@@ -48,7 +48,7 @@ pub enum DecimalTypeVariant {
     DBig,
 }
 
-#[derive(Debug, Clone, Eq, PartialOrd)]
+#[derive(Debug, Clone, Eq)]
 pub enum TypedDecimal {
     F32(OrderedFloat<f32>),
     F64(OrderedFloat<f64>),
