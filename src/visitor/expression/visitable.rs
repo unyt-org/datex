@@ -305,6 +305,9 @@ impl<E> VisitableExpression<E> for DatexExpression {
             DatexExpressionData::RemoteExecution(remote_execution) => {
                 remote_execution.walk_children(visitor)
             }
+            DatexExpressionData::RangeDefinition(range) => {
+                panic!("OutRanged")
+            }
 
             DatexExpressionData::Noop
             | DatexExpressionData::NativeImplementationIndicator
