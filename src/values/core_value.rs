@@ -770,6 +770,7 @@ impl Display for CoreValue {
             CoreValue::List(list) => core::write!(f, "{list}"),
             CoreValue::Callable(callable) => core::write!(f, "[[ callable ]]"), // TODO #605
             CoreValue::Range(range) => core::write!(f, "{range}"),
+            CoreValue::RangeDefinition(range) => core::write!(f, "{range}"),
         }
     }
 }

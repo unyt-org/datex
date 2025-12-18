@@ -139,7 +139,7 @@ pub fn append_value(buffer: &mut Vec<u8>, value: &Value) {
             append_encoded_integer(buffer, &start);
             append_encoded_integer(buffer, &end);
         }
-        CoreValue::Range(range) => {
+        CoreValue::RangeDefinition(range) => {
             append_instruction_code(buffer, InstructionCode::RANGE);
             let start = range.start.to_smallest_fitting();
             let end = range.end.to_smallest_fitting();
