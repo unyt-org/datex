@@ -64,7 +64,7 @@ pub enum IntegerTypeVariant {
     // TODO #610: ubig?
 }
 
-#[derive(Debug, Clone, Eq, PartialOrd)]
+#[derive(Debug, Clone, Eq)]
 pub enum TypedInteger {
     IBig(Integer),
     I8(i8),
