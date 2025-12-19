@@ -321,11 +321,7 @@ impl<E> VisitableExpression<E> for DatexExpression {
             | DatexExpressionData::Decimal(_)
             | DatexExpressionData::TypedDecimal(_)
             | DatexExpressionData::Integer(_)
-<<<<<<< HEAD
             | DatexExpressionData::Range(_)
-=======
-            | DatexExpressionData::RangeDefinition(_)
->>>>>>> 2088b9a5 (WIP ranges lost markers...)
             | DatexExpressionData::TypedInteger(_)
             | DatexExpressionData::Identifier(_)
             | DatexExpressionData::Endpoint(_) => Ok(()),
