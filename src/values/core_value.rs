@@ -94,6 +94,9 @@ impl StructuralEq for CoreValue {
             (CoreValue::Type(a), CoreValue::Type(b)) => a.structural_eq(b),
             (CoreValue::Callable(a), CoreValue::Callable(b)) => {
                 a.structural_eq(b)
+
+            (CoreValue::RangeDefinition(a), CoreValue::RangeDefinition(b)) => {
+                a.start.structural_eq(&b.start) && a.end.structural_eq(&b.end)
             }
             _ => false,
         }
@@ -786,6 +789,18 @@ mod tests {
         init_logger_debug();
         let a = CoreValue::from(42i32);
         assert_eq!(a.default_type_definition().to_string(), "integer/i32");
+    }
+
+    #[test]
+    pub fn range_from_core() {
+        assert_eq!(
+            CoreValue::from(RangeDefinition::new(
+                Integer::from(11),
+                Integer::from(13),
+            ))
+            .to_string(),
+            "11..13"
+        );
     }
 
     #[test]
