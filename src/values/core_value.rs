@@ -91,12 +91,17 @@ impl StructuralEq for CoreValue {
             }
             (CoreValue::List(a), CoreValue::List(b)) => a.structural_eq(b),
             (CoreValue::Map(a), CoreValue::Map(b)) => a.structural_eq(b),
+<<<<<<< HEAD
             (CoreValue::Type(a), CoreValue::Type(b)) => a.structural_eq(b),
             (CoreValue::Callable(a), CoreValue::Callable(b)) => {
                 a.structural_eq(b)
             }
 
             (CoreValue::Range(a), CoreValue::Range(b)) => {
+=======
+
+            (CoreValue::RangeDefinition(a), CoreValue::RangeDefinition(b)) => {
+>>>>>>> 2088b9a5 (WIP ranges lost markers...)
                 a.start.structural_eq(&b.start) && a.end.structural_eq(&b.end)
             }
             _ => false,
@@ -231,8 +236,12 @@ impl From<&CoreValue> for CoreLibPointerId {
             CoreValue::Endpoint(_) => CoreLibPointerId::Endpoint,
             CoreValue::Null => CoreLibPointerId::Null,
             CoreValue::Type(_) => CoreLibPointerId::Type,
+<<<<<<< HEAD
             CoreValue::Callable(_) => CoreLibPointerId::Callable,
             CoreValue::Range(_) => CoreLibPointerId::Range,
+=======
+            CoreValue::RangeDefinition(_) => CoreLibPointerId::RangeDefinition,
+>>>>>>> 2088b9a5 (WIP ranges lost markers...)
         }
     }
 }
@@ -798,6 +807,18 @@ mod tests {
         assert_eq!(
             CoreValue::from(Range::new(Integer::from(11), Integer::from(13),))
                 .to_string(),
+            "11..13"
+        );
+    }
+
+    #[test]
+    pub fn range_from_core() {
+        assert_eq!(
+            CoreValue::from(RangeDefinition::new(
+                Integer::from(11),
+                Integer::from(13),
+            ))
+            .to_string(),
             "11..13"
         );
     }
