@@ -296,6 +296,7 @@ pub fn create_core_lib_types() -> HashMap<CoreLibPointerId, Type> {
         map(),
         null(),
         callable(),
+        range(),
     ]
     .into_iter()
     .chain(once(integer.clone()))
@@ -353,6 +354,9 @@ pub fn decimal() -> CoreLibTypeDefinition {
 
 pub fn callable() -> CoreLibTypeDefinition {
     create_core_type("Callable", None, None, CoreLibPointerId::Callable)
+
+pub fn range() -> CoreLibTypeDefinition {
+    create_core_type("range", None, None, CoreLibPointerId::RangeDefinition)
 }
 
 pub fn decimal_variant(
