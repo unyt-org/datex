@@ -462,6 +462,12 @@ mod tests {
     }
 
     #[test]
+    fn range_token() {
+        let mut lexer = Token::lexer("..");
+        assert_eq!(lexer.next().unwrap(), Ok(Token::Range));
+    }
+
+    #[test]
     fn integer_type() {
         let mut lexer = Token::lexer("42u8");
         let res = lexer.next().unwrap();
