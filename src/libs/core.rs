@@ -356,7 +356,7 @@ pub fn callable() -> CoreLibTypeDefinition {
     create_core_type("Callable", None, None, CoreLibPointerId::Callable)
 
 pub fn range() -> CoreLibTypeDefinition {
-    create_core_type("range", None, None, CoreLibPointerId::RangeDefinition)
+    create_core_type("range", None, None, CoreLibPointerId::Range)
 }
 
 pub fn decimal_variant(

@@ -22,7 +22,7 @@ use crate::values::core_values::integer::typed_integer::{
 };
 use crate::values::core_values::list::List;
 use crate::values::core_values::map::Map;
-use crate::values::core_values::range::RangeDefinition;
+use crate::values::core_values::range::Range;
 use crate::values::core_values::text::Text;
 use crate::values::core_values::r#type::Type;
 use crate::values::value_container::{ValueContainer, ValueError};
@@ -43,7 +43,7 @@ pub enum CoreValue {
     Map(Map),
     Type(Type),
     Callable(Callable),
-    Range(RangeDefinition),
+    Range(Range),
 }
 impl StructuralEq for CoreValue {
     fn structural_eq(&self, other: &Self) -> bool {
@@ -95,7 +95,7 @@ impl StructuralEq for CoreValue {
             (CoreValue::Callable(a), CoreValue::Callable(b)) => {
                 a.structural_eq(b)
 
-            (CoreValue::RangeDefinition(a), CoreValue::RangeDefinition(b)) => {
+            (CoreValue::Range(a), CoreValue::Range(b)) => {
                 a.start.structural_eq(&b.start) && a.end.structural_eq(&b.end)
             }
             _ => false,
@@ -794,11 +794,8 @@ mod tests {
     #[test]
     pub fn range_from_core() {
         assert_eq!(
-            CoreValue::from(RangeDefinition::new(
-                Integer::from(11),
-                Integer::from(13),
-            ))
-            .to_string(),
+            CoreValue::from(Range::new(Integer::from(11), Integer::from(13),))
+                .to_string(),
             "11..13"
         );
     }
