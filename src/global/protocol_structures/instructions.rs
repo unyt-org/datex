@@ -68,6 +68,7 @@ pub enum RegularInstruction {
 
     // default integer
     Integer(IntegerData),
+    Range(RangeData),
 
     Endpoint(Endpoint),
 
@@ -196,11 +197,12 @@ impl Display for RegularInstruction {
             RegularInstruction::UInt128(data) => {
                 core::write!(f, "UINT_128 {}", data.0)
             }
-
+            RegularInstruction::Range(data) => {
+                core::write!(f, "RANGE {} {}", data.start, data.end)
+            }
             RegularInstruction::Apply(count) => {
                 core::write!(f, "APPLY {}", count.arg_count)
             }
-
             RegularInstruction::BigInteger(data) => {
                 core::write!(f, "BIG_INTEGER {}", data.0)
             }
@@ -684,4 +686,11 @@ pub struct TypeReferenceData {
 #[brw(little)]
 pub struct TypeMetadata {
     pub mutability: TypeMutabilityCode,
+}
+
+#[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
+#[brw(little)]
+pub struct RangeData {
+    pub start: Integer,
+    pub end: Integer,
 }

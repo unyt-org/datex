@@ -2,7 +2,7 @@ use crate::ast::expressions::Apply;
 use crate::ast::expressions::{
     BinaryOperation, CallableDeclaration, ComparisonOperation, Conditional,
     CreateRef, DatexExpression, DatexExpressionData, Deref, DerefAssignment,
-    GenericInstantiation, List, Map, PropertyAccess, PropertyAssignment,
+    GenericInstantiation, List, Map, PropertyAccess, PropertyAssignment, Range,
     RemoteExecution, SlotAssignment, Statements, TypeDeclaration,
     UnaryOperation, VariableAssignment, VariableDeclaration,
 };
@@ -17,6 +17,17 @@ pub trait VisitableExpression<E> {
         &mut self,
         visitor: &mut impl ExpressionVisitor<E>,
     ) -> Result<(), E>;
+}
+
+impl<E> VisitableExpression<E> for Range {
+    fn walk_children(
+        &mut self,
+        visitor: &mut impl ExpressionVisitor<E>,
+    ) -> Result<(), E> {
+        visitor.visit_datex_expression(&mut self.start)?;
+        visitor.visit_datex_expression(&mut self.end)?;
+        Ok(())
+    }
 }
 
 impl<E> VisitableExpression<E> for BinaryOperation {
