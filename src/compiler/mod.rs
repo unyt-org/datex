@@ -42,7 +42,7 @@ use crate::runtime::execution::context::ExecutionMode;
 use crate::stdlib::rc::Rc;
 use crate::stdlib::vec::Vec;
 use crate::time::Instant;
-use crate::utils::buffers::append_u32;
+use crate::utils::buffers::{append_i64, append_u32};
 use crate::utils::buffers::{append_u8, append_u16};
 use crate::values::core_values::decimal::Decimal;
 use crate::values::pointer::PointerAddress;
@@ -557,21 +557,19 @@ fn compile_expression(
                 InstructionCode::RANGE,
             );
             let start = match range.start.data {
-                DatexExpressionData::Integer(int) => int,
+                DatexExpressionData::Integer(int) => {
+                    int.to_smallest_fitting().as_i64().unwrap()
+                }
                 _ => panic!("CompilerOutRanged"),
             };
             let end = match range.end.data {
-                DatexExpressionData::Integer(int) => int,
+                DatexExpressionData::Integer(int) => {
+                    int.to_smallest_fitting().as_i64().unwrap()
+                }
                 _ => panic!("CompilerOutRanged"),
             };
-            append_encoded_integer(
-                &mut compilation_context.buffer,
-                &start.to_smallest_fitting(),
-            );
-            append_encoded_integer(
-                &mut compilation_context.buffer,
-                &end.to_smallest_fitting(),
-            );
+            append_i64(&mut compilation_context.buffer, start);
+            append_i64(&mut compilation_context.buffer, end);
         }
         DatexExpressionData::TypedInteger(typed_int) => {
             append_encoded_integer(&mut compilation_context.buffer, &typed_int);
@@ -1850,18 +1848,32 @@ pub mod tests {
     #[test]
     fn range_u8() {
         init_logger_debug();
-        let start = 11u8;
-        let end = 13u8;
+        let start = 11i64;
+        let end = 13i64;
         let datex_script = format!("{start}..{end}");
         let result = compile_and_log(&datex_script);
+        let x = start as u8;
+        let y = end as u8;
         assert_eq!(
             result,
             vec![
                 InstructionCode::RANGE.into(),
-                InstructionCode::INT_8.into(),
-                start,
-                InstructionCode::INT_8.into(),
-                end
+                x,
+                0u8,
+                0u8,
+                0u8,
+                0u8,
+                0u8,
+                0u8,
+                0u8,
+                y,
+                0u8,
+                0u8,
+                0u8,
+                0u8,
+                0u8,
+                0u8,
+                0u8
             ]
         );
     }

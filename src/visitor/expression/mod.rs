@@ -614,6 +614,6 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
     ) -> ExpressionVisitResult<E> {
         let _ = span;
         let _ = range;
-        Ok(VisitAction::VisitChildren)
+        Ok(VisitAction::SkipChildren)
     }
 }
