@@ -897,12 +897,14 @@ mod tests {
         let null_ast = DatexExpressionData::Null;
         assert_eq!(compact().format(&null_ast.with_default_span()), "null");
 
-        let range_ast = DatexExpressionData::Range(
-            crate::values::core_values::range::Range::new(
-                crate::values::core_values::integer::Integer(11.into()),
-                crate::values::core_values::integer::Integer(13.into()),
+        let range_ast = DatexExpressionData::Range(Range {
+            start: Box::new(
+                DatexExpressionData::Integer(11.into()).with_default_span(),
             ),
-        );
+            end: Box::new(
+                DatexExpressionData::Integer(13.into()).with_default_span(),
+            ),
+        });
 
         assert_eq!(compact().format(&range_ast.with_default_span()), "11..13");
     }
