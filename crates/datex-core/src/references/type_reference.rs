@@ -1,0 +1,216 @@
+use core::{
+    cell::RefCell,
+    fmt::{Display, Formatter},
+    
+    result::Result,
+};
+use serde::{Deserialize, Serialize};
+
+use crate::{
+    libs::core::CoreLibPointerId,
+    prelude::*,
+    references::reference::ReferenceMutability,
+    runtime::execution::ExecutionError,
+    traits::apply::Apply,
+    types::{
+        definition::TypeDefinition,
+        structural_type_definition::StructuralTypeDefinition,
+    },
+    values::{
+        core_values::r#type::Type, pointer::PointerAddress,
+        value_container::ValueContainer,
+    },
+};
+use core::option::Option;
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct NominalTypeDeclaration {
+    pub name: String,
+    pub variant: Option<String>,
+}
+impl From<String> for NominalTypeDeclaration {
+    fn from(name_and_variant: String) -> Self {
+        NominalTypeDeclaration::from(name_and_variant.as_str())
+    }
+}
+impl From<&str> for NominalTypeDeclaration {
+    fn from(name_and_variant: &str) -> Self {
+        let mut parts = name_and_variant.split('/');
+        NominalTypeDeclaration {
+            name: unsafe {
+                // rationale: at least one part always exists
+                parts.next().unwrap_unchecked().to_string()
+            },
+            variant: parts.next().map(|s| s.to_string()),
+        }
+    }
+}
+
+impl Display for NominalTypeDeclaration {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        if let Some(variant) = &self.variant {
+            core::write!(f, "{}/{}", self.name, variant)
+        } else {
+            core::write!(f, "{}", self.name)
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct TypeReference {
+    /// the value that contains the type declaration
+    pub type_value: Type,
+    /// optional nominal type declaration
+    pub nominal_type_declaration: Option<NominalTypeDeclaration>,
+    /// pointer id, can be initialized as None for local pointers
+    pub pointer_address: Option<PointerAddress>,
+}
+
+impl TypeReference {
+    pub fn nominal<T>(
+        type_value: Type,
+        nominal_type_declaration: T,
+        pointer_address: Option<PointerAddress>,
+    ) -> Self
+    where
+        T: Into<NominalTypeDeclaration>,
+    {
+        TypeReference {
+            type_value,
+            nominal_type_declaration: Some(nominal_type_declaration.into()),
+            pointer_address,
+        }
+    }
+    pub fn anonymous(
+        type_value: Type,
+        pointer_address: Option<PointerAddress>,
+    ) -> Self {
+        TypeReference {
+            type_value,
+            nominal_type_declaration: None,
+            pointer_address,
+        }
+    }
+    pub fn as_ref_cell(self) -> Rc<RefCell<TypeReference>> {
+        Rc::new(RefCell::new(self))
+    }
+
+    /// Convert this TypeReference into a Type representing a reference to the underlying type
+    pub fn as_type(self) -> Type {
+        let mutability =
+            self.mutability().unwrap_or(ReferenceMutability::Immutable);
+        Type::reference(self.as_ref_cell(), mutability)
+    }
+
+    pub fn collapse_reference_chain(&self) -> TypeReference {
+        match &self.type_value.type_definition {
+            TypeDefinition::Reference(reference) => {
+                // If this is a reference type, resolve it to its current reference
+                reference.borrow().collapse_reference_chain()
+            }
+            _ => {
+                // If this is not a reference type, return it directly
+                self.clone()
+            }
+        }
+    }
+    pub fn mutability(&self) -> Option<ReferenceMutability> {
+        self.type_value.reference_mutability()
+    }
+}
+
+impl TypeReference {
+    // pub fn as_type(&self) -> &Type {
+    //     &self.type_value
+    // }
+
+    pub fn structural_type_definition(
+        &self,
+    ) -> Option<&StructuralTypeDefinition> {
+        self.type_value.structural_type_definition()
+    }
+
+    pub fn base_type(&self) -> Option<Rc<RefCell<TypeReference>>> {
+        self.type_value.base_type_reference()
+    }
+
+    pub fn matches_reference(
+        &self,
+        _other: Rc<RefCell<TypeReference>>,
+    ) -> bool {
+        core::todo!("#300 implement type matching");
+    }
+
+    pub fn matches_type(&self, other: &Type) -> bool {
+        if let Some(base) = other.base_type_reference() {
+            return *self == *base.borrow();
+        }
+
+        core::todo!("#301 implement type matching");
+    }
+}
+
+impl Apply for TypeReference {
+    fn apply(
+        &self,
+        _args: &[ValueContainer],
+    ) -> Result<Option<ValueContainer>, ExecutionError> {
+        core::todo!("#302 Undescribed by author.")
+    }
+
+    fn apply_single(
+        &self,
+        arg: &ValueContainer,
+    ) -> Result<Option<ValueContainer>, ExecutionError> {
+        // TODO #303: ensure that we can guarantee that pointer_address is always Some here
+        let core_lib_id =
+            CoreLibPointerId::try_from(self.pointer_address.as_ref().unwrap());
+        if let Ok(core_lib_id) = core_lib_id {
+            match core_lib_id {
+                CoreLibPointerId::Integer(None) => arg
+                    .to_value()
+                    .borrow()
+                    .cast_to_integer()
+                    .map(|i| Some(ValueContainer::from(i)))
+                    .ok_or_else(|| ExecutionError::InvalidTypeCast),
+                CoreLibPointerId::Integer(Some(variant)) => arg
+                    .to_value()
+                    .borrow()
+                    .cast_to_typed_integer(variant)
+                    .map(|i| Some(ValueContainer::from(i)))
+                    .ok_or_else(|| ExecutionError::InvalidTypeCast),
+                CoreLibPointerId::Decimal(None) => arg
+                    .to_value()
+                    .borrow()
+                    .cast_to_decimal()
+                    .map(|d| Some(ValueContainer::from(d)))
+                    .ok_or_else(|| ExecutionError::InvalidTypeCast),
+                CoreLibPointerId::Decimal(Some(variant)) => arg
+                    .to_value()
+                    .borrow()
+                    .cast_to_typed_decimal(variant)
+                    .map(|d| Some(ValueContainer::from(d)))
+                    .ok_or_else(|| ExecutionError::InvalidTypeCast),
+                _ => core::todo!("#304 Undescribed by author."),
+            }
+        } else {
+            core::todo!("#305 Undescribed by author.")
+        }
+    }
+}
+
+impl Display for TypeReference {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        if let Some(nominal) = &self.nominal_type_declaration {
+            // special exception: for Unit, display "()"
+            if self.pointer_address
+                == Some(PointerAddress::from(CoreLibPointerId::Unit))
+            {
+                return core::write!(f, "()");
+            }
+            core::write!(f, "{}", nominal)
+        } else {
+            core::write!(f, "{}", self.type_value)
+        }
+    }
+}

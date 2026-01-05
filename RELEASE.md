@@ -5,7 +5,7 @@ library. The process creates a Github release, updates the version number in the
 Cargo.toml file, and publishes the new version to crates.io.
 
 1. Run the
-   ["Create release"](https://github.com/unyt-org/datex-core/actions/workflows/create-release.yml)
+   ["Create release"](https://github.com/unyt-org/datex/actions/workflows/create-release.yml)
    workflow in Github.
 
 - Specify whether you want to create a new major, minor, or patch release.

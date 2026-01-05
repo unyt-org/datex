@@ -1,0 +1,39 @@
+use crate::{
+    dif::{r#type::DIFTypeDefinition, value::DIFValueContainer},
+    references::reference::{
+        Reference, ReferenceMutability, mutability_as_int,
+    },
+    runtime::memory::Memory,
+};
+use core::{cell::RefCell, prelude::rust_2024::*};
+use serde::{Deserialize, Serialize};
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct DIFReference {
+    pub value: DIFValueContainer,
+    pub allowed_type: DIFTypeDefinition,
+    #[serde(rename = "mut")]
+    #[serde(with = "mutability_as_int")]
+    pub mutability: ReferenceMutability,
+}
+
+impl DIFReference {
+    pub fn from_reference(
+        reference: &Reference,
+        memory: &RefCell<Memory>,
+    ) -> Self {
+        let value = DIFValueContainer::from_value_container(
+            &reference.value_container(),
+            memory,
+        );
+        let allowed_type = DIFTypeDefinition::from_type_definition(
+            &reference.allowed_type(),
+            memory,
+        );
+        DIFReference {
+            value,
+            allowed_type,
+            mutability: reference.mutability(),
+        }
+    }
+}

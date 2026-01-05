@@ -1,0 +1,62 @@
+use crate::{
+    ast::{
+        spanned::Spanned,
+        type_expressions::{TypeExpression, TypeExpressionData},
+    },
+    parser::{Parser, SpannedParserError, errors::ParserError, lexer::Token},
+};
+
+use crate::prelude::*;
+impl Parser {
+    pub(crate) fn parse_type_key(
+        &mut self,
+    ) -> Result<TypeExpression, SpannedParserError> {
+        Ok(match self.peek()?.token.clone() {
+            // allow grouped expressions as keys
+            Token::LeftParen => self.parse_type_grouped()?,
+
+            // allow integers as keys
+            Token::IntegerLiteral(value) => {
+                self.parse_type_integer_literal(value)?
+            }
+            // allow string literals as keys
+            Token::StringLiteral(value) => {
+                self.parse_type_string_literal(value)?
+            }
+
+            // treat plain identifiers as text keys
+            Token::Identifier(name) => {
+                TypeExpressionData::Text(name).with_span(self.advance()?.span)
+            }
+            // map reserved keywords to text keys
+            // TODO #667: add more keywords as needed
+            t @ Token::True
+            | t @ Token::False
+            | t @ Token::TypeDeclaration
+            | t @ Token::Compile
+            | t @ Token::If
+            | t @ Token::Else
+            | t @ Token::Is
+            | t @ Token::Matches
+            | t @ Token::And
+            | t @ Token::Or => {
+                TypeExpressionData::Text(t.as_const_str().unwrap().to_string())
+                    .with_span(self.advance()?.span)
+            }
+
+            _ => {
+                return Err(SpannedParserError {
+                    error: ParserError::UnexpectedToken {
+                        expected: vec![
+                            Token::Identifier("".to_string()),
+                            Token::IntegerLiteral("".to_string()),
+                            Token::StringLiteral("".to_string()),
+                        ],
+                        found: self.peek()?.token.clone(),
+                    },
+                    span: self.peek()?.span.clone(),
+                });
+            }
+        })
+    }
+}
