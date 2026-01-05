@@ -1,0 +1,28 @@
+[package]
+name = "datex-macros"
+version = "0.1.4"
+edition = "2024"
+description = "The public macros for the DATEX Core Rust implementation"
+authors = [
+    "Benedikt Strehle <benedikt@unyt.org>",
+    "Jonas Strehle <jonas@unyt.org>",
+]
+license = "MIT"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+quote = "1.0"
+syn = { version = "2.0", features = ["full"] }
+proc-macro2 = { version = "1.0", features = ["span-locations"] }
+datex-core = { path = "../datex-core", features = ["std", "compiler"] }
+
+[dev-dependencies]
+tokio = { version = "1.43.0", features = [
+    "sync",
+    "macros",
+    "io-util",
+    "rt",
+    "time",
+], default-features = false }

@@ -1,8 +1,8 @@
-# Contributing to **DATEX Core**
+# Contributing to **DATEX**
 
 This document describes the workflow, branch strategy, coding standards, and
 quality gates for contributing to the
-[`datex-core`](https://github.com/unyt-org/datex-core) Rust crate.
+[`datex`](https://github.com/unyt-org/datex) Rust crate.
 
 ---
 
@@ -191,8 +191,8 @@ Before requesting review, ensure you have:
 - Small changes (< 30 LoC) may be approved by one maintainer; larger or
   architectural changes require two approvals.
 - Discuss API-breaking changes in a GitHub
-  [Issue](https://github.com/unyt-org/datex-core/issues) or
-  [Discussion](https://github.com/unyt-org/datex-core/discussions) before
+  [Issue](https://github.com/unyt-org/datex/issues) or
+  [Discussion](https://github.com/unyt-org/datex/discussions) before
   coding.
 - Feel free to draft a PR early (`[WIP]`) and mark as draft to get feedback on
   direction.
@@ -202,8 +202,8 @@ Before requesting review, ensure you have:
 ## Getting Started Locally
 
 ```bash
-git clone https://github.com/unyt-org/datex-core.git
-cd datex-core
+git clone https://github.com/unyt-org/datex.git
+cd datex/crates/datex
 rustup override set nightly
 cargo test-debug
 cargo clippy --features debug

@@ -1,0 +1,534 @@
+use crate::{
+    dif::{
+        r#type::{DIFType, DIFTypeDefinition},
+        value::{DIFReferenceNotFoundError, DIFValueContainer},
+    },
+    libs::core::{CoreLibPointerId, get_core_lib_type_definition},
+    runtime::memory::Memory,
+    types::structural_type_definition::StructuralTypeDefinition,
+    values::{
+        core_value::CoreValue,
+        core_values::{
+            decimal::typed_decimal::{DecimalTypeVariant, TypedDecimal},
+            integer::Integer,
+            map::Map,
+        },
+        value::Value,
+        value_container::ValueContainer,
+    },
+};
+
+use crate::prelude::*;
+use core::{cell::RefCell, fmt,  result::Result};
+use crate::values::core_values::integer::typed_integer::TypedInteger;
+use indexmap::IndexMap;
+use ordered_float::OrderedFloat;
+use serde::{
+    Deserialize, Deserializer, Serialize, Serializer, de,
+    de::{MapAccess, SeqAccess, Visitor},
+    ser::{SerializeMap, SerializeSeq},
+};
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum DIFValueRepresentation {
+    Null,
+    /// Represents a boolean value in DIF.
+    Boolean(bool),
+    /// Represents a string value in DIF.
+    String(String),
+    /// Represents a number in DIF.
+    Number(f64),
+    /// Represents a array of DIF values.
+    Array(Vec<DIFValueContainer>),
+    /// Represents a map of DIF values.
+    Map(Vec<(DIFValueContainer, DIFValueContainer)>),
+    /// Represents a struct value in DIF.
+    Object(Vec<(String, DIFValueContainer)>),
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum DIFTypeRepresentation {
+    Null,
+    /// Represents a boolean value in DIF.
+    Boolean(bool),
+    /// Represents a string value in DIF.
+    String(String),
+    /// Represents a number in DIF.
+    Number(f64),
+    /// Represents a array of DIF values.
+    Array(Vec<DIFType>),
+    /// Represents a map of DIF values.
+    Map(Vec<(DIFType, DIFType)>),
+    /// Represents a struct value in DIF.
+    Object(Vec<(String, DIFType)>),
+}
+
+impl DIFValueRepresentation {
+    /// Converts a DIFRepresentationValue into a default Value, without considering additional type information.
+    /// Returns an error if a reference cannot be resolved.
+    pub fn to_default_value(
+        &self,
+        memory: &RefCell<Memory>,
+    ) -> Result<Value, DIFReferenceNotFoundError> {
+        Ok(match self {
+            DIFValueRepresentation::Null => Value::null(),
+            DIFValueRepresentation::String(str) => Value {
+                actual_type: Box::new(get_core_lib_type_definition(
+                    CoreLibPointerId::Text,
+                )),
+                inner: CoreValue::Text(str.clone().into()),
+            },
+            DIFValueRepresentation::Boolean(b) => Value {
+                actual_type: Box::new(get_core_lib_type_definition(
+                    CoreLibPointerId::Boolean,
+                )),
+                inner: CoreValue::Boolean((*b).into()),
+            },
+            DIFValueRepresentation::Number(n) => Value {
+                actual_type: Box::new(get_core_lib_type_definition(
+                    CoreLibPointerId::Decimal(Some(DecimalTypeVariant::F64)),
+                )),
+                inner: CoreValue::TypedDecimal(TypedDecimal::F64(
+                    OrderedFloat::from(*n),
+                )),
+            },
+            DIFValueRepresentation::Array(array) => Value {
+                actual_type: Box::new(get_core_lib_type_definition(
+                    CoreLibPointerId::List,
+                )),
+                inner: CoreValue::List(
+                    array
+                        .iter()
+                        .map(|v| v.to_value_container(memory))
+                        .collect::<Result<Vec<ValueContainer>, _>>()?
+                        .into(),
+                ),
+            },
+            DIFValueRepresentation::Object(object) => {
+                let mut map: Vec<(String, ValueContainer)> = Vec::new();
+                for (k, v) in object.clone() {
+                    map.push((k, v.to_value_container(memory)?));
+                }
+                Value {
+                    actual_type: Box::new(get_core_lib_type_definition(
+                        CoreLibPointerId::Map,
+                    )),
+                    inner: CoreValue::Map(map.into()),
+                }
+            }
+            DIFValueRepresentation::Map(map) => {
+                let mut core_map = IndexMap::default();
+                for (k, v) in map {
+                    core_map.insert(
+                        k.to_value_container(memory)?,
+                        v.to_value_container(memory)?,
+                    );
+                }
+                Value {
+                    actual_type: Box::new(get_core_lib_type_definition(
+                        CoreLibPointerId::Map,
+                    )),
+                    inner: CoreValue::Map(core_map.into()),
+                }
+            }
+            _ => {
+                core::todo!(
+                    "#388 Other DIFValueRepresentation variants not supported yet"
+                )
+            }
+        })
+    }
+
+    /// Converts a DIFValueRepresentation into a Value, using the provided type information to guide the conversion.
+    /// Returns an error if a reference cannot be resolved.
+    pub fn to_value_with_type(
+        &self,
+        type_definition: &DIFTypeDefinition,
+        memory: &RefCell<Memory>,
+    ) -> Result<Value, DIFReferenceNotFoundError> {
+        let val = match type_definition {
+            DIFTypeDefinition::Reference(r) => {
+                if let Ok(core_lib_ptr_id) = CoreLibPointerId::try_from(r) {
+                    match core_lib_ptr_id {
+                        // special mappings:
+                        // type map and represented as object -> convert to map
+                        CoreLibPointerId::Map
+                            if let DIFValueRepresentation::Object(object) =
+                                self =>
+                        {
+                            let mut entries: Vec<(String, ValueContainer)> =
+                                Vec::new();
+                            for (k, v) in object.clone().into_iter() {
+                                entries
+                                    .push((k, v.to_value_container(memory)?));
+                            }
+                            Some(Value::from(CoreValue::Map(Map::from(
+                                entries,
+                            ))))
+                        }
+                        // type map and represented as empty array -> convert to empty map
+                        CoreLibPointerId::Map
+                            if let DIFValueRepresentation::Array(array) =
+                                self =>
+                        {
+                            // assert that array is empty, otherwise this is not a valid DIF representation
+                            if !array.is_empty() {
+                                unreachable!(
+                                    "Invalid DIF value, non-empty array with map type"
+                                )
+                            }
+                            Some(Value::from(CoreValue::Map(Map::Structural(
+                                vec![],
+                            ))))
+                        }
+                        // type integer and represented as string -> convert to integer
+                        CoreLibPointerId::Integer(None)
+                            if let DIFValueRepresentation::String(s) = self =>
+                        {
+                            Some(Value::from(CoreValue::Integer(
+                                Integer::from_string(s).unwrap(),
+                            )))
+                        }
+                        CoreLibPointerId::Integer(Some(variant))
+                            if let DIFValueRepresentation::String(s) = self =>
+                        {
+                            Some(Value::from(CoreValue::TypedInteger(
+                                TypedInteger::from_string_with_variant(
+                                    s, variant,
+                                )
+                                .unwrap(),
+                            )))
+                        }
+                        // otherwise, use default mapping
+                        _ => None,
+                    }
+                } else {
+                    core::todo!("#389 Handle non-core library type references")
+                }
+            }
+            _ => None,
+        };
+        let val = match val {
+            Some(v) => v,
+            None => self.to_default_value(memory)?,
+        };
+
+        let ty = type_definition.to_type_definition(memory);
+
+        Ok(Value {
+            actual_type: Box::new(ty),
+            ..val
+        })
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum DeserializeMapOrArray<T> {
+    MapEntry(T, T),
+    ArrayEntry(T),
+}
+
+impl DIFTypeRepresentation {
+    pub fn from_structural_type_definition(
+        struct_def: &StructuralTypeDefinition,
+        memory: &RefCell<Memory>,
+    ) -> Self {
+        match struct_def {
+            StructuralTypeDefinition::Null => DIFTypeRepresentation::Null,
+            StructuralTypeDefinition::Boolean(b) => {
+                DIFTypeRepresentation::Boolean(b.as_bool())
+            }
+            StructuralTypeDefinition::Integer(i) => {
+                // FIXME #392: this can overflow
+                DIFTypeRepresentation::Number(i.as_i128().unwrap() as f64)
+            }
+            StructuralTypeDefinition::TypedInteger(i) => {
+                DIFTypeRepresentation::Number(i.as_i128().unwrap() as f64)
+            }
+            StructuralTypeDefinition::Decimal(d) => {
+                DIFTypeRepresentation::Number(d.into_f64())
+            }
+            StructuralTypeDefinition::TypedDecimal(d) => {
+                DIFTypeRepresentation::Number(d.as_f64())
+            }
+            StructuralTypeDefinition::Text(t) => {
+                DIFTypeRepresentation::String(t.0.clone())
+            }
+            StructuralTypeDefinition::Endpoint(endpoint) => {
+                DIFTypeRepresentation::String(endpoint.to_string())
+            }
+            StructuralTypeDefinition::List(arr) => {
+                DIFTypeRepresentation::Array(
+                    arr.iter().map(|v| DIFType::from_type(v, memory)).collect(),
+                )
+            }
+            StructuralTypeDefinition::Map(fields) => {
+                DIFTypeRepresentation::Map(
+                    fields
+                        .iter()
+                        .map(|(k, v)| {
+                            (
+                                DIFType::from_type(k, memory),
+                                DIFType::from_type(v, memory),
+                            )
+                        })
+                        .collect(),
+                )
+            }
+        }
+    }
+}
+
+impl Serialize for DIFValueRepresentation {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match self {
+            DIFValueRepresentation::Null => serializer.serialize_unit(),
+            DIFValueRepresentation::Boolean(b) => serializer.serialize_bool(*b),
+            DIFValueRepresentation::String(s) => serializer.serialize_str(s),
+            DIFValueRepresentation::Number(f) => serializer.serialize_f64(*f),
+            DIFValueRepresentation::Array(vec) => vec.serialize(serializer),
+            DIFValueRepresentation::Map(entries) => {
+                let mut seq = serializer.serialize_seq(Some(entries.len()))?;
+                for (k, v) in entries {
+                    seq.serialize_element(&vec![k, v])?;
+                }
+                seq.end()
+            }
+            DIFValueRepresentation::Object(fields) => {
+                let mut map = serializer.serialize_map(Some(fields.len()))?;
+                for (k, v) in fields {
+                    map.serialize_entry(k, v)?;
+                }
+                map.end()
+            }
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for DIFValueRepresentation {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct DIFCoreValueVisitor;
+
+        impl<'de> Visitor<'de> for DIFCoreValueVisitor {
+            type Value = DIFValueRepresentation;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("a valid DIFCoreValue")
+            }
+
+            fn visit_bool<E>(self, value: bool) -> Result<Self::Value, E> {
+                Ok(DIFValueRepresentation::Boolean(value))
+            }
+
+            fn visit_i64<E>(self, value: i64) -> Result<Self::Value, E> {
+                Ok(DIFValueRepresentation::Number(value as f64))
+            }
+
+            fn visit_u64<E>(self, value: u64) -> Result<Self::Value, E> {
+                // Safe cast since DIFCoreValue uses i64
+                Ok(DIFValueRepresentation::Number(value as f64))
+            }
+
+            fn visit_f64<E>(self, value: f64) -> Result<Self::Value, E> {
+                Ok(DIFValueRepresentation::Number(value))
+            }
+
+            fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+            where
+                E: de::Error,
+            {
+                Ok(DIFValueRepresentation::String(value.to_string()))
+            }
+
+            fn visit_string<E>(self, value: String) -> Result<Self::Value, E> {
+                Ok(DIFValueRepresentation::String(value))
+            }
+
+            fn visit_none<E>(self) -> Result<Self::Value, E> {
+                Ok(DIFValueRepresentation::Null)
+            }
+
+            fn visit_unit<E>(self) -> Result<Self::Value, E> {
+                Ok(DIFValueRepresentation::Null)
+            }
+
+            // array / map
+            fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
+            where
+                A: SeqAccess<'de>,
+            {
+                let first_entry = seq
+                    .next_element::<DeserializeMapOrArray<DIFValueContainer>>(
+                    )?;
+                match first_entry {
+                    Some(DeserializeMapOrArray::ArrayEntry(first)) => {
+                        let mut elements = vec![first];
+                        while let Some(elem) =
+                            seq.next_element::<DIFValueContainer>()?
+                        {
+                            elements.push(elem);
+                        }
+                        Ok(DIFValueRepresentation::Array(elements))
+                    }
+                    Some(DeserializeMapOrArray::MapEntry(k, v)) => {
+                        let mut elements = vec![(k, v)];
+                        while let Some((k, v)) = seq.next_element::<(
+                            DIFValueContainer,
+                            DIFValueContainer,
+                        )>(
+                        )? {
+                            elements.push((k, v));
+                        }
+                        Ok(DIFValueRepresentation::Map(elements))
+                    }
+                    None => Ok(DIFValueRepresentation::Array(vec![])), // empty array
+                }
+            }
+
+            // object
+            fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
+            where
+                A: MapAccess<'de>,
+            {
+                let mut entries = Vec::new();
+                while let Some((k, v)) = map.next_entry()? {
+                    entries.push((k, v));
+                }
+                Ok(DIFValueRepresentation::Object(entries))
+            }
+        }
+
+        deserializer.deserialize_any(DIFCoreValueVisitor)
+    }
+}
+
+impl Serialize for DIFTypeRepresentation {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match self {
+            DIFTypeRepresentation::Null => serializer.serialize_unit(),
+            DIFTypeRepresentation::Boolean(b) => serializer.serialize_bool(*b),
+            DIFTypeRepresentation::String(s) => serializer.serialize_str(s),
+            DIFTypeRepresentation::Number(f) => serializer.serialize_f64(*f),
+            DIFTypeRepresentation::Array(vec) => vec.serialize(serializer),
+            DIFTypeRepresentation::Map(entries) => {
+                let mut seq = serializer.serialize_seq(Some(entries.len()))?;
+                for (k, v) in entries {
+                    seq.serialize_element(&vec![k, v])?;
+                }
+                seq.end()
+            }
+            DIFTypeRepresentation::Object(fields) => {
+                let mut map = serializer.serialize_map(Some(fields.len()))?;
+                for (k, v) in fields {
+                    map.serialize_entry(k, v)?;
+                }
+                map.end()
+            }
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for DIFTypeRepresentation {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct DIFCoreValueVisitor;
+
+        impl<'de> Visitor<'de> for DIFCoreValueVisitor {
+            type Value = DIFTypeRepresentation;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("a valid DIFCoreValue")
+            }
+
+            fn visit_bool<E>(self, value: bool) -> Result<Self::Value, E> {
+                Ok(DIFTypeRepresentation::Boolean(value))
+            }
+
+            fn visit_i64<E>(self, value: i64) -> Result<Self::Value, E> {
+                Ok(DIFTypeRepresentation::Number(value as f64))
+            }
+
+            fn visit_u64<E>(self, value: u64) -> Result<Self::Value, E> {
+                // Safe cast since DIFCoreValue uses i64
+                Ok(DIFTypeRepresentation::Number(value as f64))
+            }
+
+            fn visit_f64<E>(self, value: f64) -> Result<Self::Value, E> {
+                Ok(DIFTypeRepresentation::Number(value))
+            }
+
+            fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+            where
+                E: de::Error,
+            {
+                Ok(DIFTypeRepresentation::String(value.to_string()))
+            }
+
+            fn visit_string<E>(self, value: String) -> Result<Self::Value, E> {
+                Ok(DIFTypeRepresentation::String(value))
+            }
+
+            fn visit_none<E>(self) -> Result<Self::Value, E> {
+                Ok(DIFTypeRepresentation::Null)
+            }
+
+            fn visit_unit<E>(self) -> Result<Self::Value, E> {
+                Ok(DIFTypeRepresentation::Null)
+            }
+
+            // array / map
+            fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
+            where
+                A: SeqAccess<'de>,
+            {
+                let first_entry =
+                    seq.next_element::<DeserializeMapOrArray<DIFType>>()?;
+                match first_entry {
+                    Some(DeserializeMapOrArray::ArrayEntry(first)) => {
+                        let mut elements = vec![first];
+                        while let Some(elem) = seq.next_element::<DIFType>()? {
+                            elements.push(elem);
+                        }
+                        Ok(DIFTypeRepresentation::Array(elements))
+                    }
+                    Some(DeserializeMapOrArray::MapEntry(k, v)) => {
+                        let mut elements = vec![(k, v)];
+                        while let Some((k, v)) =
+                            seq.next_element::<(DIFType, DIFType)>()?
+                        {
+                            elements.push((k, v));
+                        }
+                        Ok(DIFTypeRepresentation::Map(elements))
+                    }
+                    None => Ok(DIFTypeRepresentation::Array(vec![])), // empty array
+                }
+            }
+
+            // object
+            fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
+            where
+                A: MapAccess<'de>,
+            {
+                let mut entries = Vec::new();
+                while let Some((k, v)) = map.next_entry()? {
+                    entries.push((k, v));
+                }
+                Ok(DIFTypeRepresentation::Object(entries))
+            }
+        }
+
+        deserializer.deserialize_any(DIFCoreValueVisitor)
+    }
+}

@@ -1,11 +1,4 @@
-/target
-**/*.rs.bk
-bin/
-# check out compiled code
-# pkg/
-wasm-pack.log
 .DS_Store
-Cargo.lock
 .idea
-macros/target
 rustc-ice-*
+target

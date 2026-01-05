@@ -1,3 +1,4 @@
 max_width = 80
 tab_spaces = 4
 edition = "2024"
+merge_imports = true

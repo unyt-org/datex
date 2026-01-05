@@ -1,0 +1,288 @@
+cargo-features = ["profile-rustflags"]
+
+[package]
+name = "datex-core"
+version = "0.0.8"
+description = "The DATEX Core Rust implementation"
+authors = [
+    "Benedikt Strehle <benedikt@unyt.org>",
+    "Jonas Strehle <jonas@unyt.org>",
+    "Norbert Brzezinski <norbert@unyt.org>",
+]
+edition = "2024"
+license-file = "LICENSE"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[[bench]]
+name = "mod"
+harness = false
+
+[lints.clippy]
+std_instead_of_core = "deny"
+alloc_instead_of_core = "deny"
+std_instead_of_alloc = "deny"
+
+[dependencies]
+# core dependencies
+strum = { version = "0.27.1", default-features = false, features = ["derive"] }
+num = { version = "0.4.3", default-features = false, features = [
+    "alloc",
+    "libm",
+] }
+num-bigint = { version = "0.4", default-features = false }
+num-integer = { version = "0.1", default-features = false }
+num_enum = { version = "0.7.4", default-features = false }
+itertools = { version = "0.14.0", default-features = false, features = [
+    "use_alloc",
+] }
+binrw = { version = "0.15.0", default-features = false }
+modular-bitfield = "0.13.0"
+thiserror = { version = "2.0.11", default-features = false }
+url = { version = "2.5.7", default-features = false }
+num-traits = { version = "0.2.19", default-features = false }
+hex = { version = "0.4.3", default-features = false, features = ["alloc"] }
+log = { version = "0.4", default-features = false, features = ["serde"] }
+bytes = { version = "1", default-features = false }
+futures-util = { version = "0.3", default-features = false, features = [
+    "async-await-macro",
+    "alloc",
+] }
+futures = { version = "0.3", default-features = false, features = ["alloc"] }
+indexmap = { version = "2.9.0", default-features = false }
+ordered-float = { version = "5.0.0", default-features = false }
+bigdecimal = { version = "0.4.8", default-features = false }
+ringmap = { version = "0.1.3", default-features = false }
+futures-core = { version = "0.3.31", default-features = false, features = [
+    "alloc",
+] }
+serde = { version = "1.0.219", default-features = false, features = [
+    "derive",
+    "alloc",
+] }
+serde_with = { version = "3.12.0", default-features = false, features = [
+    "macros",
+    "schemars_1",
+    "chrono",
+    "alloc",
+] }
+serde_json = { version = "1.0.140", default-features = false, features = [
+    "alloc",
+] }
+serde-big-array = { version = "0.5.1", optional = true }
+realhydroper-lsp = { version = "0.22.0", optional = true, default-features = false, features = [
+    "proposed",
+] }
+
+
+# macros
+strum_macros = { version = "0.27.1" }
+cfg-if = "1.0.1"
+async-trait = "0.1.87"
+datex-macros-internal = { path = "../datex-macros-internal", version = "0.0.1" }
+datex-crypto-facade = { path = "../datex-crypto-facade", version = "0.0.1" }
+
+
+# optional dependencies
+tokio = { version = "1.43.0", optional = true, features = [
+    "sync",
+    "macros",
+    "io-util",
+    "rt",
+    "time",
+], default-features = false }
+webrtc = { version = "0.13.0", optional = true }
+ariadne = { version = "0.5.1", optional = true }
+syntect = { version = "5.2.0", default-features = false, optional = true, features = [
+    "default-fancy",
+] }
+pretty = { version = "0.12.5", optional = true }
+logos = { version = "0.15.0", optional = true }
+internment = { version = "0.8.6", optional = true }
+foldhash = { version = "0.2.0", default-features = false }
+spin = { version = "0.10.0", default-features = false, features = [
+    "spin_mutex",
+    "mutex",
+    "lock_api",
+] }
+embassy-time = { version = "0.5.0", optional = true }
+async-unsync = { version = "0.3.0", optional = true, default-features = false, features = [
+    "alloc",
+] }
+embassy-executor = { version = "0.9.1", optional = true }
+embassy-futures = { version = "0.1.2", optional = true, default-features = false }
+hashbrown = { version = "0.16.0", features = ["serde"], optional = true }
+web-time = { version = "1.1.0", optional = true }
+async-select = "0.3.0"
+datex-crypto-native = { path = "../datex-crypto-native", version = "0.0.1", optional = true }
+datex-crypto-esp32 = { path = "../datex-crypto-esp32", version = "0.0.1", optional = true }
+flexi_logger = { version = "0.31.8", optional = true }
+async-timer = { version = "0.7.4", default-features = false, features = ["no_std"], optional = true}
+
+quote = { version = "1.0", optional = true}
+syn = { version = "2.0", features = ["full"], optional = true }
+proc-macro2 = { version = "1.0", features = ["span-locations"], optional = true }
+dotenvy = { version = "0.15.7", optional = true }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+wasm-bindgen-futures = { optional = true, version = "0.4.29" }
+gloo-timers = { optional = true, version = "0.3.0", features = ["futures"] }
+tsify = { optional = true, version = "0.5.6", features = ["js"] }
+
+# wasm-bindgen is required for tsify
+wasm-bindgen = { optional = true, version = "=0.2.105" }
+
+[target.'cfg(any(target_arch = "xtensa", target_arch = "riscv32"))'.dependencies]
+datex-crypto-esp32 = { path = "../datex-crypto-esp32", version = "0.0.1" }
+
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+datex-crypto-web = { path = "../datex-crypto-web", version = "0.0.1" }
+
+
+# TODO: required for rust-analyzer to resolve dependencies
+wasm-bindgen-futures = { version = "0.4.29" }
+gloo-timers = { version = "0.3.0", features = ["futures"] }
+tsify = "0.5.6"
+wasm-bindgen = "=0.2.105"
+
+[profile.release]
+opt-level = "z"
+strip = true
+lto = true
+codegen-units = 1
+panic = "abort"
+
+
+# Development dependencies
+[target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
+matchbox_signaling = { version = "0.12.0" }
+tokio = { version = "1.43.0", features = [
+    "sync",
+    "macros",
+    "io-util",
+    "rt",
+    "time",
+], default-features = false }
+
+[dev-dependencies]
+criterion = { version = "0.6.0", features = ["html_reports"] }
+criterion-macro = "0.4.0"
+json-syntax = "0.12.5"
+lazy_static = "1.4.0"
+ntest_timeout = "0.9.3"
+indoc = "2.0.6"
+datex-crypto-native = { path = "../datex-crypto-native" }
+
+
+[features]
+# alloc = [] see https://github.com/unyt-org/datex/issues/699
+
+# Default features shall be no_std compatbile,
+# and allow for the minimum needed feature set for most use cases,
+# while still being compatible with std.
+default = [
+    "compiler", # TODO: remove from default features
+    #    "syntax_highlighting_legacy",
+    "no_std",
+    "allow_unsigned_blocks"
+]
+
+no_std = [
+    "hashbrown",
+    "dep:async-unsync",
+    "dep:async-timer"
+]
+
+macro_utils = [
+    "dep:quote",
+    "dep:syn",
+    "dep:proc-macro2",
+]
+
+# embedded build
+embedded = ["embassy_runtime"]
+esp32 = ["dep:datex-crypto-esp32"]
+
+# runtime
+tokio_runtime = ["dep:tokio", "futures/std"]
+wasm_runtime = [
+    "dep:wasm-bindgen-futures",
+    "dep:gloo-timers",
+    "dep:tsify",
+    "dep:wasm-bindgen",
+    "dep:web-time",
+]
+embassy_runtime = [
+    "dep:embassy-executor",
+    "dep:embassy-time",
+    "dep:embassy-futures",
+]
+
+# Enabled ComHub metadata
+com_hub_metadata = []
+
+# only required for legacy syntax highlighting in decompiler, will be removed in the future
+syntax_highlighting_legacy = ["dep:syntect"]
+
+# when enabled, unsigned DXB blocks are accepted
+allow_unsigned_blocks = []
+
+# Standard features, including std and all features that require it
+std = [
+    "serde/std",
+    "serde_with/std",
+    "serde_json/std",
+    "indexmap/std",
+    "log/std",
+    "futures-util/std",
+    "futures-core/std",
+    "futures/std",
+    "url/std",
+    "num/std",
+    "num-traits/std",
+    "num-bigint/std",
+    "num-integer/std",
+    "bigdecimal/std",
+    "ordered-float/std",
+    "num_enum/std",
+    "strum/std",
+    "binrw/std",
+    "thiserror/std",
+    "hex/std",
+    "bytes/std",
+    "ringmap/std",
+    "dep:datex-crypto-native",
+    "dep:flexi_logger",
+    "tokio_runtime",
+    "macro_utils",
+    "dep:dotenvy"
+] # use std
+
+debug = ["dep:serde-big-array"]
+
+# note: compiler requires std
+compiler = [
+    # "std",
+    "dep:ariadne",
+    "dep:pretty",
+    "dep:logos",
+    "dep:internment",
+    "ast",
+]
+
+webrtc = ["dep:webrtc"]
+
+# decompiler
+decompiler = ["ast"]
+
+# ast structures, needed by compiler, decompiler, and lsp
+ast = []
+
+lsp = ["dep:realhydroper-lsp"]
+
+# lsp support
+lsp_tokio = ["lsp", "realhydroper-lsp/runtime-tokio"]
+# enable runtime-agnostic feature for realhydroper-lsp in wasm
+lsp_wasm = ["lsp", "realhydroper-lsp/runtime-agnostic"]
