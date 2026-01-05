@@ -1,0 +1,103 @@
+use core::fmt::Display;
+
+use crate::{
+    network::com_hub::errors::ComInterfaceCreateError, prelude::*,
+    runtime::RuntimeConfigInterface, serde::Deserialize,
+};
+use serde::Serialize;
+use url::Url;
+
+#[derive(Debug)]
+pub enum URLError {
+    InvalidURL,
+    InvalidScheme,
+}
+impl Display for URLError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            URLError::InvalidURL => core::write!(f, "URLError: Invalid URL"),
+            URLError::InvalidScheme => {
+                core::write!(f, "URLError: Invalid URL scheme")
+            }
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(tag = "type", content = "data")]
+#[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
+pub enum TLSMode {
+    /// The TLS certificate is handled externally (e.g., by a reverse proxy or load balancer).
+    HandledExternally,
+    /// The server must handle TLS using the provided certificate.
+    WithCertificate {
+        private_key: Vec<u8>,
+        certificate: Vec<u8>,
+    },
+}
+
+pub type AcceptAddress = (String, Option<TLSMode>);
+pub type AcceptAddresses = Vec<AcceptAddress>;
+
+/// Parses a WebSocket URL and returns a `Url` object.
+/// If no protocol is specified, it defaults to `ws` or `wss` based on the `secure` parameter.
+pub fn parse_url(address: &str) -> Result<Url, URLError> {
+    let mut url = Url::parse(address).map_err(|_| URLError::InvalidURL)?;
+    match url.scheme() {
+        "https" => url.set_scheme("wss").unwrap(),
+        "http" => url.set_scheme("ws").unwrap(),
+        "wss" | "ws" => (),
+        _ => return Err(URLError::InvalidScheme),
+    }
+    Ok(url)
+}
+
+/// Generates the setup data for client interfaces based on the server's accept addresses.
+pub fn get_clients_setup_data<T: Serialize>(
+    accept_addresses: Option<AcceptAddresses>,
+    protocols: (String, String),
+    interface_type: String,
+    generate_client_interface: fn(String) -> T,
+) -> Result<Option<Vec<RuntimeConfigInterface>>, ComInterfaceCreateError> {
+    accept_addresses.map(|addrs| {
+        addrs
+            .into_iter()
+            .map(|(address, tls_mode)| {
+                let url = format!(
+                    "{}://{}",
+                    if tls_mode.is_some() { protocols.1.clone() } else { protocols.0.clone() },
+                    address
+                );
+                // parse and validate URL
+                parse_url(&url).map_err(|_| {
+                    ComInterfaceCreateError::invalid_setup_data(
+                        format!("Invalid URL for WebSocket connection: {url}")
+                    )
+                })?;
+                RuntimeConfigInterface::new(
+                    interface_type.as_str(),
+                    generate_client_interface(url),
+                ).map_err(|e| {
+                    ComInterfaceCreateError::invalid_setup_data(
+                        format!("Failed to create connectable interface for WebSocket client: {e}")
+                    )
+                })
+            })
+            .collect::<_>()
+    }).transpose()
+}
+
+/// Splits an address string into host and port components.
+/// Expects the address to be in the format "host:port".
+pub fn split_address_into_host_and_port(address: &str) -> Result<(String, u16), URLError> {
+    // split at ":" to separate host and port
+    let parts: Vec<&str> = address.rsplitn(2, ':').collect();
+    if parts.len() != 2 {
+        return Err(URLError::InvalidURL);
+    }
+    
+    let host = parts[1].to_string();
+    let port = parts[0].parse::<u16>().map_err(|_| URLError::InvalidURL)?;
+    
+    Ok((host, port))
+}

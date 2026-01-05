@@ -1,0 +1,36 @@
+[package]
+name = "datex-crypto-esp32"
+version = "0.0.1"
+description = "Embedded ESP32 target implementation of the DATEX Crypto facade"
+authors = [
+    "Benedikt Strehle <benedikt@unyt.org>",
+    "Jonas Strehle <jonas@unyt.org>",
+    "Norbert Brzezinski <norbert@unyt.org>",
+]
+edition = "2024"
+license-file = "LICENSE"
+
+[lib]
+crate-type = ["rlib"]
+
+[lints.clippy]
+std_instead_of_core = "deny"
+alloc_instead_of_core = "deny"
+std_instead_of_alloc = "deny"
+
+[dependencies]
+datex-crypto-facade = { path = "../datex-crypto-facade", version = "0.0.1" }
+spin = "0.10.0"
+static_cell = "2.1.1"
+
+[dev-dependencies]
+esp-hal = { version = "1.0.0", features = ["esp32s3", "unstable", "psram"] }
+
+[target.xtensa-esp32s3-none-elf.dependencies]
+esp-hal = { version = "1.0.0", features = ["esp32s3", "unstable", "psram"] }
+
+[target.xtensa-esp32-none-elf.dependencies]
+esp-hal = { version = "1.0.0", features = ["esp32", "unstable", "psram"] }
+
+[target.riscv32imc-unknown-none-elf.dependencies]
+esp-hal = { version = "1.0.0", features = ["esp32c2", "unstable", "psram"] }
