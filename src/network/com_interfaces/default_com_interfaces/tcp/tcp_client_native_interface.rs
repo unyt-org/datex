@@ -1,7 +1,11 @@
 use super::tcp_common::{TCPClientInterfaceSetupData, TCPError};
 
+use crate::network::com_hub::errors::InterfaceCreateError;
 use crate::network::com_interfaces::com_interface::error::ComInterfaceError;
-use crate::network::com_interfaces::com_interface::implementation::{ComInterfaceSyncFactory, ComInterfaceImplementation, ComInterfaceAsyncFactory};
+use crate::network::com_interfaces::com_interface::implementation::{
+    ComInterfaceAsyncFactory, ComInterfaceImplementation,
+    ComInterfaceSyncFactory,
+};
 use crate::network::com_interfaces::com_interface::properties::{
     InterfaceDirection, InterfaceProperties,
 };
@@ -32,7 +36,6 @@ use tokio::net::TcpStream;
 use tokio::net::tcp::OwnedWriteHalf;
 use tokio::select;
 use tokio::sync::Notify;
-use crate::network::com_hub::errors::InterfaceCreateError;
 
 pub struct TCPClientNativeInterface {
     pub address: SocketAddr,
@@ -48,11 +51,11 @@ impl TCPClientNativeInterface {
         com_interface: Rc<ComInterface>,
     ) -> Result<(Self, InterfaceProperties), InterfaceCreateError> {
         let address = SocketAddr::from_str(&setup_data.address)
-            .map_err(|_| InterfaceCreateError::InvalidSetupData)?;
+            .map_err(|e| InterfaceCreateError::invalid_setup_data(e))?;
 
-        let stream = TcpStream::connect(address)
-            .await
-            .map_err(|error| ComInterfaceError::connection_error_with_details(error))?;
+        let stream = TcpStream::connect(address).await.map_err(|error| {
+            ComInterfaceError::connection_error_with_details(error)
+        })?;
 
         let (read_half, tx) = stream.into_split();
 
@@ -104,12 +107,12 @@ impl TCPClientNativeInterface {
                 socket_uuid,
                 tx: RefCell::new(tx),
                 com_interface,
-                shutdown_signal
+                shutdown_signal,
             },
             InterfaceProperties {
                 name: Some(setup_data.address),
                 ..Self::get_default_properties()
-            }
+            },
         ))
     }
 }
@@ -130,11 +133,15 @@ impl ComInterfaceImplementation for TCPClientNativeInterface {
             }
         })
     }
-    fn handle_destroy<'a>(&'a self) -> Pin<Box<dyn Future<Output = bool> + 'a>> {
+    fn handle_destroy<'a>(
+        &'a self,
+    ) -> Pin<Box<dyn Future<Output = bool> + 'a>> {
         todo!()
     }
 
-    fn handle_reconnect<'a>(&'a self) -> Pin<Box<dyn Future<Output=bool> + 'a>> {
+    fn handle_reconnect<'a>(
+        &'a self,
+    ) -> Pin<Box<dyn Future<Output = bool> + 'a>> {
         todo!()
     }
 }
@@ -145,7 +152,16 @@ impl ComInterfaceAsyncFactory for TCPClientNativeInterface {
     fn create(
         setup_data: Self::SetupData,
         com_interface: Rc<ComInterface>,
-    ) -> Pin<Box<dyn Future<Output = Result<(Self, InterfaceProperties), InterfaceCreateError>>>> {
+    ) -> Pin<
+        Box<
+            dyn Future<
+                Output = Result<
+                    (Self, InterfaceProperties),
+                    InterfaceCreateError,
+                >,
+            >,
+        >,
+    > {
         Box::pin(async move {
             TCPClientNativeInterface::create(setup_data, com_interface).await
         })

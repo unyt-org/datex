@@ -28,17 +28,19 @@ use super::websocket_common::{
     WebSocketError, WebSocketServerError, WebSocketServerInterfaceSetupData,
     parse_url,
 };
+use crate::network::com_hub::errors::InterfaceCreateError;
 use crate::network::com_interfaces::com_interface::ComInterface;
 use crate::network::com_interfaces::com_interface::error::ComInterfaceError;
-use crate::network::com_interfaces::com_interface::implementation::{ComInterfaceAsyncFactory, ComInterfaceSyncFactory};
 use crate::network::com_interfaces::com_interface::implementation::ComInterfaceImplementation;
+use crate::network::com_interfaces::com_interface::implementation::{
+    ComInterfaceAsyncFactory, ComInterfaceSyncFactory,
+};
 use crate::network::com_interfaces::com_interface::properties::{
     InterfaceDirection, InterfaceProperties,
 };
 use crate::network::com_interfaces::com_interface::socket::ComInterfaceSocketUUID;
 use crate::runtime::global_context::{get_global_context, set_global_context};
 use tokio_tungstenite::WebSocketStream;
-use crate::network::com_hub::errors::InterfaceCreateError;
 
 type WebsocketStreamMap = HashMap<
     ComInterfaceSocketUUID,
@@ -52,16 +54,20 @@ pub struct WebSocketServerNativeInterface {
 }
 
 impl WebSocketServerNativeInterface {
-
     async fn create(
         setup_data: WebSocketServerInterfaceSetupData,
         com_interface: Rc<ComInterface>,
     ) -> Result<(Self, InterfaceProperties), InterfaceCreateError> {
-
-        let address: String = format!("0.0.0.0:{}", setup_data.port);
-        let address = parse_url(&address, setup_data.secure.unwrap_or(true)).map_err(|_| {
-            InterfaceCreateError::InvalidSetupData
-        })?;
+        let address: String = format!(
+            "{}://0.0.0.0:{}",
+            match setup_data.secure.unwrap_or(true) {
+                true => "wss",
+                false => "ws",
+            },
+            setup_data.port
+        );
+        let address = parse_url(&address)
+            .map_err(|e| InterfaceCreateError::invalid_setup_data(e))?;
 
         info!("Spinning up server at {address}");
         let addr = format!(
@@ -70,9 +76,11 @@ impl WebSocketServerNativeInterface {
             address.port_or_known_default().unwrap()
         )
         .parse::<SocketAddr>()
-        .map_err(|_| InterfaceCreateError::InvalidSetupData)?;
+        .map_err(|e| InterfaceCreateError::invalid_setup_data(e))?;
 
-        let listener = TcpListener::bind(&addr).await.map_err(|err| ComInterfaceError::connection_error_with_details(err))?;
+        let listener = TcpListener::bind(&addr).await.map_err(|err| {
+            ComInterfaceError::connection_error_with_details(err)
+        })?;
 
         let websocket_streams = Arc::new(Mutex::new(HashMap::new()));
         let websocket_streams_clone = websocket_streams.clone();
@@ -183,7 +191,7 @@ impl WebSocketServerNativeInterface {
             InterfaceProperties {
                 name: Some(address.to_string()),
                 ..Self::get_default_properties()
-            }
+            },
         ))
     }
 }
@@ -194,9 +202,19 @@ impl ComInterfaceAsyncFactory for WebSocketServerNativeInterface {
     fn create(
         setup_data: Self::SetupData,
         com_interface: Rc<ComInterface>,
-    ) -> Pin<Box<dyn Future<Output = Result<(Self, InterfaceProperties), InterfaceCreateError>> + 'static>> {
+    ) -> Pin<
+        Box<
+            dyn Future<
+                    Output = Result<
+                        (Self, InterfaceProperties),
+                        InterfaceCreateError,
+                    >,
+                > + 'static,
+        >,
+    > {
         Box::pin(async move {
-            WebSocketServerNativeInterface::create(setup_data, com_interface).await
+            WebSocketServerNativeInterface::create(setup_data, com_interface)
+                .await
         })
     }
 
@@ -236,7 +254,9 @@ impl ComInterfaceImplementation for WebSocketServerNativeInterface {
         })
     }
 
-    fn handle_destroy<'a>(&'a self) -> Pin<Box<dyn Future<Output = bool> + 'a>> {
+    fn handle_destroy<'a>(
+        &'a self,
+    ) -> Pin<Box<dyn Future<Output = bool> + 'a>> {
         let shutdown_signal = self.shutdown_signal.clone();
         let websocket_streams = self.websocket_streams_by_socket.clone();
         Box::pin(async move {
@@ -246,7 +266,9 @@ impl ComInterfaceImplementation for WebSocketServerNativeInterface {
         })
     }
 
-    fn handle_reconnect<'a>(&'a self) -> Pin<Box<dyn Future<Output = bool> + 'a>> {
+    fn handle_reconnect<'a>(
+        &'a self,
+    ) -> Pin<Box<dyn Future<Output = bool> + 'a>> {
         todo!()
     }
 }

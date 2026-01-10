@@ -16,9 +16,13 @@ use core::time::Duration;
 use futures::StreamExt;
 use tokio_stream::wrappers::BroadcastStream;
 
+use super::http_common::{HTTPError, HTTPServerInterfaceSetupData};
+use crate::network::com_hub::errors::InterfaceCreateError;
 use crate::network::com_interfaces::com_interface::ComInterface;
 use crate::network::com_interfaces::com_interface::error::ComInterfaceError;
-use crate::network::com_interfaces::com_interface::implementation::{ComInterfaceAsyncFactory, ComInterfaceSyncFactory};
+use crate::network::com_interfaces::com_interface::implementation::{
+    ComInterfaceAsyncFactory, ComInterfaceSyncFactory,
+};
 use crate::network::com_interfaces::com_interface::properties::{
     InterfaceDirection, InterfaceProperties,
 };
@@ -34,8 +38,6 @@ use datex_macros::{com_interface, create_opener};
 use log::{debug, error, info};
 use tokio::sync::{RwLock, broadcast, mpsc};
 use url::Url;
-use crate::network::com_hub::errors::InterfaceCreateError;
-use super::http_common::{HTTPError, HTTPServerInterfaceSetupData};
 
 async fn server_to_client_handler(
     Path(route): Path<String>,
@@ -178,7 +180,7 @@ impl HTTPServerNativeInterface {
     ) -> Result<(Self, InterfaceProperties), InterfaceCreateError> {
         let address: String = format!("http://127.0.0.1:{}", setup_data.port);
         let address = Url::parse(&address)
-            .map_err(|e| InterfaceCreateError::InvalidSetupData)?;
+            .map_err(|e| InterfaceCreateError::invalid_setup_data(e))?;
 
         info!("Spinning up server at {address}");
 
@@ -194,10 +196,12 @@ impl HTTPServerNativeInterface {
 
         let addr: SocketAddr = address
             .socket_addrs(|| None)
-            .map_err(|_| InterfaceCreateError::InvalidSetupData)?
+            .map_err(|e| InterfaceCreateError::invalid_setup_data(e))?
             .first()
             .cloned()
-            .ok_or(InterfaceCreateError::InvalidSetupData)?;
+            .ok_or(InterfaceCreateError::invalid_setup_data(
+                "Socket address invalid",
+            ))?;
 
         println!("HTTP server starting on http://{addr}");
         spawn(async move {
@@ -242,11 +246,15 @@ impl ComInterfaceImplementation for HTTPServerNativeInterface {
             }
         })
     }
-    fn handle_destroy<'a>(&'a self) -> Pin<Box<dyn Future<Output = bool> + 'a>> {
+    fn handle_destroy<'a>(
+        &'a self,
+    ) -> Pin<Box<dyn Future<Output = bool> + 'a>> {
         todo!("#199")
     }
 
-    fn handle_reconnect<'a>(&'a self) -> Pin<Box<dyn Future<Output = bool> + 'a>> {
+    fn handle_reconnect<'a>(
+        &'a self,
+    ) -> Pin<Box<dyn Future<Output = bool> + 'a>> {
         todo!()
     }
 }
@@ -257,7 +265,16 @@ impl ComInterfaceAsyncFactory for HTTPServerNativeInterface {
     fn create(
         setup_data: Self::SetupData,
         com_interface: Rc<ComInterface>,
-    ) -> Pin<Box<dyn Future<Output = Result<(Self, InterfaceProperties), InterfaceCreateError>>>> {
+    ) -> Pin<
+        Box<
+            dyn Future<
+                Output = Result<
+                    (Self, InterfaceProperties),
+                    InterfaceCreateError,
+                >,
+            >,
+        >,
+    > {
         Box::pin(async move {
             HTTPServerNativeInterface::create(setup_data, com_interface).await
         })

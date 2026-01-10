@@ -154,20 +154,30 @@ pub struct BlockId {
 }
 
 impl DXBBlock {
+    pub fn new_with_body(body: &[u8]) -> DXBBlock {
+        let mut block = DXBBlock {
+            body: body.to_vec(),
+            ..DXBBlock::default()
+        };
+        block.recalculate_struct();
+        block
+    }
     pub fn new(
         routing_header: RoutingHeader,
         block_header: BlockHeader,
         encrypted_header: EncryptedHeader,
         body: Vec<u8>,
     ) -> DXBBlock {
-        DXBBlock {
+        let mut block = DXBBlock {
             routing_header,
             block_header,
             signature: None,
             encrypted_header,
             body,
             raw_bytes: None,
-        }
+        };
+        block.recalculate_struct();
+        block
     }
 
     pub fn to_bytes(&self) -> Result<Vec<u8>, binrw::Error> {

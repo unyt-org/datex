@@ -396,6 +396,7 @@ mod tests {
     use core::str::FromStr;
 
     use crate::runtime::{AsyncContext, RuntimeConfig};
+    use crate::utils::context::init_global_context;
     use crate::values::core_values::endpoint::Endpoint;
 
     use super::*;
@@ -410,6 +411,7 @@ mod tests {
 
         local
             .run_until(async {
+                init_global_context();
                 let runtime = Runtime::new(
                     RuntimeConfig::new_with_endpoint(
                         Endpoint::from_str("@lspler").unwrap(),

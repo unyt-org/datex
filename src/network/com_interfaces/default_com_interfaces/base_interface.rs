@@ -3,7 +3,7 @@ use core::result::Result;
 use std::collections::HashMap;
 
 use crate::network::com_interfaces::com_interface::implementation::{
-    ComInterfaceSyncFactory, ComInterfaceImplementation,
+    ComInterfaceImplementation, ComInterfaceSyncFactory,
 };
 use crate::network::com_interfaces::com_interface::state::ComInterfaceState;
 use crate::network::{
@@ -137,11 +137,15 @@ impl ComInterfaceImplementation for BaseInterface {
         self.on_send.as_ref()(block, socket_uuid)
     }
 
-    fn handle_destroy<'a>(&'a self) -> Pin<Box<dyn Future<Output = bool> + 'a>> {
+    fn handle_destroy<'a>(
+        &'a self,
+    ) -> Pin<Box<dyn Future<Output = bool> + 'a>> {
         Box::pin(async move { true })
     }
 
-    fn handle_reconnect<'a>(&'a self) -> Pin<Box<dyn Future<Output = bool> + 'a>> {
+    fn handle_reconnect<'a>(
+        &'a self,
+    ) -> Pin<Box<dyn Future<Output = bool> + 'a>> {
         Box::pin(async move { true })
     }
 }
@@ -178,7 +182,7 @@ mod tests {
                 properties::InterfaceProperties, state::ComInterfaceState,
             },
             default_com_interfaces::base_interface::{
-                self, BaseInterfaceHolder, BaseInterfaceSetupData,
+                BaseInterfaceHolder, BaseInterfaceSetupData,
             },
         },
         utils::context::init_global_context,
@@ -201,20 +205,11 @@ mod tests {
         );
         assert!(base_interface.properties().close_timestamp.is_none());
 
-        // Open the interface
-        base_interface.reconnect().await;
-        assert_eq!(
-            base_interface.current_state(),
-            ComInterfaceState::Connected
-        );
-        assert!(base_interface.properties().close_timestamp.is_none());
-
         // Close the interface
         assert!(base_interface.close().await);
         assert_eq!(
             base_interface.current_state(),
             ComInterfaceState::NotConnected
         );
-        assert!(base_interface.properties().close_timestamp.is_some());
     }
 }

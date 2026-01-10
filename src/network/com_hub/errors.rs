@@ -11,9 +11,14 @@ pub enum InterfaceCreateError {
     InvalidInterfaceDirectionForFallbackInterface,
     InterfaceOpenFailed,
     SetupDataParseError,
-    InvalidSetupData,
+    InvalidSetupData(String),
 }
 
+impl InterfaceCreateError {
+    pub fn invalid_setup_data<T: Display>(details: T) -> Self {
+        InterfaceCreateError::InvalidSetupData(details.to_string())
+    }
+}
 
 impl From<ComInterfaceError> for InterfaceCreateError {
     fn from(err: ComInterfaceError) -> Self {
@@ -45,13 +50,12 @@ impl Display for InterfaceCreateError {
             InterfaceCreateError::SetupDataParseError => {
                 core::write!(f, "InterfaceCreationError: Setup data parse error")
             }
-            InterfaceCreateError::InvalidSetupData => {
-                core::write!(f, "InterfaceCreationError: Invalid setup data")
+            InterfaceCreateError::InvalidSetupData(details) => {
+                core::write!(f, "InterfaceCreationError: Invalid setup data - {}", details)
             }
         }
     }
 }
-
 
 #[derive(Debug, PartialEq)]
 pub enum ComHubError {
@@ -67,7 +71,6 @@ impl From<ComInterfaceError> for ComHubError {
         ComHubError::InterfaceError(err)
     }
 }
-
 
 impl Display for ComHubError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {

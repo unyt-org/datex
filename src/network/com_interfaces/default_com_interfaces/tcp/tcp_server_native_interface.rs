@@ -1,6 +1,11 @@
+use super::tcp_common::{TCPError, TCPServerInterfaceSetupData};
+use crate::network::com_hub::errors::InterfaceCreateError;
 use crate::network::com_interfaces::com_interface::ComInterface;
 use crate::network::com_interfaces::com_interface::error::ComInterfaceError;
-use crate::network::com_interfaces::com_interface::implementation::{ComInterfaceSyncFactory, ComInterfaceImplementation, ComInterfaceAsyncFactory};
+use crate::network::com_interfaces::com_interface::implementation::{
+    ComInterfaceAsyncFactory, ComInterfaceImplementation,
+    ComInterfaceSyncFactory,
+};
 use crate::network::com_interfaces::com_interface::properties::{
     InterfaceDirection, InterfaceProperties,
 };
@@ -25,13 +30,12 @@ use log::{error, info, warn};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
 use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
-use crate::network::com_hub::errors::InterfaceCreateError;
-use super::tcp_common::{TCPError, TCPServerInterfaceSetupData};
 
 pub struct TCPServerNativeInterface {
     pub address: SocketAddr,
     com_interface: Rc<ComInterface>,
-    tx_by_socket: Arc<Mutex<HashMap<ComInterfaceSocketUUID, Arc<Mutex<OwnedWriteHalf>>>>>,
+    pub tx_by_socket:
+        Arc<Mutex<HashMap<ComInterfaceSocketUUID, Arc<Mutex<OwnedWriteHalf>>>>>,
 }
 
 impl TCPServerNativeInterface {
@@ -39,7 +43,6 @@ impl TCPServerNativeInterface {
         setup_data: TCPServerInterfaceSetupData,
         com_interface: Rc<ComInterface>,
     ) -> Result<(Self, InterfaceProperties), InterfaceCreateError> {
-
         let address = SocketAddr::V4(SocketAddrV4::new(
             Ipv4Addr::new(0, 0, 0, 0),
             setup_data.port,
@@ -47,9 +50,12 @@ impl TCPServerNativeInterface {
 
         info!("Spinning up server at {address}");
 
-        let listener = TcpListener::bind(address.clone())
-            .await
-            .map_err(|e| InterfaceCreateError::InterfaceError(ComInterfaceError::connection_error_with_details(e)))?;
+        let listener =
+            TcpListener::bind(address.clone()).await.map_err(|e| {
+                InterfaceCreateError::InterfaceError(
+                    ComInterfaceError::connection_error_with_details(e),
+                )
+            })?;
         info!("Server listening on {address}");
 
         let tx_by_socket = Arc::new(Mutex::new(HashMap::new()));
@@ -124,13 +130,26 @@ impl ComInterfaceAsyncFactory for TCPServerNativeInterface {
     fn create(
         setup_data: Self::SetupData,
         com_interface: Rc<ComInterface>,
-    ) -> Pin<Box<dyn Future<Output = Result<(Self, InterfaceProperties), InterfaceCreateError>>>> {
+    ) -> Pin<
+        Box<
+            dyn Future<
+                Output = Result<
+                    (Self, InterfaceProperties),
+                    InterfaceCreateError,
+                >,
+            >,
+        >,
+    > {
         Box::pin(async move {
             TCPServerNativeInterface::create(setup_data, com_interface)
                 .await
-                .map_err(|e| InterfaceCreateError::InterfaceError(
-                    ComInterfaceError::connection_error_with_details(format!("{e:?}"))
-                ))
+                .map_err(|e| {
+                    InterfaceCreateError::InterfaceError(
+                        ComInterfaceError::connection_error_with_details(
+                            format!("{e:?}"),
+                        ),
+                    )
+                })
         })
     }
 
@@ -163,10 +182,14 @@ impl ComInterfaceImplementation for TCPServerNativeInterface {
             async move { tx.try_lock().unwrap().write(block).await.is_ok() },
         )
     }
-    fn handle_destroy<'a>(&'a self) -> Pin<Box<dyn Future<Output = bool> + 'a>> {
+    fn handle_destroy<'a>(
+        &'a self,
+    ) -> Pin<Box<dyn Future<Output = bool> + 'a>> {
         todo!("#207")
     }
-    fn handle_reconnect<'a>(&'a self) -> Pin<Box<dyn Future<Output = bool> + 'a>> {
+    fn handle_reconnect<'a>(
+        &'a self,
+    ) -> Pin<Box<dyn Future<Output = bool> + 'a>> {
         todo!()
     }
 }

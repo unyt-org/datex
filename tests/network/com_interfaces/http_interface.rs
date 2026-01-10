@@ -1,7 +1,8 @@
 use core::str::FromStr;
+use axum::http;
 use datex_core::{
     network::com_interfaces::{
-        default_com_interfaces::http::http_server_interface::HTTPServerNativeInterface,
+        com_interface::socket::ComInterfaceSocketEvent, default_com_interfaces::http::http_server_interface::HTTPServerNativeInterface
     },
     values::core_values::endpoint::Endpoint,
 };
@@ -15,18 +16,25 @@ pub async fn test_construct() {
     const PORT: u16 = 8081;
     init_global_context();
 
-    let server = ComInterface::create_async_with_implementation::<HTTPServerNativeInterface>(
-        HTTPServerInterfaceSetupData {port: PORT}
-    ).await.expect("Failed to create HTTP server interface");
+    let server = ComInterface::create_async_with_implementation::<
+        HTTPServerNativeInterface,
+    >(HTTPServerInterfaceSetupData { port: PORT })
+    .await
+    .expect("Failed to create HTTP server interface");
 
     let endpoint = Endpoint::from_str("@jonas").unwrap();
 
-    // TODO: add as_any downcast?
-
-    server
+    let mut http_server_interface =
+        server.implementation_mut::<HTTPServerNativeInterface>();
+    http_server_interface
         .add_channel("my-secret-channel", endpoint.clone())
         .await;
-    let socket_uuid = server.get_socket_uuid_for_endpoint(endpoint).unwrap();
+    drop(http_server_interface);
+    let mut socket_event_receiver = server.take_socket_event_receiver();
+    let socket_uuid = match socket_event_receiver.next().await.unwrap() {
+        ComInterfaceSocketEvent::NewSocket(socket) => socket.uuid,
+        _ => panic!("Expected SocketCreated event"),
+    };
     let mut it = 0;
 
     while it < 5 {
@@ -35,6 +43,11 @@ pub async fn test_construct() {
         it += 1;
     }
 
-    server.remove_channel("my-secret-channel").await;
+    let mut http_server_interface =
+        server.implementation_mut::<HTTPServerNativeInterface>();
+    http_server_interface
+        .remove_channel("my-secret-channel")
+        .await;
+    drop(http_server_interface);
     server.close().await;
 }

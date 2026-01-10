@@ -1,6 +1,8 @@
 use std::assert_matches::assert_matches;
+use std::time::Duration;
 use datex_core::global::dxb_block::DXBBlock;
 use datex_core::network::com_hub::errors::InterfaceCreateError;
+use datex_core::task::sleep;
 use datex_core::utils::context::init_global_context;
 use datex_core::network::com_interfaces::default_com_interfaces::websocket::websocket_common::{WebSocketClientInterfaceSetupData, WebSocketError, WebSocketServerInterfaceSetupData};
 use datex_core::network::com_interfaces::{
@@ -10,10 +12,10 @@ use datex_core::network::com_interfaces::{
     },
 };
 
-use datex_core::run_async;
 use datex_core::network::com_interfaces::com_interface::ComInterface;
 use datex_core::network::com_interfaces::com_interface::error::ComInterfaceError;
 use datex_core::network::com_interfaces::com_interface::socket::ComInterfaceSocketEvent;
+use datex_core::run_async;
 
 #[tokio::test]
 pub async fn test_create_socket_connection() {
@@ -74,7 +76,7 @@ pub async fn test_create_socket_connection() {
                 .await
         );
 
-        tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+        sleep(Duration::from_millis(100)).await;
 
         // check if messages are received correctly
         assert_eq!(server_socket_receiver.next().await.unwrap(), client_to_server_message);
@@ -87,25 +89,29 @@ pub async fn test_construct_client() {
     init_global_context();
 
     // Test with a invalid URL
-    let client_res = ComInterface::create_async_with_implementation::<WebSocketClientNativeInterface>(
-        WebSocketClientInterfaceSetupData {
-            address: "ftp://localhost:1234".to_string(),
-        }
-    ).await;
+    let client_res = ComInterface::create_async_with_implementation::<
+        WebSocketClientNativeInterface,
+    >(WebSocketClientInterfaceSetupData {
+        address: "ftp://localhost:1234".to_string(),
+    })
+    .await;
     assert_eq!(
         client_res.unwrap_err(),
         InterfaceCreateError::InvalidSetupData
     );
 
     // We expect a connection error here, as the server can't be reached
-    let client_res = ComInterface::create_async_with_implementation::<WebSocketClientNativeInterface>(
-        WebSocketClientInterfaceSetupData {
-            address: "ws://localhost.invalid:1234".to_string(),
-        }
-    ).await;
+    let client_res = ComInterface::create_async_with_implementation::<
+        WebSocketClientNativeInterface,
+    >(WebSocketClientInterfaceSetupData {
+        address: "ws://localhost.invalid:1234".to_string(),
+    })
+    .await;
 
     assert_matches!(
         client_res.unwrap_err(),
-        InterfaceCreateError::InterfaceError(ComInterfaceError::ConnectionError(_))
+        InterfaceCreateError::InterfaceError(
+            ComInterfaceError::ConnectionError(_)
+        )
     );
 }

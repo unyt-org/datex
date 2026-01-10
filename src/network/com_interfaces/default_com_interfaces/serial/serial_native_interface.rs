@@ -6,10 +6,13 @@ use crate::stdlib::{future::Future, pin::Pin, sync::Arc, time::Duration};
 use core::prelude::rust_2024::*;
 use core::result::Result;
 
+use crate::network::com_hub::errors::InterfaceCreateError;
 use crate::network::com_interfaces::com_interface::ComInterface;
 use crate::network::com_interfaces::com_interface::error::ComInterfaceError;
-use crate::network::com_interfaces::com_interface::implementation::{ComInterfaceAsyncFactory, ComInterfaceSyncFactory};
 use crate::network::com_interfaces::com_interface::implementation::ComInterfaceImplementation;
+use crate::network::com_interfaces::com_interface::implementation::{
+    ComInterfaceAsyncFactory, ComInterfaceSyncFactory,
+};
 use crate::network::com_interfaces::com_interface::properties::{
     InterfaceDirection, InterfaceProperties,
 };
@@ -21,7 +24,6 @@ use datex_macros::{com_interface, create_opener};
 use log::{debug, error, warn};
 use serialport::SerialPort;
 use tokio::sync::Notify;
-use crate::network::com_hub::errors::InterfaceCreateError;
 
 pub struct SerialNativeInterface {
     com_interface: Rc<ComInterface>,
@@ -49,18 +51,22 @@ impl SerialNativeInterface {
     ) -> Result<(Self, InterfaceProperties), InterfaceCreateError> {
         let state = com_interface.state();
 
-        let port_name = setup_data.port_name
-            .clone()
-            .ok_or(InterfaceCreateError::InvalidSetupData)?;
+        let port_name = setup_data.port_name.clone().ok_or(
+            InterfaceCreateError::invalid_setup_data("Port name is required"),
+        )?;
 
         if port_name.is_empty() {
-            return Err(InterfaceCreateError::InvalidSetupData.into());
+            return Err(InterfaceCreateError::InvalidSetupData(
+                "Port name cannot be empty".to_string(),
+            ));
         }
 
         let port = serialport::new(port_name, setup_data.baud_rate)
             .timeout(Self::TIMEOUT)
             .open()
-            .map_err(|err| ComInterfaceError::connection_error_with_details(err))?;
+            .map_err(|err| {
+                ComInterfaceError::connection_error_with_details(err)
+            })?;
         let port = Arc::new(Mutex::new(port));
         let port_clone = port.clone();
 
@@ -115,9 +121,9 @@ impl SerialNativeInterface {
                 com_interface,
                 shutdown_signal,
                 port,
-                socket_uuid
+                socket_uuid,
             },
-            Self::get_default_properties()
+            Self::get_default_properties(),
         ))
     }
 }
@@ -161,7 +167,9 @@ impl ComInterfaceImplementation for SerialNativeInterface {
         })
     }
 
-    fn handle_destroy<'a>(&'a self) -> Pin<Box<dyn Future<Output = bool> + 'a>> {
+    fn handle_destroy<'a>(
+        &'a self,
+    ) -> Pin<Box<dyn Future<Output = bool> + 'a>> {
         let shutdown_signal = self.shutdown_signal.clone();
         Box::pin(async move {
             shutdown_signal.notified().await;
@@ -169,7 +177,9 @@ impl ComInterfaceImplementation for SerialNativeInterface {
         })
     }
 
-    fn handle_reconnect<'a>(&'a self) -> Pin<Box<dyn Future<Output = bool> + 'a>> {
+    fn handle_reconnect<'a>(
+        &'a self,
+    ) -> Pin<Box<dyn Future<Output = bool> + 'a>> {
         todo!()
     }
 }

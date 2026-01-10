@@ -1,14 +1,21 @@
 use std::{cell::RefCell, io::Bytes, rc::Rc, sync::Arc, time::Duration};
 
+use crate::network::helpers::mock_setup::{TEST_ENDPOINT_A, TEST_ENDPOINT_B};
+use datex_core::global::dxb_block::DXBBlock;
+use datex_core::network::com_interfaces::com_interface::ComInterface;
+use datex_core::network::com_interfaces::com_interface::socket::{
+    ComInterfaceSocket, ComInterfaceSocketEvent, ComInterfaceSocketUUID,
+};
+use datex_core::task::UnboundedReceiver;
+use datex_core::utils::context::init_global_context;
 use datex_core::{
-    network::com_interfaces::{
-        default_com_interfaces::webrtc::{
-            webrtc_common::{
-                media_tracks::{MediaKind, MediaTrack},
-                webrtc_trait::{WebRTCTrait, WebRTCTraitInternal},
-            },
-            webrtc_native_interface::{TrackLocal, WebRTCNativeInterface},
+    network::com_interfaces::default_com_interfaces::webrtc::{
+        webrtc_common::{
+            media_tracks::{MediaKind, MediaTrack},
+            webrtc_commons::WebRTCInterfaceSetupData,
+            webrtc_trait::{WebRTCTrait, WebRTCTraitInternal},
         },
+        webrtc_native_interface::{TrackLocal, WebRTCNativeInterface},
     },
     run_async,
     task::{sleep, spawn_local},
@@ -23,109 +30,159 @@ use webrtc::{
         track_local_static_sample::TrackLocalStaticSample,
     },
 };
-use datex_core::network::com_interfaces::com_interface::socket::ComInterfaceSocketUUID;
-use datex_core::utils::context::init_global_context;
-use crate::{
-    network::helpers::mock_setup::{TEST_ENDPOINT_A, TEST_ENDPOINT_B},
-};
+
+async fn create_webrtc_interfaces() -> (
+    Rc<ComInterface>,
+    Rc<ComInterface>,
+    UnboundedReceiver<ComInterfaceSocketEvent>,
+    UnboundedReceiver<ComInterfaceSocketEvent>,
+) {
+    // Create a WebRTCNativeInterface instance on each side (remote: @a)
+    let com_interface_a = ComInterface::create_async_with_implementation::<
+        WebRTCNativeInterface,
+    >(WebRTCInterfaceSetupData {
+        peer_endpoint: TEST_ENDPOINT_A.clone(),
+        ice_servers: None,
+    })
+    .await
+    .expect("Failed to create WebRTCNativeInterface");
+    let receiver_a = com_interface_a.take_socket_event_receiver();
+
+    // Create a WebRTCNativeInterface instance on each side (remote: @b)
+    let com_interface_b = ComInterface::create_async_with_implementation::<
+        WebRTCNativeInterface,
+    >(WebRTCInterfaceSetupData {
+        peer_endpoint: TEST_ENDPOINT_B.clone(),
+        ice_servers: None,
+    })
+    .await
+    .expect("Failed to create WebRTCNativeInterface");
+    let receiver_b = com_interface_b.take_socket_event_receiver();
+
+    let interface_a_clone = com_interface_a.clone();
+    let inteface_b_clone = com_interface_b.clone();
+
+    let webrtc_interface_a = com_interface_a.clone();
+    let webrtc_interface_a =
+        webrtc_interface_a.implementation_mut::<WebRTCNativeInterface>();
+    let webrtc_interface_b = com_interface_b.clone();
+    let webrtc_interface_b =
+        webrtc_interface_b.implementation_mut::<WebRTCNativeInterface>();
+
+    // Set up the on_ice_candidate callback for both interfaces
+    // The candidate would be transmitted to the other side via some signaling server
+    // In this case, we are using a mock setup and since we are in the same process,
+    // we can directly call the "add_ice_candidate" callback on the other side
+    webrtc_interface_a.set_on_ice_candidate(Box::new(move |candidate| {
+        let interface_b = inteface_b_clone.clone();
+        spawn_local(async move {
+            let webrtc_interface_b =
+                interface_b.implementation_mut::<WebRTCNativeInterface>();
+            webrtc_interface_b
+                .add_ice_candidate(candidate)
+                .await
+                .unwrap();
+        });
+    }));
+
+    webrtc_interface_b.set_on_ice_candidate(Box::new(move |candidate| {
+        let interface_a = interface_a_clone.clone();
+        spawn_local(async move {
+            let webrtc_interface_a =
+                interface_a.implementation_mut::<WebRTCNativeInterface>();
+            webrtc_interface_a
+                .add_ice_candidate(candidate)
+                .await
+                .unwrap();
+        });
+    }));
+    (com_interface_a, com_interface_b, receiver_a, receiver_b)
+}
+
+async fn setup_webrtc_interfaces() -> (
+    Rc<ComInterface>,
+    Rc<ComInterface>,
+    ComInterfaceSocket,
+    ComInterfaceSocket,
+) {
+    let (com_interface_a, com_interface_b, mut receiver_a, mut receiver_b) =
+        create_webrtc_interfaces().await;
+
+    let webrtc_interface_a = com_interface_a.clone();
+    let webrtc_interface_a =
+        webrtc_interface_a.implementation::<WebRTCNativeInterface>();
+    let webrtc_interface_b = com_interface_b.clone();
+    let webrtc_interface_b =
+        webrtc_interface_b.implementation::<WebRTCNativeInterface>();
+
+    // Create an offer on one side and an answer on the other side
+    // The initator would send the offer to the other side via some other channel
+    // When a connection handshake is planned on both side, the initiator should be
+    // picked by the endpoint name or something deterministic that both sides
+    // can agree on
+    let offer = webrtc_interface_a.create_offer().await.unwrap();
+
+    // The offer would be transmitted to the other side via some other channel
+    // In this case, we are using a mock setup and since we are in the same process,
+    // we can directly call the "create_answer" and "set_answer" callbacks on the other side
+    let answer = webrtc_interface_b.create_answer(offer).await.unwrap();
+    drop(webrtc_interface_b);
+
+    webrtc_interface_a.set_answer(answer).await.unwrap();
+    drop(webrtc_interface_a);
+
+    // Wait for the data channel and socket to be connected
+
+    let socket_a = match receiver_a.next().await {
+        Some(ComInterfaceSocketEvent::NewSocket(socket)) => socket,
+        _ => panic!("Expected NewSocket event for server"),
+    };
+    let socket_b = match receiver_b.next().await {
+        Some(ComInterfaceSocketEvent::NewSocket(socket)) => socket,
+        _ => panic!("Expected NewSocket event for server"),
+    };
+
+    (com_interface_a, com_interface_b, socket_a, socket_b)
+}
 
 #[tokio::test]
 #[timeout(10000)]
 pub async fn test_connect() {
-    const BLOCK_A_TO_B: &[u8] = b"Hello from A";
-    const BLOCK_B_TO_A: &[u8] = b"Hello from B";
+    let block_a_to_b = DXBBlock::new_with_body(b"Hello from A to B");
+    let block_b_to_a = DXBBlock::new_with_body(b"Hello from B to A");
     run_async! {
         init_global_context();
-        // Create a WebRTCNativeInterface instance on each side (remote: @a)
-        let mut interface_a = WebRTCNativeInterface::init(
-            TEST_ENDPOINT_A.clone(),
-        );
-        interface_a.open().await.unwrap();
+        let (com_interface_a, com_interface_b, mut socket_a, mut socket_b) =
+            setup_webrtc_interfaces().await;
 
-
-        // Create a WebRTCNativeInterface instance on each side (remote: @b)
-        let mut interface_b = WebRTCNativeInterface::init(
-            TEST_ENDPOINT_B.clone(),
-        );
-        interface_b.open().await.unwrap();
-
-        let interface_a = Rc::new(RefCell::new(interface_a));
-        let interface_b = Rc::new(RefCell::new(interface_b));
-
-        let interface_a_clone = interface_a.clone();
-        let inteface_b_clone = interface_b.clone();
-
-        // Set up the on_ice_candidate callback for both interfaces
-        // The candidate would be transmitted to the other side via some signaling server
-        // In this case, we are using a mock setup and since we are in the same process,
-        // we can directly call the "add_ice_candidate" callback on the other side
-        interface_a.clone().borrow().set_on_ice_candidate(Box::new(move |candidate| {
-            let interface_b = inteface_b_clone.clone();
-            spawn_local(async move {
-                interface_b.clone().borrow().add_ice_candidate(candidate).await.unwrap();
-            });
-        }));
-
-        interface_b.clone().borrow().set_on_ice_candidate(Box::new(move |candidate| {
-            let interface_a = interface_a_clone.clone();
-            spawn_local(async move {
-                interface_a.clone().borrow().add_ice_candidate(candidate).await.unwrap();
-            });
-        }));
-
-
-        // Create an offer on one side and an answer on the other side
-        // The initator would send the offer to the other side via some other channel
-        // When a connection handshake is planned on both side, the initiator should be
-        // picked by the endpoint name or something deterministic that both sides
-        // can agree on
-        let offer = interface_a.clone().borrow().create_offer().await.unwrap();
-
-        // The offer would be transmitted to the other side via some other channel
-        // In this case, we are using a mock setup and since we are in the same process,
-        // we can directly call the "create_answer" and "set_answer" callbacks on the other side
-        let answer = interface_b.clone().borrow().create_answer(offer).await.unwrap();
-        interface_a.clone().borrow().set_answer(answer).await.unwrap();
-
-        // Wait for the data channel and socket to be connected
-        interface_a.borrow().wait_for_connection().await.unwrap();
-        interface_b.borrow().wait_for_connection().await.unwrap();
+        // com_interface_a.borrow().wait_for_connection().await.unwrap();
+        // com_interface_b.borrow().wait_for_connection().await.unwrap();
 
         // Since the WebRTC connection interface is a single socket provider,
         // it currently doesn't care about the socket uuid. In the future, we could
         // have different sockets for the same endpoint but with different channel configs
         // such as reliable, unreliable, ordered, unordered, etc.
-        let socket_stub = ComInterfaceSocketUUID(UUID::from_string("uuid".to_string()));
         assert!(
-            interface_a.clone().borrow_mut().send_block(BLOCK_A_TO_B, socket_stub.clone()).await
+            com_interface_a.send_block(&block_a_to_b.to_bytes().unwrap(), socket_a.uuid.clone()).await
         );
         assert!(
-            interface_b.clone().borrow_mut().send_block(BLOCK_B_TO_A, socket_stub.clone()).await
+            com_interface_b.send_block(&block_b_to_a.to_bytes().unwrap(), socket_b.uuid.clone()).await
         );
 
         // Wait for the messages to be received
         sleep(Duration::from_secs(1)).await;
 
-        // FIXME update loop
-        // Drain the receive queues
-        // let receive_a = {
-        //     let  socket = interface_a.borrow_mut().get_socket();
-        //     let socket = socket.unwrap();
-        //     let socket = socket.try_lock().unwrap();
-        //     let mut socket = socket.receive_queue.try_lock().unwrap();
-        //     socket.drain(..).collect::<Vec<_>>()
-        // };
-        // let receive_b = {
-        //     let  socket = interface_b.borrow_mut().get_socket();
-        //     let socket = socket.unwrap();
-        //     let socket = socket.try_lock().unwrap();
-        //     let mut socket = socket.receive_queue.try_lock().unwrap();
-        //     socket.drain(..).collect::<Vec<_>>()
-        // };
+        let mut socket_a_in = socket_a.take_block_in_receiver();
+        assert_eq!(
+            socket_a_in.next().await.unwrap(),
+            block_b_to_a
+        );
 
-        // // Check if the messages are received correctly
-        // assert_eq!(receive_a, BLOCK_B_TO_A);
-        // assert_eq!(receive_b, BLOCK_A_TO_B);
+        let mut socket_b_in = socket_b.take_block_in_receiver();
+        assert_eq!(
+            socket_b_in.next().await.unwrap(),
+            block_a_to_b
+        );
     }
 }
 
@@ -134,55 +191,46 @@ pub async fn test_connect() {
 pub async fn test_media_track() {
     run_async! {
         init_global_context();
-        // Create a WebRTCNativeInterface instance on each side (remote: @a)
-        let mut interface_a = WebRTCNativeInterface::init(
-            TEST_ENDPOINT_A.clone(),
-        );
-        interface_a.open().await.unwrap();
 
+        let (com_interface_a, com_interface_b, mut receiver_a, mut receiver_b) =
+            create_webrtc_interfaces().await;
 
-        // Create a WebRTCNativeInterface instance on each side (remote: @b)
-        let mut interface_b = WebRTCNativeInterface::init(
-            TEST_ENDPOINT_B.clone(),
-        );
-        interface_b.open().await.unwrap();
-
-        let interface_a = Rc::new(RefCell::new(interface_a));
-        let interface_b = Rc::new(RefCell::new(interface_b));
-
-        let interface_a_clone = interface_a.clone();
-        let inteface_b_clone = interface_b.clone();
-
-        interface_a.clone().borrow().set_on_ice_candidate(Box::new(move |candidate| {
-            let interface_b = inteface_b_clone.clone();
-            spawn_local(async move {
-                interface_b.clone().borrow().add_ice_candidate(candidate).await.unwrap();
-            });
-        }));
-
-        interface_b.clone().borrow().set_on_ice_candidate(Box::new(move |candidate| {
-            let interface_a = interface_a_clone.clone();
-            spawn_local(async move {
-                interface_a.clone().borrow().add_ice_candidate(candidate).await.unwrap();
-            });
-        }));
-        let txTrack: Rc<RefCell<MediaTrack<Arc<TrackLocal>>>> = interface_a.borrow().create_media_track(
+        let webrtc_interface_a = com_interface_a.clone();
+        let webrtc_interface_a =
+            webrtc_interface_a.implementation_mut::<WebRTCNativeInterface>();
+        let webrtc_interface_b = com_interface_b.clone();
+        let webrtc_interface_b =
+            webrtc_interface_b.implementation_mut::<WebRTCNativeInterface>();
+        let tx_track: Rc<RefCell<MediaTrack<Arc<TrackLocal>>>> = webrtc_interface_a.create_media_track(
             "dx".to_owned(),
             MediaKind::Audio
         ).await.unwrap();
-        println!("Has local media track: {:?}", txTrack.borrow().kind);
+        println!("Has local media track: {:?}", tx_track.borrow().kind);
 
-        let offer = interface_a.clone().borrow().create_offer().await.unwrap();
+        let offer = webrtc_interface_a.create_offer().await.unwrap();
 
-        let answer = interface_b.clone().borrow().create_answer(offer).await.unwrap();
-        interface_a.clone().borrow().set_answer(answer).await.unwrap();
+        let answer = webrtc_interface_b.create_answer(offer).await.unwrap();
+        webrtc_interface_a.set_answer(answer).await.unwrap();
 
-        interface_a.borrow().wait_for_connection().await.unwrap();
-        interface_b.borrow().wait_for_connection().await.unwrap();
+        drop(webrtc_interface_a);
+        drop(webrtc_interface_b);
+
+        // interface_a.borrow().wait_for_connection().await.unwrap();
+        // interface_b.borrow().wait_for_connection().await.unwrap();
+
+        // Wait for the data channel and socket to be connected
+        match receiver_a.next().await {
+            Some(ComInterfaceSocketEvent::NewSocket(socket)) => socket,
+            _ => panic!("Expected NewSocket event for server"),
+        };
+        match receiver_b.next().await {
+            Some(ComInterfaceSocketEvent::NewSocket(socket)) => socket,
+            _ => panic!("Expected NewSocket event for server"),
+        };
 
         spawn_local(
             async move {
-                let binding = txTrack.borrow();
+                let binding = tx_track.borrow();
                 let track = binding.track.as_any().downcast_ref::<TrackLocalStaticSample>().unwrap();
                 track.write_sample(&webrtc::media::Sample {
                     data: vec![0u8; 960].into(),
@@ -213,13 +261,13 @@ pub async fn test_media_track() {
         );
         sleep(Duration::from_secs(2)).await;
 
-        let rx_track = &interface_b.borrow();
-        let tracks = &rx_track.provide_remote_media_tracks();
+        let webrtc_interface_b =
+            com_interface_b.implementation_mut::<WebRTCNativeInterface>();
+        let tracks = webrtc_interface_b.provide_remote_media_tracks();
         let tracks = &tracks.borrow();
         let track = tracks.tracks.values().next().unwrap();
         let track = track.borrow();
         println!("Received track id: {:?}", track.id());
-        let mut buf = vec![0u8; 1600];
         let n = track.track.read_rtp().await.unwrap().0.to_string();
         println!("Read {} bytes from track", n);
         println!("Tracks B: {:?}", track.kind());

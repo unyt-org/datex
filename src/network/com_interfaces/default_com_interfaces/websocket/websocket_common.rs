@@ -2,6 +2,7 @@ use crate::network::com_hub::errors::ComHubError;
 use crate::stdlib::format;
 use crate::stdlib::string::String;
 use crate::stdlib::string::ToString;
+use core::fmt::Display;
 use core::prelude::rust_2024::*;
 use core::result::Result;
 use serde::{Deserialize, Serialize};
@@ -28,6 +29,16 @@ pub enum URLError {
     InvalidURL,
     InvalidScheme,
 }
+impl Display for URLError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            URLError::InvalidURL => core::write!(f, "URLError: Invalid URL"),
+            URLError::InvalidScheme => {
+                core::write!(f, "URLError: Invalid URL scheme")
+            }
+        }
+    }
+}
 
 #[derive(Debug, Display, Error, Clone, PartialEq)]
 pub enum WebSocketError {
@@ -44,16 +55,9 @@ pub enum WebSocketServerError {
     InvalidPort,
 }
 
-
 /// Parses a WebSocket URL and returns a `Url` object.
 /// If no protocol is specified, it defaults to `ws` or `wss` based on the `secure` parameter.
-pub fn parse_url(address: &str, secure: bool) -> Result<Url, URLError> {
-    let address = if address.contains("://") {
-        address.to_string()
-    } else {
-        format!("{}://{address}", if secure { "wss" } else { "ws" })
-    };
-
+pub fn parse_url(address: &str) -> Result<Url, URLError> {
     let mut url = Url::parse(&address).map_err(|_| URLError::InvalidURL)?;
     match url.scheme() {
         "https" => url.set_scheme("wss").unwrap(),
