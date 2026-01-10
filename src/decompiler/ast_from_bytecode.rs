@@ -321,16 +321,14 @@ pub fn ast_from_bytecode(
                         None
                     };
 
-                expr.map(|expr| CollectedAstResult::from(expr))
+                expr.map(CollectedAstResult::from)
             }
             Instruction::TypeInstruction(type_instruction) => {
                 let type_instruction = collector
                     .default_type_instruction_collection(type_instruction);
 
                 let type_expression: Option<TypeExpression> =
-                    if let Some(type_instruction) = type_instruction {
-                        Some(
-                            match type_instruction {
+                    type_instruction.map(|type_instruction| match type_instruction {
                                 TypeInstruction::LiteralInteger(
                                     integer_data,
                                 ) => {
@@ -351,13 +349,9 @@ pub fn ast_from_bytecode(
                                     unreachable!()
                                 }
                             }
-                            .with_default_span(),
-                        )
-                    } else {
-                        None
-                    };
+                            .with_default_span());
 
-                type_expression.map(|ty_expr| CollectedAstResult::from(ty_expr))
+                type_expression.map(CollectedAstResult::from)
             }
         };
 

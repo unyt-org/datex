@@ -1,17 +1,16 @@
-use crate::std_sync::Mutex;
 use crate::stdlib::cell::RefCell;
 use crate::stdlib::rc::Rc;
 use crate::stdlib::{future::Future, pin::Pin, time::Duration};
 use core::prelude::rust_2024::*;
 use core::result::Result;
 use futures_util::{SinkExt, StreamExt, stream::SplitSink};
-use log::{debug, error, info};
+use log::{error, info};
 use tokio::net::TcpStream;
 use tungstenite::Message;
 use url::Url;
 
 use super::websocket_common::{
-    WebSocketClientInterfaceSetupData, WebSocketError, parse_url,
+    WebSocketClientInterfaceSetupData, parse_url,
 };
 use crate::network::com_hub::errors::InterfaceCreateError;
 use crate::network::com_interfaces::com_interface::ComInterface;

@@ -4,7 +4,6 @@ use bytes::Bytes;
 use core::cell::RefCell;
 
 use crate::collections::HashMap;
-use crate::std_sync::Mutex;
 use crate::stdlib::net::SocketAddr;
 use crate::stdlib::pin::Pin;
 use crate::stdlib::rc::Rc;
@@ -19,7 +18,6 @@ use tokio_stream::wrappers::BroadcastStream;
 use super::http_common::{HTTPError, HTTPServerInterfaceSetupData};
 use crate::network::com_hub::errors::InterfaceCreateError;
 use crate::network::com_interfaces::com_interface::ComInterface;
-use crate::network::com_interfaces::com_interface::error::ComInterfaceError;
 use crate::network::com_interfaces::com_interface::implementation::{
     ComInterfaceAsyncFactory, ComInterfaceSyncFactory,
 };
@@ -34,7 +32,6 @@ use axum::{
     routing::get,
 };
 use datex_core::network::com_interfaces::com_interface::implementation::ComInterfaceImplementation;
-use datex_macros::{com_interface, create_opener};
 use log::{debug, error, info};
 use tokio::sync::{RwLock, broadcast, mpsc};
 use url::Url;
@@ -180,7 +177,7 @@ impl HTTPServerNativeInterface {
     ) -> Result<(Self, InterfaceProperties), InterfaceCreateError> {
         let address: String = format!("http://127.0.0.1:{}", setup_data.port);
         let address = Url::parse(&address)
-            .map_err(|e| InterfaceCreateError::invalid_setup_data(e))?;
+            .map_err(InterfaceCreateError::invalid_setup_data)?;
 
         info!("Spinning up server at {address}");
 
@@ -196,7 +193,7 @@ impl HTTPServerNativeInterface {
 
         let addr: SocketAddr = address
             .socket_addrs(|| None)
-            .map_err(|e| InterfaceCreateError::invalid_setup_data(e))?
+            .map_err(InterfaceCreateError::invalid_setup_data)?
             .first()
             .cloned()
             .ok_or(InterfaceCreateError::invalid_setup_data(

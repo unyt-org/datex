@@ -213,11 +213,7 @@ pub fn get_core_lib_value(
                 }
                 _ => core::panic!("Core lib type is not a TypeReference"),
             }
-        } else if let Some(val) = core_lib_values.get(&id) {
-            Some(val.clone())
-        } else {
-            None
-        }
+        } else { core_lib_values.get(&id).map(|val| val.clone()) }
     })
 }
 
@@ -411,7 +407,7 @@ pub fn print() -> (CoreLibPointerId, ValueContainer) {
                 if let Some(ValueContainer::Value(Value {
                     inner: CoreValue::Text(text),
                     ..
-                })) = args.get(0)
+                })) = args.first()
                 {
                     output.push_str(&text.0);
                     // remove first argument from args

@@ -2,11 +2,9 @@ use crate::network::com_interfaces::com_interface::implementation::{
     ComInterfaceAsyncFactory, ComInterfaceImpl, ComInterfaceImplementation,
     ComInterfaceSyncFactory,
 };
-use crate::network::com_interfaces::com_interface::properties::{
-    InterfaceDirection, InterfaceProperties,
-};
+use crate::network::com_interfaces::com_interface::properties::InterfaceProperties;
 use crate::network::com_interfaces::com_interface::socket::{
-    ComInterfaceSocket, ComInterfaceSocketEvent, ComInterfaceSocketUUID,
+    ComInterfaceSocketEvent, ComInterfaceSocketUUID,
 };
 use crate::network::com_interfaces::com_interface::socket_manager::ComInterfaceSocketManager;
 use crate::network::com_interfaces::com_interface::state::{
@@ -18,26 +16,20 @@ use crate::network::com_hub::managers::interface_manager::{
     AsyncComInterfaceImplementationFactoryFn,
     SyncComInterfaceImplementationFactoryFn,
 };
-use crate::stdlib::any::Any;
 use crate::stdlib::cell::Ref;
 use crate::stdlib::cell::RefCell;
 use crate::stdlib::cell::RefMut;
 use crate::stdlib::rc::Rc;
 use crate::stdlib::sync::{Arc, Mutex};
 use crate::task::{
-    UnboundedReceiver, UnboundedSender, create_unbounded_channel,
+    UnboundedReceiver, create_unbounded_channel,
 };
 use crate::utils::once_consumer::OnceConsumer;
 use crate::utils::uuid::UUID;
-use crate::values::core_values::endpoint::Endpoint;
 use crate::values::value_container::ValueContainer;
 use binrw::error::CustomError;
-use core::cell::Cell;
 use core::fmt::Debug;
 use core::fmt::Display;
-use core::pin::Pin;
-use core::time::Duration;
-use log::debug;
 
 pub mod error;
 pub mod implementation;

@@ -1,15 +1,13 @@
 use crate::std_sync::Mutex;
-use crate::stdlib::cell::RefCell;
 use crate::stdlib::rc::Rc;
 use crate::stdlib::{
     collections::HashMap, future::Future, net::SocketAddr, pin::Pin,
 };
-use crate::task::{spawn_with_panic_notify, spawn_with_panic_notify_default};
-use crate::{stdlib::sync::Arc, task::spawn};
+use crate::task::spawn_with_panic_notify_default;
+use crate::stdlib::sync::Arc;
 use core::prelude::rust_2024::*;
 use core::result::Result;
 use core::time::Duration;
-use datex_macros::{com_interface, create_opener};
 
 use futures_util::{SinkExt, StreamExt};
 use log::{error, info};
@@ -20,13 +18,12 @@ use tokio::{
     task::JoinHandle,
 };
 use tungstenite::Message;
-use url::Url;
 
 use futures_util::stream::SplitSink;
 use tokio_tungstenite::accept_async;
 
 use super::websocket_common::{
-    WebSocketError, WebSocketServerError, WebSocketServerInterfaceSetupData,
+    WebSocketServerInterfaceSetupData,
     parse_url,
 };
 use crate::network::com_hub::errors::InterfaceCreateError;
@@ -40,7 +37,7 @@ use crate::network::com_interfaces::com_interface::properties::{
     InterfaceDirection, InterfaceProperties,
 };
 use crate::network::com_interfaces::com_interface::socket::ComInterfaceSocketUUID;
-use crate::runtime::global_context::{get_global_context, set_global_context};
+use crate::runtime::global_context::get_global_context;
 use tokio_tungstenite::WebSocketStream;
 
 type WebsocketStreamMap = HashMap<
@@ -68,7 +65,7 @@ impl WebSocketServerNativeInterface {
             setup_data.port
         );
         let address = parse_url(&address)
-            .map_err(|e| InterfaceCreateError::invalid_setup_data(e))?;
+            .map_err(InterfaceCreateError::invalid_setup_data)?;
 
         info!("Spinning up server at {address}");
         let addr = format!(
@@ -77,7 +74,7 @@ impl WebSocketServerNativeInterface {
             address.port_or_known_default().unwrap()
         )
         .parse::<SocketAddr>()
-        .map_err(|e| InterfaceCreateError::invalid_setup_data(e))?;
+        .map_err(InterfaceCreateError::invalid_setup_data)?;
 
         let listener = TcpListener::bind(&addr).await.map_err(|err| {
             ComInterfaceError::connection_error_with_details(err)
@@ -86,7 +83,7 @@ impl WebSocketServerNativeInterface {
         let websocket_streams = Arc::new(Mutex::new(HashMap::new()));
         let websocket_streams_clone = websocket_streams.clone();
         let shutdown_signal = Arc::new(Notify::new());
-        let mut tasks: Vec<JoinHandle<()>> = vec![];
+        let tasks: Vec<JoinHandle<()>> = vec![];
         let global_context = get_global_context();
 
         let manager = com_interface.socket_manager();

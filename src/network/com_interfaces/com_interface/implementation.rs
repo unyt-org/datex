@@ -1,18 +1,14 @@
 use crate::network::com_hub::ComHub;
 use crate::network::com_hub::errors::InterfaceCreateError;
-use crate::network::com_hub::managers::interface_manager::AsyncComInterfaceImplementationFactoryFn;
 use crate::network::com_interfaces::com_interface::ComInterface;
-use crate::network::com_interfaces::com_interface::error::ComInterfaceError;
 use crate::network::com_interfaces::com_interface::properties::InterfaceProperties;
 use crate::network::com_interfaces::com_interface::socket::ComInterfaceSocketUUID;
 use crate::serde::Deserialize;
 use crate::serde::deserializer::from_value_container;
 use crate::stdlib::any::Any;
-use crate::stdlib::cell::RefCell;
 use crate::stdlib::rc::Rc;
 use crate::values::value_container::ValueContainer;
 use core::pin::Pin;
-use log::error;
 
 pub trait ComInterfaceImplementation {
     fn send_block<'a>(

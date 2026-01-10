@@ -10,7 +10,6 @@ use crate::{
         webrtc_commons::WebRTCInterfaceSetupData,
     },
     task::spawn_local,
-    values::core_values::endpoint::Endpoint,
 };
 use async_trait::async_trait;
 use bytes::Bytes;
@@ -19,7 +18,7 @@ use futures::{StreamExt, channel::mpsc};
 use super::webrtc_common::{
     data_channels::{DataChannel, DataChannels},
     structures::{
-        RTCIceCandidateInitDX, RTCIceServer, RTCSessionDescriptionDX,
+        RTCIceCandidateInitDX, RTCSessionDescriptionDX,
     },
     utils::WebRTCError,
     webrtc_commons::WebRTCCommon,
@@ -34,7 +33,6 @@ use crate::network::com_interfaces::com_interface::implementation::{
 };
 use crate::network::com_interfaces::com_interface::properties::InterfaceProperties;
 use crate::network::com_interfaces::com_interface::socket::ComInterfaceSocketUUID;
-use datex_macros::{com_interface, create_opener};
 use log::error;
 use webrtc::{
     api::{

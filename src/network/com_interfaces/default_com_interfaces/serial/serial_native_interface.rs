@@ -1,6 +1,5 @@
-use super::serial_common::{SerialError, SerialInterfaceSetupData};
+use super::serial_common::SerialInterfaceSetupData;
 use crate::std_sync::Mutex;
-use crate::stdlib::cell::RefCell;
 use crate::stdlib::rc::Rc;
 use crate::stdlib::{future::Future, pin::Pin, sync::Arc, time::Duration};
 use core::prelude::rust_2024::*;
@@ -17,10 +16,8 @@ use crate::network::com_interfaces::com_interface::properties::{
     InterfaceDirection, InterfaceProperties,
 };
 use crate::network::com_interfaces::com_interface::socket::ComInterfaceSocketUUID;
-use crate::network::com_interfaces::com_interface::socket_manager::ComInterfaceSocketManager;
 use crate::network::com_interfaces::com_interface::state::ComInterfaceState;
 use crate::{task::spawn, task::spawn_blocking};
-use datex_macros::{com_interface, create_opener};
 use log::{debug, error, warn};
 use serialport::SerialPort;
 use tokio::sync::Notify;

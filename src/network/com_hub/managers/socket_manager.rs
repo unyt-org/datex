@@ -2,31 +2,19 @@ use crate::network::com_interfaces::com_interface::socket::{
     ComInterfaceSocket, ComInterfaceSocketEvent, ComInterfaceSocketUUID,
     SocketState,
 };
-use crate::stdlib::rc::Rc;
-use crate::task::{
-    UnboundedReceiver, UnboundedSender, spawn_local, spawn_with_panic_notify,
-};
+use crate::task::UnboundedSender;
 use itertools::Itertools;
 use log::{debug, error, info};
 
 use crate::collections::{HashMap, HashSet};
 use crate::network::com_hub::{
-    BlockSendEvent, ComHub, ComHubError, InterfacePriority,
+    BlockSendEvent, ComHubError, InterfacePriority,
     SocketEndpointRegistrationError,
 };
-use crate::stdlib::sync::{Arc, Mutex};
 
-use crate::global::dxb_block::DXBBlock;
-use crate::runtime::AsyncContext;
 use crate::utils::time::Time;
 use crate::values::core_values::endpoint::{Endpoint, EndpointInstance};
-use crate::{
-    network::com_interfaces::com_interface::{
-        error::ComInterfaceError, implementation::ComInterfaceImplementation,
-        properties::InterfaceDirection, state::ComInterfaceState,
-    },
-    stdlib::cell::RefCell,
-};
+use crate::network::com_interfaces::com_interface::properties::InterfaceDirection;
 
 pub type SocketsByUUID =
     HashMap<ComInterfaceSocketUUID, (ComInterfaceSocket, HashSet<Endpoint>)>;

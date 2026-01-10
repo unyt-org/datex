@@ -8,7 +8,7 @@ use crate::global::dxb_block::{
 use crate::network::com_interfaces::com_interface::socket::ComInterfaceSocketUUID;
 use crate::std_random::RandomState;
 use crate::stdlib::boxed::Box;
-use crate::stdlib::collections::{BTreeMap, VecDeque};
+use crate::stdlib::collections::BTreeMap;
 use crate::stdlib::rc::Rc;
 use crate::stdlib::vec;
 use crate::stdlib::vec::Vec;
@@ -242,7 +242,7 @@ impl BlockHandler {
         let new_sections =
             self.extract_complete_sections_with_new_incoming_block(block);
         // put into request queue
-        let mut sender = &self.incoming_sections_sink;
+        let sender = &self.incoming_sections_sink;
         for section in new_sections {
             sender.send(section);
         }

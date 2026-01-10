@@ -1,11 +1,9 @@
 use crate::{
     network::com_interfaces::com_interface::{
-        error::ComInterfaceError,
-        implementation::{ComInterfaceImpl, ComInterfaceImplementation},
+        implementation::ComInterfaceImpl,
         properties::InterfaceDirection,
-        state::ComInterfaceState,
     },
-    stdlib::{cell::RefCell, rc::Rc},
+    stdlib::rc::Rc,
 };
 use core::pin::Pin;
 
@@ -257,7 +255,7 @@ impl InterfaceManager {
         &mut self,
         interface_uuid: &ComInterfaceUUID,
     ) -> Option<Rc<ComInterface>> {
-        Some(self.interfaces.remove(&interface_uuid).or(None)?.0)
+        Some(self.interfaces.remove(interface_uuid).or(None)?.0)
     }
 
     /// Handles interface events received from interfaces
@@ -266,12 +264,9 @@ impl InterfaceManager {
         interface_uuid: &ComInterfaceUUID,
         event: ComInterfaceEvent,
     ) {
-        match event {
-            ComInterfaceEvent::Destroyed => {
-                // FIXME should probably do more cleanup here, but this was what com hub did before
-                self.cleanup_interface(interface_uuid);
-            }
-            _ => {}
+        if let ComInterfaceEvent::Destroyed = event {
+            // FIXME should probably do more cleanup here, but this was what com hub did before
+            self.cleanup_interface(interface_uuid);
         }
     }
 }

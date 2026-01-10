@@ -190,7 +190,7 @@ pub fn append_typed_integer(buffer: &mut Vec<u8>, integer: &TypedInteger) {
         buffer,
         &get_core_lib_type_definition(CoreLibPointerId::from(integer)),
     );
-    append_encoded_integer(buffer, &integer);
+    append_encoded_integer(buffer, integer);
 }
 
 /// Appends a default, unsized integer

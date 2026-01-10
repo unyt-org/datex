@@ -1,4 +1,4 @@
-use super::tcp_common::{TCPClientInterfaceSetupData, TCPError};
+use super::tcp_common::TCPClientInterfaceSetupData;
 
 use crate::network::com_hub::errors::InterfaceCreateError;
 use crate::network::com_interfaces::com_interface::error::ComInterfaceError;
@@ -9,14 +9,9 @@ use crate::network::com_interfaces::com_interface::implementation::{
 use crate::network::com_interfaces::com_interface::properties::{
     InterfaceDirection, InterfaceProperties,
 };
-use crate::network::com_interfaces::com_interface::socket::{
-    ComInterfaceSocket, ComInterfaceSocketUUID,
-};
+use crate::network::com_interfaces::com_interface::socket::ComInterfaceSocketUUID;
 use crate::network::com_interfaces::com_interface::state::ComInterfaceState;
-use crate::network::com_interfaces::com_interface::{
-    ComInterface, ComInterfaceInfo,
-};
-use crate::std_sync::Mutex;
+use crate::network::com_interfaces::com_interface::ComInterface;
 use crate::stdlib::net::SocketAddr;
 use crate::stdlib::pin::Pin;
 use crate::stdlib::rc::Rc;
@@ -28,8 +23,6 @@ use core::prelude::rust_2024::*;
 use core::result::Result;
 use core::str::FromStr;
 use core::time::Duration;
-use datex_macros::{com_interface, create_opener};
-use futures_util::FutureExt;
 use log::{error, warn};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
@@ -51,7 +44,7 @@ impl TCPClientNativeInterface {
         com_interface: Rc<ComInterface>,
     ) -> Result<(Self, InterfaceProperties), InterfaceCreateError> {
         let address = SocketAddr::from_str(&setup_data.address)
-            .map_err(|e| InterfaceCreateError::invalid_setup_data(e))?;
+            .map_err(InterfaceCreateError::invalid_setup_data)?;
 
         let stream = TcpStream::connect(address).await.map_err(|error| {
             ComInterfaceError::connection_error_with_details(error)

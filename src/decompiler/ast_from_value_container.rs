@@ -154,7 +154,7 @@ fn type_to_type_expression(type_value: &Type) -> TypeExpression {
         TypeDefinition::Union(union_types) => TypeExpressionData::Union(Union(
             union_types
                 .iter()
-                .map(|t| type_to_type_expression(t))
+                .map(type_to_type_expression)
                 .collect::<Vec<TypeExpression>>(),
         ))
         .with_default_span(),
@@ -162,7 +162,7 @@ fn type_to_type_expression(type_value: &Type) -> TypeExpression {
             TypeExpressionData::Intersection(Intersection(
                 intersection_types
                     .iter()
-                    .map(|t| type_to_type_expression(t))
+                    .map(type_to_type_expression)
                     .collect::<Vec<TypeExpression>>(),
             ))
             .with_default_span()

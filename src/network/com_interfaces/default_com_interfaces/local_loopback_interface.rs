@@ -1,7 +1,6 @@
 use crate::network::com_interfaces::com_interface::ComInterface;
 
 use crate::network::com_hub::errors::InterfaceCreateError;
-use crate::network::com_interfaces::com_interface::error::ComInterfaceError;
 use crate::network::com_interfaces::com_interface::implementation::{
     ComInterfaceImplementation, ComInterfaceSyncFactory,
 };
@@ -57,7 +56,7 @@ impl ComInterfaceSyncFactory for LocalLoopbackInterface {
         com_interface: Rc<ComInterface>,
     ) -> Result<(Self, InterfaceProperties), InterfaceCreateError> {
         // directly create a socket and register it
-        let (socket_uuid, mut sender) = com_interface
+        let (socket_uuid, sender) = com_interface
             .socket_manager()
             .lock()
             .unwrap()

@@ -33,8 +33,8 @@ pub fn parse_integer_literal(
 
     // check for exponent part
     let mut exponent_part = String::new();
-    if let Some(&c) = chars.peek() {
-        if c == 'e' || c == 'E' {
+    if let Some(&c) = chars.peek()
+        && (c == 'e' || c == 'E') {
             chars.next();
             // optional + or -
             if let Some(&c2) = chars.peek() {
@@ -48,7 +48,6 @@ pub fn parse_integer_literal(
             // consume all digits for exponent part
             exponent_part += &consume_digits_with_underscores(&mut chars);
         }
-    }
 
     // the rest is the variant suffix, if any
     let variant_part: String = chars.collect();
@@ -110,7 +109,7 @@ pub fn parse_integer_literal(
 fn consume_digits_with_underscores(chars: &mut Peekable<Chars>) -> String {
     let mut part = String::new();
     while let Some(&c) = chars.peek() {
-        if c.is_digit(10) {
+        if c.is_ascii_digit() {
             part.push(c);
             chars.next();
         } else if c == '_' {

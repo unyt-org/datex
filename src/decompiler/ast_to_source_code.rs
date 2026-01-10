@@ -754,7 +754,7 @@ impl AstToSourceCodeConverter {
                     self.key_expression_to_source_code(property)
                 )
             }
-            DatexExpressionData::NativeImplementationIndicator { .. } => {
+            DatexExpressionData::NativeImplementationIndicator => {
                 "[[ native code ]]".to_string()
             }
             DatexExpressionData::GenericInstantiation(_) => {

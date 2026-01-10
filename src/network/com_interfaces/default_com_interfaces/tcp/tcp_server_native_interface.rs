@@ -1,4 +1,4 @@
-use super::tcp_common::{TCPError, TCPServerInterfaceSetupData};
+use super::tcp_common::TCPServerInterfaceSetupData;
 use crate::network::com_hub::errors::InterfaceCreateError;
 use crate::network::com_interfaces::com_interface::ComInterface;
 use crate::network::com_interfaces::com_interface::error::ComInterfaceError;
@@ -9,11 +9,8 @@ use crate::network::com_interfaces::com_interface::implementation::{
 use crate::network::com_interfaces::com_interface::properties::{
     InterfaceDirection, InterfaceProperties,
 };
-use crate::network::com_interfaces::com_interface::socket::{
-    ComInterfaceSocket, ComInterfaceSocketUUID,
-};
+use crate::network::com_interfaces::com_interface::socket::ComInterfaceSocketUUID;
 use crate::std_sync::Mutex;
-use crate::stdlib::cell::RefCell;
 use crate::stdlib::collections::HashMap;
 use crate::stdlib::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 use crate::stdlib::pin::Pin;
@@ -25,7 +22,6 @@ use core::future::Future;
 use core::prelude::rust_2024::*;
 use core::result::Result;
 use core::time::Duration;
-use datex_macros::{com_interface, create_opener};
 use log::{error, info, warn};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
@@ -51,7 +47,7 @@ impl TCPServerNativeInterface {
         info!("Spinning up server at {address}");
 
         let listener =
-            TcpListener::bind(address.clone()).await.map_err(|e| {
+            TcpListener::bind(address).await.map_err(|e| {
                 InterfaceCreateError::InterfaceError(
                     ComInterfaceError::connection_error_with_details(e),
                 )

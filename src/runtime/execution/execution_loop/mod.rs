@@ -517,7 +517,7 @@ pub fn inner_execution_loop(
                     };
 
                     type_expression
-                        .map(|ty_expr| CollectedExecutionResult::from(ty_expr))
+                        .map(CollectedExecutionResult::from)
                 }
             };
 
@@ -738,7 +738,7 @@ pub fn inner_execution_loop(
                                             AssignmentOperator::from(
                                                 regular_instruction
                                             ),
-                                            &slot_value,
+                                            slot_value,
                                             value,
                                         )
                                     );
@@ -996,7 +996,7 @@ pub fn inner_execution_loop(
                                         );
                                         buffer.extend_from_slice(
                                             &compile_value_container(
-                                                &slot_value,
+                                                slot_value,
                                             ),
                                         );
                                     }
@@ -1017,7 +1017,7 @@ pub fn inner_execution_loop(
                                             )
                                         )
                                     )
-                                        .map(|val| RuntimeValue::ValueContainer(val))
+                                        .map(RuntimeValue::ValueContainer)
                                         .into()
                                 }
 
@@ -1168,13 +1168,11 @@ pub fn inner_execution_loop(
             yield Ok(ExecutionInterrupt::External(
                 ExternalExecutionInterrupt::Result(match result {
                     CollectedExecutionResult::Value(value) => {
-                        let value = yield_unwrap!(
+                        yield_unwrap!(
                             value
                                 .map(|v| v.into_cloned_value_container(&state))
                                 .transpose()
-                        );
-
-                        value
+                        )
                     }
                     _ => unreachable!("Expected root result"),
                 }),

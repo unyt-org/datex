@@ -268,8 +268,8 @@ pub fn extract_static_value_from_script(
 /// Converts a DATEX script template text with inserted values into an AST with metadata
 /// If the script does not contain any dynamic values or operations, the static result value is
 /// directly returned instead of the AST.
-pub fn compile_script_or_return_static_value<'a>(
-    datex_script: &'a str,
+pub fn compile_script_or_return_static_value(
+    datex_script: &str,
     mut options: CompileOptions,
 ) -> Result<(StaticValueOrDXB, CompilationScope), SpannedCompilerError> {
     let ast = parse_datex_script_to_rich_ast_simple_error(
@@ -1183,7 +1183,7 @@ fn compile_expression(
             // reset to current scope
             scope = external_scope
                 .pop_external()
-                .ok_or_else(|| CompilerError::ScopePopError)?;
+                .ok_or(CompilerError::ScopePopError)?;
 
             let external_slots = execution_block_ctx.external_slots();
 

@@ -210,7 +210,7 @@ impl Value {
             CoreValue::List(ref mut list) => {
                 if let Some(index) = key.try_as_index() {
                     list.set(index, val)
-                        .map_err(|err| AccessError::IndexOutOfBounds(err))?;
+                        .map_err(AccessError::IndexOutOfBounds)?;
                 } else {
                     return Err(AccessError::InvalidIndexKey);
                 }

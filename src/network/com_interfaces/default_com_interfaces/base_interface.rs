@@ -2,9 +2,7 @@ use core::prelude::rust_2024::*;
 use core::result::Result;
 use std::collections::HashMap;
 
-use crate::network::com_interfaces::com_interface::implementation::{
-    ComInterfaceImplementation, ComInterfaceSyncFactory,
-};
+use crate::network::com_interfaces::com_interface::implementation::ComInterfaceImplementation;
 use crate::network::com_interfaces::com_interface::state::ComInterfaceState;
 use crate::network::{
     com_hub::errors::ComHubError,

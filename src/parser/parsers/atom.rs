@@ -102,7 +102,7 @@ impl Parser {
                 Ok(DatexExpressionData::TypeExpression(type_expression)
                     .with_span(span))
             }
-            Err(e) => return self.collect_error_and_continue(e),
+            Err(e) => self.collect_error_and_continue(e),
         }
     }
 

@@ -2,7 +2,7 @@ use crate::collections::HashMap;
 use crate::global::protocol_structures::block_header::BlockType;
 use crate::global::protocol_structures::routing_header::SignatureType;
 use crate::network::com_hub::errors::{
-    ComHubError, InterfaceCreateError, SocketEndpointRegistrationError,
+    ComHubError, SocketEndpointRegistrationError,
 };
 use crate::network::com_hub::managers::interface_manager::InterfaceManager;
 use crate::network::com_hub::network_response::{
@@ -34,7 +34,6 @@ use core::cmp::PartialEq;
 use core::fmt::{Debug, Formatter};
 use core::prelude::rust_2024::*;
 use core::result::Result;
-use futures::channel::oneshot::Sender;
 use itertools::Itertools;
 use log::{debug, error, info, warn};
 #[cfg(feature = "tokio_runtime")]
@@ -563,7 +562,7 @@ impl ComHub {
                                     .ver_ed25519(pub_key, &signature, &hashed_signed)
                                     .await
                                     .map_err(|_| ComHubError::SignatureError)?;
-                                return Ok(ver);
+                                Ok(ver)
                             },
                             SignatureType::Unencrypted => {
                                 let crypto = get_global_context().crypto;
@@ -586,7 +585,7 @@ impl ComHub {
                                     .ver_ed25519(pub_key, signature, &hashed_signed)
                                     .await
                                     .map_err(|_| ComHubError::SignatureError)?;
-                                return Ok(ver);
+                                Ok(ver)
                             },
                             SignatureType::None => {
                                 unreachable!("If (is_signed == true) => !None");
