@@ -51,12 +51,12 @@ async fn create_network_trace() {
         { // update a
             let mockup_interface_impl = com_interface_a
                 .implementation_mut::<MockupInterface>();
-            mockup_interface_impl.update().await;
+            mockup_interface_impl.update();
         }
         { // update b
             let mockup_interface_impl = com_interface_b
                 .implementation_mut::<MockupInterface>();
-            mockup_interface_impl.update().await;
+            mockup_interface_impl.update();
         }
         yield_now().await;
         yield_now().await;

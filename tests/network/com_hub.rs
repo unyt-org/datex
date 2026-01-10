@@ -560,17 +560,17 @@ pub async fn test_basic_routing() {
 
         {
             let mut mockup_interface_a = com_interface_a.implementation_mut::<MockupInterface>();
-            mockup_interface_a.update().await;
+            mockup_interface_a.update();
 
             let mut mockup_interface_b = com_interface_b.implementation_mut::<MockupInterface>();
-            mockup_interface_b.update().await;
+            mockup_interface_b.update();
         }
 
         yield_now().await;
         yield_now().await;
 
         let block_a_to_b = send_block_with_body(
-            &[TEST_ENDPOINT_B.clone()],
+            std::slice::from_ref(&TEST_ENDPOINT_B),
             b"Hello world",
             &com_hub_mut_a,
         )
@@ -578,7 +578,7 @@ pub async fn test_basic_routing() {
 
         {
             let mut mockup_interface_b = com_interface_b.implementation_mut::<MockupInterface>();
-            mockup_interface_b.update().await;
+            mockup_interface_b.update();
         }
         yield_now().await;
 

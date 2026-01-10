@@ -12,6 +12,7 @@ use datex_core::network::block_handler::IncomingSectionsSinkType;
 use datex_core::run_async;
 use datex_core::utils::context::init_global_context;
 use log::info;
+use ntest_timeout::timeout;
 use std::rc::Rc;
 use std::sync::mpsc;
 use tokio::task::yield_now;
@@ -57,7 +58,7 @@ async fn receive_single_block() {
         {
             let mockup_interface_impl = com_interface
                 .implementation_mut::<MockupInterface>();
-            mockup_interface_impl.update().await;
+            mockup_interface_impl.update();
         }
 
         // wait a tick to allow processing
@@ -141,7 +142,7 @@ async fn receive_multiple_blocks() {
         {
             let mockup_interface_impl = com_interface
                 .implementation_mut::<MockupInterface>();
-            mockup_interface_impl.update().await;
+            mockup_interface_impl.update();
         }
 
         // wait a tick to allow processing
@@ -169,7 +170,7 @@ async fn receive_multiple_blocks() {
         {
             let  mockup_interface_impl = com_interface
                 .implementation_mut::<MockupInterface>();
-            mockup_interface_impl.update().await;
+            mockup_interface_impl.update();
         }
 
         // wait a tick to allow processing
@@ -253,7 +254,7 @@ async fn receive_multiple_blocks_wrong_order() {
         {
             let mut mockup_interface_impl = com_interface
                 .implementation_mut::<MockupInterface>();
-            mockup_interface_impl.update().await;
+            mockup_interface_impl.update();
         }
         yield_now().await;
 
@@ -268,7 +269,7 @@ async fn receive_multiple_blocks_wrong_order() {
         {
             let mockup_interface_impl = com_interface
                 .implementation_mut::<MockupInterface>();
-            mockup_interface_impl.update().await;
+            mockup_interface_impl.update();
         }
         yield_now().await;
 
@@ -394,7 +395,7 @@ async fn receive_multiple_sections() {
         {
             let  mockup_interface_impl = com_interface
                 .implementation_mut::<MockupInterface>();
-            mockup_interface_impl.update().await;
+            mockup_interface_impl.update();
         }
 
         yield_now().await;
@@ -421,7 +422,7 @@ async fn receive_multiple_sections() {
         {
             let  mockup_interface_impl = com_interface
                 .implementation_mut::<MockupInterface>();
-            mockup_interface_impl.update().await;
+            mockup_interface_impl.update();
         }
         yield_now().await;
 
@@ -449,7 +450,7 @@ async fn receive_multiple_sections() {
         {
             let  mockup_interface_impl = com_interface
                 .implementation_mut::<MockupInterface>();
-            mockup_interface_impl.update().await;
+            mockup_interface_impl.update();
         }
         yield_now().await;
 
@@ -475,7 +476,7 @@ async fn receive_multiple_sections() {
         {
             let  mockup_interface_impl = com_interface
                 .implementation_mut::<MockupInterface>();
-            mockup_interface_impl.update().await;
+            mockup_interface_impl.update();
         }
         yield_now().await;
 
@@ -499,13 +500,14 @@ async fn receive_multiple_sections() {
 }
 
 #[tokio::test]
+#[timeout(2000)]
 async fn await_response_block() {
     run_async! {
         init_global_context();
 
         let (sender, receiver) = mpsc::channel::<Vec<u8>>();
 
-        let (com_hub, com_interface, socket_uuid) = get_mock_setup_and_socket(IncomingSectionsSinkType::Collector).await;
+        let (com_hub, com_interface, _) = get_mock_setup_and_socket(IncomingSectionsSinkType::Collector).await;
         {
             let mut mockup_interface_impl = com_interface
                 .implementation_mut::<MockupInterface>();
@@ -545,7 +547,7 @@ async fn await_response_block() {
         {
             let mockup_interface_impl = com_interface
                 .implementation_mut::<MockupInterface>();
-            mockup_interface_impl.update().await;
+            mockup_interface_impl.update();
         }
         yield_now().await;
 

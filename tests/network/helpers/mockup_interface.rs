@@ -271,15 +271,15 @@ impl MockupInterface {
         self.outgoing_queue.borrow().last().cloned()
     }
 
-    pub async fn update(&self) {
+    pub fn update(&self) {
         MockupInterface::_update(
             self.receiver.clone(),
             self.socket_senders.clone(),
         )
-        .await;
     }
 
-    pub async fn _update(
+    // FIXME deprecate update loop and use async recv in a single thread
+    pub fn _update(
         receiver: Rc<RefCell<Option<mpsc::Receiver<Vec<u8>>>>>,
         socket_senders: Rc<
             RefCell<HashMap<ComInterfaceSocketUUID, UnboundedSender<Vec<u8>>>>,
@@ -291,8 +291,7 @@ impl MockupInterface {
             if let Some(sender) = sender {
                 while let Ok(block) = receiver.try_recv() {
                     sender
-                        .send(block)
-                        .await
+                        .start_send(block)
                         .expect("Failed to send block to socket");
                 }
             }
@@ -304,8 +303,7 @@ impl MockupInterface {
         let sockets = self.socket_senders.clone();
         spawn_with_panic_notify_default(async move {
             loop {
-                MockupInterface::_update(receiver.clone(), sockets.clone())
-                    .await;
+                MockupInterface::_update(receiver.clone(), sockets.clone());
                 #[cfg(feature = "tokio_runtime")]
                 tokio::time::sleep(Duration::from_millis(1)).await;
             }
