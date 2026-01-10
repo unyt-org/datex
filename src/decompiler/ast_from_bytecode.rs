@@ -327,29 +327,29 @@ pub fn ast_from_bytecode(
                 let type_instruction = collector
                     .default_type_instruction_collection(type_instruction);
 
-                let type_expression: Option<TypeExpression> =
-                    type_instruction.map(|type_instruction| match type_instruction {
-                                TypeInstruction::LiteralInteger(
-                                    integer_data,
-                                ) => {
-                                    TypeExpressionData::Integer(integer_data.0)
-                                }
-                                TypeInstruction::LiteralText(text_data) => {
-                                    TypeExpressionData::Text(text_data.0)
-                                }
-                                TypeInstruction::TypeReference(reference) => {
-                                    TypeExpressionData::GetReference(
-                                        PointerAddress::from(reference.address),
-                                    )
-                                }
-                                // NOTE: make sure that each possible match case is either implemented in the default collection or here
-                                // If an instruction is implemented in the default collection, it should be marked as unreachable!() here
-                                TypeInstruction::List(_)
-                                | TypeInstruction::ImplType(_) => {
-                                    unreachable!()
-                                }
+                let type_expression: Option<TypeExpression> = type_instruction
+                    .map(|type_instruction| {
+                        match type_instruction {
+                            TypeInstruction::LiteralInteger(integer_data) => {
+                                TypeExpressionData::Integer(integer_data.0)
                             }
-                            .with_default_span());
+                            TypeInstruction::LiteralText(text_data) => {
+                                TypeExpressionData::Text(text_data.0)
+                            }
+                            TypeInstruction::TypeReference(reference) => {
+                                TypeExpressionData::GetReference(
+                                    PointerAddress::from(reference.address),
+                                )
+                            }
+                            // NOTE: make sure that each possible match case is either implemented in the default collection or here
+                            // If an instruction is implemented in the default collection, it should be marked as unreachable!() here
+                            TypeInstruction::List(_)
+                            | TypeInstruction::ImplType(_) => {
+                                unreachable!()
+                            }
+                        }
+                        .with_default_span()
+                    });
 
                 type_expression.map(CollectedAstResult::from)
             }

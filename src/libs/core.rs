@@ -213,7 +213,9 @@ pub fn get_core_lib_value(
                 }
                 _ => core::panic!("Core lib type is not a TypeReference"),
             }
-        } else { core_lib_values.get(&id).map(|val| val.clone()) }
+        } else {
+            core_lib_values.get(&id).map(|val| val.clone())
+        }
     })
 }
 

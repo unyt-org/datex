@@ -1,6 +1,7 @@
 use super::tcp_common::TCPClientInterfaceSetupData;
 
 use crate::network::com_hub::errors::InterfaceCreateError;
+use crate::network::com_interfaces::com_interface::ComInterface;
 use crate::network::com_interfaces::com_interface::error::ComInterfaceError;
 use crate::network::com_interfaces::com_interface::implementation::{
     ComInterfaceAsyncFactory, ComInterfaceImplementation,
@@ -11,7 +12,6 @@ use crate::network::com_interfaces::com_interface::properties::{
 };
 use crate::network::com_interfaces::com_interface::socket::ComInterfaceSocketUUID;
 use crate::network::com_interfaces::com_interface::state::ComInterfaceState;
-use crate::network::com_interfaces::com_interface::ComInterface;
 use crate::stdlib::net::SocketAddr;
 use crate::stdlib::pin::Pin;
 use crate::stdlib::rc::Rc;

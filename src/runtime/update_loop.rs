@@ -6,8 +6,8 @@ use crate::global::protocol_structures::block_header::{
 };
 use crate::global::protocol_structures::encrypted_header::EncryptedHeader;
 use crate::global::protocol_structures::routing_header::RoutingHeader;
-use crate::runtime::execution::ExecutionError;
 use crate::runtime::RuntimeInternal;
+use crate::runtime::execution::ExecutionError;
 use crate::stdlib::borrow::ToOwned;
 use crate::stdlib::rc::Rc;
 use crate::stdlib::vec;

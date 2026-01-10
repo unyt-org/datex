@@ -46,12 +46,11 @@ impl TCPServerNativeInterface {
 
         info!("Spinning up server at {address}");
 
-        let listener =
-            TcpListener::bind(address).await.map_err(|e| {
-                InterfaceCreateError::InterfaceError(
-                    ComInterfaceError::connection_error_with_details(e),
-                )
-            })?;
+        let listener = TcpListener::bind(address).await.map_err(|e| {
+            InterfaceCreateError::InterfaceError(
+                ComInterfaceError::connection_error_with_details(e),
+            )
+        })?;
         info!("Server listening on {address}");
 
         let tx_by_socket = Arc::new(Mutex::new(HashMap::new()));

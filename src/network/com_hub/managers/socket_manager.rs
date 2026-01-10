@@ -12,9 +12,9 @@ use crate::network::com_hub::{
     SocketEndpointRegistrationError,
 };
 
+use crate::network::com_interfaces::com_interface::properties::InterfaceDirection;
 use crate::utils::time::Time;
 use crate::values::core_values::endpoint::{Endpoint, EndpointInstance};
-use crate::network::com_interfaces::com_interface::properties::InterfaceDirection;
 
 pub type SocketsByUUID =
     HashMap<ComInterfaceSocketUUID, (ComInterfaceSocket, HashSet<Endpoint>)>;

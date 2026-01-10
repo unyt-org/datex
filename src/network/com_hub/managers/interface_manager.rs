@@ -1,7 +1,6 @@
 use crate::{
     network::com_interfaces::com_interface::{
-        implementation::ComInterfaceImpl,
-        properties::InterfaceDirection,
+        implementation::ComInterfaceImpl, properties::InterfaceDirection,
     },
     stdlib::rc::Rc,
 };

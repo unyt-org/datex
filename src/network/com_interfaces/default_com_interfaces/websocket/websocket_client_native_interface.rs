@@ -9,9 +9,7 @@ use tokio::net::TcpStream;
 use tungstenite::Message;
 use url::Url;
 
-use super::websocket_common::{
-    WebSocketClientInterfaceSetupData, parse_url,
-};
+use super::websocket_common::{WebSocketClientInterfaceSetupData, parse_url};
 use crate::network::com_hub::errors::InterfaceCreateError;
 use crate::network::com_interfaces::com_interface::ComInterface;
 use crate::network::com_interfaces::com_interface::error::ComInterfaceError;

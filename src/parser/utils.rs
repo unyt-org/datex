@@ -34,20 +34,21 @@ pub fn parse_integer_literal(
     // check for exponent part
     let mut exponent_part = String::new();
     if let Some(&c) = chars.peek()
-        && (c == 'e' || c == 'E') {
-            chars.next();
-            // optional + or -
-            if let Some(&c2) = chars.peek() {
-                if c2 == '-' {
-                    exponent_part.push(c2);
-                    chars.next();
-                } else if c2 == '+' {
-                    chars.next();
-                }
+        && (c == 'e' || c == 'E')
+    {
+        chars.next();
+        // optional + or -
+        if let Some(&c2) = chars.peek() {
+            if c2 == '-' {
+                exponent_part.push(c2);
+                chars.next();
+            } else if c2 == '+' {
+                chars.next();
             }
-            // consume all digits for exponent part
-            exponent_part += &consume_digits_with_underscores(&mut chars);
         }
+        // consume all digits for exponent part
+        exponent_part += &consume_digits_with_underscores(&mut chars);
+    }
 
     // the rest is the variant suffix, if any
     let variant_part: String = chars.collect();

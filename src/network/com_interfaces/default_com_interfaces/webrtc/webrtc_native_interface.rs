@@ -17,9 +17,7 @@ use futures::{StreamExt, channel::mpsc};
 
 use super::webrtc_common::{
     data_channels::{DataChannel, DataChannels},
-    structures::{
-        RTCIceCandidateInitDX, RTCSessionDescriptionDX,
-    },
+    structures::{RTCIceCandidateInitDX, RTCSessionDescriptionDX},
     utils::WebRTCError,
     webrtc_commons::WebRTCCommon,
     webrtc_trait::{WebRTCTrait, WebRTCTraitInternal},

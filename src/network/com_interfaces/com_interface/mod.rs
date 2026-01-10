@@ -21,9 +21,7 @@ use crate::stdlib::cell::RefCell;
 use crate::stdlib::cell::RefMut;
 use crate::stdlib::rc::Rc;
 use crate::stdlib::sync::{Arc, Mutex};
-use crate::task::{
-    UnboundedReceiver, create_unbounded_channel,
-};
+use crate::task::{UnboundedReceiver, create_unbounded_channel};
 use crate::utils::once_consumer::OnceConsumer;
 use crate::utils::uuid::UUID;
 use crate::values::value_container::ValueContainer;

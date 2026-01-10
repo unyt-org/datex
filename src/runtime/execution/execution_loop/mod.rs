@@ -516,8 +516,7 @@ pub fn inner_execution_loop(
                         None
                     };
 
-                    type_expression
-                        .map(CollectedExecutionResult::from)
+                    type_expression.map(CollectedExecutionResult::from)
                 }
             };
 
