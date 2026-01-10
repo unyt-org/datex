@@ -6,8 +6,8 @@ use crate::global::protocol_structures::block_header::{
 };
 use crate::global::protocol_structures::encrypted_header::EncryptedHeader;
 use crate::global::protocol_structures::routing_header::RoutingHeader;
-use crate::runtime::{AsyncContext, RuntimeInternal};
 use crate::runtime::execution::ExecutionError;
+use crate::runtime::{AsyncContext, RuntimeInternal};
 use crate::stdlib::borrow::ToOwned;
 use crate::stdlib::rc::Rc;
 use crate::stdlib::vec;
@@ -18,9 +18,9 @@ use crate::values::value_container::ValueContainer;
 use core::prelude::rust_2024::*;
 use core::result::Result;
 use core::time::Duration;
+use datex_core::task::UnboundedReceiver;
 use futures::channel::oneshot;
 use log::info;
-use datex_core::task::UnboundedReceiver;
 
 #[cfg_attr(feature = "embassy_runtime", embassy_executor::task)]
 async fn handle_incoming_section_task(
@@ -46,11 +46,13 @@ async fn handle_incoming_section_task(
 }
 
 #[cfg_attr(feature = "embassy_runtime", embassy_executor::task)]
-async fn handle_incoming_sections_task(
-    runtime_rc: Rc<RuntimeInternal>,
-) {
+async fn handle_incoming_sections_task(runtime_rc: Rc<RuntimeInternal>) {
     let async_context_clone = runtime_rc.async_context.clone();
-    let mut sections_receiver = runtime_rc.com_hub.incoming_sections_receiver.borrow_mut().consume();
+    let mut sections_receiver = runtime_rc
+        .com_hub
+        .incoming_sections_receiver
+        .borrow_mut()
+        .consume();
 
     while let Some(section) = sections_receiver.next().await {
         let runtime_rc_clone = runtime_rc.clone();

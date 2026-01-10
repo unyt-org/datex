@@ -1,9 +1,9 @@
+use crate::serde::Deserialize;
 use crate::stdlib::string::String;
 use core::prelude::rust_2024::*;
 use serde::Serialize;
 use strum::Display;
 use thiserror::Error;
-use crate::serde::Deserialize;
 
 #[derive(Debug, Display, Error)]
 pub enum HTTPError {
@@ -13,7 +13,6 @@ pub enum HTTPError {
     SendError,
     ReceiveError,
 }
-
 
 #[derive(Serialize, Deserialize)]
 #[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]

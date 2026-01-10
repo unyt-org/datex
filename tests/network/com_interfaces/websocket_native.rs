@@ -95,9 +95,9 @@ pub async fn test_construct_client() {
         address: "ftp://localhost:1234".to_string(),
     })
     .await;
-    assert_eq!(
+    assert_matches!(
         client_res.unwrap_err(),
-        InterfaceCreateError::InvalidSetupData
+        InterfaceCreateError::InvalidSetupData(_)
     );
 
     // We expect a connection error here, as the server can't be reached

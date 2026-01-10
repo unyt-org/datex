@@ -1,8 +1,9 @@
 use crate::network::com_interfaces::com_interface::ComInterface;
 
+use crate::network::com_hub::errors::InterfaceCreateError;
 use crate::network::com_interfaces::com_interface::error::ComInterfaceError;
 use crate::network::com_interfaces::com_interface::implementation::{
-    ComInterfaceSyncFactory, ComInterfaceImplementation,
+    ComInterfaceImplementation, ComInterfaceSyncFactory,
 };
 use crate::network::com_interfaces::com_interface::properties::{
     InterfaceDirection, InterfaceProperties,
@@ -19,7 +20,6 @@ use core::future::Future;
 use core::prelude::rust_2024::*;
 use core::result::Result;
 use core::time::Duration;
-use crate::network::com_hub::errors::InterfaceCreateError;
 
 /// A simple local loopback interface that puts outgoing data
 /// back into the incoming queue.
@@ -36,11 +36,15 @@ impl ComInterfaceImplementation for LocalLoopbackInterface {
         self.sender.borrow_mut().start_send(block.to_vec()).unwrap();
         Box::pin(async { true })
     }
-    fn handle_destroy<'a>(&'a self) -> Pin<Box<dyn Future<Output = bool> + 'a>> {
+    fn handle_destroy<'a>(
+        &'a self,
+    ) -> Pin<Box<dyn Future<Output = bool> + 'a>> {
         Box::pin(async move { true })
     }
 
-    fn handle_reconnect<'a>(&'a self) -> Pin<Box<dyn Future<Output = bool> + 'a>> {
+    fn handle_reconnect<'a>(
+        &'a self,
+    ) -> Pin<Box<dyn Future<Output = bool> + 'a>> {
         Box::pin(async move { true })
     }
 }

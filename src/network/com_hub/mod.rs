@@ -1,7 +1,9 @@
 use crate::collections::HashMap;
 use crate::global::protocol_structures::block_header::BlockType;
 use crate::global::protocol_structures::routing_header::SignatureType;
-use crate::network::com_hub::errors::{ComHubError, InterfaceCreateError, SocketEndpointRegistrationError};
+use crate::network::com_hub::errors::{
+    ComHubError, InterfaceCreateError, SocketEndpointRegistrationError,
+};
 use crate::network::com_hub::managers::interface_manager::InterfaceManager;
 use crate::network::com_hub::network_response::{
     Response, ResponseError, ResponseOptions, ResponseResolutionStrategy,
@@ -61,7 +63,6 @@ pub enum BlockSendEvent {
 }
 
 pub struct ComHub {
-
     /// the runtime endpoint of the hub (@me)
     pub endpoint: Endpoint,
 
@@ -172,9 +173,11 @@ impl ComHub {
         // add default local loopback interface
         let local_interface = ComInterface::create_sync_with_implementation::<
             LocalLoopbackInterface,
-        >(()).unwrap();
+        >(())
+        .unwrap();
 
-        com_hub.register_com_interface(local_interface, InterfacePriority::None);
+        com_hub
+            .register_com_interface(local_interface, InterfacePriority::None);
 
         // start handling ComHub events
         ComHub::handle_events(com_hub.clone());

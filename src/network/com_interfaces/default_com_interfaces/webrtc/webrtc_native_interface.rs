@@ -25,9 +25,13 @@ use super::webrtc_common::{
     webrtc_commons::WebRTCCommon,
     webrtc_trait::{WebRTCTrait, WebRTCTraitInternal},
 };
+use crate::network::com_hub::errors::InterfaceCreateError;
 use crate::network::com_interfaces::com_interface::ComInterface;
 use crate::network::com_interfaces::com_interface::error::ComInterfaceError;
-use crate::network::com_interfaces::com_interface::implementation::{ComInterfaceSyncFactory, ComInterfaceImplementation, ComInterfaceAsyncFactory};
+use crate::network::com_interfaces::com_interface::implementation::{
+    ComInterfaceAsyncFactory, ComInterfaceImplementation,
+    ComInterfaceSyncFactory,
+};
 use crate::network::com_interfaces::com_interface::properties::InterfaceProperties;
 use crate::network::com_interfaces::com_interface::socket::ComInterfaceSocketUUID;
 use datex_macros::{com_interface, create_opener};
@@ -56,7 +60,6 @@ use webrtc::{
         track_remote::{OnMuteHdlrFn, TrackRemote},
     },
 };
-use crate::network::com_hub::errors::InterfaceCreateError;
 
 pub type TrackLocal = dyn webrtc::track::track_local::TrackLocal + Send + Sync;
 
@@ -82,7 +85,8 @@ pub struct WebRTCNativeInterface {
 
 impl WebRTCTrait<Arc<RTCDataChannel>, Arc<TrackRemote>, Arc<TrackLocal>>
     for WebRTCNativeInterface
-{}
+{
+}
 
 #[async_trait(?Send)]
 impl WebRTCTraitInternal<Arc<RTCDataChannel>, Arc<TrackRemote>, Arc<TrackLocal>>
@@ -392,12 +396,10 @@ impl WebRTCTraitInternal<Arc<RTCDataChannel>, Arc<TrackRemote>, Arc<TrackLocal>>
 }
 
 impl WebRTCNativeInterface {
-
     async fn create(
         setup_data: WebRTCInterfaceSetupData,
         com_interface: Rc<ComInterface>,
     ) -> Result<(Self, InterfaceProperties), InterfaceCreateError> {
-
         let commons = WebRTCCommon::new(setup_data.peer_endpoint);
         let interface = WebRTCNativeInterface {
             com_interface,
@@ -418,9 +420,9 @@ impl WebRTCNativeInterface {
         let api = APIBuilder::new();
         let api = if has_media_support {
             let mut media_engine = MediaEngine::default();
-            media_engine
-                .register_default_codecs()
-                .map_err(|e| ComInterfaceError::connection_error_with_details(e))?;
+            media_engine.register_default_codecs().map_err(|e| {
+                ComInterfaceError::connection_error_with_details(e)
+            })?;
 
             media_engine
                 .register_codec(
@@ -439,13 +441,15 @@ impl WebRTCNativeInterface {
             let mut registry = Registry::new();
             registry =
                 register_default_interceptors(registry, &mut media_engine)
-                    .map_err(|e| ComInterfaceError::connection_error_with_details(e))?;
+                    .map_err(|e| {
+                        ComInterfaceError::connection_error_with_details(e)
+                    })?;
             api.with_media_engine(media_engine)
                 .with_interceptor_registry(registry)
         } else {
             api
         }
-            .build();
+        .build();
 
         {
             // ICE servers
@@ -470,7 +474,8 @@ impl WebRTCNativeInterface {
             .new_peer_connection(interface.rtc_configuration.borrow().clone())
             .await
             .unwrap();
-        interface.peer_connection
+        interface
+            .peer_connection
             .lock()
             .unwrap()
             .replace(peer_connection);
@@ -481,7 +486,8 @@ impl WebRTCNativeInterface {
                 mpsc::unbounded::<Arc<RTCDataChannel>>();
             let data_channel_tx_clone = tx_data_channel.clone();
 
-            interface.peer_connection
+            interface
+                .peer_connection
                 .lock()
                 .unwrap()
                 .as_ref()
@@ -524,7 +530,8 @@ impl WebRTCNativeInterface {
             //     )
             //     .await
             //     .unwrap();
-            interface.peer_connection
+            interface
+                .peer_connection
                 .lock()
                 .unwrap()
                 .as_ref()
@@ -532,7 +539,8 @@ impl WebRTCNativeInterface {
                 .add_transceiver_from_kind(RTPCodecType::Audio, None)
                 .await
                 .unwrap();
-            interface.peer_connection
+            interface
+                .peer_connection
                 .lock()
                 .unwrap()
                 .as_ref()
@@ -563,7 +571,8 @@ impl WebRTCNativeInterface {
                 mpsc::unbounded::<RTCIceCandidateInit>();
             let tx_clone = tx_ice_candidate.clone();
 
-            interface.peer_connection
+            interface
+                .peer_connection
                 .lock()
                 .unwrap()
                 .as_ref()
@@ -596,10 +605,7 @@ impl WebRTCNativeInterface {
         }
         interface.setup_listeners();
 
-        Ok((
-            interface,
-            Self::get_default_properties())
-        )
+        Ok((interface, Self::get_default_properties()))
     }
 }
 
@@ -621,11 +627,15 @@ impl ComInterfaceImplementation for WebRTCNativeInterface {
         }
     }
 
-    fn handle_destroy<'a>(&'a self) -> Pin<Box<dyn Future<Output = bool> + 'a>> {
+    fn handle_destroy<'a>(
+        &'a self,
+    ) -> Pin<Box<dyn Future<Output = bool> + 'a>> {
         todo!()
     }
 
-    fn handle_reconnect<'a>(&'a self) -> Pin<Box<dyn Future<Output = bool> + 'a>> {
+    fn handle_reconnect<'a>(
+        &'a self,
+    ) -> Pin<Box<dyn Future<Output = bool> + 'a>> {
         todo!()
     }
 }
@@ -635,7 +645,16 @@ impl ComInterfaceAsyncFactory for WebRTCNativeInterface {
     fn create(
         setup_data: Self::SetupData,
         com_interface: Rc<ComInterface>,
-    ) -> Pin<Box<dyn Future<Output = Result<(Self, InterfaceProperties), InterfaceCreateError>>>> {
+    ) -> Pin<
+        Box<
+            dyn Future<
+                Output = Result<
+                    (Self, InterfaceProperties),
+                    InterfaceCreateError,
+                >,
+            >,
+        >,
+    > {
         Box::pin(async move {
             WebRTCNativeInterface::create(setup_data, com_interface).await
         })

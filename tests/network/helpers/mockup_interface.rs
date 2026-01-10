@@ -3,10 +3,11 @@ use core::time::Duration;
 use datex_core::global::{
     dxb_block::DXBBlock, protocol_structures::block_header::BlockType,
 };
+use datex_core::network::com_hub::errors::InterfaceCreateError;
 use datex_core::network::com_interfaces::com_interface::ComInterface;
 use datex_core::network::com_interfaces::com_interface::error::ComInterfaceError;
 use datex_core::network::com_interfaces::com_interface::implementation::{
-    ComInterfaceSyncFactory, ComInterfaceImplementation,
+    ComInterfaceImplementation, ComInterfaceSyncFactory,
 };
 use datex_core::network::com_interfaces::com_interface::properties::{
     InterfaceDirection, InterfaceProperties,
@@ -27,7 +28,6 @@ use std::{
     pin::Pin,
     sync::{Arc, Mutex, mpsc},
 };
-use datex_core::network::com_hub::errors::InterfaceCreateError;
 
 pub struct MockupInterface {
     pub outgoing_queue: RefCell<Vec<(ComInterfaceSocketUUID, Vec<u8>)>>,
@@ -95,7 +95,7 @@ impl MockupInterface {
                 name: Some(name),
                 direction,
                 ..Default::default()
-            }
+            },
         ))
     }
 
@@ -220,7 +220,8 @@ impl ComInterfaceSyncFactory for MockupInterface {
     fn create(
         setup_data: Self::SetupData,
         com_interface: Rc<ComInterface>,
-    ) -> Result<(MockupInterface, InterfaceProperties), InterfaceCreateError> {
+    ) -> Result<(MockupInterface, InterfaceProperties), InterfaceCreateError>
+    {
         MockupInterface::new(setup_data, com_interface)
     }
 
@@ -345,12 +346,16 @@ impl ComInterfaceImplementation for MockupInterface {
         }))
     }
 
-    fn handle_destroy<'a>(&'a self) -> Pin<Box<dyn Future<Output = bool> + 'a>> {
+    fn handle_destroy<'a>(
+        &'a self,
+    ) -> Pin<Box<dyn Future<Output = bool> + 'a>> {
         self.outgoing_queue.borrow_mut().clear();
         Pin::from(Box::new(async move { true }))
     }
 
-    fn handle_reconnect<'a>(&'a self) -> Pin<Box<dyn Future<Output = bool> + 'a>> {
+    fn handle_reconnect<'a>(
+        &'a self,
+    ) -> Pin<Box<dyn Future<Output = bool> + 'a>> {
         unimplemented!()
     }
 }

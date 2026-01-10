@@ -1,4 +1,6 @@
 use crate::network::com_hub::ComHub;
+use crate::network::com_hub::errors::InterfaceCreateError;
+use crate::network::com_hub::managers::interface_manager::AsyncComInterfaceImplementationFactoryFn;
 use crate::network::com_interfaces::com_interface::ComInterface;
 use crate::network::com_interfaces::com_interface::error::ComInterfaceError;
 use crate::network::com_interfaces::com_interface::properties::InterfaceProperties;
@@ -11,8 +13,6 @@ use crate::stdlib::rc::Rc;
 use crate::values::value_container::ValueContainer;
 use core::pin::Pin;
 use log::error;
-use crate::network::com_hub::errors::InterfaceCreateError;
-use crate::network::com_hub::managers::interface_manager::AsyncComInterfaceImplementationFactoryFn;
 
 pub trait ComInterfaceImplementation {
     fn send_block<'a>(
@@ -21,8 +21,11 @@ pub trait ComInterfaceImplementation {
         _: ComInterfaceSocketUUID,
     ) -> Pin<Box<dyn Future<Output = bool> + 'a>>;
 
-    fn handle_destroy<'a>(&'a self) -> Pin<Box<dyn Future<Output = bool> + 'a>>;
-    fn handle_reconnect<'a>(&'a self) -> Pin<Box<dyn Future<Output = bool> + 'a>>;
+    fn handle_destroy<'a>(&'a self)
+    -> Pin<Box<dyn Future<Output = bool> + 'a>>;
+    fn handle_reconnect<'a>(
+        &'a self,
+    ) -> Pin<Box<dyn Future<Output = bool> + 'a>>;
 }
 
 /// A specific implementation of a communication interface for a channel
@@ -43,8 +46,6 @@ where
         self
     }
 }
-
-
 
 /// This trait can be implemented by any ComInterfaceImplementation impl that wants to
 /// support a factory method for creating instances of the interface.
@@ -87,7 +88,10 @@ where
     fn factory(
         setup_data: ValueContainer,
         com_interface: Rc<ComInterface>,
-    ) -> Result<(Box<dyn ComInterfaceImpl>, InterfaceProperties), InterfaceCreateError> {
+    ) -> Result<
+        (Box<dyn ComInterfaceImpl>, InterfaceProperties),
+        InterfaceCreateError,
+    > {
         let setup_data = from_value_container::<Self::SetupData>(setup_data)
             .map_err(|_| InterfaceCreateError::SetupDataParseError)?;
         let (interface, properties) = Self::create(setup_data, com_interface)?;
@@ -113,7 +117,6 @@ where
     fn get_default_properties() -> InterfaceProperties;
 }
 
-
 pub trait ComInterfaceAsyncFactory
 where
     Self: Sized + ComInterfaceImpl,
@@ -126,11 +129,22 @@ where
     fn factory(
         setup_data: ValueContainer,
         com_interface: Rc<ComInterface>,
-    ) -> Pin<Box<dyn Future<Output = Result<(Box<dyn ComInterfaceImpl>, InterfaceProperties), InterfaceCreateError>>+ 'static>> {
+    ) -> Pin<
+        Box<
+            dyn Future<
+                    Output = Result<
+                        (Box<dyn ComInterfaceImpl>, InterfaceProperties),
+                        InterfaceCreateError,
+                    >,
+                > + 'static,
+        >,
+    > {
         Box::pin(async move {
-            let setup_data = from_value_container::<Self::SetupData>(setup_data)
-                .map_err(|_| InterfaceCreateError::SetupDataParseError)?;
-            let (interface, properties) = Self::create(setup_data, com_interface).await?;
+            let setup_data =
+                from_value_container::<Self::SetupData>(setup_data)
+                    .map_err(|_| InterfaceCreateError::SetupDataParseError)?;
+            let (interface, properties) =
+                Self::create(setup_data, com_interface).await?;
             Ok((Box::new(interface) as Box<dyn ComInterfaceImpl>, properties))
         })
     }
@@ -148,7 +162,16 @@ where
     fn create(
         setup_data: Self::SetupData,
         com_interface: Rc<ComInterface>,
-    ) -> Pin<Box<dyn Future<Output = Result<(Self, InterfaceProperties), InterfaceCreateError>>>>;
+    ) -> Pin<
+        Box<
+            dyn Future<
+                Output = Result<
+                    (Self, InterfaceProperties),
+                    InterfaceCreateError,
+                >,
+            >,
+        >,
+    >;
 
     /// Get the default interface properties for the interface.
     fn get_default_properties() -> InterfaceProperties;

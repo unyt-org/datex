@@ -1,4 +1,7 @@
-use crate::network::com_hub::managers::interface_manager::{SyncComInterfaceImplementationFactoryFn, InterfaceManager, AsyncComInterfaceImplementationFactoryFn};
+use crate::network::com_hub::managers::interface_manager::{
+    AsyncComInterfaceImplementationFactoryFn, InterfaceManager,
+    SyncComInterfaceImplementationFactoryFn,
+};
 use crate::network::com_interfaces::com_interface::socket::ComInterfaceSocketUUID;
 use crate::stdlib::string::String;
 use crate::stdlib::{cell::RefCell, rc::Rc};
@@ -6,8 +9,8 @@ use crate::task::{UnboundedReceiver, spawn_with_panic_notify};
 use core::prelude::rust_2024::*;
 use core::result::Result;
 
-use crate::network::com_hub::{ComHub, ComHubError, InterfacePriority};
 use crate::network::com_hub::errors::InterfaceCreateError;
+use crate::network::com_hub::{ComHub, ComHubError, InterfacePriority};
 use crate::network::com_interfaces::com_interface::ComInterface;
 use crate::network::com_interfaces::com_interface::{
     ComInterfaceEvent, ComInterfaceUUID,
@@ -38,16 +41,12 @@ impl ComHub {
     }
 
     /// Adds a new interface to the ComHub
-    fn init_interface_event_listeners(
-        &self,
-        interface: Rc<ComInterface>,
-    ) {
+    fn init_interface_event_listeners(&self, interface: Rc<ComInterface>) {
         // handle socket events
         self.handle_interface_socket_events(interface.clone());
         // handle interface events
         self.handle_interface_events(interface);
     }
-
 
     /// Internal method to handle interface events
     fn handle_interface_events(&self, interface: Rc<ComInterface>) {
@@ -78,12 +77,16 @@ impl ComHub {
             .dyn_interface_by_uuid(&socket.interface_uuid)
     }
 
-
     /// Registers an existing com interface on the ComHub and sets up event handling
-    pub fn register_com_interface(&self, com_interface: Rc<ComInterface>, priority: InterfacePriority) {
+    pub fn register_com_interface(
+        &self,
+        com_interface: Rc<ComInterface>,
+        priority: InterfacePriority,
+    ) {
         self.interface_manager
             .borrow_mut()
-            .add_interface(com_interface.clone(), priority).unwrap();
+            .add_interface(com_interface.clone(), priority)
+            .unwrap();
         self.handle_interface_socket_events(com_interface);
     }
 
@@ -94,7 +97,8 @@ impl ComHub {
         setup_data: ValueContainer,
         priority: InterfacePriority,
     ) -> Result<Rc<ComInterface>, InterfaceCreateError> {
-        let com_interface = self.interface_manager
+        let com_interface = self
+            .interface_manager
             .borrow_mut()
             .create_and_add_interface(interface_type, setup_data, priority)
             .await?;
@@ -110,9 +114,14 @@ impl ComHub {
         setup_data: ValueContainer,
         priority: InterfacePriority,
     ) -> Result<Rc<ComInterface>, InterfaceCreateError> {
-        let com_interface = self.interface_manager
+        let com_interface = self
+            .interface_manager
             .borrow_mut()
-            .create_and_add_interface_sync(interface_type, setup_data, priority)?;
+            .create_and_add_interface_sync(
+                interface_type,
+                setup_data,
+                priority,
+            )?;
         self.init_interface_event_listeners(com_interface.clone());
         Ok(com_interface)
     }

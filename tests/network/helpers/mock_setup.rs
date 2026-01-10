@@ -50,8 +50,7 @@ pub async fn get_mock_setup_with_endpoint(
     sink_type: IncomingSectionsSinkType,
 ) -> (Rc<ComHub>, Rc<ComInterface>) {
     // init com hub
-    let com_hub =
-        ComHub::create(endpoint, AsyncContext::new(), sink_type);
+    let com_hub = ComHub::create(endpoint, AsyncContext::new(), sink_type);
 
     // init mockup interface
     let mockup_interface = ComInterface::create_sync_with_implementation::<
@@ -60,8 +59,7 @@ pub async fn get_mock_setup_with_endpoint(
     .unwrap();
 
     // add mockup interface to com_hub
-    com_hub
-        .register_com_interface(mockup_interface.clone(), priority);
+    com_hub.register_com_interface(mockup_interface.clone(), priority);
 
     (com_hub, mockup_interface.clone())
 }

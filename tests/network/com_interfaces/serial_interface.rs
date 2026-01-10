@@ -18,14 +18,18 @@ pub async fn test_construct() {
     if !available_ports.contains(&PORT_NAME.to_string()) {
         return;
     }
-    let mut interface = ComInterface::create_sync_with_implementation::<SerialNativeInterface>(
-        SerialInterfaceSetupData {
-            port_name: Some(PORT_NAME.to_string()),
-            baud_rate: BAUD_RATE,
-        }
-    ).unwrap();
-    
-    let socket_uuid = interface.implementation::<SerialNativeInterface>().socket_uuid.clone();
+    let mut interface = ComInterface::create_sync_with_implementation::<
+        SerialNativeInterface,
+    >(SerialInterfaceSetupData {
+        port_name: Some(PORT_NAME.to_string()),
+        baud_rate: BAUD_RATE,
+    })
+    .unwrap();
+
+    let socket_uuid = interface
+        .implementation::<SerialNativeInterface>()
+        .socket_uuid
+        .clone();
     assert!(interface.send_block(b"Hello World", socket_uuid).await);
     interface.close().await;
 }

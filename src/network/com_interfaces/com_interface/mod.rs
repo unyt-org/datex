@@ -1,4 +1,7 @@
-use crate::network::com_interfaces::com_interface::implementation::{ComInterfaceSyncFactory, ComInterfaceImpl, ComInterfaceImplementation, ComInterfaceAsyncFactory};
+use crate::network::com_interfaces::com_interface::implementation::{
+    ComInterfaceAsyncFactory, ComInterfaceImpl, ComInterfaceImplementation,
+    ComInterfaceSyncFactory,
+};
 use crate::network::com_interfaces::com_interface::properties::{
     InterfaceDirection, InterfaceProperties,
 };
@@ -10,7 +13,13 @@ use crate::network::com_interfaces::com_interface::state::{
     ComInterfaceState, ComInterfaceStateWrapper,
 };
 
+use crate::network::com_hub::errors::InterfaceCreateError;
+use crate::network::com_hub::managers::interface_manager::{
+    AsyncComInterfaceImplementationFactoryFn,
+    SyncComInterfaceImplementationFactoryFn,
+};
 use crate::stdlib::any::Any;
+use crate::stdlib::cell::Ref;
 use crate::stdlib::cell::RefCell;
 use crate::stdlib::cell::RefMut;
 use crate::stdlib::rc::Rc;
@@ -24,14 +33,11 @@ use crate::values::core_values::endpoint::Endpoint;
 use crate::values::value_container::ValueContainer;
 use binrw::error::CustomError;
 use core::cell::Cell;
+use core::fmt::Debug;
 use core::fmt::Display;
 use core::pin::Pin;
 use core::time::Duration;
-use core::fmt::Debug;
-use crate::stdlib::cell::Ref;
 use log::debug;
-use crate::network::com_hub::errors::InterfaceCreateError;
-use crate::network::com_hub::managers::interface_manager::{AsyncComInterfaceImplementationFactoryFn, SyncComInterfaceImplementationFactoryFn};
 
 pub mod error;
 pub mod implementation;
@@ -162,7 +168,8 @@ impl ComInterface {
         let com_interface = Self::create_headless();
 
         // Create the implementation using the factory function
-        let (implementation, properties) = factory_fn(setup_data, com_interface.clone())?;
+        let (implementation, properties) =
+            factory_fn(setup_data, com_interface.clone())?;
         com_interface.set_implementation(implementation);
         com_interface.info.properties.replace(properties);
         Ok(com_interface)
@@ -176,7 +183,8 @@ impl ComInterface {
         let com_interface = Self::create_headless();
 
         // Create the implementation using the factory function
-        let (implementation, properties) = factory_fn(setup_data, com_interface.clone()).await?;
+        let (implementation, properties) =
+            factory_fn(setup_data, com_interface.clone()).await?;
         com_interface.set_implementation(implementation);
         com_interface.info.properties.replace(properties);
         Ok(com_interface)
@@ -188,7 +196,7 @@ impl ComInterface {
                 ComInterfaceState::NotConnected,
                 InterfaceProperties::default(),
             )
-                .into(),
+            .into(),
             implementation: RefCell::new(None),
         })
     }
@@ -205,7 +213,8 @@ impl ComInterface {
         let com_interface = Self::create_headless();
 
         // Create the implementation using the factory function
-        let (implementation, properties) = T::create(setup_data, com_interface.clone())?;
+        let (implementation, properties) =
+            T::create(setup_data, com_interface.clone())?;
         com_interface.set_implementation(Box::new(implementation));
         com_interface.info.properties.replace(properties);
         Ok(com_interface)
@@ -223,7 +232,8 @@ impl ComInterface {
         let com_interface = Self::create_headless();
 
         // Create the implementation using the factory function
-        let (implementation, properties) = T::create(setup_data, com_interface.clone()).await?;
+        let (implementation, properties) =
+            T::create(setup_data, com_interface.clone()).await?;
         com_interface.set_implementation(Box::new(implementation));
         com_interface.info.properties.replace(properties);
         Ok(com_interface)
@@ -252,7 +262,10 @@ impl ComInterface {
     /// Initializes a headless ComInterface with the provided implementation
     /// and upgrades it to an Initialized state.
     /// This can only be done once on a headless interface and will panic if attempted on an already initialized interface.
-    pub(crate) fn set_implementation(&self, implementation: Box<dyn ComInterfaceImpl>) {
+    pub(crate) fn set_implementation(
+        &self,
+        implementation: Box<dyn ComInterfaceImpl>,
+    ) {
         match self.implementation.replace(Some(implementation)) {
             None => {
                 // Successfully initialized

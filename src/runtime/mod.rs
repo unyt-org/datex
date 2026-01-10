@@ -12,7 +12,9 @@ use crate::logger::{init_logger, init_logger_debug};
 use crate::network::block_handler::IncomingSectionsSinkType;
 use crate::network::com_hub::network_response::ResponseOptions;
 use crate::network::com_hub::{ComHub, InterfacePriority};
-use crate::network::com_interfaces::com_interface::implementation::{ComInterfaceAsyncFactory, ComInterfaceSyncFactory};
+use crate::network::com_interfaces::com_interface::implementation::{
+    ComInterfaceAsyncFactory, ComInterfaceSyncFactory,
+};
 use crate::runtime::execution::ExecutionError;
 use crate::runtime::execution::context::ExecutionMode;
 use crate::serde::error::SerializationError;
