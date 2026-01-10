@@ -293,18 +293,18 @@ pub async fn test_routes(
                 ));
             }
             // check channel
-            if let Some(channel) = &expected_channel {
-                if original.socket.interface_name != Some(channel.clone()) {
-                    return Err(RouteAssertionError::InvalidChannelOnHop(
-                        index,
-                        channel.clone(),
-                        original
-                            .socket
-                            .interface_name
-                            .clone()
-                            .unwrap_or("None".to_string()),
-                    ));
-                }
+            if let Some(channel) = &expected_channel
+                && original.socket.interface_name != Some(channel.clone())
+            {
+                return Err(RouteAssertionError::InvalidChannelOnHop(
+                    index,
+                    channel.clone(),
+                    original
+                        .socket
+                        .interface_name
+                        .clone()
+                        .unwrap_or("None".to_string()),
+                ));
             }
             // check fork
             if let Some(fork) = expected_fork {
@@ -323,14 +323,18 @@ pub async fn test_routes(
     Ok(())
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(PartialEq)]
 pub enum RouteAssertionError {
     InvalidEndpointOnHop(i32, Endpoint, Endpoint),
     InvalidChannelOnHop(i32, String, String),
     InvalidForkOnHop(i32, String, String),
     MissingResponse(Endpoint),
 }
-
+impl Debug for RouteAssertionError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        core::write!(f, "{}", self)
+    }
+}
 impl Display for RouteAssertionError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {

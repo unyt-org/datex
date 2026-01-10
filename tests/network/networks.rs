@@ -536,7 +536,7 @@ async fn simple_network() {
         network.start().await;
         tokio::time::sleep(Duration::from_millis(1000)).await;
         Route::between("@4726", "@s5zw")
-            .to_via("@yhr9", "mockup")
+            .to_via("@yhr9", "4726_mockup_yhr9")
             .hop("@s5zw")
             .hop("@4726")
             .test(&network)

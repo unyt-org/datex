@@ -4,13 +4,9 @@ use strum_macros::EnumIs;
 use crate::network::com_interfaces::block_collector::BlockCollector;
 use crate::network::com_interfaces::com_interface::ComInterfaceUUID;
 use crate::network::com_interfaces::com_interface::properties::InterfaceDirection;
-use crate::std_sync::Mutex;
 use crate::stdlib::string::String;
-use crate::stdlib::sync::Arc;
 use crate::stdlib::vec::Vec;
-use crate::task::{
-    UnboundedReceiver, UnboundedSender, create_unbounded_channel,
-};
+use crate::task::{UnboundedReceiver, UnboundedSender};
 use crate::utils::once_consumer::OnceConsumer;
 use crate::utils::uuid::UUID;
 use crate::{
@@ -20,9 +16,8 @@ use core::fmt::Display;
 
 #[derive(Debug, Clone, Copy, PartialEq, EnumIs)]
 pub enum SocketState {
-    Created,
-    Open,
-    Destroyed,
+    Connected,
+    Disconnected,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -83,7 +78,7 @@ impl ComInterfaceSocket {
         (
             ComInterfaceSocket {
                 direct_endpoint: None,
-                state: SocketState::Created,
+                state: SocketState::Connected,
                 uuid: ComInterfaceSocketUUID(UUID::new()),
                 interface_uuid,
                 connection_timestamp: 0,

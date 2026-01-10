@@ -764,6 +764,10 @@ impl ComHub {
         let context_id = block.block_header.context_id;
         let section_index = block.block_header.section_index;
 
+        let mut rx = self
+            .block_handler
+            .register_incoming_block_observer(context_id, section_index);
+
         let has_exact_receiver_count = block.has_exact_receiver_count();
         let receivers = block.receiver_endpoints();
 
@@ -827,10 +831,6 @@ impl ComHub {
                     .collect::<Vec<_>>()
                     .join(",")
             );
-
-            let mut rx = self
-                .block_handler
-                .register_incoming_block_observer(context_id, section_index);
 
             let res = task::timeout(timeout, async {
                 while let Some(section) = rx.next().await {

@@ -501,7 +501,7 @@ pub async fn test_add_and_remove_interface_and_sockets() {
             let socket_manager = com_hub.socket_manager();
             socket_manager.borrow().socket_state(&socket_uuid)
         };
-        assert_eq!(socket_state, SocketState::Open);
+        assert_eq!(socket_state, SocketState::Connected);
 
         let uuid = com_interface.uuid().clone();
 
@@ -525,7 +525,7 @@ pub async fn test_add_and_remove_interface_and_sockets() {
             let socket_manager = com_hub.socket_manager();
             socket_manager.borrow().socket_state(&socket_uuid)
         };
-        assert_eq!(socket_state, SocketState::Destroyed);
+        assert_eq!(socket_state, SocketState::Disconnected);
     };
 }
 

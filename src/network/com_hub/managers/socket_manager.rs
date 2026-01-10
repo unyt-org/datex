@@ -122,7 +122,7 @@ impl SocketManager {
         let is_direct = socket.direct_endpoint == Some(endpoint.clone());
 
         // cannot register endpoint if socket is not connected
-        if !socket.state.is_open() {
+        if !socket.state.is_connected() {
             return Err(SocketEndpointRegistrationError::SocketDisconnected);
         }
 

@@ -86,7 +86,6 @@ impl MockupInterface {
 
         let name = setup_data.name.clone();
         let direction = setup_data.direction.clone();
-
         Ok((
             mockup_interface,
             InterfaceProperties {

@@ -54,10 +54,7 @@ impl ComInterfaceSocketManager {
         self.socket_event_sender
             .start_send(ComInterfaceSocketEvent::RemovedSocket(socket_uuid))
             .unwrap();
-        // FIXME socket state
-        // if let Some(socket) = self.sockets.get(socket_uuid) {
-        //     socket.try_lock().unwrap().state = SocketState::Destroyed;
-        // }
+        // FIXME socket state (socket should no longer exist)
     }
 
     /// Registers an endpoint for a socket and notifies listeners on ComHub
