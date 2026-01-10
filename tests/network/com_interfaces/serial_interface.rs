@@ -2,7 +2,8 @@ use datex_core::network::com_interfaces::{
     default_com_interfaces::serial::serial_native_interface::SerialNativeInterface,
 };
 use log::info;
-
+use datex_core::network::com_interfaces::com_interface::ComInterface;
+use datex_core::network::com_interfaces::default_com_interfaces::serial::serial_common::SerialInterfaceSetupData;
 use datex_core::utils::context::init_global_context;
 
 #[tokio::test]
@@ -17,12 +18,14 @@ pub async fn test_construct() {
     if !available_ports.contains(&PORT_NAME.to_string()) {
         return;
     }
-    let mut interface =
-        SerialNativeInterface::new_with_baud_rate(PORT_NAME, BAUD_RATE)
-            .unwrap_or_else(|e| {
-                core::panic!("Failed to create SerialNativeInterface: {e:?}");
-            });
-    let socket_uuid = interface.get_socket_uuid().unwrap();
+    let mut interface = ComInterface::create_sync_with_implementation::<SerialNativeInterface>(
+        SerialInterfaceSetupData {
+            port_name: Some(PORT_NAME.to_string()),
+            baud_rate: BAUD_RATE,
+        }
+    ).unwrap();
+    
+    let socket_uuid = interface.implementation::<SerialNativeInterface>().socket_uuid.clone();
     assert!(interface.send_block(b"Hello World", socket_uuid).await);
-    interface.destroy().await;
+    interface.close().await;
 }

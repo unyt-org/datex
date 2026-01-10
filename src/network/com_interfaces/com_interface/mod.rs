@@ -27,6 +27,7 @@ use core::cell::Cell;
 use core::fmt::Display;
 use core::pin::Pin;
 use core::time::Duration;
+use core::fmt::Debug;
 use crate::stdlib::cell::Ref;
 use log::debug;
 use crate::network::com_hub::errors::InterfaceCreateError;
@@ -141,6 +142,16 @@ pub struct ComInterface {
     pub(crate) implementation: RefCell<Option<Box<dyn ComInterfaceImpl>>>,
 }
 
+impl Debug for ComInterface {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("ComInterface")
+            .field("uuid", &self.uuid())
+            .field("state", &self.current_state())
+            .field("properties", &self.properties())
+            .finish()
+    }
+}
+
 impl ComInterface {
     /// Initializes a new ComInterface with a specified implementation as returned by the factory function
     pub fn create_from_sync_factory_fn(
@@ -217,7 +228,7 @@ impl ComInterface {
         com_interface.info.properties.replace(properties);
         Ok(com_interface)
     }
-    
+
     pub fn implementation_mut<T: ComInterfaceImpl>(&self) -> RefMut<'_, T> {
         RefMut::map(self.implementation.borrow_mut(), |opt| {
             opt.as_mut()

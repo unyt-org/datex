@@ -46,14 +46,10 @@ pub async fn test_add_and_remove() {
                 ::create_sync_with_implementation::<MockupInterface>(MockupInterfaceSetupData::new("test")).unwrap();
             let uuid = mockup_interface.uuid().clone();
             com_hub
-                .open_and_add_interface(
+                .register_com_interface(
                     mockup_interface,
                     InterfacePriority::default(),
-                )
-                .await
-                .unwrap_or_else(|e| {
-                    core::panic!("Error adding interface: {e:?}");
-                });
+                );
             uuid
         };
         assert!(com_hub.remove_interface(uuid).await.is_ok());
@@ -73,42 +69,36 @@ pub async fn test_multiple_add() {
                 ::create_sync_with_implementation::<MockupInterface>(MockupInterfaceSetupData::new("mockup_interface2")).unwrap();
 
         com_hub
-            .open_and_add_interface(
+            .register_com_interface(
                 mockup_interface1.clone(),
                 InterfacePriority::default(),
-            )
-            .await
-            .unwrap_or_else(|e| {
-                core::panic!("Error adding interface: {e:?}");
-            });
+            );
         com_hub
-            .open_and_add_interface(
+            .register_com_interface(
                 mockup_interface2.clone(),
                 InterfacePriority::default(),
-            )
-            .await
-            .unwrap_or_else(|e| {
-                core::panic!("Error adding interface: {e:?}");
-            });
+            );
 
-        assert!(
-            com_hub
-                .open_and_add_interface(
-                    mockup_interface1.clone(),
-                    InterfacePriority::default()
-                )
-                .await
-                .is_err()
-        );
-        assert!(
-            com_hub
-                .open_and_add_interface(
-                    mockup_interface2.clone(),
-                    InterfacePriority::default()
-                )
-                .await
-                .is_err()
-        );
+
+        panic!("fixme")
+        // assert!(
+        //     com_hub
+        //         .register_com_interface(
+        //             mockup_interface1.clone(),
+        //             InterfacePriority::default()
+        //         )
+        //         .await
+        //         .is_err()
+        // );
+        // assert!(
+        //     com_hub
+        //         .register_com_interface(
+        //             mockup_interface2.clone(),
+        //             InterfacePriority::default()
+        //         )
+        //         .await
+        //         .is_err()
+        // );
     }
 }
 
@@ -602,7 +592,7 @@ pub async fn test_basic_routing() {
 pub async fn register_factory() {
     run_async! {
         init_global_context();
-        let com_hub = Rc::new(ComHub::create(Endpoint::default(), AsyncContext::new(), IncomingSectionsSinkType::Collector));
+        let com_hub = ComHub::create(Endpoint::default(), AsyncContext::new(), IncomingSectionsSinkType::Collector);
         MockupInterface::register_on_com_hub(com_hub.clone());
 
         assert_eq!(com_hub.interface_manager().borrow().interface_factories.len(), 1);
@@ -646,11 +636,7 @@ pub async fn test_reconnect() {
 
         // add base_interface to com_hub
         com_hub
-            .open_and_add_interface(base_interface.com_interface.clone(), InterfacePriority::default())
-            .await
-            .unwrap_or_else(|e| {
-                core::panic!("Error adding interface: {e:?}");
-            });
+            .register_com_interface(base_interface.com_interface.clone(), InterfacePriority::default());
 
         // check that the interface is connected
         assert_eq!(

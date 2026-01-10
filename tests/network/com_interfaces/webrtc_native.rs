@@ -23,9 +23,9 @@ use webrtc::{
         track_local_static_sample::TrackLocalStaticSample,
     },
 };
-
+use datex_core::network::com_interfaces::com_interface::socket::ComInterfaceSocketUUID;
+use datex_core::utils::context::init_global_context;
 use crate::{
-    context::init_global_context,
     network::helpers::mock_setup::{TEST_ENDPOINT_A, TEST_ENDPOINT_B},
 };
 

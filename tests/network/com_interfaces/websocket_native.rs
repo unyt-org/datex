@@ -1,5 +1,8 @@
+use std::assert_matches::assert_matches;
+use datex_core::global::dxb_block::DXBBlock;
+use datex_core::network::com_hub::errors::InterfaceCreateError;
 use datex_core::utils::context::init_global_context;
-use datex_core::network::com_interfaces::default_com_interfaces::websocket::websocket_common::WebSocketError;
+use datex_core::network::com_interfaces::default_com_interfaces::websocket::websocket_common::{WebSocketClientInterfaceSetupData, WebSocketError, WebSocketServerInterfaceSetupData};
 use datex_core::network::com_interfaces::{
     default_com_interfaces::{
         websocket::websocket_client_native_interface::WebSocketClientNativeInterface,
@@ -8,7 +11,9 @@ use datex_core::network::com_interfaces::{
 };
 
 use datex_core::run_async;
-use std::{cell::RefCell, rc::Rc};
+use datex_core::network::com_interfaces::com_interface::ComInterface;
+use datex_core::network::com_interfaces::com_interface::error::ComInterfaceError;
+use datex_core::network::com_interfaces::com_interface::socket::ComInterfaceSocketEvent;
 
 #[tokio::test]
 pub async fn test_create_socket_connection() {
@@ -16,66 +21,64 @@ pub async fn test_create_socket_connection() {
         const PORT: u16 = 8085;
         init_global_context();
 
-        const CLIENT_TO_SERVER_MSG: &[u8] = b"Hello World";
-        const SERVER_TO_CLIENT_MSG: &[u8] = b"Nooo, this is Patrick!";
+        let client_to_server_message = DXBBlock::default();
+        let server_to_client_message = DXBBlock::default();
 
-        let mut server = WebSocketServerNativeInterface::new(PORT, false).unwrap();
-        server.open().await.unwrap_or_else(|e| {
-            core::panic!("Failed to create WebSocketServerInterface: {e}");
-        });
+        let server_interface = ComInterface::create_async_with_implementation::<WebSocketServerNativeInterface>(
+            WebSocketServerInterfaceSetupData {
+                port: PORT,
+                secure: Some(false),
+            }
+        ).await.expect("Failed to create WebSocketServerInterface");
+        let mut server_interface_socket_event_receiver = server_interface.take_socket_event_receiver();
 
-        let client = Rc::new(RefCell::new(
-            WebSocketClientNativeInterface::new(&format!("ws://localhost:{PORT}"))
-                .unwrap(),
-        ));
-        client.borrow_mut().open().await.unwrap_or_else(|e| {
-            core::panic!("Failed to create WebSocketClientInterface: {e}");
-        });
-        let server = Rc::new(RefCell::new(server));
+        let client_interface = ComInterface::create_async_with_implementation::<WebSocketClientNativeInterface>(
+            WebSocketClientInterfaceSetupData {
+                address: format!("ws://localhost:{PORT}")
+            }
+        ).await.expect("Failed to create WebSocketClientInterface");
+        let mut client_interface_socket_event_receiver = client_interface.take_socket_event_receiver();
 
-        let client_uuid = client.borrow().get_socket_uuid().unwrap();
+        // sockets must be connected, extract them from the event receivers
+        let mut client_socket = match client_interface_socket_event_receiver.next().await {
+            Some(ComInterfaceSocketEvent::NewSocket(socket)) => socket,
+            _ => panic!("Expected NewSocket event for client"),
+        };
+        let mut client_socket_receiver = client_socket.take_block_in_receiver();
+        let mut server_socket = match server_interface_socket_event_receiver.next().await {
+            Some(ComInterfaceSocketEvent::NewSocket(socket)) => socket,
+            _ => panic!("Expected NewSocket event for server"),
+        };
+        let mut server_socket_receiver = server_socket.take_block_in_receiver();
+
+        // send block from client to server
+        let client_uuid = client_interface.implementation::<WebSocketClientNativeInterface>().socket_uuid.clone();
         assert!(
-            client
-                .borrow_mut()
-                .send_block(CLIENT_TO_SERVER_MSG, client_uuid.clone())
+            client_interface
+                .send_block(&client_to_server_message.to_bytes().unwrap(), client_uuid)
                 .await
         );
 
-        let server_uuid = server.borrow().get_socket_uuid_at(0).unwrap();
+        // send block from server to client
+        let server_socket_uuid = server_interface.implementation::<WebSocketServerNativeInterface>()
+            .websocket_streams_by_socket
+            .lock()
+            .unwrap()
+            .keys()
+            .next()
+            .unwrap()
+            .clone();
         assert!(
-            server
-                .borrow_mut()
-                .send_block(SERVER_TO_CLIENT_MSG, server_uuid.clone())
+            server_interface
+                .send_block(&server_to_client_message.to_bytes().unwrap(), server_socket_uuid.clone())
                 .await
         );
 
         tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
 
-        {
-            let server = server.clone();
-            let server = server.borrow_mut();
-            let socket = server.get_socket_with_uuid(server_uuid.clone()).unwrap();
-            let socket = socket.try_lock().unwrap();
-            // FIXME update loop
-            // let mut queue = socket.receive_queue.try_lock().unwrap();
-            // assert_eq!(queue.drain(..).collect::<Vec<_>>(), CLIENT_TO_SERVER_MSG);
-        }
-
-        {
-            let client = client.clone();
-            let client = client.borrow_mut();
-            let socket = client.get_socket().unwrap();
-            let socket = socket.try_lock().unwrap();
-            // FIXME update loop
-            // let mut queue = socket.receive_queue.try_lock().unwrap();
-            // assert_eq!(queue.drain(..).collect::<Vec<_>>(), SERVER_TO_CLIENT_MSG);
-        }
-
-        let client = &mut *client.borrow_mut();
-        client.destroy_ref().await;
-
-        let server = &mut *server.borrow_mut();
-        server.destroy_ref().await;
+        // check if messages are received correctly
+        assert_eq!(server_socket_receiver.next().await.unwrap(), client_to_server_message);
+        assert_eq!(client_socket_receiver.next().await.unwrap(), server_to_client_message);
     }
 }
 
@@ -84,19 +87,25 @@ pub async fn test_construct_client() {
     init_global_context();
 
     // Test with a invalid URL
+    let client_res = ComInterface::create_async_with_implementation::<WebSocketClientNativeInterface>(
+        WebSocketClientInterfaceSetupData {
+            address: "ftp://localhost:1234".to_string(),
+        }
+    ).await;
     assert_eq!(
-        WebSocketClientNativeInterface::new("ftp://localhost:1234")
-            .unwrap_err(),
-        WebSocketError::InvalidURL
+        client_res.unwrap_err(),
+        InterfaceCreateError::InvalidSetupData
     );
 
     // We expect a connection error here, as the server can't be reached
-    let mut client =
-        WebSocketClientNativeInterface::new("ws://localhost.invalid:1234")
-            .unwrap();
+    let client_res = ComInterface::create_async_with_implementation::<WebSocketClientNativeInterface>(
+        WebSocketClientInterfaceSetupData {
+            address: "ws://localhost.invalid:1234".to_string(),
+        }
+    ).await;
 
-    assert_eq!(
-        client.open().await.unwrap_err(),
-        WebSocketError::ConnectionError
+    assert_matches!(
+        client_res.unwrap_err(),
+        InterfaceCreateError::InterfaceError(ComInterfaceError::ConnectionError(_))
     );
 }

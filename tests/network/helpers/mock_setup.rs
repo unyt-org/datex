@@ -51,7 +51,7 @@ pub async fn get_mock_setup_with_endpoint(
 ) -> (Rc<ComHub>, Rc<ComInterface>) {
     // init com hub
     let com_hub =
-        ComHub::create(endpoint, AsyncContext::new(), sink_type).await;
+        ComHub::create(endpoint, AsyncContext::new(), sink_type);
 
     // init mockup interface
     let mockup_interface = ComInterface::create_sync_with_implementation::<
@@ -61,11 +61,7 @@ pub async fn get_mock_setup_with_endpoint(
 
     // add mockup interface to com_hub
     com_hub
-        .open_and_add_interface(mockup_interface.clone(), priority)
-        .await
-        .unwrap_or_else(|e| {
-            core::panic!("Error adding interface: {e:?}");
-        });
+        .register_com_interface(mockup_interface.clone(), priority);
 
     (com_hub, mockup_interface.clone())
 }
@@ -87,11 +83,7 @@ pub async fn get_runtime_with_mock_interface(
     // add mockup interface to com_hub
     runtime
         .com_hub()
-        .open_and_add_interface(mockup_interface_ref.clone(), priority)
-        .await
-        .unwrap_or_else(|e| {
-            core::panic!("Error adding interface: {e:?}");
-        });
+        .register_com_interface(mockup_interface_ref.clone(), priority);
 
     (runtime, mockup_interface_ref)
 }

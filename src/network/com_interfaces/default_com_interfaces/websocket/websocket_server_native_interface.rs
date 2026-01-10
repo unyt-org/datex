@@ -46,7 +46,7 @@ type WebsocketStreamMap = HashMap<
 >;
 
 pub struct WebSocketServerNativeInterface {
-    websocket_streams: Arc<Mutex<WebsocketStreamMap>>,
+    pub websocket_streams_by_socket: Arc<Mutex<WebsocketStreamMap>>,
     shutdown_signal: Arc<Notify>,
     com_interface: Rc<ComInterface>,
 }
@@ -176,7 +176,7 @@ impl WebSocketServerNativeInterface {
 
         Ok((
             WebSocketServerNativeInterface {
-                websocket_streams,
+                websocket_streams_by_socket: websocket_streams,
                 shutdown_signal,
                 com_interface,
             },
@@ -217,7 +217,7 @@ impl ComInterfaceImplementation for WebSocketServerNativeInterface {
         block: &'a [u8],
         socket_uuid: ComInterfaceSocketUUID,
     ) -> Pin<Box<dyn Future<Output = bool> + 'a>> {
-        let tx = self.websocket_streams.clone();
+        let tx = self.websocket_streams_by_socket.clone();
         Box::pin(async move {
             let tx = &mut tx.try_lock().unwrap();
             let tx = tx.get_mut(&socket_uuid);
@@ -238,7 +238,7 @@ impl ComInterfaceImplementation for WebSocketServerNativeInterface {
 
     fn handle_destroy<'a>(&'a self) -> Pin<Box<dyn Future<Output = bool> + 'a>> {
         let shutdown_signal = self.shutdown_signal.clone();
-        let websocket_streams = self.websocket_streams.clone();
+        let websocket_streams = self.websocket_streams_by_socket.clone();
         Box::pin(async move {
             shutdown_signal.notify_waiters();
             websocket_streams.try_lock().unwrap().clear();

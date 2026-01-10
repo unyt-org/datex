@@ -78,6 +78,15 @@ impl ComHub {
             .dyn_interface_by_uuid(&socket.interface_uuid)
     }
 
+
+    /// Registers an existing com interface on the ComHub and sets up event handling
+    pub fn register_com_interface(&self, com_interface: Rc<ComInterface>, priority: InterfacePriority) {
+        self.interface_manager
+            .borrow_mut()
+            .add_interface(com_interface.clone(), priority).unwrap();
+        self.handle_interface_socket_events(com_interface);
+    }
+
     /// Creates a new interface of the given type with the provided setup data
     pub async fn create_interface(
         &self,

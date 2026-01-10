@@ -2,7 +2,6 @@ use std::sync::{Arc, Mutex};
 
 use datex_core::network::com_interfaces::default_com_interfaces::tcp::{
     tcp_client_native_interface::TCPClientNativeInterface,
-    tcp_common::TCPError,
     tcp_server_native_interface::TCPServerNativeInterface,
 };
 use datex_core::run_async;
@@ -14,16 +13,15 @@ use datex_core::network::com_interfaces::default_com_interfaces::tcp::tcp_common
 #[tokio::test]
 pub async fn test_client_no_connection() {
     init_global_context();
-    let mut client_interface = ComInterface::create_sync_with_implementation::<TCPClientNativeInterface>(
+    let mut client_interface = ComInterface::create_async_with_implementation::<TCPClientNativeInterface>(
         TCPClientInterfaceSetupData { address: "0.0.0.0:8080".to_string()}
-    ).unwrap();
+    ).await.unwrap();
 
     assert!(client_interface.state().lock().unwrap().get().is_not_connected());
     let res = client_interface.reconnect().await;
     assert_eq!(res, false);
-    assert_eq!(res.unwrap_err(), TCPError::ConnectionError);
     assert!(client_interface.state().lock().unwrap().get().is_not_connected());
-    client_interface.handle_destroy().await;
+    client_interface.close().await;
 }
 
 #[tokio::test]
@@ -36,17 +34,17 @@ pub async fn test_construct() {
         init_global_context();
 
         // let mut server = TCPServerNativeInterface::new(PORT).unwrap();
-        let mut server_interface = ComInterface::create_sync_with_implementation::<TCPServerNativeInterface>(
+        let mut server_interface = ComInterface::create_async_with_implementation::<TCPServerNativeInterface>(
             TCPServerInterfaceSetupData { port: PORT }
-        ).unwrap();
+        ).await.unwrap();
 
         assert_eq!(server_interface.reconnect().await, true);
 
-        let mut client_interface = ComInterface::create_sync_with_implementation::<TCPClientNativeInterface>(
+        let mut client_interface = ComInterface::create_async_with_implementation::<TCPClientNativeInterface>(
             TCPClientInterfaceSetupData { address: format!("0.0.0.0:{PORT}") }
-        ).unwrap();
+        ).await.unwrap();
 
-        let client_uuid = client_interface.implementation::<TCPClientNativeInterface>().uuid;
+        let client_uuid = client_interface.implementation::<TCPClientNativeInterface>().socket_uuid;
 
         assert!(
             client_interface
@@ -55,10 +53,9 @@ pub async fn test_construct() {
         );
         tokio::time::sleep(tokio::time::Duration::from_millis(1)).await;
 
-        let server_uuid = server_interface.implementation()
         assert!(
             server_interface
-                .send_block(SERVER_TO_CLIENT_MSG, server_uuid.clone())
+                .send_block(SERVER_TO_CLIENT_MSG, client_uuid.clone())
                 .await
         );
         tokio::time::sleep(tokio::time::Duration::from_millis(1)).await;
@@ -115,8 +112,8 @@ pub async fn test_construct() {
         // We take ownership of the client
         let client = Arc::into_inner(client).unwrap();
         let client = Mutex::into_inner(client).unwrap();
-        client.destroy().await;
+        client.close().await;
 
-        server_interface.destroy().await;
+        server_interface.close().await;
     }
 }

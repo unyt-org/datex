@@ -7,7 +7,7 @@ use crate::network::com_hub::network_response::{
     Response, ResponseError, ResponseOptions, ResponseResolutionStrategy,
 };
 use crate::network::com_hub::options::ComHubOptions;
-pub(crate) mod managers;
+pub mod managers;
 
 #[cfg(feature = "debug")]
 pub mod metadata;
@@ -178,10 +178,10 @@ impl ComHub {
 
         // start handling ComHub events
         ComHub::handle_events(com_hub.clone());
-        
+
         com_hub
     }
-    
+
     /// Starts handling ComHub events
     fn handle_events(self_rc: Rc<Self>) {
         let receiver = self_rc
@@ -193,14 +193,6 @@ impl ComHub {
             &async_context.clone(),
             com_hub_event_task(receiver, self_rc, async_context),
         );
-    }
-
-    /// Registers an existing com interface on the ComHub and sets up event handling
-    fn register_com_interface(&self, com_interface: Rc<ComInterface>, priority: InterfacePriority) {
-        self.interface_manager
-            .borrow_mut()
-            .add_interface(com_interface.clone(), priority).unwrap();
-        self.handle_interface_socket_events(com_interface);
     }
 
     /// Register an incoming block interceptor

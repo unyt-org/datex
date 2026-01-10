@@ -25,6 +25,7 @@ use crate::network::com_hub::errors::InterfaceCreateError;
 
 pub struct SerialNativeInterface {
     com_interface: Rc<ComInterface>,
+    pub socket_uuid: ComInterfaceSocketUUID,
     shutdown_signal: Arc<Notify>,
     port: Arc<Mutex<Box<dyn SerialPort>>>,
 }
@@ -114,6 +115,7 @@ impl SerialNativeInterface {
                 com_interface,
                 shutdown_signal,
                 port,
+                socket_uuid
             },
             Self::get_default_properties()
         ))

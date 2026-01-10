@@ -27,6 +27,7 @@ use std::{
     pin::Pin,
     sync::{Arc, Mutex, mpsc},
 };
+use datex_core::network::com_hub::errors::InterfaceCreateError;
 
 pub struct MockupInterface {
     pub outgoing_queue: RefCell<Vec<(ComInterfaceSocketUUID, Vec<u8>)>>,
@@ -54,7 +55,7 @@ impl MockupInterface {
     pub fn new(
         setup_data: MockupInterfaceSetupData,
         com_interface: Rc<ComInterface>,
-    ) -> Result<Self, ComInterfaceError> {
+    ) -> Result<(Self, InterfaceProperties), InterfaceCreateError> {
         info!("Creating MockupInterface with setup data: {:?}", setup_data);
         let mut mockup_interface = MockupInterface {
             outgoing_queue: RefCell::new(Vec::new()),
@@ -83,14 +84,26 @@ impl MockupInterface {
         mockup_interface.start_update_loop();
         info!("started update loop");
 
-        Ok(mockup_interface)
+        let name = setup_data.name.clone();
+        let direction = setup_data.direction.clone();
+
+        Ok((
+            mockup_interface,
+            InterfaceProperties {
+                interface_type: "mockup".to_string(),
+                channel: "mockup".to_string(),
+                name: Some(name),
+                direction,
+                ..Default::default()
+            }
+        ))
     }
 
     pub fn create_and_add_socket(
         &mut self,
         endpoint: Option<Endpoint>,
     ) -> Result<ComInterfaceSocketUUID, ComInterfaceError> {
-        let direction = self.get_properties().direction.clone();
+        let direction = self.setup_data.direction.clone();
         let (socket_uuid, sender) = self
             .com_interface
             .socket_manager()
@@ -207,7 +220,7 @@ impl ComInterfaceSyncFactory for MockupInterface {
     fn create(
         setup_data: Self::SetupData,
         com_interface: Rc<ComInterface>,
-    ) -> Result<MockupInterface, ComInterfaceError> {
+    ) -> Result<(MockupInterface, InterfaceProperties), InterfaceCreateError> {
         MockupInterface::new(setup_data, com_interface)
     }
 
@@ -332,22 +345,12 @@ impl ComInterfaceImplementation for MockupInterface {
         }))
     }
 
-    fn get_properties(&self) -> InterfaceProperties {
-        InterfaceProperties {
-            interface_type: "mockup".to_string(),
-            channel: "mockup".to_string(),
-            name: Some(self.setup_data.name.clone()),
-            direction: self.setup_data.direction.clone(),
-            ..Default::default()
-        }
-    }
-
-    fn handle_close<'a>(&'a self) -> Pin<Box<dyn Future<Output = bool> + 'a>> {
+    fn handle_destroy<'a>(&'a self) -> Pin<Box<dyn Future<Output = bool> + 'a>> {
         self.outgoing_queue.borrow_mut().clear();
         Pin::from(Box::new(async move { true }))
     }
 
-    fn handle_open<'a>(&'a self) -> Pin<Box<dyn Future<Output = bool> + 'a>> {
-        Pin::from(Box::new(async move { true }))
+    fn handle_reconnect<'a>(&'a self) -> Pin<Box<dyn Future<Output = bool> + 'a>> {
+        unimplemented!()
     }
 }
