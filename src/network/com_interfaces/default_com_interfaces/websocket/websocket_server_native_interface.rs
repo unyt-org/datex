@@ -4,6 +4,7 @@ use crate::stdlib::rc::Rc;
 use crate::stdlib::{
     collections::HashMap, future::Future, net::SocketAddr, pin::Pin,
 };
+use crate::task::{spawn_with_panic_notify, spawn_with_panic_notify_default};
 use crate::{stdlib::sync::Arc, task::spawn};
 use core::prelude::rust_2024::*;
 use core::result::Result;
@@ -92,10 +93,9 @@ impl WebSocketServerNativeInterface {
 
         let shutdown_signal_clone = shutdown_signal.clone();
 
-        spawn(async move {
-            let global_context = global_context.clone();
+        // FIXME fix task abort on shutdown
+        spawn_with_panic_notify_default(async move {
             let manager = manager.clone();
-            set_global_context(global_context.clone());
             info!("WebSocket server started at {addr}");
             loop {
                 let manager = manager.clone();
@@ -104,10 +104,8 @@ impl WebSocketServerNativeInterface {
                         match res {
                             Ok((stream, addr)) => {
                                 let websocket_streams = websocket_streams_clone.clone();
-                                let global_context = global_context.clone();
                                 info!("New connection from {addr}");
-                                let task = spawn(async move {
-                                    set_global_context(global_context.clone());
+                                spawn_with_panic_notify_default(async move {
                                     let manager = manager.clone();
 
                                     match accept_async(stream).await {
@@ -163,7 +161,6 @@ impl WebSocketServerNativeInterface {
                                         }
                                     }
                                 });
-                                tasks.push(task);
                             }
                             Err(e) => {
                                 error!("Failed to accept connection: {e}");
@@ -173,9 +170,9 @@ impl WebSocketServerNativeInterface {
                     }
                     _ = shutdown_signal_clone.notified() => {
                         info!("Shutdown signal received, stopping server...");
-                        for task in tasks {
-                            task.abort();
-                        }
+                        // for task in tasks {
+                        //     task.abort();
+                        // }
                         break;
                     }
                 }

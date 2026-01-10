@@ -16,15 +16,17 @@ use datex_core::network::com_interfaces::com_interface::ComInterface;
 use datex_core::network::com_interfaces::com_interface::error::ComInterfaceError;
 use datex_core::network::com_interfaces::com_interface::socket::ComInterfaceSocketEvent;
 use datex_core::run_async;
+use ntest_timeout::timeout;
 
 #[tokio::test]
+#[timeout(4000)]
 pub async fn test_create_socket_connection() {
     run_async! {
         const PORT: u16 = 8085;
         init_global_context();
 
-        let client_to_server_message = DXBBlock::default();
-        let server_to_client_message = DXBBlock::default();
+        let client_to_server_message = DXBBlock::new_with_body(b"Hello from client to server");
+        let server_to_client_message = DXBBlock::new_with_body(b"Hello from server to client");
 
         let server_interface = ComInterface::create_async_with_implementation::<WebSocketServerNativeInterface>(
             WebSocketServerInterfaceSetupData {
