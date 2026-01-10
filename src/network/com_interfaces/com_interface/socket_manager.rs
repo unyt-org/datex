@@ -1,5 +1,4 @@
 use crate::collections::HashMap;
-use crate::network::com_hub::ComInterfaceImplementationFactoryFn;
 use crate::network::com_interfaces::com_interface::ComInterfaceUUID;
 use crate::network::com_interfaces::com_interface::error::ComInterfaceError;
 use crate::network::com_interfaces::com_interface::properties::InterfaceDirection;

@@ -2,9 +2,8 @@ use core::prelude::rust_2024::*;
 use core::result::Result;
 use std::collections::HashMap;
 
-use crate::network::com_interfaces::com_interface::error::ComInterfaceError;
 use crate::network::com_interfaces::com_interface::implementation::{
-    ComInterfaceFactory, ComInterfaceImplementation,
+    ComInterfaceSyncFactory, ComInterfaceImplementation,
 };
 use crate::network::com_interfaces::com_interface::state::ComInterfaceState;
 use crate::network::{
@@ -31,7 +30,6 @@ pub type OnSendCallback = dyn Fn(&[u8], ComInterfaceSocketUUID) -> Pin<Box<dyn F
 
 pub struct BaseInterface {
     on_send: Box<OnSendCallback>,
-    properties: InterfaceProperties,
     com_interface: Rc<ComInterface>,
 }
 
@@ -65,18 +63,17 @@ impl BaseInterfaceHolder {
         let com_interface = Rc::new(ComInterface {
             info: Rc::new(ComInterfaceInfo::init(
                 ComInterfaceState::NotConnected,
-                InterfaceProperties::default(),
+                setup_data.properties,
             )),
             implementation: RefCell::new(None),
         });
 
         // Create the implementation using the factory function
         let implementation = BaseInterface {
-            properties: setup_data.properties,
             on_send: setup_data.on_send_callback,
             com_interface: com_interface.clone(),
         };
-        com_interface.initialize(Box::new(implementation));
+        com_interface.set_implementation(Box::new(implementation));
 
         BaseInterfaceHolder {
             sender: HashMap::new(),
@@ -140,15 +137,11 @@ impl ComInterfaceImplementation for BaseInterface {
         self.on_send.as_ref()(block, socket_uuid)
     }
 
-    fn get_properties(&self) -> InterfaceProperties {
-        self.properties.clone()
-    }
-
-    fn handle_close<'a>(&'a self) -> Pin<Box<dyn Future<Output = bool> + 'a>> {
+    fn handle_destroy<'a>(&'a self) -> Pin<Box<dyn Future<Output = bool> + 'a>> {
         Box::pin(async move { true })
     }
 
-    fn handle_open<'a>(&'a self) -> Pin<Box<dyn Future<Output = bool> + 'a>> {
+    fn handle_reconnect<'a>(&'a self) -> Pin<Box<dyn Future<Output = bool> + 'a>> {
         Box::pin(async move { true })
     }
 }
@@ -209,7 +202,7 @@ mod tests {
         assert!(base_interface.properties().close_timestamp.is_none());
 
         // Open the interface
-        base_interface.open().await;
+        base_interface.reconnect().await;
         assert_eq!(
             base_interface.current_state(),
             ComInterfaceState::Connected

@@ -15,7 +15,7 @@ pub async fn test_construct() {
     const PORT: u16 = 8081;
     init_global_context();
 
-    let server = ComInterface::create_with_implementation::<HTTPServerNativeInterface>(
+    let server = ComInterface::create_sync_with_implementation::<HTTPServerNativeInterface>(
         HTTPServerInterfaceSetupData {port: PORT}
     ).expect("Failed to create HTTP server interface");
     assert!(server.borrow().handle_open().await);

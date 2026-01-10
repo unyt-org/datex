@@ -18,7 +18,7 @@ use tokio_stream::wrappers::BroadcastStream;
 
 use crate::network::com_interfaces::com_interface::ComInterface;
 use crate::network::com_interfaces::com_interface::error::ComInterfaceError;
-use crate::network::com_interfaces::com_interface::implementation::ComInterfaceFactory;
+use crate::network::com_interfaces::com_interface::implementation::{ComInterfaceAsyncFactory, ComInterfaceSyncFactory};
 use crate::network::com_interfaces::com_interface::properties::{
     InterfaceDirection, InterfaceProperties,
 };
@@ -34,7 +34,7 @@ use datex_macros::{com_interface, create_opener};
 use log::{debug, error, info};
 use tokio::sync::{RwLock, broadcast, mpsc};
 use url::Url;
-
+use crate::network::com_hub::errors::InterfaceCreateError;
 use super::http_common::{HTTPError, HTTPServerInterfaceSetupData};
 
 async fn server_to_client_handler(
@@ -172,25 +172,32 @@ impl HTTPServerNativeInterface {
         }
     }
 
-    async fn open(&self) -> Result<(), HTTPError> {
-        let address = self.address.clone();
+    async fn create(
+        setup_data: HTTPServerInterfaceSetupData,
+        com_interface: Rc<ComInterface>,
+    ) -> Result<(Self, InterfaceProperties), InterfaceCreateError> {
+        let address: String = format!("http://127.0.0.1:{}", setup_data.port);
+        let address = Url::parse(&address)
+            .map_err(|e| InterfaceCreateError::InvalidSetupData)?;
+
         info!("Spinning up server at {address}");
 
+        let channels = Arc::new(RwLock::new(HashMap::new()));
+
         let state = HTTPServerState {
-            channels: self.channels.clone(),
+            channels: channels.clone(),
         };
         let app = Router::new()
             .route("/{route}/rx", get(server_to_client_handler))
             .route("/{route}/tx", post(client_to_server_handler))
             .with_state(state.clone());
 
-        let addr: SocketAddr = self
-            .address
+        let addr: SocketAddr = address
             .socket_addrs(|| None)
-            .map_err(|_| HTTPError::InvalidAddress)?
+            .map_err(|_| InterfaceCreateError::InvalidSetupData)?
             .first()
             .cloned()
-            .ok_or(HTTPError::InvalidAddress)?;
+            .ok_or(InterfaceCreateError::InvalidSetupData)?;
 
         println!("HTTP server starting on http://{addr}");
         spawn(async move {
@@ -199,7 +206,16 @@ impl HTTPServerNativeInterface {
                 .await
                 .unwrap();
         });
-        Ok(())
+
+        Ok((
+            HTTPServerNativeInterface {
+                channels,
+                address,
+                socket_channel_mapping: Rc::new(RefCell::new(HashMap::new())),
+                com_interface,
+            },
+            Self::get_default_properties(),
+        ))
     }
 }
 
@@ -226,39 +242,25 @@ impl ComInterfaceImplementation for HTTPServerNativeInterface {
             }
         })
     }
-    fn get_properties(&self) -> InterfaceProperties {
-        HTTPServerNativeInterface::get_default_properties()
+    fn handle_destroy<'a>(&'a self) -> Pin<Box<dyn Future<Output = bool> + 'a>> {
+        todo!("#199")
     }
 
-    fn handle_close<'a>(&'a self) -> Pin<Box<dyn Future<Output = bool> + 'a>> {
-        // TODO #199
-        Box::pin(async move { true })
-    }
-
-    fn handle_open<'a>(&'a self) -> Pin<Box<dyn Future<Output = bool> + 'a>> {
-        Box::pin(async move { self.open().await.is_ok() })
+    fn handle_reconnect<'a>(&'a self) -> Pin<Box<dyn Future<Output = bool> + 'a>> {
+        todo!()
     }
 }
 
-impl ComInterfaceFactory for HTTPServerNativeInterface {
+impl ComInterfaceAsyncFactory for HTTPServerNativeInterface {
     type SetupData = HTTPServerInterfaceSetupData;
 
     fn create(
         setup_data: Self::SetupData,
         com_interface: Rc<ComInterface>,
-    ) -> Result<Self, ComInterfaceError> {
-        let address: String = format!("http://127.0.0.1:{}", setup_data.port);
-        let address = Url::parse(&address)
-            .map_err(|_| HTTPError::InvalidAddress)
-            .map_err(|e| ComInterfaceError::InvalidSetupData)?;
-
-        let interface = HTTPServerNativeInterface {
-            channels: Arc::new(RwLock::new(HashMap::new())),
-            address,
-            socket_channel_mapping: Rc::new(RefCell::new(HashMap::new())),
-            com_interface,
-        };
-        Ok(interface)
+    ) -> Pin<Box<dyn Future<Output = Result<(Self, InterfaceProperties), InterfaceCreateError>>>> {
+        Box::pin(async move {
+            HTTPServerNativeInterface::create(setup_data, com_interface).await
+        })
     }
 
     fn get_default_properties() -> InterfaceProperties {

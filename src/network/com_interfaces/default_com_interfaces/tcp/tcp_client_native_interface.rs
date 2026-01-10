@@ -1,9 +1,7 @@
 use super::tcp_common::{TCPClientInterfaceSetupData, TCPError};
 
 use crate::network::com_interfaces::com_interface::error::ComInterfaceError;
-use crate::network::com_interfaces::com_interface::implementation::{
-    ComInterfaceFactory, ComInterfaceImplementation,
-};
+use crate::network::com_interfaces::com_interface::implementation::{ComInterfaceSyncFactory, ComInterfaceImplementation, ComInterfaceAsyncFactory};
 use crate::network::com_interfaces::com_interface::properties::{
     InterfaceDirection, InterfaceProperties,
 };
@@ -32,56 +30,87 @@ use log::{error, warn};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 use tokio::net::tcp::OwnedWriteHalf;
+use tokio::select;
+use tokio::sync::Notify;
+use crate::network::com_hub::errors::InterfaceCreateError;
 
 pub struct TCPClientNativeInterface {
     pub address: SocketAddr,
-    tx: Rc<RefCell<Option<OwnedWriteHalf>>>,
+    pub socket_uuid: ComInterfaceSocketUUID,
+    tx: RefCell<OwnedWriteHalf>,
     com_interface: Rc<ComInterface>,
+    shutdown_signal: Arc<Notify>,
 }
 
 impl TCPClientNativeInterface {
-    async fn open(&self) -> Result<(), TCPError> {
-        let stream = TcpStream::connect(self.address)
+    async fn create(
+        setup_data: TCPClientInterfaceSetupData,
+        com_interface: Rc<ComInterface>,
+    ) -> Result<(Self, InterfaceProperties), InterfaceCreateError> {
+        let address = SocketAddr::from_str(&setup_data.address)
+            .map_err(|_| InterfaceCreateError::InvalidSetupData)?;
+
+        let stream = TcpStream::connect(address)
             .await
-            .map_err(|_| TCPError::ConnectionError)?;
+            .map_err(|error| ComInterfaceError::connection_error_with_details(error))?;
 
-        let (read_half, write_half) = stream.into_split();
+        let (read_half, tx) = stream.into_split();
 
-        let (_, mut sender) = self
-            .com_interface
+        let (socket_uuid, mut sender) = com_interface
             .socket_manager()
             .lock()
             .unwrap()
             .create_and_init_socket(InterfaceDirection::InOut, 1);
-        self.tx.borrow_mut().replace(write_half);
 
-        let state = self.com_interface.state();
+        let state = com_interface.state();
+        let shutdown_signal = Arc::new(Notify::new());
+        let shutdown_signal_clone = shutdown_signal.clone();
 
         spawn(async move {
             let mut reader = read_half;
             let mut buffer = [0u8; 1024];
             loop {
-                match reader.read(&mut buffer).await {
-                    Ok(0) => {
-                        warn!("Connection closed by peer");
-                        state.lock().unwrap().set(ComInterfaceState::Destroyed);
-                        break;
+                select! {
+                    next = reader.read(&mut buffer) => {
+                        match next {
+                            Ok(0) => {
+                                warn!("Connection closed by peer");
+                                state.lock().unwrap().set(ComInterfaceState::Destroyed);
+                                break;
+                            }
+                            Ok(n) => {
+                                sender.start_send(buffer[..n].to_vec()).unwrap();
+                            }
+                            Err(e) => {
+                                error!("Failed to read from socket: {e}");
+                                state
+                                    .try_lock()
+                                    .unwrap()
+                                    .set(ComInterfaceState::Destroyed);
+                                break;
+                            }
+                        }
                     }
-                    Ok(n) => {
-                        sender.start_send(buffer[..n].to_vec()).unwrap();
-                    }
-                    Err(e) => {
-                        error!("Failed to read from socket: {e}");
-                        state
-                            .try_lock()
-                            .unwrap()
-                            .set(ComInterfaceState::Destroyed);
+                    _ = shutdown_signal_clone.notified() => {
                         break;
                     }
                 }
             }
         });
-        Ok(())
+
+        Ok((
+            TCPClientNativeInterface {
+                address,
+                socket_uuid,
+                tx: RefCell::new(tx),
+                com_interface,
+                shutdown_signal
+            },
+            InterfaceProperties {
+                name: Some(setup_data.address),
+                ..Self::get_default_properties()
+            }
+        ))
     }
 }
 
@@ -91,56 +120,34 @@ impl ComInterfaceImplementation for TCPClientNativeInterface {
         block: &'a [u8],
         _: ComInterfaceSocketUUID,
     ) -> Pin<Box<dyn Future<Output = bool> + 'a>> {
-        let tx = self.tx.clone();
         Box::pin(async move {
-            let mut tx = tx.borrow_mut();
-            if let Some(tx) = tx.as_mut() {
-                match tx.write_all(block).await {
-                    Ok(_) => true,
-                    Err(e) => {
-                        error!("Failed to send data: {}", e);
-                        false
-                    }
+            match self.tx.borrow_mut().write_all(block).await {
+                Ok(_) => true,
+                Err(e) => {
+                    error!("Failed to send data: {}", e);
+                    false
                 }
-            } else {
-                error!("Client is not connected");
-                false
             }
         })
     }
-    fn get_properties(&self) -> InterfaceProperties {
-        InterfaceProperties {
-            interface_type: "tcp-client".to_string(),
-            channel: "tcp".to_string(),
-            round_trip_time: Duration::from_millis(20),
-            max_bandwidth: 1000,
-            ..InterfaceProperties::default()
-        }
+    fn handle_destroy<'a>(&'a self) -> Pin<Box<dyn Future<Output = bool> + 'a>> {
+        todo!()
     }
 
-    fn handle_close<'a>(&'a self) -> Pin<Box<dyn Future<Output = bool> + 'a>> {
-        // TODO #208
-        Box::pin(async move { true })
-    }
-
-    fn handle_open<'a>(&'a self) -> Pin<Box<dyn Future<Output = bool> + 'a>> {
-        Box::pin(async move { self.open().await.is_ok() })
+    fn handle_reconnect<'a>(&'a self) -> Pin<Box<dyn Future<Output=bool> + 'a>> {
+        todo!()
     }
 }
 
-impl ComInterfaceFactory for TCPClientNativeInterface {
+impl ComInterfaceAsyncFactory for TCPClientNativeInterface {
     type SetupData = TCPClientInterfaceSetupData;
 
     fn create(
         setup_data: Self::SetupData,
         com_interface: Rc<ComInterface>,
-    ) -> Result<Self, ComInterfaceError> {
-        let address = SocketAddr::from_str(&setup_data.address)
-            .map_err(|_| ComInterfaceError::InvalidSetupData)?;
-        Ok(TCPClientNativeInterface {
-            address,
-            tx: Rc::new(RefCell::new(None)),
-            com_interface,
+    ) -> Pin<Box<dyn Future<Output = Result<(Self, InterfaceProperties), InterfaceCreateError>>>> {
+        Box::pin(async move {
+            TCPClientNativeInterface::create(setup_data, com_interface).await
         })
     }
 

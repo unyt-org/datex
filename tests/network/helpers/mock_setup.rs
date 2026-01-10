@@ -54,7 +54,7 @@ pub async fn get_mock_setup_with_endpoint(
         ComHub::create(endpoint, AsyncContext::new(), sink_type).await;
 
     // init mockup interface
-    let mockup_interface = ComInterface::create_with_implementation::<
+    let mockup_interface = ComInterface::create_sync_with_implementation::<
         MockupInterface,
     >(MockupInterfaceSetupData::new("mockup"))
     .unwrap();
@@ -79,7 +79,7 @@ pub async fn get_runtime_with_mock_interface(
         Runtime::init_native(RuntimeConfig::new_with_endpoint(endpoint));
 
     // init mockup interface
-    let mockup_interface_ref = ComInterface::create_with_implementation::<
+    let mockup_interface_ref = ComInterface::create_sync_with_implementation::<
         MockupInterface,
     >(MockupInterfaceSetupData::new("mockup"))
     .unwrap();

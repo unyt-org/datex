@@ -14,7 +14,7 @@ use super::{
     webrtc_commons::WebRTCCommon,
 };
 use crate::network::com_interfaces::com_interface::ComInterface;
-use crate::network::com_interfaces::com_interface::properties::InterfaceDirection;
+use crate::network::com_interfaces::com_interface::properties::{InterfaceDirection, InterfaceProperties};
 use crate::network::com_interfaces::com_interface::socket::ComInterfaceSocketUUID;
 use crate::network::com_interfaces::com_interface::socket_manager::ComInterfaceSocketManager;
 use crate::task::UnboundedSender;
@@ -28,6 +28,8 @@ use crate::{
     serde::{deserializer::from_bytes, serializer::to_bytes},
     values::core_values::endpoint::Endpoint,
 };
+use crate::network::com_hub::errors::InterfaceCreateError;
+use crate::network::com_interfaces::default_com_interfaces::webrtc::webrtc_common::webrtc_commons::WebRTCInterfaceSetupData;
 
 #[async_trait(?Send)]
 pub trait WebRTCTraitInternal<DC: 'static, MR: 'static, ML: 'static> {
@@ -206,15 +208,6 @@ pub trait WebRTCTraitInternal<DC: 'static, MR: 'static, ML: 'static> {
 pub trait WebRTCTrait<DC: 'static, MR: 'static, ML: 'static>:
     WebRTCTraitInternal<DC, MR, ML>
 {
-    fn new(
-        peer_endpoint: impl Into<Endpoint>,
-        com_interface: Rc<ComInterface>,
-    ) -> Self;
-    fn new_with_ice_servers(
-        peer_endpoint: impl Into<Endpoint>,
-        ice_servers: Vec<RTCIceServer>,
-        com_interface: Rc<ComInterface>,
-    ) -> Self;
     async fn create_offer(&self) -> Result<Vec<u8>, WebRTCError> {
         let data_channel = self.handle_create_data_channel().await?;
         let data_channel_rc = Rc::new(RefCell::new(data_channel));

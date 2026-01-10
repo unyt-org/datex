@@ -27,9 +27,7 @@ use super::webrtc_common::{
 };
 use crate::network::com_interfaces::com_interface::ComInterface;
 use crate::network::com_interfaces::com_interface::error::ComInterfaceError;
-use crate::network::com_interfaces::com_interface::implementation::{
-    ComInterfaceFactory, ComInterfaceImplementation,
-};
+use crate::network::com_interfaces::com_interface::implementation::{ComInterfaceSyncFactory, ComInterfaceImplementation, ComInterfaceAsyncFactory};
 use crate::network::com_interfaces::com_interface::properties::InterfaceProperties;
 use crate::network::com_interfaces::com_interface::socket::ComInterfaceSocketUUID;
 use datex_macros::{com_interface, create_opener};
@@ -58,6 +56,7 @@ use webrtc::{
         track_remote::{OnMuteHdlrFn, TrackRemote},
     },
 };
+use crate::network::com_hub::errors::InterfaceCreateError;
 
 pub type TrackLocal = dyn webrtc::track::track_local::TrackLocal + Send + Sync;
 
@@ -83,34 +82,7 @@ pub struct WebRTCNativeInterface {
 
 impl WebRTCTrait<Arc<RTCDataChannel>, Arc<TrackRemote>, Arc<TrackLocal>>
     for WebRTCNativeInterface
-{
-    fn new(
-        peer_endpoint: impl Into<Endpoint>,
-        com_interface: Rc<ComInterface>,
-    ) -> Self {
-        let commons = WebRTCCommon::new(peer_endpoint);
-        WebRTCNativeInterface {
-            com_interface,
-            commons: Arc::new(Mutex::new(commons)),
-            peer_connection: Arc::new(Mutex::new(None)),
-            data_channels: Rc::new(RefCell::new(DataChannels::default())),
-            remote_media_tracks: Rc::new(RefCell::new(MediaTracks::default())),
-            local_media_tracks: Rc::new(RefCell::new(MediaTracks::default())),
-            rtc_configuration: RefCell::new(RTCConfiguration {
-                ..Default::default()
-            }),
-        }
-    }
-    fn new_with_ice_servers(
-        peer_endpoint: impl Into<Endpoint>,
-        ice_servers: Vec<RTCIceServer>,
-        com_interface: Rc<ComInterface>,
-    ) -> Self {
-        let interface = Self::new(peer_endpoint, com_interface);
-        interface.set_ice_servers(ice_servers);
-        interface
-    }
-}
+{}
 
 #[async_trait(?Send)]
 impl WebRTCTraitInternal<Arc<RTCDataChannel>, Arc<TrackRemote>, Arc<TrackLocal>>
@@ -420,14 +392,35 @@ impl WebRTCTraitInternal<Arc<RTCDataChannel>, Arc<TrackRemote>, Arc<TrackLocal>>
 }
 
 impl WebRTCNativeInterface {
-    async fn open(&self) -> Result<(), WebRTCError> {
+
+    async fn create(
+        setup_data: WebRTCInterfaceSetupData,
+        com_interface: Rc<ComInterface>,
+    ) -> Result<(Self, InterfaceProperties), InterfaceCreateError> {
+
+        let commons = WebRTCCommon::new(setup_data.peer_endpoint);
+        let interface = WebRTCNativeInterface {
+            com_interface,
+            commons: Arc::new(Mutex::new(commons)),
+            peer_connection: Arc::new(Mutex::new(None)),
+            data_channels: Rc::new(RefCell::new(DataChannels::default())),
+            remote_media_tracks: Rc::new(RefCell::new(MediaTracks::default())),
+            local_media_tracks: Rc::new(RefCell::new(MediaTracks::default())),
+            rtc_configuration: RefCell::new(RTCConfiguration {
+                ..Default::default()
+            }),
+        };
+        if let Some(ice_servers) = setup_data.ice_servers {
+            interface.set_ice_servers(ice_servers);
+        }
+
         let has_media_support = true; // TODO #202
         let api = APIBuilder::new();
         let api = if has_media_support {
             let mut media_engine = MediaEngine::default();
             media_engine
                 .register_default_codecs()
-                .map_err(|_| WebRTCError::MediaEngineError)?;
+                .map_err(|e| ComInterfaceError::connection_error_with_details(e))?;
 
             media_engine
                 .register_codec(
@@ -446,17 +439,17 @@ impl WebRTCNativeInterface {
             let mut registry = Registry::new();
             registry =
                 register_default_interceptors(registry, &mut media_engine)
-                    .map_err(|_| WebRTCError::MediaEngineError)?;
+                    .map_err(|e| ComInterfaceError::connection_error_with_details(e))?;
             api.with_media_engine(media_engine)
                 .with_interceptor_registry(registry)
         } else {
             api
         }
-        .build();
+            .build();
 
         {
             // ICE servers
-            self.rtc_configuration.borrow_mut().ice_servers = self
+            interface.rtc_configuration.borrow_mut().ice_servers = interface
                 .commons
                 .try_lock()
                 .unwrap()
@@ -474,21 +467,21 @@ impl WebRTCNativeInterface {
                 .collect()
         }
         let peer_connection = api
-            .new_peer_connection(self.rtc_configuration.borrow().clone())
+            .new_peer_connection(interface.rtc_configuration.borrow().clone())
             .await
             .unwrap();
-        self.peer_connection
+        interface.peer_connection
             .lock()
             .unwrap()
             .replace(peer_connection);
         {
             // Data channels
-            let data_channels = self.data_channels.clone();
+            let data_channels = interface.data_channels.clone();
             let (tx_data_channel, mut rx_data_channel) =
                 mpsc::unbounded::<Arc<RTCDataChannel>>();
             let data_channel_tx_clone = tx_data_channel.clone();
 
-            self.peer_connection
+            interface.peer_connection
                 .lock()
                 .unwrap()
                 .as_ref()
@@ -514,7 +507,7 @@ impl WebRTCNativeInterface {
         }
         {
             // Media tracks
-            let media_tracks = self.remote_media_tracks.clone();
+            let media_tracks = interface.remote_media_tracks.clone();
             let (tx_media_track, mut rx_media_track) =
                 mpsc::unbounded::<Arc<TrackRemote>>();
             let media_track_tx_clone = tx_media_track.clone();
@@ -531,7 +524,7 @@ impl WebRTCNativeInterface {
             //     )
             //     .await
             //     .unwrap();
-            self.peer_connection
+            interface.peer_connection
                 .lock()
                 .unwrap()
                 .as_ref()
@@ -539,7 +532,7 @@ impl WebRTCNativeInterface {
                 .add_transceiver_from_kind(RTPCodecType::Audio, None)
                 .await
                 .unwrap();
-            self.peer_connection
+            interface.peer_connection
                 .lock()
                 .unwrap()
                 .as_ref()
@@ -565,12 +558,12 @@ impl WebRTCNativeInterface {
             });
         }
         {
-            let commons = self.commons.clone();
+            let commons = interface.commons.clone();
             let (tx_ice_candidate, mut rx_ice_candidate) =
                 mpsc::unbounded::<RTCIceCandidateInit>();
             let tx_clone = tx_ice_candidate.clone();
 
-            self.peer_connection
+            interface.peer_connection
                 .lock()
                 .unwrap()
                 .as_ref()
@@ -601,8 +594,12 @@ impl WebRTCNativeInterface {
                 }
             });
         }
-        self.setup_listeners();
-        Ok(())
+        interface.setup_listeners();
+
+        Ok((
+            interface,
+            Self::get_default_properties())
+        )
     }
 }
 
@@ -624,7 +621,27 @@ impl ComInterfaceImplementation for WebRTCNativeInterface {
         }
     }
 
-    fn get_properties(&self) -> InterfaceProperties {
+    fn handle_destroy<'a>(&'a self) -> Pin<Box<dyn Future<Output = bool> + 'a>> {
+        todo!()
+    }
+
+    fn handle_reconnect<'a>(&'a self) -> Pin<Box<dyn Future<Output = bool> + 'a>> {
+        todo!()
+    }
+}
+
+impl ComInterfaceAsyncFactory for WebRTCNativeInterface {
+    type SetupData = WebRTCInterfaceSetupData;
+    fn create(
+        setup_data: Self::SetupData,
+        com_interface: Rc<ComInterface>,
+    ) -> Pin<Box<dyn Future<Output = Result<(Self, InterfaceProperties), InterfaceCreateError>>>> {
+        Box::pin(async move {
+            WebRTCNativeInterface::create(setup_data, com_interface).await
+        })
+    }
+
+    fn get_default_properties() -> InterfaceProperties {
         InterfaceProperties {
             interface_type: "webrtc".to_string(),
             channel: "webrtc".to_string(),
@@ -632,45 +649,5 @@ impl ComInterfaceImplementation for WebRTCNativeInterface {
             max_bandwidth: 1000,
             ..InterfaceProperties::default()
         }
-    }
-    fn handle_close<'a>(&'a self) -> Pin<Box<dyn Future<Output = bool> + 'a>> {
-        let success = { true };
-        Box::pin(async move { success })
-    }
-
-    fn handle_open<'a>(&'a self) -> Pin<Box<dyn Future<Output = bool> + 'a>> {
-        Box::pin(async move { self.open().await.is_ok() })
-    }
-}
-
-impl ComInterfaceFactory for WebRTCNativeInterface {
-    type SetupData = WebRTCInterfaceSetupData;
-    fn create(
-        setup_data: Self::SetupData,
-        com_interface: Rc<ComInterface>,
-    ) -> Result<WebRTCNativeInterface, ComInterfaceError> {
-        if let Some(ice_servers) = setup_data.ice_servers.as_ref() {
-            if ice_servers.is_empty() {
-                error!(
-                    "Ice servers list is empty, at least one ice server is required"
-                );
-                Err(ComInterfaceError::InvalidSetupData)
-            } else {
-                Ok(WebRTCNativeInterface::new_with_ice_servers(
-                    setup_data.peer_endpoint,
-                    ice_servers.to_owned(),
-                    com_interface,
-                ))
-            }
-        } else {
-            Ok(WebRTCNativeInterface::new(
-                setup_data.peer_endpoint,
-                com_interface,
-            ))
-        }
-    }
-
-    fn get_default_properties() -> InterfaceProperties {
-        InterfaceProperties::default()
     }
 }

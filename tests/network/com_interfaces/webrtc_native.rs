@@ -37,14 +37,14 @@ pub async fn test_connect() {
     run_async! {
         init_global_context();
         // Create a WebRTCNativeInterface instance on each side (remote: @a)
-        let mut interface_a = WebRTCNativeInterface::new(
+        let mut interface_a = WebRTCNativeInterface::init(
             TEST_ENDPOINT_A.clone(),
         );
         interface_a.open().await.unwrap();
 
 
         // Create a WebRTCNativeInterface instance on each side (remote: @b)
-        let mut interface_b = WebRTCNativeInterface::new(
+        let mut interface_b = WebRTCNativeInterface::init(
             TEST_ENDPOINT_B.clone(),
         );
         interface_b.open().await.unwrap();
@@ -135,14 +135,14 @@ pub async fn test_media_track() {
     run_async! {
         init_global_context();
         // Create a WebRTCNativeInterface instance on each side (remote: @a)
-        let mut interface_a = WebRTCNativeInterface::new(
+        let mut interface_a = WebRTCNativeInterface::init(
             TEST_ENDPOINT_A.clone(),
         );
         interface_a.open().await.unwrap();
 
 
         // Create a WebRTCNativeInterface instance on each side (remote: @b)
-        let mut interface_b = WebRTCNativeInterface::new(
+        let mut interface_b = WebRTCNativeInterface::init(
             TEST_ENDPOINT_B.clone(),
         );
         interface_b.open().await.unwrap();

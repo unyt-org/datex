@@ -42,14 +42,8 @@ pub enum WebSocketError {
 pub enum WebSocketServerError {
     WebSocketError(WebSocketError),
     InvalidPort,
-    ComHubError(ComHubError),
 }
 
-impl From<ComHubError> for WebSocketServerError {
-    fn from(err: ComHubError) -> Self {
-        WebSocketServerError::ComHubError(err)
-    }
-}
 
 /// Parses a WebSocket URL and returns a `Url` object.
 /// If no protocol is specified, it defaults to `ws` or `wss` based on the `secure` parameter.

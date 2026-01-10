@@ -12,7 +12,7 @@ use crate::logger::{init_logger, init_logger_debug};
 use crate::network::block_handler::IncomingSectionsSinkType;
 use crate::network::com_hub::network_response::ResponseOptions;
 use crate::network::com_hub::{ComHub, InterfacePriority};
-use crate::network::com_interfaces::com_interface::implementation::ComInterfaceFactory;
+use crate::network::com_interfaces::com_interface::implementation::{ComInterfaceAsyncFactory, ComInterfaceSyncFactory};
 use crate::runtime::execution::ExecutionError;
 use crate::runtime::execution::context::ExecutionMode;
 use crate::serde::error::SerializationError;
@@ -456,7 +456,7 @@ impl Runtime {
     /// otherwise the runtime will panic here.
     pub fn new(config: RuntimeConfig, async_context: AsyncContext) -> Runtime {
         let endpoint = config.endpoint.clone().unwrap_or_else(Endpoint::random);
-        let com_hub = ComHub::init(
+        let com_hub = ComHub::create(
             endpoint.clone(),
             async_context.clone(),
             IncomingSectionsSinkType::Channel,
@@ -468,7 +468,7 @@ impl Runtime {
                 endpoint,
                 memory,
                 config,
-                com_hub: Rc::new(com_hub),
+                com_hub,
                 execution_contexts: RefCell::new(HashMap::new()),
                 async_context,
             }),
@@ -531,9 +531,6 @@ impl Runtime {
     ///  - ComHub
     pub async fn start(&self) {
         info!("starting runtime...");
-        ComHub::start(self.com_hub())
-            .await
-            .expect("Failed to initialize ComHub");
 
         // register interface factories
         self.register_interface_factories();

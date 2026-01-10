@@ -6,7 +6,7 @@ use datex_core::global::{
 use datex_core::network::com_interfaces::com_interface::ComInterface;
 use datex_core::network::com_interfaces::com_interface::error::ComInterfaceError;
 use datex_core::network::com_interfaces::com_interface::implementation::{
-    ComInterfaceFactory, ComInterfaceImplementation,
+    ComInterfaceSyncFactory, ComInterfaceImplementation,
 };
 use datex_core::network::com_interfaces::com_interface::properties::{
     InterfaceDirection, InterfaceProperties,
@@ -201,7 +201,7 @@ impl MockupInterfaceSetupData {
     }
 }
 
-impl ComInterfaceFactory for MockupInterface {
+impl ComInterfaceSyncFactory for MockupInterface {
     type SetupData = MockupInterfaceSetupData;
 
     fn create(

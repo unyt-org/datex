@@ -8,7 +8,7 @@ use core::result::Result;
 
 use crate::network::com_interfaces::com_interface::ComInterface;
 use crate::network::com_interfaces::com_interface::error::ComInterfaceError;
-use crate::network::com_interfaces::com_interface::implementation::ComInterfaceFactory;
+use crate::network::com_interfaces::com_interface::implementation::{ComInterfaceAsyncFactory, ComInterfaceSyncFactory};
 use crate::network::com_interfaces::com_interface::implementation::ComInterfaceImplementation;
 use crate::network::com_interfaces::com_interface::properties::{
     InterfaceDirection, InterfaceProperties,
@@ -21,11 +21,12 @@ use datex_macros::{com_interface, create_opener};
 use log::{debug, error, warn};
 use serialport::SerialPort;
 use tokio::sync::Notify;
+use crate::network::com_hub::errors::InterfaceCreateError;
 
 pub struct SerialNativeInterface {
     com_interface: Rc<ComInterface>,
     shutdown_signal: Arc<Notify>,
-    port: Arc<Mutex<Box<dyn SerialPort + Send>>>,
+    port: Arc<Mutex<Box<dyn SerialPort>>>,
 }
 
 impl SerialNativeInterface {
@@ -41,61 +42,44 @@ impl SerialNativeInterface {
             .collect()
     }
 
-    pub fn new(
-        port_name: &str,
+    fn create(
+        setup_data: SerialInterfaceSetupData,
         com_interface: Rc<ComInterface>,
-    ) -> Result<SerialNativeInterface, SerialError> {
-        Self::new_with_baud_rate(
-            port_name,
-            Self::DEFAULT_BAUD_RATE,
-            com_interface,
-        )
-    }
-    // Allow to open interface with a configured port
-    pub fn new_with_port(
-        port: Box<dyn SerialPort + Send>,
-        com_interface: Rc<ComInterface>,
-    ) -> Result<SerialNativeInterface, SerialError> {
-        let interface = SerialNativeInterface {
-            shutdown_signal: Arc::new(Notify::new()),
-            port: Arc::new(Mutex::new(port)),
-            com_interface,
-        };
-        Ok(interface)
-    }
-    pub fn new_with_baud_rate(
-        port_name: &str,
-        baud_rate: u32,
-        com_interface: Rc<ComInterface>,
-    ) -> Result<SerialNativeInterface, SerialError> {
-        let port = serialport::new(port_name, baud_rate)
+    ) -> Result<(Self, InterfaceProperties), InterfaceCreateError> {
+        let state = com_interface.state();
+
+        let port_name = setup_data.port_name
+            .clone()
+            .ok_or(InterfaceCreateError::InvalidSetupData)?;
+
+        if port_name.is_empty() {
+            return Err(InterfaceCreateError::InvalidSetupData.into());
+        }
+
+        let port = serialport::new(port_name, setup_data.baud_rate)
             .timeout(Self::TIMEOUT)
             .open()
-            .map_err(|_| SerialError::PortNotFound)?;
-        Self::new_with_port(port, com_interface)
-    }
+            .map_err(|err| ComInterfaceError::connection_error_with_details(err))?;
+        let port = Arc::new(Mutex::new(port));
+        let port_clone = port.clone();
 
-    fn open(&self) -> Result<(), SerialError> {
-        let state = self.com_interface.state();
-        let port = self.port.clone();
-
-        let (socket_uuid, mut sender) = self
-            .com_interface
+        let (socket_uuid, mut sender) = com_interface
             .socket_manager()
             .lock()
             .unwrap()
             .create_and_init_socket(InterfaceDirection::InOut, 1);
 
-        let shutdown_signal = self.shutdown_signal.clone();
+        let shutdown_signal = Arc::new(Notify::new());
+        let shutdown_signal_clone = shutdown_signal.clone();
         spawn(async move {
             loop {
                 tokio::select! {
-                    _ = shutdown_signal.notified() => {
+                    _ = shutdown_signal_clone.notified() => {
                         warn!("Shutting down serial task...");
                         break;
                     },
                     result = spawn_blocking({
-                        let port = port.clone();
+                        let port = port_clone.clone();
                         move || {
                             let mut buffer = [0u8; Self::BUFFER_SIZE];
                             match port.try_lock().unwrap().read(&mut buffer) {
@@ -124,25 +108,25 @@ impl SerialNativeInterface {
             state.try_lock().unwrap().set(ComInterfaceState::Destroyed);
             warn!("Serial socket closed");
         });
-        Ok(())
+
+        Ok((
+            SerialNativeInterface {
+                com_interface,
+                shutdown_signal,
+                port,
+            },
+            Self::get_default_properties()
+        ))
     }
 }
 
-impl ComInterfaceFactory for SerialNativeInterface {
+impl ComInterfaceSyncFactory for SerialNativeInterface {
     type SetupData = SerialInterfaceSetupData;
     fn create(
         setup_data: Self::SetupData,
         com_interface: Rc<ComInterface>,
-    ) -> Result<SerialNativeInterface, ComInterfaceError> {
-        if let Some(port) = setup_data.port_name {
-            if port.is_empty() {
-                return Err(ComInterfaceError::InvalidSetupData);
-            }
-            SerialNativeInterface::new(&port, com_interface)
-                .map_err(|_| ComInterfaceError::InvalidSetupData)
-        } else {
-            Err(ComInterfaceError::InvalidSetupData)
-        }
+    ) -> Result<(Self, InterfaceProperties), InterfaceCreateError> {
+        SerialNativeInterface::create(setup_data, com_interface)
     }
 
     fn get_default_properties() -> InterfaceProperties {
@@ -175,7 +159,7 @@ impl ComInterfaceImplementation for SerialNativeInterface {
         })
     }
 
-    fn handle_close<'a>(&'a self) -> Pin<Box<dyn Future<Output = bool> + 'a>> {
+    fn handle_destroy<'a>(&'a self) -> Pin<Box<dyn Future<Output = bool> + 'a>> {
         let shutdown_signal = self.shutdown_signal.clone();
         Box::pin(async move {
             shutdown_signal.notified().await;
@@ -183,11 +167,7 @@ impl ComInterfaceImplementation for SerialNativeInterface {
         })
     }
 
-    fn get_properties(&self) -> InterfaceProperties {
-        Self::get_default_properties()
-    }
-
-    fn handle_open<'a>(&'a self) -> Pin<Box<dyn Future<Output = bool> + 'a>> {
-        Box::pin(async move { self.open().is_ok() })
+    fn handle_reconnect<'a>(&'a self) -> Pin<Box<dyn Future<Output = bool> + 'a>> {
+        todo!()
     }
 }

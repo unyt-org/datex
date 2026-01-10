@@ -4,7 +4,7 @@ use core::fmt::{self, Debug, Display};
 use core::panic;
 use core::str::FromStr;
 use datex_core::network::com_hub::network_tracing::TraceOptions;
-use datex_core::network::com_hub::{ComInterfaceImplementationFactoryFn, InterfacePriority};
+use datex_core::network::com_hub::{SyncComInterfaceImplementationFactoryFn, InterfacePriority};
 use datex_core::runtime::{AsyncContext, Runtime, RuntimeConfig};
 use datex_core::serde::serializer::to_value_container;
 use datex_core::values::core_values::endpoint::Endpoint;
@@ -17,7 +17,7 @@ use std::path::Path;
 use std::rc::Rc;
 use std::sync::mpsc;
 use std::{env, fs};
-use datex_core::network::com_interfaces::com_interface::implementation::ComInterfaceFactory;
+use datex_core::network::com_interfaces::com_interface::implementation::ComInterfaceSyncFactory;
 use datex_core::network::com_interfaces::com_interface::properties::InterfaceDirection;
 
 pub struct InterfaceConnection {
@@ -79,7 +79,7 @@ type MockupInterfaceChannels =
 pub struct Network {
     pub is_initialized: bool,
     pub endpoints: Vec<Node>,
-    com_interface_factories: HashMap<String, ComInterfaceImplementationFactoryFn>,
+    com_interface_factories: HashMap<String, SyncComInterfaceImplementationFactoryFn>,
 }
 #[derive(Clone)]
 pub struct Route {
@@ -602,7 +602,7 @@ impl Network {
     pub fn register_interface(
         &mut self,
         interface_type: &str,
-        factory: ComInterfaceImplementationFactoryFn,
+        factory: SyncComInterfaceImplementationFactoryFn,
     ) {
         self.com_interface_factories
             .insert(interface_type.to_string(), factory);
@@ -624,7 +624,7 @@ impl Network {
             // register factories
             for (interface_type, factory) in self.com_interface_factories.iter()
             {
-                runtime.com_hub().register_interface_factory(
+                runtime.com_hub().register_sync_interface_factory(
                     interface_type.clone(),
                     *factory,
                 )

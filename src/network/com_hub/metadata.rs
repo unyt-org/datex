@@ -168,7 +168,7 @@ impl ComHub {
         for (interface, _) in interface_manager.interfaces.values() {
             metadata.interfaces.push(ComHubMetadataInterface {
                 uuid: interface.uuid().0.to_string(),
-                properties: interface.properties().as_ref().clone(),
+                properties: interface.properties().clone(),
                 sockets: sockets_by_com_interface_uuid
                     .remove(&interface.uuid())
                     .unwrap_or_default(),

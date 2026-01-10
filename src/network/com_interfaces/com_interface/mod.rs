@@ -1,9 +1,4 @@
-use crate::collections::HashMap;
-use crate::network::com_hub::ComInterfaceImplementationFactoryFn;
-use crate::network::com_interfaces::com_interface::error::ComInterfaceError;
-use crate::network::com_interfaces::com_interface::implementation::{
-    ComInterfaceFactory, ComInterfaceImpl, ComInterfaceImplementation,
-};
+use crate::network::com_interfaces::com_interface::implementation::{ComInterfaceSyncFactory, ComInterfaceImpl, ComInterfaceImplementation, ComInterfaceAsyncFactory};
 use crate::network::com_interfaces::com_interface::properties::{
     InterfaceDirection, InterfaceProperties,
 };
@@ -19,7 +14,6 @@ use crate::stdlib::any::Any;
 use crate::stdlib::cell::RefCell;
 use crate::stdlib::cell::RefMut;
 use crate::stdlib::rc::Rc;
-use crate::stdlib::sync::MutexGuard;
 use crate::stdlib::sync::{Arc, Mutex};
 use crate::task::{
     UnboundedReceiver, UnboundedSender, create_unbounded_channel,
@@ -33,7 +27,11 @@ use core::cell::Cell;
 use core::fmt::Display;
 use core::pin::Pin;
 use core::time::Duration;
+use crate::stdlib::cell::Ref;
 use log::debug;
+use crate::network::com_hub::errors::InterfaceCreateError;
+use crate::network::com_hub::managers::interface_manager::{AsyncComInterfaceImplementationFactoryFn, SyncComInterfaceImplementationFactoryFn};
+
 pub mod error;
 pub mod implementation;
 pub mod properties;
@@ -74,7 +72,7 @@ pub struct ComInterfaceInfo {
     pub socket_manager: Arc<Mutex<ComInterfaceSocketManager>>,
 
     /// Details about the interface
-    pub interface_properties: Rc<InterfaceProperties>,
+    pub properties: Rc<RefCell<InterfaceProperties>>,
 
     /// Receiver for interface events (consumed by ComHub)
     socket_event_receiver:
@@ -110,7 +108,7 @@ impl ComInterfaceInfo {
             interface_event_receiver: RefCell::new(OnceConsumer::new(
                 interface_event_receiver,
             )),
-            interface_properties: Rc::new(interface_properties),
+            properties: Rc::new(RefCell::new(interface_properties)),
             socket_event_receiver: RefCell::new(OnceConsumer::new(
                 socket_event_receiver,
             )),
@@ -144,50 +142,82 @@ pub struct ComInterface {
 }
 
 impl ComInterface {
-    /// Creates a new ComInterface with a specified implementation as returned by the factory function
-    pub fn create_from_factory_fn(
-        factory_fn: ComInterfaceImplementationFactoryFn,
+    /// Initializes a new ComInterface with a specified implementation as returned by the factory function
+    pub fn create_from_sync_factory_fn(
+        factory_fn: SyncComInterfaceImplementationFactoryFn,
         setup_data: ValueContainer,
-    ) -> Result<Rc<ComInterface>, ComInterfaceError> {
+    ) -> Result<Rc<ComInterface>, InterfaceCreateError> {
         // Create a headless ComInterface first
-        let com_interface = Rc::new(ComInterface {
+        let com_interface = Self::create_headless();
+
+        // Create the implementation using the factory function
+        let (implementation, properties) = factory_fn(setup_data, com_interface.clone())?;
+        com_interface.set_implementation(implementation);
+        com_interface.info.properties.replace(properties);
+        Ok(com_interface)
+    }
+
+    pub async fn create_from_async_factory_fn(
+        factory_fn: AsyncComInterfaceImplementationFactoryFn,
+        setup_data: ValueContainer,
+    ) -> Result<Rc<ComInterface>, InterfaceCreateError> {
+        // Create a headless ComInterface first
+        let com_interface = Self::create_headless();
+
+        // Create the implementation using the factory function
+        let (implementation, properties) = factory_fn(setup_data, com_interface.clone()).await?;
+        com_interface.set_implementation(implementation);
+        com_interface.info.properties.replace(properties);
+        Ok(com_interface)
+    }
+
+    fn create_headless() -> Rc<ComInterface> {
+        Rc::new(ComInterface {
             info: ComInterfaceInfo::init(
                 ComInterfaceState::NotConnected,
                 InterfaceProperties::default(),
             )
-            .into(),
+                .into(),
             implementation: RefCell::new(None),
-        });
+        })
+    }
+
+    /// Creates a new ComInterface with the implementation of type T
+    /// only works for sync factories
+    pub fn create_sync_with_implementation<T>(
+        setup_data: T::SetupData,
+    ) -> Result<Rc<ComInterface>, InterfaceCreateError>
+    where
+        T: ComInterfaceImplementation + ComInterfaceSyncFactory,
+    {
+        // Create a headless ComInterface first
+        let com_interface = Self::create_headless();
 
         // Create the implementation using the factory function
-        let implementation = factory_fn(setup_data, com_interface.clone())?;
-        com_interface.initialize(implementation);
+        let (implementation, properties) = T::create(setup_data, com_interface.clone())?;
+        com_interface.set_implementation(Box::new(implementation));
+        com_interface.info.properties.replace(properties);
         Ok(com_interface)
     }
 
     /// Creates a new ComInterface with the implementation of type T
-    pub fn create_with_implementation<T>(
+    /// only works for async factories
+    pub async fn create_async_with_implementation<T>(
         setup_data: T::SetupData,
-    ) -> Result<Rc<ComInterface>, ComInterfaceError>
+    ) -> Result<Rc<ComInterface>, InterfaceCreateError>
     where
-        T: ComInterfaceImplementation + ComInterfaceFactory,
+        T: ComInterfaceImplementation + ComInterfaceAsyncFactory,
     {
         // Create a headless ComInterface first
-        let com_interface = Rc::new(ComInterface {
-            info: ComInterfaceInfo::init(
-                ComInterfaceState::NotConnected,
-                InterfaceProperties::default(),
-            )
-            .into(),
-            implementation: RefCell::new(None),
-        });
+        let com_interface = Self::create_headless();
 
         // Create the implementation using the factory function
-        let implementation = T::create(setup_data, com_interface.clone())?;
-        com_interface.initialize(Box::new(implementation));
+        let (implementation, properties) = T::create(setup_data, com_interface.clone()).await?;
+        com_interface.set_implementation(Box::new(implementation));
+        com_interface.info.properties.replace(properties);
         Ok(com_interface)
     }
-
+    
     pub fn implementation_mut<T: ComInterfaceImpl>(&self) -> RefMut<'_, T> {
         RefMut::map(self.implementation.borrow_mut(), |opt| {
             opt.as_mut()
@@ -198,10 +228,20 @@ impl ComInterface {
         })
     }
 
+    pub fn implementation<T: ComInterfaceImpl>(&self) -> Ref<'_, T> {
+        Ref::map(self.implementation.borrow(), |opt| {
+            opt.as_ref()
+                .expect("ComInterface is not initialized")
+                .as_any()
+                .downcast_ref::<T>()
+                .expect("ComInterface implementation type mismatch")
+        })
+    }
+
     /// Initializes a headless ComInterface with the provided implementation
     /// and upgrades it to an Initialized state.
     /// This can only be done once on a headless interface and will panic if attempted on an already initialized interface.
-    pub(crate) fn initialize(&self, implementation: Box<dyn ComInterfaceImpl>) {
+    pub(crate) fn set_implementation(&self, implementation: Box<dyn ComInterfaceImpl>) {
         match self.implementation.replace(Some(implementation)) {
             None => {
                 // Successfully initialized
@@ -228,8 +268,8 @@ impl ComInterface {
         self.info.set_state(new_state);
     }
 
-    pub fn properties(&self) -> Rc<InterfaceProperties> {
-        self.info.interface_properties.clone()
+    pub fn properties(&self) -> Ref<'_, InterfaceProperties> {
+        self.info.properties.borrow()
     }
 
     pub async fn send_block(
@@ -247,42 +287,8 @@ impl ComInterface {
         }
     }
 
-    pub async fn handle_open(&self) -> bool {
-        match self.implementation.borrow_mut().as_mut() {
-            None => {
-                panic!("Cannot open headless ComInterface");
-            }
-            Some(implementation) => implementation.handle_open().await,
-        }
-    }
-
-    pub async fn handle_destroy(&self) -> bool {
-        match self.implementation.borrow_mut().as_mut() {
-            None => {
-                panic!("Cannot destroy headless ComInterface");
-            }
-            Some(implementation) => implementation.handle_close().await,
-        }
-    }
-
-    pub async fn open(&self) -> bool {
-        if self.current_state() == ComInterfaceState::Connected {
-            // already connected
-            return true;
-        }
-        self.set_state(ComInterfaceState::Connecting);
-        let result = match self.implementation.borrow_mut().as_mut() {
-            None => {
-                panic!("Cannot open headless ComInterface");
-            }
-            Some(implementation) => implementation.handle_open().await,
-        };
-        // if result {
-        //     self.set_state(ComInterfaceState::Connected);
-        // } else {
-        //     self.set_state(ComInterfaceState::NotConnected);
-        // }
-        result
+    pub async fn reconnect(&self) -> bool {
+        todo!()
     }
 
     pub async fn close(&self) -> bool {
@@ -291,7 +297,7 @@ impl ComInterface {
             None => {
                 panic!("Cannot close headless ComInterface");
             }
-            Some(implementation) => implementation.handle_close().await,
+            Some(implementation) => implementation.handle_destroy().await,
         };
         self.set_state(ComInterfaceState::NotConnected);
         result

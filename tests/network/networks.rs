@@ -12,7 +12,7 @@ use core::time::Duration;
 use datex_core::network::com_hub::InterfacePriority;
 use datex_core::network::com_hub::network_response::ResponseOptions;
 use datex_core::network::com_hub::network_tracing::TraceOptions;
-use datex_core::network::com_interfaces::com_interface::implementation::ComInterfaceFactory;
+use datex_core::network::com_interfaces::com_interface::implementation::ComInterfaceSyncFactory;
 use datex_core::run_async;
 use datex_core::utils::context::init_global_context;
 use datex_core::values::core_values::endpoint::Endpoint;

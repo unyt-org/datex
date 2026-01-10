@@ -15,7 +15,7 @@ use std::sync::mpsc;
 use tokio::task::yield_now;
 use datex_core::network::block_handler::IncomingSectionsSinkType;
 use datex_core::network::com_interfaces::com_interface::ComInterface;
-use datex_core::network::com_interfaces::com_interface::implementation::ComInterfaceFactory;
+use datex_core::network::com_interfaces::com_interface::implementation::ComInterfaceSyncFactory;
 use datex_core::network::com_interfaces::com_interface::properties::{InterfaceProperties, ReconnectionConfig};
 use datex_core::network::com_interfaces::com_interface::socket::SocketState;
 use datex_core::network::com_interfaces::com_interface::state::ComInterfaceState;
@@ -40,10 +40,10 @@ pub async fn test_add_and_remove() {
     run_async! {
         init_global_context();
         let com_hub =
-            Rc::new(ComHub::init(Endpoint::default(), AsyncContext::new(), IncomingSectionsSinkType::Channel));
+            Rc::new(ComHub::create(Endpoint::default(), AsyncContext::new(), IncomingSectionsSinkType::Channel));
         let uuid = {
             let mockup_interface = ComInterface
-                ::create_with_implementation::<MockupInterface>(MockupInterfaceSetupData::new("test")).unwrap();
+                ::create_sync_with_implementation::<MockupInterface>(MockupInterfaceSetupData::new("test")).unwrap();
             let uuid = mockup_interface.uuid().clone();
             com_hub
                 .open_and_add_interface(
@@ -65,12 +65,12 @@ pub async fn test_multiple_add() {
     run_async! {
         init_global_context();
 
-        let com_hub = ComHub::init(Endpoint::default(), AsyncContext::new(), IncomingSectionsSinkType::Collector);
+        let com_hub = ComHub::create(Endpoint::default(), AsyncContext::new(), IncomingSectionsSinkType::Collector);
 
         let mockup_interface1 = ComInterface
-                ::create_with_implementation::<MockupInterface>(MockupInterfaceSetupData::new("mockup_interface1")).unwrap();
+                ::create_sync_with_implementation::<MockupInterface>(MockupInterfaceSetupData::new("mockup_interface1")).unwrap();
         let mockup_interface2 = ComInterface
-                ::create_with_implementation::<MockupInterface>(MockupInterfaceSetupData::new("mockup_interface2")).unwrap();
+                ::create_sync_with_implementation::<MockupInterface>(MockupInterfaceSetupData::new("mockup_interface2")).unwrap();
 
         com_hub
             .open_and_add_interface(
@@ -602,7 +602,7 @@ pub async fn test_basic_routing() {
 pub async fn register_factory() {
     run_async! {
         init_global_context();
-        let com_hub = Rc::new(ComHub::init(Endpoint::default(), AsyncContext::new(), IncomingSectionsSinkType::Collector));
+        let com_hub = Rc::new(ComHub::create(Endpoint::default(), AsyncContext::new(), IncomingSectionsSinkType::Collector));
         MockupInterface::register_on_com_hub(com_hub.clone());
 
         assert_eq!(com_hub.interface_manager().borrow().interface_factories.len(), 1);
@@ -634,7 +634,7 @@ pub async fn register_factory() {
 pub async fn test_reconnect() {
     run_async! {
         init_global_context();
-        let com_hub = ComHub::init(Endpoint::default(), AsyncContext::new(), IncomingSectionsSinkType::Channel);
+        let com_hub = ComHub::create(Endpoint::default(), AsyncContext::new(), IncomingSectionsSinkType::Channel);
 
         // create a new interface, open it and add it to the com_hub
         let base_interface = BaseInterfaceHolder::new(BaseInterfaceSetupData::new(InterfaceProperties {

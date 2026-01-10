@@ -1,15 +1,13 @@
 use crate::collections::HashMap;
 use crate::global::protocol_structures::block_header::BlockType;
 use crate::global::protocol_structures::routing_header::SignatureType;
-use crate::network::com_hub::errors::{
-    ComHubError, SocketEndpointRegistrationError,
-};
+use crate::network::com_hub::errors::{ComHubError, InterfaceCreateError, SocketEndpointRegistrationError};
 use crate::network::com_hub::managers::interface_manager::InterfaceManager;
 use crate::network::com_hub::network_response::{
     Response, ResponseError, ResponseOptions, ResponseResolutionStrategy,
 };
 use crate::network::com_hub::options::ComHubOptions;
-mod managers;
+pub(crate) mod managers;
 
 #[cfg(feature = "debug")]
 pub mod metadata;
@@ -50,7 +48,6 @@ pub mod com_hub_interface;
 
 use crate::network::com_interfaces::com_interface::ComInterface;
 use crate::utils::once_consumer::OnceConsumer;
-pub use managers::interface_manager::ComInterfaceImplementationFactoryFn;
 
 pub type IncomingBlockInterceptor =
     Box<dyn Fn(&DXBBlock, &ComInterfaceSocketUUID) + 'static>;
@@ -64,6 +61,7 @@ pub enum BlockSendEvent {
 }
 
 pub struct ComHub {
+
     /// the runtime endpoint of the hub (@me)
     pub endpoint: Endpoint,
 
@@ -122,7 +120,7 @@ async fn reconnect_interface_task(interface: Rc<ComInterface>) {
     config.reconnect_attempts = Some(current_attempts + 1);
     */
 
-    let res = interface.handle_open().await;
+    let res = interface.reconnect().await;
     if res {
         interface.set_state(ComInterfaceState::Connected);
         // config.reconnect_attempts = None;
@@ -142,17 +140,17 @@ impl ComHub {
 }
 
 impl ComHub {
-    pub fn init(
+    pub fn create(
         endpoint: impl Into<Endpoint>,
         async_context: AsyncContext,
         incoming_sections_sink_type: IncomingSectionsSinkType,
-    ) -> ComHub {
+    ) -> Rc<ComHub> {
         let (block_send_sender, send_request_receiver) =
             create_unbounded_channel::<BlockSendEvent>();
 
         let (block_handler, incoming_sections_receiver) =
             BlockHandler::init(incoming_sections_sink_type);
-        ComHub {
+        let com_hub = Rc::new(ComHub {
             endpoint: endpoint.into(),
             async_context,
             options: ComHubOptions::default(),
@@ -169,44 +167,21 @@ impl ComHub {
             send_request_receiver: RefCell::new(Some(send_request_receiver)),
             incoming_block_interceptors: RefCell::new(Vec::new()),
             outgoing_block_interceptors: RefCell::new(Vec::new()),
-        }
-    }
+        });
 
-    /// Create and start a new ComHub instance
-    /// Only needed for tests, initialization and start happens in two steps in the runtime
-    pub async fn create(
-        endpoint: impl Into<Endpoint>,
-        async_context: AsyncContext,
-        incoming_sections_sink_type: IncomingSectionsSinkType,
-    ) -> Rc<Self> {
-        let com_hub = Rc::new(ComHub::init(
-            endpoint,
-            async_context,
-            incoming_sections_sink_type,
-        ));
-        ComHub::start(com_hub.clone())
-            .await
-            .expect("Failed to start ComHub");
-        com_hub
-    }
-
-    pub async fn start(self_rc: Rc<Self>) -> Result<(), ComHubError> {
         // add default local loopback interface
-        let local_interface = ComInterface::create_with_implementation::<
+        let local_interface = ComInterface::create_sync_with_implementation::<
             LocalLoopbackInterface,
-        >(())?;
-        self_rc
-            .clone()
-            .interface_manager
-            .borrow_mut()
-            .open_and_add_interface(local_interface, InterfacePriority::None)
-            .await?;
+        >(()).unwrap();
+
+        com_hub.register_com_interface(local_interface, InterfacePriority::None);
 
         // start handling ComHub events
-        ComHub::handle_events(self_rc);
-        Ok(())
+        ComHub::handle_events(com_hub.clone());
+        
+        com_hub
     }
-
+    
     /// Starts handling ComHub events
     fn handle_events(self_rc: Rc<Self>) {
         let receiver = self_rc
@@ -218,6 +193,14 @@ impl ComHub {
             &async_context.clone(),
             com_hub_event_task(receiver, self_rc, async_context),
         );
+    }
+
+    /// Registers an existing com interface on the ComHub and sets up event handling
+    fn register_com_interface(&self, com_interface: Rc<ComInterface>, priority: InterfacePriority) {
+        self.interface_manager
+            .borrow_mut()
+            .add_interface(com_interface.clone(), priority).unwrap();
+        self.handle_interface_socket_events(com_interface);
     }
 
     /// Register an incoming block interceptor
