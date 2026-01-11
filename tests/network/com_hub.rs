@@ -157,6 +157,7 @@ pub async fn test_send_invalid_recipient() {
     assert!(mockup_interface_out.last_block().is_none());
 }
 
+// FIXME: Move to use base interface over mockup interface for multi connections
 #[async_test]
 pub async fn send_block_to_multiple_endpoints() {
     let (com_hub, com_interface) = get_mock_setup().await;
