@@ -21,7 +21,9 @@ use crate::stdlib::cell::RefCell;
 use crate::stdlib::cell::RefMut;
 use crate::stdlib::rc::Rc;
 use crate::stdlib::sync::{Arc, Mutex};
-use crate::task::{UnboundedReceiver, create_unbounded_channel, UnboundedSender};
+use crate::task::{
+    UnboundedReceiver, UnboundedSender, create_unbounded_channel,
+};
 use crate::utils::once_consumer::OnceConsumer;
 use crate::utils::uuid::UUID;
 use crate::values::value_container::ValueContainer;
@@ -91,7 +93,8 @@ pub struct ComInterfaceInner {
         RefCell<OnceConsumer<UnboundedReceiver<ComInterfaceImplEvent>>>,
 
     /// Sender for interface implementation events (used by the ComInterface to send events to the implementation)
-    interface_impl_event_sender: RefCell<UnboundedSender<ComInterfaceImplEvent>>,
+    interface_impl_event_sender:
+        RefCell<UnboundedSender<ComInterfaceImplEvent>>,
 }
 
 impl ComInterfaceInner {
@@ -131,7 +134,9 @@ impl ComInterfaceInner {
             interface_impl_event_receiver: RefCell::new(OnceConsumer::new(
                 interface_impl_event_receiver,
             )),
-            interface_impl_event_sender: RefCell::new(interface_impl_event_sender),
+            interface_impl_event_sender: RefCell::new(
+                interface_impl_event_sender,
+            ),
         }
     }
 
@@ -149,9 +154,7 @@ impl ComInterfaceInner {
     pub fn take_interface_impl_event_receiver(
         &self,
     ) -> UnboundedReceiver<ComInterfaceImplEvent> {
-        self.interface_impl_event_receiver
-            .borrow_mut()
-            .consume()
+        self.interface_impl_event_receiver.borrow_mut().consume()
     }
 
     pub fn state(&self) -> ComInterfaceState {
@@ -325,7 +328,8 @@ impl ComInterface {
         block: &[u8],
         socket_uuid: ComInterfaceSocketUUID,
     ) {
-        self.inner.interface_impl_event_sender
+        self.inner
+            .interface_impl_event_sender
             .borrow_mut()
             .start_send(ComInterfaceImplEvent::SendBlock(
                 block.to_vec(),
@@ -342,8 +346,7 @@ impl ComInterface {
     /// Note: This method is non-blocking and returns immediately after queuing the close request
     /// The actual closing of resources is handled asynchronously by the implementation
     pub fn close(&self) {
-       self
-            .inner
+        self.inner
             .interface_impl_event_sender
             .borrow_mut()
             .start_send(ComInterfaceImplEvent::Destroy)

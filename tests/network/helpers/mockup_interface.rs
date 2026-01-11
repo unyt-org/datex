@@ -4,7 +4,6 @@ use datex_core::global::{
     dxb_block::DXBBlock, protocol_structures::block_header::BlockType,
 };
 use datex_core::network::com_hub::errors::InterfaceCreateError;
-use datex_core::network::com_interfaces::com_interface::{ComInterface, ComInterfaceImplEvent};
 use datex_core::network::com_interfaces::com_interface::error::ComInterfaceError;
 use datex_core::network::com_interfaces::com_interface::implementation::{
     ComInterfaceImplementation, ComInterfaceSyncFactory,
@@ -13,7 +12,13 @@ use datex_core::network::com_interfaces::com_interface::properties::{
     InterfaceDirection, InterfaceProperties,
 };
 use datex_core::network::com_interfaces::com_interface::socket::ComInterfaceSocketUUID;
-use datex_core::task::{UnboundedSender, spawn_with_panic_notify, spawn_with_panic_notify_default, UnboundedReceiver};
+use datex_core::network::com_interfaces::com_interface::{
+    ComInterface, ComInterfaceImplEvent,
+};
+use datex_core::task::{
+    UnboundedReceiver, UnboundedSender, spawn_with_panic_notify,
+    spawn_with_panic_notify_default,
+};
 use datex_core::values::core_values::endpoint::Endpoint;
 use datex_macros::{com_interface, create_opener};
 use log::{error, info};
@@ -85,14 +90,14 @@ impl MockupInterface {
 
         let name = setup_data.name.clone();
         let direction = setup_data.direction.clone();
-        
+
         // setup event handler task
         spawn_with_panic_notify_default(Self::event_handler_task(
             mockup_interface.outgoing_queue.clone(),
             mockup_interface.sender.clone(),
             com_interface.take_interface_impl_event_receiver(),
         ));
-        
+
         Ok((
             mockup_interface,
             InterfaceProperties {
@@ -317,7 +322,6 @@ impl MockupInterface {
         });
     }
 
-
     /// background task to handle com hub events (e.g. outgoing messages)
     async fn event_handler_task(
         outgoing_queue: Rc<RefCell<Vec<(ComInterfaceSocketUUID, Vec<u8>)>>>,
@@ -330,7 +334,10 @@ impl MockupInterface {
                     let is_hello = {
                         match DXBBlock::from_bytes(&block).await {
                             Ok(block) => {
-                                block.block_header.flags_and_timestamp.block_type()
+                                block
+                                    .block_header
+                                    .flags_and_timestamp
+                                    .block_type()
                                     == BlockType::Hello
                             }
                             _ => false,

@@ -1,4 +1,6 @@
-use crate::network::com_interfaces::com_interface::{ComInterface, ComInterfaceImplEvent};
+use crate::network::com_interfaces::com_interface::{
+    ComInterface, ComInterfaceImplEvent,
+};
 
 use crate::network::com_hub::errors::InterfaceCreateError;
 use crate::network::com_interfaces::com_interface::implementation::{
@@ -9,7 +11,9 @@ use crate::network::com_interfaces::com_interface::properties::{
 };
 use crate::stdlib::rc::Rc;
 use crate::stdlib::string::ToString;
-use crate::task::{spawn_with_panic_notify_default, UnboundedReceiver, UnboundedSender};
+use crate::task::{
+    UnboundedReceiver, UnboundedSender, spawn_with_panic_notify_default,
+};
 use crate::values::core_values::endpoint::Endpoint;
 use core::prelude::rust_2024::*;
 use core::result::Result;
@@ -55,21 +59,15 @@ impl ComInterfaceSyncFactory for LocalLoopbackInterface {
             .lock()
             .unwrap()
             .register_socket_with_endpoint(socket_uuid, Endpoint::LOCAL, 1)?;
-        
-        
+
         // TODO: use async context
         // spawn event handler task for impl events
-        spawn_with_panic_notify_default(
-            Self::event_handler_task(
-                sender,
-                com_interface.take_interface_impl_event_receiver(),
-            )
-        );
+        spawn_with_panic_notify_default(Self::event_handler_task(
+            sender,
+            com_interface.take_interface_impl_event_receiver(),
+        ));
 
-        Ok((
-            LocalLoopbackInterface,
-            Self::get_default_properties(),
-        ))
+        Ok((LocalLoopbackInterface, Self::get_default_properties()))
     }
 
     fn get_default_properties() -> InterfaceProperties {

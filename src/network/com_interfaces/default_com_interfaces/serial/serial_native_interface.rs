@@ -1,12 +1,5 @@
 use super::serial_common::SerialInterfaceSetupData;
-use crate::std_sync::Mutex;
-use crate::stdlib::rc::Rc;
-use crate::stdlib::{future::Future, pin::Pin, sync::Arc, time::Duration};
-use core::prelude::rust_2024::*;
-use core::result::Result;
-use futures_util::stream::SplitSink;
 use crate::network::com_hub::errors::InterfaceCreateError;
-use crate::network::com_interfaces::com_interface::{ComInterface, ComInterfaceImplEvent};
 use crate::network::com_interfaces::com_interface::error::ComInterfaceError;
 use crate::network::com_interfaces::com_interface::implementation::ComInterfaceImplementation;
 use crate::network::com_interfaces::com_interface::implementation::{
@@ -16,15 +9,26 @@ use crate::network::com_interfaces::com_interface::properties::{
     InterfaceDirection, InterfaceProperties,
 };
 use crate::network::com_interfaces::com_interface::socket::ComInterfaceSocketUUID;
-use crate::network::com_interfaces::com_interface::state::{ComInterfaceState, ComInterfaceStateWrapper};
+use crate::network::com_interfaces::com_interface::state::{
+    ComInterfaceState, ComInterfaceStateWrapper,
+};
+use crate::network::com_interfaces::com_interface::{
+    ComInterface, ComInterfaceImplEvent,
+};
+use crate::std_sync::Mutex;
+use crate::stdlib::rc::Rc;
+use crate::stdlib::{future::Future, pin::Pin, sync::Arc, time::Duration};
+use crate::task::{UnboundedReceiver, spawn_with_panic_notify_default};
 use crate::{task::spawn, task::spawn_blocking};
+use core::prelude::rust_2024::*;
+use core::result::Result;
+use futures_util::stream::SplitSink;
 use log::{debug, error, warn};
 use serialport::SerialPort;
 use tokio::net::TcpStream;
 use tokio::sync::Notify;
 use tokio_tungstenite::{MaybeTlsStream, WebSocketStream};
 use tungstenite::Message;
-use crate::task::{spawn_with_panic_notify_default, UnboundedReceiver};
 
 pub struct SerialNativeInterface {
     com_interface: Rc<ComInterface>,
@@ -114,14 +118,12 @@ impl SerialNativeInterface {
             state.try_lock().unwrap().set(ComInterfaceState::Destroyed);
             warn!("Serial socket closed");
         });
-        
-        spawn_with_panic_notify_default(
-            Self::event_handler_task(
-                com_interface.take_interface_impl_event_receiver(),
-                port.clone(),
-                shutdown_signal.clone(),
-            )
-        );
+
+        spawn_with_panic_notify_default(Self::event_handler_task(
+            com_interface.take_interface_impl_event_receiver(),
+            port.clone(),
+            shutdown_signal.clone(),
+        ));
 
         Ok((
             SerialNativeInterface {
@@ -147,11 +149,10 @@ impl SerialNativeInterface {
                     shutdown_signal.notify_waiters();
                     break;
                 }
-                _ => todo!()
+                _ => todo!(),
             }
         }
     }
-
 }
 
 impl ComInterfaceSyncFactory for SerialNativeInterface {
