@@ -30,6 +30,6 @@ pub async fn test_construct() {
         .implementation::<SerialNativeInterface>()
         .socket_uuid
         .clone();
-    assert!(interface.send_block(b"Hello World", socket_uuid).await);
-    interface.close().await;
+    interface.send_block(b"Hello World", socket_uuid);
+    interface.close();
 }

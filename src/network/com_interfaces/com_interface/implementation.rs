@@ -50,10 +50,13 @@ where
 ///    pub example_data: String,
 /// }
 ///
-/// impl ComInterfaceFactory<BaseInterfaceSetupData> for BaseInterface {
-///     fn create(setup_data: BaseInterfaceSetupData) -> Result<BaseInterface, ComInterfaceError> {
-///         // ...
-///         Ok(BaseInterface::new_with_name("example"))
+/// impl ComInterfaceSyncFactory for BaseInterface {
+///     type SetupData = BaseInterfaceSetupData;
+///     fn create(
+///         setup_data: Self::SetupData,
+///         com_interface: Rc<ComInterface>,
+///     ) -> Result<(Self, InterfaceProperties), ComInterfaceError> {
+///         todo!()
 ///     }
 ///     fn get_default_properties() -> InterfaceProperties {
 ///         InterfaceProperties {

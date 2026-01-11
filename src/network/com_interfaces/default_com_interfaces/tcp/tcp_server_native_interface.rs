@@ -1,6 +1,6 @@
 use super::tcp_common::TCPServerInterfaceSetupData;
 use crate::network::com_hub::errors::InterfaceCreateError;
-use crate::network::com_interfaces::com_interface::ComInterface;
+use crate::network::com_interfaces::com_interface::{ComInterface, ComInterfaceImplEvent};
 use crate::network::com_interfaces::com_interface::error::ComInterfaceError;
 use crate::network::com_interfaces::com_interface::implementation::{
     ComInterfaceAsyncFactory, ComInterfaceImplementation,
@@ -16,7 +16,7 @@ use crate::stdlib::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 use crate::stdlib::pin::Pin;
 use crate::stdlib::rc::Rc;
 use crate::stdlib::sync::Arc;
-use crate::task::UnboundedSender;
+use crate::task::{UnboundedReceiver, UnboundedSender};
 use crate::task::spawn_with_panic_notify_default;
 use core::future::Future;
 use core::prelude::rust_2024::*;
@@ -26,8 +26,11 @@ use log::{error, info, warn};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
 use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
+use tokio::sync::Notify;
+use tungstenite::Message;
 
 pub struct TCPServerNativeInterface {
+    // TODO: properties not really needed, just for testing purposes, can we remove this?
     pub address: SocketAddr,
     com_interface: Rc<ComInterface>,
     pub tx_by_socket:
@@ -85,6 +88,12 @@ impl TCPServerNativeInterface {
             }
         });
 
+        spawn_with_panic_notify_default(Self::event_handler_task(
+            com_interface.take_interface_impl_event_receiver(),
+            tx_by_socket.clone(),
+            Arc::new(Notify::new()),
+        ));
+
         Ok((
             TCPServerNativeInterface {
                 address,
@@ -93,6 +102,39 @@ impl TCPServerNativeInterface {
             },
             Self::get_default_properties(),
         ))
+    }
+
+    /// background task to handle com hub events (e.g. outgoing messages)
+    async fn event_handler_task(
+        mut receiver: UnboundedReceiver<ComInterfaceImplEvent>,
+        tx_by_socket: Arc<
+            Mutex<HashMap<ComInterfaceSocketUUID, Arc<Mutex<OwnedWriteHalf>>>>,
+        >,
+        shutdown_signal: Arc<Notify>,
+    ) {
+        while let Some(event) = receiver.next().await {
+            match event {
+                ComInterfaceImplEvent::SendBlock(block, socket_uuid) => {
+                    let tx_queues = tx_by_socket.try_lock().unwrap();
+                    let tx = tx_queues.get(&socket_uuid);
+                    match tx {
+                        None => {
+                            error!("Client is not connected");
+                            // TODO: handle
+                            return;
+                        }
+                        Some(tx) => {
+                            tx.try_lock().unwrap().write(&block).await.unwrap();
+                            // TODO: handle error
+                        }
+                    }
+                }
+                ComInterfaceImplEvent::Destroy => {
+                    shutdown_signal.notify_waiters();
+                }
+                _ => todo!()
+            }
+        }
     }
 
     async fn handle_client(
@@ -159,32 +201,4 @@ impl ComInterfaceAsyncFactory for TCPServerNativeInterface {
     }
 }
 
-impl ComInterfaceImplementation for TCPServerNativeInterface {
-    fn send_block<'a>(
-        &'a self,
-        block: &'a [u8],
-        socket: ComInterfaceSocketUUID,
-    ) -> Pin<Box<dyn Future<Output = bool> + 'a>> {
-        let tx_queues = self.tx_by_socket.clone();
-        let tx_queues = tx_queues.try_lock().unwrap();
-        let tx = tx_queues.get(&socket);
-        if tx.is_none() {
-            error!("Client is not connected");
-            return Box::pin(async { false });
-        }
-        let tx = tx.unwrap().clone();
-        Box::pin(
-            async move { tx.try_lock().unwrap().write(block).await.is_ok() },
-        )
-    }
-    fn handle_destroy<'a>(
-        &'a self,
-    ) -> Pin<Box<dyn Future<Output = bool> + 'a>> {
-        todo!("#207")
-    }
-    fn handle_reconnect<'a>(
-        &'a self,
-    ) -> Pin<Box<dyn Future<Output = bool> + 'a>> {
-        todo!()
-    }
-}
+impl ComInterfaceImplementation for TCPServerNativeInterface {}

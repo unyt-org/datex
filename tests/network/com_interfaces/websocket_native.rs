@@ -57,11 +57,8 @@ pub async fn test_create_socket_connection() {
 
         // send block from client to server
         let client_uuid = client_interface.implementation::<WebSocketClientNativeInterface>().socket_uuid.clone();
-        assert!(
-            client_interface
-                .send_block(&client_to_server_message.to_bytes().unwrap(), client_uuid)
-                .await
-        );
+        client_interface
+                .send_block(&client_to_server_message.to_bytes().unwrap(), client_uuid);
 
         // send block from server to client
         let server_socket_uuid = server_interface.implementation::<WebSocketServerNativeInterface>()
@@ -72,11 +69,8 @@ pub async fn test_create_socket_connection() {
             .next()
             .unwrap()
             .clone();
-        assert!(
-            server_interface
-                .send_block(&server_to_client_message.to_bytes().unwrap(), server_socket_uuid.clone())
-                .await
-        );
+        server_interface
+                .send_block(&server_to_client_message.to_bytes().unwrap(), server_socket_uuid.clone());
 
         sleep(Duration::from_millis(100)).await;
 

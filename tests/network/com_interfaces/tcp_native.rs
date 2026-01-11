@@ -61,11 +61,8 @@ pub async fn test_construct() {
 
         // send block from client to server
         let client_uuid = client_interface.implementation::<TCPClientNativeInterface>().socket_uuid.clone();
-        assert!(
-            client_interface
-                .send_block(&client_to_server_message.to_bytes().unwrap(), client_uuid.clone())
-                .await
-        );
+         client_interface
+                .send_block(&client_to_server_message.to_bytes().unwrap(), client_uuid.clone());
 
         // send block from server to client
         let server_socket_uuid = server_interface.implementation::<TCPServerNativeInterface>()
@@ -76,11 +73,8 @@ pub async fn test_construct() {
             .next()
             .unwrap()
             .clone();
-        assert!(
-            server_interface
-                .send_block(&server_to_client_message.to_bytes().unwrap(), server_socket_uuid.clone())
-                .await
-        );
+        server_interface
+                .send_block(&server_to_client_message.to_bytes().unwrap(), server_socket_uuid.clone());
 
 
         // check if messages are received correctly
@@ -90,20 +84,15 @@ pub async fn test_construct() {
 
         // Parallel sending
         let client = Arc::new(Mutex::new(client_interface));
-        let mut futures = vec![];
         for _ in 0..5 {
             let client_to_server_message_clone = client_to_server_message.clone();
             let client = client.clone();
             let client_uuid = client_uuid.clone();
-            futures.push(async move {
-                client
-                    .try_lock()
-                    .unwrap()
-                    .send_block(&client_to_server_message_clone.to_bytes().unwrap(), client_uuid.clone())
-                    .await;
-            });
+            client
+                .try_lock()
+                .unwrap()
+                .send_block(&client_to_server_message_clone.to_bytes().unwrap(), client_uuid.clone())
         }
-        join_all(futures).await;
 
         // We take ownership of the client
         let client = Arc::into_inner(client).unwrap();

@@ -179,14 +179,11 @@ impl WebSocketServerNativeInterface {
             .take_interface_impl_event_receiver();
         let shutdown_signal_clone = shutdown_signal.clone();
         let websocket_streams_clone = websocket_streams_by_socket.clone();
-        spawn_with_panic_notify_default(async move {
-            Self::event_handler_task(
-                websocket_streams_clone,
-                interface_impl_event_receiver,
-                shutdown_signal_clone,
-            )
-            .await;
-        });
+        spawn_with_panic_notify_default(Self::event_handler_task(
+            websocket_streams_clone,
+            interface_impl_event_receiver,
+            shutdown_signal_clone,
+        ));
 
         Ok((
             WebSocketServerNativeInterface {

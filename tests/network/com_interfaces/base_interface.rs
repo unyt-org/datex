@@ -118,7 +118,7 @@ pub async fn test_construct() {
         // Send a message from mockup-b to mockup-a via socket_b
         send_b_to_a.start_send(MESSAGE_B_TO_A.to_vec()).unwrap();
 
-        base_interface_a.get().com_interface.close().await;
-        base_interface_b.get().com_interface.close().await;
+        base_interface_a.get().com_interface.close();
+        base_interface_b.get().com_interface.close();
     }
 }

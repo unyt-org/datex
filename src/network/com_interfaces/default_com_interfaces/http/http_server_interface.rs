@@ -8,16 +8,17 @@ use crate::stdlib::net::SocketAddr;
 use crate::stdlib::pin::Pin;
 use crate::stdlib::rc::Rc;
 use crate::stdlib::sync::Arc;
-use crate::task::spawn;
+use crate::task::{spawn, spawn_with_panic_notify_default, UnboundedReceiver};
 use axum::response::Response;
 use core::future::Future;
 use core::time::Duration;
+use std::sync::Mutex;
 use futures::StreamExt;
 use tokio_stream::wrappers::BroadcastStream;
 
 use super::http_common::{HTTPError, HTTPServerInterfaceSetupData};
 use crate::network::com_hub::errors::InterfaceCreateError;
-use crate::network::com_interfaces::com_interface::ComInterface;
+use crate::network::com_interfaces::com_interface::{ComInterface, ComInterfaceImplEvent};
 use crate::network::com_interfaces::com_interface::implementation::{
     ComInterfaceAsyncFactory, ComInterfaceSyncFactory,
 };
@@ -33,7 +34,8 @@ use axum::{
 };
 use datex_core::network::com_interfaces::com_interface::implementation::ComInterfaceImplementation;
 use log::{debug, error, info};
-use tokio::sync::{RwLock, broadcast, mpsc};
+use tokio::sync::{RwLock, broadcast, mpsc, Notify};
+use tungstenite::Message;
 use url::Url;
 
 async fn server_to_client_handler(
@@ -208,53 +210,58 @@ impl HTTPServerNativeInterface {
                 .unwrap();
         });
 
+        let socket_channel_mapping =
+            Rc::new(RefCell::new(HashMap::new()));
+
+        spawn_with_panic_notify_default(
+            Self::event_handler_task(
+                socket_channel_mapping.clone(),
+                channels.clone(),
+                com_interface.take_interface_impl_event_receiver(),
+            )
+        );
+
         Ok((
             HTTPServerNativeInterface {
                 channels,
                 address,
-                socket_channel_mapping: Rc::new(RefCell::new(HashMap::new())),
+                socket_channel_mapping,
                 com_interface,
             },
             Self::get_default_properties(),
         ))
     }
-}
 
-impl ComInterfaceImplementation for HTTPServerNativeInterface {
-    fn send_block<'a>(
-        &'a self,
-        block: &'a [u8],
-        socket: ComInterfaceSocketUUID,
-    ) -> Pin<Box<dyn Future<Output = bool> + 'a>> {
-        let route = self.socket_channel_mapping.borrow();
-        let route = route.iter().find(|(_, v)| *v == &socket).map(|(k, _)| k);
-        if route.is_none() {
-            return Box::pin(async { false });
-        }
-        let route = route.unwrap().to_string();
-        let channels = self.channels.clone();
-        Box::pin(async move {
-            let map = channels.read().await;
-            if let Some((sender, _)) = map.get(&route) {
-                let _ = sender.send(Bytes::copy_from_slice(block));
-                true
-            } else {
-                false
+    /// background task to handle com hub events (e.g. outgoing messages)
+    async fn event_handler_task(
+        mut socket_channel_mapping: Rc<RefCell<HashMap<String, ComInterfaceSocketUUID>>>,
+        channels: Arc<RwLock<HTTPChannelMap>>,
+        mut receiver: UnboundedReceiver<ComInterfaceImplEvent>,
+    ) {
+        while let Some(event) = receiver.next().await {
+            match event {
+                ComInterfaceImplEvent::SendBlock(block, socket_uuid) => {
+                    let route = socket_channel_mapping.borrow();
+                    let route = route.iter().find(|(_, v)| *v == &socket_uuid).map(|(k, _)| k);
+                    if route.is_none() {
+                        // TODO: handle
+                        return;
+                    }
+                    let route = route.unwrap().to_string();
+                    let map = channels.read().await;
+                    if let Some((sender, _)) = map.get(&route) {
+                        let _ = sender.send(Bytes::from(block));
+                    } else {
+                        // TODO: handle
+                    }
+                }
+                _ => todo!()
             }
-        })
-    }
-    fn handle_destroy<'a>(
-        &'a self,
-    ) -> Pin<Box<dyn Future<Output = bool> + 'a>> {
-        todo!("#199")
-    }
-
-    fn handle_reconnect<'a>(
-        &'a self,
-    ) -> Pin<Box<dyn Future<Output = bool> + 'a>> {
-        todo!()
+        }
     }
 }
+
+impl ComInterfaceImplementation for HTTPServerNativeInterface {}
 
 impl ComInterfaceAsyncFactory for HTTPServerNativeInterface {
     type SetupData = HTTPServerInterfaceSetupData;

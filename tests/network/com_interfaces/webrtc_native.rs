@@ -162,12 +162,8 @@ pub async fn test_connect() {
         // it currently doesn't care about the socket uuid. In the future, we could
         // have different sockets for the same endpoint but with different channel configs
         // such as reliable, unreliable, ordered, unordered, etc.
-        assert!(
-            com_interface_a.send_block(&block_a_to_b.to_bytes().unwrap(), socket_a.uuid.clone()).await
-        );
-        assert!(
-            com_interface_b.send_block(&block_b_to_a.to_bytes().unwrap(), socket_b.uuid.clone()).await
-        );
+        com_interface_a.send_block(&block_a_to_b.to_bytes().unwrap(), socket_a.uuid.clone());
+        com_interface_b.send_block(&block_b_to_a.to_bytes().unwrap(), socket_b.uuid.clone());
 
         // Wait for the messages to be received
         sleep(Duration::from_secs(1)).await;

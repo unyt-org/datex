@@ -23,7 +23,7 @@ use super::webrtc_common::{
     webrtc_trait::{WebRTCTrait, WebRTCTraitInternal},
 };
 use crate::network::com_hub::errors::InterfaceCreateError;
-use crate::network::com_interfaces::com_interface::ComInterface;
+use crate::network::com_interfaces::com_interface::{ComInterface, ComInterfaceImplEvent};
 use crate::network::com_interfaces::com_interface::error::ComInterfaceError;
 use crate::network::com_interfaces::com_interface::implementation::{
     ComInterfaceAsyncFactory, ComInterfaceImplementation,
@@ -32,6 +32,7 @@ use crate::network::com_interfaces::com_interface::implementation::{
 use crate::network::com_interfaces::com_interface::properties::InterfaceProperties;
 use crate::network::com_interfaces::com_interface::socket::ComInterfaceSocketUUID;
 use log::error;
+use tokio::net::tcp::OwnedWriteHalf;
 use webrtc::{
     api::{
         APIBuilder,
@@ -56,6 +57,7 @@ use webrtc::{
         track_remote::{OnMuteHdlrFn, TrackRemote},
     },
 };
+use crate::task::{spawn_with_panic_notify_default, UnboundedReceiver};
 
 pub type TrackLocal = dyn webrtc::track::track_local::TrackLocal + Send + Sync;
 
@@ -601,40 +603,43 @@ impl WebRTCNativeInterface {
         }
         interface.setup_listeners();
 
+        // spawn event handler task
+        let data_channels_clone = interface.data_channels.clone();
+        let receiver = interface
+            .com_interface
+            .take_interface_impl_event_receiver();
+        spawn_with_panic_notify_default(Self::event_handler_task(data_channels_clone, receiver));
+        
         Ok((interface, Self::get_default_properties()))
     }
-}
 
-impl ComInterfaceImplementation for WebRTCNativeInterface {
-    fn send_block<'a>(
-        &'a self,
-        block: &'a [u8],
-        _: ComInterfaceSocketUUID,
-    ) -> Pin<Box<dyn Future<Output = bool> + 'a>> {
-        match self.data_channels.borrow().get_data_channel("DATEX") {
-            Some(channel) => Box::pin(async move {
-                let bytes = Bytes::from(block.to_vec());
-                channel.borrow().data_channel.send(&bytes).await.is_ok()
-            }),
-            _ => {
-                error!("Failed to send message, data channel not found");
-                Box::pin(async move { false })
+    /// background task to handle com hub events (e.g. outgoing messages)
+    async fn event_handler_task(
+        data_channels: Rc<RefCell<DataChannels<Arc<RTCDataChannel>>>>,
+        mut receiver: UnboundedReceiver<ComInterfaceImplEvent>,
+    ) {
+        while let Some(event) = receiver.next().await {
+            match event {
+                ComInterfaceImplEvent::SendBlock(block, _) => {
+                    match data_channels.borrow().get_data_channel("DATEX") {
+                        Some(channel) => {
+                            let bytes = Bytes::from(block);
+                            channel.borrow().data_channel.send(&bytes).await.unwrap();
+                            // TODO: handle error
+                        }
+                        _ => {
+                            error!("Failed to send message, data channel not found");
+                            // TODO: handle
+                        }
+                    }
+                }
+                _ => todo!()
             }
         }
     }
-
-    fn handle_destroy<'a>(
-        &'a self,
-    ) -> Pin<Box<dyn Future<Output = bool> + 'a>> {
-        todo!()
-    }
-
-    fn handle_reconnect<'a>(
-        &'a self,
-    ) -> Pin<Box<dyn Future<Output = bool> + 'a>> {
-        todo!()
-    }
 }
+
+impl ComInterfaceImplementation for WebRTCNativeInterface {}
 
 impl ComInterfaceAsyncFactory for WebRTCNativeInterface {
     type SetupData = WebRTCInterfaceSetupData;

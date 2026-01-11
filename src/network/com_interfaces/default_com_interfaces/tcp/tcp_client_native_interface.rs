@@ -1,7 +1,7 @@
 use super::tcp_common::TCPClientInterfaceSetupData;
 
 use crate::network::com_hub::errors::InterfaceCreateError;
-use crate::network::com_interfaces::com_interface::ComInterface;
+use crate::network::com_interfaces::com_interface::{ComInterface, ComInterfaceImplEvent};
 use crate::network::com_interfaces::com_interface::error::ComInterfaceError;
 use crate::network::com_interfaces::com_interface::implementation::{
     ComInterfaceAsyncFactory, ComInterfaceImplementation,
@@ -11,31 +11,33 @@ use crate::network::com_interfaces::com_interface::properties::{
     InterfaceDirection, InterfaceProperties,
 };
 use crate::network::com_interfaces::com_interface::socket::ComInterfaceSocketUUID;
-use crate::network::com_interfaces::com_interface::state::ComInterfaceState;
+use crate::network::com_interfaces::com_interface::state::{ComInterfaceState, ComInterfaceStateWrapper};
 use crate::stdlib::net::SocketAddr;
 use crate::stdlib::pin::Pin;
 use crate::stdlib::rc::Rc;
 use crate::stdlib::sync::Arc;
-use crate::task::spawn;
+use crate::task::{spawn, spawn_with_panic_notify_default, UnboundedReceiver};
 use core::cell::RefCell;
 use core::future::Future;
 use core::prelude::rust_2024::*;
 use core::result::Result;
 use core::str::FromStr;
 use core::time::Duration;
+use std::sync::Mutex;
+use futures_util::stream::SplitSink;
 use log::{error, warn};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 use tokio::net::tcp::OwnedWriteHalf;
 use tokio::select;
 use tokio::sync::Notify;
+use tokio_tungstenite::{MaybeTlsStream, WebSocketStream};
+use tungstenite::Message;
 
 pub struct TCPClientNativeInterface {
     pub address: SocketAddr,
     pub socket_uuid: ComInterfaceSocketUUID,
-    tx: RefCell<OwnedWriteHalf>,
     com_interface: Rc<ComInterface>,
-    shutdown_signal: Arc<Notify>,
 }
 
 impl TCPClientNativeInterface {
@@ -94,13 +96,18 @@ impl TCPClientNativeInterface {
             }
         });
 
+        spawn_with_panic_notify_default(
+            Self::event_handler_task(
+                tx,
+                com_interface.take_interface_impl_event_receiver(),
+            )
+        );
+        
         Ok((
             TCPClientNativeInterface {
                 address,
                 socket_uuid,
-                tx: RefCell::new(tx),
                 com_interface,
-                shutdown_signal,
             },
             InterfaceProperties {
                 name: Some(setup_data.address),
@@ -108,36 +115,28 @@ impl TCPClientNativeInterface {
             },
         ))
     }
-}
 
-impl ComInterfaceImplementation for TCPClientNativeInterface {
-    fn send_block<'a>(
-        &'a self,
-        block: &'a [u8],
-        _: ComInterfaceSocketUUID,
-    ) -> Pin<Box<dyn Future<Output = bool> + 'a>> {
-        Box::pin(async move {
-            match self.tx.borrow_mut().write_all(block).await {
-                Ok(_) => true,
-                Err(e) => {
-                    error!("Failed to send data: {}", e);
-                    false
+    /// background task to handle com hub events (e.g. outgoing messages)
+    async fn event_handler_task(
+        mut write: OwnedWriteHalf,
+        mut receiver: UnboundedReceiver<ComInterfaceImplEvent>,
+    ) {
+        while let Some(event) = receiver.next().await {
+            match event {
+                ComInterfaceImplEvent::SendBlock(block, _) => {
+                    if let Err(e) = write.write_all(&block).await {
+                        error!("Failed to send data: {}", e);
+                        // TODO: handle error properly
+                    }
                 }
+                _ => todo!()
             }
-        })
-    }
-    fn handle_destroy<'a>(
-        &'a self,
-    ) -> Pin<Box<dyn Future<Output = bool> + 'a>> {
-        todo!()
+        }
     }
 
-    fn handle_reconnect<'a>(
-        &'a self,
-    ) -> Pin<Box<dyn Future<Output = bool> + 'a>> {
-        todo!()
-    }
 }
+
+impl ComInterfaceImplementation for TCPClientNativeInterface {}
 
 impl ComInterfaceAsyncFactory for TCPClientNativeInterface {
     type SetupData = TCPClientInterfaceSetupData;

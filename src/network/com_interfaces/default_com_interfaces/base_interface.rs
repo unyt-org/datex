@@ -77,15 +77,12 @@ impl BaseInterfaceHolder {
         com_interface.set_implementation(Box::new(implementation));
 
         let interface_impl_event_receiver = com_interface.take_interface_impl_event_receiver();
-        
+
         // todo: use async context
-        spawn_with_panic_notify_default(async move {
-            Self::event_handler_task(
-                setup_data.on_send_callback,
-                interface_impl_event_receiver,
-            )
-            .await;
-        });
+        spawn_with_panic_notify_default(Self::event_handler_task(
+            setup_data.on_send_callback,
+            interface_impl_event_receiver,
+        ));
 
         BaseInterfaceHolder {
             sender: HashMap::new(),
@@ -110,7 +107,7 @@ impl BaseInterfaceHolder {
             }
         }
     }
-    
+
     pub fn receive(
         &mut self,
         receiver_socket_uuid: ComInterfaceSocketUUID,
@@ -186,6 +183,7 @@ impl BaseInterfaceSetupData {
 
 #[cfg(test)]
 mod tests {
+    use datex_core::run_async;
     use crate::{
         network::com_interfaces::{
             com_interface::{
@@ -200,26 +198,28 @@ mod tests {
 
     #[tokio::test]
     pub async fn test_close() {
-        init_global_context();
-        // Create a new interface
-        let base_interface =
-            BaseInterfaceHolder::new(BaseInterfaceSetupData::new(
-                InterfaceProperties::default(),
-                Box::new(|_, _| Box::pin(async move { true })),
-            ))
-            .com_interface
-            .clone();
-        assert_eq!(
-            base_interface.current_state(),
-            ComInterfaceState::NotConnected
-        );
-        assert!(base_interface.properties().close_timestamp.is_none());
+        run_async! {
+            init_global_context();
+            // Create a new interface
+            let base_interface =
+                BaseInterfaceHolder::new(BaseInterfaceSetupData::new(
+                    InterfaceProperties::default(),
+                    Box::new(|_, _| Box::pin(async move { true })),
+                ))
+                .com_interface
+                .clone();
+            assert_eq!(
+                base_interface.current_state(),
+                ComInterfaceState::NotConnected
+            );
+            assert!(base_interface.properties().close_timestamp.is_none());
 
-        // Close the interface
-        assert!(base_interface.close().await);
-        assert_eq!(
-            base_interface.current_state(),
-            ComInterfaceState::NotConnected
-        );
+            // Close the interface
+            base_interface.close();
+            assert_eq!(
+                base_interface.current_state(),
+                ComInterfaceState::NotConnected
+            );
+        }
     }
 }

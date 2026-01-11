@@ -582,6 +582,7 @@ pub async fn test_basic_routing() {
         }
         yield_now().await;
 
+
         let last_block =
             get_last_received_single_block_from_com_hub(&com_hub_mut_b);
         assert_eq!(block_a_to_b.body, last_block.body);
@@ -651,7 +652,7 @@ pub async fn test_reconnect() {
         // simulate a disconnection by closing the interface
         // This action is normally done by the interface itself
         // but we do it manually here to test the reconnection
-        assert!(base_interface.com_interface.close().await);
+        base_interface.com_interface.close();
 
         // check that the interface is not connected
         // and that the close_timestamp is set

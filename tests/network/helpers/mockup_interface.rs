@@ -4,7 +4,7 @@ use datex_core::global::{
     dxb_block::DXBBlock, protocol_structures::block_header::BlockType,
 };
 use datex_core::network::com_hub::errors::InterfaceCreateError;
-use datex_core::network::com_interfaces::com_interface::ComInterface;
+use datex_core::network::com_interfaces::com_interface::{ComInterface, ComInterfaceImplEvent};
 use datex_core::network::com_interfaces::com_interface::error::ComInterfaceError;
 use datex_core::network::com_interfaces::com_interface::implementation::{
     ComInterfaceImplementation, ComInterfaceSyncFactory,
@@ -13,12 +13,10 @@ use datex_core::network::com_interfaces::com_interface::properties::{
     InterfaceDirection, InterfaceProperties,
 };
 use datex_core::network::com_interfaces::com_interface::socket::ComInterfaceSocketUUID;
-use datex_core::task::{
-    UnboundedSender, spawn_with_panic_notify, spawn_with_panic_notify_default,
-};
+use datex_core::task::{UnboundedSender, spawn_with_panic_notify, spawn_with_panic_notify_default, UnboundedReceiver};
 use datex_core::values::core_values::endpoint::Endpoint;
 use datex_macros::{com_interface, create_opener};
-use log::info;
+use log::{error, info};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt::Debug;
@@ -28,9 +26,10 @@ use std::{
     pin::Pin,
     sync::{Arc, Mutex, mpsc},
 };
+use tokio::net::tcp::OwnedWriteHalf;
 
 pub struct MockupInterface {
-    pub outgoing_queue: RefCell<Vec<(ComInterfaceSocketUUID, Vec<u8>)>>,
+    pub outgoing_queue: Rc<RefCell<Vec<(ComInterfaceSocketUUID, Vec<u8>)>>>,
     pub socket_senders:
         Rc<RefCell<HashMap<ComInterfaceSocketUUID, UnboundedSender<Vec<u8>>>>>,
     pub sender: Option<mpsc::Sender<Vec<u8>>>,
@@ -58,12 +57,12 @@ impl MockupInterface {
     ) -> Result<(Self, InterfaceProperties), InterfaceCreateError> {
         info!("Creating MockupInterface with setup data: {:?}", setup_data);
         let mut mockup_interface = MockupInterface {
-            outgoing_queue: RefCell::new(Vec::new()),
+            outgoing_queue: Rc::new(RefCell::new(Vec::new())),
             socket_senders: Rc::new(RefCell::new(HashMap::new())),
             receiver: Rc::new(RefCell::new(None)),
             sender: None,
             setup_data: setup_data.clone(),
-            com_interface,
+            com_interface: com_interface.clone(),
         };
 
         if let Some(sender) = setup_data.sender() {
@@ -86,6 +85,14 @@ impl MockupInterface {
 
         let name = setup_data.name.clone();
         let direction = setup_data.direction.clone();
+        
+        // setup event handler task
+        spawn_with_panic_notify_default(Self::event_handler_task(
+            mockup_interface.outgoing_queue.clone(),
+            mockup_interface.sender.clone(),
+            com_interface.take_interface_impl_event_receiver(),
+        ));
+        
         Ok((
             mockup_interface,
             InterfaceProperties {
@@ -309,50 +316,42 @@ impl MockupInterface {
             }
         });
     }
-}
 
-impl ComInterfaceImplementation for MockupInterface {
-    fn send_block<'a>(
-        &'a self,
-        block: &'a [u8],
-        socket_uuid: ComInterfaceSocketUUID,
-    ) -> Pin<Box<dyn Future<Output = bool> + 'a>> {
-        // FIXME #219 this should be inside the async body, why is it not working?
-        Pin::from(Box::new(async move {
-            let is_hello = {
-                match DXBBlock::from_bytes(block).await {
-                    Ok(block) => {
-                        block.block_header.flags_and_timestamp.block_type()
-                            == BlockType::Hello
+
+    /// background task to handle com hub events (e.g. outgoing messages)
+    async fn event_handler_task(
+        outgoing_queue: Rc<RefCell<Vec<(ComInterfaceSocketUUID, Vec<u8>)>>>,
+        sender: Option<mpsc::Sender<Vec<u8>>>,
+        mut receiver: UnboundedReceiver<ComInterfaceImplEvent>,
+    ) {
+        while let Some(event) = receiver.next().await {
+            match event {
+                ComInterfaceImplEvent::SendBlock(block, socket_uuid) => {
+                    let is_hello = {
+                        match DXBBlock::from_bytes(&block).await {
+                            Ok(block) => {
+                                block.block_header.flags_and_timestamp.block_type()
+                                    == BlockType::Hello
+                            }
+                            _ => false,
+                        }
+                    };
+                    if !is_hello {
+                        outgoing_queue
+                            .borrow_mut()
+                            .push((socket_uuid, block.to_vec()));
                     }
-                    _ => false,
+                    let mut result: bool = true;
+                    if let Some(sender) = &sender {
+                        if sender.send(block.to_vec()).is_err() {
+                            result = false;
+                        }
+                    }
                 }
-            };
-            if !is_hello {
-                self.outgoing_queue
-                    .borrow_mut()
-                    .push((socket_uuid, block.to_vec()));
+                _ => {}
             }
-            let mut result: bool = true;
-            if let Some(sender) = &self.sender {
-                if sender.send(block.to_vec()).is_err() {
-                    result = false;
-                }
-            }
-            result
-        }))
-    }
-
-    fn handle_destroy<'a>(
-        &'a self,
-    ) -> Pin<Box<dyn Future<Output = bool> + 'a>> {
-        self.outgoing_queue.borrow_mut().clear();
-        Pin::from(Box::new(async move { true }))
-    }
-
-    fn handle_reconnect<'a>(
-        &'a self,
-    ) -> Pin<Box<dyn Future<Output = bool> + 'a>> {
-        unimplemented!()
+        }
     }
 }
+
+impl ComInterfaceImplementation for MockupInterface {}

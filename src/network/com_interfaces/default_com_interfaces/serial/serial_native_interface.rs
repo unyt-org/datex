@@ -4,9 +4,9 @@ use crate::stdlib::rc::Rc;
 use crate::stdlib::{future::Future, pin::Pin, sync::Arc, time::Duration};
 use core::prelude::rust_2024::*;
 use core::result::Result;
-
+use futures_util::stream::SplitSink;
 use crate::network::com_hub::errors::InterfaceCreateError;
-use crate::network::com_interfaces::com_interface::ComInterface;
+use crate::network::com_interfaces::com_interface::{ComInterface, ComInterfaceImplEvent};
 use crate::network::com_interfaces::com_interface::error::ComInterfaceError;
 use crate::network::com_interfaces::com_interface::implementation::ComInterfaceImplementation;
 use crate::network::com_interfaces::com_interface::implementation::{
@@ -16,17 +16,19 @@ use crate::network::com_interfaces::com_interface::properties::{
     InterfaceDirection, InterfaceProperties,
 };
 use crate::network::com_interfaces::com_interface::socket::ComInterfaceSocketUUID;
-use crate::network::com_interfaces::com_interface::state::ComInterfaceState;
+use crate::network::com_interfaces::com_interface::state::{ComInterfaceState, ComInterfaceStateWrapper};
 use crate::{task::spawn, task::spawn_blocking};
 use log::{debug, error, warn};
 use serialport::SerialPort;
+use tokio::net::TcpStream;
 use tokio::sync::Notify;
+use tokio_tungstenite::{MaybeTlsStream, WebSocketStream};
+use tungstenite::Message;
+use crate::task::{spawn_with_panic_notify_default, UnboundedReceiver};
 
 pub struct SerialNativeInterface {
     com_interface: Rc<ComInterface>,
     pub socket_uuid: ComInterfaceSocketUUID,
-    shutdown_signal: Arc<Notify>,
-    port: Arc<Mutex<Box<dyn SerialPort>>>,
 }
 
 impl SerialNativeInterface {
@@ -112,17 +114,44 @@ impl SerialNativeInterface {
             state.try_lock().unwrap().set(ComInterfaceState::Destroyed);
             warn!("Serial socket closed");
         });
+        
+        spawn_with_panic_notify_default(
+            Self::event_handler_task(
+                com_interface.take_interface_impl_event_receiver(),
+                port.clone(),
+                shutdown_signal.clone(),
+            )
+        );
 
         Ok((
             SerialNativeInterface {
                 com_interface,
-                shutdown_signal,
-                port,
                 socket_uuid,
             },
             Self::get_default_properties(),
         ))
     }
+
+    /// background task to handle com hub events (e.g. outgoing messages)
+    async fn event_handler_task(
+        mut receiver: UnboundedReceiver<ComInterfaceImplEvent>,
+        mut port: Arc<Mutex<Box<dyn SerialPort>>>,
+        shutdown_signal: Arc<Notify>,
+    ) {
+        while let Some(event) = receiver.next().await {
+            match event {
+                ComInterfaceImplEvent::SendBlock(block, _) => {
+                    port.lock().unwrap().write_all(block.as_slice()).unwrap();
+                }
+                ComInterfaceImplEvent::Destroy => {
+                    shutdown_signal.notify_waiters();
+                    break;
+                }
+                _ => todo!()
+            }
+        }
+    }
+
 }
 
 impl ComInterfaceSyncFactory for SerialNativeInterface {
@@ -145,38 +174,4 @@ impl ComInterfaceSyncFactory for SerialNativeInterface {
     }
 }
 
-impl ComInterfaceImplementation for SerialNativeInterface {
-    fn send_block<'a>(
-        &'a self,
-        block: &'a [u8],
-        _: ComInterfaceSocketUUID,
-    ) -> Pin<Box<dyn Future<Output = bool> + 'a>> {
-        let port = self.port.clone();
-        Box::pin(async move {
-            // FIXME #213 improve the lifetime issue here to avoid cloning the block twice
-            let block = block.to_vec();
-            let result = spawn_blocking(move || {
-                let mut locked = port.try_lock().unwrap();
-                locked.write_all(block.as_slice()).is_ok()
-            })
-            .await;
-            result.unwrap_or(false)
-        })
-    }
-
-    fn handle_destroy<'a>(
-        &'a self,
-    ) -> Pin<Box<dyn Future<Output = bool> + 'a>> {
-        let shutdown_signal = self.shutdown_signal.clone();
-        Box::pin(async move {
-            shutdown_signal.notified().await;
-            true
-        })
-    }
-
-    fn handle_reconnect<'a>(
-        &'a self,
-    ) -> Pin<Box<dyn Future<Output = bool> + 'a>> {
-        todo!()
-    }
-}
+impl ComInterfaceImplementation for SerialNativeInterface {}
