@@ -5,15 +5,12 @@ use core::cell::RefCell;
 
 use crate::collections::HashMap;
 use crate::stdlib::net::SocketAddr;
-use crate::stdlib::pin::Pin;
 use crate::stdlib::rc::Rc;
 use crate::stdlib::sync::Arc;
 use crate::task::{UnboundedReceiver, spawn, spawn_with_panic_notify_default};
 use axum::response::Response;
-use core::future::Future;
 use core::time::Duration;
 use futures::StreamExt;
-use std::sync::Mutex;
 use tokio_stream::wrappers::BroadcastStream;
 
 use super::http_common::{HTTPError, HTTPServerInterfaceSetupData};
@@ -37,8 +34,7 @@ use axum::{
 };
 use datex_core::network::com_interfaces::com_interface::implementation::ComInterfaceImplementation;
 use log::{debug, error, info};
-use tokio::sync::{Notify, RwLock, broadcast, mpsc};
-use tungstenite::Message;
+use tokio::sync::{RwLock, broadcast, mpsc};
 use url::Url;
 
 async fn server_to_client_handler(
@@ -234,7 +230,7 @@ impl HTTPServerNativeInterface {
 
     /// background task to handle com hub events (e.g. outgoing messages)
     async fn event_handler_task(
-        mut socket_channel_mapping: Rc<
+        socket_channel_mapping: Rc<
             RefCell<HashMap<String, ComInterfaceSocketUUID>>,
         >,
         channels: Arc<RwLock<HTTPChannelMap>>,

@@ -17,19 +17,15 @@ use crate::network::com_interfaces::com_interface::{
     ComInterface, ComInterfaceImplEvent,
 };
 use crate::stdlib::net::SocketAddr;
-use crate::stdlib::pin::Pin;
 use crate::stdlib::rc::Rc;
 use crate::stdlib::sync::Arc;
 use crate::task::{
     UnboundedReceiver, UnboundedSender, spawn, spawn_with_panic_notify_default,
 };
-use core::cell::RefCell;
-use core::future::Future;
 use core::prelude::rust_2024::*;
 use core::result::Result;
 use core::str::FromStr;
 use core::time::Duration;
-use futures_util::stream::SplitSink;
 use log::{error, warn};
 use std::sync::Mutex;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -37,8 +33,6 @@ use tokio::net::TcpStream;
 use tokio::net::tcp::OwnedWriteHalf;
 use tokio::select;
 use tokio::sync::Notify;
-use tokio_tungstenite::{MaybeTlsStream, WebSocketStream};
-use tungstenite::Message;
 
 pub struct TCPClientNativeInterface {
     pub address: SocketAddr,
@@ -60,7 +54,7 @@ impl TCPClientNativeInterface {
 
         let (read_half, tx) = stream.into_split();
 
-        let (socket_uuid, mut sender) = com_interface
+        let (socket_uuid, sender) = com_interface
             .socket_manager()
             .lock()
             .unwrap()

@@ -20,7 +20,6 @@ pub mod errors;
 pub mod network_response;
 pub mod network_tracing;
 use crate::network::com_interfaces::com_interface::socket::ComInterfaceSocketUUID;
-use crate::network::com_interfaces::com_interface::state::ComInterfaceState;
 use crate::stdlib::boxed::Box;
 use crate::stdlib::string::ToString;
 use crate::stdlib::vec;

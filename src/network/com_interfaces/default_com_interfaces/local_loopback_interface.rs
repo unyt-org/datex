@@ -31,11 +31,8 @@ impl LocalLoopbackInterface {
         mut receiver: UnboundedReceiver<ComInterfaceImplEvent>,
     ) {
         while let Some(event) = receiver.next().await {
-            match event {
-                ComInterfaceImplEvent::SendBlock(block, _) => {
-                    sender.start_send(block).unwrap();
-                }
-                _ => {}
+            if let ComInterfaceImplEvent::SendBlock(block, _) = event {
+                sender.start_send(block).unwrap();
             }
         }
     }

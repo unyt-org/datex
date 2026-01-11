@@ -9,26 +9,20 @@ use crate::network::com_interfaces::com_interface::properties::{
     InterfaceDirection, InterfaceProperties,
 };
 use crate::network::com_interfaces::com_interface::socket::ComInterfaceSocketUUID;
-use crate::network::com_interfaces::com_interface::state::{
-    ComInterfaceState, ComInterfaceStateWrapper,
-};
+use crate::network::com_interfaces::com_interface::state::ComInterfaceState;
 use crate::network::com_interfaces::com_interface::{
     ComInterface, ComInterfaceImplEvent,
 };
 use crate::std_sync::Mutex;
 use crate::stdlib::rc::Rc;
-use crate::stdlib::{future::Future, pin::Pin, sync::Arc, time::Duration};
+use crate::stdlib::{sync::Arc, time::Duration};
 use crate::task::{UnboundedReceiver, spawn_with_panic_notify_default};
 use crate::{task::spawn, task::spawn_blocking};
 use core::prelude::rust_2024::*;
 use core::result::Result;
-use futures_util::stream::SplitSink;
 use log::{debug, error, warn};
 use serialport::SerialPort;
-use tokio::net::TcpStream;
 use tokio::sync::Notify;
-use tokio_tungstenite::{MaybeTlsStream, WebSocketStream};
-use tungstenite::Message;
 
 pub struct SerialNativeInterface {
     com_interface: Rc<ComInterface>,
@@ -137,7 +131,7 @@ impl SerialNativeInterface {
     /// background task to handle com hub events (e.g. outgoing messages)
     async fn event_handler_task(
         mut receiver: UnboundedReceiver<ComInterfaceImplEvent>,
-        mut port: Arc<Mutex<Box<dyn SerialPort>>>,
+        port: Arc<Mutex<Box<dyn SerialPort>>>,
         shutdown_signal: Arc<Notify>,
     ) {
         while let Some(event) = receiver.next().await {

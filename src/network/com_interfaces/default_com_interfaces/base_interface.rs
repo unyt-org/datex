@@ -3,9 +3,7 @@ use core::result::Result;
 use std::collections::HashMap;
 
 use crate::network::com_interfaces::com_interface::implementation::ComInterfaceImplementation;
-use crate::network::com_interfaces::com_interface::state::{
-    ComInterfaceState, ComInterfaceStateWrapper,
-};
+use crate::network::com_interfaces::com_interface::state::ComInterfaceState;
 use crate::network::{
     com_hub::errors::ComHubError,
     com_interfaces::com_interface::properties::InterfaceDirection,

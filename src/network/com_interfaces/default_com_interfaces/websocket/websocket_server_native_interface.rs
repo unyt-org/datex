@@ -2,7 +2,7 @@ use crate::std_sync::Mutex;
 use crate::stdlib::rc::Rc;
 use crate::stdlib::sync::Arc;
 use crate::stdlib::{
-    collections::HashMap, future::Future, net::SocketAddr, pin::Pin,
+    collections::HashMap, net::SocketAddr,
 };
 use crate::task::{UnboundedReceiver, spawn_with_panic_notify_default};
 use core::prelude::rust_2024::*;
@@ -20,7 +20,7 @@ use tokio::{
 use tungstenite::Message;
 
 use futures_util::stream::SplitSink;
-use tokio_tungstenite::{MaybeTlsStream, accept_async};
+use tokio_tungstenite::accept_async;
 
 use super::websocket_common::{WebSocketServerInterfaceSetupData, parse_url};
 use crate::network::com_hub::errors::InterfaceCreateError;
@@ -35,9 +35,6 @@ use crate::network::com_interfaces::com_interface::properties::{
     InterfaceDirection, InterfaceProperties,
 };
 use crate::network::com_interfaces::com_interface::socket::ComInterfaceSocketUUID;
-use crate::network::com_interfaces::com_interface::state::{
-    ComInterfaceState, ComInterfaceStateWrapper,
-};
 use crate::network::com_interfaces::com_interface::{
     ComInterface, ComInterfaceImplEvent,
 };
@@ -205,7 +202,7 @@ impl WebSocketServerNativeInterface {
 
     /// background task to handle com hub events (e.g. outgoing messages)
     async fn event_handler_task(
-        mut websocket_streams_by_socket: Arc<Mutex<WebsocketStreamMap>>,
+        websocket_streams_by_socket: Arc<Mutex<WebsocketStreamMap>>,
         mut receiver: UnboundedReceiver<ComInterfaceImplEvent>,
         shutdown_signal: Arc<Notify>,
     ) {

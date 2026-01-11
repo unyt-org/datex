@@ -2,7 +2,6 @@ use crate::network::com_hub::ComHub;
 use crate::network::com_hub::errors::InterfaceCreateError;
 use crate::network::com_interfaces::com_interface::ComInterface;
 use crate::network::com_interfaces::com_interface::properties::InterfaceProperties;
-use crate::network::com_interfaces::com_interface::socket::ComInterfaceSocketUUID;
 use crate::serde::Deserialize;
 use crate::serde::deserializer::from_value_container;
 use crate::stdlib::any::Any;

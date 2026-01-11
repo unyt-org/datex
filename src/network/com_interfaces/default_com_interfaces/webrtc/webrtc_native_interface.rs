@@ -1,6 +1,6 @@
 use crate::std_sync::Mutex;
 use crate::stdlib::{
-    cell::RefCell, future::Future, pin::Pin, rc::Rc, sync::Arc, time::Duration,
+    cell::RefCell, rc::Rc, sync::Arc, time::Duration,
 };
 
 use crate::{
@@ -29,13 +29,11 @@ use crate::network::com_interfaces::com_interface::implementation::{
     ComInterfaceImplementation, ComInterfaceSyncFactory,
 };
 use crate::network::com_interfaces::com_interface::properties::InterfaceProperties;
-use crate::network::com_interfaces::com_interface::socket::ComInterfaceSocketUUID;
 use crate::network::com_interfaces::com_interface::{
     ComInterface, ComInterfaceImplEvent,
 };
 use crate::task::{UnboundedReceiver, spawn_with_panic_notify_default};
 use log::error;
-use tokio::net::tcp::OwnedWriteHalf;
 use webrtc::{
     api::{
         APIBuilder,
