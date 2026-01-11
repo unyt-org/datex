@@ -1,9 +1,8 @@
 use crate::network::helpers::mock_setup::{
-    MockupSetupData, get_mock_setup_with_two_runtimes,
+    get_mock_setup_default_with_two_connected_runtimes,
 };
 use core::time::Duration;
 use datex_core::{
-    logger::init_logger_debug,
     runtime::execution::context::{ExecutionContext, ExecutionMode},
     values::{
         core_values::{endpoint::Endpoint, integer::Integer},
@@ -16,15 +15,9 @@ use datex_macros::async_test;
 pub async fn test_basic_remote_execution() {
     let endpoint_a = Endpoint::new("@test_a");
     let endpoint_b = Endpoint::new("@test_b");
-    let (runtime_a, runtime_b) = get_mock_setup_with_two_runtimes(
-        MockupSetupData {
-            local_endpoint: endpoint_a.clone(),
-            ..Default::default()
-        },
-        MockupSetupData {
-            local_endpoint: endpoint_b.clone(),
-            ..Default::default()
-        },
+    let (runtime_a, runtime_b) = get_mock_setup_default_with_two_connected_runtimes(
+        endpoint_a.clone(),
+        endpoint_b.clone()
     )
     .await;
 
@@ -59,15 +52,9 @@ pub async fn test_basic_remote_execution() {
 pub async fn test_remote_execution_persistent_context() {
     let endpoint_a = Endpoint::new("@test_a");
     let endpoint_b = Endpoint::new("@test_b");
-    let (runtime_a, runtime_b) = get_mock_setup_with_two_runtimes(
-        MockupSetupData {
-            local_endpoint: endpoint_a.clone(),
-            ..Default::default()
-        },
-        MockupSetupData {
-            local_endpoint: endpoint_b.clone(),
-            ..Default::default()
-        },
+    let (runtime_a, runtime_b) = get_mock_setup_default_with_two_connected_runtimes(
+        endpoint_a.clone(),
+        endpoint_b.clone(),
     )
     .await;
 
@@ -104,15 +91,9 @@ pub async fn test_remote_execution_persistent_context() {
 pub async fn test_remote_inline() {
     let endpoint_a = Endpoint::new("@test_a");
     let endpoint_b = Endpoint::new("@test_b");
-    let (runtime_a, runtime_b) = get_mock_setup_with_two_runtimes(
-        MockupSetupData {
-            local_endpoint: endpoint_a.clone(),
-            ..Default::default()
-        },
-        MockupSetupData {
-            local_endpoint: endpoint_b.clone(),
-            ..Default::default()
-        },
+    let (runtime_a, runtime_b) = get_mock_setup_default_with_two_connected_runtimes(
+        endpoint_a.clone(),
+        endpoint_b.clone(),
     )
     .await;
 
@@ -142,15 +123,9 @@ pub async fn test_remote_inline() {
 pub async fn test_remote_inline_implicit_context() {
     let endpoint_a = Endpoint::new("@test_a");
     let endpoint_b = Endpoint::new("@test_b");
-    let (runtime_a, _) = get_mock_setup_with_two_runtimes(
-        MockupSetupData {
-            local_endpoint: endpoint_a.clone(),
-            ..Default::default()
-        },
-        MockupSetupData {
-            local_endpoint: endpoint_b.clone(),
-            ..Default::default()
-        },
+    let (runtime_a, _) = get_mock_setup_default_with_two_connected_runtimes(
+        endpoint_a.clone(),
+        endpoint_b.clone(),
     )
     .await;
 

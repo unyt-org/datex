@@ -42,25 +42,30 @@ where
 /// ```
 /// # use core::cell::RefCell;
 /// # use datex_core::stdlib::rc::Rc;
-/// # use datex_core::network::com_interfaces::com_interface::{ComInterfaceError};
-/// # use datex_core::network::com_interfaces::com_interface_implementation::ComInterfaceFactory;
-/// # use datex_core::network::com_interfaces::com_interface_properties::InterfaceProperties;
 /// use serde::{Deserialize, Serialize};
-/// use datex_core::network::com_interfaces::default_com_interfaces::base_interface::BaseInterface;
+/// use datex_core::network::com_hub::errors::InterfaceCreateError;
+/// use datex_core::network::com_interfaces::com_interface::ComInterface;
+/// use datex_core::network::com_interfaces::com_interface::implementation::{ComInterfaceImplementation, ComInterfaceSyncFactory};
+/// use datex_core::network::com_interfaces::com_interface::properties::InterfaceProperties;
+///
+/// struct ExampleInterface;
+/// impl ComInterfaceImplementation for ExampleInterface {}
 ///
 /// #[derive(Serialize, Deserialize)]
 /// struct BaseInterfaceSetupData {
 ///    pub example_data: String,
 /// }
 ///
-/// impl ComInterfaceSyncFactory for BaseInterface {
+/// impl ComInterfaceSyncFactory for ExampleInterface {
 ///     type SetupData = BaseInterfaceSetupData;
+/// 
 ///     fn create(
 ///         setup_data: Self::SetupData,
 ///         com_interface: Rc<ComInterface>,
-///     ) -> Result<(Self, InterfaceProperties), ComInterfaceError> {
+///     ) -> Result<(Self, InterfaceProperties), InterfaceCreateError> {
 ///         todo!()
 ///     }
+/// 
 ///     fn get_default_properties() -> InterfaceProperties {
 ///         InterfaceProperties {
 ///             interface_type: "example".to_string(),

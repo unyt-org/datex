@@ -82,6 +82,61 @@ pub async fn get_mock_setup_with_com_hub(
     (com_hub, mockup_interface.clone())
 }
 
+/// Helper function to create a default mock setup with two com hubs connected to each other via mock interface channels
+pub async fn get_default_mock_setup_with_two_connected_com_hubs() -> (
+    (
+        Rc<ComHub>,
+        Rc<ComInterface>,
+        UnboundedReceiver<IncomingSection>,
+    ),
+    (
+        Rc<ComHub>,
+        Rc<ComInterface>,
+        UnboundedReceiver<IncomingSection>,
+    )
+) {
+    let (sender_a, receiver_a) = create_unbounded_channel::<Vec<u8>>();
+    let (sender_b, receiver_b) = create_unbounded_channel::<Vec<u8>>();
+
+    let (incoming_sections_sender_b, incoming_sections_receiver_b) = create_unbounded_channel::<IncomingSection>();
+    let (incoming_sections_sender_a, incoming_sections_receiver_a) = create_unbounded_channel::<IncomingSection>();
+    
+    let (com_hub_mut_a, com_interface_a) = get_mock_setup_with_com_hub(MockupSetupData {
+        interface_setup_data: MockupInterfaceSetupData {
+            endpoint: Some(TEST_ENDPOINT_A.clone()),
+            receiver_in: Some(receiver_b),
+            sender_out: Some(sender_a),
+            ..Default::default()
+        },
+        com_hub_sections_sender: Some(incoming_sections_sender_a),
+        ..Default::default()
+    }).await;
+
+    let (com_hub_mut_b, com_interface_b) = get_mock_setup_with_com_hub(MockupSetupData {
+        interface_setup_data: MockupInterfaceSetupData {
+            endpoint: Some(TEST_ENDPOINT_B.clone()),
+            receiver_in: Some(receiver_a),
+            sender_out: Some(sender_b),
+            ..Default::default()
+        },
+        com_hub_sections_sender: Some(incoming_sections_sender_b),
+        ..Default::default()
+    }).await;
+
+    (
+        (
+            com_hub_mut_a,
+            com_interface_a,
+            incoming_sections_receiver_a
+        ),
+        (
+            com_hub_mut_b,
+            com_interface_b,
+            incoming_sections_receiver_b
+        )
+    )
+}
+
 /// Helper function to create a mock setup with a com hub and an existing interface
 pub fn get_mock_setup_with_interface(
     interface: Rc<ComInterface>,
@@ -158,6 +213,7 @@ pub async fn get_mock_setup_with_runtime(
     (runtime, mockup_interface_ref)
 }
 
+/// Helper function to create a default mock setup with two separate runtimes
 pub async fn get_mock_setup_with_two_runtimes(
     setup_data_a: MockupSetupData,
     setup_data_b: MockupSetupData,
@@ -167,6 +223,37 @@ pub async fn get_mock_setup_with_two_runtimes(
     let (runtime_b, _) = get_mock_setup_with_runtime(setup_data_b).await;
 
     (runtime_a, runtime_b)
+}
+
+/// Helper function to create a default mock setup with two connected runtimes via a mockup interface channel
+pub async fn get_mock_setup_default_with_two_connected_runtimes(
+    endpoint_a: Endpoint,
+    endpoint_b: Endpoint,
+) -> (Runtime, Runtime) {
+    let (sender_a, receiver_a) = create_unbounded_channel::<Vec<u8>>();
+    let (sender_b, receiver_b) = create_unbounded_channel::<Vec<u8>>();
+
+    get_mock_setup_with_two_runtimes(
+        MockupSetupData {
+            local_endpoint: endpoint_a,
+            interface_setup_data: MockupInterfaceSetupData {
+                receiver_in: Some(receiver_b),
+                sender_out: Some(sender_a),
+                ..Default::default()
+            },
+            ..Default::default()
+        },
+        MockupSetupData {
+            local_endpoint: endpoint_b,
+            interface_setup_data: MockupInterfaceSetupData {
+                receiver_in: Some(receiver_a),
+                sender_out: Some(sender_b),
+                ..Default::default()
+            },
+            ..Default::default()
+        },
+    )
+    .await
 }
 
 pub async fn send_block_with_body(

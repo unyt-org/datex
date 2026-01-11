@@ -15,52 +15,21 @@ use datex_macros::async_test;
 use ntest_timeout::timeout;
 use std::{sync::mpsc, thread};
 use tokio::task::yield_now;
+use datex_core::task::create_unbounded_channel;
+use crate::network::helpers::mock_setup::{get_default_mock_setup_with_two_connected_com_hubs, get_mock_setup_with_com_hub, MockupSetupData};
+use crate::network::helpers::mockup_interface::MockupInterfaceSetupData;
 
 #[async_test]
 #[timeout(1000)]
 async fn create_network_trace() {
-    let (sender_a, receiver_a) = mpsc::channel::<Vec<u8>>();
-    let (sender_b, receiver_b) = mpsc::channel::<Vec<u8>>();
-
-    let (com_hub_mut_a, com_interface_a, socket_a) =
-        get_mock_setup_and_socket_for_endpoint(
-            TEST_ENDPOINT_A.clone(),
-            None,
-            Some(sender_a),
-            Some(receiver_b),
-            InterfacePriority::default(),
-            true,
-        )
-        .await;
-
-    let (com_hub_mut_b, com_interface_b, socket_b) =
-        get_mock_setup_and_socket_for_endpoint(
-            TEST_ENDPOINT_B.clone(),
-            None,
-            Some(sender_b),
-            Some(receiver_a),
-            InterfacePriority::default(),
-            true,
-        )
-        .await;
-
+    let (
+        (com_hub_mut_a, ..),
+        ..
+    ) = get_default_mock_setup_with_two_connected_com_hubs().await;
+    
     yield_now().await;
     yield_now().await;
-    {
-        // update a
-        let mockup_interface_impl =
-            com_interface_a.implementation_mut::<MockupInterface>();
-        mockup_interface_impl.update();
-    }
-    {
-        // update b
-        let mockup_interface_impl =
-            com_interface_b.implementation_mut::<MockupInterface>();
-        mockup_interface_impl.update();
-    }
-    yield_now().await;
-    yield_now().await;
-
+    
     log::info!("Sending trace from A to B");
 
     // send trace from A to B
@@ -83,24 +52,24 @@ async fn create_network_trace() {
 #[timeout(3000)]
 async fn create_network_trace_separate_threads() {
     // create a new thread for each com hub
-    let (sender_a, receiver_a) = mpsc::channel::<Vec<u8>>();
-    let (sender_b, receiver_b) = mpsc::channel::<Vec<u8>>();
+    let (sender_a, receiver_a) = create_unbounded_channel::<Vec<u8>>();
+    let (sender_b, receiver_b) = create_unbounded_channel::<Vec<u8>>();
+
 
     // Endpoint A
     let thread_a = run_async_thread! {
         init_global_context();
 
-        let (com_hub_mut_a, com_interface_a, socket_a) =
-            get_mock_setup_and_socket_for_endpoint(
-                TEST_ENDPOINT_A.clone(),
-                None,
-                Some(sender_a),
-                Some(receiver_b),
-                InterfacePriority::default(),
-                true,
-            )
-            .await;
-
+         let (com_hub_mut_a, ..) = get_mock_setup_with_com_hub(MockupSetupData {
+                interface_setup_data: MockupInterfaceSetupData {
+                    endpoint: Some(TEST_ENDPOINT_A.clone()),
+                    receiver_in: Some(receiver_b),
+                    sender_out: Some(sender_a),
+                    ..Default::default()
+                },
+                ..Default::default()
+            }).await;
+        
         log::info!("Sending trace from A to B");
         // sleep required to handle message transfer
         tokio::time::sleep(tokio::time::Duration::from_millis(100))
@@ -129,16 +98,15 @@ async fn create_network_trace_separate_threads() {
     let thread_b = run_async_thread! {
         init_global_context();
 
-        let (com_hub_mut_b, com_interface_b, socket_b) =
-            get_mock_setup_and_socket_for_endpoint(
-                TEST_ENDPOINT_B.clone(),
-                None,
-                Some(sender_b),
-                Some(receiver_a),
-                InterfacePriority::default(),
-                true,
-            )
-            .await;
+        let _ = get_mock_setup_with_com_hub(MockupSetupData {
+            interface_setup_data: MockupInterfaceSetupData {
+                endpoint: Some(TEST_ENDPOINT_B.clone()),
+                receiver_in: Some(receiver_a),
+                sender_out: Some(sender_b),
+                ..Default::default()
+            },
+            ..Default::default()
+        }).await;
 
         // sleep 2s to ensure that the other thread has finished
         tokio::time::sleep(tokio::time::Duration::from_millis(200))

@@ -36,7 +36,7 @@ use std::{
 use tokio::net::tcp::OwnedWriteHalf;
 
 pub struct MockupInterface {
-    outgoing_queue: Rc<RefCell<Vec<(ComInterfaceSocketUUID, Vec<u8>)>>>,
+    pub(crate) outgoing_queue: Rc<RefCell<Vec<(ComInterfaceSocketUUID, Vec<u8>)>>>,
     com_interface: Rc<ComInterface>,
     setup_data: MockupInterfaceSetupData,
     pub socket_uuid: ComInterfaceSocketUUID,
