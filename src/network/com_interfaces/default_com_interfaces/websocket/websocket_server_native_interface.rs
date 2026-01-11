@@ -4,7 +4,7 @@ use crate::stdlib::sync::Arc;
 use crate::stdlib::{
     collections::HashMap, future::Future, net::SocketAddr, pin::Pin,
 };
-use crate::task::{spawn_with_panic_notify_default, UnboundedReceiver};
+use crate::task::{UnboundedReceiver, spawn_with_panic_notify_default};
 use core::prelude::rust_2024::*;
 use core::result::Result;
 use core::time::Duration;
@@ -20,23 +20,29 @@ use tokio::{
 use tungstenite::Message;
 
 use futures_util::stream::SplitSink;
-use tokio_tungstenite::{accept_async, MaybeTlsStream};
+use tokio_tungstenite::{MaybeTlsStream, accept_async};
 
 use super::websocket_common::{WebSocketServerInterfaceSetupData, parse_url};
 use crate::network::com_hub::errors::InterfaceCreateError;
-use crate::network::com_interfaces::com_interface::{ComInterface, ComInterfaceImplEvent};
 use crate::network::com_interfaces::com_interface::error::ComInterfaceError;
-use crate::network::com_interfaces::com_interface::implementation::ComInterfaceImplementation;
 use crate::network::com_interfaces::com_interface::implementation::{
     ComInterfaceAsyncFactory, ComInterfaceSyncFactory,
+};
+use crate::network::com_interfaces::com_interface::implementation::{
+    ComInterfaceAsyncFactoryResult, ComInterfaceImplementation,
 };
 use crate::network::com_interfaces::com_interface::properties::{
     InterfaceDirection, InterfaceProperties,
 };
 use crate::network::com_interfaces::com_interface::socket::ComInterfaceSocketUUID;
+use crate::network::com_interfaces::com_interface::state::{
+    ComInterfaceState, ComInterfaceStateWrapper,
+};
+use crate::network::com_interfaces::com_interface::{
+    ComInterface, ComInterfaceImplEvent,
+};
 use crate::runtime::global_context::get_global_context;
 use tokio_tungstenite::WebSocketStream;
-use crate::network::com_interfaces::com_interface::state::{ComInterfaceState, ComInterfaceStateWrapper};
 
 type WebsocketStreamMap = HashMap<
     ComInterfaceSocketUUID,
@@ -175,8 +181,8 @@ impl WebSocketServerNativeInterface {
         });
 
         // start event handler task
-        let interface_impl_event_receiver = com_interface
-            .take_interface_impl_event_receiver();
+        let interface_impl_event_receiver =
+            com_interface.take_interface_impl_event_receiver();
         let shutdown_signal_clone = shutdown_signal.clone();
         let websocket_streams_clone = websocket_streams_by_socket.clone();
         spawn_with_panic_notify_default(Self::event_handler_task(
@@ -206,12 +212,12 @@ impl WebSocketServerNativeInterface {
         while let Some(event) = receiver.next().await {
             match event {
                 ComInterfaceImplEvent::SendBlock(block, socket_uuid) => {
-                    let tx = &mut websocket_streams_by_socket.try_lock().unwrap();
+                    let tx =
+                        &mut websocket_streams_by_socket.try_lock().unwrap();
                     let tx = tx.get_mut(&socket_uuid);
                     match tx {
                         Some(tx) => {
-                            tx
-                                .send(Message::Binary(block.to_vec()))
+                            tx.send(Message::Binary(block.to_vec()))
                                 .await
                                 .unwrap();
                         }
@@ -222,12 +228,11 @@ impl WebSocketServerNativeInterface {
                             );
                         }
                     };
-                    
                 }
                 ComInterfaceImplEvent::Destroy => {
                     shutdown_signal.notify_waiters();
                 }
-                _ => todo!()
+                _ => todo!(),
             }
         }
     }
@@ -241,16 +246,7 @@ impl ComInterfaceAsyncFactory for WebSocketServerNativeInterface {
     fn create(
         setup_data: Self::SetupData,
         com_interface: Rc<ComInterface>,
-    ) -> Pin<
-        Box<
-            dyn Future<
-                    Output = Result<
-                        (Self, InterfaceProperties),
-                        InterfaceCreateError,
-                    >,
-                > + 'static,
-        >,
-    > {
+    ) -> ComInterfaceAsyncFactoryResult<Self> {
         Box::pin(async move {
             WebSocketServerNativeInterface::create(setup_data, com_interface)
                 .await

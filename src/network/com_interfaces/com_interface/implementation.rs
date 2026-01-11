@@ -108,6 +108,14 @@ where
     fn get_default_properties() -> InterfaceProperties;
 }
 
+pub type ComInterfaceAsyncFactoryResult<T> = Pin<
+    Box<
+        dyn Future<
+                Output = Result<(T, InterfaceProperties), InterfaceCreateError>,
+            > + 'static,
+    >,
+>;
+
 pub trait ComInterfaceAsyncFactory
 where
     Self: Sized + ComInterfaceImpl,
@@ -120,16 +128,7 @@ where
     fn factory(
         setup_data: ValueContainer,
         com_interface: Rc<ComInterface>,
-    ) -> Pin<
-        Box<
-            dyn Future<
-                    Output = Result<
-                        (Box<dyn ComInterfaceImpl>, InterfaceProperties),
-                        InterfaceCreateError,
-                    >,
-                > + 'static,
-        >,
-    > {
+    ) -> ComInterfaceAsyncFactoryResult<Box<dyn ComInterfaceImpl>> {
         Box::pin(async move {
             let setup_data =
                 from_value_container::<Self::SetupData>(setup_data)
@@ -153,16 +152,7 @@ where
     fn create(
         setup_data: Self::SetupData,
         com_interface: Rc<ComInterface>,
-    ) -> Pin<
-        Box<
-            dyn Future<
-                Output = Result<
-                    (Self, InterfaceProperties),
-                    InterfaceCreateError,
-                >,
-            >,
-        >,
-    >;
+    ) -> ComInterfaceAsyncFactoryResult<Self>;
 
     /// Get the default interface properties for the interface.
     fn get_default_properties() -> InterfaceProperties;

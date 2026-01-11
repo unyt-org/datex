@@ -14,9 +14,11 @@ use url::Url;
 use super::websocket_common::{WebSocketClientInterfaceSetupData, parse_url};
 use crate::network::com_hub::errors::InterfaceCreateError;
 use crate::network::com_interfaces::com_interface::error::ComInterfaceError;
-use crate::network::com_interfaces::com_interface::implementation::ComInterfaceImplementation;
 use crate::network::com_interfaces::com_interface::implementation::{
     ComInterfaceAsyncFactory, ComInterfaceSyncFactory,
+};
+use crate::network::com_interfaces::com_interface::implementation::{
+    ComInterfaceAsyncFactoryResult, ComInterfaceImplementation,
 };
 use crate::network::com_interfaces::com_interface::properties::{
     InterfaceDirection, InterfaceProperties,
@@ -175,16 +177,7 @@ impl ComInterfaceAsyncFactory for WebSocketClientNativeInterface {
     fn create(
         setup_data: Self::SetupData,
         com_interface: Rc<ComInterface>,
-    ) -> Pin<
-        Box<
-            dyn Future<
-                Output = Result<
-                    (Self, InterfaceProperties),
-                    InterfaceCreateError,
-                >,
-            >,
-        >,
-    > {
+    ) -> ComInterfaceAsyncFactoryResult<Self> {
         Box::pin(async move {
             WebSocketClientNativeInterface::create(setup_data, com_interface)
                 .await

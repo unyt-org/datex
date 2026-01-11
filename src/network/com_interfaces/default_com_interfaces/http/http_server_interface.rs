@@ -8,24 +8,27 @@ use crate::stdlib::net::SocketAddr;
 use crate::stdlib::pin::Pin;
 use crate::stdlib::rc::Rc;
 use crate::stdlib::sync::Arc;
-use crate::task::{spawn, spawn_with_panic_notify_default, UnboundedReceiver};
+use crate::task::{UnboundedReceiver, spawn, spawn_with_panic_notify_default};
 use axum::response::Response;
 use core::future::Future;
 use core::time::Duration;
-use std::sync::Mutex;
 use futures::StreamExt;
+use std::sync::Mutex;
 use tokio_stream::wrappers::BroadcastStream;
 
 use super::http_common::{HTTPError, HTTPServerInterfaceSetupData};
 use crate::network::com_hub::errors::InterfaceCreateError;
-use crate::network::com_interfaces::com_interface::{ComInterface, ComInterfaceImplEvent};
 use crate::network::com_interfaces::com_interface::implementation::{
-    ComInterfaceAsyncFactory, ComInterfaceSyncFactory,
+    ComInterfaceAsyncFactory, ComInterfaceAsyncFactoryResult,
+    ComInterfaceSyncFactory,
 };
 use crate::network::com_interfaces::com_interface::properties::{
     InterfaceDirection, InterfaceProperties,
 };
 use crate::network::com_interfaces::com_interface::socket::ComInterfaceSocketUUID;
+use crate::network::com_interfaces::com_interface::{
+    ComInterface, ComInterfaceImplEvent,
+};
 use crate::values::core_values::endpoint::Endpoint;
 use axum::{
     Router,
@@ -34,7 +37,7 @@ use axum::{
 };
 use datex_core::network::com_interfaces::com_interface::implementation::ComInterfaceImplementation;
 use log::{debug, error, info};
-use tokio::sync::{RwLock, broadcast, mpsc, Notify};
+use tokio::sync::{Notify, RwLock, broadcast, mpsc};
 use tungstenite::Message;
 use url::Url;
 
@@ -210,16 +213,13 @@ impl HTTPServerNativeInterface {
                 .unwrap();
         });
 
-        let socket_channel_mapping =
-            Rc::new(RefCell::new(HashMap::new()));
+        let socket_channel_mapping = Rc::new(RefCell::new(HashMap::new()));
 
-        spawn_with_panic_notify_default(
-            Self::event_handler_task(
-                socket_channel_mapping.clone(),
-                channels.clone(),
-                com_interface.take_interface_impl_event_receiver(),
-            )
-        );
+        spawn_with_panic_notify_default(Self::event_handler_task(
+            socket_channel_mapping.clone(),
+            channels.clone(),
+            com_interface.take_interface_impl_event_receiver(),
+        ));
 
         Ok((
             HTTPServerNativeInterface {
@@ -234,7 +234,9 @@ impl HTTPServerNativeInterface {
 
     /// background task to handle com hub events (e.g. outgoing messages)
     async fn event_handler_task(
-        mut socket_channel_mapping: Rc<RefCell<HashMap<String, ComInterfaceSocketUUID>>>,
+        mut socket_channel_mapping: Rc<
+            RefCell<HashMap<String, ComInterfaceSocketUUID>>,
+        >,
         channels: Arc<RwLock<HTTPChannelMap>>,
         mut receiver: UnboundedReceiver<ComInterfaceImplEvent>,
     ) {
@@ -242,7 +244,10 @@ impl HTTPServerNativeInterface {
             match event {
                 ComInterfaceImplEvent::SendBlock(block, socket_uuid) => {
                     let route = socket_channel_mapping.borrow();
-                    let route = route.iter().find(|(_, v)| *v == &socket_uuid).map(|(k, _)| k);
+                    let route = route
+                        .iter()
+                        .find(|(_, v)| *v == &socket_uuid)
+                        .map(|(k, _)| k);
                     if route.is_none() {
                         // TODO: handle
                         return;
@@ -255,7 +260,7 @@ impl HTTPServerNativeInterface {
                         // TODO: handle
                     }
                 }
-                _ => todo!()
+                _ => todo!(),
             }
         }
     }
@@ -269,16 +274,7 @@ impl ComInterfaceAsyncFactory for HTTPServerNativeInterface {
     fn create(
         setup_data: Self::SetupData,
         com_interface: Rc<ComInterface>,
-    ) -> Pin<
-        Box<
-            dyn Future<
-                Output = Result<
-                    (Self, InterfaceProperties),
-                    InterfaceCreateError,
-                >,
-            >,
-        >,
-    > {
+    ) -> ComInterfaceAsyncFactoryResult<Self> {
         Box::pin(async move {
             HTTPServerNativeInterface::create(setup_data, com_interface).await
         })

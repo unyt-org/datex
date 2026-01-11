@@ -1,31 +1,37 @@
 use super::tcp_common::TCPClientInterfaceSetupData;
 
 use crate::network::com_hub::errors::InterfaceCreateError;
-use crate::network::com_interfaces::com_interface::{ComInterface, ComInterfaceImplEvent};
 use crate::network::com_interfaces::com_interface::error::ComInterfaceError;
 use crate::network::com_interfaces::com_interface::implementation::{
-    ComInterfaceAsyncFactory, ComInterfaceImplementation,
-    ComInterfaceSyncFactory,
+    ComInterfaceAsyncFactory, ComInterfaceAsyncFactoryResult,
+    ComInterfaceImplementation, ComInterfaceSyncFactory,
 };
 use crate::network::com_interfaces::com_interface::properties::{
     InterfaceDirection, InterfaceProperties,
 };
 use crate::network::com_interfaces::com_interface::socket::ComInterfaceSocketUUID;
-use crate::network::com_interfaces::com_interface::state::{ComInterfaceState, ComInterfaceStateWrapper};
+use crate::network::com_interfaces::com_interface::state::{
+    ComInterfaceState, ComInterfaceStateWrapper,
+};
+use crate::network::com_interfaces::com_interface::{
+    ComInterface, ComInterfaceImplEvent,
+};
 use crate::stdlib::net::SocketAddr;
 use crate::stdlib::pin::Pin;
 use crate::stdlib::rc::Rc;
 use crate::stdlib::sync::Arc;
-use crate::task::{spawn, spawn_with_panic_notify_default, UnboundedReceiver};
+use crate::task::{
+    UnboundedReceiver, UnboundedSender, spawn, spawn_with_panic_notify_default,
+};
 use core::cell::RefCell;
 use core::future::Future;
 use core::prelude::rust_2024::*;
 use core::result::Result;
 use core::str::FromStr;
 use core::time::Duration;
-use std::sync::Mutex;
 use futures_util::stream::SplitSink;
 use log::{error, warn};
+use std::sync::Mutex;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 use tokio::net::tcp::OwnedWriteHalf;
@@ -65,44 +71,20 @@ impl TCPClientNativeInterface {
         let shutdown_signal_clone = shutdown_signal.clone();
 
         spawn(async move {
-            let mut reader = read_half;
-            let mut buffer = [0u8; 1024];
-            loop {
-                select! {
-                    next = reader.read(&mut buffer) => {
-                        match next {
-                            Ok(0) => {
-                                warn!("Connection closed by peer");
-                                state.lock().unwrap().set(ComInterfaceState::Destroyed);
-                                break;
-                            }
-                            Ok(n) => {
-                                sender.start_send(buffer[..n].to_vec()).unwrap();
-                            }
-                            Err(e) => {
-                                error!("Failed to read from socket: {e}");
-                                state
-                                    .try_lock()
-                                    .unwrap()
-                                    .set(ComInterfaceState::Destroyed);
-                                break;
-                            }
-                        }
-                    }
-                    _ = shutdown_signal_clone.notified() => {
-                        break;
-                    }
-                }
-            }
+            Self::handle_receive(
+                read_half,
+                sender,
+                state,
+                shutdown_signal_clone,
+            )
+            .await;
         });
 
-        spawn_with_panic_notify_default(
-            Self::event_handler_task(
-                tx,
-                com_interface.take_interface_impl_event_receiver(),
-            )
-        );
-        
+        spawn_with_panic_notify_default(Self::event_handler_task(
+            tx,
+            com_interface.take_interface_impl_event_receiver(),
+        ));
+
         Ok((
             TCPClientNativeInterface {
                 address,
@@ -114,6 +96,44 @@ impl TCPClientNativeInterface {
                 ..Self::get_default_properties()
             },
         ))
+    }
+
+    /// Background task to handle incoming messages
+    async fn handle_receive(
+        read_half: tokio::net::tcp::OwnedReadHalf,
+        mut sender: UnboundedSender<Vec<u8>>,
+        state: Arc<Mutex<ComInterfaceStateWrapper>>,
+        shutdown_signal_clone: Arc<Notify>,
+    ) {
+        let mut reader = read_half;
+        let mut buffer = [0u8; 1024];
+        loop {
+            select! {
+                next = reader.read(&mut buffer) => {
+                    match next {
+                        Ok(0) => {
+                            warn!("Connection closed by peer");
+                            state.lock().unwrap().set(ComInterfaceState::Destroyed);
+                            break;
+                        }
+                        Ok(n) => {
+                            sender.start_send(buffer[..n].to_vec()).unwrap();
+                        }
+                        Err(e) => {
+                            error!("Failed to read from socket: {e}");
+                            state
+                                .try_lock()
+                                .unwrap()
+                                .set(ComInterfaceState::Destroyed);
+                            break;
+                        }
+                    }
+                }
+                _ = shutdown_signal_clone.notified() => {
+                    break;
+                }
+            }
+        }
     }
 
     /// background task to handle com hub events (e.g. outgoing messages)
@@ -129,11 +149,10 @@ impl TCPClientNativeInterface {
                         // TODO: handle error properly
                     }
                 }
-                _ => todo!()
+                _ => todo!(),
             }
         }
     }
-
 }
 
 impl ComInterfaceImplementation for TCPClientNativeInterface {}
@@ -144,16 +163,7 @@ impl ComInterfaceAsyncFactory for TCPClientNativeInterface {
     fn create(
         setup_data: Self::SetupData,
         com_interface: Rc<ComInterface>,
-    ) -> Pin<
-        Box<
-            dyn Future<
-                Output = Result<
-                    (Self, InterfaceProperties),
-                    InterfaceCreateError,
-                >,
-            >,
-        >,
-    > {
+    ) -> ComInterfaceAsyncFactoryResult<Self> {
         Box::pin(async move {
             TCPClientNativeInterface::create(setup_data, com_interface).await
         })

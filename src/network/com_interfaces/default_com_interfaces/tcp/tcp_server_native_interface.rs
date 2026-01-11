@@ -3,8 +3,8 @@ use crate::core::net::AddrParseError;
 use crate::network::com_hub::errors::InterfaceCreateError;
 use crate::network::com_interfaces::com_interface::error::ComInterfaceError;
 use crate::network::com_interfaces::com_interface::implementation::{
-    ComInterfaceAsyncFactory, ComInterfaceImplementation,
-    ComInterfaceSyncFactory,
+    ComInterfaceAsyncFactory, ComInterfaceAsyncFactoryResult,
+    ComInterfaceImplementation, ComInterfaceSyncFactory,
 };
 use crate::network::com_interfaces::com_interface::properties::{
     InterfaceDirection, InterfaceProperties,
@@ -197,16 +197,7 @@ impl ComInterfaceAsyncFactory for TCPServerNativeInterface {
     fn create(
         setup_data: Self::SetupData,
         com_interface: Rc<ComInterface>,
-    ) -> Pin<
-        Box<
-            dyn Future<
-                Output = Result<
-                    (Self, InterfaceProperties),
-                    InterfaceCreateError,
-                >,
-            >,
-        >,
-    > {
+    ) -> ComInterfaceAsyncFactoryResult<Self> {
         Box::pin(async move {
             TCPServerNativeInterface::create(setup_data, com_interface).await
         })
