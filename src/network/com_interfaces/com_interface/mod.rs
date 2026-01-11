@@ -21,7 +21,7 @@ use crate::stdlib::cell::RefCell;
 use crate::stdlib::cell::RefMut;
 use crate::stdlib::rc::Rc;
 use crate::stdlib::sync::{Arc, Mutex};
-use crate::task::{UnboundedReceiver, create_unbounded_channel};
+use crate::task::{UnboundedReceiver, create_unbounded_channel, UnboundedSender};
 use crate::utils::once_consumer::OnceConsumer;
 use crate::utils::uuid::UUID;
 use crate::values::value_container::ValueContainer;
@@ -57,8 +57,15 @@ pub enum ComInterfaceEvent {
     Destroyed,
 }
 
+#[derive(Debug, Clone)]
+pub enum ComInterfaceImplEvent {
+    SendBlock(Vec<u8>, ComInterfaceSocketUUID),
+    Destroy,
+    Reconnect,
+}
+
 #[derive(Debug)]
-pub struct ComInterfaceInfo {
+pub struct ComInterfaceInner {
     // Unique identifier
     pub uuid: ComInterfaceUUID,
 
@@ -78,9 +85,16 @@ pub struct ComInterfaceInfo {
     /// Receiver for interface events (consumed by ComHub)
     interface_event_receiver:
         RefCell<OnceConsumer<UnboundedReceiver<ComInterfaceEvent>>>,
+
+    /// Receiver for interface implementation events (consumed by the implementation, sent by ComInterface)
+    interface_impl_event_receiver:
+        RefCell<OnceConsumer<UnboundedReceiver<ComInterfaceImplEvent>>>,
+
+    /// Sender for interface implementation events (used by the ComInterface to send events to the implementation)
+    interface_impl_event_sender: RefCell<UnboundedSender<ComInterfaceImplEvent>>,
 }
 
-impl ComInterfaceInfo {
+impl ComInterfaceInner {
     pub fn init(
         state: ComInterfaceState,
         interface_properties: InterfaceProperties,
@@ -89,6 +103,10 @@ impl ComInterfaceInfo {
             create_unbounded_channel::<ComInterfaceSocketEvent>();
         let (interface_event_sender, interface_event_receiver) =
             create_unbounded_channel::<ComInterfaceEvent>();
+
+        let (interface_impl_event_sender, interface_impl_event_receiver) =
+            create_unbounded_channel::<ComInterfaceImplEvent>();
+
         let uuid = ComInterfaceUUID(UUID::new());
         Self {
             state: Arc::new(Mutex::new(ComInterfaceStateWrapper::new(
@@ -102,13 +120,18 @@ impl ComInterfaceInfo {
                 ),
             )),
             uuid,
+            properties: Rc::new(RefCell::new(interface_properties)),
+
             interface_event_receiver: RefCell::new(OnceConsumer::new(
                 interface_event_receiver,
             )),
-            properties: Rc::new(RefCell::new(interface_properties)),
             socket_event_receiver: RefCell::new(OnceConsumer::new(
                 socket_event_receiver,
             )),
+            interface_impl_event_receiver: RefCell::new(OnceConsumer::new(
+                interface_impl_event_receiver,
+            )),
+            interface_impl_event_sender: RefCell::new(interface_impl_event_sender),
         }
     }
 
@@ -123,6 +146,14 @@ impl ComInterfaceInfo {
         self.interface_event_receiver.borrow_mut().consume()
     }
 
+    pub fn take_interface_impl_event_receiver(
+        &self,
+    ) -> UnboundedReceiver<ComInterfaceImplEvent> {
+        self.interface_impl_event_receiver
+            .borrow_mut()
+            .consume()
+    }
+
     pub fn state(&self) -> ComInterfaceState {
         self.state.try_lock().unwrap().get()
     }
@@ -134,7 +165,7 @@ impl ComInterfaceInfo {
 /// A communication interface wrapper
 /// which contains a concrete implementation of a com interface logic
 pub struct ComInterface {
-    pub(crate) info: Rc<ComInterfaceInfo>,
+    pub(crate) inner: Rc<ComInterfaceInner>,
     pub(crate) implementation: RefCell<Option<Box<dyn ComInterfaceImpl>>>,
 }
 
@@ -161,7 +192,7 @@ impl ComInterface {
         let (implementation, properties) =
             factory_fn(setup_data, com_interface.clone())?;
         com_interface.set_implementation(implementation);
-        com_interface.info.properties.replace(properties);
+        com_interface.inner.properties.replace(properties);
         Ok(com_interface)
     }
 
@@ -176,13 +207,13 @@ impl ComInterface {
         let (implementation, properties) =
             factory_fn(setup_data, com_interface.clone()).await?;
         com_interface.set_implementation(implementation);
-        com_interface.info.properties.replace(properties);
+        com_interface.inner.properties.replace(properties);
         Ok(com_interface)
     }
 
     fn create_headless() -> Rc<ComInterface> {
         Rc::new(ComInterface {
-            info: ComInterfaceInfo::init(
+            inner: ComInterfaceInner::init(
                 ComInterfaceState::NotConnected,
                 InterfaceProperties::default(),
             )
@@ -206,7 +237,7 @@ impl ComInterface {
         let (implementation, properties) =
             T::create(setup_data, com_interface.clone())?;
         com_interface.set_implementation(Box::new(implementation));
-        com_interface.info.properties.replace(properties);
+        com_interface.inner.properties.replace(properties);
         Ok(com_interface)
     }
 
@@ -225,7 +256,7 @@ impl ComInterface {
         let (implementation, properties) =
             T::create(setup_data, com_interface.clone()).await?;
         com_interface.set_implementation(Box::new(implementation));
-        com_interface.info.properties.replace(properties);
+        com_interface.inner.properties.replace(properties);
         Ok(com_interface)
     }
 
@@ -267,7 +298,7 @@ impl ComInterface {
     }
 
     pub fn uuid(&self) -> ComInterfaceUUID {
-        self.info.uuid.clone()
+        self.inner.uuid.clone()
     }
 
     pub fn current_state(&self) -> ComInterfaceState {
@@ -275,50 +306,53 @@ impl ComInterface {
     }
 
     pub fn state(&self) -> Arc<Mutex<ComInterfaceStateWrapper>> {
-        self.info.state.clone()
+        self.inner.state.clone()
     }
 
     pub fn set_state(&self, new_state: ComInterfaceState) {
-        self.info.set_state(new_state);
+        self.inner.set_state(new_state);
     }
 
     pub fn properties(&self) -> Ref<'_, InterfaceProperties> {
-        self.info.properties.borrow()
+        self.inner.properties.borrow()
     }
 
-    pub async fn send_block(
+    /// Sends a block of data to the implementation to be transmitted over the specified socket
+    /// Note: This method is non-blocking and returns immediately after queuing the send request
+    /// If a block cannot be sent, the implementation should send it back to the com interface for retrying
+    pub fn send_block(
         &self,
         block: &[u8],
         socket_uuid: ComInterfaceSocketUUID,
-    ) -> bool {
-        match self.implementation.borrow_mut().as_mut() {
-            None => {
-                panic!("Cannot send block on headless ComInterface");
-            }
-            Some(implementation) => {
-                implementation.send_block(block, socket_uuid).await
-            }
-        }
+    ) {
+        self.inner.interface_impl_event_sender
+            .borrow_mut()
+            .start_send(ComInterfaceImplEvent::SendBlock(
+                block.to_vec(),
+                socket_uuid,
+            ))
+            .unwrap();
     }
 
-    pub async fn reconnect(&self) -> bool {
+    pub fn reconnect(&self) {
         todo!()
     }
 
-    pub async fn close(&self) -> bool {
-        self.set_state(ComInterfaceState::Closing);
-        let result = match self.implementation.borrow_mut().as_mut() {
-            None => {
-                panic!("Cannot close headless ComInterface");
-            }
-            Some(implementation) => implementation.handle_destroy().await,
-        };
+    /// Closes the communication interface and transitions it to the NotConnected state
+    /// Note: This method is non-blocking and returns immediately after queuing the close request
+    /// The actual closing of resources is handled asynchronously by the implementation
+    pub fn close(&self) {
+       self
+            .inner
+            .interface_impl_event_sender
+            .borrow_mut()
+            .start_send(ComInterfaceImplEvent::Destroy)
+            .unwrap();
         self.set_state(ComInterfaceState::NotConnected);
-        result
     }
 
-    pub fn info(&self) -> Rc<ComInterfaceInfo> {
-        self.info.clone()
+    pub fn info(&self) -> Rc<ComInterfaceInner> {
+        self.inner.clone()
     }
 
     pub fn socket_manager(&self) -> Arc<Mutex<ComInterfaceSocketManager>> {
@@ -328,12 +362,18 @@ impl ComInterface {
     pub fn take_interface_event_receiver(
         &self,
     ) -> UnboundedReceiver<ComInterfaceEvent> {
-        self.info.take_interface_event_receiver()
+        self.inner.take_interface_event_receiver()
     }
 
     pub fn take_socket_event_receiver(
         &self,
     ) -> UnboundedReceiver<ComInterfaceSocketEvent> {
-        self.info.take_socket_event_receiver()
+        self.inner.take_socket_event_receiver()
+    }
+
+    pub fn take_interface_impl_event_receiver(
+        &self,
+    ) -> UnboundedReceiver<ComInterfaceImplEvent> {
+        self.inner.take_interface_impl_event_receiver()
     }
 }

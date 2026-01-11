@@ -4,7 +4,7 @@ use crate::stdlib::sync::Arc;
 use crate::stdlib::{
     collections::HashMap, future::Future, net::SocketAddr, pin::Pin,
 };
-use crate::task::spawn_with_panic_notify_default;
+use crate::task::{spawn_with_panic_notify_default, UnboundedReceiver};
 use core::prelude::rust_2024::*;
 use core::result::Result;
 use core::time::Duration;
@@ -20,11 +20,11 @@ use tokio::{
 use tungstenite::Message;
 
 use futures_util::stream::SplitSink;
-use tokio_tungstenite::accept_async;
+use tokio_tungstenite::{accept_async, MaybeTlsStream};
 
 use super::websocket_common::{WebSocketServerInterfaceSetupData, parse_url};
 use crate::network::com_hub::errors::InterfaceCreateError;
-use crate::network::com_interfaces::com_interface::ComInterface;
+use crate::network::com_interfaces::com_interface::{ComInterface, ComInterfaceImplEvent};
 use crate::network::com_interfaces::com_interface::error::ComInterfaceError;
 use crate::network::com_interfaces::com_interface::implementation::ComInterfaceImplementation;
 use crate::network::com_interfaces::com_interface::implementation::{
@@ -36,6 +36,7 @@ use crate::network::com_interfaces::com_interface::properties::{
 use crate::network::com_interfaces::com_interface::socket::ComInterfaceSocketUUID;
 use crate::runtime::global_context::get_global_context;
 use tokio_tungstenite::WebSocketStream;
+use crate::network::com_interfaces::com_interface::state::{ComInterfaceState, ComInterfaceStateWrapper};
 
 type WebsocketStreamMap = HashMap<
     ComInterfaceSocketUUID,
@@ -43,8 +44,8 @@ type WebsocketStreamMap = HashMap<
 >;
 
 pub struct WebSocketServerNativeInterface {
+    // TODO: properties not really needed here, just for testing purposes
     pub websocket_streams_by_socket: Arc<Mutex<WebsocketStreamMap>>,
-    shutdown_signal: Arc<Notify>,
     com_interface: Rc<ComInterface>,
 }
 
@@ -77,8 +78,8 @@ impl WebSocketServerNativeInterface {
             ComInterfaceError::connection_error_with_details(err)
         })?;
 
-        let websocket_streams = Arc::new(Mutex::new(HashMap::new()));
-        let websocket_streams_clone = websocket_streams.clone();
+        let websocket_streams_by_socket = Arc::new(Mutex::new(HashMap::new()));
+        let websocket_streams_clone = websocket_streams_by_socket.clone();
         let shutdown_signal = Arc::new(Notify::new());
         let tasks: Vec<JoinHandle<()>> = vec![];
         let global_context = get_global_context();
@@ -173,10 +174,23 @@ impl WebSocketServerNativeInterface {
             }
         });
 
+        // start event handler task
+        let interface_impl_event_receiver = com_interface
+            .take_interface_impl_event_receiver();
+        let shutdown_signal_clone = shutdown_signal.clone();
+        let websocket_streams_clone = websocket_streams_by_socket.clone();
+        spawn_with_panic_notify_default(async move {
+            Self::event_handler_task(
+                websocket_streams_clone,
+                interface_impl_event_receiver,
+                shutdown_signal_clone,
+            )
+            .await;
+        });
+
         Ok((
             WebSocketServerNativeInterface {
-                websocket_streams_by_socket: websocket_streams,
-                shutdown_signal,
+                websocket_streams_by_socket,
                 com_interface,
             },
             InterfaceProperties {
@@ -185,7 +199,44 @@ impl WebSocketServerNativeInterface {
             },
         ))
     }
+
+    /// background task to handle com hub events (e.g. outgoing messages)
+    async fn event_handler_task(
+        mut websocket_streams_by_socket: Arc<Mutex<WebsocketStreamMap>>,
+        mut receiver: UnboundedReceiver<ComInterfaceImplEvent>,
+        shutdown_signal: Arc<Notify>,
+    ) {
+        while let Some(event) = receiver.next().await {
+            match event {
+                ComInterfaceImplEvent::SendBlock(block, socket_uuid) => {
+                    let tx = &mut websocket_streams_by_socket.try_lock().unwrap();
+                    let tx = tx.get_mut(&socket_uuid);
+                    match tx {
+                        Some(tx) => {
+                            tx
+                                .send(Message::Binary(block.to_vec()))
+                                .await
+                                .unwrap();
+                        }
+                        None => {
+                            error!(
+                                "Socket UUID {:?} not found for sending",
+                                socket_uuid
+                            );
+                        }
+                    };
+                    
+                }
+                ComInterfaceImplEvent::Destroy => {
+                    shutdown_signal.notify_waiters();
+                }
+                _ => todo!()
+            }
+        }
+    }
 }
+
+impl ComInterfaceImplementation for WebSocketServerNativeInterface {}
 
 impl ComInterfaceAsyncFactory for WebSocketServerNativeInterface {
     type SetupData = WebSocketServerInterfaceSetupData;
@@ -217,49 +268,5 @@ impl ComInterfaceAsyncFactory for WebSocketServerNativeInterface {
             max_bandwidth: 1000,
             ..InterfaceProperties::default()
         }
-    }
-}
-
-impl ComInterfaceImplementation for WebSocketServerNativeInterface {
-    fn send_block<'a>(
-        &'a self,
-        block: &'a [u8],
-        socket_uuid: ComInterfaceSocketUUID,
-    ) -> Pin<Box<dyn Future<Output = bool> + 'a>> {
-        let tx = self.websocket_streams_by_socket.clone();
-        Box::pin(async move {
-            let tx = &mut tx.try_lock().unwrap();
-            let tx = tx.get_mut(&socket_uuid);
-            if tx.is_none() {
-                error!("Client is not connected");
-                return false;
-            }
-            tx.unwrap()
-                .send(Message::Binary(block.to_vec()))
-                .await
-                .map_err(|e| {
-                    error!("Error sending message: {e:?}");
-                    false
-                })
-                .is_ok()
-        })
-    }
-
-    fn handle_destroy<'a>(
-        &'a self,
-    ) -> Pin<Box<dyn Future<Output = bool> + 'a>> {
-        let shutdown_signal = self.shutdown_signal.clone();
-        let websocket_streams = self.websocket_streams_by_socket.clone();
-        Box::pin(async move {
-            shutdown_signal.notify_waiters();
-            websocket_streams.try_lock().unwrap().clear();
-            true
-        })
-    }
-
-    fn handle_reconnect<'a>(
-        &'a self,
-    ) -> Pin<Box<dyn Future<Output = bool> + 'a>> {
-        todo!()
     }
 }

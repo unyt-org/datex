@@ -239,7 +239,8 @@ impl InterfaceManager {
             .clone();
         {
             // Async close the interface (stop tasks, server, cleanup internal data)
-            interface.close().await;
+            interface.close();
+            // TODO: await until closed asynchronously?
         }
 
         self.cleanup_interface(&interface_uuid)

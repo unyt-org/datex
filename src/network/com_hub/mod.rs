@@ -120,13 +120,14 @@ async fn reconnect_interface_task(interface: Rc<ComInterface>) {
     config.reconnect_attempts = Some(current_attempts + 1);
     */
 
-    let res = interface.reconnect().await;
-    if res {
-        interface.set_state(ComInterfaceState::Connected);
-        // config.reconnect_attempts = None;
-    } else {
-        interface.set_state(ComInterfaceState::NotConnected);
-    }
+    interface.reconnect();
+    // TODO: handle reconnection asynchronously (await for success/failure)
+    // if res {
+    //     interface.set_state(ComInterfaceState::Connected);
+    //     // config.reconnect_attempts = None;
+    // } else {
+    //     interface.set_state(ComInterfaceState::NotConnected);
+    // }
 }
 
 // #[cfg(test)]
@@ -1071,14 +1072,7 @@ impl ComHub {
                 // TODO #190: resend block if socket failed to send
                 let com_interface =
                     self.dyn_interface_for_socket_uuid(socket_uuid);
-                spawn_with_panic_notify(
-                    &self.async_context,
-                    send_outgoing_block_task(
-                        com_interface,
-                        socket_uuid.clone(),
-                        bytes,
-                    ),
-                );
+                com_interface.send_block(&bytes, socket_uuid.clone());
             }
             Err(err) => {
                 error!("Failed to convert block to bytes: {err:?}");
@@ -1270,13 +1264,4 @@ async fn handle_incoming_socket_blocks_task(
     while let Some(block) = socket_receive_queue.next().await {
         com_hub_rc.receive_block(&block, socket_uuid.clone()).await;
     }
-}
-
-#[cfg_attr(feature = "embassy_runtime", embassy_executor::task)]
-async fn send_outgoing_block_task(
-    com_interface: Rc<ComInterface>,
-    socket_uuid: ComInterfaceSocketUUID,
-    bytes: Vec<u8>,
-) {
-    com_interface.send_block(&bytes, socket_uuid).await;
 }

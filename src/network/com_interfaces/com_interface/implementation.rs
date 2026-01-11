@@ -11,17 +11,7 @@ use crate::values::value_container::ValueContainer;
 use core::pin::Pin;
 
 pub trait ComInterfaceImplementation {
-    fn send_block<'a>(
-        &'a self,
-        block: &'a [u8],
-        _: ComInterfaceSocketUUID,
-    ) -> Pin<Box<dyn Future<Output = bool> + 'a>>;
-
-    fn handle_destroy<'a>(&'a self)
-    -> Pin<Box<dyn Future<Output = bool> + 'a>>;
-    fn handle_reconnect<'a>(
-        &'a self,
-    ) -> Pin<Box<dyn Future<Output = bool> + 'a>>;
+    // NOTE: ComInterfaceImplementation is no longer used for any method calls, just as a marker trait for com interface implementations
 }
 
 /// A specific implementation of a communication interface for a channel

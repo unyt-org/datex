@@ -1,4 +1,4 @@
-use crate::network::com_interfaces::com_interface::ComInterface;
+use crate::network::com_interfaces::com_interface::{ComInterface, ComInterfaceImplEvent};
 
 use crate::network::com_hub::errors::InterfaceCreateError;
 use crate::network::com_interfaces::com_interface::implementation::{
@@ -7,44 +7,33 @@ use crate::network::com_interfaces::com_interface::implementation::{
 use crate::network::com_interfaces::com_interface::properties::{
     InterfaceDirection, InterfaceProperties,
 };
-use crate::network::com_interfaces::com_interface::socket::ComInterfaceSocketUUID;
-use crate::stdlib::boxed::Box;
-use crate::stdlib::cell::RefCell;
-use crate::stdlib::pin::Pin;
 use crate::stdlib::rc::Rc;
 use crate::stdlib::string::ToString;
-use crate::task::UnboundedSender;
+use crate::task::{spawn_with_panic_notify_default, UnboundedReceiver, UnboundedSender};
 use crate::values::core_values::endpoint::Endpoint;
-use core::future::Future;
 use core::prelude::rust_2024::*;
 use core::result::Result;
 use core::time::Duration;
 
 /// A simple local loopback interface that puts outgoing data
 /// back into the incoming queue.
-pub struct LocalLoopbackInterface {
-    sender: RefCell<UnboundedSender<Vec<u8>>>,
-}
+pub struct LocalLoopbackInterface;
+impl ComInterfaceImplementation for LocalLoopbackInterface {}
 
-impl ComInterfaceImplementation for LocalLoopbackInterface {
-    fn send_block<'a>(
-        &'a self,
-        block: &'a [u8],
-        _: ComInterfaceSocketUUID,
-    ) -> Pin<Box<dyn Future<Output = bool> + 'a>> {
-        self.sender.borrow_mut().start_send(block.to_vec()).unwrap();
-        Box::pin(async { true })
-    }
-    fn handle_destroy<'a>(
-        &'a self,
-    ) -> Pin<Box<dyn Future<Output = bool> + 'a>> {
-        Box::pin(async move { true })
-    }
-
-    fn handle_reconnect<'a>(
-        &'a self,
-    ) -> Pin<Box<dyn Future<Output = bool> + 'a>> {
-        Box::pin(async move { true })
+impl LocalLoopbackInterface {
+    /// background task to handle com hub events (e.g. outgoing messages)
+    async fn event_handler_task(
+        mut sender: UnboundedSender<Vec<u8>>,
+        mut receiver: UnboundedReceiver<ComInterfaceImplEvent>,
+    ) {
+        while let Some(event) = receiver.next().await {
+            match event {
+                ComInterfaceImplEvent::SendBlock(block, _) => {
+                    sender.start_send(block).unwrap();
+                }
+                _ => {}
+            }
+        }
     }
 }
 
@@ -66,11 +55,19 @@ impl ComInterfaceSyncFactory for LocalLoopbackInterface {
             .lock()
             .unwrap()
             .register_socket_with_endpoint(socket_uuid, Endpoint::LOCAL, 1)?;
+        
+        
+        // TODO: use async context
+        // spawn event handler task for impl events
+        spawn_with_panic_notify_default(
+            Self::event_handler_task(
+                sender,
+                com_interface.take_interface_impl_event_receiver(),
+            )
+        );
 
         Ok((
-            LocalLoopbackInterface {
-                sender: RefCell::new(sender),
-            },
+            LocalLoopbackInterface,
             Self::get_default_properties(),
         ))
     }

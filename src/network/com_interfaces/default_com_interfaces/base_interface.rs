@@ -3,7 +3,7 @@ use core::result::Result;
 use std::collections::HashMap;
 
 use crate::network::com_interfaces::com_interface::implementation::ComInterfaceImplementation;
-use crate::network::com_interfaces::com_interface::state::ComInterfaceState;
+use crate::network::com_interfaces::com_interface::state::{ComInterfaceState, ComInterfaceStateWrapper};
 use crate::network::{
     com_hub::errors::ComHubError,
     com_interfaces::com_interface::properties::InterfaceDirection,
@@ -11,9 +11,7 @@ use crate::network::{
 
 use crate::network::com_interfaces::com_interface::properties::InterfaceProperties;
 use crate::network::com_interfaces::com_interface::socket::ComInterfaceSocketUUID;
-use crate::network::com_interfaces::com_interface::{
-    ComInterface, ComInterfaceInfo,
-};
+use crate::network::com_interfaces::com_interface::{ComInterface, ComInterfaceImplEvent, ComInterfaceInner};
 use crate::stdlib::boxed::Box;
 use crate::stdlib::cell::RefCell;
 use crate::stdlib::pin::Pin;
@@ -22,18 +20,24 @@ use crate::stdlib::string::String;
 use crate::stdlib::vec::Vec;
 use crate::values::core_values::endpoint::Endpoint;
 use core::future::Future;
+use std::sync::{Arc, Mutex};
+use futures_util::stream::SplitSink;
+use log::error;
 
 pub type OnSendCallback = dyn Fn(&[u8], ComInterfaceSocketUUID) -> Pin<Box<dyn Future<Output = bool>>>
     + 'static;
 
 pub struct BaseInterface {
-    on_send: Box<OnSendCallback>,
     com_interface: Rc<ComInterface>,
 }
 
-use crate::task::UnboundedSender;
+use crate::task::{UnboundedReceiver, UnboundedSender};
 use strum::Display;
 use thiserror::Error;
+use tokio::net::TcpStream;
+use tokio_tungstenite::{MaybeTlsStream, WebSocketStream};
+use tungstenite::Message;
+use datex_core::task::spawn_with_panic_notify_default;
 
 #[derive(Debug, Display, Error)]
 pub enum BaseInterfaceError {
@@ -59,7 +63,7 @@ impl BaseInterfaceHolder {
     pub fn new(setup_data: BaseInterfaceSetupData) -> BaseInterfaceHolder {
         // Create a headless ComInterface first
         let com_interface = Rc::new(ComInterface {
-            info: Rc::new(ComInterfaceInfo::init(
+            inner: Rc::new(ComInterfaceInner::init(
                 ComInterfaceState::NotConnected,
                 setup_data.properties,
             )),
@@ -68,10 +72,20 @@ impl BaseInterfaceHolder {
 
         // Create the implementation using the factory function
         let implementation = BaseInterface {
-            on_send: setup_data.on_send_callback,
             com_interface: com_interface.clone(),
         };
         com_interface.set_implementation(Box::new(implementation));
+
+        let interface_impl_event_receiver = com_interface.take_interface_impl_event_receiver();
+        
+        // todo: use async context
+        spawn_with_panic_notify_default(async move {
+            Self::event_handler_task(
+                setup_data.on_send_callback,
+                interface_impl_event_receiver,
+            )
+            .await;
+        });
 
         BaseInterfaceHolder {
             sender: HashMap::new(),
@@ -79,6 +93,24 @@ impl BaseInterfaceHolder {
         }
     }
 
+    /// background task to handle com hub events (e.g. outgoing messages)
+    async fn event_handler_task(
+        on_send_callback: Box<OnSendCallback>,
+        mut receiver: UnboundedReceiver<ComInterfaceImplEvent>,
+    ) {
+        while let Some(event) = receiver.next().await {
+            match event {
+                ComInterfaceImplEvent::SendBlock(block, socket_uuid) => {
+                    if !on_send_callback(&block, socket_uuid).await {
+                        error!("BaseInterface send error");
+                        // todo: handle error
+                    }
+                },
+                _ => todo!()
+            }
+        }
+    }
+    
     pub fn receive(
         &mut self,
         receiver_socket_uuid: ComInterfaceSocketUUID,
@@ -126,27 +158,7 @@ impl BaseInterfaceHolder {
     }
 }
 
-impl ComInterfaceImplementation for BaseInterface {
-    fn send_block<'a>(
-        &'a self,
-        block: &'a [u8],
-        socket_uuid: ComInterfaceSocketUUID,
-    ) -> Pin<Box<dyn Future<Output = bool> + 'a>> {
-        self.on_send.as_ref()(block, socket_uuid)
-    }
-
-    fn handle_destroy<'a>(
-        &'a self,
-    ) -> Pin<Box<dyn Future<Output = bool> + 'a>> {
-        Box::pin(async move { true })
-    }
-
-    fn handle_reconnect<'a>(
-        &'a self,
-    ) -> Pin<Box<dyn Future<Output = bool> + 'a>> {
-        Box::pin(async move { true })
-    }
-}
+impl ComInterfaceImplementation for BaseInterface {}
 
 #[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
 pub struct BaseInterfaceSetupData {
