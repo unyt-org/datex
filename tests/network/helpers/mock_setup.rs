@@ -7,15 +7,20 @@ use datex_core::{
         com_hub::{ComHub, InterfacePriority},
         com_interfaces::com_interface::{
             ComInterface, error::ComInterfaceError,
-            socket::ComInterfaceSocketUUID,
+            properties::InterfaceDirection, socket::ComInterfaceSocketUUID,
         },
     },
     runtime::{AsyncContext, Runtime, RuntimeConfig},
     stdlib::{cell::RefCell, rc::Rc},
+    task::{UnboundedReceiver, UnboundedSender},
+    utils::once_consumer::OnceConsumer,
     values::core_values::endpoint::Endpoint,
 };
 use log::{error, info};
-use std::{cell::RefMut, sync::mpsc};
+use std::{
+    cell::RefMut,
+    sync::{Once, mpsc},
+};
 use tokio::task::yield_now;
 use webrtc::interceptor::mock;
 
@@ -38,9 +43,28 @@ lazy_static::lazy_static! {
     pub static ref TEST_ENDPOINT_M: Endpoint = Endpoint::from_str("@test-m").unwrap();
 }
 
+pub struct MockupSetupData {
+    pub local_endpoint: Endpoint,
+    pub setup_data: MockupInterfaceSetupData,
+    pub priority: InterfacePriority,
+    pub incoming_sections_sink_type: IncomingSectionsSinkType,
+}
+impl Default for MockupSetupData {
+    fn default() -> Self {
+        Self {
+            local_endpoint: TEST_ENDPOINT_ORIGIN.clone(),
+            setup_data: MockupInterfaceSetupData::default(),
+            priority: InterfacePriority::default(),
+            incoming_sections_sink_type: IncomingSectionsSinkType::Channel,
+        }
+    }
+}
+
 pub async fn get_mock_setup() -> (Rc<ComHub>, Rc<ComInterface>) {
     get_mock_setup_with_endpoint(
         TEST_ENDPOINT_ORIGIN.clone(),
+        None,
+        InterfaceDirection::InOut,
         InterfacePriority::default(),
         IncomingSectionsSinkType::Channel,
     )
@@ -49,6 +73,8 @@ pub async fn get_mock_setup() -> (Rc<ComHub>, Rc<ComInterface>) {
 
 pub async fn get_mock_setup_with_endpoint(
     endpoint: Endpoint,
+    remote_endpoint: Option<Endpoint>,
+    direction: InterfaceDirection,
     priority: InterfacePriority,
     sink_type: IncomingSectionsSinkType,
 ) -> (Rc<ComHub>, Rc<ComInterface>) {
@@ -58,7 +84,11 @@ pub async fn get_mock_setup_with_endpoint(
     // init mockup interface
     let mockup_interface = ComInterface::create_sync_with_implementation::<
         MockupInterface,
-    >(MockupInterfaceSetupData::new("mockup"))
+    >(MockupInterfaceSetupData {
+        endpoint: remote_endpoint,
+        direction,
+        ..Default::default()
+    })
     .unwrap();
 
     // add mockup interface to com_hub
@@ -68,181 +98,33 @@ pub async fn get_mock_setup_with_endpoint(
 }
 
 pub async fn get_runtime_with_mock_interface(
-    endpoint: Endpoint,
-    priority: InterfacePriority,
+    setup: MockupSetupData,
 ) -> (Runtime, Rc<ComInterface>) {
     // init com hub
-    let runtime =
-        Runtime::init_native(RuntimeConfig::new_with_endpoint(endpoint));
+    let runtime = Runtime::init_native(RuntimeConfig::new_with_endpoint(
+        setup.local_endpoint,
+    ));
 
     // init mockup interface
     let mockup_interface_ref = ComInterface::create_sync_with_implementation::<
         MockupInterface,
-    >(MockupInterfaceSetupData::new("mockup"))
+    >(setup.setup_data)
     .unwrap();
 
     // add mockup interface to com_hub
     runtime
         .com_hub()
-        .register_com_interface(mockup_interface_ref.clone(), priority);
-
+        .register_com_interface(mockup_interface_ref.clone(), setup.priority);
     (runtime, mockup_interface_ref)
 }
 
-pub fn create_and_add_socket(
-    mockup_interface: &mut RefMut<MockupInterface>,
-) -> Result<ComInterfaceSocketUUID, ComInterfaceError> {
-    mockup_interface.create_and_add_socket(None)
-}
-
-pub fn register_socket_endpoint(
-    mockup_interface: Rc<ComInterface>,
-    socket_uuid: ComInterfaceSocketUUID,
-    endpoint: Endpoint,
-) {
-    mockup_interface
-        .socket_manager()
-        .lock()
-        .unwrap()
-        .register_socket_with_endpoint(socket_uuid, endpoint, 1)
-        .unwrap();
-}
-
-pub async fn get_mock_setup_and_socket(
-    sink_type: IncomingSectionsSinkType,
-) -> (Rc<ComHub>, Rc<ComInterface>, ComInterfaceSocketUUID) {
-    get_mock_setup_and_socket_for_endpoint(
-        TEST_ENDPOINT_ORIGIN.clone(),
-        Some(TEST_ENDPOINT_A.clone()),
-        None,
-        None,
-        InterfacePriority::default(),
-        sink_type,
-    )
-    .await
-}
-
-pub async fn get_mock_setup_and_socket_for_priority(
-    priority: InterfacePriority,
-    sink_type: IncomingSectionsSinkType,
-) -> (Rc<ComHub>, Rc<ComInterface>, ComInterfaceSocketUUID) {
-    get_mock_setup_and_socket_for_endpoint(
-        TEST_ENDPOINT_ORIGIN.clone(),
-        Some(TEST_ENDPOINT_A.clone()),
-        None,
-        None,
-        priority,
-        sink_type,
-    )
-    .await
-}
-
-pub async fn get_mock_setup_and_socket_for_endpoint(
-    local_endpoint: Endpoint,
-    remote_endpoint: Option<Endpoint>,
-    sender: Option<mpsc::Sender<Vec<u8>>>,
-    receiver: Option<mpsc::Receiver<Vec<u8>>>,
-    priority: InterfacePriority,
-    incoming_sections_sink_type: IncomingSectionsSinkType,
-) -> (Rc<ComHub>, Rc<ComInterface>, ComInterfaceSocketUUID) {
-    get_mock_setup_and_socket_for_endpoint_and_update_loop(
-        local_endpoint,
-        remote_endpoint,
-        sender,
-        receiver,
-        priority,
-        false,
-        incoming_sections_sink_type,
-    )
-    .await
-}
-
-pub async fn get_mock_setup_and_socket_for_endpoint_and_update_loop(
-    local_endpoint: Endpoint,
-    remote_endpoint: Option<Endpoint>,
-    sender: Option<mpsc::Sender<Vec<u8>>>,
-    receiver: Option<mpsc::Receiver<Vec<u8>>>,
-    priority: InterfacePriority,
-    enable_update_loop: bool,
-    incoming_sections_sink_type: IncomingSectionsSinkType,
-) -> (Rc<ComHub>, Rc<ComInterface>, ComInterfaceSocketUUID) {
-    let (com_hub, com_interface) = get_mock_setup_with_endpoint(
-        local_endpoint,
-        priority,
-        incoming_sections_sink_type,
-    )
-    .await;
-    let mockup_interface_clone = com_interface.clone();
-    let mut mockup_interface =
-        mockup_interface_clone.implementation_mut::<MockupInterface>();
-    mockup_interface.sender = sender;
-    mockup_interface.receiver = Rc::new(RefCell::new(receiver));
-
-    if enable_update_loop {
-        // start mockup interface update loop
-        mockup_interface.start_update_loop();
-
-        tokio::task::yield_now().await;
-    }
-
-    let socket_uuid = create_and_add_socket(&mut mockup_interface).unwrap();
-    if remote_endpoint.is_some() {
-        register_socket_endpoint(
-            com_interface.clone(),
-            socket_uuid.clone(),
-            remote_endpoint.unwrap(),
-        );
-    }
-
-    tokio::task::yield_now().await;
-
-    (com_hub.clone(), com_interface, socket_uuid)
-}
-
-pub async fn get_mock_setup_runtime(
-    local_endpoint: Endpoint,
-    sender: Option<mpsc::Sender<Vec<u8>>>,
-    receiver: Option<mpsc::Receiver<Vec<u8>>>,
-) -> Runtime {
-    let (runtime, mockup_interface_ref) = get_runtime_with_mock_interface(
-        local_endpoint,
-        InterfacePriority::default(),
-    )
-    .await;
-
-    let mut mockup_interface =
-        mockup_interface_ref.implementation_mut::<MockupInterface>();
-    mockup_interface.sender = sender;
-    mockup_interface.receiver = Rc::new(RefCell::new(receiver));
-
-    // start mockup interface update loop
-    mockup_interface.start_update_loop();
-
-    create_and_add_socket(&mut mockup_interface).unwrap();
-    runtime.start().await;
-    runtime
-}
-
 pub async fn get_mock_setup_with_two_runtimes(
-    endpoint_a: Endpoint,
-    endpoint_b: Endpoint,
+    setup_data_a: MockupSetupData,
+    setup_data_b: MockupSetupData,
 ) -> (Runtime, Runtime) {
-    let (sender_a, receiver_a) = mpsc::channel::<Vec<u8>>();
-    let (sender_b, receiver_b) = mpsc::channel::<Vec<u8>>();
+    let (runtime_a, _) = get_runtime_with_mock_interface(setup_data_a).await;
 
-    let runtime_a = get_mock_setup_runtime(
-        endpoint_a.clone(),
-        Some(sender_a),
-        Some(receiver_b),
-    )
-    .await;
-
-    let runtime_b = get_mock_setup_runtime(
-        endpoint_b.clone(),
-        Some(sender_b),
-        Some(receiver_a),
-    )
-    .await;
+    let (runtime_b, _) = get_runtime_with_mock_interface(setup_data_b).await;
 
     (runtime_a, runtime_b)
 }

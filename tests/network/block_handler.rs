@@ -31,7 +31,7 @@ async fn receive_single_block() {
     {
         let mut mockup_interface_impl =
             com_interface.implementation_mut::<MockupInterface>();
-        mockup_interface_impl.receiver = Rc::new(RefCell::new(Some(receiver)));
+        mockup_interface_impl.outside_receiver = Rc::new(RefCell::new(Some(receiver)));
     }
 
     let context_id = com_hub.block_handler.get_new_context_id();
@@ -94,7 +94,7 @@ async fn receive_multiple_blocks() {
     {
         let mut mockup_interface_impl =
             com_interface.implementation_mut::<MockupInterface>();
-        mockup_interface_impl.receiver = Rc::new(RefCell::new(Some(receiver)));
+        mockup_interface_impl.outside_receiver = Rc::new(RefCell::new(Some(receiver)));
     }
     let context_id = com_hub.block_handler.get_new_context_id();
     let section_index = 42;
@@ -213,7 +213,7 @@ async fn receive_multiple_blocks_wrong_order() {
     {
         let mut mockup_interface_impl =
             com_interface.implementation_mut::<MockupInterface>();
-        mockup_interface_impl.receiver = Rc::new(RefCell::new(Some(receiver)));
+        mockup_interface_impl.outside_receiver = Rc::new(RefCell::new(Some(receiver)));
     }
 
     let context_id = com_hub.block_handler.get_new_context_id();
@@ -325,7 +325,7 @@ async fn receive_multiple_sections() {
     {
         let mut mockup_interface_impl =
             com_interface.implementation_mut::<MockupInterface>();
-        mockup_interface_impl.receiver = Rc::new(RefCell::new(Some(receiver)));
+        mockup_interface_impl.outside_receiver = Rc::new(RefCell::new(Some(receiver)));
     }
 
     let context_id = com_hub.block_handler.get_new_context_id();
@@ -545,7 +545,7 @@ async fn await_response_block() {
     {
         let mut mockup_interface_impl =
             com_interface.implementation_mut::<MockupInterface>();
-        mockup_interface_impl.receiver = Rc::new(RefCell::new(Some(receiver)));
+        mockup_interface_impl.outside_receiver = Rc::new(RefCell::new(Some(receiver)));
     }
 
     let context_id = com_hub.block_handler.get_new_context_id();

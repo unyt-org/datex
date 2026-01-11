@@ -1,7 +1,7 @@
 use crate::network::helpers::{
     mock_setup::{
         TEST_ENDPOINT_A, TEST_ENDPOINT_B,
-        get_mock_setup_and_socket_for_endpoint_and_update_loop,
+        get_mock_setup_and_socket_for_endpoint,
     },
     mockup_interface::MockupInterface,
 };
@@ -24,7 +24,7 @@ async fn create_network_trace() {
     let (sender_b, receiver_b) = mpsc::channel::<Vec<u8>>();
 
     let (com_hub_mut_a, com_interface_a, socket_a) =
-        get_mock_setup_and_socket_for_endpoint_and_update_loop(
+        get_mock_setup_and_socket_for_endpoint(
             TEST_ENDPOINT_A.clone(),
             None,
             Some(sender_a),
@@ -36,7 +36,7 @@ async fn create_network_trace() {
         .await;
 
     let (com_hub_mut_b, com_interface_b, socket_b) =
-        get_mock_setup_and_socket_for_endpoint_and_update_loop(
+        get_mock_setup_and_socket_for_endpoint(
             TEST_ENDPOINT_B.clone(),
             None,
             Some(sender_b),
@@ -94,7 +94,7 @@ async fn create_network_trace_separate_threads() {
         init_global_context();
 
         let (com_hub_mut_a, com_interface_a, socket_a) =
-            get_mock_setup_and_socket_for_endpoint_and_update_loop(
+            get_mock_setup_and_socket_for_endpoint(
                 TEST_ENDPOINT_A.clone(),
                 None,
                 Some(sender_a),
@@ -134,7 +134,7 @@ async fn create_network_trace_separate_threads() {
         init_global_context();
 
         let (com_hub_mut_b, com_interface_b, socket_b) =
-            get_mock_setup_and_socket_for_endpoint_and_update_loop(
+            get_mock_setup_and_socket_for_endpoint(
                 TEST_ENDPOINT_B.clone(),
                 None,
                 Some(sender_b),

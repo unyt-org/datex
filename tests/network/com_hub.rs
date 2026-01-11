@@ -2,7 +2,7 @@ use super::helpers::mock_setup::get_mock_setup_and_socket_for_endpoint;
 use crate::network::helpers::{
     mock_setup::{
         TEST_ENDPOINT_A, TEST_ENDPOINT_B, TEST_ENDPOINT_ORIGIN,
-        create_and_add_socket, get_all_received_single_blocks_from_com_hub,
+        get_all_received_single_blocks_from_com_hub,
         get_last_received_single_block_from_com_hub, get_mock_setup,
         get_mock_setup_and_socket, get_mock_setup_and_socket_for_priority,
         get_mock_setup_with_endpoint, register_socket_endpoint,
@@ -165,6 +165,7 @@ pub async fn send_block_to_multiple_endpoints() {
             com_interface.implementation_mut::<MockupInterface>();
         create_and_add_socket(&mut mockup_interface).unwrap()
     };
+    // FIXME
     register_socket_endpoint(
         com_interface.clone(),
         socket_uuid.clone(),

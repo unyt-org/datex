@@ -18,8 +18,6 @@ use log::{error, info};
 use tokio::{
     net::{TcpListener, TcpStream},
     select,
-    sync::Notify,
-    task::JoinHandle,
 };
 use tungstenite::Message;
 

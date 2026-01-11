@@ -146,7 +146,7 @@ impl Display for NetworkTraceResult {
         writeln!(f, "Network trace ({} ──▶ {})", self.sender, self.receiver)?;
         writeln!(f, "  Round trip time: {:?}", self.round_trip_time)?;
         writeln!(f, "  Outbound path:")?;
-        let mut hop = 1;
+        let mut hop = 0;
         let mut is_return_path = false;
         let mut receiver_distance = 0;
         for hops in self.hops.chunks(2) {
@@ -201,7 +201,7 @@ impl Display for NetworkTraceResult {
                 writeln!(f, "  Return path:")?;
                 is_return_path = true;
                 receiver_distance = hop_2.distance;
-                hop = 1;
+                hop = 0;
             }
         }
         writeln!(

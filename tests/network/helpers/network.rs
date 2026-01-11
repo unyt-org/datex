@@ -1,4 +1,4 @@
-use super::mockup_interface::{MockupInterface, store_sender_and_receiver};
+use super::mockup_interface::MockupInterface;
 use crate::network::helpers::mockup_interface::MockupInterfaceSetupData;
 use core::{
     fmt::{self, Debug, Display},
@@ -19,6 +19,7 @@ use datex_core::{
     },
     runtime::{AsyncContext, Runtime, RuntimeConfig},
     serde::serializer::to_value_container,
+    task::{UnboundedReceiver, UnboundedSender, create_unbounded_channel},
     values::{
         core_values::endpoint::Endpoint, value_container::ValueContainer,
     },
@@ -78,8 +79,8 @@ impl Node {
 }
 
 pub struct MockupInterfaceChannelEndpoint {
-    sender: mpsc::Sender<Vec<u8>>,
-    receiver: mpsc::Receiver<Vec<u8>>,
+    sender: UnboundedSender<Vec<u8>>,
+    receiver: UnboundedReceiver<Vec<u8>>,
 }
 
 type MockupInterfaceChannels =
@@ -353,7 +354,7 @@ impl Display for RouteAssertionError {
             ) => {
                 core::write!(
                     f,
-                    "Expected hop #{index} to be {expected} but was {actual}"
+                    "Expected hop {index} to be {expected} but was {actual}"
                 )
             }
             RouteAssertionError::InvalidChannelOnHop(
@@ -363,13 +364,13 @@ impl Display for RouteAssertionError {
             ) => {
                 core::write!(
                     f,
-                    "Expected hop #{index} to be channel {expected} but was {actual}"
+                    "Expected hop {index} to be channel {expected} but was {actual}"
                 )
             }
             RouteAssertionError::InvalidForkOnHop(index, expected, actual) => {
                 core::write!(
                     f,
-                    "Expected hop #{index} to be fork {expected} but was {actual}"
+                    "Expected hop {index} to be fork {expected} but was {actual}"
                 )
             }
             RouteAssertionError::MissingResponse(endpoint) => {
@@ -421,13 +422,9 @@ impl Network {
             .edges
             .iter()
             .map(|edge| {
-                let mut channel = [
-                    edge.edge_type.clone(),
-                    edge.source.clone(),
-                    edge.target.clone(),
-                ];
+                let mut channel = [edge.source.clone(), edge.target.clone()];
                 channel.sort();
-                channel.join("_")
+                format!("{}_{}_{}", channel[0], edge.edge_type, channel[1])
             })
             .collect::<Vec<_>>();
 
@@ -437,13 +434,10 @@ impl Network {
             let mut node = Node::new(endpoint);
 
             for edge in network_data.edges.iter() {
-                let mut channel = [
-                    edge.edge_type.clone(),
-                    edge.source.clone(),
-                    edge.target.clone(),
-                ];
+                let mut channel = [edge.source.clone(), edge.target.clone()];
                 channel.sort();
-                let channel = channel.join("_");
+                let channel =
+                    format!("{}_{}_{}", channel[0], edge.edge_type, channel[1]);
                 let is_bidirectional = channel_names
                     .iter()
                     .filter(|&item| item == &channel)
@@ -560,22 +554,14 @@ impl Network {
             );
             match setup_data.direction {
                 InterfaceDirection::In => {
-                    setup_data.channel_index = Some(store_sender_and_receiver(
-                        None,
-                        Some(channel.receiver),
-                    ));
+                    setup_data.receiver_in = Some(channel.receiver);
                 }
                 InterfaceDirection::Out => {
-                    setup_data.channel_index = Some(store_sender_and_receiver(
-                        Some(channel.sender),
-                        None,
-                    ));
+                    setup_data.sender_out = Some(channel.sender);
                 }
                 InterfaceDirection::InOut => {
-                    setup_data.channel_index = Some(store_sender_and_receiver(
-                        Some(channel.sender),
-                        Some(channel.receiver),
-                    ));
+                    setup_data.sender_out = Some(channel.sender);
+                    setup_data.receiver_in = Some(channel.receiver);
                 }
             }
 
@@ -588,9 +574,8 @@ impl Network {
         name: String,
     ) -> MockupInterfaceChannelEndpoint {
         if !mockup_interface_channels.contains_key(&name) {
-            let (sender_a, receiver_a) = mpsc::channel::<Vec<u8>>();
-            let (sender_b, receiver_b) = mpsc::channel::<Vec<u8>>();
-
+            let (sender_a, receiver_a) = create_unbounded_channel::<Vec<u8>>();
+            let (sender_b, receiver_b) = create_unbounded_channel::<Vec<u8>>();
             mockup_interface_channels.insert(
                 name,
                 Some(MockupInterfaceChannelEndpoint {
@@ -661,6 +646,12 @@ impl Network {
             }
 
             runtime.start().await;
+
+            println!(
+                "{}>>>{}",
+                endpoint.endpoint,
+                runtime.com_hub().metadata()
+            );
             endpoint.runtime = Some(runtime);
         }
     }
