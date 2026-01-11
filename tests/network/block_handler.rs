@@ -1,6 +1,6 @@
 use crate::network::helpers::{
     mock_setup::{
-        TEST_ENDPOINT_A, TEST_ENDPOINT_ORIGIN, get_mock_setup_and_socket,
+        TEST_ENDPOINT_A, TEST_ENDPOINT_ORIGIN,
     },
     mockup_interface::MockupInterface,
 };
@@ -13,7 +13,6 @@ use datex_core::{
             routing_header::RoutingHeader,
         },
     },
-    network::block_handler::IncomingSectionsSinkType,
     utils::context::init_global_context,
 };
 use datex_macros::async_test;
@@ -21,18 +20,18 @@ use log::info;
 use ntest_timeout::timeout;
 use std::{rc::Rc, sync::mpsc};
 use tokio::task::yield_now;
+use datex_core::task::create_unbounded_channel;
+use crate::network::helpers::mock_setup::{get_default_mock_setup_with_com_hub, get_last_received_single_block_from_receiver, get_mock_setup_with_com_hub, MockupSetupData};
+use crate::network::helpers::mockup_interface::MockupInterfaceSetupData;
 
 #[async_test]
 async fn receive_single_block() {
-    let (sender, receiver) = mpsc::channel::<Vec<u8>>();
-
-    let (com_hub, com_interface, _) =
-        get_mock_setup_and_socket(IncomingSectionsSinkType::Collector).await;
-    {
-        let mut mockup_interface_impl =
-            com_interface.implementation_mut::<MockupInterface>();
-        mockup_interface_impl.outside_receiver = Rc::new(RefCell::new(Some(receiver)));
-    }
+    let (
+        com_hub,
+        com_interface,
+        mut interface_in_sender,
+        mut com_hub_sections_receiver
+    ) = get_default_mock_setup_with_com_hub().await;
 
     let context_id = com_hub.block_handler.get_new_context_id();
 
@@ -51,51 +50,33 @@ async fn receive_single_block() {
         ..DXBBlock::default()
     };
     block.set_receivers(vec![TEST_ENDPOINT_ORIGIN.clone()]);
-
-    let block_bytes = block.to_bytes().unwrap();
     let block_endpoint_context_id = block.get_endpoint_context_id();
 
-    // Put into incoming queue of mock interface
-    sender.send(block_bytes).unwrap();
-    // update the com interface
-    {
-        let mockup_interface_impl =
-            com_interface.implementation_mut::<MockupInterface>();
-        mockup_interface_impl.update();
-    }
+    // Send as incoming data into the interface
+    interface_in_sender.send(block.to_bytes().unwrap()).await.unwrap();
 
     // wait a tick to allow processing
     yield_now().await;
 
     // block must be in incoming_sections_queue
-    let sections = com_hub.block_handler.drain_collected_sections();
-    assert_eq!(sections.len(), 1);
-    let section = sections.first().unwrap();
+    let block = get_last_received_single_block_from_receiver(&mut com_hub_sections_receiver).await;
 
-    // block must be a single block
-    match section {
-        IncomingSection::SingleBlock((Some(block), ..)) => {
-            info!("section: {section:?}");
-            assert_eq!(
-                block.get_endpoint_context_id(),
-                block_endpoint_context_id
-            );
-        }
-        _ => core::panic!("Expected a SingleBlock section"),
-    }
+    assert_eq!(
+        block.get_endpoint_context_id(),
+        block_endpoint_context_id
+    );
 }
 
 #[async_test]
 async fn receive_multiple_blocks() {
-    let (sender, receiver) = mpsc::channel::<Vec<u8>>();
 
-    let (com_hub, com_interface, _) =
-        get_mock_setup_and_socket(IncomingSectionsSinkType::Collector).await;
-    {
-        let mut mockup_interface_impl =
-            com_interface.implementation_mut::<MockupInterface>();
-        mockup_interface_impl.outside_receiver = Rc::new(RefCell::new(Some(receiver)));
-    }
+    let (
+        com_hub,
+        com_interface,
+        mut interface_in_sender,
+        mut com_hub_sections_receiver
+    ) = get_default_mock_setup_with_com_hub().await;
+
     let context_id = com_hub.block_handler.get_new_context_id();
     let section_index = 42;
 
@@ -140,22 +121,14 @@ async fn receive_multiple_blocks() {
 
     // 1. Send first block
     let block_bytes = blocks[0].to_bytes().unwrap();
-    sender.send(block_bytes).unwrap();
-    // update the com interface
-    {
-        let mockup_interface_impl =
-            com_interface.implementation_mut::<MockupInterface>();
-        mockup_interface_impl.update();
-    }
+    interface_in_sender.send(block_bytes).await.unwrap();
 
     // wait a tick to allow processing
     yield_now().await;
 
     // block must be in incoming_sections_queue
-    let mut sections = com_hub.block_handler.drain_collected_sections();
-    assert_eq!(sections.len(), 1);
-    let section = sections.first_mut().unwrap();
-    match section {
+    let mut section =com_hub_sections_receiver.next().await.unwrap();
+    match &section {
         IncomingSection::BlockStream((
             Some(blocks),
             incoming_context_section_id,
@@ -173,19 +146,13 @@ async fn receive_multiple_blocks() {
 
     // 2. Send second block
     let block_bytes = blocks[1].to_bytes().unwrap();
-    sender.send(block_bytes).unwrap();
-    // update the com interface
-    {
-        let mockup_interface_impl =
-            com_interface.implementation_mut::<MockupInterface>();
-        mockup_interface_impl.update();
-    }
+    interface_in_sender.send(block_bytes).await.unwrap();
 
     // wait a tick to allow processing
     yield_now().await;
 
     // no new incoming sections, old section receives new blocks
-    assert_eq!(com_hub.block_handler.drain_collected_sections().len(), 0);
+    assert!(com_hub_sections_receiver.next().await.is_none());
     // block must be a block stream
     match &section {
         IncomingSection::BlockStream((
@@ -206,15 +173,12 @@ async fn receive_multiple_blocks() {
 
 #[async_test]
 async fn receive_multiple_blocks_wrong_order() {
-    let (sender, receiver) = mpsc::channel::<Vec<u8>>();
-
-    let (com_hub, com_interface, socket_uuid) =
-        get_mock_setup_and_socket(IncomingSectionsSinkType::Collector).await;
-    {
-        let mut mockup_interface_impl =
-            com_interface.implementation_mut::<MockupInterface>();
-        mockup_interface_impl.outside_receiver = Rc::new(RefCell::new(Some(receiver)));
-    }
+    let (
+        com_hub,
+        com_interface,
+        mut interface_in_sender,
+        mut com_hub_sections_receiver
+    ) = get_default_mock_setup_with_com_hub().await;
 
     let context_id = com_hub.block_handler.get_new_context_id();
     let section_index = 42;
@@ -260,37 +224,23 @@ async fn receive_multiple_blocks_wrong_order() {
 
     // 1. Send first block
     let block_bytes = blocks[0].to_bytes().unwrap();
-    sender.send(block_bytes).unwrap();
-    // update the com interface
-    {
-        let mut mockup_interface_impl =
-            com_interface.implementation_mut::<MockupInterface>();
-        mockup_interface_impl.update();
-    }
+    interface_in_sender.send(block_bytes).await.unwrap();
+
     yield_now().await;
 
     // block is not in incoming_sections_queue
-    let sections = com_hub.block_handler.drain_collected_sections();
-    assert_eq!(sections.len(), 0);
+    assert!(com_hub_sections_receiver.next().await.is_none());
 
     // 2. Send second block
     let block_bytes = blocks[1].to_bytes().unwrap();
-    sender.send(block_bytes).unwrap();
-    // update the com interface
-    {
-        let mockup_interface_impl =
-            com_interface.implementation_mut::<MockupInterface>();
-        mockup_interface_impl.update();
-    }
+    interface_in_sender.send(block_bytes).await.unwrap();
+
     yield_now().await;
 
     // block must be in incoming_sections_queue
-    let mut sections = com_hub.block_handler.drain_collected_sections();
-    assert_eq!(sections.len(), 1);
-
-    let section = sections.first_mut().unwrap();
+    let mut section = com_hub_sections_receiver.next().await.unwrap();
     // block must be a block stream
-    match section {
+    match &section {
         IncomingSection::BlockStream((
             Some(blocks),
             incoming_context_section_id,
@@ -314,19 +264,20 @@ async fn receive_multiple_blocks_wrong_order() {
         }
         _ => core::panic!("Expected a BlockStream section"),
     }
+
+    // no new incoming sections
+    assert!(com_hub_sections_receiver.next().await.is_none());
 }
 
 #[async_test]
 async fn receive_multiple_sections() {
-    let (sender, receiver) = mpsc::channel::<Vec<u8>>();
+    let (
+        com_hub,
+        com_interface,
+        mut interface_in_sender,
+        mut com_hub_sections_receiver
+    ) = get_default_mock_setup_with_com_hub().await;
 
-    let (com_hub, com_interface, socket_uuid) =
-        get_mock_setup_and_socket(IncomingSectionsSinkType::Collector).await;
-    {
-        let mut mockup_interface_impl =
-            com_interface.implementation_mut::<MockupInterface>();
-        mockup_interface_impl.outside_receiver = Rc::new(RefCell::new(Some(receiver)));
-    }
 
     let context_id = com_hub.block_handler.get_new_context_id();
     let section_index_1 = 42;
@@ -403,22 +354,14 @@ async fn receive_multiple_sections() {
 
     // 1. Send first block
     let block_bytes = blocks[0].to_bytes().unwrap();
-    sender.send(block_bytes).unwrap();
-    // update the com interface
-    {
-        let mockup_interface_impl =
-            com_interface.implementation_mut::<MockupInterface>();
-        mockup_interface_impl.update();
-    }
+    interface_in_sender.send(block_bytes).await.unwrap();
 
     yield_now().await;
 
     // block must be in incoming_sections_queue
-    let mut sections = com_hub.block_handler.drain_collected_sections();
-    assert_eq!(sections.len(), 1);
-    let section = sections.first_mut().unwrap();
+    let mut section = com_hub_sections_receiver.next().await.unwrap();
     // block must be a block stream
-    match section {
+    match &section {
         IncomingSection::BlockStream((
             Some(blocks),
             incoming_context_section_id,
@@ -433,26 +376,20 @@ async fn receive_multiple_sections() {
         }
         _ => core::panic!("Expected a BlockStream section"),
     }
+    // no new incoming sections
+    assert!(com_hub_sections_receiver.next().await.is_none());
 
     // 2. Send second block
     let block_bytes = blocks[1].to_bytes().unwrap();
-    sender.send(block_bytes).unwrap();
-    // update the com interface
-    {
-        let mockup_interface_impl =
-            com_interface.implementation_mut::<MockupInterface>();
-        mockup_interface_impl.update();
-    }
+    interface_in_sender.send(block_bytes).await.unwrap();
+
     yield_now().await;
 
     // block must not be in incoming_sections_queue
-    let new_sections = com_hub.block_handler.drain_collected_sections();
-    assert_eq!(new_sections.len(), 0);
-
-    let section = sections.first_mut().unwrap();
+    let mut section = com_hub_sections_receiver.next().await.unwrap();
 
     // block must be a block stream
-    match section {
+    match &section {
         IncomingSection::BlockStream((
             Some(blocks),
             incoming_context_section_id,
@@ -468,23 +405,19 @@ async fn receive_multiple_sections() {
         _ => core::panic!("Expected a BlockStream section"),
     }
 
+    // no new incoming sections
+    assert!(com_hub_sections_receiver.next().await.is_none());
+
     // 3. Send third block
     let block_bytes = blocks[2].to_bytes().unwrap();
-    sender.send(block_bytes).unwrap();
-    // update the com interface
-    {
-        let mockup_interface_impl =
-            com_interface.implementation_mut::<MockupInterface>();
-        mockup_interface_impl.update();
-    }
+    interface_in_sender.send(block_bytes).await.unwrap();
+
     yield_now().await;
 
     // block must be in incoming_sections_queue
-    let mut sections = com_hub.block_handler.drain_collected_sections();
-    assert_eq!(sections.len(), 1);
-    let section = sections.first_mut().unwrap();
+    let mut section = com_hub_sections_receiver.next().await.unwrap();
     // block must be a block stream
-    match section {
+    match &section {
         IncomingSection::BlockStream((
             Some(blocks),
             incoming_context_section_id,
@@ -502,23 +435,15 @@ async fn receive_multiple_sections() {
 
     // 4. Send fourth block
     let block_bytes = blocks[3].to_bytes().unwrap();
-    sender.send(block_bytes).unwrap();
-    // update the com interface
-    {
-        let mockup_interface_impl =
-            com_interface.implementation_mut::<MockupInterface>();
-        mockup_interface_impl.update();
-    }
+    interface_in_sender.send(block_bytes).await.unwrap();
+
     yield_now().await;
 
     // block must not be in incoming_sections_queue
-    let new_sections = com_hub.block_handler.drain_collected_sections();
-    assert_eq!(new_sections.len(), 0);
-
-    let section = sections.first_mut().unwrap();
+    assert!(com_hub_sections_receiver.next().await.is_none());
 
     // block must be a block stream
-    match section {
+    match &section {
         IncomingSection::BlockStream((
             Some(blocks),
             incoming_context_section_id,
@@ -538,15 +463,12 @@ async fn receive_multiple_sections() {
 #[async_test]
 #[timeout(2000)]
 async fn await_response_block() {
-    let (sender, receiver) = mpsc::channel::<Vec<u8>>();
-
-    let (com_hub, com_interface, _) =
-        get_mock_setup_and_socket(IncomingSectionsSinkType::Collector).await;
-    {
-        let mut mockup_interface_impl =
-            com_interface.implementation_mut::<MockupInterface>();
-        mockup_interface_impl.outside_receiver = Rc::new(RefCell::new(Some(receiver)));
-    }
+    let (
+        com_hub,
+        com_interface,
+        mut interface_in_sender,
+        mut com_hub_sections_receiver
+    ) = get_default_mock_setup_with_com_hub().await;
 
     let context_id = com_hub.block_handler.get_new_context_id();
     let section_index = 42;
@@ -574,21 +496,14 @@ async fn await_response_block() {
         .block_handler
         .register_incoming_block_observer(context_id, section_index);
 
-    let block_bytes = block.to_bytes().unwrap();
-
     // Put into incoming queue of mock interface
-    sender.send(block_bytes).unwrap();
-    // update the com interface
-    {
-        let mockup_interface_impl =
-            com_interface.implementation_mut::<MockupInterface>();
-        mockup_interface_impl.update();
-    }
+    let block_bytes = block.to_bytes().unwrap();
+    interface_in_sender.send(block_bytes).await.unwrap();
+
     yield_now().await;
 
     // block must not be in incoming_sections_queue
-    let sections = com_hub.block_handler.drain_collected_sections();
-    assert_eq!(sections.len(), 0);
+    assert!(com_hub_sections_receiver.next().await.is_none());
 
     // await receiver
     let response = rx.next().await.unwrap();

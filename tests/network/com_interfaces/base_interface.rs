@@ -57,7 +57,7 @@ pub async fn test_construct() {
             );
             let ok = base_interface_b_clone
                 .get_mut()
-                .receive(socket_a_uuid_clone.get().clone(), data.to_vec())
+                .send_incoming_data(socket_a_uuid_clone.get().clone(), data.to_vec())
                 .is_ok();
             assert!(ok, "Failed to receive data");
             Box::pin(async move { ok })
@@ -81,7 +81,7 @@ pub async fn test_construct() {
             );
             let ok = base_interface_a_clone
                 .get_mut()
-                .receive(socket_b_uuid_clone.get().clone(), data.to_vec())
+                .send_incoming_data(socket_b_uuid_clone.get().clone(), data.to_vec())
                 .is_ok();
             assert!(ok, "Failed to receive data");
             Box::pin(async move { ok })
@@ -96,7 +96,7 @@ pub async fn test_construct() {
     ));
 
     // This is a socket of mockup-a connected to mockup-b
-    let (socket_a_uuid_inner, mut send_a_to_b) = base_interface_a
+    let socket_a_uuid_inner = base_interface_a
         .get_mut()
         .register_new_socket_with_endpoint(
             InterfaceDirection::Out,
@@ -105,7 +105,7 @@ pub async fn test_construct() {
     socket_a_uuid.set(socket_a_uuid_inner);
 
     // This is a socket of mockup-b connected to mockup-a
-    let (socket_b_uuid_inner, mut send_b_to_a) = base_interface_b
+    let socket_b_uuid_inner = base_interface_b
         .get_mut()
         .register_new_socket_with_endpoint(
             InterfaceDirection::Out,
@@ -114,10 +114,10 @@ pub async fn test_construct() {
     socket_b_uuid.set(socket_b_uuid_inner);
 
     // Send a message from mockup-a to mockup-b via socket_a
-    send_a_to_b.start_send(MESSAGE_A_TO_B.to_vec()).unwrap();
+    base_interface_a.get_mut().send_incoming_data(socket_a_uuid.get().clone(), MESSAGE_A_TO_B.to_vec()).unwrap();
 
     // Send a message from mockup-b to mockup-a via socket_b
-    send_b_to_a.start_send(MESSAGE_B_TO_A.to_vec()).unwrap();
+    base_interface_b.get_mut().send_incoming_data(socket_b_uuid.get().clone(), MESSAGE_B_TO_A.to_vec()).unwrap();
 
     base_interface_a.get().com_interface.close();
     base_interface_b.get().com_interface.close();

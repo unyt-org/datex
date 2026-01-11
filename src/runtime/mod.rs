@@ -14,7 +14,6 @@ use crate::{
     },
     logger::{init_logger, init_logger_debug},
     network::{
-        block_handler::IncomingSectionsSinkType,
         com_hub::{
             ComHub, InterfacePriority, network_response::ResponseOptions,
         },
@@ -50,6 +49,7 @@ use execution::context::{
 use global_context::{GlobalContext, set_global_context};
 use log::{debug, error, info};
 use serde::{Deserialize, Serialize};
+use crate::task::{create_unbounded_channel, UnboundedReceiver};
 
 pub mod dif_interface;
 pub mod execution;
@@ -110,6 +110,9 @@ pub struct RuntimeInternal {
     pub com_hub: Rc<ComHub>,
     pub endpoint: Endpoint,
     pub config: RuntimeConfig,
+
+    // receiver for incoming sections from com hub
+    pub(crate) incoming_sections_receiver: RefCell<UnboundedReceiver<IncomingSection>>,
 
     /// active execution contexts, stored by context_id
     pub execution_contexts:
@@ -465,10 +468,13 @@ impl Runtime {
     /// otherwise the runtime will panic here.
     pub fn new(config: RuntimeConfig, async_context: AsyncContext) -> Runtime {
         let endpoint = config.endpoint.clone().unwrap_or_else(Endpoint::random);
+        
+        let (incoming_sections_sender, incoming_sections_receiver) = create_unbounded_channel::<IncomingSection>();
+        
         let com_hub = ComHub::create(
             endpoint.clone(),
+            incoming_sections_sender,
             async_context.clone(),
-            IncomingSectionsSinkType::Channel,
         );
         let memory = RefCell::new(Memory::new(endpoint.clone()));
         Runtime {
@@ -478,6 +484,7 @@ impl Runtime {
                 memory,
                 config,
                 com_hub,
+                incoming_sections_receiver: RefCell::new(incoming_sections_receiver),
                 execution_contexts: RefCell::new(HashMap::new()),
                 async_context,
             }),

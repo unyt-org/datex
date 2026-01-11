@@ -23,6 +23,7 @@ use crate::{
     },
     values::value_container::ValueContainer,
 };
+use crate::network::com_hub::errors::InterfaceAddError;
 
 /// Interface management methods
 impl ComHub {
@@ -89,12 +90,12 @@ impl ComHub {
         &self,
         com_interface: Rc<ComInterface>,
         priority: InterfacePriority,
-    ) {
+    ) -> Result<(), InterfaceAddError> {
         self.interface_manager
             .borrow_mut()
-            .add_interface(com_interface.clone(), priority)
-            .unwrap();
+            .add_interface(com_interface.clone(), priority)?;
         self.handle_interface_socket_events(com_interface);
+        Ok(())
     }
 
     /// Creates a new interface of the given type with the provided setup data

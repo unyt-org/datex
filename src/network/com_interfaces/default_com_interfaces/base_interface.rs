@@ -104,7 +104,7 @@ impl BaseInterfaceHolder {
         }
     }
 
-    pub fn receive(
+    pub fn send_incoming_data(
         &mut self,
         receiver_socket_uuid: ComInterfaceSocketUUID,
         data: Vec<u8>,
@@ -138,7 +138,7 @@ impl BaseInterfaceHolder {
         &mut self,
         direction: InterfaceDirection,
         endpoint: Endpoint,
-    ) -> (ComInterfaceSocketUUID, UnboundedSender<Vec<u8>>) {
+    ) -> ComInterfaceSocketUUID {
         let (socket_uuid, sender) = self.create_and_init_socket(direction);
 
         self.com_interface
@@ -147,7 +147,10 @@ impl BaseInterfaceHolder {
             .unwrap()
             .register_socket_with_endpoint(socket_uuid.clone(), endpoint, 1)
             .unwrap();
-        (socket_uuid, sender)
+        
+        self.sender.insert(socket_uuid.clone(), sender.clone());
+
+        socket_uuid
     }
 }
 

@@ -2,13 +2,35 @@ use core::fmt::Display;
 
 use crate::network::com_interfaces::com_interface::error::ComInterfaceError;
 
+
+#[derive(Debug, PartialEq)]
+pub enum InterfaceAddError {
+    InterfaceAlreadyExists,
+    InvalidInterfaceDirectionForFallbackInterface,
+}
+
+impl Display for InterfaceAddError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            InterfaceAddError::InterfaceAlreadyExists => {
+                core::write!(f, "InterfaceAddError: Interface already exists")
+            }
+            InterfaceAddError::InvalidInterfaceDirectionForFallbackInterface => {
+                core::write!(
+                    f,
+                    "InterfaceAddError: Invalid interface direction for fallback interface"
+                )
+            }
+        }
+    }
+}
+
 #[derive(Debug, PartialEq)]
 pub enum InterfaceCreateError {
     InterfaceError(ComInterfaceError),
+    InterfaceAddError(InterfaceAddError),
     InterfaceCreationRequiresAsyncContext,
     InterfaceTypeDoesNotExist,
-    InterfaceAlreadyExists,
-    InvalidInterfaceDirectionForFallbackInterface,
     InterfaceOpenFailed,
     SetupDataParseError,
     InvalidSetupData(String),
@@ -17,6 +39,12 @@ pub enum InterfaceCreateError {
 impl InterfaceCreateError {
     pub fn invalid_setup_data<T: Display>(details: T) -> Self {
         InterfaceCreateError::InvalidSetupData(details.to_string())
+    }
+}
+
+impl From<InterfaceAddError> for InterfaceCreateError {
+    fn from(err: InterfaceAddError) -> Self {
+        InterfaceCreateError::InterfaceAddError(err)
     }
 }
 
@@ -38,12 +66,6 @@ impl Display for InterfaceCreateError {
             InterfaceCreateError::InterfaceTypeDoesNotExist => {
                 core::write!(f, "InterfaceCreationError: Interface type does not exist")
             }
-            InterfaceCreateError::InterfaceAlreadyExists => {
-                core::write!(f, "InterfaceCreationError: Interface already exists")
-            }
-            InterfaceCreateError::InvalidInterfaceDirectionForFallbackInterface => {
-                core::write!(f, "InterfaceCreationError: Invalid interface direction for fallback interface")
-            }
             InterfaceCreateError::InterfaceOpenFailed => {
                 core::write!(f, "InterfaceCreationError: Failed to open interface")
             }
@@ -52,6 +74,9 @@ impl Display for InterfaceCreateError {
             }
             InterfaceCreateError::InvalidSetupData(details) => {
                 core::write!(f, "InterfaceCreationError: Invalid setup data - {}", details)
+            }
+            InterfaceCreateError::InterfaceAddError(add_err) => {
+                core::write!(f, "InterfaceCreationError: InterfaceAddError - {}", add_err)
             }
         }
     }

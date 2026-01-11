@@ -49,7 +49,7 @@ use crate::{
     global::dxb_block::{DXBBlock, IncomingSection},
     network::{
         block_handler::{
-            BlockHandler, BlockHistoryData, IncomingSectionsSinkType,
+            BlockHandler, BlockHistoryData,
         },
         com_hub::network_tracing::{
             NetworkTraceHop, NetworkTraceHopDirection, NetworkTraceHopSocket,
@@ -65,6 +65,7 @@ use crate::{
     network::com_interfaces::com_interface::ComInterface,
     utils::once_consumer::OnceConsumer,
 };
+use crate::task::UnboundedSender;
 
 pub type IncomingBlockInterceptor =
     Box<dyn Fn(&DXBBlock, &ComInterfaceSocketUUID) + 'static>;
@@ -90,8 +91,6 @@ pub struct ComHub {
     interface_manager: Rc<RefCell<InterfaceManager>>,
 
     pub block_handler: BlockHandler,
-    pub incoming_sections_receiver:
-        RefCell<OnceConsumer<UnboundedReceiver<IncomingSection>>>,
 
     incoming_block_interceptors: RefCell<Vec<IncomingBlockInterceptor>>,
     outgoing_block_interceptors: RefCell<Vec<OutgoingBlockInterceptor>>,
@@ -159,22 +158,19 @@ impl ComHub {
 impl ComHub {
     pub fn create(
         endpoint: impl Into<Endpoint>,
+        incoming_sections_sender: UnboundedSender<IncomingSection>,
         async_context: AsyncContext,
-        incoming_sections_sink_type: IncomingSectionsSinkType,
     ) -> Rc<ComHub> {
         let (block_send_sender, send_request_receiver) =
             create_unbounded_channel::<BlockSendEvent>();
 
-        let (block_handler, incoming_sections_receiver) =
-            BlockHandler::init(incoming_sections_sink_type);
+        let block_handler =
+            BlockHandler::init(incoming_sections_sender);
         let com_hub = Rc::new(ComHub {
             endpoint: endpoint.into(),
             async_context,
             options: ComHubOptions::default(),
             block_handler,
-            incoming_sections_receiver: RefCell::new(OnceConsumer::from(
-                incoming_sections_receiver,
-            )),
             socket_manager: Rc::new(RefCell::new(SocketManager::new(
                 block_send_sender,
             ))),
@@ -193,7 +189,7 @@ impl ComHub {
         .unwrap();
 
         com_hub
-            .register_com_interface(local_interface, InterfacePriority::None);
+            .register_com_interface(local_interface, InterfacePriority::None).unwrap();
 
         // start handling ComHub events
         ComHub::handle_events(com_hub.clone());

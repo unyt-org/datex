@@ -1,13 +1,12 @@
 use crate::network::helpers::{
     mock_setup::{
         TEST_ENDPOINT_A, TEST_ENDPOINT_B,
-        get_mock_setup_and_socket_for_endpoint,
     },
     mockup_interface::MockupInterface,
 };
 use datex_core::{
     network::{
-        block_handler::IncomingSectionsSinkType, com_hub::InterfacePriority,
+        com_hub::InterfacePriority,
     },
     run_async_thread,
     utils::context::init_global_context,
@@ -31,7 +30,6 @@ async fn create_network_trace() {
             Some(receiver_b),
             InterfacePriority::default(),
             true,
-            IncomingSectionsSinkType::Channel,
         )
         .await;
 
@@ -43,7 +41,6 @@ async fn create_network_trace() {
             Some(receiver_a),
             InterfacePriority::default(),
             true,
-            IncomingSectionsSinkType::Channel,
         )
         .await;
 
@@ -101,7 +98,6 @@ async fn create_network_trace_separate_threads() {
                 Some(receiver_b),
                 InterfacePriority::default(),
                 true,
-                IncomingSectionsSinkType::Channel
             )
             .await;
 
@@ -141,7 +137,6 @@ async fn create_network_trace_separate_threads() {
                 Some(receiver_a),
                 InterfacePriority::default(),
                 true,
-                IncomingSectionsSinkType::Channel
             )
             .await;
 

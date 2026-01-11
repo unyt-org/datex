@@ -21,6 +21,7 @@ use crate::{
     },
     values::value_container::ValueContainer,
 };
+use crate::network::com_hub::errors::InterfaceAddError;
 
 type InterfaceMap =
     HashMap<ComInterfaceUUID, (Rc<ComInterface>, InterfacePriority)>;
@@ -113,6 +114,7 @@ impl InterfaceManager {
                     )?;
                     self.add_interface(interface.clone(), priority)
                         .map(|_| interface)
+                        .map_err(|e| e.into())
                 }
                 SyncOrAsyncComInterfaceImplementationFactoryFn::Async(
                     async_factory,
@@ -125,6 +127,7 @@ impl InterfaceManager {
 
                     self.add_interface(interface.clone(), priority)
                         .map(|_| interface)
+                        .map_err(|e| e.into())
                 }
             }
         } else {
@@ -154,6 +157,7 @@ impl InterfaceManager {
                     )?;
                     self.add_interface(interface.clone(), priority)
                         .map(|_| interface)
+                        .map_err(|e| e.into())
                 }
                 SyncOrAsyncComInterfaceImplementationFactoryFn::Async(_) => Err(
                     InterfaceCreateError::InterfaceCreationRequiresAsyncContext,
@@ -198,10 +202,10 @@ impl InterfaceManager {
         &mut self,
         interface: Rc<ComInterface>,
         priority: InterfacePriority,
-    ) -> Result<(), InterfaceCreateError> {
+    ) -> Result<(), InterfaceAddError> {
         let uuid = interface.uuid().clone();
         if self.interfaces.contains_key(&uuid) {
-            return Err(InterfaceCreateError::InterfaceAlreadyExists);
+            return Err(InterfaceAddError::InterfaceAlreadyExists);
         }
 
         // make sure the interface can send if a priority is set
@@ -209,7 +213,7 @@ impl InterfaceManager {
             && interface.properties().direction == InterfaceDirection::In
         {
             return Err(
-                InterfaceCreateError::InvalidInterfaceDirectionForFallbackInterface,
+                InterfaceAddError::InvalidInterfaceDirectionForFallbackInterface,
             );
         }
 

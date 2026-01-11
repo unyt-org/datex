@@ -39,6 +39,7 @@ pub struct MockupInterface {
     outgoing_queue: Rc<RefCell<Vec<(ComInterfaceSocketUUID, Vec<u8>)>>>,
     com_interface: Rc<ComInterface>,
     setup_data: MockupInterfaceSetupData,
+    pub socket_uuid: ComInterfaceSocketUUID,
 }
 
 impl Debug for MockupInterface {
@@ -56,7 +57,7 @@ impl MockupInterface {
         com_interface: Rc<ComInterface>,
     ) -> Result<(Self, InterfaceProperties), InterfaceCreateError> {
         let outgoing_queue = Rc::new(RefCell::new(Vec::new()));
-        let (_, sender) =
+        let (socket_uuid, sender) =
             Self::create_and_add_socket(&setup_data, com_interface.clone())?;
 
         let name = setup_data.name.clone();
@@ -76,6 +77,7 @@ impl MockupInterface {
 
         Ok((
             MockupInterface {
+                socket_uuid,
                 outgoing_queue,
                 setup_data,
                 com_interface: com_interface.clone(),
