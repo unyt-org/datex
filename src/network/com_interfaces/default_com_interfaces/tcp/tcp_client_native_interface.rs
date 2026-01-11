@@ -8,7 +8,7 @@ use crate::{
             error::ComInterfaceError,
             implementation::{
                 ComInterfaceAsyncFactory, ComInterfaceAsyncFactoryResult,
-                ComInterfaceImplementation, ComInterfaceSyncFactory,
+                ComInterfaceImplementation,
             },
             properties::{InterfaceDirection, InterfaceProperties},
             socket::ComInterfaceSocketUUID,
@@ -17,8 +17,7 @@ use crate::{
     },
     stdlib::{net::SocketAddr, rc::Rc, sync::Arc},
     task::{
-        UnboundedReceiver, UnboundedSender, spawn,
-        spawn_with_panic_notify_default,
+        UnboundedReceiver, UnboundedSender, spawn_with_panic_notify_default,
     },
 };
 use core::{
@@ -39,6 +38,7 @@ pub struct TCPClientNativeInterface {
     com_interface: Rc<ComInterface>,
 }
 
+/// Implementation of the TCP Client Native Interface
 impl TCPClientNativeInterface {
     async fn create(
         setup_data: TCPClientInterfaceSetupData,
@@ -60,17 +60,11 @@ impl TCPClientNativeInterface {
             .create_and_init_socket(InterfaceDirection::InOut, 1);
 
         let state = com_interface.state();
-        let shutdown_signal = Arc::new(Notify::new());
-        let shutdown_signal_clone = shutdown_signal.clone();
+        let shutdown_signal = com_interface.shutdown_signal();
 
-        spawn(async move {
-            Self::handle_receive(
-                read_half,
-                sender,
-                state,
-                shutdown_signal_clone,
-            )
-            .await;
+        spawn_with_panic_notify_default(async move {
+            Self::handle_receive(read_half, sender, state, shutdown_signal)
+                .await;
         });
 
         spawn_with_panic_notify_default(Self::event_handler_task(
@@ -96,7 +90,7 @@ impl TCPClientNativeInterface {
         read_half: tokio::net::tcp::OwnedReadHalf,
         mut sender: UnboundedSender<Vec<u8>>,
         state: Arc<Mutex<ComInterfaceStateWrapper>>,
-        shutdown_signal_clone: Arc<Notify>,
+        shutdown_signal: Arc<Notify>,
     ) {
         let mut reader = read_half;
         let mut buffer = [0u8; 1024];
@@ -122,7 +116,7 @@ impl TCPClientNativeInterface {
                         }
                     }
                 }
-                _ = shutdown_signal_clone.notified() => {
+                _ = shutdown_signal.notified() => {
                     break;
                 }
             }
@@ -141,6 +135,9 @@ impl TCPClientNativeInterface {
                         error!("Failed to send data: {}", e);
                         // TODO: handle error properly
                     }
+                }
+                ComInterfaceImplEvent::Destroy => {
+                    break;
                 }
                 _ => todo!(),
             }

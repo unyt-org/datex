@@ -28,6 +28,7 @@ use crate::{
 };
 use binrw::error::CustomError;
 use core::fmt::{Debug, Display};
+use tokio::sync::Notify;
 
 pub mod error;
 pub mod implementation;
@@ -161,6 +162,9 @@ impl ComInterfaceInner {
     pub fn set_state(&self, new_state: ComInterfaceState) {
         self.state.try_lock().unwrap().set(new_state);
     }
+    pub fn shutdown_signal(&self) -> Arc<Notify> {
+        self.state.try_lock().unwrap().shutdown_signal().clone()
+    }
 }
 
 /// A communication interface wrapper
@@ -181,6 +185,10 @@ impl Debug for ComInterface {
 }
 
 impl ComInterface {
+    pub fn shutdown_signal(&self) -> Arc<Notify> {
+        self.inner.shutdown_signal()
+    }
+
     /// Initializes a new ComInterface with a specified implementation as returned by the factory function
     pub fn create_from_sync_factory_fn(
         factory_fn: SyncComInterfaceImplementationFactoryFn,

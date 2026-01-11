@@ -1,3 +1,7 @@
+use crate::stdlib::sync::Arc;
+
+use tokio::sync::Notify;
+
 use crate::{
     network::com_interfaces::com_interface::ComInterfaceEvent,
     task::UnboundedSender,
@@ -16,6 +20,7 @@ pub enum ComInterfaceState {
 pub struct ComInterfaceStateWrapper {
     state: ComInterfaceState,
     event_sender: UnboundedSender<ComInterfaceEvent>,
+    shutdown_signal: Arc<Notify>, // FIXME deprecate tokio::sync::Notify in favor of stdlib::sync::Notify
 }
 
 /// Wrapper around ComInterfaceState that sends events on state changes
@@ -27,6 +32,7 @@ impl ComInterfaceStateWrapper {
         ComInterfaceStateWrapper {
             state,
             event_sender,
+            shutdown_signal: Arc::new(Notify::new()),
         }
     }
 
@@ -41,12 +47,19 @@ impl ComInterfaceStateWrapper {
         let event = match new_state {
             ComInterfaceState::NotConnected => ComInterfaceEvent::NotConnected,
             ComInterfaceState::Connected => ComInterfaceEvent::Connected,
-            ComInterfaceState::Destroyed => ComInterfaceEvent::Destroyed,
+            ComInterfaceState::Destroyed => {
+                self.shutdown_signal.notify_waiters();
+                ComInterfaceEvent::Destroyed
+            }
             ComInterfaceState::Closing | ComInterfaceState::Connecting => {
                 return;
             } // No event for connecting state
         };
         let _ = self.event_sender.start_send(event);
+    }
+
+    pub fn shutdown_signal(&self) -> Arc<Notify> {
+        self.shutdown_signal.clone()
     }
 }
 

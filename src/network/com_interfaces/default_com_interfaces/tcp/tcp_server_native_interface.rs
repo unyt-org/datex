@@ -29,6 +29,7 @@ use tokio::{
         TcpListener,
         tcp::{OwnedReadHalf, OwnedWriteHalf},
     },
+    select,
     sync::Notify,
 };
 
@@ -67,42 +68,55 @@ impl TCPServerNativeInterface {
         let tx_by_socket_clone = tx_by_socket.clone();
 
         let manager = com_interface.socket_manager();
+        let shutdown_signal = com_interface.shutdown_signal();
+        let shutdown_signal_clone = shutdown_signal.clone();
         spawn_with_panic_notify_default(async move {
             loop {
-                // Accept an incoming connection
-                match listener.accept().await {
-                    Ok((stream, _)) => {
-                        // Initialize socket in com socket manager
-                        let (socket_uuid, rx_sender) =
-                            manager.lock().unwrap().create_and_init_socket(
-                                InterfaceDirection::InOut,
-                                1,
-                            );
-                        // Handle the client connection
-                        let (tcp_read_half, tcp_write_half) =
-                            stream.into_split();
-                        let (tx_sender, tx_receiver) =
-                            create_unbounded_channel::<Vec<u8>>();
+                select! {
+                    // Wait for an incoming connection
+                    accept_result = listener.accept() => {
+                        let shutdown_signal_clone = shutdown_signal_clone.clone();
+                        match accept_result {
+                            Ok((stream, _)) => {
+                                // Initialize socket in com socket manager
+                                let (socket_uuid, rx_sender) =
+                                    manager.lock().unwrap().create_and_init_socket(
+                                        InterfaceDirection::InOut,
+                                        1,
+                                    );
+                                // Handle the client connection
+                                let (tcp_read_half, tcp_write_half) =
+                                    stream.into_split();
+                                let (tx_sender, tx_receiver) =
+                                    create_unbounded_channel::<Vec<u8>>();
 
-                        // Spawn a task to handle outgoing messages to the client
-                        spawn_with_panic_notify_default(async move {
-                            Self::handle_send(tcp_write_half, tx_receiver).await
-                        });
+                                let shutdown_signal = shutdown_signal_clone.clone();
+                                // Spawn a task to handle outgoing messages to the client
+                                spawn_with_panic_notify_default(async move {
+                                    Self::handle_send(tcp_write_half, tx_receiver, shutdown_signal).await
+                                });
 
-                        // Store the sender in the map
-                        tx_by_socket_clone
-                            .try_lock()
-                            .unwrap()
-                            .insert(socket_uuid, tx_sender);
+                                // Store the sender in the map
+                                tx_by_socket_clone
+                                    .try_lock()
+                                    .unwrap()
+                                    .insert(socket_uuid, tx_sender);
 
-                        // Spawn a task to handle incoming messages from the client
-                        spawn_with_panic_notify_default(async move {
-                            Self::handle_receive(tcp_read_half, rx_sender).await
-                        });
+                                // Spawn a task to handle incoming messages from the client
+                                spawn_with_panic_notify_default(async move {
+                                    Self::handle_receive(tcp_read_half, rx_sender, shutdown_signal_clone).await
+                                });
+                            }
+                            Err(e) => {
+                                error!("Failed to accept connection: {e}");
+                                continue;
+                            }
+                        }
+
                     }
-                    Err(e) => {
-                        error!("Failed to accept connection: {e}");
-                        continue;
+                    _ = shutdown_signal.notified() => {
+                        info!("Shutdown signal received, stopping listener loop");
+                        break;
                     }
                 }
             }
@@ -111,7 +125,6 @@ impl TCPServerNativeInterface {
         spawn_with_panic_notify_default(Self::event_handler_task(
             com_interface.take_interface_impl_event_receiver(),
             tx_by_socket.clone(),
-            Arc::new(Notify::new()),
         ));
 
         Ok((
@@ -131,7 +144,6 @@ impl TCPServerNativeInterface {
         tx_by_socket: Arc<
             Mutex<HashMap<ComInterfaceSocketUUID, UnboundedSender<Vec<u8>>>>,
         >,
-        shutdown_signal: Arc<Notify>,
     ) {
         while let Some(event) = receiver.next().await {
             match event {
@@ -149,7 +161,7 @@ impl TCPServerNativeInterface {
                     }
                 }
                 ComInterfaceImplEvent::Destroy => {
-                    shutdown_signal.notify_waiters();
+                    break;
                 }
                 _ => todo!(),
             }
@@ -159,21 +171,29 @@ impl TCPServerNativeInterface {
     async fn handle_receive(
         mut rx: OwnedReadHalf,
         mut bytes_in_sender: UnboundedSender<Vec<u8>>,
+        shutdown_signal: Arc<Notify>,
     ) {
         let mut buffer = [0u8; 1024];
         loop {
-            match rx.read(&mut buffer).await {
-                Ok(0) => {
-                    warn!("Connection closed by peer");
-                    break;
+            tokio::select! {
+                result = rx.read(&mut buffer) => {
+                    match result {
+                        Ok(0) => {
+                            warn!("Connection closed by peer");
+                            break;
+                        }
+                        Ok(n) => {
+                            bytes_in_sender.start_send(buffer[..n].to_vec()).expect("Failed to send received data to ComHub");
+                        }
+                        Err(e) => {
+                            error!("Failed to read from socket: {e}");
+                            break;
+                        }
+                    }
                 }
-                Ok(n) => {
-                    bytes_in_sender.start_send(buffer[..n].to_vec()).expect(
-                        "Failed to send received data to ComInterfaceSocket",
-                    );
-                }
-                Err(e) => {
-                    error!("Failed to read from socket: {e}");
+
+                // Shutdown signal received
+                _ = shutdown_signal.notified() => {
                     break;
                 }
             }
@@ -183,11 +203,27 @@ impl TCPServerNativeInterface {
     async fn handle_send(
         mut tcp_write_half: OwnedWriteHalf,
         mut tx_receiver: UnboundedReceiver<Vec<u8>>,
+        shutdown_signal: Arc<Notify>,
     ) {
-        while let Some(block) = tx_receiver.next().await {
-            if tcp_write_half.write_all(&block).await.is_err() {
-                // FIXME error handling when write fails
-                break;
+        loop {
+            tokio::select! {
+                maybe_block = tx_receiver.next() => {
+                    match maybe_block {
+                        Some(block) => {
+                            if tcp_write_half.write_all(&block).await.is_err() {
+                                error!("Failed to write to socket");
+                                break;
+                            }
+                        }
+                        None => {
+                            // FIXME handle closed channel properly
+                            continue;
+                        }
+                    }
+                }
+                _ = shutdown_signal.notified() => {
+                    break;
+                }
             }
         }
     }
@@ -219,7 +255,7 @@ impl ComInterfaceImplementation for TCPServerNativeInterface {}
 
 #[cfg(test)]
 mod tests {
-    use core::{assert_matches::assert_matches, u16};
+    use core::assert_matches::assert_matches;
 
     use datex_macros::async_test;
 
