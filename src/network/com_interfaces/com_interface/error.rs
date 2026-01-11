@@ -1,5 +1,4 @@
-use core::fmt::Debug;
-use core::fmt::Display;
+use core::fmt::{Debug, Display};
 
 pub enum ComInterfaceError {
     SocketNotFound,

@@ -8,14 +8,17 @@ use core::pin::Pin;
 
 use log::info;
 
-use crate::network::com_hub::errors::InterfaceCreateError;
-use crate::network::com_interfaces::com_interface::properties::InterfaceProperties;
-use crate::network::com_interfaces::com_interface::{
-    ComInterface, ComInterfaceEvent, ComInterfaceUUID,
-};
 use crate::{
     collections::HashMap,
-    network::com_hub::{ComHubError, InterfacePriority},
+    network::{
+        com_hub::{
+            ComHubError, InterfacePriority, errors::InterfaceCreateError,
+        },
+        com_interfaces::com_interface::{
+            ComInterface, ComInterfaceEvent, ComInterfaceUUID,
+            properties::InterfaceProperties,
+        },
+    },
     values::value_container::ValueContainer,
 };
 

@@ -1,33 +1,36 @@
 use super::tcp_common::TCPServerInterfaceSetupData;
-use crate::core::net::AddrParseError;
-use crate::network::com_hub::errors::InterfaceCreateError;
-use crate::network::com_interfaces::com_interface::error::ComInterfaceError;
-use crate::network::com_interfaces::com_interface::implementation::{
-    ComInterfaceAsyncFactory, ComInterfaceAsyncFactoryResult,
-    ComInterfaceImplementation, ComInterfaceSyncFactory,
+use crate::{
+    core::net::AddrParseError,
+    network::{
+        com_hub::errors::InterfaceCreateError,
+        com_interfaces::com_interface::{
+            ComInterface, ComInterfaceImplEvent,
+            error::ComInterfaceError,
+            implementation::{
+                ComInterfaceAsyncFactory, ComInterfaceAsyncFactoryResult,
+                ComInterfaceImplementation, ComInterfaceSyncFactory,
+            },
+            properties::{InterfaceDirection, InterfaceProperties},
+            socket::ComInterfaceSocketUUID,
+        },
+    },
+    std_sync::Mutex,
+    stdlib::{collections::HashMap, net::SocketAddr, rc::Rc, sync::Arc},
+    task::{
+        UnboundedReceiver, UnboundedSender, create_unbounded_channel,
+        spawn_with_panic_notify_default,
+    },
 };
-use crate::network::com_interfaces::com_interface::properties::{
-    InterfaceDirection, InterfaceProperties,
-};
-use crate::network::com_interfaces::com_interface::socket::ComInterfaceSocketUUID;
-use crate::network::com_interfaces::com_interface::{
-    ComInterface, ComInterfaceImplEvent,
-};
-use crate::std_sync::Mutex;
-use crate::stdlib::collections::HashMap;
-use crate::stdlib::net::SocketAddr;
-use crate::stdlib::rc::Rc;
-use crate::stdlib::sync::Arc;
-use crate::task::{UnboundedReceiver, UnboundedSender};
-use crate::task::{create_unbounded_channel, spawn_with_panic_notify_default};
-use core::prelude::rust_2024::*;
-use core::result::Result;
-use core::time::Duration;
+use core::{prelude::rust_2024::*, result::Result, time::Duration};
 use log::{error, info, warn};
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tokio::net::TcpListener;
-use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
-use tokio::sync::Notify;
+use tokio::{
+    io::{AsyncReadExt, AsyncWriteExt},
+    net::{
+        TcpListener,
+        tcp::{OwnedReadHalf, OwnedWriteHalf},
+    },
+    sync::Notify,
+};
 
 pub struct TCPServerNativeInterface {
     // TODO: properties not really needed, just for testing purposes, can we remove this?

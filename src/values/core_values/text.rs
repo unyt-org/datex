@@ -1,12 +1,13 @@
-use crate::references::reference::IndexOutOfBoundsError;
-use crate::stdlib::ops::{Add, AddAssign};
-use crate::stdlib::string::String;
-use crate::stdlib::string::ToString;
-use crate::stdlib::vec::Vec;
-use crate::traits::structural_eq::StructuralEq;
-use core::fmt::Display;
-use core::prelude::rust_2024::*;
-use core::result::Result;
+use crate::{
+    references::reference::IndexOutOfBoundsError,
+    stdlib::{
+        ops::{Add, AddAssign},
+        string::{String, ToString},
+        vec::Vec,
+    },
+    traits::structural_eq::StructuralEq,
+};
+use core::{fmt::Display, prelude::rust_2024::*, result::Result};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]

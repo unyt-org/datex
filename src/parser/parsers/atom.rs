@@ -1,16 +1,25 @@
-use crate::ast::expressions::{DatexExpression, DatexExpressionData, Slot};
-use crate::ast::spanned::Spanned;
-use crate::parser::errors::ParserError;
-use crate::parser::lexer::{DecimalWithVariant, IntegerWithVariant, Token};
-use crate::parser::utils::{
-    IntegerOrDecimal, IntegerOrTypedInteger, parse_integer_literal,
-    parse_integer_with_variant, unescape_text,
+use crate::{
+    ast::{
+        expressions::{DatexExpression, DatexExpressionData, Slot},
+        spanned::Spanned,
+    },
+    parser::{
+        Parser, SpannedParserError,
+        errors::ParserError,
+        lexer::{DecimalWithVariant, IntegerWithVariant, Token},
+        utils::{
+            IntegerOrDecimal, IntegerOrTypedInteger, parse_integer_literal,
+            parse_integer_with_variant, unescape_text,
+        },
+    },
+    values::{
+        core_values::{
+            decimal::{Decimal, typed_decimal::TypedDecimal},
+            endpoint::Endpoint,
+        },
+        pointer::PointerAddress,
+    },
 };
-use crate::parser::{Parser, SpannedParserError};
-use crate::values::core_values::decimal::Decimal;
-use crate::values::core_values::decimal::typed_decimal::TypedDecimal;
-use crate::values::core_values::endpoint::Endpoint;
-use crate::values::pointer::PointerAddress;
 use core::str::FromStr;
 
 impl Parser {
@@ -316,21 +325,29 @@ impl Parser {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast::expressions::{DatexExpressionData, Slot, Statements};
-    use crate::ast::spanned::Spanned;
-    use crate::ast::type_expressions::TypeExpressionData;
-    use crate::ast::type_expressions::{TypeExpression, Union};
-    use crate::parser::errors::ParserError;
-    use crate::parser::parser_result::ParserResult;
-    use crate::parser::tests::try_parse_and_return_on_first_error;
-    use crate::parser::tests::{parse, try_parse_and_collect_errors};
-    use crate::values::core_values::decimal::Decimal;
-    use crate::values::core_values::decimal::typed_decimal::TypedDecimal;
-    use crate::values::core_values::endpoint::{
-        Endpoint, InvalidEndpointError,
+    use crate::{
+        ast::{
+            expressions::{DatexExpressionData, Slot, Statements},
+            spanned::Spanned,
+            type_expressions::{TypeExpression, TypeExpressionData, Union},
+        },
+        parser::{
+            errors::ParserError,
+            parser_result::ParserResult,
+            tests::{
+                parse, try_parse_and_collect_errors,
+                try_parse_and_return_on_first_error,
+            },
+        },
+        values::{
+            core_values::{
+                decimal::{Decimal, typed_decimal::TypedDecimal},
+                endpoint::{Endpoint, InvalidEndpointError},
+                integer::typed_integer::TypedInteger,
+            },
+            pointer::PointerAddress,
+        },
     };
-    use crate::values::core_values::integer::typed_integer::TypedInteger;
-    use crate::values::pointer::PointerAddress;
     use core::assert_matches::assert_matches;
 
     #[test]

@@ -1,7 +1,11 @@
-use crate::global::instruction_codes::InstructionCode;
-use crate::global::protocol_structures::instructions::RegularInstruction;
-use core::fmt::{Display, Formatter};
-use core::prelude::rust_2024::*;
+use crate::global::{
+    instruction_codes::InstructionCode,
+    protocol_structures::instructions::RegularInstruction,
+};
+use core::{
+    fmt::{Display, Formatter},
+    prelude::rust_2024::*,
+};
 
 #[derive(Clone, Debug, PartialEq, Copy, Eq)]
 pub enum UnaryOperator {

@@ -1,14 +1,17 @@
-use crate::runtime::RuntimeInternal;
-use crate::runtime::execution::ExecutionError;
-use crate::runtime::execution::execution_loop::execution_loop;
-use crate::runtime::execution::execution_loop::interrupts::{
-    ExternalExecutionInterrupt, InterruptProvider,
+use crate::{
+    runtime::{
+        RuntimeInternal,
+        execution::{
+            ExecutionError,
+            execution_loop::{
+                execution_loop,
+                interrupts::{ExternalExecutionInterrupt, InterruptProvider},
+                state::{ExecutionLoopState, RuntimeExecutionState},
+            },
+        },
+    },
+    stdlib::{boxed::Box, rc::Rc},
 };
-use crate::runtime::execution::execution_loop::state::{
-    ExecutionLoopState, RuntimeExecutionState,
-};
-use crate::stdlib::boxed::Box;
-use crate::stdlib::rc::Rc;
 use core::cell::RefCell;
 
 #[derive(Debug, Clone, Default)]

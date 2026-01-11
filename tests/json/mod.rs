@@ -1,18 +1,18 @@
-use datex_core::assert_structural_eq;
-use datex_core::compiler::{CompileOptions, compile_script};
-use datex_core::decompiler::{
-    DecompileOptions, FormattingMode, FormattingOptions, decompile_body,
+use datex_core::{
+    assert_structural_eq,
+    compiler::{CompileOptions, compile_script},
+    decompiler::{
+        DecompileOptions, FormattingMode, FormattingOptions, decompile_body,
+    },
+    runtime::execution::{ExecutionInput, ExecutionOptions, execute_dxb_sync},
+    traits::structural_eq::StructuralEq,
+    values::{
+        core_value::CoreValue,
+        core_values::{decimal::Decimal, integer::Integer, map::Map},
+        value::Value,
+        value_container::ValueContainer,
+    },
 };
-use datex_core::runtime::execution::{
-    ExecutionInput, ExecutionOptions, execute_dxb_sync,
-};
-use datex_core::traits::structural_eq::StructuralEq;
-use datex_core::values::core_value::CoreValue;
-use datex_core::values::core_values::decimal::Decimal;
-use datex_core::values::core_values::integer::Integer;
-use datex_core::values::core_values::map::Map;
-use datex_core::values::value::Value;
-use datex_core::values::value_container::ValueContainer;
 use indexmap::IndexMap;
 use itertools::Itertools;
 use json_syntax::Parse;

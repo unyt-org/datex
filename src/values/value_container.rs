@@ -1,28 +1,25 @@
-use crate::traits::identity::Identity;
-use crate::traits::structural_eq::StructuralEq;
-use core::cell::RefCell;
-use core::prelude::rust_2024::*;
-use core::result::Result;
+use crate::traits::{identity::Identity, structural_eq::StructuralEq};
+use core::{cell::RefCell, prelude::rust_2024::*, result::Result};
 
 use super::value::Value;
-use crate::references::mutations::DIFUpdateDataOrMemory;
-use crate::references::observers::TransceiverId;
-use crate::references::reference::{AccessError, Reference};
-use crate::runtime::execution::ExecutionError;
-use crate::serde::deserializer::DatexDeserializer;
-use crate::stdlib::borrow::Cow;
-use crate::stdlib::boxed::Box;
-use crate::stdlib::rc::Rc;
-use crate::stdlib::string::String;
-use crate::traits::apply::Apply;
-use crate::traits::value_eq::ValueEq;
-use crate::types::definition::TypeDefinition;
-use crate::values::core_value::CoreValue;
-use crate::values::core_values::r#type::Type;
-use core::fmt::Display;
-use core::hash::{Hash, Hasher};
-use core::ops::FnOnce;
-use core::ops::{Add, Neg, Sub};
+use crate::{
+    references::{
+        mutations::DIFUpdateDataOrMemory,
+        observers::TransceiverId,
+        reference::{AccessError, Reference},
+    },
+    runtime::execution::ExecutionError,
+    serde::deserializer::DatexDeserializer,
+    stdlib::{borrow::Cow, boxed::Box, rc::Rc, string::String},
+    traits::{apply::Apply, value_eq::ValueEq},
+    types::definition::TypeDefinition,
+    values::{core_value::CoreValue, core_values::r#type::Type},
+};
+use core::{
+    fmt::Display,
+    hash::{Hash, Hasher},
+    ops::{Add, FnOnce, Neg, Sub},
+};
 use serde::Deserialize;
 
 #[derive(Debug, Clone, PartialEq)]

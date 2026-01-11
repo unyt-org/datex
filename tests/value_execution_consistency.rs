@@ -2,16 +2,18 @@
 /// the compile and execution process.
 /// Any value passed as input should be returned exactly as it was passed in after compilation and execution.
 use datex_core::compile;
-use datex_core::runtime::execution::{
-    ExecutionInput, ExecutionOptions, execute_dxb_sync,
+use datex_core::{
+    runtime::execution::{ExecutionInput, ExecutionOptions, execute_dxb_sync},
+    values::{
+        core_values::{
+            decimal::{Decimal, typed_decimal::TypedDecimal},
+            integer::{Integer, typed_integer::TypedInteger},
+            list::List,
+            map::Map,
+        },
+        value_container::ValueContainer,
+    },
 };
-use datex_core::values::core_values::decimal::Decimal;
-use datex_core::values::core_values::decimal::typed_decimal::TypedDecimal;
-use datex_core::values::core_values::integer::Integer;
-use datex_core::values::core_values::integer::typed_integer::TypedInteger;
-use datex_core::values::core_values::list::List;
-use datex_core::values::core_values::map::Map;
-use datex_core::values::value_container::ValueContainer;
 
 fn compile_and_execute(input: ValueContainer) -> ValueContainer {
     let (dxb, _) = compile!("?", input.clone()).unwrap();

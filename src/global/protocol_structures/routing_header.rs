@@ -1,10 +1,10 @@
 use super::serializable::Serializable;
-use crate::global::protocol_structures::instructions::RawFullPointerAddress;
-use crate::stdlib::vec::Vec;
-use crate::values::core_values::endpoint::Endpoint;
+use crate::{
+    global::protocol_structures::instructions::RawFullPointerAddress,
+    stdlib::vec::Vec, values::core_values::endpoint::Endpoint,
+};
 use binrw::{BinRead, BinWrite};
-use core::fmt::Display;
-use core::prelude::rust_2024::*;
+use core::{fmt::Display, prelude::rust_2024::*};
 use modular_bitfield::prelude::*;
 
 // 2 bit

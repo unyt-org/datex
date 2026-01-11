@@ -1,16 +1,23 @@
-use crate::ast::expressions::{CreateRef, DatexExpressionData, List, Map};
-use crate::ast::spanned::Spanned;
-use crate::ast::type_expressions::{
-    Intersection, TypeExpression, TypeExpressionData, Union,
+use crate::{
+    ast::{
+        expressions::{CreateRef, DatexExpressionData, List, Map},
+        spanned::Spanned,
+        type_expressions::{
+            Intersection, TypeExpression, TypeExpressionData, Union,
+        },
+    },
+    types::{
+        definition::TypeDefinition,
+        structural_type_definition::StructuralTypeDefinition,
+    },
+    values::{
+        core_value::CoreValue, core_values::r#type::Type, value::Value,
+        value_container::ValueContainer,
+    },
 };
-use crate::types::definition::TypeDefinition;
-use crate::types::structural_type_definition::StructuralTypeDefinition;
-use crate::values::core_value::CoreValue;
-use crate::values::core_values::r#type::Type;
-use crate::values::value::Value;
-use crate::values::value_container::ValueContainer;
-use datex_core::ast::expressions::CallableDeclaration;
-use datex_core::libs::core::CoreLibPointerId;
+use datex_core::{
+    ast::expressions::CallableDeclaration, libs::core::CoreLibPointerId,
+};
 
 impl From<&ValueContainer> for DatexExpressionData {
     /// Converts a ValueContainer into a DatexExpression AST.
@@ -193,14 +200,20 @@ fn type_to_type_expression(type_value: &Type) -> TypeExpression {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast::expressions::{DatexExpressionData, List};
-    use crate::ast::spanned::Spanned;
-    use crate::values::core_values::decimal::Decimal;
-    use crate::values::core_values::decimal::typed_decimal::TypedDecimal;
-    use crate::values::core_values::integer::Integer;
-    use crate::values::core_values::integer::typed_integer::TypedInteger;
-    use crate::values::value::Value;
-    use crate::values::value_container::ValueContainer;
+    use crate::{
+        ast::{
+            expressions::{DatexExpressionData, List},
+            spanned::Spanned,
+        },
+        values::{
+            core_values::{
+                decimal::{Decimal, typed_decimal::TypedDecimal},
+                integer::{Integer, typed_integer::TypedInteger},
+            },
+            value::Value,
+            value_container::ValueContainer,
+        },
+    };
 
     #[test]
     fn test_integer_to_ast() {

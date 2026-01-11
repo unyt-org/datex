@@ -1,39 +1,46 @@
-use crate::core_compiler::value_compiler::compile_value_container;
-use crate::global::dxb_block::{DXBBlock, IncomingSection, OutgoingContextId};
-use crate::global::protocol_structures::block_header::{
-    BlockHeader, BlockType, FlagsAndTimestamp,
+use crate::{
+    core_compiler::value_compiler::compile_value_container,
+    global::{
+        dxb_block::{DXBBlock, IncomingSection, OutgoingContextId},
+        protocol_structures::{
+            block_header::{BlockHeader, BlockType, FlagsAndTimestamp},
+            routing_header::RoutingHeader,
+        },
+    },
+    network::{
+        com_hub::{
+            ComHub,
+            network_response::{Response, ResponseOptions},
+        },
+        com_interfaces::com_interface::{
+            properties::InterfaceProperties, socket::ComInterfaceSocketUUID,
+        },
+    },
+    runtime::execution::{ExecutionInput, ExecutionOptions, execute_dxb_sync},
+    stdlib::{
+        borrow::ToOwned,
+        format,
+        string::{String, ToString},
+        vec,
+        vec::Vec,
+    },
+    utils::time::Time,
+    values::{
+        core_value::CoreValue,
+        core_values::{
+            boolean::Boolean, endpoint::Endpoint,
+            integer::typed_integer::TypedInteger, map::Map,
+        },
+        value::Value,
+        value_container::ValueContainer,
+    },
 };
-use crate::global::protocol_structures::routing_header::RoutingHeader;
-use crate::network::com_hub::ComHub;
-use crate::network::com_hub::network_response::{Response, ResponseOptions};
-use crate::network::com_interfaces::com_interface::properties::InterfaceProperties;
-use crate::network::com_interfaces::com_interface::socket::ComInterfaceSocketUUID;
-use crate::runtime::execution::{
-    ExecutionInput, ExecutionOptions, execute_dxb_sync,
+use core::{
+    fmt::Display, prelude::rust_2024::*, time::Duration, unreachable, writeln,
 };
-use crate::stdlib::borrow::ToOwned;
-use crate::stdlib::format;
-use crate::stdlib::string::String;
-use crate::stdlib::string::ToString;
-use crate::stdlib::vec;
-use crate::stdlib::vec::Vec;
-use crate::utils::time::Time;
-use crate::values::core_value::CoreValue;
-use crate::values::core_values::boolean::Boolean;
-use crate::values::core_values::endpoint::Endpoint;
-use crate::values::core_values::integer::typed_integer::TypedInteger;
-use crate::values::core_values::map::Map;
-use crate::values::value::Value;
-use crate::values::value_container::ValueContainer;
-use core::fmt::Display;
-use core::prelude::rust_2024::*;
-use core::time::Duration;
-use core::unreachable;
-use core::writeln;
 use log::{error, info};
 use serde::{Deserialize, Serialize};
-use serde_with::DisplayFromStr;
-use serde_with::serde_as;
+use serde_with::{DisplayFromStr, serde_as};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct NetworkTraceHopSocket {

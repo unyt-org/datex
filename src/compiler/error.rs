@@ -1,12 +1,14 @@
-use crate::ast::expressions::DatexExpression;
-use crate::compiler::precompiler::precompiled_ast::RichAst;
-use crate::parser::errors::{ParserError, SpannedParserError};
-use crate::serde::error::DeserializationError;
-use crate::type_inference::error::{
-    DetailedTypeErrors, SpannedTypeError, TypeError,
+use crate::{
+    ast::expressions::DatexExpression,
+    compiler::precompiler::precompiled_ast::RichAst,
+    parser::errors::{ParserError, SpannedParserError},
+    serde::error::DeserializationError,
+    type_inference::error::{DetailedTypeErrors, SpannedTypeError, TypeError},
 };
-use core::fmt::{Display, Formatter};
-use core::ops::Range;
+use core::{
+    fmt::{Display, Formatter},
+    ops::Range,
+};
 
 #[derive(Debug, Clone)]
 pub enum CompilerError {

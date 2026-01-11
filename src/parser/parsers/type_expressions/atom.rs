@@ -1,15 +1,22 @@
-use crate::ast::spanned::Spanned;
-use crate::ast::type_expressions::{TypeExpression, TypeExpressionData};
-use crate::parser::errors::ParserError;
-use crate::parser::lexer::{DecimalWithVariant, IntegerWithVariant, Token};
-use crate::parser::utils::{
-    IntegerOrDecimal, IntegerOrTypedInteger, parse_integer_literal,
-    parse_integer_with_variant, unescape_text,
+use crate::{
+    ast::{
+        spanned::Spanned,
+        type_expressions::{TypeExpression, TypeExpressionData},
+    },
+    parser::{
+        Parser, SpannedParserError,
+        errors::ParserError,
+        lexer::{DecimalWithVariant, IntegerWithVariant, Token},
+        utils::{
+            IntegerOrDecimal, IntegerOrTypedInteger, parse_integer_literal,
+            parse_integer_with_variant, unescape_text,
+        },
+    },
+    values::core_values::{
+        decimal::{Decimal, typed_decimal::TypedDecimal},
+        endpoint::Endpoint,
+    },
 };
-use crate::parser::{Parser, SpannedParserError};
-use crate::values::core_values::decimal::Decimal;
-use crate::values::core_values::decimal::typed_decimal::TypedDecimal;
-use crate::values::core_values::endpoint::Endpoint;
 use core::str::FromStr;
 
 impl Parser {
@@ -250,14 +257,16 @@ impl Parser {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast::type_expressions::TypeExpressionData;
-    use crate::values::core_values::decimal::Decimal;
-    use crate::values::core_values::decimal::typed_decimal::{
-        DecimalTypeVariant, TypedDecimal,
-    };
-    use crate::values::core_values::endpoint::Endpoint;
-    use crate::values::core_values::integer::typed_integer::{
-        IntegerTypeVariant, TypedInteger,
+    use crate::{
+        ast::type_expressions::TypeExpressionData,
+        values::core_values::{
+            decimal::{
+                Decimal,
+                typed_decimal::{DecimalTypeVariant, TypedDecimal},
+            },
+            endpoint::Endpoint,
+            integer::typed_integer::{IntegerTypeVariant, TypedInteger},
+        },
     };
     use datex_core::parser::parsers::type_expressions::tests::parse_type_expression;
 

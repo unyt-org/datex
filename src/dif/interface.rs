@@ -1,21 +1,22 @@
-use crate::dif::reference::DIFReference;
-use crate::dif::r#type::DIFTypeDefinition;
-use crate::dif::update::DIFUpdateData;
-use crate::dif::value::DIFReferenceNotFoundError;
-use crate::dif::value::DIFValueContainer;
-use crate::references::observers::{
-    ObserveOptions, ObserverError, TransceiverId,
+use crate::{
+    dif::{
+        reference::DIFReference,
+        r#type::DIFTypeDefinition,
+        update::DIFUpdateData,
+        value::{DIFReferenceNotFoundError, DIFValueContainer},
+    },
+    references::{
+        observers::{ObserveOptions, ObserverError, TransceiverId},
+        reference::{
+            AccessError, AssignmentError, ReferenceCreationError,
+            ReferenceMutability, TypeError,
+        },
+    },
+    runtime::execution::ExecutionError,
+    stdlib::boxed::Box,
+    values::pointer::PointerAddress,
 };
-use crate::references::reference::{
-    AccessError, AssignmentError, ReferenceCreationError, ReferenceMutability,
-    TypeError,
-};
-use crate::runtime::execution::ExecutionError;
-use crate::stdlib::boxed::Box;
-use crate::values::pointer::PointerAddress;
-use core::fmt::Display;
-use core::prelude::rust_2024::*;
-use core::result::Result;
+use core::{fmt::Display, prelude::rust_2024::*, result::Result};
 
 #[derive(Debug)]
 pub enum DIFObserveError {

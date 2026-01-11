@@ -1,25 +1,25 @@
-use crate::stdlib::{cell::RefCell, collections::HashSet, ops::Range, rc::Rc};
-use crate::type_inference::infer_expression_type_detailed_errors;
-use core::str::FromStr;
-use core::unreachable;
+use crate::{
+    stdlib::{cell::RefCell, collections::HashSet, ops::Range, rc::Rc},
+    type_inference::infer_expression_type_detailed_errors,
+};
+use core::{str::FromStr, unreachable};
 
 pub mod options;
 pub mod precompiled_ast;
 pub mod scope;
 pub mod scope_stack;
-use crate::ast::expressions::{
-    BinaryOperation, DatexExpressionData, Statements, TypeDeclaration,
-    VariableAccess, VariableAssignment, VariableDeclaration, VariableKind,
-};
-use crate::ast::expressions::{
-    DatexExpression, RemoteExecution, TypeDeclarationKind, VariantAccess,
-};
-use crate::ast::resolved_variable::ResolvedVariable;
-use crate::ast::type_expressions::{TypeExpressionData, TypeVariantAccess};
-use crate::types::definition::TypeDefinition;
-use crate::visitor::type_expression::visitable::TypeExpressionVisitResult;
 use crate::{
-    ast::spanned::Spanned,
+    ast::{
+        expressions::{
+            BinaryOperation, DatexExpression, DatexExpressionData,
+            RemoteExecution, Statements, TypeDeclaration, TypeDeclarationKind,
+            VariableAccess, VariableAssignment, VariableDeclaration,
+            VariableKind, VariantAccess,
+        },
+        resolved_variable::ResolvedVariable,
+        spanned::Spanned,
+        type_expressions::{TypeExpressionData, TypeVariantAccess},
+    },
     compiler::error::{
         CompilerError, DetailedCompilerErrors,
         DetailedCompilerErrorsWithRichAst, ErrorCollector, MaybeAction,
@@ -29,17 +29,18 @@ use crate::{
     global::operators::{BinaryOperator, binary::ArithmeticOperator},
     libs::core::CoreLibPointerId,
     references::type_reference::{NominalTypeDeclaration, TypeReference},
+    types::definition::TypeDefinition,
     values::core_values::r#type::Type,
     visitor::{
         VisitAction,
         expression::{ExpressionVisitor, visitable::ExpressionVisitResult},
-        type_expression::TypeExpressionVisitor,
+        type_expression::{
+            TypeExpressionVisitor, visitable::TypeExpressionVisitResult,
+        },
     },
 };
 use options::PrecompilerOptions;
-use precompiled_ast::AstMetadata;
-use precompiled_ast::RichAst;
-use precompiled_ast::VariableShape;
+use precompiled_ast::{AstMetadata, RichAst, VariableShape};
 use scope::NewScopeType;
 use scope_stack::PrecompilerScopeStack;
 
@@ -593,15 +594,18 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ast::expressions::{CreateRef, Deref};
-    use crate::ast::resolved_variable::ResolvedVariable;
-    use crate::ast::src_id::SrcId;
-    use crate::ast::type_expressions::{StructuralMap, TypeExpressionData};
-    use crate::parser::Parser;
-    use crate::references::reference::ReferenceMutability;
-    use crate::stdlib::assert_matches::assert_matches;
-    use crate::values::core_values::integer::Integer;
-    use crate::values::pointer::PointerAddress;
+    use crate::{
+        ast::{
+            expressions::{CreateRef, Deref},
+            resolved_variable::ResolvedVariable,
+            src_id::SrcId,
+            type_expressions::{StructuralMap, TypeExpressionData},
+        },
+        parser::Parser,
+        references::reference::ReferenceMutability,
+        stdlib::assert_matches::assert_matches,
+        values::{core_values::integer::Integer, pointer::PointerAddress},
+    };
 
     fn precompile(
         ast: DatexExpression,

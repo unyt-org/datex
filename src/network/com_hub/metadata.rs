@@ -1,19 +1,28 @@
 use core::prelude::rust_2024::*;
 use log::info;
 
-use crate::collections::HashMap;
-use crate::network::com_hub::ComHub;
-use crate::network::com_hub::managers::socket_manager::DynamicEndpointProperties;
-use crate::network::com_interfaces::com_interface::ComInterfaceUUID;
+use crate::{
+    collections::HashMap,
+    network::{
+        com_hub::{
+            ComHub, managers::socket_manager::DynamicEndpointProperties,
+        },
+        com_interfaces::com_interface::ComInterfaceUUID,
+    },
+};
 
-use crate::network::com_interfaces::com_interface::properties::InterfaceDirection;
-use crate::network::com_interfaces::com_interface::properties::InterfaceProperties;
-use crate::network::com_interfaces::com_interface::socket::ComInterfaceSocketUUID;
-use crate::stdlib::format;
-use crate::stdlib::string::String;
-use crate::stdlib::string::ToString;
-use crate::stdlib::vec::Vec;
-use crate::values::core_values::endpoint::Endpoint;
+use crate::{
+    network::com_interfaces::com_interface::{
+        properties::{InterfaceDirection, InterfaceProperties},
+        socket::ComInterfaceSocketUUID,
+    },
+    stdlib::{
+        format,
+        string::{String, ToString},
+        vec::Vec,
+    },
+    values::core_values::endpoint::Endpoint,
+};
 use core::fmt::Display;
 use itertools::Itertools;
 

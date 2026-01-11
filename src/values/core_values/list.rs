@@ -1,15 +1,13 @@
-use crate::references::reference::IndexOutOfBoundsError;
-use crate::stdlib::ops::Index;
-use crate::stdlib::vec::Vec;
-use crate::traits::structural_eq::StructuralEq;
-use crate::values::{
-    core_value::CoreValue,
-    value_container::{ValueContainer, ValueError},
+use crate::{
+    references::reference::IndexOutOfBoundsError,
+    stdlib::{ops::Index, vec::Vec},
+    traits::structural_eq::StructuralEq,
+    values::{
+        core_value::CoreValue,
+        value_container::{ValueContainer, ValueError},
+    },
 };
-use core::fmt::Display;
-use core::ops::Range;
-use core::prelude::rust_2024::*;
-use core::result::Result;
+use core::{fmt::Display, ops::Range, prelude::rust_2024::*, result::Result};
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct List(Vec<ValueContainer>);

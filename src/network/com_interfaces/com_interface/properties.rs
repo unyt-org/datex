@@ -1,11 +1,10 @@
-use crate::stdlib::string::String;
-use crate::stdlib::string::ToString;
-use crate::utils::time::Time;
-use core::prelude::rust_2024::*;
-use core::time::Duration;
+use crate::{
+    stdlib::string::{String, ToString},
+    utils::time::Time,
+};
+use core::{prelude::rust_2024::*, time::Duration};
 use serde::{Deserialize, Serialize};
-use serde_with::DurationMilliSeconds;
-use serde_with::serde_as;
+use serde_with::{DurationMilliSeconds, serde_as};
 use strum::EnumString;
 
 #[derive(PartialEq, Debug, Clone, EnumString, Serialize, Deserialize)]

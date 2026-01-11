@@ -1,25 +1,33 @@
-use crate::ast::resolved_variable::{ResolvedVariable, VariableId};
-use crate::ast::spanned::Spanned;
-use crate::ast::type_expressions::TypeExpression;
-use crate::global::operators::BinaryOperator;
-use crate::global::operators::ComparisonOperator;
-use crate::global::operators::assignment::AssignmentOperator;
-use crate::global::operators::{ArithmeticUnaryOperator, UnaryOperator};
-use crate::references::reference::ReferenceMutability;
-use crate::stdlib::vec::Vec;
-use crate::values::core_value::CoreValue;
 pub use crate::values::core_values::callable::CallableKind;
-use crate::values::core_values::decimal::Decimal;
-use crate::values::core_values::decimal::typed_decimal::TypedDecimal;
-use crate::values::core_values::endpoint::Endpoint;
-use crate::values::core_values::integer::Integer;
-use crate::values::core_values::integer::typed_integer::TypedInteger;
-use crate::values::core_values::r#type::Type;
-use crate::values::pointer::PointerAddress;
-use crate::values::value::Value;
-use crate::values::value_container::ValueContainer;
-use core::fmt::Display;
-use core::ops::{Neg, Range};
+use crate::{
+    ast::{
+        resolved_variable::{ResolvedVariable, VariableId},
+        spanned::Spanned,
+        type_expressions::TypeExpression,
+    },
+    global::operators::{
+        ArithmeticUnaryOperator, BinaryOperator, ComparisonOperator,
+        UnaryOperator, assignment::AssignmentOperator,
+    },
+    references::reference::ReferenceMutability,
+    stdlib::vec::Vec,
+    values::{
+        core_value::CoreValue,
+        core_values::{
+            decimal::{Decimal, typed_decimal::TypedDecimal},
+            endpoint::Endpoint,
+            integer::{Integer, typed_integer::TypedInteger},
+            r#type::Type,
+        },
+        pointer::PointerAddress,
+        value::Value,
+        value_container::ValueContainer,
+    },
+};
+use core::{
+    fmt::Display,
+    ops::{Neg, Range},
+};
 
 #[derive(Clone, Debug)]
 /// An expression in the AST

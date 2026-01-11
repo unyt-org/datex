@@ -1,13 +1,15 @@
-use crate::dif::{DIFConvertible, value::DIFValueContainer};
-use crate::references::observers::TransceiverId;
-use crate::runtime::memory::Memory;
-use crate::stdlib::borrow::Cow;
-use crate::stdlib::string::String;
-use crate::stdlib::string::ToString;
-use crate::stdlib::vec::Vec;
-use crate::values::value_container::ValueKey;
-use core::cell::RefCell;
-use core::prelude::rust_2024::*;
+use crate::{
+    dif::{DIFConvertible, value::DIFValueContainer},
+    references::observers::TransceiverId,
+    runtime::memory::Memory,
+    stdlib::{
+        borrow::Cow,
+        string::{String, ToString},
+        vec::Vec,
+    },
+    values::value_container::ValueKey,
+};
+use core::{cell::RefCell, prelude::rust_2024::*};
 use serde::{Deserialize, Serialize};
 
 /// Represents a key in the Datex Interface Format (DIF).
@@ -164,8 +166,7 @@ impl DIFUpdateData {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::dif::representation::DIFValueRepresentation;
-    use crate::dif::value::DIFValue;
+    use crate::dif::{representation::DIFValueRepresentation, value::DIFValue};
 
     #[test]
     fn serialize_replace() {

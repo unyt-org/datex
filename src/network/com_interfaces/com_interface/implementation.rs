@@ -1,12 +1,14 @@
-use crate::network::com_hub::ComHub;
-use crate::network::com_hub::errors::InterfaceCreateError;
-use crate::network::com_interfaces::com_interface::ComInterface;
-use crate::network::com_interfaces::com_interface::properties::InterfaceProperties;
-use crate::serde::Deserialize;
-use crate::serde::deserializer::from_value_container;
-use crate::stdlib::any::Any;
-use crate::stdlib::rc::Rc;
-use crate::values::value_container::ValueContainer;
+use crate::{
+    network::{
+        com_hub::{ComHub, errors::InterfaceCreateError},
+        com_interfaces::com_interface::{
+            ComInterface, properties::InterfaceProperties,
+        },
+    },
+    serde::{Deserialize, deserializer::from_value_container},
+    stdlib::{any::Any, rc::Rc},
+    values::value_container::ValueContainer,
+};
 use core::pin::Pin;
 
 pub trait ComInterfaceImplementation {

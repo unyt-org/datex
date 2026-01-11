@@ -1,8 +1,10 @@
-use crate::ast::spanned::Spanned;
-use crate::ast::type_expressions::TypeExpression;
-use crate::ast::type_expressions::{StructuralMap, TypeExpressionData};
-use crate::parser::lexer::Token;
-use crate::parser::{Parser, SpannedParserError};
+use crate::{
+    ast::{
+        spanned::Spanned,
+        type_expressions::{StructuralMap, TypeExpression, TypeExpressionData},
+    },
+    parser::{Parser, SpannedParserError, lexer::Token},
+};
 
 impl Parser {
     pub fn parse_type_map(
@@ -29,10 +31,15 @@ impl Parser {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast::spanned::Spanned;
-    use crate::ast::type_expressions::StructuralMap;
-    use crate::ast::type_expressions::{Intersection, TypeExpressionData};
-    use crate::parser::parsers::type_expressions::tests::parse_type_expression;
+    use crate::{
+        ast::{
+            spanned::Spanned,
+            type_expressions::{
+                Intersection, StructuralMap, TypeExpressionData,
+            },
+        },
+        parser::parsers::type_expressions::tests::parse_type_expression,
+    };
 
     #[test]
     fn parse_empty_map() {

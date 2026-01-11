@@ -1,19 +1,18 @@
-use crate::collections::HashMap;
-use crate::global::protocol_structures::instructions::RawFullPointerAddress;
-use crate::libs::core::{CoreLibPointerId, load_core_lib};
-use crate::references::reference::Reference;
-use crate::references::type_reference::TypeReference;
-use crate::references::value_reference::ValueReference;
-use crate::stdlib::rc::Rc;
-use crate::stdlib::vec::Vec;
-use crate::types::error::IllegalTypeError;
-use crate::utils::time::Time;
-use crate::values::core_values::endpoint::Endpoint;
-use crate::values::pointer::PointerAddress;
+use crate::{
+    collections::HashMap,
+    global::protocol_structures::instructions::RawFullPointerAddress,
+    libs::core::{CoreLibPointerId, load_core_lib},
+    references::{
+        reference::Reference, type_reference::TypeReference,
+        value_reference::ValueReference,
+    },
+    stdlib::{rc::Rc, vec::Vec},
+    types::error::IllegalTypeError,
+    utils::time::Time,
+    values::{core_values::endpoint::Endpoint, pointer::PointerAddress},
+};
 use binrw::io::Cursor;
-use core::cell::RefCell;
-use core::prelude::rust_2024::*;
-use core::result::Result;
+use core::{cell::RefCell, prelude::rust_2024::*, result::Result};
 
 #[derive(Debug, Default)]
 pub struct Memory {

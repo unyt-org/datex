@@ -1,21 +1,19 @@
-use crate::dif::DIFConvertible;
-use crate::dif::representation::DIFTypeRepresentation;
-use crate::references::reference::ReferenceMutability;
-use crate::runtime::memory::Memory;
-use crate::stdlib::boxed::Box;
-use crate::stdlib::format;
-use crate::stdlib::string::String;
-use crate::stdlib::vec::Vec;
-use crate::types::definition::TypeDefinition;
-use crate::types::structural_type_definition::StructuralTypeDefinition;
-use crate::values::core_values::r#type::Type;
-use crate::values::pointer::PointerAddress;
-use core::cell::RefCell;
-use core::prelude::rust_2024::*;
+use crate::{
+    dif::{DIFConvertible, representation::DIFTypeRepresentation},
+    references::reference::ReferenceMutability,
+    runtime::memory::Memory,
+    stdlib::{boxed::Box, format, string::String, vec::Vec},
+    types::{
+        definition::TypeDefinition,
+        structural_type_definition::StructuralTypeDefinition,
+    },
+    values::{core_values::r#type::Type, pointer::PointerAddress},
+};
+use core::{cell::RefCell, prelude::rust_2024::*};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
-use serde::de::IntoDeserializer;
-use serde::ser::SerializeStruct;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize, Serialize, de::IntoDeserializer, ser::SerializeStruct,
+};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum DIFTypeDefinition {

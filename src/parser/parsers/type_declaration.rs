@@ -1,10 +1,13 @@
-use crate::ast::expressions::{
-    DatexExpression, DatexExpressionData, TypeDeclaration, TypeDeclarationKind,
+use crate::{
+    ast::{
+        expressions::{
+            DatexExpression, DatexExpressionData, TypeDeclaration,
+            TypeDeclarationKind,
+        },
+        spanned::Spanned,
+    },
+    parser::{Parser, SpannedParserError, errors::ParserError, lexer::Token},
 };
-use crate::ast::spanned::Spanned;
-use crate::parser::errors::ParserError;
-use crate::parser::lexer::Token;
-use crate::parser::{Parser, SpannedParserError};
 
 impl Parser {
     pub(crate) fn parse_type_declaration(
@@ -71,13 +74,17 @@ impl Parser {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast::expressions::{
-        DatexExpressionData, TypeDeclaration, TypeDeclarationKind,
-        VariableDeclaration, VariableKind,
+    use crate::{
+        ast::{
+            expressions::{
+                DatexExpressionData, TypeDeclaration, TypeDeclarationKind,
+                VariableDeclaration, VariableKind,
+            },
+            spanned::Spanned,
+            type_expressions::TypeExpressionData,
+        },
+        parser::tests::{parse, try_parse_and_return_on_first_error},
     };
-    use crate::ast::spanned::Spanned;
-    use crate::ast::type_expressions::TypeExpressionData;
-    use crate::parser::tests::{parse, try_parse_and_return_on_first_error};
 
     #[test]
     fn parse_type_declaration() {

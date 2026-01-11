@@ -1,20 +1,26 @@
-use crate::crypto::random;
-use crate::stdlib::format;
-use crate::stdlib::string::String;
-use crate::stdlib::string::ToString;
-use crate::stdlib::vec::Vec;
-use crate::traits::structural_eq::StructuralEq;
-use crate::utils::buffers::buffer_to_hex;
-use crate::values::core_value::CoreValue;
-use crate::values::value_container::{ValueContainer, ValueError};
-use binrw::io::Cursor;
-use binrw::{BinRead, BinWrite};
-use core::fmt::{Debug, Display, Formatter};
-use core::hash::Hash;
-use core::prelude::rust_2024::*;
-use core::result::Result;
-use core::str;
-use core::str::FromStr;
+use crate::{
+    crypto::random,
+    stdlib::{
+        format,
+        string::{String, ToString},
+        vec::Vec,
+    },
+    traits::structural_eq::StructuralEq,
+    utils::buffers::buffer_to_hex,
+    values::{
+        core_value::CoreValue,
+        value_container::{ValueContainer, ValueError},
+    },
+};
+use binrw::{BinRead, BinWrite, io::Cursor};
+use core::{
+    fmt::{Debug, Display, Formatter},
+    hash::Hash,
+    prelude::rust_2024::*,
+    result::Result,
+    str,
+    str::FromStr,
+};
 use hex::decode;
 use serde::{Deserialize, Serialize};
 

@@ -1,9 +1,13 @@
-use crate::runtime::execution::ExecutionError;
-use crate::runtime::execution::execution_loop::slots::{
-    get_slot_value, get_slot_value_mut,
+use crate::{
+    runtime::execution::{
+        ExecutionError,
+        execution_loop::{
+            slots::{get_slot_value, get_slot_value_mut},
+            state::RuntimeExecutionState,
+        },
+    },
+    values::value_container::ValueContainer,
 };
-use crate::runtime::execution::execution_loop::state::RuntimeExecutionState;
-use crate::values::value_container::ValueContainer;
 
 /// Represents a value in the runtime execution context, which can either be a direct
 /// `ValueContainer` or a reference to a slot address where the value is stored.

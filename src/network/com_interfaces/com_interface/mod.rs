@@ -1,35 +1,33 @@
-use crate::network::com_interfaces::com_interface::implementation::{
-    ComInterfaceAsyncFactory, ComInterfaceImpl, ComInterfaceImplementation,
-    ComInterfaceSyncFactory,
-};
-use crate::network::com_interfaces::com_interface::properties::InterfaceProperties;
-use crate::network::com_interfaces::com_interface::socket::{
-    ComInterfaceSocketEvent, ComInterfaceSocketUUID,
-};
-use crate::network::com_interfaces::com_interface::socket_manager::ComInterfaceSocketManager;
-use crate::network::com_interfaces::com_interface::state::{
-    ComInterfaceState, ComInterfaceStateWrapper,
+use crate::network::com_interfaces::com_interface::{
+    implementation::{
+        ComInterfaceAsyncFactory, ComInterfaceImpl, ComInterfaceImplementation,
+        ComInterfaceSyncFactory,
+    },
+    properties::InterfaceProperties,
+    socket::{ComInterfaceSocketEvent, ComInterfaceSocketUUID},
+    socket_manager::ComInterfaceSocketManager,
+    state::{ComInterfaceState, ComInterfaceStateWrapper},
 };
 
-use crate::network::com_hub::errors::InterfaceCreateError;
-use crate::network::com_hub::managers::interface_manager::{
-    AsyncComInterfaceImplementationFactoryFn,
-    SyncComInterfaceImplementationFactoryFn,
+use crate::{
+    network::com_hub::{
+        errors::InterfaceCreateError,
+        managers::interface_manager::{
+            AsyncComInterfaceImplementationFactoryFn,
+            SyncComInterfaceImplementationFactoryFn,
+        },
+    },
+    stdlib::{
+        cell::{Ref, RefCell, RefMut},
+        rc::Rc,
+        sync::{Arc, Mutex},
+    },
+    task::{UnboundedReceiver, UnboundedSender, create_unbounded_channel},
+    utils::{once_consumer::OnceConsumer, uuid::UUID},
+    values::value_container::ValueContainer,
 };
-use crate::stdlib::cell::Ref;
-use crate::stdlib::cell::RefCell;
-use crate::stdlib::cell::RefMut;
-use crate::stdlib::rc::Rc;
-use crate::stdlib::sync::{Arc, Mutex};
-use crate::task::{
-    UnboundedReceiver, UnboundedSender, create_unbounded_channel,
-};
-use crate::utils::once_consumer::OnceConsumer;
-use crate::utils::uuid::UUID;
-use crate::values::value_container::ValueContainer;
 use binrw::error::CustomError;
-use core::fmt::Debug;
-use core::fmt::Display;
+use core::fmt::{Debug, Display};
 
 pub mod error;
 pub mod implementation;

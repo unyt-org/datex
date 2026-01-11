@@ -1,18 +1,27 @@
-use std::assert_matches::assert_matches;
-use std::sync::{Arc, Mutex};
-
-use datex_core::global::dxb_block::DXBBlock;
-use datex_core::network::com_hub::errors::InterfaceCreateError;
-use datex_core::network::com_interfaces::com_interface::socket::ComInterfaceSocketEvent;
-use datex_core::network::com_interfaces::default_com_interfaces::tcp::{
-    tcp_client_native_interface::TCPClientNativeInterface,
-    tcp_server_native_interface::TCPServerNativeInterface,
+use std::{
+    assert_matches::assert_matches,
+    sync::{Arc, Mutex},
 };
-use datex_core::utils::context::init_global_context;
+
+use datex_core::{
+    global::dxb_block::DXBBlock,
+    network::{
+        com_hub::errors::InterfaceCreateError,
+        com_interfaces::{
+            com_interface::{ComInterface, socket::ComInterfaceSocketEvent},
+            default_com_interfaces::tcp::{
+                tcp_client_native_interface::TCPClientNativeInterface,
+                tcp_common::{
+                    TCPClientInterfaceSetupData, TCPServerInterfaceSetupData,
+                },
+                tcp_server_native_interface::TCPServerNativeInterface,
+            },
+        },
+    },
+    utils::context::init_global_context,
+};
 use datex_macros::async_test;
 use futures::future::join_all;
-use datex_core::network::com_interfaces::com_interface::ComInterface;
-use datex_core::network::com_interfaces::default_com_interfaces::tcp::tcp_common::{TCPClientInterfaceSetupData, TCPServerInterfaceSetupData};
 
 #[async_test]
 pub async fn test_client_no_connection() {

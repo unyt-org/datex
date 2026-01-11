@@ -1,9 +1,10 @@
 use crate::{
     global::dxb_block::IncomingSection, values::core_values::endpoint::Endpoint,
 };
-use core::fmt::Display;
-use core::fmt::Formatter;
-use core::time::Duration;
+use core::{
+    fmt::{Display, Formatter},
+    time::Duration,
+};
 #[derive(Default, PartialEq, Debug)]
 pub enum ResponseResolutionStrategy {
     /// Promise.allSettled

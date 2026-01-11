@@ -1,13 +1,9 @@
-use crate::dif::update::{DIFUpdate, DIFUpdateData};
-use crate::references::{
-    reference::Reference, value_reference::ValueReference,
+use crate::{
+    dif::update::{DIFUpdate, DIFUpdateData},
+    references::{reference::Reference, value_reference::ValueReference},
+    stdlib::{cell::RefCell, rc::Rc, vec, vec::Vec},
 };
-use crate::stdlib::vec;
-use crate::stdlib::vec::Vec;
-use crate::stdlib::{cell::RefCell, rc::Rc};
-use core::fmt::Display;
-use core::prelude::rust_2024::*;
-use core::result::Result;
+use core::{fmt::Display, prelude::rust_2024::*, result::Result};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug)]
@@ -176,26 +172,24 @@ impl Reference {
 
 #[cfg(test)]
 mod tests {
-    use crate::dif::r#type::DIFTypeDefinition;
-    use crate::dif::update::{DIFUpdate, DIFUpdateData};
-    use crate::references::observers::Observer;
-    use crate::references::observers::{ObserveOptions, TransceiverId};
-    use crate::runtime::memory::Memory;
-    use crate::stdlib::borrow::Cow;
-    use crate::stdlib::{
-        assert_matches::assert_matches, cell::RefCell, rc::Rc,
-    };
-    use crate::values::core_values::map::Map;
     use crate::{
         dif::{
             representation::DIFValueRepresentation,
+            r#type::DIFTypeDefinition,
+            update::{DIFUpdate, DIFUpdateData},
             value::{DIFValue, DIFValueContainer},
         },
         references::{
-            observers::ObserverError,
+            observers::{
+                ObserveOptions, Observer, ObserverError, TransceiverId,
+            },
             reference::{Reference, ReferenceMutability},
         },
-        values::value_container::ValueContainer,
+        runtime::memory::Memory,
+        stdlib::{
+            assert_matches::assert_matches, borrow::Cow, cell::RefCell, rc::Rc,
+        },
+        values::{core_values::map::Map, value_container::ValueContainer},
     };
 
     /// Helper function to record DIF updates observed on a reference

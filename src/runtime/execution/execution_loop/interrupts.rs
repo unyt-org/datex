@@ -1,10 +1,11 @@
-use crate::global::protocol_structures::instructions::{
-    RawFullPointerAddress, RawInternalPointerAddress, RawLocalPointerAddress,
+use crate::{
+    global::protocol_structures::instructions::{
+        RawFullPointerAddress, RawInternalPointerAddress,
+        RawLocalPointerAddress,
+    },
+    stdlib::{cell::RefCell, rc::Rc, vec::Vec},
+    values::value_container::ValueContainer,
 };
-use crate::stdlib::cell::RefCell;
-use crate::stdlib::rc::Rc;
-use crate::stdlib::vec::Vec;
-use crate::values::value_container::ValueContainer;
 
 #[derive(Debug)]
 pub enum ExecutionInterrupt {

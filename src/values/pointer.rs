@@ -1,11 +1,10 @@
-use crate::global::protocol_structures::instructions::{
-    RawInternalPointerAddress, RawPointerAddress,
+use crate::{
+    global::protocol_structures::instructions::{
+        RawInternalPointerAddress, RawPointerAddress,
+    },
+    stdlib::{format, string::String},
 };
-use crate::stdlib::format;
-use crate::stdlib::string::String;
-use core::fmt::Display;
-use core::prelude::rust_2024::*;
-use core::result::Result;
+use core::{fmt::Display, prelude::rust_2024::*, result::Result};
 use datex_core::global::protocol_structures::instructions::{
     RawFullPointerAddress, RawLocalPointerAddress,
 };

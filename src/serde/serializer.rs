@@ -1,19 +1,20 @@
-use crate::core_compiler::value_compiler::compile_value_container;
-use crate::runtime::execution::{
-    ExecutionInput, ExecutionOptions, execute_dxb_sync,
+use crate::{
+    core_compiler::value_compiler::compile_value_container,
+    runtime::execution::{ExecutionInput, ExecutionOptions, execute_dxb_sync},
+    serde::error::SerializationError,
+    stdlib::{
+        format,
+        string::{String, ToString},
+        vec,
+        vec::Vec,
+    },
+    values::{
+        core_value::CoreValue,
+        core_values::{list::List, map::Map},
+        value_container::ValueContainer,
+    },
 };
-use crate::serde::error::SerializationError;
-use crate::stdlib::format;
-use crate::stdlib::string::String;
-use crate::stdlib::string::ToString;
-use crate::stdlib::vec;
-use crate::stdlib::vec::Vec;
-use crate::values::core_value::CoreValue;
-use crate::values::core_values::list::List;
-use crate::values::core_values::map::Map;
-use crate::values::value_container::ValueContainer;
-use core::prelude::rust_2024::*;
-use core::result::Result;
+use core::{prelude::rust_2024::*, result::Result};
 use serde::ser::{
     Serialize, SerializeMap, SerializeSeq, SerializeStruct,
     SerializeStructVariant, SerializeTuple, SerializeTupleStruct,
@@ -600,17 +601,19 @@ impl Serializer for &mut DatexSerializer {
 
 #[cfg(test)]
 mod tests {
-    use crate::assert_structural_eq;
-    use crate::serde::serializer::{
-        DatexSerializer, to_bytes, to_value_container,
+    use crate::{
+        assert_structural_eq,
+        serde::serializer::{DatexSerializer, to_bytes, to_value_container},
+        traits::structural_eq::StructuralEq,
+        values::core_values::{endpoint::Endpoint, map::Map},
     };
-    use crate::traits::structural_eq::StructuralEq;
-    use crate::values::core_values::endpoint::Endpoint;
-    use crate::values::core_values::map::Map;
 
-    use crate::stdlib::assert_matches::assert_matches;
-    use crate::values::{
-        core_value::CoreValue, value::Value, value_container::ValueContainer,
+    use crate::{
+        stdlib::assert_matches::assert_matches,
+        values::{
+            core_value::CoreValue, value::Value,
+            value_container::ValueContainer,
+        },
     };
     use serde::{Deserialize, Serialize};
 

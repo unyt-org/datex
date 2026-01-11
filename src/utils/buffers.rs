@@ -1,9 +1,8 @@
-use crate::stdlib::string::String;
-use crate::stdlib::string::ToString;
-use crate::stdlib::vec::Vec;
-use core::convert::TryInto;
-use core::fmt::Write;
-use core::iter::FromIterator;
+use crate::stdlib::{
+    string::{String, ToString},
+    vec::Vec,
+};
+use core::{convert::TryInto, fmt::Write, iter::FromIterator};
 use itertools::Itertools;
 
 /*

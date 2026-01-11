@@ -1,10 +1,14 @@
-use crate::ast::expressions::{
-    DatexExpression, DatexExpressionData, Statements,
+use crate::{
+    ast::{
+        expressions::{DatexExpression, DatexExpressionData, Statements},
+        spanned::Spanned,
+    },
+    parser::{
+        Parser,
+        errors::SpannedParserError,
+        lexer::{SpannedToken, Token},
+    },
 };
-use crate::ast::spanned::Spanned;
-use crate::parser::Parser;
-use crate::parser::errors::SpannedParserError;
-use crate::parser::lexer::{SpannedToken, Token};
 
 impl Parser {
     pub(crate) fn parse_parenthesized_statements(
@@ -106,9 +110,13 @@ impl Parser {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast::expressions::{DatexExpressionData, Statements};
-    use crate::ast::spanned::Spanned;
-    use crate::parser::tests::{parse, try_parse_and_return_on_first_error};
+    use crate::{
+        ast::{
+            expressions::{DatexExpressionData, Statements},
+            spanned::Spanned,
+        },
+        parser::tests::{parse, try_parse_and_return_on_first_error},
+    };
 
     #[test]
     fn parse_empty_statements() {

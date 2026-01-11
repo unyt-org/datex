@@ -1,12 +1,14 @@
-use crate::dxb_parser::body::DXBParserError;
-use crate::network::com_hub::network_response::ResponseError;
-use crate::references::reference::{
-    AccessError, AssignmentError, ReferenceCreationError,
+use crate::{
+    dxb_parser::body::DXBParserError,
+    network::com_hub::network_response::ResponseError,
+    references::reference::{
+        AccessError, AssignmentError, ReferenceCreationError,
+    },
+    runtime::execution::execution_loop::state::ExecutionLoopState,
+    stdlib::string::String,
+    types::error::IllegalTypeError,
+    values::value_container::{ValueContainer, ValueError},
 };
-use crate::runtime::execution::execution_loop::state::ExecutionLoopState;
-use crate::stdlib::string::String;
-use crate::types::error::IllegalTypeError;
-use crate::values::value_container::{ValueContainer, ValueError};
 use core::fmt::Display;
 
 #[derive(Debug, Clone, PartialEq, Eq)]

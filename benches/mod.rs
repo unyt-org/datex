@@ -7,10 +7,12 @@
 
 use core::hint::black_box;
 
-use crate::json::{
-    get_json_test_string, json_to_dxb, json_to_runtime_value_baseline_serde,
+use crate::{
+    json::{
+        get_json_test_string, json_to_dxb, json_to_runtime_value_baseline_serde,
+    },
+    runtime::runtime_init,
 };
-use crate::runtime::runtime_init;
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use datex_core::compiler::{CompileOptions, compile_script};
 

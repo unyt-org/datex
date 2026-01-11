@@ -1,7 +1,10 @@
-use crate::ast::expressions::{DatexExpression, DatexExpressionData, List};
-use crate::ast::spanned::Spanned;
-use crate::parser::lexer::Token;
-use crate::parser::{Parser, SpannedParserError};
+use crate::{
+    ast::{
+        expressions::{DatexExpression, DatexExpressionData, List},
+        spanned::Spanned,
+    },
+    parser::{Parser, SpannedParserError, lexer::Token},
+};
 
 impl Parser {
     pub fn parse_list(
@@ -30,14 +33,20 @@ impl Parser {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast::expressions::{DatexExpressionData, List};
-    use crate::ast::spanned::Spanned;
-    use crate::parser::errors::ParserError;
-    use crate::parser::lexer::Token;
-    use crate::parser::parser_result::ParserResult;
-    use crate::parser::tests::{
-        parse, try_parse_and_collect_errors,
-        try_parse_and_return_on_first_error,
+    use crate::{
+        ast::{
+            expressions::{DatexExpressionData, List},
+            spanned::Spanned,
+        },
+        parser::{
+            errors::ParserError,
+            lexer::Token,
+            parser_result::ParserResult,
+            tests::{
+                parse, try_parse_and_collect_errors,
+                try_parse_and_return_on_first_error,
+            },
+        },
     };
     use core::assert_matches::assert_matches;
 

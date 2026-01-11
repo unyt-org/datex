@@ -1,5 +1,6 @@
-use crate::stdlib::sync::Arc;
-use crate::{crypto::crypto::CryptoTrait, utils::time::TimeTrait};
+use crate::{
+    crypto::crypto::CryptoTrait, stdlib::sync::Arc, utils::time::TimeTrait,
+};
 use core::prelude::rust_2024::*;
 #[cfg(feature = "debug")]
 #[derive(Clone, Debug)]

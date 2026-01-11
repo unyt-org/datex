@@ -1,53 +1,65 @@
-use crate::compiler::error::{
-    CompilerError, SimpleOrDetailedCompilerError, SpannedCompilerError,
+use crate::{
+    compiler::error::{
+        CompilerError, SimpleOrDetailedCompilerError, SpannedCompilerError,
+    },
+    global::{
+        dxb_block::DXBBlock,
+        operators::assignment::AssignmentOperator,
+        protocol_structures::{
+            block_header::BlockHeader, encrypted_header::EncryptedHeader,
+            routing_header::RoutingHeader,
+        },
+    },
 };
-use crate::global::dxb_block::DXBBlock;
-use crate::global::operators::assignment::AssignmentOperator;
-use crate::global::protocol_structures::block_header::BlockHeader;
-use crate::global::protocol_structures::encrypted_header::EncryptedHeader;
-use crate::global::protocol_structures::routing_header::RoutingHeader;
 use core::cell::RefCell;
 
-use crate::ast::expressions::{
-    BinaryOperation, ComparisonOperation, DatexExpression, DatexExpressionData,
-    DerefAssignment, RemoteExecution, Slot, Statements, UnaryOperation,
-    UnboundedStatement, VariableAccess, VariableAssignment,
-    VariableDeclaration, VariableKind,
+use crate::{
+    ast::expressions::{
+        BinaryOperation, ComparisonOperation, DatexExpression,
+        DatexExpressionData, DerefAssignment, RemoteExecution, Slot,
+        Statements, UnaryOperation, UnboundedStatement, VariableAccess,
+        VariableAssignment, VariableDeclaration, VariableKind,
+    },
+    compiler::{
+        context::{CompilationContext, VirtualSlot},
+        error::{
+            DetailedCompilerErrorsWithMaybeRichAst,
+            SimpleCompilerErrorOrDetailedCompilerErrorWithRichAst,
+        },
+        metadata::CompileMetadata,
+        scope::CompilationScope,
+        type_compiler::compile_type_expression,
+    },
+    global::{instruction_codes::InstructionCode, slots::InternalSlot},
+    libs::core::CoreLibPointerId,
 };
-use crate::compiler::context::{CompilationContext, VirtualSlot};
-use crate::compiler::error::{
-    DetailedCompilerErrorsWithMaybeRichAst,
-    SimpleCompilerErrorOrDetailedCompilerErrorWithRichAst,
-};
-use crate::compiler::metadata::CompileMetadata;
-use crate::compiler::scope::CompilationScope;
-use crate::compiler::type_compiler::compile_type_expression;
-use crate::global::instruction_codes::InstructionCode;
-use crate::global::slots::InternalSlot;
-use crate::libs::core::CoreLibPointerId;
 
-use crate::ast::resolved_variable::VariableId;
-use crate::core_compiler::value_compiler::{
-    append_boolean, append_decimal, append_encoded_integer, append_endpoint,
-    append_float_as_i16, append_float_as_i32, append_instruction_code,
-    append_integer, append_text, append_typed_decimal, append_value_container,
+use crate::{
+    ast::resolved_variable::VariableId,
+    core_compiler::value_compiler::{
+        append_boolean, append_decimal, append_encoded_integer,
+        append_endpoint, append_float_as_i16, append_float_as_i32,
+        append_get_ref, append_instruction_code, append_integer,
+        append_key_string, append_text, append_typed_decimal,
+        append_value_container,
+    },
+    parser::{Parser, ParserOptions},
+    references::reference::ReferenceMutability,
+    runtime::execution::context::ExecutionMode,
+    stdlib::{rc::Rc, vec::Vec},
+    time::Instant,
+    utils::buffers::{append_u8, append_u16, append_u32},
+    values::{
+        core_values::decimal::Decimal, pointer::PointerAddress,
+        value_container::ValueContainer,
+    },
 };
-use crate::core_compiler::value_compiler::{append_get_ref, append_key_string};
-use crate::parser::{Parser, ParserOptions};
-use crate::references::reference::ReferenceMutability;
-use crate::runtime::execution::context::ExecutionMode;
-use crate::stdlib::rc::Rc;
-use crate::stdlib::vec::Vec;
-use crate::time::Instant;
-use crate::utils::buffers::append_u32;
-use crate::utils::buffers::{append_u8, append_u16};
-use crate::values::core_values::decimal::Decimal;
-use crate::values::pointer::PointerAddress;
-use crate::values::value_container::ValueContainer;
 use log::{debug, info};
-use precompiler::options::PrecompilerOptions;
-use precompiler::precompile_ast;
-use precompiler::precompiled_ast::{AstMetadata, RichAst, VariableMetadata};
+use precompiler::{
+    options::PrecompilerOptions,
+    precompile_ast,
+    precompiled_ast::{AstMetadata, RichAst, VariableMetadata},
+};
 
 pub mod context;
 pub mod error;
@@ -1418,25 +1430,29 @@ pub mod tests {
         compile_script, compile_script_or_return_static_value,
         compile_template, parse_datex_script_to_rich_ast_simple_error,
     };
-    use crate::stdlib::assert_matches::assert_matches;
-    use crate::stdlib::io::Read;
-    use crate::stdlib::vec;
+    use crate::stdlib::{assert_matches::assert_matches, io::Read, vec};
 
-    use crate::compiler::scope::CompilationScope;
-    use crate::global::type_instruction_codes::TypeInstructionCode;
-    use crate::libs::core::CoreLibPointerId;
-    use crate::runtime::execution::ExecutionError;
-    use crate::runtime::execution::context::{
-        ExecutionContext, ExecutionMode, LocalExecutionContext,
-    };
-    use crate::values::core_values::integer::Integer;
-    use crate::values::pointer::PointerAddress;
-    use crate::values::value_container::ValueContainer;
     use crate::{
-        global::instruction_codes::InstructionCode, logger::init_logger_debug,
+        compiler::scope::CompilationScope,
+        global::{
+            instruction_codes::InstructionCode,
+            type_instruction_codes::TypeInstructionCode,
+        },
+        libs::core::CoreLibPointerId,
+        logger::init_logger_debug,
+        runtime::execution::{
+            ExecutionError,
+            context::{ExecutionContext, ExecutionMode, LocalExecutionContext},
+        },
+        values::{
+            core_values::integer::Integer, pointer::PointerAddress,
+            value_container::ValueContainer,
+        },
     };
-    use datex_core::compiler::error::CompilerError;
-    use datex_core::values::core_values::integer::typed_integer::TypedInteger;
+    use datex_core::{
+        compiler::error::CompilerError,
+        values::core_values::integer::typed_integer::TypedInteger,
+    };
     use log::*;
 
     fn compile_and_log(datex_script: &str) -> Vec<u8> {

@@ -1,7 +1,10 @@
-use crate::ast::expressions::{DatexExpression, VariableDeclaration};
-use crate::visitor::VisitAction;
-use crate::visitor::expression::ExpressionVisitor;
-use crate::visitor::type_expression::TypeExpressionVisitor;
+use crate::{
+    ast::expressions::{DatexExpression, VariableDeclaration},
+    visitor::{
+        VisitAction, expression::ExpressionVisitor,
+        type_expression::TypeExpressionVisitor,
+    },
+};
 use core::ops::Range;
 
 #[derive(Default)]

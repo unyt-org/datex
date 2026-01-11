@@ -1,14 +1,21 @@
-use crate::parser::lexer::{IntegerWithVariant, Token};
-use crate::values::core_values::decimal::Decimal;
-use crate::values::core_values::decimal::typed_decimal::{
-    DecimalTypeVariant, TypedDecimal,
+use crate::{
+    parser::lexer::{IntegerWithVariant, Token},
+    values::core_values::{
+        decimal::{
+            Decimal,
+            typed_decimal::{DecimalTypeVariant, TypedDecimal},
+        },
+        error::NumberParseError,
+        integer::typed_integer::TypedInteger,
+    },
 };
-use crate::values::core_values::error::NumberParseError;
-use crate::values::core_values::integer::typed_integer::TypedInteger;
-use core::iter::Peekable;
-use core::str::{Chars, FromStr};
-use datex_core::values::core_values::integer::Integer;
-use datex_core::values::core_values::integer::typed_integer::IntegerTypeVariant;
+use core::{
+    iter::Peekable,
+    str::{Chars, FromStr},
+};
+use datex_core::values::core_values::integer::{
+    Integer, typed_integer::IntegerTypeVariant,
+};
 
 pub enum IntegerOrDecimal {
     Integer(Integer),

@@ -9,18 +9,21 @@ use crate::values::{
     value_container::{ValueContainer, ValueError},
 };
 
-use crate::libs::core::CoreLibPointerId;
-use crate::stdlib::format;
-use crate::stdlib::string::String;
-use crate::stdlib::string::ToString;
-use crate::traits::structural_eq::StructuralEq;
-use core::hash::Hash;
-use core::prelude::rust_2024::*;
-use core::result::Result;
-use core::unreachable;
+use crate::{
+    libs::core::CoreLibPointerId,
+    stdlib::{
+        format,
+        string::{String, ToString},
+    },
+    traits::structural_eq::StructuralEq,
+};
 use core::{
     fmt::Display,
+    hash::Hash,
     ops::{Add, AddAssign, Neg, Sub},
+    prelude::rust_2024::*,
+    result::Result,
+    unreachable,
 };
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{Deserialize, Serialize};

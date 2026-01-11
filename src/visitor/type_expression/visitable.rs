@@ -1,10 +1,11 @@
-use crate::ast::type_expressions::{
-    CallableTypeExpression, FixedSizeList, GenericAccess, Intersection,
-    SliceList, StructuralList, StructuralMap, TypeExpression,
-    TypeExpressionData, Union,
+use crate::{
+    ast::type_expressions::{
+        CallableTypeExpression, FixedSizeList, GenericAccess, Intersection,
+        SliceList, StructuralList, StructuralMap, TypeExpression,
+        TypeExpressionData, Union,
+    },
+    visitor::{VisitAction, type_expression::TypeExpressionVisitor},
 };
-use crate::visitor::VisitAction;
-use crate::visitor::type_expression::TypeExpressionVisitor;
 
 pub type TypeExpressionVisitResult<E> = Result<VisitAction<TypeExpression>, E>;
 

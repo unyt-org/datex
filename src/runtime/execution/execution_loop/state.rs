@@ -1,15 +1,19 @@
-use crate::collections::HashMap;
-use crate::references::observers::TransceiverId;
-use crate::runtime::RuntimeInternal;
-use crate::runtime::execution::ExecutionError;
-use crate::runtime::execution::execution_loop::ExternalExecutionInterrupt;
-use crate::runtime::execution::execution_loop::interrupts::InterruptProvider;
-use crate::stdlib::boxed::Box;
-use crate::stdlib::rc::Rc;
-use crate::stdlib::vec::Vec;
-use crate::values::value_container::ValueContainer;
-use core::cell::RefCell;
-use core::fmt::Debug;
+use crate::{
+    collections::HashMap,
+    references::observers::TransceiverId,
+    runtime::{
+        RuntimeInternal,
+        execution::{
+            ExecutionError,
+            execution_loop::{
+                ExternalExecutionInterrupt, interrupts::InterruptProvider,
+            },
+        },
+    },
+    stdlib::{boxed::Box, rc::Rc, vec::Vec},
+    values::value_container::ValueContainer,
+};
+use core::{cell::RefCell, fmt::Debug};
 
 pub struct ExecutionLoopState {
     pub iterator: Box<

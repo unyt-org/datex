@@ -1,15 +1,19 @@
 #[cfg(feature = "compiler")]
 use crate::compiler::error::{CompilerError, SpannedCompilerError};
-use crate::runtime::execution::ExecutionError;
-use crate::stdlib::io;
-use crate::stdlib::string::String;
-use crate::stdlib::string::ToString;
-use core::fmt;
-use core::fmt::Display;
-use core::prelude::rust_2024::*;
-use serde::de::Error;
-use serde::ser::StdError;
-use serde::ser::{self};
+use crate::{
+    runtime::execution::ExecutionError,
+    stdlib::{
+        io,
+        string::{String, ToString},
+    },
+};
+use core::{fmt, fmt::Display, prelude::rust_2024::*};
+use serde::{
+    de::Error,
+    ser::{
+        StdError, {self},
+    },
+};
 
 #[derive(Debug)]
 pub enum SerializationError {

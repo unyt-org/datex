@@ -1,8 +1,10 @@
 #[cfg(feature = "compiler")]
 use crate::compiler::scope::CompilationScope;
-use crate::global::dxb_block::OutgoingContextId;
-use crate::runtime::execution::context::{ExecutionContext, ExecutionMode};
-use crate::values::core_values::endpoint::Endpoint;
+use crate::{
+    global::dxb_block::OutgoingContextId,
+    runtime::execution::context::{ExecutionContext, ExecutionMode},
+    values::core_values::endpoint::Endpoint,
+};
 
 #[derive(Debug, Clone, Default)]
 pub struct RemoteExecutionContext {

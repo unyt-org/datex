@@ -1,33 +1,37 @@
-use crate::references::type_reference::{
-    NominalTypeDeclaration, TypeReference,
+use crate::{
+    references::type_reference::{NominalTypeDeclaration, TypeReference},
+    values::core_value::CoreValue,
 };
-use crate::values::core_value::CoreValue;
-use core::prelude::rust_2024::*;
-use core::result::Result;
+use core::{prelude::rust_2024::*, result::Result};
 
-use crate::references::value_reference::ValueReference;
-use crate::runtime::execution::ExecutionError;
-use crate::stdlib::boxed::Box;
-use crate::stdlib::rc::Rc;
-use crate::stdlib::string::String;
-use crate::stdlib::string::ToString;
-use crate::traits::apply::Apply;
-use crate::traits::identity::Identity;
-use crate::traits::structural_eq::StructuralEq;
-use crate::traits::value_eq::ValueEq;
-use crate::types::definition::TypeDefinition;
-use crate::values::core_values::map::MapAccessError;
-use crate::values::core_values::r#type::Type;
-use crate::values::pointer::PointerAddress;
-use crate::values::value::Value;
-use crate::values::value_container::{ValueContainer, ValueKey};
-use core::cell::RefCell;
-use core::fmt::Display;
-use core::hash::{Hash, Hasher};
-use core::ops::FnOnce;
-use core::option::Option;
-use core::unreachable;
-use core::write;
+use crate::{
+    references::value_reference::ValueReference,
+    runtime::execution::ExecutionError,
+    stdlib::{
+        boxed::Box,
+        rc::Rc,
+        string::{String, ToString},
+    },
+    traits::{
+        apply::Apply, identity::Identity, structural_eq::StructuralEq,
+        value_eq::ValueEq,
+    },
+    types::definition::TypeDefinition,
+    values::{
+        core_values::{map::MapAccessError, r#type::Type},
+        pointer::PointerAddress,
+        value::Value,
+        value_container::{ValueContainer, ValueKey},
+    },
+};
+use core::{
+    cell::RefCell,
+    fmt::Display,
+    hash::{Hash, Hasher},
+    ops::FnOnce,
+    option::Option,
+    unreachable, write,
+};
 use num_enum::TryFromPrimitive;
 use serde::{Deserialize, Serialize};
 
@@ -154,8 +158,7 @@ pub mod mutability_as_int {
     use super::ReferenceMutability;
     use crate::stdlib::format;
     use core::prelude::rust_2024::*;
-    use serde::de::Error;
-    use serde::{Deserialize, Deserializer, Serializer};
+    use serde::{Deserialize, Deserializer, Serializer, de::Error};
 
     pub fn serialize<S>(
         value: &ReferenceMutability,
@@ -193,8 +196,7 @@ pub mod mutability_option_as_int {
     use super::ReferenceMutability;
     use crate::stdlib::format;
     use core::prelude::rust_2024::*;
-    use serde::de::Error;
-    use serde::{Deserialize, Deserializer, Serializer};
+    use serde::{Deserialize, Deserializer, Serializer, de::Error};
 
     pub fn serialize<S>(
         value: &Option<ReferenceMutability>,
@@ -744,11 +746,15 @@ impl Apply for Reference {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::runtime::global_context::{GlobalContext, set_global_context};
-    use crate::runtime::memory::Memory;
-    use crate::stdlib::assert_matches::assert_matches;
-    use crate::traits::value_eq::ValueEq;
-    use crate::{assert_identical, assert_structural_eq, assert_value_eq};
+    use crate::{
+        assert_identical, assert_structural_eq, assert_value_eq,
+        runtime::{
+            global_context::{GlobalContext, set_global_context},
+            memory::Memory,
+        },
+        stdlib::assert_matches::assert_matches,
+        traits::value_eq::ValueEq,
+    };
     use datex_core::values::core_values::map::Map;
 
     #[test]

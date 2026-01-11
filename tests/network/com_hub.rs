@@ -1,39 +1,49 @@
-use datex_core::serde::serializer::to_value_container;
-use datex_core::global::dxb_block::DXBBlock;
-use datex_core::global::protocol_structures::block_header::BlockHeader;
-use datex_core::global::protocol_structures::encrypted_header::{
-    self, EncryptedHeader,
-};
-use datex_core::global::protocol_structures::routing_header::{RoutingHeader, SignatureType};
-use datex_core::network::com_hub::{ComHub, InterfacePriority};
-use datex_core::network::com_interfaces::default_com_interfaces::base_interface::{BaseInterface, BaseInterfaceHolder, BaseInterfaceSetupData};
-use datex_core::stdlib::cell::RefCell;
-use datex_core::stdlib::rc::Rc;
-use datex_macros::async_test;
-use std::pin::Pin;
-use std::sync::mpsc;
-use tokio::task::yield_now;
-use datex_core::network::block_handler::IncomingSectionsSinkType;
-use datex_core::network::com_interfaces::com_interface::ComInterface;
-use datex_core::network::com_interfaces::com_interface::implementation::ComInterfaceSyncFactory;
-use datex_core::network::com_interfaces::com_interface::properties::{InterfaceProperties, ReconnectionConfig};
-use datex_core::network::com_interfaces::com_interface::socket::SocketState;
-use datex_core::network::com_interfaces::com_interface::state::ComInterfaceState;
 use super::helpers::mock_setup::get_mock_setup_and_socket_for_endpoint;
-use datex_core::utils::context::init_global_context;
-use crate::network::helpers::mock_setup::{
-    TEST_ENDPOINT_A, TEST_ENDPOINT_B, TEST_ENDPOINT_ORIGIN, create_and_add_socket,
-    get_all_received_single_blocks_from_com_hub,
-    get_last_received_single_block_from_com_hub, get_mock_setup,
-    get_mock_setup_and_socket, get_mock_setup_and_socket_for_priority,
-    get_mock_setup_with_endpoint, register_socket_endpoint,
-    send_block_with_body, send_empty_block_and_update,
+use crate::network::helpers::{
+    mock_setup::{
+        TEST_ENDPOINT_A, TEST_ENDPOINT_B, TEST_ENDPOINT_ORIGIN,
+        create_and_add_socket, get_all_received_single_blocks_from_com_hub,
+        get_last_received_single_block_from_com_hub, get_mock_setup,
+        get_mock_setup_and_socket, get_mock_setup_and_socket_for_priority,
+        get_mock_setup_with_endpoint, register_socket_endpoint,
+        send_block_with_body, send_empty_block_and_update,
+    },
+    mockup_interface::{MockupInterface, MockupInterfaceSetupData},
 };
-use crate::network::helpers::mockup_interface::{
-    MockupInterface, MockupInterfaceSetupData,
+use datex_core::{
+    global::{
+        dxb_block::DXBBlock,
+        protocol_structures::{
+            block_header::BlockHeader,
+            encrypted_header::{self, EncryptedHeader},
+            routing_header::{RoutingHeader, SignatureType},
+        },
+    },
+    network::{
+        block_handler::IncomingSectionsSinkType,
+        com_hub::{ComHub, InterfacePriority},
+        com_interfaces::{
+            com_interface::{
+                ComInterface,
+                implementation::ComInterfaceSyncFactory,
+                properties::{InterfaceProperties, ReconnectionConfig},
+                socket::SocketState,
+                state::ComInterfaceState,
+            },
+            default_com_interfaces::base_interface::{
+                BaseInterface, BaseInterfaceHolder, BaseInterfaceSetupData,
+            },
+        },
+    },
+    runtime::AsyncContext,
+    serde::serializer::to_value_container,
+    stdlib::{cell::RefCell, rc::Rc},
+    utils::context::init_global_context,
+    values::core_values::endpoint::Endpoint,
 };
-use datex_core::runtime::AsyncContext;
-use datex_core::values::core_values::endpoint::Endpoint;
+use datex_macros::async_test;
+use std::{pin::Pin, sync::mpsc};
+use tokio::task::yield_now;
 
 #[async_test]
 pub async fn test_add_and_remove() {

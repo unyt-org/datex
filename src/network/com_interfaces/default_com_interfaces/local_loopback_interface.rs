@@ -2,22 +2,23 @@ use crate::network::com_interfaces::com_interface::{
     ComInterface, ComInterfaceImplEvent,
 };
 
-use crate::network::com_hub::errors::InterfaceCreateError;
-use crate::network::com_interfaces::com_interface::implementation::{
-    ComInterfaceImplementation, ComInterfaceSyncFactory,
+use crate::{
+    network::{
+        com_hub::errors::InterfaceCreateError,
+        com_interfaces::com_interface::{
+            implementation::{
+                ComInterfaceImplementation, ComInterfaceSyncFactory,
+            },
+            properties::{InterfaceDirection, InterfaceProperties},
+        },
+    },
+    stdlib::{rc::Rc, string::ToString},
+    task::{
+        UnboundedReceiver, UnboundedSender, spawn_with_panic_notify_default,
+    },
+    values::core_values::endpoint::Endpoint,
 };
-use crate::network::com_interfaces::com_interface::properties::{
-    InterfaceDirection, InterfaceProperties,
-};
-use crate::stdlib::rc::Rc;
-use crate::stdlib::string::ToString;
-use crate::task::{
-    UnboundedReceiver, UnboundedSender, spawn_with_panic_notify_default,
-};
-use crate::values::core_values::endpoint::Endpoint;
-use core::prelude::rust_2024::*;
-use core::result::Result;
-use core::time::Duration;
+use core::{prelude::rust_2024::*, result::Result, time::Duration};
 
 /// A simple local loopback interface that puts outgoing data
 /// back into the incoming queue.

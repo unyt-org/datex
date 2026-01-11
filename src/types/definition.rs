@@ -1,23 +1,27 @@
-use crate::references::reference::ReferenceMutability;
-use crate::references::type_reference::TypeReference;
-use crate::stdlib::boxed::Box;
-use crate::stdlib::format;
-use crate::stdlib::string::String;
-use crate::stdlib::string::ToString;
-use crate::stdlib::vec::Vec;
-use crate::stdlib::{cell::RefCell, hash::Hash, rc::Rc};
-use crate::values::core_values::callable::CallableSignature;
-use crate::values::core_values::r#type::Type;
-use crate::values::pointer::PointerAddress;
 use crate::{
+    references::{
+        reference::ReferenceMutability, type_reference::TypeReference,
+    },
+    stdlib::{
+        boxed::Box,
+        cell::RefCell,
+        format,
+        hash::Hash,
+        rc::Rc,
+        string::{String, ToString},
+        vec::Vec,
+    },
     traits::structural_eq::StructuralEq,
     types::{
         collection_type_definition::CollectionTypeDefinition,
         structural_type_definition::StructuralTypeDefinition,
     },
+    values::{
+        core_values::{callable::CallableSignature, r#type::Type},
+        pointer::PointerAddress,
+    },
 };
-use core::fmt::Display;
-use core::prelude::rust_2024::*;
+use core::{fmt::Display, prelude::rust_2024::*};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TypeDefinition {

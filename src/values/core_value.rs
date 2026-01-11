@@ -1,32 +1,39 @@
-use core::prelude::rust_2024::*;
-use core::result::Result;
+use core::{prelude::rust_2024::*, result::Result};
 use datex_macros::FromCoreValue;
 
-use crate::libs::core::{CoreLibPointerId, get_core_lib_type_reference};
-use crate::stdlib::string::String;
-use crate::stdlib::string::ToString;
-use crate::stdlib::vec::Vec;
-use crate::traits::structural_eq::StructuralEq;
-use crate::traits::value_eq::ValueEq;
-use crate::types::definition::TypeDefinition;
-use crate::values::core_values::boolean::Boolean;
-use crate::values::core_values::callable::Callable;
-use crate::values::core_values::decimal::Decimal;
-use crate::values::core_values::decimal::typed_decimal::{
-    DecimalTypeVariant, TypedDecimal,
+use crate::{
+    libs::core::{CoreLibPointerId, get_core_lib_type_reference},
+    stdlib::{
+        string::{String, ToString},
+        vec::Vec,
+    },
+    traits::{structural_eq::StructuralEq, value_eq::ValueEq},
+    types::definition::TypeDefinition,
+    values::{
+        core_values::{
+            boolean::Boolean,
+            callable::Callable,
+            decimal::{
+                Decimal,
+                typed_decimal::{DecimalTypeVariant, TypedDecimal},
+            },
+            endpoint::Endpoint,
+            integer::{
+                Integer,
+                typed_integer::{IntegerTypeVariant, TypedInteger},
+            },
+            list::List,
+            map::Map,
+            text::Text,
+            r#type::Type,
+        },
+        value_container::{ValueContainer, ValueError},
+    },
 };
-use crate::values::core_values::endpoint::Endpoint;
-use crate::values::core_values::integer::Integer;
-use crate::values::core_values::integer::typed_integer::{
-    IntegerTypeVariant, TypedInteger,
+use core::{
+    fmt::{Display, Formatter},
+    ops::{Add, AddAssign, Neg, Not, Sub},
 };
-use crate::values::core_values::list::List;
-use crate::values::core_values::map::Map;
-use crate::values::core_values::text::Text;
-use crate::values::core_values::r#type::Type;
-use crate::values::value_container::{ValueContainer, ValueError};
-use core::fmt::{Display, Formatter};
-use core::ops::{Add, AddAssign, Neg, Not, Sub};
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, FromCoreValue)]
 pub enum CoreValue {

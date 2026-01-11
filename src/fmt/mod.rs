@@ -1,17 +1,21 @@
 use core::ops::Range;
 
-use crate::ast::expressions::{DatexExpression, VariableAccess};
-use crate::ast::type_expressions::{
-    CallableTypeExpression, TypeExpression, TypeExpressionData,
-    TypeVariantAccess,
-};
-use crate::parser::ParserOptions;
 use crate::{
-    compiler::precompiler::precompiled_ast::RichAst,
-    compiler::{CompileOptions, parse_datex_script_to_rich_ast_simple_error},
+    ast::{
+        expressions::{DatexExpression, VariableAccess},
+        type_expressions::{
+            CallableTypeExpression, TypeExpression, TypeExpressionData,
+            TypeVariantAccess,
+        },
+    },
+    compiler::{
+        CompileOptions, parse_datex_script_to_rich_ast_simple_error,
+        precompiler::precompiled_ast::RichAst,
+    },
     fmt::options::{FormattingOptions, TypeDeclarationFormatting},
     global::operators::{BinaryOperator, ComparisonOperator, UnaryOperator},
     libs::core::CoreLibPointerId,
+    parser::ParserOptions,
 };
 use pretty::{DocAllocator, DocBuilder, RcAllocator, RcDoc};
 

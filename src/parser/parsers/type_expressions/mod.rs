@@ -4,15 +4,22 @@ mod key;
 mod list;
 mod map;
 
-use crate::ast::spanned::Spanned;
-use crate::ast::type_expressions::{
-    Intersection, TypeExpression, TypeExpressionData, TypeVariantAccess, Union,
+use crate::{
+    ast::{
+        spanned::Spanned,
+        type_expressions::{
+            Intersection, TypeExpression, TypeExpressionData,
+            TypeVariantAccess, Union,
+        },
+    },
+    global::operators::{ArithmeticUnaryOperator, UnaryOperator},
+    parser::{
+        Parser,
+        errors::{ParserError, SpannedParserError},
+        lexer::{SpannedToken, Token},
+    },
+    values::core_values::error::NumberParseError,
 };
-use crate::global::operators::{ArithmeticUnaryOperator, UnaryOperator};
-use crate::parser::Parser;
-use crate::parser::errors::{ParserError, SpannedParserError};
-use crate::parser::lexer::{SpannedToken, Token};
-use crate::values::core_values::error::NumberParseError;
 
 static UNARY_BP: u8 = 11; // less binding power than variant access and property access, but more than all other infix operators
 
@@ -193,13 +200,17 @@ impl Parser {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast::spanned::Spanned;
-    use crate::ast::type_expressions::TypeExpression;
-    use crate::ast::type_expressions::{
-        Intersection, TypeExpressionData, Union,
+    use crate::{
+        ast::{
+            spanned::Spanned,
+            type_expressions::{
+                Intersection, TypeExpression, TypeExpressionData, Union,
+            },
+        },
+        parser::{
+            Parser, ParserOptions, lexer::get_spanned_tokens_from_source,
+        },
     };
-    use crate::parser::lexer::get_spanned_tokens_from_source;
-    use crate::parser::{Parser, ParserOptions};
 
     pub fn parse_type_expression(src: &str) -> TypeExpression {
         let (tokens, errors) = get_spanned_tokens_from_source(src);

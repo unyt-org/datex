@@ -1,6 +1,5 @@
 use cfg_if::cfg_if;
-use core::sync::atomic::AtomicBool;
-use core::sync::atomic::Ordering;
+use core::sync::atomic::{AtomicBool, Ordering};
 
 static INIT: AtomicBool = AtomicBool::new(false);
 

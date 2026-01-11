@@ -1,10 +1,13 @@
-use crate::collections::HashMap;
-use crate::core_compiler::value_compiler::append_instruction_code;
-use crate::core_compiler::value_compiler::append_value_container;
-use crate::global::instruction_codes::InstructionCode;
-use crate::runtime::execution::context::ExecutionMode;
-use crate::utils::buffers::append_u32;
-use crate::values::value_container::ValueContainer;
+use crate::{
+    collections::HashMap,
+    core_compiler::value_compiler::{
+        append_instruction_code, append_value_container,
+    },
+    global::instruction_codes::InstructionCode,
+    runtime::execution::context::ExecutionMode,
+    utils::buffers::append_u32,
+    values::value_container::ValueContainer,
+};
 use core::cmp::PartialEq;
 use itertools::Itertools;
 

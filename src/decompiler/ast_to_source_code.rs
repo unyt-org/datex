@@ -1,21 +1,22 @@
-use crate::ast::expressions::{Apply, PropertyAssignment};
-use crate::ast::expressions::{
-    BinaryOperation, ComparisonOperation, Conditional, DerefAssignment, List,
-    Map, PropertyAccess, RemoteExecution, SlotAssignment, TypeDeclaration,
-    VariantAccess,
-};
-use crate::ast::expressions::{
-    CallableDeclaration, DatexExpression, DatexExpressionData, VariableAccess,
-    VariableAssignment, VariableDeclaration,
-};
-use crate::ast::type_expressions::{
-    CallableTypeExpression, TypeExpression, TypeExpressionData,
-    TypeVariantAccess,
+use crate::ast::{
+    expressions::{
+        Apply, BinaryOperation, CallableDeclaration, ComparisonOperation,
+        Conditional, DatexExpression, DatexExpressionData, DerefAssignment,
+        List, Map, PropertyAccess, PropertyAssignment, RemoteExecution,
+        SlotAssignment, TypeDeclaration, VariableAccess, VariableAssignment,
+        VariableDeclaration, VariantAccess,
+    },
+    type_expressions::{
+        CallableTypeExpression, TypeExpression, TypeExpressionData,
+        TypeVariantAccess,
+    },
 };
 use core::fmt::{self};
 
-use crate::decompiler::{FormattingMode, FormattingOptions, IndentType};
-use crate::references::reference::ReferenceMutability;
+use crate::{
+    decompiler::{FormattingMode, FormattingOptions, IndentType},
+    references::reference::ReferenceMutability,
+};
 
 #[derive(Clone, Default)]
 pub enum BraceStyle {
@@ -769,10 +770,15 @@ mod tests {
     use indoc::indoc;
 
     use super::*;
-    use crate::ast::expressions::{Deref, VariableKind};
-    use crate::global::operators::assignment::AssignmentOperator;
-    use crate::parser::Parser;
-    use crate::{ast::spanned::Spanned, values::core_values::decimal::Decimal};
+    use crate::{
+        ast::{
+            expressions::{Deref, VariableKind},
+            spanned::Spanned,
+        },
+        global::operators::assignment::AssignmentOperator,
+        parser::Parser,
+        values::core_values::decimal::Decimal,
+    };
 
     fn compact() -> AstToSourceCodeConverter {
         AstToSourceCodeConverter::new(FormattingOptions::compact())

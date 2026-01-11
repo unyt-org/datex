@@ -1,23 +1,25 @@
-use crate::libs::core::CoreLibPointerId;
-use crate::stdlib::format;
-use crate::stdlib::string::String;
-use crate::stdlib::string::ToString;
-use crate::stdlib::vec::Vec;
-use crate::traits::structural_eq::StructuralEq;
-use crate::values::core_value::CoreValue;
-use crate::values::core_values::boolean::Boolean;
-use crate::values::core_values::decimal::Decimal;
-use crate::values::core_values::decimal::typed_decimal::TypedDecimal;
-use crate::values::core_values::endpoint::Endpoint;
-use crate::values::core_values::integer::Integer;
-use crate::values::core_values::integer::typed_integer::TypedInteger;
-use crate::values::core_values::text::Text;
-use crate::values::core_values::r#type::Type;
-use crate::values::value_container::ValueContainer;
-use core::fmt::Display;
-use core::hash::Hash;
-use core::prelude::rust_2024::*;
-use core::unimplemented;
+use crate::{
+    libs::core::CoreLibPointerId,
+    stdlib::{
+        format,
+        string::{String, ToString},
+        vec::Vec,
+    },
+    traits::structural_eq::StructuralEq,
+    values::{
+        core_value::CoreValue,
+        core_values::{
+            boolean::Boolean,
+            decimal::{Decimal, typed_decimal::TypedDecimal},
+            endpoint::Endpoint,
+            integer::{Integer, typed_integer::TypedInteger},
+            text::Text,
+            r#type::Type,
+        },
+        value_container::ValueContainer,
+    },
+};
+use core::{fmt::Display, hash::Hash, prelude::rust_2024::*, unimplemented};
 
 #[derive(Debug, Clone, PartialEq, Hash, Eq)]
 pub enum StructuralTypeDefinition {
@@ -245,12 +247,14 @@ impl Display for StructuralTypeDefinition {
 
 #[cfg(test)]
 mod tests {
-    use crate::types::structural_type_definition::StructuralTypeDefinition;
-    use crate::values::core_value::CoreValue;
-    use crate::values::core_values::integer::Integer;
-    use crate::values::core_values::text::Text;
-    use crate::values::core_values::r#type::Type;
-    use crate::values::value_container::ValueContainer;
+    use crate::{
+        types::structural_type_definition::StructuralTypeDefinition,
+        values::{
+            core_value::CoreValue,
+            core_values::{integer::Integer, text::Text, r#type::Type},
+            value_container::ValueContainer,
+        },
+    };
 
     #[test]
     fn test_structural_type_display() {

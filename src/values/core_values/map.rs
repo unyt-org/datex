@@ -1,18 +1,21 @@
-use crate::collections::HashMap;
-use crate::references::reference::KeyNotFoundError;
-use crate::std_random::RandomState;
-use crate::stdlib::borrow::Cow;
-use crate::stdlib::format;
-use crate::stdlib::string::String;
-use crate::stdlib::vec::Vec;
-use crate::traits::structural_eq::StructuralEq;
-use crate::values::core_value::CoreValue;
-use crate::values::value::Value;
-use crate::values::value_container::{ValueContainer, ValueKey};
-use core::fmt::{self, Display};
-use core::hash::{Hash, Hasher};
-use core::prelude::rust_2024::*;
-use core::result::Result;
+use crate::{
+    collections::HashMap,
+    references::reference::KeyNotFoundError,
+    std_random::RandomState,
+    stdlib::{borrow::Cow, format, string::String, vec::Vec},
+    traits::structural_eq::StructuralEq,
+    values::{
+        core_value::CoreValue,
+        value::Value,
+        value_container::{ValueContainer, ValueKey},
+    },
+};
+use core::{
+    fmt::{self, Display},
+    hash::{Hash, Hasher},
+    prelude::rust_2024::*,
+    result::Result,
+};
 use indexmap::IndexMap;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -635,10 +638,13 @@ impl TryFrom<CoreValue> for Map {
 
 #[cfg(test)]
 mod tests {
-    use crate::values::core_values::decimal::Decimal;
-    use crate::values::core_values::decimal::typed_decimal::TypedDecimal;
-    use crate::values::core_values::map::Map;
-    use crate::values::value_container::ValueContainer;
+    use crate::values::{
+        core_values::{
+            decimal::{Decimal, typed_decimal::TypedDecimal},
+            map::Map,
+        },
+        value_container::ValueContainer,
+    };
 
     #[test]
     fn test_map() {

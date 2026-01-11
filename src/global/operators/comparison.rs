@@ -1,7 +1,8 @@
-use crate::global::instruction_codes::InstructionCode;
-use crate::global::protocol_structures::instructions::RegularInstruction;
-use core::fmt::Display;
-use core::prelude::rust_2024::*;
+use crate::global::{
+    instruction_codes::InstructionCode,
+    protocol_structures::instructions::RegularInstruction,
+};
+use core::{fmt::Display, prelude::rust_2024::*};
 
 #[derive(Clone, Debug, PartialEq, Copy)]
 pub enum ComparisonOperator {

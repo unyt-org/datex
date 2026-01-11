@@ -1,7 +1,10 @@
-use crate::ast::expressions::{DatexExpression, DatexExpressionData, Map};
-use crate::ast::spanned::Spanned;
-use crate::parser::lexer::Token;
-use crate::parser::{Parser, SpannedParserError};
+use crate::{
+    ast::{
+        expressions::{DatexExpression, DatexExpressionData, Map},
+        spanned::Spanned,
+    },
+    parser::{Parser, SpannedParserError, lexer::Token},
+};
 
 impl Parser {
     pub fn parse_map(&mut self) -> Result<DatexExpression, SpannedParserError> {
@@ -25,12 +28,14 @@ impl Parser {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast::expressions::BinaryOperation;
-    use crate::ast::expressions::{DatexExpressionData, Map};
-    use crate::ast::spanned::Spanned;
-    use crate::global::operators::BinaryOperator;
-    use crate::global::operators::binary::ArithmeticOperator;
-    use crate::parser::tests::{parse, try_parse_and_return_on_first_error};
+    use crate::{
+        ast::{
+            expressions::{BinaryOperation, DatexExpressionData, Map},
+            spanned::Spanned,
+        },
+        global::operators::{BinaryOperator, binary::ArithmeticOperator},
+        parser::tests::{parse, try_parse_and_return_on_first_error},
+    };
 
     #[test]
     fn parse_empty_map() {

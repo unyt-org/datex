@@ -1,11 +1,8 @@
-use crate::stdlib::boxed::Box;
-use crate::stdlib::string::String;
-use crate::stdlib::vec::Vec;
-use crate::stdlib::{future::Future, pin::Pin};
+use crate::stdlib::{
+    boxed::Box, future::Future, pin::Pin, string::String, vec::Vec,
+};
 use bs58;
-use core::fmt::Display;
-use core::prelude::rust_2024::*;
-use core::result::Result;
+use core::{fmt::Display, prelude::rust_2024::*, result::Result};
 pub type CryptoResult<'a, T> =
     Pin<Box<dyn Future<Output = Result<T, CryptoError>> + 'a>>;
 

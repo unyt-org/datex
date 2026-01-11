@@ -12,27 +12,23 @@ use crate::{
     types::definition::TypeDefinition,
 };
 
-use crate::ast::expressions::Apply;
-use crate::ast::expressions::{
-    BinaryOperation, DatexExpression, Statements, TypeDeclaration,
-    VariableAccess, VariableDeclaration,
-};
-use crate::ast::expressions::{
-    CallableDeclaration, ComparisonOperation, Conditional, CreateRef,
-    DatexExpressionData, Deref, DerefAssignment, List, Map, PropertyAssignment,
-    RemoteExecution, Slot, SlotAssignment, UnaryOperation, VariableAssignment,
-    VariantAccess,
-};
-use crate::ast::expressions::{GenericInstantiation, PropertyAccess};
-use crate::ast::type_expressions::{
-    CallableTypeExpression, FixedSizeList, GenericAccess, SliceList,
-    TypeVariantAccess,
-};
-use crate::ast::type_expressions::{
-    Intersection, StructuralList, StructuralMap, TypeExpression, Union,
-};
-use crate::values::core_values::callable::CallableSignature;
 use crate::{
+    ast::{
+        expressions::{
+            Apply, BinaryOperation, CallableDeclaration, ComparisonOperation,
+            Conditional, CreateRef, DatexExpression, DatexExpressionData,
+            Deref, DerefAssignment, GenericInstantiation, List, Map,
+            PropertyAccess, PropertyAssignment, RemoteExecution, Slot,
+            SlotAssignment, Statements, TypeDeclaration, UnaryOperation,
+            VariableAccess, VariableAssignment, VariableDeclaration,
+            VariantAccess,
+        },
+        type_expressions::{
+            CallableTypeExpression, FixedSizeList, GenericAccess, Intersection,
+            SliceList, StructuralList, StructuralMap, TypeExpression,
+            TypeVariantAccess, Union,
+        },
+    },
     compiler::precompiler::precompiled_ast::{AstMetadata, RichAst},
     libs::core::{CoreLibPointerId, get_core_lib_type},
     type_inference::{
@@ -45,6 +41,7 @@ use crate::{
     values::{
         core_values::{
             boolean::Boolean,
+            callable::CallableSignature,
             decimal::{Decimal, typed_decimal::TypedDecimal},
             endpoint::Endpoint,
             integer::{Integer, typed_integer::TypedInteger},
@@ -1239,16 +1236,14 @@ mod tests {
         assert_matches::assert_matches, cell::RefCell, rc::Rc, str::FromStr,
     };
 
-    use crate::ast::expressions::{
-        BinaryOperation, DatexExpression, DatexExpressionData, List, Map,
-        VariableDeclaration, VariableKind,
-    };
-    use crate::parser::Parser;
-    use crate::values::core_values::callable::{
-        CallableKind, CallableSignature,
-    };
     use crate::{
-        ast::spanned::Spanned,
+        ast::{
+            expressions::{
+                BinaryOperation, DatexExpression, DatexExpressionData, List,
+                Map, VariableDeclaration, VariableKind,
+            },
+            spanned::Spanned,
+        },
         compiler::precompiler::{
             precompile_ast_simple_error,
             precompiled_ast::{AstMetadata, RichAst},
@@ -1258,6 +1253,7 @@ mod tests {
         libs::core::{
             CoreLibPointerId, get_core_lib_type, get_core_lib_type_reference,
         },
+        parser::Parser,
         references::type_reference::{NominalTypeDeclaration, TypeReference},
         type_inference::{
             error::{SpannedTypeError, TypeError},
@@ -1273,6 +1269,7 @@ mod tests {
             core_value::CoreValue,
             core_values::{
                 boolean::Boolean,
+                callable::{CallableKind, CallableSignature},
                 decimal::{Decimal, typed_decimal::TypedDecimal},
                 endpoint::Endpoint,
                 integer::{

@@ -1,10 +1,11 @@
-use crate::dif::r#type::DIFTypeDefinition;
-use crate::dif::value::DIFValueContainer;
-use crate::references::reference::mutability_as_int;
-use crate::references::reference::{Reference, ReferenceMutability};
-use crate::runtime::memory::Memory;
-use core::cell::RefCell;
-use core::prelude::rust_2024::*;
+use crate::{
+    dif::{r#type::DIFTypeDefinition, value::DIFValueContainer},
+    references::reference::{
+        Reference, ReferenceMutability, mutability_as_int,
+    },
+    runtime::memory::Memory,
+};
+use core::{cell::RefCell, prelude::rust_2024::*};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]

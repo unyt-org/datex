@@ -1,18 +1,17 @@
-use crate::libs::core::CoreLibPointerId;
-use crate::stdlib::format;
-use crate::stdlib::ops::{Add, AddAssign, Sub};
-use crate::stdlib::string::String;
-use crate::traits::structural_eq::StructuralEq;
-use crate::traits::value_eq::ValueEq;
-use crate::values::core_values::decimal::Decimal;
-use crate::values::core_values::error::NumberParseError;
-use core::fmt::Display;
-use core::hash::Hash;
-use core::num::ParseFloatError;
-use core::ops::Neg;
-use core::prelude::rust_2024::*;
-use core::result::Result;
-use core::unreachable;
+use crate::{
+    libs::core::CoreLibPointerId,
+    stdlib::{
+        format,
+        ops::{Add, AddAssign, Sub},
+        string::String,
+    },
+    traits::{structural_eq::StructuralEq, value_eq::ValueEq},
+    values::core_values::{decimal::Decimal, error::NumberParseError},
+};
+use core::{
+    fmt::Display, hash::Hash, num::ParseFloatError, ops::Neg,
+    prelude::rust_2024::*, result::Result, unreachable,
+};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use num_traits::Zero;
 use ordered_float::OrderedFloat;
@@ -571,8 +570,10 @@ mod tests {
     use crate::stdlib::assert_matches::assert_matches;
 
     use super::*;
-    use crate::values::core_values::decimal::Decimal;
-    use crate::{assert_structural_eq, assert_value_eq};
+    use crate::{
+        assert_structural_eq, assert_value_eq,
+        values::core_values::decimal::Decimal,
+    };
     use ordered_float::OrderedFloat;
 
     #[test]

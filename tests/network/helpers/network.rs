@@ -1,25 +1,33 @@
 use super::mockup_interface::{MockupInterface, store_sender_and_receiver};
 use crate::network::helpers::mockup_interface::MockupInterfaceSetupData;
-use core::fmt::{self, Debug, Display};
-use core::panic;
-use core::str::FromStr;
-use datex_core::network::com_hub::InterfacePriority;
-use datex_core::network::com_hub::managers::interface_manager::SyncComInterfaceImplementationFactoryFn;
-use datex_core::network::com_hub::network_tracing::TraceOptions;
-use datex_core::network::com_interfaces::com_interface::implementation::ComInterfaceSyncFactory;
-use datex_core::network::com_interfaces::com_interface::properties::InterfaceDirection;
-use datex_core::runtime::{AsyncContext, Runtime, RuntimeConfig};
-use datex_core::serde::serializer::to_value_container;
-use datex_core::values::core_values::endpoint::Endpoint;
-use datex_core::values::value_container::ValueContainer;
+use core::{
+    fmt::{self, Debug, Display},
+    panic,
+    str::FromStr,
+};
+use datex_core::{
+    network::{
+        com_hub::{
+            InterfacePriority,
+            managers::interface_manager::SyncComInterfaceImplementationFactoryFn,
+            network_tracing::TraceOptions,
+        },
+        com_interfaces::com_interface::{
+            implementation::ComInterfaceSyncFactory,
+            properties::InterfaceDirection,
+        },
+    },
+    runtime::{AsyncContext, Runtime, RuntimeConfig},
+    serde::serializer::to_value_container,
+    values::{
+        core_values::endpoint::Endpoint, value_container::ValueContainer,
+    },
+};
 use log::info;
 use serde::{Deserialize, Serialize};
-use std::any::Any;
-use std::collections::HashMap;
-use std::path::Path;
-use std::rc::Rc;
-use std::sync::mpsc;
-use std::{env, fs};
+use std::{
+    any::Any, collections::HashMap, env, fs, path::Path, rc::Rc, sync::mpsc,
+};
 
 pub struct InterfaceConnection {
     interface_type: String,

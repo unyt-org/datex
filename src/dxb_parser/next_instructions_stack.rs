@@ -1,5 +1,4 @@
-use crate::stdlib::vec;
-use crate::stdlib::vec::Vec;
+use crate::stdlib::{vec, vec::Vec};
 
 #[derive(Debug, Clone)]
 pub enum NextScopeInstruction {

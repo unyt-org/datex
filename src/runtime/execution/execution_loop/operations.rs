@@ -1,18 +1,18 @@
-use crate::global::operators::binary::{
-    ArithmeticOperator, BitwiseOperator, LogicalOperator,
+use crate::{
+    global::operators::{
+        ArithmeticUnaryOperator, AssignmentOperator, BinaryOperator,
+        ComparisonOperator, LogicalUnaryOperator, ReferenceUnaryOperator,
+        UnaryOperator,
+        binary::{ArithmeticOperator, BitwiseOperator, LogicalOperator},
+    },
+    references::reference::Reference,
+    runtime::execution::ExecutionError,
+    stdlib::rc::Rc,
+    traits::{
+        identity::Identity, structural_eq::StructuralEq, value_eq::ValueEq,
+    },
+    values::value_container::{OwnedValueKey, ValueContainer},
 };
-use crate::global::operators::{
-    ArithmeticUnaryOperator, AssignmentOperator, BinaryOperator,
-    ComparisonOperator, LogicalUnaryOperator, ReferenceUnaryOperator,
-    UnaryOperator,
-};
-use crate::references::reference::Reference;
-use crate::runtime::execution::ExecutionError;
-use crate::stdlib::rc::Rc;
-use crate::traits::identity::Identity;
-use crate::traits::structural_eq::StructuralEq;
-use crate::traits::value_eq::ValueEq;
-use crate::values::value_container::{OwnedValueKey, ValueContainer};
 use datex_core::runtime::RuntimeInternal;
 
 pub fn set_property(

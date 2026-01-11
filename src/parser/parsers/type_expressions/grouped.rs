@@ -1,7 +1,10 @@
-use crate::ast::spanned::Spanned;
-use crate::ast::type_expressions::{TypeExpression, TypeExpressionData};
-use crate::parser::lexer::Token;
-use crate::parser::{Parser, SpannedParserError};
+use crate::{
+    ast::{
+        spanned::Spanned,
+        type_expressions::{TypeExpression, TypeExpressionData},
+    },
+    parser::{Parser, SpannedParserError, lexer::Token},
+};
 
 impl Parser {
     pub(crate) fn parse_type_grouped(

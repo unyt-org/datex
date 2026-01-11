@@ -1,7 +1,7 @@
 use crate::stdlib::vec::Vec;
-use binrw::io::Cursor;
 use binrw::{
     BinWrite,
+    io::Cursor,
     meta::{ReadEndian, WriteEndian},
 };
 use core::prelude::rust_2024::*;

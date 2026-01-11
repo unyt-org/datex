@@ -1,8 +1,11 @@
-use crate::network::com_interfaces::com_interface::ComInterface;
-use crate::network::com_interfaces::com_interface::socket::ComInterfaceSocketEvent;
 use crate::{
-    network::com_hub::{
-        ComHub, InterfacePriority, managers::socket_manager::SocketManager,
+    network::{
+        com_hub::{
+            ComHub, InterfacePriority, managers::socket_manager::SocketManager,
+        },
+        com_interfaces::com_interface::{
+            ComInterface, socket::ComInterfaceSocketEvent,
+        },
     },
     stdlib::{cell::RefCell, rc::Rc},
     task::{UnboundedReceiver, spawn_with_panic_notify},

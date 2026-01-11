@@ -1,10 +1,14 @@
-use datex_core::network::com_interfaces::{
-    default_com_interfaces::serial::serial_native_interface::SerialNativeInterface,
+use datex_core::{
+    network::com_interfaces::{
+        com_interface::ComInterface,
+        default_com_interfaces::serial::{
+            serial_common::SerialInterfaceSetupData,
+            serial_native_interface::SerialNativeInterface,
+        },
+    },
+    utils::context::init_global_context,
 };
 use log::info;
-use datex_core::network::com_interfaces::com_interface::ComInterface;
-use datex_core::network::com_interfaces::default_com_interfaces::serial::serial_common::SerialInterfaceSetupData;
-use datex_core::utils::context::init_global_context;
 
 #[tokio::test]
 pub async fn test_construct() {

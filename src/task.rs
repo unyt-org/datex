@@ -1,10 +1,8 @@
-use crate::stdlib::string::String;
-use crate::stdlib::string::ToString;
+use crate::stdlib::string::{String, ToString};
 use cfg_if::cfg_if;
-use core::cell::RefCell;
-use core::clone::Clone;
-use core::future::Future;
-use core::prelude::rust_2024::*;
+use core::{
+    cell::RefCell, clone::Clone, future::Future, prelude::rust_2024::*,
+};
 use futures_util::{FutureExt, SinkExt, StreamExt};
 use log::info;
 

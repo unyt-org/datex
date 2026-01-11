@@ -1,16 +1,20 @@
-use crate::network::helpers::mock_setup::{
-    TEST_ENDPOINT_A, TEST_ENDPOINT_B,
-    get_mock_setup_and_socket_for_endpoint_and_update_loop,
+use crate::network::helpers::{
+    mock_setup::{
+        TEST_ENDPOINT_A, TEST_ENDPOINT_B,
+        get_mock_setup_and_socket_for_endpoint_and_update_loop,
+    },
+    mockup_interface::MockupInterface,
 };
-use crate::network::helpers::mockup_interface::MockupInterface;
-use datex_core::network::block_handler::IncomingSectionsSinkType;
-use datex_core::network::com_hub::InterfacePriority;
-use datex_core::run_async_thread;
-use datex_core::utils::context::init_global_context;
+use datex_core::{
+    network::{
+        block_handler::IncomingSectionsSinkType, com_hub::InterfacePriority,
+    },
+    run_async_thread,
+    utils::context::init_global_context,
+};
 use datex_macros::async_test;
 use ntest_timeout::timeout;
-use std::sync::mpsc;
-use std::thread;
+use std::{sync::mpsc, thread};
 use tokio::task::yield_now;
 
 #[async_test]

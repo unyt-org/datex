@@ -1,8 +1,10 @@
-use crate::ast::expressions::DatexExpressionData;
-use crate::ast::expressions::{Conditional, DatexExpression};
-use crate::ast::spanned::Spanned;
-use crate::parser::lexer::Token;
-use crate::parser::{Parser, SpannedParserError};
+use crate::{
+    ast::{
+        expressions::{Conditional, DatexExpression, DatexExpressionData},
+        spanned::Spanned,
+    },
+    parser::{Parser, SpannedParserError, lexer::Token},
+};
 
 impl Parser {
     pub(crate) fn parse_if_else(
@@ -45,9 +47,13 @@ impl Parser {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast::expressions::{Conditional, DatexExpressionData};
-    use crate::ast::spanned::Spanned;
-    use crate::parser::tests::parse;
+    use crate::{
+        ast::{
+            expressions::{Conditional, DatexExpressionData},
+            spanned::Spanned,
+        },
+        parser::tests::parse,
+    };
 
     #[test]
     fn parse_single_if() {

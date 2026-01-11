@@ -1,21 +1,27 @@
-use core::prelude::rust_2024::*;
-use core::result::Result;
+use core::{prelude::rust_2024::*, result::Result};
 pub mod typed_integer;
 pub mod utils;
 
-use crate::stdlib::string::String;
-use crate::stdlib::string::ToString;
-use crate::stdlib::vec;
-use crate::traits::structural_eq::StructuralEq;
-use crate::values::core_values::{
-    error::NumberParseError, integer::typed_integer::TypedInteger,
+use crate::{
+    stdlib::{
+        string::{String, ToString},
+        vec,
+    },
+    traits::structural_eq::StructuralEq,
+    values::core_values::{
+        error::NumberParseError, integer::typed_integer::TypedInteger,
+    },
 };
-use binrw::io::{Read, Seek, Write};
-use binrw::{BinRead, BinReaderExt, BinResult, BinWrite, Endian};
-use core::fmt::Display;
-use core::hash::Hash;
-use core::ops::{Add, Neg, Sub};
-use core::str::FromStr;
+use binrw::{
+    BinRead, BinReaderExt, BinResult, BinWrite, Endian,
+    io::{Read, Seek, Write},
+};
+use core::{
+    fmt::Display,
+    hash::Hash,
+    ops::{Add, Neg, Sub},
+    str::FromStr,
+};
 use num::{BigInt, Num};
 use num_traits::ToPrimitive;
 use serde::{Deserialize, Serialize};

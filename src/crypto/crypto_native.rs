@@ -1,6 +1,8 @@
 use super::crypto::{CryptoError, CryptoResult, CryptoTrait};
-use crate::stdlib::sync::OnceLock;
-use crate::stdlib::sync::atomic::{AtomicU64, Ordering};
+use crate::stdlib::sync::{
+    OnceLock,
+    atomic::{AtomicU64, Ordering},
+};
 use core::prelude::rust_2024::*;
 use openssl::{
     aes::{AesKey, unwrap_key, wrap_key},

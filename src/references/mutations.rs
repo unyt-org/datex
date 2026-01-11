@@ -1,17 +1,20 @@
-use crate::dif::update::{DIFKey, DIFUpdateData};
-use crate::dif::value::DIFValueContainer;
-use crate::references::observers::TransceiverId;
-use crate::runtime::memory::Memory;
-use crate::stdlib::format;
-use crate::stdlib::vec::Vec;
-use crate::values::value_container::ValueKey;
 use crate::{
-    references::reference::{AccessError, Reference},
-    values::{core_value::CoreValue, value_container::ValueContainer},
+    dif::{
+        update::{DIFKey, DIFUpdateData},
+        value::DIFValueContainer,
+    },
+    references::{
+        observers::TransceiverId,
+        reference::{AccessError, Reference},
+    },
+    runtime::memory::Memory,
+    stdlib::{format, vec::Vec},
+    values::{
+        core_value::CoreValue,
+        value_container::{ValueContainer, ValueKey},
+    },
 };
-use core::cell::RefCell;
-use core::ops::FnOnce;
-use core::prelude::rust_2024::*;
+use core::{cell::RefCell, ops::FnOnce, prelude::rust_2024::*};
 
 pub enum DIFUpdateDataOrMemory<'a> {
     Update(&'a DIFUpdateData),
@@ -286,17 +289,17 @@ impl Reference {
 
 #[cfg(test)]
 mod tests {
-    use crate::references::reference::{
-        AccessError, AssignmentError, IndexOutOfBoundsError,
-        ReferenceMutability,
-    };
-    use crate::runtime::memory::Memory;
-    use crate::stdlib::assert_matches::assert_matches;
-    use crate::values::core_values::list::List;
-    use crate::values::core_values::map::Map;
     use crate::{
-        references::reference::Reference,
-        values::value_container::ValueContainer,
+        references::reference::{
+            AccessError, AssignmentError, IndexOutOfBoundsError, Reference,
+            ReferenceMutability,
+        },
+        runtime::memory::Memory,
+        stdlib::assert_matches::assert_matches,
+        values::{
+            core_values::{list::List, map::Map},
+            value_container::ValueContainer,
+        },
     };
     use core::cell::RefCell;
 

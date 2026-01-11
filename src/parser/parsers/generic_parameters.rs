@@ -1,7 +1,7 @@
-use crate::ast::type_expressions::TypeExpression;
-use crate::parser::errors::ParserError;
-use crate::parser::lexer::Token;
-use crate::parser::{Parser, SpannedParserError};
+use crate::{
+    ast::type_expressions::TypeExpression,
+    parser::{Parser, SpannedParserError, errors::ParserError, lexer::Token},
+};
 use core::ops::Range;
 
 impl Parser {

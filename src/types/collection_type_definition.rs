@@ -1,7 +1,5 @@
-use crate::stdlib::boxed::Box;
-use crate::values::core_values::r#type::Type;
-use core::fmt::Display;
-use core::prelude::rust_2024::*;
+use crate::{stdlib::boxed::Box, values::core_values::r#type::Type};
+use core::{fmt::Display, prelude::rust_2024::*};
 
 // TODO #377: Rename to Generic type definition?
 #[derive(Debug, Clone, PartialEq, Hash, Eq)]

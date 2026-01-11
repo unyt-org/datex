@@ -1,25 +1,27 @@
 use super::serial_common::SerialInterfaceSetupData;
-use crate::network::com_hub::errors::InterfaceCreateError;
-use crate::network::com_interfaces::com_interface::error::ComInterfaceError;
-use crate::network::com_interfaces::com_interface::implementation::ComInterfaceImplementation;
-use crate::network::com_interfaces::com_interface::implementation::{
-    ComInterfaceAsyncFactory, ComInterfaceSyncFactory,
+use crate::{
+    network::{
+        com_hub::errors::InterfaceCreateError,
+        com_interfaces::com_interface::{
+            ComInterface, ComInterfaceImplEvent,
+            error::ComInterfaceError,
+            implementation::{
+                ComInterfaceAsyncFactory, ComInterfaceImplementation,
+                ComInterfaceSyncFactory,
+            },
+            properties::{InterfaceDirection, InterfaceProperties},
+            socket::ComInterfaceSocketUUID,
+            state::ComInterfaceState,
+        },
+    },
+    std_sync::Mutex,
+    stdlib::{rc::Rc, sync::Arc, time::Duration},
+    task::{
+        UnboundedReceiver, spawn, spawn_blocking,
+        spawn_with_panic_notify_default,
+    },
 };
-use crate::network::com_interfaces::com_interface::properties::{
-    InterfaceDirection, InterfaceProperties,
-};
-use crate::network::com_interfaces::com_interface::socket::ComInterfaceSocketUUID;
-use crate::network::com_interfaces::com_interface::state::ComInterfaceState;
-use crate::network::com_interfaces::com_interface::{
-    ComInterface, ComInterfaceImplEvent,
-};
-use crate::std_sync::Mutex;
-use crate::stdlib::rc::Rc;
-use crate::stdlib::{sync::Arc, time::Duration};
-use crate::task::{UnboundedReceiver, spawn_with_panic_notify_default};
-use crate::{task::spawn, task::spawn_blocking};
-use core::prelude::rust_2024::*;
-use core::result::Result;
+use core::{prelude::rust_2024::*, result::Result};
 use log::{debug, error, warn};
 use serialport::SerialPort;
 use tokio::sync::Notify;

@@ -1,16 +1,17 @@
-use crate::global::operators::AssignmentOperator;
-use crate::global::type_instruction_codes::TypeMutabilityCode;
-use crate::stdlib::string::String;
-use crate::stdlib::vec::Vec;
-use crate::values::core_values::decimal::Decimal;
-use crate::values::core_values::endpoint::EndpointParsingError;
-use crate::values::core_values::integer::Integer;
-use crate::values::core_values::{
-    decimal::utils::decimal_to_string, endpoint::Endpoint,
+use crate::{
+    global::{
+        operators::AssignmentOperator,
+        type_instruction_codes::TypeMutabilityCode,
+    },
+    stdlib::{string::String, vec::Vec},
+    values::core_values::{
+        decimal::{Decimal, utils::decimal_to_string},
+        endpoint::{Endpoint, EndpointParsingError},
+        integer::Integer,
+    },
 };
 use binrw::{BinRead, BinWrite};
-use core::fmt::Display;
-use core::prelude::rust_2024::*;
+use core::{fmt::Display, prelude::rust_2024::*};
 use datex_core::values::pointer::PointerAddress;
 use serde::{Deserialize, Serialize};
 

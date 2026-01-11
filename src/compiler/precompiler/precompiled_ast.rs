@@ -1,6 +1,8 @@
-use crate::ast::expressions::{DatexExpression, VariableKind};
-use crate::stdlib::{cell::RefCell, rc::Rc};
-use crate::values::core_values::r#type::Type;
+use crate::{
+    ast::expressions::{DatexExpression, VariableKind},
+    stdlib::{cell::RefCell, rc::Rc},
+    values::core_values::r#type::Type,
+};
 use core::fmt::Display;
 
 #[derive(Clone, Debug)]

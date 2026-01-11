@@ -1,14 +1,15 @@
-use crate::ast::expressions::DatexExpression;
-use crate::ast::expressions::DatexExpressionData;
-use crate::ast::spanned::Spanned;
-use crate::ast::type_expressions::{TypeExpression, TypeExpressionData};
-use crate::compiler::error::{
-    ErrorCollector, MaybeAction, collect_or_pass_error,
-};
-use crate::parser::errors::{ParserError, SpannedParserError};
-use crate::parser::lexer::{SpannedToken, Token};
-use crate::parser::parser_result::{
-    InvalidDatexParseResult, ValidDatexParseResult,
+use crate::{
+    ast::{
+        expressions::{DatexExpression, DatexExpressionData},
+        spanned::Spanned,
+        type_expressions::{TypeExpression, TypeExpressionData},
+    },
+    compiler::error::{ErrorCollector, MaybeAction, collect_or_pass_error},
+    parser::{
+        errors::{ParserError, SpannedParserError},
+        lexer::{SpannedToken, Token},
+        parser_result::{InvalidDatexParseResult, ValidDatexParseResult},
+    },
 };
 use core::ops::Range;
 use itertools::Itertools;

@@ -1,14 +1,18 @@
 use url::Url;
 
-use crate::collections::HashMap;
-use crate::compiler::error::DetailedCompilerErrors;
-use crate::compiler::error::DetailedCompilerErrorsWithMaybeRichAst;
-use crate::compiler::precompiler::precompiled_ast::RichAst;
-use crate::compiler::{
-    CompileOptions, parse_datex_script_to_rich_ast_detailed_errors,
+use crate::{
+    collections::HashMap,
+    compiler::{
+        CompileOptions,
+        error::{
+            DetailedCompilerErrors, DetailedCompilerErrorsWithMaybeRichAst,
+        },
+        parse_datex_script_to_rich_ast_detailed_errors,
+        precompiler::precompiled_ast::RichAst,
+    },
+    runtime::Runtime,
+    values::core_values::r#type::Type,
 };
-use crate::runtime::Runtime;
-use crate::values::core_values::r#type::Type;
 
 /// Represents a file in the compiler workspace with its URL, cached content and AST.
 pub struct WorkspaceFile {

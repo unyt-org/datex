@@ -1,6 +1,5 @@
 use crate::stdlib::string::String;
-use core::fmt::Display;
-use core::prelude::rust_2024::*;
+use core::{fmt::Display, prelude::rust_2024::*};
 
 #[derive(Debug)]
 pub enum IllegalTypeError {

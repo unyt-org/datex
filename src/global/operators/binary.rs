@@ -1,8 +1,11 @@
-use crate::global::instruction_codes::InstructionCode;
-use crate::global::protocol_structures::instructions::RegularInstruction;
-use crate::stdlib::string::ToString;
-use core::fmt::Display;
-use core::prelude::rust_2024::*;
+use crate::{
+    global::{
+        instruction_codes::InstructionCode,
+        protocol_structures::instructions::RegularInstruction,
+    },
+    stdlib::string::ToString,
+};
+use core::{fmt::Display, prelude::rust_2024::*};
 
 #[derive(Clone, Debug, PartialEq, Copy)]
 pub enum BinaryOperator {

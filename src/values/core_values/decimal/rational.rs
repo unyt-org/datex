@@ -1,10 +1,13 @@
-use crate::stdlib::format;
-use crate::stdlib::string::String;
-use crate::stdlib::string::ToString;
-use core::fmt::Display;
-use core::ops::{Add, Neg};
-use core::prelude::rust_2024::*;
-use core::result::Result;
+use crate::stdlib::{
+    format,
+    string::{String, ToString},
+};
+use core::{
+    fmt::Display,
+    ops::{Add, Neg},
+    prelude::rust_2024::*,
+    result::Result,
+};
 use num::BigRational;
 use num_bigint::BigInt;
 use num_integer::Integer;

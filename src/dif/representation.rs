@@ -1,29 +1,35 @@
-use crate::dif::r#type::{DIFType, DIFTypeDefinition};
-use crate::dif::value::{DIFReferenceNotFoundError, DIFValueContainer};
-use crate::libs::core::{CoreLibPointerId, get_core_lib_type_definition};
-use crate::runtime::memory::Memory;
-use crate::stdlib::boxed::Box;
-use crate::stdlib::string::String;
-use crate::stdlib::string::ToString;
-use crate::stdlib::vec;
-use crate::stdlib::vec::Vec;
-use crate::types::structural_type_definition::StructuralTypeDefinition;
-use crate::values::core_value::CoreValue;
-use crate::values::core_values::decimal::typed_decimal::{
-    DecimalTypeVariant, TypedDecimal,
+use crate::{
+    dif::{
+        r#type::{DIFType, DIFTypeDefinition},
+        value::{DIFReferenceNotFoundError, DIFValueContainer},
+    },
+    libs::core::{CoreLibPointerId, get_core_lib_type_definition},
+    runtime::memory::Memory,
+    stdlib::{
+        boxed::Box,
+        string::{String, ToString},
+        vec,
+        vec::Vec,
+    },
+    types::structural_type_definition::StructuralTypeDefinition,
+    values::{
+        core_value::CoreValue,
+        core_values::{
+            decimal::typed_decimal::{DecimalTypeVariant, TypedDecimal},
+            map::Map,
+        },
+        value::Value,
+        value_container::ValueContainer,
+    },
 };
-use crate::values::core_values::map::Map;
-use crate::values::value::Value;
-use crate::values::value_container::ValueContainer;
-use core::cell::RefCell;
-use core::fmt;
-use core::prelude::rust_2024::*;
-use core::result::Result;
+use core::{cell::RefCell, fmt, prelude::rust_2024::*, result::Result};
 use indexmap::IndexMap;
 use ordered_float::OrderedFloat;
-use serde::de::{MapAccess, SeqAccess, Visitor};
-use serde::ser::{SerializeMap, SerializeSeq};
-use serde::{Deserialize, Deserializer, Serialize, Serializer, de};
+use serde::{
+    Deserialize, Deserializer, Serialize, Serializer, de,
+    de::{MapAccess, SeqAccess, Visitor},
+    ser::{SerializeMap, SerializeSeq},
+};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum DIFValueRepresentation {

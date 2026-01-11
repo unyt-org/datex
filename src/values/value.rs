@@ -1,25 +1,29 @@
-use crate::libs::core::CoreLibPointerId;
-use crate::references::reference::AccessError;
-use crate::references::type_reference::TypeReference;
-use crate::runtime::execution::ExecutionError;
-use crate::stdlib::boxed::Box;
-use crate::stdlib::format;
-use crate::stdlib::string::String;
-use crate::stdlib::string::ToString;
-use crate::traits::apply::Apply;
-use crate::traits::structural_eq::StructuralEq;
-use crate::traits::value_eq::ValueEq;
-use crate::types::definition::TypeDefinition;
-use crate::values::core_value::CoreValue;
-use crate::values::core_values::callable::{
-    Callable, CallableBody, CallableSignature,
+use crate::{
+    libs::core::CoreLibPointerId,
+    references::{reference::AccessError, type_reference::TypeReference},
+    runtime::execution::ExecutionError,
+    stdlib::{
+        boxed::Box,
+        format,
+        string::{String, ToString},
+    },
+    traits::{apply::Apply, structural_eq::StructuralEq, value_eq::ValueEq},
+    types::definition::TypeDefinition,
+    values::{
+        core_value::CoreValue,
+        core_values::{
+            callable::{Callable, CallableBody, CallableSignature},
+            integer::typed_integer::TypedInteger,
+        },
+        value_container::{ValueContainer, ValueError, ValueKey},
+    },
 };
-use crate::values::core_values::integer::typed_integer::TypedInteger;
-use crate::values::value_container::{ValueContainer, ValueError, ValueKey};
-use core::fmt::{Display, Formatter};
-use core::ops::{Add, AddAssign, Deref, Neg, Not, Sub};
-use core::prelude::rust_2024::*;
-use core::result::Result;
+use core::{
+    fmt::{Display, Formatter},
+    ops::{Add, AddAssign, Deref, Neg, Not, Sub},
+    prelude::rust_2024::*,
+    result::Result,
+};
 use log::error;
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
@@ -331,9 +335,9 @@ where
 /// The value is a holder for a combination of a CoreValue representation and its actual type.
 mod tests {
     use super::*;
-    use crate::libs::core::{get_core_lib_type, get_core_lib_type_reference};
     use crate::{
         assert_structural_eq, datex_list,
+        libs::core::{get_core_lib_type, get_core_lib_type_reference},
         logger::init_logger_debug,
         values::core_values::{
             endpoint::Endpoint,

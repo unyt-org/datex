@@ -1,13 +1,15 @@
-use crate::ast::type_expressions::{TypeExpression, TypeExpressionData};
-use crate::compiler::context::CompilationContext;
-use crate::compiler::error::CompilerError;
-use crate::compiler::precompiler::precompiled_ast::AstMetadata;
-use crate::compiler::scope::CompilationScope;
-use crate::core_compiler::value_compiler::append_big_integer;
-use crate::global::type_instruction_codes::TypeInstructionCode;
-use crate::stdlib::rc::Rc;
-use crate::utils::buffers::{append_u8, append_u32};
-use crate::values::core_values::integer::Integer;
+use crate::{
+    ast::type_expressions::{TypeExpression, TypeExpressionData},
+    compiler::{
+        context::CompilationContext, error::CompilerError,
+        precompiler::precompiled_ast::AstMetadata, scope::CompilationScope,
+    },
+    core_compiler::value_compiler::append_big_integer,
+    global::type_instruction_codes::TypeInstructionCode,
+    stdlib::rc::Rc,
+    utils::buffers::{append_u8, append_u32},
+    values::core_values::integer::Integer,
+};
 use core::cell::RefCell;
 
 /// Compilation functions for type expressions.

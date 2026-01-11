@@ -1,11 +1,15 @@
-use crate::network::com_interfaces::com_interface::ComInterfaceUUID;
-use crate::network::com_interfaces::com_interface::error::ComInterfaceError;
-use crate::network::com_interfaces::com_interface::properties::InterfaceDirection;
-use crate::network::com_interfaces::com_interface::socket::{
-    ComInterfaceSocket, ComInterfaceSocketEvent, ComInterfaceSocketUUID,
+use crate::{
+    network::com_interfaces::com_interface::{
+        ComInterfaceUUID,
+        error::ComInterfaceError,
+        properties::InterfaceDirection,
+        socket::{
+            ComInterfaceSocket, ComInterfaceSocketEvent, ComInterfaceSocketUUID,
+        },
+    },
+    task::UnboundedSender,
+    values::core_values::endpoint::Endpoint,
 };
-use crate::task::UnboundedSender;
-use crate::values::core_values::endpoint::Endpoint;
 use log::debug;
 
 #[derive(Debug)]

@@ -1,7 +1,10 @@
-use datex_core::compiler::{CompileOptions, compile_script};
-use datex_core::decompiler::{DecompileOptions, FormattingOptions};
-use datex_core::decompiler::{FormattingMode, decompile_body};
-use datex_core::logger::init_logger_debug;
+use datex_core::{
+    compiler::{CompileOptions, compile_script},
+    decompiler::{
+        DecompileOptions, FormattingMode, FormattingOptions, decompile_body,
+    },
+    logger::init_logger_debug,
+};
 use log::info;
 
 fn compare_compiled_with_decompiled(datex_script: &str) {

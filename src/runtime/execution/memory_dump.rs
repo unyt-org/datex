@@ -1,6 +1,7 @@
-use crate::runtime::execution::execution_loop::state::RuntimeExecutionSlots;
-use crate::stdlib::vec::Vec;
-use crate::values::value_container::ValueContainer;
+use crate::{
+    runtime::execution::execution_loop::state::RuntimeExecutionSlots,
+    stdlib::vec::Vec, values::value_container::ValueContainer,
+};
 use core::fmt::Display;
 use itertools::Itertools;
 

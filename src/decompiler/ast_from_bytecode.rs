@@ -1,31 +1,37 @@
-use crate::ast::expressions::{
-    Apply, BinaryOperation, DatexExpression, List, Map, Slot, UnaryOperation,
-    VariableAssignment, VariableDeclaration, VariableKind,
+use crate::{
+    ast::{
+        expressions::{
+            Apply, BinaryOperation, DatexExpression, DatexExpressionData, List,
+            Map, PropertyAssignment, Slot, Statements, UnaryOperation,
+            UnboundedStatement, VariableAssignment, VariableDeclaration,
+            VariableKind,
+        },
+        spanned::Spanned,
+        type_expressions::{TypeExpression, TypeExpressionData},
+    },
+    dxb_parser::{
+        body::{DXBParserError, iterate_instructions},
+        instruction_collector::{
+            CollectedResults, CollectionResultsPopper, FullOrPartialResult,
+            InstructionCollector, StatementResultCollectionStrategy,
+        },
+    },
+    global::{
+        operators::{AssignmentOperator, BinaryOperator, UnaryOperator},
+        protocol_structures::instructions::{
+            Instruction, RegularInstruction, TypeInstruction,
+        },
+        slots::InternalSlot,
+    },
+    stdlib::{format, rc::Rc},
+    values::{
+        core_values::{
+            decimal::{Decimal, typed_decimal::TypedDecimal},
+            integer::{Integer, typed_integer::TypedInteger},
+        },
+        pointer::PointerAddress,
+    },
 };
-use crate::ast::expressions::{DatexExpressionData, Statements};
-use crate::ast::expressions::{PropertyAssignment, UnboundedStatement};
-use crate::ast::spanned::Spanned;
-use crate::ast::type_expressions::{TypeExpression, TypeExpressionData};
-use crate::dxb_parser::body::{DXBParserError, iterate_instructions};
-use crate::dxb_parser::instruction_collector::StatementResultCollectionStrategy;
-use crate::dxb_parser::instruction_collector::{
-    CollectedResults, CollectionResultsPopper, FullOrPartialResult,
-    InstructionCollector,
-};
-use crate::global::operators::{
-    AssignmentOperator, BinaryOperator, UnaryOperator,
-};
-use crate::global::protocol_structures::instructions::{
-    Instruction, RegularInstruction, TypeInstruction,
-};
-use crate::global::slots::InternalSlot;
-use crate::stdlib::format;
-use crate::stdlib::rc::Rc;
-use crate::values::core_values::decimal::Decimal;
-use crate::values::core_values::decimal::typed_decimal::TypedDecimal;
-use crate::values::core_values::integer::Integer;
-use crate::values::core_values::integer::typed_integer::TypedInteger;
-use crate::values::pointer::PointerAddress;
 use core::cell::RefCell;
 use num_enum::TryFromPrimitive;
 
@@ -702,11 +708,13 @@ pub fn ast_from_bytecode(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ast::expressions::PropertyAccess;
-    use crate::global::operators::binary::ArithmeticOperator;
-    use crate::global::type_instruction_codes::TypeInstructionCode;
     use crate::{
-        ast::spanned::Spanned, global::instruction_codes::InstructionCode,
+        ast::{expressions::PropertyAccess, spanned::Spanned},
+        global::{
+            instruction_codes::InstructionCode,
+            operators::binary::ArithmeticOperator,
+            type_instruction_codes::TypeInstructionCode,
+        },
     };
 
     #[test]

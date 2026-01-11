@@ -1,26 +1,28 @@
-use core::prelude::rust_2024::*;
-use core::result::Result;
+use core::{prelude::rust_2024::*, result::Result};
 pub mod rational;
 pub mod typed_decimal;
 pub mod utils;
 
-use crate::stdlib::string::ToString;
-use crate::stdlib::vec;
-use crate::stdlib::vec::Vec;
-use crate::traits::structural_eq::StructuralEq;
-use crate::traits::value_eq::ValueEq;
-use crate::values::core_values::decimal::typed_decimal::TypedDecimal;
-use crate::values::core_values::error::NumberParseError;
+use crate::{
+    stdlib::{string::ToString, vec, vec::Vec},
+    traits::{structural_eq::StructuralEq, value_eq::ValueEq},
+    values::core_values::{
+        decimal::typed_decimal::TypedDecimal, error::NumberParseError,
+    },
+};
 use bigdecimal::BigDecimal;
-use binrw::io::{Read, Seek, Write};
-use binrw::{BinRead, BinReaderExt, BinResult, BinWrite, Endian};
-use core::cmp::Ordering;
-use core::fmt::Display;
-use core::hash::Hash;
-use core::ops::{Add, Neg, Sub};
-use core::str::FromStr;
-use num::BigInt;
-use num::BigRational;
+use binrw::{
+    BinRead, BinReaderExt, BinResult, BinWrite, Endian,
+    io::{Read, Seek, Write},
+};
+use core::{
+    cmp::Ordering,
+    fmt::Display,
+    hash::Hash,
+    ops::{Add, Neg, Sub},
+    str::FromStr,
+};
+use num::{BigInt, BigRational};
 use num_enum::TryFromPrimitive;
 use num_traits::{FromPrimitive, Zero};
 use rational::Rational;

@@ -1,32 +1,34 @@
-use crate::collections::HashMap;
-use crate::references::reference::Reference;
-use crate::references::type_reference::{
-    NominalTypeDeclaration, TypeReference,
+use crate::{
+    collections::HashMap,
+    references::{
+        reference::Reference,
+        type_reference::{NominalTypeDeclaration, TypeReference},
+    },
+    runtime::memory::Memory,
+    stdlib::{
+        boxed::Box,
+        format,
+        rc::Rc,
+        string::{String, ToString},
+        vec,
+        vec::Vec,
+    },
+    types::definition::TypeDefinition,
+    values::{
+        core_value::CoreValue,
+        core_values::{
+            callable::{CallableBody, CallableKind, CallableSignature},
+            decimal::typed_decimal::DecimalTypeVariant,
+            integer::typed_integer::IntegerTypeVariant,
+            map::Map,
+            r#type::Type,
+        },
+        pointer::PointerAddress,
+        value::Value,
+        value_container::ValueContainer,
+    },
 };
-use crate::runtime::memory::Memory;
-use crate::stdlib::boxed::Box;
-use crate::stdlib::format;
-use crate::stdlib::rc::Rc;
-use crate::stdlib::string::String;
-use crate::stdlib::string::ToString;
-use crate::stdlib::vec;
-use crate::stdlib::vec::Vec;
-use crate::types::definition::TypeDefinition;
-use crate::values::core_value::CoreValue;
-use crate::values::core_values::callable::{
-    CallableBody, CallableKind, CallableSignature,
-};
-use crate::values::core_values::decimal::typed_decimal::DecimalTypeVariant;
-use crate::values::core_values::integer::typed_integer::IntegerTypeVariant;
-use crate::values::core_values::map::Map;
-use crate::values::core_values::r#type::Type;
-use crate::values::pointer::PointerAddress;
-use crate::values::value::Value;
-use crate::values::value_container::ValueContainer;
-use core::cell::RefCell;
-use core::iter::once;
-use core::prelude::rust_2024::*;
-use core::result::Result;
+use core::{cell::RefCell, iter::once, prelude::rust_2024::*, result::Result};
 use datex_macros::LibTypeString;
 use log::info;
 use strum::IntoEnumIterator;

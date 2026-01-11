@@ -12,10 +12,12 @@ pub struct Loc {
     pub source: SourceId,
     pub span: Range<usize>,
 }
-use crate::parser::errors::{ParserError, SpannedParserError};
-use crate::values::core_values::{
-    decimal::typed_decimal::DecimalTypeVariant,
-    integer::typed_integer::IntegerTypeVariant,
+use crate::{
+    parser::errors::{ParserError, SpannedParserError},
+    values::core_values::{
+        decimal::typed_decimal::DecimalTypeVariant,
+        integer::typed_integer::IntegerTypeVariant,
+    },
 };
 use strum::IntoEnumIterator;
 

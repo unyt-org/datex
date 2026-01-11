@@ -1,8 +1,5 @@
 use binrw::{BinRead, BinWrite};
 use core::str::FromStr;
-use datex_core::values::core_values::endpoint::{
-    Endpoint, EndpointInstance, EndpointType,
-};
 use datex_core::{
     global::{
         dxb_block::DXBBlock,
@@ -14,7 +11,10 @@ use datex_core::{
             serializable::Serializable,
         },
     },
-    values::pointer::PointerAddress,
+    values::{
+        core_values::endpoint::{Endpoint, EndpointInstance, EndpointType},
+        pointer::PointerAddress,
+    },
 };
 use serde::Serialize;
 use serde_json::ser::{Formatter, PrettyFormatter};
@@ -100,8 +100,7 @@ pub async fn parse_dxb_block() {
 }
 
 fn create_dxb_block_artifacts(block: &mut DXBBlock, name: &str) {
-    use std::fs;
-    use std::path::Path;
+    use std::{fs, path::Path};
     let dir_path = Path::new("tests").join("structs").join(name);
     fs::create_dir_all(&dir_path).unwrap();
     let bin_path = dir_path.join("block.bin");

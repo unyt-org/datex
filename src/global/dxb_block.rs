@@ -3,17 +3,18 @@ use super::protocol_structures::{
     encrypted_header::EncryptedHeader,
     routing_header::{EncryptionType, RoutingHeader, SignatureType},
 };
-use crate::global::protocol_structures::routing_header::Receivers;
-use crate::stdlib::vec::Vec;
-use crate::task::UnboundedReceiver;
-use crate::utils::buffers::write_u16;
-use crate::values::core_values::endpoint::Endpoint;
-use binrw::io::{Cursor, Read};
-use binrw::{BinRead, BinWrite};
-use core::fmt::Display;
-use core::prelude::rust_2024::*;
-use core::result::Result;
-use core::unimplemented;
+use crate::{
+    global::protocol_structures::routing_header::Receivers, stdlib::vec::Vec,
+    task::UnboundedReceiver, utils::buffers::write_u16,
+    values::core_values::endpoint::Endpoint,
+};
+use binrw::{
+    BinRead, BinWrite,
+    io::{Cursor, Read},
+};
+use core::{
+    fmt::Display, prelude::rust_2024::*, result::Result, unimplemented,
+};
 use log::error;
 use strum::Display;
 use thiserror::Error;
@@ -449,8 +450,7 @@ mod tests {
     use core::str::FromStr;
 
     use crate::{
-        crypto::crypto::CryptoTrait,
-        crypto::crypto_native::CryptoNative,
+        crypto::{crypto::CryptoTrait, crypto_native::CryptoNative},
         global::{
             dxb_block::DXBBlock,
             protocol_structures::{

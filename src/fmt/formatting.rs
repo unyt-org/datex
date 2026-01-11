@@ -2,17 +2,16 @@ use core::ops::Range;
 
 use pretty::DocAllocator;
 
-use crate::ast::expressions::{
-    BinaryOperation, DatexExpression, DatexExpressionData, List, Map,
-    VariableAccess, VariableDeclaration,
-};
-use crate::fmt::Assoc;
-use crate::references::reference::ReferenceMutability;
 use crate::{
+    ast::expressions::{
+        BinaryOperation, DatexExpression, DatexExpressionData, List, Map,
+        VariableAccess, VariableDeclaration,
+    },
     fmt::{
-        Format, Formatter, Operation, ParentContext,
+        Assoc, Format, Formatter, Operation, ParentContext,
         options::{StatementFormatting, VariantFormatting},
     },
+    references::reference::ReferenceMutability,
     values::core_values::{
         decimal::typed_decimal::TypedDecimal,
         integer::typed_integer::TypedInteger,

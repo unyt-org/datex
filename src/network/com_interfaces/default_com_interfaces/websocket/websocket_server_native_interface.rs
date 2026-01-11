@@ -1,13 +1,9 @@
-use crate::std_sync::Mutex;
-use crate::stdlib::rc::Rc;
-use crate::stdlib::sync::Arc;
-use crate::stdlib::{
-    collections::HashMap, net::SocketAddr,
+use crate::{
+    std_sync::Mutex,
+    stdlib::{collections::HashMap, net::SocketAddr, rc::Rc, sync::Arc},
+    task::{UnboundedReceiver, spawn_with_panic_notify_default},
 };
-use crate::task::{UnboundedReceiver, spawn_with_panic_notify_default};
-use core::prelude::rust_2024::*;
-use core::result::Result;
-use core::time::Duration;
+use core::{prelude::rust_2024::*, result::Result, time::Duration};
 
 use futures_util::{SinkExt, StreamExt};
 use log::{error, info};
@@ -23,22 +19,22 @@ use futures_util::stream::SplitSink;
 use tokio_tungstenite::accept_async;
 
 use super::websocket_common::{WebSocketServerInterfaceSetupData, parse_url};
-use crate::network::com_hub::errors::InterfaceCreateError;
-use crate::network::com_interfaces::com_interface::error::ComInterfaceError;
-use crate::network::com_interfaces::com_interface::implementation::{
-    ComInterfaceAsyncFactory, ComInterfaceSyncFactory,
+use crate::{
+    network::{
+        com_hub::errors::InterfaceCreateError,
+        com_interfaces::com_interface::{
+            ComInterface, ComInterfaceImplEvent,
+            error::ComInterfaceError,
+            implementation::{
+                ComInterfaceAsyncFactory, ComInterfaceAsyncFactoryResult,
+                ComInterfaceImplementation, ComInterfaceSyncFactory,
+            },
+            properties::{InterfaceDirection, InterfaceProperties},
+            socket::ComInterfaceSocketUUID,
+        },
+    },
+    runtime::global_context::get_global_context,
 };
-use crate::network::com_interfaces::com_interface::implementation::{
-    ComInterfaceAsyncFactoryResult, ComInterfaceImplementation,
-};
-use crate::network::com_interfaces::com_interface::properties::{
-    InterfaceDirection, InterfaceProperties,
-};
-use crate::network::com_interfaces::com_interface::socket::ComInterfaceSocketUUID;
-use crate::network::com_interfaces::com_interface::{
-    ComInterface, ComInterfaceImplEvent,
-};
-use crate::runtime::global_context::get_global_context;
 use tokio_tungstenite::WebSocketStream;
 
 type WebsocketStreamMap = HashMap<

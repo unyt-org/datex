@@ -1,6 +1,6 @@
-use crate::{
-    compiler::error::CompilerError,
-    compiler::precompiler::{
+use crate::compiler::{
+    error::CompilerError,
+    precompiler::{
         precompiled_ast::{AstMetadata, VariableMetadata, VariableShape},
         scope::PrecompilerScope,
     },

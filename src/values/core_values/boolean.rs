@@ -1,10 +1,9 @@
-use crate::stdlib::string::String;
-use crate::stdlib::string::ToString;
-use crate::traits::structural_eq::StructuralEq;
-use crate::values::value_container::{ValueContainer, ValueError};
-use core::prelude::rust_2024::*;
-use core::result::Result;
-use core::{fmt::Display, ops::Not};
+use crate::{
+    stdlib::string::{String, ToString},
+    traits::structural_eq::StructuralEq,
+    values::value_container::{ValueContainer, ValueError},
+};
+use core::{fmt::Display, ops::Not, prelude::rust_2024::*, result::Result};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]

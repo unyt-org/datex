@@ -1,37 +1,38 @@
-use crate::dxb_parser::next_instructions_stack::NextInstructionsStack;
-use crate::dxb_parser::next_instructions_stack::{
-    NextInstructionType, NotInUnboundedRegularScopeError,
+use crate::{
+    dxb_parser::next_instructions_stack::{
+        NextInstructionType, NextInstructionsStack,
+        NotInUnboundedRegularScopeError,
+    },
+    global::{
+        instruction_codes::InstructionCode,
+        operators::assignment::AssignmentOperator,
+        protocol_structures::instructions::{
+            ApplyData, DecimalData, Float32Data, Float64Data, FloatAsInt16Data,
+            FloatAsInt32Data, ImplTypeData, Instruction, InstructionBlockData,
+            Int8Data, Int16Data, Int32Data, Int64Data, Int128Data, IntegerData,
+            ListData, MapData, RawFullPointerAddress,
+            RawInternalPointerAddress, RawLocalPointerAddress,
+            RegularInstruction, ShortListData, ShortMapData,
+            ShortStatementsData, ShortTextData, ShortTextDataRaw, SlotAddress,
+            StatementsData, TextData, TextDataRaw, TypeInstruction,
+            TypeReferenceData, UInt8Data, UInt16Data, UInt32Data, UInt64Data,
+            UInt128Data, UnboundedStatementsData,
+        },
+        type_instruction_codes::TypeInstructionCode,
+    },
+    runtime::execution::macros::yield_unwrap,
+    stdlib::{
+        rc::Rc,
+        string::{FromUtf8Error, String},
+        vec::Vec,
+    },
+    values::core_values::endpoint::Endpoint,
 };
-use crate::global::instruction_codes::InstructionCode;
-use crate::global::operators::assignment::AssignmentOperator;
-use crate::global::protocol_structures::instructions::{
-    ApplyData, DecimalData, Float32Data, Float64Data, FloatAsInt16Data,
-    FloatAsInt32Data, ImplTypeData, Instruction, InstructionBlockData,
-    Int8Data, Int16Data, Int32Data, Int64Data, Int128Data, IntegerData,
-    ListData, MapData, RawFullPointerAddress, RawInternalPointerAddress,
-    RegularInstruction, ShortListData, ShortMapData, ShortStatementsData,
-    ShortTextData, ShortTextDataRaw, SlotAddress, TextData, TextDataRaw,
-    TypeInstruction, TypeReferenceData, UInt8Data, UInt16Data, UInt32Data,
-    UInt64Data, UInt128Data, UnboundedStatementsData,
+use binrw::{BinRead, io::Cursor};
+use core::{
+    cell::RefCell, convert::TryFrom, fmt, fmt::Display, prelude::rust_2024::*,
+    result::Result,
 };
-use crate::global::protocol_structures::instructions::{
-    RawLocalPointerAddress, StatementsData,
-};
-use crate::global::type_instruction_codes::TypeInstructionCode;
-use crate::runtime::execution::macros::yield_unwrap;
-use crate::stdlib::rc::Rc;
-use crate::stdlib::string::FromUtf8Error;
-use crate::stdlib::string::String;
-use crate::stdlib::vec::Vec;
-use crate::values::core_values::endpoint::Endpoint;
-use binrw::BinRead;
-use binrw::io::Cursor;
-use core::cell::RefCell;
-use core::convert::TryFrom;
-use core::fmt;
-use core::fmt::Display;
-use core::prelude::rust_2024::*;
-use core::result::Result;
 
 #[derive(Debug)]
 pub enum DXBParserError {

@@ -1,27 +1,29 @@
-use crate::stdlib::format;
-use crate::stdlib::string::String;
-use crate::stdlib::string::ToString;
-use crate::stdlib::vec;
-use crate::values::core_values::map::{Map, MapKey};
-use crate::values::value::Value;
 use crate::{
     runtime::execution::{ExecutionInput, ExecutionOptions, execute_dxb_sync},
     serde::error::DeserializationError,
+    stdlib::{
+        format,
+        string::{String, ToString},
+        vec,
+    },
     values::{
         core_value::CoreValue,
         core_values::{
             decimal::typed_decimal::TypedDecimal,
             integer::typed_integer::TypedInteger,
+            map::{Map, MapKey},
         },
         value,
+        value::Value,
         value_container::ValueContainer,
     },
 };
-use core::prelude::rust_2024::*;
-use core::result::Result;
-use core::unreachable;
-use serde::de::{EnumAccess, VariantAccess, Visitor};
-use serde::{Deserializer, de::IntoDeserializer, forward_to_deserialize_any};
+use core::{prelude::rust_2024::*, result::Result, unreachable};
+use serde::{
+    Deserializer,
+    de::{EnumAccess, IntoDeserializer, VariantAccess, Visitor},
+    forward_to_deserialize_any,
+};
 
 /// Deserialize a value of type T from a byte slice containing DXB data
 pub fn from_bytes<'de, T>(input: &'de [u8]) -> Result<T, DeserializationError>
@@ -583,9 +585,12 @@ impl<'de> VariantAccess<'de> for VariantDeserializer {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::compiler::{CompileOptions, compile_script};
-    use crate::serde::serializer::to_bytes;
-    use crate::{logger::init_logger, values::core_values::endpoint::Endpoint};
+    use crate::{
+        compiler::{CompileOptions, compile_script},
+        logger::init_logger,
+        serde::serializer::to_bytes,
+        values::core_values::endpoint::Endpoint,
+    };
     use serde::{Deserialize, Serialize};
 
     #[derive(Deserialize, Serialize, Debug, PartialEq)]

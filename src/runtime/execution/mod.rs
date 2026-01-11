@@ -1,21 +1,22 @@
-use crate::global::protocol_structures::instructions::*;
-use crate::libs::core::{CoreLibPointerId, get_core_lib_value};
-use crate::runtime::RuntimeInternal;
-use crate::runtime::execution::context::ExecutionMode;
-use crate::runtime::execution::context::RemoteExecutionContext;
-use crate::runtime::execution::execution_loop::interrupts::{
-    ExternalExecutionInterrupt, InterruptResult,
+use crate::{
+    global::protocol_structures::instructions::*,
+    libs::core::{CoreLibPointerId, get_core_lib_value},
+    runtime::{
+        RuntimeInternal,
+        execution::{
+            context::{ExecutionMode, RemoteExecutionContext},
+            execution_loop::interrupts::{
+                ExternalExecutionInterrupt, InterruptResult,
+            },
+        },
+    },
+    stdlib::rc::Rc,
+    traits::apply::Apply,
+    values::{pointer::PointerAddress, value_container::ValueContainer},
 };
-use crate::stdlib::rc::Rc;
-use crate::traits::apply::Apply;
-use crate::values::pointer::PointerAddress;
-use crate::values::value_container::ValueContainer;
-use core::prelude::rust_2024::*;
-use core::result::Result;
-use core::unreachable;
+use core::{prelude::rust_2024::*, result::Result, unreachable};
 pub use errors::*;
-pub use execution_input::ExecutionInput;
-pub use execution_input::ExecutionOptions;
+pub use execution_input::{ExecutionInput, ExecutionOptions};
 pub use memory_dump::*;
 
 pub mod context;
@@ -222,30 +223,35 @@ fn get_local_pointer_value(
 
 #[cfg(test)]
 mod tests {
-    use crate::libs::core::get_core_lib_type_reference;
-    use crate::references::reference::Reference;
-    use crate::stdlib::assert_matches::assert_matches;
-    use crate::stdlib::vec;
+    use crate::{
+        libs::core::get_core_lib_type_reference,
+        references::reference::Reference,
+        stdlib::{assert_matches::assert_matches, vec},
+    };
 
     use super::*;
-    use crate::compiler::scope::CompilationScope;
-    use crate::compiler::{CompileOptions, compile_script};
-    use crate::global::instruction_codes::InstructionCode;
-    use crate::logger::init_logger_debug;
-    use crate::runtime::execution::context::ExecutionContext;
-    use crate::runtime::execution::context::LocalExecutionContext;
-    use crate::runtime::execution::execution_input::ExecutionOptions;
-    use crate::stdlib::string::ToString;
-    use crate::stdlib::vec::Vec;
-    use crate::traits::structural_eq::StructuralEq;
-    use crate::traits::value_eq::ValueEq;
-    use crate::values::core_value::CoreValue;
-    use crate::values::core_values::decimal::Decimal;
-    use crate::values::core_values::integer::Integer;
-    use crate::values::core_values::integer::typed_integer::TypedInteger;
-    use crate::values::core_values::list::List;
-    use crate::values::core_values::map::Map;
-    use crate::{assert_structural_eq, assert_value_eq, datex_list};
+    use crate::{
+        assert_structural_eq, assert_value_eq,
+        compiler::{CompileOptions, compile_script, scope::CompilationScope},
+        datex_list,
+        global::instruction_codes::InstructionCode,
+        logger::init_logger_debug,
+        runtime::execution::{
+            context::{ExecutionContext, LocalExecutionContext},
+            execution_input::ExecutionOptions,
+        },
+        stdlib::{string::ToString, vec::Vec},
+        traits::{structural_eq::StructuralEq, value_eq::ValueEq},
+        values::{
+            core_value::CoreValue,
+            core_values::{
+                decimal::Decimal,
+                integer::{Integer, typed_integer::TypedInteger},
+                list::List,
+                map::Map,
+            },
+        },
+    };
     use log::{debug, info};
 
     fn execute_datex_script_debug(

@@ -1,14 +1,17 @@
-use crate::ast::expressions::Apply;
-use crate::ast::expressions::{
-    BinaryOperation, CallableDeclaration, ComparisonOperation, Conditional,
-    CreateRef, DatexExpression, DatexExpressionData, Deref, DerefAssignment,
-    GenericInstantiation, List, Map, PropertyAccess, PropertyAssignment,
-    RemoteExecution, SlotAssignment, Statements, TypeDeclaration,
-    UnaryOperation, VariableAssignment, VariableDeclaration,
+use crate::{
+    ast::expressions::{
+        Apply, BinaryOperation, CallableDeclaration, ComparisonOperation,
+        Conditional, CreateRef, DatexExpression, DatexExpressionData, Deref,
+        DerefAssignment, GenericInstantiation, List, Map, PropertyAccess,
+        PropertyAssignment, RemoteExecution, SlotAssignment, Statements,
+        TypeDeclaration, UnaryOperation, VariableAssignment,
+        VariableDeclaration,
+    },
+    visitor::{
+        VisitAction, expression::ExpressionVisitor,
+        type_expression::visitable::VisitableTypeExpression,
+    },
 };
-use crate::visitor::VisitAction;
-use crate::visitor::expression::ExpressionVisitor;
-use crate::visitor::type_expression::visitable::VisitableTypeExpression;
 
 pub type ExpressionVisitResult<E> = Result<VisitAction<DatexExpression>, E>;
 

@@ -1,8 +1,8 @@
-use crate::ast::expressions::{
-    BinaryOperation, ComparisonOperation, DatexExpression, DatexExpressionData,
-    UnaryOperation,
-};
 use crate::{
+    ast::expressions::{
+        BinaryOperation, ComparisonOperation, DatexExpression,
+        DatexExpressionData, UnaryOperation,
+    },
     fmt::{
         Assoc, Format, Formatter, Operation, ParentContext,
         options::BracketStyle,

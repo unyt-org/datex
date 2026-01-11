@@ -2,23 +2,29 @@ mod errors;
 mod type_hint_collector;
 mod utils;
 mod variable_declaration_finder;
-use crate::ast::expressions::{
-    DatexExpressionData, VariableAccess, VariableAssignment,
-    VariableDeclaration,
+use crate::{
+    ast::expressions::{
+        DatexExpressionData, VariableAccess, VariableAssignment,
+        VariableDeclaration,
+    },
+    collections::HashMap,
+    compiler::{
+        precompiler::precompiled_ast::RichAst, workspace::CompilerWorkspace,
+    },
+    lsp::{
+        errors::SpannedLSPCompilerError,
+        variable_declaration_finder::VariableDeclarationFinder,
+    },
+    runtime::Runtime,
+    stdlib::{borrow::Cow, cell::RefCell},
+    values::core_values::r#type::Type,
+    visitor::expression::ExpressionVisitor,
 };
-use crate::collections::HashMap;
-use crate::compiler::precompiler::precompiled_ast::RichAst;
-use crate::compiler::workspace::CompilerWorkspace;
-use crate::lsp::errors::SpannedLSPCompilerError;
-use crate::lsp::variable_declaration_finder::VariableDeclarationFinder;
-use crate::runtime::Runtime;
-use crate::stdlib::borrow::Cow;
-use crate::stdlib::cell::RefCell;
-use crate::values::core_values::r#type::Type;
-use crate::visitor::expression::ExpressionVisitor;
-use realhydroper_lsp::jsonrpc::{Error, ErrorCode};
-use realhydroper_lsp::{Client, LanguageServer, Server};
-use realhydroper_lsp::{LspService, lsp_types::*};
+use realhydroper_lsp::{
+    Client, LanguageServer, LspService, Server,
+    jsonrpc::{Error, ErrorCode},
+    lsp_types::*,
+};
 
 #[cfg(feature = "lsp_wasm")]
 use futures::io::{AsyncRead, AsyncWrite};
@@ -395,14 +401,18 @@ where
 mod tests {
     use core::str::FromStr;
 
-    use crate::runtime::{AsyncContext, RuntimeConfig};
-    use crate::utils::context::init_global_context;
-    use crate::values::core_values::endpoint::Endpoint;
+    use crate::{
+        runtime::{AsyncContext, RuntimeConfig},
+        utils::context::init_global_context,
+        values::core_values::endpoint::Endpoint,
+    };
 
     use super::*;
-    use tokio::io::{AsyncReadExt, AsyncWriteExt, duplex};
-    use tokio::task::LocalSet;
-    use tokio::time::{Duration, timeout};
+    use tokio::{
+        io::{AsyncReadExt, AsyncWriteExt, duplex},
+        task::LocalSet,
+        time::{Duration, timeout},
+    };
 
     #[tokio::test(flavor = "current_thread")]
     async fn test_lsp_initialization() {

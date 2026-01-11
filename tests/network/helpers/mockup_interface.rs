@@ -1,34 +1,35 @@
-use core::cell::RefCell;
-use core::time::Duration;
-use datex_core::global::{
-    dxb_block::DXBBlock, protocol_structures::block_header::BlockType,
+use core::{cell::RefCell, time::Duration};
+use datex_core::{
+    global::{
+        dxb_block::DXBBlock, protocol_structures::block_header::BlockType,
+    },
+    network::{
+        com_hub::errors::InterfaceCreateError,
+        com_interfaces::com_interface::{
+            ComInterface, ComInterfaceImplEvent,
+            error::ComInterfaceError,
+            implementation::{
+                ComInterfaceImplementation, ComInterfaceSyncFactory,
+            },
+            properties::{InterfaceDirection, InterfaceProperties},
+            socket::ComInterfaceSocketUUID,
+        },
+    },
+    task::{
+        UnboundedReceiver, UnboundedSender, spawn_with_panic_notify,
+        spawn_with_panic_notify_default,
+    },
+    values::core_values::endpoint::Endpoint,
 };
-use datex_core::network::com_hub::errors::InterfaceCreateError;
-use datex_core::network::com_interfaces::com_interface::error::ComInterfaceError;
-use datex_core::network::com_interfaces::com_interface::implementation::{
-    ComInterfaceImplementation, ComInterfaceSyncFactory,
-};
-use datex_core::network::com_interfaces::com_interface::properties::{
-    InterfaceDirection, InterfaceProperties,
-};
-use datex_core::network::com_interfaces::com_interface::socket::ComInterfaceSocketUUID;
-use datex_core::network::com_interfaces::com_interface::{
-    ComInterface, ComInterfaceImplEvent,
-};
-use datex_core::task::{
-    UnboundedReceiver, UnboundedSender, spawn_with_panic_notify,
-    spawn_with_panic_notify_default,
-};
-use datex_core::values::core_values::endpoint::Endpoint;
 use datex_macros::{com_interface, create_opener};
 use log::{error, info};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use std::fmt::Debug;
-use std::rc::Rc;
 use std::{
+    collections::HashMap,
+    fmt::Debug,
     future::Future,
     pin::Pin,
+    rc::Rc,
     sync::{Arc, Mutex, mpsc},
 };
 use tokio::net::tcp::OwnedWriteHalf;

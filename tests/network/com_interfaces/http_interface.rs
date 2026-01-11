@@ -1,9 +1,14 @@
 use core::str::FromStr;
-use datex_core::{network::com_interfaces::{
-    com_interface::socket::ComInterfaceSocketEvent, default_com_interfaces::http::http_server_interface::HTTPServerNativeInterface
-}, values::core_values::endpoint::Endpoint};
-use datex_core::network::com_interfaces::com_interface::ComInterface;
-use datex_core::network::com_interfaces::default_com_interfaces::http::http_common::HTTPServerInterfaceSetupData;
+use datex_core::{
+    network::com_interfaces::{
+        com_interface::{ComInterface, socket::ComInterfaceSocketEvent},
+        default_com_interfaces::http::{
+            http_common::HTTPServerInterfaceSetupData,
+            http_server_interface::HTTPServerNativeInterface,
+        },
+    },
+    values::core_values::endpoint::Endpoint,
+};
 use datex_macros::async_test;
 
 // $ head -c 48192 /dev/zero | curl -X POST http://localhost:8081/my-secret-channel/tx --data-binary @-

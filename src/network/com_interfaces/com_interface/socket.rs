@@ -1,16 +1,16 @@
 use core::prelude::rust_2024::*;
 use strum_macros::EnumIs;
 
-use crate::network::com_interfaces::block_collector::BlockCollector;
-use crate::network::com_interfaces::com_interface::ComInterfaceUUID;
-use crate::network::com_interfaces::com_interface::properties::InterfaceDirection;
-use crate::stdlib::string::String;
-use crate::stdlib::vec::Vec;
-use crate::task::{UnboundedReceiver, UnboundedSender};
-use crate::utils::once_consumer::OnceConsumer;
-use crate::utils::uuid::UUID;
 use crate::{
-    global::dxb_block::DXBBlock, values::core_values::endpoint::Endpoint,
+    global::dxb_block::DXBBlock,
+    network::com_interfaces::{
+        block_collector::BlockCollector,
+        com_interface::{ComInterfaceUUID, properties::InterfaceDirection},
+    },
+    stdlib::{string::String, vec::Vec},
+    task::{UnboundedReceiver, UnboundedSender},
+    utils::{once_consumer::OnceConsumer, uuid::UUID},
+    values::core_values::endpoint::Endpoint,
 };
 use core::fmt::Display;
 

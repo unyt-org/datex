@@ -1,7 +1,9 @@
-use crate::global::protocol_structures::instructions::{
-    Instruction, RegularInstruction, TypeInstruction,
+use crate::{
+    global::protocol_structures::instructions::{
+        Instruction, RegularInstruction, TypeInstruction,
+    },
+    stdlib::vec::Vec,
 };
-use crate::stdlib::vec::Vec;
 
 pub trait CollectionResultsPopper<Result, Val, Key, KeyVal, Type>:
     GetResults<Result> + Sized

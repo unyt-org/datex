@@ -1,36 +1,37 @@
-use crate::stdlib::rc::Rc;
-use crate::stdlib::sync::{Arc, Mutex};
-use crate::stdlib::time::Duration;
-use core::prelude::rust_2024::*;
-use core::result::Result;
-use futures_util::stream::SplitStream;
-use futures_util::{SinkExt, StreamExt, stream::SplitSink};
+use crate::stdlib::{
+    rc::Rc,
+    sync::{Arc, Mutex},
+    time::Duration,
+};
+use core::{prelude::rust_2024::*, result::Result};
+use futures_util::{
+    SinkExt, StreamExt,
+    stream::{SplitSink, SplitStream},
+};
 use log::{error, info};
 use tokio::net::TcpStream;
 use tungstenite::Message;
 use url::Url;
 
 use super::websocket_common::{WebSocketClientInterfaceSetupData, parse_url};
-use crate::network::com_hub::errors::InterfaceCreateError;
-use crate::network::com_interfaces::com_interface::error::ComInterfaceError;
-use crate::network::com_interfaces::com_interface::implementation::{
-    ComInterfaceAsyncFactory, ComInterfaceSyncFactory,
-};
-use crate::network::com_interfaces::com_interface::implementation::{
-    ComInterfaceAsyncFactoryResult, ComInterfaceImplementation,
-};
-use crate::network::com_interfaces::com_interface::properties::{
-    InterfaceDirection, InterfaceProperties,
-};
-use crate::network::com_interfaces::com_interface::socket::ComInterfaceSocketUUID;
-use crate::network::com_interfaces::com_interface::state::{
-    ComInterfaceState, ComInterfaceStateWrapper,
-};
-use crate::network::com_interfaces::com_interface::{
-    ComInterface, ComInterfaceImplEvent,
-};
-use crate::task::{
-    UnboundedReceiver, UnboundedSender, spawn_with_panic_notify_default,
+use crate::{
+    network::{
+        com_hub::errors::InterfaceCreateError,
+        com_interfaces::com_interface::{
+            ComInterface, ComInterfaceImplEvent,
+            error::ComInterfaceError,
+            implementation::{
+                ComInterfaceAsyncFactory, ComInterfaceAsyncFactoryResult,
+                ComInterfaceImplementation, ComInterfaceSyncFactory,
+            },
+            properties::{InterfaceDirection, InterfaceProperties},
+            socket::ComInterfaceSocketUUID,
+            state::{ComInterfaceState, ComInterfaceStateWrapper},
+        },
+    },
+    task::{
+        UnboundedReceiver, UnboundedSender, spawn_with_panic_notify_default,
+    },
 };
 use tokio_tungstenite::{MaybeTlsStream, WebSocketStream};
 

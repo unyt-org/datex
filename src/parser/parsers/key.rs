@@ -1,8 +1,10 @@
-use crate::ast::expressions::{DatexExpression, DatexExpressionData};
-use crate::ast::spanned::Spanned;
-use crate::parser::errors::ParserError;
-use crate::parser::lexer::Token;
-use crate::parser::{Parser, SpannedParserError};
+use crate::{
+    ast::{
+        expressions::{DatexExpression, DatexExpressionData},
+        spanned::Spanned,
+    },
+    parser::{Parser, SpannedParserError, errors::ParserError, lexer::Token},
+};
 
 impl Parser {
     pub(crate) fn parse_key(

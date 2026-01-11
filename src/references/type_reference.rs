@@ -1,23 +1,25 @@
-use core::prelude::rust_2024::*;
-use core::result::Result;
+use core::{prelude::rust_2024::*, result::Result};
 use serde::{Deserialize, Serialize};
 
-use crate::libs::core::CoreLibPointerId;
-use crate::references::reference::ReferenceMutability;
-use crate::runtime::execution::ExecutionError;
-use crate::stdlib::string::ToString;
-use crate::stdlib::{
-    cell::RefCell,
-    fmt::{Display, Formatter},
-    rc::Rc,
-    string::String,
-};
-use crate::traits::apply::Apply;
-use crate::types::structural_type_definition::StructuralTypeDefinition;
-use crate::values::pointer::PointerAddress;
-use crate::values::value_container::ValueContainer;
 use crate::{
-    types::definition::TypeDefinition, values::core_values::r#type::Type,
+    libs::core::CoreLibPointerId,
+    references::reference::ReferenceMutability,
+    runtime::execution::ExecutionError,
+    stdlib::{
+        cell::RefCell,
+        fmt::{Display, Formatter},
+        rc::Rc,
+        string::{String, ToString},
+    },
+    traits::apply::Apply,
+    types::{
+        definition::TypeDefinition,
+        structural_type_definition::StructuralTypeDefinition,
+    },
+    values::{
+        core_values::r#type::Type, pointer::PointerAddress,
+        value_container::ValueContainer,
+    },
 };
 use core::option::Option;
 

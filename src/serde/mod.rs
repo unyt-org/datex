@@ -1,5 +1,7 @@
-use crate::core_compiler::value_compiler::compile_value_container;
-use crate::values::value_container::ValueContainer;
+use crate::{
+    core_compiler::value_compiler::compile_value_container,
+    values::value_container::ValueContainer,
+};
 use core::result::Result;
 use serde::Serialize;
 
@@ -22,16 +24,18 @@ impl Serialize for ValueContainer {
 
 #[cfg(test)]
 mod tests {
-    use crate::assert_structural_eq;
-    use crate::decompiler::DecompileOptions;
-    use crate::logger::init_logger_debug;
-    use crate::serde::{
-        deserializer::{from_bytes, from_value_container},
-        serializer::{to_bytes, to_value_container},
+    use crate::{
+        assert_structural_eq,
+        decompiler::DecompileOptions,
+        logger::init_logger_debug,
+        serde::{
+            deserializer::{from_bytes, from_value_container},
+            serializer::{to_bytes, to_value_container},
+        },
+        stdlib::collections::{HashMap, HashSet},
+        traits::structural_eq::StructuralEq,
+        values::value_container::ValueContainer,
     };
-    use crate::stdlib::collections::{HashMap, HashSet};
-    use crate::traits::structural_eq::StructuralEq;
-    use crate::values::value_container::ValueContainer;
     use datex_core::decompiler::decompile_body;
     use log::info;
     use serde::{Deserialize, Serialize};

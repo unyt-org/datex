@@ -1,21 +1,27 @@
-use crate::ast::expressions::{
-    DatexExpression, DatexExpressionData, List, Map, Statements,
-    VariableAccess, VariableAssignment, VariableDeclaration,
+use crate::{
+    ast::expressions::{
+        DatexExpression, DatexExpressionData, List, Map, Statements,
+        VariableAccess, VariableAssignment, VariableDeclaration,
+    },
+    compiler::{
+        error::DetailedCompilerErrors,
+        precompiler::precompiled_ast::VariableMetadata,
+    },
+    lsp::{
+        LanguageServerBackend, errors::SpannedLSPCompilerError,
+        type_hint_collector::TypeHintCollector,
+    },
+    values::core_values::{
+        decimal::{Decimal, typed_decimal::TypedDecimal},
+        endpoint::Endpoint,
+        integer::{Integer, typed_integer::TypedInteger},
+        r#type::Type,
+    },
+    visitor::{
+        VisitAction, expression::ExpressionVisitor,
+        type_expression::TypeExpressionVisitor,
+    },
 };
-use crate::compiler::error::DetailedCompilerErrors;
-use crate::compiler::precompiler::precompiled_ast::VariableMetadata;
-use crate::lsp::LanguageServerBackend;
-use crate::lsp::errors::SpannedLSPCompilerError;
-use crate::lsp::type_hint_collector::TypeHintCollector;
-use crate::values::core_values::decimal::Decimal;
-use crate::values::core_values::decimal::typed_decimal::TypedDecimal;
-use crate::values::core_values::endpoint::Endpoint;
-use crate::values::core_values::integer::Integer;
-use crate::values::core_values::integer::typed_integer::TypedInteger;
-use crate::values::core_values::r#type::Type;
-use crate::visitor::VisitAction;
-use crate::visitor::expression::ExpressionVisitor;
-use crate::visitor::type_expression::TypeExpressionVisitor;
 use realhydroper_lsp::lsp_types::{
     MessageType, Position, Range, TextDocumentPositionParams,
 };

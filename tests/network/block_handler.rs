@@ -1,20 +1,25 @@
-use crate::network::helpers::mock_setup::{
-    TEST_ENDPOINT_A, TEST_ENDPOINT_ORIGIN, get_mock_setup_and_socket,
+use crate::network::helpers::{
+    mock_setup::{
+        TEST_ENDPOINT_A, TEST_ENDPOINT_ORIGIN, get_mock_setup_and_socket,
+    },
+    mockup_interface::MockupInterface,
 };
-use crate::network::helpers::mockup_interface::MockupInterface;
 use core::cell::RefCell;
-use datex_core::global::dxb_block::{DXBBlock, IncomingSection};
-use datex_core::global::protocol_structures::block_header::{
-    BlockHeader, BlockType, FlagsAndTimestamp,
+use datex_core::{
+    global::{
+        dxb_block::{DXBBlock, IncomingSection},
+        protocol_structures::{
+            block_header::{BlockHeader, BlockType, FlagsAndTimestamp},
+            routing_header::RoutingHeader,
+        },
+    },
+    network::block_handler::IncomingSectionsSinkType,
+    utils::context::init_global_context,
 };
-use datex_core::global::protocol_structures::routing_header::RoutingHeader;
-use datex_core::network::block_handler::IncomingSectionsSinkType;
-use datex_core::utils::context::init_global_context;
 use datex_macros::async_test;
 use log::info;
 use ntest_timeout::timeout;
-use std::rc::Rc;
-use std::sync::mpsc;
+use std::{rc::Rc, sync::mpsc};
 use tokio::task::yield_now;
 
 #[async_test]

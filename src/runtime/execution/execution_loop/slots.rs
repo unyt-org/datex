@@ -1,7 +1,10 @@
-use crate::global::slots::InternalSlot;
-use crate::runtime::execution::ExecutionError;
-use crate::runtime::execution::execution_loop::state::RuntimeExecutionState;
-use crate::values::value_container::ValueContainer;
+use crate::{
+    global::slots::InternalSlot,
+    runtime::execution::{
+        ExecutionError, execution_loop::state::RuntimeExecutionState,
+    },
+    values::value_container::ValueContainer,
+};
 use num_enum::TryFromPrimitive;
 
 pub fn get_slot_value_mut(

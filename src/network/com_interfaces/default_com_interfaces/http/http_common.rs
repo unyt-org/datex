@@ -1,5 +1,4 @@
-use crate::serde::Deserialize;
-use crate::stdlib::string::String;
+use crate::{serde::Deserialize, stdlib::string::String};
 use core::prelude::rust_2024::*;
 use serde::Serialize;
 use strum::Display;

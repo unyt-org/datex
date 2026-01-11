@@ -1,20 +1,28 @@
 use core::ops::Range;
 
-use crate::ast::expressions::VariableAccess;
-use crate::ast::type_expressions::{
-    CallableTypeExpression, FixedSizeList, GenericAccess, Intersection,
-    SliceList, StructuralList, StructuralMap, TypeExpression,
-    TypeExpressionData, TypeVariantAccess, Union,
-};
-use crate::values::core_values::decimal::Decimal;
-use crate::values::core_values::decimal::typed_decimal::TypedDecimal;
-use crate::values::core_values::endpoint::Endpoint;
-use crate::values::core_values::integer::Integer;
-use crate::values::core_values::integer::typed_integer::TypedInteger;
-use crate::values::pointer::PointerAddress;
-use crate::visitor::VisitAction;
-use crate::visitor::type_expression::visitable::{
-    TypeExpressionVisitResult, VisitableTypeExpression,
+use crate::{
+    ast::{
+        expressions::VariableAccess,
+        type_expressions::{
+            CallableTypeExpression, FixedSizeList, GenericAccess, Intersection,
+            SliceList, StructuralList, StructuralMap, TypeExpression,
+            TypeExpressionData, TypeVariantAccess, Union,
+        },
+    },
+    values::{
+        core_values::{
+            decimal::{Decimal, typed_decimal::TypedDecimal},
+            endpoint::Endpoint,
+            integer::{Integer, typed_integer::TypedInteger},
+        },
+        pointer::PointerAddress,
+    },
+    visitor::{
+        VisitAction,
+        type_expression::visitable::{
+            TypeExpressionVisitResult, VisitableTypeExpression,
+        },
+    },
 };
 pub mod visitable;
 

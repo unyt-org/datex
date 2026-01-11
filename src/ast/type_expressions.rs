@@ -1,16 +1,21 @@
 use core::ops::Range;
 
-use crate::ast::expressions::VariableAccess;
-use crate::ast::resolved_variable::ResolvedVariable;
-use crate::ast::spanned::Spanned;
-use crate::values::core_values::callable::CallableKind;
-use crate::values::core_values::decimal::Decimal;
-use crate::values::core_values::decimal::typed_decimal::TypedDecimal;
-use crate::values::core_values::endpoint::Endpoint;
-use crate::values::core_values::integer::Integer;
-use crate::values::core_values::integer::typed_integer::TypedInteger;
-use crate::values::core_values::r#type::Type;
-use crate::values::pointer::PointerAddress;
+use crate::{
+    ast::{
+        expressions::VariableAccess, resolved_variable::ResolvedVariable,
+        spanned::Spanned,
+    },
+    values::{
+        core_values::{
+            callable::CallableKind,
+            decimal::{Decimal, typed_decimal::TypedDecimal},
+            endpoint::Endpoint,
+            integer::{Integer, typed_integer::TypedInteger},
+            r#type::Type,
+        },
+        pointer::PointerAddress,
+    },
+};
 
 #[derive(Clone, Debug, PartialEq)]
 /// The different kinds of type expressions in the AST

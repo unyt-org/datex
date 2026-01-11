@@ -1,5 +1,4 @@
-use crate::runtime::global_context::get_global_context;
-use crate::stdlib::vec::Vec;
+use crate::{runtime::global_context::get_global_context, stdlib::vec::Vec};
 use core::convert::TryInto;
 
 pub fn random_bytes_slice<const SIZE: usize>() -> [u8; SIZE] {

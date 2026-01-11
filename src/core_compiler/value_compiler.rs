@@ -1,27 +1,28 @@
-use crate::core_compiler::type_compiler::append_type;
-use crate::global::instruction_codes::InstructionCode;
-use crate::libs::core::{CoreLibPointerId, get_core_lib_type_definition};
-use crate::references::reference::ReferenceMutability;
-use crate::stdlib::vec::Vec;
-use crate::types::definition::TypeDefinition;
-use crate::utils::buffers::{
-    append_f32, append_f64, append_i8, append_i16, append_u8, append_u32,
-    append_u128,
+use crate::{
+    core_compiler::type_compiler::append_type,
+    global::instruction_codes::InstructionCode,
+    libs::core::{CoreLibPointerId, get_core_lib_type_definition},
+    references::reference::ReferenceMutability,
+    stdlib::vec::Vec,
+    types::definition::TypeDefinition,
+    utils::buffers::{
+        append_f32, append_f64, append_i8, append_i16, append_i32, append_i64,
+        append_i128, append_u8, append_u16, append_u32, append_u64,
+        append_u128,
+    },
+    values::{
+        core_value::CoreValue,
+        core_values::{
+            decimal::{Decimal, typed_decimal::TypedDecimal},
+            endpoint::Endpoint,
+            integer::{Integer, typed_integer::TypedInteger},
+        },
+        pointer::PointerAddress,
+        value::Value,
+        value_container::ValueContainer,
+    },
 };
-use crate::utils::buffers::{
-    append_i32, append_i64, append_i128, append_u16, append_u64,
-};
-use crate::values::core_value::CoreValue;
-use crate::values::core_values::decimal::Decimal;
-use crate::values::core_values::decimal::typed_decimal::TypedDecimal;
-use crate::values::core_values::endpoint::Endpoint;
-use crate::values::core_values::integer::Integer;
-use crate::values::core_values::integer::typed_integer::TypedInteger;
-use crate::values::pointer::PointerAddress;
-use crate::values::value::Value;
-use crate::values::value_container::ValueContainer;
-use binrw::BinWrite;
-use binrw::io::Cursor;
+use binrw::{BinWrite, io::Cursor};
 use core::prelude::rust_2024::*;
 
 /// Compiles a given value container to a DXB body

@@ -1,22 +1,21 @@
-use crate::core_compiler::value_compiler::compile_value_container;
-use crate::global::dxb_block::{DXBBlock, IncomingSection, OutgoingContextId};
-use crate::global::protocol_structures::block_header::FlagsAndTimestamp;
-use crate::global::protocol_structures::block_header::{
-    BlockHeader, BlockType,
+use crate::{
+    core_compiler::value_compiler::compile_value_container,
+    global::{
+        dxb_block::{DXBBlock, IncomingSection, OutgoingContextId},
+        protocol_structures::{
+            block_header::{BlockHeader, BlockType, FlagsAndTimestamp},
+            encrypted_header::EncryptedHeader,
+            routing_header::RoutingHeader,
+        },
+    },
+    runtime::{RuntimeInternal, execution::ExecutionError},
+    stdlib::{borrow::ToOwned, rc::Rc, vec, vec::Vec},
+    task::spawn_with_panic_notify,
+    values::{
+        core_values::endpoint::Endpoint, value_container::ValueContainer,
+    },
 };
-use crate::global::protocol_structures::encrypted_header::EncryptedHeader;
-use crate::global::protocol_structures::routing_header::RoutingHeader;
-use crate::runtime::RuntimeInternal;
-use crate::runtime::execution::ExecutionError;
-use crate::stdlib::borrow::ToOwned;
-use crate::stdlib::rc::Rc;
-use crate::stdlib::vec;
-use crate::stdlib::vec::Vec;
-use crate::task::spawn_with_panic_notify;
-use crate::values::core_values::endpoint::Endpoint;
-use crate::values::value_container::ValueContainer;
-use core::prelude::rust_2024::*;
-use core::result::Result;
+use core::{prelude::rust_2024::*, result::Result};
 use log::info;
 
 #[cfg_attr(feature = "embassy_runtime", embassy_executor::task)]

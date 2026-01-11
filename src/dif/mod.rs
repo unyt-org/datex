@@ -28,21 +28,24 @@ pub trait DIFConvertible: Serialize + for<'de> Deserialize<'de> {
 
 #[cfg(test)]
 mod tests {
-    use crate::dif::DIFConvertible;
-    use crate::dif::update::DIFUpdateData;
-    use crate::dif::value::DIFValueContainer;
-    use crate::runtime::memory::Memory;
     use crate::{
-        dif::{representation::DIFValueRepresentation, value::DIFValue},
+        dif::{
+            DIFConvertible,
+            representation::DIFValueRepresentation,
+            update::DIFUpdateData,
+            value::{DIFValue, DIFValueContainer},
+        },
         libs::core::CoreLibPointerId,
+        runtime::memory::Memory,
         values::{
             core_values::integer::typed_integer::IntegerTypeVariant,
             value_container::ValueContainer,
         },
     };
     use core::cell::RefCell;
-    use datex_core::dif::r#type::DIFTypeDefinition;
-    use datex_core::values::core_values::endpoint::Endpoint;
+    use datex_core::{
+        dif::r#type::DIFTypeDefinition, values::core_values::endpoint::Endpoint,
+    };
 
     fn dif_value_circle(value_container: ValueContainer) -> DIFValueContainer {
         let memory = RefCell::new(Memory::new(Endpoint::default()));

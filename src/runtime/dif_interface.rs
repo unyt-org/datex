@@ -1,27 +1,23 @@
-use crate::dif::interface::DIFResolveReferenceError;
-use crate::dif::reference::DIFReference;
-use crate::dif::r#type::DIFTypeDefinition;
-use crate::dif::update::{DIFKey, DIFUpdateData};
-use crate::dif::value::DIFReferenceNotFoundError;
-use crate::references::observers::{ObserveOptions, Observer, TransceiverId};
-use crate::references::reference::ReferenceMutability;
-use crate::runtime::RuntimeInternal;
-use crate::stdlib::rc::Rc;
-use crate::stdlib::vec::Vec;
-use crate::values::value_container::ValueContainer;
 use crate::{
     dif::{
         interface::{
             DIFApplyError, DIFCreatePointerError, DIFInterface,
-            DIFObserveError, DIFUpdateError,
+            DIFObserveError, DIFResolveReferenceError, DIFUpdateError,
         },
-        value::DIFValueContainer,
+        reference::DIFReference,
+        r#type::DIFTypeDefinition,
+        update::{DIFKey, DIFUpdateData},
+        value::{DIFReferenceNotFoundError, DIFValueContainer},
     },
-    references::reference::Reference,
-    values::pointer::PointerAddress,
+    references::{
+        observers::{ObserveOptions, Observer, TransceiverId},
+        reference::{Reference, ReferenceMutability},
+    },
+    runtime::RuntimeInternal,
+    stdlib::{rc::Rc, vec::Vec},
+    values::{pointer::PointerAddress, value_container::ValueContainer},
 };
-use core::prelude::rust_2024::*;
-use core::result::Result;
+use core::{prelude::rust_2024::*, result::Result};
 
 impl RuntimeInternal {
     fn resolve_in_memory_reference(
@@ -225,18 +221,23 @@ impl DIFInterface for RuntimeInternal {
 
 #[cfg(test)]
 mod tests {
-    use crate::dif::interface::DIFInterface;
-    use crate::dif::representation::DIFValueRepresentation;
-    use crate::dif::update::DIFUpdateData;
-    use crate::dif::value::{DIFValue, DIFValueContainer};
-    use crate::references::observers::ObserveOptions;
-    use crate::references::reference::ReferenceMutability;
-    use crate::runtime::Runtime;
-    use crate::runtime::memory::Memory;
-    use crate::stdlib::rc::Rc;
-    use crate::values::core_values::endpoint::Endpoint;
-    use crate::values::core_values::map::Map;
-    use crate::values::value_container::ValueContainer;
+    use crate::{
+        dif::{
+            interface::DIFInterface,
+            representation::DIFValueRepresentation,
+            update::DIFUpdateData,
+            value::{DIFValue, DIFValueContainer},
+        },
+        references::{
+            observers::ObserveOptions, reference::ReferenceMutability,
+        },
+        runtime::{Runtime, memory::Memory},
+        stdlib::rc::Rc,
+        values::{
+            core_values::{endpoint::Endpoint, map::Map},
+            value_container::ValueContainer,
+        },
+    };
     use core::cell::RefCell;
     use datex_core::runtime::RuntimeConfig;
     use datex_macros::async_test;

@@ -1,12 +1,13 @@
 use crate::network::helpers::mock_setup::get_mock_setup_with_two_runtimes;
 use core::time::Duration;
-use datex_core::logger::init_logger_debug;
-use datex_core::runtime::execution::context::{
-    ExecutionContext, ExecutionMode,
+use datex_core::{
+    logger::init_logger_debug,
+    runtime::execution::context::{ExecutionContext, ExecutionMode},
+    values::{
+        core_values::{endpoint::Endpoint, integer::Integer},
+        value_container::ValueContainer,
+    },
 };
-use datex_core::values::core_values::endpoint::Endpoint;
-use datex_core::values::core_values::integer::Integer;
-use datex_core::values::value_container::ValueContainer;
 use datex_macros::async_test;
 
 #[async_test]

@@ -3,12 +3,14 @@ use crate::compiler::{
     CompileOptions, compile_template, error::SpannedCompilerError,
     scope::CompilationScope,
 };
-use crate::runtime::execution::{
-    ExecutionError, ExecutionInput, MemoryDump, execute_dxb, execute_dxb_sync,
+use crate::{
+    runtime::execution::{
+        ExecutionError, ExecutionInput, MemoryDump, execute_dxb,
+        execute_dxb_sync,
+    },
+    stdlib::{format, vec::Vec},
+    values::value_container::ValueContainer,
 };
-use crate::stdlib::format;
-use crate::stdlib::vec::Vec;
-use crate::values::value_container::ValueContainer;
 pub use local::*;
 use log::info;
 pub use remote::*;

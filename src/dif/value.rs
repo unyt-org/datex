@@ -1,22 +1,25 @@
-use crate::dif::DIFConvertible;
-use crate::dif::representation::DIFValueRepresentation;
-use crate::dif::r#type::DIFTypeDefinition;
-use crate::libs::core::CoreLibPointerId;
-use crate::runtime::memory::Memory;
-use crate::stdlib::string::ToString;
-use crate::types::definition::TypeDefinition;
-use crate::values::core_value::CoreValue;
-use crate::values::core_values::decimal::typed_decimal::{
-    DecimalTypeVariant, TypedDecimal,
+use crate::{
+    dif::{
+        DIFConvertible, representation::DIFValueRepresentation,
+        r#type::DIFTypeDefinition,
+    },
+    libs::core::CoreLibPointerId,
+    runtime::memory::Memory,
+    stdlib::string::ToString,
+    types::definition::TypeDefinition,
+    values::{
+        core_value::CoreValue,
+        core_values::{
+            decimal::typed_decimal::{DecimalTypeVariant, TypedDecimal},
+            integer::typed_integer::TypedInteger,
+            map::{BorrowedMapKey, Map},
+        },
+        pointer::PointerAddress,
+        value::Value,
+        value_container::ValueContainer,
+    },
 };
-use crate::values::core_values::integer::typed_integer::TypedInteger;
-use crate::values::core_values::map::{BorrowedMapKey, Map};
-use crate::values::pointer::PointerAddress;
-use crate::values::value::Value;
-use crate::values::value_container::ValueContainer;
-use core::cell::RefCell;
-use core::prelude::rust_2024::*;
-use core::result::Result;
+use core::{cell::RefCell, prelude::rust_2024::*, result::Result};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug)]
@@ -322,15 +325,17 @@ fn get_type_if_non_default(
 
 #[cfg(test)]
 mod tests {
-    use crate::dif::DIFConvertible;
-    use crate::dif::r#type::DIFTypeDefinition;
-    use crate::runtime::memory::Memory;
-    use crate::values::core_values::endpoint::Endpoint;
-    use crate::values::core_values::map::Map;
-    use crate::values::value_container::ValueContainer;
     use crate::{
-        dif::value::DIFValue, libs::core::CoreLibPointerId,
-        values::core_values::integer::typed_integer::IntegerTypeVariant,
+        dif::{DIFConvertible, r#type::DIFTypeDefinition, value::DIFValue},
+        libs::core::CoreLibPointerId,
+        runtime::memory::Memory,
+        values::{
+            core_values::{
+                endpoint::Endpoint, integer::typed_integer::IntegerTypeVariant,
+                map::Map,
+            },
+            value_container::ValueContainer,
+        },
     };
     use core::cell::RefCell;
     use datex_core::values::value::Value;

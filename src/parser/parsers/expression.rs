@@ -1,23 +1,27 @@
-use crate::ast::expressions::PropertyAccess;
-use crate::ast::expressions::{
-    Apply, BinaryOperation, ComparisonOperation, CreateRef, DatexExpression,
-    DatexExpressionData, Deref, DerefAssignment, GenericInstantiation,
-    PropertyAssignment, RemoteExecution, SlotAssignment, UnaryOperation,
-    VariableAssignment,
+use crate::{
+    ast::{
+        expressions::{
+            Apply, BinaryOperation, ComparisonOperation, CreateRef,
+            DatexExpression, DatexExpressionData, Deref, DerefAssignment,
+            GenericInstantiation, PropertyAccess, PropertyAssignment,
+            RemoteExecution, SlotAssignment, UnaryOperation,
+            VariableAssignment,
+        },
+        spanned::Spanned,
+    },
+    global::operators::{
+        ArithmeticUnaryOperator, AssignmentOperator, BinaryOperator,
+        ComparisonOperator, LogicalUnaryOperator, UnaryOperator,
+        binary::{ArithmeticOperator, BitwiseOperator, LogicalOperator},
+    },
+    parser::{
+        Parser,
+        errors::{ParserError, SpannedParserError},
+        lexer::{SpannedToken, Token},
+    },
+    references::reference::ReferenceMutability,
+    values::core_values::error::NumberParseError,
 };
-use crate::ast::spanned::Spanned;
-use crate::global::operators::binary::{
-    ArithmeticOperator, BitwiseOperator, LogicalOperator,
-};
-use crate::global::operators::{
-    ArithmeticUnaryOperator, AssignmentOperator, BinaryOperator,
-    ComparisonOperator, LogicalUnaryOperator, UnaryOperator,
-};
-use crate::parser::Parser;
-use crate::parser::errors::{ParserError, SpannedParserError};
-use crate::parser::lexer::{SpannedToken, Token};
-use crate::references::reference::ReferenceMutability;
-use crate::values::core_values::error::NumberParseError;
 
 static UNARY_BP: u8 = 22; // weaker than property access / apply, stronger than all other binary operators
 
@@ -510,24 +514,29 @@ impl Parser {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast::expressions::{
-        Apply, BinaryOperation, ComparisonOperation, CreateRef,
-        DatexExpressionData, Deref, DerefAssignment, GenericInstantiation,
-        PropertyAccess, PropertyAssignment, RemoteExecution, Slot,
-        SlotAssignment, Statements, UnaryOperation, VariableAssignment,
+    use crate::{
+        ast::{
+            expressions::{
+                Apply, BinaryOperation, ComparisonOperation, CreateRef,
+                DatexExpressionData, Deref, DerefAssignment,
+                GenericInstantiation, PropertyAccess, PropertyAssignment,
+                RemoteExecution, Slot, SlotAssignment, Statements,
+                UnaryOperation, VariableAssignment,
+            },
+            spanned::Spanned,
+            type_expressions::TypeExpressionData,
+        },
+        global::operators::{
+            ArithmeticUnaryOperator, AssignmentOperator, BinaryOperator,
+            ComparisonOperator, LogicalUnaryOperator, UnaryOperator,
+            binary::{ArithmeticOperator, BitwiseOperator, LogicalOperator},
+        },
+        parser::{
+            errors::ParserError,
+            tests::{parse, try_parse_and_return_on_first_error},
+        },
+        references::reference::ReferenceMutability,
     };
-    use crate::ast::spanned::Spanned;
-    use crate::ast::type_expressions::TypeExpressionData;
-    use crate::global::operators::binary::{
-        ArithmeticOperator, BitwiseOperator, LogicalOperator,
-    };
-    use crate::global::operators::{
-        ArithmeticUnaryOperator, AssignmentOperator, BinaryOperator,
-        ComparisonOperator, LogicalUnaryOperator, UnaryOperator,
-    };
-    use crate::parser::errors::ParserError;
-    use crate::parser::tests::{parse, try_parse_and_return_on_first_error};
-    use crate::references::reference::ReferenceMutability;
 
     #[test]
     fn parse_simple_binary_expression() {

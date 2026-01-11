@@ -1,21 +1,28 @@
-use crate::network::com_hub::managers::interface_manager::{
-    AsyncComInterfaceImplementationFactoryFn, InterfaceManager,
-    SyncComInterfaceImplementationFactoryFn,
+use crate::{
+    network::{
+        com_hub::managers::interface_manager::{
+            AsyncComInterfaceImplementationFactoryFn, InterfaceManager,
+            SyncComInterfaceImplementationFactoryFn,
+        },
+        com_interfaces::com_interface::socket::ComInterfaceSocketUUID,
+    },
+    stdlib::{cell::RefCell, rc::Rc, string::String},
+    task::{UnboundedReceiver, spawn_with_panic_notify},
 };
-use crate::network::com_interfaces::com_interface::socket::ComInterfaceSocketUUID;
-use crate::stdlib::string::String;
-use crate::stdlib::{cell::RefCell, rc::Rc};
-use crate::task::{UnboundedReceiver, spawn_with_panic_notify};
-use core::prelude::rust_2024::*;
-use core::result::Result;
+use core::{prelude::rust_2024::*, result::Result};
 
-use crate::network::com_hub::errors::InterfaceCreateError;
-use crate::network::com_hub::{ComHub, ComHubError, InterfacePriority};
-use crate::network::com_interfaces::com_interface::ComInterface;
-use crate::network::com_interfaces::com_interface::{
-    ComInterfaceEvent, ComInterfaceUUID,
+use crate::{
+    network::{
+        com_hub::{
+            ComHub, ComHubError, InterfacePriority,
+            errors::InterfaceCreateError,
+        },
+        com_interfaces::com_interface::{
+            ComInterface, ComInterfaceEvent, ComInterfaceUUID,
+        },
+    },
+    values::value_container::ValueContainer,
 };
-use crate::values::value_container::ValueContainer;
 
 /// Interface management methods
 impl ComHub {

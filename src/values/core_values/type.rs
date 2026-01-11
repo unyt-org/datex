@@ -1,31 +1,37 @@
 #[cfg(feature = "compiler")]
 use crate::ast::expressions::DatexExpressionData;
-use crate::libs::core::CoreLibPointerId;
-use crate::libs::core::get_core_lib_type;
-use crate::libs::core::get_core_lib_type_reference;
-use crate::references::reference::ReferenceMutability;
-use crate::references::type_reference::TypeReference;
-use crate::stdlib::format;
-use crate::stdlib::rc::Rc;
-use crate::stdlib::string::ToString;
-use crate::stdlib::vec::Vec;
-use crate::traits::structural_eq::StructuralEq;
-use crate::types::definition::TypeDefinition;
-use crate::types::structural_type_definition::StructuralTypeDefinition;
-use crate::values::core_value::CoreValue;
-use crate::values::core_values::boolean::Boolean;
-use crate::values::core_values::callable::CallableSignature;
-use crate::values::core_values::decimal::typed_decimal::DecimalTypeVariant;
-use crate::values::core_values::integer::typed_integer::IntegerTypeVariant;
-use crate::values::core_values::text::Text;
-use crate::values::pointer::PointerAddress;
-use crate::values::value_container::ValueContainer;
-use core::cell::RefCell;
-use core::fmt::Display;
-use core::hash::{Hash, Hasher};
-use core::prelude::rust_2024::*;
-use core::result::Result;
-use core::unimplemented;
+use crate::{
+    libs::core::{
+        CoreLibPointerId, get_core_lib_type, get_core_lib_type_reference,
+    },
+    references::{
+        reference::ReferenceMutability, type_reference::TypeReference,
+    },
+    stdlib::{format, rc::Rc, string::ToString, vec::Vec},
+    traits::structural_eq::StructuralEq,
+    types::{
+        definition::TypeDefinition,
+        structural_type_definition::StructuralTypeDefinition,
+    },
+    values::{
+        core_value::CoreValue,
+        core_values::{
+            boolean::Boolean, callable::CallableSignature,
+            decimal::typed_decimal::DecimalTypeVariant,
+            integer::typed_integer::IntegerTypeVariant, text::Text,
+        },
+        pointer::PointerAddress,
+        value_container::ValueContainer,
+    },
+};
+use core::{
+    cell::RefCell,
+    fmt::Display,
+    hash::{Hash, Hasher},
+    prelude::rust_2024::*,
+    result::Result,
+    unimplemented,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Type {
@@ -520,14 +526,16 @@ impl TryFrom<&DatexExpressionData> for Type {
 
 #[cfg(test)]
 mod tests {
-    use crate::libs::core::{CoreLibPointerId, get_core_lib_type};
-    use crate::values::{
-        core_values::{
-            integer::{Integer, typed_integer::TypedInteger},
-            text::Text,
-            r#type::Type,
+    use crate::{
+        libs::core::{CoreLibPointerId, get_core_lib_type},
+        values::{
+            core_values::{
+                integer::{Integer, typed_integer::TypedInteger},
+                text::Text,
+                r#type::Type,
+            },
+            value_container::ValueContainer,
         },
-        value_container::ValueContainer,
     };
     #[test]
     fn test_match_equal_values() {

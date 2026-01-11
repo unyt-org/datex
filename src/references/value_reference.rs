@@ -1,15 +1,14 @@
-use crate::references::observers::Observer;
-use crate::references::reference::ReferenceMutability;
-use crate::stdlib::rc::Rc;
-use crate::traits::value_eq::ValueEq;
-use crate::types::definition::TypeDefinition;
-use crate::utils::freemap::FreeHashMap;
-use crate::values::pointer::PointerAddress;
-use crate::values::value::Value;
-use crate::values::value_container::ValueContainer;
-use core::cell::RefCell;
-use core::fmt::Debug;
-use core::prelude::rust_2024::*;
+use crate::{
+    references::{observers::Observer, reference::ReferenceMutability},
+    stdlib::rc::Rc,
+    traits::value_eq::ValueEq,
+    types::definition::TypeDefinition,
+    utils::freemap::FreeHashMap,
+    values::{
+        pointer::PointerAddress, value::Value, value_container::ValueContainer,
+    },
+};
+use core::{cell::RefCell, fmt::Debug, prelude::rust_2024::*};
 
 pub struct ValueReference {
     /// the value that this reference points to

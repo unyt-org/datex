@@ -1,6 +1,6 @@
-use crate::std_sync::Mutex;
-use crate::stdlib::{
-    cell::RefCell, rc::Rc, sync::Arc, time::Duration,
+use crate::{
+    std_sync::Mutex,
+    stdlib::{cell::RefCell, rc::Rc, sync::Arc, time::Duration},
 };
 
 use crate::{
@@ -22,17 +22,21 @@ use super::webrtc_common::{
     webrtc_commons::WebRTCCommon,
     webrtc_trait::{WebRTCTrait, WebRTCTraitInternal},
 };
-use crate::network::com_hub::errors::InterfaceCreateError;
-use crate::network::com_interfaces::com_interface::error::ComInterfaceError;
-use crate::network::com_interfaces::com_interface::implementation::{
-    ComInterfaceAsyncFactory, ComInterfaceAsyncFactoryResult,
-    ComInterfaceImplementation, ComInterfaceSyncFactory,
+use crate::{
+    network::{
+        com_hub::errors::InterfaceCreateError,
+        com_interfaces::com_interface::{
+            ComInterface, ComInterfaceImplEvent,
+            error::ComInterfaceError,
+            implementation::{
+                ComInterfaceAsyncFactory, ComInterfaceAsyncFactoryResult,
+                ComInterfaceImplementation, ComInterfaceSyncFactory,
+            },
+            properties::InterfaceProperties,
+        },
+    },
+    task::{UnboundedReceiver, spawn_with_panic_notify_default},
 };
-use crate::network::com_interfaces::com_interface::properties::InterfaceProperties;
-use crate::network::com_interfaces::com_interface::{
-    ComInterface, ComInterfaceImplEvent,
-};
-use crate::task::{UnboundedReceiver, spawn_with_panic_notify_default};
 use log::error;
 use webrtc::{
     api::{

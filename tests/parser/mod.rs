@@ -1,5 +1,5 @@
-use datex_core::ast::expressions::{RemoteExecution, Statements};
 use datex_core::{
+    ast::expressions::{RemoteExecution, Statements},
     global::operators::{
         ArithmeticUnaryOperator, AssignmentOperator, BinaryOperator,
         ComparisonOperator, LogicalUnaryOperator, UnaryOperator,
@@ -16,34 +16,37 @@ use datex_core::{
     },
 };
 
-use datex_core::ast::expressions::VariableAssignment;
-use datex_core::ast::expressions::{
-    Apply, CallableKind, Conditional, CreateRef, DatexExpression,
-    DatexExpressionData, Deref, GenericInstantiation, List, Map,
-    PropertyAccess, Slot, UnaryOperation, VariableDeclaration, VariableKind,
+use datex_core::{
+    ast::{
+        expressions::{
+            Apply, BinaryOperation, CallableDeclaration, CallableKind,
+            ComparisonOperation, Conditional, CreateRef, DatexExpression,
+            DatexExpressionData, Deref, GenericInstantiation, List, Map,
+            PropertyAccess, PropertyAssignment, Slot, TypeDeclaration,
+            TypeDeclarationKind, UnaryOperation, VariableAssignment,
+            VariableDeclaration, VariableKind,
+        },
+        spanned::Spanned,
+        src_id::SrcId,
+        type_expressions::{
+            Intersection, StructuralList, StructuralMap, TypeExpression,
+            TypeExpressionData, TypeVariantAccess, Union,
+        },
+    },
+    parser::{
+        Parser,
+        errors::{ParserError, SpannedParserError},
+        lexer::Token,
+        parser_result::{
+            InvalidDatexParseResult, ParserResult, ValidDatexParseResult,
+        },
+    },
+    references::reference::ReferenceMutability,
+    stdlib::{
+        assert_matches::assert_matches, collections::HashMap, str::FromStr, vec,
+    },
+    values::core_values::error::NumberParseError,
 };
-use datex_core::ast::expressions::{
-    BinaryOperation, CallableDeclaration, ComparisonOperation,
-    PropertyAssignment, TypeDeclaration, TypeDeclarationKind,
-};
-use datex_core::ast::spanned::Spanned;
-use datex_core::ast::src_id::SrcId;
-use datex_core::ast::type_expressions::{
-    Intersection, StructuralList, StructuralMap, TypeExpression,
-    TypeExpressionData, TypeVariantAccess, Union,
-};
-use datex_core::parser::Parser;
-use datex_core::parser::errors::ParserError;
-use datex_core::parser::errors::SpannedParserError;
-use datex_core::parser::lexer::Token;
-use datex_core::parser::parser_result::{
-    InvalidDatexParseResult, ParserResult, ValidDatexParseResult,
-};
-use datex_core::references::reference::ReferenceMutability;
-use datex_core::stdlib::{
-    assert_matches::assert_matches, collections::HashMap, str::FromStr, vec,
-};
-use datex_core::values::core_values::error::NumberParseError;
 
 /// Parse the given source code into a DatexExpression AST.
 fn parse_unwrap(src: &str) -> DatexExpression {

@@ -1,24 +1,27 @@
 pub mod visitable;
-use crate::ast::expressions::GenericInstantiation;
-use crate::ast::expressions::{
-    Apply, BinaryOperation, CallableDeclaration, ComparisonOperation,
-    Conditional, CreateRef, DatexExpression, DatexExpressionData, Deref,
-    DerefAssignment, List, Map, PropertyAccess, PropertyAssignment,
-    RemoteExecution, Slot, SlotAssignment, Statements, TypeDeclaration,
-    UnaryOperation, VariableAccess, VariableAssignment, VariableDeclaration,
-    VariantAccess,
+use crate::{
+    ast::expressions::{
+        Apply, BinaryOperation, CallableDeclaration, ComparisonOperation,
+        Conditional, CreateRef, DatexExpression, DatexExpressionData, Deref,
+        DerefAssignment, GenericInstantiation, List, Map, PropertyAccess,
+        PropertyAssignment, RemoteExecution, Slot, SlotAssignment, Statements,
+        TypeDeclaration, UnaryOperation, VariableAccess, VariableAssignment,
+        VariableDeclaration, VariantAccess,
+    },
+    values::{
+        core_values::{
+            decimal::{Decimal, typed_decimal::TypedDecimal},
+            endpoint::Endpoint,
+            integer::{Integer, typed_integer::TypedInteger},
+        },
+        pointer::PointerAddress,
+    },
+    visitor::{
+        VisitAction,
+        expression::visitable::{ExpressionVisitResult, VisitableExpression},
+        type_expression::TypeExpressionVisitor,
+    },
 };
-use crate::values::core_values::decimal::Decimal;
-use crate::values::core_values::decimal::typed_decimal::TypedDecimal;
-use crate::values::core_values::endpoint::Endpoint;
-use crate::values::core_values::integer::Integer;
-use crate::values::core_values::integer::typed_integer::TypedInteger;
-use crate::values::pointer::PointerAddress;
-use crate::visitor::VisitAction;
-use crate::visitor::expression::visitable::{
-    ExpressionVisitResult, VisitableExpression,
-};
-use crate::visitor::type_expression::TypeExpressionVisitor;
 use core::ops::Range;
 
 pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {

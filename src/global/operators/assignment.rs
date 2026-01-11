@@ -1,6 +1,5 @@
 use super::super::instruction_codes::InstructionCode;
-use core::fmt::Display;
-use core::prelude::rust_2024::*;
+use core::{fmt::Display, prelude::rust_2024::*};
 use datex_core::global::protocol_structures::instructions::RegularInstruction;
 
 #[derive(Clone, Debug, PartialEq, Copy)]

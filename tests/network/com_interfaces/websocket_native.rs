@@ -1,21 +1,27 @@
-use std::assert_matches::assert_matches;
-use std::time::Duration;
-use datex_core::global::dxb_block::DXBBlock;
-use datex_core::network::com_hub::errors::InterfaceCreateError;
-use datex_core::task::sleep;
-use datex_core::utils::context::init_global_context;
-use datex_core::network::com_interfaces::default_com_interfaces::websocket::websocket_common::{WebSocketClientInterfaceSetupData, WebSocketError, WebSocketServerInterfaceSetupData};
-use datex_core::network::com_interfaces::{
-    default_com_interfaces::{
-        websocket::websocket_client_native_interface::WebSocketClientNativeInterface,
-        websocket::websocket_server_native_interface::WebSocketServerNativeInterface,
+use datex_core::{
+    global::dxb_block::DXBBlock,
+    network::{
+        com_hub::errors::InterfaceCreateError,
+        com_interfaces::default_com_interfaces::websocket::{
+            websocket_client_native_interface::WebSocketClientNativeInterface,
+            websocket_common::{
+                WebSocketClientInterfaceSetupData, WebSocketError,
+                WebSocketServerInterfaceSetupData,
+            },
+            websocket_server_native_interface::WebSocketServerNativeInterface,
+        },
     },
+    task::sleep,
+    utils::context::init_global_context,
 };
+use std::{assert_matches::assert_matches, time::Duration};
 
-use datex_core::network::com_interfaces::com_interface::ComInterface;
-use datex_core::network::com_interfaces::com_interface::error::ComInterfaceError;
-use datex_core::network::com_interfaces::com_interface::socket::ComInterfaceSocketEvent;
-use datex_core::run_async;
+use datex_core::{
+    network::com_interfaces::com_interface::{
+        ComInterface, error::ComInterfaceError, socket::ComInterfaceSocketEvent,
+    },
+    run_async,
+};
 use datex_macros::async_test;
 use ntest_timeout::timeout;
 

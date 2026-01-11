@@ -1,10 +1,14 @@
-use crate::ast::expressions::{
-    CallableDeclaration, CallableKind, DatexExpression, DatexExpressionData,
+use crate::{
+    ast::{
+        expressions::{
+            CallableDeclaration, CallableKind, DatexExpression,
+            DatexExpressionData,
+        },
+        spanned::Spanned,
+        type_expressions::TypeExpression,
+    },
+    parser::{Parser, SpannedParserError, lexer::Token},
 };
-use crate::ast::spanned::Spanned;
-use crate::ast::type_expressions::TypeExpression;
-use crate::parser::lexer::Token;
-use crate::parser::{Parser, SpannedParserError};
 
 impl Parser {
     pub(crate) fn parse_callable_definition(
@@ -81,15 +85,18 @@ impl Parser {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast::expressions::{
-        BinaryOperation, CallableDeclaration, CallableKind,
-        DatexExpressionData, Statements,
+    use crate::{
+        ast::{
+            expressions::{
+                BinaryOperation, CallableDeclaration, CallableKind,
+                DatexExpressionData, Statements,
+            },
+            spanned::Spanned,
+            type_expressions::TypeExpressionData,
+        },
+        global::operators::{BinaryOperator, binary::ArithmeticOperator},
+        parser::tests::parse,
     };
-    use crate::ast::spanned::Spanned;
-    use crate::ast::type_expressions::TypeExpressionData;
-    use crate::global::operators::BinaryOperator;
-    use crate::global::operators::binary::ArithmeticOperator;
-    use crate::parser::tests::parse;
 
     #[test]
     fn parse_empty_function() {

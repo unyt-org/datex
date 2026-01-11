@@ -1,26 +1,24 @@
-use core::prelude::rust_2024::*;
-use core::result::Result;
+use core::{prelude::rust_2024::*, result::Result};
 use std::collections::HashMap;
 
-use crate::network::com_interfaces::com_interface::implementation::ComInterfaceImplementation;
-use crate::network::com_interfaces::com_interface::state::ComInterfaceState;
 use crate::network::{
     com_hub::errors::ComHubError,
-    com_interfaces::com_interface::properties::InterfaceDirection,
+    com_interfaces::com_interface::{
+        implementation::ComInterfaceImplementation,
+        properties::InterfaceDirection, state::ComInterfaceState,
+    },
 };
 
-use crate::network::com_interfaces::com_interface::properties::InterfaceProperties;
-use crate::network::com_interfaces::com_interface::socket::ComInterfaceSocketUUID;
-use crate::network::com_interfaces::com_interface::{
-    ComInterface, ComInterfaceImplEvent, ComInterfaceInner,
+use crate::{
+    network::com_interfaces::com_interface::{
+        ComInterface, ComInterfaceImplEvent, ComInterfaceInner,
+        properties::InterfaceProperties, socket::ComInterfaceSocketUUID,
+    },
+    stdlib::{
+        boxed::Box, cell::RefCell, pin::Pin, rc::Rc, string::String, vec::Vec,
+    },
+    values::core_values::endpoint::Endpoint,
 };
-use crate::stdlib::boxed::Box;
-use crate::stdlib::cell::RefCell;
-use crate::stdlib::pin::Pin;
-use crate::stdlib::rc::Rc;
-use crate::stdlib::string::String;
-use crate::stdlib::vec::Vec;
-use crate::values::core_values::endpoint::Endpoint;
 use core::future::Future;
 use log::error;
 

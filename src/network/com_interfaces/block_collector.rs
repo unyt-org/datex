@@ -1,7 +1,11 @@
-use crate::global::dxb_block::{DXBBlock, HeaderParsingError};
-use crate::stdlib::vec::Vec;
-use crate::task::{UnboundedReceiver, UnboundedSender};
-use crate::task::{create_unbounded_channel, spawn_local};
+use crate::{
+    global::dxb_block::{DXBBlock, HeaderParsingError},
+    stdlib::vec::Vec,
+    task::{
+        UnboundedReceiver, UnboundedSender, create_unbounded_channel,
+        spawn_local,
+    },
+};
 use core::prelude::rust_2024::*;
 use log::error;
 

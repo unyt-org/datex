@@ -1,9 +1,12 @@
-use crate::ast::expressions::DatexExpression;
-use crate::compiler::error::ErrorCollector;
-use crate::global::operators::UnaryOperator;
-use crate::parser::lexer::Token;
-use crate::values::core_values::endpoint::InvalidEndpointError;
-use crate::values::core_values::error::NumberParseError;
+use crate::{
+    ast::expressions::DatexExpression,
+    compiler::error::ErrorCollector,
+    global::operators::UnaryOperator,
+    parser::lexer::Token,
+    values::core_values::{
+        endpoint::InvalidEndpointError, error::NumberParseError,
+    },
+};
 use core::ops::Range;
 
 #[derive(Debug, Clone, PartialEq, Eq)]

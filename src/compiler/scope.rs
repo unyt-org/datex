@@ -1,9 +1,15 @@
-use crate::ast::expressions::VariableKind;
-use crate::collections::HashMap;
-use crate::compiler::precompiler::precompiled_ast::RichAst;
-use crate::compiler::precompiler::scope_stack::PrecompilerScopeStack;
-use crate::compiler::{Variable, VariableRepresentation, context::VirtualSlot};
-use crate::runtime::execution::context::ExecutionMode;
+use crate::{
+    ast::expressions::VariableKind,
+    collections::HashMap,
+    compiler::{
+        Variable, VariableRepresentation,
+        context::VirtualSlot,
+        precompiler::{
+            precompiled_ast::RichAst, scope_stack::PrecompilerScopeStack,
+        },
+    },
+    runtime::execution::context::ExecutionMode,
+};
 use core::cell::RefCell;
 
 #[derive(Debug, Default, Clone)]
