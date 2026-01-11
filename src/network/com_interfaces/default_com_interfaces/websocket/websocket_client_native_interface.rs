@@ -1,11 +1,11 @@
 use crate::stdlib::cell::RefCell;
 use crate::stdlib::rc::Rc;
+use crate::stdlib::sync::{Arc, Mutex};
 use crate::stdlib::{future::Future, pin::Pin, time::Duration};
 use core::prelude::rust_2024::*;
 use core::result::Result;
-use crate::stdlib::sync::{Arc, Mutex};
-use futures_util::{SinkExt, StreamExt, stream::SplitSink};
 use futures_util::stream::SplitStream;
+use futures_util::{SinkExt, StreamExt, stream::SplitSink};
 use log::{error, info};
 use tokio::net::TcpStream;
 use tungstenite::Message;
@@ -13,7 +13,6 @@ use url::Url;
 
 use super::websocket_common::{WebSocketClientInterfaceSetupData, parse_url};
 use crate::network::com_hub::errors::InterfaceCreateError;
-use crate::network::com_interfaces::com_interface::{ComInterface, ComInterfaceImplEvent};
 use crate::network::com_interfaces::com_interface::error::ComInterfaceError;
 use crate::network::com_interfaces::com_interface::implementation::ComInterfaceImplementation;
 use crate::network::com_interfaces::com_interface::implementation::{
@@ -23,8 +22,15 @@ use crate::network::com_interfaces::com_interface::properties::{
     InterfaceDirection, InterfaceProperties,
 };
 use crate::network::com_interfaces::com_interface::socket::ComInterfaceSocketUUID;
-use crate::network::com_interfaces::com_interface::state::{ComInterfaceState, ComInterfaceStateWrapper};
-use crate::task::{spawn_with_panic_notify_default, UnboundedReceiver, UnboundedSender};
+use crate::network::com_interfaces::com_interface::state::{
+    ComInterfaceState, ComInterfaceStateWrapper,
+};
+use crate::network::com_interfaces::com_interface::{
+    ComInterface, ComInterfaceImplEvent,
+};
+use crate::task::{
+    UnboundedReceiver, UnboundedSender, spawn_with_panic_notify_default,
+};
 use tokio_tungstenite::{MaybeTlsStream, WebSocketStream};
 
 pub struct WebSocketClientNativeInterface {
@@ -37,33 +43,30 @@ impl WebSocketClientNativeInterface {
         setup_data: WebSocketClientInterfaceSetupData,
         com_interface: Rc<ComInterface>,
     ) -> Result<(Self, InterfaceProperties), InterfaceCreateError> {
+        let (address, write, read) =
+            Self::create_websocket_client_connection(&setup_data).await?;
 
-        let (address, write, mut read) = Self::create_websocket_client_connection(&setup_data).await?;
-
-        let (socket_uuid, mut sender) = com_interface
+        let (socket_uuid, sender) = com_interface
             .socket_manager()
             .lock()
             .unwrap()
             .create_and_init_socket(InterfaceDirection::InOut, 1);
 
         let state = com_interface.state();
-        let interface_impl_event_receiver = com_interface.take_interface_impl_event_receiver();
+        let interface_impl_event_receiver =
+            com_interface.take_interface_impl_event_receiver();
 
-        spawn_with_panic_notify_default(
-            Self::read_task(
-                read,
-                sender,
-                state.clone()
-            )
-        );
-        
-        spawn_with_panic_notify_default(
-            Self::event_handler_task(
-                write,
-                interface_impl_event_receiver,
-                state,
-            )
-        );
+        spawn_with_panic_notify_default(Self::read_task(
+            read,
+            sender,
+            state.clone(),
+        ));
+
+        spawn_with_panic_notify_default(Self::event_handler_task(
+            write,
+            interface_impl_event_receiver,
+            state,
+        ));
 
         Ok((
             WebSocketClientNativeInterface {
@@ -82,7 +85,7 @@ impl WebSocketClientNativeInterface {
     async fn read_task(
         mut read: SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>>,
         mut sender: UnboundedSender<Vec<u8>>,
-        state: Arc<Mutex<ComInterfaceStateWrapper>>
+        state: Arc<Mutex<ComInterfaceStateWrapper>>,
     ) {
         while let Some(msg) = read.next().await {
             match msg {
@@ -94,10 +97,7 @@ impl WebSocketClientNativeInterface {
                 }
                 Err(e) => {
                     error!("WebSocket read error: {e}");
-                    state
-                        .try_lock()
-                        .unwrap()
-                        .set(ComInterfaceState::Destroyed);
+                    state.try_lock().unwrap().set(ComInterfaceState::Destroyed);
                     break;
                 }
             }
@@ -106,30 +106,41 @@ impl WebSocketClientNativeInterface {
 
     /// background task to handle com hub events (e.g. outgoing messages)
     async fn event_handler_task(
-        mut write: SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>,
+        mut write: SplitSink<
+            WebSocketStream<MaybeTlsStream<TcpStream>>,
+            Message,
+        >,
         mut receiver: UnboundedReceiver<ComInterfaceImplEvent>,
         state: Arc<Mutex<ComInterfaceStateWrapper>>,
     ) {
         while let Some(event) = receiver.next().await {
             match event {
-                ComInterfaceImplEvent::SendBlock(block, _) => if let Err(e) = write.send(Message::Binary(block)).await {
-                    error!("WebSocket write error: {e}");
-                    state
-                        .try_lock()
-                        .unwrap()
-                        .set(ComInterfaceState::Destroyed);
-                    break;
-                },
-                _ => todo!()
+                ComInterfaceImplEvent::SendBlock(block, _) => {
+                    if let Err(e) = write.send(Message::Binary(block)).await {
+                        error!("WebSocket write error: {e}");
+                        state
+                            .try_lock()
+                            .unwrap()
+                            .set(ComInterfaceState::Destroyed);
+                        break;
+                    }
+                }
+                _ => todo!(),
             }
         }
     }
 
     /// initialize a new websocket client connection
-    async fn create_websocket_client_connection(setup_data: &WebSocketClientInterfaceSetupData) -> Result<
-        (Url, SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>, SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>>),
+    async fn create_websocket_client_connection(
+        setup_data: &WebSocketClientInterfaceSetupData,
+    ) -> Result<
+        (
+            Url,
+            SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>,
+            SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>>,
+        ),
         InterfaceCreateError,
-    >{
+    > {
         let address = parse_url(&setup_data.address).map_err(|_| {
             InterfaceCreateError::InvalidSetupData(
                 "Invalid WebSocket URL".to_string(),

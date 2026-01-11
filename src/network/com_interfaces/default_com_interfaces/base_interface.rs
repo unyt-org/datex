@@ -3,7 +3,9 @@ use core::result::Result;
 use std::collections::HashMap;
 
 use crate::network::com_interfaces::com_interface::implementation::ComInterfaceImplementation;
-use crate::network::com_interfaces::com_interface::state::{ComInterfaceState, ComInterfaceStateWrapper};
+use crate::network::com_interfaces::com_interface::state::{
+    ComInterfaceState, ComInterfaceStateWrapper,
+};
 use crate::network::{
     com_hub::errors::ComHubError,
     com_interfaces::com_interface::properties::InterfaceDirection,
@@ -11,7 +13,9 @@ use crate::network::{
 
 use crate::network::com_interfaces::com_interface::properties::InterfaceProperties;
 use crate::network::com_interfaces::com_interface::socket::ComInterfaceSocketUUID;
-use crate::network::com_interfaces::com_interface::{ComInterface, ComInterfaceImplEvent, ComInterfaceInner};
+use crate::network::com_interfaces::com_interface::{
+    ComInterface, ComInterfaceImplEvent, ComInterfaceInner,
+};
 use crate::stdlib::boxed::Box;
 use crate::stdlib::cell::RefCell;
 use crate::stdlib::pin::Pin;
@@ -20,8 +24,6 @@ use crate::stdlib::string::String;
 use crate::stdlib::vec::Vec;
 use crate::values::core_values::endpoint::Endpoint;
 use core::future::Future;
-use std::sync::{Arc, Mutex};
-use futures_util::stream::SplitSink;
 use log::error;
 
 pub type OnSendCallback = dyn Fn(&[u8], ComInterfaceSocketUUID) -> Pin<Box<dyn Future<Output = bool>>>
@@ -32,12 +34,9 @@ pub struct BaseInterface {
 }
 
 use crate::task::{UnboundedReceiver, UnboundedSender};
+use datex_core::task::spawn_with_panic_notify_default;
 use strum::Display;
 use thiserror::Error;
-use tokio::net::TcpStream;
-use tokio_tungstenite::{MaybeTlsStream, WebSocketStream};
-use tungstenite::Message;
-use datex_core::task::spawn_with_panic_notify_default;
 
 #[derive(Debug, Display, Error)]
 pub enum BaseInterfaceError {
@@ -76,7 +75,8 @@ impl BaseInterfaceHolder {
         };
         com_interface.set_implementation(Box::new(implementation));
 
-        let interface_impl_event_receiver = com_interface.take_interface_impl_event_receiver();
+        let interface_impl_event_receiver =
+            com_interface.take_interface_impl_event_receiver();
 
         // todo: use async context
         spawn_with_panic_notify_default(Self::event_handler_task(
@@ -102,8 +102,8 @@ impl BaseInterfaceHolder {
                         error!("BaseInterface send error");
                         // todo: handle error
                     }
-                },
-                _ => todo!()
+                }
+                _ => todo!(),
             }
         }
     }
@@ -183,7 +183,6 @@ impl BaseInterfaceSetupData {
 
 #[cfg(test)]
 mod tests {
-    use datex_core::run_async;
     use crate::{
         network::com_interfaces::{
             com_interface::{
@@ -195,6 +194,7 @@ mod tests {
         },
         utils::context::init_global_context,
     };
+    use datex_core::run_async;
 
     #[tokio::test]
     pub async fn test_close() {

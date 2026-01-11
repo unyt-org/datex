@@ -1,6 +1,6 @@
 use super::tcp_common::TCPServerInterfaceSetupData;
+use crate::core::net::AddrParseError;
 use crate::network::com_hub::errors::InterfaceCreateError;
-use crate::network::com_interfaces::com_interface::{ComInterface, ComInterfaceImplEvent};
 use crate::network::com_interfaces::com_interface::error::ComInterfaceError;
 use crate::network::com_interfaces::com_interface::implementation::{
     ComInterfaceAsyncFactory, ComInterfaceImplementation,
@@ -10,6 +10,9 @@ use crate::network::com_interfaces::com_interface::properties::{
     InterfaceDirection, InterfaceProperties,
 };
 use crate::network::com_interfaces::com_interface::socket::ComInterfaceSocketUUID;
+use crate::network::com_interfaces::com_interface::{
+    ComInterface, ComInterfaceImplEvent,
+};
 use crate::std_sync::Mutex;
 use crate::stdlib::collections::HashMap;
 use crate::stdlib::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
@@ -17,7 +20,7 @@ use crate::stdlib::pin::Pin;
 use crate::stdlib::rc::Rc;
 use crate::stdlib::sync::Arc;
 use crate::task::{UnboundedReceiver, UnboundedSender};
-use crate::task::spawn_with_panic_notify_default;
+use crate::task::{create_unbounded_channel, spawn_with_panic_notify_default};
 use core::future::Future;
 use core::prelude::rust_2024::*;
 use core::result::Result;
@@ -27,14 +30,13 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
 use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
 use tokio::sync::Notify;
-use tungstenite::Message;
 
 pub struct TCPServerNativeInterface {
     // TODO: properties not really needed, just for testing purposes, can we remove this?
     pub address: SocketAddr,
     com_interface: Rc<ComInterface>,
     pub tx_by_socket:
-        Arc<Mutex<HashMap<ComInterfaceSocketUUID, Arc<Mutex<OwnedWriteHalf>>>>>,
+        Arc<Mutex<HashMap<ComInterfaceSocketUUID, UnboundedSender<Vec<u8>>>>>,
 }
 
 impl TCPServerNativeInterface {
@@ -42,42 +44,59 @@ impl TCPServerNativeInterface {
         setup_data: TCPServerInterfaceSetupData,
         com_interface: Rc<ComInterface>,
     ) -> Result<(Self, InterfaceProperties), InterfaceCreateError> {
-        let address = SocketAddr::V4(SocketAddrV4::new(
-            Ipv4Addr::new(0, 0, 0, 0),
-            setup_data.port,
-        ));
+        let host = setup_data
+            .host
+            .clone()
+            .unwrap_or_else(|| "0.0.0.0".to_string());
 
-        info!("Spinning up server at {address}");
+        let address: SocketAddr = format!("{}:{}", host, setup_data.port)
+            .parse()
+            .map_err(|e: AddrParseError| {
+                InterfaceCreateError::InvalidSetupData(e.to_string())
+            })?;
 
         let listener = TcpListener::bind(address).await.map_err(|e| {
             InterfaceCreateError::InterfaceError(
                 ComInterfaceError::connection_error_with_details(e),
             )
         })?;
-        info!("Server listening on {address}");
+        info!("TCP Server listening on {address}");
 
         let tx_by_socket = Arc::new(Mutex::new(HashMap::new()));
         let tx_by_socket_clone = tx_by_socket.clone();
 
-        // TODO #615: use normal spawn (thread)? currently leads to global context panic
         let manager = com_interface.socket_manager();
         spawn_with_panic_notify_default(async move {
             loop {
+                // Accept an incoming connection
                 match listener.accept().await {
                     Ok((stream, _)) => {
-                        let (socket_uuid, sender) =
+                        // Initialize socket in com socket manager
+                        let (socket_uuid, rx_sender) =
                             manager.lock().unwrap().create_and_init_socket(
                                 InterfaceDirection::InOut,
                                 1,
                             );
-                        let (read_half, write_half) = stream.into_split();
-                        tx_by_socket_clone.try_lock().unwrap().insert(
-                            socket_uuid,
-                            Arc::new(Mutex::new(write_half)),
-                        );
+                        // Handle the client connection
+                        let (tcp_read_half, tcp_write_half) =
+                            stream.into_split();
+                        let (tx_sender, tx_receiver) =
+                            create_unbounded_channel::<Vec<u8>>();
 
+                        // Spawn a task to handle outgoing messages to the client
                         spawn_with_panic_notify_default(async move {
-                            Self::handle_client(read_half, sender).await
+                            Self::handle_send(tcp_write_half, tx_receiver).await
+                        });
+
+                        // Store the sender in the map
+                        tx_by_socket_clone
+                            .try_lock()
+                            .unwrap()
+                            .insert(socket_uuid, tx_sender);
+
+                        // Spawn a task to handle incoming messages from the client
+                        spawn_with_panic_notify_default(async move {
+                            Self::handle_receive(tcp_read_half, rx_sender).await
                         });
                     }
                     Err(e) => {
@@ -104,40 +123,39 @@ impl TCPServerNativeInterface {
         ))
     }
 
+    #[allow(clippy::await_holding_lock)]
     /// background task to handle com hub events (e.g. outgoing messages)
     async fn event_handler_task(
         mut receiver: UnboundedReceiver<ComInterfaceImplEvent>,
         tx_by_socket: Arc<
-            Mutex<HashMap<ComInterfaceSocketUUID, Arc<Mutex<OwnedWriteHalf>>>>,
+            Mutex<HashMap<ComInterfaceSocketUUID, UnboundedSender<Vec<u8>>>>,
         >,
         shutdown_signal: Arc<Notify>,
     ) {
         while let Some(event) = receiver.next().await {
             match event {
                 ComInterfaceImplEvent::SendBlock(block, socket_uuid) => {
-                    let tx_queues = tx_by_socket.try_lock().unwrap();
-                    let tx = tx_queues.get(&socket_uuid);
-                    match tx {
-                        None => {
-                            error!("Client is not connected");
-                            // TODO: handle
-                            return;
-                        }
-                        Some(tx) => {
-                            tx.try_lock().unwrap().write(&block).await.unwrap();
-                            // TODO: handle error
-                        }
+                    let tx = tx_by_socket
+                        .lock()
+                        .map(|guard| guard.get(&socket_uuid).cloned());
+                    let Ok(tx) = tx else {
+                        error!("Client is not connected: {}", socket_uuid);
+                        continue;
+                    };
+                    let mut tx = tx.unwrap();
+                    if tx.start_send(block).is_err() {
+                        error!("Write failed for {}", socket_uuid);
                     }
                 }
                 ComInterfaceImplEvent::Destroy => {
                     shutdown_signal.notify_waiters();
                 }
-                _ => todo!()
+                _ => todo!(),
             }
         }
     }
 
-    async fn handle_client(
+    async fn handle_receive(
         mut rx: OwnedReadHalf,
         mut bytes_in_sender: UnboundedSender<Vec<u8>>,
     ) {
@@ -160,6 +178,18 @@ impl TCPServerNativeInterface {
             }
         }
     }
+
+    async fn handle_send(
+        mut tcp_write_half: OwnedWriteHalf,
+        mut tx_receiver: UnboundedReceiver<Vec<u8>>,
+    ) {
+        while let Some(block) = tx_receiver.next().await {
+            if tcp_write_half.write_all(&block).await.is_err() {
+                // FIXME error handling when write fails
+                break;
+            }
+        }
+    }
 }
 
 impl ComInterfaceAsyncFactory for TCPServerNativeInterface {
@@ -178,15 +208,7 @@ impl ComInterfaceAsyncFactory for TCPServerNativeInterface {
         >,
     > {
         Box::pin(async move {
-            TCPServerNativeInterface::create(setup_data, com_interface)
-                .await
-                .map_err(|e| {
-                    InterfaceCreateError::InterfaceError(
-                        ComInterfaceError::connection_error_with_details(
-                            format!("{e:?}"),
-                        ),
-                    )
-                })
+            TCPServerNativeInterface::create(setup_data, com_interface).await
         })
     }
 
@@ -202,3 +224,46 @@ impl ComInterfaceAsyncFactory for TCPServerNativeInterface {
 }
 
 impl ComInterfaceImplementation for TCPServerNativeInterface {}
+
+#[cfg(test)]
+mod tests {
+    use core::{assert_matches::assert_matches, u16};
+
+    use crate::{
+        network::{
+            com_hub::errors::InterfaceCreateError,
+            com_interfaces::{
+                com_interface::ComInterface,
+                default_com_interfaces::tcp::{
+                    tcp_common::TCPServerInterfaceSetupData,
+                    tcp_server_native_interface::TCPServerNativeInterface,
+                },
+            },
+        },
+        run_async,
+        utils::context::init_global_context,
+    };
+
+    #[tokio::test]
+    async fn test_construct() {
+        run_async! {
+            const PORT: u16 = 5088;
+            init_global_context();
+            let com_interface = ComInterface::create_async_with_implementation::<TCPServerNativeInterface>(
+                TCPServerInterfaceSetupData::new_with_port(PORT)
+            ).await.unwrap();
+            let tcp_server_interface = com_interface.implementation::<TCPServerNativeInterface>();
+            assert_eq!(tcp_server_interface.address.port(), PORT);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_invalid_address() {
+        run_async! {
+            init_global_context();
+            assert_matches!(ComInterface::create_async_with_implementation::<TCPServerNativeInterface>(
+                TCPServerInterfaceSetupData::new_with_host_and_port("invalid-address".to_string(), 5088)
+            ).await, Err(InterfaceCreateError::InvalidSetupData(_)));
+        }
+    }
+}
