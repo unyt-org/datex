@@ -22,7 +22,7 @@ use crate::{
             error::ComInterfaceError,
             implementation::{
                 ComInterfaceAsyncFactory, ComInterfaceAsyncFactoryResult,
-                ComInterfaceImplementation, ComInterfaceSyncFactory,
+                ComInterfaceImplementation,
             },
             properties::{InterfaceDirection, InterfaceProperties},
             socket::ComInterfaceSocketUUID,

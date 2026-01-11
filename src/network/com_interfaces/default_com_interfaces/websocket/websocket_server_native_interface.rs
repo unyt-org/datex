@@ -1,10 +1,18 @@
 use crate::{
+    network::com_interfaces::com_interface::{
+        socket_manager::ComInterfaceSocketManager,
+        state::ComInterfaceStateWrapper,
+    },
     std_sync::Mutex,
     stdlib::{collections::HashMap, net::SocketAddr, rc::Rc, sync::Arc},
-    task::{UnboundedReceiver, spawn_with_panic_notify_default},
+    task::{
+        UnboundedReceiver, UnboundedSender, create_unbounded_channel,
+        spawn_with_panic_notify_default,
+    },
 };
 use core::{prelude::rust_2024::*, result::Result, time::Duration};
 
+use futures::stream::SplitStream;
 use futures_util::{SinkExt, StreamExt};
 use log::{error, info};
 use tokio::{
@@ -37,10 +45,8 @@ use crate::{
 };
 use tokio_tungstenite::WebSocketStream;
 
-type WebsocketStreamMap = HashMap<
-    ComInterfaceSocketUUID,
-    SplitSink<WebSocketStream<TcpStream>, Message>,
->;
+type WebsocketStreamMap =
+    HashMap<ComInterfaceSocketUUID, UnboundedSender<Vec<u8>>>;
 
 pub struct WebSocketServerNativeInterface {
     // TODO: properties not really needed here, just for testing purposes
@@ -81,9 +87,8 @@ impl WebSocketServerNativeInterface {
         let websocket_streams_clone = websocket_streams_by_socket.clone();
         let shutdown_signal = com_interface.shutdown_signal();
         let manager = com_interface.socket_manager();
-        let shutdown_signal_clone = shutdown_signal.clone();
+        let state = com_interface.state();
 
-        // FIXME fix task abort on shutdown
         spawn_with_panic_notify_default(async move {
             let manager = manager.clone();
             info!("WebSocket server started at {addr}");
@@ -93,64 +98,58 @@ impl WebSocketServerNativeInterface {
                     res = listener.accept() => {
                         match res {
                             Ok((stream, addr)) => {
+                                let state = state.clone();
                                 let websocket_streams = websocket_streams_clone.clone();
                                 info!("New connection from {addr}");
-                                spawn_with_panic_notify_default(async move {
-                                    let manager = manager.clone();
+                                match accept_async(stream).await {
+                                    Ok(ws_stream) => {
+                                        let (write, read) = ws_stream.split();
+                                        let (tx_sender, tx_receiver) = create_unbounded_channel::<Vec<u8>>();
 
-                                    match accept_async(stream).await {
-                                        Ok(ws_stream) => {
-                                            info!(
-                                                "Accepted WebSocket connection from {addr}"
-                                            );
-                                            let (write, mut read) = ws_stream.split();
+                                        info!("Accepted WebSocket connection from {addr}");
+                                        let manager = manager.clone();
 
-                                            let (socket_uuid, mut sender) = manager
-                                                .lock()
-                                                .unwrap()
-                                                .create_and_init_socket(InterfaceDirection::InOut, 1);
+                                        let (socket_uuid, sender) = manager
+                                            .lock()
+                                            .unwrap()
+                                            .create_and_init_socket(InterfaceDirection::InOut, 1);
 
-                                            websocket_streams
-                                                .try_lock()
-                                                .unwrap()
-                                                .insert(socket_uuid.clone(), write);
+                                        websocket_streams
+                                            .try_lock()
+                                            .unwrap()
+                                            .insert(socket_uuid.clone(), tx_sender);
 
-                                            while let Some(msg) = read.next().await {
-                                                match msg {
-                                                    Ok(Message::Binary(bin)) => {
-                                                        sender.start_send(bin).unwrap();
-                                                    }
-                                                    Ok(_) => {}
-                                                    Err(e) => {
-                                                        error!(
-                                                            "WebSocket error from {addr}: {e}"
-                                                        );
-                                                        break;
-                                                    }
-                                                }
-                                            }
-                                            // consider the connection closed, clean up
-                                            let mut streams =
-                                                websocket_streams
-                                                    .try_lock()
-                                                    .unwrap();
-                                            streams.remove(&socket_uuid);
+                                        let state_clone = state.clone();
 
-                                            manager
-                                                .lock()
-                                                .unwrap()
-                                                .remove_socket(socket_uuid);
-                                            info!(
-                                                "WebSocket connection from {addr} closed"
-                                            );
-                                        }
-                                        Err(e) => {
-                                            error!(
-                                                "WebSocket handshake failed with {addr}: {e}"
-                                            );
-                                        }
+                                        // spawn read task
+                                        spawn_with_panic_notify_default(async move {
+                                            Self::client_read_task(
+                                                manager,
+                                                read,
+                                                sender,
+                                                addr,
+                                                websocket_streams,
+                                                state_clone,
+                                                socket_uuid
+                                            )
+                                            .await;
+                                        });
+
+                                        // spawn write task
+                                        spawn_with_panic_notify_default(async move {
+                                            Self::client_write_task(
+                                                write,
+                                                tx_receiver,
+                                                addr,
+                                                state,
+                                            )
+                                            .await;
+                                        });
                                     }
-                                });
+                                    Err(e) => {
+                                        error!("WebSocket handshake failed with {addr}: {e}");
+                                    }
+                                }
                             }
                             Err(e) => {
                                 error!("Failed to accept connection: {e}");
@@ -158,7 +157,7 @@ impl WebSocketServerNativeInterface {
                             }
                         };
                     }
-                    _ = shutdown_signal_clone.notified() => {
+                    _ = shutdown_signal.notified() => {
                         break;
                     }
                 }
@@ -168,12 +167,10 @@ impl WebSocketServerNativeInterface {
         // start event handler task
         let interface_impl_event_receiver =
             com_interface.take_interface_impl_event_receiver();
-        let shutdown_signal_clone = shutdown_signal.clone();
         let websocket_streams_clone = websocket_streams_by_socket.clone();
         spawn_with_panic_notify_default(Self::event_handler_task(
             websocket_streams_clone,
             interface_impl_event_receiver,
-            shutdown_signal_clone,
         ));
 
         Ok((
@@ -188,11 +185,91 @@ impl WebSocketServerNativeInterface {
         ))
     }
 
+    async fn client_write_task(
+        mut write: SplitSink<WebSocketStream<TcpStream>, Message>,
+        mut receiver: UnboundedReceiver<Vec<u8>>,
+        addr: SocketAddr,
+        state: Arc<Mutex<ComInterfaceStateWrapper>>,
+    ) {
+        let shutdown_signal = state.try_lock().unwrap().shutdown_signal();
+        loop {
+            tokio::select! {
+                // Receive next message to send
+                msg = receiver.next() => {
+                    match msg {
+                        Some(data) => {
+                            if let Err(e) = write.send(Message::Binary(data)).await {
+                                error!("WebSocket write error to {addr}: {e}");
+                                continue;
+                            }
+                        }
+                        None => {
+                            // Channel closed
+                            break;
+                        }
+                    }
+                }
+                // Shutdown signal received
+                _ = shutdown_signal.notified() => {
+                    info!("Shutdown signal received, stopping write_task for {addr}");
+                    break;
+                }
+            }
+        }
+    }
+
+    async fn client_read_task(
+        manager: Arc<Mutex<ComInterfaceSocketManager>>,
+        mut read: SplitStream<WebSocketStream<TcpStream>>,
+        mut sender: UnboundedSender<Vec<u8>>,
+        addr: SocketAddr,
+        websocket_streams: Arc<Mutex<WebsocketStreamMap>>,
+        state: Arc<Mutex<ComInterfaceStateWrapper>>,
+        socket_uuid: ComInterfaceSocketUUID,
+    ) {
+        let shutdown_signal = state.try_lock().unwrap().shutdown_signal();
+
+        loop {
+            tokio::select! {
+                // Read next WebSocket message
+                msg = read.next() => {
+                    match msg {
+                        Some(Ok(Message::Binary(bin))) => {
+                            sender.start_send(bin).expect("Failed to send received data to ComHub");
+                        }
+                        Some(Ok(_)) => {
+                            // Ignore non-binary messages
+                            continue;
+                        }
+                        Some(Err(e)) => {
+                            error!("WebSocket error from {addr}: {e}");
+                            continue;
+                        }
+                        None => {
+                            // Connection closed by peer
+                            break;
+                        }
+                    }
+                }
+                // Shutdown signal received
+                _ = shutdown_signal.notified() => {
+                    info!("Shutdown signal received, stopping read_task for {addr}");
+                    break;
+                }
+            }
+        }
+
+        // cleanup on connection close
+        let mut streams = websocket_streams.try_lock().unwrap();
+        streams.remove(&socket_uuid);
+        manager.lock().unwrap().remove_socket(socket_uuid);
+        info!("WebSocket connection from {addr} closed");
+    }
+
     /// background task to handle com hub events (e.g. outgoing messages)
     async fn event_handler_task(
         websocket_streams_by_socket: Arc<Mutex<WebsocketStreamMap>>,
         mut receiver: UnboundedReceiver<ComInterfaceImplEvent>,
-        shutdown_signal: Arc<Notify>,
     ) {
         while let Some(event) = receiver.next().await {
             match event {
@@ -202,9 +279,9 @@ impl WebSocketServerNativeInterface {
                     let tx = tx.get_mut(&socket_uuid);
                     match tx {
                         Some(tx) => {
-                            tx.send(Message::Binary(block.to_vec()))
-                                .await
-                                .unwrap();
+                            tx.start_send(block.to_vec()).expect(
+                                "Failed to send outgoing data to WebSocket",
+                            );
                         }
                         None => {
                             error!(
@@ -215,7 +292,7 @@ impl WebSocketServerNativeInterface {
                     };
                 }
                 ComInterfaceImplEvent::Destroy => {
-                    shutdown_signal.notify_waiters();
+                    break;
                 }
                 _ => todo!(),
             }
