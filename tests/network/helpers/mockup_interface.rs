@@ -138,7 +138,8 @@ impl Default for MockupInterfaceSetupData {
             name: "mockup".to_string(),
             endpoint: None,
             direction: InterfaceDirection::InOut,
-            ..Default::default()
+            sender_out: None,
+            receiver_in: None,
         }
     }
 }

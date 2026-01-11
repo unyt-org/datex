@@ -1,7 +1,7 @@
 use crate::network::helpers::{
     mock_setup::{
         TEST_ENDPOINT_A, TEST_ENDPOINT_B, TEST_ENDPOINT_ORIGIN,
-        get_all_received_single_blocks_from_receiver,
+        get_collected_received_single_blocks_from_receiver,
         get_mock_setup_with_com_hub,
         send_block_with_body, send_empty_block,
     },
@@ -39,11 +39,13 @@ use datex_core::{
 };
 use datex_macros::async_test;
 use std::{pin::Pin, sync::mpsc};
+use std::time::Duration;
+use log::info;
 use tokio::task::yield_now;
 use datex_core::global::dxb_block::IncomingSection;
 use datex_core::network::com_interfaces::com_interface::properties::InterfaceDirection;
 use datex_core::network::com_interfaces::com_interface::socket::ComInterfaceSocketUUID;
-use datex_core::task::create_unbounded_channel;
+use datex_core::task::{create_unbounded_channel, sleep};
 use crate::network::helpers::mock_setup::{get_default_mock_setup_with_com_hub, get_default_mock_setup_with_two_connected_com_hubs, get_last_received_single_block_from_receiver, get_mock_setup_with_interface, MockupSetupData};
 
 /// Creates a mock ComHub for testing without a connected channel
@@ -256,7 +258,7 @@ pub async fn send_blocks_to_multiple_endpoints() {
     let (_, first_block_socket_uuid) = outgoing_blocks_receiver.next().await.unwrap();
     let (_, second_block_socket_uuid) = outgoing_blocks_receiver.next().await.unwrap();
 
-    let socket_uuids = vec![first_block_socket_uuid, second_block_socket_uuid];
+    let socket_uuids = [first_block_socket_uuid, second_block_socket_uuid];
     assert!(socket_uuids.contains(&socket_uuid_a));
     assert!(socket_uuids.contains(&socket_uuid_b));
 }
@@ -270,6 +272,9 @@ pub async fn default_interface_create_socket_first() {
         &com_hub,
     )
     .await;
+
+    // sleep to let the com_hub process the new socket
+    sleep(Duration::from_millis(10)).await;
 
     let mockup_interface =
         com_interface.implementation_mut::<MockupInterface>();
@@ -449,9 +454,7 @@ pub async fn test_receive_multiple() {
 
     yield_now().await;
 
-    let incoming_blocks = get_all_received_single_blocks_from_receiver(&mut incoming_sections_receiver).await;
-
-    assert_eq!(incoming_blocks.len(), blocks.len());
+    let incoming_blocks = get_collected_received_single_blocks_from_receiver(&mut incoming_sections_receiver, blocks.len()).await;
 
     for (incoming_block, block) in incoming_blocks.iter().zip(blocks.iter()) {
         assert_eq!(
@@ -509,8 +512,8 @@ pub async fn test_add_and_remove_interface_and_sockets() {
 #[async_test]
 pub async fn test_basic_routing() {
     let (
-        (com_hub_mut_a, com_interface_a, _), 
-        (com_hub_mut_b, com_interface_b, mut incoming_sections_receiver_b)
+        (com_hub_mut_a, ..),
+        (.., mut incoming_sections_receiver_b)
     ) = get_default_mock_setup_with_two_connected_com_hubs().await;
 
     yield_now().await;

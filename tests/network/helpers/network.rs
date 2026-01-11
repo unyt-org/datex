@@ -650,7 +650,8 @@ impl Network {
             println!(
                 "{}>>>{}",
                 endpoint.endpoint,
-                runtime.com_hub().metadata()
+                runtime.com_hub().
+                    metadata()
             );
             endpoint.runtime = Some(runtime);
         }

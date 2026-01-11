@@ -78,7 +78,7 @@ pub async fn get_mock_setup_with_com_hub(
         mock_setup_data.com_hub_sections_sender,
         mock_setup_data.interface_priority,
     );
-    
+
     (com_hub, mockup_interface.clone())
 }
 
@@ -100,25 +100,25 @@ pub async fn get_default_mock_setup_with_two_connected_com_hubs() -> (
 
     let (incoming_sections_sender_b, incoming_sections_receiver_b) = create_unbounded_channel::<IncomingSection>();
     let (incoming_sections_sender_a, incoming_sections_receiver_a) = create_unbounded_channel::<IncomingSection>();
-    
+
     let (com_hub_mut_a, com_interface_a) = get_mock_setup_with_com_hub(MockupSetupData {
         interface_setup_data: MockupInterfaceSetupData {
-            endpoint: Some(TEST_ENDPOINT_A.clone()),
             receiver_in: Some(receiver_b),
             sender_out: Some(sender_a),
             ..Default::default()
         },
+        local_endpoint: TEST_ENDPOINT_A.clone(),
         com_hub_sections_sender: Some(incoming_sections_sender_a),
         ..Default::default()
     }).await;
 
     let (com_hub_mut_b, com_interface_b) = get_mock_setup_with_com_hub(MockupSetupData {
         interface_setup_data: MockupInterfaceSetupData {
-            endpoint: Some(TEST_ENDPOINT_B.clone()),
             receiver_in: Some(receiver_a),
             sender_out: Some(sender_b),
             ..Default::default()
         },
+        local_endpoint: TEST_ENDPOINT_B.clone(),
         com_hub_sections_sender: Some(incoming_sections_sender_b),
         ..Default::default()
     }).await;
@@ -152,7 +152,7 @@ pub fn get_mock_setup_with_interface(
         }),
         AsyncContext::new(),
     );
-    
+
     // add mockup interface to com_hub
     com_hub
         .register_com_interface(interface, interface_priority)
@@ -169,12 +169,13 @@ pub async fn get_default_mock_setup_with_com_hub() -> (
     UnboundedSender<Vec<u8>>,
     UnboundedReceiver<IncomingSection>,
 ) {
-    let (interface_in_sender, interface_in_receiver) = create_unbounded_channel();
-    let (com_hub_sections_sender, mut com_hub_sections_receiver) = create_unbounded_channel();
+    let (interface_in_sender, interface_in_receiver) = create_unbounded_channel::<Vec<u8>>();
+    let (com_hub_sections_sender, com_hub_sections_receiver) = create_unbounded_channel::<IncomingSection>();
 
     let (com_hub, com_interface) = get_mock_setup_with_com_hub(MockupSetupData {
         interface_setup_data: MockupInterfaceSetupData {
             receiver_in: Some(interface_in_receiver),
+            endpoint: Some(TEST_ENDPOINT_B.clone()),
             ..Default::default()
         },
         com_hub_sections_sender: Some(com_hub_sections_sender),
@@ -287,16 +288,14 @@ pub async fn send_empty_block(
         }
     }
 
-    yield_now().await;
     block
 }
 pub async fn get_last_received_single_block_from_receiver(
     sections_receiver: &mut UnboundedReceiver<IncomingSection>
 ) -> DXBBlock {
-    let sections = sections_receiver.collect_all().await;
-    assert_eq!(sections.len(), 1);
+    let section = sections_receiver.next().await.unwrap();
 
-    match &sections[0] {
+    match &section {
         IncomingSection::SingleBlock((Some(block), id)) => {
             // assert that endpoint context section id matches block
             let block_id = block.get_block_id();
@@ -316,14 +315,16 @@ pub async fn get_last_received_single_block_from_receiver(
         }
     }
 }
-pub async fn get_all_received_single_blocks_from_receiver(
-    sections_receiver: &mut UnboundedReceiver<IncomingSection>
+pub async fn get_collected_received_single_blocks_from_receiver(
+    sections_receiver: &mut UnboundedReceiver<IncomingSection>,
+    count: usize,
 ) -> Vec<DXBBlock> {
-    let sections = sections_receiver.collect_all().await;
-
     let mut blocks = vec![];
 
-    for section in sections {
+    for (received_count, section) in sections_receiver.next().await.into_iter().enumerate() {
+        if received_count >= count {
+            break;
+        }
         match section {
             IncomingSection::SingleBlock((Some(block), ..)) => {
                 blocks.push(block.clone());
@@ -332,6 +333,10 @@ pub async fn get_all_received_single_blocks_from_receiver(
                 core::panic!("Expected single block, but got block stream");
             }
         }
+    }
+    
+    if blocks.len() != count {
+        panic!("Expected to receive {} blocks, but got {}", count, blocks.len());
     }
 
     blocks

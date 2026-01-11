@@ -330,14 +330,6 @@ impl<T> UnboundedReceiver<T> {
             self.0.recv().await
         }
     }
-    
-    pub async fn collect_all(&mut self) -> Vec<T> {
-        let mut items = Vec::new();
-        while let Some(item) = self.next().await {
-            items.push(item);
-        }
-        items
-    }
 }
 
 #[derive(Debug)]
