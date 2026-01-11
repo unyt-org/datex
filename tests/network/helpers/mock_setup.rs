@@ -23,6 +23,8 @@ use std::{
 use tokio::task::yield_now;
 use webrtc::interceptor::mock;
 use datex_core::global::dxb_block::IncomingEndpointContextSectionId;
+use datex_core::global::protocol_structures::block_header::{BlockHeader, FlagsAndTimestamp};
+use datex_core::global::protocol_structures::routing_header::RoutingHeader;
 use datex_core::task::create_unbounded_channel;
 
 lazy_static::lazy_static! {
@@ -78,6 +80,8 @@ pub async fn get_mock_setup_with_com_hub(
         mock_setup_data.com_hub_sections_sender,
         mock_setup_data.interface_priority,
     );
+
+    yield_now().await;
 
     (com_hub, mockup_interface.clone())
 }
@@ -163,6 +167,7 @@ pub fn get_mock_setup_with_interface(
 
 
 /// Helper function to create a default mock setup with initialized channels for com hub and mockup interface
+/// The endpoint at the mockup interface socket is set to TEST_ENDPOINT_B
 pub async fn get_default_mock_setup_with_com_hub() -> (
     Rc<ComHub>,
     Rc<ComInterface>,
@@ -181,6 +186,8 @@ pub async fn get_default_mock_setup_with_com_hub() -> (
         com_hub_sections_sender: Some(com_hub_sections_sender),
         ..Default::default()
     }).await;
+
+    yield_now().await;
 
     (
         com_hub,
@@ -290,7 +297,7 @@ pub async fn send_empty_block(
 
     block
 }
-pub async fn get_last_received_single_block_from_receiver(
+pub async fn get_next_received_single_block_from_receiver(
     sections_receiver: &mut UnboundedReceiver<IncomingSection>
 ) -> DXBBlock {
     let section = sections_receiver.next().await.unwrap();
@@ -315,29 +322,94 @@ pub async fn get_last_received_single_block_from_receiver(
         }
     }
 }
-pub async fn get_collected_received_single_blocks_from_receiver(
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
+pub enum CollectedBlockType {
+    #[default]
+    All,
+    SingleBocks,
+    BlockStream,
+}
+
+impl CollectedBlockType {
+    pub fn matches_section(&self, section: &IncomingSection) -> bool {
+        match self {
+            CollectedBlockType::SingleBocks => matches!(section, IncomingSection::SingleBlock(_)),
+            CollectedBlockType::BlockStream => matches!(section, IncomingSection::BlockStream(_)),
+            CollectedBlockType::All => true,
+        }
+    }
+}
+
+
+pub async fn get_collected_received_blocks_from_receiver(
     sections_receiver: &mut UnboundedReceiver<IncomingSection>,
+    collected_type: CollectedBlockType,
     count: usize,
 ) -> Vec<DXBBlock> {
     let mut blocks = vec![];
 
-    for (received_count, section) in sections_receiver.next().await.into_iter().enumerate() {
-        if received_count >= count {
-            break;
+    let mut received_count = 0;
+
+    while let Some(section) = sections_receiver.next().await {
+        if !collected_type.matches_section(&section) {
+            panic!("Received section does not match collected block type {:?}", collected_type);
         }
+
         match section {
             IncomingSection::SingleBlock((Some(block), ..)) => {
                 blocks.push(block.clone());
+                received_count += 1;
+                info!("Received single block");
+            }
+            IncomingSection::BlockStream((Some(mut block_stream), ..)) => {
+                info!("[START] block stream");
+                while let Some(block) = block_stream.next().await {
+                    received_count += 1;
+                    blocks.push(block.clone());
+                    info!("Received block from stream");
+
+                    if received_count >= count {
+                        break;
+                    }
+                }
+                info!("[END] receiving block stream");
             }
             _ => {
-                core::panic!("Expected single block, but got block stream");
+                panic!("Received section does not contain a block");
             }
         }
+
+        if received_count >= count {
+            break;
+        }
     }
-    
+
     if blocks.len() != count {
         panic!("Expected to receive {} blocks, but got {}", count, blocks.len());
     }
 
     blocks
+}
+
+/// Helper function to send multiple blocks to a local mockup interface via its incoming blocks sender
+/// Changes the receivers of each block to TEST_ENDPOINT_ORIGIN before sending
+pub async fn send_multiple_blocks_to_local(
+    incoming_blocks_sender: &mut UnboundedSender<Vec<u8>>,
+    blocks: &mut Vec<DXBBlock>,
+) {
+    for block in blocks.iter_mut() {
+        // set receiver to ORIGIN
+        block.set_receivers(vec![TEST_ENDPOINT_ORIGIN.clone()]);
+    }
+
+    let block_bytes: Vec<Vec<u8>> = blocks
+        .iter()
+        .map(|block| block.to_bytes().unwrap())
+        .collect();
+
+    for block in block_bytes.into_iter() {
+        incoming_blocks_sender.start_send(block).unwrap();
+        yield_now().await;
+    }
 }

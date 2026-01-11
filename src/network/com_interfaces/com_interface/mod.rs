@@ -223,7 +223,7 @@ impl ComInterface {
     fn create_headless() -> Rc<ComInterface> {
         Rc::new(ComInterface {
             inner: ComInterfaceInner::init(
-                ComInterfaceState::NotConnected,
+                ComInterfaceState::Connected,
                 InterfaceProperties::default(),
             )
             .into(),

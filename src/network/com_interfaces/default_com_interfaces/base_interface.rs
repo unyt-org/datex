@@ -59,7 +59,7 @@ impl BaseInterfaceHolder {
         // Create a headless ComInterface first
         let com_interface = Rc::new(ComInterface {
             inner: Rc::new(ComInterfaceInner::init(
-                ComInterfaceState::NotConnected,
+                ComInterfaceState::Connected,
                 setup_data.properties,
             )),
             implementation: RefCell::new(None),
@@ -147,7 +147,7 @@ impl BaseInterfaceHolder {
             .unwrap()
             .register_socket_with_endpoint(socket_uuid.clone(), endpoint, 1)
             .unwrap();
-        
+
         self.sender.insert(socket_uuid.clone(), sender.clone());
 
         socket_uuid
@@ -204,7 +204,7 @@ mod tests {
             .clone();
         assert_eq!(
             base_interface.current_state(),
-            ComInterfaceState::NotConnected
+            ComInterfaceState::Connected
         );
         assert!(base_interface.properties().close_timestamp.is_none());
 

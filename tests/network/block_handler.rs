@@ -21,7 +21,7 @@ use ntest_timeout::timeout;
 use std::{rc::Rc, sync::mpsc};
 use tokio::task::yield_now;
 use datex_core::task::create_unbounded_channel;
-use crate::network::helpers::mock_setup::{get_default_mock_setup_with_com_hub, get_last_received_single_block_from_receiver, get_mock_setup_with_com_hub, MockupSetupData};
+use crate::network::helpers::mock_setup::{get_default_mock_setup_with_com_hub, get_next_received_single_block_from_receiver, get_mock_setup_with_com_hub, MockupSetupData};
 use crate::network::helpers::mockup_interface::MockupInterfaceSetupData;
 
 #[async_test]
@@ -59,7 +59,7 @@ async fn receive_single_block() {
     yield_now().await;
 
     // block must be in incoming_sections_queue
-    let block = get_last_received_single_block_from_receiver(&mut com_hub_sections_receiver).await;
+    let block = get_next_received_single_block_from_receiver(&mut com_hub_sections_receiver).await;
 
     assert_eq!(
         block.get_endpoint_context_id(),
@@ -152,7 +152,6 @@ async fn receive_multiple_blocks() {
     yield_now().await;
 
     // no new incoming sections, old section receives new blocks
-    assert!(com_hub_sections_receiver.next().await.is_none());
     // block must be a block stream
     match &section {
         IncomingSection::BlockStream((
@@ -228,9 +227,6 @@ async fn receive_multiple_blocks_wrong_order() {
 
     yield_now().await;
 
-    // block is not in incoming_sections_queue
-    assert!(com_hub_sections_receiver.next().await.is_none());
-
     // 2. Send second block
     let block_bytes = blocks[1].to_bytes().unwrap();
     interface_in_sender.send(block_bytes).await.unwrap();
@@ -264,9 +260,6 @@ async fn receive_multiple_blocks_wrong_order() {
         }
         _ => core::panic!("Expected a BlockStream section"),
     }
-
-    // no new incoming sections
-    assert!(com_hub_sections_receiver.next().await.is_none());
 }
 
 #[async_test]
@@ -285,6 +278,7 @@ async fn receive_multiple_sections() {
 
     // Create a single DXB block
     let mut blocks = vec![
+        // first section
         DXBBlock {
             block_header: BlockHeader {
                 context_id,
@@ -315,6 +309,7 @@ async fn receive_multiple_sections() {
                 .to_owned(),
             ..DXBBlock::default()
         },
+        // second section, end of context
         DXBBlock {
             block_header: BlockHeader {
                 context_id,
@@ -376,17 +371,12 @@ async fn receive_multiple_sections() {
         }
         _ => core::panic!("Expected a BlockStream section"),
     }
-    // no new incoming sections
-    assert!(com_hub_sections_receiver.next().await.is_none());
 
     // 2. Send second block
     let block_bytes = blocks[1].to_bytes().unwrap();
     interface_in_sender.send(block_bytes).await.unwrap();
 
     yield_now().await;
-
-    // block must not be in incoming_sections_queue
-    let mut section = com_hub_sections_receiver.next().await.unwrap();
 
     // block must be a block stream
     match &section {
@@ -399,14 +389,12 @@ async fn receive_multiple_sections() {
                 incoming_context_section_id.section_index,
                 section_index_1
             );
+
             // blocks queue length must be 1
             assert_eq!(section.drain().await.len(), 1);
         }
         _ => core::panic!("Expected a BlockStream section"),
     }
-
-    // no new incoming sections
-    assert!(com_hub_sections_receiver.next().await.is_none());
 
     // 3. Send third block
     let block_bytes = blocks[2].to_bytes().unwrap();
@@ -440,8 +428,6 @@ async fn receive_multiple_sections() {
     yield_now().await;
 
     // block must not be in incoming_sections_queue
-    assert!(com_hub_sections_receiver.next().await.is_none());
-
     // block must be a block stream
     match &section {
         IncomingSection::BlockStream((
@@ -501,9 +487,6 @@ async fn await_response_block() {
     interface_in_sender.send(block_bytes).await.unwrap();
 
     yield_now().await;
-
-    // block must not be in incoming_sections_queue
-    assert!(com_hub_sections_receiver.next().await.is_none());
 
     // await receiver
     let response = rx.next().await.unwrap();

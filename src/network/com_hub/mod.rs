@@ -1243,6 +1243,7 @@ async fn com_hub_event_task(
                     socket_manager.get_socket_by_uuid_mut(&socket_uuid);
                 let socket_can_send = socket.can_send();
                 let receiver = socket.take_block_in_receiver();
+                drop(socket_manager);
 
                 // spawn task to collect incoming blocks from this socket
                 spawn_with_panic_notify(
@@ -1254,7 +1255,6 @@ async fn com_hub_event_task(
                     ),
                 );
 
-                drop(socket_manager);
 
                 if socket_can_send
                     && let Err(err) =

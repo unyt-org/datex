@@ -21,6 +21,7 @@ use crate::{
     utils::time::Time,
     values::core_values::endpoint::{Endpoint, EndpointInstance},
 };
+use crate::network::com_interfaces::com_interface::ComInterfaceUUID;
 
 pub type SocketsByUUID =
     HashMap<ComInterfaceSocketUUID, (ComInterfaceSocket, HashSet<Endpoint>)>;
@@ -45,6 +46,10 @@ pub struct SocketManager {
     /// a list of all available sockets, keyed by their UUID
     /// contains the socket itself and a list of endpoints currently associated with it
     pub sockets: SocketsByUUID,
+
+    /// mapping of interface UUIDs to socket UUIDs
+    pub socket_uuids_by_interface_uuid:
+        HashMap<ComInterfaceUUID, HashSet<ComInterfaceSocketUUID>>,
 
     /// a blacklist of sockets that are not allowed to be used for a specific endpoint
     pub endpoint_sockets_blacklist:
@@ -71,6 +76,7 @@ impl SocketManager {
     ) -> SocketManager {
         SocketManager {
             sockets: HashMap::new(),
+            socket_uuids_by_interface_uuid: HashMap::new(),
             endpoint_sockets_blacklist: HashMap::new(),
             fallback_sockets: Vec::new(),
             endpoint_sockets: HashMap::new(),
@@ -185,7 +191,7 @@ impl SocketManager {
         socket_uuid: &ComInterfaceSocketUUID,
         endpoint: Endpoint,
     ) {
-        core::assert!(
+        assert!(
             self.sockets.contains_key(socket_uuid),
             "Socket not found in ComHub"
         );
@@ -236,6 +242,28 @@ impl SocketManager {
                 )
 
         });
+    }
+
+    /// Returns all socket UUIDs for a given interface UUID
+    pub fn get_sockets_for_interface_uuid(
+        &self,
+        interface_uuid: &ComInterfaceUUID,
+    ) -> Option<&HashSet<ComInterfaceSocketUUID>> {
+        self.socket_uuids_by_interface_uuid.get(interface_uuid)
+    }
+
+    /// Removes all sockets for a given interface UUID
+    pub fn remove_sockets_for_interface_uuid(
+        &mut self,
+        interface_uuid: &ComInterfaceUUID,
+    ) {
+        if let Some(socket_uuids) =
+            self.socket_uuids_by_interface_uuid.remove(interface_uuid)
+        {
+            for socket_uuid in socket_uuids {
+                self.delete_socket(&socket_uuid);
+            }
+        }
     }
 
     /// Returns the socket for a given UUID
@@ -294,6 +322,12 @@ impl SocketManager {
                 socket_uuid
             );
         }
+        // store interface socket mapping
+        self.socket_uuids_by_interface_uuid
+            .entry(socket.interface_uuid.clone())
+            .or_default()
+            .insert(socket_uuid.clone());
+
         self.sockets.insert(socket_uuid, (socket, HashSet::new()));
     }
 
@@ -312,10 +346,10 @@ impl SocketManager {
             core::panic!("Socket {} already exists in ComHub", socket.uuid);
         }
 
-        // info!(
-        //     "Adding socket {} to ComHub with priority {:?}",
-        //     socket_ref.uuid, priority
-        // );
+        info!(
+            "Adding socket {} to ComHub with priority {:?}",
+            socket.uuid, priority
+        );
 
         if !socket.can_send() && priority != InterfacePriority::None {
             core::panic!(
@@ -377,9 +411,15 @@ impl SocketManager {
 
     /// Removes a socket from the socket list
     pub fn delete_socket(&mut self, socket_uuid: &ComInterfaceSocketUUID) {
-        if self.has_socket(socket_uuid) {
+        if !self.has_socket(socket_uuid) {
             core::panic!("Socket {socket_uuid} not found in ComHub")
         };
+
+        // get interface uuid before removing socket
+        let interface_uuid = self
+            .get_socket_by_uuid(socket_uuid)
+            .interface_uuid
+            .clone();
 
         // remove socket from endpoint socket list
         // remove endpoint key from endpoint_sockets if not sockets present
@@ -388,9 +428,22 @@ impl SocketManager {
             !sockets.is_empty()
         });
 
+        // remove socket from socket list
+        self.sockets.remove(socket_uuid);
+
         // remove socket if it is the default socket
         self.fallback_sockets
             .retain(|(uuid, _, _)| uuid != socket_uuid);
+
+        // remove socket from interface socket mapping
+        if let Some(socket_uuids) =
+            self.socket_uuids_by_interface_uuid.get_mut(&interface_uuid)
+        {
+            socket_uuids.remove(socket_uuid);
+            if socket_uuids.is_empty() {
+                self.socket_uuids_by_interface_uuid.remove(&interface_uuid);
+            }
+        }
     }
 
     /// Returns an iterator over all sockets for a given endpoint

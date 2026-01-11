@@ -134,14 +134,19 @@ impl ComHub {
         Ok(com_interface)
     }
 
-    pub async fn remove_interface(
+    pub fn remove_interface(
         &self,
         interface_uuid: ComInterfaceUUID,
-    ) -> Result<(), ComHubError> {
+    ) -> Result<(), ComHubError> {        
         self.interface_manager
             .borrow_mut()
-            .remove_interface(interface_uuid)
-            .await
+            .remove_interface(&interface_uuid)?;
+
+        self.socket_manager
+            .borrow_mut()
+            .remove_sockets_for_interface_uuid(&interface_uuid);
+        
+        Ok(())
     }
 
     pub fn has_interface(&self, interface_uuid: &ComInterfaceUUID) -> bool {

@@ -233,14 +233,14 @@ impl InterfaceManager {
 
     /// User can proactively remove an interface from the hub.
     /// This will destroy the interface and it's sockets (perform deep cleanup)
-    pub async fn remove_interface(
+    pub fn remove_interface(
         &mut self,
-        interface_uuid: ComInterfaceUUID,
+        interface_uuid: &ComInterfaceUUID,
     ) -> Result<(), ComHubError> {
         info!("Removing interface {interface_uuid}");
         let interface = self
             .interfaces
-            .get_mut(&interface_uuid.clone())
+            .get_mut(interface_uuid)
             .ok_or(ComHubError::InterfaceDoesNotExist)?
             .0
             .clone();
@@ -250,7 +250,7 @@ impl InterfaceManager {
             // TODO: await until closed asynchronously?
         }
 
-        self.cleanup_interface(&interface_uuid)
+        self.cleanup_interface(interface_uuid)
             .ok_or(ComHubError::InterfaceDoesNotExist)?;
 
         Ok(())
