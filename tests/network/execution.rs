@@ -22,6 +22,7 @@ pub async fn test_basic_remote_execution() {
 
     // sleep for a short time to ensure the connection is established
     tokio::time::sleep(Duration::from_millis(1)).await;
+    #[cfg(feature = "debug")]
     runtime_a.com_hub().print_metadata();
 
     // create an execution context for @test_b
@@ -58,6 +59,8 @@ pub async fn test_remote_execution_persistent_context() {
 
     // sleep for a short time to ensure the connection is established
     tokio::time::sleep(Duration::from_millis(1)).await;
+
+    #[cfg(feature = "debug")]
     runtime_a.com_hub().print_metadata();
 
     // create an execution context for @test_b
@@ -95,6 +98,8 @@ pub async fn test_remote_inline() {
 
     // sleep for a short time to ensure the connection is established
     tokio::time::sleep(Duration::from_millis(1)).await;
+
+    #[cfg(feature = "debug")]
     runtime_a.com_hub().print_metadata();
 
     // create an execution context for @test_b
@@ -125,6 +130,8 @@ pub async fn test_remote_inline_implicit_context() {
 
     // sleep for a short time to ensure the connection is established
     tokio::time::sleep(Duration::from_millis(1)).await;
+
+    #[cfg(feature = "debug")]
     runtime_a.com_hub().print_metadata();
 
     // execute script remotely on @test_b
