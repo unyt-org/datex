@@ -79,12 +79,8 @@ impl WebSocketServerNativeInterface {
 
         let websocket_streams_by_socket = Arc::new(Mutex::new(HashMap::new()));
         let websocket_streams_clone = websocket_streams_by_socket.clone();
-        let shutdown_signal = Arc::new(Notify::new());
-        let tasks: Vec<JoinHandle<()>> = vec![];
-        let global_context = get_global_context();
-
+        let shutdown_signal = com_interface.shutdown_signal();
         let manager = com_interface.socket_manager();
-
         let shutdown_signal_clone = shutdown_signal.clone();
 
         // FIXME fix task abort on shutdown
@@ -163,10 +159,6 @@ impl WebSocketServerNativeInterface {
                         };
                     }
                     _ = shutdown_signal_clone.notified() => {
-                        info!("Shutdown signal received, stopping server...");
-                        // for task in tasks {
-                        //     task.abort();
-                        // }
                         break;
                     }
                 }

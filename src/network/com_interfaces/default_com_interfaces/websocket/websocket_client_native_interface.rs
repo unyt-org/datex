@@ -89,17 +89,32 @@ impl WebSocketClientNativeInterface {
         mut sender: UnboundedSender<Vec<u8>>,
         state: Arc<Mutex<ComInterfaceStateWrapper>>,
     ) {
-        while let Some(msg) = read.next().await {
-            match msg {
-                Ok(Message::Binary(data)) => {
-                    sender.start_send(data).unwrap();
-                }
-                Ok(_) => {
-                    error!("Invalid message type received");
-                }
-                Err(e) => {
-                    error!("WebSocket read error: {e}");
-                    state.try_lock().unwrap().set(ComInterfaceState::Destroyed);
+        let shutdown_signal = state.try_lock().unwrap().shutdown_signal();
+        loop {
+            tokio::select! {
+                msg = read.next() => {
+                    match msg {
+                        Some(Ok(Message::Binary(data))) => {
+                            sender.start_send(data).expect("Failed to send received data to ComHub")
+                        }
+                        Some(Ok(_)) => {
+                            error!("Invalid message type received");
+                        }
+                        Some(Err(e)) => {
+                            error!("WebSocket read error: {e}");
+                            // FIXME what about read errors that are not fatal?
+                            continue;
+                        }
+                        None => {
+                            log::warn!("WebSocket closed by peer");
+                            state.lock().unwrap().set(ComInterfaceState::Destroyed);
+                            break;
+                        }
+                    }
+                },
+                // Shutdown signal received
+                _ = shutdown_signal.notified() => {
+                    info!("Shutdown signal received, stopping read_task");
                     break;
                 }
             }
@@ -119,6 +134,7 @@ impl WebSocketClientNativeInterface {
             match event {
                 ComInterfaceImplEvent::SendBlock(block, _) => {
                     if let Err(e) = write.send(Message::Binary(block)).await {
+                        // FIXME shall we retry?
                         error!("WebSocket write error: {e}");
                         state
                             .try_lock()
@@ -127,6 +143,7 @@ impl WebSocketClientNativeInterface {
                         break;
                     }
                 }
+                ComInterfaceImplEvent::Destroy => break,
                 _ => todo!(),
             }
         }
