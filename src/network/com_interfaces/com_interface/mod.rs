@@ -357,7 +357,7 @@ impl ComInterface {
             .borrow_mut()
             .start_send(ComInterfaceImplEvent::Destroy)
             .unwrap();
-        self.set_state(ComInterfaceState::NotConnected);
+        self.set_state(ComInterfaceState::Destroyed);
     }
 
     pub fn info(&self) -> Rc<ComInterfaceInner> {

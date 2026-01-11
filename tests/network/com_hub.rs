@@ -539,11 +539,8 @@ pub async fn test_add_and_remove_interface_and_sockets() {
 
     assert_eq!(com_interface.current_state(), ComInterfaceState::Destroyed);
 
-    let socket_state = {
-        let socket_manager = com_hub.socket_manager();
-        socket_manager.borrow().socket_state(&socket_uuid)
-    };
-    assert_eq!(socket_state, SocketState::Disconnected);
+    let socket_manager = com_hub.socket_manager();
+    assert!(!socket_manager.borrow().has_socket(&socket_uuid))
 }
 
 #[async_test]

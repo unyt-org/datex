@@ -212,7 +212,7 @@ mod tests {
         base_interface.close();
         assert_eq!(
             base_interface.current_state(),
-            ComInterfaceState::NotConnected
+            ComInterfaceState::Destroyed
         );
     }
 }
