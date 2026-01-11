@@ -12,6 +12,8 @@ use core::pin::Pin;
 
 pub trait ComInterfaceImplementation {
     // NOTE: ComInterfaceImplementation is no longer used for any method calls, just as a marker trait for com interface implementations
+    // FIXME: we might remove the ComInterfaceImplementation trait and dont store any dyn references to the impl since
+    // the channels are enough to interact with the interface
 }
 
 /// A specific implementation of a communication interface for a channel
