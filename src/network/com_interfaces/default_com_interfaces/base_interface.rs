@@ -183,43 +183,37 @@ impl BaseInterfaceSetupData {
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        network::com_interfaces::{
-            com_interface::{
-                properties::InterfaceProperties, state::ComInterfaceState,
-            },
-            default_com_interfaces::base_interface::{
-                BaseInterfaceHolder, BaseInterfaceSetupData,
-            },
+    use crate::network::com_interfaces::{
+        com_interface::{
+            properties::InterfaceProperties, state::ComInterfaceState,
         },
-        utils::context::init_global_context,
+        default_com_interfaces::base_interface::{
+            BaseInterfaceHolder, BaseInterfaceSetupData,
+        },
     };
-    use datex_core::run_async;
+    use datex_macros::async_test;
 
-    #[tokio::test]
+    #[async_test]
     pub async fn test_close() {
-        run_async! {
-            init_global_context();
-            // Create a new interface
-            let base_interface =
-                BaseInterfaceHolder::new(BaseInterfaceSetupData::new(
-                    InterfaceProperties::default(),
-                    Box::new(|_, _| Box::pin(async move { true })),
-                ))
-                .com_interface
-                .clone();
-            assert_eq!(
-                base_interface.current_state(),
-                ComInterfaceState::NotConnected
-            );
-            assert!(base_interface.properties().close_timestamp.is_none());
+        // Create a new interface
+        let base_interface =
+            BaseInterfaceHolder::new(BaseInterfaceSetupData::new(
+                InterfaceProperties::default(),
+                Box::new(|_, _| Box::pin(async move { true })),
+            ))
+            .com_interface
+            .clone();
+        assert_eq!(
+            base_interface.current_state(),
+            ComInterfaceState::NotConnected
+        );
+        assert!(base_interface.properties().close_timestamp.is_none());
 
-            // Close the interface
-            base_interface.close();
-            assert_eq!(
-                base_interface.current_state(),
-                ComInterfaceState::NotConnected
-            );
-        }
+        // Close the interface
+        base_interface.close();
+        assert_eq!(
+            base_interface.current_state(),
+            ComInterfaceState::NotConnected
+        );
     }
 }

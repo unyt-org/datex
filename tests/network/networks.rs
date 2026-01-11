@@ -13,9 +13,9 @@ use datex_core::network::com_hub::InterfacePriority;
 use datex_core::network::com_hub::network_response::ResponseOptions;
 use datex_core::network::com_hub::network_tracing::TraceOptions;
 use datex_core::network::com_interfaces::com_interface::implementation::ComInterfaceSyncFactory;
-use datex_core::run_async;
 use datex_core::utils::context::init_global_context;
 use datex_core::values::core_values::endpoint::Endpoint;
+use datex_macros::async_test;
 use log::info;
 use ntest_timeout::timeout;
 use tokio::task;
@@ -525,134 +525,106 @@ async fn network_routing_with_four_nodes_6_deterministic_priorities() {
         .await;
 }
 
-#[tokio::test]
+#[async_test]
 #[timeout(2000)]
 async fn simple_network() {
-    init_global_context();
-    run_async! {
-        let mut network = Network::load(
-            "simple.json",
-        );
-        network.start().await;
-        tokio::time::sleep(Duration::from_millis(1000)).await;
-        Route::between("@4726", "@s5zw")
-            .to_via("@yhr9", "4726_mockup_yhr9")
-            .hop("@s5zw")
-            .hop("@4726")
-            .test(&network)
-            .await
-            .unwrap();
-    }
+    let mut network = Network::load("simple.json");
+    network.start().await;
+    tokio::time::sleep(Duration::from_millis(1000)).await;
+    Route::between("@4726", "@s5zw")
+        .to_via("@yhr9", "4726_mockup_yhr9")
+        .hop("@s5zw")
+        .hop("@4726")
+        .test(&network)
+        .await
+        .unwrap();
 }
 
-#[tokio::test]
+#[async_test]
 #[timeout(7000)]
 async fn complex_network_1() {
-    init_global_context();
-    run_async! {
-        let mut network = Network::load(
-            "complex.json",
-        );
-        network.start().await;
-        tokio::time::sleep(Duration::from_millis(1000)).await;
-        Route::between("@bk2y", "@n7oe")
-            .hop("@em68")
-            .hop("@msun")
-            .hop("@fyig")
-            .hop("@n7oe")
-            .hop("@fyig")
-            .hop("@msun")
-            .hop("@ajil")
-            .hop("@bk2y")
-            .test(&network)
-            .await
-            .unwrap();
-    }
+    let mut network = Network::load("complex.json");
+    network.start().await;
+    tokio::time::sleep(Duration::from_millis(1000)).await;
+    Route::between("@bk2y", "@n7oe")
+        .hop("@em68")
+        .hop("@msun")
+        .hop("@fyig")
+        .hop("@n7oe")
+        .hop("@fyig")
+        .hop("@msun")
+        .hop("@ajil")
+        .hop("@bk2y")
+        .test(&network)
+        .await
+        .unwrap();
 }
 
-#[tokio::test]
+#[async_test]
 #[timeout(7000)]
 async fn complex_network_2() {
-    init_global_context();
-    run_async! {
-        let mut network = Network::load(
-            "complex.json",
-        );
-        network.start().await;
-        tokio::time::sleep(Duration::from_millis(1000)).await;
-        Route::between("@msun", "@bk2y")
-            .hop("@fyig")
-            .hop("@n7oe")
-            .hop("@fyig")
-            .hop("@msun")
-            .hop("@ajil")
-            .hop("@bk2y")
-            .hop("@em68")
-            .hop("@msun")
-            .test(&network)
-            .await
-            .unwrap();
-    }
+    let mut network = Network::load("complex.json");
+    network.start().await;
+    tokio::time::sleep(Duration::from_millis(1000)).await;
+    Route::between("@msun", "@bk2y")
+        .hop("@fyig")
+        .hop("@n7oe")
+        .hop("@fyig")
+        .hop("@msun")
+        .hop("@ajil")
+        .hop("@bk2y")
+        .hop("@em68")
+        .hop("@msun")
+        .test(&network)
+        .await
+        .unwrap();
 }
 
-#[tokio::test]
+#[async_test]
 #[timeout(7000)]
 async fn complex_network_3() {
-    init_global_context();
-    run_async! {
-        let mut network = Network::load(
-            "complex.json",
-        );
-        network.start().await;
-        tokio::time::sleep(Duration::from_millis(1000)).await;
-        Route::between("@fyig", "@n7oe")
-            .hop("@n7oe")
-            .hop("@fyig")
-            .test(&network)
-            .await
-            .unwrap();
-    }
+    let mut network = Network::load("complex.json");
+    network.start().await;
+    tokio::time::sleep(Duration::from_millis(1000)).await;
+    Route::between("@fyig", "@n7oe")
+        .hop("@n7oe")
+        .hop("@fyig")
+        .test(&network)
+        .await
+        .unwrap();
 }
 
-#[tokio::test]
+#[async_test]
 #[timeout(7000)]
 async fn threesome_1() {
-    init_global_context();
-    run_async! {
-        let mut network = Network::load(
-            "threesome.json",
-        );
-        network.start().await;
-        tokio::time::sleep(Duration::from_millis(1000)).await;
-        Route::between("@msun", "@n7oe")
-            .hop("@em68")
-            .hop("@msun")
-            .hop("@ajil")
-            .hop("@arh0")
-            .hop("@ajil")
-            .hop("@msun")
-            .hop("@fyig")
-            .hop("@n7oe")
-            .hop("@fyig")
-            .hop("@msun")
-            .test(&network)
-            .await
-            .unwrap();
-    }
+    let mut network = Network::load("threesome.json");
+    network.start().await;
+    tokio::time::sleep(Duration::from_millis(1000)).await;
+    Route::between("@msun", "@n7oe")
+        .hop("@em68")
+        .hop("@msun")
+        .hop("@ajil")
+        .hop("@arh0")
+        .hop("@ajil")
+        .hop("@msun")
+        .hop("@fyig")
+        .hop("@n7oe")
+        .hop("@fyig")
+        .hop("@msun")
+        .test(&network)
+        .await
+        .unwrap();
 }
 
-#[tokio::test]
+#[async_test]
 #[timeout(7000)]
 async fn multi_tracing_1() {
-    init_global_context();
-    run_async! {
-        let mut network = Network::load(
-            "threesome.json",
-        );
-        network.start().await;
-        tokio::time::sleep(Duration::from_millis(1000)).await;
+    let mut network = Network::load("threesome.json");
+    network.start().await;
+    tokio::time::sleep(Duration::from_millis(1000)).await;
 
-        test_routes(&[
+    test_routes(
+        &[
             Route::between("@msun", "@n7oe")
                 .fork("0")
                 .hop("@em68")
@@ -677,70 +649,65 @@ async fn multi_tracing_1() {
             Route::between("@msun", "@ajil")
                 .fork("1")
                 .hop("@ajil")
-                .hop("@msun")
-        ], &network, TraceOptions::default())
-        .await
-        .unwrap();
-    }
+                .hop("@msun"),
+        ],
+        &network,
+        TraceOptions::default(),
+    )
+    .await
+    .unwrap();
 }
 
-#[tokio::test]
+#[async_test]
 #[timeout(7000)]
 async fn ttl_reached() {
-    init_global_context();
-    run_async! {
-        // working network
-        let mut network = Network::load(
-            "complex.json",
-        );
-        network.start().await;
-        tokio::time::sleep(Duration::from_millis(1000)).await;
-        Route::between("@msun", "@n7oe")
-            .hop("@fyig")
-            .hop("@n7oe")
-            .hop("@fyig")
-            .hop("@msun")
-            .test(&network)
-            .await
-            .unwrap();
+    // working network
+    let mut network = Network::load("complex.json");
+    network.start().await;
+    tokio::time::sleep(Duration::from_millis(1000)).await;
+    Route::between("@msun", "@n7oe")
+        .hop("@fyig")
+        .hop("@n7oe")
+        .hop("@fyig")
+        .hop("@msun")
+        .test(&network)
+        .await
+        .unwrap();
 
-        // network with only 1 hop, fails
-        let mut network = Network::load(
-            "complex.json",
-        );
-        network.start().await;
-        tokio::time::sleep(Duration::from_millis(1000)).await;
-        let res = Route::between("@msun", "@n7oe")
-            .hop("@fyig")
-            .hop("@n7oe")
-            .hop("@fyig")
-            .hop("@msun")
-            .test_with_options(
-                &network,
-                TraceOptions::new(
-                    Some(1),
-                    ResponseOptions::new_with_timeout(Duration::from_secs(3))
-                ))
-            .await;
-        assert_eq!(
-            res,
-            Err(RouteAssertionError::MissingResponse(Endpoint::from_str("@n7oe").unwrap()))
+    // network with only 1 hop, fails
+    let mut network = Network::load("complex.json");
+    network.start().await;
+    tokio::time::sleep(Duration::from_millis(1000)).await;
+    let res = Route::between("@msun", "@n7oe")
+        .hop("@fyig")
+        .hop("@n7oe")
+        .hop("@fyig")
+        .hop("@msun")
+        .test_with_options(
+            &network,
+            TraceOptions::new(
+                Some(1),
+                ResponseOptions::new_with_timeout(Duration::from_secs(3)),
+            ),
         )
-    }
+        .await;
+    assert_eq!(
+        res,
+        Err(RouteAssertionError::MissingResponse(
+            Endpoint::from_str("@n7oe").unwrap()
+        ))
+    )
 }
 
-#[tokio::test]
+#[async_test]
 #[timeout(7000)]
 async fn multi_tracing_2() {
-    init_global_context();
-    run_async! {
-        let mut network = Network::load(
-            "se_house_of_se_nikolaus.json",
-        );
-        network.start().await;
-        tokio::time::sleep(Duration::from_millis(1000)).await;
+    let mut network = Network::load("se_house_of_se_nikolaus.json");
+    network.start().await;
+    tokio::time::sleep(Duration::from_millis(1000)).await;
 
-        test_routes(&[
+    test_routes(
+        &[
             Route::between("@4pk8", "@xxif")
                 .fork("0")
                 .hop("@46l6")
@@ -776,8 +743,10 @@ async fn multi_tracing_2() {
                 .hop("@kz0l")
                 .hop("@7iyl")
                 .hop("@4pk8"),
-        ], &network, TraceOptions::default())
-        .await
-        .unwrap();
-    }
+        ],
+        &network,
+        TraceOptions::default(),
+    )
+    .await
+    .unwrap();
 }

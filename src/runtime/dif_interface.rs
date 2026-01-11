@@ -227,21 +227,19 @@ impl DIFInterface for RuntimeInternal {
 mod tests {
     use crate::dif::interface::DIFInterface;
     use crate::dif::representation::DIFValueRepresentation;
-    use crate::dif::update::{DIFUpdate, DIFUpdateData};
+    use crate::dif::update::DIFUpdateData;
     use crate::dif::value::{DIFValue, DIFValueContainer};
     use crate::references::observers::ObserveOptions;
     use crate::references::reference::ReferenceMutability;
-    use crate::run_async;
     use crate::runtime::Runtime;
-    use crate::runtime::global_context::set_global_context;
     use crate::runtime::memory::Memory;
     use crate::stdlib::rc::Rc;
-    use crate::utils::context::init_global_context;
     use crate::values::core_values::endpoint::Endpoint;
     use crate::values::core_values::map::Map;
     use crate::values::value_container::ValueContainer;
     use core::cell::RefCell;
     use datex_core::runtime::RuntimeConfig;
+    use datex_macros::async_test;
 
     #[test]
     fn struct_serde() {
@@ -254,80 +252,77 @@ mod tests {
         let _ = serde_json::to_string(&dif_value).unwrap();
     }
 
-    #[tokio::test]
+    #[async_test]
     async fn test_create_and_observe_pointer() {
-        run_async! {
-            init_global_context();
-            let runtime = Runtime::init_native(RuntimeConfig::default()).internal;
-            let pointer_address = runtime
-                .create_pointer(
-                    DIFValueContainer::Value(DIFValue::from(
-                        DIFValueRepresentation::String("Hello, world!".to_string()),
-                    )),
-                    None,
-                    ReferenceMutability::Mutable,
-                )
-                .expect("Failed to create pointer");
+        let runtime = Runtime::init_native(RuntimeConfig::default()).internal;
+        let pointer_address = runtime
+            .create_pointer(
+                DIFValueContainer::Value(DIFValue::from(
+                    DIFValueRepresentation::String("Hello, world!".to_string()),
+                )),
+                None,
+                ReferenceMutability::Mutable,
+            )
+            .expect("Failed to create pointer");
 
-            let observed = Rc::new(RefCell::new(None));
-            let observed_clone = observed.clone();
+        let observed = Rc::new(RefCell::new(None));
+        let observed_clone = observed.clone();
 
-            let observer_id = Rc::new(RefCell::new(None));
-            let observer_id_clone = observer_id.clone();
-            let runtime_clone = runtime.clone();
-            let pointer_address_clone = pointer_address.clone();
+        let observer_id = Rc::new(RefCell::new(None));
+        let observer_id_clone = observer_id.clone();
+        let runtime_clone = runtime.clone();
+        let pointer_address_clone = pointer_address.clone();
 
-            // Observe the pointer
-            observer_id.replace(Some(
-                runtime
-                    .observe_pointer(
-                        0,
-                        pointer_address_clone.clone(),
-                        ObserveOptions::default(),
-                        move |update, _| {
-                            println!("Observed pointer value: {:?}", update);
-                            observed_clone.replace(Some(update.clone()));
-                            // unobserve after first update
-                            runtime_clone
-                                .unobserve_pointer(
-                                    pointer_address_clone.clone(),
-                                    observer_id_clone.borrow().unwrap(),
-                                )
-                                .unwrap();
-                        },
-                    )
-                    .expect("Failed to observe pointer"),
-            ));
-
-            // Update the pointer value
+        // Observe the pointer
+        observer_id.replace(Some(
             runtime
-                .update(
-                    1,
-                    pointer_address.clone(),
-                    &DIFUpdateData::replace(DIFValue::from(
-                        DIFValueRepresentation::String("Hello, Datex!".to_string()),
-                    )),
+                .observe_pointer(
+                    0,
+                    pointer_address_clone.clone(),
+                    ObserveOptions::default(),
+                    move |update, _| {
+                        println!("Observed pointer value: {:?}", update);
+                        observed_clone.replace(Some(update.clone()));
+                        // unobserve after first update
+                        runtime_clone
+                            .unobserve_pointer(
+                                pointer_address_clone.clone(),
+                                observer_id_clone.borrow().unwrap(),
+                            )
+                            .unwrap();
+                    },
                 )
-                .expect("Failed to update pointer");
+                .expect("Failed to observe pointer"),
+        ));
 
-            // Check if the observed value matches the update
-            let observed_value = observed.borrow();
-            assert_eq!(
-                *observed_value,
-                Some(DIFUpdateData::replace(DIFValue::from(
-                    DIFValueRepresentation::String("Hello, Datex!".to_string(),)
-                )))
-            );
+        // Update the pointer value
+        runtime
+            .update(
+                1,
+                pointer_address.clone(),
+                &DIFUpdateData::replace(DIFValue::from(
+                    DIFValueRepresentation::String("Hello, Datex!".to_string()),
+                )),
+            )
+            .expect("Failed to update pointer");
 
-            // try unobserve again, should fail
-            assert!(
-                runtime
-                    .unobserve_pointer(
-                        pointer_address.clone(),
-                        observer_id.borrow().unwrap()
-                    )
-                    .is_err()
-            );
-        }
+        // Check if the observed value matches the update
+        let observed_value = observed.borrow();
+        assert_eq!(
+            *observed_value,
+            Some(DIFUpdateData::replace(DIFValue::from(
+                DIFValueRepresentation::String("Hello, Datex!".to_string(),)
+            )))
+        );
+
+        // try unobserve again, should fail
+        assert!(
+            runtime
+                .unobserve_pointer(
+                    pointer_address.clone(),
+                    observer_id.borrow().unwrap()
+                )
+                .is_err()
+        );
     }
 }

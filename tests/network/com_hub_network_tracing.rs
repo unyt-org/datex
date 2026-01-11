@@ -5,78 +5,76 @@ use crate::network::helpers::mock_setup::{
 use crate::network::helpers::mockup_interface::MockupInterface;
 use datex_core::network::block_handler::IncomingSectionsSinkType;
 use datex_core::network::com_hub::InterfacePriority;
+use datex_core::run_async_thread;
 use datex_core::utils::context::init_global_context;
-use datex_core::{run_async, run_async_thread};
+use datex_macros::async_test;
 use ntest_timeout::timeout;
 use std::sync::mpsc;
 use std::thread;
 use tokio::task::yield_now;
 
-#[tokio::test]
+#[async_test]
 #[timeout(1000)]
 async fn create_network_trace() {
-    run_async! {
-        init_global_context();
+    let (sender_a, receiver_a) = mpsc::channel::<Vec<u8>>();
+    let (sender_b, receiver_b) = mpsc::channel::<Vec<u8>>();
 
-        let (sender_a, receiver_a) = mpsc::channel::<Vec<u8>>();
-        let (sender_b, receiver_b) = mpsc::channel::<Vec<u8>>();
+    let (com_hub_mut_a, com_interface_a, socket_a) =
+        get_mock_setup_and_socket_for_endpoint_and_update_loop(
+            TEST_ENDPOINT_A.clone(),
+            None,
+            Some(sender_a),
+            Some(receiver_b),
+            InterfacePriority::default(),
+            true,
+            IncomingSectionsSinkType::Channel,
+        )
+        .await;
 
-        let (com_hub_mut_a, com_interface_a, socket_a) =
-            get_mock_setup_and_socket_for_endpoint_and_update_loop(
-                TEST_ENDPOINT_A.clone(),
-                None,
-                Some(sender_a),
-                Some(receiver_b),
-                InterfacePriority::default(),
-                true,
-                IncomingSectionsSinkType::Channel
-            )
-            .await;
+    let (com_hub_mut_b, com_interface_b, socket_b) =
+        get_mock_setup_and_socket_for_endpoint_and_update_loop(
+            TEST_ENDPOINT_B.clone(),
+            None,
+            Some(sender_b),
+            Some(receiver_a),
+            InterfacePriority::default(),
+            true,
+            IncomingSectionsSinkType::Channel,
+        )
+        .await;
 
-        let (com_hub_mut_b, com_interface_b, socket_b) =
-            get_mock_setup_and_socket_for_endpoint_and_update_loop(
-                TEST_ENDPOINT_B.clone(),
-                None,
-                Some(sender_b),
-                Some(receiver_a),
-                InterfacePriority::default(),
-                true,
-                IncomingSectionsSinkType::Channel
-            )
-            .await;
-
-
-        yield_now().await;
-        yield_now().await;
-        { // update a
-            let mockup_interface_impl = com_interface_a
-                .implementation_mut::<MockupInterface>();
-            mockup_interface_impl.update();
-        }
-        { // update b
-            let mockup_interface_impl = com_interface_b
-                .implementation_mut::<MockupInterface>();
-            mockup_interface_impl.update();
-        }
-        yield_now().await;
-        yield_now().await;
-
-        log::info!("Sending trace from A to B");
-
-        // send trace from A to B
-        let network_trace =
-            com_hub_mut_a.record_trace(TEST_ENDPOINT_B.clone()).await;
-
-        assert!(network_trace.is_some());
-        log::info!("Network trace:\n{}", network_trace.as_ref().unwrap());
-
-        assert!(network_trace.unwrap().matches_hops(&[
-            (TEST_ENDPOINT_A.clone(), "mockup"),
-            (TEST_ENDPOINT_B.clone(), "mockup"),
-            (TEST_ENDPOINT_B.clone(), "mockup"),
-            (TEST_ENDPOINT_A.clone(), "mockup")
-        ]));
+    yield_now().await;
+    yield_now().await;
+    {
+        // update a
+        let mockup_interface_impl =
+            com_interface_a.implementation_mut::<MockupInterface>();
+        mockup_interface_impl.update();
     }
+    {
+        // update b
+        let mockup_interface_impl =
+            com_interface_b.implementation_mut::<MockupInterface>();
+        mockup_interface_impl.update();
+    }
+    yield_now().await;
+    yield_now().await;
+
+    log::info!("Sending trace from A to B");
+
+    // send trace from A to B
+    let network_trace =
+        com_hub_mut_a.record_trace(TEST_ENDPOINT_B.clone()).await;
+
+    assert!(network_trace.is_some());
+    log::info!("Network trace:\n{}", network_trace.as_ref().unwrap());
+
+    assert!(network_trace.unwrap().matches_hops(&[
+        (TEST_ENDPOINT_A.clone(), "mockup"),
+        (TEST_ENDPOINT_B.clone(), "mockup"),
+        (TEST_ENDPOINT_B.clone(), "mockup"),
+        (TEST_ENDPOINT_A.clone(), "mockup")
+    ]));
 }
 
 // same as create_network_trace, but both com hubs in separate threads

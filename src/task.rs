@@ -67,7 +67,7 @@ macro_rules! run_async_thread {
 
             // Run an async block using the runtime
             runtime.block_on(async {
-                run_async! {
+                datex_core::run_async! {
                     $($body)*
                 }
             });

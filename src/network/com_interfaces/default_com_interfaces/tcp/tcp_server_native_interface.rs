@@ -229,41 +229,44 @@ impl ComInterfaceImplementation for TCPServerNativeInterface {}
 mod tests {
     use core::{assert_matches::assert_matches, u16};
 
-    use crate::{
-        network::{
-            com_hub::errors::InterfaceCreateError,
-            com_interfaces::{
-                com_interface::ComInterface,
-                default_com_interfaces::tcp::{
-                    tcp_common::TCPServerInterfaceSetupData,
-                    tcp_server_native_interface::TCPServerNativeInterface,
-                },
+    use datex_macros::async_test;
+
+    use crate::network::{
+        com_hub::errors::InterfaceCreateError,
+        com_interfaces::{
+            com_interface::ComInterface,
+            default_com_interfaces::tcp::{
+                tcp_common::TCPServerInterfaceSetupData,
+                tcp_server_native_interface::TCPServerNativeInterface,
             },
         },
-        run_async,
-        utils::context::init_global_context,
     };
 
-    #[tokio::test]
+    #[async_test]
     async fn test_construct() {
-        run_async! {
-            const PORT: u16 = 5088;
-            init_global_context();
-            let com_interface = ComInterface::create_async_with_implementation::<TCPServerNativeInterface>(
-                TCPServerInterfaceSetupData::new_with_port(PORT)
-            ).await.unwrap();
-            let tcp_server_interface = com_interface.implementation::<TCPServerNativeInterface>();
-            assert_eq!(tcp_server_interface.address.port(), PORT);
-        }
+        const PORT: u16 = 5088;
+        let com_interface =
+            ComInterface::create_async_with_implementation::<
+                TCPServerNativeInterface,
+            >(TCPServerInterfaceSetupData::new_with_port(PORT))
+            .await
+            .unwrap();
+        let tcp_server_interface =
+            com_interface.implementation::<TCPServerNativeInterface>();
+        assert_eq!(tcp_server_interface.address.port(), PORT);
     }
 
-    #[tokio::test]
+    #[async_test]
     async fn test_invalid_address() {
-        run_async! {
-            init_global_context();
-            assert_matches!(ComInterface::create_async_with_implementation::<TCPServerNativeInterface>(
-                TCPServerInterfaceSetupData::new_with_host_and_port("invalid-address".to_string(), 5088)
-            ).await, Err(InterfaceCreateError::InvalidSetupData(_)));
-        }
+        assert_matches!(
+            ComInterface::create_async_with_implementation::<
+                TCPServerNativeInterface,
+            >(TCPServerInterfaceSetupData::new_with_host_and_port(
+                "invalid-address".to_string(),
+                5088
+            ))
+            .await,
+            Err(InterfaceCreateError::InvalidSetupData(_))
+        );
     }
 }
