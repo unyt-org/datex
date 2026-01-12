@@ -211,7 +211,7 @@ impl Route {
         network: &Network,
         options: TraceOptions,
     ) -> Result<(), RouteAssertionError> {
-        test_routes(&[self.clone()], network, options).await
+        test_routes(core::slice::from_ref(self), network, options).await
     }
 }
 
@@ -275,8 +275,6 @@ pub async fn test_routes(
         // print network trace
         info!("Network trace:\n{trace}");
 
-        let mut index = 0;
-
         // combine original and expected hops
         let hop_pairs = trace
             .hops
@@ -289,13 +287,12 @@ pub async fn test_routes(
             )
             .zip(route.hops.iter());
 
-        for (original, (expected_endpoint, expected_channel, expected_fork)) in
-            hop_pairs
+        for (index, (original, (expected_endpoint, expected_channel, expected_fork))) in hop_pairs.enumerate()
         {
             // check endpoint
             if original.endpoint != expected_endpoint.clone() {
                 return Err(RouteAssertionError::InvalidEndpointOnHop(
-                    index,
+                    index as i32,
                     expected_endpoint.clone(),
                     original.endpoint.clone(),
                 ));
@@ -305,7 +302,7 @@ pub async fn test_routes(
                 && original.socket.interface_name != Some(channel.clone())
             {
                 return Err(RouteAssertionError::InvalidChannelOnHop(
-                    index,
+                    index as i32,
                     channel.clone(),
                     original
                         .socket
@@ -315,16 +312,13 @@ pub async fn test_routes(
                 ));
             }
             // check fork
-            if let Some(fork) = expected_fork {
-                if &original.fork_nr != fork {
-                    return Err(RouteAssertionError::InvalidForkOnHop(
-                        index,
-                        fork.clone(),
-                        original.fork_nr.clone(),
-                    ));
-                }
+            if let Some(fork) = expected_fork && &original.fork_nr != fork {
+                return Err(RouteAssertionError::InvalidForkOnHop(
+                    index as i32,
+                    fork.clone(),
+                    original.fork_nr.clone(),
+                ));
             }
-            index += 1;
         }
     }
 
