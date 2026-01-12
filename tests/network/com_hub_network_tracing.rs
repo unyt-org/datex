@@ -4,16 +4,16 @@ use crate::network::helpers::{
     },
 };
 use datex_core::{
-    network::{
-        com_hub::InterfacePriority,
-    },
     run_async_thread,
     utils::context::init_global_context,
 };
 use datex_macros::async_test;
 use ntest_timeout::timeout;
 use std::{sync::mpsc, thread};
+use tokio::sync::oneshot;
 use tokio::task::yield_now;
+use datex_core::global::dxb_block::IncomingSection;
+use datex_core::network::com_interfaces::com_interface::ComInterfaceProxy;
 use datex_core::task::create_unbounded_channel;
 use crate::network::helpers::mock_setup::{get_default_mock_setup_with_two_connected_com_hubs, get_mock_setup_with_com_hub, MockupSetupData};
 use crate::network::helpers::mockup_interface::MockupInterfaceSetupData;
@@ -25,10 +25,10 @@ async fn create_network_trace() {
         (com_hub_mut_a, ..),
         ..
     ) = get_default_mock_setup_with_two_connected_com_hubs().await;
-    
+
     yield_now().await;
     yield_now().await;
-    
+
     log::info!("Sending trace from A to B");
 
     // send trace from A to B
@@ -51,31 +51,32 @@ async fn create_network_trace() {
 #[timeout(3000)]
 async fn create_network_trace_separate_threads() {
     // create a new thread for each com hub
-    let (sender_a, receiver_a) = create_unbounded_channel::<Vec<u8>>();
-    let (sender_b, receiver_b) = create_unbounded_channel::<Vec<u8>>();
+    let (incoming_sections_sender_b, incoming_sections_receiver_b) = create_unbounded_channel::<IncomingSection>();
+    let (incoming_sections_sender_a, incoming_sections_receiver_a) = create_unbounded_channel::<IncomingSection>();
 
-
+    // is later sent from thread a
+    let (interface_proxy_a_tx, interface_proxy_a_rx) = oneshot::channel::<ComInterfaceProxy>();
+    let (interface_proxy_b_tx, interface_proxy_b_rx) = oneshot::channel::<ComInterfaceProxy>();
+    
     // Endpoint A
     let thread_a = run_async_thread! {
         init_global_context();
 
-         let (com_hub_mut_a, ..) = get_mock_setup_with_com_hub(MockupSetupData {
-                interface_properties: MockupInterfaceSetupData {
-                    endpoint: Some(TEST_ENDPOINT_A.clone()),
-                    receiver_in: Some(receiver_b),
-                    sender_out: Some(sender_a),
-                    ..Default::default()
-                },
-                ..Default::default()
-            }).await;
-        
+        let (com_hub_a, interface_proxy_a) = get_mock_setup_with_com_hub(MockupSetupData {
+            local_endpoint: TEST_ENDPOINT_A.clone(),
+            com_hub_sections_sender: Some(incoming_sections_sender_a),
+            ..Default::default()
+        }).await;
+
+        interface_proxy_a_tx.send(interface_proxy_a).unwrap();
+        // sleep required to wait for interface_proxy_a_tx send
+
         log::info!("Sending trace from A to B");
-        // sleep required to handle message transfer
         tokio::time::sleep(tokio::time::Duration::from_millis(100))
             .await;
 
         // send trace from A to B
-        let network_trace = com_hub_mut_a
+        let network_trace = com_hub_a
             .record_trace(TEST_ENDPOINT_B.clone())
             .await;
 
@@ -97,20 +98,23 @@ async fn create_network_trace_separate_threads() {
     let thread_b = run_async_thread! {
         init_global_context();
 
-        let _ = get_mock_setup_with_com_hub(MockupSetupData {
-            interface_properties: MockupInterfaceSetupData {
-                endpoint: Some(TEST_ENDPOINT_B.clone()),
-                receiver_in: Some(receiver_a),
-                sender_out: Some(sender_b),
-                ..Default::default()
-            },
+        let (com_hub_b, interface_proxy_b) = get_mock_setup_with_com_hub(MockupSetupData {
+            local_endpoint: TEST_ENDPOINT_B.clone(),
+            com_hub_sections_sender: Some(incoming_sections_sender_b),
             ..Default::default()
         }).await;
-
+        interface_proxy_b_tx.send(interface_proxy_b).unwrap();
+        
         // sleep 2s to ensure that the other thread has finished
         tokio::time::sleep(tokio::time::Duration::from_millis(200))
             .await;
     };
+
+    // wait for both interface proxies from the threads and couple them
+    ComInterfaceProxy::couple_bidirectional(
+        interface_proxy_a_rx.await.unwrap(),
+        interface_proxy_b_rx.await.unwrap(),
+    );
 
     // Wait for both threads to finish
     thread_a.join().expect("Thread A panicked");

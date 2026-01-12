@@ -7,7 +7,7 @@ use crate::{
     },
 };
 use core::prelude::rust_2024::*;
-use log::error;
+use log::{error, info};
 
 #[derive(Debug)]
 pub struct BlockCollector {

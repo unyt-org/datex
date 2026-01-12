@@ -352,8 +352,11 @@ impl SocketManager {
         }
 
         info!(
-            "Adding socket {} to ComHub with priority {:?}",
-            socket.uuid, priority
+            "Adding socket {} to ComHub with priority {:?}, direct endpoint: {}, direction: {:?}",
+            socket.uuid,
+            priority,
+            socket.direct_endpoint.as_ref().map(|e| e.to_string()).unwrap_or("None".to_string()),
+            socket.direction
         );
 
         if !socket.can_send() && priority != InterfacePriority::None {

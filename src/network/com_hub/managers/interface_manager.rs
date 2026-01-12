@@ -189,7 +189,7 @@ impl InterfaceManager {
     /// Returns the com interface for a given UUID
     /// The interface must be registered in the ComHub,
     /// otherwise a panic will be triggered
-    pub(crate) fn get_interface_by_uuid(
+    pub fn get_interface_by_uuid(
         &self,
         interface_uuid: &ComInterfaceUUID,
     ) -> &ComInterface {

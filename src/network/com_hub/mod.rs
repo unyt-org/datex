@@ -1236,12 +1236,12 @@ async fn com_hub_event_task(
         match event {
             BlockSendEvent::NewSocket { socket_uuid } => {
                 info!("New socket connected: {}", socket_uuid);
-                let mut socket_manager = self_rc.socket_manager.borrow_mut();
-                let socket =
-                    socket_manager.get_socket_by_uuid_mut(&socket_uuid);
-                let socket_can_send = socket.can_send();
-                let receiver = socket.take_block_in_receiver();
-                drop(socket_manager);
+                let (receiver, socket_can_send) = {
+                    let mut socket_manager = self_rc.socket_manager.borrow_mut();
+                    let socket =
+                        socket_manager.get_socket_by_uuid_mut(&socket_uuid);
+                    (socket.take_block_in_receiver(), socket.can_send())
+                };
 
                 // spawn task to collect incoming blocks from this socket
                 spawn_with_panic_notify(

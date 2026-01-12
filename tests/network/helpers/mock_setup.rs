@@ -21,7 +21,7 @@ use std::{
 use tokio::task::yield_now;
 use datex_core::global::dxb_block::IncomingEndpointContextSectionId;
 use datex_core::global::protocol_structures::block_header::{FlagsAndTimestamp};
-use datex_core::network::com_interfaces::com_interface::{ComInterfaceProxy, ComInterfaceUUID, ComInterfaceWithReceivers};
+use datex_core::network::com_interfaces::com_interface::{ComInterfaceEvent, ComInterfaceProxy, ComInterfaceUUID, ComInterfaceWithReceivers};
 use datex_core::network::com_interfaces::com_interface::properties::InterfaceProperties;
 use datex_core::task::create_unbounded_channel;
 
@@ -359,6 +359,55 @@ pub async fn get_collected_received_blocks_from_receiver(
 
     blocks
 }
+
+pub async fn get_collected_outgoing_blocks_from_receiver(
+    event_receiver: &mut UnboundedReceiver<ComInterfaceEvent>,
+    count: usize,
+) -> Vec<(DXBBlock, ComInterfaceSocketUUID)> {
+    let mut collected_blocks = vec![];
+    
+    let mut received_count = 0;
+
+    while let Some(event) = event_receiver.next().await {
+        if let ComInterfaceEvent::SendBlock(bytes, socket_uuid) = event {
+            let block =
+                DXBBlock::from_bytes(&bytes)
+                    .await
+                    .unwrap();
+
+            collected_blocks.push((block, socket_uuid));
+            received_count += 1;
+
+            if received_count >= count {
+                break;
+            }
+        }
+    }
+
+    if collected_blocks.len() != count {
+        panic!("Expected to collect {} blocks, but got {}", count, collected_blocks.len());
+    }
+
+    collected_blocks
+}
+
+pub async fn get_next_outgoing_block_from_receiver(
+    event_receiver: &mut UnboundedReceiver<ComInterfaceEvent>,
+) -> (DXBBlock, ComInterfaceSocketUUID) {
+    while let Some(event) = event_receiver.next().await {
+        if let ComInterfaceEvent::SendBlock(bytes, socket_uuid) = event {
+            let block =
+                DXBBlock::from_bytes(&bytes)
+                    .await
+                    .unwrap();
+
+            return (block, socket_uuid);
+        }
+    }
+
+    panic!("No outgoing block received");
+}
+
 
 /// Helper function to send multiple blocks to a local mockup interface via its incoming blocks sender
 /// Changes the receivers of each block to TEST_ENDPOINT_ORIGIN before sending
