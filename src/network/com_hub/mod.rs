@@ -268,18 +268,6 @@ impl ComHub {
                 block,
             );
         }
-        println!(
-            "{} >>>> Block is new: {}, type: {:?} {} {}",
-            self.endpoint,
-            is_new_block,
-            block_type,
-            block
-                .receiver_endpoints()
-                .iter()
-                .map(|e| e.to_string())
-                .join(","),
-            block.routing_header.sender
-        );
 
         let receivers = block.receiver_endpoints();
         if !receivers.is_empty() {

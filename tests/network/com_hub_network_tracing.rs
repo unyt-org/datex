@@ -20,32 +20,26 @@ use tokio::{sync::oneshot, task::yield_now};
 #[async_test]
 #[timeout(1000)]
 async fn create_network_trace() {
-    let ((com_hub_mut_a, ..), (b, ..)) =
+    let ((com_hub_mut_a, ..), ..) =
         get_default_mock_setup_with_two_connected_com_hubs().await;
-
-    yield_now().await;
     yield_now().await;
 
     log::info!("Sending trace from A to B");
 
     // send trace from A to B
-    // let network_trace =
-    //     com_hub_mut_a.record_trace(TEST_ENDPOINT_B.clone()).await;
+    let network_trace =
+        com_hub_mut_a.record_trace(TEST_ENDPOINT_B.clone()).await;
     yield_now().await;
-    yield_now().await;
 
-    com_hub_mut_a.print_metadata();
-    b.print_metadata();
+    assert!(network_trace.is_some());
+    log::info!("Network trace:\n{}", network_trace.as_ref().unwrap());
 
-    // assert!(network_trace.is_some());
-    // log::info!("Network trace:\n{}", network_trace.as_ref().unwrap());
-
-    // assert!(network_trace.unwrap().matches_hops(&[
-    //     (TEST_ENDPOINT_A.clone(), "mockup"),
-    //     (TEST_ENDPOINT_B.clone(), "mockup"),
-    //     (TEST_ENDPOINT_B.clone(), "mockup"),
-    //     (TEST_ENDPOINT_A.clone(), "mockup")
-    // ]));
+    assert!(network_trace.unwrap().matches_hops(&[
+        (TEST_ENDPOINT_A.clone(), "unknown"),
+        (TEST_ENDPOINT_B.clone(), "unknown"),
+        (TEST_ENDPOINT_B.clone(), "unknown"),
+        (TEST_ENDPOINT_A.clone(), "unknown")
+    ]));
 }
 
 // same as create_network_trace, but both com hubs in separate threads

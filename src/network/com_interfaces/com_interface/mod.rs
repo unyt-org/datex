@@ -233,22 +233,6 @@ impl ComInterfaceProxy {
                 1,
                 remote_endpoint_a,
             );
-        spawn_with_panic_notify_default(async move {
-            let mut event_receiver_a = proxy_a.event_receiver;
-            loop {
-                tokio::select! {
-                    Some(event) = event_receiver_a.next() => {
-                        if let ComInterfaceEvent::SendBlock(block, _socket_uuid) = event {
-                            // directly send the block to socket B
-                            socket_a_sender.start_send(block).unwrap();
-                        }
-                    }
-                    _ = shutdown_signal_a.notified() => {
-                        break;
-                    }
-                }
-            }
-        });
 
         // Forward events from proxy B to proxy A
         let shutdown_signal_b = proxy_b.shutdown_signal();
@@ -258,6 +242,23 @@ impl ComInterfaceProxy {
                 1,
                 remote_endpoint_b,
             );
+
+        spawn_with_panic_notify_default(async move {
+            let mut event_receiver_a = proxy_a.event_receiver;
+            loop {
+                tokio::select! {
+                    Some(event) = event_receiver_a.next() => {
+                        if let ComInterfaceEvent::SendBlock(block, _socket_uuid) = event {
+                            // directly send the block to socket B
+                            socket_b_sender.start_send(block).unwrap();
+                        }
+                    }
+                    _ = shutdown_signal_a.notified() => {
+                        break;
+                    }
+                }
+            }
+        });
         spawn_with_panic_notify_default(async move {
             let mut event_receiver_b = proxy_b.event_receiver;
             loop {
@@ -265,7 +266,7 @@ impl ComInterfaceProxy {
                     Some(event) = event_receiver_b.next() => {
                         if let ComInterfaceEvent::SendBlock(block, _socket_uuid) = event {
                             // directly send the block to socket A
-                            socket_b_sender.start_send(block).unwrap();
+                            socket_a_sender.start_send(block).unwrap();
                         }
                     }
                     _ = shutdown_signal_b.notified() => {

@@ -22,7 +22,10 @@ use datex_core::{
         },
     },
     network::{
-        com_hub::{ComHub, InterfacePriority},
+        com_hub::{
+            ComHub, InterfacePriority,
+            metadata::{ComHubMetadata, ComHubMetadataInterface},
+        },
         com_interfaces::com_interface::{
             ComInterface, ComInterfaceEvent, ComInterfaceProxy,
             implementation::ComInterfaceSyncFactory,
@@ -87,6 +90,46 @@ pub async fn test_multiple_add() {
     com_hub
         .register_com_interface(mockup_interface2, InterfacePriority::default())
         .unwrap();
+}
+
+fn metadata_sockets(
+    com_hub_metadata: ComHubMetadata,
+) -> Vec<(Option<Endpoint>, Option<i8>)> {
+    com_hub_metadata
+        .interfaces
+        .into_iter()
+        .flat_map(|e| {
+            e.sockets
+                .into_iter()
+                .map(|s| (s.endpoint, s.properties.map(|p| p.distance)))
+        })
+        .collect::<Vec<_>>()
+}
+
+#[async_test]
+#[timeout(1000)]
+async fn create_hello_connection() {
+    let ((com_hub_mut_a, ..), (com_hub_mut_b, ..)) =
+        get_default_mock_setup_with_two_connected_com_hubs().await;
+
+    yield_now().await;
+
+    let com_hub_a_sockets = metadata_sockets(com_hub_mut_a.metadata());
+    assert!(
+        com_hub_a_sockets.contains(&(Some(TEST_ENDPOINT_B.clone()), Some(1)))
+    );
+    let com_hub_b_sockets = metadata_sockets(com_hub_mut_b.metadata());
+    assert!(
+        com_hub_b_sockets.contains(&(Some(Endpoint::LOCAL.clone()), Some(0)))
+    );
+
+    let com_hub_b_sockets = metadata_sockets(com_hub_mut_b.metadata());
+    assert!(
+        com_hub_b_sockets.contains(&(Some(TEST_ENDPOINT_A.clone()), Some(1)))
+    );
+    assert!(
+        com_hub_b_sockets.contains(&(Some(Endpoint::LOCAL.clone()), Some(0)))
+    );
 }
 
 #[async_test]
