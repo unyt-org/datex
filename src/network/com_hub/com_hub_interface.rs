@@ -116,12 +116,15 @@ impl ComHub {
         setup_data: ValueContainer,
         priority: InterfacePriority,
     ) -> Result<ComInterfaceUUID, InterfaceCreateError> {
-        let mut interface_manager = self.interface_manager.borrow_mut();
-        let (com_interface, receivers) = interface_manager
-            .create_and_add_interface(interface_type, setup_data, priority)
+        let (com_interface_uuid, receivers) = 
+            InterfaceManager::create_and_add_interface(self.interface_manager.clone(), interface_type, setup_data, priority)
             .await?;
-        self.init_interface_event_listeners(com_interface, receivers);
-        Ok(com_interface.uuid())
+        let interface_manager = self.interface_manager.borrow();
+        self.init_interface_event_listeners(
+            interface_manager.get_interface_by_uuid(&com_interface_uuid),
+            receivers
+        );
+        Ok(com_interface_uuid)
     }
 
     /// Creates a new interface of the given type with the provided setup data
@@ -133,14 +136,18 @@ impl ComHub {
         priority: InterfacePriority,
     ) -> Result<ComInterfaceUUID, InterfaceCreateError> {
         let mut interface_manager = self.interface_manager.borrow_mut();
-        let (com_interface, receivers) = interface_manager
+        let (com_interface_uuid, receivers) = interface_manager
             .create_and_add_interface_sync(
                 interface_type,
                 setup_data,
                 priority,
             )?;
-        self.init_interface_event_listeners(com_interface, receivers);
-        Ok(com_interface.uuid())
+        let interface_manager = self.interface_manager.borrow();
+        self.init_interface_event_listeners(
+            interface_manager.get_interface_by_uuid(&com_interface_uuid), 
+            receivers
+        );
+        Ok(com_interface_uuid)
     }
 
     pub fn remove_interface(

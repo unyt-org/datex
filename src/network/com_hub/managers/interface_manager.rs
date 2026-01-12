@@ -4,7 +4,8 @@ use crate::{
     }
 };
 use core::pin::Pin;
-
+use core::cell::RefCell;
+use crate::stdlib::rc::Rc;
 use log::info;
 
 use crate::{
@@ -51,6 +52,7 @@ pub type AsyncComInterfaceImplementationFactoryFn = fn(
     proxy: ComInterfaceProxy,
 ) -> ComInterfaceAsyncFactoryResult;
 
+#[derive(Clone, Copy)]
 pub enum SyncOrAsyncComInterfaceImplementationFactoryFn {
     Sync(SyncComInterfaceImplementationFactoryFn),
     Async(AsyncComInterfaceImplementationFactoryFn),
@@ -100,36 +102,32 @@ impl InterfaceManager {
     /// for the specified interface type if it exists.
     /// The interface is opened and added to the ComHub.
     pub async fn create_and_add_interface(
-        &mut self,
+        self_rc: Rc<RefCell<Self>>,
         interface_type: &str,
         setup_data: ValueContainer,
         priority: InterfacePriority,
-    ) -> Result<(&ComInterface, ComInterfaceReceivers), InterfaceCreateError> {
+    ) -> Result<(ComInterfaceUUID, ComInterfaceReceivers), InterfaceCreateError> {
         info!("creating interface {interface_type}");
-        if let Some(factory) = self.interface_factories.get(interface_type) {
+        let factory = self_rc.borrow().interface_factories.get(interface_type).cloned();
+        if let Some(factory) = factory {
             match factory {
-                SyncOrAsyncComInterfaceImplementationFactoryFn::Sync(
-                    sync_factory,
-                ) => {
-                    let (interface, receivers) = ComInterface::create_from_sync_factory_fn(
-                        *sync_factory,
+                SyncOrAsyncComInterfaceImplementationFactoryFn::Sync(_ ) =>
+                    self_rc.borrow_mut().create_and_add_interface_sync(
+                        interface_type,
                         setup_data,
-                    )?;
-                    self.add_interface(interface, priority)
-                        .map_err(|e| e.into())
-                        .map(|interface| (interface, receivers))
-                }
+                        priority,
+                    ),
                 SyncOrAsyncComInterfaceImplementationFactoryFn::Async(
                     async_factory,
                 ) => {
                     let (interface, receivers) = ComInterface::create_from_async_factory_fn(
-                        *async_factory,
+                        async_factory,
                         setup_data,
                     )
                     .await?;
-                    self.add_interface(interface, priority)
+                    self_rc.borrow_mut().add_interface(interface, priority)
                         .map_err(|e| e.into())
-                        .map(|interface| (interface, receivers))
+                        .map(|interface| (interface.uuid.clone(), receivers))
                 }
             }
         } else {
@@ -146,8 +144,8 @@ impl InterfaceManager {
         interface_type: &str,
         setup_data: ValueContainer,
         priority: InterfacePriority,
-    ) -> Result<(&ComInterface, ComInterfaceReceivers), InterfaceCreateError> {
-        info!("creating interface {interface_type}");
+    ) -> Result<(ComInterfaceUUID, ComInterfaceReceivers), InterfaceCreateError> {
+        info!("creating interface sync {interface_type}");
         if let Some(factory) = self.interface_factories.get(interface_type) {
             match factory {
                 SyncOrAsyncComInterfaceImplementationFactoryFn::Sync(
@@ -159,7 +157,7 @@ impl InterfaceManager {
                     )?;
                     self.add_interface(interface, priority)
                         .map_err(|e| e.into())
-                        .map(|interface| (interface, receivers))
+                        .map(|interface| (interface.uuid.clone(), receivers))
                 }
                 SyncOrAsyncComInterfaceImplementationFactoryFn::Async(_) => Err(
                     InterfaceCreateError::InterfaceCreationRequiresAsyncContext,
@@ -274,7 +272,7 @@ impl InterfaceManager {
     ) {
         if let ComInterfaceStateEvent::Destroyed = event {
             // FIXME should probably do more cleanup here, but this was what com hub did before
-            self.cleanup_interface(interface_uuid);
+            self.cleanup_interface(interface_uuid).unwrap();
         }
     }
 }

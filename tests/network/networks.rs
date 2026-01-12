@@ -70,12 +70,12 @@ async fn create_network_with_two_nodes() {
                 .await;
             assert!(network_trace.is_some());
             info!("Network trace:\n{}", network_trace.as_ref().unwrap());
-            assert!(network_trace.unwrap().matches_hops(&[
+            network_trace.unwrap().assert_matches_hops(&[
                 (TEST_ENDPOINT_A.clone(), "mockup"),
                 (TEST_ENDPOINT_B.clone(), "mockup"),
                 (TEST_ENDPOINT_B.clone(), "mockup"),
                 (TEST_ENDPOINT_A.clone(), "mockup")
-            ]));
+            ]);
 
             // send trace from B to A
             let network_trace = runtime_b
@@ -84,12 +84,12 @@ async fn create_network_with_two_nodes() {
                 .await;
             assert!(network_trace.is_some());
             info!("Network trace:\n{}", network_trace.as_ref().unwrap());
-            assert!(network_trace.unwrap().matches_hops(&[
+            network_trace.unwrap().assert_matches_hops(&[
                 (TEST_ENDPOINT_B.clone(), "mockup"),
                 (TEST_ENDPOINT_A.clone(), "mockup"),
                 (TEST_ENDPOINT_A.clone(), "mockup"),
                 (TEST_ENDPOINT_B.clone(), "mockup")
-            ]));
+            ]);
 
             // send trace from A to A
             let network_trace = runtime_a
@@ -98,12 +98,12 @@ async fn create_network_with_two_nodes() {
                 .await;
             assert!(network_trace.is_some());
             info!("Network trace:\n{}", network_trace.as_ref().unwrap());
-            assert!(network_trace.unwrap().matches_hops(&[
+            network_trace.unwrap().assert_matches_hops(&[
                 (TEST_ENDPOINT_A.clone(), "local"),
                 (TEST_ENDPOINT_A.clone(), "local"),
                 (TEST_ENDPOINT_A.clone(), "local"),
                 (TEST_ENDPOINT_A.clone(), "local")
-            ]));
+            ]);
         })
         .await;
 }
@@ -238,7 +238,7 @@ async fn network_routing_with_four_nodes_1() {
                 .await;
             assert!(network_trace.is_some());
             info!("Network trace:\n{}", network_trace.as_ref().unwrap());
-            assert!(network_trace.unwrap().matches_hops(&[
+            network_trace.unwrap().assert_matches_hops(&[
                 (TEST_ENDPOINT_A.clone(), "mockup"),
                 (TEST_ENDPOINT_B.clone(), "mockup"),
                 (TEST_ENDPOINT_B.clone(), "mockup"),
@@ -247,7 +247,7 @@ async fn network_routing_with_four_nodes_1() {
                 (TEST_ENDPOINT_B.clone(), "mockup"),
                 (TEST_ENDPOINT_B.clone(), "mockup"),
                 (TEST_ENDPOINT_A.clone(), "mockup")
-            ]));
+            ]);
         })
         .await;
 }
@@ -303,7 +303,7 @@ async fn network_routing_with_four_nodes_2() {
                 .await;
             assert!(network_trace.is_some());
             info!("Network trace:\n{}", network_trace.as_ref().unwrap());
-            assert!(network_trace.unwrap().matches_hops(&[
+            network_trace.unwrap().assert_matches_hops(&[
                 (TEST_ENDPOINT_C.clone(), "mockup"),
                 (TEST_ENDPOINT_B.clone(), "mockup"),
                 (TEST_ENDPOINT_B.clone(), "mockup"),
@@ -312,7 +312,7 @@ async fn network_routing_with_four_nodes_2() {
                 (TEST_ENDPOINT_B.clone(), "mockup"),
                 (TEST_ENDPOINT_B.clone(), "mockup"),
                 (TEST_ENDPOINT_C.clone(), "mockup")
-            ]));
+            ]);
         })
         .await;
 }
@@ -349,7 +349,7 @@ async fn network_routing_with_four_nodes_3() {
                 .await;
             assert!(network_trace.is_some());
             info!("Network trace:\n{}", network_trace.as_ref().unwrap());
-            assert!(network_trace.unwrap().matches_hops(&[
+            network_trace.unwrap().assert_matches_hops(&[
                 (TEST_ENDPOINT_A.clone(), "mockup"),
                 (TEST_ENDPOINT_B.clone(), "mockup"),
                 (TEST_ENDPOINT_B.clone(), "mockup"),
@@ -362,7 +362,7 @@ async fn network_routing_with_four_nodes_3() {
                 (TEST_ENDPOINT_B.clone(), "mockup"),
                 (TEST_ENDPOINT_B.clone(), "mockup"),
                 (TEST_ENDPOINT_A.clone(), "mockup")
-            ]));
+            ]);
         })
         .await;
 }
@@ -418,7 +418,7 @@ async fn network_routing_with_four_nodes_4() {
                 .await;
             assert!(network_trace.is_some());
             info!("Network trace:\n{}", network_trace.as_ref().unwrap());
-            assert!(network_trace.unwrap().matches_hops(&[
+            network_trace.unwrap().assert_matches_hops(&[
                 (TEST_ENDPOINT_B.clone(), "mockup"),
                 (TEST_ENDPOINT_C.clone(), "mockup"),
                 (TEST_ENDPOINT_C.clone(), "mockup"),
@@ -427,7 +427,7 @@ async fn network_routing_with_four_nodes_4() {
                 (TEST_ENDPOINT_C.clone(), "mockup"),
                 (TEST_ENDPOINT_C.clone(), "mockup"),
                 (TEST_ENDPOINT_B.clone(), "mockup")
-            ]));
+            ]);
         })
         .await;
 }
@@ -466,7 +466,7 @@ async fn network_routing_with_four_nodes_5_deterministic_priorities() {
                 .await;
             assert!(network_trace.is_some());
             info!("Network trace:\n{}", network_trace.as_ref().unwrap());
-            assert!(network_trace.unwrap().matches_hops(&[
+            network_trace.unwrap().assert_matches_hops(&[
                 (TEST_ENDPOINT_B.clone(), "mockup"),
                 (TEST_ENDPOINT_C.clone(), "mockup"),
                 (TEST_ENDPOINT_C.clone(), "mockup"),
@@ -475,7 +475,7 @@ async fn network_routing_with_four_nodes_5_deterministic_priorities() {
                 (TEST_ENDPOINT_C.clone(), "mockup"),
                 (TEST_ENDPOINT_C.clone(), "mockup"),
                 (TEST_ENDPOINT_B.clone(), "mockup")
-            ]));
+            ]);
         })
         .await;
 }
@@ -512,7 +512,7 @@ async fn network_routing_with_four_nodes_6_deterministic_priorities() {
                 .await;
             assert!(network_trace.is_some());
             info!("Network trace:\n{}", network_trace.as_ref().unwrap());
-            assert!(network_trace.unwrap().matches_hops(&[
+            network_trace.unwrap().assert_matches_hops(&[
                 (TEST_ENDPOINT_C.clone(), "mockup"),
                 (TEST_ENDPOINT_D.clone(), "mockup"),
                 (TEST_ENDPOINT_D.clone(), "mockup"),
@@ -525,7 +525,7 @@ async fn network_routing_with_four_nodes_6_deterministic_priorities() {
                 (TEST_ENDPOINT_B.clone(), "mockup"),
                 (TEST_ENDPOINT_B.clone(), "mockup"),
                 (TEST_ENDPOINT_C.clone(), "mockup"),
-            ]));
+            ]);
         })
         .await;
 }

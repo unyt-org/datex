@@ -294,17 +294,8 @@ pub async fn default_interface_create_socket_first() {
 
 #[async_test]
 pub async fn test_receive() {
-    let (incoming_sections_sender, mut incoming_sections_receiver) =
-        create_unbounded_channel::<IncomingSection>();
-    // Priority None to avoid panic from fallback interfaces (as InterfaceDirection:In and not bidirectional)
-
-    let (_, interface_proxy) = get_mock_setup_with_com_hub(MockupSetupData {
-        interface_priority: InterfacePriority::None,
-        com_hub_sections_sender: Some(incoming_sections_sender),
-        ..Default::default()
-    })
-    .await;
-
+    let (_, interface_proxy, mut incoming_sections_receiver) = get_default_mock_setup_with_com_hub().await;
+    
     // receive block
     let mut block = DXBBlock {
         body: vec![0x01, 0x02, 0x03],
@@ -428,8 +419,8 @@ pub async fn encrypted_signature_prepare_block_com_hub() {
 
 #[async_test]
 pub async fn test_receive_multiple_blocks_single_section() {
-    let (com_hub, interface_proxy, mut incoming_sections_receiver) =
-        get_default_mock_setup_with_com_hub().await;
+    let (_, interface_proxy, mut incoming_sections_receiver) = get_default_mock_setup_with_com_hub().await;
+
 
     let mut blocks = vec![
         DXBBlock {
@@ -497,8 +488,8 @@ pub async fn test_receive_multiple_blocks_single_section() {
 
 #[async_test]
 pub async fn test_receive_multiple_separate_blocks() {
-    let (com_hub, interface_proxy, mut incoming_sections_receiver) =
-        get_default_mock_setup_with_com_hub().await;
+    let (_, interface_proxy, mut incoming_sections_receiver) = get_default_mock_setup_with_com_hub().await;
+
 
     let mut blocks = vec![
         DXBBlock {

@@ -99,68 +99,6 @@ pub async fn get_mock_setup_with_com_hub(
     (com_hub, proxy)
 }
 
-/// Helper function to create a default mock setup with two com hubs connected to each other via mock interface channels
-pub async fn get_default_mock_setup_with_two_connected_com_hubs() -> (
-    (
-        Rc<ComHub>,
-        UnboundedReceiver<IncomingSection>,
-        ComInterfaceUUID,
-    ),
-    (
-        Rc<ComHub>,
-        UnboundedReceiver<IncomingSection>,
-        ComInterfaceUUID,
-    ),
-) {
-    let (incoming_sections_sender_b, incoming_sections_receiver_b) =
-        create_unbounded_channel::<IncomingSection>();
-    let (incoming_sections_sender_a, incoming_sections_receiver_a) =
-        create_unbounded_channel::<IncomingSection>();
-
-    let (com_hub_mut_a, interface_proxy_a) =
-        get_mock_setup_with_com_hub(MockupSetupData {
-            interface_properties: InterfaceProperties {
-                name: Some("A->B".to_string()),
-                ..Default::default()
-            },
-            local_endpoint: TEST_ENDPOINT_A.clone(),
-            com_hub_sections_sender: Some(incoming_sections_sender_a),
-            ..Default::default()
-        })
-        .await;
-
-    let (com_hub_mut_b, interface_proxy_b) =
-        get_mock_setup_with_com_hub(MockupSetupData {
-            interface_properties: InterfaceProperties {
-                name: Some("B->A".to_string()),
-                ..Default::default()
-            },
-            local_endpoint: TEST_ENDPOINT_B.clone(),
-            com_hub_sections_sender: Some(incoming_sections_sender_b),
-            ..Default::default()
-        })
-        .await;
-
-    let (interface_a_uuid, interface_b_uuid) =
-        ComInterfaceProxy::couple_bidirectional(
-            (interface_proxy_a, None),
-            (interface_proxy_b, None),
-        );
-
-    (
-        (
-            com_hub_mut_a,
-            incoming_sections_receiver_a,
-            interface_a_uuid,
-        ),
-        (
-            com_hub_mut_b,
-            incoming_sections_receiver_b,
-            interface_b_uuid,
-        ),
-    )
-}
-
 /// Helper function to create a mock setup with a com hub and an existing interface
 pub fn get_mock_setup_with_interface(
     interface: ComInterfaceWithReceivers,
@@ -186,7 +124,6 @@ pub fn get_mock_setup_with_interface(
 }
 
 /// Helper function to create a default mock setup with initialized channels for com hub and mockup interface
-/// The endpoint at the mockup interface socket is set to TEST_ENDPOINT_B
 pub async fn get_default_mock_setup_with_com_hub() -> (
     Rc<ComHub>,
     ComInterfaceProxy,
@@ -206,6 +143,74 @@ pub async fn get_default_mock_setup_with_com_hub() -> (
 
     (com_hub, proxy, com_hub_sections_receiver)
 }
+
+
+/// Helper function to create a default mock setup with two com hubs connected to each other via mock interface channels
+pub async fn get_default_mock_setup_with_two_connected_com_hubs() -> (
+    (
+        Rc<ComHub>,
+        UnboundedReceiver<IncomingSection>,
+        ComInterfaceUUID,
+    ),
+    (
+        Rc<ComHub>,
+        UnboundedReceiver<IncomingSection>,
+        ComInterfaceUUID,
+    ),
+) {
+    let (incoming_sections_sender_b, incoming_sections_receiver_b) =
+        create_unbounded_channel::<IncomingSection>();
+    let (incoming_sections_sender_a, incoming_sections_receiver_a) =
+        create_unbounded_channel::<IncomingSection>();
+
+    let (com_hub_mut_a, interface_proxy_a) =
+        get_mock_setup_with_com_hub(MockupSetupData {
+            interface_properties: InterfaceProperties {
+                name: Some("A->B".to_string()),
+                channel: "mockup".to_string(),
+                interface_type: "mockup".to_string(),
+                ..Default::default()
+            },
+            local_endpoint: TEST_ENDPOINT_A.clone(),
+            com_hub_sections_sender: Some(incoming_sections_sender_a),
+            ..Default::default()
+        })
+            .await;
+
+    let (com_hub_mut_b, interface_proxy_b) =
+        get_mock_setup_with_com_hub(MockupSetupData {
+            interface_properties: InterfaceProperties {
+                name: Some("B->A".to_string()),
+                channel: "mockup".to_string(),
+                interface_type: "mockup".to_string(),
+                ..Default::default()
+            },
+            local_endpoint: TEST_ENDPOINT_B.clone(),
+            com_hub_sections_sender: Some(incoming_sections_sender_b),
+            ..Default::default()
+        })
+            .await;
+
+    let (interface_a_uuid, interface_b_uuid) =
+        ComInterfaceProxy::couple_bidirectional(
+            (interface_proxy_a, None),
+            (interface_proxy_b, None),
+        );
+
+    (
+        (
+            com_hub_mut_a,
+            incoming_sections_receiver_a,
+            interface_a_uuid,
+        ),
+        (
+            com_hub_mut_b,
+            incoming_sections_receiver_b,
+            interface_b_uuid,
+        ),
+    )
+}
+
 
 /// Helper function to create a mock setup with a full runtime and a mockup interface
 pub async fn get_mock_setup_with_runtime(

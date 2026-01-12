@@ -119,21 +119,29 @@ impl NetworkTraceResult {
 impl NetworkTraceResult {
     /// Checks if the hops in the network trace result match the given hops.
     /// A hop consists of an endpoint and an interface type.
-    pub fn matches_hops(&self, hops: &[(Endpoint, &str)]) -> bool {
+    pub fn assert_matches_hops(&self, hops: &[(Endpoint, &str)]) {
         if self.hops.len() != hops.len() {
-            return false;
+            panic!(
+                "Hop count mismatch: expected {}, got {}",
+                hops.len(),
+                self.hops.len()
+            );
         }
 
         for (hop, expected_hop) in self.hops.iter().zip(hops) {
             if hop.endpoint != expected_hop.0 {
-                return false;
+                panic!(
+                    "Hop endpoint mismatch: expected {}, got {}",
+                    expected_hop.0, hop.endpoint
+                );
             }
             if hop.socket.interface_type != expected_hop.1 {
-                return false;
+                panic!(
+                    "Hop interface type mismatch: expected {}, got {}",
+                    expected_hop.1, hop.socket.interface_type
+                );
             }
         }
-
-        true
     }
 }
 

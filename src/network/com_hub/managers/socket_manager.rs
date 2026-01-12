@@ -364,12 +364,6 @@ impl SocketManager {
             socket.direction
         );
 
-        if !can_send && priority != InterfacePriority::None {
-            core::panic!(
-                "Socket {} cannot be used for fallback routing, since it has no send capability",
-                socket.uuid
-            );
-        }
         let direction = socket.direction.clone();
 
         self.add_socket_to_list(socket_uuid.clone(), socket);

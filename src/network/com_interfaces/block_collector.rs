@@ -8,6 +8,7 @@ use crate::{
 };
 use core::prelude::rust_2024::*;
 use log::error;
+use crate::task::spawn_with_panic_notify_default;
 
 #[derive(Debug)]
 pub struct BlockCollector {
@@ -95,7 +96,8 @@ impl BlockCollector {
             current_block: Vec::new(),
             current_block_specified_length: None,
         };
-        spawn_local(run_block_collector_task(block_collector));
+        // TODO: use spawn_with_panic_notify, remove AsynContext
+        spawn_with_panic_notify_default(run_block_collector_task(block_collector));
         (bytes_in_sender, block_in_receiver)
     }
 }
