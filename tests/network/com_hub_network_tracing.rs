@@ -2,7 +2,6 @@ use crate::network::helpers::{
     mock_setup::{
         TEST_ENDPOINT_A, TEST_ENDPOINT_B,
     },
-    mockup_interface::MockupInterface,
 };
 use datex_core::{
     network::{
@@ -61,7 +60,7 @@ async fn create_network_trace_separate_threads() {
         init_global_context();
 
          let (com_hub_mut_a, ..) = get_mock_setup_with_com_hub(MockupSetupData {
-                interface_setup_data: MockupInterfaceSetupData {
+                interface_properties: MockupInterfaceSetupData {
                     endpoint: Some(TEST_ENDPOINT_A.clone()),
                     receiver_in: Some(receiver_b),
                     sender_out: Some(sender_a),
@@ -99,7 +98,7 @@ async fn create_network_trace_separate_threads() {
         init_global_context();
 
         let _ = get_mock_setup_with_com_hub(MockupSetupData {
-            interface_setup_data: MockupInterfaceSetupData {
+            interface_properties: MockupInterfaceSetupData {
                 endpoint: Some(TEST_ENDPOINT_B.clone()),
                 receiver_in: Some(receiver_a),
                 sender_out: Some(sender_b),

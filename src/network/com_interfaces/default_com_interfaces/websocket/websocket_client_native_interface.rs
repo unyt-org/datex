@@ -17,7 +17,7 @@ use crate::{
     network::{
         com_hub::errors::InterfaceCreateError,
         com_interfaces::com_interface::{
-            ComInterfaceImplEvent,
+            ComInterfaceEvent,
             error::ComInterfaceError,
             implementation::{
                 ComInterfaceAsyncFactory, ComInterfaceAsyncFactoryResult,
@@ -42,9 +42,6 @@ impl WebSocketClientInterfaceSetupData {
             self.create_websocket_client_connection().await?;
 
         let (_, sender) = com_interface_proxy
-            .socket_manager
-            .lock()
-            .unwrap()
             .create_and_init_socket(InterfaceDirection::InOut, 1);
 
         let state = com_interface_proxy.state;
@@ -111,12 +108,12 @@ impl WebSocketClientInterfaceSetupData {
             WebSocketStream<MaybeTlsStream<TcpStream>>,
             Message,
         >,
-        mut receiver: UnboundedReceiver<ComInterfaceImplEvent>,
+        mut receiver: UnboundedReceiver<ComInterfaceEvent>,
         state: Arc<Mutex<ComInterfaceStateWrapper>>,
     ) {
         while let Some(event) = receiver.next().await {
             match event {
-                ComInterfaceImplEvent::SendBlock(block, _) => {
+                ComInterfaceEvent::SendBlock(block, _) => {
                     if let Err(e) = write.send(Message::Binary(block)).await {
                         // FIXME shall we retry?
                         error!("WebSocket write error: {e}");
@@ -127,7 +124,7 @@ impl WebSocketClientInterfaceSetupData {
                         break;
                     }
                 }
-                ComInterfaceImplEvent::Destroy => break,
+                ComInterfaceEvent::Destroy => break,
                 _ => todo!(),
             }
         }

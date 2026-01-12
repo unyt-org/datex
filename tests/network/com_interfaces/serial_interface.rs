@@ -3,7 +3,6 @@ use datex_core::{
         com_interface::ComInterface,
         default_com_interfaces::serial::{
             serial_common::SerialInterfaceSetupData,
-            serial_native_interface::SerialNativeInterface,
         },
     },
     utils::context::init_global_context,
@@ -15,25 +14,16 @@ pub async fn test_construct() {
     init_global_context();
     const PORT_NAME: &str = "/dev/ttyUSB0";
     const BAUD_RATE: u32 = 115200;
-    let available_ports = SerialNativeInterface::get_available_ports();
+    let available_ports = SerialInterfaceSetupData::get_available_ports();
     for port in available_ports.clone() {
         info!("Available port: {port}");
     }
     if !available_ports.contains(&PORT_NAME.to_string()) {
         return;
     }
-    let mut interface = ComInterface::create_sync_from_setup_data::<
-        SerialNativeInterface,
-    >(SerialInterfaceSetupData {
+    let mut interface = ComInterface::create_sync_from_setup_data(SerialInterfaceSetupData {
         port_name: Some(PORT_NAME.to_string()),
         baud_rate: BAUD_RATE,
     })
     .unwrap();
-
-    let socket_uuid = interface
-        .implementation::<SerialNativeInterface>()
-        .socket_uuid
-        .clone();
-    interface.send_block(b"Hello World", socket_uuid);
-    interface.close();
 }

@@ -4,7 +4,7 @@ use crate::{
     network::{
         com_hub::errors::InterfaceCreateError,
         com_interfaces::com_interface::{
-            ComInterfaceImplEvent,
+            ComInterfaceEvent,
             error::ComInterfaceError,
             implementation::{
                 ComInterfaceAsyncFactory, ComInterfaceAsyncFactoryResult,
@@ -130,14 +130,14 @@ impl TCPServerInterfaceSetupData {
     #[allow(clippy::await_holding_lock)]
     /// background task to handle com hub events (e.g. outgoing messages)
     async fn event_handler_task(
-        mut receiver: UnboundedReceiver<ComInterfaceImplEvent>,
+        mut receiver: UnboundedReceiver<ComInterfaceEvent>,
         tx_by_socket: Arc<
             Mutex<HashMap<ComInterfaceSocketUUID, UnboundedSender<Vec<u8>>>>,
         >,
     ) {
         while let Some(event) = receiver.next().await {
             match event {
-                ComInterfaceImplEvent::SendBlock(block, socket_uuid) => {
+                ComInterfaceEvent::SendBlock(block, socket_uuid) => {
                     let tx = tx_by_socket
                         .lock()
                         .map(|guard| guard.get(&socket_uuid).cloned());
@@ -150,7 +150,7 @@ impl TCPServerInterfaceSetupData {
                         error!("Write failed for {}", socket_uuid);
                     }
                 }
-                ComInterfaceImplEvent::Destroy => {
+                ComInterfaceEvent::Destroy => {
                     break;
                 }
                 _ => todo!(),

@@ -16,8 +16,8 @@ pub async fn test_basic_remote_execution() {
     let endpoint_a = Endpoint::new("@test_a");
     let endpoint_b = Endpoint::new("@test_b");
     let (runtime_a, runtime_b) = get_mock_setup_default_with_two_connected_runtimes(
-        endpoint_a.clone(),
-        endpoint_b.clone()
+        endpoint_a.clone().into(),
+        endpoint_b.clone().into(),
     )
     .await;
 
@@ -53,8 +53,8 @@ pub async fn test_remote_execution_persistent_context() {
     let endpoint_a = Endpoint::new("@test_a");
     let endpoint_b = Endpoint::new("@test_b");
     let (runtime_a, runtime_b) = get_mock_setup_default_with_two_connected_runtimes(
-        endpoint_a.clone(),
-        endpoint_b.clone(),
+        endpoint_a.clone().into(),
+        endpoint_b.clone().into(),
     )
     .await;
 
@@ -92,8 +92,8 @@ pub async fn test_remote_inline() {
     let endpoint_a = Endpoint::new("@test_a");
     let endpoint_b = Endpoint::new("@test_b");
     let (runtime_a, runtime_b) = get_mock_setup_default_with_two_connected_runtimes(
-        endpoint_a.clone(),
-        endpoint_b.clone(),
+        endpoint_a.clone().into(),
+        endpoint_b.clone().into(),
     )
     .await;
 
@@ -124,8 +124,8 @@ pub async fn test_remote_inline_implicit_context() {
     let endpoint_a = Endpoint::new("@test_a");
     let endpoint_b = Endpoint::new("@test_b");
     let (runtime_a, _) = get_mock_setup_default_with_two_connected_runtimes(
-        endpoint_a.clone(),
-        endpoint_b.clone(),
+        endpoint_a.clone().into(),
+        endpoint_b.clone().into(),
     )
     .await;
 

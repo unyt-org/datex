@@ -29,7 +29,7 @@ use crate::{
     network::{
         com_hub::errors::InterfaceCreateError,
         com_interfaces::com_interface::{
-            ComInterface, ComInterfaceImplEvent,
+            ComInterface, ComInterfaceEvent,
             error::ComInterfaceError,
             implementation::{
                 ComInterfaceAsyncFactory, ComInterfaceAsyncFactoryResult,
@@ -253,11 +253,11 @@ impl WebSocketServerInterfaceSetupData {
     /// background task to handle com hub events (e.g. outgoing messages)
     async fn event_handler_task(
         websocket_streams_by_socket: Arc<Mutex<WebsocketStreamMap>>,
-        mut receiver: UnboundedReceiver<ComInterfaceImplEvent>,
+        mut receiver: UnboundedReceiver<ComInterfaceEvent>,
     ) {
         while let Some(event) = receiver.next().await {
             match event {
-                ComInterfaceImplEvent::SendBlock(block, socket_uuid) => {
+                ComInterfaceEvent::SendBlock(block, socket_uuid) => {
                     let tx =
                         &mut websocket_streams_by_socket.try_lock().unwrap();
                     let tx = tx.get_mut(&socket_uuid);
@@ -275,7 +275,7 @@ impl WebSocketServerInterfaceSetupData {
                         }
                     };
                 }
-                ComInterfaceImplEvent::Destroy => {
+                ComInterfaceEvent::Destroy => {
                     break;
                 }
                 _ => todo!(),

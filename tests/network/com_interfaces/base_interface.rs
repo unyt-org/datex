@@ -1,8 +1,5 @@
-use std::{cell::RefCell, rc::Rc};
-
 use datex_core::{
     network::com_interfaces::{
-        com_interface,
         default_com_interfaces::base_interface::BaseInterface,
     },
     stdlib::{future::Future, pin::Pin},
@@ -11,14 +8,13 @@ use datex_core::{
 use datex_core::{
     network::com_interfaces::{
         com_interface::{
-            ComInterface, properties::InterfaceDirection,
+            properties::InterfaceDirection,
             socket::ComInterfaceSocketUUID, state::ComInterfaceState,
         },
         default_com_interfaces::base_interface::{
             BaseInterfaceSetupData,
         },
     },
-    utils::context::init_global_context,
     values::core_values::endpoint::Endpoint,
 };
 use datex_macros::async_test;

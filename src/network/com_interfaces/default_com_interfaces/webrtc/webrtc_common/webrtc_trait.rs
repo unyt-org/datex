@@ -111,8 +111,7 @@ pub trait WebRTCTraitInternal<DC: 'static, MR: 'static, ML: 'static> {
         let (socket_uuid, sender) =
             manager.create_and_init_socket(InterfaceDirection::InOut, 1);
         manager
-            .register_socket_with_endpoint(socket_uuid.clone(), endpoint, 1)
-            .unwrap();
+            .register_socket_endpoint(socket_uuid.clone(), endpoint, 1);
 
         (socket_uuid, sender)
     }

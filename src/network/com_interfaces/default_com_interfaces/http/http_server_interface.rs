@@ -17,7 +17,7 @@ use crate::{
     network::{
         com_hub::errors::InterfaceCreateError,
         com_interfaces::com_interface::{
-            ComInterface, ComInterfaceImplEvent,
+            ComInterface, ComInterfaceEvent,
             implementation::{
                 ComInterfaceAsyncFactory, ComInterfaceAsyncFactoryResult,
                 ComInterfaceSyncFactory,
@@ -220,11 +220,11 @@ impl HTTPServerInterfaceSetupData {
             RefCell<HashMap<String, ComInterfaceSocketUUID>>,
         >,
         channels: Arc<RwLock<HTTPChannelMap>>,
-        mut receiver: UnboundedReceiver<ComInterfaceImplEvent>,
+        mut receiver: UnboundedReceiver<ComInterfaceEvent>,
     ) {
         while let Some(event) = receiver.next().await {
             match event {
-                ComInterfaceImplEvent::SendBlock(block, socket_uuid) => {
+                ComInterfaceEvent::SendBlock(block, socket_uuid) => {
                     let route = socket_channel_mapping.borrow();
                     let route = route
                         .iter()

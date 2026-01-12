@@ -10,7 +10,7 @@ use crate::network::{
 
 use crate::{
     network::com_interfaces::com_interface::{
-        ComInterface, ComInterfaceImplEvent,
+        ComInterface, ComInterfaceEvent,
         properties::InterfaceProperties, socket::ComInterfaceSocketUUID,
     },
     stdlib::{
@@ -25,6 +25,7 @@ use crate::task::{UnboundedReceiver, UnboundedSender};
 use datex_core::task::spawn_with_panic_notify_default;
 use strum::Display;
 use thiserror::Error;
+use datex_core::network::com_interfaces::com_interface::ComInterfaceWithReceivers;
 use crate::network::com_interfaces::com_interface::{ComInterfaceProxy, ComInterfaceUUID};
 use crate::network::com_interfaces::com_interface::socket_manager::ComInterfaceSocketManager;
 use crate::network::com_interfaces::com_interface::state::ComInterfaceStateWrapper;
@@ -47,7 +48,11 @@ impl From<ComHubError> for BaseInterfaceError {
         BaseInterfaceError::ComHubError(err)
     }
 }
-
+// FIXME: the BaseInterface does not really serve a purpose anymore since we have ComInterfaceProxy
+// that provides the same functionality. The only difference is that BaseInterface allows using a callback
+// for send events.
+// We should consider removing it completely.
+#[deprecated]
 pub struct BaseInterface {
     pub uuid: ComInterfaceUUID,
     pub state: Arc<Mutex<ComInterfaceStateWrapper>>,
@@ -55,9 +60,9 @@ pub struct BaseInterface {
     senders: HashMap<ComInterfaceSocketUUID, UnboundedSender<Vec<u8>>>,
 }
 impl BaseInterface {
-    pub fn create(setup_data: BaseInterfaceSetupData) -> (BaseInterface, ComInterface) {
+    pub fn create(setup_data: BaseInterfaceSetupData) -> (BaseInterface, ComInterfaceWithReceivers) {
 
-        let (proxy, interface) = ComInterfaceProxy::create_interface(
+        let (proxy, interface_with_receivers) = ComInterfaceProxy::create_interface(
             setup_data.properties.clone(),
         );
 
@@ -74,18 +79,18 @@ impl BaseInterface {
                 socket_manager: proxy.socket_manager,
                 senders: HashMap::new(),
             },
-            interface,
+            interface_with_receivers,
         )
     }
 
     /// background task to handle com hub events (e.g. outgoing messages)
     async fn event_handler_task(
         on_send_callback: Box<OnSendCallback>,
-        mut receiver: UnboundedReceiver<ComInterfaceImplEvent>,
+        mut receiver: UnboundedReceiver<ComInterfaceEvent>,
     ) {
         while let Some(event) = receiver.next().await {
             match event {
-                ComInterfaceImplEvent::SendBlock(block, socket_uuid) => {
+                ComInterfaceEvent::SendBlock(block, socket_uuid) => {
                     if !on_send_callback(&block, socket_uuid).await {
                         error!("BaseInterface send error");
                         // todo: handle error
@@ -136,8 +141,7 @@ impl BaseInterface {
             .socket_manager
             .lock()
             .unwrap()
-            .register_socket_with_endpoint(socket_uuid.clone(), endpoint, 1)
-            .unwrap();
+            .register_socket_endpoint(socket_uuid.clone(), endpoint, 1);
 
         self.senders.insert(socket_uuid.clone(), sender.clone());
 

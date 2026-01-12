@@ -3,7 +3,7 @@ use crate::{
     network::{
         com_hub::errors::InterfaceCreateError,
         com_interfaces::com_interface::{
-            ComInterfaceImplEvent,
+            ComInterfaceEvent,
             error::ComInterfaceError,
             implementation::{
                 ComInterfaceAsyncFactory,
@@ -63,10 +63,7 @@ impl SerialInterfaceSetupData {
         let port = Arc::new(Mutex::new(port));
         let port_clone = port.clone();
 
-        let (socket_uuid, mut sender) = com_interface_proxy
-            .socket_manager
-            .lock()
-            .unwrap()
+        let (_, mut sender) = com_interface_proxy
             .create_and_init_socket(InterfaceDirection::InOut, 1);
 
         let shutdown_signal = Arc::new(Notify::new());
@@ -120,16 +117,16 @@ impl SerialInterfaceSetupData {
 
     /// background task to handle com hub events (e.g. outgoing messages)
     async fn event_handler_task(
-        mut receiver: UnboundedReceiver<ComInterfaceImplEvent>,
+        mut receiver: UnboundedReceiver<ComInterfaceEvent>,
         port: Arc<Mutex<Box<dyn SerialPort>>>,
         shutdown_signal: Arc<Notify>,
     ) {
         while let Some(event) = receiver.next().await {
             match event {
-                ComInterfaceImplEvent::SendBlock(block, _) => {
+                ComInterfaceEvent::SendBlock(block, _) => {
                     port.lock().unwrap().write_all(block.as_slice()).unwrap();
                 }
-                ComInterfaceImplEvent::Destroy => {
+                ComInterfaceEvent::Destroy => {
                     shutdown_signal.notify_waiters();
                     break;
                 }

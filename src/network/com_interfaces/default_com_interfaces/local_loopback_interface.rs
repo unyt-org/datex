@@ -1,5 +1,5 @@
 use crate::network::com_interfaces::com_interface::{
-    ComInterfaceImplEvent,
+    ComInterfaceEvent,
 };
 
 use crate::{
@@ -36,20 +36,14 @@ impl ComInterfaceSyncFactory for LocalLoopbackInterfaceSetupData {
 
         // directly create a socket and register it
         let (socket_uuid, mut sender) = com_interface_proxy
-            .socket_manager
-            .lock()
-            .unwrap()
             .create_and_init_socket(InterfaceDirection::InOut, 1);
         com_interface_proxy
-            .socket_manager
-            .lock()
-            .unwrap()
-            .register_socket_with_endpoint(socket_uuid, Endpoint::LOCAL, 1)?;
+            .register_socket_endpoint(socket_uuid, Endpoint::LOCAL, 1);
 
         // spawn event handler task for impl events
         spawn_with_panic_notify_default(async move {
             while let Some(event) = com_interface_proxy.event_receiver.next().await {
-                if let ComInterfaceImplEvent::SendBlock(block, _) = event {
+                if let ComInterfaceEvent::SendBlock(block, _) = event {
                     sender.start_send(block).unwrap();
                 }
             }

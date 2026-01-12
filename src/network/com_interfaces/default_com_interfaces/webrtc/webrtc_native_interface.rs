@@ -26,7 +26,7 @@ use crate::{
     network::{
         com_hub::errors::InterfaceCreateError,
         com_interfaces::com_interface::{
-            ComInterface, ComInterfaceImplEvent,
+            ComInterface, ComInterfaceEvent,
             error::ComInterfaceError,
             implementation::{
                 ComInterfaceAsyncFactory, ComInterfaceAsyncFactoryResult,
@@ -622,11 +622,11 @@ impl WebRTCInterfaceSetupData {
     /// background task to handle com hub events (e.g. outgoing messages)
     async fn event_handler_task(
         data_channels: Rc<RefCell<DataChannels<Arc<RTCDataChannel>>>>,
-        mut receiver: UnboundedReceiver<ComInterfaceImplEvent>,
+        mut receiver: UnboundedReceiver<ComInterfaceEvent>,
     ) {
         while let Some(event) = receiver.next().await {
             match event {
-                ComInterfaceImplEvent::SendBlock(block, _) => {
+                ComInterfaceEvent::SendBlock(block, _) => {
                     match data_channels.borrow().get_data_channel("DATEX") {
                         Some(channel) => {
                             let bytes = Bytes::from(block);

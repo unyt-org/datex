@@ -10,6 +10,7 @@ use crate::{
     task::{UnboundedReceiver, spawn_with_panic_notify},
 };
 use core::{prelude::rust_2024::*, result::Result};
+use datex_core::network::com_interfaces::com_interface::ComInterfaceWithReceivers;
 use crate::stdlib::cell::Ref;
 use crate::{
     network::{
@@ -18,12 +19,14 @@ use crate::{
             errors::InterfaceCreateError,
         },
         com_interfaces::com_interface::{
-            ComInterface, ComInterfaceEvent, ComInterfaceUUID,
+            ComInterface, ComInterfaceStateEvent, ComInterfaceUUID,
         },
     },
     values::value_container::ValueContainer,
 };
 use crate::network::com_hub::errors::InterfaceAddError;
+use crate::network::com_interfaces::com_interface::ComInterfaceReceivers;
+use crate::network::com_interfaces::com_interface::socket::ComInterfaceSocketEvent;
 
 /// Interface management methods
 impl ComHub {
@@ -49,17 +52,23 @@ impl ComHub {
     }
 
     /// Adds a new interface to the ComHub
-    fn init_interface_event_listeners(&self, interface: &ComInterface) {
-        // handle socket events
-        self.handle_interface_socket_events(&interface);
+    fn init_interface_event_listeners(
+        &self, 
+        interface: &ComInterface, 
+        event_receivers: ComInterfaceReceivers,
+    ) {
         // handle interface events
-        self.handle_interface_events(&interface);
+        self.handle_interface_events(&interface, event_receivers.0);
+        // handle socket events
+        self.handle_interface_socket_events(&interface, event_receivers.1);
     }
 
     /// Internal method to handle interface events
-    fn handle_interface_events(&self, interface: &ComInterface) {
-        let interface_event_receiver =
-            interface.take_interface_event_receiver();
+    fn handle_interface_events(
+        &self,
+        interface: &ComInterface,
+        interface_event_receiver: UnboundedReceiver<ComInterfaceStateEvent>,
+    ) {
         let uuid = interface.uuid().clone();
         spawn_with_panic_notify(
             &self.async_context,
@@ -89,14 +98,15 @@ impl ComHub {
     /// Registers an existing com interface on the ComHub and sets up event handling
     pub fn register_com_interface(
         &self,
-        com_interface: ComInterface,
+        com_interface_with_receivers: ComInterfaceWithReceivers,
         priority: InterfacePriority,
     ) -> Result<(), InterfaceAddError> {
+        let (com_interface, receivers) = com_interface_with_receivers;
         let uuid = com_interface.uuid().clone();
         self.interface_manager
             .borrow_mut()
             .add_interface(com_interface, priority)?;
-        self.handle_interface_socket_events(self.interface_manager.borrow().get_interface_by_uuid(&uuid));
+        self.init_interface_event_listeners(self.interface_manager.borrow().get_interface_by_uuid(&uuid), receivers);
         Ok(())
     }
 
@@ -110,10 +120,10 @@ impl ComHub {
         let mut interface_manager = self
             .interface_manager
             .borrow_mut();
-        let com_interface = interface_manager
+        let (com_interface, receivers) = interface_manager
             .create_and_add_interface(interface_type, setup_data, priority)
             .await?;
-        self.init_interface_event_listeners(com_interface);
+        self.init_interface_event_listeners(com_interface, receivers);
         Ok(com_interface.uuid())
     }
 
@@ -128,9 +138,9 @@ impl ComHub {
         let mut interface_manager = self
             .interface_manager
             .borrow_mut();
-        let com_interface = interface_manager
+        let (com_interface, receivers) = interface_manager
             .create_and_add_interface_sync(interface_type, setup_data, priority)?;
-        self.init_interface_event_listeners(com_interface);
+        self.init_interface_event_listeners(com_interface, receivers);
         Ok(com_interface.uuid())
     }
 
@@ -158,7 +168,7 @@ impl ComHub {
 
 async fn handle_interface_events(
     uuid: ComInterfaceUUID,
-    mut receiver_queue: UnboundedReceiver<ComInterfaceEvent>,
+    mut receiver_queue: UnboundedReceiver<ComInterfaceStateEvent>,
     interface_manager: Rc<RefCell<InterfaceManager>>,
 ) {
     while let Some(event) = receiver_queue.next().await {

@@ -15,8 +15,8 @@ impl ComHub {
     pub(crate) fn handle_interface_socket_events(
         &self,
         interface: &ComInterface,
+        socket_event_receiver: UnboundedReceiver<ComInterfaceSocketEvent>,
     ) {
-        let socket_event_receiver = interface.take_socket_event_receiver();
         let interface_uuid = interface.uuid();
         let priority = self
             .interface_manager

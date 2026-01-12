@@ -1,4 +1,3 @@
-use super::mockup_interface::MockupInterface;
 use crate::network::helpers::mockup_interface::MockupInterfaceSetupData;
 use core::{
     fmt::{self, Debug, Display},
@@ -509,7 +508,7 @@ impl Network {
             nodes.push(node);
         }
         let mut network = Network::create(nodes);
-        network.register_interface("mockup", MockupInterface::factory);
+        network.register_interface("mockup", MockupInterfaceSetupData::factory);
         network
     }
 

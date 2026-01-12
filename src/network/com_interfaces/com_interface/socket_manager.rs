@@ -45,14 +45,14 @@ impl ComInterfaceSocketManager {
             .unwrap();
         // FIXME socket state (socket should no longer exist)
     }
-
+    
     /// Registers an endpoint for a socket and notifies listeners on ComHub
-    pub fn register_socket_with_endpoint(
+    pub fn register_socket_endpoint(
         &mut self,
         socket_uuid: ComInterfaceSocketUUID,
         endpoint: Endpoint,
         distance: u8,
-    ) -> Result<(), ComInterfaceError> {
+    ) {
         debug!("Socket registered: {socket_uuid} {endpoint}");
         self.socket_event_sender
             .start_send(ComInterfaceSocketEvent::RegisteredSocket(
@@ -61,9 +61,9 @@ impl ComInterfaceSocketManager {
                 endpoint,
             ))
             .unwrap();
-        Ok(())
     }
 
+    /// Creates and initializes a new socket and returns its UUID and sender
     pub fn create_and_init_socket(
         &mut self,
         direction: InterfaceDirection,

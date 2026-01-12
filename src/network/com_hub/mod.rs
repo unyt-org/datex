@@ -64,7 +64,6 @@ pub mod com_hub_interface;
 
 use crate::{
     network::com_interfaces::com_interface::ComInterface,
-    utils::once_consumer::OnceConsumer,
 };
 use crate::task::UnboundedSender;
 

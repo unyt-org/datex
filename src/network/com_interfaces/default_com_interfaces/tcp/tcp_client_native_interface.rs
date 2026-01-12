@@ -4,7 +4,7 @@ use crate::{
     network::{
         com_hub::errors::InterfaceCreateError,
         com_interfaces::com_interface::{
-            ComInterface, ComInterfaceImplEvent,
+            ComInterface, ComInterfaceEvent,
             error::ComInterfaceError,
             implementation::{
                 ComInterfaceAsyncFactory, ComInterfaceAsyncFactoryResult,
@@ -53,10 +53,7 @@ impl TCPClientInterfaceSetupData {
 
         let (read_half, tx) = stream.into_split();
 
-        let (socket_uuid, sender) = com_interface_proxy
-            .socket_manager
-            .lock()
-            .unwrap()
+        let (_, sender) = com_interface_proxy
             .create_and_init_socket(InterfaceDirection::InOut, 1);
 
         let shutdown_signal = com_interface_proxy.shutdown_signal();
@@ -118,17 +115,17 @@ impl TCPClientInterfaceSetupData {
     /// background task to handle com hub events (e.g. outgoing messages)
     async fn event_handler_task(
         mut write: OwnedWriteHalf,
-        mut receiver: UnboundedReceiver<ComInterfaceImplEvent>,
+        mut receiver: UnboundedReceiver<ComInterfaceEvent>,
     ) {
         while let Some(event) = receiver.next().await {
             match event {
-                ComInterfaceImplEvent::SendBlock(block, _) => {
+                ComInterfaceEvent::SendBlock(block, _) => {
                     if let Err(e) = write.write_all(&block).await {
                         error!("Failed to send data: {}", e);
                         // TODO: handle error properly
                     }
                 }
-                ComInterfaceImplEvent::Destroy => {
+                ComInterfaceEvent::Destroy => {
                     break;
                 }
                 _ => todo!(),
