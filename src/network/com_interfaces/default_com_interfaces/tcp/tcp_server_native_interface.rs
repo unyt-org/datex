@@ -260,7 +260,7 @@ mod tests {
         const PORT: u16 = 5088;
         let interface_properties = TCPServerInterfaceSetupData::create_interface(
             TCPServerInterfaceSetupData::new_with_port(PORT),
-            ComInterfaceProxy::new().0
+            ComInterfaceProxy::new_with_channels().0
         ).await.unwrap();
 
         assert_eq!(interface_properties.name, Some(format!("0.0.0.0:{}", PORT)));
@@ -274,7 +274,7 @@ mod tests {
                     "invalid-address".to_string(),
                     5088
                 ),
-                ComInterfaceProxy::new().0
+                ComInterfaceProxy::new_with_channels().0
             ).await,
             Err(InterfaceCreateError::InvalidSetupData(_))
         );

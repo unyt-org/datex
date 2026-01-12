@@ -3,7 +3,7 @@ use std::{cell::RefCell, rc::Rc};
 use datex_core::{
     network::com_interfaces::{
         com_interface,
-        default_com_interfaces::base_interface::BaseInterfaceHolder,
+        default_com_interfaces::base_interface::BaseInterface,
     },
     stdlib::{future::Future, pin::Pin},
 };
@@ -15,7 +15,7 @@ use datex_core::{
             socket::ComInterfaceSocketUUID, state::ComInterfaceState,
         },
         default_com_interfaces::base_interface::{
-            BaseInterface, BaseInterfaceSetupData,
+            BaseInterfaceSetupData,
         },
     },
     utils::context::init_global_context,
@@ -30,8 +30,8 @@ pub async fn test_construct() {
     const MESSAGE_A_TO_B: &[u8] = b"Hello from A";
     const MESSAGE_B_TO_A: &[u8] = b"Hello from B";
 
-    let base_interface_a = SharedLazyValue::<BaseInterfaceHolder>::new();
-    let base_interface_b = SharedLazyValue::<BaseInterfaceHolder>::new();
+    let base_interface_a = SharedLazyValue::<BaseInterface>::new();
+    let base_interface_b = SharedLazyValue::<BaseInterface>::new();
     let socket_a_uuid = SharedLazyValue::<ComInterfaceSocketUUID>::new();
     let socket_b_uuid = SharedLazyValue::<ComInterfaceSocketUUID>::new();
 
@@ -88,10 +88,10 @@ pub async fn test_construct() {
         },
     );
 
-    base_interface_a.set(BaseInterfaceHolder::new(
+    base_interface_a.set(BaseInterface::create(
         BaseInterfaceSetupData::with_callback(callback_a),
     ));
-    base_interface_b.set(BaseInterfaceHolder::new(
+    base_interface_b.set(BaseInterface::create(
         BaseInterfaceSetupData::with_callback(callback_b),
     ));
 

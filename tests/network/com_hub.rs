@@ -27,7 +27,7 @@ use datex_core::{
                 state::ComInterfaceState,
             },
             default_com_interfaces::base_interface::{
-                BaseInterface, BaseInterfaceHolder, BaseInterfaceSetupData,
+                BaseInterface, BaseInterfaceSetupData,
             },
         },
     },
@@ -211,7 +211,7 @@ pub async fn send_blocks_to_multiple_endpoints() {
 
     let (outgoing_blocks_sender, mut outgoing_blocks_receiver) = create_unbounded_channel::<(Vec<u8>, ComInterfaceSocketUUID)>();
 
-    let mut base_interface = BaseInterfaceHolder::new(
+    let mut base_interface = BaseInterface::create(
         BaseInterfaceSetupData {
             properties: Default::default(),
             on_send_callback: Box::new(
@@ -606,7 +606,7 @@ pub async fn test_reconnect() {
     let com_hub = create_mock_com_hub();
 
     // create a new interface, open it and add it to the com_hub
-    let base_interface = BaseInterfaceHolder::new(BaseInterfaceSetupData::new(
+    let base_interface = BaseInterface::create(BaseInterfaceSetupData::new(
         InterfaceProperties {
             reconnection_config: ReconnectionConfig::ReconnectWithTimeout {
                 timeout: Duration::from_secs(1),

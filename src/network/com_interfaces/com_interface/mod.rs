@@ -66,7 +66,7 @@ pub enum ComInterfaceImplEvent {
 
 #[derive(Debug)]
 pub struct ComInterfaceProxy {
-    // Unique identifier
+    // Unique identifier for the interface
     pub uuid: ComInterfaceUUID,
 
     /// Connection state
@@ -75,7 +75,7 @@ pub struct ComInterfaceProxy {
     /// Manager for sockets associated with this interface
     pub socket_manager: Arc<Mutex<ComInterfaceSocketManager>>,
 
-    /// Sender for interface implementation events (used by the ComInterface to send events to the implementation)
+    /// receiver for internal interface events that must be handled by the proxy (e.g. blocks to send)
     pub event_receiver: UnboundedReceiver<ComInterfaceImplEvent>,
 }
 
@@ -93,7 +93,9 @@ type ComInterfaceProxyShared = (
 
 
 impl ComInterfaceProxy {
-    pub fn new() -> (Self,ComInterfaceProxyChannels) {
+    /// Creates a raw default ComInterfaceProxy instance along with its communication channels
+    /// This can be used to connect a ComInterface implementation with the ComInterfaceProxy
+    pub fn new_with_channels() -> (Self, ComInterfaceProxyChannels) {
 
         // set up channels
         let (interface_event_sender, interface_event_receiver) =
@@ -127,6 +129,22 @@ impl ComInterfaceProxy {
                 socket_event_receiver,
                 interface_impl_event_sender,
             )
+        )
+    }
+
+    /// Creates a new ComInterface instance along with its proxy, configured with the specified properties
+    pub fn create_interface(properties: InterfaceProperties) -> (Self, ComInterface) {
+        // Create a proxy for initialization
+        let (com_interface_proxy, channels) = ComInterfaceProxy::new_with_channels();
+        let com_interface_proxy_shared  = com_interface_proxy.clone_shared();
+
+        (
+            com_interface_proxy,
+            ComInterface::init_from_proxy_and_properties(
+                com_interface_proxy_shared,
+                channels,
+                properties,
+            ),
         )
     }
 
@@ -192,7 +210,7 @@ impl ComInterface {
         setup_data: ValueContainer,
     ) -> Result<ComInterface, InterfaceCreateError> {
         // Create a proxy for initialization
-        let (com_interface_proxy, channels) = ComInterfaceProxy::new();
+        let (com_interface_proxy, channels) = ComInterfaceProxy::new_with_channels();
         let com_interface_proxy_shared  = com_interface_proxy.clone_shared();
 
         // Create the implementation using the factory function
@@ -211,7 +229,7 @@ impl ComInterface {
         setup_data: ValueContainer,
     ) -> Result<ComInterface, InterfaceCreateError> {
         // Create a proxy for initialization
-        let (com_interface_proxy, channels) = ComInterfaceProxy::new();
+        let (com_interface_proxy, channels) = ComInterfaceProxy::new_with_channels();
         let com_interface_proxy_shared  = com_interface_proxy.clone_shared();
 
         // Create the implementation using the factory function
@@ -231,7 +249,7 @@ impl ComInterface {
     ) -> Result<ComInterface, InterfaceCreateError>
     {
         // Create a proxy for initialization
-        let (com_interface_proxy, channels) = ComInterfaceProxy::new();
+        let (com_interface_proxy, channels) = ComInterfaceProxy::new_with_channels();
         let com_interface_proxy_shared  = com_interface_proxy.clone_shared();
 
         // Create the implementation using the factory function
@@ -251,7 +269,7 @@ impl ComInterface {
     ) -> Result<ComInterface, InterfaceCreateError>
     {
         // Create a proxy for initialization
-        let (com_interface_proxy, channels) = ComInterfaceProxy::new();
+        let (com_interface_proxy, channels) = ComInterfaceProxy::new_with_channels();
         let com_interface_proxy_shared  = com_interface_proxy.clone_shared();
 
         // Create the implementation using the factory function

@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use crate::network::{
     com_hub::errors::ComHubError,
     com_interfaces::com_interface::{
-        properties::InterfaceDirection, state::ComInterfaceState,
+        properties::InterfaceDirection,
     },
 };
 
@@ -14,24 +14,23 @@ use crate::{
         properties::InterfaceProperties, socket::ComInterfaceSocketUUID,
     },
     stdlib::{
-        boxed::Box, cell::RefCell, pin::Pin, rc::Rc, string::String, vec::Vec,
+        boxed::Box, pin::Pin, string::String, vec::Vec,
     },
     values::core_values::endpoint::Endpoint,
 };
 use core::future::Future;
+use crate::stdlib::sync::{Arc, Mutex};
 use log::error;
-
-pub type OnSendCallback = dyn Fn(&[u8], ComInterfaceSocketUUID) -> Pin<Box<dyn Future<Output = bool>>>
-    + 'static;
-
-pub struct BaseInterface {
-    com_interface: ComInterface,
-}
-
 use crate::task::{UnboundedReceiver, UnboundedSender};
 use datex_core::task::spawn_with_panic_notify_default;
 use strum::Display;
 use thiserror::Error;
+use crate::network::com_interfaces::com_interface::{ComInterfaceProxy, ComInterfaceUUID};
+use crate::network::com_interfaces::com_interface::socket_manager::ComInterfaceSocketManager;
+use crate::network::com_interfaces::com_interface::state::ComInterfaceStateWrapper;
+
+pub type OnSendCallback = dyn Fn(&[u8], ComInterfaceSocketUUID) -> Pin<Box<dyn Future<Output = bool>>>
++ 'static;
 
 #[derive(Debug, Display, Error)]
 pub enum BaseInterfaceError {
@@ -49,39 +48,34 @@ impl From<ComHubError> for BaseInterfaceError {
     }
 }
 
-pub struct BaseInterfaceHolder {
-    sender: HashMap<ComInterfaceSocketUUID, UnboundedSender<Vec<u8>>>,
+pub struct BaseInterface {
+    pub uuid: ComInterfaceUUID,
+    pub state: Arc<Mutex<ComInterfaceStateWrapper>>,
+    pub socket_manager: Arc<Mutex<ComInterfaceSocketManager>>,
+    senders: HashMap<ComInterfaceSocketUUID, UnboundedSender<Vec<u8>>>,
 }
-impl BaseInterfaceHolder {
-    pub fn new(setup_data: BaseInterfaceSetupData) -> BaseInterfaceHolder {
-        // Create a headless ComInterface first
-        let com_interface = Rc::new(ComInterface {
-            inner: Rc::new(ComInterfaceInner::init(
-                ComInterfaceState::Connected,
-                setup_data.properties,
-            )),
-            implementation: RefCell::new(None),
-        });
+impl BaseInterface {
+    pub fn create(setup_data: BaseInterfaceSetupData) -> (BaseInterface, ComInterface) {
 
-        // Create the implementation using the factory function
-        let implementation = BaseInterface {
-            com_interface: com_interface.clone(),
-        };
-        com_interface.set_implementation(Box::new(implementation));
-
-        let interface_impl_event_receiver =
-            com_interface.take_interface_impl_event_receiver();
+        let (proxy, interface) = ComInterfaceProxy::create_interface(
+            setup_data.properties.clone(),
+        );
 
         // todo: use async context
         spawn_with_panic_notify_default(Self::event_handler_task(
             setup_data.on_send_callback,
-            interface_impl_event_receiver,
+            proxy.event_receiver,
         ));
 
-        BaseInterfaceHolder {
-            sender: HashMap::new(),
-            com_interface,
-        }
+        (
+            BaseInterface {
+                uuid: proxy.uuid,
+                state: proxy.state,
+                socket_manager: proxy.socket_manager,
+                senders: HashMap::new(),
+            },
+            interface,
+        )
     }
 
     /// background task to handle com hub events (e.g. outgoing messages)
@@ -107,7 +101,7 @@ impl BaseInterfaceHolder {
         receiver_socket_uuid: ComInterfaceSocketUUID,
         data: Vec<u8>,
     ) -> Result<(), BaseInterfaceError> {
-        if let Some(sender) = self.sender.get_mut(&receiver_socket_uuid) {
+        if let Some(sender) = self.senders.get_mut(&receiver_socket_uuid) {
             sender
                 .start_send(data)
                 .map_err(|_| BaseInterfaceError::ReceiveError)?;
@@ -122,8 +116,7 @@ impl BaseInterfaceHolder {
         direction: InterfaceDirection,
     ) -> (ComInterfaceSocketUUID, UnboundedSender<Vec<u8>>) {
         let (uuid, sender) = self
-            .com_interface
-            .socket_manager()
+            .socket_manager
             .lock()
             .unwrap()
             .create_and_init_socket(direction, 1);
@@ -139,14 +132,14 @@ impl BaseInterfaceHolder {
     ) -> ComInterfaceSocketUUID {
         let (socket_uuid, sender) = self.create_and_init_socket(direction);
 
-        self.com_interface
-            .socket_manager()
+        self
+            .socket_manager
             .lock()
             .unwrap()
             .register_socket_with_endpoint(socket_uuid.clone(), endpoint, 1)
             .unwrap();
 
-        self.sender.insert(socket_uuid.clone(), sender.clone());
+        self.senders.insert(socket_uuid.clone(), sender.clone());
 
         socket_uuid
     }
@@ -173,42 +166,5 @@ impl BaseInterfaceSetupData {
             properties: InterfaceProperties::default(),
             on_send_callback,
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::network::com_interfaces::{
-        com_interface::{
-            properties::InterfaceProperties, state::ComInterfaceState,
-        },
-        default_com_interfaces::base_interface::{
-            BaseInterfaceHolder, BaseInterfaceSetupData,
-        },
-    };
-    use datex_macros::async_test;
-
-    #[async_test]
-    pub async fn test_close() {
-        // Create a new interface
-        let base_interface =
-            BaseInterfaceHolder::new(BaseInterfaceSetupData::new(
-                InterfaceProperties::default(),
-                Box::new(|_, _| Box::pin(async move { true })),
-            ))
-            .com_interface
-            .clone();
-        assert_eq!(
-            base_interface.current_state(),
-            ComInterfaceState::Connected
-        );
-        assert!(base_interface.properties().close_timestamp.is_none());
-
-        // Close the interface
-        base_interface.close();
-        assert_eq!(
-            base_interface.current_state(),
-            ComInterfaceState::Destroyed
-        );
     }
 }

@@ -35,6 +35,7 @@ use crate::{
 pub trait WebRTCTraitInternal<DC: 'static, MR: 'static, ML: 'static> {
     // These method must be implemented in the interface
     fn provide_data_channels(&self) -> Rc<RefCell<DataChannels<DC>>>;
+    fn provide_socket_manager(&self) -> Arc<Mutex<ComInterfaceSocketManager>>;
     fn provide_remote_media_tracks(&self) -> Rc<RefCell<MediaTracks<MR>>>;
     fn provide_local_media_tracks(&self) -> Rc<RefCell<MediaTracks<ML>>>;
     fn get_commons(&self) -> Arc<Mutex<WebRTCCommon>>;
@@ -217,7 +218,7 @@ pub trait WebRTCTrait<DC: 'static, MR: 'static, ML: 'static>:
                 self._remote_endpoint(),
                 data_channels,
                 data_channel_rc.clone(),
-                self.provide_com_interface().socket_manager(),
+                self.provide_socket_manager(),
             )
             .await?;
         }
@@ -277,7 +278,7 @@ pub trait WebRTCTrait<DC: 'static, MR: 'static, ML: 'static>:
         let commons = self.get_commons();
         let remote_endpoint = self.remote_endpoint();
         let com_interface_socket_manager =
-            self.provide_com_interface().socket_manager();
+            self.provide_socket_manager();
 
         data_channels.borrow_mut().on_add =
             Some(Box::new(move |data_channel| {

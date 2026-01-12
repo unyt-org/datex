@@ -63,6 +63,7 @@ use webrtc::{
     },
 };
 use datex_core::network::com_interfaces::com_interface::ComInterfaceProxy;
+use crate::network::com_interfaces::com_interface::socket_manager::ComInterfaceSocketManager;
 
 pub type TrackLocal = dyn webrtc::track::track_local::TrackLocal + Send + Sync;
 
@@ -82,6 +83,7 @@ pub struct WebRTCNativeInterface {
     data_channels: Rc<RefCell<DataChannels<Arc<RTCDataChannel>>>>,
     remote_media_tracks: Rc<RefCell<MediaTracks<Arc<TrackRemote>>>>,
     local_media_tracks: Rc<RefCell<MediaTracks<Arc<TrackLocal>>>>,
+    socket_manager: Arc<Mutex<ComInterfaceSocketManager>>,
     rtc_configuration: RefCell<RTCConfiguration>,
 }
 
@@ -110,6 +112,10 @@ impl WebRTCTraitInternal<Arc<RTCDataChannel>, Arc<TrackRemote>, Arc<TrackLocal>>
         &self,
     ) -> Rc<RefCell<MediaTracks<Arc<TrackLocal>>>> {
         self.local_media_tracks.clone()
+    }
+
+    fn provide_socket_manager(&self) -> Arc<Mutex<ComInterfaceSocketManager>> {
+        self.socket_manager.clone()
     }
     
     async fn handle_create_data_channel(
@@ -405,6 +411,7 @@ impl WebRTCInterfaceSetupData {
             data_channels: Rc::new(RefCell::new(DataChannels::default())),
             remote_media_tracks: Rc::new(RefCell::new(MediaTracks::default())),
             local_media_tracks: Rc::new(RefCell::new(MediaTracks::default())),
+            socket_manager: com_interface_proxy.socket_manager.clone(),
             rtc_configuration: RefCell::new(RTCConfiguration {
                 ..Default::default()
             }),
