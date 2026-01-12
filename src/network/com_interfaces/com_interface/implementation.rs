@@ -6,35 +6,11 @@ use crate::{
         },
     },
     serde::{Deserialize, deserializer::from_value_container},
-    stdlib::{any::Any, rc::Rc},
+    stdlib::{rc::Rc},
     values::value_container::ValueContainer,
 };
-use core::pin::Pin;
-
-pub trait ComInterfaceImplementation {
-    // NOTE: ComInterfaceImplementation is no longer used for any method calls, just as a marker trait for com interface implementations
-    // FIXME: we might remove the ComInterfaceImplementation trait and dont store any dyn references to the impl since
-    // the channels are enough to interact with the interface
-}
-
-/// A specific implementation of a communication interface for a channel
-pub trait ComInterfaceImpl: ComInterfaceImplementation + Any {
-    fn as_any(&self) -> &dyn Any;
-    fn as_any_mut(&mut self) -> &mut dyn Any;
-}
-
-impl<T> ComInterfaceImpl for T
-where
-    T: ComInterfaceImplementation + Any,
-{
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-
-    fn as_any_mut(&mut self) -> &mut dyn Any {
-        self
-    }
-}
+pub(crate) use crate::network::com_hub::managers::interface_manager::ComInterfaceAsyncFactoryResult;
+use crate::network::com_interfaces::com_interface::ComInterfaceProxy;
 
 /// This trait can be implemented by any ComInterfaceImplementation impl that wants to
 /// support a factory method for creating instances of the interface.
@@ -48,24 +24,20 @@ where
 /// use datex_core::network::com_interfaces::com_interface::implementation::{ComInterfaceImplementation, ComInterfaceSyncFactory};
 /// use datex_core::network::com_interfaces::com_interface::properties::InterfaceProperties;
 ///
-/// struct ExampleInterface;
-/// impl ComInterfaceImplementation for ExampleInterface {}
 ///
 /// #[derive(Serialize, Deserialize)]
-/// struct BaseInterfaceSetupData {
+/// struct ExampleInterfaceSetupData {
 ///    pub example_data: String,
 /// }
 ///
-/// impl ComInterfaceSyncFactory for ExampleInterface {
-///     type SetupData = BaseInterfaceSetupData;
-/// 
+/// impl ComInterfaceSyncFactory for ExampleInterfaceSetupData {
 ///     fn create(
-///         setup_data: Self::SetupData,
-///         com_interface: Rc<ComInterface>,
-///     ) -> Result<(Self, InterfaceProperties), InterfaceCreateError> {
+///         setup_data: Self,
+///         com_interface: ComInterface,
+///     ) -> Result<InterfaceProperties, InterfaceCreateError> {
 ///         todo!()
 ///     }
-/// 
+///
 ///     fn get_default_properties() -> InterfaceProperties {
 ///         InterfaceProperties {
 ///             interface_type: "example".to_string(),
@@ -75,24 +47,21 @@ where
 /// }
 pub trait ComInterfaceSyncFactory
 where
-    Self: Sized + ComInterfaceImpl,
+    Self: Deserialize<'static> + 'static,
 {
-    type SetupData: Deserialize<'static> + 'static;
-
     /// The factory method that is called from the ComHub on a registered interface
     /// to create a new instance of the interface.
     /// The setup data is passed as a ValueContainer and has to be downcasted
     fn factory(
         setup_data: ValueContainer,
-        com_interface: Rc<ComInterface>,
+        com_interface_proxy: ComInterfaceProxy,
     ) -> Result<
-        (Box<dyn ComInterfaceImpl>, InterfaceProperties),
+        InterfaceProperties,
         InterfaceCreateError,
     > {
-        let setup_data = from_value_container::<Self::SetupData>(setup_data)
+        let setup_data = from_value_container::<Self>(setup_data)
             .map_err(|_| InterfaceCreateError::SetupDataParseError)?;
-        let (interface, properties) = Self::create(setup_data, com_interface)?;
-        Ok((Box::new(interface), properties))
+        Self::create_interface(setup_data, com_interface_proxy)
     }
 
     /// Register the interface on which the factory is implemented
@@ -105,43 +74,32 @@ where
     /// Create a new instance of the interface with the given setup data.
     /// If no instance could be created with the given setup data,
     /// None is returned.
-    fn create(
-        setup_data: Self::SetupData,
-        com_interface: Rc<ComInterface>,
-    ) -> Result<(Self, InterfaceProperties), InterfaceCreateError>;
+    fn create_interface(
+        self,
+        com_interface_proxy: ComInterfaceProxy,
+    ) -> Result<InterfaceProperties, InterfaceCreateError>;
 
     /// Get the default interface properties for the interface.
     fn get_default_properties() -> InterfaceProperties;
 }
 
-pub type ComInterfaceAsyncFactoryResult<T> = Pin<
-    Box<
-        dyn Future<
-                Output = Result<(T, InterfaceProperties), InterfaceCreateError>,
-            > + 'static,
-    >,
->;
 
 pub trait ComInterfaceAsyncFactory
 where
-    Self: Sized + ComInterfaceImpl,
+    Self: Deserialize<'static> + 'static,
 {
-    type SetupData: Deserialize<'static> + 'static;
-
     /// The factory method that is called from the ComHub on a registered interface
     /// to create a new instance of the interface.
     /// The setup data is passed as a ValueContainer and has to be downcasted
     fn factory(
         setup_data: ValueContainer,
-        com_interface: Rc<ComInterface>,
-    ) -> ComInterfaceAsyncFactoryResult<Box<dyn ComInterfaceImpl>> {
+        com_interface_proxy: ComInterfaceProxy,
+    ) -> ComInterfaceAsyncFactoryResult {
         Box::pin(async move {
             let setup_data =
-                from_value_container::<Self::SetupData>(setup_data)
+                from_value_container::<Self>(setup_data)
                     .map_err(|_| InterfaceCreateError::SetupDataParseError)?;
-            let (interface, properties) =
-                Self::create(setup_data, com_interface).await?;
-            Ok((Box::new(interface) as Box<dyn ComInterfaceImpl>, properties))
+            Self::create_interface(setup_data, com_interface_proxy).await
         })
     }
 
@@ -155,10 +113,10 @@ where
     /// Create a new instance of the interface with the given setup data.
     /// If no instance could be created with the given setup data,
     /// None is returned.
-    fn create(
-        setup_data: Self::SetupData,
-        com_interface: Rc<ComInterface>,
-    ) -> ComInterfaceAsyncFactoryResult<Self>;
+    fn create_interface(
+        self,
+        com_interface_proxy: ComInterfaceProxy,
+    ) -> ComInterfaceAsyncFactoryResult;
 
     /// Get the default interface properties for the interface.
     fn get_default_properties() -> InterfaceProperties;

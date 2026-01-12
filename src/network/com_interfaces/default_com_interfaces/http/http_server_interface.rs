@@ -33,10 +33,10 @@ use axum::{
     extract::{Path, State},
     routing::get,
 };
-use datex_core::network::com_interfaces::com_interface::implementation::ComInterfaceImplementation;
 use log::{debug, error, info};
 use tokio::sync::{RwLock, broadcast, mpsc};
 use url::Url;
+use datex_core::network::com_interfaces::com_interface::ComInterfaceProxy;
 
 async fn server_to_client_handler(
     Path(route): Path<String>,
@@ -95,14 +95,6 @@ async fn client_to_server_handler(
     }
 }
 
-pub struct HTTPServerNativeInterface {
-    pub address: Url,
-    com_interface: Rc<ComInterface>,
-    socket_channel_mapping:
-        Rc<RefCell<HashMap<String, ComInterfaceSocketUUID>>>,
-    channels: Arc<RwLock<HTTPChannelMap>>,
-}
-
 type HTTPChannelMap =
     HashMap<String, (broadcast::Sender<Bytes>, mpsc::Sender<Bytes>)>;
 
@@ -111,73 +103,74 @@ struct HTTPServerState {
     channels: Arc<RwLock<HTTPChannelMap>>,
 }
 
-impl HTTPServerNativeInterface {
-    pub async fn add_channel(&mut self, route: &str, endpoint: Endpoint) {
-        let mut map = self.channels.write().await;
-        if !map.contains_key(route) {
-            let (server_tx, _) = broadcast::channel::<Bytes>(100);
-            let (client_tx, mut rx) = mpsc::channel::<Bytes>(100); // FIXME #198 not braodcast needed
-            map.insert(route.to_string(), (server_tx, client_tx));
-            let (socket_uuid, mut sender) = self
-                .com_interface
-                .socket_manager()
-                .lock()
-                .unwrap()
-                .create_and_init_socket(InterfaceDirection::InOut, 1);
-            self.com_interface
-                .socket_manager()
-                .lock()
-                .unwrap()
-                .register_socket_with_endpoint(socket_uuid.clone(), endpoint, 1)
-                .unwrap();
+impl HTTPServerInterfaceSetupData {
+    // FIXME: implement channel if needed, but not via methods on the HTTPServerInterfaceSetupData struct
+    // pub async fn add_channel(&mut self, route: &str, endpoint: Endpoint) {
+    //     let mut map = self.channels.write().await;
+    //     if !map.contains_key(route) {
+    //         let (server_tx, _) = broadcast::channel::<Bytes>(100);
+    //         let (client_tx, mut rx) = mpsc::channel::<Bytes>(100); // FIXME #198 not braodcast needed
+    //         map.insert(route.to_string(), (server_tx, client_tx));
+    //         let (socket_uuid, mut sender) = self
+    //             .com_interface
+    //             .socket_manager()
+    //             .lock()
+    //             .unwrap()
+    //             .create_and_init_socket(InterfaceDirection::InOut, 1);
+    //         self.com_interface
+    //             .socket_manager()
+    //             .lock()
+    //             .unwrap()
+    //             .register_socket_with_endpoint(socket_uuid.clone(), endpoint, 1)
+    //             .unwrap();
+    //
+    //         self.socket_channel_mapping
+    //             .borrow_mut()
+    //             .insert(route.to_string(), socket_uuid.clone());
+    //
+    //         spawn(async move {
+    //             loop {
+    //                 if let Some(data) = rx.recv().await {
+    //                     debug!(
+    //                         "Received data from socket {:?}: {}",
+    //                         data.to_vec(),
+    //                         socket_uuid
+    //                     );
+    //                     sender.start_send(data.to_vec()).unwrap();
+    //                 }
+    //             }
+    //         });
+    //     }
+    // }
+    //
+    // pub async fn remove_channel(&mut self, route: &str) {
+    //     let mapping = self.socket_channel_mapping.clone();
+    //     let socket_uuid = {
+    //         let mapping = mapping.borrow();
+    //         if let Some(socket_uuid) = mapping.get(route) {
+    //             socket_uuid.clone()
+    //         } else {
+    //             return;
+    //         }
+    //     };
+    //
+    //     self.com_interface
+    //         .socket_manager()
+    //         .lock()
+    //         .unwrap()
+    //         .remove_socket(socket_uuid);
+    //
+    //     let mut map = self.channels.write().await;
+    //     if map.get(route).is_some() {
+    //         map.remove(route);
+    //     }
+    // }
 
-            self.socket_channel_mapping
-                .borrow_mut()
-                .insert(route.to_string(), socket_uuid.clone());
-
-            spawn(async move {
-                loop {
-                    if let Some(data) = rx.recv().await {
-                        debug!(
-                            "Received data from socket {:?}: {}",
-                            data.to_vec(),
-                            socket_uuid
-                        );
-                        sender.start_send(data.to_vec()).unwrap();
-                    }
-                }
-            });
-        }
-    }
-
-    pub async fn remove_channel(&mut self, route: &str) {
-        let mapping = self.socket_channel_mapping.clone();
-        let socket_uuid = {
-            let mapping = mapping.borrow();
-            if let Some(socket_uuid) = mapping.get(route) {
-                socket_uuid.clone()
-            } else {
-                return;
-            }
-        };
-
-        self.com_interface
-            .socket_manager()
-            .lock()
-            .unwrap()
-            .remove_socket(socket_uuid);
-
-        let mut map = self.channels.write().await;
-        if map.get(route).is_some() {
-            map.remove(route);
-        }
-    }
-
-    async fn create(
-        setup_data: HTTPServerInterfaceSetupData,
-        com_interface: Rc<ComInterface>,
-    ) -> Result<(Self, InterfaceProperties), InterfaceCreateError> {
-        let address: String = format!("http://127.0.0.1:{}", setup_data.port);
+    async fn create_interface(
+        self,
+        com_interface_proxy: ComInterfaceProxy,
+    ) -> Result<InterfaceProperties, InterfaceCreateError> {
+        let address: String = format!("http://0.0.0.0:{}", self.port);
         let address = Url::parse(&address)
             .map_err(InterfaceCreateError::invalid_setup_data)?;
 
@@ -215,18 +208,10 @@ impl HTTPServerNativeInterface {
         spawn_with_panic_notify_default(Self::event_handler_task(
             socket_channel_mapping.clone(),
             channels.clone(),
-            com_interface.take_interface_impl_event_receiver(),
+            com_interface_proxy.event_receiver,
         ));
 
-        Ok((
-            HTTPServerNativeInterface {
-                channels,
-                address,
-                socket_channel_mapping,
-                com_interface,
-            },
-            Self::get_default_properties(),
-        ))
+        Ok(Self::get_default_properties())
     }
 
     /// background task to handle com hub events (e.g. outgoing messages)
@@ -263,17 +248,13 @@ impl HTTPServerNativeInterface {
     }
 }
 
-impl ComInterfaceImplementation for HTTPServerNativeInterface {}
-
-impl ComInterfaceAsyncFactory for HTTPServerNativeInterface {
-    type SetupData = HTTPServerInterfaceSetupData;
-
-    fn create(
-        setup_data: Self::SetupData,
-        com_interface: Rc<ComInterface>,
-    ) -> ComInterfaceAsyncFactoryResult<Self> {
+impl ComInterfaceAsyncFactory for HTTPServerInterfaceSetupData {
+    fn create_interface(
+        self,
+        com_interface_proxy: ComInterfaceProxy,
+    ) -> ComInterfaceAsyncFactoryResult {
         Box::pin(async move {
-            HTTPServerNativeInterface::create(setup_data, com_interface).await
+            self.create_interface(com_interface_proxy).await
         })
     }
 

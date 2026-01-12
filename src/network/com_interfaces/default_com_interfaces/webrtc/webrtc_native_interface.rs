@@ -30,7 +30,7 @@ use crate::{
             error::ComInterfaceError,
             implementation::{
                 ComInterfaceAsyncFactory, ComInterfaceAsyncFactoryResult,
-                ComInterfaceImplementation, ComInterfaceSyncFactory,
+                ComInterfaceSyncFactory,
             },
             properties::InterfaceProperties,
         },
@@ -62,6 +62,7 @@ use webrtc::{
         track_remote::{OnMuteHdlrFn, TrackRemote},
     },
 };
+use datex_core::network::com_interfaces::com_interface::ComInterfaceProxy;
 
 pub type TrackLocal = dyn webrtc::track::track_local::TrackLocal + Send + Sync;
 
@@ -76,7 +77,6 @@ enum MediaChannelEvent {
 }
 
 pub struct WebRTCNativeInterface {
-    com_interface: Rc<ComInterface>,
     commons: Arc<Mutex<WebRTCCommon>>,
     peer_connection: Arc<Mutex<Option<RTCPeerConnection>>>,
     data_channels: Rc<RefCell<DataChannels<Arc<RTCDataChannel>>>>,
@@ -111,11 +111,7 @@ impl WebRTCTraitInternal<Arc<RTCDataChannel>, Arc<TrackRemote>, Arc<TrackLocal>>
     ) -> Rc<RefCell<MediaTracks<Arc<TrackLocal>>>> {
         self.local_media_tracks.clone()
     }
-
-    fn provide_com_interface(&self) -> &Rc<ComInterface> {
-        &self.com_interface
-    }
-
+    
     async fn handle_create_data_channel(
         &self,
     ) -> Result<DataChannel<Arc<RTCDataChannel>>, WebRTCError> {
@@ -397,14 +393,13 @@ impl WebRTCTraitInternal<Arc<RTCDataChannel>, Arc<TrackRemote>, Arc<TrackLocal>>
     }
 }
 
-impl WebRTCNativeInterface {
-    async fn create(
-        setup_data: WebRTCInterfaceSetupData,
-        com_interface: Rc<ComInterface>,
-    ) -> Result<(Self, InterfaceProperties), InterfaceCreateError> {
-        let commons = WebRTCCommon::new(setup_data.peer_endpoint);
+impl WebRTCInterfaceSetupData {
+    async fn create_interface(
+        self,
+        com_interface_proxy: ComInterfaceProxy,
+    ) -> Result<InterfaceProperties, InterfaceCreateError> {
+        let commons = WebRTCCommon::new(self.peer_endpoint);
         let interface = WebRTCNativeInterface {
-            com_interface,
             commons: Arc::new(Mutex::new(commons)),
             peer_connection: Arc::new(Mutex::new(None)),
             data_channels: Rc::new(RefCell::new(DataChannels::default())),
@@ -414,7 +409,7 @@ impl WebRTCNativeInterface {
                 ..Default::default()
             }),
         };
-        if let Some(ice_servers) = setup_data.ice_servers {
+        if let Some(ice_servers) = self.ice_servers {
             interface.set_ice_servers(ice_servers);
         }
 
@@ -609,14 +604,12 @@ impl WebRTCNativeInterface {
 
         // spawn event handler task
         let data_channels_clone = interface.data_channels.clone();
-        let receiver =
-            interface.com_interface.take_interface_impl_event_receiver();
         spawn_with_panic_notify_default(Self::event_handler_task(
             data_channels_clone,
-            receiver,
+            com_interface_proxy.event_receiver,
         ));
 
-        Ok((interface, Self::get_default_properties()))
+        Ok(Self::get_default_properties())
     }
 
     /// background task to handle com hub events (e.g. outgoing messages)
@@ -652,16 +645,13 @@ impl WebRTCNativeInterface {
     }
 }
 
-impl ComInterfaceImplementation for WebRTCNativeInterface {}
-
-impl ComInterfaceAsyncFactory for WebRTCNativeInterface {
-    type SetupData = WebRTCInterfaceSetupData;
-    fn create(
-        setup_data: Self::SetupData,
-        com_interface: Rc<ComInterface>,
-    ) -> ComInterfaceAsyncFactoryResult<Self> {
+impl ComInterfaceAsyncFactory for WebRTCInterfaceSetupData {
+    fn create_interface(
+        self,
+        com_interface_proxy: ComInterfaceProxy,
+    ) -> ComInterfaceAsyncFactoryResult {
         Box::pin(async move {
-            WebRTCNativeInterface::create(setup_data, com_interface).await
+            self.create_interface(com_interface_proxy).await
         })
     }
 

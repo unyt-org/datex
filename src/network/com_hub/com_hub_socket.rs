@@ -14,7 +14,7 @@ use crate::{
 impl ComHub {
     pub(crate) fn handle_interface_socket_events(
         &self,
-        interface: Rc<ComInterface>,
+        interface: &ComInterface,
     ) {
         let socket_event_receiver = interface.take_socket_event_receiver();
         let interface_uuid = interface.uuid();

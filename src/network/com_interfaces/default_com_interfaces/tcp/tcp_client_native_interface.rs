@@ -8,14 +8,13 @@ use crate::{
             error::ComInterfaceError,
             implementation::{
                 ComInterfaceAsyncFactory, ComInterfaceAsyncFactoryResult,
-                ComInterfaceImplementation,
             },
             properties::{InterfaceDirection, InterfaceProperties},
             socket::ComInterfaceSocketUUID,
             state::{ComInterfaceState, ComInterfaceStateWrapper},
         },
     },
-    stdlib::{net::SocketAddr, rc::Rc, sync::Arc},
+    stdlib::{net::SocketAddr, sync::Arc},
     task::{
         UnboundedReceiver, UnboundedSender, spawn_with_panic_notify_default,
     },
@@ -31,20 +30,21 @@ use tokio::{
     select,
     sync::Notify,
 };
+use crate::network::com_interfaces::com_interface::ComInterfaceProxy;
 
 pub struct TCPClientNativeInterface {
     pub address: SocketAddr,
     pub socket_uuid: ComInterfaceSocketUUID,
-    com_interface: Rc<ComInterface>,
+    com_interface: ComInterface,
 }
 
 /// Implementation of the TCP Client Native Interface
-impl TCPClientNativeInterface {
-    async fn create(
-        setup_data: TCPClientInterfaceSetupData,
-        com_interface: Rc<ComInterface>,
-    ) -> Result<(Self, InterfaceProperties), InterfaceCreateError> {
-        let address = SocketAddr::from_str(&setup_data.address)
+impl TCPClientInterfaceSetupData {
+    async fn create_interface(
+        self,
+        com_interface_proxy: ComInterfaceProxy,
+    ) -> Result<InterfaceProperties, InterfaceCreateError> {
+        let address = SocketAddr::from_str(&self.address)
             .map_err(InterfaceCreateError::invalid_setup_data)?;
 
         let stream = TcpStream::connect(address).await.map_err(|error| {
@@ -53,36 +53,28 @@ impl TCPClientNativeInterface {
 
         let (read_half, tx) = stream.into_split();
 
-        let (socket_uuid, sender) = com_interface
-            .socket_manager()
+        let (socket_uuid, sender) = com_interface_proxy
+            .socket_manager
             .lock()
             .unwrap()
             .create_and_init_socket(InterfaceDirection::InOut, 1);
 
-        let state = com_interface.state();
-        let shutdown_signal = com_interface.shutdown_signal();
+        let shutdown_signal = com_interface_proxy.shutdown_signal();
 
         spawn_with_panic_notify_default(async move {
-            Self::handle_receive(read_half, sender, state, shutdown_signal)
+            Self::handle_receive(read_half, sender, com_interface_proxy.state, shutdown_signal)
                 .await;
         });
 
         spawn_with_panic_notify_default(Self::event_handler_task(
             tx,
-            com_interface.take_interface_impl_event_receiver(),
+            com_interface_proxy.event_receiver,
         ));
 
-        Ok((
-            TCPClientNativeInterface {
-                address,
-                socket_uuid,
-                com_interface,
-            },
-            InterfaceProperties {
-                name: Some(setup_data.address),
-                ..Self::get_default_properties()
-            },
-        ))
+        Ok(InterfaceProperties {
+            name: Some(self.address),
+            ..Self::get_default_properties()
+        })
     }
 
     /// Background task to handle incoming messages
@@ -145,17 +137,13 @@ impl TCPClientNativeInterface {
     }
 }
 
-impl ComInterfaceImplementation for TCPClientNativeInterface {}
-
-impl ComInterfaceAsyncFactory for TCPClientNativeInterface {
-    type SetupData = TCPClientInterfaceSetupData;
-
-    fn create(
-        setup_data: Self::SetupData,
-        com_interface: Rc<ComInterface>,
-    ) -> ComInterfaceAsyncFactoryResult<Self> {
+impl ComInterfaceAsyncFactory for TCPClientInterfaceSetupData {
+    fn create_interface(
+        self,
+        com_interface_proxy: ComInterfaceProxy,
+    ) -> ComInterfaceAsyncFactoryResult {
         Box::pin(async move {
-            TCPClientNativeInterface::create(setup_data, com_interface).await
+            self.create_interface(com_interface_proxy).await
         })
     }
 

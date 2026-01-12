@@ -37,7 +37,7 @@ use tokio::net::tcp::OwnedWriteHalf;
 
 pub struct MockupInterface {
     pub(crate) outgoing_queue: Rc<RefCell<Vec<(ComInterfaceSocketUUID, Vec<u8>)>>>,
-    com_interface: Rc<ComInterface>,
+    com_interface: ComInterface,
     setup_data: MockupInterfaceSetupData,
     pub socket_uuid: ComInterfaceSocketUUID,
 }
@@ -54,7 +54,7 @@ impl Debug for MockupInterface {
 impl MockupInterface {
     pub fn new(
         mut setup_data: MockupInterfaceSetupData,
-        com_interface: Rc<ComInterface>,
+        com_interface: ComInterface,
     ) -> Result<(Self, InterfaceProperties), InterfaceCreateError> {
         let outgoing_queue = Rc::new(RefCell::new(Vec::new()));
         let (socket_uuid, sender) =
@@ -94,7 +94,7 @@ impl MockupInterface {
 
     fn create_and_add_socket(
         setup_data: &MockupInterfaceSetupData,
-        com_interface: Rc<ComInterface>,
+        com_interface: ComInterface,
     ) -> Result<
         (ComInterfaceSocketUUID, UnboundedSender<Vec<u8>>),
         ComInterfaceError,
@@ -186,9 +186,9 @@ impl MockupInterfaceSetupData {
 impl ComInterfaceSyncFactory for MockupInterface {
     type SetupData = MockupInterfaceSetupData;
 
-    fn create(
+    fn create_interface(
         setup_data: Self::SetupData,
-        com_interface: Rc<ComInterface>,
+        com_interface: ComInterface,
     ) -> Result<(MockupInterface, InterfaceProperties), InterfaceCreateError>
     {
         MockupInterface::new(setup_data, com_interface)

@@ -66,9 +66,9 @@ impl Default for MockupSetupData {
 /// Helper function to create a mock setup with a com hub and a mockup interface
 pub async fn get_mock_setup_with_com_hub(
     mock_setup_data: MockupSetupData,
-) -> (Rc<ComHub>, Rc<ComInterface>) {
+) -> (Rc<ComHub>, ComInterface) {
     // init mockup interface
-    let mockup_interface = ComInterface::create_sync_with_implementation::<
+    let mockup_interface = ComInterface::create_sync_from_setup_data::<
         MockupInterface,
     >(mock_setup_data.interface_setup_data)
         .unwrap();
@@ -90,12 +90,12 @@ pub async fn get_mock_setup_with_com_hub(
 pub async fn get_default_mock_setup_with_two_connected_com_hubs() -> (
     (
         Rc<ComHub>,
-        Rc<ComInterface>,
+        ComInterface,
         UnboundedReceiver<IncomingSection>,
     ),
     (
         Rc<ComHub>,
-        Rc<ComInterface>,
+        ComInterface,
         UnboundedReceiver<IncomingSection>,
     )
 ) {
@@ -143,7 +143,7 @@ pub async fn get_default_mock_setup_with_two_connected_com_hubs() -> (
 
 /// Helper function to create a mock setup with a com hub and an existing interface
 pub fn get_mock_setup_with_interface(
-    interface: Rc<ComInterface>,
+    interface: ComInterface,
     local_endpoint: Endpoint,
     incoming_sections_sender: Option<UnboundedSender<IncomingSection>>,
     interface_priority: InterfacePriority,
@@ -170,7 +170,7 @@ pub fn get_mock_setup_with_interface(
 /// The endpoint at the mockup interface socket is set to TEST_ENDPOINT_B
 pub async fn get_default_mock_setup_with_com_hub() -> (
     Rc<ComHub>,
-    Rc<ComInterface>,
+    ComInterface,
     UnboundedSender<Vec<u8>>,
     UnboundedReceiver<IncomingSection>,
 ) {
@@ -201,14 +201,14 @@ pub async fn get_default_mock_setup_with_com_hub() -> (
 /// Helper function to create a mock setup with a full runtime and a mockup interface
 pub async fn get_mock_setup_with_runtime(
     mock_setup_data: MockupSetupData,
-) -> (Runtime, Rc<ComInterface>) {
+) -> (Runtime, ComInterface) {
     // init com hub
     let runtime = Runtime::init_native(RuntimeConfig::new_with_endpoint(
         mock_setup_data.local_endpoint,
     ));
 
     // init mockup interface
-    let mockup_interface_ref = ComInterface::create_sync_with_implementation::<
+    let mockup_interface_ref = ComInterface::create_sync_from_setup_data::<
         MockupInterface,
     >(mock_setup_data.interface_setup_data)
     .unwrap();

@@ -26,7 +26,7 @@ use futures::future::join_all;
 #[async_test]
 pub async fn test_client_no_connection() {
     assert_matches!(
-        ComInterface::create_async_with_implementation::<
+        ComInterface::create_async_from_setup_data::<
             TCPClientNativeInterface,
         >(TCPClientInterfaceSetupData {
             address: "0.0.0.0:9086".to_string(),
@@ -47,7 +47,7 @@ pub async fn test_construct() {
 
     // let mut server = TCPServerNativeInterface::new(PORT).unwrap();
     let server_interface =
-        ComInterface::create_async_with_implementation::<
+        ComInterface::create_async_from_setup_data::<
             TCPServerNativeInterface,
         >(TCPServerInterfaceSetupData::new_with_port(PORT))
         .await
@@ -55,7 +55,7 @@ pub async fn test_construct() {
     let mut server_interface_socket_event_receiver =
         server_interface.take_socket_event_receiver();
 
-    let client_interface = ComInterface::create_async_with_implementation::<
+    let client_interface = ComInterface::create_async_from_setup_data::<
         TCPClientNativeInterface,
     >(TCPClientInterfaceSetupData {
         address: format!("0.0.0.0:{PORT}"),

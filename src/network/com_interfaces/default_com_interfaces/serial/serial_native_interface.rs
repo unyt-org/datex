@@ -3,14 +3,13 @@ use crate::{
     network::{
         com_hub::errors::InterfaceCreateError,
         com_interfaces::com_interface::{
-            ComInterface, ComInterfaceImplEvent,
+            ComInterfaceImplEvent,
             error::ComInterfaceError,
             implementation::{
-                ComInterfaceAsyncFactory, ComInterfaceImplementation,
+                ComInterfaceAsyncFactory,
                 ComInterfaceSyncFactory,
             },
             properties::{InterfaceDirection, InterfaceProperties},
-            socket::ComInterfaceSocketUUID,
             state::ComInterfaceState,
         },
     },
@@ -25,13 +24,10 @@ use core::{prelude::rust_2024::*, result::Result};
 use log::{debug, error, warn};
 use serialport::SerialPort;
 use tokio::sync::Notify;
+use datex_core::network::com_interfaces::com_interface::ComInterfaceProxy;
 
-pub struct SerialNativeInterface {
-    com_interface: Rc<ComInterface>,
-    pub socket_uuid: ComInterfaceSocketUUID,
-}
 
-impl SerialNativeInterface {
+impl SerialInterfaceSetupData {
     const TIMEOUT: Duration = Duration::from_millis(1000);
     const BUFFER_SIZE: usize = 1024;
     const DEFAULT_BAUD_RATE: u32 = 115200;
@@ -44,13 +40,11 @@ impl SerialNativeInterface {
             .collect()
     }
 
-    fn create(
-        setup_data: SerialInterfaceSetupData,
-        com_interface: Rc<ComInterface>,
-    ) -> Result<(Self, InterfaceProperties), InterfaceCreateError> {
-        let state = com_interface.state();
-
-        let port_name = setup_data.port_name.clone().ok_or(
+    fn create_interface(
+        self,
+        com_interface_proxy: ComInterfaceProxy,
+    ) -> Result<InterfaceProperties, InterfaceCreateError> {
+        let port_name = self.port_name.clone().ok_or(
             InterfaceCreateError::invalid_setup_data("Port name is required"),
         )?;
 
@@ -60,7 +54,7 @@ impl SerialNativeInterface {
             ));
         }
 
-        let port = serialport::new(port_name, setup_data.baud_rate)
+        let port = serialport::new(port_name, self.baud_rate)
             .timeout(Self::TIMEOUT)
             .open()
             .map_err(|err| {
@@ -69,8 +63,8 @@ impl SerialNativeInterface {
         let port = Arc::new(Mutex::new(port));
         let port_clone = port.clone();
 
-        let (socket_uuid, mut sender) = com_interface
-            .socket_manager()
+        let (socket_uuid, mut sender) = com_interface_proxy
+            .socket_manager
             .lock()
             .unwrap()
             .create_and_init_socket(InterfaceDirection::InOut, 1);
@@ -111,23 +105,17 @@ impl SerialNativeInterface {
                 }
             }
             // FIXME #212 add reconnect logic (close gracefully and reopen)
-            state.try_lock().unwrap().set(ComInterfaceState::Destroyed);
+            com_interface_proxy.state.try_lock().unwrap().set(ComInterfaceState::Destroyed);
             warn!("Serial socket closed");
         });
 
         spawn_with_panic_notify_default(Self::event_handler_task(
-            com_interface.take_interface_impl_event_receiver(),
+            com_interface_proxy.event_receiver,
             port.clone(),
             shutdown_signal.clone(),
         ));
 
-        Ok((
-            SerialNativeInterface {
-                com_interface,
-                socket_uuid,
-            },
-            Self::get_default_properties(),
-        ))
+        Ok(Self::get_default_properties())
     }
 
     /// background task to handle com hub events (e.g. outgoing messages)
@@ -151,13 +139,12 @@ impl SerialNativeInterface {
     }
 }
 
-impl ComInterfaceSyncFactory for SerialNativeInterface {
-    type SetupData = SerialInterfaceSetupData;
-    fn create(
-        setup_data: Self::SetupData,
-        com_interface: Rc<ComInterface>,
-    ) -> Result<(Self, InterfaceProperties), InterfaceCreateError> {
-        SerialNativeInterface::create(setup_data, com_interface)
+impl ComInterfaceSyncFactory for SerialInterfaceSetupData {
+    fn create_interface(
+        self,
+        com_interface_proxy: ComInterfaceProxy,
+    ) -> Result<InterfaceProperties, InterfaceCreateError> {
+        self.create_interface(com_interface_proxy)
     }
 
     fn get_default_properties() -> InterfaceProperties {
@@ -170,5 +157,3 @@ impl ComInterfaceSyncFactory for SerialNativeInterface {
         }
     }
 }
-
-impl ComInterfaceImplementation for SerialNativeInterface {}

@@ -1,5 +1,4 @@
 use crate::stdlib::{
-    rc::Rc,
     sync::{Arc, Mutex},
     time::Duration,
 };
@@ -18,14 +17,12 @@ use crate::{
     network::{
         com_hub::errors::InterfaceCreateError,
         com_interfaces::com_interface::{
-            ComInterface, ComInterfaceImplEvent,
+            ComInterfaceImplEvent,
             error::ComInterfaceError,
             implementation::{
                 ComInterfaceAsyncFactory, ComInterfaceAsyncFactoryResult,
-                ComInterfaceImplementation,
             },
             properties::{InterfaceDirection, InterfaceProperties},
-            socket::ComInterfaceSocketUUID,
             state::{ComInterfaceState, ComInterfaceStateWrapper},
         },
     },
@@ -34,29 +31,23 @@ use crate::{
     },
 };
 use tokio_tungstenite::{MaybeTlsStream, WebSocketStream};
+use datex_core::network::com_interfaces::com_interface::ComInterfaceProxy;
 
-pub struct WebSocketClientNativeInterface {
-    pub address: Url,
-    pub socket_uuid: ComInterfaceSocketUUID,
-    com_interface: Rc<ComInterface>,
-}
-impl WebSocketClientNativeInterface {
-    async fn create(
-        setup_data: WebSocketClientInterfaceSetupData,
-        com_interface: Rc<ComInterface>,
-    ) -> Result<(Self, InterfaceProperties), InterfaceCreateError> {
+impl WebSocketClientInterfaceSetupData {
+    async fn create_interface(
+        self,
+        com_interface_proxy: ComInterfaceProxy,
+    ) -> Result<InterfaceProperties, InterfaceCreateError> {
         let (address, write, read) =
-            Self::create_websocket_client_connection(&setup_data).await?;
+            self.create_websocket_client_connection().await?;
 
-        let (socket_uuid, sender) = com_interface
-            .socket_manager()
+        let (_, sender) = com_interface_proxy
+            .socket_manager
             .lock()
             .unwrap()
             .create_and_init_socket(InterfaceDirection::InOut, 1);
 
-        let state = com_interface.state();
-        let interface_impl_event_receiver =
-            com_interface.take_interface_impl_event_receiver();
+        let state = com_interface_proxy.state;
 
         spawn_with_panic_notify_default(Self::read_task(
             read,
@@ -66,21 +57,14 @@ impl WebSocketClientNativeInterface {
 
         spawn_with_panic_notify_default(Self::event_handler_task(
             write,
-            interface_impl_event_receiver,
+            com_interface_proxy.event_receiver,
             state,
         ));
 
-        Ok((
-            WebSocketClientNativeInterface {
-                address: address.clone(),
-                socket_uuid,
-                com_interface,
-            },
-            InterfaceProperties {
-                name: Some(address.to_string()),
-                ..Self::get_default_properties()
-            },
-        ))
+        Ok(InterfaceProperties {
+            name: Some(address.to_string()),
+            ..Self::get_default_properties()
+        },)
     }
 
     /// background task to read messages from the websocket
@@ -151,7 +135,7 @@ impl WebSocketClientNativeInterface {
 
     /// initialize a new websocket client connection
     async fn create_websocket_client_connection(
-        setup_data: &WebSocketClientInterfaceSetupData,
+        &self,
     ) -> Result<
         (
             Url,
@@ -160,7 +144,7 @@ impl WebSocketClientNativeInterface {
         ),
         InterfaceCreateError,
     > {
-        let address = parse_url(&setup_data.address).map_err(|_| {
+        let address = parse_url(&self.address).map_err(|_| {
             InterfaceCreateError::InvalidSetupData(
                 "Invalid WebSocket URL".to_string(),
             )
@@ -186,17 +170,14 @@ impl WebSocketClientNativeInterface {
     }
 }
 
-impl ComInterfaceImplementation for WebSocketClientNativeInterface {}
+impl ComInterfaceAsyncFactory for WebSocketClientInterfaceSetupData {
 
-impl ComInterfaceAsyncFactory for WebSocketClientNativeInterface {
-    type SetupData = WebSocketClientInterfaceSetupData;
-
-    fn create(
-        setup_data: Self::SetupData,
-        com_interface: Rc<ComInterface>,
-    ) -> ComInterfaceAsyncFactoryResult<Self> {
+    fn create_interface(
+        self,
+        com_interface_proxy: ComInterfaceProxy,
+    ) -> ComInterfaceAsyncFactoryResult {
         Box::pin(async move {
-            WebSocketClientNativeInterface::create(setup_data, com_interface)
+            self.create_interface(com_interface_proxy)
                 .await
         })
     }

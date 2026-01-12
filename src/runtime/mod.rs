@@ -49,6 +49,11 @@ use execution::context::{
 use global_context::{GlobalContext, set_global_context};
 use log::{debug, error, info};
 use serde::{Deserialize, Serialize};
+use datex_core::network::com_interfaces::default_com_interfaces::tcp::tcp_common::TCPClientInterfaceSetupData;
+use datex_core::network::com_interfaces::default_com_interfaces::websocket::websocket_common::WebSocketClientInterfaceSetupData;
+use crate::network::com_interfaces::default_com_interfaces::serial::serial_common::SerialInterfaceSetupData;
+use crate::network::com_interfaces::default_com_interfaces::tcp::tcp_common::TCPServerInterfaceSetupData;
+use crate::network::com_interfaces::default_com_interfaces::websocket::websocket_common::WebSocketServerInterfaceSetupData;
 use crate::task::{create_unbounded_channel, UnboundedReceiver};
 
 pub mod dif_interface;
@@ -604,15 +609,15 @@ impl Runtime {
 
     fn register_interface_factories(&self) {
         #[cfg(feature = "native_websocket")]
-        crate::network::com_interfaces::default_com_interfaces::websocket::websocket_client_native_interface::WebSocketClientNativeInterface::register_on_com_hub(self.com_hub());
+        WebSocketClientInterfaceSetupData::register_on_com_hub(self.com_hub());
         #[cfg(feature = "native_websocket")]
-        crate::network::com_interfaces::default_com_interfaces::websocket::websocket_server_native_interface::WebSocketServerNativeInterface::register_on_com_hub(self.com_hub());
+        WebSocketServerInterfaceSetupData::register_on_com_hub(self.com_hub());
         #[cfg(feature = "native_serial")]
-        crate::network::com_interfaces::default_com_interfaces::serial::serial_native_interface::SerialNativeInterface::register_on_com_hub(self.com_hub());
+        SerialInterfaceSetupData::register_on_com_hub(self.com_hub());
         #[cfg(feature = "native_tcp")]
-        crate::network::com_interfaces::default_com_interfaces::tcp::tcp_client_native_interface::TCPClientNativeInterface::register_on_com_hub(self.com_hub());
+        TCPClientInterfaceSetupData::register_on_com_hub(self.com_hub());
         #[cfg(feature = "native_tcp")]
-        crate::network::com_interfaces::default_com_interfaces::tcp::tcp_server_native_interface::TCPServerNativeInterface::register_on_com_hub(self.com_hub());
+        TCPServerInterfaceSetupData::register_on_com_hub(self.com_hub());
         // TODO #234:
         // #[cfg(feature = "native_webrtc")]
         // crate::network::com_interfaces::default_com_interfaces::webrtc::webrtc_native_interface::WebRTCNativeInterface::register_on_com_hub(self.com_hub());

@@ -35,13 +35,13 @@ use webrtc::{
 };
 
 async fn create_webrtc_interfaces() -> (
-    Rc<ComInterface>,
-    Rc<ComInterface>,
+    ComInterface,
+    ComInterface,
     UnboundedReceiver<ComInterfaceSocketEvent>,
     UnboundedReceiver<ComInterfaceSocketEvent>,
 ) {
     // Create a WebRTCNativeInterface instance on each side (remote: @a)
-    let com_interface_a = ComInterface::create_async_with_implementation::<
+    let com_interface_a = ComInterface::create_async_from_setup_data::<
         WebRTCNativeInterface,
     >(WebRTCInterfaceSetupData {
         peer_endpoint: TEST_ENDPOINT_A.clone(),
@@ -52,7 +52,7 @@ async fn create_webrtc_interfaces() -> (
     let receiver_a = com_interface_a.take_socket_event_receiver();
 
     // Create a WebRTCNativeInterface instance on each side (remote: @b)
-    let com_interface_b = ComInterface::create_async_with_implementation::<
+    let com_interface_b = ComInterface::create_async_from_setup_data::<
         WebRTCNativeInterface,
     >(WebRTCInterfaceSetupData {
         peer_endpoint: TEST_ENDPOINT_B.clone(),
@@ -103,8 +103,8 @@ async fn create_webrtc_interfaces() -> (
 }
 
 async fn setup_webrtc_interfaces() -> (
-    Rc<ComInterface>,
-    Rc<ComInterface>,
+    ComInterface,
+    ComInterface,
     ComInterfaceSocket,
     ComInterfaceSocket,
 ) {

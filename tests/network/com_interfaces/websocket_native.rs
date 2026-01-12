@@ -35,7 +35,7 @@ pub async fn test_create_socket_connection() {
     let server_to_client_message =
         DXBBlock::new_with_body(b"Hello from server to client");
 
-    let server_interface = ComInterface::create_async_with_implementation::<
+    let server_interface = ComInterface::create_async_from_setup_data::<
         WebSocketServerNativeInterface,
     >(WebSocketServerInterfaceSetupData {
         port: PORT,
@@ -46,7 +46,7 @@ pub async fn test_create_socket_connection() {
     let mut server_interface_socket_event_receiver =
         server_interface.take_socket_event_receiver();
 
-    let client_interface = ComInterface::create_async_with_implementation::<
+    let client_interface = ComInterface::create_async_from_setup_data::<
         WebSocketClientNativeInterface,
     >(WebSocketClientInterfaceSetupData {
         address: format!("ws://localhost:{PORT}"),
@@ -109,7 +109,7 @@ pub async fn test_create_socket_connection() {
 #[async_test]
 pub async fn test_construct_client() {
     // Test with a invalid URL
-    let client_res = ComInterface::create_async_with_implementation::<
+    let client_res = ComInterface::create_async_from_setup_data::<
         WebSocketClientNativeInterface,
     >(WebSocketClientInterfaceSetupData {
         address: "ftp://localhost:1234".to_string(),
@@ -121,7 +121,7 @@ pub async fn test_construct_client() {
     );
 
     // We expect a connection error here, as the server can't be reached
-    let client_res = ComInterface::create_async_with_implementation::<
+    let client_res = ComInterface::create_async_from_setup_data::<
         WebSocketClientNativeInterface,
     >(WebSocketClientInterfaceSetupData {
         address: "ws://localhost.invalid:1234".to_string(),

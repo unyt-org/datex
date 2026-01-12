@@ -22,7 +22,7 @@ pub async fn test_construct() {
     if !available_ports.contains(&PORT_NAME.to_string()) {
         return;
     }
-    let mut interface = ComInterface::create_sync_with_implementation::<
+    let mut interface = ComInterface::create_sync_from_setup_data::<
         SerialNativeInterface,
     >(SerialInterfaceSetupData {
         port_name: Some(PORT_NAME.to_string()),

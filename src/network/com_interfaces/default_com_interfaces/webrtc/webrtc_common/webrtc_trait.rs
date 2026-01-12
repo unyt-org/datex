@@ -18,7 +18,7 @@ use super::{
 use crate::{
     network::com_interfaces::{
         com_interface::{
-            ComInterface, properties::InterfaceDirection,
+            properties::InterfaceDirection,
             socket::ComInterfaceSocketUUID,
             socket_manager::ComInterfaceSocketManager,
         },
@@ -38,7 +38,6 @@ pub trait WebRTCTraitInternal<DC: 'static, MR: 'static, ML: 'static> {
     fn provide_remote_media_tracks(&self) -> Rc<RefCell<MediaTracks<MR>>>;
     fn provide_local_media_tracks(&self) -> Rc<RefCell<MediaTracks<ML>>>;
     fn get_commons(&self) -> Arc<Mutex<WebRTCCommon>>;
-    fn provide_com_interface(&self) -> &Rc<ComInterface>;
     async fn handle_create_data_channel(
         &self,
     ) -> Result<DataChannel<DC>, WebRTCError>;

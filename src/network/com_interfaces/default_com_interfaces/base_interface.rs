@@ -4,14 +4,13 @@ use std::collections::HashMap;
 use crate::network::{
     com_hub::errors::ComHubError,
     com_interfaces::com_interface::{
-        implementation::ComInterfaceImplementation,
         properties::InterfaceDirection, state::ComInterfaceState,
     },
 };
 
 use crate::{
     network::com_interfaces::com_interface::{
-        ComInterface, ComInterfaceImplEvent, ComInterfaceInner,
+        ComInterface, ComInterfaceImplEvent,
         properties::InterfaceProperties, socket::ComInterfaceSocketUUID,
     },
     stdlib::{
@@ -26,7 +25,7 @@ pub type OnSendCallback = dyn Fn(&[u8], ComInterfaceSocketUUID) -> Pin<Box<dyn F
     + 'static;
 
 pub struct BaseInterface {
-    com_interface: Rc<ComInterface>,
+    com_interface: ComInterface,
 }
 
 use crate::task::{UnboundedReceiver, UnboundedSender};
@@ -52,7 +51,6 @@ impl From<ComHubError> for BaseInterfaceError {
 
 pub struct BaseInterfaceHolder {
     sender: HashMap<ComInterfaceSocketUUID, UnboundedSender<Vec<u8>>>,
-    pub com_interface: Rc<ComInterface>,
 }
 impl BaseInterfaceHolder {
     pub fn new(setup_data: BaseInterfaceSetupData) -> BaseInterfaceHolder {
@@ -153,8 +151,6 @@ impl BaseInterfaceHolder {
         socket_uuid
     }
 }
-
-impl ComInterfaceImplementation for BaseInterface {}
 
 #[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
 pub struct BaseInterfaceSetupData {

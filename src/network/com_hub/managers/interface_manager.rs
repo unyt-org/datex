@@ -1,8 +1,7 @@
 use crate::{
     network::com_interfaces::com_interface::{
-        implementation::ComInterfaceImpl, properties::InterfaceDirection,
-    },
-    stdlib::rc::Rc,
+        properties::InterfaceDirection,
+    }
 };
 use core::pin::Pin;
 
@@ -22,31 +21,35 @@ use crate::{
     values::value_container::ValueContainer,
 };
 use crate::network::com_hub::errors::InterfaceAddError;
+use crate::network::com_interfaces::com_interface::ComInterfaceProxy;
 
 type InterfaceMap =
-    HashMap<ComInterfaceUUID, (Rc<ComInterface>, InterfacePriority)>;
+    HashMap<ComInterfaceUUID, (ComInterface, InterfacePriority)>;
 
 pub type SyncComInterfaceImplementationFactoryFn = fn(
     setup_data: ValueContainer,
-    interface: Rc<ComInterface>,
+    proxy: ComInterfaceProxy,
 ) -> Result<
-    (Box<dyn ComInterfaceImpl>, InterfaceProperties),
+    InterfaceProperties,
     InterfaceCreateError,
 >;
 
-pub type AsyncComInterfaceImplementationFactoryFn = fn(
-    setup_data: ValueContainer,
-    interface: Rc<ComInterface>,
-) -> Pin<
+pub type ComInterfaceAsyncFactoryResult = Pin<
     Box<
         dyn Future<
-                Output = Result<
-                    (Box<dyn ComInterfaceImpl>, InterfaceProperties),
-                    InterfaceCreateError,
-                >,
-            > + 'static,
+            Output = Result<
+                InterfaceProperties,
+                InterfaceCreateError,
+            >,
+        > + 'static,
     >,
 >;
+
+
+pub type AsyncComInterfaceImplementationFactoryFn = fn(
+    setup_data: ValueContainer,
+    proxy: ComInterfaceProxy,
+) -> ComInterfaceAsyncFactoryResult;
 
 pub enum SyncOrAsyncComInterfaceImplementationFactoryFn {
     Sync(SyncComInterfaceImplementationFactoryFn),
@@ -101,7 +104,7 @@ impl InterfaceManager {
         interface_type: &str,
         setup_data: ValueContainer,
         priority: InterfacePriority,
-    ) -> Result<Rc<ComInterface>, InterfaceCreateError> {
+    ) -> Result<&ComInterface, InterfaceCreateError> {
         info!("creating interface {interface_type}");
         if let Some(factory) = self.interface_factories.get(interface_type) {
             match factory {
@@ -112,8 +115,8 @@ impl InterfaceManager {
                         *sync_factory,
                         setup_data,
                     )?;
-                    self.add_interface(interface.clone(), priority)
-                        .map(|_| interface)
+                    let uuid = interface.uuid().clone();
+                    self.add_interface(interface, priority)
                         .map_err(|e| e.into())
                 }
                 SyncOrAsyncComInterfaceImplementationFactoryFn::Async(
@@ -124,9 +127,7 @@ impl InterfaceManager {
                         setup_data,
                     )
                     .await?;
-
-                    self.add_interface(interface.clone(), priority)
-                        .map(|_| interface)
+                    self.add_interface(interface, priority)
                         .map_err(|e| e.into())
                 }
             }
@@ -144,7 +145,7 @@ impl InterfaceManager {
         interface_type: &str,
         setup_data: ValueContainer,
         priority: InterfacePriority,
-    ) -> Result<Rc<ComInterface>, InterfaceCreateError> {
+    ) -> Result<&ComInterface, InterfaceCreateError> {
         info!("creating interface {interface_type}");
         if let Some(factory) = self.interface_factories.get(interface_type) {
             match factory {
@@ -155,8 +156,7 @@ impl InterfaceManager {
                         *sync_factory,
                         setup_data,
                     )?;
-                    self.add_interface(interface.clone(), priority)
-                        .map(|_| interface)
+                    self.add_interface(interface, priority)
                         .map_err(|e| e.into())
                 }
                 SyncOrAsyncComInterfaceImplementationFactoryFn::Async(_) => Err(
@@ -175,10 +175,10 @@ impl InterfaceManager {
 
     /// Returns the com interface for a given UUID
     /// The interface is returned as a dynamic trait object
-    pub fn try_dyn_interface_by_uuid(
+    pub fn try_interface_by_uuid(
         &self,
         uuid: &ComInterfaceUUID,
-    ) -> Option<Rc<ComInterface>> {
+    ) -> Option<&ComInterface> {
         self.interfaces
             .get(uuid)
             .map(|(interface, _)| interface.clone())
@@ -187,11 +187,11 @@ impl InterfaceManager {
     /// Returns the com interface for a given UUID
     /// The interface must be registered in the ComHub,
     /// otherwise a panic will be triggered
-    pub(crate) fn dyn_interface_by_uuid(
+    pub(crate) fn get_interface_by_uuid(
         &self,
         interface_uuid: &ComInterfaceUUID,
-    ) -> Rc<ComInterface> {
-        self.try_dyn_interface_by_uuid(interface_uuid)
+    ) -> &ComInterface {
+        self.try_interface_by_uuid(interface_uuid)
             .unwrap_or_else(|| {
                 core::panic!("Interface for uuid {interface_uuid} not found")
             })
@@ -200,9 +200,9 @@ impl InterfaceManager {
     /// Adds an interface to the manager, checking for duplicates
     pub fn add_interface(
         &mut self,
-        interface: Rc<ComInterface>,
+        interface: ComInterface,
         priority: InterfacePriority,
-    ) -> Result<(), InterfaceAddError> {
+    ) -> Result<&ComInterface, InterfaceAddError> {
         let uuid = interface.uuid().clone();
         if self.interfaces.contains_key(&uuid) {
             return Err(InterfaceAddError::InterfaceAlreadyExists);
@@ -217,8 +217,8 @@ impl InterfaceManager {
             );
         }
 
-        self.interfaces.insert(uuid, (interface.clone(), priority));
-        Ok(())
+        self.interfaces.insert(uuid.clone(), (interface, priority));
+        Ok(self.get_interface_by_uuid(&uuid))
     }
 
     /// Returns the priority of the interface with the given UUID
@@ -238,20 +238,18 @@ impl InterfaceManager {
         interface_uuid: &ComInterfaceUUID,
     ) -> Result<(), ComHubError> {
         info!("Removing interface {interface_uuid}");
-        let interface = self
+        let interface = &mut self
             .interfaces
             .get_mut(interface_uuid)
             .ok_or(ComHubError::InterfaceDoesNotExist)?
-            .0
-            .clone();
+            .0;
         {
             // Async close the interface (stop tasks, server, cleanup internal data)
             interface.close();
             // TODO: await until closed asynchronously?
         }
 
-        self.cleanup_interface(interface_uuid)
-            .ok_or(ComHubError::InterfaceDoesNotExist)?;
+        self.cleanup_interface(interface_uuid)?;
 
         Ok(())
     }
@@ -261,8 +259,9 @@ impl InterfaceManager {
     fn cleanup_interface(
         &mut self,
         interface_uuid: &ComInterfaceUUID,
-    ) -> Option<Rc<ComInterface>> {
-        Some(self.interfaces.remove(interface_uuid).or(None)?.0)
+    ) -> Result<(), ComHubError> {
+        self.interfaces.remove(interface_uuid).ok_or(ComHubError::InterfaceDoesNotExist)
+            .map(|_| ())
     }
 
     /// Handles interface events received from interfaces

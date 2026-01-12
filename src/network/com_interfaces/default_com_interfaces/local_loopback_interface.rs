@@ -1,5 +1,5 @@
 use crate::network::com_interfaces::com_interface::{
-    ComInterface, ComInterfaceImplEvent,
+    ComInterfaceImplEvent,
 };
 
 use crate::{
@@ -7,65 +7,55 @@ use crate::{
         com_hub::errors::InterfaceCreateError,
         com_interfaces::com_interface::{
             implementation::{
-                ComInterfaceImplementation, ComInterfaceSyncFactory,
+                ComInterfaceSyncFactory,
             },
             properties::{InterfaceDirection, InterfaceProperties},
         },
     },
-    stdlib::{rc::Rc, string::ToString},
+    stdlib::{string::ToString},
     task::{
-        UnboundedReceiver, UnboundedSender, spawn_with_panic_notify_default,
+        spawn_with_panic_notify_default,
     },
     values::core_values::endpoint::Endpoint,
 };
 use core::{prelude::rust_2024::*, result::Result, time::Duration};
+use serde::Deserialize;
+use datex_core::network::com_interfaces::com_interface::ComInterfaceProxy;
 
 /// A simple local loopback interface that puts outgoing data
 /// back into the incoming queue.
-pub struct LocalLoopbackInterface;
-impl ComInterfaceImplementation for LocalLoopbackInterface {}
+#[derive(Deserialize)]
+pub struct LocalLoopbackInterfaceSetupData;
 
-impl LocalLoopbackInterface {
-    /// background task to handle com hub events (e.g. outgoing messages)
-    async fn event_handler_task(
-        mut sender: UnboundedSender<Vec<u8>>,
-        mut receiver: UnboundedReceiver<ComInterfaceImplEvent>,
-    ) {
-        while let Some(event) = receiver.next().await {
-            if let ComInterfaceImplEvent::SendBlock(block, _) = event {
-                sender.start_send(block).unwrap();
-            }
-        }
-    }
-}
+impl ComInterfaceSyncFactory for LocalLoopbackInterfaceSetupData {
 
-impl ComInterfaceSyncFactory for LocalLoopbackInterface {
-    type SetupData = ();
+    fn create_interface(
+        self,
+        mut com_interface_proxy: ComInterfaceProxy,
+    ) -> Result<InterfaceProperties, InterfaceCreateError> {
 
-    fn create(
-        _setup_data: Self::SetupData,
-        com_interface: Rc<ComInterface>,
-    ) -> Result<(Self, InterfaceProperties), InterfaceCreateError> {
         // directly create a socket and register it
-        let (socket_uuid, sender) = com_interface
-            .socket_manager()
+        let (socket_uuid, mut sender) = com_interface_proxy
+            .socket_manager
             .lock()
             .unwrap()
             .create_and_init_socket(InterfaceDirection::InOut, 1);
-        com_interface
-            .socket_manager()
+        com_interface_proxy
+            .socket_manager
             .lock()
             .unwrap()
             .register_socket_with_endpoint(socket_uuid, Endpoint::LOCAL, 1)?;
 
-        // TODO: use async context
         // spawn event handler task for impl events
-        spawn_with_panic_notify_default(Self::event_handler_task(
-            sender,
-            com_interface.take_interface_impl_event_receiver(),
-        ));
+        spawn_with_panic_notify_default(async move {
+            while let Some(event) = com_interface_proxy.event_receiver.next().await {
+                if let ComInterfaceImplEvent::SendBlock(block, _) = event {
+                    sender.start_send(block).unwrap();
+                }
+            }
+        });
 
-        Ok((LocalLoopbackInterface, Self::get_default_properties()))
+        Ok(Self::get_default_properties())
     }
 
     fn get_default_properties() -> InterfaceProperties {

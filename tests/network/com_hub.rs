@@ -63,7 +63,7 @@ fn create_mock_com_hub() -> Rc<ComHub> {
 pub async fn test_add_and_remove() {
 
     let com_hub = create_mock_com_hub();
-    let mockup_interface = ComInterface::create_sync_with_implementation::<MockupInterface>(MockupInterfaceSetupData::new("test"))
+    let mockup_interface = ComInterface::create_sync_from_setup_data::<MockupInterface>(MockupInterfaceSetupData::new("test"))
         .unwrap();
 
     let uuid = mockup_interface.uuid().clone();
@@ -81,12 +81,12 @@ pub async fn test_multiple_add() {
     let com_hub = create_mock_com_hub();
 
     let mockup_interface1 =
-        ComInterface::create_sync_with_implementation::<MockupInterface>(
+        ComInterface::create_sync_from_setup_data::<MockupInterface>(
             MockupInterfaceSetupData::new("mockup_interface1"),
         )
         .unwrap();
     let mockup_interface2 =
-        ComInterface::create_sync_with_implementation::<MockupInterface>(
+        ComInterface::create_sync_from_setup_data::<MockupInterface>(
             MockupInterfaceSetupData::new("mockup_interface2"),
         )
         .unwrap();

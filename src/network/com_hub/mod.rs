@@ -44,6 +44,8 @@ use itertools::Itertools;
 use log::{debug, error, info, warn};
 #[cfg(feature = "tokio_runtime")]
 use tokio::task::yield_now;
+use datex_core::network::com_interfaces::default_com_interfaces::local_loopback_interface::LocalLoopbackInterfaceSetupData;
+
 pub mod options;
 use crate::{
     global::dxb_block::{DXBBlock, IncomingSection},
@@ -54,7 +56,6 @@ use crate::{
         com_hub::network_tracing::{
             NetworkTraceHop, NetworkTraceHopDirection, NetworkTraceHopSocket,
         },
-        com_interfaces::default_com_interfaces::local_loopback_interface::LocalLoopbackInterface,
     },
     runtime::AsyncContext,
     values::core_values::endpoint::Endpoint,
@@ -126,7 +127,7 @@ impl Default for InterfacePriority {
 }
 
 #[cfg_attr(feature = "embassy_runtime", embassy_executor::task)]
-async fn reconnect_interface_task(interface: Rc<ComInterface>) {
+async fn reconnect_interface_task(interface: ComInterface) {
     /* FIXME Reconnect logic
     let config = interface.properties_mut();
     config.close_timestamp = None;
@@ -183,9 +184,7 @@ impl ComHub {
         });
 
         // add default local loopback interface
-        let local_interface = ComInterface::create_sync_with_implementation::<
-            LocalLoopbackInterface,
-        >(())
+        let local_interface = ComInterface::create_sync_from_setup_data(LocalLoopbackInterfaceSetupData)
         .unwrap();
 
         com_hub

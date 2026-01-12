@@ -16,7 +16,7 @@ use datex_macros::async_test;
 pub async fn test_construct() {
     const PORT: u16 = 8081;
 
-    let server = ComInterface::create_async_with_implementation::<
+    let server = ComInterface::create_async_from_setup_data::<
         HTTPServerNativeInterface,
     >(HTTPServerInterfaceSetupData { port: PORT })
     .await

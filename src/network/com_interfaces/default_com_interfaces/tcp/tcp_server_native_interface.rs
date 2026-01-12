@@ -4,18 +4,18 @@ use crate::{
     network::{
         com_hub::errors::InterfaceCreateError,
         com_interfaces::com_interface::{
-            ComInterface, ComInterfaceImplEvent,
+            ComInterfaceImplEvent,
             error::ComInterfaceError,
             implementation::{
                 ComInterfaceAsyncFactory, ComInterfaceAsyncFactoryResult,
-                ComInterfaceImplementation, ComInterfaceSyncFactory,
+                ComInterfaceSyncFactory,
             },
             properties::{InterfaceDirection, InterfaceProperties},
             socket::ComInterfaceSocketUUID,
         },
     },
     std_sync::Mutex,
-    stdlib::{collections::HashMap, net::SocketAddr, rc::Rc, sync::Arc},
+    stdlib::{collections::HashMap, net::SocketAddr, sync::Arc},
     task::{
         UnboundedReceiver, UnboundedSender, create_unbounded_channel,
         spawn_with_panic_notify_default,
@@ -32,26 +32,19 @@ use tokio::{
     select,
     sync::Notify,
 };
+use crate::network::com_interfaces::com_interface::ComInterfaceProxy;
 
-pub struct TCPServerNativeInterface {
-    // TODO: properties not really needed, just for testing purposes, can we remove this?
-    pub address: SocketAddr,
-    com_interface: Rc<ComInterface>,
-    pub tx_by_socket:
-        Arc<Mutex<HashMap<ComInterfaceSocketUUID, UnboundedSender<Vec<u8>>>>>,
-}
-
-impl TCPServerNativeInterface {
-    async fn create(
-        setup_data: TCPServerInterfaceSetupData,
-        com_interface: Rc<ComInterface>,
-    ) -> Result<(Self, InterfaceProperties), InterfaceCreateError> {
-        let host = setup_data
+impl TCPServerInterfaceSetupData {
+    async fn create_interface(
+        self,
+        com_interface_proxy: ComInterfaceProxy,
+    ) -> Result<InterfaceProperties, InterfaceCreateError> {
+        let host = self
             .host
             .clone()
             .unwrap_or_else(|| "0.0.0.0".to_string());
 
-        let address: SocketAddr = format!("{}:{}", host, setup_data.port)
+        let address: SocketAddr = format!("{}:{}", host, self.port)
             .parse()
             .map_err(|e: AddrParseError| {
                 InterfaceCreateError::InvalidSetupData(e.to_string())
@@ -67,15 +60,14 @@ impl TCPServerNativeInterface {
         let tx_by_socket = Arc::new(Mutex::new(HashMap::new()));
         let tx_by_socket_clone = tx_by_socket.clone();
 
-        let manager = com_interface.socket_manager();
-        let shutdown_signal = com_interface.shutdown_signal();
-        let shutdown_signal_clone = shutdown_signal.clone();
+        let shutdown_signal = com_interface_proxy.shutdown_signal();
+        let manager = com_interface_proxy.socket_manager;
         spawn_with_panic_notify_default(async move {
             loop {
                 select! {
                     // Wait for an incoming connection
                     accept_result = listener.accept() => {
-                        let shutdown_signal_clone = shutdown_signal_clone.clone();
+                        let shutdown_signal_clone = shutdown_signal.clone();
                         match accept_result {
                             Ok((stream, _)) => {
                                 // Initialize socket in com socket manager
@@ -123,18 +115,16 @@ impl TCPServerNativeInterface {
         });
 
         spawn_with_panic_notify_default(Self::event_handler_task(
-            com_interface.take_interface_impl_event_receiver(),
+            com_interface_proxy.event_receiver,
             tx_by_socket.clone(),
         ));
 
-        Ok((
-            TCPServerNativeInterface {
-                address,
-                com_interface,
-                tx_by_socket,
-            },
-            Self::get_default_properties(),
-        ))
+        Ok(
+            InterfaceProperties {
+                name: Some(format!("{}:{}", host, self.port)),
+                ..Self::get_default_properties()
+            }
+        )
     }
 
     #[allow(clippy::await_holding_lock)]
@@ -229,14 +219,13 @@ impl TCPServerNativeInterface {
     }
 }
 
-impl ComInterfaceAsyncFactory for TCPServerNativeInterface {
-    type SetupData = TCPServerInterfaceSetupData;
-    fn create(
-        setup_data: Self::SetupData,
-        com_interface: Rc<ComInterface>,
-    ) -> ComInterfaceAsyncFactoryResult<Self> {
+impl ComInterfaceAsyncFactory for TCPServerInterfaceSetupData {
+    fn create_interface(
+        self,
+        com_interface_proxy: ComInterfaceProxy,
+    ) -> ComInterfaceAsyncFactoryResult {
         Box::pin(async move {
-            TCPServerNativeInterface::create(setup_data, com_interface).await
+            self.create_interface(com_interface_proxy).await
         })
     }
 
@@ -251,49 +240,42 @@ impl ComInterfaceAsyncFactory for TCPServerNativeInterface {
     }
 }
 
-impl ComInterfaceImplementation for TCPServerNativeInterface {}
-
 #[cfg(test)]
 mod tests {
-    use core::assert_matches::assert_matches;
-
+    use std::assert_matches::assert_matches;
     use datex_macros::async_test;
 
     use crate::network::{
-        com_hub::errors::InterfaceCreateError,
         com_interfaces::{
-            com_interface::ComInterface,
             default_com_interfaces::tcp::{
                 tcp_common::TCPServerInterfaceSetupData,
-                tcp_server_native_interface::TCPServerNativeInterface,
             },
         },
     };
+    use crate::network::com_hub::errors::InterfaceCreateError;
+    use crate::network::com_interfaces::com_interface::ComInterfaceProxy;
 
     #[async_test]
     async fn test_construct() {
         const PORT: u16 = 5088;
-        let com_interface =
-            ComInterface::create_async_with_implementation::<
-                TCPServerNativeInterface,
-            >(TCPServerInterfaceSetupData::new_with_port(PORT))
-            .await
-            .unwrap();
-        let tcp_server_interface =
-            com_interface.implementation::<TCPServerNativeInterface>();
-        assert_eq!(tcp_server_interface.address.port(), PORT);
+        let interface_properties = TCPServerInterfaceSetupData::create_interface(
+            TCPServerInterfaceSetupData::new_with_port(PORT),
+            ComInterfaceProxy::new().0
+        ).await.unwrap();
+
+        assert_eq!(interface_properties.name, Some(format!("0.0.0.0:{}", PORT)));
     }
 
     #[async_test]
     async fn test_invalid_address() {
         assert_matches!(
-            ComInterface::create_async_with_implementation::<
-                TCPServerNativeInterface,
-            >(TCPServerInterfaceSetupData::new_with_host_and_port(
-                "invalid-address".to_string(),
-                5088
-            ))
-            .await,
+            TCPServerInterfaceSetupData::create_interface(
+                TCPServerInterfaceSetupData::new_with_host_and_port(
+                    "invalid-address".to_string(),
+                    5088
+                ),
+                ComInterfaceProxy::new().0
+            ).await,
             Err(InterfaceCreateError::InvalidSetupData(_))
         );
     }

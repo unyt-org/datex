@@ -10,7 +10,7 @@ use crate::{
     task::{UnboundedReceiver, spawn_with_panic_notify},
 };
 use core::{prelude::rust_2024::*, result::Result};
-
+use std::cell::Ref;
 use crate::{
     network::{
         com_hub::{
@@ -49,15 +49,15 @@ impl ComHub {
     }
 
     /// Adds a new interface to the ComHub
-    fn init_interface_event_listeners(&self, interface: Rc<ComInterface>) {
+    fn init_interface_event_listeners(&self, interface: &ComInterface) {
         // handle socket events
-        self.handle_interface_socket_events(interface.clone());
+        self.handle_interface_socket_events(&interface);
         // handle interface events
-        self.handle_interface_events(interface);
+        self.handle_interface_events(&interface);
     }
 
     /// Internal method to handle interface events
-    fn handle_interface_events(&self, interface: Rc<ComInterface>) {
+    fn handle_interface_events(&self, interface: &ComInterface) {
         let interface_event_receiver =
             interface.take_interface_event_receiver();
         let uuid = interface.uuid().clone();
@@ -77,24 +77,26 @@ impl ComHub {
     pub(crate) fn dyn_interface_for_socket_uuid(
         &self,
         socket_uuid: &ComInterfaceSocketUUID,
-    ) -> Rc<ComInterface> {
+    ) -> Ref<'_, ComInterface> {
         let socket_manager = self.socket_manager.borrow();
         let socket = socket_manager.get_socket_by_uuid(socket_uuid);
-        self.interface_manager
-            .borrow()
-            .dyn_interface_by_uuid(&socket.interface_uuid)
+        Ref::map(
+            self.interface_manager.borrow(),
+            |manager| manager.get_interface_by_uuid(&socket.interface_uuid),
+        )
     }
 
     /// Registers an existing com interface on the ComHub and sets up event handling
     pub fn register_com_interface(
         &self,
-        com_interface: Rc<ComInterface>,
+        com_interface: ComInterface,
         priority: InterfacePriority,
     ) -> Result<(), InterfaceAddError> {
+        let uuid = com_interface.uuid().clone();
         self.interface_manager
             .borrow_mut()
-            .add_interface(com_interface.clone(), priority)?;
-        self.handle_interface_socket_events(com_interface);
+            .add_interface(com_interface, priority)?;
+        self.handle_interface_socket_events(self.interface_manager.borrow().get_interface_by_uuid(&uuid));
         Ok(())
     }
 
@@ -104,14 +106,15 @@ impl ComHub {
         interface_type: &str,
         setup_data: ValueContainer,
         priority: InterfacePriority,
-    ) -> Result<Rc<ComInterface>, InterfaceCreateError> {
-        let com_interface = self
+    ) -> Result<ComInterfaceUUID, InterfaceCreateError> {
+        let mut interface_manager = self
             .interface_manager
-            .borrow_mut()
+            .borrow_mut();
+        let com_interface = interface_manager
             .create_and_add_interface(interface_type, setup_data, priority)
             .await?;
-        self.init_interface_event_listeners(com_interface.clone());
-        Ok(com_interface)
+        self.init_interface_event_listeners(com_interface);
+        Ok(com_interface.uuid())
     }
 
     /// Creates a new interface of the given type with the provided setup data
@@ -121,23 +124,20 @@ impl ComHub {
         interface_type: &str,
         setup_data: ValueContainer,
         priority: InterfacePriority,
-    ) -> Result<Rc<ComInterface>, InterfaceCreateError> {
-        let com_interface = self
+    ) -> Result<ComInterfaceUUID, InterfaceCreateError> {
+        let mut interface_manager = self
             .interface_manager
-            .borrow_mut()
-            .create_and_add_interface_sync(
-                interface_type,
-                setup_data,
-                priority,
-            )?;
-        self.init_interface_event_listeners(com_interface.clone());
-        Ok(com_interface)
+            .borrow_mut();
+        let com_interface = interface_manager
+            .create_and_add_interface_sync(interface_type, setup_data, priority)?;
+        self.init_interface_event_listeners(com_interface);
+        Ok(com_interface.uuid())
     }
 
     pub fn remove_interface(
         &self,
         interface_uuid: ComInterfaceUUID,
-    ) -> Result<(), ComHubError> {        
+    ) -> Result<(), ComHubError> {
         self.interface_manager
             .borrow_mut()
             .remove_interface(&interface_uuid)?;
@@ -145,7 +145,7 @@ impl ComHub {
         self.socket_manager
             .borrow_mut()
             .remove_sockets_for_interface_uuid(&interface_uuid);
-        
+
         Ok(())
     }
 
