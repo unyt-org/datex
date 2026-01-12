@@ -64,7 +64,7 @@ impl ComInterfaceSocket {
         interface_uuid: ComInterfaceUUID,
         direction: InterfaceDirection,
         channel_factor: u32,
-        direct_endpoint: Option<Endpoint>
+        direct_endpoint: Option<Endpoint>,
     ) -> (ComInterfaceSocket, UnboundedSender<Vec<u8>>) {
         let (bytes_in_sender, block_in_receiver) = BlockCollector::init();
         (

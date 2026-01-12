@@ -4,6 +4,7 @@ use crate::{
         block_header::BlockType, routing_header::SignatureType,
     },
     network::com_hub::{
+        self,
         errors::{ComHubError, SocketEndpointRegistrationError},
         managers::interface_manager::InterfaceManager,
         network_response::{
@@ -35,10 +36,7 @@ use crate::{
     utils::time::Time,
 };
 use core::{
-    cmp::PartialEq,
-    fmt::{Debug, Formatter},
-    prelude::rust_2024::*,
-    result::Result,
+    cmp::PartialEq, fmt::{Debug, Formatter}, panic, prelude::rust_2024::*, result::Result
 };
 use itertools::Itertools;
 use log::{debug, error, info, warn};
@@ -50,9 +48,7 @@ pub mod options;
 use crate::{
     global::dxb_block::{DXBBlock, IncomingSection},
     network::{
-        block_handler::{
-            BlockHandler, BlockHistoryData,
-        },
+        block_handler::{BlockHandler, BlockHistoryData},
         com_hub::network_tracing::{
             NetworkTraceHop, NetworkTraceHopDirection, NetworkTraceHopSocket,
         },
@@ -63,9 +59,8 @@ use crate::{
 pub mod com_hub_interface;
 
 use crate::{
-    network::com_interfaces::com_interface::ComInterface,
+    network::com_interfaces::com_interface::ComInterface, task::UnboundedSender,
 };
-use crate::task::UnboundedSender;
 
 pub type IncomingBlockInterceptor =
     Box<dyn Fn(&DXBBlock, &ComInterfaceSocketUUID) + 'static>;
@@ -164,8 +159,7 @@ impl ComHub {
         let (block_send_sender, send_request_receiver) =
             create_unbounded_channel::<BlockSendEvent>();
 
-        let block_handler =
-            BlockHandler::init(incoming_sections_sender);
+        let block_handler = BlockHandler::init(incoming_sections_sender);
         let com_hub = Rc::new(ComHub {
             endpoint: endpoint.into(),
             async_context,
@@ -183,16 +177,24 @@ impl ComHub {
         });
 
         // add default local loopback interface
-        let local_interface = ComInterface::create_sync_from_setup_data(LocalLoopbackInterfaceSetupData)
+        let local_interface = ComInterface::create_sync_from_setup_data(
+            LocalLoopbackInterfaceSetupData,
+        )
         .unwrap();
 
         com_hub
-            .register_com_interface(local_interface, InterfacePriority::None).unwrap();
+            .register_com_interface(local_interface, InterfacePriority::None)
+            .unwrap();
 
         // start handling ComHub events
         ComHub::handle_events(com_hub.clone());
 
         com_hub
+    }
+
+    /// Checks if the given endpoint is the local endpoint, matching instances as well
+    pub fn is_local_endpoint_exact(&self, endpoint: &Endpoint) -> bool {
+        &self.endpoint == endpoint || endpoint.is_local()
     }
 
     /// Starts handling ComHub events
@@ -258,17 +260,31 @@ impl ComHub {
         let is_new_block = !self.block_handler.is_block_in_history(block);
         // assign endpoint to socket if none is assigned
         // only if a new block and the sender in not the local endpoint
-        if is_new_block && block.routing_header.sender != self.endpoint {
+        if is_new_block
+            && !self.is_local_endpoint_exact(&block.routing_header.sender)
+        {
             self.register_socket_endpoint_from_incoming_block(
                 socket_uuid.clone(),
                 block,
             );
         }
+        println!(
+            "{} >>>> Block is new: {}, type: {:?} {} {}",
+            self.endpoint,
+            is_new_block,
+            block_type,
+            block
+                .receiver_endpoints()
+                .iter()
+                .map(|e| e.to_string())
+                .join(","),
+            block.routing_header.sender
+        );
 
         let receivers = block.receiver_endpoints();
         if !receivers.is_empty() {
             let is_for_own = receivers.iter().any(|e| {
-                e == &self.endpoint
+                self.is_local_endpoint_exact(e)
                     || e == &Endpoint::ANY
                     || e == &Endpoint::ANY_ALL_INSTANCES
             });
@@ -351,7 +367,7 @@ impl ComHub {
     ) -> Vec<Endpoint> {
         receiver_endpoints
             .iter()
-            .filter(|e| e != &&self.endpoint)
+            .filter(|e| !self.is_local_endpoint_exact(e))
             .cloned()
             .collect::<Vec<_>>()
     }
@@ -368,6 +384,11 @@ impl ComHub {
 
         let distance = block.routing_header.distance;
         let sender = block.routing_header.sender.clone();
+
+        println!(
+            "Registering socket endpoint from incoming block: socket {}, endpoint {}, distance {}",
+            socket.uuid, sender, distance
+        );
 
         // set as direct endpoint if distance = 0
         if socket.direct_endpoint.is_none() && distance == 1 {
@@ -413,7 +434,7 @@ impl ComHub {
             self.block_handler.get_block_data_from_history(&block);
         if history_block_data.is_some() {
             for receiver in &receivers {
-                if receiver != &self.endpoint {
+                if !self.is_local_endpoint_exact(receiver) {
                     info!(
                         "{}: Adding socket {} to blacklist for receiver {}",
                         self.endpoint, incoming_socket, receiver
@@ -444,12 +465,24 @@ impl ComHub {
             warn!("Block TTL expired. Dropping block...");
             return;
         }
+        println!(
+            "{} >>>> Redirecting block, rec: {}, send: {},  distance: {},  ttl: {} ",
+            self.endpoint,
+            block
+                .receiver_endpoints()
+                .iter()
+                .map(|e| e.to_string())
+                .join(","),
+            block.sender(),
+            block.routing_header.distance,
+            block.routing_header.ttl
+        );
 
         let mut prefer_incoming_socket_for_bounce_back = false;
         // if we are the original sender of the block, don't send again (prevent loop) and send
         // bounce back block with all receivers
         let res = {
-            if block.routing_header.sender == self.endpoint {
+            if self.is_local_endpoint_exact(&block.routing_header.sender) {
                 // if not bounce back block, directly send back to incoming socket (prevent loop)
                 prefer_incoming_socket_for_bounce_back =
                     !block.is_bounce_back();
@@ -1056,15 +1089,21 @@ impl ComHub {
 
         let socket_manager = self.socket_manager.borrow();
         let socket = socket_manager.get_socket_by_uuid(socket_uuid);
+        if !socket.can_send() {
+            panic!(
+                "Tried to send block via socket {}, but socket cannot send",
+                socket_uuid
+            );
+        }
 
         let is_broadcast = endpoints
             .iter()
             .any(|e| e == &Endpoint::ANY_ALL_INSTANCES || e == &Endpoint::ANY);
 
+        // Break loop and don't relay broadcast blocks back to socket with direct endpoint set to self
         if is_broadcast
             && let Some(direct_endpoint) = &socket.direct_endpoint
-            && (direct_endpoint == &self.endpoint
-                || direct_endpoint == &Endpoint::LOCAL)
+            && self.is_local_endpoint_exact(direct_endpoint)
         {
             return;
         }
@@ -1229,18 +1268,30 @@ impl ComHub {
 #[cfg_attr(feature = "embassy_runtime", embassy_executor::task)]
 async fn com_hub_event_task(
     mut receiver: UnboundedReceiver<BlockSendEvent>,
-    self_rc: Rc<ComHub>,
+    com_hub_rc: Rc<ComHub>,
     async_context: AsyncContext,
 ) {
     while let Some(event) = receiver.next().await {
         match event {
             BlockSendEvent::NewSocket { socket_uuid } => {
                 info!("New socket connected: {}", socket_uuid);
-                let (receiver, socket_can_send) = {
-                    let mut socket_manager = self_rc.socket_manager.borrow_mut();
+                let (receiver, shall_send_hello) = {
+                    let mut socket_manager =
+                        com_hub_rc.socket_manager.borrow_mut();
                     let socket =
                         socket_manager.get_socket_by_uuid_mut(&socket_uuid);
-                    (socket.take_block_in_receiver(), socket.can_send())
+
+                    let interface_manager = com_hub_rc.interface_manager();
+                    let auto_identify = interface_manager
+                        .borrow()
+                        .get_interface_by_uuid(&socket.interface_uuid)
+                        .properties()
+                        .auto_identify;
+
+                    (
+                        socket.take_block_in_receiver(),
+                        socket.can_send() && auto_identify, // Only send hello if auto_identify is enabled
+                    )
                 };
 
                 // spawn task to collect incoming blocks from this socket
@@ -1249,14 +1300,13 @@ async fn com_hub_event_task(
                     handle_incoming_socket_blocks_task(
                         receiver,
                         socket_uuid.clone(),
-                        self_rc.clone(),
+                        com_hub_rc.clone(),
                     ),
                 );
 
-
-                if socket_can_send
+                if shall_send_hello
                     && let Err(err) =
-                        self_rc.send_hello_block(socket_uuid).await
+                        com_hub_rc.send_hello_block(socket_uuid).await
                 {
                     error!("Failed to send hello block: {:?}", err);
                 }

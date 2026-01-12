@@ -63,6 +63,10 @@ pub struct InterfaceProperties {
     // If the interface is not able to reconnect, it will be destroyed
     pub reconnection_config: ReconnectionConfig,
 
+    // If true, the interface sends Hello block identifications automatically
+    // after socket connection establishment
+    pub auto_identify: bool,
+
     // FIXME move to state
     /* private field */
     /// Timestamp of the interface close event
@@ -166,6 +170,7 @@ impl InterfaceProperties {
 impl Default for InterfaceProperties {
     fn default() -> Self {
         InterfaceProperties {
+            auto_identify: true,
             interface_type: "unknown".to_string(),
             channel: "unknown".to_string(),
             name: None,

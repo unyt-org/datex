@@ -1,70 +1,69 @@
 use crate::network::helpers::{
     mock_setup::{
-        TEST_ENDPOINT_A, TEST_ENDPOINT_B, TEST_ENDPOINT_ORIGIN,
+        CollectedBlockType, MockupSetupData, TEST_ENDPOINT_A, TEST_ENDPOINT_B,
+        TEST_ENDPOINT_ORIGIN, get_collected_outgoing_blocks_from_receiver,
         get_collected_received_blocks_from_receiver,
-        get_mock_setup_with_com_hub,
-        send_block_with_body, send_empty_block,
+        get_default_mock_setup_with_com_hub,
+        get_default_mock_setup_with_two_connected_com_hubs,
+        get_mock_setup_with_com_hub, get_mock_setup_with_interface,
+        get_next_outgoing_block_from_receiver,
+        get_next_received_single_block_from_receiver, send_block_with_body,
+        send_empty_block, send_multiple_blocks_to_local,
     },
-    mockup_interface::{MockupInterfaceSetupData},
+    mockup_interface::MockupInterfaceSetupData,
 };
 use datex_core::{
     global::{
-        dxb_block::DXBBlock,
+        dxb_block::{DXBBlock, IncomingSection},
         protocol_structures::{
-            block_header::BlockHeader,
+            block_header::{BlockHeader, FlagsAndTimestamp},
             encrypted_header::{self, EncryptedHeader},
             routing_header::{RoutingHeader, SignatureType},
         },
     },
     network::{
         com_hub::{ComHub, InterfacePriority},
-        com_interfaces::{
-            com_interface::{
-                ComInterface,
-                properties::{InterfaceProperties},
-                state::ComInterfaceState,
-            },
+        com_interfaces::com_interface::{
+            ComInterface, ComInterfaceEvent, ComInterfaceProxy,
+            implementation::ComInterfaceSyncFactory,
+            properties::{InterfaceDirection, InterfaceProperties},
+            state::ComInterfaceState,
         },
     },
     runtime::AsyncContext,
     serde::serializer::to_value_container,
-    stdlib::{rc::Rc},
+    stdlib::rc::Rc,
+    task::{create_unbounded_channel, sleep},
     values::core_values::endpoint::Endpoint,
 };
 use datex_macros::async_test;
-use std::time::Duration;
 use log::info;
+use std::time::Duration;
 use tokio::task::yield_now;
-use datex_core::global::protocol_structures::block_header::FlagsAndTimestamp;
-use datex_core::network::com_interfaces::com_interface::{ComInterfaceEvent, ComInterfaceProxy};
-use datex_core::network::com_interfaces::com_interface::implementation::ComInterfaceSyncFactory;
-use datex_core::network::com_interfaces::com_interface::properties::InterfaceDirection;
-use datex_core::task::{create_unbounded_channel, sleep};
-use crate::network::helpers::mock_setup::{get_default_mock_setup_with_com_hub, get_default_mock_setup_with_two_connected_com_hubs, get_next_received_single_block_from_receiver, get_mock_setup_with_interface, MockupSetupData, CollectedBlockType, send_multiple_blocks_to_local, get_collected_outgoing_blocks_from_receiver, get_next_outgoing_block_from_receiver};
 
 /// Creates a mock ComHub for testing without a connected channel
 fn create_mock_com_hub() -> Rc<ComHub> {
     let (sender, receiver) = create_unbounded_channel();
-    ComHub::create(
-        Endpoint::default(),
-        sender,
-        AsyncContext::new(),
-    )
+    ComHub::create(Endpoint::default(), sender, AsyncContext::new())
 }
 
 #[async_test]
 pub async fn test_add_and_remove() {
-
     let com_hub = create_mock_com_hub();
-    let mockup_interface_with_receivers = ComInterface::create_sync_from_setup_data(MockupInterfaceSetupData::new("test"))
+    let mockup_interface_with_receivers =
+        ComInterface::create_sync_from_setup_data(
+            MockupInterfaceSetupData::new("test"),
+        )
         .unwrap();
 
     let uuid = mockup_interface_with_receivers.0.uuid().clone();
 
-    com_hub.register_com_interface(
-        mockup_interface_with_receivers,
-        InterfacePriority::default(),
-    ).unwrap();
+    com_hub
+        .register_com_interface(
+            mockup_interface_with_receivers,
+            InterfacePriority::default(),
+        )
+        .unwrap();
 
     assert!(com_hub.remove_interface(uuid).is_ok());
 }
@@ -73,34 +72,33 @@ pub async fn test_add_and_remove() {
 pub async fn test_multiple_add() {
     let com_hub = create_mock_com_hub();
 
-    let mockup_interface1 =
-        ComInterface::create_sync_from_setup_data(
-            MockupInterfaceSetupData::new("mockup_interface1"),
-        )
-            .unwrap();
-    let mockup_interface2 =
-        ComInterface::create_sync_from_setup_data(
-            MockupInterfaceSetupData::new("mockup_interface2"),
-        )
-            .unwrap();
+    let mockup_interface1 = ComInterface::create_sync_from_setup_data(
+        MockupInterfaceSetupData::new("mockup_interface1"),
+    )
+    .unwrap();
+    let mockup_interface2 = ComInterface::create_sync_from_setup_data(
+        MockupInterfaceSetupData::new("mockup_interface2"),
+    )
+    .unwrap();
 
-    com_hub.register_com_interface(
-        mockup_interface1,
-        InterfacePriority::default(),
-    ).unwrap();
-    com_hub.register_com_interface(
-        mockup_interface2,
-        InterfacePriority::default(),
-    ).unwrap();
+    com_hub
+        .register_com_interface(mockup_interface1, InterfacePriority::default())
+        .unwrap();
+    com_hub
+        .register_com_interface(mockup_interface2, InterfacePriority::default())
+        .unwrap();
 }
 
 #[async_test]
 pub async fn test_send() {
-    let (com_hub, mut interface_proxy, _) = get_default_mock_setup_with_com_hub().await;
+    let (com_hub, mut interface_proxy, _) =
+        get_default_mock_setup_with_com_hub().await;
 
     // set up socket that goes to TEST_ENDPOINT_B (direct connection)
     interface_proxy.create_and_init_socket_with_direct_endpoint(
-        InterfaceDirection::Out, 1, TEST_ENDPOINT_B.clone()
+        InterfaceDirection::Out,
+        1,
+        TEST_ENDPOINT_B.clone(),
     );
 
     yield_now().await;
@@ -116,18 +114,24 @@ pub async fn test_send() {
     // hello block, skip
     interface_proxy.event_receiver.next().await.unwrap();
     // get next block that was sent
-    let recorded_block = get_next_outgoing_block_from_receiver(&mut interface_proxy.event_receiver).await.0;
+    let recorded_block = get_next_outgoing_block_from_receiver(
+        &mut interface_proxy.event_receiver,
+    )
+    .await
+    .0;
     assert_eq!(recorded_block.body, sent_block.body);
 }
 
 #[async_test]
 pub async fn test_send_invalid_recipient() {
     // init without fallback interfaces
-    let (com_hub, interface_proxy, ..) = get_mock_setup_with_com_hub(MockupSetupData {
-        interface_properties: Default::default(),
-        interface_priority: InterfacePriority::None,
-        ..Default::default()
-    }).await;
+    let (com_hub, interface_proxy, ..) =
+        get_mock_setup_with_com_hub(MockupSetupData {
+            interface_properties: Default::default(),
+            interface_priority: InterfacePriority::None,
+            ..Default::default()
+        })
+        .await;
 
     send_empty_block(std::slice::from_ref(&TEST_ENDPOINT_B), &com_hub).await;
 
@@ -136,23 +140,32 @@ pub async fn test_send_invalid_recipient() {
 
 #[async_test]
 pub async fn send_block_to_multiple_endpoints() {
-    let (com_hub, mut interface_proxy, _) = get_default_mock_setup_with_com_hub().await;
+    let (com_hub, mut interface_proxy, _) =
+        get_default_mock_setup_with_com_hub().await;
 
-    let (socket_uuid, _) = interface_proxy
-        .create_and_init_socket(InterfaceDirection::InOut, 0);
+    let (socket_uuid, _) =
+        interface_proxy.create_and_init_socket(InterfaceDirection::InOut, 0);
     yield_now().await;
 
-    com_hub.socket_manager().borrow_mut().register_socket_endpoint(
-        socket_uuid.clone(),
-        TEST_ENDPOINT_A.clone(),
-        1,
-    ).unwrap();
+    com_hub
+        .socket_manager()
+        .borrow_mut()
+        .register_socket_endpoint(
+            socket_uuid.clone(),
+            TEST_ENDPOINT_A.clone(),
+            1,
+        )
+        .unwrap();
 
-    com_hub.socket_manager().borrow_mut().register_socket_endpoint(
-        socket_uuid.clone(),
-        TEST_ENDPOINT_B.clone(),
-        1,
-    ).unwrap();
+    com_hub
+        .socket_manager()
+        .borrow_mut()
+        .register_socket_endpoint(
+            socket_uuid.clone(),
+            TEST_ENDPOINT_B.clone(),
+            1,
+        )
+        .unwrap();
 
     // send block to multiple receivers
     let sent_block = send_block_with_body(
@@ -165,29 +178,35 @@ pub async fn send_block_to_multiple_endpoints() {
     // hello block, skip
     interface_proxy.event_receiver.next().await.unwrap();
     // get next block that was sent
-    let recorded_block = get_next_outgoing_block_from_receiver(&mut interface_proxy.event_receiver).await.0;
+    let recorded_block = get_next_outgoing_block_from_receiver(
+        &mut interface_proxy.event_receiver,
+    )
+    .await
+    .0;
     assert_eq!(recorded_block.body, sent_block.body);
 }
 
 #[async_test]
 pub async fn send_blocks_to_multiple_endpoint_sockets() {
-
-    let (com_hub, mut interface_proxy, _) = get_default_mock_setup_with_com_hub().await;
+    let (com_hub, mut interface_proxy, _) =
+        get_default_mock_setup_with_com_hub().await;
 
     // create two separate sockets for each endpoint
 
-    let (socket_uuid_a, _) = interface_proxy.create_and_init_socket_with_direct_endpoint(
-        InterfaceDirection::InOut,
-        1,
-        TEST_ENDPOINT_A.clone(),
-    );
+    let (socket_uuid_a, _) = interface_proxy
+        .create_and_init_socket_with_direct_endpoint(
+            InterfaceDirection::InOut,
+            1,
+            TEST_ENDPOINT_A.clone(),
+        );
     yield_now().await;
 
-    let (socket_uuid_b, _) = interface_proxy.create_and_init_socket_with_direct_endpoint(
-        InterfaceDirection::InOut,
-        1,
-        TEST_ENDPOINT_B.clone(),
-    );
+    let (socket_uuid_b, _) = interface_proxy
+        .create_and_init_socket_with_direct_endpoint(
+            InterfaceDirection::InOut,
+            1,
+            TEST_ENDPOINT_B.clone(),
+        );
     yield_now().await;
 
     // send block to multiple receivers
@@ -197,8 +216,15 @@ pub async fn send_blocks_to_multiple_endpoint_sockets() {
     )
     .await;
 
-    let blocks = get_collected_outgoing_blocks_from_receiver(&mut interface_proxy.event_receiver, 2).await;
-    let block_uuids = blocks.into_iter().map(|(_, socket_uuid)| socket_uuid).collect::<Vec<_>>();
+    let blocks = get_collected_outgoing_blocks_from_receiver(
+        &mut interface_proxy.event_receiver,
+        2,
+    )
+    .await;
+    let block_uuids = blocks
+        .into_iter()
+        .map(|(_, socket_uuid)| socket_uuid)
+        .collect::<Vec<_>>();
 
     assert!(block_uuids.contains(&socket_uuid_a));
     assert!(block_uuids.contains(&socket_uuid_b));
@@ -206,24 +232,35 @@ pub async fn send_blocks_to_multiple_endpoint_sockets() {
 
 #[async_test]
 pub async fn default_interface_create_socket_first() {
-    let (com_hub, mut interface_proxy, ..) = get_default_mock_setup_with_com_hub().await;
+    let (com_hub, mut interface_proxy, ..) =
+        get_default_mock_setup_with_com_hub().await;
 
-    let _ = send_empty_block(
-        std::slice::from_ref(&TEST_ENDPOINT_B),
-        &com_hub,
-    )
-    .await;
+    let _ = send_empty_block(std::slice::from_ref(&TEST_ENDPOINT_B), &com_hub)
+        .await;
 
     // sleep to let the com_hub process the new socket
     sleep(Duration::from_millis(10)).await;
 
     // collect 1 outgoing block
-    get_collected_outgoing_blocks_from_receiver(&mut interface_proxy.event_receiver, 1).await;
+    get_collected_outgoing_blocks_from_receiver(
+        &mut interface_proxy.event_receiver,
+        1,
+    )
+    .await;
 }
 
 #[async_test]
 pub async fn test_receive() {
-    let (com_hub, interface_proxy, mut incoming_sections_receiver) = get_default_mock_setup_with_com_hub().await;
+    let (incoming_sections_sender, mut incoming_sections_receiver) =
+        create_unbounded_channel::<IncomingSection>();
+    // Priority None to avoid panic from fallback interfaces (as InterfaceDirection:In and not bidirectional)
+
+    let (_, interface_proxy) = get_mock_setup_with_com_hub(MockupSetupData {
+        interface_priority: InterfacePriority::None,
+        com_hub_sections_sender: Some(incoming_sections_sender),
+        ..Default::default()
+    })
+    .await;
 
     // receive block
     let mut block = DXBBlock {
@@ -238,22 +275,28 @@ pub async fn test_receive() {
     block.set_receivers(vec![TEST_ENDPOINT_ORIGIN.clone()]);
     block.recalculate_struct();
 
-    let (_, mut incoming_blocks_sender) = interface_proxy
-        .create_and_init_socket(InterfaceDirection::In, 1); // FIXME: works with InterfaceDirection::InOut?!
+    let (_, mut incoming_blocks_sender) =
+        interface_proxy.create_and_init_socket(InterfaceDirection::In, 1);
     yield_now().await;
 
     let block_bytes = block.to_bytes().unwrap();
-    incoming_blocks_sender.start_send(block_bytes.as_slice().to_vec()).unwrap();
+    incoming_blocks_sender
+        .start_send(block_bytes.as_slice().to_vec())
+        .unwrap();
 
     yield_now().await;
 
-    let last_block = get_next_received_single_block_from_receiver(&mut incoming_sections_receiver).await;
+    let last_block = get_next_received_single_block_from_receiver(
+        &mut incoming_sections_receiver,
+    )
+    .await;
     assert_eq!(last_block.raw_bytes.clone().unwrap(), block_bytes);
 }
 
 #[async_test]
 pub async fn unencrypted_signature_prepare_block_com_hub() {
-    let (com_hub, interface_proxy, mut incoming_sections_receiver) = get_default_mock_setup_with_com_hub().await;
+    let (com_hub, interface_proxy, mut incoming_sections_receiver) =
+        get_default_mock_setup_with_com_hub().await;
 
     // receive block
     let mut block = DXBBlock {
@@ -274,15 +317,20 @@ pub async fn unencrypted_signature_prepare_block_com_hub() {
     block = com_hub.prepare_own_block(block).await.unwrap();
     let block_bytes = block.to_bytes().unwrap();
 
-    let (_, mut incoming_blocks_sender) = interface_proxy
-        .create_and_init_socket(InterfaceDirection::In, 0);
+    let (_, mut incoming_blocks_sender) =
+        interface_proxy.create_and_init_socket(InterfaceDirection::In, 0);
     yield_now().await;
 
-    incoming_blocks_sender.start_send(block_bytes.as_slice().to_vec()).unwrap();
+    incoming_blocks_sender
+        .start_send(block_bytes.as_slice().to_vec())
+        .unwrap();
 
     yield_now().await;
 
-    let last_block = get_next_received_single_block_from_receiver(&mut incoming_sections_receiver).await;
+    let last_block = get_next_received_single_block_from_receiver(
+        &mut incoming_sections_receiver,
+    )
+    .await;
     assert_eq!(last_block.raw_bytes.clone().unwrap(), block_bytes);
     assert_eq!(block.signature, last_block.signature);
 
@@ -291,7 +339,8 @@ pub async fn unencrypted_signature_prepare_block_com_hub() {
 
 #[async_test]
 pub async fn encrypted_signature_prepare_block_com_hub() {
-    let (com_hub, interface_proxy, mut incoming_sections_receiver) = get_default_mock_setup_with_com_hub().await;
+    let (com_hub, interface_proxy, mut incoming_sections_receiver) =
+        get_default_mock_setup_with_com_hub().await;
 
     // receive block
     let mut block = DXBBlock {
@@ -314,15 +363,20 @@ pub async fn encrypted_signature_prepare_block_com_hub() {
     block = com_hub.prepare_own_block(block).await.unwrap();
     let block_bytes = block.to_bytes().unwrap();
 
-    let (_, mut incoming_blocks_sender) = interface_proxy
-        .create_and_init_socket(InterfaceDirection::In, 0);
+    let (_, mut incoming_blocks_sender) =
+        interface_proxy.create_and_init_socket(InterfaceDirection::In, 0);
     yield_now().await;
 
-    incoming_blocks_sender.start_send(block_bytes.as_slice().to_vec()).unwrap();
+    incoming_blocks_sender
+        .start_send(block_bytes.as_slice().to_vec())
+        .unwrap();
 
     yield_now().await;
 
-    let last_block = get_next_received_single_block_from_receiver(&mut incoming_sections_receiver).await;
+    let last_block = get_next_received_single_block_from_receiver(
+        &mut incoming_sections_receiver,
+    )
+    .await;
     assert_eq!(last_block.raw_bytes.clone().unwrap(), block_bytes);
     assert_eq!(block.signature, last_block.signature);
 
@@ -331,7 +385,8 @@ pub async fn encrypted_signature_prepare_block_com_hub() {
 
 #[async_test]
 pub async fn test_receive_multiple_blocks_single_section() {
-    let (com_hub, interface_proxy, mut incoming_sections_receiver) = get_default_mock_setup_with_com_hub().await;
+    let (com_hub, interface_proxy, mut incoming_sections_receiver) =
+        get_default_mock_setup_with_com_hub().await;
 
     let mut blocks = vec![
         DXBBlock {
@@ -373,22 +428,21 @@ pub async fn test_receive_multiple_blocks_single_section() {
     ];
     let blocks_count = blocks.len();
 
-    let (_, mut incoming_blocks_sender) = interface_proxy
-        .create_and_init_socket(InterfaceDirection::In, 0);
+    let (_, mut incoming_blocks_sender) =
+        interface_proxy.create_and_init_socket(InterfaceDirection::In, 0);
     yield_now().await;
 
     // send blocks via incoming_blocks_sender
-    send_multiple_blocks_to_local(
-        &mut incoming_blocks_sender,
-        &mut blocks,
-    ).await;
+    send_multiple_blocks_to_local(&mut incoming_blocks_sender, &mut blocks)
+        .await;
 
     // collect received blocks from incoming_sections_receiver
     let incoming_blocks = get_collected_received_blocks_from_receiver(
         &mut incoming_sections_receiver,
         CollectedBlockType::BlockStream,
-        blocks_count
-    ).await;
+        blocks_count,
+    )
+    .await;
 
     for (incoming_block, block) in incoming_blocks.iter().zip(blocks.iter()) {
         assert_eq!(
@@ -398,11 +452,10 @@ pub async fn test_receive_multiple_blocks_single_section() {
     }
 }
 
-
-
 #[async_test]
 pub async fn test_receive_multiple_separate_blocks() {
-    let (com_hub, interface_proxy, mut incoming_sections_receiver) = get_default_mock_setup_with_com_hub().await;
+    let (com_hub, interface_proxy, mut incoming_sections_receiver) =
+        get_default_mock_setup_with_com_hub().await;
 
     let mut blocks = vec![
         DXBBlock {
@@ -435,22 +488,21 @@ pub async fn test_receive_multiple_separate_blocks() {
     ];
     let blocks_count = blocks.len();
 
-    let (_, mut incoming_blocks_sender) = interface_proxy
-        .create_and_init_socket(InterfaceDirection::In, 0);
+    let (_, mut incoming_blocks_sender) =
+        interface_proxy.create_and_init_socket(InterfaceDirection::In, 0);
     yield_now().await;
 
     // send blocks via incoming_blocks_sender
-    send_multiple_blocks_to_local(
-        &mut incoming_blocks_sender,
-        &mut blocks,
-    ).await;
+    send_multiple_blocks_to_local(&mut incoming_blocks_sender, &mut blocks)
+        .await;
 
     // collect received blocks from incoming_sections_receiver
     let incoming_blocks = get_collected_received_blocks_from_receiver(
         &mut incoming_sections_receiver,
         CollectedBlockType::SingleBocks,
-        blocks_count
-    ).await;
+        blocks_count,
+    )
+    .await;
 
     for (incoming_block, block) in incoming_blocks.iter().zip(blocks.iter()) {
         assert_eq!(
@@ -462,7 +514,8 @@ pub async fn test_receive_multiple_separate_blocks() {
 
 #[async_test]
 pub async fn test_add_and_remove_interface_and_sockets() {
-    let (com_hub, interface_proxy, mut incoming_sections_receiver) = get_default_mock_setup_with_com_hub().await;
+    let (com_hub, interface_proxy, mut incoming_sections_receiver) =
+        get_default_mock_setup_with_com_hub().await;
 
     {
         let interface_manager = com_hub.interface_manager();
@@ -472,10 +525,13 @@ pub async fn test_add_and_remove_interface_and_sockets() {
         assert_eq!(socket_manager.borrow().endpoint_sockets.len(), 2);
     }
 
-    assert_eq!(interface_proxy.state.lock().unwrap().get(), ComInterfaceState::Connected);
+    assert_eq!(
+        interface_proxy.state.lock().unwrap().get(),
+        ComInterfaceState::Connected
+    );
 
-    let (socket_uuid,_ ) = interface_proxy
-        .create_and_init_socket(InterfaceDirection::InOut, 0);
+    let (socket_uuid, _) =
+        interface_proxy.create_and_init_socket(InterfaceDirection::InOut, 0);
     yield_now().await;
 
     let interface_uuid = interface_proxy.uuid.clone();
@@ -491,7 +547,10 @@ pub async fn test_add_and_remove_interface_and_sockets() {
         assert_eq!(socket_manager.borrow().endpoint_sockets.len(), 1);
     }
 
-    assert_eq!(interface_proxy.state.lock().unwrap().get(), ComInterfaceState::Destroyed);
+    assert_eq!(
+        interface_proxy.state.lock().unwrap().get(),
+        ComInterfaceState::Destroyed
+    );
 
     let socket_manager = com_hub.socket_manager();
     assert!(!socket_manager.borrow().has_socket(&socket_uuid))
@@ -499,10 +558,8 @@ pub async fn test_add_and_remove_interface_and_sockets() {
 
 #[async_test]
 pub async fn test_basic_routing() {
-    let (
-        (com_hub_mut_a, ..),
-        (_, mut incoming_sections_receiver_b, _)
-    ) = get_default_mock_setup_with_two_connected_com_hubs().await;
+    let ((com_hub_mut_a, ..), (_, mut incoming_sections_receiver_b, _)) =
+        get_default_mock_setup_with_two_connected_com_hubs().await;
 
     yield_now().await;
     yield_now().await;
@@ -516,7 +573,10 @@ pub async fn test_basic_routing() {
 
     yield_now().await;
 
-    let last_block = get_next_received_single_block_from_receiver(&mut incoming_sections_receiver_b).await;
+    let last_block = get_next_received_single_block_from_receiver(
+        &mut incoming_sections_receiver_b,
+    )
+    .await;
     assert_eq!(block_a_to_b.body, last_block.body);
 }
 
@@ -552,7 +612,15 @@ pub async fn register_factory() {
         .await
         .unwrap();
 
-    assert_eq!(com_hub.interface_manager().borrow().get_interface_by_uuid(&interface_uuid).properties().interface_type, "mockup");
+    assert_eq!(
+        com_hub
+            .interface_manager()
+            .borrow()
+            .get_interface_by_uuid(&interface_uuid)
+            .properties()
+            .interface_type,
+        "mockup"
+    );
 }
 
 #[async_test]
@@ -562,13 +630,16 @@ pub async fn test_reconnect() {
     // TODO: refactor using proxy
 
     // create a new interface, open it and add it to the com_hub
-    let (base_interface, interface_with_receivers) = ComInterfaceProxy::create_interface(InterfaceProperties::default());
+    let (base_interface, interface_with_receivers) =
+        ComInterfaceProxy::create_interface(InterfaceProperties::default());
 
     // add base_interface to com_hub
-    com_hub.register_com_interface(
-        interface_with_receivers,
-        InterfacePriority::default(),
-    ).unwrap();
+    com_hub
+        .register_com_interface(
+            interface_with_receivers,
+            InterfacePriority::default(),
+        )
+        .unwrap();
 
     // check that the interface is connected
     assert_eq!(

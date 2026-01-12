@@ -17,8 +17,15 @@ use crate::{
         com_hub::{
             ComHub, InterfacePriority, network_response::ResponseOptions,
         },
-        com_interfaces::com_interface::implementation::{
-            ComInterfaceAsyncFactory, ComInterfaceSyncFactory,
+        com_interfaces::{
+            com_interface::implementation::{
+                ComInterfaceAsyncFactory, ComInterfaceSyncFactory,
+            },
+            default_com_interfaces::{
+                serial::serial_common::SerialInterfaceSetupData,
+                tcp::tcp_common::TCPServerInterfaceSetupData,
+                websocket::websocket_common::WebSocketServerInterfaceSetupData,
+            },
         },
     },
     runtime::execution::{ExecutionError, context::ExecutionMode},
@@ -34,6 +41,7 @@ use crate::{
         vec,
         vec::Vec,
     },
+    task::{UnboundedReceiver, create_unbounded_channel},
     time::Instant,
     utils::time::Time,
     values::{
@@ -43,18 +51,16 @@ use crate::{
 use core::{
     fmt::Debug, prelude::rust_2024::*, result::Result, slice, unreachable,
 };
+use datex_core::network::com_interfaces::default_com_interfaces::{
+    tcp::tcp_common::TCPClientInterfaceSetupData,
+    websocket::websocket_common::WebSocketClientInterfaceSetupData,
+};
 use execution::context::{
     ExecutionContext, RemoteExecutionContext, ScriptExecutionError,
 };
 use global_context::{GlobalContext, set_global_context};
 use log::{debug, error, info};
 use serde::{Deserialize, Serialize};
-use datex_core::network::com_interfaces::default_com_interfaces::tcp::tcp_common::TCPClientInterfaceSetupData;
-use datex_core::network::com_interfaces::default_com_interfaces::websocket::websocket_common::WebSocketClientInterfaceSetupData;
-use crate::network::com_interfaces::default_com_interfaces::serial::serial_common::SerialInterfaceSetupData;
-use crate::network::com_interfaces::default_com_interfaces::tcp::tcp_common::TCPServerInterfaceSetupData;
-use crate::network::com_interfaces::default_com_interfaces::websocket::websocket_common::WebSocketServerInterfaceSetupData;
-use crate::task::{create_unbounded_channel, UnboundedReceiver};
 
 pub mod dif_interface;
 pub mod execution;
@@ -117,7 +123,8 @@ pub struct RuntimeInternal {
     pub config: RuntimeConfig,
 
     // receiver for incoming sections from com hub
-    pub(crate) incoming_sections_receiver: RefCell<UnboundedReceiver<IncomingSection>>,
+    pub(crate) incoming_sections_receiver:
+        RefCell<UnboundedReceiver<IncomingSection>>,
 
     /// active execution contexts, stored by context_id
     pub execution_contexts:
@@ -342,7 +349,7 @@ impl RuntimeInternal {
                 if let Err(err) = res {
                     return (
                         Err(err),
-                        block.get_sender().clone(),
+                        block.sender().clone(),
                         block.block_header.context_id,
                     );
                 }
@@ -357,7 +364,7 @@ impl RuntimeInternal {
             unreachable!("Incoming section must contain at least one block");
         }
         let last_block = last_block.unwrap();
-        let sender_endpoint = last_block.get_sender().clone();
+        let sender_endpoint = last_block.sender().clone();
         let context_id = last_block.block_header.context_id;
 
         // insert the context back into the map for future use
@@ -473,9 +480,10 @@ impl Runtime {
     /// otherwise the runtime will panic here.
     pub fn new(config: RuntimeConfig, async_context: AsyncContext) -> Runtime {
         let endpoint = config.endpoint.clone().unwrap_or_else(Endpoint::random);
-        
-        let (incoming_sections_sender, incoming_sections_receiver) = create_unbounded_channel::<IncomingSection>();
-        
+
+        let (incoming_sections_sender, incoming_sections_receiver) =
+            create_unbounded_channel::<IncomingSection>();
+
         let com_hub = ComHub::create(
             endpoint.clone(),
             incoming_sections_sender,
@@ -489,7 +497,9 @@ impl Runtime {
                 memory,
                 config,
                 com_hub,
-                incoming_sections_receiver: RefCell::new(incoming_sections_receiver),
+                incoming_sections_receiver: RefCell::new(
+                    incoming_sections_receiver,
+                ),
                 execution_contexts: RefCell::new(HashMap::new()),
                 async_context,
             }),

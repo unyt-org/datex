@@ -1,8 +1,5 @@
 use crate::network::com_interfaces::com_interface::{
-    implementation::{
-        ComInterfaceAsyncFactory,
-        ComInterfaceSyncFactory,
-    },
+    implementation::{ComInterfaceAsyncFactory, ComInterfaceSyncFactory},
     properties::InterfaceProperties,
     socket::{ComInterfaceSocketEvent, ComInterfaceSocketUUID},
     socket_manager::ComInterfaceSocketManager,
@@ -10,27 +7,32 @@ use crate::network::com_interfaces::com_interface::{
 };
 
 use crate::{
-    network::com_hub::{
-        errors::InterfaceCreateError,
-        managers::interface_manager::{
-            AsyncComInterfaceImplementationFactoryFn,
-            SyncComInterfaceImplementationFactoryFn,
+    network::{
+        com_hub::{
+            errors::InterfaceCreateError,
+            managers::interface_manager::{
+                AsyncComInterfaceImplementationFactoryFn,
+                SyncComInterfaceImplementationFactoryFn,
+            },
         },
+        com_interfaces::com_interface::properties::InterfaceDirection,
     },
     stdlib::{
         cell::{Ref, RefCell, RefMut},
         rc::Rc,
         sync::{Arc, Mutex},
     },
-    task::{UnboundedReceiver, UnboundedSender, create_unbounded_channel},
-    utils::{uuid::UUID},
-    values::value_container::ValueContainer,
+    task::{
+        UnboundedReceiver, UnboundedSender, create_unbounded_channel,
+        spawn_with_panic_notify_default,
+    },
+    utils::uuid::UUID,
+    values::{
+        core_values::endpoint::Endpoint, value_container::ValueContainer,
+    },
 };
 use core::fmt::{Debug, Display};
 use tokio::sync::Notify;
-use crate::network::com_interfaces::com_interface::properties::InterfaceDirection;
-use crate::task::spawn_with_panic_notify_default;
-use crate::values::core_values::endpoint::Endpoint;
 
 pub mod error;
 pub mod implementation;
@@ -82,7 +84,6 @@ pub struct ComInterfaceProxy {
     pub event_receiver: UnboundedReceiver<ComInterfaceEvent>,
 }
 
-
 type ComInterfaceProxyChannels = (
     UnboundedReceiver<ComInterfaceStateEvent>,
     UnboundedReceiver<ComInterfaceSocketEvent>,
@@ -95,12 +96,10 @@ type ComInterfaceProxyShared = (
     Arc<Mutex<ComInterfaceSocketManager>>,
 );
 
-
 impl ComInterfaceProxy {
     /// Creates a raw default ComInterfaceProxy instance along with its communication channels
     /// This can be used to connect a ComInterface implementation with the ComInterfaceProxy
     pub fn new_with_channels() -> (Self, ComInterfaceProxyChannels) {
-
         // set up channels
         let (interface_state_event_sender, interface_state_event_receiver) =
             create_unbounded_channel::<ComInterfaceStateEvent>();
@@ -132,15 +131,18 @@ impl ComInterfaceProxy {
                 interface_state_event_receiver,
                 socket_event_receiver,
                 interface_event_sender,
-            )
+            ),
         )
     }
 
     /// Creates a new ComInterface instance along with its proxy, configured with the specified properties
-    pub fn create_interface(properties: InterfaceProperties) -> (Self, ComInterfaceWithReceivers) {
+    pub fn create_interface(
+        properties: InterfaceProperties,
+    ) -> (Self, ComInterfaceWithReceivers) {
         // Create a proxy for initialization
-        let (com_interface_proxy, channels) = ComInterfaceProxy::new_with_channels();
-        let com_interface_proxy_shared  = com_interface_proxy.clone_shared();
+        let (com_interface_proxy, channels) =
+            ComInterfaceProxy::new_with_channels();
+        let com_interface_proxy_shared = com_interface_proxy.clone_shared();
 
         (
             com_interface_proxy,
@@ -152,9 +154,7 @@ impl ComInterfaceProxy {
         )
     }
 
-    fn clone_shared(
-        &self,
-    ) -> ComInterfaceProxyShared {
+    fn clone_shared(&self) -> ComInterfaceProxyShared {
         (
             self.uuid.clone(),
             self.state.clone(),
@@ -175,8 +175,11 @@ impl ComInterfaceProxy {
         channel_factor: u32,
         direct_endpoint: Endpoint,
     ) -> (ComInterfaceSocketUUID, UnboundedSender<Vec<u8>>) {
-        self
-            .create_and_init_socket_with_optional_endpoint(direction, channel_factor, Some(direct_endpoint))
+        self.create_and_init_socket_with_optional_endpoint(
+            direction,
+            channel_factor,
+            Some(direct_endpoint),
+        )
     }
 
     /// Creates and initializes a new socket and returns its UUID and sender
@@ -186,8 +189,11 @@ impl ComInterfaceProxy {
         direction: InterfaceDirection,
         channel_factor: u32,
     ) -> (ComInterfaceSocketUUID, UnboundedSender<Vec<u8>>) {
-        self
-            .create_and_init_socket_with_optional_endpoint(direction, channel_factor, None)
+        self.create_and_init_socket_with_optional_endpoint(
+            direction,
+            channel_factor,
+            None,
+        )
     }
 
     fn create_and_init_socket_with_optional_endpoint(
@@ -199,7 +205,11 @@ impl ComInterfaceProxy {
         self.socket_manager
             .lock()
             .unwrap()
-            .create_and_init_socket_with_optional_endpoint(direction, channel_factor, direct_endpoint)
+            .create_and_init_socket_with_optional_endpoint(
+                direction,
+                channel_factor,
+                direct_endpoint,
+            )
     }
 
     /// Couples two ComInterfaceProxy instances together, simulating a direct bidirectional read/write connection between them via
@@ -207,17 +217,22 @@ impl ComInterfaceProxy {
     /// The socket manager and other internal components must be cloned before calling this method to still have access to them
     #[cfg(all(feature = "debug", feature = "std"))]
     pub fn couple_bidirectional(
-        proxy_a: ComInterfaceProxy,
-        proxy_b: ComInterfaceProxy,
+        couple_a: (ComInterfaceProxy, Option<Endpoint>),
+        couple_b: (ComInterfaceProxy, Option<Endpoint>),
     ) -> (ComInterfaceUUID, ComInterfaceUUID) {
+        let (proxy_a, remote_endpoint_a) = couple_a;
+        let (proxy_b, remote_endpoint_b) = couple_b;
         let uuid_a = proxy_a.uuid.clone();
         let uuid_b = proxy_b.uuid.clone();
 
         // Forward events from proxy A to proxy B
         let shutdown_signal_a = proxy_a.shutdown_signal();
-        let (_, mut socket_a_sender) = proxy_a.create_and_init_socket(
-            InterfaceDirection::InOut, 0
-        );
+        let (_, mut socket_a_sender) = proxy_a
+            .create_and_init_socket_with_optional_endpoint(
+                InterfaceDirection::InOut,
+                1,
+                remote_endpoint_a,
+            );
         spawn_with_panic_notify_default(async move {
             let mut event_receiver_a = proxy_a.event_receiver;
             loop {
@@ -237,9 +252,12 @@ impl ComInterfaceProxy {
 
         // Forward events from proxy B to proxy A
         let shutdown_signal_b = proxy_b.shutdown_signal();
-        let (_, mut socket_b_sender) = proxy_b.create_and_init_socket(
-            InterfaceDirection::InOut, 0
-        );
+        let (_, mut socket_b_sender) = proxy_b
+            .create_and_init_socket_with_optional_endpoint(
+                InterfaceDirection::InOut,
+                1,
+                remote_endpoint_b,
+            );
         spawn_with_panic_notify_default(async move {
             let mut event_receiver_b = proxy_b.event_receiver;
             loop {
@@ -261,7 +279,6 @@ impl ComInterfaceProxy {
     }
 }
 
-
 /// A com interface that can be used by the com hub to manage communication
 /// Implementations can be created using factory functions or setup data structs
 pub struct ComInterface {
@@ -275,11 +292,11 @@ pub struct ComInterface {
     pub socket_manager: Arc<Mutex<ComInterfaceSocketManager>>,
 
     /// Details about the interface
+    /// FIXME make as Rc only, no RefCell needed
     pub properties: Rc<RefCell<InterfaceProperties>>,
 
     /// Sender for interface implementation events (used by the ComInterface to send events to the implementation)
-    interface_event_sender:
-        RefCell<UnboundedSender<ComInterfaceEvent>>,
+    interface_event_sender: RefCell<UnboundedSender<ComInterfaceEvent>>,
 }
 
 pub type ComInterfaceReceivers = (
@@ -287,10 +304,7 @@ pub type ComInterfaceReceivers = (
     UnboundedReceiver<ComInterfaceSocketEvent>,
 );
 
-pub type ComInterfaceWithReceivers = (
-    ComInterface,
-    ComInterfaceReceivers
-);
+pub type ComInterfaceWithReceivers = (ComInterface, ComInterfaceReceivers);
 
 impl Debug for ComInterface {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
@@ -303,19 +317,18 @@ impl Debug for ComInterface {
 }
 
 impl ComInterface {
-
     /// Initializes a new ComInterface with a specified implementation as returned by the factory function
     pub fn create_from_sync_factory_fn(
         factory_fn: SyncComInterfaceImplementationFactoryFn,
         setup_data: ValueContainer,
     ) -> Result<ComInterfaceWithReceivers, InterfaceCreateError> {
         // Create a proxy for initialization
-        let (com_interface_proxy, channels) = ComInterfaceProxy::new_with_channels();
-        let com_interface_proxy_shared  = com_interface_proxy.clone_shared();
+        let (com_interface_proxy, channels) =
+            ComInterfaceProxy::new_with_channels();
+        let com_interface_proxy_shared = com_interface_proxy.clone_shared();
 
         // Create the implementation using the factory function
-        let properties =
-            factory_fn(setup_data, com_interface_proxy)?;
+        let properties = factory_fn(setup_data, com_interface_proxy)?;
 
         Ok(ComInterface::init_from_proxy_and_properties(
             com_interface_proxy_shared,
@@ -329,12 +342,12 @@ impl ComInterface {
         setup_data: ValueContainer,
     ) -> Result<ComInterfaceWithReceivers, InterfaceCreateError> {
         // Create a proxy for initialization
-        let (com_interface_proxy, channels) = ComInterfaceProxy::new_with_channels();
-        let com_interface_proxy_shared  = com_interface_proxy.clone_shared();
+        let (com_interface_proxy, channels) =
+            ComInterfaceProxy::new_with_channels();
+        let com_interface_proxy_shared = com_interface_proxy.clone_shared();
 
         // Create the implementation using the factory function
-        let properties =
-            factory_fn(setup_data, com_interface_proxy).await?;
+        let properties = factory_fn(setup_data, com_interface_proxy).await?;
         Ok(ComInterface::init_from_proxy_and_properties(
             com_interface_proxy_shared,
             channels,
@@ -346,11 +359,11 @@ impl ComInterface {
     /// only works for sync factories
     pub fn create_sync_from_setup_data<T: ComInterfaceSyncFactory>(
         setup_data: T,
-    ) -> Result<ComInterfaceWithReceivers, InterfaceCreateError>
-    {
+    ) -> Result<ComInterfaceWithReceivers, InterfaceCreateError> {
         // Create a proxy for initialization
-        let (com_interface_proxy, channels) = ComInterfaceProxy::new_with_channels();
-        let com_interface_proxy_shared  = com_interface_proxy.clone_shared();
+        let (com_interface_proxy, channels) =
+            ComInterfaceProxy::new_with_channels();
+        let com_interface_proxy_shared = com_interface_proxy.clone_shared();
 
         // Create the implementation using the factory function
         let properties = T::create_interface(setup_data, com_interface_proxy)?;
@@ -366,14 +379,15 @@ impl ComInterface {
     /// only works for async factories
     pub async fn create_async_from_setup_data<T: ComInterfaceAsyncFactory>(
         setup_data: T,
-    ) -> Result<ComInterfaceWithReceivers, InterfaceCreateError>
-    {
+    ) -> Result<ComInterfaceWithReceivers, InterfaceCreateError> {
         // Create a proxy for initialization
-        let (com_interface_proxy, channels) = ComInterfaceProxy::new_with_channels();
-        let com_interface_proxy_shared  = com_interface_proxy.clone_shared();
+        let (com_interface_proxy, channels) =
+            ComInterfaceProxy::new_with_channels();
+        let com_interface_proxy_shared = com_interface_proxy.clone_shared();
 
         // Create the implementation using the factory function
-        let properties = T::create_interface(setup_data, com_interface_proxy).await?;
+        let properties =
+            T::create_interface(setup_data, com_interface_proxy).await?;
 
         Ok(ComInterface::init_from_proxy_and_properties(
             com_interface_proxy_shared,
@@ -393,7 +407,6 @@ impl ComInterface {
     pub fn state(&self) -> Arc<Mutex<ComInterfaceStateWrapper>> {
         self.state.clone()
     }
-
 
     pub fn properties(&self) -> Ref<'_, InterfaceProperties> {
         self.properties.borrow()
@@ -447,10 +460,7 @@ impl ComInterface {
                 properties: Rc::new(RefCell::new(interface_properties)),
                 interface_event_sender: RefCell::new(channels.2),
             },
-            (
-                channels.0,
-                channels.1,
-            )
+            (channels.0, channels.1),
         )
     }
 

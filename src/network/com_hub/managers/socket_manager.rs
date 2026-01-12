@@ -16,11 +16,12 @@ use crate::{
 };
 
 use crate::{
-    network::com_interfaces::com_interface::properties::InterfaceDirection,
+    network::com_interfaces::com_interface::{
+        ComInterfaceUUID, properties::InterfaceDirection,
+    },
     utils::time::Time,
     values::core_values::endpoint::{Endpoint, EndpointInstance},
 };
-use crate::network::com_interfaces::com_interface::ComInterfaceUUID;
 
 pub type SocketsByUUID =
     HashMap<ComInterfaceSocketUUID, (ComInterfaceSocket, HashSet<Endpoint>)>;
@@ -317,7 +318,8 @@ impl SocketManager {
             .or_default()
             .insert(socket_uuid.clone());
         // add socket to socket list
-        self.sockets.insert(socket_uuid.clone(), (socket, HashSet::new()));
+        self.sockets
+            .insert(socket_uuid.clone(), (socket, HashSet::new()));
 
         // if socket has direct endpoint, register it
         if let Some(direct_endpoint) = direct_endpoint {
@@ -326,14 +328,13 @@ impl SocketManager {
                 direct_endpoint,
                 0,
             )
-                .unwrap_or_else(|e| {
-                    error!(
-                        "Failed to register direct endpoint for socket {}: {:?}",
-                        socket_uuid, e
-                    )
-                });
+            .unwrap_or_else(|e| {
+                error!(
+                    "Failed to register direct endpoint for socket {}: {:?}",
+                    socket_uuid, e
+                )
+            });
         }
-
     }
 
     /// Adds a socket to the socket list.
@@ -355,11 +356,15 @@ impl SocketManager {
             "Adding socket {} to ComHub with priority {:?}, direct endpoint: {}, direction: {:?}",
             socket.uuid,
             priority,
-            socket.direct_endpoint.as_ref().map(|e| e.to_string()).unwrap_or("None".to_string()),
+            socket
+                .direct_endpoint
+                .as_ref()
+                .map(|e| e.to_string())
+                .unwrap_or("None".to_string()),
             socket.direction
         );
 
-        if !socket.can_send() && priority != InterfacePriority::None {
+        if !can_send && priority != InterfacePriority::None {
             core::panic!(
                 "Socket {} cannot be used for fallback routing, since it has no send capability",
                 socket.uuid
@@ -424,10 +429,8 @@ impl SocketManager {
         };
 
         // get interface uuid before removing socket
-        let interface_uuid = self
-            .get_socket_by_uuid(socket_uuid)
-            .interface_uuid
-            .clone();
+        let interface_uuid =
+            self.get_socket_by_uuid(socket_uuid).interface_uuid.clone();
 
         // remove socket from endpoint socket list
         // remove endpoint key from endpoint_sockets if not sockets present

@@ -392,7 +392,7 @@ impl DXBBlock {
         self.routing_header.flags.is_bounce_back()
     }
 
-    pub fn get_sender(&self) -> &Endpoint {
+    pub fn sender(&self) -> &Endpoint {
         &self.routing_header.sender
     }
 

@@ -1,29 +1,30 @@
-use super::mockup_interface::{MockupInterfaceSetupData};
+use super::mockup_interface::MockupInterfaceSetupData;
 use core::str::FromStr;
 use datex_core::{
-    global::dxb_block::{DXBBlock, IncomingSection},
+    global::{
+        dxb_block::{
+            DXBBlock, IncomingEndpointContextSectionId, IncomingSection,
+        },
+        protocol_structures::block_header::FlagsAndTimestamp,
+    },
     network::{
         com_hub::{ComHub, InterfacePriority},
         com_interfaces::com_interface::{
-            ComInterface,
-            properties::InterfaceDirection, socket::ComInterfaceSocketUUID,
+            ComInterface, ComInterfaceEvent, ComInterfaceProxy,
+            ComInterfaceUUID, ComInterfaceWithReceivers,
+            properties::{InterfaceDirection, InterfaceProperties},
+            socket::ComInterfaceSocketUUID,
         },
     },
     runtime::{AsyncContext, Runtime, RuntimeConfig},
     stdlib::{cell::RefCell, rc::Rc},
-    task::{UnboundedReceiver, UnboundedSender},
+    task::{UnboundedReceiver, UnboundedSender, create_unbounded_channel},
     values::core_values::endpoint::Endpoint,
 };
+use hyper::header::TE;
 use log::{error, info};
-use std::{
-    sync::{Once, mpsc},
-};
+use std::sync::{Once, mpsc};
 use tokio::task::yield_now;
-use datex_core::global::dxb_block::IncomingEndpointContextSectionId;
-use datex_core::global::protocol_structures::block_header::{FlagsAndTimestamp};
-use datex_core::network::com_interfaces::com_interface::{ComInterfaceEvent, ComInterfaceProxy, ComInterfaceUUID, ComInterfaceWithReceivers};
-use datex_core::network::com_interfaces::com_interface::properties::InterfaceProperties;
-use datex_core::task::create_unbounded_channel;
 
 lazy_static::lazy_static! {
     pub static ref ANY : Endpoint = Endpoint::ANY.clone();
@@ -76,13 +77,14 @@ impl From<Endpoint> for MockupSetupData {
     }
 }
 
-
 /// Helper function to create a mock setup with a com hub and a mockup interface
 pub async fn get_mock_setup_with_com_hub(
     mock_setup_data: MockupSetupData,
 ) -> (Rc<ComHub>, ComInterfaceProxy) {
     // init mockup interface
-    let (proxy, interface) = ComInterfaceProxy::create_interface(mock_setup_data.interface_properties);
+    let (proxy, interface) = ComInterfaceProxy::create_interface(
+        mock_setup_data.interface_properties,
+    );
 
     // init com hub
     let com_hub = get_mock_setup_with_interface(
@@ -102,33 +104,48 @@ pub async fn get_default_mock_setup_with_two_connected_com_hubs() -> (
     (
         Rc<ComHub>,
         UnboundedReceiver<IncomingSection>,
-        ComInterfaceUUID
+        ComInterfaceUUID,
     ),
     (
         Rc<ComHub>,
         UnboundedReceiver<IncomingSection>,
-        ComInterfaceUUID
-    )
+        ComInterfaceUUID,
+    ),
 ) {
-    let (incoming_sections_sender_b, incoming_sections_receiver_b) = create_unbounded_channel::<IncomingSection>();
-    let (incoming_sections_sender_a, incoming_sections_receiver_a) = create_unbounded_channel::<IncomingSection>();
+    let (incoming_sections_sender_b, incoming_sections_receiver_b) =
+        create_unbounded_channel::<IncomingSection>();
+    let (incoming_sections_sender_a, incoming_sections_receiver_a) =
+        create_unbounded_channel::<IncomingSection>();
 
-    let (com_hub_mut_a, interface_proxy_a) = get_mock_setup_with_com_hub(MockupSetupData {
-        local_endpoint: TEST_ENDPOINT_A.clone(),
-        com_hub_sections_sender: Some(incoming_sections_sender_a),
-        ..Default::default()
-    }).await;
+    let (com_hub_mut_a, interface_proxy_a) =
+        get_mock_setup_with_com_hub(MockupSetupData {
+            interface_properties: InterfaceProperties {
+                name: Some("A->B".to_string()),
+                ..Default::default()
+            },
+            local_endpoint: TEST_ENDPOINT_A.clone(),
+            com_hub_sections_sender: Some(incoming_sections_sender_a),
+            ..Default::default()
+        })
+        .await;
 
-    let (com_hub_mut_b, interface_proxy_b) = get_mock_setup_with_com_hub(MockupSetupData {
-        local_endpoint: TEST_ENDPOINT_B.clone(),
-        com_hub_sections_sender: Some(incoming_sections_sender_b),
-        ..Default::default()
-    }).await;
-    
-    let (interface_a_uuid, interface_b_uuid) = ComInterfaceProxy::couple_bidirectional(
-        interface_proxy_a,
-        interface_proxy_b,
-    );
+    let (com_hub_mut_b, interface_proxy_b) =
+        get_mock_setup_with_com_hub(MockupSetupData {
+            interface_properties: InterfaceProperties {
+                name: Some("B->A".to_string()),
+                ..Default::default()
+            },
+            local_endpoint: TEST_ENDPOINT_B.clone(),
+            com_hub_sections_sender: Some(incoming_sections_sender_b),
+            ..Default::default()
+        })
+        .await;
+
+    let (interface_a_uuid, interface_b_uuid) =
+        ComInterfaceProxy::couple_bidirectional(
+            (interface_proxy_a, None),
+            (interface_proxy_b, None),
+        );
 
     (
         (
@@ -140,7 +157,7 @@ pub async fn get_default_mock_setup_with_two_connected_com_hubs() -> (
             com_hub_mut_b,
             incoming_sections_receiver_b,
             interface_b_uuid,
-        )
+        ),
     )
 }
 
@@ -168,7 +185,6 @@ pub fn get_mock_setup_with_interface(
     com_hub
 }
 
-
 /// Helper function to create a default mock setup with initialized channels for com hub and mockup interface
 /// The endpoint at the mockup interface socket is set to TEST_ENDPOINT_B
 pub async fn get_default_mock_setup_with_com_hub() -> (
@@ -176,23 +192,20 @@ pub async fn get_default_mock_setup_with_com_hub() -> (
     ComInterfaceProxy,
     UnboundedReceiver<IncomingSection>,
 ) {
-    let (com_hub_sections_sender, com_hub_sections_receiver) = create_unbounded_channel::<IncomingSection>();
+    let (com_hub_sections_sender, com_hub_sections_receiver) =
+        create_unbounded_channel::<IncomingSection>();
 
     let (com_hub, proxy) = get_mock_setup_with_com_hub(MockupSetupData {
         interface_properties: InterfaceProperties::default(),
         com_hub_sections_sender: Some(com_hub_sections_sender),
         ..Default::default()
-    }).await;
+    })
+    .await;
 
     yield_now().await;
 
-    (
-        com_hub,
-        proxy,
-        com_hub_sections_receiver,
-    )
+    (com_hub, proxy, com_hub_sections_receiver)
 }
-
 
 /// Helper function to create a mock setup with a full runtime and a mockup interface
 pub async fn get_mock_setup_with_runtime(
@@ -204,7 +217,9 @@ pub async fn get_mock_setup_with_runtime(
     ));
 
     // init mockup interface
-    let (proxy, interface) = ComInterfaceProxy::create_interface(mock_setup_data.interface_properties);
+    let (proxy, interface) = ComInterfaceProxy::create_interface(
+        mock_setup_data.interface_properties,
+    );
 
     // add mockup interface to com_hub
     runtime
@@ -222,12 +237,9 @@ pub async fn get_mock_setup_default_with_two_connected_runtimes(
     let (runtime_a, proxy_a) = get_mock_setup_with_runtime(setup_data_a).await;
 
     let (runtime_b, proxy_b) = get_mock_setup_with_runtime(setup_data_b).await;
-    
+
     // couple interfaces
-    ComInterfaceProxy::couple_bidirectional(
-        proxy_a,
-        proxy_b,
-    );
+    ComInterfaceProxy::couple_bidirectional((proxy_a, None), (proxy_b, None));
 
     (runtime_a, runtime_b)
 }
@@ -266,7 +278,7 @@ pub async fn send_empty_block(
     block
 }
 pub async fn get_next_received_single_block_from_receiver(
-    sections_receiver: &mut UnboundedReceiver<IncomingSection>
+    sections_receiver: &mut UnboundedReceiver<IncomingSection>,
 ) -> DXBBlock {
     let section = sections_receiver.next().await.unwrap();
 
@@ -302,13 +314,16 @@ pub enum CollectedBlockType {
 impl CollectedBlockType {
     pub fn matches_section(&self, section: &IncomingSection) -> bool {
         match self {
-            CollectedBlockType::SingleBocks => matches!(section, IncomingSection::SingleBlock(_)),
-            CollectedBlockType::BlockStream => matches!(section, IncomingSection::BlockStream(_)),
+            CollectedBlockType::SingleBocks => {
+                matches!(section, IncomingSection::SingleBlock(_))
+            }
+            CollectedBlockType::BlockStream => {
+                matches!(section, IncomingSection::BlockStream(_))
+            }
             CollectedBlockType::All => true,
         }
     }
 }
-
 
 pub async fn get_collected_received_blocks_from_receiver(
     sections_receiver: &mut UnboundedReceiver<IncomingSection>,
@@ -321,7 +336,10 @@ pub async fn get_collected_received_blocks_from_receiver(
 
     while let Some(section) = sections_receiver.next().await {
         if !collected_type.matches_section(&section) {
-            panic!("Received section does not match collected block type {:?}", collected_type);
+            panic!(
+                "Received section does not match collected block type {:?}",
+                collected_type
+            );
         }
 
         match section {
@@ -354,7 +372,11 @@ pub async fn get_collected_received_blocks_from_receiver(
     }
 
     if blocks.len() != count {
-        panic!("Expected to receive {} blocks, but got {}", count, blocks.len());
+        panic!(
+            "Expected to receive {} blocks, but got {}",
+            count,
+            blocks.len()
+        );
     }
 
     blocks
@@ -365,15 +387,12 @@ pub async fn get_collected_outgoing_blocks_from_receiver(
     count: usize,
 ) -> Vec<(DXBBlock, ComInterfaceSocketUUID)> {
     let mut collected_blocks = vec![];
-    
+
     let mut received_count = 0;
 
     while let Some(event) = event_receiver.next().await {
         if let ComInterfaceEvent::SendBlock(bytes, socket_uuid) = event {
-            let block =
-                DXBBlock::from_bytes(&bytes)
-                    .await
-                    .unwrap();
+            let block = DXBBlock::from_bytes(&bytes).await.unwrap();
 
             collected_blocks.push((block, socket_uuid));
             received_count += 1;
@@ -385,7 +404,11 @@ pub async fn get_collected_outgoing_blocks_from_receiver(
     }
 
     if collected_blocks.len() != count {
-        panic!("Expected to collect {} blocks, but got {}", count, collected_blocks.len());
+        panic!(
+            "Expected to collect {} blocks, but got {}",
+            count,
+            collected_blocks.len()
+        );
     }
 
     collected_blocks
@@ -396,10 +419,7 @@ pub async fn get_next_outgoing_block_from_receiver(
 ) -> (DXBBlock, ComInterfaceSocketUUID) {
     while let Some(event) = event_receiver.next().await {
         if let ComInterfaceEvent::SendBlock(bytes, socket_uuid) = event {
-            let block =
-                DXBBlock::from_bytes(&bytes)
-                    .await
-                    .unwrap();
+            let block = DXBBlock::from_bytes(&bytes).await.unwrap();
 
             return (block, socket_uuid);
         }
@@ -407,7 +427,6 @@ pub async fn get_next_outgoing_block_from_receiver(
 
     panic!("No outgoing block received");
 }
-
 
 /// Helper function to send multiple blocks to a local mockup interface via its incoming blocks sender
 /// Changes the receivers of each block to TEST_ENDPOINT_ORIGIN before sending
