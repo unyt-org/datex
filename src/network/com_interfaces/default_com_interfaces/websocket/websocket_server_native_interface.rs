@@ -25,11 +25,10 @@ use futures_util::stream::SplitSink;
 use tokio_tungstenite::accept_async;
 
 use super::websocket_common::{WebSocketServerInterfaceSetupData, parse_url};
-use crate::{
-    network::{
+use crate::network::{
         com_hub::errors::InterfaceCreateError,
         com_interfaces::com_interface::{
-            ComInterface, ComInterfaceEvent,
+            ComInterfaceEvent,
             error::ComInterfaceError,
             implementation::{
                 ComInterfaceAsyncFactory, ComInterfaceAsyncFactoryResult,
@@ -38,8 +37,7 @@ use crate::{
             properties::{InterfaceDirection, InterfaceProperties},
             socket::ComInterfaceSocketUUID,
         },
-    },
-};
+    };
 use tokio_tungstenite::WebSocketStream;
 use datex_core::network::com_interfaces::com_interface::ComInterfaceProxy;
 

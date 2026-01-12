@@ -11,7 +11,7 @@ use crate::{
         com_interfaces::com_interface::{
             ComInterface, ComInterfaceReceivers, ComInterfaceStateEvent,
             ComInterfaceUUID,
-            socket::{ComInterfaceSocketEvent, ComInterfaceSocketUUID},
+            socket::ComInterfaceSocketUUID,
         },
     },
     stdlib::{
@@ -55,9 +55,9 @@ impl ComHub {
         event_receivers: ComInterfaceReceivers,
     ) {
         // handle interface events
-        self.handle_interface_events(&interface, event_receivers.0);
+        self.handle_interface_events(interface, event_receivers.0);
         // handle socket events
-        self.handle_interface_socket_events(&interface, event_receivers.1);
+        self.handle_interface_socket_events(interface, event_receivers.1);
     }
 
     /// Internal method to handle interface events

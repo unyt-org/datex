@@ -14,7 +14,7 @@ use crate::{
         },
     },
     std_sync::Mutex,
-    stdlib::{rc::Rc, sync::Arc, time::Duration},
+    stdlib::{sync::Arc, time::Duration},
     task::{
         UnboundedReceiver, spawn, spawn_blocking,
         spawn_with_panic_notify_default,

@@ -18,7 +18,7 @@ use crate::{
         com_interfaces::com_interface::properties::InterfaceDirection,
     },
     stdlib::{
-        cell::{Ref, RefCell, RefMut},
+        cell::{Ref, RefCell},
         rc::Rc,
         sync::{Arc, Mutex},
     },

@@ -13,21 +13,18 @@ use futures::StreamExt;
 use tokio_stream::wrappers::BroadcastStream;
 
 use super::http_common::{HTTPError, HTTPServerInterfaceSetupData};
-use crate::{
-    network::{
+use crate::network::{
         com_hub::errors::InterfaceCreateError,
         com_interfaces::com_interface::{
-            ComInterface, ComInterfaceEvent,
+            ComInterfaceEvent,
             implementation::{
                 ComInterfaceAsyncFactory, ComInterfaceAsyncFactoryResult,
                 ComInterfaceSyncFactory,
             },
-            properties::{InterfaceDirection, InterfaceProperties},
+            properties::InterfaceProperties,
             socket::ComInterfaceSocketUUID,
         },
-    },
-    values::core_values::endpoint::Endpoint,
-};
+    };
 use axum::{
     Router,
     extract::{Path, State},

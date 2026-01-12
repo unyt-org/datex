@@ -183,7 +183,7 @@ impl InterfaceManager {
     ) -> Option<&ComInterface> {
         self.interfaces
             .get(uuid)
-            .map(|(interface, _)| interface.clone())
+            .map(|(interface, _)| interface)
     }
 
     /// Returns the com interface for a given UUID

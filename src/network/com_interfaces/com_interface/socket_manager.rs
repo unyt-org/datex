@@ -1,7 +1,6 @@
 use crate::{
     network::com_interfaces::com_interface::{
         ComInterfaceUUID,
-        error::ComInterfaceError,
         properties::InterfaceDirection,
         socket::{
             ComInterfaceSocket, ComInterfaceSocketEvent, ComInterfaceSocketUUID,

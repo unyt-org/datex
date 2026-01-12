@@ -4,7 +4,6 @@ use crate::{
         block_header::BlockType, routing_header::SignatureType,
     },
     network::com_hub::{
-        self,
         errors::{ComHubError, SocketEndpointRegistrationError},
         managers::interface_manager::InterfaceManager,
         network_response::{

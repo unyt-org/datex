@@ -26,7 +26,7 @@ use crate::{
     network::{
         com_hub::errors::InterfaceCreateError,
         com_interfaces::com_interface::{
-            ComInterface, ComInterfaceEvent,
+            ComInterfaceEvent,
             error::ComInterfaceError,
             implementation::{
                 ComInterfaceAsyncFactory, ComInterfaceAsyncFactoryResult,

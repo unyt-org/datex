@@ -1,9 +1,7 @@
 use crate::{
     network::{
         com_hub::{ComHub, errors::InterfaceCreateError},
-        com_interfaces::com_interface::{
-            ComInterface, properties::InterfaceProperties,
-        },
+        com_interfaces::com_interface::properties::InterfaceProperties,
     },
     serde::{Deserialize, deserializer::from_value_container},
     stdlib::{rc::Rc},
