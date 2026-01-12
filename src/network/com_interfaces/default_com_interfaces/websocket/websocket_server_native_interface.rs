@@ -104,7 +104,7 @@ impl WebSocketServerInterfaceSetupData {
                                         let (socket_uuid, sender) = manager
                                             .lock()
                                             .unwrap()
-                                            .create_and_init_socket(InterfaceDirection::InOut, 1);
+                                            .create_and_init_socket_with_optional_endpoint(InterfaceDirection::InOut, 1, None);
 
                                         websocket_streams
                                             .try_lock()

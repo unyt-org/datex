@@ -116,36 +116,17 @@ impl BaseInterface {
         }
     }
 
-    fn create_and_init_socket(
+    fn create_and_init_socket_with_optional_endpoint(
         &mut self,
         direction: InterfaceDirection,
+        direct_endpoint: Option<Endpoint>
     ) -> (ComInterfaceSocketUUID, UnboundedSender<Vec<u8>>) {
         let (uuid, sender) = self
             .socket_manager
             .lock()
             .unwrap()
-            .create_and_init_socket(direction, 1);
+            .create_and_init_socket_with_optional_endpoint(direction, 1, direct_endpoint);
         (uuid, sender)
-    }
-
-    /// Registers and initializes a new socket with the given endpoint and direction
-    /// Returns the socket UUID and a sender to send data to the socket
-    pub fn register_new_socket_with_endpoint(
-        &mut self,
-        direction: InterfaceDirection,
-        endpoint: Endpoint,
-    ) -> ComInterfaceSocketUUID {
-        let (socket_uuid, sender) = self.create_and_init_socket(direction);
-
-        self
-            .socket_manager
-            .lock()
-            .unwrap()
-            .register_socket_endpoint(socket_uuid.clone(), endpoint, 1);
-
-        self.senders.insert(socket_uuid.clone(), sender.clone());
-
-        socket_uuid
     }
 }
 

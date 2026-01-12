@@ -124,7 +124,5 @@ impl Display for ComHubError {
 
 #[derive(Debug)]
 pub enum SocketEndpointRegistrationError {
-    SocketDisconnected,
-    SocketUninitialized,
     SocketEndpointAlreadyRegistered,
 }

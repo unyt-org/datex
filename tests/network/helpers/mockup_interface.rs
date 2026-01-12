@@ -75,18 +75,8 @@ impl MockupInterfaceSetupData {
         let (socket_uuid, sender) = socket_manager
             .lock()
             .unwrap()
-            .create_and_init_socket(direction, 1);
+            .create_and_init_socket_with_optional_endpoint(direction, 1, self.endpoint.clone());
 
-        if let Some(endpoint) = &self.endpoint {
-            socket_manager
-                .lock()
-                .unwrap()
-                .register_socket_endpoint(
-                    socket_uuid.clone(),
-                    endpoint.clone(),
-                    1,
-                );
-        }
         Ok((socket_uuid, sender))
     }
 }

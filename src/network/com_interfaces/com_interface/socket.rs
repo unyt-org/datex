@@ -14,12 +14,6 @@ use crate::{
 };
 use core::fmt::Display;
 
-#[derive(Debug, Clone, Copy, PartialEq, EnumIs)]
-pub enum SocketState {
-    Connected,
-    Disconnected,
-}
-
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ComInterfaceSocketUUID(pub UUID);
 impl Display for ComInterfaceSocketUUID {
@@ -32,18 +26,15 @@ impl ComInterfaceSocketUUID {
         ComInterfaceSocketUUID(UUID::from_string(s))
     }
 }
-
 #[derive(Debug)]
 pub enum ComInterfaceSocketEvent {
     NewSocket(ComInterfaceSocket),
     RemovedSocket(ComInterfaceSocketUUID),
-    RegisteredSocket(ComInterfaceSocketUUID, i8, Endpoint),
 }
 
 #[derive(Debug)]
 pub struct ComInterfaceSocket {
     pub direct_endpoint: Option<Endpoint>,
-    pub state: SocketState,
     pub uuid: ComInterfaceSocketUUID,
     pub interface_uuid: ComInterfaceUUID,
     pub connection_timestamp: u64,
@@ -73,12 +64,12 @@ impl ComInterfaceSocket {
         interface_uuid: ComInterfaceUUID,
         direction: InterfaceDirection,
         channel_factor: u32,
+        direct_endpoint: Option<Endpoint>
     ) -> (ComInterfaceSocket, UnboundedSender<Vec<u8>>) {
         let (bytes_in_sender, block_in_receiver) = BlockCollector::init();
         (
             ComInterfaceSocket {
-                direct_endpoint: None,
-                state: SocketState::Connected,
+                direct_endpoint,
                 uuid: ComInterfaceSocketUUID(UUID::new()),
                 interface_uuid,
                 connection_timestamp: 0,

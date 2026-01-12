@@ -10,7 +10,6 @@ use crate::{
     task::UnboundedSender,
     values::core_values::endpoint::Endpoint,
 };
-use log::debug;
 
 #[derive(Debug)]
 pub struct ComInterfaceSocketManager {
@@ -45,34 +44,19 @@ impl ComInterfaceSocketManager {
             .unwrap();
         // FIXME socket state (socket should no longer exist)
     }
-    
-    /// Registers an endpoint for a socket and notifies listeners on ComHub
-    pub fn register_socket_endpoint(
-        &mut self,
-        socket_uuid: ComInterfaceSocketUUID,
-        endpoint: Endpoint,
-        distance: u8,
-    ) {
-        debug!("Socket registered: {socket_uuid} {endpoint}");
-        self.socket_event_sender
-            .start_send(ComInterfaceSocketEvent::RegisteredSocket(
-                socket_uuid,
-                distance as i8,
-                endpoint,
-            ))
-            .unwrap();
-    }
 
     /// Creates and initializes a new socket and returns its UUID and sender
-    pub fn create_and_init_socket(
+    pub fn create_and_init_socket_with_optional_endpoint(
         &mut self,
         direction: InterfaceDirection,
         channel_factor: u32,
+        direct_endpoint: Option<Endpoint>,
     ) -> (ComInterfaceSocketUUID, UnboundedSender<Vec<u8>>) {
         let (socket, sender) = ComInterfaceSocket::init(
             self.interface_uuid.clone(),
             direction,
             channel_factor,
+            direct_endpoint,
         );
         let socket_uuid = socket.uuid.clone();
         self.add_socket(socket);

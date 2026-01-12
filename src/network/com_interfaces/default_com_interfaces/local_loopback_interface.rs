@@ -35,10 +35,12 @@ impl ComInterfaceSyncFactory for LocalLoopbackInterfaceSetupData {
     ) -> Result<InterfaceProperties, InterfaceCreateError> {
 
         // directly create a socket and register it
-        let (socket_uuid, mut sender) = com_interface_proxy
-            .create_and_init_socket(InterfaceDirection::InOut, 1);
-        com_interface_proxy
-            .register_socket_endpoint(socket_uuid, Endpoint::LOCAL, 1);
+        let (_, mut sender) = com_interface_proxy
+            .create_and_init_socket_with_direct_endpoint(
+                InterfaceDirection::InOut, 
+                1,
+                Endpoint::LOCAL.clone(),
+            );
 
         // spawn event handler task for impl events
         spawn_with_panic_notify_default(async move {

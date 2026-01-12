@@ -109,10 +109,8 @@ pub trait WebRTCTraitInternal<DC: 'static, MR: 'static, ML: 'static> {
     ) -> (ComInterfaceSocketUUID, UnboundedSender<Vec<u8>>) {
         let mut manager = manager.try_lock().unwrap();
         let (socket_uuid, sender) =
-            manager.create_and_init_socket(InterfaceDirection::InOut, 1);
-        manager
-            .register_socket_endpoint(socket_uuid.clone(), endpoint, 1);
-
+            manager.create_and_init_socket_with_optional_endpoint(InterfaceDirection::InOut, 1, Some(endpoint));
+        
         (socket_uuid, sender)
     }
     fn _remote_endpoint(&self) -> Endpoint {

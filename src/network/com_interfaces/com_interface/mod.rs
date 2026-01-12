@@ -167,30 +167,39 @@ impl ComInterfaceProxy {
     }
 
     /// Creates and initializes a new socket and returns its UUID and sender
+    /// Also registers an already known direct endpoint for the socket
+    /// Locks the socket manager internally and calls the creation method
+    pub fn create_and_init_socket_with_direct_endpoint(
+        &self,
+        direction: InterfaceDirection,
+        channel_factor: u32,
+        direct_endpoint: Endpoint,
+    ) -> (ComInterfaceSocketUUID, UnboundedSender<Vec<u8>>) {
+        self
+            .create_and_init_socket_with_optional_endpoint(direction, channel_factor, Some(direct_endpoint))
+    }
+
+    /// Creates and initializes a new socket and returns its UUID and sender
     /// Locks the socket manager internally and calls the creation method
     pub fn create_and_init_socket(
         &self,
         direction: InterfaceDirection,
         channel_factor: u32,
     ) -> (ComInterfaceSocketUUID, UnboundedSender<Vec<u8>>) {
-        self.socket_manager
-            .lock()
-            .unwrap()
-            .create_and_init_socket(direction, channel_factor)
+        self
+            .create_and_init_socket_with_optional_endpoint(direction, channel_factor, None)
     }
 
-    /// Registers an endpoint for a socket and notifies listeners on ComHub
-    /// Locks the socket manager internally and calls the registration method
-    pub fn register_socket_endpoint(
+    fn create_and_init_socket_with_optional_endpoint(
         &self,
-        socket_uuid: ComInterfaceSocketUUID,
-        endpoint: Endpoint,
-        distance: u8,
-    ) {
+        direction: InterfaceDirection,
+        channel_factor: u32,
+        direct_endpoint: Option<Endpoint>,
+    ) -> (ComInterfaceSocketUUID, UnboundedSender<Vec<u8>>) {
         self.socket_manager
             .lock()
             .unwrap()
-            .register_socket_endpoint(socket_uuid, endpoint, distance)
+            .create_and_init_socket_with_optional_endpoint(direction, channel_factor, direct_endpoint)
     }
 
     /// Couples two ComInterfaceProxy instances together, simulating a direct bidirectional read/write connection between them via
@@ -206,7 +215,7 @@ impl ComInterfaceProxy {
 
         // Forward events from proxy A to proxy B
         let shutdown_signal_a = proxy_a.shutdown_signal();
-        let (_, mut socket_a_sender) = proxy_a.socket_manager.lock().unwrap().create_and_init_socket(
+        let (_, mut socket_a_sender) = proxy_a.create_and_init_socket(
             InterfaceDirection::InOut, 0
         );
         spawn_with_panic_notify_default(async move {
@@ -228,7 +237,7 @@ impl ComInterfaceProxy {
 
         // Forward events from proxy B to proxy A
         let shutdown_signal_b = proxy_b.shutdown_signal();
-        let (_, mut socket_b_sender) = proxy_b.socket_manager.lock().unwrap().create_and_init_socket(
+        let (_, mut socket_b_sender) = proxy_b.create_and_init_socket(
             InterfaceDirection::InOut, 0
         );
         spawn_with_panic_notify_default(async move {
@@ -419,7 +428,6 @@ impl ComInterface {
             .borrow_mut()
             .start_send(ComInterfaceEvent::Destroy)
             .unwrap();
-        self.set_state(ComInterfaceState::Destroyed);
     }
 
     pub fn socket_manager(&self) -> Arc<Mutex<ComInterfaceSocketManager>> {

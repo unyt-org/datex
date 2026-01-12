@@ -1,7 +1,6 @@
 use crate::{
     network::com_interfaces::com_interface::socket::{
         ComInterfaceSocket, ComInterfaceSocketEvent, ComInterfaceSocketUUID,
-        SocketState,
     },
     task::UnboundedSender,
 };
@@ -120,11 +119,6 @@ impl SocketManager {
         // if the registered endpoint is the same as the socket endpoint,
         // this is a direct socket to the endpoint
         let is_direct = socket.direct_endpoint == Some(endpoint.clone());
-
-        // cannot register endpoint if socket is not connected
-        if !socket.state.is_connected() {
-            return Err(SocketEndpointRegistrationError::SocketDisconnected);
-        }
 
         // check if the socket is already registered for the endpoint
         if let Some(entries) = self.endpoint_sockets.get(&endpoint)
@@ -301,14 +295,6 @@ impl SocketManager {
         self.sockets.contains_key(socket_uuid)
     }
 
-    /// Returns the current state of a socket by its UUID
-    pub fn socket_state(
-        &self,
-        socket_uuid: &ComInterfaceSocketUUID,
-    ) -> SocketState {
-        self.get_socket_by_uuid(socket_uuid).state
-    }
-
     /// Adds a socket to the SocketManager
     /// Panics if the socket already exists
     fn add_socket_to_list(
@@ -322,13 +308,32 @@ impl SocketManager {
                 socket_uuid
             );
         }
+
+        let direct_endpoint = socket.direct_endpoint.clone();
+
         // store interface socket mapping
         self.socket_uuids_by_interface_uuid
             .entry(socket.interface_uuid.clone())
             .or_default()
             .insert(socket_uuid.clone());
+        // add socket to socket list
+        self.sockets.insert(socket_uuid.clone(), (socket, HashSet::new()));
 
-        self.sockets.insert(socket_uuid, (socket, HashSet::new()));
+        // if socket has direct endpoint, register it
+        if let Some(direct_endpoint) = direct_endpoint {
+            self.register_socket_endpoint(
+                socket_uuid.clone(),
+                direct_endpoint,
+                0,
+            )
+                .unwrap_or_else(|e| {
+                    error!(
+                        "Failed to register direct endpoint for socket {}: {:?}",
+                        socket_uuid, e
+                    )
+                });
+        }
+
     }
 
     /// Adds a socket to the socket list.
@@ -657,18 +662,6 @@ impl SocketManager {
             }
             ComInterfaceSocketEvent::RemovedSocket(socket_uuid) => {
                 self.delete_socket(&socket_uuid);
-            }
-            ComInterfaceSocketEvent::RegisteredSocket(
-                socket_uuid,
-                distance,
-                endpoint,
-            ) => {
-                self.register_socket_endpoint(socket_uuid.clone(), endpoint.clone(), distance)
-                .unwrap_or_else(|e| {
-                    error!(
-                        "Failed to register socket {socket_uuid} for endpoint {endpoint} {e:?}"
-                    );
-                });
             }
         }
     }

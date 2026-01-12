@@ -72,9 +72,10 @@ impl TCPServerInterfaceSetupData {
                             Ok((stream, _)) => {
                                 // Initialize socket in com socket manager
                                 let (socket_uuid, rx_sender) =
-                                    manager.lock().unwrap().create_and_init_socket(
+                                    manager.lock().unwrap().create_and_init_socket_with_optional_endpoint(
                                         InterfaceDirection::InOut,
                                         1,
+                                        None
                                     );
                                 // Handle the client connection
                                 let (tcp_read_half, tcp_write_half) =

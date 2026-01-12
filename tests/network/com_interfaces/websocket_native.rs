@@ -37,7 +37,7 @@ pub async fn test_create_socket_connection() {
     })
     .await
     .expect("Failed to create WebSocketServerInterface");
-    
+
     let (client_interface, (_, mut client_interface_socket_event_receiver)) = ComInterface::create_async_from_setup_data(WebSocketClientInterfaceSetupData {
         address: format!("ws://localhost:{PORT}"),
     })
