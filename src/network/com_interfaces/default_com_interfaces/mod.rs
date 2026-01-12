@@ -1,4 +1,3 @@
-pub mod base_interface;
 #[cfg(feature = "com_http")]
 pub mod http;
 pub mod local_loopback_interface;

@@ -37,7 +37,7 @@ impl ComInterfaceSyncFactory for LocalLoopbackInterfaceSetupData {
         // directly create a socket and register it
         let (_, mut sender) = com_interface_proxy
             .create_and_init_socket_with_direct_endpoint(
-                InterfaceDirection::InOut, 
+                InterfaceDirection::InOut,
                 1,
                 Endpoint::LOCAL.clone(),
             );
