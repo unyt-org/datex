@@ -434,14 +434,15 @@ impl ComInterface {
         todo!()
     }
 
-    /// Closes the communication interface and transitions it to the NotConnected state
+    /// Closes the communication interface and transitions it to the Destroyed state
     /// Note: This method is non-blocking and returns immediately after queuing the close request
     /// The actual closing of resources is handled asynchronously by the implementation
-    pub fn close(&self) {
+    pub fn destroy(&self) {
         self.interface_event_sender
             .borrow_mut()
             .start_send(ComInterfaceEvent::Destroy)
             .unwrap();
+        self.state.try_lock().unwrap().set(ComInterfaceState::Destroyed);
     }
 
     pub fn socket_manager(&self) -> Arc<Mutex<ComInterfaceSocketManager>> {

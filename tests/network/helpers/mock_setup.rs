@@ -269,7 +269,7 @@ pub async fn send_block_with_body(
 pub async fn send_empty_block(
     to: &[Endpoint],
     com_hub: &Rc<ComHub>,
-) -> DXBBlock {
+) -> Result<DXBBlock, ()> {
     let mut block: DXBBlock = DXBBlock::default();
     block.set_receivers(to);
     {
@@ -277,10 +277,11 @@ pub async fn send_empty_block(
             info!("Sent block: {:?}", sent_block);
         } else {
             error!("Failed to send block");
+            return Err(());
         }
     }
 
-    block
+    Ok(block)
 }
 pub async fn get_next_received_single_block_from_receiver(
     sections_receiver: &mut UnboundedReceiver<IncomingSection>,

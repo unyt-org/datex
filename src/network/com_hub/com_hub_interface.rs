@@ -116,7 +116,7 @@ impl ComHub {
         setup_data: ValueContainer,
         priority: InterfacePriority,
     ) -> Result<ComInterfaceUUID, InterfaceCreateError> {
-        let (com_interface_uuid, receivers) = 
+        let (com_interface_uuid, receivers) =
             InterfaceManager::create_and_add_interface(self.interface_manager.clone(), interface_type, setup_data, priority)
             .await?;
         let interface_manager = self.interface_manager.borrow();
@@ -144,7 +144,7 @@ impl ComHub {
             )?;
         let interface_manager = self.interface_manager.borrow();
         self.init_interface_event_listeners(
-            interface_manager.get_interface_by_uuid(&com_interface_uuid), 
+            interface_manager.get_interface_by_uuid(&com_interface_uuid),
             receivers
         );
         Ok(com_interface_uuid)
@@ -156,7 +156,7 @@ impl ComHub {
     ) -> Result<(), ComHubError> {
         self.interface_manager
             .borrow_mut()
-            .remove_interface(&interface_uuid)?;
+            .destroy_interface(&interface_uuid)?;
 
         self.socket_manager
             .borrow_mut()

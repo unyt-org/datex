@@ -233,7 +233,7 @@ impl InterfaceManager {
 
     /// User can proactively remove an interface from the hub.
     /// This will destroy the interface and it's sockets (perform deep cleanup)
-    pub fn remove_interface(
+    pub fn destroy_interface(
         &mut self,
         interface_uuid: &ComInterfaceUUID,
     ) -> Result<(), ComHubError> {
@@ -245,10 +245,10 @@ impl InterfaceManager {
             .0;
         {
             // Async close the interface (stop tasks, server, cleanup internal data)
-            interface.close();
+            interface.destroy();
             // TODO: await until closed asynchronously?
         }
-
+        
         self.cleanup_interface(interface_uuid)?;
 
         Ok(())

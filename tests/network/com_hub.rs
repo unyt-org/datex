@@ -5,7 +5,7 @@ use crate::network::helpers::{
         get_collected_received_blocks_from_receiver,
         get_default_mock_setup_with_com_hub,
         get_default_mock_setup_with_two_connected_com_hubs,
-        get_mock_setup_with_com_hub, get_mock_setup_with_interface,
+        get_mock_setup_with_com_hub,
         get_next_outgoing_block_from_receiver,
         get_next_received_single_block_from_receiver, send_block_with_body,
         send_empty_block, send_multiple_blocks_to_local,
@@ -14,7 +14,7 @@ use crate::network::helpers::{
 };
 use datex_core::{
     global::{
-        dxb_block::{DXBBlock, IncomingSection},
+        dxb_block::{DXBBlock},
         protocol_structures::{
             block_header::{BlockHeader, FlagsAndTimestamp},
             encrypted_header::{self, EncryptedHeader},
@@ -24,10 +24,10 @@ use datex_core::{
     network::{
         com_hub::{
             ComHub, InterfacePriority,
-            metadata::{ComHubMetadata, ComHubMetadataInterface},
+            metadata::{ComHubMetadata},
         },
         com_interfaces::com_interface::{
-            ComInterface, ComInterfaceEvent, ComInterfaceProxy,
+            ComInterface, ComInterfaceProxy,
             implementation::ComInterfaceSyncFactory,
             properties::{InterfaceDirection, InterfaceProperties},
             state::ComInterfaceState,
@@ -40,7 +40,6 @@ use datex_core::{
     values::core_values::endpoint::Endpoint,
 };
 use datex_macros::async_test;
-use log::info;
 use std::time::Duration;
 use tokio::task::yield_now;
 
@@ -166,7 +165,7 @@ pub async fn test_send() {
 }
 
 #[async_test]
-pub async fn test_send_invalid_recipient() {
+pub async fn send_block_to_invalid_receiver() {
     // init without fallback interfaces
     let (com_hub, interface_proxy, ..) =
         get_mock_setup_with_com_hub(MockupSetupData {
@@ -176,9 +175,9 @@ pub async fn test_send_invalid_recipient() {
         })
         .await;
 
-    send_empty_block(std::slice::from_ref(&TEST_ENDPOINT_B), &com_hub).await;
-
-    // TODO: validate that no block was sent?
+    assert!(
+        send_empty_block(std::slice::from_ref(&TEST_ENDPOINT_B), &com_hub).await.is_err()
+    );
 }
 
 #[async_test]
@@ -253,11 +252,13 @@ pub async fn send_blocks_to_multiple_endpoint_sockets() {
     yield_now().await;
 
     // send block to multiple receivers
-    let _ = send_empty_block(
-        &[TEST_ENDPOINT_A.clone(), TEST_ENDPOINT_B.clone()],
-        &com_hub,
-    )
-    .await;
+    assert!(
+        send_empty_block(
+            &[TEST_ENDPOINT_A.clone(), TEST_ENDPOINT_B.clone()],
+            &com_hub,
+        )
+        .await.is_ok()
+    );
 
     let blocks = get_collected_outgoing_blocks_from_receiver(
         &mut interface_proxy.event_receiver,
@@ -273,29 +274,11 @@ pub async fn send_blocks_to_multiple_endpoint_sockets() {
     assert!(block_uuids.contains(&socket_uuid_b));
 }
 
-#[async_test]
-pub async fn default_interface_create_socket_first() {
-    let (com_hub, mut interface_proxy, ..) =
-        get_default_mock_setup_with_com_hub().await;
-
-    let _ = send_empty_block(std::slice::from_ref(&TEST_ENDPOINT_B), &com_hub)
-        .await;
-
-    // sleep to let the com_hub process the new socket
-    sleep(Duration::from_millis(10)).await;
-
-    // collect 1 outgoing block
-    get_collected_outgoing_blocks_from_receiver(
-        &mut interface_proxy.event_receiver,
-        1,
-    )
-    .await;
-}
 
 #[async_test]
 pub async fn test_receive() {
     let (_, interface_proxy, mut incoming_sections_receiver) = get_default_mock_setup_with_com_hub().await;
-    
+
     // receive block
     let mut block = DXBBlock {
         body: vec![0x01, 0x02, 0x03],
@@ -548,15 +531,16 @@ pub async fn test_receive_multiple_separate_blocks() {
 
 #[async_test]
 pub async fn test_add_and_remove_interface_and_sockets() {
-    let (com_hub, interface_proxy, mut incoming_sections_receiver) =
+    let (com_hub, interface_proxy, _) =
         get_default_mock_setup_with_com_hub().await;
 
+    // initial state with loopback interface and mockup interface
     {
         let interface_manager = com_hub.interface_manager();
         let socket_manager = com_hub.socket_manager();
         assert_eq!(interface_manager.borrow().interfaces.len(), 2); // loopback + mockup interface
-        assert_eq!(socket_manager.borrow().sockets.len(), 2); // loopback + mockup socket
-        assert_eq!(socket_manager.borrow().endpoint_sockets.len(), 2);
+        assert_eq!(socket_manager.borrow().sockets.len(), 1); // loopback
+        assert_eq!(socket_manager.borrow().endpoint_sockets.len(), 1);
     }
 
     assert_eq!(
@@ -564,9 +548,29 @@ pub async fn test_add_and_remove_interface_and_sockets() {
         ComInterfaceState::Connected
     );
 
+    // add new socket without direct endpoint
     let (socket_uuid, _) =
-        interface_proxy.create_and_init_socket(InterfaceDirection::InOut, 0);
+        interface_proxy.create_and_init_socket(InterfaceDirection::InOut, 1);
     yield_now().await;
+
+    {
+        let socket_manager = com_hub.socket_manager();
+        assert!(socket_manager.borrow().has_socket(&socket_uuid));
+        assert_eq!(socket_manager.borrow().sockets.len(), 2);
+        assert_eq!(socket_manager.borrow().endpoint_sockets.len(), 1);
+    }
+
+    // add new socket with direct endpoint
+    let (socket_uuid, _) =
+        interface_proxy.create_and_init_socket_with_direct_endpoint(InterfaceDirection::InOut, 1, TEST_ENDPOINT_A.clone());
+    yield_now().await;
+
+    {
+        let socket_manager = com_hub.socket_manager();
+        assert!(socket_manager.borrow().has_socket(&socket_uuid));
+        assert_eq!(socket_manager.borrow().sockets.len(), 3);
+        assert_eq!(socket_manager.borrow().endpoint_sockets.len(), 2);
+    }
 
     let interface_uuid = interface_proxy.uuid.clone();
 
