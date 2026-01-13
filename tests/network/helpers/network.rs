@@ -688,8 +688,8 @@ impl Network {
         runtime_b.0.com_hub().register_com_interface(com_interface_b, runtime_b.1.priority).expect("Failed to register interface B");
 
         // connect the two interfaces
-        let remote_endpoint_a = runtime_b.1.endpoint.clone();
-        let remote_endpoint_b = runtime_a.1.endpoint.clone();
+        let remote_endpoint_a = runtime_b.1.setup_data.unwrap().endpoint.clone();
+        let remote_endpoint_b = runtime_a.1.setup_data.unwrap().endpoint.clone();
 
 
         // Forward events from proxy A to proxy B
