@@ -24,28 +24,22 @@ use crate::{
 };
 use core::{prelude::rust_2024::*, result::Result};
 use datex_core::network::com_interfaces::com_interface::ComInterfaceWithReceivers;
+use datex_core::network::com_interfaces::com_interface::implementation::ComInterfaceAsyncFactory;
+use crate::network::com_interfaces::com_interface::implementation::ComInterfaceSyncFactory;
 
 /// Interface management methods
 impl ComHub {
     /// Registers a new sync interface factory for the given interface type
-    pub fn register_sync_interface_factory(
-        &self,
-        interface_type: String,
-        factory: SyncComInterfaceImplementationFactoryFn,
-    ) {
+    pub fn register_sync_interface_factory<T: ComInterfaceSyncFactory>(&self) {
         self.interface_manager
             .borrow_mut()
-            .register_sync_interface_factory(interface_type, factory);
+            .register_sync_interface_factory::<T>();
     }
 
-    pub fn register_async_interface_factory(
-        &self,
-        interface_type: String,
-        factory: AsyncComInterfaceImplementationFactoryFn,
-    ) {
+    pub fn register_async_interface_factory<T: ComInterfaceAsyncFactory>(&self) {
         self.interface_manager
             .borrow_mut()
-            .register_async_interface_factory(interface_type, factory);
+            .register_async_interface_factory::<T>();
     }
 
     /// Adds a new interface to the ComHub

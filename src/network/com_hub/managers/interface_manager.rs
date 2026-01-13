@@ -23,6 +23,7 @@ use crate::{
 };
 use crate::network::com_hub::errors::InterfaceAddError;
 use crate::network::com_interfaces::com_interface::{ComInterfaceProxy, ComInterfaceReceivers};
+use crate::network::com_interfaces::com_interface::implementation::{ComInterfaceAsyncFactory, ComInterfaceSyncFactory};
 
 type InterfaceMap =
     HashMap<ComInterfaceUUID, (ComInterface, InterfacePriority)>;
@@ -74,27 +75,21 @@ pub struct InterfaceManager {
 impl InterfaceManager {
     /// Registers a new sync interface factory for a specific interface implementation.
     /// This allows the ComHub to create new instances of the interface on demand.
-    pub fn register_sync_interface_factory(
-        &mut self,
-        interface_type: String,
-        factory: SyncComInterfaceImplementationFactoryFn,
-    ) {
+    pub fn register_sync_interface_factory<T: ComInterfaceSyncFactory>(&mut self) {
+        let interface_type = T::get_default_properties().interface_type;
         self.interface_factories.insert(
             interface_type,
-            SyncOrAsyncComInterfaceImplementationFactoryFn::Sync(factory),
+            SyncOrAsyncComInterfaceImplementationFactoryFn::Sync(T::factory),
         );
     }
 
     /// Registers a new async interface factory for a specific interface implementation.
     /// This allows the ComHub to create new instances of the interface on demand.
-    pub fn register_async_interface_factory(
-        &mut self,
-        interface_type: String,
-        factory: AsyncComInterfaceImplementationFactoryFn,
-    ) {
+    pub fn register_async_interface_factory<T: ComInterfaceAsyncFactory>(&mut self) {
+        let interface_type = T::get_default_properties().interface_type;
         self.interface_factories.insert(
             interface_type,
-            SyncOrAsyncComInterfaceImplementationFactoryFn::Async(factory),
+            SyncOrAsyncComInterfaceImplementationFactoryFn::Async(T::factory),
         );
     }
 

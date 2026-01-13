@@ -621,7 +621,7 @@ pub async fn test_basic_routing() {
 #[async_test]
 pub async fn register_factory() {
     let com_hub = create_mock_com_hub();
-    MockupInterfaceSetupData::register_on_com_hub(com_hub.clone());
+    com_hub.register_sync_interface_factory::<MockupInterfaceSetupData>();
 
     assert_eq!(
         com_hub

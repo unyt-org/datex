@@ -10,7 +10,7 @@ use crate::{
 pub(crate) use crate::network::com_hub::managers::interface_manager::ComInterfaceAsyncFactoryResult;
 use crate::network::com_interfaces::com_interface::ComInterfaceProxy;
 
-/// This trait can be implemented to provide a factory with a synchronous setup process 
+/// This trait can be implemented to provide a factory with a synchronous setup process
 /// for a ComInterface implementation that can be registered on a ComHub.
 /// The trait should be implemented for the setup data type of the interface.
 /// Example:
@@ -63,13 +63,6 @@ where
         Self::create_interface(setup_data, com_interface_proxy)
     }
 
-    /// Register the interface on which the factory is implemented
-    /// on the given ComHub.
-    fn register_on_com_hub(com_hub: Rc<ComHub>) {
-        let interface_type = Self::get_default_properties().interface_type;
-        com_hub.register_sync_interface_factory(interface_type, Self::factory);
-    }
-
     /// Create a new instance of the interface with the given setup data.
     /// If no instance could be created with the given setup data,
     /// None is returned.
@@ -83,7 +76,7 @@ where
 }
 
 
-/// This trait can be implemented to provide a factory with an asynchronous setup process 
+/// This trait can be implemented to provide a factory with an asynchronous setup process
 /// for a ComInterface implementation that can be registered on a ComHub.
 /// The trait should be implemented for the setup data type of the interface.
 /// Example:
@@ -95,9 +88,7 @@ where
 /// use datex_core::network::com_interfaces::com_interface::ComInterfaceProxy;
 /// use datex_core::network::com_interfaces::com_interface::implementation::ComInterfaceAsyncFactory;
 /// use datex_core::network::com_interfaces::com_interface::properties::InterfaceProperties;
-/// use datex_core::network::com_hub::managers::interface_manager::ComInterfaceAsyncFactoryResult
-/// use core::pin::Pin;
-/// use core::future::Future;
+/// use datex_core::network::com_hub::managers::interface_manager::ComInterfaceAsyncFactoryResult;
 ///
 /// #[derive(Serialize, Deserialize)]
 /// struct ExampleInterfaceSetupData {
@@ -137,13 +128,6 @@ where
                     .map_err(|_| InterfaceCreateError::SetupDataParseError)?;
             Self::create_interface(setup_data, com_interface_proxy).await
         })
-    }
-
-    /// Register the interface on which the factory is implemented
-    /// on the given ComHub.
-    fn register_on_com_hub(com_hub: Rc<ComHub>) {
-        let interface_type = Self::get_default_properties().interface_type;
-        com_hub.register_async_interface_factory(interface_type, Self::factory);
     }
 
     /// Create a new instance of the interface with the given setup data.

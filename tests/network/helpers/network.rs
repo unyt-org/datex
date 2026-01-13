@@ -616,6 +616,7 @@ impl Network {
             // register factories
             for (interface_type, factory) in self.com_interface_factories.iter()
             {
+                // FIXME: dont use Mock interfaces here, just ComInterfaceProxy and remove factory stuff
                 runtime.com_hub().register_sync_interface_factory(
                     interface_type.clone(),
                     *factory,

@@ -618,16 +618,19 @@ impl Runtime {
     }
 
     fn register_interface_factories(&self) {
+        let com_hub = self.com_hub();
         #[cfg(feature = "native_websocket")]
-        WebSocketClientInterfaceSetupData::register_on_com_hub(self.com_hub());
-        #[cfg(feature = "native_websocket")]
-        WebSocketServerInterfaceSetupData::register_on_com_hub(self.com_hub());
+        {
+            com_hub.register_async_interface_factory::<WebSocketClientInterfaceSetupData>();
+            com_hub.register_async_interface_factory::<WebSocketServerInterfaceSetupData>();
+        }
         #[cfg(feature = "native_serial")]
-        SerialInterfaceSetupData::register_on_com_hub(self.com_hub());
+        com_hub.register_sync_interface_factory::<SerialInterfaceSetupData>();
         #[cfg(feature = "native_tcp")]
-        TCPClientInterfaceSetupData::register_on_com_hub(self.com_hub());
-        #[cfg(feature = "native_tcp")]
-        TCPServerInterfaceSetupData::register_on_com_hub(self.com_hub());
+        {
+            com_hub.register_async_interface_factory::<TCPClientInterfaceSetupData>();
+            com_hub.register_async_interface_factory::<TCPServerInterfaceSetupData>();
+        }
         // TODO #234:
         // #[cfg(feature = "native_webrtc")]
         // crate::network::com_interfaces::default_com_interfaces::webrtc::webrtc_native_interface::WebRTCNativeInterface::register_on_com_hub(self.com_hub());
