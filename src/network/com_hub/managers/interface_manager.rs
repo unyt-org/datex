@@ -243,7 +243,7 @@ impl InterfaceManager {
             interface.destroy();
             // TODO: await until closed asynchronously?
         }
-        
+
         self.cleanup_interface(interface_uuid)?;
 
         Ok(())

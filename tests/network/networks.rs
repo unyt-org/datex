@@ -2,7 +2,6 @@ use crate::network::helpers::{
     mock_setup::{
         TEST_ENDPOINT_A, TEST_ENDPOINT_B, TEST_ENDPOINT_C, TEST_ENDPOINT_D,
     },
-    mockup_interface::{MockupInterfaceSetupData},
     network::{
         InterfaceConnection, Network, Node, Route, RouteAssertionError,
         test_routes,
@@ -24,6 +23,7 @@ use datex_macros::async_test;
 use log::info;
 use ntest_timeout::timeout;
 use tokio::task;
+use crate::network::helpers::network::MockupInterfaceSetupData;
 
 #[tokio::test]
 #[timeout(2000)]
@@ -51,7 +51,6 @@ async fn create_network_with_two_nodes() {
                     ),
                 ),
             ]);
-            network.register_interface("mockup", MockupInterfaceSetupData::factory);
 
             network.start().await;
 
@@ -151,7 +150,6 @@ async fn get_test_network_1() -> Network {
             ),
         ),
     ]);
-    network.register_interface("mockup", MockupInterfaceSetupData::factory);
 
     network.start().await;
     network
@@ -200,7 +198,6 @@ async fn get_test_network_1_with_deterministic_priorities() -> Network {
             ),
         ),
     ]);
-    network.register_interface("mockup", MockupInterfaceSetupData::factory);
 
     network.start().await;
     network

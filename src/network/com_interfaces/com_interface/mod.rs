@@ -196,7 +196,7 @@ impl ComInterfaceProxy {
         )
     }
 
-    fn create_and_init_socket_with_optional_endpoint(
+    pub fn create_and_init_socket_with_optional_endpoint(
         &self,
         direction: InterfaceDirection,
         channel_factor: u32,
