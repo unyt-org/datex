@@ -371,12 +371,7 @@ impl ComHub {
 
         let distance = block.routing_header.distance;
         let sender = block.routing_header.sender.clone();
-
-        println!(
-            "Registering socket endpoint from incoming block: socket {}, endpoint {}, distance {}",
-            socket.uuid, sender, distance
-        );
-
+        
         // set as direct endpoint if distance = 0
         if socket.direct_endpoint.is_none() && distance == 1 {
             info!(

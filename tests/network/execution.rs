@@ -1,7 +1,7 @@
+use tokio::task::yield_now;
 use crate::network::helpers::mock_setup::{
     get_mock_setup_default_with_two_connected_runtimes,
 };
-use core::time::Duration;
 use datex_core::{
     runtime::execution::context::{ExecutionContext, ExecutionMode},
     values::{
@@ -21,10 +21,13 @@ pub async fn test_basic_remote_execution() {
     )
     .await;
 
-    // sleep for a short time to ensure the connection is established
-    tokio::time::sleep(Duration::from_millis(1)).await;
+    yield_now().await;
+
     #[cfg(feature = "debug")]
-    runtime_a.com_hub().print_metadata();
+    {
+        runtime_a.com_hub().print_metadata();
+        runtime_b.com_hub().print_metadata();
+    }
 
     // create an execution context for @test_b
     let mut remote_execution_context =
@@ -58,8 +61,7 @@ pub async fn test_remote_execution_persistent_context() {
     )
     .await;
 
-    // sleep for a short time to ensure the connection is established
-    tokio::time::sleep(Duration::from_millis(1)).await;
+    yield_now().await;
 
     #[cfg(feature = "debug")]
     runtime_a.com_hub().print_metadata();
@@ -97,8 +99,7 @@ pub async fn test_remote_inline() {
     )
     .await;
 
-    // sleep for a short time to ensure the connection is established
-    tokio::time::sleep(Duration::from_millis(1)).await;
+    yield_now().await;
 
     #[cfg(feature = "debug")]
     runtime_a.com_hub().print_metadata();
@@ -128,6 +129,8 @@ pub async fn test_remote_inline_implicit_context() {
         endpoint_b.clone().into(),
     )
     .await;
+
+    yield_now().await;
 
     #[cfg(feature = "debug")]
     runtime_a.com_hub().print_metadata();

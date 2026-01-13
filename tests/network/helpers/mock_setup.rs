@@ -217,9 +217,9 @@ pub async fn get_mock_setup_with_runtime(
     mock_setup_data: MockupSetupData,
 ) -> (Runtime, ComInterfaceProxy) {
     // init com hub
-    let runtime = Runtime::init_native(RuntimeConfig::new_with_endpoint(
+    let runtime = Runtime::create_native(RuntimeConfig::new_with_endpoint(
         mock_setup_data.local_endpoint,
-    ));
+    )).await;
 
     // init mockup interface
     let (proxy, interface) = ComInterfaceProxy::create_interface(

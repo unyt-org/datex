@@ -558,8 +558,8 @@ impl Runtime {
         )
     }
 
-    /// Initializes the runtime and its subsystems:
-    ///  - ComHub
+    /// Initializes the runtime by creating all configured interfaces
+    /// and starting the event handler tasks
     pub async fn start(&self) {
         info!("starting runtime...");
 

@@ -28,6 +28,7 @@ use serde::{Deserialize, Serialize};
 use std::{
     any::Any, collections::HashMap, env, fs, path::Path, rc::Rc, sync::mpsc,
 };
+use tokio::task::yield_now;
 
 pub struct InterfaceConnection {
     interface_type: String,
@@ -59,7 +60,7 @@ impl InterfaceConnection {
 pub struct Node {
     pub endpoint: Endpoint,
     pub connections: Vec<InterfaceConnection>,
-    pub runtime: Option<Rc<Runtime>>,
+    pub runtime: Option<Runtime>,
 }
 
 impl Node {
@@ -608,10 +609,9 @@ impl Network {
 
         // create new runtimes for each endpoint
         for endpoint in self.endpoints.iter_mut() {
-            let runtime = Rc::new(Runtime::new(
+            let runtime = Runtime::create_native(
                 RuntimeConfig::new_with_endpoint(endpoint.endpoint.clone()),
-                AsyncContext::new(),
-            ));
+            ).await;
 
             // register factories
             for (interface_type, factory) in self.com_interface_factories.iter()
@@ -637,8 +637,6 @@ impl Network {
                     .await
                     .expect("failed to create interface");
             }
-
-            runtime.start().await;
 
             endpoint.runtime = Some(runtime);
         }
