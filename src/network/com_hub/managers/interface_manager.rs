@@ -24,6 +24,7 @@ use crate::{
 use crate::network::com_hub::errors::InterfaceAddError;
 use crate::network::com_interfaces::com_interface::{ComInterfaceProxy, ComInterfaceReceivers};
 use crate::network::com_interfaces::com_interface::implementation::{ComInterfaceAsyncFactory, ComInterfaceSyncFactory};
+use crate::runtime::AsyncContext;
 
 type InterfaceMap =
     HashMap<ComInterfaceUUID, (ComInterface, InterfacePriority)>;
@@ -101,6 +102,7 @@ impl InterfaceManager {
         interface_type: &str,
         setup_data: ValueContainer,
         priority: InterfacePriority,
+        async_context: AsyncContext,
     ) -> Result<(ComInterfaceUUID, ComInterfaceReceivers), InterfaceCreateError> {
         info!("creating interface {interface_type}");
         let factory = self_rc.borrow().interface_factories.get(interface_type).cloned();
@@ -111,6 +113,7 @@ impl InterfaceManager {
                         interface_type,
                         setup_data,
                         priority,
+                        async_context
                     ),
                 SyncOrAsyncComInterfaceImplementationFactoryFn::Async(
                     async_factory,
@@ -118,6 +121,7 @@ impl InterfaceManager {
                     let (interface, receivers) = ComInterface::create_from_async_factory_fn(
                         async_factory,
                         setup_data,
+                        async_context,
                     )
                     .await?;
                     self_rc.borrow_mut().add_interface(interface, priority)
@@ -139,6 +143,7 @@ impl InterfaceManager {
         interface_type: &str,
         setup_data: ValueContainer,
         priority: InterfacePriority,
+        async_context: AsyncContext,
     ) -> Result<(ComInterfaceUUID, ComInterfaceReceivers), InterfaceCreateError> {
         info!("creating interface sync {interface_type}");
         if let Some(factory) = self.interface_factories.get(interface_type) {
@@ -149,6 +154,7 @@ impl InterfaceManager {
                     let (interface, receivers) = ComInterface::create_from_sync_factory_fn(
                         *sync_factory,
                         setup_data,
+                        async_context
                     )?;
                     self.add_interface(interface, priority)
                         .map_err(|e| e.into())

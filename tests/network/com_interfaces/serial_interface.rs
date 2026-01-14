@@ -8,6 +8,7 @@ use datex_core::{
     utils::context::init_global_context,
 };
 use log::info;
+use datex_core::runtime::AsyncContext;
 
 #[tokio::test]
 pub async fn test_construct() {
@@ -24,6 +25,6 @@ pub async fn test_construct() {
     let mut interface = ComInterface::create_sync_from_setup_data(SerialInterfaceSetupData {
         port_name: Some(PORT_NAME.to_string()),
         baud_rate: BAUD_RATE,
-    })
+    }, AsyncContext::default())
     .unwrap();
 }

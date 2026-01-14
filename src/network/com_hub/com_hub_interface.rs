@@ -26,6 +26,7 @@ use core::{prelude::rust_2024::*, result::Result};
 use datex_core::network::com_interfaces::com_interface::ComInterfaceWithReceivers;
 use datex_core::network::com_interfaces::com_interface::implementation::ComInterfaceAsyncFactory;
 use crate::network::com_interfaces::com_interface::implementation::ComInterfaceSyncFactory;
+use crate::runtime::AsyncContext;
 
 /// Interface management methods
 impl ComHub {
@@ -109,9 +110,10 @@ impl ComHub {
         interface_type: &str,
         setup_data: ValueContainer,
         priority: InterfacePriority,
+        async_context: AsyncContext,
     ) -> Result<ComInterfaceUUID, InterfaceCreateError> {
         let (com_interface_uuid, receivers) =
-            InterfaceManager::create_and_add_interface(self.interface_manager.clone(), interface_type, setup_data, priority)
+            InterfaceManager::create_and_add_interface(self.interface_manager.clone(), interface_type, setup_data, priority, async_context)
             .await?;
         let interface_manager = self.interface_manager.borrow();
         self.init_interface_event_listeners(
@@ -128,6 +130,7 @@ impl ComHub {
         interface_type: &str,
         setup_data: ValueContainer,
         priority: InterfacePriority,
+        async_context: AsyncContext,
     ) -> Result<ComInterfaceUUID, InterfaceCreateError> {
         let mut interface_manager = self.interface_manager.borrow_mut();
         let (com_interface_uuid, receivers) = interface_manager
@@ -135,6 +138,7 @@ impl ComHub {
                 interface_type,
                 setup_data,
                 priority,
+                async_context
             )?;
         let interface_manager = self.interface_manager.borrow();
         self.init_interface_event_listeners(

@@ -579,6 +579,7 @@ impl Runtime {
                         interface_type,
                         config.clone(),
                         InterfacePriority::default(),
+                        self.internal.async_context.clone(),
                     )
                     .await
                 {

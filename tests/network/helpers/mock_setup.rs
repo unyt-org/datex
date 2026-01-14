@@ -84,6 +84,7 @@ pub async fn get_mock_setup_with_com_hub(
     // init mockup interface
     let (proxy, interface) = ComInterfaceProxy::create_interface(
         mock_setup_data.interface_properties,
+        AsyncContext::default()
     );
 
     // init com hub
@@ -224,6 +225,7 @@ pub async fn get_mock_setup_with_runtime(
     // init mockup interface
     let (proxy, interface) = ComInterfaceProxy::create_interface(
         mock_setup_data.interface_properties,
+        AsyncContext::default()
     );
 
     // add mockup interface to com_hub

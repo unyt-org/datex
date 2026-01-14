@@ -33,7 +33,9 @@ use axum::{
 use log::{debug, error, info};
 use tokio::sync::{RwLock, broadcast, mpsc};
 use url::Url;
+use uuid::serde::compact;
 use datex_core::network::com_interfaces::com_interface::ComInterfaceProxy;
+use crate::task::spawn_with_panic_notify;
 
 async fn server_to_client_handler(
     Path(route): Path<String>,
@@ -202,7 +204,7 @@ impl HTTPServerInterfaceSetupData {
 
         let socket_channel_mapping = Rc::new(RefCell::new(HashMap::new()));
 
-        spawn_with_panic_notify_default(Self::event_handler_task(
+        spawn_with_panic_notify(&com_interface_proxy.async_context, Self::event_handler_task(
             socket_channel_mapping.clone(),
             channels.clone(),
             com_interface_proxy.event_receiver,

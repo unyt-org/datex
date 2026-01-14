@@ -32,6 +32,7 @@ use crate::{
 };
 use tokio_tungstenite::{MaybeTlsStream, WebSocketStream};
 use datex_core::network::com_interfaces::com_interface::ComInterfaceProxy;
+use crate::task::spawn_with_panic_notify;
 
 impl WebSocketClientInterfaceSetupData {
     async fn create_interface(
@@ -46,13 +47,13 @@ impl WebSocketClientInterfaceSetupData {
 
         let state = com_interface_proxy.state;
 
-        spawn_with_panic_notify_default(Self::read_task(
+        spawn_with_panic_notify(&com_interface_proxy.async_context, Self::read_task(
             read,
             sender,
             state.clone(),
         ));
 
-        spawn_with_panic_notify_default(Self::event_handler_task(
+        spawn_with_panic_notify(&com_interface_proxy.async_context, Self::event_handler_task(
             write,
             com_interface_proxy.event_receiver,
             state,

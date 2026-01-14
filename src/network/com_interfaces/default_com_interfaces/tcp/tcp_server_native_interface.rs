@@ -255,13 +255,14 @@ mod tests {
     };
     use crate::network::com_hub::errors::InterfaceCreateError;
     use crate::network::com_interfaces::com_interface::ComInterfaceProxy;
+    use crate::runtime::AsyncContext;
 
     #[async_test]
     async fn test_construct() {
         const PORT: u16 = 5088;
         let interface_properties = TCPServerInterfaceSetupData::create_interface(
             TCPServerInterfaceSetupData::new_with_port(PORT),
-            ComInterfaceProxy::new_with_channels().0
+            ComInterfaceProxy::new_with_channels(AsyncContext::default()).0
         ).await.unwrap();
 
         assert_eq!(interface_properties.name, Some(format!("0.0.0.0:{}", PORT)));
@@ -275,7 +276,7 @@ mod tests {
                     "invalid-address".to_string(),
                     5088
                 ),
-                ComInterfaceProxy::new_with_channels().0
+                ComInterfaceProxy::new_with_channels(AsyncContext::default()).0
             ).await,
             Err(InterfaceCreateError::InvalidSetupData(_))
         );

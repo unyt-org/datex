@@ -8,6 +8,7 @@ use datex_core::{
     },
     values::core_values::endpoint::Endpoint,
 };
+use datex_core::runtime::AsyncContext;
 use datex_macros::async_test;
 
 // $ head -c 48192 /dev/zero | curl -X POST http://localhost:8081/my-secret-channel/tx --data-binary @-
@@ -15,7 +16,7 @@ use datex_macros::async_test;
 pub async fn test_construct() {
     const PORT: u16 = 8081;
 
-    let http_server_interface = ComInterface::create_async_from_setup_data(HTTPServerInterfaceSetupData { port: PORT })
+    let http_server_interface = ComInterface::create_async_from_setup_data(HTTPServerInterfaceSetupData { port: PORT }, AsyncContext::default())
         .await
         .expect("Failed to create HTTP server interface");
 

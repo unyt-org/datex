@@ -27,6 +27,7 @@ use tokio::sync::Notify;
 use tokio::task::yield_now;
 use datex_core::network::com_interfaces::com_interface::{ComInterfaceEvent, ComInterfaceProxy};
 use datex_core::network::com_interfaces::com_interface::properties::InterfaceProperties;
+use datex_core::runtime::AsyncContext;
 use datex_core::task::{spawn_with_panic_notify_default, UnboundedReceiver, UnboundedSender};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -579,7 +580,8 @@ impl Network {
                 direction: interface_direction.clone(),
                 name: Some(connection.setup_data.name.clone()),
                 ..Default::default()
-            }
+            },
+            AsyncContext::default()
         );
         runtime.com_hub().register_com_interface(com_interface, connection.priority).expect("Failed to register interface A");
 

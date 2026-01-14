@@ -161,7 +161,7 @@ impl ComHub {
         let block_handler = BlockHandler::init(incoming_sections_sender);
         let com_hub = Rc::new(ComHub {
             endpoint: endpoint.into(),
-            async_context,
+            async_context: async_context.clone(),
             options: ComHubOptions::default(),
             block_handler,
             socket_manager: Rc::new(RefCell::new(SocketManager::new(
@@ -178,6 +178,7 @@ impl ComHub {
         // add default local loopback interface
         let local_interface = ComInterface::create_sync_from_setup_data(
             LocalLoopbackInterfaceSetupData,
+            async_context,
         )
         .unwrap();
 

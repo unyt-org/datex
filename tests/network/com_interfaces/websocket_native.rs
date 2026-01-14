@@ -19,6 +19,7 @@ use datex_core::{
     },
     run_async,
 };
+use datex_core::runtime::AsyncContext;
 use datex_macros::async_test;
 
 #[async_test]
@@ -34,13 +35,13 @@ pub async fn test_create_socket_connection() {
     let (server_interface, (_, mut server_interface_socket_event_receiver)) = ComInterface::create_async_from_setup_data(WebSocketServerInterfaceSetupData {
         port: PORT,
         secure: Some(false),
-    })
+    }, AsyncContext::default())
     .await
     .expect("Failed to create WebSocketServerInterface");
 
     let (client_interface, (_, mut client_interface_socket_event_receiver)) = ComInterface::create_async_from_setup_data(WebSocketClientInterfaceSetupData {
         address: format!("ws://localhost:{PORT}"),
-    })
+    }, AsyncContext::default())
     .await
     .expect("Failed to create WebSocketClientInterface");
 
@@ -88,7 +89,7 @@ pub async fn test_construct_client() {
     // Test with a invalid URL
     let client_res = ComInterface::create_async_from_setup_data(WebSocketClientInterfaceSetupData {
         address: "ftp://localhost:1234".to_string(),
-    })
+    }, AsyncContext::default())
     .await;
     assert_matches!(
         client_res.unwrap_err(),
@@ -98,7 +99,7 @@ pub async fn test_construct_client() {
     // We expect a connection error here, as the server can't be reached
     let client_res = ComInterface::create_async_from_setup_data(WebSocketClientInterfaceSetupData {
         address: "ws://localhost.invalid:1234".to_string(),
-    })
+    }, AsyncContext::default())
     .await;
 
     assert_matches!(

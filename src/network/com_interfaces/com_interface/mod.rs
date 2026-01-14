@@ -33,6 +33,7 @@ use crate::{
 };
 use core::fmt::{Debug, Display};
 use tokio::sync::Notify;
+use crate::runtime::AsyncContext;
 
 pub mod error;
 pub mod implementation;
@@ -82,6 +83,9 @@ pub struct ComInterfaceProxy {
 
     /// receiver for internal interface events that must be handled by the proxy (e.g. blocks to send)
     pub event_receiver: UnboundedReceiver<ComInterfaceEvent>,
+
+    /// Async context that can be used to spawn async tasks
+    pub async_context: AsyncContext
 }
 
 type ComInterfaceProxyChannels = (
@@ -99,7 +103,7 @@ type ComInterfaceProxyShared = (
 impl ComInterfaceProxy {
     /// Creates a raw default ComInterfaceProxy instance along with its communication channels
     /// This can be used to connect a ComInterface implementation with the ComInterfaceProxy
-    pub fn new_with_channels() -> (Self, ComInterfaceProxyChannels) {
+    pub fn new_with_channels(async_context: AsyncContext) -> (Self, ComInterfaceProxyChannels) {
         // set up channels
         let (interface_state_event_sender, interface_state_event_receiver) =
             create_unbounded_channel::<ComInterfaceStateEvent>();
@@ -126,6 +130,7 @@ impl ComInterfaceProxy {
                     ),
                 )),
                 event_receiver: interface_event_receiver,
+                async_context,
             },
             (
                 interface_state_event_receiver,
@@ -138,10 +143,11 @@ impl ComInterfaceProxy {
     /// Creates a new ComInterface instance along with its proxy, configured with the specified properties
     pub fn create_interface(
         properties: InterfaceProperties,
+        async_context: AsyncContext
     ) -> (Self, ComInterfaceWithReceivers) {
         // Create a proxy for initialization
         let (com_interface_proxy, channels) =
-            ComInterfaceProxy::new_with_channels();
+            ComInterfaceProxy::new_with_channels(async_context);
         let com_interface_proxy_shared = com_interface_proxy.clone_shared();
 
         (
@@ -165,7 +171,7 @@ impl ComInterfaceProxy {
     pub fn shutdown_signal(&self) -> Arc<Notify> {
         self.state.lock().unwrap().shutdown_signal().clone()
     }
-
+    
     /// Creates and initializes a new socket and returns its UUID and sender
     /// Also registers an already known direct endpoint for the socket
     /// Locks the socket manager internally and calls the creation method
@@ -322,10 +328,11 @@ impl ComInterface {
     pub fn create_from_sync_factory_fn(
         factory_fn: SyncComInterfaceImplementationFactoryFn,
         setup_data: ValueContainer,
+        async_context: AsyncContext
     ) -> Result<ComInterfaceWithReceivers, InterfaceCreateError> {
         // Create a proxy for initialization
         let (com_interface_proxy, channels) =
-            ComInterfaceProxy::new_with_channels();
+            ComInterfaceProxy::new_with_channels(async_context);
         let com_interface_proxy_shared = com_interface_proxy.clone_shared();
 
         // Create the implementation using the factory function
@@ -341,10 +348,11 @@ impl ComInterface {
     pub async fn create_from_async_factory_fn(
         factory_fn: AsyncComInterfaceImplementationFactoryFn,
         setup_data: ValueContainer,
+        async_context: AsyncContext
     ) -> Result<ComInterfaceWithReceivers, InterfaceCreateError> {
         // Create a proxy for initialization
         let (com_interface_proxy, channels) =
-            ComInterfaceProxy::new_with_channels();
+            ComInterfaceProxy::new_with_channels(async_context);
         let com_interface_proxy_shared = com_interface_proxy.clone_shared();
 
         // Create the implementation using the factory function
@@ -360,10 +368,11 @@ impl ComInterface {
     /// only works for sync factories
     pub fn create_sync_from_setup_data<T: ComInterfaceSyncFactory>(
         setup_data: T,
+        async_context: AsyncContext
     ) -> Result<ComInterfaceWithReceivers, InterfaceCreateError> {
         // Create a proxy for initialization
         let (com_interface_proxy, channels) =
-            ComInterfaceProxy::new_with_channels();
+            ComInterfaceProxy::new_with_channels(async_context);
         let com_interface_proxy_shared = com_interface_proxy.clone_shared();
 
         // Create the implementation using the factory function
@@ -380,10 +389,11 @@ impl ComInterface {
     /// only works for async factories
     pub async fn create_async_from_setup_data<T: ComInterfaceAsyncFactory>(
         setup_data: T,
+        async_context: AsyncContext
     ) -> Result<ComInterfaceWithReceivers, InterfaceCreateError> {
         // Create a proxy for initialization
         let (com_interface_proxy, channels) =
-            ComInterfaceProxy::new_with_channels();
+            ComInterfaceProxy::new_with_channels(async_context);
         let com_interface_proxy_shared = com_interface_proxy.clone_shared();
 
         // Create the implementation using the factory function

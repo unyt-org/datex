@@ -40,7 +40,6 @@ use datex_core::{
     values::core_values::endpoint::Endpoint,
 };
 use datex_macros::async_test;
-use std::time::Duration;
 use tokio::task::yield_now;
 
 /// Creates a mock ComHub for testing without a connected channel
@@ -55,6 +54,7 @@ pub async fn test_add_and_remove() {
     let mockup_interface_with_receivers =
         ComInterface::create_sync_from_setup_data(
             MockupInterfaceSetupData::new("test"),
+            AsyncContext::default()
         )
         .unwrap();
 
@@ -76,10 +76,12 @@ pub async fn test_multiple_add() {
 
     let mockup_interface1 = ComInterface::create_sync_from_setup_data(
         MockupInterfaceSetupData::new("mockup_interface1"),
+        AsyncContext::default()
     )
     .unwrap();
     let mockup_interface2 = ComInterface::create_sync_from_setup_data(
         MockupInterfaceSetupData::new("mockup_interface2"),
+        AsyncContext::default()
     )
     .unwrap();
 
@@ -646,6 +648,7 @@ pub async fn register_factory() {
             to_value_container(&MockupInterfaceSetupData::new("mockup"))
                 .unwrap(),
             InterfacePriority::default(),
+            AsyncContext::default()
         )
         .await
         .unwrap();
@@ -669,7 +672,7 @@ pub async fn test_reconnect() {
 
     // create a new interface, open it and add it to the com_hub
     let (base_interface, interface_with_receivers) =
-        ComInterfaceProxy::create_interface(InterfaceProperties::default());
+        ComInterfaceProxy::create_interface(InterfaceProperties::default(), AsyncContext::default());
 
     // add base_interface to com_hub
     com_hub
