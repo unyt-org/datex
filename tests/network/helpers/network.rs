@@ -12,24 +12,23 @@ use datex_core::{
             properties::InterfaceDirection,
         },
     },
-    runtime::{AsyncContext, Runtime, RuntimeConfig},
-    serde::serializer::to_value_container,
-    task::{UnboundedReceiver, UnboundedSender, create_unbounded_channel},
+    runtime::{Runtime, RuntimeConfig},
     values::{
-        core_values::endpoint::Endpoint, value_container::ValueContainer,
+        core_values::endpoint::Endpoint,
     },
 };
 use log::info;
 use serde::{Deserialize, Serialize};
 use std::{
-    collections::HashMap, env, fs, path::Path, rc::Rc, sync::mpsc,
+    collections::HashMap, env, fs, path::Path,
 };
+use std::sync::Arc;
+use tokio::sync::Notify;
 use tokio::task::yield_now;
 use datex_core::network::com_interfaces::com_interface::{ComInterfaceEvent, ComInterfaceProxy};
 use datex_core::network::com_interfaces::com_interface::properties::InterfaceProperties;
-use datex_core::task::spawn_with_panic_notify_default;
+use datex_core::task::{spawn_with_panic_notify_default, UnboundedReceiver, UnboundedSender};
 
-// FIXME: refactor and rename
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct MockupInterfaceSetupData {
     pub name: String,
@@ -49,22 +48,19 @@ impl MockupInterfaceSetupData {
 
 #[derive(Debug, Clone)]
 pub struct InterfaceConnection {
-    interface_type: String,
     priority: InterfacePriority,
-    pub setup_data: Option<MockupInterfaceSetupData>,
+    pub setup_data: MockupInterfaceSetupData,
     pub endpoint: Option<Endpoint>,
 }
 
 impl InterfaceConnection {
     pub fn new(
-        interface_type: &str,
         priority: InterfacePriority,
         setup_data: MockupInterfaceSetupData,
     ) -> Self {
         InterfaceConnection {
-            interface_type: interface_type.to_string(),
             priority,
-            setup_data: Some(setup_data),
+            setup_data,
             endpoint: None,
         }
     }
@@ -96,14 +92,6 @@ impl Node {
         self
     }
 }
-
-pub struct MockupInterfaceChannelEndpoint {
-    sender: UnboundedSender<Vec<u8>>,
-    receiver: UnboundedReceiver<Vec<u8>>,
-}
-
-type MockupInterfaceChannels =
-    HashMap<String, Option<MockupInterfaceChannelEndpoint>>;
 
 pub struct Network {
     pub is_initialized: bool,
@@ -495,7 +483,6 @@ impl Network {
 
                         if let Some(endpoint) = other_endpoint {
                             node = node.with_connection(InterfaceConnection::new(
-                                &edge.edge_type,
                                 prio,
                                 MockupInterfaceSetupData {
                                     name: channel,
@@ -506,7 +493,6 @@ impl Network {
                         } else {
                             node = node
                                 .with_connection(InterfaceConnection::new(
-                                &edge.edge_type,
                                 prio,
                                 MockupInterfaceSetupData {
                                     name: channel,
@@ -520,90 +506,13 @@ impl Network {
             }
             nodes.push(node);
         }
-        Network::create(nodes)
+        Network::new(nodes)
     }
 
-    pub fn create(endpoints: Vec<Node>) -> Self {
-        // let mut mockup_interface_channels = HashMap::new();
-        //
-        // // iterate over all endpoints and handle mockup endpoints
-        // for endpoint in endpoints.iter_mut() {
-        //     for connection in endpoint.connections.iter_mut() {
-        //         if connection.interface_type == "mockup" {
-        //             Network::init_mockup_endpoint(
-        //                 connection,
-        //                 &mut mockup_interface_channels,
-        //             );
-        //         }
-        //     }
-        // }
-        // info!(
-        //     "Mockup channels: {:?}",
-        //     mockup_interface_channels
-        //         .values()
-        //         .map(|c| c.is_some())
-        //         .collect::<Vec<_>>()
-        // );
-
+    pub fn new(endpoints: Vec<Node>) -> Self {
         Network {
             is_initialized: false,
             endpoints,
-        }
-    }
-
-    // fn init_mockup_endpoint(
-    //     connection: &mut InterfaceConnection,
-    //     mockup_interface_channels: &mut MockupInterfaceChannels,
-    // ) {
-    //     // get setup data as MockupInterfaceSetupData
-    //     if let Some(setup_data) = &mut connection.setup_data {
-    //         let channel = Network::get_mockup_interface_channel(
-    //             mockup_interface_channels,
-    //             setup_data.name.clone(),
-    //         );
-    //         match setup_data.direction {
-    //             InterfaceDirection::In => {
-    //                 setup_data.receiver_in = Some(channel.receiver);
-    //             }
-    //             InterfaceDirection::Out => {
-    //                 setup_data.sender_out = Some(channel.sender);
-    //             }
-    //             InterfaceDirection::InOut => {
-    //                 setup_data.sender_out = Some(channel.sender);
-    //                 setup_data.receiver_in = Some(channel.receiver);
-    //             }
-    //         }
-    //
-    //         info!("setup_data: {:?}", setup_data);
-    //     }
-    // }
-
-    fn get_mockup_interface_channel(
-        mockup_interface_channels: &mut MockupInterfaceChannels,
-        name: String,
-    ) -> MockupInterfaceChannelEndpoint {
-        if !mockup_interface_channels.contains_key(&name) {
-            let (sender_a, receiver_a) = create_unbounded_channel::<Vec<u8>>();
-            let (sender_b, receiver_b) = create_unbounded_channel::<Vec<u8>>();
-            mockup_interface_channels.insert(
-                name,
-                Some(MockupInterfaceChannelEndpoint {
-                    sender: sender_b,
-                    receiver: receiver_a,
-                }),
-            );
-
-            MockupInterfaceChannelEndpoint {
-                sender: sender_a,
-                receiver: receiver_b,
-            }
-        } else {
-            match mockup_interface_channels.get_mut(&name).unwrap().take() {
-                Some(channel) => channel,
-                _ => {
-                    core::panic!("Channel {name} is already used");
-                }
-            }
         }
     }
 
@@ -625,9 +534,9 @@ impl Network {
 
             for connection in node.connections.iter() {
                 // save in channel pairs
-                let pairs = channel_pairs.entry(connection.setup_data.as_ref().unwrap().name.clone()).or_insert((None, None));
+                let pairs = channel_pairs.entry(connection.setup_data.name.clone()).or_insert((None, None));
                 if pairs.0.is_some() && pairs.1.is_some() {
-                    panic!("Channel {} already has two endpoints", connection.setup_data.as_ref().unwrap().name);
+                    panic!("Channel {} already has two endpoints", connection.setup_data.name);
                 }
                 else if pairs.0.is_none() {
                     *pairs = (Some((runtime.clone(), connection.clone())), None);
@@ -657,97 +566,92 @@ impl Network {
         }
     }
 
-    // create connection between two runtimes via a defined channel
-    // TODO: cleanup this mess, works but ugly
+    // Initializes a single mockup interface on a runtime with a given connection definition
+    fn init_interface(
+        runtime: &Runtime,
+        connection: &InterfaceConnection,
+        remote_endpoint: Option<Endpoint>,
+    ) -> (ComInterfaceProxy, Arc<Notify>, UnboundedSender<Vec<u8>>) {
+        let interface_direction = connection.setup_data.direction.clone();
+        let (proxy, com_interface) = ComInterfaceProxy::create_interface(
+            InterfaceProperties {
+                interface_type: "mockup".to_string(),
+                direction: interface_direction.clone(),
+                name: Some(connection.setup_data.name.clone()),
+                ..Default::default()
+            }
+        );
+        runtime.com_hub().register_com_interface(com_interface, connection.priority).expect("Failed to register interface A");
+
+        let shutdown_signal = proxy.shutdown_signal();
+        let (_, socket_sender) = proxy
+            .create_and_init_socket_with_optional_endpoint(
+                interface_direction,
+                1,
+                remote_endpoint,
+            );
+
+        (
+            proxy,
+            shutdown_signal,
+            socket_sender,
+        )
+    }
+
+    /// Spawns a task that forwards data blocks from a com interface event receiver to a socket sender
+    fn spawn_socket_forwarding_task(
+        mut event_receiver: UnboundedReceiver<ComInterfaceEvent>,
+        shutdown_signal: Arc<Notify>,
+        mut socket_sender: UnboundedSender<Vec<u8>>,
+    ) {
+        spawn_with_panic_notify_default(async move {
+            loop {
+                tokio::select! {
+                    Some(event) = event_receiver.next() => {
+                        if let ComInterfaceEvent::SendBlock(block, _socket_uuid) = event {
+                            // directly send the block to socket B
+                            socket_sender.start_send(block).unwrap();
+                        }
+                    }
+                    _ = shutdown_signal.notified() => {
+                        break;
+                    }
+                }
+            }
+        });
+    }
+
+    /// Creates a connection between two runtimes based on the provided interface connections
     fn create_connection(
         runtime_a: (Runtime, InterfaceConnection),
         runtime_b: (Runtime, InterfaceConnection),
     ) {
-        let interface_a_direction = runtime_a.1.setup_data.as_ref().unwrap().direction.clone();
-        let (proxy_a, com_interface_a) = ComInterfaceProxy::create_interface(
-            InterfaceProperties {
-                interface_type: "mockup".to_string(),
-                direction: interface_a_direction.clone(),
-                name: Some(runtime_a.1.setup_data.as_ref().unwrap().name.clone()),
-                ..Default::default()
-            }
-        );
-        let interface_a_can_send = com_interface_a.0.properties.borrow().can_send();
-        runtime_a.0.com_hub().register_com_interface(com_interface_a, runtime_a.1.priority).expect("Failed to register interface A");
+        let remote_endpoint_a = runtime_b.1.setup_data.endpoint.clone();
+        let (proxy_a, shutdown_signal_a, socket_a_sender) = Network::init_interface(&runtime_a.0, &runtime_a.1, remote_endpoint_a);
+        let interface_a_direction = runtime_a.1.setup_data.direction.clone();
+        let interface_a_can_send = interface_a_direction != InterfaceDirection::In;
 
-        let interface_b_direction = runtime_b.1.setup_data.as_ref().unwrap().direction.clone();
-        let (proxy_b, com_interface_b) = ComInterfaceProxy::create_interface(
-            InterfaceProperties {
-                interface_type: "mockup".to_string(),
-                direction: interface_b_direction.clone(),
-                name: Some(runtime_b.1.setup_data.as_ref().unwrap().name.clone()),
-                ..Default::default()
-            }
-        );
-        let interface_b_can_send = com_interface_b.0.properties.borrow().can_send();
-        runtime_b.0.com_hub().register_com_interface(com_interface_b, runtime_b.1.priority).expect("Failed to register interface B");
+        let remote_endpoint_b = runtime_a.1.setup_data.endpoint.clone();
+        let (proxy_b, shutdown_signal_b, socket_b_sender) = Network::init_interface(&runtime_b.0, &runtime_b.1, remote_endpoint_b);
+        let interface_b_direction = runtime_b.1.setup_data.direction.clone();
+        let interface_b_can_send = interface_b_direction != InterfaceDirection::In;
 
         // connect the two interfaces
-        let remote_endpoint_a = runtime_b.1.setup_data.unwrap().endpoint.clone();
-        let remote_endpoint_b = runtime_a.1.setup_data.unwrap().endpoint.clone();
-
-
-        // Forward events from proxy A to proxy B
-        let shutdown_signal_a = proxy_a.shutdown_signal();
-        let (_, mut socket_a_sender) = proxy_a
-            .create_and_init_socket_with_optional_endpoint(
-                interface_a_direction,
-                1,
-                remote_endpoint_a,
-            );
-
-        // Forward events from proxy B to proxy A
-        let shutdown_signal_b = proxy_b.shutdown_signal();
-        let (_, mut socket_b_sender) = proxy_b
-            .create_and_init_socket_with_optional_endpoint(
-                interface_b_direction,
-                1,
-                remote_endpoint_b,
-            );
-
         if interface_a_can_send {
-            spawn_with_panic_notify_default(async move {
-                let mut event_receiver_a = proxy_a.event_receiver;
-                loop {
-                    tokio::select! {
-                        Some(event) = event_receiver_a.next() => {
-                            if let ComInterfaceEvent::SendBlock(block, _socket_uuid) = event {
-                                // directly send the block to socket B
-                                socket_b_sender.start_send(block).unwrap();
-                            }
-                        }
-                        _ = shutdown_signal_a.notified() => {
-                            break;
-                        }
-                    }
-                }
-            });
+            Network::spawn_socket_forwarding_task(
+                proxy_a.event_receiver,
+                shutdown_signal_a,
+                socket_b_sender,
+            );
         }
 
         if interface_b_can_send {
-            spawn_with_panic_notify_default(async move {
-                let mut event_receiver_b = proxy_b.event_receiver;
-                loop {
-                    tokio::select! {
-                        Some(event) = event_receiver_b.next() => {
-                            if let ComInterfaceEvent::SendBlock(block, _socket_uuid) = event {
-                                // directly send the block to socket A
-                                socket_a_sender.start_send(block).unwrap();
-                            }
-                        }
-                        _ = shutdown_signal_b.notified() => {
-                            break;
-                        }
-                    }
-                }
-            });
+            Network::spawn_socket_forwarding_task(
+                proxy_b.event_receiver,
+                shutdown_signal_b,
+                socket_a_sender,
+            );
         }
-
     }
 
 

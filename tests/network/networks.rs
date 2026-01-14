@@ -14,7 +14,6 @@ use datex_core::{
             InterfacePriority, network_response::ResponseOptions,
             network_tracing::TraceOptions,
         },
-        com_interfaces::com_interface::implementation::ComInterfaceSyncFactory,
     },
     utils::context::init_global_context,
     values::core_values::endpoint::Endpoint,
@@ -33,11 +32,10 @@ async fn create_network_with_two_nodes() {
         .run_until(async {
             init_global_context();
 
-            let mut network = Network::create(vec![
+            let mut network = Network::new(vec![
                 // @test-a
                 Node::new(TEST_ENDPOINT_A.clone()).with_connection(
                     InterfaceConnection::new(
-                        "mockup",
                         InterfacePriority::default(),
                         MockupInterfaceSetupData::new("ab"),
                     ),
@@ -45,7 +43,6 @@ async fn create_network_with_two_nodes() {
                 // @test-b
                 Node::new(TEST_ENDPOINT_B.clone()).with_connection(
                     InterfaceConnection::new(
-                        "mockup",
                         InterfacePriority::default(),
                         MockupInterfaceSetupData::new("ab"),
                     ),
@@ -108,11 +105,10 @@ async fn create_network_with_two_nodes() {
 }
 
 async fn get_test_network_1() -> Network {
-    let mut network = Network::create(vec![
+    let mut network = Network::new(vec![
         // @test-a
         Node::new(TEST_ENDPOINT_A.clone()).with_connection(
             InterfaceConnection::new(
-                "mockup",
                 InterfacePriority::default(),
                 MockupInterfaceSetupData::new("ab"),
             ),
@@ -120,31 +116,26 @@ async fn get_test_network_1() -> Network {
         // @test-b
         Node::new(TEST_ENDPOINT_B.clone())
             .with_connection(InterfaceConnection::new(
-                "mockup",
                 InterfacePriority::default(),
                 MockupInterfaceSetupData::new("ab"),
             ))
             .with_connection(InterfaceConnection::new(
-                "mockup",
                 InterfacePriority::default(),
                 MockupInterfaceSetupData::new("bc"),
             )),
         // @test-c
         Node::new(TEST_ENDPOINT_C.clone())
             .with_connection(InterfaceConnection::new(
-                "mockup",
                 InterfacePriority::default(),
                 MockupInterfaceSetupData::new("bc"),
             ))
             .with_connection(InterfaceConnection::new(
-                "mockup",
                 InterfacePriority::default(),
                 MockupInterfaceSetupData::new("cd"),
             )),
         // @test-d
         Node::new(TEST_ENDPOINT_D.clone()).with_connection(
             InterfaceConnection::new(
-                "mockup",
                 InterfacePriority::default(),
                 MockupInterfaceSetupData::new("cd"),
             ),
@@ -156,11 +147,10 @@ async fn get_test_network_1() -> Network {
 }
 
 async fn get_test_network_1_with_deterministic_priorities() -> Network {
-    let mut network = Network::create(vec![
+    let mut network = Network::new(vec![
         // @test-a
         Node::new(TEST_ENDPOINT_A.clone()).with_connection(
             InterfaceConnection::new(
-                "mockup",
                 InterfacePriority::Priority(0),
                 MockupInterfaceSetupData::new("ab"),
             ),
@@ -168,31 +158,26 @@ async fn get_test_network_1_with_deterministic_priorities() -> Network {
         // @test-b
         Node::new(TEST_ENDPOINT_B.clone())
             .with_connection(InterfaceConnection::new(
-                "mockup",
                 InterfacePriority::Priority(0),
                 MockupInterfaceSetupData::new("ab"),
             ))
             .with_connection(InterfaceConnection::new(
-                "mockup",
                 InterfacePriority::Priority(1),
                 MockupInterfaceSetupData::new("bc"),
             )),
         // @test-c
         Node::new(TEST_ENDPOINT_C.clone())
             .with_connection(InterfaceConnection::new(
-                "mockup",
                 InterfacePriority::Priority(0),
                 MockupInterfaceSetupData::new("bc"),
             ))
             .with_connection(InterfaceConnection::new(
-                "mockup",
                 InterfacePriority::Priority(1),
                 MockupInterfaceSetupData::new("cd"),
             )),
         // @test-d
         Node::new(TEST_ENDPOINT_D.clone()).with_connection(
             InterfaceConnection::new(
-                "mockup",
                 InterfacePriority::Priority(0),
                 MockupInterfaceSetupData::new("cd"),
             ),
