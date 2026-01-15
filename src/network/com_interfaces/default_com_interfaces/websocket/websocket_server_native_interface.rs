@@ -261,7 +261,7 @@ impl WebSocketServerInterfaceSetupData {
                     let tx = tx.get_mut(&socket_uuid);
                     match tx {
                         Some(tx) => {
-                            tx.start_send(block.to_vec()).expect(
+                            tx.start_send(block.to_bytes()).expect(
                                 "Failed to send outgoing data to WebSocket",
                             );
                         }

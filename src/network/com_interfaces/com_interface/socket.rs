@@ -28,7 +28,11 @@ impl ComInterfaceSocketUUID {
 #[derive(Debug)]
 pub enum ComInterfaceSocketEvent {
     NewSocket(ComInterfaceSocket),
-    RemovedSocket(ComInterfaceSocketUUID),
+    /// indicates that the socket can no longer be used and should be removed
+    /// optionally includes a block that could not be sent out since the socket can no longer be used
+    /// This event may be triggered multiple times for the same socket close if asynchronously scheduled
+    /// blocks are still being processed after the first close event.
+    CloseSocket(ComInterfaceSocketUUID, Option<DXBBlock>),
 }
 
 #[derive(Debug)]

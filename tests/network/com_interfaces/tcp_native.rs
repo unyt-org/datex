@@ -67,21 +67,21 @@ pub async fn test_construct() {
     // send block from client to server
     let client_socket_uuid = client_socket.uuid.clone();
     client_interface.send_block(
-        &client_to_server_message.to_bytes().unwrap(),
+        client_to_server_message.clone(),
         client_socket_uuid.clone(),
     );
 
     // send block from server to client
     let server_socket_uuid = server_socket.uuid.clone();
     server_interface.send_block(
-        &server_to_client_message.to_bytes().unwrap(),
+        server_to_client_message.clone(),
         server_socket_uuid.clone(),
     );
 
     // check if messages are received correctly
     assert_eq!(
         server_socket_receiver.next().await.unwrap(),
-        client_to_server_message
+        client_to_server_message.clone()
     );
     assert_eq!(
         client_socket_receiver.next().await.unwrap(),
@@ -95,7 +95,7 @@ pub async fn test_construct() {
         let client = client.clone();
         let client_uuid = client_socket_uuid.clone();
         client.try_lock().unwrap().send_block(
-            &client_to_server_message_clone.to_bytes().unwrap(),
+            client_to_server_message_clone,
             client_uuid.clone(),
         )
     }

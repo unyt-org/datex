@@ -399,9 +399,7 @@ pub async fn get_collected_outgoing_blocks_from_receiver(
     let mut received_count = 0;
 
     while let Some(event) = event_receiver.next().await {
-        if let ComInterfaceEvent::SendBlock(bytes, socket_uuid) = event {
-            let block = DXBBlock::from_bytes(&bytes).await.unwrap();
-
+        if let ComInterfaceEvent::SendBlock(block, socket_uuid) = event {
             collected_blocks.push((block, socket_uuid));
             received_count += 1;
 
@@ -426,9 +424,7 @@ pub async fn get_next_outgoing_block_from_receiver(
     event_receiver: &mut UnboundedReceiver<ComInterfaceEvent>,
 ) -> (DXBBlock, ComInterfaceSocketUUID) {
     while let Some(event) = event_receiver.next().await {
-        if let ComInterfaceEvent::SendBlock(bytes, socket_uuid) = event {
-            let block = DXBBlock::from_bytes(&bytes).await.unwrap();
-
+        if let ComInterfaceEvent::SendBlock(block, socket_uuid) = event {
             return (block, socket_uuid);
         }
     }
@@ -449,7 +445,7 @@ pub async fn send_multiple_blocks_to_local(
 
     let block_bytes: Vec<Vec<u8>> = blocks
         .iter()
-        .map(|block| block.to_bytes().unwrap())
+        .map(|block| block.to_bytes())
         .collect();
 
     for block in block_bytes.into_iter() {

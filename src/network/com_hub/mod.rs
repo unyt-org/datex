@@ -1093,23 +1093,16 @@ impl ComHub {
         for interceptor in self.outgoing_block_interceptors.borrow().iter() {
             interceptor(&block, socket_uuid, endpoints);
         }
-        match block.to_bytes() {
-            Ok(bytes) => {
-                info!(
-                    "Sending block to socket {}: {}",
-                    socket_uuid,
-                    endpoints.iter().map(|e| e.to_string()).join(", ")
-                );
+        info!(
+            "Sending block to socket {}: {}",
+            socket_uuid,
+            endpoints.iter().map(|e| e.to_string()).join(", ")
+        );
 
-                // TODO #190: resend block if socket failed to send
-                let com_interface =
-                    self.dyn_interface_for_socket_uuid(socket_uuid);
-                com_interface.send_block(&bytes, socket_uuid.clone());
-            }
-            Err(err) => {
-                error!("Failed to convert block to bytes: {err:?}");
-            }
-        }
+        // TODO #190: resend block if socket failed to send
+        let com_interface =
+            self.dyn_interface_for_socket_uuid(socket_uuid);
+        com_interface.send_block(block, socket_uuid.clone());
     }
 
     // TODO handle the reconnection logic event based (#684)

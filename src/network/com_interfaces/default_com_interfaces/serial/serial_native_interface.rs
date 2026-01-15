@@ -124,7 +124,7 @@ impl SerialInterfaceSetupData {
         while let Some(event) = receiver.next().await {
             match event {
                 ComInterfaceEvent::SendBlock(block, _) => {
-                    port.lock().unwrap().write_all(block.as_slice()).unwrap();
+                    port.lock().unwrap().write_all(block.to_bytes().as_slice()).unwrap();
                 }
                 ComInterfaceEvent::Destroy => {
                     shutdown_signal.notify_waiters();

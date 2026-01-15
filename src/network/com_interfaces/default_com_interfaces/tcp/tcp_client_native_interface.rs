@@ -120,7 +120,7 @@ impl TCPClientInterfaceSetupData {
         while let Some(event) = receiver.next().await {
             match event {
                 ComInterfaceEvent::SendBlock(block, _) => {
-                    if let Err(e) = write.write_all(&block).await {
+                    if let Err(e) = write.write_all(&block.to_bytes()).await {
                         error!("Failed to send data: {}", e);
                         // TODO: handle error properly
                     }

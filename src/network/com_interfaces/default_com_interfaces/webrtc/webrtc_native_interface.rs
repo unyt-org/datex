@@ -629,7 +629,7 @@ impl WebRTCInterfaceSetupData {
                 ComInterfaceEvent::SendBlock(block, _) => {
                     match data_channels.borrow().get_data_channel("DATEX") {
                         Some(channel) => {
-                            let bytes = Bytes::from(block);
+                            let bytes = Bytes::from(block.to_bytes());
                             channel
                                 .borrow()
                                 .data_channel

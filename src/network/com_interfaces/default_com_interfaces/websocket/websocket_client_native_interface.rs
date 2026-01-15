@@ -115,7 +115,7 @@ impl WebSocketClientInterfaceSetupData {
         while let Some(event) = receiver.next().await {
             match event {
                 ComInterfaceEvent::SendBlock(block, _) => {
-                    if let Err(e) = write.send(Message::Binary(block)).await {
+                    if let Err(e) = write.send(Message::Binary(block.to_bytes())).await {
                         // FIXME shall we retry?
                         error!("WebSocket write error: {e}");
                         state

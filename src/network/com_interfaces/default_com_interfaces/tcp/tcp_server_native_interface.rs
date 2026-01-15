@@ -147,7 +147,7 @@ impl TCPServerInterfaceSetupData {
                         continue;
                     };
                     let mut tx = tx.unwrap();
-                    if tx.start_send(block).is_err() {
+                    if tx.start_send(block.to_bytes()).is_err() {
                         error!("Write failed for {}", socket_uuid);
                     }
                 }

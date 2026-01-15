@@ -53,7 +53,7 @@ async fn receive_single_block() {
 
     // Send as incoming data into the interface
     let (_, mut interface_in_sender) = interface_proxy.create_and_init_socket(InterfaceDirection::InOut, 0);
-    interface_in_sender.send(block.to_bytes().unwrap()).await.unwrap();
+    interface_in_sender.send(block.to_bytes()).await.unwrap();
 
     // wait a tick to allow processing
     yield_now().await;
@@ -122,7 +122,7 @@ async fn receive_multiple_blocks() {
         .create_and_init_socket(InterfaceDirection::InOut, 0);
 
     // 1. Send first block
-    let block_bytes = blocks[0].to_bytes().unwrap();
+    let block_bytes = blocks[0].to_bytes();
     interface_in_sender.send(block_bytes).await.unwrap();
 
     // wait a tick to allow processing
@@ -147,7 +147,7 @@ async fn receive_multiple_blocks() {
     }
 
     // 2. Send second block
-    let block_bytes = blocks[1].to_bytes().unwrap();
+    let block_bytes = blocks[1].to_bytes();
     interface_in_sender.send(block_bytes).await.unwrap();
 
     // wait a tick to allow processing
@@ -226,13 +226,13 @@ async fn receive_multiple_blocks_wrong_order() {
         .create_and_init_socket(InterfaceDirection::InOut, 0);
 
     // 1. Send first block
-    let block_bytes = blocks[0].to_bytes().unwrap();
+    let block_bytes = blocks[0].to_bytes();
     interface_in_sender.send(block_bytes).await.unwrap();
 
     yield_now().await;
 
     // 2. Send second block
-    let block_bytes = blocks[1].to_bytes().unwrap();
+    let block_bytes = blocks[1].to_bytes();
     interface_in_sender.send(block_bytes).await.unwrap();
 
     yield_now().await;
@@ -354,7 +354,7 @@ async fn receive_multiple_sections() {
         .create_and_init_socket(InterfaceDirection::InOut, 0);
 
     // 1. Send first block
-    let block_bytes = blocks[0].to_bytes().unwrap();
+    let block_bytes = blocks[0].to_bytes();
     interface_in_sender.send(block_bytes).await.unwrap();
 
     yield_now().await;
@@ -379,7 +379,7 @@ async fn receive_multiple_sections() {
     }
 
     // 2. Send second block
-    let block_bytes = blocks[1].to_bytes().unwrap();
+    let block_bytes = blocks[1].to_bytes();
     interface_in_sender.send(block_bytes).await.unwrap();
 
     yield_now().await;
@@ -403,7 +403,7 @@ async fn receive_multiple_sections() {
     }
 
     // 3. Send third block
-    let block_bytes = blocks[2].to_bytes().unwrap();
+    let block_bytes = blocks[2].to_bytes();
     interface_in_sender.send(block_bytes).await.unwrap();
 
     yield_now().await;
@@ -428,7 +428,7 @@ async fn receive_multiple_sections() {
     }
 
     // 4. Send fourth block
-    let block_bytes = blocks[3].to_bytes().unwrap();
+    let block_bytes = blocks[3].to_bytes();
     interface_in_sender.send(block_bytes).await.unwrap();
 
     yield_now().await;
@@ -491,7 +491,7 @@ async fn await_response_block() {
         .register_incoming_block_observer(context_id, section_index);
 
     // Put into incoming queue of mock interface
-    let block_bytes = block.to_bytes().unwrap();
+    let block_bytes = block.to_bytes();
     interface_in_sender.send(block_bytes).await.unwrap();
 
     yield_now().await;

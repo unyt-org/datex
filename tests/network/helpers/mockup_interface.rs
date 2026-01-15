@@ -163,25 +163,18 @@ impl MockupInterfaceSetupData {
         while let Some(event) = receiver.next().await {
             match event {
                 ComInterfaceEvent::SendBlock(block, socket_uuid) => {
-                    let is_hello = {
-                        match DXBBlock::from_bytes(&block).await {
-                            Ok(block) => {
-                                block
-                                    .block_header
-                                    .flags_and_timestamp
-                                    .block_type()
-                                    == BlockType::Hello
-                            }
-                            _ => false,
-                        }
-                    };
+                    let is_hello = block
+                        .block_header
+                        .flags_and_timestamp
+                        .block_type() == BlockType::Hello;
+                    let bytes = block.to_bytes();
                     if !is_hello {
                         outgoing_queue
                             .borrow_mut()
-                            .push((socket_uuid, block.clone()));
+                            .push((socket_uuid, bytes.clone()));
                     }
                     if let Some(sender) = sender.as_mut() {
-                        sender.start_send(block).expect(
+                        sender.start_send(bytes).expect(
                             "Failed to send outgoing block from MockupInterface",
                         );
                     }

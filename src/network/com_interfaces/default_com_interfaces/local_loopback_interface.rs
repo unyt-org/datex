@@ -40,7 +40,7 @@ impl ComInterfaceSyncFactory for LocalLoopbackInterfaceSetupData {
                 com_interface_proxy.event_receiver.next().await
             {
                 if let ComInterfaceEvent::SendBlock(block, _) = event {
-                    sender.start_send(block).unwrap();
+                    sender.start_send(block.to_bytes()).unwrap();
                 }
             }
         });

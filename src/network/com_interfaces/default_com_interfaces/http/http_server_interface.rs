@@ -236,7 +236,7 @@ impl HTTPServerInterfaceSetupData {
                     let route = route.unwrap().to_string();
                     let map = channels.read().await;
                     if let Some((sender, _)) = map.get(&route) {
-                        let _ = sender.send(Bytes::from(block));
+                        let _ = sender.send(Bytes::from(block.to_bytes()));
                     } else {
                         // TODO: handle
                     }

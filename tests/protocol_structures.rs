@@ -40,11 +40,8 @@ pub fn parse_encrypted_header() {
 
     let header_result = EncryptedHeader::read(&mut reader).unwrap();
     assert!(header_result.flags.has_on_behalf_of());
-    assert!(header_result.clone().on_behalf_of.unwrap() == endpoint);
-    assert!(
-        header_result.to_bytes().unwrap()
-            == encrypted_header.to_bytes().unwrap()
-    );
+    assert_eq!(header_result.clone().on_behalf_of.unwrap(), endpoint);
+    assert_eq!(header_result.to_bytes().unwrap(), encrypted_header.to_bytes().unwrap());
 }
 
 #[test]
@@ -57,9 +54,7 @@ pub fn parse_block_header() {
     reader.seek(SeekFrom::Start(0)).unwrap();
 
     let header_result = BlockHeader::read(&mut reader).unwrap();
-    assert!(
-        header_result.to_bytes().unwrap() == block_header.to_bytes().unwrap()
-    );
+    assert_eq!(header_result.to_bytes().unwrap(), block_header.to_bytes().unwrap());
 }
 
 #[test]
@@ -79,9 +74,7 @@ pub fn parse_routing_header() {
     reader.seek(SeekFrom::Start(0)).unwrap();
 
     let header_result = RoutingHeader::read(&mut reader).unwrap();
-    assert!(
-        header_result.to_bytes().unwrap() == routing_header.to_bytes().unwrap()
-    );
+    assert_eq!(header_result.to_bytes().unwrap(), routing_header.to_bytes().unwrap());
 }
 
 #[tokio::test]
@@ -91,10 +84,10 @@ pub async fn parse_dxb_block() {
         ..DXBBlock::default()
     };
 
-    let bytes = block.to_bytes().unwrap();
+    let bytes = block.to_bytes();
 
     let new_block = DXBBlock::from_bytes(bytes.as_slice()).await.unwrap();
-    let new_bytes = new_block.to_bytes().unwrap();
+    let new_bytes = new_block.to_bytes();
 
     assert_eq!(bytes, new_bytes);
 }
@@ -108,7 +101,7 @@ fn create_dxb_block_artifacts(block: &mut DXBBlock, name: &str) {
     let json_path = dir_path.join("block.json");
 
     let adjusted_block = block.recalculate_struct();
-    fs::write(&bin_path, adjusted_block.to_bytes().unwrap()).unwrap();
+    fs::write(&bin_path, adjusted_block.to_bytes()).unwrap();
 
     let mut buf = Vec::new();
     let mut ser = serde_json::Serializer::with_formatter(

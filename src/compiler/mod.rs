@@ -251,9 +251,7 @@ pub fn compile_block(
     let block =
         DXBBlock::new(routing_header, block_header, encrypted_header, body);
 
-    let bytes = block
-        .to_bytes()
-        .map_err(|e| CompilerError::SerializationError)?;
+    let bytes = block.to_bytes();
     Ok(bytes)
 }
 

@@ -298,7 +298,7 @@ pub async fn test_receive() {
         interface_proxy.create_and_init_socket(InterfaceDirection::In, 1);
     yield_now().await;
 
-    let block_bytes = block.to_bytes().unwrap();
+    let block_bytes = block.to_bytes();
     incoming_blocks_sender
         .start_send(block_bytes.as_slice().to_vec())
         .unwrap();
@@ -334,7 +334,7 @@ pub async fn unencrypted_signature_prepare_block_com_hub() {
         .flags
         .set_signature_type(SignatureType::Unencrypted);
     block = com_hub.prepare_own_block(block).await.unwrap();
-    let block_bytes = block.to_bytes().unwrap();
+    let block_bytes = block.to_bytes();
 
     let (_, mut incoming_blocks_sender) =
         interface_proxy.create_and_init_socket(InterfaceDirection::In, 0);
@@ -380,7 +380,7 @@ pub async fn encrypted_signature_prepare_block_com_hub() {
         .flags
         .set_signature_type(SignatureType::Encrypted);
     block = com_hub.prepare_own_block(block).await.unwrap();
-    let block_bytes = block.to_bytes().unwrap();
+    let block_bytes = block.to_bytes();
 
     let (_, mut incoming_blocks_sender) =
         interface_proxy.create_and_init_socket(InterfaceDirection::In, 0);
@@ -466,7 +466,7 @@ pub async fn test_receive_multiple_blocks_single_section() {
     for (incoming_block, block) in incoming_blocks.iter().zip(blocks.iter()) {
         assert_eq!(
             incoming_block.raw_bytes.clone().unwrap(),
-            block.to_bytes().unwrap()
+            block.to_bytes()
         );
     }
 }
@@ -526,7 +526,7 @@ pub async fn test_receive_multiple_separate_blocks() {
     for (incoming_block, block) in incoming_blocks.iter().zip(blocks.iter()) {
         assert_eq!(
             incoming_block.raw_bytes.clone().unwrap(),
-            block.to_bytes().unwrap()
+            block.to_bytes()
         );
     }
 }

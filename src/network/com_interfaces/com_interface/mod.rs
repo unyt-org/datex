@@ -33,6 +33,7 @@ use crate::{
 };
 use core::fmt::{Debug, Display};
 use tokio::sync::Notify;
+use crate::global::dxb_block::DXBBlock;
 use crate::runtime::AsyncContext;
 
 pub mod error;
@@ -65,7 +66,7 @@ pub enum ComInterfaceStateEvent {
 
 #[derive(Debug, Clone)]
 pub enum ComInterfaceEvent {
-    SendBlock(Vec<u8>, ComInterfaceSocketUUID),
+    SendBlock(DXBBlock, ComInterfaceSocketUUID),
     Destroy,
     Reconnect,
 }
@@ -171,7 +172,7 @@ impl ComInterfaceProxy {
     pub fn shutdown_signal(&self) -> Arc<Notify> {
         self.state.lock().unwrap().shutdown_signal().clone()
     }
-    
+
     /// Creates and initializes a new socket and returns its UUID and sender
     /// Also registers an already known direct endpoint for the socket
     /// Locks the socket manager internally and calls the creation method
@@ -256,7 +257,7 @@ impl ComInterfaceProxy {
                     Some(event) = event_receiver_a.next() => {
                         if let ComInterfaceEvent::SendBlock(block, _socket_uuid) = event {
                             // directly send the block to socket B
-                            socket_b_sender.start_send(block).unwrap();
+                            socket_b_sender.start_send(block.to_bytes()).unwrap();
                         }
                     }
                     _ = shutdown_signal_a.notified() => {
@@ -272,7 +273,7 @@ impl ComInterfaceProxy {
                     Some(event) = event_receiver_b.next() => {
                         if let ComInterfaceEvent::SendBlock(block, _socket_uuid) = event {
                             // directly send the block to socket A
-                            socket_a_sender.start_send(block).unwrap();
+                            socket_a_sender.start_send(block.to_bytes()).unwrap();
                         }
                     }
                     _ = shutdown_signal_b.notified() => {
@@ -428,13 +429,13 @@ impl ComInterface {
     /// If a block cannot be sent, the implementation should send it back to the com interface for retrying
     pub fn send_block(
         &self,
-        block: &[u8],
+        block: DXBBlock,
         socket_uuid: ComInterfaceSocketUUID,
     ) {
         self.interface_event_sender
             .borrow_mut()
             .start_send(ComInterfaceEvent::SendBlock(
-                block.to_vec(),
+                block,
                 socket_uuid,
             ))
             .unwrap();

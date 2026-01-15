@@ -62,12 +62,12 @@ pub async fn test_create_socket_connection() {
     // send block from client to server
     let client_uuid = client_socket.uuid.clone();
     client_interface
-        .send_block(&client_to_server_message.to_bytes().unwrap(), client_uuid);
+        .send_block(client_to_server_message.clone(), client_uuid);
 
     // send block from server to client
     let server_socket_uuid = server_socket.uuid.clone();
     server_interface.send_block(
-        &server_to_client_message.to_bytes().unwrap(),
+        server_to_client_message.clone(),
         server_socket_uuid.clone(),
     );
 

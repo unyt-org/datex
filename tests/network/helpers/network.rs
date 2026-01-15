@@ -612,7 +612,7 @@ impl Network {
                     Some(event) = event_receiver.next() => {
                         if let ComInterfaceEvent::SendBlock(block, _socket_uuid) = event {
                             // directly send the block to socket B
-                            socket_sender.start_send(block).unwrap();
+                            socket_sender.start_send(block.to_bytes()).unwrap();
                         }
                     }
                     _ = shutdown_signal.notified() => {

@@ -181,18 +181,19 @@ impl DXBBlock {
         block
     }
 
-    pub fn to_bytes(&self) -> Result<Vec<u8>, binrw::Error> {
+    // TODO: guarantee that all unwraps are safe and no binrw::Error is possible
+    pub fn to_bytes(&self) -> Vec<u8> {
         let mut writer = Cursor::new(Vec::new());
-        self.routing_header.write(&mut writer)?;
-        self.signature.write(&mut writer)?;
-        self.block_header.write(&mut writer)?;
-        self.encrypted_header.write(&mut writer)?;
+        self.routing_header.write(&mut writer).unwrap();
+        self.signature.write(&mut writer).unwrap();
+        self.block_header.write(&mut writer).unwrap();
+        self.encrypted_header.write(&mut writer).unwrap();
         let mut bytes = writer.into_inner();
         bytes.extend_from_slice(&self.body);
-        Ok(DXBBlock::adjust_block_length(bytes))
+        DXBBlock::adjust_block_length(bytes)
     }
     pub fn recalculate_struct(&mut self) -> &mut Self {
-        let bytes = self.to_bytes().unwrap();
+        let bytes = self.to_bytes();
         let size = bytes.len() as u16;
         self.routing_header.block_size = size;
         self
@@ -480,7 +481,7 @@ mod tests {
 
         {
             // invalid block size
-            let block_bytes = block.to_bytes().unwrap();
+            let block_bytes = block.to_bytes();
             let block2: DXBBlock =
                 DXBBlock::from_bytes(&block_bytes).await.unwrap();
             assert_ne!(block, block2);
@@ -489,7 +490,7 @@ mod tests {
         {
             // valid block size
             block.recalculate_struct();
-            let block_bytes = block.to_bytes().unwrap();
+            let block_bytes = block.to_bytes();
             let block3: DXBBlock =
                 DXBBlock::from_bytes(&block_bytes).await.unwrap();
             assert_eq!(block, block3);
@@ -528,7 +529,7 @@ mod tests {
         // 64 + 44 = 108
         block.signature = Some([signature.to_vec(), pub_key.clone()].concat());
 
-        let block_bytes = block.to_bytes().unwrap();
+        let block_bytes = block.to_bytes();
         let block2: DXBBlock =
             DXBBlock::from_bytes(&block_bytes).await.unwrap();
         assert_eq!(block, block2);
@@ -542,7 +543,7 @@ mod tests {
             other_sig[42] = 43u8;
         }
         block.signature = Some([other_sig.to_vec(), pub_key].concat());
-        let block_bytes2 = block.to_bytes().unwrap();
+        let block_bytes2 = block.to_bytes();
         let block3 = DXBBlock::from_bytes(&block_bytes2).await;
         assert!(block3.is_err());
         assert_eq!(
