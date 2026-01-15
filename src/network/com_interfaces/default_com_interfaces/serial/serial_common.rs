@@ -5,7 +5,6 @@ use strum::Display;
 use thiserror::Error;
 
 #[derive(Serialize, Deserialize)]
-#[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
 pub struct SerialInterfaceSetupData {
     pub port_name: Option<String>,
     pub baud_rate: u32,
