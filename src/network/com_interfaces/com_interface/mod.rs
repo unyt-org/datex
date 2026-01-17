@@ -7,6 +7,7 @@ use crate::network::com_interfaces::com_interface::{
 };
 
 use crate::{
+    global::dxb_block::DXBBlock,
     network::{
         com_hub::{
             errors::InterfaceCreateError,
@@ -17,6 +18,7 @@ use crate::{
         },
         com_interfaces::com_interface::properties::InterfaceDirection,
     },
+    runtime::AsyncContext,
     stdlib::{
         cell::{Ref, RefCell},
         rc::Rc,
@@ -31,10 +33,8 @@ use crate::{
         core_values::endpoint::Endpoint, value_container::ValueContainer,
     },
 };
+use async_notify::Notify;
 use core::fmt::{Debug, Display};
-use tokio::sync::Notify;
-use crate::global::dxb_block::DXBBlock;
-use crate::runtime::AsyncContext;
 
 pub mod error;
 pub mod implementation;
@@ -86,7 +86,7 @@ pub struct ComInterfaceProxy {
     pub event_receiver: UnboundedReceiver<ComInterfaceEvent>,
 
     /// Async context that can be used to spawn async tasks
-    pub async_context: AsyncContext
+    pub async_context: AsyncContext,
 }
 
 type ComInterfaceProxyChannels = (
@@ -104,7 +104,9 @@ type ComInterfaceProxyShared = (
 impl ComInterfaceProxy {
     /// Creates a raw default ComInterfaceProxy instance along with its communication channels
     /// This can be used to connect a ComInterface implementation with the ComInterfaceProxy
-    pub fn new_with_channels(async_context: AsyncContext) -> (Self, ComInterfaceProxyChannels) {
+    pub fn new_with_channels(
+        async_context: AsyncContext,
+    ) -> (Self, ComInterfaceProxyChannels) {
         // set up channels
         let (interface_state_event_sender, interface_state_event_receiver) =
             create_unbounded_channel::<ComInterfaceStateEvent>();
@@ -144,7 +146,7 @@ impl ComInterfaceProxy {
     /// Creates a new ComInterface instance along with its proxy, configured with the specified properties
     pub fn create_interface(
         properties: InterfaceProperties,
-        async_context: AsyncContext
+        async_context: AsyncContext,
     ) -> (Self, ComInterfaceWithReceivers) {
         // Create a proxy for initialization
         let (com_interface_proxy, channels) =
@@ -253,7 +255,9 @@ impl ComInterfaceProxy {
         spawn_with_panic_notify_default(async move {
             let mut event_receiver_a = proxy_a.event_receiver;
             loop {
-                tokio::select! {
+                use async_select::select;
+
+                select! {
                     Some(event) = event_receiver_a.next() => {
                         if let ComInterfaceEvent::SendBlock(block, _socket_uuid) = event {
                             // directly send the block to socket B
@@ -269,7 +273,9 @@ impl ComInterfaceProxy {
         spawn_with_panic_notify_default(async move {
             let mut event_receiver_b = proxy_b.event_receiver;
             loop {
-                tokio::select! {
+                use async_select::select;
+
+                select! {
                     Some(event) = event_receiver_b.next() => {
                         if let ComInterfaceEvent::SendBlock(block, _socket_uuid) = event {
                             // directly send the block to socket A
@@ -329,7 +335,7 @@ impl ComInterface {
     pub fn create_from_sync_factory_fn(
         factory_fn: SyncComInterfaceImplementationFactoryFn,
         setup_data: ValueContainer,
-        async_context: AsyncContext
+        async_context: AsyncContext,
     ) -> Result<ComInterfaceWithReceivers, InterfaceCreateError> {
         // Create a proxy for initialization
         let (com_interface_proxy, channels) =
@@ -349,7 +355,7 @@ impl ComInterface {
     pub async fn create_from_async_factory_fn(
         factory_fn: AsyncComInterfaceImplementationFactoryFn,
         setup_data: ValueContainer,
-        async_context: AsyncContext
+        async_context: AsyncContext,
     ) -> Result<ComInterfaceWithReceivers, InterfaceCreateError> {
         // Create a proxy for initialization
         let (com_interface_proxy, channels) =
@@ -369,7 +375,7 @@ impl ComInterface {
     /// only works for sync factories
     pub fn create_sync_from_setup_data<T: ComInterfaceSyncFactory>(
         setup_data: T,
-        async_context: AsyncContext
+        async_context: AsyncContext,
     ) -> Result<ComInterfaceWithReceivers, InterfaceCreateError> {
         // Create a proxy for initialization
         let (com_interface_proxy, channels) =
@@ -390,7 +396,7 @@ impl ComInterface {
     /// only works for async factories
     pub async fn create_async_from_setup_data<T: ComInterfaceAsyncFactory>(
         setup_data: T,
-        async_context: AsyncContext
+        async_context: AsyncContext,
     ) -> Result<ComInterfaceWithReceivers, InterfaceCreateError> {
         // Create a proxy for initialization
         let (com_interface_proxy, channels) =
@@ -434,10 +440,7 @@ impl ComInterface {
     ) {
         self.interface_event_sender
             .borrow_mut()
-            .start_send(ComInterfaceEvent::SendBlock(
-                block,
-                socket_uuid,
-            ))
+            .start_send(ComInterfaceEvent::SendBlock(block, socket_uuid))
             .unwrap();
     }
 
@@ -453,7 +456,10 @@ impl ComInterface {
             .borrow_mut()
             .start_send(ComInterfaceEvent::Destroy)
             .unwrap();
-        self.state.try_lock().unwrap().set(ComInterfaceState::Destroyed);
+        self.state
+            .try_lock()
+            .unwrap()
+            .set(ComInterfaceState::Destroyed);
     }
 
     pub fn socket_manager(&self) -> Arc<Mutex<ComInterfaceSocketManager>> {

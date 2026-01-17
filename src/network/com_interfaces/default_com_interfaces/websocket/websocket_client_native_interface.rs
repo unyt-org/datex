@@ -2,6 +2,7 @@ use crate::stdlib::{
     sync::{Arc, Mutex},
     time::Duration,
 };
+use async_select::select;
 use core::{prelude::rust_2024::*, result::Result};
 use futures_util::{
     SinkExt, StreamExt,
@@ -27,12 +28,12 @@ use crate::{
         },
     },
     task::{
-        UnboundedReceiver, UnboundedSender, spawn_with_panic_notify_default,
+        UnboundedReceiver, UnboundedSender, spawn_with_panic_notify,
+        spawn_with_panic_notify_default,
     },
 };
-use tokio_tungstenite::{MaybeTlsStream, WebSocketStream};
 use datex_core::network::com_interfaces::com_interface::ComInterfaceProxy;
-use crate::task::spawn_with_panic_notify;
+use tokio_tungstenite::{MaybeTlsStream, WebSocketStream};
 
 impl WebSocketClientInterfaceSetupData {
     async fn create_interface(
@@ -47,22 +48,24 @@ impl WebSocketClientInterfaceSetupData {
 
         let state = com_interface_proxy.state;
 
-        spawn_with_panic_notify(&com_interface_proxy.async_context, Self::read_task(
-            read,
-            sender,
-            state.clone(),
-        ));
+        spawn_with_panic_notify(
+            &com_interface_proxy.async_context,
+            Self::read_task(read, sender, state.clone()),
+        );
 
-        spawn_with_panic_notify(&com_interface_proxy.async_context, Self::event_handler_task(
-            write,
-            com_interface_proxy.event_receiver,
-            state,
-        ));
+        spawn_with_panic_notify(
+            &com_interface_proxy.async_context,
+            Self::event_handler_task(
+                write,
+                com_interface_proxy.event_receiver,
+                state,
+            ),
+        );
 
         Ok(InterfaceProperties {
             name: Some(address.to_string()),
             ..Self::get_default_properties()
-        },)
+        })
     }
 
     /// background task to read messages from the websocket
@@ -73,7 +76,7 @@ impl WebSocketClientInterfaceSetupData {
     ) {
         let shutdown_signal = state.try_lock().unwrap().shutdown_signal();
         loop {
-            tokio::select! {
+            select! {
                 msg = read.next() => {
                     match msg {
                         Some(Ok(Message::Binary(data))) => {
@@ -115,7 +118,9 @@ impl WebSocketClientInterfaceSetupData {
         while let Some(event) = receiver.next().await {
             match event {
                 ComInterfaceEvent::SendBlock(block, _) => {
-                    if let Err(e) = write.send(Message::Binary(block.to_bytes())).await {
+                    if let Err(e) =
+                        write.send(Message::Binary(block.to_bytes())).await
+                    {
                         // FIXME shall we retry?
                         error!("WebSocket write error: {e}");
                         state
@@ -169,15 +174,13 @@ impl WebSocketClientInterfaceSetupData {
 }
 
 impl ComInterfaceAsyncFactory for WebSocketClientInterfaceSetupData {
-
     fn create_interface(
         self,
         com_interface_proxy: ComInterfaceProxy,
     ) -> ComInterfaceAsyncFactoryResult {
-        Box::pin(async move {
-            self.create_interface(com_interface_proxy)
-                .await
-        })
+        Box::pin(
+            async move { self.create_interface(com_interface_proxy).await },
+        )
     }
 
     fn get_default_properties() -> InterfaceProperties {

@@ -3,6 +3,7 @@ use datex_core::{
     runtime::global_context::{GlobalContext, set_global_context},
 };
 
+#[cfg(feature = "native_crypto")]
 pub fn init_global_context() {
     let global_ctx = GlobalContext::native();
     set_global_context(global_ctx);

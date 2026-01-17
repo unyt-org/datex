@@ -1,34 +1,27 @@
+use async_notify::Notify;
+use async_select::select;
 use core::{
     fmt::{self, Debug, Display},
     str::FromStr,
 };
 use datex_core::{
     network::{
-        com_hub::{
-            InterfacePriority,
-            network_tracing::TraceOptions,
-        },
+        com_hub::{InterfacePriority, network_tracing::TraceOptions},
         com_interfaces::com_interface::{
-            properties::InterfaceDirection,
+            ComInterfaceEvent, ComInterfaceProxy,
+            properties::{InterfaceDirection, InterfaceProperties},
         },
     },
-    runtime::{Runtime, RuntimeConfig},
-    values::{
-        core_values::endpoint::Endpoint,
+    runtime::{AsyncContext, Runtime, RuntimeConfig},
+    task::{
+        UnboundedReceiver, UnboundedSender, spawn_with_panic_notify_default,
     },
+    values::core_values::endpoint::Endpoint,
 };
 use log::info;
 use serde::{Deserialize, Serialize};
-use std::{
-    collections::HashMap, env, fs, path::Path,
-};
-use std::sync::Arc;
-use tokio::sync::Notify;
+use std::{collections::HashMap, env, fs, path::Path, sync::Arc};
 use tokio::task::yield_now;
-use datex_core::network::com_interfaces::com_interface::{ComInterfaceEvent, ComInterfaceProxy};
-use datex_core::network::com_interfaces::com_interface::properties::InterfaceProperties;
-use datex_core::runtime::AsyncContext;
-use datex_core::task::{spawn_with_panic_notify_default, UnboundedReceiver, UnboundedSender};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct MockupInterfaceSetupData {
@@ -294,7 +287,10 @@ pub async fn test_routes(
             )
             .zip(route.hops.iter());
 
-        for (index, (original, (expected_endpoint, expected_channel, expected_fork))) in hop_pairs.enumerate()
+        for (
+            index,
+            (original, (expected_endpoint, expected_channel, expected_fork)),
+        ) in hop_pairs.enumerate()
         {
             // check endpoint
             if original.endpoint != expected_endpoint.clone() {
@@ -319,7 +315,9 @@ pub async fn test_routes(
                 ));
             }
             // check fork
-            if let Some(fork) = expected_fork && &original.fork_nr != fork {
+            if let Some(fork) = expected_fork
+                && &original.fork_nr != fork
+            {
                 return Err(RouteAssertionError::InvalidForkOnHop(
                     index as i32,
                     fork.clone(),
@@ -483,24 +481,25 @@ impl Network {
                             .map(|e| e.unwrap());
 
                         if let Some(endpoint) = other_endpoint {
-                            node = node.with_connection(InterfaceConnection::new(
-                                prio,
-                                MockupInterfaceSetupData {
-                                    name: channel,
-                                    endpoint: Some(endpoint.clone()),
-                                    direction: interface_direction,
-                                }
-                            ));
+                            node =
+                                node.with_connection(InterfaceConnection::new(
+                                    prio,
+                                    MockupInterfaceSetupData {
+                                        name: channel,
+                                        endpoint: Some(endpoint.clone()),
+                                        direction: interface_direction,
+                                    },
+                                ));
                         } else {
-                            node = node
-                                .with_connection(InterfaceConnection::new(
-                                prio,
-                                MockupInterfaceSetupData {
-                                    name: channel,
-                                    endpoint: None,
-                                    direction: interface_direction,
-                                }
-                            ));
+                            node =
+                                node.with_connection(InterfaceConnection::new(
+                                    prio,
+                                    MockupInterfaceSetupData {
+                                        name: channel,
+                                        endpoint: None,
+                                        direction: interface_direction,
+                                    },
+                                ));
                         }
                     }
                 }
@@ -523,35 +522,60 @@ impl Network {
         }
         self.is_initialized = true;
 
-        let mut channel_pairs: HashMap<String, (Option<(Runtime, InterfaceConnection)>, Option<(Runtime, InterfaceConnection)>)> = HashMap::new();
+        let mut channel_pairs: HashMap<
+            String,
+            (
+                Option<(Runtime, InterfaceConnection)>,
+                Option<(Runtime, InterfaceConnection)>,
+            ),
+        > = HashMap::new();
 
         // iterate over all endpoints and set up runtimes
         for node in self.endpoints.iter_mut() {
             info!("creating runtime for endpoint {}", node.endpoint);
             let runtime = Runtime::create_native(
                 RuntimeConfig::new_with_endpoint(node.endpoint.clone()),
-            ).await;
+            )
+            .await;
             node.runtime = Some(runtime.clone());
 
             for connection in node.connections.iter() {
                 // save in channel pairs
-                let pairs = channel_pairs.entry(connection.setup_data.name.clone()).or_insert((None, None));
+                let pairs = channel_pairs
+                    .entry(connection.setup_data.name.clone())
+                    .or_insert((None, None));
                 if pairs.0.is_some() && pairs.1.is_some() {
-                    panic!("Channel {} already has two endpoints", connection.setup_data.name);
-                }
-                else if pairs.0.is_none() {
-                    *pairs = (Some((runtime.clone(), connection.clone())), None);
-                }
-                else {
-                    *pairs = (pairs.0.take(), Some((runtime.clone(), connection.clone())));
+                    panic!(
+                        "Channel {} already has two endpoints",
+                        connection.setup_data.name
+                    );
+                } else if pairs.0.is_none() {
+                    *pairs =
+                        (Some((runtime.clone(), connection.clone())), None);
+                } else {
+                    *pairs = (
+                        pairs.0.take(),
+                        Some((runtime.clone(), connection.clone())),
+                    );
                 }
             }
         }
 
         // iterate over all connection pairs and set up
         let mut iterator = channel_pairs.iter();
-        while let Some((channel_name, (Some((runtime_a, connection_a)), Some((runtime_b, connection_b))))) = iterator.next() {
-            info!("{}: ({} : {:?} , {} : {:?})", channel_name, runtime_a.endpoint(), connection_a.priority, runtime_b.endpoint(), connection_b.priority);
+        while let Some((
+            channel_name,
+            (Some((runtime_a, connection_a)), Some((runtime_b, connection_b))),
+        )) = iterator.next()
+        {
+            info!(
+                "{}: ({} : {:?} , {} : {:?})",
+                channel_name,
+                runtime_a.endpoint(),
+                connection_a.priority,
+                runtime_b.endpoint(),
+                connection_b.priority
+            );
 
             Network::create_connection(
                 (runtime_a.clone(), connection_a.clone()),
@@ -581,9 +605,12 @@ impl Network {
                 name: Some(connection.setup_data.name.clone()),
                 ..Default::default()
             },
-            AsyncContext::default()
+            AsyncContext::default(),
         );
-        runtime.com_hub().register_com_interface(com_interface, connection.priority).expect("Failed to register interface A");
+        runtime
+            .com_hub()
+            .register_com_interface(com_interface, connection.priority)
+            .expect("Failed to register interface A");
 
         let shutdown_signal = proxy.shutdown_signal();
         let (_, socket_sender) = proxy
@@ -593,11 +620,7 @@ impl Network {
                 remote_endpoint,
             );
 
-        (
-            proxy,
-            shutdown_signal,
-            socket_sender,
-        )
+        (proxy, shutdown_signal, socket_sender)
     }
 
     /// Spawns a task that forwards data blocks from a com interface event receiver to a socket sender
@@ -608,7 +631,7 @@ impl Network {
     ) {
         spawn_with_panic_notify_default(async move {
             loop {
-                tokio::select! {
+                select! {
                     Some(event) = event_receiver.next() => {
                         if let ComInterfaceEvent::SendBlock(block, _socket_uuid) = event {
                             // directly send the block to socket B
@@ -629,14 +652,26 @@ impl Network {
         runtime_b: (Runtime, InterfaceConnection),
     ) {
         let remote_endpoint_a = runtime_b.1.setup_data.endpoint.clone();
-        let (proxy_a, shutdown_signal_a, socket_a_sender) = Network::init_interface(&runtime_a.0, &runtime_a.1, remote_endpoint_a);
+        let (proxy_a, shutdown_signal_a, socket_a_sender) =
+            Network::init_interface(
+                &runtime_a.0,
+                &runtime_a.1,
+                remote_endpoint_a,
+            );
         let interface_a_direction = runtime_a.1.setup_data.direction.clone();
-        let interface_a_can_send = interface_a_direction != InterfaceDirection::In;
+        let interface_a_can_send =
+            interface_a_direction != InterfaceDirection::In;
 
         let remote_endpoint_b = runtime_a.1.setup_data.endpoint.clone();
-        let (proxy_b, shutdown_signal_b, socket_b_sender) = Network::init_interface(&runtime_b.0, &runtime_b.1, remote_endpoint_b);
+        let (proxy_b, shutdown_signal_b, socket_b_sender) =
+            Network::init_interface(
+                &runtime_b.0,
+                &runtime_b.1,
+                remote_endpoint_b,
+            );
         let interface_b_direction = runtime_b.1.setup_data.direction.clone();
-        let interface_b_can_send = interface_b_direction != InterfaceDirection::In;
+        let interface_b_can_send =
+            interface_b_direction != InterfaceDirection::In;
 
         // connect the two interfaces
         if interface_a_can_send {
@@ -655,7 +690,6 @@ impl Network {
             );
         }
     }
-
 
     pub fn get_runtime(&self, endpoint: impl Into<Endpoint>) -> &Runtime {
         let endpoint = endpoint.into();

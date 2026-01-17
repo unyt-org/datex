@@ -4,11 +4,10 @@ use crate::{
     network::{
         com_hub::errors::InterfaceCreateError,
         com_interfaces::com_interface::{
-            ComInterfaceEvent,
+            ComInterfaceEvent, ComInterfaceProxy,
             error::ComInterfaceError,
             implementation::{
                 ComInterfaceAsyncFactory, ComInterfaceAsyncFactoryResult,
-                ComInterfaceSyncFactory,
             },
             properties::{InterfaceDirection, InterfaceProperties},
             socket::ComInterfaceSocketUUID,
@@ -21,6 +20,8 @@ use crate::{
         spawn_with_panic_notify_default,
     },
 };
+use async_notify::Notify;
+use async_select::select;
 use core::{prelude::rust_2024::*, result::Result, time::Duration};
 use log::{error, info, warn};
 use tokio::{
@@ -29,20 +30,14 @@ use tokio::{
         TcpListener,
         tcp::{OwnedReadHalf, OwnedWriteHalf},
     },
-    select,
-    sync::Notify,
 };
-use crate::network::com_interfaces::com_interface::ComInterfaceProxy;
 
 impl TCPServerInterfaceSetupData {
     async fn create_interface(
         self,
         com_interface_proxy: ComInterfaceProxy,
     ) -> Result<InterfaceProperties, InterfaceCreateError> {
-        let host = self
-            .host
-            .clone()
-            .unwrap_or_else(|| "0.0.0.0".to_string());
+        let host = self.host.clone().unwrap_or_else(|| "0.0.0.0".to_string());
 
         let address: SocketAddr = format!("{}:{}", host, self.port)
             .parse()
@@ -120,12 +115,10 @@ impl TCPServerInterfaceSetupData {
             tx_by_socket.clone(),
         ));
 
-        Ok(
-            InterfaceProperties {
-                name: Some(format!("{}:{}", host, self.port)),
-                ..Self::get_default_properties()
-            }
-        )
+        Ok(InterfaceProperties {
+            name: Some(format!("{}:{}", host, self.port)),
+            ..Self::get_default_properties()
+        })
     }
 
     #[allow(clippy::await_holding_lock)]
@@ -166,7 +159,7 @@ impl TCPServerInterfaceSetupData {
     ) {
         let mut buffer = [0u8; 1024];
         loop {
-            tokio::select! {
+            select! {
                 result = rx.read(&mut buffer) => {
                     match result {
                         Ok(0) => {
@@ -197,7 +190,7 @@ impl TCPServerInterfaceSetupData {
         shutdown_signal: Arc<Notify>,
     ) {
         loop {
-            tokio::select! {
+            select! {
                 maybe_block = tx_receiver.next() => {
                     match maybe_block {
                         Some(block) => {
@@ -225,9 +218,9 @@ impl ComInterfaceAsyncFactory for TCPServerInterfaceSetupData {
         self,
         com_interface_proxy: ComInterfaceProxy,
     ) -> ComInterfaceAsyncFactoryResult {
-        Box::pin(async move {
-            self.create_interface(com_interface_proxy).await
-        })
+        Box::pin(
+            async move { self.create_interface(com_interface_proxy).await },
+        )
     }
 
     fn get_default_properties() -> InterfaceProperties {
@@ -243,29 +236,35 @@ impl ComInterfaceAsyncFactory for TCPServerInterfaceSetupData {
 
 #[cfg(test)]
 mod tests {
-    use std::assert_matches::assert_matches;
     use datex_macros::async_test;
+    use std::assert_matches::assert_matches;
 
-    use crate::network::{
-        com_interfaces::{
-            default_com_interfaces::tcp::{
-                tcp_common::TCPServerInterfaceSetupData,
+    use crate::{
+        network::{
+            com_hub::errors::InterfaceCreateError,
+            com_interfaces::{
+                com_interface::ComInterfaceProxy,
+                default_com_interfaces::tcp::tcp_common::TCPServerInterfaceSetupData,
             },
         },
+        runtime::AsyncContext,
     };
-    use crate::network::com_hub::errors::InterfaceCreateError;
-    use crate::network::com_interfaces::com_interface::ComInterfaceProxy;
-    use crate::runtime::AsyncContext;
 
     #[async_test]
     async fn test_construct() {
         const PORT: u16 = 5088;
-        let interface_properties = TCPServerInterfaceSetupData::create_interface(
-            TCPServerInterfaceSetupData::new_with_port(PORT),
-            ComInterfaceProxy::new_with_channels(AsyncContext::default()).0
-        ).await.unwrap();
+        let interface_properties =
+            TCPServerInterfaceSetupData::create_interface(
+                TCPServerInterfaceSetupData::new_with_port(PORT),
+                ComInterfaceProxy::new_with_channels(AsyncContext::default()).0,
+            )
+            .await
+            .unwrap();
 
-        assert_eq!(interface_properties.name, Some(format!("0.0.0.0:{}", PORT)));
+        assert_eq!(
+            interface_properties.name,
+            Some(format!("0.0.0.0:{}", PORT))
+        );
     }
 
     #[async_test]
@@ -277,7 +276,8 @@ mod tests {
                     5088
                 ),
                 ComInterfaceProxy::new_with_channels(AsyncContext::default()).0
-            ).await,
+            )
+            .await,
             Err(InterfaceCreateError::InvalidSetupData(_))
         );
     }

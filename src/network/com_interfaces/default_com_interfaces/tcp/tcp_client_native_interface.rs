@@ -4,7 +4,7 @@ use crate::{
     network::{
         com_hub::errors::InterfaceCreateError,
         com_interfaces::com_interface::{
-            ComInterface, ComInterfaceEvent,
+            ComInterface, ComInterfaceEvent, ComInterfaceProxy,
             error::ComInterfaceError,
             implementation::{
                 ComInterfaceAsyncFactory, ComInterfaceAsyncFactoryResult,
@@ -19,6 +19,7 @@ use crate::{
         UnboundedReceiver, UnboundedSender, spawn_with_panic_notify_default,
     },
 };
+use async_notify::Notify;
 use core::{
     prelude::rust_2024::*, result::Result, str::FromStr, time::Duration,
 };
@@ -28,15 +29,7 @@ use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::{TcpStream, tcp::OwnedWriteHalf},
     select,
-    sync::Notify,
 };
-use crate::network::com_interfaces::com_interface::ComInterfaceProxy;
-
-pub struct TCPClientNativeInterface {
-    pub address: SocketAddr,
-    pub socket_uuid: ComInterfaceSocketUUID,
-    com_interface: ComInterface,
-}
 
 /// Implementation of the TCP Client Native Interface
 impl TCPClientInterfaceSetupData {
@@ -59,8 +52,13 @@ impl TCPClientInterfaceSetupData {
         let shutdown_signal = com_interface_proxy.shutdown_signal();
 
         spawn_with_panic_notify_default(async move {
-            Self::handle_receive(read_half, sender, com_interface_proxy.state, shutdown_signal)
-                .await;
+            Self::handle_receive(
+                read_half,
+                sender,
+                com_interface_proxy.state,
+                shutdown_signal,
+            )
+            .await;
         });
 
         spawn_with_panic_notify_default(Self::event_handler_task(
@@ -139,9 +137,9 @@ impl ComInterfaceAsyncFactory for TCPClientInterfaceSetupData {
         self,
         com_interface_proxy: ComInterfaceProxy,
     ) -> ComInterfaceAsyncFactoryResult {
-        Box::pin(async move {
-            self.create_interface(com_interface_proxy).await
-        })
+        Box::pin(
+            async move { self.create_interface(com_interface_proxy).await },
+        )
     }
 
     fn get_default_properties() -> InterfaceProperties {

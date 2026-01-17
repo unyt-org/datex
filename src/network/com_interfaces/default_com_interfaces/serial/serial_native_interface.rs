@@ -6,8 +6,7 @@ use crate::{
             ComInterfaceEvent,
             error::ComInterfaceError,
             implementation::{
-                ComInterfaceAsyncFactory,
-                ComInterfaceSyncFactory,
+                ComInterfaceAsyncFactory, ComInterfaceSyncFactory,
             },
             properties::{InterfaceDirection, InterfaceProperties},
             state::ComInterfaceState,
@@ -20,12 +19,12 @@ use crate::{
         spawn_with_panic_notify_default,
     },
 };
+use async_notify::Notify;
+use async_select::select;
 use core::{prelude::rust_2024::*, result::Result};
+use datex_core::network::com_interfaces::com_interface::ComInterfaceProxy;
 use log::{debug, error, warn};
 use serialport::SerialPort;
-use tokio::sync::Notify;
-use datex_core::network::com_interfaces::com_interface::ComInterfaceProxy;
-
 
 impl SerialInterfaceSetupData {
     const TIMEOUT: Duration = Duration::from_millis(1000);
@@ -70,7 +69,7 @@ impl SerialInterfaceSetupData {
         let shutdown_signal_clone = shutdown_signal.clone();
         spawn(async move {
             loop {
-                tokio::select! {
+                select! {
                     _ = shutdown_signal_clone.notified() => {
                         warn!("Shutting down serial task...");
                         break;
@@ -102,7 +101,11 @@ impl SerialInterfaceSetupData {
                 }
             }
             // FIXME #212 add reconnect logic (close gracefully and reopen)
-            com_interface_proxy.state.try_lock().unwrap().set(ComInterfaceState::Destroyed);
+            com_interface_proxy
+                .state
+                .try_lock()
+                .unwrap()
+                .set(ComInterfaceState::Destroyed);
             warn!("Serial socket closed");
         });
 
@@ -124,10 +127,13 @@ impl SerialInterfaceSetupData {
         while let Some(event) = receiver.next().await {
             match event {
                 ComInterfaceEvent::SendBlock(block, _) => {
-                    port.lock().unwrap().write_all(block.to_bytes().as_slice()).unwrap();
+                    port.lock()
+                        .unwrap()
+                        .write_all(block.to_bytes().as_slice())
+                        .unwrap();
                 }
                 ComInterfaceEvent::Destroy => {
-                    shutdown_signal.notify_waiters();
+                    shutdown_signal.notify();
                     break;
                 }
                 _ => todo!(),

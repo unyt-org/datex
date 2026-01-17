@@ -15,31 +15,29 @@ use core::{prelude::rust_2024::*, result::Result, time::Duration};
 use futures::stream::SplitStream;
 use futures_util::{SinkExt, StreamExt};
 use log::{error, info};
-use tokio::{
-    net::{TcpListener, TcpStream},
-    select,
-};
+use tokio::net::{TcpListener, TcpStream};
 use tungstenite::Message;
 
+use async_select::select;
 use futures_util::stream::SplitSink;
 use tokio_tungstenite::accept_async;
 
 use super::websocket_common::{WebSocketServerInterfaceSetupData, parse_url};
 use crate::network::{
-        com_hub::errors::InterfaceCreateError,
-        com_interfaces::com_interface::{
-            ComInterfaceEvent,
-            error::ComInterfaceError,
-            implementation::{
-                ComInterfaceAsyncFactory, ComInterfaceAsyncFactoryResult,
-                ComInterfaceSyncFactory,
-            },
-            properties::{InterfaceDirection, InterfaceProperties},
-            socket::ComInterfaceSocketUUID,
+    com_hub::errors::InterfaceCreateError,
+    com_interfaces::com_interface::{
+        ComInterfaceEvent,
+        error::ComInterfaceError,
+        implementation::{
+            ComInterfaceAsyncFactory, ComInterfaceAsyncFactoryResult,
+            ComInterfaceSyncFactory,
         },
-    };
-use tokio_tungstenite::WebSocketStream;
+        properties::{InterfaceDirection, InterfaceProperties},
+        socket::ComInterfaceSocketUUID,
+    },
+};
 use datex_core::network::com_interfaces::com_interface::ComInterfaceProxy;
+use tokio_tungstenite::WebSocketStream;
 
 type WebsocketStreamMap =
     HashMap<ComInterfaceSocketUUID, UnboundedSender<Vec<u8>>>;
@@ -164,7 +162,7 @@ impl WebSocketServerInterfaceSetupData {
         Ok(InterfaceProperties {
             name: Some(address.to_string()),
             ..Self::get_default_properties()
-        },)
+        })
     }
 
     async fn client_write_task(
@@ -175,7 +173,7 @@ impl WebSocketServerInterfaceSetupData {
     ) {
         let shutdown_signal = state.try_lock().unwrap().shutdown_signal();
         loop {
-            tokio::select! {
+            select! {
                 // Receive next message to send
                 msg = receiver.next() => {
                     match msg {
@@ -212,7 +210,7 @@ impl WebSocketServerInterfaceSetupData {
         let shutdown_signal = state.try_lock().unwrap().shutdown_signal();
 
         loop {
-            tokio::select! {
+            select! {
                 // Read next WebSocket message
                 msg = read.next() => {
                     match msg {
@@ -283,15 +281,13 @@ impl WebSocketServerInterfaceSetupData {
 }
 
 impl ComInterfaceAsyncFactory for WebSocketServerInterfaceSetupData {
-
     fn create_interface(
         self,
         com_interface_proxy: ComInterfaceProxy,
     ) -> ComInterfaceAsyncFactoryResult {
-        Box::pin(async move {
-            self.create_interface(com_interface_proxy)
-                .await
-        })
+        Box::pin(
+            async move { self.create_interface(com_interface_proxy).await },
+        )
     }
 
     fn get_default_properties() -> InterfaceProperties {
