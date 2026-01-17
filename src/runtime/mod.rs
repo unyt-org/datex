@@ -17,15 +17,8 @@ use crate::{
         com_hub::{
             ComHub, InterfacePriority, network_response::ResponseOptions,
         },
-        com_interfaces::{
-            com_interface::implementation::{
-                ComInterfaceAsyncFactory, ComInterfaceSyncFactory,
-            },
-            default_com_interfaces::{
-                serial::serial_common::SerialInterfaceSetupData,
-                tcp::tcp_common::TCPServerInterfaceSetupData,
-                websocket::websocket_common::WebSocketServerInterfaceSetupData,
-            },
+        com_interfaces::com_interface::implementation::{
+            ComInterfaceAsyncFactory, ComInterfaceSyncFactory,
         },
     },
     runtime::execution::{ExecutionError, context::ExecutionMode},
@@ -50,10 +43,6 @@ use crate::{
 };
 use core::{
     fmt::Debug, prelude::rust_2024::*, result::Result, slice, unreachable,
-};
-use datex_core::network::com_interfaces::default_com_interfaces::{
-    tcp::tcp_common::TCPClientInterfaceSetupData,
-    websocket::websocket_common::WebSocketClientInterfaceSetupData,
 };
 use execution::context::{
     ExecutionContext, RemoteExecutionContext, ScriptExecutionError,
@@ -622,15 +611,15 @@ impl Runtime {
         let com_hub = self.com_hub();
         #[cfg(feature = "native_websocket")]
         {
-            com_hub.register_async_interface_factory::<WebSocketClientInterfaceSetupData>();
-            com_hub.register_async_interface_factory::<WebSocketServerInterfaceSetupData>();
+            com_hub.register_async_interface_factory::<crate::network::com_interfaces::default_com_interfaces::websocket::websocket_common::WebSocketClientInterfaceSetupData>();
+            com_hub.register_async_interface_factory::<crate::network::com_interfaces::default_com_interfaces::websocket::websocket_common::WebSocketServerInterfaceSetupData>();
         }
         #[cfg(feature = "native_serial")]
-        com_hub.register_sync_interface_factory::<SerialInterfaceSetupData>();
+        com_hub.register_sync_interface_factory::<crate::network::com_interfaces::default_com_interfaces::serial::serial_common::SerialInterfaceSetupData>();
         #[cfg(feature = "native_tcp")]
         {
-            com_hub.register_async_interface_factory::<TCPClientInterfaceSetupData>();
-            com_hub.register_async_interface_factory::<TCPServerInterfaceSetupData>();
+            com_hub.register_async_interface_factory::<crate::network::com_interfaces::default_com_interfaces::tcp::tcp_common::TCPClientInterfaceSetupData>();
+            com_hub.register_async_interface_factory::<crate::network::com_interfaces::default_com_interfaces::tcp::tcp_common::TCPServerInterfaceSetupData>();
         }
         // TODO #234:
         // #[cfg(feature = "native_webrtc")]
