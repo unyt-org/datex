@@ -1,9 +1,12 @@
-use crate::network::com_interfaces::com_interface::{
-    implementation::{ComInterfaceAsyncFactory, ComInterfaceSyncFactory},
-    properties::InterfaceProperties,
-    socket::{ComInterfaceSocketEvent, ComInterfaceSocketUUID},
-    socket_manager::ComInterfaceSocketManager,
-    state::{ComInterfaceState, ComInterfaceStateWrapper},
+use crate::network::{
+    com_hub::managers::interface_manager::SyncOrAsyncComInterfaceImplementationFactoryFn,
+    com_interfaces::com_interface::{
+        implementation::{ComInterfaceAsyncFactory, ComInterfaceSyncFactory},
+        properties::InterfaceProperties,
+        socket::{ComInterfaceSocketEvent, ComInterfaceSocketUUID},
+        socket_manager::ComInterfaceSocketManager,
+        state::{ComInterfaceState, ComInterfaceStateWrapper},
+    },
 };
 
 use crate::{
@@ -47,13 +50,16 @@ pub mod state;
 pub struct ComInterfaceUUID(pub UUID);
 impl Display for ComInterfaceUUID {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
-        core::write!(f, "ComInterface({})", self.0)
+        core::write!(f, "com_interface::{}", self.0)
     }
 }
 
-impl ComInterfaceUUID {
-    pub fn from_string(uuid: String) -> Self {
-        ComInterfaceUUID(UUID::from_string(uuid))
+impl TryFrom<String> for ComInterfaceUUID {
+    type Error = ();
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        let value = value.strip_prefix("com_interface::").ok_or(())?;
+        Ok(ComInterfaceUUID(UUID::from_string(value.to_owned())))
     }
 }
 
@@ -353,7 +359,7 @@ impl ComInterface {
     }
 
     pub async fn create_from_async_factory_fn(
-        factory_fn: AsyncComInterfaceImplementationFactoryFn,
+        factory_fn: SyncOrAsyncComInterfaceImplementationFactoryFn,
         setup_data: ValueContainer,
         async_context: AsyncContext,
     ) -> Result<ComInterfaceWithReceivers, InterfaceCreateError> {
@@ -363,7 +369,17 @@ impl ComInterface {
         let com_interface_proxy_shared = com_interface_proxy.clone_shared();
 
         // Create the implementation using the factory function
-        let properties = factory_fn(setup_data, com_interface_proxy).await?;
+        let properties = match factory_fn {
+            SyncOrAsyncComInterfaceImplementationFactoryFn::Sync(sync_fn) => {
+                sync_fn(setup_data, com_interface_proxy)?
+            }
+            SyncOrAsyncComInterfaceImplementationFactoryFn::Async(async_fn) => {
+                async_fn(setup_data, com_interface_proxy).await?
+            }
+            SyncOrAsyncComInterfaceImplementationFactoryFn::Dyn(dyn_fn) => {
+                dyn_fn(setup_data, com_interface_proxy).await?
+            }
+        };
         Ok(ComInterface::init_from_proxy_and_properties(
             com_interface_proxy_shared,
             channels,

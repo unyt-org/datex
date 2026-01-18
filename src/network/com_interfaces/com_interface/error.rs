@@ -7,7 +7,30 @@ pub enum ComInterfaceError {
     SendError,
     ReceiveError,
 }
-
+impl Display for ComInterfaceError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            ComInterfaceError::SocketNotFound => {
+                write!(f, "ComInterfaceError: Socket not found")
+            }
+            ComInterfaceError::SocketAlreadyExists => {
+                write!(f, "ComInterfaceError: Socket already exists")
+            }
+            ComInterfaceError::ConnectionError(Some(details)) => {
+                write!(f, "ComInterfaceError: Connection error: {}", details)
+            }
+            ComInterfaceError::ConnectionError(None) => {
+                write!(f, "ComInterfaceError: Connection error")
+            }
+            ComInterfaceError::SendError => {
+                write!(f, "ComInterfaceError: Send error")
+            }
+            ComInterfaceError::ReceiveError => {
+                write!(f, "ComInterfaceError: Receive error")
+            }
+        }
+    }
+}
 impl PartialEq for ComInterfaceError {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {

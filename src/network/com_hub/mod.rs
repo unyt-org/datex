@@ -115,6 +115,11 @@ pub enum InterfacePriority {
     /// A higher number means a higher priority
     Priority(u16),
 }
+
+pub fn is_none_variant(v: &InterfacePriority) -> bool {
+    matches!(v, InterfacePriority::None)
+}
+
 impl From<Option<u16>> for InterfacePriority {
     fn from(value: Option<u16>) -> Self {
         match value {

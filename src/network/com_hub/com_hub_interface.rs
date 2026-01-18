@@ -4,16 +4,18 @@ use crate::{
             ComHub, ComHubError, InterfacePriority,
             errors::{InterfaceAddError, InterfaceCreateError},
             managers::interface_manager::{
-                AsyncComInterfaceImplementationFactoryFn, InterfaceManager,
+                AsyncComInterfaceImplementationFactoryFn,
+                DynInterfaceImplementationFactoryFn, InterfaceManager,
                 SyncComInterfaceImplementationFactoryFn,
             },
         },
         com_interfaces::com_interface::{
             ComInterface, ComInterfaceReceivers, ComInterfaceStateEvent,
-            ComInterfaceUUID,
+            ComInterfaceUUID, implementation::ComInterfaceSyncFactory,
             socket::ComInterfaceSocketUUID,
         },
     },
+    runtime::AsyncContext,
     stdlib::{
         cell::{Ref, RefCell},
         rc::Rc,
@@ -23,10 +25,9 @@ use crate::{
     values::value_container::ValueContainer,
 };
 use core::{prelude::rust_2024::*, result::Result};
-use datex_core::network::com_interfaces::com_interface::ComInterfaceWithReceivers;
-use datex_core::network::com_interfaces::com_interface::implementation::ComInterfaceAsyncFactory;
-use crate::network::com_interfaces::com_interface::implementation::ComInterfaceSyncFactory;
-use crate::runtime::AsyncContext;
+use datex_core::network::com_interfaces::com_interface::{
+    ComInterfaceWithReceivers, implementation::ComInterfaceAsyncFactory,
+};
 
 /// Interface management methods
 impl ComHub {
@@ -37,12 +38,23 @@ impl ComHub {
             .register_sync_interface_factory::<T>();
     }
 
-    pub fn register_async_interface_factory<T: ComInterfaceAsyncFactory>(&self) {
+    pub fn register_async_interface_factory<T: ComInterfaceAsyncFactory>(
+        &self,
+    ) {
         self.interface_manager
             .borrow_mut()
             .register_async_interface_factory::<T>();
     }
 
+    pub fn register_dyn_interface_factory(
+        &self,
+        interface_type: String,
+        factory: DynInterfaceImplementationFactoryFn,
+    ) {
+        self.interface_manager
+            .borrow_mut()
+            .register_dyn_interface_factory(interface_type, factory);
+    }
     /// Adds a new interface to the ComHub
     fn init_interface_event_listeners(
         &self,
@@ -113,12 +125,18 @@ impl ComHub {
         async_context: AsyncContext,
     ) -> Result<ComInterfaceUUID, InterfaceCreateError> {
         let (com_interface_uuid, receivers) =
-            InterfaceManager::create_and_add_interface(self.interface_manager.clone(), interface_type, setup_data, priority, async_context)
+            InterfaceManager::create_and_add_interface(
+                self.interface_manager.clone(),
+                interface_type,
+                setup_data,
+                priority,
+                async_context,
+            )
             .await?;
         let interface_manager = self.interface_manager.borrow();
         self.init_interface_event_listeners(
             interface_manager.get_interface_by_uuid(&com_interface_uuid),
-            receivers
+            receivers,
         );
         Ok(com_interface_uuid)
     }
@@ -138,12 +156,12 @@ impl ComHub {
                 interface_type,
                 setup_data,
                 priority,
-                async_context
+                async_context,
             )?;
         let interface_manager = self.interface_manager.borrow();
         self.init_interface_event_listeners(
             interface_manager.get_interface_by_uuid(&com_interface_uuid),
-            receivers
+            receivers,
         );
         Ok(com_interface_uuid)
     }

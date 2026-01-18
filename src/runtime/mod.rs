@@ -391,12 +391,15 @@ impl RuntimeInternal {
         .await
     }
 }
-
+use crate::network::com_hub::is_none_variant;
 #[derive(Debug, Deserialize, Serialize)]
 pub struct RuntimeConfigInterface {
     #[serde(rename = "type")]
     pub interface_type: String,
     pub config: ValueContainer,
+
+    #[serde(default, skip_serializing_if = "is_none_variant")]
+    pub priority: InterfacePriority,
 }
 
 impl RuntimeConfigInterface {
@@ -406,6 +409,7 @@ impl RuntimeConfigInterface {
     ) -> Result<RuntimeConfigInterface, SerializationError> {
         Ok(RuntimeConfigInterface {
             interface_type: interface_type.to_string(),
+            priority: InterfacePriority::default(),
             config: to_value_container(&config)?,
         })
     }
@@ -415,6 +419,7 @@ impl RuntimeConfigInterface {
         config: ValueContainer,
     ) -> RuntimeConfigInterface {
         RuntimeConfigInterface {
+            priority: InterfacePriority::default(),
             interface_type: interface_type.to_string(),
             config,
         }
@@ -444,11 +449,13 @@ impl RuntimeConfig {
         &mut self,
         interface_type: String,
         config: T,
+        priority: InterfacePriority,
     ) -> Result<(), SerializationError> {
         let config = to_value_container(&config)?;
         let interface = RuntimeConfigInterface {
             interface_type,
             config,
+            priority,
         };
         if let Some(interfaces) = &mut self.interfaces {
             interfaces.push(interface);
@@ -560,6 +567,7 @@ impl Runtime {
             for RuntimeConfigInterface {
                 interface_type,
                 config,
+                priority,
             } in interfaces.iter()
             {
                 if let Err(err) = self
@@ -567,7 +575,7 @@ impl Runtime {
                     .create_interface(
                         interface_type,
                         config.clone(),
-                        InterfacePriority::default(),
+                        priority.clone(),
                         self.internal.async_context.clone(),
                     )
                     .await

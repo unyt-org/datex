@@ -1,21 +1,15 @@
-use crate::{crypto::uuid::generate_uuid, stdlib::string::String};
+use crate::{crypto::uuid::generate_uuid_string, stdlib::string::String};
 use core::{fmt::Display, prelude::rust_2024::*};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct UUID(String);
 
 impl UUID {
-    pub fn new() -> UUID {
-        UUID::default()
+    pub(crate) fn new() -> UUID {
+        UUID(generate_uuid_string())
     }
     pub fn from_string(uuid: String) -> UUID {
         UUID(uuid)
-    }
-}
-
-impl Default for UUID {
-    fn default() -> Self {
-        UUID(generate_uuid())
     }
 }
 

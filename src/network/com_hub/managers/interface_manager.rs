@@ -1,63 +1,62 @@
 use crate::{
-    network::com_interfaces::com_interface::{
-        properties::InterfaceDirection,
-    }
+    network::com_interfaces::com_interface::properties::InterfaceDirection,
+    stdlib::rc::Rc,
 };
-use core::pin::Pin;
-use core::cell::RefCell;
-use crate::stdlib::rc::Rc;
+use core::{cell::RefCell, pin::Pin};
 use log::info;
+use std::sync::Arc;
 
 use crate::{
     collections::HashMap,
     network::{
         com_hub::{
-            ComHubError, InterfacePriority, errors::InterfaceCreateError,
+            ComHubError, InterfacePriority,
+            errors::{InterfaceAddError, InterfaceCreateError},
         },
         com_interfaces::com_interface::{
-            ComInterface, ComInterfaceStateEvent, ComInterfaceUUID,
+            ComInterface, ComInterfaceProxy, ComInterfaceReceivers,
+            ComInterfaceStateEvent, ComInterfaceUUID,
+            implementation::{
+                ComInterfaceAsyncFactory, ComInterfaceSyncFactory,
+            },
             properties::InterfaceProperties,
         },
     },
+    runtime::AsyncContext,
     values::value_container::ValueContainer,
 };
-use crate::network::com_hub::errors::InterfaceAddError;
-use crate::network::com_interfaces::com_interface::{ComInterfaceProxy, ComInterfaceReceivers};
-use crate::network::com_interfaces::com_interface::implementation::{ComInterfaceAsyncFactory, ComInterfaceSyncFactory};
-use crate::runtime::AsyncContext;
 
 type InterfaceMap =
     HashMap<ComInterfaceUUID, (ComInterface, InterfacePriority)>;
 
-pub type SyncComInterfaceImplementationFactoryFn = fn(
-    setup_data: ValueContainer,
-    proxy: ComInterfaceProxy,
-) -> Result<
-    InterfaceProperties,
-    InterfaceCreateError,
->;
+pub type SyncComInterfaceImplementationFactoryFn =
+    fn(
+        setup_data: ValueContainer,
+        proxy: ComInterfaceProxy,
+    ) -> Result<InterfaceProperties, InterfaceCreateError>;
 
 pub type ComInterfaceAsyncFactoryResult = Pin<
     Box<
-        dyn Future<
-            Output = Result<
-                InterfaceProperties,
-                InterfaceCreateError,
-            >,
-        > + 'static,
+        dyn Future<Output = Result<InterfaceProperties, InterfaceCreateError>>
+            + 'static,
     >,
 >;
 
+pub type AsyncComInterfaceImplementationFactoryFn =
+    fn(
+        setup_data: ValueContainer,
+        proxy: ComInterfaceProxy,
+    ) -> ComInterfaceAsyncFactoryResult;
 
-pub type AsyncComInterfaceImplementationFactoryFn = fn(
-    setup_data: ValueContainer,
-    proxy: ComInterfaceProxy,
-) -> ComInterfaceAsyncFactoryResult;
+pub type DynInterfaceImplementationFactoryFn = Rc<
+    dyn Fn(ValueContainer, ComInterfaceProxy) -> ComInterfaceAsyncFactoryResult,
+>;
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub enum SyncOrAsyncComInterfaceImplementationFactoryFn {
     Sync(SyncComInterfaceImplementationFactoryFn),
     Async(AsyncComInterfaceImplementationFactoryFn),
+    Dyn(DynInterfaceImplementationFactoryFn),
 }
 
 #[derive(Default)]
@@ -76,7 +75,9 @@ pub struct InterfaceManager {
 impl InterfaceManager {
     /// Registers a new sync interface factory for a specific interface implementation.
     /// This allows the ComHub to create new instances of the interface on demand.
-    pub fn register_sync_interface_factory<T: ComInterfaceSyncFactory>(&mut self) {
+    pub fn register_sync_interface_factory<T: ComInterfaceSyncFactory>(
+        &mut self,
+    ) {
         let interface_type = T::get_default_properties().interface_type;
         self.interface_factories.insert(
             interface_type,
@@ -86,11 +87,26 @@ impl InterfaceManager {
 
     /// Registers a new async interface factory for a specific interface implementation.
     /// This allows the ComHub to create new instances of the interface on demand.
-    pub fn register_async_interface_factory<T: ComInterfaceAsyncFactory>(&mut self) {
+    pub fn register_async_interface_factory<T: ComInterfaceAsyncFactory>(
+        &mut self,
+    ) {
         let interface_type = T::get_default_properties().interface_type;
         self.interface_factories.insert(
             interface_type,
             SyncOrAsyncComInterfaceImplementationFactoryFn::Async(T::factory),
+        );
+    }
+
+    /// Registers a new custom async interface factory for a specific interface type.
+    /// This allows the ComHub to create new instances of the interface on demand.
+    pub fn register_dyn_interface_factory(
+        &mut self,
+        interface_type: String,
+        factory: DynInterfaceImplementationFactoryFn,
+    ) {
+        self.interface_factories.insert(
+            interface_type,
+            SyncOrAsyncComInterfaceImplementationFactoryFn::Dyn(factory),
         );
     }
 
@@ -103,28 +119,36 @@ impl InterfaceManager {
         setup_data: ValueContainer,
         priority: InterfacePriority,
         async_context: AsyncContext,
-    ) -> Result<(ComInterfaceUUID, ComInterfaceReceivers), InterfaceCreateError> {
+    ) -> Result<(ComInterfaceUUID, ComInterfaceReceivers), InterfaceCreateError>
+    {
         info!("creating interface {interface_type}");
-        let factory = self_rc.borrow().interface_factories.get(interface_type).cloned();
+        let factory = self_rc
+            .borrow()
+            .interface_factories
+            .get(interface_type)
+            .cloned();
         if let Some(factory) = factory {
             match factory {
-                SyncOrAsyncComInterfaceImplementationFactoryFn::Sync(_ ) =>
+                SyncOrAsyncComInterfaceImplementationFactoryFn::Sync(_) => {
                     self_rc.borrow_mut().create_and_add_interface_sync(
                         interface_type,
                         setup_data,
                         priority,
-                        async_context
-                    ),
-                SyncOrAsyncComInterfaceImplementationFactoryFn::Async(
-                    async_factory,
-                ) => {
-                    let (interface, receivers) = ComInterface::create_from_async_factory_fn(
-                        async_factory,
-                        setup_data,
                         async_context,
                     )
-                    .await?;
-                    self_rc.borrow_mut().add_interface(interface, priority)
+                }
+                SyncOrAsyncComInterfaceImplementationFactoryFn::Async(_)
+                | SyncOrAsyncComInterfaceImplementationFactoryFn::Dyn(_) => {
+                    let (interface, receivers) =
+                        ComInterface::create_from_async_factory_fn(
+                            factory,
+                            setup_data,
+                            async_context,
+                        )
+                        .await?;
+                    self_rc
+                        .borrow_mut()
+                        .add_interface(interface, priority)
                         .map_err(|e| e.into())
                         .map(|interface| (interface.uuid.clone(), receivers))
                 }
@@ -144,23 +168,26 @@ impl InterfaceManager {
         setup_data: ValueContainer,
         priority: InterfacePriority,
         async_context: AsyncContext,
-    ) -> Result<(ComInterfaceUUID, ComInterfaceReceivers), InterfaceCreateError> {
+    ) -> Result<(ComInterfaceUUID, ComInterfaceReceivers), InterfaceCreateError>
+    {
         info!("creating interface sync {interface_type}");
         if let Some(factory) = self.interface_factories.get(interface_type) {
             match factory {
                 SyncOrAsyncComInterfaceImplementationFactoryFn::Sync(
                     sync_factory,
                 ) => {
-                    let (interface, receivers) = ComInterface::create_from_sync_factory_fn(
-                        *sync_factory,
-                        setup_data,
-                        async_context
-                    )?;
+                    let (interface, receivers) =
+                        ComInterface::create_from_sync_factory_fn(
+                            *sync_factory,
+                            setup_data,
+                            async_context,
+                        )?;
                     self.add_interface(interface, priority)
                         .map_err(|e| e.into())
                         .map(|interface| (interface.uuid.clone(), receivers))
                 }
-                SyncOrAsyncComInterfaceImplementationFactoryFn::Async(_) => Err(
+                SyncOrAsyncComInterfaceImplementationFactoryFn::Async(_)
+                | SyncOrAsyncComInterfaceImplementationFactoryFn::Dyn(_) => Err(
                     InterfaceCreateError::InterfaceCreationRequiresAsyncContext,
                 ),
             }
@@ -180,9 +207,7 @@ impl InterfaceManager {
         &self,
         uuid: &ComInterfaceUUID,
     ) -> Option<&ComInterface> {
-        self.interfaces
-            .get(uuid)
-            .map(|(interface, _)| interface)
+        self.interfaces.get(uuid).map(|(interface, _)| interface)
     }
 
     /// Returns the com interface for a given UUID
@@ -261,7 +286,9 @@ impl InterfaceManager {
         &mut self,
         interface_uuid: &ComInterfaceUUID,
     ) -> Result<(), ComHubError> {
-        self.interfaces.remove(interface_uuid).ok_or(ComHubError::InterfaceDoesNotExist)
+        self.interfaces
+            .remove(interface_uuid)
+            .ok_or(ComHubError::InterfaceDoesNotExist)
             .map(|_| ())
     }
 
