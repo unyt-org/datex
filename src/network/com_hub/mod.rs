@@ -39,6 +39,7 @@ use core::{
 };
 use itertools::Itertools;
 use log::{debug, error, info, warn};
+use serde::{Deserialize, Serialize};
 #[cfg(feature = "tokio_runtime")]
 use tokio::task::yield_now;
 use datex_core::network::com_interfaces::default_com_interfaces::local_loopback_interface::LocalLoopbackInterfaceSetupData;
@@ -101,7 +102,9 @@ impl Debug for ComHub {
     }
 }
 
-#[derive(Debug, Clone, Copy, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(
+    Debug, Clone, Copy, Ord, PartialOrd, Eq, PartialEq, Serialize, Deserialize,
+)]
 pub enum InterfacePriority {
     /// The interface will not be used for fallback routing if no other interface is available
     /// This is useful for interfaces which cannot communicate with the outside world or are not
@@ -111,6 +114,14 @@ pub enum InterfacePriority {
     /// depending on the defined priority
     /// A higher number means a higher priority
     Priority(u16),
+}
+impl From<Option<u16>> for InterfacePriority {
+    fn from(value: Option<u16>) -> Self {
+        match value {
+            Some(priority) => InterfacePriority::Priority(priority),
+            None => InterfacePriority::None,
+        }
+    }
 }
 
 impl Default for InterfacePriority {
@@ -372,7 +383,7 @@ impl ComHub {
 
         let distance = block.routing_header.distance;
         let sender = block.routing_header.sender.clone();
-        
+
         // set as direct endpoint if distance = 0
         if socket.direct_endpoint.is_none() && distance == 1 {
             info!(
@@ -1100,8 +1111,7 @@ impl ComHub {
         );
 
         // TODO #190: resend block if socket failed to send
-        let com_interface =
-            self.dyn_interface_for_socket_uuid(socket_uuid);
+        let com_interface = self.dyn_interface_for_socket_uuid(socket_uuid);
         com_interface.send_block(block, socket_uuid.clone());
     }
 

@@ -2,7 +2,6 @@ use core::fmt::Display;
 
 use crate::network::com_interfaces::com_interface::error::ComInterfaceError;
 
-
 #[derive(Debug, PartialEq)]
 pub enum InterfaceAddError {
     InterfaceAlreadyExists,
@@ -33,6 +32,7 @@ pub enum InterfaceCreateError {
     InterfaceTypeDoesNotExist,
     InterfaceOpenFailed,
     SetupDataParseError,
+    Timeout,
     InvalidSetupData(String),
 }
 
@@ -57,26 +57,49 @@ impl From<ComInterfaceError> for InterfaceCreateError {
 impl Display for InterfaceCreateError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
+            InterfaceCreateError::Timeout => {
+                core::write!(f, "InterfaceCreationError: Timeout")
+            }
             InterfaceCreateError::InterfaceError(_msg) => {
                 core::write!(f, "InterfaceCreationError: ComInterfaceError")
             }
             InterfaceCreateError::InterfaceCreationRequiresAsyncContext => {
-                core::write!(f, "InterfaceCreationError: Interface creation requires async context")
+                core::write!(
+                    f,
+                    "InterfaceCreationError: Interface creation requires async context"
+                )
             }
             InterfaceCreateError::InterfaceTypeDoesNotExist => {
-                core::write!(f, "InterfaceCreationError: Interface type does not exist")
+                core::write!(
+                    f,
+                    "InterfaceCreationError: Interface type does not exist"
+                )
             }
             InterfaceCreateError::InterfaceOpenFailed => {
-                core::write!(f, "InterfaceCreationError: Failed to open interface")
+                core::write!(
+                    f,
+                    "InterfaceCreationError: Failed to open interface"
+                )
             }
             InterfaceCreateError::SetupDataParseError => {
-                core::write!(f, "InterfaceCreationError: Setup data parse error")
+                core::write!(
+                    f,
+                    "InterfaceCreationError: Setup data parse error"
+                )
             }
             InterfaceCreateError::InvalidSetupData(details) => {
-                core::write!(f, "InterfaceCreationError: Invalid setup data - {}", details)
+                core::write!(
+                    f,
+                    "InterfaceCreationError: Invalid setup data - {}",
+                    details
+                )
             }
             InterfaceCreateError::InterfaceAddError(add_err) => {
-                core::write!(f, "InterfaceCreationError: InterfaceAddError - {}", add_err)
+                core::write!(
+                    f,
+                    "InterfaceCreationError: InterfaceAddError - {}",
+                    add_err
+                )
             }
         }
     }
