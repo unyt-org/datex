@@ -12,7 +12,7 @@ use crate::values::value_container::ValueContainer;
 use datex_core::ast::expressions::CallableDeclaration;
 use datex_core::libs::core::CoreLibPointerId;
 
-use crate::ast::structs::expression;
+use crate::ast::expressions;
 
 impl From<&ValueContainer> for DatexExpressionData {
     /// Converts a ValueContainer into a DatexExpression AST.
@@ -51,7 +51,7 @@ fn value_to_datex_expression(value: &Value) -> DatexExpressionData {
         CoreValue::Text(text) => DatexExpressionData::Text(text.0.clone()),
 
         CoreValue::Range(range) => {
-            DatexExpressionData::Range(expression::Range {
+            DatexExpressionData::Range(expressions::Range {
                 start: Box::new(
                     DatexExpressionData::Integer(range.clone().start)
                         .with_default_span(),
@@ -235,7 +235,7 @@ mod tests {
         let ast = DatexExpressionData::from(&range);
         assert_eq!(
             ast,
-            DatexExpressionData::Range(expression::Range {
+            DatexExpressionData::Range(crate::ast::expressions::Range {
                 start: Box::new(
                     DatexExpressionData::Integer(Integer::from(11))
                         .with_default_span()

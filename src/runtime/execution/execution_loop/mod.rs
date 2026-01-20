@@ -17,7 +17,7 @@ use crate::global::operators::{
 };
 use crate::global::protocol_structures::instructions::{
     ApplyData, DecimalData, Float32Data, Float64Data, FloatAsInt16Data,
-    FloatAsInt32Data, Instruction, IntegerData, RawPointerAddress,
+    FloatAsInt32Data, Instruction, IntegerData, RangeData, RawPointerAddress,
     RegularInstruction, ShortTextData, SlotAddress, TextData, TypeInstruction,
 };
 use crate::references::reference::{Reference, ReferenceMutability};
@@ -47,6 +47,7 @@ use crate::values::core_values::decimal::typed_decimal::TypedDecimal;
 use crate::values::core_values::integer::typed_integer::TypedInteger;
 use crate::values::core_values::list::List;
 use crate::values::core_values::map::{Map, MapKey};
+use crate::values::core_values::range::Range;
 use crate::values::core_values::r#type::Type;
 use crate::values::pointer::PointerAddress;
 use crate::values::value::Value;
@@ -329,6 +330,10 @@ pub fn inner_execution_loop(
                             }
                             RegularInstruction::Decimal(DecimalData(big_decimal)) => {
                                 Some(ValueContainer::from(big_decimal).into())
+                            }
+
+                            RegularInstruction::Range(range) => {
+                                Some(ValueContainer::from(Range::new(range.start.into(), range.end.into())).into())
                             }
 
                             // endpoint
