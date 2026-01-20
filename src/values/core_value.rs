@@ -94,6 +94,7 @@ impl StructuralEq for CoreValue {
             (CoreValue::Type(a), CoreValue::Type(b)) => a.structural_eq(b),
             (CoreValue::Callable(a), CoreValue::Callable(b)) => {
                 a.structural_eq(b)
+            }
 
             (CoreValue::Range(a), CoreValue::Range(b)) => {
                 a.start.structural_eq(&b.start) && a.end.structural_eq(&b.end)
