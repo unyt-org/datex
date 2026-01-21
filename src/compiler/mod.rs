@@ -1843,7 +1843,6 @@ pub mod tests {
         assert_eq!(result, vec![InstructionCode::UINT_8.into(), val,]);
     }
 
-    /*
     #[test]
     fn range_u8() {
         init_logger_debug();
@@ -1857,9 +1856,19 @@ pub mod tests {
             result,
             vec![
                 InstructionCode::RANGE.into(),
-                InstructionCode::INT_8.into(),
+                InstructionCode::INT.into(),
+                InstructionCode::SHORT_STATEMENTS.into(),
+                InstructionCode::STATEMENTS.into(),
+                0,
+                0,
+                0,
                 x,
-                InstructionCode::INT_8.into(),
+                InstructionCode::INT.into(),
+                InstructionCode::SHORT_STATEMENTS.into(),
+                InstructionCode::STATEMENTS.into(),
+                0,
+                0,
+                0,
                 y,
             ]
         );
@@ -1867,7 +1876,7 @@ pub mod tests {
     #[test]
     fn range_i64() {
         init_logger_debug();
-        let start = -256i64;
+        let start = 128i64;
         let end = 256i64;
         let datex_script = format!("{start}..{end}");
         let result = compile_and_log(&datex_script);
@@ -1877,29 +1886,24 @@ pub mod tests {
             result,
             vec![
                 InstructionCode::RANGE.into(),
-                InstructionCode::UNARY_MINUS.into(),
-                InstructionCode::INT_16.into(),
+                InstructionCode::INT.into(),
+                InstructionCode::SHORT_STATEMENTS.into(),
+                InstructionCode::STATEMENTS.into(),
+                0,
+                0,
+                0,
                 x,
-                InstructionCode::INT_16.into(),
-                y,
+                InstructionCode::INT.into(),
+                InstructionCode::SHORT_STATEMENTS.into(),
+                InstructionCode::SHORT_STATEMENTS.into(),
+                0,
+                0,
+                0,
+                1,
+                0,
             ]
         );
     }
-    #[test]
-    fn range_panic() {
-        use std::panic::catch_unwind;
-        init_logger_debug();
-
-        let start = 11i64;
-        let end = 13i64;
-        let datex_script = format!("var x = {start}; var y = {end}; x..y");
-
-        let result = catch_unwind(|| {
-            compile_script(&datex_script, CompileOptions::default());
-        });
-        assert!(result.is_err());
-    }
-    */
 
     // Test for decimal
     #[test]

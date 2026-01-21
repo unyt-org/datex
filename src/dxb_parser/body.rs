@@ -8,11 +8,11 @@ use crate::global::protocol_structures::instructions::{
     ApplyData, DecimalData, Float32Data, Float64Data, FloatAsInt16Data,
     FloatAsInt32Data, ImplTypeData, Instruction, InstructionBlockData,
     Int8Data, Int16Data, Int32Data, Int64Data, Int128Data, IntegerData,
-    ListData, MapData, RawFullPointerAddress, RawInternalPointerAddress,
-    RegularInstruction, ShortListData, ShortMapData, ShortStatementsData,
-    ShortTextData, ShortTextDataRaw, SlotAddress, TextData, TextDataRaw,
-    TypeInstruction, TypeReferenceData, UInt8Data, UInt16Data, UInt32Data,
-    UInt64Data, UInt128Data, UnboundedStatementsData,
+    ListData, MapData, RangeData, RawFullPointerAddress,
+    RawInternalPointerAddress, RegularInstruction, ShortListData, ShortMapData,
+    ShortStatementsData, ShortTextData, ShortTextDataRaw, SlotAddress,
+    TextData, TextDataRaw, TypeInstruction, TypeReferenceData, UInt8Data,
+    UInt16Data, UInt32Data, UInt64Data, UInt128Data, UnboundedStatementsData,
 };
 use crate::global::protocol_structures::instructions::{
     RawLocalPointerAddress, StatementsData,
@@ -595,6 +595,11 @@ pub fn iterate_instructions(
                         InstructionCode::TYPE_EXPRESSION => {
                             next_instructions_stack.push_next_type(1);
                             RegularInstruction::TypeExpression
+                        }
+
+                        InstructionCode::RANGE => {
+                            let data = RangeData::read(&mut reader);
+                            RegularInstruction::Range(yield_unwrap!(data))
                         }
 
                         _ => {

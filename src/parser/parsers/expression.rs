@@ -108,6 +108,21 @@ impl Parser {
                 .with_span(span)
             }
 
+            Token::Range => {
+                self.advance()?; // consume the operator
+                let rhs = self.parse_expression(r_bp)?;
+                let span = lhs.span.start..rhs.span.end;
+                DatexExpression::new(
+                    DatexExpressionData::Range(
+                        crate::ast::expressions::Range {
+                            start: Box::new(lhs),
+                            end: Box::new(rhs),
+                        },
+                    ),
+                    span,
+                )
+            }
+
             // generic parameters or fall back to less than operator if not generic parameters
             Token::LeftAngle => {
                 let generic_params =
@@ -501,7 +516,7 @@ impl Parser {
             | Token::DecimalLiteral(_)
             | Token::PointerAddress(_)
             | Token::Slot(_)
-            | Token::PointerAddress(_)
+            | Token::Range
             | Token::Endpoint(_) => Some((23, 24)),
             _ => None,
         }
