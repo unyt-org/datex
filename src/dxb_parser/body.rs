@@ -598,8 +598,11 @@ pub fn iterate_instructions(
                         }
 
                         InstructionCode::RANGE => {
-                            let data = RangeData::read(&mut reader);
-                            RegularInstruction::Range(yield_unwrap!(data))
+                            let range_data =
+                                RangeData::read(&mut reader).unwrap();
+                            println!("Awesome debug print...");
+                            println!("RangeData: {:?}", range_data);
+                            RegularInstruction::Range(range_data)
                         }
 
                         _ => {
