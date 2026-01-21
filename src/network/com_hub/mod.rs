@@ -124,7 +124,7 @@ impl From<Option<u16>> for InterfacePriority {
     fn from(value: Option<u16>) -> Self {
         match value {
             Some(priority) => InterfacePriority::Priority(priority),
-            None => InterfacePriority::None,
+            None => InterfacePriority::default(),
         }
     }
 }

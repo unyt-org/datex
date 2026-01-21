@@ -30,6 +30,8 @@ use serde::{
     de::{MapAccess, SeqAccess, Visitor},
     ser::{SerializeMap, SerializeSeq},
 };
+use datex_core::values::core_values::integer::typed_integer::TypedInteger;
+use crate::values::core_values::integer::Integer;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum DIFValueRepresentation {
@@ -182,6 +184,17 @@ impl DIFValueRepresentation {
                             Some(Value::from(CoreValue::Map(Map::Fixed(
                                 vec![],
                             ))))
+                        }
+                        // type integer and represented as string -> convert to integer
+                        CoreLibPointerId::Integer(None)
+                            if let DIFValueRepresentation::String(s) = self =>
+                        {
+                            Some(Value::from(CoreValue::Integer(Integer::from_string(s).unwrap())))
+                        }
+                        CoreLibPointerId::Integer(Some(variant))
+                            if let DIFValueRepresentation::String(s) = self =>
+                        {
+                            Some(Value::from(CoreValue::TypedInteger(TypedInteger::from_string_with_variant(s, variant).unwrap())))
                         }
                         // otherwise, use default mapping
                         _ => None,

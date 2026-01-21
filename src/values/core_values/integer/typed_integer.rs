@@ -360,6 +360,38 @@ impl TypedInteger {
         }
     }
 
+    pub fn as_f32(&self) -> f32 {
+        match self {
+            TypedInteger::IBig(v) => v.as_f32(),
+            TypedInteger::I8(v) => *v as f32,
+            TypedInteger::I16(v) => *v as f32,
+            TypedInteger::I32(v) => *v as f32,
+            TypedInteger::I64(v) => *v as f32,
+            TypedInteger::I128(v) => *v as f32,
+            TypedInteger::U8(v) => *v as f32,
+            TypedInteger::U16(v) => *v as f32,
+            TypedInteger::U32(v) => *v as f32,
+            TypedInteger::U64(v) => *v as f32,
+            TypedInteger::U128(v) => *v as f32,
+        }
+    }
+
+    pub fn as_f64(&self) -> f64 {
+        match self {
+            TypedInteger::IBig(v) => v.as_f64(),
+            TypedInteger::I8(v) => *v as f64,
+            TypedInteger::I16(v) => *v as f64,
+            TypedInteger::I32(v) => *v as f64,
+            TypedInteger::I64(v) => *v as f64,
+            TypedInteger::I128(v) => *v as f64,
+            TypedInteger::U8(v) => *v as f64,
+            TypedInteger::U16(v) => *v as f64,
+            TypedInteger::U32(v) => *v as f64,
+            TypedInteger::U64(v) => *v as f64,
+            TypedInteger::U128(v) => *v as f64,
+        }
+    }
+
     /// Converts the integer to a usize if it fits, otherwise returns None.
     pub fn as_usize(&self) -> Option<usize> {
         self.as_u128().and_then(|v| usize::try_from(v).ok())

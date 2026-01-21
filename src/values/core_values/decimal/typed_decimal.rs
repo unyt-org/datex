@@ -350,16 +350,7 @@ impl TypedDecimal {
                     && value.into_inner() <= i64::MAX as f64
                     && core::f64::math::fract(value.into_inner()) == 0.0
             }
-            TypedDecimal::Decimal(value) => match value {
-                Decimal::Finite(big_value) => {
-                    big_value.is_integer() && big_value.to_f64().is_finite()
-                }
-                Decimal::Zero => true,
-                Decimal::NegZero => true,
-                Decimal::Infinity => false,
-                Decimal::NegInfinity => false,
-                Decimal::Nan => false,
-            },
+            TypedDecimal::Decimal(value) => value.is_integer()
         }
     }
 
@@ -389,12 +380,7 @@ impl TypedDecimal {
             match self {
                 TypedDecimal::F32(value) => Some(value.into_inner() as i64),
                 TypedDecimal::F64(value) => Some(value.into_inner() as i64),
-                TypedDecimal::Decimal(value) => match value {
-                    Decimal::Finite(big_value) => big_value.to_i64(),
-                    Decimal::Zero => Some(0),
-                    Decimal::NegZero => Some(-0),
-                    _ => unreachable!("Not an integer"), // should not happen due to is_integer check
-                },
+                TypedDecimal::Decimal(value) => value.as_integer()
             }
         } else {
             None

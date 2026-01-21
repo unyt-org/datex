@@ -139,7 +139,7 @@ impl<'de> Deserializer<'de> for DatexDeserializer {
     type Error = DeserializationError;
 
     forward_to_deserialize_any! {
-        bool i8 i16 i32 i64 u8 u16 u32 u64 f32 f64 char str string bytes byte_buf
+        bool char str string bytes byte_buf
         tuple seq unit struct ignored_any
     }
 
@@ -167,30 +167,6 @@ impl<'de> Deserializer<'de> for DatexDeserializer {
                     TypedInteger::U8(u) => visitor.visit_u8(u),
                     TypedInteger::IBig(i) => {
                         visitor.visit_i128(i.as_i128().unwrap())
-                    }
-                    e => core::todo!("#393 Unsupported typed integer: {:?}", e),
-                },
-                CoreValue::Integer(i) => {
-                    if let Some(v) = i.as_i8() {
-                        visitor.visit_i8(v)
-                    } else if let Some(v) = i.as_i16() {
-                        visitor.visit_i16(v)
-                    } else if let Some(v) = i.as_i32() {
-                        visitor.visit_i32(v)
-                    } else if let Some(v) = i.as_i64() {
-                        visitor.visit_i64(v)
-                    } else {
-                        visitor.visit_i128(i.as_i128().unwrap())
-                    }
-                }
-                CoreValue::Decimal(d) => {
-                    core::todo!("#394 Unsupported decimal: {:?}", d)
-                }
-                CoreValue::TypedDecimal(d) => match d {
-                    TypedDecimal::F32(v) => visitor.visit_f32(v.0),
-                    TypedDecimal::F64(v) => visitor.visit_f64(v.0),
-                    TypedDecimal::Decimal(v) => {
-                        visitor.visit_str(&v.to_string())
                     }
                 },
                 CoreValue::Text(s) => visitor.visit_string(s.0),
@@ -493,6 +469,202 @@ impl<'de> Deserializer<'de> for DatexDeserializer {
                 "Expected enum representation, found: {}",
                 e
             ))),
+        }
+    }
+
+    fn deserialize_f32<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        match &self.value.to_value().borrow().inner {
+            CoreValue::Decimal(decimal) => {
+                visitor.visit_f32(decimal.into_f32())
+            }
+            CoreValue::TypedDecimal(typed_decimal) => {
+                visitor.visit_f32(typed_decimal.as_f32())
+            }
+            CoreValue::Integer(integer) => {
+                visitor.visit_f32(integer.as_f32())
+            }
+            CoreValue::TypedInteger(typed_integer) => {
+                visitor.visit_f32(typed_integer.as_f32())
+            }
+            _ => Err(DeserializationError::CanNotDeserialize(
+                "f32".to_string(),
+            )),
+        }
+    }
+
+    fn deserialize_f64<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        match &self.value.to_value().borrow().inner {
+            CoreValue::Decimal(decimal) => {
+                visitor.visit_f64(decimal.into_f64())
+            }
+            CoreValue::TypedDecimal(typed_decimal) => {
+                visitor.visit_f64(typed_decimal.as_f64())
+            }
+            CoreValue::Integer(integer) => {
+                visitor.visit_f64(integer.as_f64())
+            }
+            CoreValue::TypedInteger(typed_integer) => {
+                visitor.visit_f64(typed_integer.as_f64())
+            }
+            _ => Err(DeserializationError::CanNotDeserialize(
+                "f64".to_string(),
+            )),
+        }
+    }
+
+    fn deserialize_i8<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        match &self.value.to_value().borrow().inner {
+            CoreValue::Integer(i) => visitor.visit_i8(i.as_wrapped_i8()),
+            CoreValue::TypedInteger(i) => visitor.visit_i8(i.as_integer().as_wrapped_i8()),
+            CoreValue::Decimal(d) => visitor.visit_i8(d.as_integer().unwrap() as i8),
+            CoreValue::TypedDecimal(d) => visitor.visit_i8(d.as_integer().unwrap() as i8),
+            _ => Err(DeserializationError::CanNotDeserialize(
+                "i8".to_string(),
+            )),
+        }
+    }
+
+    fn deserialize_i16<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        match &self.value.to_value().borrow().inner {
+            CoreValue::Integer(i) => visitor.visit_i16(i.as_wrapped_i16()),
+            CoreValue::TypedInteger(i) => visitor.visit_i16(i.as_integer().as_wrapped_i16()),
+            CoreValue::Decimal(d) => visitor.visit_i16(d.as_integer().unwrap() as i16),
+            CoreValue::TypedDecimal(d) => visitor.visit_i16(d.as_integer().unwrap() as i16),
+            _ => Err(DeserializationError::CanNotDeserialize(
+                "i16".to_string(),
+            )),
+        }
+    }
+
+    fn deserialize_i32<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        match &self.value.to_value().borrow().inner {
+            CoreValue::Integer(i) => visitor.visit_i32(i.as_wrapped_i32()),
+            CoreValue::TypedInteger(i) => visitor.visit_i32(i.as_integer().as_wrapped_i32()),
+            CoreValue::Decimal(d) => visitor.visit_i32(d.as_integer().unwrap() as i32),
+            CoreValue::TypedDecimal(d) => visitor.visit_i32(d.as_integer().unwrap() as i32),
+            _ => Err(DeserializationError::CanNotDeserialize(
+                "i32".to_string(),
+            )),
+        }
+    }
+
+    fn deserialize_i64<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        match &self.value.to_value().borrow().inner {
+            CoreValue::Integer(i) => visitor.visit_i64(i.as_wrapped_i64()),
+            CoreValue::TypedInteger(i) => visitor.visit_i64(i.as_integer().as_wrapped_i64()),
+            CoreValue::Decimal(d) => visitor.visit_i64(d.as_integer().unwrap() as i64),
+            CoreValue::TypedDecimal(d) => visitor.visit_i64(d.as_integer().unwrap() as i64),
+            _ => Err(DeserializationError::CanNotDeserialize(
+                "i64".to_string(),
+            )),
+        }
+    }
+
+    fn deserialize_i128<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        match &self.value.to_value().borrow().inner {
+            CoreValue::Integer(i) => visitor.visit_i128(i.as_wrapped_i128()),
+            CoreValue::TypedInteger(i) => visitor.visit_i128(i.as_integer().as_wrapped_i128()),
+            CoreValue::Decimal(d) => visitor.visit_i128(d.as_integer().unwrap() as i128),
+            CoreValue::TypedDecimal(d) => visitor.visit_i128(d.as_integer().unwrap() as i128),
+            _ => Err(DeserializationError::CanNotDeserialize(
+                "i128".to_string(),
+            )),
+        }
+    }
+
+    fn deserialize_u8<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        match &self.value.to_value().borrow().inner {
+            CoreValue::Integer(i) => visitor.visit_u8(i.as_wrapped_u8()),
+            CoreValue::TypedInteger(i) => visitor.visit_u8(i.as_integer().as_wrapped_u8()),
+            CoreValue::Decimal(d) => visitor.visit_u8(d.as_integer().unwrap() as u8),
+            CoreValue::TypedDecimal(d) => visitor.visit_u8(d.as_integer().unwrap() as u8),
+            _ => Err(DeserializationError::CanNotDeserialize(
+                "u8".to_string(),
+            )),
+        }
+    }
+
+    fn deserialize_u16<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        match &self.value.to_value().borrow().inner {
+            CoreValue::Integer(i) => visitor.visit_u16(i.as_wrapped_u16()),
+            CoreValue::TypedInteger(i) => visitor.visit_u16(i.as_integer().as_wrapped_u16()),
+            CoreValue::Decimal(d) => visitor.visit_u16(d.as_integer().unwrap() as u16),
+            CoreValue::TypedDecimal(d) => visitor.visit_u16(d.as_integer().unwrap() as u16),
+            _ => Err(DeserializationError::CanNotDeserialize(
+                "u16".to_string(),
+            )),
+        }
+    }
+
+    fn deserialize_u32<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        match &self.value.to_value().borrow().inner {
+            CoreValue::Integer(i) => visitor.visit_u32(i.as_wrapped_u32()),
+            CoreValue::TypedInteger(i) => visitor.visit_u32(i.as_integer().as_wrapped_u32()),
+            CoreValue::Decimal(d) => visitor.visit_u32(d.as_integer().unwrap() as u32),
+            CoreValue::TypedDecimal(d) => visitor.visit_u32(d.as_integer().unwrap() as u32),
+            _ => Err(DeserializationError::CanNotDeserialize(
+                "u32".to_string(),
+            )),
+        }
+    }
+
+    fn deserialize_u64<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        match &self.value.to_value().borrow().inner {
+            CoreValue::Integer(i) => visitor.visit_u64(i.as_wrapped_u64()),
+            CoreValue::TypedInteger(i) => visitor.visit_u64(i.as_integer().as_wrapped_u64()),
+            CoreValue::Decimal(d) => visitor.visit_u64(d.as_integer().unwrap() as u64),
+            CoreValue::TypedDecimal(d) => visitor.visit_u64(d.as_integer().unwrap() as u64),
+            _ => Err(DeserializationError::CanNotDeserialize(
+                "u64".to_string(),
+            )),
+        }
+    }
+
+    fn deserialize_u128<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        match &self.value.to_value().borrow().inner {
+            CoreValue::Integer(i) => visitor.visit_u128(i.as_wrapped_u128()),
+            CoreValue::TypedInteger(i) => visitor.visit_u128(i.as_integer().as_wrapped_u128()),
+            CoreValue::Decimal(d) => visitor.visit_u128(d.as_integer().unwrap() as u128),
+            CoreValue::TypedDecimal(d) => visitor.visit_u128(d.as_integer().unwrap() as u128),
+            _ => Err(DeserializationError::CanNotDeserialize(
+                "u128".to_string(),
+            )),
         }
     }
 

@@ -93,6 +93,31 @@ impl Decimal {
         }
     }
 
+    pub fn is_integer(&self) -> bool {
+        match self {
+            Decimal::Finite(big_value) => {
+                big_value.is_integer() && big_value.to_f64().is_finite()
+            }
+            Decimal::Zero => true,
+            Decimal::NegZero => true,
+            Decimal::Infinity => false,
+            Decimal::NegInfinity => false,
+            Decimal::Nan => false,
+        }
+    }
+
+    pub fn as_integer(&self) -> Option<i64> {
+        if !self.is_integer() {
+            return None;
+        }
+        match self {
+            Decimal::Finite(big_value) => big_value.to_i64(),
+            Decimal::Zero => Some(0),
+            Decimal::NegZero => Some(-0),
+            _ => unreachable!("Not an integer"), // should not happen due to is_integer check
+        }
+    }
+
     /// Returns true if the value is finite (not NaN or Infinity).
     pub fn is_finite(&self) -> bool {
         core::matches!(
