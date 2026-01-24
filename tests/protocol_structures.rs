@@ -41,7 +41,10 @@ pub fn parse_encrypted_header() {
     let header_result = EncryptedHeader::read(&mut reader).unwrap();
     assert!(header_result.flags.has_on_behalf_of());
     assert_eq!(header_result.clone().on_behalf_of.unwrap(), endpoint);
-    assert_eq!(header_result.to_bytes().unwrap(), encrypted_header.to_bytes().unwrap());
+    assert_eq!(
+        header_result.to_bytes().unwrap(),
+        encrypted_header.to_bytes().unwrap()
+    );
 }
 
 #[test]
@@ -54,7 +57,10 @@ pub fn parse_block_header() {
     reader.seek(SeekFrom::Start(0)).unwrap();
 
     let header_result = BlockHeader::read(&mut reader).unwrap();
-    assert_eq!(header_result.to_bytes().unwrap(), block_header.to_bytes().unwrap());
+    assert_eq!(
+        header_result.to_bytes().unwrap(),
+        block_header.to_bytes().unwrap()
+    );
 }
 
 #[test]
@@ -74,7 +80,10 @@ pub fn parse_routing_header() {
     reader.seek(SeekFrom::Start(0)).unwrap();
 
     let header_result = RoutingHeader::read(&mut reader).unwrap();
-    assert_eq!(header_result.to_bytes().unwrap(), routing_header.to_bytes().unwrap());
+    assert_eq!(
+        header_result.to_bytes().unwrap(),
+        routing_header.to_bytes().unwrap()
+    );
 }
 
 #[tokio::test]

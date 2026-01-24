@@ -84,7 +84,7 @@ pub async fn get_mock_setup_with_com_hub(
     // init mockup interface
     let (proxy, interface) = ComInterfaceProxy::create_interface(
         mock_setup_data.interface_properties,
-        AsyncContext::default()
+        AsyncContext::default(),
     );
 
     // init com hub
@@ -145,7 +145,6 @@ pub async fn get_default_mock_setup_with_com_hub() -> (
     (com_hub, proxy, com_hub_sections_receiver)
 }
 
-
 /// Helper function to create a default mock setup with two com hubs connected to each other via mock interface channels
 pub async fn get_default_mock_setup_with_two_connected_com_hubs() -> (
     (
@@ -176,7 +175,7 @@ pub async fn get_default_mock_setup_with_two_connected_com_hubs() -> (
             com_hub_sections_sender: Some(incoming_sections_sender_a),
             ..Default::default()
         })
-            .await;
+        .await;
 
     let (com_hub_mut_b, interface_proxy_b) =
         get_mock_setup_with_com_hub(MockupSetupData {
@@ -190,7 +189,7 @@ pub async fn get_default_mock_setup_with_two_connected_com_hubs() -> (
             com_hub_sections_sender: Some(incoming_sections_sender_b),
             ..Default::default()
         })
-            .await;
+        .await;
 
     let (interface_a_uuid, interface_b_uuid) =
         ComInterfaceProxy::couple_bidirectional(
@@ -212,7 +211,6 @@ pub async fn get_default_mock_setup_with_two_connected_com_hubs() -> (
     )
 }
 
-
 /// Helper function to create a mock setup with a full runtime and a mockup interface
 pub async fn get_mock_setup_with_runtime(
     mock_setup_data: MockupSetupData,
@@ -220,12 +218,13 @@ pub async fn get_mock_setup_with_runtime(
     // init com hub
     let runtime = Runtime::create_native(RuntimeConfig::new_with_endpoint(
         mock_setup_data.local_endpoint,
-    )).await;
+    ))
+    .await;
 
     // init mockup interface
     let (proxy, interface) = ComInterfaceProxy::create_interface(
         mock_setup_data.interface_properties,
-        AsyncContext::default()
+        AsyncContext::default(),
     );
 
     // add mockup interface to com_hub
@@ -443,10 +442,8 @@ pub async fn send_multiple_blocks_to_local(
         block.set_receivers(vec![TEST_ENDPOINT_ORIGIN.clone()]);
     }
 
-    let block_bytes: Vec<Vec<u8>> = blocks
-        .iter()
-        .map(|block| block.to_bytes())
-        .collect();
+    let block_bytes: Vec<Vec<u8>> =
+        blocks.iter().map(|block| block.to_bytes()).collect();
 
     for block in block_bytes.into_iter() {
         incoming_blocks_sender.start_send(block).unwrap();

@@ -88,7 +88,9 @@ impl Debug for BlockHandler {
 const RING_MAP_CAPACITY: usize = 500;
 
 impl BlockHandler {
-    pub fn init(incoming_sections_sender: UnboundedSender<IncomingSection>) -> BlockHandler {
+    pub fn init(
+        incoming_sections_sender: UnboundedSender<IncomingSection>,
+    ) -> BlockHandler {
         BlockHandler {
             current_context_id: RefCell::new(0),
             block_cache: RefCell::new(HashMap::new()),
@@ -102,7 +104,7 @@ impl BlockHandler {
             ),
         }
     }
-    
+
     /// Adds a block to the history of incoming blocks
     /// if the block is not already in the history
     /// returns true if the block was added and not already in the history

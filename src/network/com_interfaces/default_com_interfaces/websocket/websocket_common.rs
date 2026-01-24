@@ -12,7 +12,6 @@ pub struct WebSocketClientInterfaceSetupData {
     pub url: String,
 }
 
-
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(tag = "type", content = "data")]
 #[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]

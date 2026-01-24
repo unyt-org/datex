@@ -3,12 +3,11 @@ use crate::{
     stdlib::vec::Vec,
     task::{
         UnboundedReceiver, UnboundedSender, create_unbounded_channel,
-        spawn_local,
+        spawn_local, spawn_with_panic_notify_default,
     },
 };
 use core::prelude::rust_2024::*;
 use log::error;
-use crate::task::spawn_with_panic_notify_default;
 
 #[derive(Debug)]
 pub struct BlockCollector {
@@ -97,7 +96,9 @@ impl BlockCollector {
             current_block_specified_length: None,
         };
         // TODO: use spawn_with_panic_notify, remove AsynContext
-        spawn_with_panic_notify_default(run_block_collector_task(block_collector));
+        spawn_with_panic_notify_default(run_block_collector_task(
+            block_collector,
+        ));
         (bytes_in_sender, block_in_receiver)
     }
 }

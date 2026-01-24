@@ -33,10 +33,12 @@ use crate::{
                 ComInterfaceSyncFactory,
             },
             properties::InterfaceProperties,
+            socket_manager::ComInterfaceSocketManager,
         },
     },
     task::{UnboundedReceiver, spawn_with_panic_notify_default},
 };
+use datex_core::network::com_interfaces::com_interface::ComInterfaceProxy;
 use log::error;
 use webrtc::{
     api::{
@@ -62,8 +64,6 @@ use webrtc::{
         track_remote::{OnMuteHdlrFn, TrackRemote},
     },
 };
-use datex_core::network::com_interfaces::com_interface::ComInterfaceProxy;
-use crate::network::com_interfaces::com_interface::socket_manager::ComInterfaceSocketManager;
 
 pub type TrackLocal = dyn webrtc::track::track_local::TrackLocal + Send + Sync;
 
@@ -117,7 +117,7 @@ impl WebRTCTraitInternal<Arc<RTCDataChannel>, Arc<TrackRemote>, Arc<TrackLocal>>
     fn provide_socket_manager(&self) -> Arc<Mutex<ComInterfaceSocketManager>> {
         self.socket_manager.clone()
     }
-    
+
     async fn handle_create_data_channel(
         &self,
     ) -> Result<DataChannel<Arc<RTCDataChannel>>, WebRTCError> {
@@ -657,9 +657,9 @@ impl ComInterfaceAsyncFactory for WebRTCInterfaceSetupData {
         self,
         com_interface_proxy: ComInterfaceProxy,
     ) -> ComInterfaceAsyncFactoryResult {
-        Box::pin(async move {
-            self.create_interface(com_interface_proxy).await
-        })
+        Box::pin(
+            async move { self.create_interface(com_interface_proxy).await },
+        )
     }
 
     fn get_default_properties() -> InterfaceProperties {

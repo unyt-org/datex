@@ -1,7 +1,10 @@
 use crate::network::helpers::{
     mock_setup::{
-        TEST_ENDPOINT_A, TEST_ENDPOINT_ORIGIN,
+        MockupSetupData, TEST_ENDPOINT_A, TEST_ENDPOINT_ORIGIN,
+        get_default_mock_setup_with_com_hub, get_mock_setup_with_com_hub,
+        get_next_received_single_block_from_receiver,
     },
+    mockup_interface::MockupInterfaceSetupData,
 };
 use core::cell::RefCell;
 use datex_core::{
@@ -12,6 +15,8 @@ use datex_core::{
             routing_header::RoutingHeader,
         },
     },
+    network::com_interfaces::com_interface::properties::InterfaceDirection,
+    task::create_unbounded_channel,
     utils::context::init_global_context,
 };
 use datex_macros::async_test;
@@ -19,18 +24,11 @@ use log::info;
 use ntest_timeout::timeout;
 use std::{rc::Rc, sync::mpsc};
 use tokio::task::yield_now;
-use datex_core::network::com_interfaces::com_interface::properties::InterfaceDirection;
-use datex_core::task::create_unbounded_channel;
-use crate::network::helpers::mock_setup::{get_default_mock_setup_with_com_hub, get_next_received_single_block_from_receiver, get_mock_setup_with_com_hub, MockupSetupData};
-use crate::network::helpers::mockup_interface::MockupInterfaceSetupData;
 
 #[async_test]
 async fn receive_single_block() {
-    let (
-        com_hub,
-        interface_proxy,
-        mut com_hub_sections_receiver
-    ) = get_default_mock_setup_with_com_hub().await;
+    let (com_hub, interface_proxy, mut com_hub_sections_receiver) =
+        get_default_mock_setup_with_com_hub().await;
 
     let context_id = com_hub.block_handler.get_new_context_id();
 
@@ -52,29 +50,26 @@ async fn receive_single_block() {
     let block_endpoint_context_id = block.get_endpoint_context_id();
 
     // Send as incoming data into the interface
-    let (_, mut interface_in_sender) = interface_proxy.create_and_init_socket(InterfaceDirection::InOut, 0);
+    let (_, mut interface_in_sender) =
+        interface_proxy.create_and_init_socket(InterfaceDirection::InOut, 0);
     interface_in_sender.send(block.to_bytes()).await.unwrap();
 
     // wait a tick to allow processing
     yield_now().await;
 
     // block must be in incoming_sections_queue
-    let block = get_next_received_single_block_from_receiver(&mut com_hub_sections_receiver).await;
+    let block = get_next_received_single_block_from_receiver(
+        &mut com_hub_sections_receiver,
+    )
+    .await;
 
-    assert_eq!(
-        block.get_endpoint_context_id(),
-        block_endpoint_context_id
-    );
+    assert_eq!(block.get_endpoint_context_id(), block_endpoint_context_id);
 }
 
 #[async_test]
 async fn receive_multiple_blocks() {
-
-    let (
-        com_hub,
-        com_interface,
-        mut com_hub_sections_receiver
-    ) = get_default_mock_setup_with_com_hub().await;
+    let (com_hub, com_interface, mut com_hub_sections_receiver) =
+        get_default_mock_setup_with_com_hub().await;
 
     let context_id = com_hub.block_handler.get_new_context_id();
     let section_index = 42;
@@ -118,8 +113,8 @@ async fn receive_multiple_blocks() {
         block.set_receivers(vec![TEST_ENDPOINT_ORIGIN.clone()]);
     }
 
-    let (_, mut interface_in_sender) = com_interface
-        .create_and_init_socket(InterfaceDirection::InOut, 0);
+    let (_, mut interface_in_sender) =
+        com_interface.create_and_init_socket(InterfaceDirection::InOut, 0);
 
     // 1. Send first block
     let block_bytes = blocks[0].to_bytes();
@@ -129,7 +124,7 @@ async fn receive_multiple_blocks() {
     yield_now().await;
 
     // block must be in incoming_sections_queue
-    let mut section =com_hub_sections_receiver.next().await.unwrap();
+    let mut section = com_hub_sections_receiver.next().await.unwrap();
     match &section {
         IncomingSection::BlockStream((
             Some(blocks),
@@ -174,11 +169,8 @@ async fn receive_multiple_blocks() {
 
 #[async_test]
 async fn receive_multiple_blocks_wrong_order() {
-    let (
-        com_hub,
-        com_interface,
-        mut com_hub_sections_receiver
-    ) = get_default_mock_setup_with_com_hub().await;
+    let (com_hub, com_interface, mut com_hub_sections_receiver) =
+        get_default_mock_setup_with_com_hub().await;
 
     let context_id = com_hub.block_handler.get_new_context_id();
     let section_index = 42;
@@ -222,8 +214,8 @@ async fn receive_multiple_blocks_wrong_order() {
         block.set_receivers(vec![TEST_ENDPOINT_ORIGIN.clone()]);
     }
 
-    let (_, mut interface_in_sender) = com_interface
-        .create_and_init_socket(InterfaceDirection::InOut, 0);
+    let (_, mut interface_in_sender) =
+        com_interface.create_and_init_socket(InterfaceDirection::InOut, 0);
 
     // 1. Send first block
     let block_bytes = blocks[0].to_bytes();
@@ -268,12 +260,8 @@ async fn receive_multiple_blocks_wrong_order() {
 
 #[async_test]
 async fn receive_multiple_sections() {
-    let (
-        com_hub,
-        com_interface,
-        mut com_hub_sections_receiver
-    ) = get_default_mock_setup_with_com_hub().await;
-
+    let (com_hub, com_interface, mut com_hub_sections_receiver) =
+        get_default_mock_setup_with_com_hub().await;
 
     let context_id = com_hub.block_handler.get_new_context_id();
     let section_index_1 = 42;
@@ -350,8 +338,8 @@ async fn receive_multiple_sections() {
         block.set_receivers(vec![TEST_ENDPOINT_ORIGIN.clone()]);
     }
 
-    let (_, mut interface_in_sender) = com_interface
-        .create_and_init_socket(InterfaceDirection::InOut, 0);
+    let (_, mut interface_in_sender) =
+        com_interface.create_and_init_socket(InterfaceDirection::InOut, 0);
 
     // 1. Send first block
     let block_bytes = blocks[0].to_bytes();
@@ -455,11 +443,8 @@ async fn receive_multiple_sections() {
 #[async_test]
 #[timeout(2000)]
 async fn await_response_block() {
-    let (
-        com_hub,
-        com_interface,
-        mut com_hub_sections_receiver
-    ) = get_default_mock_setup_with_com_hub().await;
+    let (com_hub, com_interface, mut com_hub_sections_receiver) =
+        get_default_mock_setup_with_com_hub().await;
 
     let context_id = com_hub.block_handler.get_new_context_id();
     let section_index = 42;
@@ -482,8 +467,8 @@ async fn await_response_block() {
     };
     block.set_receivers(vec![TEST_ENDPOINT_ORIGIN.clone()]);
 
-    let (_, mut interface_in_sender) = com_interface
-        .create_and_init_socket(InterfaceDirection::InOut, 0);
+    let (_, mut interface_in_sender) =
+        com_interface.create_and_init_socket(InterfaceDirection::InOut, 0);
 
     // set observer for the block
     let mut rx = com_hub

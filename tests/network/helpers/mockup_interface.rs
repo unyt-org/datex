@@ -1,4 +1,4 @@
-use core::{cell::RefCell};
+use core::cell::RefCell;
 use datex_core::{
     global::{
         dxb_block::DXBBlock, protocol_structures::block_header::BlockType,
@@ -6,18 +6,16 @@ use datex_core::{
     network::{
         com_hub::errors::InterfaceCreateError,
         com_interfaces::com_interface::{
-            ComInterfaceEvent,
+            ComInterfaceEvent, ComInterfaceProxy,
             error::ComInterfaceError,
-            factory::{
-                ComInterfaceSyncFactory,
-            },
+            factory::ComInterfaceSyncFactory,
             properties::{InterfaceDirection, InterfaceProperties},
             socket::ComInterfaceSocketUUID,
+            socket_manager::ComInterfaceSocketManager,
         },
     },
     task::{
-        UnboundedReceiver, UnboundedSender,
-        spawn_with_panic_notify_default,
+        UnboundedReceiver, UnboundedSender, spawn_with_panic_notify_default,
     },
     values::core_values::endpoint::Endpoint,
 };
@@ -25,11 +23,8 @@ use serde::{Deserialize, Serialize};
 use std::{
     fmt::Debug,
     rc::Rc,
+    sync::{Arc, Mutex},
 };
-use std::sync::{Arc, Mutex};
-use datex_core::network::com_interfaces::com_interface::ComInterfaceProxy;
-use datex_core::network::com_interfaces::com_interface::socket_manager::ComInterfaceSocketManager;
-
 
 impl MockupInterfaceSetupData {
     pub fn create_interface(
@@ -75,7 +70,11 @@ impl MockupInterfaceSetupData {
         let (socket_uuid, sender) = socket_manager
             .lock()
             .unwrap()
-            .create_and_init_socket_with_optional_endpoint(direction, 1, self.endpoint.clone());
+            .create_and_init_socket_with_optional_endpoint(
+                direction,
+                1,
+                self.endpoint.clone(),
+            );
 
         Ok((socket_uuid, sender))
     }
@@ -163,10 +162,9 @@ impl MockupInterfaceSetupData {
         while let Some(event) = receiver.next().await {
             match event {
                 ComInterfaceEvent::SendBlock(block, socket_uuid) => {
-                    let is_hello = block
-                        .block_header
-                        .flags_and_timestamp
-                        .block_type() == BlockType::Hello;
+                    let is_hello =
+                        block.block_header.flags_and_timestamp.block_type()
+                            == BlockType::Hello;
                     let bytes = block.to_bytes();
                     if !is_hello {
                         outgoing_queue
@@ -189,8 +187,7 @@ impl ComInterfaceSyncFactory for MockupInterfaceSetupData {
     fn create_interface(
         self,
         proxy: ComInterfaceProxy,
-    ) -> Result<InterfaceProperties, InterfaceCreateError>
-    {
+    ) -> Result<InterfaceProperties, InterfaceCreateError> {
         self.create_interface(proxy)
     }
 

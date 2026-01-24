@@ -148,7 +148,6 @@ impl Integer {
         unsafe { self.0.to_f64().unwrap_unchecked() } // Note: this is always Some for BigInt
     }
 
-
     // TODO: this can be optimized and redundant code can be reduced
     /// Converts the integer to an i8, wrapping on overflow.
     pub fn as_wrapped_i8(&self) -> i8 {
@@ -156,15 +155,17 @@ impl Integer {
         let i16 = self.0.mod_floor(&BigInt::from(MAX)).to_i16().unwrap();
         if i16 > MAX {
             (i16 - MAX) as i8
-        }
-        else {
+        } else {
             i16 as i8
         }
     }
 
     /// Converts the integer to a u8, wrapping on overflow.
     pub fn as_wrapped_u8(&self) -> u8 {
-        self.0.mod_floor(&(BigInt::from(u8::MAX as u16 + 1))).to_u8().unwrap()
+        self.0
+            .mod_floor(&(BigInt::from(u8::MAX as u16 + 1)))
+            .to_u8()
+            .unwrap()
     }
 
     pub fn as_wrapped_i16(&self) -> i16 {
@@ -172,14 +173,16 @@ impl Integer {
         let i32 = self.0.mod_floor(&BigInt::from(MAX)).to_i32().unwrap();
         if i32 > MAX {
             (i32 - MAX) as i16
-        }
-        else {
+        } else {
             i32 as i16
         }
     }
 
     pub fn as_wrapped_u16(&self) -> u16 {
-        self.0.mod_floor(&BigInt::from(u16::MAX as u32 + 1)).to_u16().unwrap()
+        self.0
+            .mod_floor(&BigInt::from(u16::MAX as u32 + 1))
+            .to_u16()
+            .unwrap()
     }
 
     pub fn as_wrapped_i32(&self) -> i32 {
@@ -187,14 +190,16 @@ impl Integer {
         let i64 = self.0.mod_floor(&BigInt::from(MAX)).to_i64().unwrap();
         if i64 > MAX {
             (i64 - MAX) as i32
-        }
-        else {
+        } else {
             i64 as i32
         }
     }
 
     pub fn as_wrapped_u32(&self) -> u32 {
-        self.0.mod_floor(&BigInt::from(u32::MAX as u64 + 1)).to_u32().unwrap()
+        self.0
+            .mod_floor(&BigInt::from(u32::MAX as u64 + 1))
+            .to_u32()
+            .unwrap()
     }
 
     pub fn as_wrapped_i64(&self) -> i64 {
@@ -202,14 +207,16 @@ impl Integer {
         let i128 = self.0.mod_floor(&BigInt::from(MAX)).to_i128().unwrap();
         if i128 > MAX {
             (i128 - MAX) as i64
-        }
-        else {
+        } else {
             i128 as i64
         }
     }
 
     pub fn as_wrapped_u64(&self) -> u64 {
-        self.0.mod_floor(&BigInt::from(u64::MAX as u128 + 1)).to_u64().unwrap()
+        self.0
+            .mod_floor(&BigInt::from(u64::MAX as u128 + 1))
+            .to_u64()
+            .unwrap()
     }
 
     pub fn as_wrapped_i128(&self) -> i128 {
@@ -217,14 +224,16 @@ impl Integer {
         let i256 = self.0.mod_floor(&max);
         if i256 > max {
             (i256 - max).to_i128().unwrap()
-        }
-        else {
+        } else {
             i256.to_i128().unwrap()
         }
     }
 
     pub fn as_wrapped_u128(&self) -> u128 {
-        self.0.mod_floor(&(BigInt::from(u128::MAX) + BigInt::from(1))).to_u128().unwrap()
+        self.0
+            .mod_floor(&(BigInt::from(u128::MAX) + BigInt::from(1)))
+            .to_u128()
+            .unwrap()
     }
 
     /// Converts the integer to the smallest fitting TypedInteger variant.

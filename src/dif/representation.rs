@@ -16,6 +16,7 @@ use crate::{
         core_value::CoreValue,
         core_values::{
             decimal::typed_decimal::{DecimalTypeVariant, TypedDecimal},
+            integer::Integer,
             map::Map,
         },
         value::Value,
@@ -23,6 +24,7 @@ use crate::{
     },
 };
 use core::{cell::RefCell, fmt, prelude::rust_2024::*, result::Result};
+use datex_core::values::core_values::integer::typed_integer::TypedInteger;
 use indexmap::IndexMap;
 use ordered_float::OrderedFloat;
 use serde::{
@@ -30,8 +32,6 @@ use serde::{
     de::{MapAccess, SeqAccess, Visitor},
     ser::{SerializeMap, SerializeSeq},
 };
-use datex_core::values::core_values::integer::typed_integer::TypedInteger;
-use crate::values::core_values::integer::Integer;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum DIFValueRepresentation {
@@ -189,12 +189,19 @@ impl DIFValueRepresentation {
                         CoreLibPointerId::Integer(None)
                             if let DIFValueRepresentation::String(s) = self =>
                         {
-                            Some(Value::from(CoreValue::Integer(Integer::from_string(s).unwrap())))
+                            Some(Value::from(CoreValue::Integer(
+                                Integer::from_string(s).unwrap(),
+                            )))
                         }
                         CoreLibPointerId::Integer(Some(variant))
                             if let DIFValueRepresentation::String(s) = self =>
                         {
-                            Some(Value::from(CoreValue::TypedInteger(TypedInteger::from_string_with_variant(s, variant).unwrap())))
+                            Some(Value::from(CoreValue::TypedInteger(
+                                TypedInteger::from_string_with_variant(
+                                    s, variant,
+                                )
+                                .unwrap(),
+                            )))
                         }
                         // otherwise, use default mapping
                         _ => None,

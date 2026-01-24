@@ -44,9 +44,8 @@ async fn handle_incoming_section_task(
 #[cfg_attr(feature = "embassy_runtime", embassy_executor::task)]
 async fn handle_incoming_sections_task(runtime_rc: Rc<RuntimeInternal>) {
     let async_context_clone = runtime_rc.async_context.clone();
-    let mut sections_receiver = runtime_rc
-        .incoming_sections_receiver
-        .borrow_mut();
+    let mut sections_receiver =
+        runtime_rc.incoming_sections_receiver.borrow_mut();
 
     while let Some(section) = sections_receiver.next().await {
         let runtime_rc_clone = runtime_rc.clone();

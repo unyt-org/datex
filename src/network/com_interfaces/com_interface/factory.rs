@@ -1,15 +1,16 @@
-use serde::de::DeserializeOwned;
+pub(crate) use crate::network::com_hub::managers::interfaces_manager::ComInterfaceAsyncFactoryResult;
 use crate::{
     network::{
         com_hub::{ComHub, errors::InterfaceCreateError},
-        com_interfaces::com_interface::properties::InterfaceProperties,
+        com_interfaces::com_interface::{
+            ComInterfaceProxy, properties::InterfaceProperties,
+        },
     },
     serde::{Deserialize, deserializer::from_value_container},
-    stdlib::{rc::Rc},
+    stdlib::rc::Rc,
     values::value_container::ValueContainer,
 };
-pub(crate) use crate::network::com_hub::managers::interfaces_manager::ComInterfaceAsyncFactoryResult;
-use crate::network::com_interfaces::com_interface::ComInterfaceProxy;
+use serde::de::DeserializeOwned;
 
 /// This trait can be implemented to provide a factory with a synchronous setup process
 /// for a ComInterface implementation that can be registered on a ComHub.
@@ -55,10 +56,7 @@ where
     fn factory(
         setup_data: ValueContainer,
         com_interface_proxy: ComInterfaceProxy,
-    ) -> Result<
-        InterfaceProperties,
-        InterfaceCreateError,
-    > {
+    ) -> Result<InterfaceProperties, InterfaceCreateError> {
         let setup_data = from_value_container::<Self>(&setup_data)
             .map_err(|_| InterfaceCreateError::SetupDataParseError)?;
         Self::create_interface(setup_data, com_interface_proxy)
@@ -75,7 +73,6 @@ where
     /// Get the default interface properties for the interface.
     fn get_default_properties() -> InterfaceProperties;
 }
-
 
 /// This trait can be implemented to provide a factory with an asynchronous setup process
 /// for a ComInterface implementation that can be registered on a ComHub.
@@ -124,9 +121,8 @@ where
         com_interface_proxy: ComInterfaceProxy,
     ) -> ComInterfaceAsyncFactoryResult {
         Box::pin(async move {
-            let setup_data =
-                from_value_container::<Self>(&setup_data)
-                    .map_err(|_| InterfaceCreateError::SetupDataParseError)?;
+            let setup_data = from_value_container::<Self>(&setup_data)
+                .map_err(|_| InterfaceCreateError::SetupDataParseError)?;
             Self::create_interface(setup_data, com_interface_proxy).await
         })
     }

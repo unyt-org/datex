@@ -13,7 +13,8 @@ use futures::StreamExt;
 use tokio_stream::wrappers::BroadcastStream;
 
 use super::http_common::{HTTPError, HTTPServerInterfaceSetupData};
-use crate::network::{
+use crate::{
+    network::{
         com_hub::errors::InterfaceCreateError,
         com_interfaces::com_interface::{
             ComInterfaceEvent,
@@ -24,18 +25,19 @@ use crate::network::{
             properties::InterfaceProperties,
             socket::ComInterfaceSocketUUID,
         },
-    };
+    },
+    task::spawn_with_panic_notify,
+};
 use axum::{
     Router,
     extract::{Path, State},
     routing::get,
 };
+use datex_core::network::com_interfaces::com_interface::ComInterfaceProxy;
 use log::{debug, error, info};
 use tokio::sync::{RwLock, broadcast, mpsc};
 use url::Url;
 use uuid::serde::compact;
-use datex_core::network::com_interfaces::com_interface::ComInterfaceProxy;
-use crate::task::spawn_with_panic_notify;
 
 async fn server_to_client_handler(
     Path(route): Path<String>,
@@ -204,11 +206,14 @@ impl HTTPServerInterfaceSetupData {
 
         let socket_channel_mapping = Rc::new(RefCell::new(HashMap::new()));
 
-        spawn_with_panic_notify(&com_interface_proxy.async_context, Self::event_handler_task(
-            socket_channel_mapping.clone(),
-            channels.clone(),
-            com_interface_proxy.event_receiver,
-        ));
+        spawn_with_panic_notify(
+            &com_interface_proxy.async_context,
+            Self::event_handler_task(
+                socket_channel_mapping.clone(),
+                channels.clone(),
+                com_interface_proxy.event_receiver,
+            ),
+        );
 
         Ok(Self::get_default_properties())
     }
@@ -252,9 +257,9 @@ impl ComInterfaceAsyncFactory for HTTPServerInterfaceSetupData {
         self,
         com_interface_proxy: ComInterfaceProxy,
     ) -> ComInterfaceAsyncFactoryResult {
-        Box::pin(async move {
-            self.create_interface(com_interface_proxy).await
-        })
+        Box::pin(
+            async move { self.create_interface(com_interface_proxy).await },
+        )
     }
 
     fn get_default_properties() -> InterfaceProperties {

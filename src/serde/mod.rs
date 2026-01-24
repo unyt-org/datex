@@ -430,8 +430,7 @@ mod tests {
             field: MyEnum::Newtype(42),
         };
         let vc = to_value_container(&val).unwrap();
-        let deserialized: StructWithEnum =
-            from_value_container(&vc).unwrap();
+        let deserialized: StructWithEnum = from_value_container(&vc).unwrap();
         assert_eq!(val, deserialized);
     }
 
@@ -445,8 +444,7 @@ mod tests {
 
         let val = OuterTuple(InnerTuple(10, "Hi".to_string()), true);
         let vc = to_value_container(&val).unwrap();
-        let deserialized: OuterTuple =
-            from_value_container(&vc).unwrap();
+        let deserialized: OuterTuple = from_value_container(&vc).unwrap();
         assert_eq!(val, deserialized);
     }
 
@@ -454,14 +452,12 @@ mod tests {
     fn option_wrapped_types() {
         let val: Option<String> = Some("hello".to_string());
         let vc = to_value_container(&val).unwrap();
-        let deserialized: Option<String> =
-            from_value_container(&vc).unwrap();
+        let deserialized: Option<String> = from_value_container(&vc).unwrap();
         assert_eq!(val, deserialized);
 
         let val: Option<i32> = None;
         let vc = to_value_container(&val).unwrap();
-        let deserialized: Option<i32> =
-            from_value_container(&vc).unwrap();
+        let deserialized: Option<i32> = from_value_container(&vc).unwrap();
         assert_eq!(val, deserialized);
     }
 

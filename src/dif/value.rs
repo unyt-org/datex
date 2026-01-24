@@ -217,19 +217,21 @@ impl DIFValue {
                     .collect(),
             ),
             CoreValue::Map(map) => match map {
-                Map::StructuralWithStringKeys(entries) => DIFValueRepresentation::Object(
-                    entries
-                        .iter()
-                        .map(|(k, v)| {
-                            (
-                                k.clone(),
-                                DIFValueContainer::from_value_container(
-                                    v, memory,
-                                ),
-                            )
-                        })
-                        .collect(),
-                ),
+                Map::StructuralWithStringKeys(entries) => {
+                    DIFValueRepresentation::Object(
+                        entries
+                            .iter()
+                            .map(|(k, v)| {
+                                (
+                                    k.clone(),
+                                    DIFValueContainer::from_value_container(
+                                        v, memory,
+                                    ),
+                                )
+                            })
+                            .collect(),
+                    )
+                }
                 _ => {
                     if map.is_empty() {
                         is_empty_map = true;

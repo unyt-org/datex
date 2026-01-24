@@ -1,7 +1,8 @@
 use crate::{
     network::{
         com_hub::{
-            ComHub, InterfacePriority, managers::sockets_manager::SocketsManager,
+            ComHub, InterfacePriority,
+            managers::sockets_manager::SocketsManager,
         },
         com_interfaces::com_interface::{
             ComInterface, socket::ComInterfaceSocketEvent,

@@ -8,16 +8,18 @@ use crate::network::helpers::{
 };
 use datex_core::{
     global::dxb_block::IncomingSection,
-    network::com_interfaces::com_interface::ComInterfaceProxy,
-    run_async_thread, task::create_unbounded_channel,
+    network::com_interfaces::com_interface::{
+        ComInterfaceProxy, properties::InterfaceProperties,
+    },
+    run_async_thread,
+    task::create_unbounded_channel,
     utils::context::init_global_context,
 };
 use datex_macros::async_test;
+use log::info;
 use ntest_timeout::timeout;
 use std::thread;
-use log::info;
 use tokio::{sync::oneshot, task::yield_now};
-use datex_core::network::com_interfaces::com_interface::properties::InterfaceProperties;
 
 #[async_test]
 #[timeout(1000)]
@@ -29,8 +31,7 @@ async fn create_network_trace() {
     info!("Sending trace from A to B");
 
     // send trace from A to B
-    let network_trace =
-        com_hub_a.record_trace(TEST_ENDPOINT_B.clone()).await;
+    let network_trace = com_hub_a.record_trace(TEST_ENDPOINT_B.clone()).await;
     yield_now().await;
 
     assert!(network_trace.is_some());
@@ -40,7 +41,7 @@ async fn create_network_trace() {
         (TEST_ENDPOINT_A.clone(), "mockup"),
         (TEST_ENDPOINT_B.clone(), "mockup"),
         (TEST_ENDPOINT_B.clone(), "mockup"),
-        (TEST_ENDPOINT_A.clone(), "mockup")
+        (TEST_ENDPOINT_A.clone(), "mockup"),
     ]);
 }
 
@@ -121,21 +122,14 @@ async fn create_network_trace_separate_threads() {
 
     // wait for both interface proxies from the threads and couple them
     ComInterfaceProxy::couple_bidirectional(
-        (
-            interface_proxy_a_rx.await.unwrap(),
-            None,
-        ),
-        (
-            interface_proxy_b_rx.await.unwrap(),
-            None,
-        ),
+        (interface_proxy_a_rx.await.unwrap(), None),
+        (interface_proxy_b_rx.await.unwrap(), None),
     );
 
     info!("Both interface proxies coupled");
 
     // sleep to run coupling tasks in background before joining threads
-    tokio::time::sleep(tokio::time::Duration::from_millis(30))
-        .await;
+    tokio::time::sleep(tokio::time::Duration::from_millis(30)).await;
 
     // Wait for both threads to finish
     thread_a.join().expect("Thread A panicked");

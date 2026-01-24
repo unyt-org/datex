@@ -350,7 +350,7 @@ impl TypedDecimal {
                     && value.into_inner() <= i64::MAX as f64
                     && core::f64::math::fract(value.into_inner()) == 0.0
             }
-            TypedDecimal::Decimal(value) => value.is_integer()
+            TypedDecimal::Decimal(value) => value.is_integer(),
         }
     }
 
@@ -380,7 +380,7 @@ impl TypedDecimal {
             match self {
                 TypedDecimal::F32(value) => Some(value.into_inner() as i64),
                 TypedDecimal::F64(value) => Some(value.into_inner() as i64),
-                TypedDecimal::Decimal(value) => value.as_integer()
+                TypedDecimal::Decimal(value) => value.as_integer(),
             }
         } else {
             None

@@ -9,7 +9,10 @@ use crate::{
         reference::{AccessError, Reference},
     },
     runtime::execution::ExecutionError,
-    serde::deserializer::DatexDeserializer,
+    serde::{
+        deserializer::{DatexDeserializer, from_value_container},
+        error::DeserializationError,
+    },
     stdlib::{borrow::Cow, boxed::Box, rc::Rc, string::String},
     traits::{apply::Apply, value_eq::ValueEq},
     types::definition::TypeDefinition,
@@ -20,10 +23,7 @@ use core::{
     hash::{Hash, Hasher},
     ops::{Add, FnOnce, Neg, Sub},
 };
-use serde::de::DeserializeOwned;
-use serde::Deserialize;
-use crate::serde::deserializer::from_value_container;
-use crate::serde::error::DeserializationError;
+use serde::{Deserialize, de::DeserializeOwned};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum ValueError {
@@ -362,7 +362,9 @@ impl ValueContainer {
     }
 
     /// Casts the contained Value or Reference to the desired type T using serde deserialization.
-    pub fn cast_to<T: DeserializeOwned>(&self) -> Result<T, DeserializationError> {
+    pub fn cast_to<T: DeserializeOwned>(
+        &self,
+    ) -> Result<T, DeserializationError> {
         from_value_container::<T>(self)
     }
 

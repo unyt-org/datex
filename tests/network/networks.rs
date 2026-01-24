@@ -3,17 +3,15 @@ use crate::network::helpers::{
         TEST_ENDPOINT_A, TEST_ENDPOINT_B, TEST_ENDPOINT_C, TEST_ENDPOINT_D,
     },
     network::{
-        InterfaceConnection, Network, Node, Route, RouteAssertionError,
-        test_routes,
+        InterfaceConnection, MockupInterfaceSetupData, Network, Node, Route,
+        RouteAssertionError, test_routes,
     },
 };
 use core::{str::FromStr, time::Duration};
 use datex_core::{
-    network::{
-        com_hub::{
-            InterfacePriority, network_response::ResponseOptions,
-            network_tracing::TraceOptions,
-        },
+    network::com_hub::{
+        InterfacePriority, network_response::ResponseOptions,
+        network_tracing::TraceOptions,
     },
     utils::context::init_global_context,
     values::core_values::endpoint::Endpoint,
@@ -22,7 +20,6 @@ use datex_macros::async_test;
 use log::info;
 use ntest_timeout::timeout;
 use tokio::task;
-use crate::network::helpers::network::MockupInterfaceSetupData;
 
 #[tokio::test]
 #[timeout(2000)]
@@ -70,7 +67,7 @@ async fn create_network_with_two_nodes() {
                 (TEST_ENDPOINT_A.clone(), "mockup"),
                 (TEST_ENDPOINT_B.clone(), "mockup"),
                 (TEST_ENDPOINT_B.clone(), "mockup"),
-                (TEST_ENDPOINT_A.clone(), "mockup")
+                (TEST_ENDPOINT_A.clone(), "mockup"),
             ]);
 
             // send trace from B to A
@@ -84,7 +81,7 @@ async fn create_network_with_two_nodes() {
                 (TEST_ENDPOINT_B.clone(), "mockup"),
                 (TEST_ENDPOINT_A.clone(), "mockup"),
                 (TEST_ENDPOINT_A.clone(), "mockup"),
-                (TEST_ENDPOINT_B.clone(), "mockup")
+                (TEST_ENDPOINT_B.clone(), "mockup"),
             ]);
 
             // send trace from A to A
@@ -98,7 +95,7 @@ async fn create_network_with_two_nodes() {
                 (TEST_ENDPOINT_A.clone(), "local"),
                 (TEST_ENDPOINT_A.clone(), "local"),
                 (TEST_ENDPOINT_A.clone(), "local"),
-                (TEST_ENDPOINT_A.clone(), "local")
+                (TEST_ENDPOINT_A.clone(), "local"),
             ]);
         })
         .await;
@@ -228,7 +225,7 @@ async fn network_routing_with_four_nodes_1() {
                 (TEST_ENDPOINT_C.clone(), "mockup"),
                 (TEST_ENDPOINT_B.clone(), "mockup"),
                 (TEST_ENDPOINT_B.clone(), "mockup"),
-                (TEST_ENDPOINT_A.clone(), "mockup")
+                (TEST_ENDPOINT_A.clone(), "mockup"),
             ]);
         })
         .await;
@@ -293,7 +290,7 @@ async fn network_routing_with_four_nodes_2() {
                 (TEST_ENDPOINT_A.clone(), "mockup"),
                 (TEST_ENDPOINT_B.clone(), "mockup"),
                 (TEST_ENDPOINT_B.clone(), "mockup"),
-                (TEST_ENDPOINT_C.clone(), "mockup")
+                (TEST_ENDPOINT_C.clone(), "mockup"),
             ]);
         })
         .await;
@@ -343,7 +340,7 @@ async fn network_routing_with_four_nodes_3() {
                 (TEST_ENDPOINT_C.clone(), "mockup"),
                 (TEST_ENDPOINT_B.clone(), "mockup"),
                 (TEST_ENDPOINT_B.clone(), "mockup"),
-                (TEST_ENDPOINT_A.clone(), "mockup")
+                (TEST_ENDPOINT_A.clone(), "mockup"),
             ]);
         })
         .await;
@@ -408,7 +405,7 @@ async fn network_routing_with_four_nodes_4() {
                 (TEST_ENDPOINT_D.clone(), "mockup"),
                 (TEST_ENDPOINT_C.clone(), "mockup"),
                 (TEST_ENDPOINT_C.clone(), "mockup"),
-                (TEST_ENDPOINT_B.clone(), "mockup")
+                (TEST_ENDPOINT_B.clone(), "mockup"),
             ]);
         })
         .await;
@@ -456,7 +453,7 @@ async fn network_routing_with_four_nodes_5_deterministic_priorities() {
                 (TEST_ENDPOINT_D.clone(), "mockup"),
                 (TEST_ENDPOINT_C.clone(), "mockup"),
                 (TEST_ENDPOINT_C.clone(), "mockup"),
-                (TEST_ENDPOINT_B.clone(), "mockup")
+                (TEST_ENDPOINT_B.clone(), "mockup"),
             ]);
         })
         .await;

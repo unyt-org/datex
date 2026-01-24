@@ -1,4 +1,5 @@
 use crate::{
+    global::dxb_block::DXBBlock,
     network::com_interfaces::com_interface::{
         ComInterfaceUUID,
         properties::InterfaceDirection,
@@ -9,7 +10,6 @@ use crate::{
     task::UnboundedSender,
     values::core_values::endpoint::Endpoint,
 };
-use crate::global::dxb_block::DXBBlock;
 
 #[derive(Debug)]
 pub struct ComInterfaceSocketManager {
@@ -45,11 +45,17 @@ impl ComInterfaceSocketManager {
         // FIXME socket state (socket should no longer exist)
     }
 
-
     /// Removes a socket by its UUID and notifies listeners on ComHub
-    pub fn remove_socket_with_unsent_block(&mut self, socket_uuid: ComInterfaceSocketUUID, unsent_block: DXBBlock) {
+    pub fn remove_socket_with_unsent_block(
+        &mut self,
+        socket_uuid: ComInterfaceSocketUUID,
+        unsent_block: DXBBlock,
+    ) {
         self.socket_event_sender
-            .start_send(ComInterfaceSocketEvent::CloseSocket(socket_uuid, Some(unsent_block)))
+            .start_send(ComInterfaceSocketEvent::CloseSocket(
+                socket_uuid,
+                Some(unsent_block),
+            ))
             .unwrap();
         // FIXME socket state (socket should no longer exist)
     }

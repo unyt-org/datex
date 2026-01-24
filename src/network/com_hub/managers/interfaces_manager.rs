@@ -1,10 +1,9 @@
 use crate::{
     network::com_interfaces::com_interface::properties::InterfaceDirection,
-    stdlib::rc::Rc,
+    stdlib::{rc::Rc, sync::Arc},
 };
 use core::{cell::RefCell, pin::Pin};
 use log::info;
-use crate::stdlib::sync::Arc;
 
 use crate::{
     collections::HashMap,
@@ -16,9 +15,7 @@ use crate::{
         com_interfaces::com_interface::{
             ComInterface, ComInterfaceProxy, ComInterfaceReceivers,
             ComInterfaceStateEvent, ComInterfaceUUID,
-            factory::{
-                ComInterfaceAsyncFactory, ComInterfaceSyncFactory,
-            },
+            factory::{ComInterfaceAsyncFactory, ComInterfaceSyncFactory},
             properties::InterfaceProperties,
         },
     },

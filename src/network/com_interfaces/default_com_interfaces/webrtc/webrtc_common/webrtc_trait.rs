@@ -18,8 +18,7 @@ use super::{
 use crate::{
     network::com_interfaces::{
         com_interface::{
-            properties::InterfaceDirection,
-            socket::ComInterfaceSocketUUID,
+            properties::InterfaceDirection, socket::ComInterfaceSocketUUID,
             socket_manager::ComInterfaceSocketManager,
         },
         default_com_interfaces::webrtc::webrtc_common::media_tracks::{
@@ -108,9 +107,13 @@ pub trait WebRTCTraitInternal<DC: 'static, MR: 'static, ML: 'static> {
         endpoint: Endpoint,
     ) -> (ComInterfaceSocketUUID, UnboundedSender<Vec<u8>>) {
         let mut manager = manager.try_lock().unwrap();
-        let (socket_uuid, sender) =
-            manager.create_and_init_socket_with_optional_endpoint(InterfaceDirection::InOut, 1, Some(endpoint));
-        
+        let (socket_uuid, sender) = manager
+            .create_and_init_socket_with_optional_endpoint(
+                InterfaceDirection::InOut,
+                1,
+                Some(endpoint),
+            );
+
         (socket_uuid, sender)
     }
     fn _remote_endpoint(&self) -> Endpoint {
@@ -274,8 +277,7 @@ pub trait WebRTCTrait<DC: 'static, MR: 'static, ML: 'static>:
 
         let commons = self.get_commons();
         let remote_endpoint = self.remote_endpoint();
-        let com_interface_socket_manager =
-            self.provide_socket_manager();
+        let com_interface_socket_manager = self.provide_socket_manager();
 
         data_channels.borrow_mut().on_add =
             Some(Box::new(move |data_channel| {

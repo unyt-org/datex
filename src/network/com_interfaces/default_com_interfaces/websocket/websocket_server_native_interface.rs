@@ -10,8 +10,9 @@ use crate::{
         spawn_with_panic_notify_default,
     },
 };
-use core::{prelude::rust_2024::*, result::Result, time::Duration};
-use core::str::FromStr;
+use core::{
+    prelude::rust_2024::*, result::Result, str::FromStr, time::Duration,
+};
 use futures::stream::SplitStream;
 use futures_util::{SinkExt, StreamExt};
 use log::{error, info};
@@ -22,23 +23,28 @@ use async_select::select;
 use futures_util::stream::SplitSink;
 use tokio_tungstenite::accept_async;
 
-use super::websocket_common::{WebSocketServerInterfaceSetupData, parse_url, WebSocketClientInterfaceSetupData};
-use crate::network::{
-    com_hub::errors::InterfaceCreateError,
-    com_interfaces::com_interface::{
-        ComInterfaceEvent,
-        error::ComInterfaceError,
-        factory::{
-            ComInterfaceAsyncFactory, ComInterfaceAsyncFactoryResult,
-            ComInterfaceSyncFactory,
+use super::websocket_common::{
+    WebSocketClientInterfaceSetupData, WebSocketServerInterfaceSetupData,
+    parse_url,
+};
+use crate::{
+    network::{
+        com_hub::errors::InterfaceCreateError,
+        com_interfaces::com_interface::{
+            ComInterfaceEvent,
+            error::ComInterfaceError,
+            factory::{
+                ComInterfaceAsyncFactory, ComInterfaceAsyncFactoryResult,
+                ComInterfaceSyncFactory,
+            },
+            properties::{InterfaceDirection, InterfaceProperties},
+            socket::ComInterfaceSocketUUID,
         },
-        properties::{InterfaceDirection, InterfaceProperties},
-        socket::ComInterfaceSocketUUID,
     },
+    runtime::RuntimeConfigInterface,
 };
 use datex_core::network::com_interfaces::com_interface::ComInterfaceProxy;
 use tokio_tungstenite::WebSocketStream;
-use crate::runtime::RuntimeConfigInterface;
 
 type WebsocketStreamMap =
     HashMap<ComInterfaceSocketUUID, UnboundedSender<Vec<u8>>>;
@@ -48,7 +54,6 @@ impl WebSocketServerInterfaceSetupData {
         self,
         com_interface_proxy: ComInterfaceProxy,
     ) -> Result<InterfaceProperties, InterfaceCreateError> {
-
         let addr = SocketAddr::from_str(&self.bind_address)
             .map_err(InterfaceCreateError::invalid_setup_data)?;
 

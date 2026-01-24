@@ -61,7 +61,10 @@ impl Map {
     }
 
     pub fn is_structural(&self) -> bool {
-        core::matches!(self, Map::StructuralWithStringKeys(_) | Map::Structural(_))
+        core::matches!(
+            self,
+            Map::StructuralWithStringKeys(_) | Map::Structural(_)
+        )
     }
 
     pub fn size(&self) -> usize {
@@ -519,7 +522,6 @@ impl IntoIterator for Map {
     }
 }
 
-
 impl<'a> IntoIterator for &'a mut Map {
     type Item = (BorrowedMapKey<'a>, &'a mut ValueContainer);
     type IntoIter = MapMutIterator<'a>;
@@ -528,7 +530,9 @@ impl<'a> IntoIterator for &'a mut Map {
         match self {
             Map::Dynamic(map) => MapMutIterator::Dynamic(map.iter_mut()),
             Map::Structural(vec) => MapMutIterator::Fixed(vec.iter_mut()),
-            Map::StructuralWithStringKeys(vec) => MapMutIterator::Structural(vec.iter_mut()),
+            Map::StructuralWithStringKeys(vec) => {
+                MapMutIterator::Structural(vec.iter_mut())
+            }
         }
     }
 }
