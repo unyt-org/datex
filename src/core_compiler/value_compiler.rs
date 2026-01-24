@@ -124,7 +124,7 @@ pub fn append_value(buffer: &mut Vec<u8>, value: &Value) {
                     append_u32(buffer, val.size() as u32); // FIXME #633: casting from usize to u32 here
                 }
             }
-            for (key, value) in val {
+            for (key, value) in val.iter() {
                 append_key_value_pair(
                     buffer,
                     &ValueContainer::from(key),

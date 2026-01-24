@@ -8,15 +8,33 @@ use url::Url;
 #[derive(Debug, Serialize, Deserialize)]
 #[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
 pub struct WebSocketClientInterfaceSetupData {
-    pub address: String,
+    /// A websocket URL (ws:// or wss://).
+    pub url: String,
+}
+
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(tag = "type", content = "data")]
+#[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
+pub enum TLSMode {
+    /// The TLS certificate is handled externally (e.g., by a reverse proxy or load balancer).
+    HandledExternally,
+    /// The server must handle TLS using the provided certificate.
+    WithCertificate {
+        private_key: Vec<u8>,
+        certificate: Vec<u8>,
+    },
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 #[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
 pub struct WebSocketServerInterfaceSetupData {
-    pub port: u16,
-    /// if true, the server will use wss (secure WebSocket). Defaults to true.
-    pub secure: Option<bool>,
+    /// The address to bind the WebSocket server to (e.g., "0.0.0.0:8080").
+    pub bind_address: String,
+    /// A list of addresses the server should accept connections from,
+    /// along with their optional TLS mode.
+    /// E.g., [("example.com", Some(TLSMode::WithCertificate { ... })), ("example.org:1234", None)]
+    pub accept_addresses: Option<Vec<(String, Option<TLSMode>)>>,
 }
 
 #[derive(Debug)]

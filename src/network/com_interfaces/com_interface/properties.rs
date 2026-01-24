@@ -6,6 +6,8 @@ use core::{prelude::rust_2024::*, time::Duration};
 use serde::{Deserialize, Serialize};
 use serde_with::{DurationMilliSeconds, serde_as};
 use strum::EnumString;
+use crate::runtime::RuntimeConfigInterface;
+use crate::values::value_container::ValueContainer;
 
 #[derive(PartialEq, Debug, Clone, EnumString, Serialize, Deserialize)]
 #[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
@@ -67,6 +69,8 @@ pub struct InterfaceProperties {
     // If true, the interface sends Hello block identifications automatically
     // after socket connection establishment
     pub auto_identify: bool,
+
+    pub connectable_interfaces: Option<Vec<RuntimeConfigInterface>>,
 
     // FIXME move to state
     /* private field */
@@ -184,6 +188,7 @@ impl Default for InterfaceProperties {
             reconnection_config: ReconnectionConfig::default(),
             close_timestamp: None,
             reconnect_attempts: None,
+            connectable_interfaces: None,
         }
     }
 }

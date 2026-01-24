@@ -20,7 +20,10 @@ use core::{
     hash::{Hash, Hasher},
     ops::{Add, FnOnce, Neg, Sub},
 };
+use serde::de::DeserializeOwned;
 use serde::Deserialize;
+use crate::serde::deserializer::from_value_container;
+use crate::serde::error::DeserializationError;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum ValueError {
@@ -355,6 +358,11 @@ impl ValueContainer {
 
     pub fn new_reference<T: Into<Reference>>(value: T) -> ValueContainer {
         ValueContainer::Reference(value.into())
+    }
+
+    /// Casts the contained Value or Reference to the desired type T using serde deserialization.
+    pub fn cast_to<T: DeserializeOwned>(&self) -> Result<T, DeserializationError> {
+        from_value_container::<T>(&self)
     }
 
     /// Returns the contained Reference if it is a Reference, otherwise returns None.

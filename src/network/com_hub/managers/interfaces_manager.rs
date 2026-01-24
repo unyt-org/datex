@@ -4,7 +4,7 @@ use crate::{
 };
 use core::{cell::RefCell, pin::Pin};
 use log::info;
-use std::sync::Arc;
+use crate::stdlib::sync::Arc;
 
 use crate::{
     collections::HashMap,
@@ -16,7 +16,7 @@ use crate::{
         com_interfaces::com_interface::{
             ComInterface, ComInterfaceProxy, ComInterfaceReceivers,
             ComInterfaceStateEvent, ComInterfaceUUID,
-            implementation::{
+            factory::{
                 ComInterfaceAsyncFactory, ComInterfaceSyncFactory,
             },
             properties::InterfaceProperties,
@@ -60,7 +60,7 @@ pub enum SyncOrAsyncComInterfaceImplementationFactoryFn {
 }
 
 #[derive(Default)]
-pub struct InterfaceManager {
+pub struct InterfacesManager {
     /// a list of all available interface factories, keyed by their interface type
     pub interface_factories:
         HashMap<String, SyncOrAsyncComInterfaceImplementationFactoryFn>,
@@ -72,7 +72,7 @@ pub struct InterfaceManager {
 /// Manages the registered interfaces and their factories
 /// Allows creating, adding, removing and querying interfaces
 /// Also handles interface events (lifecycle management)
-impl InterfaceManager {
+impl InterfacesManager {
     /// Registers a new sync interface factory for a specific interface implementation.
     /// This allows the ComHub to create new instances of the interface on demand.
     pub fn register_sync_interface_factory<T: ComInterfaceSyncFactory>(

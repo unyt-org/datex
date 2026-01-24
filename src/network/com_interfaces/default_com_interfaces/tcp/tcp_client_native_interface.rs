@@ -6,7 +6,7 @@ use crate::{
         com_interfaces::com_interface::{
             ComInterface, ComInterfaceEvent, ComInterfaceProxy,
             error::ComInterfaceError,
-            implementation::{
+            factory::{
                 ComInterfaceAsyncFactory, ComInterfaceAsyncFactoryResult,
             },
             properties::{InterfaceDirection, InterfaceProperties},

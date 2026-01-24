@@ -42,7 +42,7 @@ pub struct DynamicEndpointProperties {
     pub direction: InterfaceDirection,
 }
 
-pub struct SocketManager {
+pub struct SocketsManager {
     /// a list of all available sockets, keyed by their UUID
     /// contains the socket itself and a list of endpoints currently associated with it
     pub sockets: SocketsByUUID,
@@ -70,11 +70,11 @@ pub struct SocketManager {
     /// sender to send hello requests to newly added sockets
     block_event_sender: UnboundedSender<BlockSendEvent>,
 }
-impl SocketManager {
+impl SocketsManager {
     pub fn new(
         block_event_sender: UnboundedSender<BlockSendEvent>,
-    ) -> SocketManager {
-        SocketManager {
+    ) -> SocketsManager {
+        SocketsManager {
             sockets: HashMap::new(),
             socket_uuids_by_interface_uuid: HashMap::new(),
             endpoint_sockets_blacklist: HashMap::new(),
@@ -88,7 +88,7 @@ impl SocketManager {
 /// Manages all sockets registered in the ComHub
 /// Handles socket registration, endpoint registration and socket selection for endpoints
 /// Also manages fallback sockets for outgoing connections and other lifelcycle events
-impl SocketManager {
+impl SocketsManager {
     /// Add a socket to the blocklist for a specific endpoint
     pub fn add_to_endpoint_blocklist(
         &mut self,

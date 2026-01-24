@@ -4,7 +4,7 @@ use crate::{
     network::{
         com_hub::errors::InterfaceCreateError,
         com_interfaces::com_interface::{
-            implementation::ComInterfaceSyncFactory,
+            factory::ComInterfaceSyncFactory,
             properties::{InterfaceDirection, InterfaceProperties},
         },
     },

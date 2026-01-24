@@ -23,9 +23,9 @@ pub enum Map {
     // most general case, allows all types of keys and values, and dynamic size
     Dynamic(IndexMap<ValueContainer, ValueContainer, RandomState>),
     // for fixed-size maps with known keys and values on construction
-    Fixed(Vec<(ValueContainer, ValueContainer)>),
+    Structural(Vec<(ValueContainer, ValueContainer)>),
     // for maps with string keys
-    Structural(Vec<(String, ValueContainer)>), // for structural maps with string keys
+    StructuralWithStringKeys(Vec<(String, ValueContainer)>), // for structural maps with string keys
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -61,18 +61,14 @@ impl Map {
     }
 
     pub fn is_structural(&self) -> bool {
-        core::matches!(self, Map::Structural(_))
-    }
-
-    pub fn has_fixed_size(&self) -> bool {
-        core::matches!(self, Map::Fixed(_) | Map::Structural(_))
+        core::matches!(self, Map::StructuralWithStringKeys(_) | Map::Structural(_))
     }
 
     pub fn size(&self) -> usize {
         match self {
             Map::Dynamic(map) => map.len(),
-            Map::Fixed(vec) => vec.len(),
             Map::Structural(vec) => vec.len(),
+            Map::StructuralWithStringKeys(vec) => vec.len(),
         }
     }
 
@@ -89,10 +85,10 @@ impl Map {
         let key = key.into();
         match self {
             Map::Dynamic(map) => key.with_value_container(|key| map.get(key)),
-            Map::Fixed(vec) => key.with_value_container(|key| {
+            Map::Structural(vec) => key.with_value_container(|key| {
                 vec.iter().find(|(k, _)| k == key).map(|(_, v)| v)
             }),
-            Map::Structural(vec) => {
+            Map::StructuralWithStringKeys(vec) => {
                 // only works if key is a string
                 if let Some(string) = key.try_as_text() {
                     vec.iter().find(|(k, _)| k == string).map(|(_, v)| v)
@@ -110,10 +106,10 @@ impl Map {
             Map::Dynamic(map) => {
                 key.into().with_value_container(|key| map.contains_key(key))
             }
-            Map::Fixed(vec) => key
+            Map::Structural(vec) => key
                 .into()
                 .with_value_container(|key| vec.iter().any(|(k, _)| k == key)),
-            Map::Structural(vec) => {
+            Map::StructuralWithStringKeys(vec) => {
                 // only works if key is a string
                 if let Some(string) = key.into().try_as_text() {
                     vec.iter().any(|(k, _)| k == string)
@@ -138,7 +134,7 @@ impl Map {
                     })
                 })
             }),
-            Map::Fixed(_) | Map::Structural(_) => {
+            Map::Structural(_) | Map::StructuralWithStringKeys(_) => {
                 Err(MapAccessError::Immutable)
             }
         }
@@ -151,7 +147,7 @@ impl Map {
                 map.clear();
                 Ok(())
             }
-            Map::Fixed(_) | Map::Structural(_) => {
+            Map::Structural(_) | Map::StructuralWithStringKeys(_) => {
                 Err(MapAccessError::Immutable)
             }
         }
@@ -182,7 +178,7 @@ impl Map {
                 });
                 Ok(())
             }
-            Map::Fixed(vec) => key.with_value_container(|key| {
+            Map::Structural(vec) => key.with_value_container(|key| {
                 if let Some((_, v)) = vec.iter_mut().find(|(k, _)| k == key) {
                     *v = value.into();
                     Ok(())
@@ -190,7 +186,7 @@ impl Map {
                     Err(KeyNotFoundError { key: key.clone() })
                 }
             }),
-            Map::Structural(vec) => {
+            Map::StructuralWithStringKeys(vec) => {
                 if let Some(string) = key.try_as_text() {
                     if let Some((_, v)) =
                         vec.iter_mut().find(|(k, _)| k == string)
@@ -206,11 +202,27 @@ impl Map {
             }
         }
     }
+
+    pub(crate) fn iter(&self) -> MapIterator {
+        MapIterator {
+            map: self,
+            index: 0,
+        }
+    }
 }
 
 pub enum BorrowedMapKey<'a> {
     Text(&'a str),
     Value(&'a ValueContainer),
+}
+
+impl<'a> From<&'a MapKey> for BorrowedMapKey<'a> {
+    fn from(key: &'a MapKey) -> Self {
+        match key {
+            MapKey::Text(text) => BorrowedMapKey::Text(text),
+            MapKey::Value(value) => BorrowedMapKey::Value(value),
+        }
+    }
 }
 
 impl<'a> From<BorrowedMapKey<'a>> for ValueContainer {
@@ -323,7 +335,7 @@ impl<'a> Iterator for MapIterator<'a> {
                     (key, v)
                 })
             }
-            Map::Fixed(vec) => {
+            Map::Structural(vec) => {
                 if self.index < vec.len() {
                     let item = &vec[self.index];
                     self.index += 1;
@@ -339,7 +351,7 @@ impl<'a> Iterator for MapIterator<'a> {
                     None
                 }
             }
-            Map::Structural(vec) => {
+            Map::StructuralWithStringKeys(vec) => {
                 if self.index < vec.len() {
                     let item = &vec[self.index];
                     self.index += 1;
@@ -415,7 +427,7 @@ impl Iterator for IntoMapIterator {
                     (key, v.clone())
                 })
             }
-            Map::Fixed(vec) => {
+            Map::Structural(vec) => {
                 if self.index < vec.len() {
                     let item = &vec[self.index];
                     self.index += 1;
@@ -431,7 +443,7 @@ impl Iterator for IntoMapIterator {
                     None
                 }
             }
-            Map::Structural(vec) => {
+            Map::StructuralWithStringKeys(vec) => {
                 if self.index < vec.len() {
                     let item = &vec[self.index];
                     self.index += 1;
@@ -450,10 +462,10 @@ impl StructuralEq for Map {
             return false;
         }
         for ((key, value), (other_key, other_value)) in
-            self.into_iter().zip(other.into_iter())
+            self.iter().zip(other.iter())
         {
             if !key.structural_eq(&other_key)
-                || !value.structural_eq(other_value)
+                || !value.structural_eq(&other_value)
             {
                 return false;
             }
@@ -464,7 +476,7 @@ impl StructuralEq for Map {
 
 impl Hash for Map {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        for (k, v) in self.into_iter() {
+        for (k, v) in self.iter() {
             k.hash(state);
             v.hash(state);
         }
@@ -474,7 +486,7 @@ impl Hash for Map {
 impl Display for Map {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         core::write!(f, "{{")?;
-        for (i, (key, value)) in self.into_iter().enumerate() {
+        for (i, (key, value)) in self.iter().enumerate() {
             if i > 0 {
                 core::write!(f, ", ")?;
             }
@@ -506,17 +518,6 @@ impl IntoIterator for Map {
     }
 }
 
-impl<'a> IntoIterator for &'a Map {
-    type Item = (BorrowedMapKey<'a>, &'a ValueContainer);
-    type IntoIter = MapIterator<'a>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        MapIterator {
-            map: self,
-            index: 0,
-        }
-    }
-}
 
 impl<'a> IntoIterator for &'a mut Map {
     type Item = (BorrowedMapKey<'a>, &'a mut ValueContainer);
@@ -525,8 +526,8 @@ impl<'a> IntoIterator for &'a mut Map {
     fn into_iter(self) -> Self::IntoIter {
         match self {
             Map::Dynamic(map) => MapMutIterator::Dynamic(map.iter_mut()),
-            Map::Fixed(vec) => MapMutIterator::Fixed(vec.iter_mut()),
-            Map::Structural(vec) => MapMutIterator::Structural(vec.iter_mut()),
+            Map::Structural(vec) => MapMutIterator::Fixed(vec.iter_mut()),
+            Map::StructuralWithStringKeys(vec) => MapMutIterator::Structural(vec.iter_mut()),
         }
     }
 }
@@ -582,7 +583,7 @@ impl From<Vec<(MapKey, ValueContainer)>> for Map {
                     }
                 }
             }
-            Map::Structural(entries)
+            Map::StructuralWithStringKeys(entries)
         } else {
             let mut map = Map::default();
             for (k, v) in vec {

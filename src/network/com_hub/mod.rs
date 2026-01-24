@@ -5,7 +5,7 @@ use crate::{
     },
     network::com_hub::{
         errors::{ComHubError, SocketEndpointRegistrationError},
-        managers::interface_manager::InterfaceManager,
+        managers::interfaces_manager::InterfacesManager,
         network_response::{
             Response, ResponseError, ResponseOptions,
             ResponseResolutionStrategy,
@@ -17,7 +17,7 @@ pub mod managers;
 
 #[cfg(feature = "debug")]
 pub mod metadata;
-use crate::network::com_hub::managers::socket_manager::SocketManager;
+use crate::network::com_hub::managers::sockets_manager::SocketsManager;
 
 mod com_hub_socket;
 pub mod errors;
@@ -82,8 +82,8 @@ pub struct ComHub {
     /// ComHub configuration options
     pub options: ComHubOptions,
 
-    socket_manager: Rc<RefCell<SocketManager>>,
-    interface_manager: Rc<RefCell<InterfaceManager>>,
+    socket_manager: Rc<RefCell<SocketsManager>>,
+    interface_manager: Rc<RefCell<InterfacesManager>>,
 
     pub block_handler: BlockHandler,
 
@@ -157,10 +157,10 @@ async fn reconnect_interface_task(interface: ComInterface) {
 
 // #[cfg(test)]
 impl ComHub {
-    pub fn socket_manager(&self) -> Rc<RefCell<SocketManager>> {
+    pub fn socket_manager(&self) -> Rc<RefCell<SocketsManager>> {
         self.socket_manager.clone()
     }
-    pub fn interface_manager(&self) -> Rc<RefCell<InterfaceManager>> {
+    pub fn interface_manager(&self) -> Rc<RefCell<InterfacesManager>> {
         self.interface_manager.clone()
     }
 }
@@ -180,11 +180,11 @@ impl ComHub {
             async_context: async_context.clone(),
             options: ComHubOptions::default(),
             block_handler,
-            socket_manager: Rc::new(RefCell::new(SocketManager::new(
+            socket_manager: Rc::new(RefCell::new(SocketsManager::new(
                 block_send_sender,
             ))),
             interface_manager: Rc::new(RefCell::new(
-                InterfaceManager::default(),
+                InterfacesManager::default(),
             )),
             send_request_receiver: RefCell::new(Some(send_request_receiver)),
             incoming_block_interceptors: RefCell::new(Vec::new()),

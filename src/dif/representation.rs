@@ -181,7 +181,7 @@ impl DIFValueRepresentation {
                                     "Invalid DIF value, non-empty array with map type"
                                 )
                             }
-                            Some(Value::from(CoreValue::Map(Map::Fixed(
+                            Some(Value::from(CoreValue::Map(Map::Structural(
                                 vec![],
                             ))))
                         }

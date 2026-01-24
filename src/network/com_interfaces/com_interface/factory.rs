@@ -1,3 +1,4 @@
+use serde::de::DeserializeOwned;
 use crate::{
     network::{
         com_hub::{ComHub, errors::InterfaceCreateError},
@@ -7,7 +8,7 @@ use crate::{
     stdlib::{rc::Rc},
     values::value_container::ValueContainer,
 };
-pub(crate) use crate::network::com_hub::managers::interface_manager::ComInterfaceAsyncFactoryResult;
+pub(crate) use crate::network::com_hub::managers::interfaces_manager::ComInterfaceAsyncFactoryResult;
 use crate::network::com_interfaces::com_interface::ComInterfaceProxy;
 
 /// This trait can be implemented to provide a factory with a synchronous setup process
@@ -20,7 +21,7 @@ use crate::network::com_interfaces::com_interface::ComInterfaceProxy;
 /// use serde::{Deserialize, Serialize};
 /// use datex_core::network::com_hub::errors::InterfaceCreateError;
 /// use datex_core::network::com_interfaces::com_interface::ComInterfaceProxy;
-/// use datex_core::network::com_interfaces::com_interface::implementation::ComInterfaceSyncFactory;
+/// use datex_core::network::com_interfaces::com_interface::factory::ComInterfaceSyncFactory;
 /// use datex_core::network::com_interfaces::com_interface::properties::InterfaceProperties;
 ///
 ///
@@ -46,7 +47,7 @@ use crate::network::com_interfaces::com_interface::ComInterfaceProxy;
 /// }
 pub trait ComInterfaceSyncFactory
 where
-    Self: Deserialize<'static> + 'static,
+    Self: DeserializeOwned,
 {
     /// The factory method that is called from the ComHub on a registered interface
     /// to create a new instance of the interface.
@@ -58,7 +59,7 @@ where
         InterfaceProperties,
         InterfaceCreateError,
     > {
-        let setup_data = from_value_container::<Self>(setup_data)
+        let setup_data = from_value_container::<Self>(&setup_data)
             .map_err(|_| InterfaceCreateError::SetupDataParseError)?;
         Self::create_interface(setup_data, com_interface_proxy)
     }
@@ -86,9 +87,9 @@ where
 /// use serde::{Deserialize, Serialize};
 /// use datex_core::network::com_hub::errors::InterfaceCreateError;
 /// use datex_core::network::com_interfaces::com_interface::ComInterfaceProxy;
-/// use datex_core::network::com_interfaces::com_interface::implementation::ComInterfaceAsyncFactory;
+/// use datex_core::network::com_interfaces::com_interface::factory::ComInterfaceAsyncFactory;
 /// use datex_core::network::com_interfaces::com_interface::properties::InterfaceProperties;
-/// use datex_core::network::com_hub::managers::interface_manager::ComInterfaceAsyncFactoryResult;
+/// use datex_core::network::com_hub::managers::interfaces_manager::ComInterfaceAsyncFactoryResult;
 ///
 /// #[derive(Serialize, Deserialize)]
 /// struct ExampleInterfaceSetupData {
@@ -113,7 +114,7 @@ where
 /// }
 pub trait ComInterfaceAsyncFactory
 where
-    Self: Deserialize<'static> + 'static,
+    Self: DeserializeOwned,
 {
     /// The factory method that is called from the ComHub on a registered interface
     /// to create a new instance of the interface.
@@ -124,7 +125,7 @@ where
     ) -> ComInterfaceAsyncFactoryResult {
         Box::pin(async move {
             let setup_data =
-                from_value_container::<Self>(setup_data)
+                from_value_container::<Self>(&setup_data)
                     .map_err(|_| InterfaceCreateError::SetupDataParseError)?;
             Self::create_interface(setup_data, com_interface_proxy).await
         })

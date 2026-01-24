@@ -17,7 +17,7 @@ use crate::{
         com_hub::{
             ComHub, InterfacePriority, network_response::ResponseOptions,
         },
-        com_interfaces::com_interface::implementation::{
+        com_interfaces::com_interface::factory::{
             ComInterfaceAsyncFactory, ComInterfaceSyncFactory,
         },
     },
@@ -392,11 +392,12 @@ impl RuntimeInternal {
     }
 }
 use crate::network::com_hub::is_none_variant;
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct RuntimeConfigInterface {
     #[serde(rename = "type")]
     pub interface_type: String,
-    pub config: ValueContainer,
+    #[serde(rename = "config")]
+    pub setup_data: ValueContainer,
 
     #[serde(default, skip_serializing_if = "is_none_variant")]
     pub priority: InterfacePriority,
@@ -405,12 +406,12 @@ pub struct RuntimeConfigInterface {
 impl RuntimeConfigInterface {
     pub fn new<T: Serialize>(
         interface_type: &str,
-        config: T,
+        setup_data: T,
     ) -> Result<RuntimeConfigInterface, SerializationError> {
         Ok(RuntimeConfigInterface {
             interface_type: interface_type.to_string(),
             priority: InterfacePriority::default(),
-            config: to_value_container(&config)?,
+            setup_data: to_value_container(&setup_data)?,
         })
     }
 
@@ -421,7 +422,7 @@ impl RuntimeConfigInterface {
         RuntimeConfigInterface {
             priority: InterfacePriority::default(),
             interface_type: interface_type.to_string(),
-            config,
+            setup_data: config,
         }
     }
 }
@@ -454,7 +455,7 @@ impl RuntimeConfig {
         let config = to_value_container(&config)?;
         let interface = RuntimeConfigInterface {
             interface_type,
-            config,
+            setup_data: config,
             priority,
         };
         if let Some(interfaces) = &mut self.interfaces {
@@ -566,7 +567,7 @@ impl Runtime {
         if let Some(interfaces) = &self.internal.config.interfaces {
             for RuntimeConfigInterface {
                 interface_type,
-                config,
+                setup_data: config,
                 priority,
             } in interfaces.iter()
             {

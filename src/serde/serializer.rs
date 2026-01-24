@@ -88,7 +88,7 @@ impl SerializeStruct for StructSerializer {
     }
 
     fn end(self) -> Result<Self::Ok, Self::Error> {
-        Ok(Map::Structural(self.fields).into())
+        Ok(Map::StructuralWithStringKeys(self.fields).into())
     }
 }
 
@@ -867,7 +867,7 @@ mod tests {
         let result = to_value_container(&test_struct);
         assert!(result.is_ok());
         let result = result.unwrap();
-        let map = Map::Structural(vec![(
+        let map = Map::StructuralWithStringKeys(vec![(
             "endpoint".to_string(),
             ValueContainer::from(Endpoint::new("@test")),
         )]);

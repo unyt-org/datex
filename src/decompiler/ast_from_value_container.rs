@@ -65,7 +65,7 @@ fn value_to_datex_expression(value: &Value) -> DatexExpressionData {
                 .collect(),
         )),
         CoreValue::Map(map) => DatexExpressionData::Map(Map::new(
-            map.into_iter()
+            map.iter()
                 .map(|(key, value)| {
                     (
                         DatexExpressionData::from(&ValueContainer::from(key))

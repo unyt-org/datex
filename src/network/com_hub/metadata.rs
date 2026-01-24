@@ -5,7 +5,7 @@ use crate::{
     collections::HashMap,
     network::{
         com_hub::{
-            ComHub, managers::socket_manager::DynamicEndpointProperties,
+            ComHub, managers::sockets_manager::DynamicEndpointProperties,
         },
         com_interfaces::com_interface::ComInterfaceUUID,
     },

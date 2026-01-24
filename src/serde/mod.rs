@@ -49,7 +49,7 @@ mod tests {
         let original = TestTupleStruct("Hello".to_string(), 42, true);
         let serialized = to_value_container(&original).unwrap();
         let deserialized: TestTupleStruct =
-            from_value_container(serialized).unwrap();
+            from_value_container(&serialized).unwrap();
         assert_eq!(original, deserialized);
     }
 
@@ -76,7 +76,7 @@ mod tests {
         };
         let serialized = to_value_container(&original).unwrap();
         let deserialized: TestStruct =
-            from_value_container(serialized).unwrap();
+            from_value_container(&serialized).unwrap();
         assert_eq!(original, deserialized);
     }
 
@@ -115,7 +115,7 @@ mod tests {
         };
         let serialized = to_value_container(&original).unwrap();
         let deserialized: NestedStruct =
-            from_value_container(serialized).unwrap();
+            from_value_container(&serialized).unwrap();
         assert_eq!(original, deserialized);
     }
 
@@ -331,7 +331,7 @@ mod tests {
         let e = TestEnum2::Test("hello".to_string());
         let result = to_value_container(&e).unwrap();
         assert_eq!(result.to_string(), r#"{"Test": "hello"}"#);
-        let back: TestEnum2 = from_value_container(result).unwrap();
+        let back: TestEnum2 = from_value_container(&result).unwrap();
         assert_eq!(e, back);
     }
 
@@ -398,7 +398,7 @@ mod tests {
     fn newtype_struct_serde() {
         let val = MyNewtype(123);
         let vc = to_value_container(&val).unwrap();
-        let deserialized: MyNewtype = from_value_container(vc.clone()).unwrap();
+        let deserialized: MyNewtype = from_value_container(&vc).unwrap();
         assert_eq!(val, deserialized);
         assert_eq!(vc.to_string(), "123");
     }
@@ -414,7 +414,7 @@ mod tests {
     fn newtype_enum_variant_serde() {
         let val = MyEnum::Newtype(99);
         let vc = to_value_container(&val).unwrap();
-        let deserialized: MyEnum = from_value_container(vc.clone()).unwrap();
+        let deserialized: MyEnum = from_value_container(&vc).unwrap();
         assert_eq!(val, deserialized);
         assert_eq!(vc.to_string(), "{\"Newtype\": 99}");
     }
@@ -431,7 +431,7 @@ mod tests {
         };
         let vc = to_value_container(&val).unwrap();
         let deserialized: StructWithEnum =
-            from_value_container(vc.clone()).unwrap();
+            from_value_container(&vc).unwrap();
         assert_eq!(val, deserialized);
     }
 
@@ -446,7 +446,7 @@ mod tests {
         let val = OuterTuple(InnerTuple(10, "Hi".to_string()), true);
         let vc = to_value_container(&val).unwrap();
         let deserialized: OuterTuple =
-            from_value_container(vc.clone()).unwrap();
+            from_value_container(&vc).unwrap();
         assert_eq!(val, deserialized);
     }
 
@@ -455,13 +455,13 @@ mod tests {
         let val: Option<String> = Some("hello".to_string());
         let vc = to_value_container(&val).unwrap();
         let deserialized: Option<String> =
-            from_value_container(vc.clone()).unwrap();
+            from_value_container(&vc).unwrap();
         assert_eq!(val, deserialized);
 
         let val: Option<i32> = None;
         let vc = to_value_container(&val).unwrap();
         let deserialized: Option<i32> =
-            from_value_container(vc.clone()).unwrap();
+            from_value_container(&vc).unwrap();
         assert_eq!(val, deserialized);
     }
 
@@ -469,12 +469,12 @@ mod tests {
     fn reference_and_str_types() {
         let val: &str = "test_ref";
         let vc = to_value_container(&val).unwrap();
-        let deserialized: String = from_value_container(vc.clone()).unwrap();
+        let deserialized: String = from_value_container(&vc).unwrap();
         assert_eq!(val, deserialized);
 
         let val: String = "owned_string".to_string();
         let vc = to_value_container(&val).unwrap();
-        let deserialized: String = from_value_container(vc.clone()).unwrap();
+        let deserialized: String = from_value_container(&vc).unwrap();
         assert_eq!(val, deserialized);
     }
 
@@ -482,13 +482,13 @@ mod tests {
     fn array_and_tuple_arrays() {
         let val = [1, 2, 3];
         let vc = to_value_container(&val).unwrap();
-        let deserialized: [i32; 3] = from_value_container(vc.clone()).unwrap();
+        let deserialized: [i32; 3] = from_value_container(&vc).unwrap();
         assert_eq!(val, deserialized);
 
         let val = [(1, "a".to_string()), (2, "b".to_string())];
         let vc = to_value_container(&val).unwrap();
         let deserialized: [(i32, String); 2] =
-            from_value_container(vc.clone()).unwrap();
+            from_value_container(&vc).unwrap();
         assert_eq!(val, deserialized);
     }
 }

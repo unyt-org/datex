@@ -1,7 +1,7 @@
 use crate::network::{
-    com_hub::managers::interface_manager::SyncOrAsyncComInterfaceImplementationFactoryFn,
+    com_hub::managers::interfaces_manager::SyncOrAsyncComInterfaceImplementationFactoryFn,
     com_interfaces::com_interface::{
-        implementation::{ComInterfaceAsyncFactory, ComInterfaceSyncFactory},
+        factory::{ComInterfaceAsyncFactory, ComInterfaceSyncFactory},
         properties::InterfaceProperties,
         socket::{ComInterfaceSocketEvent, ComInterfaceSocketUUID},
         socket_manager::ComInterfaceSocketManager,
@@ -14,7 +14,7 @@ use crate::{
     network::{
         com_hub::{
             errors::InterfaceCreateError,
-            managers::interface_manager::{
+            managers::interfaces_manager::{
                 AsyncComInterfaceImplementationFactoryFn,
                 SyncComInterfaceImplementationFactoryFn,
             },
@@ -40,7 +40,7 @@ use async_notify::Notify;
 use core::fmt::{Debug, Display};
 
 pub mod error;
-pub mod implementation;
+pub mod factory;
 pub mod properties;
 pub mod socket;
 pub mod socket_manager;

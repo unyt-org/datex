@@ -28,7 +28,7 @@ use crate::{
         com_interfaces::com_interface::{
             ComInterfaceEvent,
             error::ComInterfaceError,
-            implementation::{
+            factory::{
                 ComInterfaceAsyncFactory, ComInterfaceAsyncFactoryResult,
                 ComInterfaceSyncFactory,
             },

@@ -3,15 +3,15 @@ use crate::{
         com_hub::{
             ComHub, ComHubError, InterfacePriority,
             errors::{InterfaceAddError, InterfaceCreateError},
-            managers::interface_manager::{
+            managers::interfaces_manager::{
                 AsyncComInterfaceImplementationFactoryFn,
-                DynInterfaceImplementationFactoryFn, InterfaceManager,
+                DynInterfaceImplementationFactoryFn, InterfacesManager,
                 SyncComInterfaceImplementationFactoryFn,
             },
         },
         com_interfaces::com_interface::{
             ComInterface, ComInterfaceReceivers, ComInterfaceStateEvent,
-            ComInterfaceUUID, implementation::ComInterfaceSyncFactory,
+            ComInterfaceUUID, factory::ComInterfaceSyncFactory,
             socket::ComInterfaceSocketUUID,
         },
     },
@@ -26,7 +26,7 @@ use crate::{
 };
 use core::{prelude::rust_2024::*, result::Result};
 use datex_core::network::com_interfaces::com_interface::{
-    ComInterfaceWithReceivers, implementation::ComInterfaceAsyncFactory,
+    ComInterfaceWithReceivers, factory::ComInterfaceAsyncFactory,
 };
 
 /// Interface management methods
@@ -125,7 +125,7 @@ impl ComHub {
         async_context: AsyncContext,
     ) -> Result<ComInterfaceUUID, InterfaceCreateError> {
         let (com_interface_uuid, receivers) =
-            InterfaceManager::create_and_add_interface(
+            InterfacesManager::create_and_add_interface(
                 self.interface_manager.clone(),
                 interface_type,
                 setup_data,
@@ -191,7 +191,7 @@ impl ComHub {
 async fn handle_interface_events(
     uuid: ComInterfaceUUID,
     mut receiver_queue: UnboundedReceiver<ComInterfaceStateEvent>,
-    interface_manager: Rc<RefCell<InterfaceManager>>,
+    interface_manager: Rc<RefCell<InterfacesManager>>,
 ) {
     while let Some(event) = receiver_queue.next().await {
         interface_manager

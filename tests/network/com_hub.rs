@@ -28,7 +28,7 @@ use datex_core::{
         },
         com_interfaces::com_interface::{
             ComInterface, ComInterfaceProxy,
-            implementation::ComInterfaceSyncFactory,
+            factory::ComInterfaceSyncFactory,
             properties::{InterfaceDirection, InterfaceProperties},
             state::ComInterfaceState,
         },

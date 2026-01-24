@@ -20,7 +20,7 @@ use crate::{
         com_interfaces::com_interface::{
             ComInterfaceEvent,
             error::ComInterfaceError,
-            implementation::{
+            factory::{
                 ComInterfaceAsyncFactory, ComInterfaceAsyncFactoryResult,
             },
             properties::{InterfaceDirection, InterfaceProperties},
@@ -147,7 +147,7 @@ impl WebSocketClientInterfaceSetupData {
         ),
         InterfaceCreateError,
     > {
-        let address = parse_url(&self.address).map_err(|_| {
+        let address = parse_url(&self.url).map_err(|_| {
             InterfaceCreateError::InvalidSetupData(
                 "Invalid WebSocket URL".to_string(),
             )

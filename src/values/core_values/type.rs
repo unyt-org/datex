@@ -462,7 +462,7 @@ impl From<&CoreValue> for Type {
             }
             CoreValue::Map(map) => {
                 let struct_types = map
-                    .into_iter()
+                    .iter()
                     .map(|(key, value)| {
                         (
                             Type::from(

@@ -19,13 +19,15 @@ use datex_core::{
     },
     run_async,
 };
+use datex_core::network::com_interfaces::default_com_interfaces::websocket::websocket_common::TLSMode;
 use datex_core::runtime::AsyncContext;
+use datex_core::serde::deserializer::from_value_container;
 use datex_macros::async_test;
 
 #[async_test]
 #[timeout(4000)]
 pub async fn test_create_socket_connection() {
-    const PORT: u16 = 8085;
+    const ADDRESS: &str = "0.0.0.0:8085";
 
     let client_to_server_message =
         DXBBlock::new_with_body(b"Hello from client to server");
@@ -33,14 +35,14 @@ pub async fn test_create_socket_connection() {
         DXBBlock::new_with_body(b"Hello from server to client");
 
     let (server_interface, (_, mut server_interface_socket_event_receiver)) = ComInterface::create_async_from_setup_data(WebSocketServerInterfaceSetupData {
-        port: PORT,
-        secure: Some(false),
+        bind_address: ADDRESS.to_string(),
+        accept_addresses: None,
     }, AsyncContext::default())
     .await
     .expect("Failed to create WebSocketServerInterface");
 
     let (client_interface, (_, mut client_interface_socket_event_receiver)) = ComInterface::create_async_from_setup_data(WebSocketClientInterfaceSetupData {
-        address: format!("ws://localhost:{PORT}"),
+        url: format!("ws://{ADDRESS}"),
     }, AsyncContext::default())
     .await
     .expect("Failed to create WebSocketClientInterface");
@@ -88,7 +90,7 @@ pub async fn test_create_socket_connection() {
 pub async fn test_construct_client() {
     // Test with a invalid URL
     let client_res = ComInterface::create_async_from_setup_data(WebSocketClientInterfaceSetupData {
-        address: "ftp://localhost:1234".to_string(),
+        url: "ftp://localhost:1234".to_string(),
     }, AsyncContext::default())
     .await;
     assert_matches!(
@@ -98,7 +100,7 @@ pub async fn test_construct_client() {
 
     // We expect a connection error here, as the server can't be reached
     let client_res = ComInterface::create_async_from_setup_data(WebSocketClientInterfaceSetupData {
-        address: "ws://localhost.invalid:1234".to_string(),
+        url: "ws://localhost.invalid:1234".to_string(),
     }, AsyncContext::default())
     .await;
 
@@ -108,4 +110,32 @@ pub async fn test_construct_client() {
             ComInterfaceError::ConnectionError(_)
         )
     );
+}
+
+
+#[async_test]
+pub async fn test_connectable_interface_config() {
+    const ADDRESS: &str = "0.0.0:8086";
+    let accept_addresses = vec![
+        ("example.com".to_string(), Some(TLSMode::HandledExternally)),
+        ("localhost:8086".to_string(), None),
+    ];
+
+    let server_setup_data = WebSocketServerInterfaceSetupData {
+        bind_address: ADDRESS.to_string(),
+        accept_addresses: Some(accept_addresses.clone()),
+    };
+    let (server_interface, ..) = ComInterface::create_async_from_setup_data(WebSocketServerInterfaceSetupData {
+        bind_address: ADDRESS.to_string(),
+        accept_addresses: None,
+    }, AsyncContext::default()).await.unwrap();
+
+    let properties = server_interface.properties.borrow();
+    let connectable_interfaces = properties.connectable_interfaces.as_ref().unwrap();
+
+    for (config, accept_address) in connectable_interfaces.iter().zip(accept_addresses.iter()) {
+        assert_eq!(config.interface_type, "websocket-client");
+        config.setup_data.clone().cast_to::<WebSocketClientInterfaceSetupData>().unwrap();
+    }
+
 }

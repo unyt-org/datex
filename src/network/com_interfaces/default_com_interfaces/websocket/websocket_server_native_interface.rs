@@ -11,7 +11,7 @@ use crate::{
     },
 };
 use core::{prelude::rust_2024::*, result::Result, time::Duration};
-
+use core::str::FromStr;
 use futures::stream::SplitStream;
 use futures_util::{SinkExt, StreamExt};
 use log::{error, info};
@@ -22,13 +22,13 @@ use async_select::select;
 use futures_util::stream::SplitSink;
 use tokio_tungstenite::accept_async;
 
-use super::websocket_common::{WebSocketServerInterfaceSetupData, parse_url};
+use super::websocket_common::{WebSocketServerInterfaceSetupData, parse_url, WebSocketClientInterfaceSetupData};
 use crate::network::{
     com_hub::errors::InterfaceCreateError,
     com_interfaces::com_interface::{
         ComInterfaceEvent,
         error::ComInterfaceError,
-        implementation::{
+        factory::{
             ComInterfaceAsyncFactory, ComInterfaceAsyncFactoryResult,
             ComInterfaceSyncFactory,
         },
@@ -38,6 +38,7 @@ use crate::network::{
 };
 use datex_core::network::com_interfaces::com_interface::ComInterfaceProxy;
 use tokio_tungstenite::WebSocketStream;
+use crate::runtime::RuntimeConfigInterface;
 
 type WebsocketStreamMap =
     HashMap<ComInterfaceSocketUUID, UnboundedSender<Vec<u8>>>;
@@ -47,25 +48,11 @@ impl WebSocketServerInterfaceSetupData {
         self,
         com_interface_proxy: ComInterfaceProxy,
     ) -> Result<InterfaceProperties, InterfaceCreateError> {
-        let address: String = format!(
-            "{}://0.0.0.0:{}",
-            match &self.secure.unwrap_or(true) {
-                true => "wss",
-                false => "ws",
-            },
-            &self.port
-        );
-        let address = parse_url(&address)
+
+        let addr = SocketAddr::from_str(&self.bind_address)
             .map_err(InterfaceCreateError::invalid_setup_data)?;
 
-        info!("Spinning up server at {address}");
-        let addr = format!(
-            "{}:{}",
-            address.host_str().unwrap(),
-            address.port_or_known_default().unwrap()
-        )
-        .parse::<SocketAddr>()
-        .map_err(InterfaceCreateError::invalid_setup_data)?;
+        info!("Spinning up server at {addr}");
 
         let listener = TcpListener::bind(&addr).await.map_err(|err| {
             ComInterfaceError::connection_error_with_details(err)
@@ -160,7 +147,36 @@ impl WebSocketServerInterfaceSetupData {
         ));
 
         Ok(InterfaceProperties {
-            name: Some(address.to_string()),
+            name: Some(addr.to_string()),
+            connectable_interfaces: self.accept_addresses.map(|addrs| {
+                addrs
+                    .into_iter()
+                    .map(|(address, tls_mode)| {
+                        let url = format!(
+                            "{}://{}",
+                            if tls_mode.is_some() { "wss" } else { "ws" },
+                            address
+                        );
+                        // parse and validate URL
+                        parse_url(&url).map_err(|_| {
+                            InterfaceCreateError::invalid_setup_data(
+                                format!("Invalid URL for WebSocket connection: {url}")
+                            )
+                        })?;
+                        RuntimeConfigInterface::new(
+                            "websocket-client",
+                            WebSocketClientInterfaceSetupData {
+                                url,
+                            },
+                        ).map_err(|e| {
+                            InterfaceCreateError::invalid_setup_data(
+                                format!("Failed to create connectable interface for WebSocket client: {e}")
+                            )
+                        })
+                    })
+                    .collect::<_>()
+            })
+                .transpose()?,
             ..Self::get_default_properties()
         })
     }

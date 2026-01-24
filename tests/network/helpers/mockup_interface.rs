@@ -8,7 +8,7 @@ use datex_core::{
         com_interfaces::com_interface::{
             ComInterfaceEvent,
             error::ComInterfaceError,
-            implementation::{
+            factory::{
                 ComInterfaceSyncFactory,
             },
             properties::{InterfaceDirection, InterfaceProperties},

@@ -1,7 +1,7 @@
 use crate::{
     network::{
         com_hub::{
-            ComHub, InterfacePriority, managers::socket_manager::SocketManager,
+            ComHub, InterfacePriority, managers::sockets_manager::SocketsManager,
         },
         com_interfaces::com_interface::{
             ComInterface, socket::ComInterfaceSocketEvent,
@@ -37,7 +37,7 @@ impl ComHub {
 #[cfg_attr(feature = "embassy_runtime", embassy_executor::task)]
 async fn handle_interface_socket_events(
     mut receiver_queue: UnboundedReceiver<ComInterfaceSocketEvent>,
-    socket_manager: Rc<RefCell<SocketManager>>,
+    socket_manager: Rc<RefCell<SocketsManager>>,
     priority: InterfacePriority,
 ) {
     while let Some(event) = receiver_queue.next().await {

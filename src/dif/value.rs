@@ -217,7 +217,7 @@ impl DIFValue {
                     .collect(),
             ),
             CoreValue::Map(map) => match map {
-                Map::Structural(entries) => DIFValueRepresentation::Object(
+                Map::StructuralWithStringKeys(entries) => DIFValueRepresentation::Object(
                     entries
                         .iter()
                         .map(|(k, v)| {
@@ -236,7 +236,7 @@ impl DIFValue {
                     };
 
                     DIFValueRepresentation::Map(
-                        map.into_iter()
+                        map.iter()
                             .map(|(k, v)| {
                                 (
                                     match k {
