@@ -205,11 +205,12 @@ impl<'a> Deserialize<'a> for ValueContainer {
     where
         D: serde::Deserializer<'a>,
     {
+        // IMPORTANT: this only works if deserializer is actually a DatexDeserializer
         let deserializer: &DatexDeserializer = unsafe {
             &*(&deserializer as *const D as *const DatexDeserializer)
         };
 
-        Ok(deserializer.to_value_container().clone().into_owned())
+        Ok(deserializer.to_value_container().into_owned())
     }
 }
 

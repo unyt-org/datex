@@ -115,9 +115,10 @@ pub async fn test_construct_client() {
 
 #[async_test]
 pub async fn test_connectable_interface_config() {
-    const ADDRESS: &str = "0.0.0:8086";
+    const ADDRESS: &str = "0.0.0.0:8086";
     let accept_addresses = vec![
         ("example.com".to_string(), Some(TLSMode::HandledExternally)),
+        ("example.org:9000".to_string(), Some(TLSMode::WithCertificate {certificate: vec![], private_key: vec![] })),
         ("localhost:8086".to_string(), None),
     ];
 
@@ -125,17 +126,18 @@ pub async fn test_connectable_interface_config() {
         bind_address: ADDRESS.to_string(),
         accept_addresses: Some(accept_addresses.clone()),
     };
-    let (server_interface, ..) = ComInterface::create_async_from_setup_data(WebSocketServerInterfaceSetupData {
-        bind_address: ADDRESS.to_string(),
-        accept_addresses: None,
-    }, AsyncContext::default()).await.unwrap();
+    let (server_interface, ..) = ComInterface::create_async_from_setup_data(server_setup_data, AsyncContext::default()).await.unwrap();
 
     let properties = server_interface.properties.borrow();
     let connectable_interfaces = properties.connectable_interfaces.as_ref().unwrap();
 
     for (config, accept_address) in connectable_interfaces.iter().zip(accept_addresses.iter()) {
         assert_eq!(config.interface_type, "websocket-client");
-        config.setup_data.clone().cast_to::<WebSocketClientInterfaceSetupData>().unwrap();
+        let setup_data = config.setup_data.clone().cast_to::<WebSocketClientInterfaceSetupData>().unwrap();
+        assert_eq!(setup_data.url, format!("{}://{}", 
+            if accept_address.1.is_some() { "wss" } else { "ws" },
+            accept_address.0
+        ));
     }
 
 }
