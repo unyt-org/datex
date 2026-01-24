@@ -297,7 +297,13 @@ impl InterfacesManager {
     ) {
         if let ComInterfaceStateEvent::Destroyed = event {
             // FIXME should probably do more cleanup here, but this was what com hub did before
-            self.cleanup_interface(interface_uuid).unwrap();
+            // try cleanup, can probably be ignored if it fails since the cleanup was already called by destroy_interface
+            let cleanup_res =self.cleanup_interface(interface_uuid);
+            if let Err(e) = cleanup_res {
+                log::error!(
+                    "Error cleaning up interface {interface_uuid} after destruction: {e}"
+                );
+            }
         }
     }
 }
