@@ -393,10 +393,12 @@ impl RuntimeInternal {
 }
 use crate::network::com_hub::is_none_variant;
 #[derive(Debug, Deserialize, Serialize, Clone)]
+#[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
 pub struct RuntimeConfigInterface {
     #[serde(rename = "type")]
     pub interface_type: String,
     #[serde(rename = "config")]
+    #[cfg_attr(feature = "wasm_runtime", tsify(type = "unknown"))]
     pub setup_data: ValueContainer,
 
     #[serde(default, skip_serializing_if = "is_none_variant")]

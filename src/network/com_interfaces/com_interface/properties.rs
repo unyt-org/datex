@@ -7,7 +7,6 @@ use serde::{Deserialize, Serialize};
 use serde_with::{DurationMilliSeconds, serde_as};
 use strum::EnumString;
 use crate::runtime::RuntimeConfigInterface;
-use crate::values::value_container::ValueContainer;
 
 #[derive(PartialEq, Debug, Clone, EnumString, Serialize, Deserialize)]
 #[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
@@ -71,18 +70,6 @@ pub struct InterfaceProperties {
     pub auto_identify: bool,
 
     pub connectable_interfaces: Option<Vec<RuntimeConfigInterface>>,
-
-    // FIXME move to state
-    /* private field */
-    /// Timestamp of the interface close event
-    /// This is used to determine if the interface shall be reopened
-    pub close_timestamp: Option<u64>, /*(crate) FIXME */
-
-    /* private field */
-    /// Number of reconnection attempts already made
-    /// This is used to determine if the interface shall be reopened
-    /// and if the interface shall be destroyed
-    pub reconnect_attempts: Option<u8>,
 }
 
 #[serde_as]
@@ -186,8 +173,6 @@ impl Default for InterfaceProperties {
             allow_redirects: true,
             is_secure_channel: false,
             reconnection_config: ReconnectionConfig::default(),
-            close_timestamp: None,
-            reconnect_attempts: None,
             connectable_interfaces: None,
         }
     }

@@ -105,6 +105,7 @@ impl Debug for ComHub {
 #[derive(
     Debug, Clone, Copy, Ord, PartialOrd, Eq, PartialEq, Serialize, Deserialize,
 )]
+#[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
 pub enum InterfacePriority {
     /// The interface will not be used for fallback routing if no other interface is available
     /// This is useful for interfaces which cannot communicate with the outside world or are not
