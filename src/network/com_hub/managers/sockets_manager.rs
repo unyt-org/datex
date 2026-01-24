@@ -660,7 +660,10 @@ impl SocketsManager {
             ComInterfaceSocketEvent::NewSocket(socket) => {
                 self.handle_new_socket(socket, priority).unwrap(); // TODO: handle result
             }
-            ComInterfaceSocketEvent::CloseSocket(socket_uuid, _unsent_block) => {
+            ComInterfaceSocketEvent::CloseSocket(
+                socket_uuid,
+                _unsent_block,
+            ) => {
                 // TODO: handle unsent block, put back to send queue
                 self.delete_socket(&socket_uuid);
             }

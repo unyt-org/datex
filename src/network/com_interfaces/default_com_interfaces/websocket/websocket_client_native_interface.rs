@@ -27,9 +27,7 @@ use crate::{
             state::{ComInterfaceState, ComInterfaceStateWrapper},
         },
     },
-    task::{
-        UnboundedReceiver, UnboundedSender, spawn_with_panic_notify,
-    },
+    task::{UnboundedReceiver, UnboundedSender, spawn_with_panic_notify},
 };
 use datex_core::network::com_interfaces::com_interface::ComInterfaceProxy;
 use tokio_tungstenite::{MaybeTlsStream, WebSocketStream};

@@ -1,17 +1,11 @@
 use crate::{
     runtime::execution::{ExecutionInput, ExecutionOptions, execute_dxb_sync},
     serde::error::DeserializationError,
-    stdlib::{
-        borrow::Cow,
-        format,
-        string::ToString,
-        vec,
-    },
+    stdlib::{borrow::Cow, format, string::ToString, vec},
     values::{
         core_value::CoreValue,
         core_values::{
-            integer::typed_integer::TypedInteger,
-            map::BorrowedMapKey,
+            integer::typed_integer::TypedInteger, map::BorrowedMapKey,
         },
         value,
         value::Value,
@@ -150,9 +144,7 @@ impl<'de> Deserializer<'de> for DatexDeserializer<'de> {
         V: serde::de::Visitor<'de>,
     {
         match self {
-            DatexDeserializer::Text(s) => {
-                visitor.visit_string(s.to_string())
-            }
+            DatexDeserializer::Text(s) => visitor.visit_string(s.to_string()),
             DatexDeserializer::ValueContainer(value) => match value {
                 // TODO #148 implement missing mapping
                 ValueContainer::Value(value::Value { inner, .. }) => {

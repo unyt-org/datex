@@ -699,7 +699,8 @@ pub fn inner_execution_loop(
                                     match &mut value_container {
                                         ValueContainer::Value(value) => {
                                             // FIXME #647: only using type definition here, refactor and/or add checks
-                                            *value.actual_type = ty.type_definition;
+                                            *value.actual_type =
+                                                ty.type_definition;
                                         }
                                         _ => panic!(
                                             "Expected ValueContainer::Value for type casting"
