@@ -6,7 +6,7 @@ use crate::{
 };
 use itertools::Itertools;
 use log::{debug, error, info, warn};
-
+use serde::{Deserialize, Serialize};
 use crate::{
     collections::{HashMap, HashSet},
     network::com_hub::{
@@ -33,7 +33,8 @@ pub struct EndpointIterateOptions<'a> {
     pub exclude_sockets: &'a [ComInterfaceSocketUUID],
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
 pub struct DynamicEndpointProperties {
     pub known_since: u64,
     pub distance: i8,

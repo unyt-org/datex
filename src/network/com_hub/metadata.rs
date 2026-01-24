@@ -25,23 +25,34 @@ use crate::{
 };
 use core::fmt::Display;
 use itertools::Itertools;
+use serde::{Deserialize, Serialize};
 
+#[derive(Serialize, Deserialize)]
+#[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
 pub struct ComHubMetadataInterfaceSocket {
     pub uuid: String,
     pub direction: InterfaceDirection,
     pub endpoint: Option<Endpoint>,
     pub properties: Option<DynamicEndpointProperties>,
 }
+
+#[derive(Serialize, Deserialize)]
+#[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
 pub struct ComHubMetadataInterfaceSocketWithoutEndpoint {
     pub uuid: String,
     pub direction: InterfaceDirection,
 }
+
+#[derive(Serialize, Deserialize)]
+#[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
 pub struct ComHubMetadataInterface {
     pub uuid: String,
     pub properties: InterfaceProperties,
     pub sockets: Vec<ComHubMetadataInterfaceSocket>,
 }
 
+#[derive(Serialize, Deserialize)]
+#[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
 pub struct ComHubMetadata {
     pub endpoint: Endpoint,
     pub interfaces: Vec<ComHubMetadataInterface>,
@@ -140,7 +151,7 @@ impl ComHub {
                     .get_mut(&com_interface_uuid)
                     .unwrap()
                     .push(ComHubMetadataInterfaceSocket {
-                        uuid: socket_uuid.0.to_string(),
+                        uuid: socket_uuid.to_string(),
                         endpoint: Some(endpoint.clone()),
                         direction: socket.direction.clone(),
                         properties: Some(properties.clone()),
@@ -163,7 +174,7 @@ impl ComHub {
                     .get_mut(&com_interface_uuid)
                     .unwrap()
                     .push(ComHubMetadataInterfaceSocket {
-                        uuid: socket_uuid.0.to_string(),
+                        uuid: socket_uuid.to_string(),
                         direction: socket.direction.clone(),
                         endpoint: None,
                         properties: None,
@@ -176,7 +187,7 @@ impl ComHub {
 
         for (interface, _) in interface_manager.interfaces.values() {
             metadata.interfaces.push(ComHubMetadataInterface {
-                uuid: interface.uuid().0.to_string(),
+                uuid: interface.uuid().to_string(),
                 properties: interface.properties().clone(),
                 sockets: sockets_by_com_interface_uuid
                     .remove(&interface.uuid())
