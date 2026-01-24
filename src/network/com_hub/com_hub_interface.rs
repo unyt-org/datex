@@ -4,9 +4,7 @@ use crate::{
             ComHub, ComHubError, InterfacePriority,
             errors::{InterfaceAddError, InterfaceCreateError},
             managers::interfaces_manager::{
-                AsyncComInterfaceImplementationFactoryFn,
                 DynInterfaceImplementationFactoryFn, InterfacesManager,
-                SyncComInterfaceImplementationFactoryFn,
             },
         },
         com_interfaces::com_interface::{

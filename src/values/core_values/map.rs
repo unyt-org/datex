@@ -206,7 +206,7 @@ impl Map {
         }
     }
 
-    pub(crate) fn iter(&self) -> MapIterator {
+    pub(crate) fn iter(&self) -> MapIterator<'_> {
         MapIterator {
             map: self,
             index: 0,
@@ -469,7 +469,7 @@ impl StructuralEq for Map {
             self.iter().zip(other.iter())
         {
             if !key.structural_eq(&other_key)
-                || !value.structural_eq(&other_value)
+                || !value.structural_eq(other_value)
             {
                 return false;
             }

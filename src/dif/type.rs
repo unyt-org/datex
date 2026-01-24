@@ -371,7 +371,7 @@ impl DIFTypeDefinition {
         memory: &RefCell<Memory>,
     ) -> Self {
         match type_def {
-            TypeDefinition::Collection(collection_def) => {
+            TypeDefinition::Collection(_collection_def) => {
                 core::todo!("#387 handle collection type conversion");
             }
             TypeDefinition::Structural(struct_def) => {

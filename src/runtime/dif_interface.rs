@@ -120,8 +120,8 @@ impl DIFInterface for RuntimeInternal {
 
     fn apply(
         &self,
-        callee: DIFValueContainer,
-        value: DIFValueContainer,
+        _callee: DIFValueContainer,
+        _value: DIFValueContainer,
     ) -> Result<DIFValueContainer, DIFApplyError> {
         core::todo!("#400 Undescribed by author.")
     }
@@ -133,7 +133,7 @@ impl DIFInterface for RuntimeInternal {
         mutability: ReferenceMutability,
     ) -> Result<PointerAddress, DIFCreatePointerError> {
         let container = value.to_value_container(&self.memory)?;
-        let type_container = if let Some(allowed_type) = &allowed_type {
+        let type_container = if let Some(_allowed_type) = &allowed_type {
             core::todo!(
                 "FIXME: Implement type_container creation from DIFTypeDefinition"
             )

@@ -14,10 +14,7 @@ use crate::{
     network::{
         com_hub::{
             errors::InterfaceCreateError,
-            managers::interfaces_manager::{
-                AsyncComInterfaceImplementationFactoryFn,
-                SyncComInterfaceImplementationFactoryFn,
-            },
+            managers::interfaces_manager::SyncComInterfaceImplementationFactoryFn,
         },
         com_interfaces::com_interface::properties::InterfaceDirection,
     },

@@ -504,7 +504,7 @@ impl Add for CoreValue {
 
             // typed integer
             CoreValue::TypedInteger(lhs) => match &rhs {
-                CoreValue::Integer(rhs) => {
+                CoreValue::Integer(_rhs) => {
                     core::todo!(
                         "#317 TypedInteger + Integer not implemented yet"
                     );
@@ -630,7 +630,7 @@ impl Sub for CoreValue {
 
             // typed integer
             CoreValue::TypedInteger(lhs) => match &rhs {
-                CoreValue::Integer(rhs) => {
+                CoreValue::Integer(_rhs) => {
                     core::todo!(
                         "#318 TypedInteger - Integer not implemented yet"
                     );
@@ -768,7 +768,7 @@ impl Display for CoreValue {
             CoreValue::Integer(integer) => core::write!(f, "{integer}"),
             CoreValue::Decimal(decimal) => core::write!(f, "{decimal}"),
             CoreValue::List(list) => core::write!(f, "{list}"),
-            CoreValue::Callable(callable) => core::write!(f, "[[ callable ]]"), // TODO #605
+            CoreValue::Callable(_callable) => core::write!(f, "[[ callable ]]"), // TODO #605
         }
     }
 }

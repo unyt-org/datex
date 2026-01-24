@@ -41,13 +41,13 @@ impl Reference {
     /// - Returns any AccessError encountered
     fn handle_update<'a>(
         &self,
-        source_id: TransceiverId,
+        _source_id: TransceiverId,
         handler: impl FnOnce() -> Result<&'a DIFUpdateData, AccessError>,
     ) -> Result<(), AccessError> {
         if !self.is_mutable() {
             return Err(AccessError::ImmutableReference);
         }
-        let update_data = handler()?;
+        let _update_data = handler()?;
         // self.notify_observers(update_data.with_source(source_id));
         Ok(())
     }

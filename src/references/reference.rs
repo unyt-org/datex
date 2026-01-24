@@ -646,7 +646,7 @@ impl Reference {
                 .borrow()
                 .actual_type()
                 .clone(),
-            Reference::TypeReference(tr) => core::todo!("#294 type Type"),
+            Reference::TypeReference(_tr) => core::todo!("#294 type Type"),
         }
     }
 

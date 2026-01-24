@@ -4,15 +4,14 @@ use crate::{
     stdlib::{
         borrow::Cow,
         format,
-        string::{String, ToString},
+        string::ToString,
         vec,
     },
     values::{
         core_value::CoreValue,
         core_values::{
-            decimal::typed_decimal::TypedDecimal,
             integer::typed_integer::TypedInteger,
-            map::{BorrowedMapKey, Map, MapKey},
+            map::BorrowedMapKey,
         },
         value,
         value::Value,
@@ -24,7 +23,7 @@ use serde::{
     Deserialize, Deserializer,
     de::{
         DeserializeOwned, EnumAccess, IntoDeserializer, VariantAccess, Visitor,
-        value::{StrDeserializer, StringDeserializer},
+        value::StrDeserializer,
     },
     forward_to_deserialize_any,
 };
@@ -152,7 +151,7 @@ impl<'de> Deserializer<'de> for DatexDeserializer<'de> {
     {
         match self {
             DatexDeserializer::Text(s) => {
-                return visitor.visit_string(s.to_string());
+                visitor.visit_string(s.to_string())
             }
             DatexDeserializer::ValueContainer(value) => match value {
                 // TODO #148 implement missing mapping
@@ -224,7 +223,7 @@ impl<'de> Deserializer<'de> for DatexDeserializer<'de> {
     ///     ()
     fn deserialize_unit_struct<V>(
         self,
-        name: &'static str,
+        _name: &'static str,
         visitor: V,
     ) -> Result<V::Value, Self::Error>
     where
@@ -260,7 +259,7 @@ impl<'de> Deserializer<'de> for DatexDeserializer<'de> {
     ///     (42,)
     fn deserialize_newtype_struct<V>(
         self,
-        name: &'static str,
+        _name: &'static str,
         visitor: V,
     ) -> Result<V::Value, Self::Error>
     where
@@ -311,8 +310,8 @@ impl<'de> Deserializer<'de> for DatexDeserializer<'de> {
     ///     [42, "Hello"]
     fn deserialize_tuple_struct<V>(
         self,
-        name: &'static str,
-        len: usize,
+        _name: &'static str,
+        _len: usize,
         visitor: V,
     ) -> Result<V::Value, Self::Error>
     where
@@ -424,10 +423,10 @@ impl<'de> Deserializer<'de> for DatexDeserializer<'de> {
     {
         match self {
             DatexDeserializer::Text(s) => {
-                return visitor.visit_enum(EnumDeserializer {
+                visitor.visit_enum(EnumDeserializer {
                     variant: s,
                     value: None,
-                });
+                })
             }
             DatexDeserializer::ValueContainer(value) => match value {
                 // Default representation: ("Variant", value)
@@ -515,7 +514,7 @@ impl<'de> Deserializer<'de> for DatexDeserializer<'de> {
         V: Visitor<'de>,
     {
         match self {
-            DatexDeserializer::Text(s) => {
+            DatexDeserializer::Text(_s) => {
                 Err(DeserializationError::CanNotDeserialize("f32".to_string()))
             }
             DatexDeserializer::ValueContainer(value) => {
@@ -545,7 +544,7 @@ impl<'de> Deserializer<'de> for DatexDeserializer<'de> {
         V: Visitor<'de>,
     {
         match self {
-            DatexDeserializer::Text(s) => {
+            DatexDeserializer::Text(_s) => {
                 Err(DeserializationError::CanNotDeserialize("f64".to_string()))
             }
             DatexDeserializer::ValueContainer(value) => {
@@ -575,7 +574,7 @@ impl<'de> Deserializer<'de> for DatexDeserializer<'de> {
         V: Visitor<'de>,
     {
         match self {
-            DatexDeserializer::Text(s) => {
+            DatexDeserializer::Text(_s) => {
                 Err(DeserializationError::CanNotDeserialize("i8".to_string()))
             }
             DatexDeserializer::ValueContainer(value) => {
@@ -605,7 +604,7 @@ impl<'de> Deserializer<'de> for DatexDeserializer<'de> {
         V: Visitor<'de>,
     {
         match self {
-            DatexDeserializer::Text(s) => {
+            DatexDeserializer::Text(_s) => {
                 Err(DeserializationError::CanNotDeserialize("i16".to_string()))
             }
             DatexDeserializer::ValueContainer(value) => {
@@ -635,7 +634,7 @@ impl<'de> Deserializer<'de> for DatexDeserializer<'de> {
         V: Visitor<'de>,
     {
         match self {
-            DatexDeserializer::Text(s) => {
+            DatexDeserializer::Text(_s) => {
                 Err(DeserializationError::CanNotDeserialize("i32".to_string()))
             }
             DatexDeserializer::ValueContainer(value) => {
@@ -665,7 +664,7 @@ impl<'de> Deserializer<'de> for DatexDeserializer<'de> {
         V: Visitor<'de>,
     {
         match self {
-            DatexDeserializer::Text(s) => {
+            DatexDeserializer::Text(_s) => {
                 Err(DeserializationError::CanNotDeserialize("i64".to_string()))
             }
             DatexDeserializer::ValueContainer(value) => {
@@ -677,10 +676,10 @@ impl<'de> Deserializer<'de> for DatexDeserializer<'de> {
                         visitor.visit_i64(i.as_integer().as_wrapped_i64())
                     }
                     CoreValue::Decimal(d) => {
-                        visitor.visit_i64(d.as_integer().unwrap() as i64)
+                        visitor.visit_i64(d.as_integer().unwrap())
                     }
                     CoreValue::TypedDecimal(d) => {
-                        visitor.visit_i64(d.as_integer().unwrap() as i64)
+                        visitor.visit_i64(d.as_integer().unwrap())
                     }
                     _ => Err(DeserializationError::CanNotDeserialize(
                         "i64".to_string(),
@@ -695,7 +694,7 @@ impl<'de> Deserializer<'de> for DatexDeserializer<'de> {
         V: Visitor<'de>,
     {
         match self {
-            DatexDeserializer::Text(s) => {
+            DatexDeserializer::Text(_s) => {
                 Err(DeserializationError::CanNotDeserialize("i128".to_string()))
             }
             DatexDeserializer::ValueContainer(value) => {
@@ -725,7 +724,7 @@ impl<'de> Deserializer<'de> for DatexDeserializer<'de> {
         V: Visitor<'de>,
     {
         match self {
-            DatexDeserializer::Text(s) => {
+            DatexDeserializer::Text(_s) => {
                 Err(DeserializationError::CanNotDeserialize("u8".to_string()))
             }
             DatexDeserializer::ValueContainer(value) => {
@@ -755,7 +754,7 @@ impl<'de> Deserializer<'de> for DatexDeserializer<'de> {
         V: Visitor<'de>,
     {
         match self {
-            DatexDeserializer::Text(s) => {
+            DatexDeserializer::Text(_s) => {
                 Err(DeserializationError::CanNotDeserialize("u16".to_string()))
             }
             DatexDeserializer::ValueContainer(value) => {
@@ -785,7 +784,7 @@ impl<'de> Deserializer<'de> for DatexDeserializer<'de> {
         V: Visitor<'de>,
     {
         match self {
-            DatexDeserializer::Text(s) => {
+            DatexDeserializer::Text(_s) => {
                 Err(DeserializationError::CanNotDeserialize("u32".to_string()))
             }
             DatexDeserializer::ValueContainer(value) => {
@@ -815,7 +814,7 @@ impl<'de> Deserializer<'de> for DatexDeserializer<'de> {
         V: Visitor<'de>,
     {
         match self {
-            DatexDeserializer::Text(s) => {
+            DatexDeserializer::Text(_s) => {
                 Err(DeserializationError::CanNotDeserialize("u64".to_string()))
             }
             DatexDeserializer::ValueContainer(value) => {
@@ -845,7 +844,7 @@ impl<'de> Deserializer<'de> for DatexDeserializer<'de> {
         V: Visitor<'de>,
     {
         match self {
-            DatexDeserializer::Text(s) => {
+            DatexDeserializer::Text(_s) => {
                 Err(DeserializationError::CanNotDeserialize("u128".to_string()))
             }
             DatexDeserializer::ValueContainer(value) => {

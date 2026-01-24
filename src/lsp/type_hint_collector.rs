@@ -21,7 +21,7 @@ impl ExpressionVisitor<()> for TypeHintCollector {
     fn visit_variable_declaration(
         &mut self,
         var_decl: &mut VariableDeclaration,
-        span: &Range<usize>,
+        _span: &Range<usize>,
     ) -> Result<VisitAction<DatexExpression>, ()> {
         if var_decl.type_annotation.is_none() {
             let expr_start = var_decl.init_expression.span.start;

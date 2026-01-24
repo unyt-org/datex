@@ -79,7 +79,7 @@ impl CompilerWorkspace {
     /// Returns a compiler error if parsing or compilation fails.
     fn get_rich_ast_for_file(
         &self,
-        url: &Url,
+        _url: &Url,
         content: String,
     ) -> Result<RichAst, DetailedCompilerErrorsWithMaybeRichAst> {
         let mut options = CompileOptions::default();

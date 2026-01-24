@@ -134,7 +134,7 @@ impl TypeReference {
         self.type_value.base_type_reference()
     }
 
-    pub fn matches_reference(&self, other: Rc<RefCell<TypeReference>>) -> bool {
+    pub fn matches_reference(&self, _other: Rc<RefCell<TypeReference>>) -> bool {
         core::todo!("#300 implement type matching");
     }
 
@@ -150,7 +150,7 @@ impl TypeReference {
 impl Apply for TypeReference {
     fn apply(
         &self,
-        args: &[ValueContainer],
+        _args: &[ValueContainer],
     ) -> Result<Option<ValueContainer>, ExecutionError> {
         core::todo!("#302 Undescribed by author.")
     }

@@ -732,7 +732,7 @@ fn compile_expression(
                     );
                 }
 
-                for (i, statement) in statements.into_iter().enumerate() {
+                for (_i, statement) in statements.into_iter().enumerate() {
                     child_scope = compile_expression(
                         compilation_context,
                         RichAst::new(statement, &metadata),
@@ -918,7 +918,7 @@ fn compile_expression(
             )?;
         }
 
-        DatexExpressionData::GenericInstantiation(generic_instantiation) => {
+        DatexExpressionData::GenericInstantiation(_generic_instantiation) => {
             // NOTE: might already be handled in type compilation
             todo!("#674 Undescribed by author.")
         }
@@ -976,7 +976,7 @@ fn compile_expression(
             id,
             name,
             kind,
-            type_annotation,
+            type_annotation: _,
             init_expression: value,
         }) => {
             compilation_context.mark_has_non_static_value();

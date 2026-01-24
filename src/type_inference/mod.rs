@@ -399,7 +399,7 @@ impl TypeExpressionVisitor<SpannedTypeError> for TypeInference {
     }
     fn visit_fixed_size_list_type(
         &mut self,
-        fixed_size_list: &mut FixedSizeList,
+        _fixed_size_list: &mut FixedSizeList,
         span: &Range<usize>,
     ) -> TypeExpressionVisitResult<SpannedTypeError> {
         Err(SpannedTypeError {
@@ -452,7 +452,7 @@ impl TypeExpressionVisitor<SpannedTypeError> for TypeInference {
     }
     fn visit_generic_access_type(
         &mut self,
-        generic_access: &mut GenericAccess,
+        _generic_access: &mut GenericAccess,
         span: &Range<usize>,
     ) -> TypeExpressionVisitResult<SpannedTypeError> {
         Err(SpannedTypeError {
@@ -464,8 +464,8 @@ impl TypeExpressionVisitor<SpannedTypeError> for TypeInference {
     }
     fn visit_literal_type(
         &mut self,
-        literal: &mut String,
-        span: &Range<usize>,
+        _literal: &mut String,
+        _span: &Range<usize>,
     ) -> TypeExpressionVisitResult<SpannedTypeError> {
         unreachable!(
             "Literal type expressions should have been resolved during precompilation"
@@ -474,7 +474,7 @@ impl TypeExpressionVisitor<SpannedTypeError> for TypeInference {
     fn visit_ref_mut_type(
         &mut self,
         type_ref_mut: &mut TypeExpression,
-        span: &Range<usize>,
+        _span: &Range<usize>,
     ) -> TypeExpressionVisitResult<SpannedTypeError> {
         let inner_type = self.infer_type_expression(type_ref_mut)?;
         mark_type(inner_type)
@@ -482,14 +482,14 @@ impl TypeExpressionVisitor<SpannedTypeError> for TypeInference {
     fn visit_ref_type(
         &mut self,
         type_ref: &mut TypeExpression,
-        span: &Range<usize>,
+        _span: &Range<usize>,
     ) -> TypeExpressionVisitResult<SpannedTypeError> {
         let inner_type = self.infer_type_expression(type_ref)?;
         mark_type(inner_type)
     }
     fn visit_slice_list_type(
         &mut self,
-        slice_list: &mut SliceList,
+        _slice_list: &mut SliceList,
         span: &Range<usize>,
     ) -> TypeExpressionVisitResult<SpannedTypeError> {
         Err(SpannedTypeError {
@@ -501,7 +501,7 @@ impl TypeExpressionVisitor<SpannedTypeError> for TypeInference {
     }
     fn visit_variant_access_type(
         &mut self,
-        variant_access: &mut TypeVariantAccess,
+        _variant_access: &mut TypeVariantAccess,
         span: &Range<usize>,
     ) -> TypeExpressionVisitResult<SpannedTypeError> {
         Err(SpannedTypeError {
@@ -600,7 +600,7 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
     fn visit_property_assignment(
         &mut self,
         property_assignment: &mut PropertyAssignment,
-        span: &Range<usize>,
+        _span: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
         let assigned_type = self
             .infer_expression(&mut property_assignment.assigned_expression)?;
@@ -625,7 +625,7 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
             );
         };
 
-        let var = self.variable_type(id).expect("Variable must be present");
+        let _var = self.variable_type(id).expect("Variable must be present");
         // println!(
         //     "Inferring type for Variable Assignment of variable {:?} with annotated type {:?}",
         //     variable_assignment.name, var
@@ -862,7 +862,7 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
 
     fn visit_apply(
         &mut self,
-        apply_chain: &mut Apply,
+        _apply_chain: &mut Apply,
         span: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
         Err(SpannedTypeError {
@@ -877,7 +877,7 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
     // apply chain access on type container level for structural types
     fn visit_property_access(
         &mut self,
-        property_access: &mut PropertyAccess,
+        _property_access: &mut PropertyAccess,
         span: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
         Err(SpannedTypeError {
@@ -890,7 +890,7 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
 
     fn visit_generic_instantiation(
         &mut self,
-        generic_instantiation: &mut GenericInstantiation,
+        _generic_instantiation: &mut GenericInstantiation,
         span: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
         Err(SpannedTypeError {
@@ -903,14 +903,14 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
 
     fn visit_comparison_operation(
         &mut self,
-        comparison_operation: &mut ComparisonOperation,
-        span: &Range<usize>,
+        _comparison_operation: &mut ComparisonOperation,
+        _span: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
         mark_type(Type::boolean())
     }
     fn visit_conditional(
         &mut self,
-        conditional: &mut Conditional,
+        _conditional: &mut Conditional,
         span: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
         Err(SpannedTypeError {
@@ -923,7 +923,7 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
     fn visit_create_mut(
         &mut self,
         datex_expression: &mut DatexExpression,
-        span: &Range<usize>,
+        _span: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
         let inner_type = self.infer_expression(datex_expression)?;
         mark_type(match &inner_type.inner_reference() {
@@ -1109,7 +1109,7 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
 
     fn visit_slot(
         &mut self,
-        slot: &Slot,
+        _slot: &Slot,
         span: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
         Err(SpannedTypeError {
@@ -1121,14 +1121,14 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
     }
     fn visit_identifier(
         &mut self,
-        identifier: &mut String,
-        span: &Range<usize>,
+        _identifier: &mut String,
+        _span: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
         Ok(VisitAction::SkipChildren)
     }
     fn visit_placeholder(
         &mut self,
-        span: &Range<usize>,
+        _span: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
         Ok(VisitAction::SkipChildren)
     }
@@ -1193,7 +1193,7 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
     }
     fn visit_slot_assignment(
         &mut self,
-        slot_assignment: &mut SlotAssignment,
+        _slot_assignment: &mut SlotAssignment,
         span: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
         Err(SpannedTypeError {
@@ -1205,7 +1205,7 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
     }
     fn visit_pointer_address(
         &mut self,
-        pointer_address: &PointerAddress,
+        _pointer_address: &PointerAddress,
         span: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
         Err(SpannedTypeError {
@@ -1217,7 +1217,7 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
     }
     fn visit_remote_execution(
         &mut self,
-        remote_execution: &mut RemoteExecution,
+        _remote_execution: &mut RemoteExecution,
         span: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
         Err(SpannedTypeError {

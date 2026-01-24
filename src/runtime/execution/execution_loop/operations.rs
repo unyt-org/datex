@@ -56,7 +56,7 @@ pub fn handle_unary_reference_operation(
 }
 pub fn handle_unary_logical_operation(
     operator: LogicalUnaryOperator,
-    value_container: ValueContainer,
+    _value_container: ValueContainer,
 ) -> Result<ValueContainer, ExecutionError> {
     unimplemented!(
         "Logical unary operations are not implemented yet: {operator:?}"
@@ -179,8 +179,8 @@ pub fn handle_arithmetic_operation(
 
 pub fn handle_bitwise_operation(
     operator: BitwiseOperator,
-    lhs: &ValueContainer,
-    rhs: &ValueContainer,
+    _lhs: &ValueContainer,
+    _rhs: &ValueContainer,
 ) -> Result<ValueContainer, ExecutionError> {
     // apply operation to active value
     {
@@ -190,8 +190,8 @@ pub fn handle_bitwise_operation(
 
 pub fn handle_logical_operation(
     operator: LogicalOperator,
-    lhs: &ValueContainer,
-    rhs: &ValueContainer,
+    _lhs: &ValueContainer,
+    _rhs: &ValueContainer,
 ) -> Result<ValueContainer, ExecutionError> {
     // apply operation to active value
     {

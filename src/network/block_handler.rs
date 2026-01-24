@@ -393,7 +393,7 @@ impl BlockHandler {
         context_id: OutgoingContextId,
         section_index: OutgoingSectionIndex,
     ) -> Option<IncomingSection> {
-        let rx =
+        let _rx =
             self.register_incoming_block_observer(context_id, section_index);
         // Await the result from the callback
         // FIXME #174

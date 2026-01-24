@@ -651,11 +651,11 @@ pub fn inner_execution_loop(
                                 }
 
                                 RegularInstruction::Matches => {
-                                    let target = yield_unwrap!(
+                                    let _target = yield_unwrap!(
                                         collected_results
                                             .pop_runtime_value_result_assert_existing()
                                     );
-                                    let type_pattern =
+                                    let _type_pattern =
                                         collected_results.pop_type_result();
 
                                     todo!("#645 Undescribed by author.")
@@ -699,8 +699,7 @@ pub fn inner_execution_loop(
                                     match &mut value_container {
                                         ValueContainer::Value(value) => {
                                             // FIXME #647: only using type definition here, refactor and/or add checks
-                                            value.actual_type =
-                                                Box::new(ty.type_definition);
+                                            *value.actual_type = ty.type_definition;
                                         }
                                         _ => panic!(
                                             "Expected ValueContainer::Value for type casting"
@@ -1148,7 +1147,7 @@ pub fn inner_execution_loop(
                             _ => unreachable!(),
                         },
 
-                        Instruction::TypeInstruction(data) => unreachable!(),
+                        Instruction::TypeInstruction(_data) => unreachable!(),
                     },
                 };
 

@@ -223,7 +223,7 @@ impl ExecutionContext {
     /// Returns a memory dump of the current state of the execution context if available.
     pub fn memory_dump(&self) -> Option<MemoryDump> {
         match self {
-            ExecutionContext::Local(local_context) => {
+            ExecutionContext::Local(_local_context) => {
                 todo!("#650 Undescribed by author.")
                 // Some(local_context.memory_dump())
             }

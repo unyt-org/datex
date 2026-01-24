@@ -2,8 +2,7 @@ use crate::{
     global::dxb_block::{DXBBlock, HeaderParsingError},
     stdlib::vec::Vec,
     task::{
-        UnboundedReceiver, UnboundedSender, create_unbounded_channel,
-        spawn_local, spawn_with_panic_notify_default,
+        UnboundedReceiver, UnboundedSender, create_unbounded_channel, spawn_with_panic_notify_default,
     },
 };
 use core::prelude::rust_2024::*;

@@ -180,7 +180,7 @@ impl<'a> Formatter<'a> {
                 self.wrap_collection(docs, ("[", "]"), ",")
             }
 
-            TypeExpressionData::FixedSizeList(list) => {
+            TypeExpressionData::FixedSizeList(_list) => {
                 core::todo!("#627 Undescribed by author.")
             }
             TypeExpressionData::SliceList(_) => {
@@ -197,17 +197,17 @@ impl<'a> Formatter<'a> {
                 self.wrap_type_collection(&items.0, "|")
             }
 
-            TypeExpressionData::GenericAccess(access) => {
+            TypeExpressionData::GenericAccess(_access) => {
                 core::todo!("#629 Undescribed by author.")
             }
 
             // Callable type, e.g. `function (x: integer, y: text) -> boolean`
             TypeExpressionData::Callable(CallableTypeExpression {
-                kind,
+                kind: _,
                 parameter_types,
-                rest_parameter_type,
-                return_type,
-                yeet_type,
+                rest_parameter_type: _,
+                return_type: _,
+                yeet_type: _,
             }) => {
                 // TODO #630: handle full signature
                 let params = parameter_types.iter().map(|(name, ty)| {
@@ -215,9 +215,9 @@ impl<'a> Formatter<'a> {
                         + self.type_declaration_colon()
                         + self.format_type_expression(ty)
                 });
-                let params_doc =
+                let _params_doc =
                     RcDoc::intersperse(params, a.text(",") + a.space());
-                let arrow = self.operator_with_spaces(a.text("->"));
+                let _arrow = self.operator_with_spaces(a.text("->"));
                 todo!("#631 Undescribed by author.")
             }
 

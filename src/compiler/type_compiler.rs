@@ -50,7 +50,7 @@ impl CompilationContext {
 pub fn compile_type_expression(
     ctx: &mut CompilationContext,
     expr: &TypeExpression,
-    ast_metadata: Rc<RefCell<AstMetadata>>,
+    _ast_metadata: Rc<RefCell<AstMetadata>>,
     scope: CompilationScope,
 ) -> Result<CompilationScope, CompilerError> {
     match &expr.data {

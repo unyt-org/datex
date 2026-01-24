@@ -24,7 +24,7 @@ use core::{
 };
 use num::{BigInt, Num};
 use num_integer::Integer as NumInteger;
-use num_traits::{PrimInt, ToPrimitive};
+use num_traits::ToPrimitive;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Hash, Eq)]

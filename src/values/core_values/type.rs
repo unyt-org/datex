@@ -382,7 +382,7 @@ impl Type {
             TypeDefinition::Structural(structural_type) => {
                 structural_type.value_matches(value)
             }
-            TypeDefinition::Reference(reference) => {
+            TypeDefinition::Reference(_reference) => {
                 core::todo!("#327 handle reference type matching");
                 //reference.value_matches(value)
             }
@@ -390,10 +390,10 @@ impl Type {
                 // TODO #464: also check mutability of current type?
                 inner_type.value_matches(value)
             }
-            TypeDefinition::Callable(signature) => {
+            TypeDefinition::Callable(_signature) => {
                 core::todo!("#328 handle function type matching");
             }
-            TypeDefinition::Collection(collection_type) => {
+            TypeDefinition::Collection(_collection_type) => {
                 core::todo!("#329 handle collection type matching");
             }
             TypeDefinition::Unit => false, // unit type does not match any value

@@ -1,13 +1,12 @@
 pub(crate) use crate::network::com_hub::managers::interfaces_manager::ComInterfaceAsyncFactoryResult;
 use crate::{
     network::{
-        com_hub::{ComHub, errors::InterfaceCreateError},
+        com_hub::errors::InterfaceCreateError,
         com_interfaces::com_interface::{
             ComInterfaceProxy, properties::InterfaceProperties,
         },
     },
-    serde::{Deserialize, deserializer::from_value_container},
-    stdlib::rc::Rc,
+    serde::deserializer::from_value_container,
     values::value_container::ValueContainer,
 };
 use serde::de::DeserializeOwned;

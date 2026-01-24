@@ -243,10 +243,10 @@ impl AstToSourceCodeConverter {
                     .collect();
                 self.wrap_list_elements(elements)
             }
-            TypeExpressionData::FixedSizeList(fixed_size_list) => {
+            TypeExpressionData::FixedSizeList(_fixed_size_list) => {
                 core::todo!("#472 Undescribed by author.")
             }
-            TypeExpressionData::SliceList(type_expression) => {
+            TypeExpressionData::SliceList(_type_expression) => {
                 core::todo!("#473 Undescribed by author.")
             }
             TypeExpressionData::Intersection(type_expressions) => {
@@ -265,7 +265,7 @@ impl AstToSourceCodeConverter {
                     .collect();
                 self.wrap_union_elements(elements)
             }
-            TypeExpressionData::GenericAccess(generic_access) => {
+            TypeExpressionData::GenericAccess(_generic_access) => {
                 core::todo!("#474 Undescribed by author.")
             }
             TypeExpressionData::Callable(CallableTypeExpression {
@@ -571,9 +571,9 @@ impl AstToSourceCodeConverter {
                 format!("{}", pointer_address) // FIXME #475
             }
             DatexExpressionData::Conditional(Conditional {
-                condition,
-                then_branch,
-                else_branch,
+                condition: _,
+                then_branch: _,
+                else_branch: _,
             }) => core::todo!("#476 Undescribed by author."),
             DatexExpressionData::VariableDeclaration(VariableDeclaration {
                 id: _,

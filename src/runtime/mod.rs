@@ -205,7 +205,7 @@ impl RuntimeInternal {
         self_rc: Rc<RuntimeInternal>,
         dxb: Vec<u8>,
         execution_context: Option<&'a mut ExecutionContext>,
-        end_execution: bool,
+        _end_execution: bool,
     ) -> Pin<
         Box<
             dyn Future<Output = Result<Option<ValueContainer>, ExecutionError>>
@@ -230,7 +230,7 @@ impl RuntimeInternal {
         self_rc: Rc<RuntimeInternal>,
         dxb: &[u8],
         execution_context: Option<&mut ExecutionContext>,
-        end_execution: bool,
+        _end_execution: bool,
     ) -> Result<Option<ValueContainer>, ExecutionError> {
         let execution_context =
             get_execution_context!(self_rc, execution_context);
@@ -578,7 +578,7 @@ impl Runtime {
                     .create_interface(
                         interface_type,
                         config.clone(),
-                        priority.clone(),
+                        *priority,
                         self.internal.async_context.clone(),
                     )
                     .await

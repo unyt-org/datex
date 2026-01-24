@@ -549,7 +549,7 @@ impl WebRTCInterfaceSetupData {
                 .unwrap()
                 .as_ref()
                 .unwrap()
-                .on_track(Box::new(move |track, a, c| {
+                .on_track(Box::new(move |track, _a, _c| {
                     let mut res = media_track_tx_clone.clone();
                     let _ = res.start_send(track);
                     Box::pin(async {})

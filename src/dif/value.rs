@@ -142,10 +142,10 @@ impl DIFValue {
         let mut is_empty_map = false;
 
         let dif_core_value = match core_value {
-            CoreValue::Type(ty) => {
+            CoreValue::Type(_ty) => {
                 core::todo!("#382 Type value not supported in DIF")
             }
-            CoreValue::Callable(callable) => {
+            CoreValue::Callable(_callable) => {
                 core::todo!("#616 Callable value not yet supported in DIF")
             }
             CoreValue::Null => DIFValueRepresentation::Null,

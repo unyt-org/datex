@@ -10,7 +10,7 @@ use crate::{
 };
 use core::{
     fmt::Display, hash::Hash, num::ParseFloatError, ops::Neg,
-    prelude::rust_2024::*, result::Result, unreachable,
+    prelude::rust_2024::*, result::Result,
 };
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use num_traits::Zero;

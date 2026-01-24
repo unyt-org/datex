@@ -150,8 +150,8 @@ impl StructuralTypeDefinition {
             // Check that all fields in the map are present and match their types
             (
                 StructuralTypeDefinition::Map(field_types),
-                CoreValue::Map(map),
-            ) => field_types.iter().all(|(field_name, field_type)| {
+                CoreValue::Map(_map),
+            ) => field_types.iter().all(|(_field_name, _field_type)| {
                 core::todo!("#375 handle key matching")
                 // map.get(&field_name_value).is_some_and(|field_value| {
                 //     field_type.value_matches(field_value)

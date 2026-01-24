@@ -4,13 +4,12 @@ use crate::{
     network::{
         com_hub::errors::InterfaceCreateError,
         com_interfaces::com_interface::{
-            ComInterface, ComInterfaceEvent, ComInterfaceProxy,
+            ComInterfaceEvent, ComInterfaceProxy,
             error::ComInterfaceError,
             factory::{
                 ComInterfaceAsyncFactory, ComInterfaceAsyncFactoryResult,
             },
             properties::{InterfaceDirection, InterfaceProperties},
-            socket::ComInterfaceSocketUUID,
             state::{ComInterfaceState, ComInterfaceStateWrapper},
         },
     },

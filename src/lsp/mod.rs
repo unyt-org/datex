@@ -277,7 +277,7 @@ impl LanguageServer for LanguageServerBackend {
             match expression.data {
                 DatexExpressionData::VariableAccess(VariableAccess {
                     id,
-                    name,
+                    name: _,
                 }) => {
                     let uri =
                         params.text_document_position_params.text_document.uri;
@@ -311,7 +311,7 @@ impl LanguageServer for LanguageServerBackend {
 
     async fn document_link(
         &self,
-        params: DocumentLinkParams,
+        _params: DocumentLinkParams,
     ) -> realhydroper_lsp::jsonrpc::Result<Option<Vec<DocumentLink>>> {
         // TODO #679
         Ok(Some(vec![]))

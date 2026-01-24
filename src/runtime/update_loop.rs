@@ -31,7 +31,7 @@ async fn handle_incoming_section_task(
         runtime_rc.endpoint, endpoint
     );
     // send response back to the sender
-    let res = RuntimeInternal::send_response_block(
+    let _res = RuntimeInternal::send_response_block(
         runtime_rc.clone(),
         result,
         endpoint,

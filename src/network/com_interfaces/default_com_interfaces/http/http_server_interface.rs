@@ -5,7 +5,7 @@ use core::cell::RefCell;
 use crate::{
     collections::HashMap,
     stdlib::{net::SocketAddr, rc::Rc, sync::Arc},
-    task::{UnboundedReceiver, spawn, spawn_with_panic_notify_default},
+    task::{UnboundedReceiver, spawn},
 };
 use axum::response::Response;
 use core::time::Duration;

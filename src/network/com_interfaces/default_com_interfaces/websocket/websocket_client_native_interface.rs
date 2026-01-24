@@ -29,7 +29,6 @@ use crate::{
     },
     task::{
         UnboundedReceiver, UnboundedSender, spawn_with_panic_notify,
-        spawn_with_panic_notify_default,
     },
 };
 use datex_core::network::com_interfaces::com_interface::ComInterfaceProxy;

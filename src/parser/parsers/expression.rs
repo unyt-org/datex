@@ -349,7 +349,7 @@ impl Parser {
                         Ok(neg_value) => {
                             DatexExpressionData::TypedInteger(neg_value)
                         }
-                        Err(e) => {
+                        Err(_e) => {
                             return Err(SpannedParserError {
                                 error: ParserError::NumberParseError(
                                     NumberParseError::OutOfRange,

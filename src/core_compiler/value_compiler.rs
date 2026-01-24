@@ -63,10 +63,10 @@ pub fn append_value(buffer: &mut Vec<u8>, value: &Value) {
         append_type_cast(buffer, &value.actual_type);
     }
     match &value.inner {
-        CoreValue::Type(ty) => {
+        CoreValue::Type(_ty) => {
             core::todo!("#439 Type value not supported in CompilationContext");
         }
-        CoreValue::Callable(callable) => {
+        CoreValue::Callable(_callable) => {
             core::todo!(
                 "#632 Callable value not supported in CompilationContext"
             );

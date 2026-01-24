@@ -37,7 +37,7 @@ impl<'a> Formatter<'a> {
             DatexExpressionData::Text(t) => self.text_to_source_code(t),
             DatexExpressionData::Endpoint(e) => a.text(e.to_string()),
             DatexExpressionData::Null => a.text("null"),
-            DatexExpressionData::Identifier(l) => unreachable!(
+            DatexExpressionData::Identifier(_l) => unreachable!(
                 "Identifiers should have been resolved before formatting"
             ),
             DatexExpressionData::Map(map) => self.map_to_source_code(map),

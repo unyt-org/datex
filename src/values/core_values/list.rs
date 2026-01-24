@@ -68,7 +68,7 @@ impl List {
         &mut self.0
     }
 
-    pub fn iter(&self) -> core::slice::Iter<ValueContainer> {
+    pub fn iter(&self) -> core::slice::Iter<'_, ValueContainer> {
         self.0.iter()
     }
 
