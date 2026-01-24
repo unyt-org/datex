@@ -362,7 +362,7 @@ impl ValueContainer {
 
     /// Casts the contained Value or Reference to the desired type T using serde deserialization.
     pub fn cast_to<T: DeserializeOwned>(&self) -> Result<T, DeserializationError> {
-        from_value_container::<T>(&self)
+        from_value_container::<T>(self)
     }
 
     /// Returns the contained Reference if it is a Reference, otherwise returns None.
