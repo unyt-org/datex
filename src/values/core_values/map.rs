@@ -211,6 +211,7 @@ impl Map {
     }
 }
 
+#[derive(Clone)]
 pub enum BorrowedMapKey<'a> {
     Text(&'a str),
     Value(&'a ValueContainer),

@@ -209,7 +209,7 @@ impl<'a> Deserialize<'a> for ValueContainer {
             &*(&deserializer as *const D as *const DatexDeserializer)
         };
 
-        Ok(deserializer.value.clone())
+        Ok(deserializer.to_value_container().clone().into_owned())
     }
 }
 

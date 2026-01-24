@@ -39,7 +39,7 @@ where
         .map_err(DeserializationError::ExecutionError)?
         .expect("DXB execution returned no value");
 
-    let deserializer = DatexDeserializer::new(&value);
+    let deserializer = DatexDeserializer::new_from_value_container(&value);
     T::deserialize(deserializer)
 }
 
@@ -86,7 +86,7 @@ where
     let value = crate::compiler::extract_static_value_from_script(script)
         .map_err(DeserializationError::CompilerError)?
         .ok_or(DeserializationError::NoStaticValueFound)?;
-    let deserializer = DatexDeserializer::new(&value);
+    let deserializer = DatexDeserializer::new_from_value_container(&value);
     T::deserialize(deserializer)
 }
 
@@ -97,18 +97,37 @@ pub fn from_value_container<T>(
 where
     T: serde::de::DeserializeOwned,
 {
-    let deserializer = DatexDeserializer::new(value);
+    let deserializer = DatexDeserializer::new_from_value_container(value);
     T::deserialize(deserializer)
 }
 
 #[derive(Clone)]
-pub struct DatexDeserializer<'de> {
-    pub value: &'de ValueContainer,
+pub enum DatexDeserializer<'de> {
+    ValueContainer(&'de ValueContainer),
+    Text(&'de str),
 }
 
 impl<'de> DatexDeserializer<'de> {
-    fn new(value: &'de ValueContainer) -> Self {
-        Self { value }
+    fn new_from_value_container(value: &'de ValueContainer) -> Self {
+        Self::ValueContainer(value)
+    }
+    fn new_from_str(text: &'de str) -> Self {
+        Self::Text(text)
+    }
+    fn new_from_borrowed_map_key(
+        key: BorrowedMapKey<'de>,
+    ) -> Self {
+        match key {
+            BorrowedMapKey::Text(s) => Self::Text(s),
+            BorrowedMapKey::Value(v) => Self::ValueContainer(v),
+        }
+    }
+
+    pub(crate) fn to_value_container(&self) -> Cow<'de, ValueContainer> {
+        match self {
+            DatexDeserializer::ValueContainer(v) => Cow::Borrowed(v),
+            DatexDeserializer::Text(s) => Cow::Owned(ValueContainer::from(*s))
+        }
     }
 }
 
@@ -133,51 +152,55 @@ impl<'de> Deserializer<'de> for DatexDeserializer<'de> {
     where
         V: serde::de::Visitor<'de>,
     {
-        match self.value {
-            // TODO #148 implement missing mapping
-            ValueContainer::Value(value::Value { inner, .. }) => match inner {
-                CoreValue::Null => visitor.visit_none(),
-                CoreValue::Boolean(b) => visitor.visit_bool(b.0),
-                CoreValue::TypedInteger(i) => match i {
-                    TypedInteger::I128(i) => visitor.visit_i128(*i),
-                    TypedInteger::U128(u) => visitor.visit_u128(*u),
-                    TypedInteger::I64(i) => visitor.visit_i64(*i),
-                    TypedInteger::U64(u) => visitor.visit_u64(*u),
-                    TypedInteger::I32(i) => visitor.visit_i32(*i),
-                    TypedInteger::U32(u) => visitor.visit_u32(*u),
-                    TypedInteger::I16(i) => visitor.visit_i16(*i),
-                    TypedInteger::U16(u) => visitor.visit_u16(*u),
-                    TypedInteger::I8(i) => visitor.visit_i8(*i),
-                    TypedInteger::U8(u) => visitor.visit_u8(*u),
-                    TypedInteger::IBig(i) => {
-                        visitor.visit_i128(i.as_i128().unwrap())
+        match self {
+            DatexDeserializer::Text(s) => {
+                return visitor.visit_string(s.to_string());
+            }
+            DatexDeserializer::ValueContainer(value) => match value {
+                // TODO #148 implement missing mapping
+                ValueContainer::Value(value::Value { inner, .. }) => match inner {
+                    CoreValue::Null => visitor.visit_none(),
+                    CoreValue::Boolean(b) => visitor.visit_bool(b.0),
+                    CoreValue::TypedInteger(i) => match i {
+                        TypedInteger::I128(i) => visitor.visit_i128(*i),
+                        TypedInteger::U128(u) => visitor.visit_u128(*u),
+                        TypedInteger::I64(i) => visitor.visit_i64(*i),
+                        TypedInteger::U64(u) => visitor.visit_u64(*u),
+                        TypedInteger::I32(i) => visitor.visit_i32(*i),
+                        TypedInteger::U32(u) => visitor.visit_u32(*u),
+                        TypedInteger::I16(i) => visitor.visit_i16(*i),
+                        TypedInteger::U16(u) => visitor.visit_u16(*u),
+                        TypedInteger::I8(i) => visitor.visit_i8(*i),
+                        TypedInteger::U8(u) => visitor.visit_u8(*u),
+                        TypedInteger::IBig(i) => {
+                            visitor.visit_i128(i.as_i128().unwrap())
+                        }
+                    },
+                    CoreValue::Text(s) => visitor.visit_string(s.0.clone()),
+                    CoreValue::Endpoint(endpoint) => {
+                        let endpoint_str = endpoint.to_string();
+                        visitor.visit_string(endpoint_str)
                     }
+                    CoreValue::Map(obj) => {
+                        let map = obj.iter().map(|(k, v)| {
+                            (
+                                DatexDeserializer::new_from_borrowed_map_key(k),
+                                DatexDeserializer::new_from_value_container(v),
+                            )
+                        }).collect::<Vec<_>>();
+                        visitor
+                            .visit_map(serde::de::value::MapDeserializer::new(map.into_iter()))
+                    }
+                    CoreValue::List(list) => {
+                        let vec: Vec<DatexDeserializer<'de>> =
+                            list.iter().map(DatexDeserializer::new_from_value_container).collect::<Vec<_>>();
+                        visitor
+                            .visit_seq(serde::de::value::SeqDeserializer::new(vec.into_iter()))
+                    }
+                    e => unreachable!("Unsupported core value: {:?}", e),
                 },
-                CoreValue::Text(s) => visitor.visit_string(s.0.clone()),
-                CoreValue::Endpoint(endpoint) => {
-                    let endpoint_str = endpoint.to_string();
-                    visitor.visit_string(endpoint_str)
-                }
-                CoreValue::Map(obj) => {
-                    let map = obj.iter().map(|(k, v)| {
-                        (
-                            k,
-                            DatexDeserializer::new(v),
-                        )
-                    }).collect::<Vec<_>>();
-                    todo!()
-                    // visitor
-                    //     .visit_map(serde::de::value::MapDeserializer::new(map.into_iter()))
-                }
-                CoreValue::List(list) => {
-                    let vec: Vec<DatexDeserializer<'de>> =
-                        list.iter().map(DatexDeserializer::new).collect::<Vec<_>>();
-                    visitor
-                        .visit_seq(serde::de::value::SeqDeserializer::new(vec.into_iter()))
-                }
-                e => unreachable!("Unsupported core value: {:?}", e),
-            },
-            _ => unreachable!("Refs are not supported in deserialization"),
+                _ => unreachable!("Refs are not supported in deserialization"),
+            }
         }
     }
 
@@ -205,10 +228,13 @@ impl<'de> Deserializer<'de> for DatexDeserializer<'de> {
     where
         V: serde::de::Visitor<'de>,
     {
-        if self.value.to_value().borrow().is_null() {
-            visitor.visit_none()
-        } else {
-            visitor.visit_some(self)
+        match self {
+            DatexDeserializer::ValueContainer(value) if value.to_value().borrow().is_null() => {
+                visitor.visit_none()
+            }
+            _ => {
+                visitor.visit_some(self)
+            }
         }
     }
 
@@ -261,7 +287,7 @@ impl<'de> Deserializer<'de> for DatexDeserializer<'de> {
         // }
 
         visitor.visit_seq(serde::de::value::SeqDeserializer::new(
-            vec![DatexDeserializer::new(self.value)].into_iter(),
+            vec![self].into_iter(),
         ))
     }
 
@@ -279,13 +305,13 @@ impl<'de> Deserializer<'de> for DatexDeserializer<'de> {
     where
         V: Visitor<'de>,
     {
-        if let ValueContainer::Value(Value {
+        if let DatexDeserializer::ValueContainer(ValueContainer::Value(Value {
             inner: CoreValue::List(list),
             ..
-        }) = self.value
+        })) = self
         {
             visitor.visit_seq(serde::de::value::SeqDeserializer::new(
-                list.iter().map(DatexDeserializer::new),
+                list.iter().map(DatexDeserializer::new_from_value_container),
             ))
         } else {
             Err(DeserializationError::Custom(
@@ -301,19 +327,18 @@ impl<'de> Deserializer<'de> for DatexDeserializer<'de> {
     where
         V: Visitor<'de>,
     {
-        if let ValueContainer::Value(Value {
+        if let DatexDeserializer::ValueContainer(ValueContainer::Value(Value {
             inner: CoreValue::Map(map),
             ..
-        }) = self.value
+        })) = self
         {
             let entries = map.iter().map(|(k, v)| {
                 (
-                    k,
-                    DatexDeserializer::new(v),
+                    DatexDeserializer::new_from_borrowed_map_key(k),
+                    DatexDeserializer::new_from_value_container(v),
                 )
             });
-            todo!()
-            // visitor.visit_map(serde::de::value::MapDeserializer::new(entries))
+            visitor.visit_map(serde::de::value::MapDeserializer::new(entries))
         } else {
             Err(DeserializationError::Custom("expected map".to_string()))
         }
@@ -330,37 +355,42 @@ impl<'de> Deserializer<'de> for DatexDeserializer<'de> {
     where
         V: Visitor<'de>,
     {
-        match self.value {
-            // Direct text
-            ValueContainer::Value(Value {
-                inner: CoreValue::Text(s),
-                ..
-            }) => visitor.visit_string(s.0.clone()),
+        match self {
+             DatexDeserializer::Text(s) => {
+                visitor.visit_string(s.to_string())
+            }
+            DatexDeserializer::ValueContainer(value) => match value {
+                // Direct text
+                ValueContainer::Value(Value {
+                                          inner: CoreValue::Text(s),
+                                          ..
+                                      }) => visitor.visit_string(s.0.clone()),
 
-            // Single-key map {"Identifier": ...}
-            ValueContainer::Value(Value {
-                inner: CoreValue::Map(o),
-                ..
-            }) => {
-                if o.size() == 1 {
-                    let (key, _) = o.iter().next().unwrap();
-                    if let BorrowedMapKey::Text(string) = key {
-                        visitor.visit_string(string.to_string())
+                // Single-key map {"Identifier": ...}
+                ValueContainer::Value(Value {
+                                          inner: CoreValue::Map(o),
+                                          ..
+                                      }) => {
+                    if o.size() == 1 {
+                        let (key, _) = o.iter().next().unwrap();
+                        if let BorrowedMapKey::Text(string) = key {
+                            visitor.visit_string(string.to_string())
+                        } else {
+                            Err(DeserializationError::Custom(
+                                "Expected text key for identifier".to_string(),
+                            ))
+                        }
                     } else {
                         Err(DeserializationError::Custom(
-                            "Expected text key for identifier".to_string(),
+                            "Expected single-key map for identifier".to_string(),
                         ))
                     }
-                } else {
-                    Err(DeserializationError::Custom(
-                        "Expected single-key map for identifier".to_string(),
-                    ))
                 }
-            }
 
-            _ => Err(DeserializationError::Custom(
-                "Expected identifier".to_string(),
-            )),
+                _ => Err(DeserializationError::Custom(
+                    "Expected identifier".to_string(),
+                )),
+            }
         }
     }
 
@@ -376,127 +406,147 @@ impl<'de> Deserializer<'de> for DatexDeserializer<'de> {
     where
         V: Visitor<'de>,
     {
-        match self.value {
-            // Default representation: ("Variant", value)
-            value @ ValueContainer::Value(Value {
-                inner: CoreValue::List(t),
-                ..
-            }) => {
-                if t.is_empty() {
-                    return Err(DeserializationError::Custom(
-                        "Expected non-empty tuple for enum".to_string(),
-                    ));
-                }
-                let deserializer = DatexDeserializer::new(value);
-                visitor.visit_enum(EnumDeserializer {
-                    variant: "_tuple",
-                    value: deserializer,
-                })
+        match self {
+            DatexDeserializer::Text(s) => {
+                return visitor.visit_enum(EnumDeserializer {
+                    variant: s,
+                    value: None,
+                });
             }
-
-            // Map with single key = variant name
-            ValueContainer::Value(Value {
-                inner: CoreValue::Map(o),
-                ..
-            }) => {
-                if o.size() != 1 {
-                    return Err(DeserializationError::Custom(
-                        "Expected single-key map for enum".to_string(),
-                    ));
-                }
-
-                let (variant_name, value) = o.iter().next().unwrap();
-                if let BorrowedMapKey::Text(variant) = variant_name {
-                    let deserializer = DatexDeserializer::new(value);
+            DatexDeserializer::ValueContainer(value) => match value {
+                // Default representation: ("Variant", value)
+                value @ ValueContainer::Value(Value {
+                                                  inner: CoreValue::List(t),
+                                                  ..
+                                              }) => {
+                    if t.is_empty() {
+                        return Err(DeserializationError::Custom(
+                            "Expected non-empty tuple for enum".to_string(),
+                        ));
+                    }
+                    let deserializer = DatexDeserializer::new_from_value_container(value);
                     visitor.visit_enum(EnumDeserializer {
-                        variant,
-                        value: deserializer,
+                        variant: "_tuple",
+                        value: Some(deserializer),
                     })
-                } else {
-                    Err(DeserializationError::Custom(
-                        "Expected text variant name".to_string(),
-                    ))
                 }
+
+                // Map with single key = variant name
+                ValueContainer::Value(Value {
+                                          inner: CoreValue::Map(o),
+                                          ..
+                                      }) => {
+                    if o.size() != 1 {
+                        return Err(DeserializationError::Custom(
+                            "Expected single-key map for enum".to_string(),
+                        ));
+                    }
+
+                    let (variant_name, value) = o.iter().next().unwrap();
+                    if let BorrowedMapKey::Text(variant) = variant_name {
+                        let deserializer = DatexDeserializer::new_from_value_container(value);
+                        visitor.visit_enum(EnumDeserializer {
+                            variant,
+                            value: Some(deserializer),
+                        })
+                    } else {
+                        Err(DeserializationError::Custom(
+                            "Expected text variant name".to_string(),
+                        ))
+                    }
+                }
+                // TODO #396: handle structurally typed maps
+                // ValueContainer::Value(Value {
+                //     inner: CoreValue::Struct(o),
+                //     ..
+                // }) => {
+                //     if o.size() != 1 {
+                //         return Err(DeserializationError::Custom(
+                //             "Expected single-key object for enum".to_string(),
+                //         ));
+                //     }
+                //
+                //     let (variant_name, value) = o.into_iter().next().unwrap();
+                //
+                //     let deserializer = DatexDeserializer::from_value(value);
+                //     visitor.visit_enum(EnumDeserializer {
+                //         variant: variant_name,
+                //         value: deserializer,
+                //     })
+                // }
+
+                // unit variants stored directly as text
+                ValueContainer::Value(Value {
+                                          inner: CoreValue::Text(s),
+                                          ..
+                                      }) => visitor.visit_enum(EnumDeserializer {
+                    variant: &s.0,
+                    value: None,
+                }),
+
+                e => Err(DeserializationError::Custom(format!(
+                    "Expected enum representation, found: {}",
+                    e
+                ))),
             }
-            // TODO #396: handle structurally typed maps
-            // ValueContainer::Value(Value {
-            //     inner: CoreValue::Struct(o),
-            //     ..
-            // }) => {
-            //     if o.size() != 1 {
-            //         return Err(DeserializationError::Custom(
-            //             "Expected single-key object for enum".to_string(),
-            //         ));
-            //     }
-            //
-            //     let (variant_name, value) = o.into_iter().next().unwrap();
-            //
-            //     let deserializer = DatexDeserializer::from_value(value);
-            //     visitor.visit_enum(EnumDeserializer {
-            //         variant: variant_name,
-            //         value: deserializer,
-            //     })
-            // }
-
-            // unit variants stored directly as text
-            ValueContainer::Value(Value {
-                inner: CoreValue::Text(s),
-                ..
-            }) => visitor.visit_enum(EnumDeserializer {
-                variant: &s.0,
-                value: todo!(), // DatexDeserializer::new(&Map::default().into()),
-            }),
-
-            e => Err(DeserializationError::Custom(format!(
-                "Expected enum representation, found: {}",
-                e
-            ))),
         }
+
     }
 
     fn deserialize_f32<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where
         V: Visitor<'de>,
     {
-        match &self.value.to_value().borrow().inner {
-            CoreValue::Decimal(decimal) => {
-                visitor.visit_f32(decimal.into_f32())
-            }
-            CoreValue::TypedDecimal(typed_decimal) => {
-                visitor.visit_f32(typed_decimal.as_f32())
-            }
-            CoreValue::Integer(integer) => {
-                visitor.visit_f32(integer.as_f32())
-            }
-            CoreValue::TypedInteger(typed_integer) => {
-                visitor.visit_f32(typed_integer.as_f32())
-            }
-            _ => Err(DeserializationError::CanNotDeserialize(
+        match self {
+            DatexDeserializer::Text(s) => Err(DeserializationError::CanNotDeserialize(
                 "f32".to_string(),
             )),
+            DatexDeserializer::ValueContainer(value) => match &value.to_value().borrow().inner {
+                CoreValue::Decimal(decimal) => {
+                    visitor.visit_f32(decimal.into_f32())
+                }
+                CoreValue::TypedDecimal(typed_decimal) => {
+                    visitor.visit_f32(typed_decimal.as_f32())
+                }
+                CoreValue::Integer(integer) => {
+                    visitor.visit_f32(integer.as_f32())
+                }
+                CoreValue::TypedInteger(typed_integer) => {
+                    visitor.visit_f32(typed_integer.as_f32())
+                }
+                _ => Err(DeserializationError::CanNotDeserialize(
+                    "f32".to_string(),
+                )),
+            },
         }
+
     }
 
     fn deserialize_f64<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where
         V: Visitor<'de>,
     {
-        match &self.value.to_value().borrow().inner {
-            CoreValue::Decimal(decimal) => {
-                visitor.visit_f64(decimal.into_f64())
-            }
-            CoreValue::TypedDecimal(typed_decimal) => {
-                visitor.visit_f64(typed_decimal.as_f64())
-            }
-            CoreValue::Integer(integer) => {
-                visitor.visit_f64(integer.as_f64())
-            }
-            CoreValue::TypedInteger(typed_integer) => {
-                visitor.visit_f64(typed_integer.as_f64())
-            }
-            _ => Err(DeserializationError::CanNotDeserialize(
+        match self {
+            DatexDeserializer::Text(s) => Err(DeserializationError::CanNotDeserialize(
                 "f64".to_string(),
             )),
+            DatexDeserializer::ValueContainer(value) => match &value.to_value().borrow().inner {
+                CoreValue::Decimal(decimal) => {
+                    visitor.visit_f64(decimal.into_f64())
+                }
+                CoreValue::TypedDecimal(typed_decimal) => {
+                    visitor.visit_f64(typed_decimal.as_f64())
+                }
+                CoreValue::Integer(integer) => {
+                    visitor.visit_f64(integer.as_f64())
+                }
+                CoreValue::TypedInteger(typed_integer) => {
+                    visitor.visit_f64(typed_integer.as_f64())
+                }
+                _ => Err(DeserializationError::CanNotDeserialize(
+                    "f64".to_string(),
+                )),
+            }
         }
     }
 
@@ -504,14 +554,19 @@ impl<'de> Deserializer<'de> for DatexDeserializer<'de> {
     where
         V: Visitor<'de>,
     {
-        match &self.value.to_value().borrow().inner {
-            CoreValue::Integer(i) => visitor.visit_i8(i.as_wrapped_i8()),
-            CoreValue::TypedInteger(i) => visitor.visit_i8(i.as_integer().as_wrapped_i8()),
-            CoreValue::Decimal(d) => visitor.visit_i8(d.as_integer().unwrap() as i8),
-            CoreValue::TypedDecimal(d) => visitor.visit_i8(d.as_integer().unwrap() as i8),
-            _ => Err(DeserializationError::CanNotDeserialize(
+        match self {
+            DatexDeserializer::Text(s) => Err(DeserializationError::CanNotDeserialize(
                 "i8".to_string(),
             )),
+            DatexDeserializer::ValueContainer(value) => match &value.to_value().borrow().inner {
+                CoreValue::Integer(i) => visitor.visit_i8(i.as_wrapped_i8()),
+                CoreValue::TypedInteger(i) => visitor.visit_i8(i.as_integer().as_wrapped_i8()),
+                CoreValue::Decimal(d) => visitor.visit_i8(d.as_integer().unwrap() as i8),
+                CoreValue::TypedDecimal(d) => visitor.visit_i8(d.as_integer().unwrap() as i8),
+                _ => Err(DeserializationError::CanNotDeserialize(
+                    "i8".to_string(),
+                )),
+            }
         }
     }
 
@@ -519,14 +574,19 @@ impl<'de> Deserializer<'de> for DatexDeserializer<'de> {
     where
         V: Visitor<'de>,
     {
-        match &self.value.to_value().borrow().inner {
-            CoreValue::Integer(i) => visitor.visit_i16(i.as_wrapped_i16()),
-            CoreValue::TypedInteger(i) => visitor.visit_i16(i.as_integer().as_wrapped_i16()),
-            CoreValue::Decimal(d) => visitor.visit_i16(d.as_integer().unwrap() as i16),
-            CoreValue::TypedDecimal(d) => visitor.visit_i16(d.as_integer().unwrap() as i16),
-            _ => Err(DeserializationError::CanNotDeserialize(
+        match self {
+            DatexDeserializer::Text(s) => Err(DeserializationError::CanNotDeserialize(
                 "i16".to_string(),
             )),
+            DatexDeserializer::ValueContainer(value) => match &value.to_value().borrow().inner {
+                CoreValue::Integer(i) => visitor.visit_i16(i.as_wrapped_i16()),
+                CoreValue::TypedInteger(i) => visitor.visit_i16(i.as_integer().as_wrapped_i16()),
+                CoreValue::Decimal(d) => visitor.visit_i16(d.as_integer().unwrap() as i16),
+                CoreValue::TypedDecimal(d) => visitor.visit_i16(d.as_integer().unwrap() as i16),
+                _ => Err(DeserializationError::CanNotDeserialize(
+                    "i16".to_string(),
+                )),
+            }
         }
     }
 
@@ -534,14 +594,19 @@ impl<'de> Deserializer<'de> for DatexDeserializer<'de> {
     where
         V: Visitor<'de>,
     {
-        match &self.value.to_value().borrow().inner {
-            CoreValue::Integer(i) => visitor.visit_i32(i.as_wrapped_i32()),
-            CoreValue::TypedInteger(i) => visitor.visit_i32(i.as_integer().as_wrapped_i32()),
-            CoreValue::Decimal(d) => visitor.visit_i32(d.as_integer().unwrap() as i32),
-            CoreValue::TypedDecimal(d) => visitor.visit_i32(d.as_integer().unwrap() as i32),
-            _ => Err(DeserializationError::CanNotDeserialize(
+        match self {
+            DatexDeserializer::Text(s) => Err(DeserializationError::CanNotDeserialize(
                 "i32".to_string(),
             )),
+            DatexDeserializer::ValueContainer(value) => match &value.to_value().borrow().inner {
+                CoreValue::Integer(i) => visitor.visit_i32(i.as_wrapped_i32()),
+                CoreValue::TypedInteger(i) => visitor.visit_i32(i.as_integer().as_wrapped_i32()),
+                CoreValue::Decimal(d) => visitor.visit_i32(d.as_integer().unwrap() as i32),
+                CoreValue::TypedDecimal(d) => visitor.visit_i32(d.as_integer().unwrap() as i32),
+                _ => Err(DeserializationError::CanNotDeserialize(
+                    "i32".to_string(),
+                )),
+            }
         }
     }
 
@@ -549,14 +614,19 @@ impl<'de> Deserializer<'de> for DatexDeserializer<'de> {
     where
         V: Visitor<'de>,
     {
-        match &self.value.to_value().borrow().inner {
-            CoreValue::Integer(i) => visitor.visit_i64(i.as_wrapped_i64()),
-            CoreValue::TypedInteger(i) => visitor.visit_i64(i.as_integer().as_wrapped_i64()),
-            CoreValue::Decimal(d) => visitor.visit_i64(d.as_integer().unwrap() as i64),
-            CoreValue::TypedDecimal(d) => visitor.visit_i64(d.as_integer().unwrap() as i64),
-            _ => Err(DeserializationError::CanNotDeserialize(
+        match self {
+            DatexDeserializer::Text(s) => Err(DeserializationError::CanNotDeserialize(
                 "i64".to_string(),
             )),
+            DatexDeserializer::ValueContainer(value) => match &value.to_value().borrow().inner {
+                CoreValue::Integer(i) => visitor.visit_i64(i.as_wrapped_i64()),
+                CoreValue::TypedInteger(i) => visitor.visit_i64(i.as_integer().as_wrapped_i64()),
+                CoreValue::Decimal(d) => visitor.visit_i64(d.as_integer().unwrap() as i64),
+                CoreValue::TypedDecimal(d) => visitor.visit_i64(d.as_integer().unwrap() as i64),
+                _ => Err(DeserializationError::CanNotDeserialize(
+                    "i64".to_string(),
+                )),
+            }
         }
     }
 
@@ -564,14 +634,19 @@ impl<'de> Deserializer<'de> for DatexDeserializer<'de> {
     where
         V: Visitor<'de>,
     {
-        match &self.value.to_value().borrow().inner {
-            CoreValue::Integer(i) => visitor.visit_i128(i.as_wrapped_i128()),
-            CoreValue::TypedInteger(i) => visitor.visit_i128(i.as_integer().as_wrapped_i128()),
-            CoreValue::Decimal(d) => visitor.visit_i128(d.as_integer().unwrap() as i128),
-            CoreValue::TypedDecimal(d) => visitor.visit_i128(d.as_integer().unwrap() as i128),
-            _ => Err(DeserializationError::CanNotDeserialize(
+        match self {
+            DatexDeserializer::Text(s) => Err(DeserializationError::CanNotDeserialize(
                 "i128".to_string(),
             )),
+            DatexDeserializer::ValueContainer(value) => match &value.to_value().borrow().inner {
+                CoreValue::Integer(i) => visitor.visit_i128(i.as_wrapped_i128()),
+                CoreValue::TypedInteger(i) => visitor.visit_i128(i.as_integer().as_wrapped_i128()),
+                CoreValue::Decimal(d) => visitor.visit_i128(d.as_integer().unwrap() as i128),
+                CoreValue::TypedDecimal(d) => visitor.visit_i128(d.as_integer().unwrap() as i128),
+                _ => Err(DeserializationError::CanNotDeserialize(
+                    "i128".to_string(),
+                )),
+            }
         }
     }
 
@@ -579,14 +654,19 @@ impl<'de> Deserializer<'de> for DatexDeserializer<'de> {
     where
         V: Visitor<'de>,
     {
-        match &self.value.to_value().borrow().inner {
-            CoreValue::Integer(i) => visitor.visit_u8(i.as_wrapped_u8()),
-            CoreValue::TypedInteger(i) => visitor.visit_u8(i.as_integer().as_wrapped_u8()),
-            CoreValue::Decimal(d) => visitor.visit_u8(d.as_integer().unwrap() as u8),
-            CoreValue::TypedDecimal(d) => visitor.visit_u8(d.as_integer().unwrap() as u8),
-            _ => Err(DeserializationError::CanNotDeserialize(
+        match self {
+            DatexDeserializer::Text(s) => Err(DeserializationError::CanNotDeserialize(
                 "u8".to_string(),
             )),
+            DatexDeserializer::ValueContainer(value) => match &value.to_value().borrow().inner {
+                CoreValue::Integer(i) => visitor.visit_u8(i.as_wrapped_u8()),
+                CoreValue::TypedInteger(i) => visitor.visit_u8(i.as_integer().as_wrapped_u8()),
+                CoreValue::Decimal(d) => visitor.visit_u8(d.as_integer().unwrap() as u8),
+                CoreValue::TypedDecimal(d) => visitor.visit_u8(d.as_integer().unwrap() as u8),
+                _ => Err(DeserializationError::CanNotDeserialize(
+                    "u8".to_string(),
+                )),
+            }
         }
     }
 
@@ -594,14 +674,19 @@ impl<'de> Deserializer<'de> for DatexDeserializer<'de> {
     where
         V: Visitor<'de>,
     {
-        match &self.value.to_value().borrow().inner {
-            CoreValue::Integer(i) => visitor.visit_u16(i.as_wrapped_u16()),
-            CoreValue::TypedInteger(i) => visitor.visit_u16(i.as_integer().as_wrapped_u16()),
-            CoreValue::Decimal(d) => visitor.visit_u16(d.as_integer().unwrap() as u16),
-            CoreValue::TypedDecimal(d) => visitor.visit_u16(d.as_integer().unwrap() as u16),
-            _ => Err(DeserializationError::CanNotDeserialize(
+        match self {
+            DatexDeserializer::Text(s) => Err(DeserializationError::CanNotDeserialize(
                 "u16".to_string(),
             )),
+            DatexDeserializer::ValueContainer(value) => match &value.to_value().borrow().inner {
+                CoreValue::Integer(i) => visitor.visit_u16(i.as_wrapped_u16()),
+                CoreValue::TypedInteger(i) => visitor.visit_u16(i.as_integer().as_wrapped_u16()),
+                CoreValue::Decimal(d) => visitor.visit_u16(d.as_integer().unwrap() as u16),
+                CoreValue::TypedDecimal(d) => visitor.visit_u16(d.as_integer().unwrap() as u16),
+                _ => Err(DeserializationError::CanNotDeserialize(
+                    "u16".to_string(),
+                )),
+            }
         }
     }
 
@@ -609,14 +694,19 @@ impl<'de> Deserializer<'de> for DatexDeserializer<'de> {
     where
         V: Visitor<'de>,
     {
-        match &self.value.to_value().borrow().inner {
-            CoreValue::Integer(i) => visitor.visit_u32(i.as_wrapped_u32()),
-            CoreValue::TypedInteger(i) => visitor.visit_u32(i.as_integer().as_wrapped_u32()),
-            CoreValue::Decimal(d) => visitor.visit_u32(d.as_integer().unwrap() as u32),
-            CoreValue::TypedDecimal(d) => visitor.visit_u32(d.as_integer().unwrap() as u32),
-            _ => Err(DeserializationError::CanNotDeserialize(
+        match self {
+            DatexDeserializer::Text(s) => Err(DeserializationError::CanNotDeserialize(
                 "u32".to_string(),
             )),
+            DatexDeserializer::ValueContainer(value) => match &value.to_value().borrow().inner {
+                CoreValue::Integer(i) => visitor.visit_u32(i.as_wrapped_u32()),
+                CoreValue::TypedInteger(i) => visitor.visit_u32(i.as_integer().as_wrapped_u32()),
+                CoreValue::Decimal(d) => visitor.visit_u32(d.as_integer().unwrap() as u32),
+                CoreValue::TypedDecimal(d) => visitor.visit_u32(d.as_integer().unwrap() as u32),
+                _ => Err(DeserializationError::CanNotDeserialize(
+                    "u32".to_string(),
+                )),
+            }
         }
     }
 
@@ -624,14 +714,19 @@ impl<'de> Deserializer<'de> for DatexDeserializer<'de> {
     where
         V: Visitor<'de>,
     {
-        match &self.value.to_value().borrow().inner {
-            CoreValue::Integer(i) => visitor.visit_u64(i.as_wrapped_u64()),
-            CoreValue::TypedInteger(i) => visitor.visit_u64(i.as_integer().as_wrapped_u64()),
-            CoreValue::Decimal(d) => visitor.visit_u64(d.as_integer().unwrap() as u64),
-            CoreValue::TypedDecimal(d) => visitor.visit_u64(d.as_integer().unwrap() as u64),
-            _ => Err(DeserializationError::CanNotDeserialize(
+        match self {
+            DatexDeserializer::Text(s) => Err(DeserializationError::CanNotDeserialize(
                 "u64".to_string(),
             )),
+            DatexDeserializer::ValueContainer(value) => match &value.to_value().borrow().inner {
+                CoreValue::Integer(i) => visitor.visit_u64(i.as_wrapped_u64()),
+                CoreValue::TypedInteger(i) => visitor.visit_u64(i.as_integer().as_wrapped_u64()),
+                CoreValue::Decimal(d) => visitor.visit_u64(d.as_integer().unwrap() as u64),
+                CoreValue::TypedDecimal(d) => visitor.visit_u64(d.as_integer().unwrap() as u64),
+                _ => Err(DeserializationError::CanNotDeserialize(
+                    "u64".to_string(),
+                )),
+            }
         }
     }
 
@@ -639,14 +734,19 @@ impl<'de> Deserializer<'de> for DatexDeserializer<'de> {
     where
         V: Visitor<'de>,
     {
-        match &self.value.to_value().borrow().inner {
-            CoreValue::Integer(i) => visitor.visit_u128(i.as_wrapped_u128()),
-            CoreValue::TypedInteger(i) => visitor.visit_u128(i.as_integer().as_wrapped_u128()),
-            CoreValue::Decimal(d) => visitor.visit_u128(d.as_integer().unwrap() as u128),
-            CoreValue::TypedDecimal(d) => visitor.visit_u128(d.as_integer().unwrap() as u128),
-            _ => Err(DeserializationError::CanNotDeserialize(
+        match self {
+            DatexDeserializer::Text(s) => Err(DeserializationError::CanNotDeserialize(
                 "u128".to_string(),
             )),
+            DatexDeserializer::ValueContainer(value) => match &value.to_value().borrow().inner {
+                CoreValue::Integer(i) => visitor.visit_u128(i.as_wrapped_u128()),
+                CoreValue::TypedInteger(i) => visitor.visit_u128(i.as_integer().as_wrapped_u128()),
+                CoreValue::Decimal(d) => visitor.visit_u128(d.as_integer().unwrap() as u128),
+                CoreValue::TypedDecimal(d) => visitor.visit_u128(d.as_integer().unwrap() as u128),
+                _ => Err(DeserializationError::CanNotDeserialize(
+                    "u128".to_string(),
+                )),
+            }
         }
     }
 
@@ -666,7 +766,7 @@ impl<'de> Deserializer<'de> for DatexDeserializer<'de> {
 ///     "Variant1" or {"Variant2": 42}
 struct EnumDeserializer<'de> {
     variant: &'de str,
-    value: DatexDeserializer<'de>,
+    value: Option<DatexDeserializer<'de>>,
 }
 impl<'de> EnumAccess<'de> for EnumDeserializer<'de> {
     type Error = DeserializationError;
@@ -696,7 +796,7 @@ impl<'de> EnumAccess<'de> for EnumDeserializer<'de> {
 /// will be deserialized from:
 ///     "Variant1" or {"Variant2": 42}
 struct VariantDeserializer<'de> {
-    value: DatexDeserializer<'de>,
+    value: Option<DatexDeserializer<'de>>,
 }
 
 impl<'de> VariantAccess<'de> for VariantDeserializer<'de> {
@@ -710,7 +810,12 @@ impl<'de> VariantAccess<'de> for VariantDeserializer<'de> {
     where
         T: serde::de::DeserializeSeed<'de>,
     {
-        seed.deserialize(self.value)
+        match self.value {
+            Some(value) => seed.deserialize(value),
+            None => Err(DeserializationError::Custom(
+                "Expected value for newtype variant".to_string(),
+            )),
+        }
     }
 
     fn tuple_variant<V>(
@@ -721,7 +826,10 @@ impl<'de> VariantAccess<'de> for VariantDeserializer<'de> {
     where
         V: serde::de::Visitor<'de>,
     {
-        self.value.deserialize_tuple(len, visitor)
+        match self.value {
+            Some(value) => value.deserialize_tuple(len, visitor),
+            None => visitor.visit_unit(),
+        }
     }
 
     fn struct_variant<V>(
@@ -732,7 +840,10 @@ impl<'de> VariantAccess<'de> for VariantDeserializer<'de> {
     where
         V: serde::de::Visitor<'de>,
     {
-        self.value.deserialize_struct("", fields, visitor)
+        match self.value {
+            Some(value) => value.deserialize_struct("", fields, visitor),
+            None => visitor.visit_unit(),
+        }
     }
 }
 
