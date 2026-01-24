@@ -37,7 +37,6 @@ use datex_core::network::com_interfaces::com_interface::ComInterfaceProxy;
 use log::{debug, error, info};
 use tokio::sync::{RwLock, broadcast, mpsc};
 use url::Url;
-use uuid::serde::compact;
 
 async fn server_to_client_handler(
     Path(route): Path<String>,
