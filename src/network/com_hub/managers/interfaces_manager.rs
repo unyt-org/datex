@@ -151,7 +151,9 @@ impl InterfacesManager {
                 }
             }
         } else {
-            Err(InterfaceCreateError::InterfaceTypeDoesNotExist)
+            Err(InterfaceCreateError::InterfaceTypeNotRegistered(
+                interface_type.to_string(),
+            ))
         }
     }
 
@@ -189,7 +191,9 @@ impl InterfacesManager {
                 ),
             }
         } else {
-            Err(InterfaceCreateError::InterfaceTypeDoesNotExist)
+            Err(InterfaceCreateError::InterfaceTypeNotRegistered(
+                interface_type.to_string(),
+            ))
         }
     }
 
@@ -297,13 +301,9 @@ impl InterfacesManager {
     ) {
         if let ComInterfaceStateEvent::Destroyed = event {
             // FIXME should probably do more cleanup here, but this was what com hub did before
-            // try cleanup, can probably be ignored if it fails since the cleanup was already called by destroy_interface
-            let cleanup_res =self.cleanup_interface(interface_uuid);
-            if let Err(e) = cleanup_res {
-                log::error!(
-                    "Error cleaning up interface {interface_uuid} after destruction: {e}"
-                );
-            }
+            // try cleanup, already cleaned up when destroyed via destroy_interface, so the call may fail
+            // but we can ignore that
+            let _ =self.cleanup_interface(interface_uuid);
         }
     }
 }

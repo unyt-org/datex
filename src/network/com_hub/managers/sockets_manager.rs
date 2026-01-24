@@ -5,7 +5,7 @@ use crate::{
     task::UnboundedSender,
 };
 use itertools::Itertools;
-use log::{debug, error, info};
+use log::{debug, error, info, warn};
 
 use crate::{
     collections::{HashMap, HashSet},
@@ -419,7 +419,8 @@ impl SocketsManager {
     /// Removes a socket from the socket list
     pub fn delete_socket(&mut self, socket_uuid: &ComInterfaceSocketUUID) {
         if !self.has_socket(socket_uuid) {
-            core::panic!("Socket {socket_uuid} not found in ComHub")
+            warn!("Socket {socket_uuid} not found in ComHub, cannot delete");
+            return;
         };
 
         // get interface uuid before removing socket

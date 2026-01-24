@@ -7,7 +7,7 @@ use crate::{
     task::UnboundedSender,
 };
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, strum_macros::EnumIs)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, strum_macros::EnumIs, strum::Display)]
 pub enum ComInterfaceState {
     NotConnected,
     Closing,

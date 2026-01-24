@@ -29,7 +29,7 @@ pub enum InterfaceCreateError {
     InterfaceError(ComInterfaceError),
     InterfaceAddError(InterfaceAddError),
     InterfaceCreationRequiresAsyncContext,
-    InterfaceTypeDoesNotExist,
+    InterfaceTypeNotRegistered(String),
     InterfaceOpenFailed,
     SetupDataParseError,
     Timeout,
@@ -69,10 +69,11 @@ impl Display for InterfaceCreateError {
                     "InterfaceCreationError: Interface creation requires async context"
                 )
             }
-            InterfaceCreateError::InterfaceTypeDoesNotExist => {
+            InterfaceCreateError::InterfaceTypeNotRegistered(ty) => {
                 core::write!(
                     f,
-                    "InterfaceCreationError: Interface type does not exist"
+                    "InterfaceCreationError: Interface type '{}' is not registered",
+                    ty
                 )
             }
             InterfaceCreateError::InterfaceOpenFailed => {
@@ -133,7 +134,7 @@ impl Display for ComHubError {
                 core::write!(f, "ComHubError: Interface not connected")
             }
             ComHubError::InterfaceDoesNotExist => {
-                core::write!(f, "ComHubError: Interface does not exit")
+                core::write!(f, "ComHubError: Interface does not exist")
             }
             ComHubError::NoResponse => {
                 core::write!(f, "ComHubError: No response")

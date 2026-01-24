@@ -705,70 +705,66 @@ impl ComHub {
         mut block: DXBBlock,
     ) -> Result<DXBBlock, ComHubError> {
         // TODO #188 signature & encryption
-        cfg_if::cfg_if! {
-            if #[cfg(feature = "native_crypto")] {
-                use crate::runtime::global_context::get_global_context;
-                match block.routing_header.flags.signature_type() {
-                    SignatureType::Encrypted => {
-                        let crypto = get_global_context().crypto;
-                        let (pub_key, pri_key) = crypto.gen_ed25519()
-                                .await
-                                .map_err(|_| ComHubError::SignatureError)?;
+        use crate::runtime::global_context::get_global_context;
+        match block.routing_header.flags.signature_type() {
+            SignatureType::Encrypted => {
+                let crypto = get_global_context().crypto;
+                let (pub_key, pri_key) = crypto.gen_ed25519()
+                        .await
+                        .map_err(|_| ComHubError::SignatureError)?;
 
-                        let raw_signed = [
-                            pub_key.clone(),
-                            block.body.clone()
-                            ]
-                            .concat();
-                        let hashed_signed = crypto
-                            .hash_sha256(&raw_signed)
-                            .await
-                            .map_err(|_| ComHubError::SignatureError)?;
+                let raw_signed = [
+                    pub_key.clone(),
+                    block.body.clone()
+                    ]
+                    .concat();
+                let hashed_signed = crypto
+                    .hash_sha256(&raw_signed)
+                    .await
+                    .map_err(|_| ComHubError::SignatureError)?;
 
-                        let signature = crypto
-                            .sig_ed25519(&pri_key, &hashed_signed)
-                            .await
-                            .map_err(|_| ComHubError::SignatureError)?;
-                        let hash = crypto
-                            .hkdf_sha256(&pub_key, &[0u8; 16])
-                            .await
-                            .map_err(|_| ComHubError::SignatureError)?;
-                        let enc_sig = crypto
-                            .aes_ctr_encrypt(&hash, &[0u8; 16], &signature)
-                            .await
-                            .map_err(|_| ComHubError::SignatureError)?;
-                        // 64 + 44 = 108
-                        block.signature =
-                            Some([enc_sig.to_vec(), pub_key].concat());
-                    }
-                    SignatureType::Unencrypted => {
-                        let crypto = get_global_context().crypto;
-                        let (pub_key, pri_key) = crypto.gen_ed25519()
-                            .await
-                            .map_err(|_| ComHubError::SignatureError)?;
+                let signature = crypto
+                    .sig_ed25519(&pri_key, &hashed_signed)
+                    .await
+                    .map_err(|_| ComHubError::SignatureError)?;
+                let hash = crypto
+                    .hkdf_sha256(&pub_key, &[0u8; 16])
+                    .await
+                    .map_err(|_| ComHubError::SignatureError)?;
+                let enc_sig = crypto
+                    .aes_ctr_encrypt(&hash, &[0u8; 16], &signature)
+                    .await
+                    .map_err(|_| ComHubError::SignatureError)?;
+                // 64 + 44 = 108
+                block.signature =
+                    Some([enc_sig.to_vec(), pub_key].concat());
+            }
+            SignatureType::Unencrypted => {
+                let crypto = get_global_context().crypto;
+                let (pub_key, pri_key) = crypto.gen_ed25519()
+                    .await
+                    .map_err(|_| ComHubError::SignatureError)?;
 
-                        let raw_signed = [
-                            pub_key.clone(),
-                            block.body.clone()
-                            ]
-                            .concat();
-                        let hashed_signed = crypto
-                            .hash_sha256(&raw_signed)
-                            .await
-                            .map_err(|_| ComHubError::SignatureError)?;
+                let raw_signed = [
+                    pub_key.clone(),
+                    block.body.clone()
+                    ]
+                    .concat();
+                let hashed_signed = crypto
+                    .hash_sha256(&raw_signed)
+                    .await
+                    .map_err(|_| ComHubError::SignatureError)?;
 
-                        let signature = crypto
-                            .sig_ed25519(&pri_key, &hashed_signed)
-                            .await
-                            .map_err(|_| ComHubError::SignatureError)?;
-                        // 64 + 44 = 108
-                        block.signature =
-                            Some([signature.to_vec(), pub_key].concat());
-                    }
-                    SignatureType::None => {
-                        /* Ignored */
-                    }
-                }
+                let signature = crypto
+                    .sig_ed25519(&pri_key, &hashed_signed)
+                    .await
+                    .map_err(|_| ComHubError::SignatureError)?;
+                // 64 + 44 = 108
+                block.signature =
+                    Some([signature.to_vec(), pub_key].concat());
+            }
+            SignatureType::None => {
+                /* Ignored */
             }
         }
 
