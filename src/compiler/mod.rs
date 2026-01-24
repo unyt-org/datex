@@ -732,7 +732,7 @@ fn compile_expression(
                     );
                 }
 
-                for (_i, statement) in statements.into_iter().enumerate() {
+                for statement in statements.into_iter() {
                     child_scope = compile_expression(
                         compilation_context,
                         RichAst::new(statement, &metadata),
