@@ -111,16 +111,16 @@ async fn create_hello_connection() {
 
     yield_now().await;
 
-    let com_hub_a_sockets = metadata_sockets(com_hub_mut_a.metadata());
+    let com_hub_a_sockets = metadata_sockets(com_hub_mut_a.get_metadata());
     assert!(
         com_hub_a_sockets.contains(&(Some(TEST_ENDPOINT_B.clone()), Some(1)))
     );
-    let com_hub_b_sockets = metadata_sockets(com_hub_mut_b.metadata());
+    let com_hub_b_sockets = metadata_sockets(com_hub_mut_b.get_metadata());
     assert!(
         com_hub_b_sockets.contains(&(Some(Endpoint::LOCAL.clone()), Some(0)))
     );
 
-    let com_hub_b_sockets = metadata_sockets(com_hub_mut_b.metadata());
+    let com_hub_b_sockets = metadata_sockets(com_hub_mut_b.get_metadata());
     assert!(
         com_hub_b_sockets.contains(&(Some(TEST_ENDPOINT_A.clone()), Some(1)))
     );
