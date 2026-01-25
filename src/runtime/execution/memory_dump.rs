@@ -9,7 +9,7 @@ pub struct MemoryDump {
     pub slots: Vec<(u32, Option<ValueContainer>)>,
 }
 
-#[cfg(feature = "compiler")]
+#[cfg(feature = "decompiler")]
 impl Display for MemoryDump {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         for (address, value) in &self.slots {

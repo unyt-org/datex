@@ -90,7 +90,7 @@ impl ExecutionContext {
                 .join(", ")
         );
 
-        #[cfg(feature = "compiler")]
+        #[cfg(feature = "decompiler")]
         {
             let decompiled = crate::decompiler::decompile_body(
                 dxb,
