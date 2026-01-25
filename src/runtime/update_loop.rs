@@ -18,7 +18,7 @@ use crate::{
 use core::{prelude::rust_2024::*, result::Result};
 use log::info;
 
-#[cfg_attr(feature = "embassy_runtime", embassy_executor::task)]
+
 async fn handle_incoming_section_task(
     runtime_rc: Rc<RuntimeInternal>,
     section: IncomingSection,
@@ -49,10 +49,20 @@ async fn handle_incoming_sections_task(runtime_rc: Rc<RuntimeInternal>) {
 
     while let Some(section) = sections_receiver.next().await {
         let runtime_rc_clone = runtime_rc.clone();
-        spawn_with_panic_notify(
-            &async_context_clone,
-            handle_incoming_section_task(runtime_rc_clone, section),
-        );
+        // for embassy, run all sections in the same task to avoid spawning too many tasks
+        #[cfg(feature = "embassy_runtime")]
+        {
+            handle_incoming_section_task(runtime_rc_clone, section).await;
+            continue;
+        }
+        // otherwise, run each section in its own task
+        #[cfg(not(feature = "embassy_runtime"))]
+        {
+            spawn_with_panic_notify(
+                &async_context_clone,
+                handle_incoming_section_task(runtime_rc_clone, section),
+            );
+        }
     }
 }
 

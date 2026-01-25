@@ -61,6 +61,11 @@ pub mod com_hub_interface;
 
 use crate::network::com_interfaces::com_interface::ComInterface;
 
+/// Maximum number of concurrent ComInterface sockets for Embassy runtime
+pub const MAX_CONCURRENT_COM_INTERFACE_SOCKETS_EMBASSY: usize = 2;
+pub const MAX_CONCURRENT_COM_INTERFACES_EMBASSY: usize = 2;
+
+
 pub type IncomingBlockInterceptor =
     Box<dyn Fn(&DXBBlock, &ComInterfaceSocketUUID) + 'static>;
 
@@ -1280,7 +1285,7 @@ async fn com_hub_event_task(
     }
 }
 
-#[cfg_attr(feature = "embassy_runtime", embassy_executor::task)]
+#[cfg_attr(feature = "embassy_runtime", embassy_executor::task(pool_size = MAX_CONCURRENT_COM_INTERFACE_SOCKETS_EMBASSY))]
 async fn handle_incoming_socket_blocks_task(
     mut socket_receive_queue: UnboundedReceiver<DXBBlock>,
     socket_uuid: ComInterfaceSocketUUID,

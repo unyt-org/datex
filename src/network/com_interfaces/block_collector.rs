@@ -8,7 +8,8 @@ use crate::{
     task::spawn_with_panic_notify,
 };
 use core::prelude::rust_2024::*;
-use log::error;
+use log::{error, info};
+use crate::network::com_hub::MAX_CONCURRENT_COM_INTERFACE_SOCKETS_EMBASSY;
 
 #[derive(Debug)]
 pub struct BlockCollector {
@@ -107,8 +108,9 @@ impl BlockCollector {
     }
 }
 
-#[cfg_attr(feature = "embassy_runtime", embassy_executor::task)]
+#[cfg_attr(feature = "embassy_runtime", embassy_executor::task(pool_size = MAX_CONCURRENT_COM_INTERFACE_SOCKETS_EMBASSY))]
 pub async fn run_block_collector_task(mut block_collector: BlockCollector) {
+    info!("BlockCollector task started");
     while let Some(slice) = block_collector.bytes_in_receiver.next().await {
         block_collector.receive_slice(&slice).await;
     }

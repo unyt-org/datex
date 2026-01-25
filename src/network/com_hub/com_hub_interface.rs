@@ -27,6 +27,7 @@ use core::{prelude::rust_2024::*, result::Result};
 use datex_core::network::com_interfaces::com_interface::{
     ComInterfaceWithReceivers, factory::ComInterfaceAsyncFactory,
 };
+use crate::network::com_hub::{MAX_CONCURRENT_COM_INTERFACES_EMBASSY, MAX_CONCURRENT_COM_INTERFACE_SOCKETS_EMBASSY};
 
 /// Interface management methods
 impl ComHub {
@@ -204,7 +205,7 @@ impl ComHub {
     }
 }
 
-#[cfg_attr(feature = "embassy_runtime", embassy_executor::task)]
+#[cfg_attr(feature = "embassy_runtime", embassy_executor::task(pool_size = MAX_CONCURRENT_COM_INTERFACES_EMBASSY))]
 async fn handle_interface_events_task(
     uuid: ComInterfaceUUID,
     mut receiver_queue: UnboundedReceiver<ComInterfaceStateEvent>,

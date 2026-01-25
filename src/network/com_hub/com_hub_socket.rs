@@ -12,6 +12,7 @@ use crate::{
     stdlib::{cell::RefCell, rc::Rc},
     task::spawn_with_panic_notify,
 };
+use crate::network::com_hub::MAX_CONCURRENT_COM_INTERFACES_EMBASSY;
 
 impl ComHub {
     pub(crate) fn handle_interface_socket_events(
@@ -36,7 +37,7 @@ impl ComHub {
     }
 }
 
-#[cfg_attr(feature = "embassy_runtime", embassy_executor::task)]
+#[cfg_attr(feature = "embassy_runtime", embassy_executor::task(pool_size = MAX_CONCURRENT_COM_INTERFACES_EMBASSY))]
 async fn handle_interface_socket_events(
     mut receiver_queue: UnboundedReceiver<ComInterfaceSocketEvent>,
     socket_manager: Rc<RefCell<SocketsManager>>,
