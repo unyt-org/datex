@@ -277,7 +277,6 @@ std = [
     "hex/std",
     "bytes/std",
     "ringmap/std",
-    "dep:embassy-sync",  # FIXME remove
 ] # use std
 
 nostd = [
