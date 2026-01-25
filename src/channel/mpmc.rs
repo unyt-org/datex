@@ -44,7 +44,7 @@ impl<T: Clone> BroadcastSender<T> {
         BroadcastSender(sender)
     }
 
-    pub fn start_send(&mut self, item: T) -> Result<(), ()> {
+    pub fn start_send(&self, item: T) -> Result<(), ()> {
         #[cfg(any(feature = "tokio_runtime", feature = "wasm_runtime"))]
         {
             self.0.try_broadcast(item).map_err(|_| ()).map(|_| ())
@@ -55,7 +55,7 @@ impl<T: Clone> BroadcastSender<T> {
         }
     }
 
-    pub async fn send(&mut self, item: T) -> Result<(), ()> {
+    pub async fn send(&self, item: T) -> Result<(), ()> {
         #[cfg(any(feature = "tokio_runtime", feature = "wasm_runtime"))]
         {
             self.0.broadcast(item).await.map_err(|_| ()).map(|_| ())
@@ -76,44 +76,75 @@ impl<T: Clone> BroadcastSender<T> {
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct BroadcastReceiver<T: Clone>(_BroadcastReceiver<T>);
-impl<T: Clone> BroadcastReceiver<T> {
-    pub fn new(receiver: _BroadcastReceiver<T>) -> Self {
-        BroadcastReceiver(receiver)
-    }
-
-    pub async fn next(&mut self) -> Result<T, ()> {
-        #[cfg(any(feature = "tokio_runtime", feature = "wasm_runtime"))]
-        {
-            self.0.recv().await.map_err(|_| ())
-        }
-        #[cfg(feature = "embassy_runtime")]
-        {
-            self.0.receive().await.map_err(|_| ())
-        }
-    }
-
-    pub fn try_next(&mut self) -> Result<T, ()> {
-        #[cfg(any(feature = "tokio_runtime", feature = "wasm_runtime"))]
-        {
-            self.0.try_recv().map_err(|_| ())
-        }
-        #[cfg(feature = "embassy_runtime")]
-        {
-            self.0.try_receive().map_err(|_| ())
-        }
-    }
-}
-
 cfg_if! {
     if #[cfg(any(feature = "tokio_runtime", feature = "wasm_runtime"))] {
+
+#[derive(Debug, Clone)]
+pub struct BroadcastReceiver<T: Clone>(_BroadcastReceiver<T>);
+        impl<T: Clone> BroadcastReceiver<T> {
+            pub fn new(receiver: _BroadcastReceiver<T>) -> Self {
+                BroadcastReceiver(receiver)
+            }
+
+            pub async fn next(&mut self) -> Result<T, ()> {
+                #[cfg(any(feature = "tokio_runtime", feature = "wasm_runtime"))]
+                {
+                    self.0.recv().await.map_err(|_| ())
+                }
+                #[cfg(feature = "embassy_runtime")]
+                {
+                    self.0.receive().await.map_err(|_| ())
+                }
+            }
+
+            pub fn try_next(&mut self) -> Result<T, ()> {
+                #[cfg(any(feature = "tokio_runtime", feature = "wasm_runtime"))]
+                {
+                    self.0.try_recv().map_err(|_| ())
+                }
+                #[cfg(feature = "embassy_runtime")]
+                {
+                    self.0.try_receive().map_err(|_| ())
+                }
+            }
+        }
+
         pub fn create_bounded_channel<T: Clone, const CAPACITY: usize>() -> (BroadcastSender<T>, BroadcastReceiver<T>) {
             let (sender, receiver) = async_broadcast::broadcast(CAPACITY);
             (BroadcastSender::new(sender), BroadcastReceiver::new(receiver))
         }
     }
     else if #[cfg(feature = "embassy_runtime")] {
+
+        #[derive(Debug, Clone)]
+        pub struct BroadcastReceiver<'a, T: Clone>(_BroadcastReceiver<'a, T>);
+        impl<T: Clone> BroadcastReceiver<'_, T> {
+            pub fn new(receiver: _BroadcastReceiver<'_, T>) -> Self {
+                BroadcastReceiver(receiver)
+            }
+
+            pub async fn next(&mut self) -> Result<T, ()> {
+                #[cfg(any(feature = "tokio_runtime", feature = "wasm_runtime"))]
+                {
+                    self.0.recv().await.map_err(|_| ())
+                }
+                #[cfg(feature = "embassy_runtime")]
+                {
+                    self.0.receive().await.map_err(|_| ())
+                }
+            }
+
+            pub fn try_next(&mut self) -> Result<T, ()> {
+                #[cfg(any(feature = "tokio_runtime", feature = "wasm_runtime"))]
+                {
+                    self.0.try_recv().map_err(|_| ())
+                }
+                #[cfg(feature = "embassy_runtime")]
+                {
+                    self.0.try_receive().map_err(|_| ())
+                }
+            }
+        }
         pub fn create_bounded_channel<T, const CAPACITY: usize>() -> (BroadcastSender<T>, BroadcastReceiver<T>) {
             let channel = embassy_sync::channel::Channel::<NoopRawMutex, T, CAPACITY>::new();
             (BroadcastSender::new(channel.sender()), BroadcastReceiver::new(channel.receiver()))

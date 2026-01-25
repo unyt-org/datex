@@ -1,5 +1,5 @@
+use crate::stdlib::format;
 use core::fmt::{Debug, Display};
-
 pub enum ComInterfaceError {
     SocketNotFound,
     SocketAlreadyExists,

@@ -1,15 +1,14 @@
-use crate::network::com_interfaces::com_interface::ComInterfaceEvent;
-
 use crate::{
     network::{
         com_hub::errors::InterfaceCreateError,
         com_interfaces::com_interface::{
+            ComInterfaceEvent,
             factory::ComInterfaceSyncFactory,
             properties::{InterfaceDirection, InterfaceProperties},
         },
     },
-    stdlib::string::ToString,
-    task::spawn_with_panic_notify_default,
+    stdlib::{string::ToString, vec},
+    task::spawn_with_panic_notify,
     values::core_values::endpoint::Endpoint,
 };
 use core::{prelude::rust_2024::*, result::Result, time::Duration};
@@ -35,19 +34,22 @@ impl ComInterfaceSyncFactory for LocalLoopbackInterfaceSetupData {
             );
 
         // spawn event handler task for impl events
-        spawn_with_panic_notify_default(async move {
-            while let Some(event) =
-                com_interface_proxy.event_receiver.next().await
-            {
-                if let ComInterfaceEvent::SendBlock(block, _) = event {
-                    sender.start_send(block.to_bytes()).unwrap();
+        spawn_with_panic_notify(
+            &com_interface_proxy.async_context,
+            async move {
+                while let Some(event) =
+                    com_interface_proxy.event_receiver.next().await
+                {
+                    if let ComInterfaceEvent::SendBlock(block, _) = event {
+                        sender.start_send(block.to_bytes()).unwrap();
+                    }
                 }
-            }
-        });
+            },
+        );
 
         Ok(InterfaceProperties {
             created_sockets: Some(vec![socket_uuid]),
-           ..Self::get_default_properties()
+            ..Self::get_default_properties()
         })
     }
 

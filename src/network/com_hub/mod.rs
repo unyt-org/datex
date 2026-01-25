@@ -464,18 +464,6 @@ impl ComHub {
             warn!("Block TTL expired. Dropping block...");
             return;
         }
-        println!(
-            "{} >>>> Redirecting block, rec: {}, send: {},  distance: {},  ttl: {} ",
-            self.endpoint,
-            block
-                .receiver_endpoints()
-                .iter()
-                .map(|e| e.to_string())
-                .join(","),
-            block.sender(),
-            block.routing_header.distance,
-            block.routing_header.ttl
-        );
 
         let mut prefer_incoming_socket_for_bounce_back = false;
         // if we are the original sender of the block, don't send again (prevent loop) and send

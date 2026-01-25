@@ -31,7 +31,6 @@ use crate::{
         rc::Rc,
         sync::Arc,
     },
-    task::spawn_with_panic_notify_default,
     utils::uuid::UUID,
     values::{
         core_values::endpoint::Endpoint, value_container::ValueContainer,
@@ -261,7 +260,7 @@ impl ComInterfaceProxy {
                 remote_endpoint_b,
             );
 
-        spawn_with_panic_notify_default(async move {
+        crate::task::spawn_with_panic_notify_default(async move {
             let mut event_receiver_a = proxy_a.event_receiver;
             loop {
                 use async_select::select;
@@ -279,7 +278,7 @@ impl ComInterfaceProxy {
                 }
             }
         });
-        spawn_with_panic_notify_default(async move {
+        crate::task::spawn_with_panic_notify_default(async move {
             let mut event_receiver_b = proxy_b.event_receiver;
             loop {
                 use async_select::select;
