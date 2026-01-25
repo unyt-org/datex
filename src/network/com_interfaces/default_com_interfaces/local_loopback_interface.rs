@@ -7,7 +7,7 @@ use crate::{
             properties::{InterfaceDirection, InterfaceProperties},
         },
     },
-    stdlib::{string::ToString, vec},
+    stdlib::{string::ToString, vec, vec::Vec},
     task::spawn_with_panic_notify,
     values::core_values::endpoint::Endpoint,
 };
@@ -24,7 +24,7 @@ pub struct LocalLoopbackInterfaceSetupData;
 impl ComInterfaceSyncFactory for LocalLoopbackInterfaceSetupData {
     fn create_interface(
         self,
-        mut com_interface_proxy: ComInterfaceProxy,
+        com_interface_proxy: ComInterfaceProxy,
     ) -> Result<InterfaceProperties, InterfaceCreateError> {
         // directly create a socket and register it
         let (socket_uuid, sender) = com_interface_proxy
@@ -35,7 +35,7 @@ impl ComInterfaceSyncFactory for LocalLoopbackInterfaceSetupData {
             );
 
         let async_context = com_interface_proxy.async_context.clone();
-        
+
         // spawn event handler task for impl events
         spawn_with_panic_notify(
             &async_context,

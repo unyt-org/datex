@@ -1,6 +1,6 @@
 use crate::{
     network::com_interfaces::com_interface::properties::InterfaceDirection,
-    stdlib::rc::Rc, stdlib::string::String, stdlib::string::ToString,
+    stdlib::rc::Rc, stdlib::string::String, stdlib::boxed::Box, stdlib::string::ToString,
 };
 use core::{cell::RefCell, pin::Pin};
 use log::info;

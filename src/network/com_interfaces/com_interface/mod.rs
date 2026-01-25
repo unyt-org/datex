@@ -27,6 +27,7 @@ use crate::{
         cell::{Ref, RefCell},
         rc::Rc,
         sync::Arc,
+        string::ToString,
     },
     utils::uuid::UUID,
     values::{
@@ -60,7 +61,7 @@ impl TryFrom<String> for ComInterfaceUUID {
 
     fn try_from(value: String) -> Result<Self, Self::Error> {
         let value = value.strip_prefix("com_interface::").ok_or(())?;
-        Ok(ComInterfaceUUID(UUID::from_string(value.to_owned())))
+        Ok(ComInterfaceUUID(UUID::from_string(value.to_string())))
     }
 }
 
