@@ -45,6 +45,8 @@ pub mod socket;
 pub mod socket_manager;
 pub mod state;
 
+#[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
+#[cfg_attr(feature = "wasm_runtime", tsify(type = "string"))]
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ComInterfaceUUID(pub UUID);
 impl Display for ComInterfaceUUID {

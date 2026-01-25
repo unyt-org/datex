@@ -15,6 +15,8 @@ use crate::{
 };
 use core::fmt::Display;
 
+#[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
+#[cfg_attr(feature = "wasm_runtime", tsify(type = "string"))]
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ComInterfaceSocketUUID(pub UUID);
 impl Display for ComInterfaceSocketUUID {

@@ -66,6 +66,8 @@ pub enum EndpointType {
     Anonymous = 2,
 }
 
+#[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
+#[cfg_attr(feature = "wasm_runtime", tsify(type = "string"))]
 #[derive(BinWrite, BinRead, Debug, Clone, Hash, PartialEq, Eq)]
 #[brw(little)]
 pub struct Endpoint {
