@@ -303,7 +303,7 @@ impl InterfacesManager {
             // FIXME should probably do more cleanup here, but this was what com hub did before
             // try cleanup, already cleaned up when destroyed via destroy_interface, so the call may fail
             // but we can ignore that
-            let _ =self.cleanup_interface(interface_uuid);
+            let _ = self.cleanup_interface(interface_uuid);
         }
     }
 }

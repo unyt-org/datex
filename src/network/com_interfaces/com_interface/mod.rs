@@ -1,13 +1,11 @@
-use crate::{
-    network::{
-        com_hub::managers::interfaces_manager::SyncOrAsyncComInterfaceImplementationFactoryFn,
-        com_interfaces::com_interface::{
-            factory::{ComInterfaceAsyncFactory, ComInterfaceSyncFactory},
-            properties::InterfaceProperties,
-            socket::{ComInterfaceSocketEvent, ComInterfaceSocketUUID},
-            socket_manager::ComInterfaceSocketManager,
-            state::{ComInterfaceState, ComInterfaceStateWrapper},
-        },
+use crate::network::{
+    com_hub::managers::interfaces_manager::SyncOrAsyncComInterfaceImplementationFactoryFn,
+    com_interfaces::com_interface::{
+        factory::{ComInterfaceAsyncFactory, ComInterfaceSyncFactory},
+        properties::InterfaceProperties,
+        socket::{ComInterfaceSocketEvent, ComInterfaceSocketUUID},
+        socket_manager::ComInterfaceSocketManager,
+        state::{ComInterfaceState, ComInterfaceStateWrapper},
     },
 };
 

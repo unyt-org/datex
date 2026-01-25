@@ -5,6 +5,7 @@ use core::{
 };
 use datex_core::{
     channel::{
+        futures_intrusive::ManualResetEvent,
         mpsc::{UnboundedReceiver, UnboundedSender},
     },
     network::{
@@ -21,7 +22,6 @@ use datex_core::{
 use log::info;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, env, fs, path::Path, sync::Arc};
-use datex_core::channel::futures_intrusive::ManualResetEvent;
 use tokio::task::yield_now;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

@@ -2,6 +2,7 @@ use super::tcp_common::TCPClientInterfaceSetupData;
 
 use crate::{
     channel::{
+        futures_intrusive::ManualResetEvent,
         mpsc::{UnboundedReceiver, UnboundedSender},
     },
     network::{
@@ -24,7 +25,6 @@ use core::{
 };
 use log::{error, warn};
 use std::sync::Mutex;
-use crate::channel::futures_intrusive::ManualResetEvent;
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::{TcpStream, tcp::OwnedWriteHalf},

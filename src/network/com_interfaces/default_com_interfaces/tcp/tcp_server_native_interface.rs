@@ -1,6 +1,7 @@
 use super::tcp_common::TCPServerInterfaceSetupData;
 use crate::{
     channel::{
+        futures_intrusive::ManualResetEvent,
         mpsc::{UnboundedReceiver, UnboundedSender, create_unbounded_channel},
     },
     core::net::AddrParseError,
@@ -22,7 +23,6 @@ use crate::{
 };
 use async_select::select;
 use core::{prelude::rust_2024::*, result::Result, time::Duration};
-use crate::channel::futures_intrusive::ManualResetEvent;
 use log::{error, info, warn};
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},

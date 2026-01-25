@@ -1,5 +1,5 @@
-use std::sync::Arc;
 use crate::channel::futures_intrusive::ManualResetEvent;
+use std::sync::Arc;
 
 use crate::{
     channel::mpsc::UnboundedSender,
