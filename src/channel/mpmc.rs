@@ -1,6 +1,5 @@
 use cfg_if::cfg_if;
 
-use async_broadcast::broadcast;
 #[cfg(any(feature = "tokio_runtime", feature = "wasm_runtime"))]
 use async_broadcast::{
     Receiver as _BroadcastReceiver, Sender as _BroadcastSender,
@@ -110,7 +109,7 @@ impl<T: Clone> BroadcastReceiver<T> {
 cfg_if! {
     if #[cfg(any(feature = "tokio_runtime", feature = "wasm_runtime"))] {
         pub fn create_bounded_channel<T: Clone, const CAPACITY: usize>() -> (BroadcastSender<T>, BroadcastReceiver<T>) {
-            let (sender, receiver) = broadcast(CAPACITY);
+            let (sender, receiver) = async_broadcast::broadcast(CAPACITY);
             (BroadcastSender::new(sender), BroadcastReceiver::new(receiver))
         }
     }
