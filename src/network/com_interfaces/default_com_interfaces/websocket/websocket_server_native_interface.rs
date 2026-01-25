@@ -137,7 +137,7 @@ impl WebSocketServerInterfaceSetupData {
                             }
                         };
                     }
-                    _ = shutdown_signal.next() => {
+                    _ = shutdown_signal.wait() => {
                         break;
                     }
                 }
@@ -211,7 +211,7 @@ impl WebSocketServerInterfaceSetupData {
                     }
                 }
                 // Shutdown signal received
-                _ = shutdown_signal.next() => {
+                _ = shutdown_signal.wait() => {
                     info!("Shutdown signal received, stopping write_task for {addr}");
                     break;
                 }
@@ -253,7 +253,7 @@ impl WebSocketServerInterfaceSetupData {
                     }
                 }
                 // Shutdown signal received
-                _ = shutdown_signal.next() => {
+                _ = shutdown_signal.wait() => {
                     info!("Shutdown signal received, stopping read_task for {addr}");
                     break;
                 }

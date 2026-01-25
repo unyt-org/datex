@@ -1,7 +1,6 @@
 use super::tcp_common::TCPServerInterfaceSetupData;
 use crate::{
     channel::{
-        mpmc::BroadcastReceiver,
         mpsc::{UnboundedReceiver, UnboundedSender, create_unbounded_channel},
     },
     core::net::AddrParseError,
@@ -23,6 +22,7 @@ use crate::{
 };
 use async_select::select;
 use core::{prelude::rust_2024::*, result::Result, time::Duration};
+use crate::channel::futures_intrusive::ManualResetEvent;
 use log::{error, info, warn};
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
@@ -102,7 +102,7 @@ impl TCPServerInterfaceSetupData {
                         }
 
                     }
-                    _ = shutdown_signal.next() => {
+                    _ = shutdown_signal.wait() => {
                         info!("Shutdown signal received, stopping listener loop");
                         break;
                     }
@@ -155,7 +155,7 @@ impl TCPServerInterfaceSetupData {
     async fn handle_receive(
         mut rx: OwnedReadHalf,
         mut bytes_in_sender: UnboundedSender<Vec<u8>>,
-        mut shutdown_signal: BroadcastReceiver<()>,
+        mut shutdown_signal: Arc<ManualResetEvent>,
     ) {
         let mut buffer = [0u8; 1024];
         loop {
@@ -177,7 +177,7 @@ impl TCPServerInterfaceSetupData {
                 }
 
                 // Shutdown signal received
-                _ = shutdown_signal.next() => {
+                _ = shutdown_signal.wait() => {
                     break;
                 }
             }
@@ -187,7 +187,7 @@ impl TCPServerInterfaceSetupData {
     async fn handle_send(
         mut tcp_write_half: OwnedWriteHalf,
         mut tx_receiver: UnboundedReceiver<Vec<u8>>,
-        mut shutdown_signal: BroadcastReceiver<()>,
+        mut shutdown_signal: Arc<ManualResetEvent>,
     ) {
         loop {
             select! {
@@ -205,7 +205,7 @@ impl TCPServerInterfaceSetupData {
                         }
                     }
                 }
-                _ = shutdown_signal.next() => {
+                _ = shutdown_signal.wait() => {
                     break;
                 }
             }

@@ -99,7 +99,7 @@ impl WebSocketClientInterfaceSetupData {
                     }
                 },
                 // Shutdown signal received
-                _ = shutdown_signal.next() => {
+                _ = shutdown_signal.wait() => {
                     info!("Shutdown signal received, stopping read_task");
                     break;
                 }

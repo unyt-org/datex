@@ -111,6 +111,7 @@ embedded-time = "0.12.1"
 async-select = "0.3.0"
 async-broadcast = { version = "0.7.2", optional = true }
 embassy-sync = { version = "0.7.2", optional = true }
+futures-intrusive = { version = "0.5.0", default-features = false }
 
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
@@ -276,6 +277,7 @@ std = [
     "hex/std",
     "bytes/std",
     "ringmap/std",
+    "futures-intrusive/default"
 ] # use std
 
 nostd = [
@@ -293,6 +295,7 @@ nostd = [
     "num/alloc",
     "num/libm",
     "dep:embassy-sync",
+    "futures-intrusive/alloc"
 ]
 
 debug = ["dep:serde-big-array"]

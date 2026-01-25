@@ -60,11 +60,11 @@ impl SerialInterfaceSetupData {
         let (socket_uuid, mut sender) = com_interface_proxy
             .create_and_init_socket(InterfaceDirection::InOut, 1);
 
-        let mut shutdown_signal = com_interface_proxy.shutdown_receiver();
-        spawn(async move {
+        let shutdown_signal = com_interface_proxy.shutdown_receiver();
+        spawn_with_panic_notify_default(async move {
             loop {
                 select! {
-                    _ = shutdown_signal.next() => {
+                    _ = shutdown_signal.wait() => {
                         warn!("Shutting down serial task...");
                         break;
                     },

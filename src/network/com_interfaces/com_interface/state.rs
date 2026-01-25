@@ -1,4 +1,5 @@
-use crate::channel::mpmc::{BroadcastChannel, BroadcastReceiver};
+use std::sync::Arc;
+use crate::channel::futures_intrusive::ManualResetEvent;
 
 use crate::{
     channel::mpsc::UnboundedSender,
@@ -20,7 +21,7 @@ pub enum ComInterfaceState {
 pub struct ComInterfaceStateWrapper {
     state: ComInterfaceState,
     event_sender: UnboundedSender<ComInterfaceStateEvent>,
-    shutdown_channel: BroadcastChannel<()>,
+    shutdown_channel: Arc<ManualResetEvent>,
 }
 
 /// Wrapper around ComInterfaceState that sends events on state changes
@@ -32,7 +33,7 @@ impl ComInterfaceStateWrapper {
         ComInterfaceStateWrapper {
             state,
             event_sender,
-            shutdown_channel: BroadcastChannel::new::<1>(),
+            shutdown_channel: Arc::new(ManualResetEvent::new(false)),
         }
     }
 
@@ -50,7 +51,7 @@ impl ComInterfaceStateWrapper {
             }
             ComInterfaceState::Connected => ComInterfaceStateEvent::Connected,
             ComInterfaceState::Destroyed => {
-                self.shutdown_channel.sender().start_send(());
+                self.shutdown_channel.set();
                 ComInterfaceStateEvent::Destroyed
             }
             ComInterfaceState::Closing | ComInterfaceState::Connecting => {
@@ -60,8 +61,8 @@ impl ComInterfaceStateWrapper {
         let _ = self.event_sender.start_send(event);
     }
 
-    pub fn shutdown_receiver(&self) -> BroadcastReceiver<()> {
-        self.shutdown_channel.receiver()
+    pub fn shutdown_receiver(&self) -> Arc<ManualResetEvent> {
+        self.shutdown_channel.clone()
     }
 }
 

@@ -5,7 +5,6 @@ use core::{
 };
 use datex_core::{
     channel::{
-        mpmc::BroadcastReceiver,
         mpsc::{UnboundedReceiver, UnboundedSender},
     },
     network::{
@@ -22,6 +21,7 @@ use datex_core::{
 use log::info;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, env, fs, path::Path, sync::Arc};
+use datex_core::channel::futures_intrusive::ManualResetEvent;
 use tokio::task::yield_now;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -599,7 +599,7 @@ impl Network {
         remote_endpoint: Option<Endpoint>,
     ) -> (
         ComInterfaceProxy,
-        BroadcastReceiver<()>,
+        Arc<ManualResetEvent>,
         UnboundedSender<Vec<u8>>,
     ) {
         let interface_direction = connection.setup_data.direction.clone();
@@ -631,7 +631,7 @@ impl Network {
     /// Spawns a task that forwards data blocks from a com interface event receiver to a socket sender
     fn spawn_socket_forwarding_task(
         mut event_receiver: UnboundedReceiver<ComInterfaceEvent>,
-        mut shutdown_signal: BroadcastReceiver<()>,
+        mut shutdown_signal: Arc<ManualResetEvent>,
         mut socket_sender: UnboundedSender<Vec<u8>>,
     ) {
         spawn_with_panic_notify_default(async move {
@@ -643,7 +643,7 @@ impl Network {
                             socket_sender.start_send(block.to_bytes()).unwrap();
                         }
                     }
-                    _ = shutdown_signal.next() => {
+                    _ = shutdown_signal.wait() => {
                         break;
                     }
                 }

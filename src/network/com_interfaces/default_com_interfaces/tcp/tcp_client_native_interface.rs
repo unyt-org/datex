@@ -2,7 +2,6 @@ use super::tcp_common::TCPClientInterfaceSetupData;
 
 use crate::{
     channel::{
-        mpmc::BroadcastReceiver,
         mpsc::{UnboundedReceiver, UnboundedSender},
     },
     network::{
@@ -25,6 +24,7 @@ use core::{
 };
 use log::{error, warn};
 use std::sync::Mutex;
+use crate::channel::futures_intrusive::ManualResetEvent;
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::{TcpStream, tcp::OwnedWriteHalf},
@@ -78,7 +78,7 @@ impl TCPClientInterfaceSetupData {
         read_half: tokio::net::tcp::OwnedReadHalf,
         mut sender: UnboundedSender<Vec<u8>>,
         state: Arc<Mutex<ComInterfaceStateWrapper>>,
-        mut shutdown_signal: BroadcastReceiver<()>,
+        mut shutdown_signal: Arc<ManualResetEvent>,
     ) {
         let mut reader = read_half;
         let mut buffer = [0u8; 1024];
@@ -104,7 +104,7 @@ impl TCPClientInterfaceSetupData {
                         }
                     }
                 }
-                _ = shutdown_signal.next() => {
+                _ = shutdown_signal.wait() => {
                     break;
                 }
             }

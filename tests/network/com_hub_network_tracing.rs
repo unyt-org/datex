@@ -45,7 +45,6 @@ async fn create_network_trace() {
     ]);
 }
 
-// same as create_network_trace, but both com hubs in separate threads
 #[async_test]
 #[timeout(1000)]
 async fn create_network_trace_separate_threads() {

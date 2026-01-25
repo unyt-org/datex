@@ -1,5 +1,4 @@
 use crate::{
-    channel::mpmc::BroadcastReceiver,
     network::{
         com_hub::managers::interfaces_manager::SyncOrAsyncComInterfaceImplementationFactoryFn,
         com_interfaces::com_interface::{
@@ -37,6 +36,7 @@ use crate::{
     },
 };
 use core::fmt::{Debug, Display};
+use futures_intrusive::sync::{GenericManualResetEvent, ManualResetEvent};
 
 pub mod error;
 pub mod factory;
@@ -179,7 +179,7 @@ impl ComInterfaceProxy {
         )
     }
 
-    pub fn shutdown_receiver(&self) -> BroadcastReceiver<()> {
+    pub fn shutdown_receiver(&self) -> Arc<ManualResetEvent> {
         self.state.lock().unwrap().shutdown_receiver()
     }
 
@@ -272,7 +272,7 @@ impl ComInterfaceProxy {
                             socket_b_sender.start_send(block.to_bytes()).unwrap();
                         }
                     }
-                    _ = shutdown_signal_a.next() => {
+                    _ = shutdown_signal_a.wait() => {
                         break;
                     }
                 }
@@ -290,7 +290,7 @@ impl ComInterfaceProxy {
                             socket_a_sender.start_send(block.to_bytes()).unwrap();
                         }
                     }
-                    _ = shutdown_signal_b.next() => {
+                    _ = shutdown_signal_b.wait() => {
                         break;
                     }
                 }
