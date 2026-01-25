@@ -45,7 +45,7 @@ impl TCPClientInterfaceSetupData {
 
         let (read_half, tx) = stream.into_split();
 
-        let (_, sender) = com_interface_proxy
+        let (socket_uuid, sender) = com_interface_proxy
             .create_and_init_socket(InterfaceDirection::InOut, 1);
 
         let shutdown_signal = com_interface_proxy.shutdown_signal();
@@ -67,6 +67,7 @@ impl TCPClientInterfaceSetupData {
 
         Ok(InterfaceProperties {
             name: Some(self.address),
+            created_sockets: Some(vec![socket_uuid]),
             ..Self::get_default_properties()
         })
     }

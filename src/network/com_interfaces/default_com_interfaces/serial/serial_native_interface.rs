@@ -51,7 +51,7 @@ impl SerialInterfaceSetupData {
             ));
         }
 
-        let port = serialport::new(port_name, self.baud_rate)
+        let port = serialport::new(port_name.clone(), self.baud_rate)
             .timeout(Self::TIMEOUT)
             .open()
             .map_err(|err| {
@@ -60,7 +60,7 @@ impl SerialInterfaceSetupData {
         let port = Arc::new(Mutex::new(port));
         let port_clone = port.clone();
 
-        let (_, mut sender) = com_interface_proxy
+        let (socket_uuid, mut sender) = com_interface_proxy
             .create_and_init_socket(InterfaceDirection::InOut, 1);
 
         let shutdown_signal = Arc::new(Notify::new());
@@ -113,7 +113,11 @@ impl SerialInterfaceSetupData {
             shutdown_signal.clone(),
         ));
 
-        Ok(Self::get_default_properties())
+        Ok(InterfaceProperties {
+            name: Some(port_name),
+            created_sockets: Some(vec![socket_uuid]),
+            ..Self::get_default_properties()
+        })
     }
 
     /// background task to handle com hub events (e.g. outgoing messages)

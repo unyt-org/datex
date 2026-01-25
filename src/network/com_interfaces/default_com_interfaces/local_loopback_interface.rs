@@ -27,7 +27,7 @@ impl ComInterfaceSyncFactory for LocalLoopbackInterfaceSetupData {
         mut com_interface_proxy: ComInterfaceProxy,
     ) -> Result<InterfaceProperties, InterfaceCreateError> {
         // directly create a socket and register it
-        let (_, mut sender) = com_interface_proxy
+        let (socket_uuid, mut sender) = com_interface_proxy
             .create_and_init_socket_with_direct_endpoint(
                 InterfaceDirection::InOut,
                 1,
@@ -45,7 +45,10 @@ impl ComInterfaceSyncFactory for LocalLoopbackInterfaceSetupData {
             }
         });
 
-        Ok(Self::get_default_properties())
+        Ok(InterfaceProperties {
+            created_sockets: Some(vec![socket_uuid]),
+           ..Self::get_default_properties()
+        })
     }
 
     fn get_default_properties() -> InterfaceProperties {

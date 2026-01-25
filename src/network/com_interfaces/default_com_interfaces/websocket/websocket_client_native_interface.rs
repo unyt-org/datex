@@ -40,7 +40,7 @@ impl WebSocketClientInterfaceSetupData {
         let (address, write, read) =
             self.create_websocket_client_connection().await?;
 
-        let (_, sender) = com_interface_proxy
+        let (socket_uuid, sender) = com_interface_proxy
             .create_and_init_socket(InterfaceDirection::InOut, 1);
 
         let state = com_interface_proxy.state;
@@ -61,6 +61,7 @@ impl WebSocketClientInterfaceSetupData {
 
         Ok(InterfaceProperties {
             name: Some(address.to_string()),
+            created_sockets: Some(vec![socket_uuid]),
             ..Self::get_default_properties()
         })
     }

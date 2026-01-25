@@ -23,7 +23,7 @@ impl ComHub {
             .interface_manager
             .borrow()
             .interface_priority(&interface_uuid)
-            .unwrap_or(InterfacePriority::None);
+            .unwrap_or_default();
         spawn_with_panic_notify(
             &self.async_context,
             handle_interface_socket_events(

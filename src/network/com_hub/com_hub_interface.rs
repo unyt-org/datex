@@ -131,11 +131,30 @@ impl ComHub {
                 async_context,
             )
             .await?;
-        let interface_manager = self.interface_manager.borrow();
-        self.init_interface_event_listeners(
-            interface_manager.get_interface_by_uuid(&com_interface_uuid),
-            receivers,
-        );
+        let created_sockets;
+        {
+            let interface_manager = self.interface_manager.borrow();
+            let interface = interface_manager.get_interface_by_uuid(&com_interface_uuid);
+            created_sockets = interface.properties().created_sockets.clone();
+
+            // set up event listeners
+            self.init_interface_event_listeners(
+                interface,
+                receivers,
+            );
+        }
+
+        // wait for all initially created sockets to be registered
+        // if let Some(created_sockets) = created_sockets {
+        //     info!("waiting for created sockets: {:?}", created_sockets);
+        //     for socket_uuid in created_sockets {
+        //         let receiver = self.socket_manager
+        //             .borrow_mut()
+        //             .get_socket_registration_waiter(&socket_uuid);
+        //         receiver.await.expect("Socket registration waiter failed");
+        //     }
+        // }
+
         Ok(com_interface_uuid)
     }
 

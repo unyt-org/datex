@@ -7,6 +7,7 @@ use core::{prelude::rust_2024::*, time::Duration};
 use serde::{Deserialize, Serialize};
 use serde_with::{DurationMilliSeconds, serde_as};
 use strum::EnumString;
+use crate::network::com_interfaces::com_interface::socket::ComInterfaceSocketUUID;
 
 #[derive(PartialEq, Debug, Clone, EnumString, Serialize, Deserialize)]
 #[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
@@ -69,6 +70,13 @@ pub struct InterfaceProperties {
     // after socket connection establishment
     pub auto_identify: bool,
 
+    // A list of UUIDs of sockets that were created by this interface
+    // during initial connect. The com hub makes sure to await the registration of these
+    // sockets before giving out the interface as fully connected.
+    // TODO: check where created_sockets have a useful effect, currently not really validated in tests
+    pub created_sockets: Option<Vec<ComInterfaceSocketUUID>>,
+
+    // A list of setup data for interfaces that can connect to this interface
     pub connectable_interfaces: Option<Vec<RuntimeConfigInterface>>,
 }
 
@@ -173,6 +181,7 @@ impl Default for InterfaceProperties {
             allow_redirects: true,
             is_secure_channel: false,
             reconnection_config: ReconnectionConfig::default(),
+            created_sockets: None,
             connectable_interfaces: None,
         }
     }

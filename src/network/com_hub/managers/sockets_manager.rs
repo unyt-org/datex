@@ -1,3 +1,4 @@
+use futures::channel::oneshot::Receiver;
 use crate::{
     network::com_interfaces::com_interface::socket::{
         ComInterfaceSocket, ComInterfaceSocketEvent, ComInterfaceSocketUUID,
@@ -68,6 +69,12 @@ pub struct SocketsManager {
         Vec<(ComInterfaceSocketUUID, DynamicEndpointProperties)>,
     >,
 
+    /// callbacks to be called when a socket is registered
+    socket_registered_callbacks: HashMap<
+        ComInterfaceSocketUUID,
+        Vec<Box<dyn FnOnce()>>,
+    >,
+
     /// sender to send hello requests to newly added sockets
     block_event_sender: UnboundedSender<BlockSendEvent>,
 }
@@ -81,6 +88,7 @@ impl SocketsManager {
             endpoint_sockets_blacklist: HashMap::new(),
             fallback_sockets: Vec::new(),
             endpoint_sockets: HashMap::new(),
+            socket_registered_callbacks: HashMap::new(),
             block_event_sender,
         }
     }
@@ -152,6 +160,36 @@ impl SocketsManager {
         self.sort_sockets(&endpoint);
 
         Ok(())
+    }
+
+    /// Registers a callback to be called when the socket with the given UUID is registered
+    pub fn on_socket_registered(&mut self, socket_uuid: &ComInterfaceSocketUUID, callback: impl FnOnce() + 'static) {
+        if self.has_socket(socket_uuid) {
+            callback();
+        } else {
+            self.socket_registered_callbacks
+                .entry(socket_uuid.clone())
+                .or_default()
+                .push(Box::new(callback));
+        }
+    }
+
+    /// Waits asynchronously until the socket with the given UUID is registered.
+    /// If the socket is already registered, the function returns immediately.
+    pub(crate) fn get_socket_registration_waiter(&mut self, socket_uuid: &ComInterfaceSocketUUID) -> Receiver<()> {
+        if self.has_socket(socket_uuid) {
+            let (sender, receiver) = futures::channel::oneshot::channel();
+            let _ = sender.send(());
+            return receiver;
+        }
+
+        let (sender, receiver) = futures::channel::oneshot::channel();
+
+        self.on_socket_registered(socket_uuid, move || {
+            let _ = sender.send(());
+        });
+
+        receiver
     }
 
     /// Adds a socket to the socket list for a specific endpoint,
@@ -386,8 +424,19 @@ impl SocketsManager {
         // hello block
 
         self.block_event_sender
-            .start_send(BlockSendEvent::NewSocket { socket_uuid })
+            .start_send(BlockSendEvent::NewSocket { socket_uuid: socket_uuid.clone() })
             .expect("Can not send hello request to socket");
+
+        // call registered callbacks for socket registration
+        if let Some(callbacks) = self
+            .socket_registered_callbacks
+            .remove(&socket_uuid)
+        {
+            for callback in callbacks {
+                callback();
+            }
+        }
+
         Ok(())
     }
 
