@@ -110,7 +110,6 @@ web-time = { version = "1.1.0", optional = true }
 embedded-time = "0.12.1"
 async-select = "0.3.0"
 async-broadcast = { version = "0.7.2", optional = true }
-embassy-sync = { version = "0.7.2", optional = true }
 futures-intrusive = { version = "0.5.0", default-features = false }
 
 
@@ -247,7 +246,6 @@ embassy_runtime = [
     "dep:embassy-time",
     "dep:embassy-futures",
     "dep:async-unsync",
-    "dep:embassy-sync",
 ]
 
 # only required for legacy syntax highlighting in decompiler, will be removed in the future
@@ -294,7 +292,6 @@ nostd = [
     "hex/alloc",
     "num/alloc",
     "num/libm",
-    "dep:embassy-sync",
     "futures-intrusive/alloc"
 ]
 
