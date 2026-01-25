@@ -109,8 +109,9 @@ esp-println = { version = "0.16.1", optional = true }
 hashbrown = { version = "0.16.0", features = ["serde"], optional = true }
 web-time = { version = "1.1.0", optional = true }
 embedded-time = "0.12.1"
-async-notify = "0.3.2"
 async-select = "0.3.0"
+async-broadcast = { version = "0.7.2", optional = true }
+embassy-sync = { version = "0.7.2", optional = true }
 
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
@@ -230,12 +231,14 @@ esp_logger = ["dep:esp-println"]
 env_logger = []
 
 # runtime
-tokio_runtime = ["dep:tokio"]
+tokio_runtime = ["dep:tokio", "dep:async-broadcast"]
 wasm_runtime = [
     "dep:wasm-bindgen-futures",
     "dep:gloo-timers",
     "dep:tsify",
     "dep:web-time",
+
+    "dep:async-broadcast",
     #    "dep:wasm-bindgen",
 
 ]
@@ -244,6 +247,7 @@ embassy_runtime = [
     "dep:embassy-time",
     "dep:embassy-futures",
     "dep:async-unsync",
+    "dep:embassy-sync",
 ]
 
 # only required for legacy syntax highlighting in decompiler, will be removed in the future
@@ -273,6 +277,7 @@ std = [
     "hex/std",
     "bytes/std",
     "ringmap/std",
+    "dep:embassy-sync",  # FIXME remove
 ] # use std
 
 nostd = [
@@ -290,6 +295,7 @@ nostd = [
     "hex/alloc",
     "num/alloc",
     "num/libm",
+    "dep:embassy-sync",
 ]
 
 debug = ["dep:serde-big-array"]

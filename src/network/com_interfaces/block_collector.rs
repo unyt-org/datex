@@ -1,10 +1,10 @@
 use crate::{
+    channel::mpsc::{
+        UnboundedReceiver, UnboundedSender, create_unbounded_channel,
+    },
     global::dxb_block::{DXBBlock, HeaderParsingError},
     stdlib::vec::Vec,
-    task::{
-        UnboundedReceiver, UnboundedSender, create_unbounded_channel,
-        spawn_with_panic_notify_default,
-    },
+    task::spawn_with_panic_notify_default,
 };
 use core::prelude::rust_2024::*;
 use log::error;

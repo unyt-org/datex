@@ -16,6 +16,7 @@ use super::{
     webrtc_commons::WebRTCCommon,
 };
 use crate::{
+    channel::mpsc::UnboundedSender,
     network::com_interfaces::{
         com_interface::{
             properties::InterfaceDirection, socket::ComInterfaceSocketUUID,
@@ -26,7 +27,6 @@ use crate::{
         },
     },
     serde::{deserializer::from_bytes, serializer::to_bytes},
-    task::UnboundedSender,
     values::core_values::endpoint::Endpoint,
 };
 

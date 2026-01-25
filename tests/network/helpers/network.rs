@@ -5,6 +5,7 @@ use core::{
     str::FromStr,
 };
 use datex_core::{
+    channel::mpmc::BroadcastReceiver,
     network::{
         com_hub::{InterfacePriority, network_tracing::TraceOptions},
         com_interfaces::com_interface::{
@@ -596,7 +597,11 @@ impl Network {
         runtime: &Runtime,
         connection: &InterfaceConnection,
         remote_endpoint: Option<Endpoint>,
-    ) -> (ComInterfaceProxy, Arc<Notify>, UnboundedSender<Vec<u8>>) {
+    ) -> (
+        ComInterfaceProxy,
+        BroadcastReceiver<()>,
+        UnboundedSender<Vec<u8>>,
+    ) {
         let interface_direction = connection.setup_data.direction.clone();
         let (proxy, com_interface) = ComInterfaceProxy::create_interface(
             InterfaceProperties {
@@ -612,7 +617,7 @@ impl Network {
             .register_com_interface(com_interface, connection.priority)
             .expect("Failed to register interface A");
 
-        let shutdown_signal = proxy.shutdown_signal();
+        let shutdown_signal = proxy.shutdown_receiver();
         let (_, socket_sender) = proxy
             .create_and_init_socket_with_optional_endpoint(
                 interface_direction,

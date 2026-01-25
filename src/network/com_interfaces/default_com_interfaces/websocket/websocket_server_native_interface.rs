@@ -1,14 +1,14 @@
 use crate::{
+    channel::mpsc::{
+        UnboundedReceiver, UnboundedSender, create_unbounded_channel,
+    },
     network::com_interfaces::com_interface::{
         socket_manager::ComInterfaceSocketManager,
         state::ComInterfaceStateWrapper,
     },
     std_sync::Mutex,
     stdlib::{collections::HashMap, net::SocketAddr, sync::Arc},
-    task::{
-        UnboundedReceiver, UnboundedSender, create_unbounded_channel,
-        spawn_with_panic_notify_default,
-    },
+    task::spawn_with_panic_notify_default,
 };
 use core::{
     prelude::rust_2024::*, result::Result, str::FromStr, time::Duration,
@@ -65,7 +65,7 @@ impl WebSocketServerInterfaceSetupData {
 
         let websocket_streams_by_socket = Arc::new(Mutex::new(HashMap::new()));
         let websocket_streams_clone = websocket_streams_by_socket.clone();
-        let shutdown_signal = com_interface_proxy.shutdown_signal();
+        let mut shutdown_signal = com_interface_proxy.shutdown_receiver();
         let manager = com_interface_proxy.socket_manager;
         let state = com_interface_proxy.state;
 
@@ -137,7 +137,7 @@ impl WebSocketServerInterfaceSetupData {
                             }
                         };
                     }
-                    _ = shutdown_signal.notified() => {
+                    _ = shutdown_signal.next() => {
                         break;
                     }
                 }
@@ -192,7 +192,7 @@ impl WebSocketServerInterfaceSetupData {
         addr: SocketAddr,
         state: Arc<Mutex<ComInterfaceStateWrapper>>,
     ) {
-        let shutdown_signal = state.try_lock().unwrap().shutdown_signal();
+        let mut shutdown_signal = state.try_lock().unwrap().shutdown_receiver();
         loop {
             select! {
                 // Receive next message to send
@@ -211,7 +211,7 @@ impl WebSocketServerInterfaceSetupData {
                     }
                 }
                 // Shutdown signal received
-                _ = shutdown_signal.notified() => {
+                _ = shutdown_signal.next() => {
                     info!("Shutdown signal received, stopping write_task for {addr}");
                     break;
                 }
@@ -228,7 +228,7 @@ impl WebSocketServerInterfaceSetupData {
         state: Arc<Mutex<ComInterfaceStateWrapper>>,
         socket_uuid: ComInterfaceSocketUUID,
     ) {
-        let shutdown_signal = state.try_lock().unwrap().shutdown_signal();
+        let mut shutdown_signal = state.try_lock().unwrap().shutdown_receiver();
 
         loop {
             select! {
@@ -253,7 +253,7 @@ impl WebSocketServerInterfaceSetupData {
                     }
                 }
                 // Shutdown signal received
-                _ = shutdown_signal.notified() => {
+                _ = shutdown_signal.next() => {
                     info!("Shutdown signal received, stopping read_task for {addr}");
                     break;
                 }

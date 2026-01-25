@@ -1,20 +1,20 @@
-use futures::channel::oneshot::Receiver;
 use crate::{
-    network::com_interfaces::com_interface::socket::{
-        ComInterfaceSocket, ComInterfaceSocketEvent, ComInterfaceSocketUUID,
+    channel::mpsc::UnboundedSender,
+    collections::{HashMap, HashSet},
+    network::{
+        com_hub::{
+            BlockSendEvent, ComHubError, InterfacePriority,
+            SocketEndpointRegistrationError,
+        },
+        com_interfaces::com_interface::socket::{
+            ComInterfaceSocket, ComInterfaceSocketEvent, ComInterfaceSocketUUID,
+        },
     },
-    task::UnboundedSender,
 };
+use futures::channel::oneshot::Receiver;
 use itertools::Itertools;
 use log::{debug, error, info, warn};
 use serde::{Deserialize, Serialize};
-use crate::{
-    collections::{HashMap, HashSet},
-    network::com_hub::{
-        BlockSendEvent, ComHubError, InterfacePriority,
-        SocketEndpointRegistrationError,
-    },
-};
 
 use crate::{
     network::com_interfaces::com_interface::{
@@ -70,10 +70,8 @@ pub struct SocketsManager {
     >,
 
     /// callbacks to be called when a socket is registered
-    socket_registered_callbacks: HashMap<
-        ComInterfaceSocketUUID,
-        Vec<Box<dyn FnOnce()>>,
-    >,
+    socket_registered_callbacks:
+        HashMap<ComInterfaceSocketUUID, Vec<Box<dyn FnOnce()>>>,
 
     /// sender to send hello requests to newly added sockets
     block_event_sender: UnboundedSender<BlockSendEvent>,
@@ -163,7 +161,11 @@ impl SocketsManager {
     }
 
     /// Registers a callback to be called when the socket with the given UUID is registered
-    pub fn on_socket_registered(&mut self, socket_uuid: &ComInterfaceSocketUUID, callback: impl FnOnce() + 'static) {
+    pub fn on_socket_registered(
+        &mut self,
+        socket_uuid: &ComInterfaceSocketUUID,
+        callback: impl FnOnce() + 'static,
+    ) {
         if self.has_socket(socket_uuid) {
             callback();
         } else {
@@ -176,7 +178,10 @@ impl SocketsManager {
 
     /// Waits asynchronously until the socket with the given UUID is registered.
     /// If the socket is already registered, the function returns immediately.
-    pub(crate) fn get_socket_registration_waiter(&mut self, socket_uuid: &ComInterfaceSocketUUID) -> Receiver<()> {
+    pub(crate) fn get_socket_registration_waiter(
+        &mut self,
+        socket_uuid: &ComInterfaceSocketUUID,
+    ) -> Receiver<()> {
         if self.has_socket(socket_uuid) {
             let (sender, receiver) = futures::channel::oneshot::channel();
             let _ = sender.send(());
@@ -424,13 +429,14 @@ impl SocketsManager {
         // hello block
 
         self.block_event_sender
-            .start_send(BlockSendEvent::NewSocket { socket_uuid: socket_uuid.clone() })
+            .start_send(BlockSendEvent::NewSocket {
+                socket_uuid: socket_uuid.clone(),
+            })
             .expect("Can not send hello request to socket");
 
         // call registered callbacks for socket registration
-        if let Some(callbacks) = self
-            .socket_registered_callbacks
-            .remove(&socket_uuid)
+        if let Some(callbacks) =
+            self.socket_registered_callbacks.remove(&socket_uuid)
         {
             for callback in callbacks {
                 callback();

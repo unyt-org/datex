@@ -1,15 +1,21 @@
-use crate::network::{
-    com_hub::managers::interfaces_manager::SyncOrAsyncComInterfaceImplementationFactoryFn,
-    com_interfaces::com_interface::{
-        factory::{ComInterfaceAsyncFactory, ComInterfaceSyncFactory},
-        properties::InterfaceProperties,
-        socket::{ComInterfaceSocketEvent, ComInterfaceSocketUUID},
-        socket_manager::ComInterfaceSocketManager,
-        state::{ComInterfaceState, ComInterfaceStateWrapper},
+use crate::{
+    channel::mpmc::BroadcastReceiver,
+    network::{
+        com_hub::managers::interfaces_manager::SyncOrAsyncComInterfaceImplementationFactoryFn,
+        com_interfaces::com_interface::{
+            factory::{ComInterfaceAsyncFactory, ComInterfaceSyncFactory},
+            properties::InterfaceProperties,
+            socket::{ComInterfaceSocketEvent, ComInterfaceSocketUUID},
+            socket_manager::ComInterfaceSocketManager,
+            state::{ComInterfaceState, ComInterfaceStateWrapper},
+        },
     },
 };
 
 use crate::{
+    channel::mpsc::{
+        UnboundedReceiver, UnboundedSender, create_unbounded_channel,
+    },
     global::dxb_block::DXBBlock,
     network::{
         com_hub::{
@@ -24,16 +30,12 @@ use crate::{
         rc::Rc,
         sync::{Arc, Mutex},
     },
-    task::{
-        UnboundedReceiver, UnboundedSender, create_unbounded_channel,
-        spawn_with_panic_notify_default,
-    },
+    task::spawn_with_panic_notify_default,
     utils::uuid::UUID,
     values::{
         core_values::endpoint::Endpoint, value_container::ValueContainer,
     },
 };
-use async_notify::Notify;
 use core::fmt::{Debug, Display};
 
 pub mod error;
@@ -174,8 +176,8 @@ impl ComInterfaceProxy {
         )
     }
 
-    pub fn shutdown_signal(&self) -> Arc<Notify> {
-        self.state.lock().unwrap().shutdown_signal().clone()
+    pub fn shutdown_receiver(&self) -> BroadcastReceiver<()> {
+        self.state.lock().unwrap().shutdown_receiver()
     }
 
     /// Creates and initializes a new socket and returns its UUID and sender
@@ -238,7 +240,7 @@ impl ComInterfaceProxy {
         let uuid_b = proxy_b.uuid.clone();
 
         // Forward events from proxy A to proxy B
-        let shutdown_signal_a = proxy_a.shutdown_signal();
+        let mut shutdown_signal_a = proxy_a.shutdown_receiver();
         let (_, mut socket_a_sender) = proxy_a
             .create_and_init_socket_with_optional_endpoint(
                 InterfaceDirection::InOut,
@@ -247,7 +249,7 @@ impl ComInterfaceProxy {
             );
 
         // Forward events from proxy B to proxy A
-        let shutdown_signal_b = proxy_b.shutdown_signal();
+        let mut shutdown_signal_b = proxy_b.shutdown_receiver();
         let (_, mut socket_b_sender) = proxy_b
             .create_and_init_socket_with_optional_endpoint(
                 InterfaceDirection::InOut,
@@ -267,7 +269,7 @@ impl ComInterfaceProxy {
                             socket_b_sender.start_send(block.to_bytes()).unwrap();
                         }
                     }
-                    _ = shutdown_signal_a.notified() => {
+                    _ = shutdown_signal_a.next() => {
                         break;
                     }
                 }
@@ -285,7 +287,7 @@ impl ComInterfaceProxy {
                             socket_a_sender.start_send(block.to_bytes()).unwrap();
                         }
                     }
-                    _ = shutdown_signal_b.notified() => {
+                    _ = shutdown_signal_b.next() => {
                         break;
                     }
                 }
@@ -498,8 +500,5 @@ impl ComInterface {
 
     pub fn set_state(&self, new_state: ComInterfaceState) {
         self.state.try_lock().unwrap().set(new_state);
-    }
-    pub fn shutdown_signal(&self) -> Arc<Notify> {
-        self.state.try_lock().unwrap().shutdown_signal().clone()
     }
 }

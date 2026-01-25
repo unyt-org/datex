@@ -23,6 +23,7 @@ extern crate mopa;
 
 extern crate num_integer;
 
+pub mod channel;
 pub mod crypto;
 pub mod dif;
 

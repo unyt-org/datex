@@ -1,4 +1,5 @@
 use crate::{
+    channel::mpsc::UnboundedReceiver,
     network::{
         com_hub::{
             ComHub, ComHubError, InterfacePriority,
@@ -19,7 +20,7 @@ use crate::{
         rc::Rc,
         string::String,
     },
-    task::{UnboundedReceiver, spawn_with_panic_notify},
+    task::spawn_with_panic_notify,
     values::value_container::ValueContainer,
 };
 use core::{prelude::rust_2024::*, result::Result};
@@ -134,14 +135,12 @@ impl ComHub {
         let created_sockets;
         {
             let interface_manager = self.interface_manager.borrow();
-            let interface = interface_manager.get_interface_by_uuid(&com_interface_uuid);
+            let interface =
+                interface_manager.get_interface_by_uuid(&com_interface_uuid);
             created_sockets = interface.properties().created_sockets.clone();
 
             // set up event listeners
-            self.init_interface_event_listeners(
-                interface,
-                receivers,
-            );
+            self.init_interface_event_listeners(interface, receivers);
         }
 
         // wait for all initially created sockets to be registered

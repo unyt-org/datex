@@ -1,13 +1,13 @@
-use crate::stdlib::sync::Arc;
-
-use async_notify::Notify;
+use crate::channel::mpmc::{BroadcastChannel, BroadcastReceiver};
 
 use crate::{
+    channel::mpsc::UnboundedSender,
     network::com_interfaces::com_interface::ComInterfaceStateEvent,
-    task::UnboundedSender,
 };
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, strum_macros::EnumIs, strum::Display)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, strum_macros::EnumIs, strum::Display,
+)]
 pub enum ComInterfaceState {
     NotConnected,
     Closing,
@@ -20,7 +20,7 @@ pub enum ComInterfaceState {
 pub struct ComInterfaceStateWrapper {
     state: ComInterfaceState,
     event_sender: UnboundedSender<ComInterfaceStateEvent>,
-    shutdown_signal: Arc<Notify>,
+    shutdown_channel: BroadcastChannel<()>,
 }
 
 /// Wrapper around ComInterfaceState that sends events on state changes
@@ -32,7 +32,7 @@ impl ComInterfaceStateWrapper {
         ComInterfaceStateWrapper {
             state,
             event_sender,
-            shutdown_signal: Arc::new(Notify::new()),
+            shutdown_channel: BroadcastChannel::new::<1>(),
         }
     }
 
@@ -50,7 +50,7 @@ impl ComInterfaceStateWrapper {
             }
             ComInterfaceState::Connected => ComInterfaceStateEvent::Connected,
             ComInterfaceState::Destroyed => {
-                self.shutdown_signal.notify();
+                self.shutdown_channel.sender().start_send(());
                 ComInterfaceStateEvent::Destroyed
             }
             ComInterfaceState::Closing | ComInterfaceState::Connecting => {
@@ -60,8 +60,8 @@ impl ComInterfaceStateWrapper {
         let _ = self.event_sender.start_send(event);
     }
 
-    pub fn shutdown_signal(&self) -> Arc<Notify> {
-        self.shutdown_signal.clone()
+    pub fn shutdown_receiver(&self) -> BroadcastReceiver<()> {
+        self.shutdown_channel.receiver()
     }
 }
 

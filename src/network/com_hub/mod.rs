@@ -1,4 +1,5 @@
 use crate::{
+    channel::mpsc::UnboundedSender,
     collections::HashMap,
     global::protocol_structures::{
         block_header::BlockType, routing_header::SignatureType,
@@ -12,6 +13,7 @@ use crate::{
         },
         options::ComHubOptions,
     },
+    task::{self, spawn_with_panic_notify},
 };
 pub mod managers;
 
@@ -28,9 +30,8 @@ use crate::{
     stdlib::{
         boxed::Box, cell::RefCell, rc::Rc, string::ToString, vec, vec::Vec,
     },
-    task::{
-        self, UnboundedReceiver, create_unbounded_channel,
-        spawn_with_panic_notify,
+    channel::mpsc::{
+        UnboundedReceiver, create_unbounded_channel,
     },
     utils::time::Time,
 };
@@ -58,9 +59,7 @@ use crate::{
 };
 pub mod com_hub_interface;
 
-use crate::{
-    network::com_interfaces::com_interface::ComInterface, task::UnboundedSender,
-};
+use crate::network::com_interfaces::com_interface::ComInterface;
 
 pub type IncomingBlockInterceptor =
     Box<dyn Fn(&DXBBlock, &ComInterfaceSocketUUID) + 'static>;
@@ -709,15 +708,12 @@ impl ComHub {
         match block.routing_header.flags.signature_type() {
             SignatureType::Encrypted => {
                 let crypto = get_global_context().crypto;
-                let (pub_key, pri_key) = crypto.gen_ed25519()
-                        .await
-                        .map_err(|_| ComHubError::SignatureError)?;
+                let (pub_key, pri_key) = crypto
+                    .gen_ed25519()
+                    .await
+                    .map_err(|_| ComHubError::SignatureError)?;
 
-                let raw_signed = [
-                    pub_key.clone(),
-                    block.body.clone()
-                    ]
-                    .concat();
+                let raw_signed = [pub_key.clone(), block.body.clone()].concat();
                 let hashed_signed = crypto
                     .hash_sha256(&raw_signed)
                     .await
@@ -736,20 +732,16 @@ impl ComHub {
                     .await
                     .map_err(|_| ComHubError::SignatureError)?;
                 // 64 + 44 = 108
-                block.signature =
-                    Some([enc_sig.to_vec(), pub_key].concat());
+                block.signature = Some([enc_sig.to_vec(), pub_key].concat());
             }
             SignatureType::Unencrypted => {
                 let crypto = get_global_context().crypto;
-                let (pub_key, pri_key) = crypto.gen_ed25519()
+                let (pub_key, pri_key) = crypto
+                    .gen_ed25519()
                     .await
                     .map_err(|_| ComHubError::SignatureError)?;
 
-                let raw_signed = [
-                    pub_key.clone(),
-                    block.body.clone()
-                    ]
-                    .concat();
+                let raw_signed = [pub_key.clone(), block.body.clone()].concat();
                 let hashed_signed = crypto
                     .hash_sha256(&raw_signed)
                     .await
@@ -760,12 +752,9 @@ impl ComHub {
                     .await
                     .map_err(|_| ComHubError::SignatureError)?;
                 // 64 + 44 = 108
-                block.signature =
-                    Some([signature.to_vec(), pub_key].concat());
+                block.signature = Some([signature.to_vec(), pub_key].concat());
             }
-            SignatureType::None => {
-                /* Ignored */
-            }
+            SignatureType::None => { /* Ignored */ }
         }
 
         let now = Time::now();

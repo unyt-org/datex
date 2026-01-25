@@ -4,9 +4,9 @@ use super::protocol_structures::{
     routing_header::{EncryptionType, RoutingHeader, SignatureType},
 };
 use crate::{
+    channel::mpsc::UnboundedReceiver,
     global::protocol_structures::routing_header::Receivers, stdlib::vec::Vec,
-    task::UnboundedReceiver, utils::buffers::write_u16,
-    values::core_values::endpoint::Endpoint,
+    utils::buffers::write_u16, values::core_values::endpoint::Endpoint,
 };
 use binrw::{
     BinRead, BinWrite,

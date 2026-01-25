@@ -3,9 +3,10 @@ use bytes::Bytes;
 use core::cell::RefCell;
 
 use crate::{
+    channel::mpsc::UnboundedReceiver,
     collections::HashMap,
     stdlib::{net::SocketAddr, rc::Rc, sync::Arc},
-    task::{UnboundedReceiver, spawn},
+    task::spawn,
 };
 use axum::response::Response;
 use core::time::Duration;

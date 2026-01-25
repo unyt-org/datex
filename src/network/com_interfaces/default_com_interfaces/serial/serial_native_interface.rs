@@ -1,5 +1,6 @@
 use super::serial_common::SerialInterfaceSetupData;
 use crate::{
+    channel::{mpmc::BroadcastChannel, mpsc::UnboundedReceiver},
     network::{
         com_hub::errors::InterfaceCreateError,
         com_interfaces::com_interface::{
@@ -12,12 +13,8 @@ use crate::{
     },
     std_sync::Mutex,
     stdlib::{sync::Arc, time::Duration},
-    task::{
-        UnboundedReceiver, spawn, spawn_blocking,
-        spawn_with_panic_notify_default,
-    },
+    task::{spawn, spawn_blocking, spawn_with_panic_notify_default},
 };
-use async_notify::Notify;
 use async_select::select;
 use core::{prelude::rust_2024::*, result::Result};
 use datex_core::network::com_interfaces::com_interface::ComInterfaceProxy;
@@ -63,12 +60,11 @@ impl SerialInterfaceSetupData {
         let (socket_uuid, mut sender) = com_interface_proxy
             .create_and_init_socket(InterfaceDirection::InOut, 1);
 
-        let shutdown_signal = Arc::new(Notify::new());
-        let shutdown_signal_clone = shutdown_signal.clone();
+        let mut shutdown_signal = com_interface_proxy.shutdown_receiver();
         spawn(async move {
             loop {
                 select! {
-                    _ = shutdown_signal_clone.notified() => {
+                    _ = shutdown_signal.next() => {
                         warn!("Shutting down serial task...");
                         break;
                     },
@@ -110,7 +106,6 @@ impl SerialInterfaceSetupData {
         spawn_with_panic_notify_default(Self::event_handler_task(
             com_interface_proxy.event_receiver,
             port.clone(),
-            shutdown_signal.clone(),
         ));
 
         Ok(InterfaceProperties {
@@ -124,7 +119,6 @@ impl SerialInterfaceSetupData {
     async fn event_handler_task(
         mut receiver: UnboundedReceiver<ComInterfaceEvent>,
         port: Arc<Mutex<Box<dyn SerialPort>>>,
-        shutdown_signal: Arc<Notify>,
     ) {
         while let Some(event) = receiver.next().await {
             match event {
@@ -135,7 +129,6 @@ impl SerialInterfaceSetupData {
                         .unwrap();
                 }
                 ComInterfaceEvent::Destroy => {
-                    shutdown_signal.notify();
                     break;
                 }
                 _ => todo!(),

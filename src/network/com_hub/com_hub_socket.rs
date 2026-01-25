@@ -1,4 +1,5 @@
 use crate::{
+    channel::mpsc::UnboundedReceiver,
     network::{
         com_hub::{
             ComHub, InterfacePriority,
@@ -9,7 +10,7 @@ use crate::{
         },
     },
     stdlib::{cell::RefCell, rc::Rc},
-    task::{UnboundedReceiver, spawn_with_panic_notify},
+    task::spawn_with_panic_notify,
 };
 
 impl ComHub {

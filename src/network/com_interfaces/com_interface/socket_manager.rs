@@ -1,4 +1,5 @@
 use crate::{
+    channel::mpsc::UnboundedSender,
     global::dxb_block::DXBBlock,
     network::com_interfaces::com_interface::{
         ComInterfaceUUID,
@@ -7,7 +8,6 @@ use crate::{
             ComInterfaceSocket, ComInterfaceSocketEvent, ComInterfaceSocketUUID,
         },
     },
-    task::UnboundedSender,
     values::core_values::endpoint::Endpoint,
 };
 

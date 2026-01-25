@@ -1,5 +1,9 @@
 use super::tcp_common::TCPServerInterfaceSetupData;
 use crate::{
+    channel::{
+        mpmc::BroadcastReceiver,
+        mpsc::{UnboundedReceiver, UnboundedSender, create_unbounded_channel},
+    },
     core::net::AddrParseError,
     network::{
         com_hub::errors::InterfaceCreateError,
@@ -15,12 +19,8 @@ use crate::{
     },
     std_sync::Mutex,
     stdlib::{collections::HashMap, net::SocketAddr, sync::Arc},
-    task::{
-        UnboundedReceiver, UnboundedSender, create_unbounded_channel,
-        spawn_with_panic_notify_default,
-    },
+    task::spawn_with_panic_notify_default,
 };
-use async_notify::Notify;
 use async_select::select;
 use core::{prelude::rust_2024::*, result::Result, time::Duration};
 use log::{error, info, warn};
@@ -55,7 +55,7 @@ impl TCPServerInterfaceSetupData {
         let tx_by_socket = Arc::new(Mutex::new(HashMap::new()));
         let tx_by_socket_clone = tx_by_socket.clone();
 
-        let shutdown_signal = com_interface_proxy.shutdown_signal();
+        let mut shutdown_signal = com_interface_proxy.shutdown_receiver();
         let manager = com_interface_proxy.socket_manager;
         spawn_with_panic_notify_default(async move {
             loop {
@@ -102,7 +102,7 @@ impl TCPServerInterfaceSetupData {
                         }
 
                     }
-                    _ = shutdown_signal.notified() => {
+                    _ = shutdown_signal.next() => {
                         info!("Shutdown signal received, stopping listener loop");
                         break;
                     }
@@ -155,7 +155,7 @@ impl TCPServerInterfaceSetupData {
     async fn handle_receive(
         mut rx: OwnedReadHalf,
         mut bytes_in_sender: UnboundedSender<Vec<u8>>,
-        shutdown_signal: Arc<Notify>,
+        mut shutdown_signal: BroadcastReceiver<()>,
     ) {
         let mut buffer = [0u8; 1024];
         loop {
@@ -177,7 +177,7 @@ impl TCPServerInterfaceSetupData {
                 }
 
                 // Shutdown signal received
-                _ = shutdown_signal.notified() => {
+                _ = shutdown_signal.next() => {
                     break;
                 }
             }
@@ -187,7 +187,7 @@ impl TCPServerInterfaceSetupData {
     async fn handle_send(
         mut tcp_write_half: OwnedWriteHalf,
         mut tx_receiver: UnboundedReceiver<Vec<u8>>,
-        shutdown_signal: Arc<Notify>,
+        mut shutdown_signal: BroadcastReceiver<()>,
     ) {
         loop {
             select! {
@@ -205,7 +205,7 @@ impl TCPServerInterfaceSetupData {
                         }
                     }
                 }
-                _ = shutdown_signal.notified() => {
+                _ = shutdown_signal.next() => {
                     break;
                 }
             }

@@ -3,13 +3,13 @@ use core::prelude::rust_2024::*;
 use serde::Serialize;
 
 use crate::{
+    channel::mpsc::{UnboundedReceiver, UnboundedSender},
     global::dxb_block::DXBBlock,
     network::com_interfaces::{
         block_collector::BlockCollector,
         com_interface::{ComInterfaceUUID, properties::InterfaceDirection},
     },
     stdlib::{string::String, vec::Vec},
-    task::{UnboundedReceiver, UnboundedSender},
     utils::{once_consumer::OnceConsumer, uuid::UUID},
     values::core_values::endpoint::Endpoint,
 };

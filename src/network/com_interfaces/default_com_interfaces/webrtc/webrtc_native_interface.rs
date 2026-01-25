@@ -23,6 +23,7 @@ use super::webrtc_common::{
     webrtc_trait::{WebRTCTrait, WebRTCTraitInternal},
 };
 use crate::{
+    channel::mpsc::UnboundedReceiver,
     network::{
         com_hub::errors::InterfaceCreateError,
         com_interfaces::com_interface::{
@@ -36,7 +37,7 @@ use crate::{
             socket_manager::ComInterfaceSocketManager,
         },
     },
-    task::{UnboundedReceiver, spawn_with_panic_notify_default},
+    task::spawn_with_panic_notify_default,
 };
 use datex_core::network::com_interfaces::com_interface::ComInterfaceProxy;
 use log::error;

@@ -1,6 +1,10 @@
 use super::tcp_common::TCPClientInterfaceSetupData;
 
 use crate::{
+    channel::{
+        mpmc::BroadcastReceiver,
+        mpsc::{UnboundedReceiver, UnboundedSender},
+    },
     network::{
         com_hub::errors::InterfaceCreateError,
         com_interfaces::com_interface::{
@@ -14,11 +18,8 @@ use crate::{
         },
     },
     stdlib::{net::SocketAddr, sync::Arc},
-    task::{
-        UnboundedReceiver, UnboundedSender, spawn_with_panic_notify_default,
-    },
+    task::spawn_with_panic_notify_default,
 };
-use async_notify::Notify;
 use core::{
     prelude::rust_2024::*, result::Result, str::FromStr, time::Duration,
 };
@@ -48,7 +49,7 @@ impl TCPClientInterfaceSetupData {
         let (socket_uuid, sender) = com_interface_proxy
             .create_and_init_socket(InterfaceDirection::InOut, 1);
 
-        let shutdown_signal = com_interface_proxy.shutdown_signal();
+        let shutdown_signal = com_interface_proxy.shutdown_receiver();
 
         spawn_with_panic_notify_default(async move {
             Self::handle_receive(
@@ -77,7 +78,7 @@ impl TCPClientInterfaceSetupData {
         read_half: tokio::net::tcp::OwnedReadHalf,
         mut sender: UnboundedSender<Vec<u8>>,
         state: Arc<Mutex<ComInterfaceStateWrapper>>,
-        shutdown_signal: Arc<Notify>,
+        mut shutdown_signal: BroadcastReceiver<()>,
     ) {
         let mut reader = read_half;
         let mut buffer = [0u8; 1024];
@@ -103,7 +104,7 @@ impl TCPClientInterfaceSetupData {
                         }
                     }
                 }
-                _ = shutdown_signal.notified() => {
+                _ = shutdown_signal.next() => {
                     break;
                 }
             }

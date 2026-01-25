@@ -1,6 +1,9 @@
-use crate::stdlib::{
-    sync::{Arc, Mutex},
-    time::Duration,
+use crate::{
+    stdlib::{
+        sync::{Arc, Mutex},
+        time::Duration,
+    },
+    task::spawn_with_panic_notify,
 };
 use async_select::select;
 use core::{prelude::rust_2024::*, result::Result};
@@ -15,6 +18,7 @@ use url::Url;
 
 use super::websocket_common::{WebSocketClientInterfaceSetupData, parse_url};
 use crate::{
+    channel::mpsc::{UnboundedReceiver, UnboundedSender},
     network::{
         com_hub::errors::InterfaceCreateError,
         com_interfaces::com_interface::{
@@ -27,7 +31,6 @@ use crate::{
             state::{ComInterfaceState, ComInterfaceStateWrapper},
         },
     },
-    task::{UnboundedReceiver, UnboundedSender, spawn_with_panic_notify},
 };
 use datex_core::network::com_interfaces::com_interface::ComInterfaceProxy;
 use tokio_tungstenite::{MaybeTlsStream, WebSocketStream};
@@ -72,7 +75,7 @@ impl WebSocketClientInterfaceSetupData {
         mut sender: UnboundedSender<Vec<u8>>,
         state: Arc<Mutex<ComInterfaceStateWrapper>>,
     ) {
-        let shutdown_signal = state.try_lock().unwrap().shutdown_signal();
+        let mut shutdown_signal = state.try_lock().unwrap().shutdown_receiver();
         loop {
             select! {
                 msg = read.next() => {
@@ -96,7 +99,7 @@ impl WebSocketClientInterfaceSetupData {
                     }
                 },
                 // Shutdown signal received
-                _ = shutdown_signal.notified() => {
+                _ = shutdown_signal.next() => {
                     info!("Shutdown signal received, stopping read_task");
                     break;
                 }
