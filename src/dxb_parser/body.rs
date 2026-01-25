@@ -146,7 +146,7 @@ pub fn iterate_instructions(
             let next_instruction_type = next_instructions_stack.pop();
 
             // parse instruction based on its type
-            let instruction = (match next_instruction_type {
+            let instruction = match next_instruction_type {
                 NextInstructionType::End => return, // end of instructions
 
                 NextInstructionType::Regular => {
@@ -662,7 +662,7 @@ pub fn iterate_instructions(
                     }
                 }
                 .into(),
-            });
+            } ;
 
             // println!("instruction {}", instruction);
 

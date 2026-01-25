@@ -1,6 +1,6 @@
 use super::serial_common::SerialInterfaceSetupData;
 use crate::{
-    channel::{mpmc::BroadcastChannel, mpsc::UnboundedReceiver},
+    channel::mpsc::UnboundedReceiver,
     network::{
         com_hub::errors::InterfaceCreateError,
         com_interfaces::com_interface::{

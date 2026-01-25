@@ -168,8 +168,8 @@ pub mod mutability_as_int {
         S: Serializer,
     {
         match value {
-            (ReferenceMutability::Mutable) => serializer.serialize_u8(0),
-            (ReferenceMutability::Immutable) => serializer.serialize_u8(1),
+            ReferenceMutability::Mutable  => serializer.serialize_u8(0),
+            ReferenceMutability::Immutable  => serializer.serialize_u8(1),
         }
     }
 
@@ -181,9 +181,9 @@ pub mod mutability_as_int {
     {
         let opt = u8::deserialize(deserializer)?;
         Ok(match opt {
-            (0) => (ReferenceMutability::Mutable),
-            (1) => (ReferenceMutability::Immutable),
-            (x) => {
+            0  => ReferenceMutability::Mutable ,
+            1  => ReferenceMutability::Immutable ,
+            x  => {
                 return Err(D::Error::custom(format!(
                     "invalid mutability code: {}",
                     x
