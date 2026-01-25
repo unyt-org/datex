@@ -8,6 +8,7 @@ use core::{prelude::rust_2024::*, time::Duration};
 use serde::{Deserialize, Serialize};
 use serde_with::{DurationMilliSeconds, serde_as};
 use strum::EnumString;
+use crate::stdlib::vec::Vec;
 
 #[derive(PartialEq, Debug, Clone, EnumString, Serialize, Deserialize)]
 #[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]

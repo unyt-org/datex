@@ -10,6 +10,7 @@ use crate::{
     values::value_container::ValueContainer,
 };
 use serde::de::DeserializeOwned;
+use crate::stdlib::boxed::Box;
 
 /// This trait can be implemented to provide a factory with a synchronous setup process
 /// for a ComInterface implementation that can be registered on a ComHub.

@@ -11,6 +11,7 @@ use crate::{
     runtime::AsyncContext,
     values::core_values::endpoint::Endpoint,
 };
+use crate::stdlib::vec::Vec;
 
 #[derive(Debug)]
 pub struct ComInterfaceSocketManager {

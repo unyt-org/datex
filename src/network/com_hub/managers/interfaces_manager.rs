@@ -1,6 +1,6 @@
 use crate::{
     network::com_interfaces::com_interface::properties::InterfaceDirection,
-    stdlib::rc::Rc,
+    stdlib::rc::Rc, stdlib::string::String, stdlib::string::ToString,
 };
 use core::{cell::RefCell, pin::Pin};
 use log::info;
@@ -138,7 +138,7 @@ impl InterfacesManager {
                 | SyncOrAsyncComInterfaceImplementationFactoryFn::Dyn(_) => {
                     let (interface, receivers) =
                         ComInterface::create_from_async_factory_fn(
-                            factory,
+                            &factory,
                             setup_data,
                             async_context,
                         )
@@ -177,7 +177,7 @@ impl InterfacesManager {
                 ) => {
                     let (interface, receivers) =
                         ComInterface::create_from_sync_factory_fn(
-                            *sync_factory,
+                            sync_factory,
                             setup_data,
                             async_context,
                         )?;

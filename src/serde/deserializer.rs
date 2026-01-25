@@ -21,6 +21,7 @@ use serde::{
     },
     forward_to_deserialize_any,
 };
+use crate::stdlib::vec::Vec;
 
 /// Deserialize a value of type T from a byte slice containing DXB data
 pub fn from_bytes<T>(input: &[u8]) -> Result<T, DeserializationError>
@@ -37,6 +38,7 @@ where
     T::deserialize(deserializer)
 }
 
+#[cfg(feature = "compiler")]
 pub fn from_script<T>(script: &str) -> Result<T, DeserializationError>
 where
     T: DeserializeOwned,
@@ -49,6 +51,7 @@ where
     from_bytes(&dxb)
 }
 
+#[cfg(all(feature = "std", feature = "compiler"))]
 pub fn from_dx_file<T>(
     path: std::path::PathBuf,
 ) -> Result<T, DeserializationError>
@@ -70,6 +73,7 @@ where
 /// For example, the script `{ "key": 42 }` will work, but the script `{ "key": 40 + 2 }` will not
 /// because the latter requires execution to evaluate the expression
 /// and extract the value
+#[cfg(feature = "compiler")]
 pub fn from_static_script<T>(script: &str) -> Result<T, DeserializationError>
 where
     T: DeserializeOwned,

@@ -10,7 +10,7 @@ use crate::{
         com_interface::{ComInterfaceUUID, properties::InterfaceDirection},
     },
     runtime::AsyncContext,
-    stdlib::{string::String, vec::Vec},
+    stdlib::{string::String, string::ToString, vec::Vec},
     utils::{once_consumer::OnceConsumer, uuid::UUID},
     values::core_values::endpoint::Endpoint,
 };
@@ -31,7 +31,7 @@ impl TryFrom<String> for ComInterfaceSocketUUID {
 
     fn try_from(value: String) -> Result<Self, Self::Error> {
         let value = value.strip_prefix("socket::").ok_or(())?;
-        Ok(ComInterfaceSocketUUID(UUID::from_string(value.to_owned())))
+        Ok(ComInterfaceSocketUUID(UUID::from_string(value.to_string())))
     }
 }
 

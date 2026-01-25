@@ -34,7 +34,9 @@ use crate::{
     },
 };
 use core::fmt::{Debug, Display};
-use futures_intrusive::sync::{GenericManualResetEvent, ManualResetEvent};
+use crate::channel::futures_intrusive::ManualResetEvent;
+use crate::stdlib::string::String;
+use crate::stdlib::vec::Vec;
 
 pub mod error;
 pub mod factory;
@@ -178,7 +180,7 @@ impl ComInterfaceProxy {
     }
 
     pub fn shutdown_receiver(&self) -> Arc<ManualResetEvent> {
-        self.state.lock().unwrap().shutdown_receiver()
+        self.state.try_lock().unwrap().shutdown_receiver()
     }
 
     /// Creates and initializes a new socket and returns its UUID and sender
@@ -218,7 +220,7 @@ impl ComInterfaceProxy {
         direct_endpoint: Option<Endpoint>,
     ) -> (ComInterfaceSocketUUID, UnboundedSender<Vec<u8>>) {
         self.socket_manager
-            .lock()
+            .try_lock()
             .unwrap()
             .create_and_init_socket_with_optional_endpoint(
                 direction,
@@ -339,7 +341,7 @@ impl Debug for ComInterface {
 impl ComInterface {
     /// Initializes a new ComInterface with a specified implementation as returned by the factory function
     pub fn create_from_sync_factory_fn(
-        factory_fn: SyncComInterfaceImplementationFactoryFn,
+        factory_fn: &SyncComInterfaceImplementationFactoryFn,
         setup_data: ValueContainer,
         async_context: AsyncContext,
     ) -> Result<ComInterfaceWithReceivers, InterfaceCreateError> {
@@ -359,7 +361,7 @@ impl ComInterface {
     }
 
     pub async fn create_from_async_factory_fn(
-        factory_fn: SyncOrAsyncComInterfaceImplementationFactoryFn,
+        factory_fn: &SyncOrAsyncComInterfaceImplementationFactoryFn,
         setup_data: ValueContainer,
         async_context: AsyncContext,
     ) -> Result<ComInterfaceWithReceivers, InterfaceCreateError> {
@@ -435,7 +437,7 @@ impl ComInterface {
     }
 
     pub fn current_state(&self) -> ComInterfaceState {
-        self.state().lock().unwrap().get()
+        self.state().try_lock().unwrap().get()
     }
 
     pub fn state(&self) -> Arc<Mutex<ComInterfaceStateWrapper>> {

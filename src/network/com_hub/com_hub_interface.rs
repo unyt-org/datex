@@ -75,7 +75,7 @@ impl ComHub {
         let uuid = interface.uuid().clone();
         spawn_with_panic_notify(
             &self.async_context,
-            handle_interface_events(
+            handle_interface_events_task(
                 uuid,
                 interface_event_receiver,
                 self.interface_manager.clone(),
@@ -204,7 +204,8 @@ impl ComHub {
     }
 }
 
-async fn handle_interface_events(
+#[cfg_attr(feature = "embassy_runtime", embassy_executor::task)]
+async fn handle_interface_events_task(
     uuid: ComInterfaceUUID,
     mut receiver_queue: UnboundedReceiver<ComInterfaceStateEvent>,
     interface_manager: Rc<RefCell<InterfacesManager>>,
