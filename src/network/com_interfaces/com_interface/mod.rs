@@ -25,10 +25,11 @@ use crate::{
         com_interfaces::com_interface::properties::InterfaceDirection,
     },
     runtime::AsyncContext,
+    std_sync::Mutex,
     stdlib::{
         cell::{Ref, RefCell},
         rc::Rc,
-        sync::{Arc, Mutex},
+        sync::Arc,
     },
     task::spawn_with_panic_notify_default,
     utils::uuid::UUID,
@@ -137,6 +138,7 @@ impl ComInterfaceProxy {
                     ComInterfaceSocketManager::new_with_sender(
                         uuid,
                         socket_event_sender,
+                        async_context.clone(),
                     ),
                 )),
                 event_receiver: interface_event_receiver,

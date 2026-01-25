@@ -221,7 +221,7 @@ impl ComHub {
             .expect("ComHub event receiver already taken");
         let async_context = self_rc.async_context.clone();
         spawn_with_panic_notify(
-            &async_context.clone(),
+            &self_rc.async_context.clone(),
             com_hub_event_task(receiver, self_rc, async_context),
         );
     }

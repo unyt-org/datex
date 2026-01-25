@@ -9,6 +9,7 @@ use crate::{
         block_collector::BlockCollector,
         com_interface::{ComInterfaceUUID, properties::InterfaceDirection},
     },
+    runtime::AsyncContext,
     stdlib::{string::String, vec::Vec},
     utils::{once_consumer::OnceConsumer, uuid::UUID},
     values::core_values::endpoint::Endpoint,
@@ -97,8 +98,10 @@ impl ComInterfaceSocket {
         direction: InterfaceDirection,
         channel_factor: u32,
         direct_endpoint: Option<Endpoint>,
+        async_context: &AsyncContext,
     ) -> (ComInterfaceSocket, UnboundedSender<Vec<u8>>) {
-        let (bytes_in_sender, block_in_receiver) = BlockCollector::init();
+        let (bytes_in_sender, block_in_receiver) =
+            BlockCollector::init(async_context);
         (
             ComInterfaceSocket {
                 direct_endpoint,

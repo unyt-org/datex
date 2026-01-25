@@ -70,7 +70,7 @@ impl TCPServerInterfaceSetupData {
                                     manager.lock().unwrap().create_and_init_socket_with_optional_endpoint(
                                         InterfaceDirection::InOut,
                                         1,
-                                        None
+                                        None,
                                     );
                                 // Handle the client connection
                                 let (tcp_read_half, tcp_write_half) =

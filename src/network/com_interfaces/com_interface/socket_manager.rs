@@ -8,6 +8,7 @@ use crate::{
             ComInterfaceSocket, ComInterfaceSocketEvent, ComInterfaceSocketUUID,
         },
     },
+    runtime::AsyncContext,
     values::core_values::endpoint::Endpoint,
 };
 
@@ -15,16 +16,19 @@ use crate::{
 pub struct ComInterfaceSocketManager {
     interface_uuid: ComInterfaceUUID,
     socket_event_sender: UnboundedSender<ComInterfaceSocketEvent>,
+    async_context: AsyncContext,
 }
 
 impl ComInterfaceSocketManager {
     pub fn new_with_sender(
         interface_uuid: ComInterfaceUUID,
         sender: UnboundedSender<ComInterfaceSocketEvent>,
+        async_context: AsyncContext,
     ) -> Self {
         ComInterfaceSocketManager {
             interface_uuid,
             socket_event_sender: sender,
+            async_context,
         }
     }
 }
@@ -72,6 +76,7 @@ impl ComInterfaceSocketManager {
             direction,
             channel_factor,
             direct_endpoint,
+            &self.async_context,
         );
         let socket_uuid = socket.uuid.clone();
         self.add_socket(socket);

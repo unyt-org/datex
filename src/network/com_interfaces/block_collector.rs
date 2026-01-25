@@ -3,8 +3,9 @@ use crate::{
         UnboundedReceiver, UnboundedSender, create_unbounded_channel,
     },
     global::dxb_block::{DXBBlock, HeaderParsingError},
+    runtime::AsyncContext,
     stdlib::vec::Vec,
-    task::spawn_with_panic_notify_default,
+    task::spawn_with_panic_notify,
 };
 use core::prelude::rust_2024::*;
 use log::error;
@@ -86,7 +87,9 @@ impl BlockCollector {
 
     /// Starts the block collector task.
     /// Returns the sender to send byte slices (socket) to and the receiver to receive collected DXB blocks (ComHub).
-    pub fn init() -> (UnboundedSender<Vec<u8>>, UnboundedReceiver<DXBBlock>) {
+    pub fn init(
+        async_context: &AsyncContext,
+    ) -> (UnboundedSender<Vec<u8>>, UnboundedReceiver<DXBBlock>) {
         let (bytes_in_sender, bytes_in_receiver) = create_unbounded_channel();
         let (block_in_sender, block_in_receiver) = create_unbounded_channel();
         let block_collector = BlockCollector {
@@ -96,9 +99,10 @@ impl BlockCollector {
             current_block_specified_length: None,
         };
         // TODO: use spawn_with_panic_notify, remove AsynContext
-        spawn_with_panic_notify_default(run_block_collector_task(
-            block_collector,
-        ));
+        spawn_with_panic_notify(
+            async_context,
+            run_block_collector_task(block_collector),
+        );
         (bytes_in_sender, block_in_receiver)
     }
 }
