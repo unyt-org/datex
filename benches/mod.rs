@@ -4,6 +4,7 @@
 #![allow(clippy::std_instead_of_alloc)]
 #![allow(clippy::alloc_instead_of_core)]
 #![allow(clippy::std_instead_of_core)]
+#![feature(assert_matches)]
 
 use core::hint::black_box;
 
