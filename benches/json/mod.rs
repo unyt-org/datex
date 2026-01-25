@@ -72,8 +72,8 @@ pub fn json_to_runtime_value_datex<'a>(json: &'a str) {
     assert!(val.to_value().borrow().is_map());
 }
 
-pub fn json_to_runtime_value_datex_auto_static_detection<'a>(
-    json: &'a str,
+pub fn json_to_runtime_value_datex_auto_static_detection(
+    json: &str,
 ) -> ValueContainer {
     let (dxb, _) = compile_script_or_return_static_value(
         json,
