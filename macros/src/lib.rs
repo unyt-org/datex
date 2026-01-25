@@ -1,5 +1,5 @@
 use proc_macro::TokenStream;
-use syn::{ImplItemFn, ItemFn, ItemImpl, parse_macro_input};
+use syn::{ItemFn, parse_macro_input};
 
 use crate::test::create_async_test;
 mod bitfield_macros;
