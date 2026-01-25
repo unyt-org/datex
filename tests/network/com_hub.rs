@@ -12,6 +12,7 @@ use crate::network::helpers::{
     mockup_interface::MockupInterfaceSetupData,
 };
 use datex_core::{
+    channel::mpsc::create_unbounded_channel,
     global::{
         dxb_block::DXBBlock,
         protocol_structures::{
@@ -32,7 +33,6 @@ use datex_core::{
     runtime::AsyncContext,
     serde::serializer::to_value_container,
     stdlib::rc::Rc,
-    task::{create_unbounded_channel, sleep},
     values::core_values::endpoint::Endpoint,
 };
 use datex_macros::async_test;

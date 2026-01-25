@@ -1,5 +1,6 @@
 use core::cell::RefCell;
 use datex_core::{
+    channel::mpsc::{UnboundedReceiver, UnboundedSender},
     global::{
         dxb_block::DXBBlock, protocol_structures::block_header::BlockType,
     },
@@ -14,9 +15,7 @@ use datex_core::{
             socket_manager::ComInterfaceSocketManager,
         },
     },
-    task::{
-        UnboundedReceiver, UnboundedSender, spawn_with_panic_notify_default,
-    },
+    task::spawn_with_panic_notify_default,
     values::core_values::endpoint::Endpoint,
 };
 use serde::{Deserialize, Serialize};

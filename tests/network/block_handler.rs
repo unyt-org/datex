@@ -8,6 +8,7 @@ use crate::network::helpers::{
 };
 use core::cell::RefCell;
 use datex_core::{
+    channel::mpsc::create_unbounded_channel,
     global::{
         dxb_block::{DXBBlock, IncomingSection},
         protocol_structures::{
@@ -16,7 +17,6 @@ use datex_core::{
         },
     },
     network::com_interfaces::com_interface::properties::InterfaceDirection,
-    task::create_unbounded_channel,
     utils::context::init_global_context,
 };
 use datex_macros::async_test;

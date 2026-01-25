@@ -7,12 +7,12 @@ use crate::network::helpers::{
     mockup_interface::MockupInterfaceSetupData,
 };
 use datex_core::{
+    channel::mpsc::create_unbounded_channel,
     global::dxb_block::IncomingSection,
     network::com_interfaces::com_interface::{
         ComInterfaceProxy, properties::InterfaceProperties,
     },
     run_async_thread,
-    task::create_unbounded_channel,
     utils::context::init_global_context,
 };
 use datex_macros::async_test;

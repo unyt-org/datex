@@ -1,11 +1,13 @@
-use async_notify::Notify;
 use async_select::select;
 use core::{
     fmt::{self, Debug, Display},
     str::FromStr,
 };
 use datex_core::{
-    channel::mpmc::BroadcastReceiver,
+    channel::{
+        mpmc::BroadcastReceiver,
+        mpsc::{UnboundedReceiver, UnboundedSender},
+    },
     network::{
         com_hub::{InterfacePriority, network_tracing::TraceOptions},
         com_interfaces::com_interface::{
@@ -14,9 +16,7 @@ use datex_core::{
         },
     },
     runtime::{AsyncContext, Runtime, RuntimeConfig},
-    task::{
-        UnboundedReceiver, UnboundedSender, spawn_with_panic_notify_default,
-    },
+    task::spawn_with_panic_notify_default,
     values::core_values::endpoint::Endpoint,
 };
 use log::info;
@@ -631,7 +631,7 @@ impl Network {
     /// Spawns a task that forwards data blocks from a com interface event receiver to a socket sender
     fn spawn_socket_forwarding_task(
         mut event_receiver: UnboundedReceiver<ComInterfaceEvent>,
-        shutdown_signal: Arc<Notify>,
+        mut shutdown_signal: BroadcastReceiver<()>,
         mut socket_sender: UnboundedSender<Vec<u8>>,
     ) {
         spawn_with_panic_notify_default(async move {
@@ -643,7 +643,7 @@ impl Network {
                             socket_sender.start_send(block.to_bytes()).unwrap();
                         }
                     }
-                    _ = shutdown_signal.notified() => {
+                    _ = shutdown_signal.next() => {
                         break;
                     }
                 }

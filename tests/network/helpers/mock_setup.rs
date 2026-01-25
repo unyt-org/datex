@@ -1,6 +1,9 @@
 use super::mockup_interface::MockupInterfaceSetupData;
 use core::str::FromStr;
 use datex_core::{
+    channel::mpsc::{
+        UnboundedReceiver, UnboundedSender, create_unbounded_channel,
+    },
     global::{
         dxb_block::{
             DXBBlock, IncomingEndpointContextSectionId, IncomingSection,
@@ -18,7 +21,6 @@ use datex_core::{
     },
     runtime::{AsyncContext, Runtime, RuntimeConfig},
     stdlib::{cell::RefCell, rc::Rc},
-    task::{UnboundedReceiver, UnboundedSender, create_unbounded_channel},
     values::core_values::endpoint::Endpoint,
 };
 use hyper::header::TE;
