@@ -492,7 +492,7 @@ mod tests {
     use crate::values::core_values::endpoint::Endpoint;
 
     use super::*;
-    use crate::stdlib::{assert_matches::assert_matches, str::FromStr};
+    use crate::stdlib::{assert_matches, str::FromStr};
     use itertools::Itertools;
 
     #[test]

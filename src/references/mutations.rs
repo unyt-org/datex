@@ -295,7 +295,7 @@ mod tests {
             ReferenceMutability,
         },
         runtime::memory::Memory,
-        stdlib::assert_matches::assert_matches,
+        stdlib::assert_matches,
         values::{
             core_values::{list::List, map::Map},
             value_container::ValueContainer,

@@ -186,11 +186,10 @@ mod tests {
             reference::{Reference, ReferenceMutability},
         },
         runtime::memory::Memory,
-        stdlib::{
-            assert_matches::assert_matches, borrow::Cow, cell::RefCell, rc::Rc,
-        },
+        stdlib::{borrow::Cow, cell::RefCell, rc::Rc},
         values::{core_values::map::Map, value_container::ValueContainer},
     };
+    use std::assert_matches;
 
     /// Helper function to record DIF updates observed on a reference
     /// Returns a Rc<RefCell<Vec<DIFUpdate>>> that contains all observed updates

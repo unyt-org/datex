@@ -523,7 +523,7 @@ impl From<f64> for Decimal {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::stdlib::assert_matches::assert_matches;
+    use std::assert_matches;
 
     #[test]
     fn decimal_addition() {

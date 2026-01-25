@@ -226,7 +226,7 @@ mod tests {
     use crate::{
         libs::core::get_core_lib_type_reference,
         references::reference::Reference,
-        stdlib::{assert_matches::assert_matches, vec},
+        stdlib::{assert_matches, vec},
     };
 
     use super::*;

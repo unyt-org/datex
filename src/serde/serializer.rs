@@ -609,7 +609,7 @@ mod tests {
     };
 
     use crate::{
-        stdlib::assert_matches::assert_matches,
+        stdlib::assert_matches,
         values::{
             core_value::CoreValue, value::Value,
             value_container::ValueContainer,

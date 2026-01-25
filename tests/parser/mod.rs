@@ -42,9 +42,7 @@ use datex_core::{
         },
     },
     references::reference::ReferenceMutability,
-    stdlib::{
-        assert_matches::assert_matches, collections::HashMap, str::FromStr, vec,
-    },
+    stdlib::{assert_matches, collections::HashMap, str::FromStr, vec},
     values::core_values::error::NumberParseError,
 };
 

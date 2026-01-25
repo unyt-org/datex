@@ -603,7 +603,7 @@ mod tests {
         },
         parser::Parser,
         references::reference::ReferenceMutability,
-        stdlib::assert_matches::assert_matches,
+        stdlib::assert_matches,
         values::{core_values::integer::Integer, pointer::PointerAddress},
     };
 

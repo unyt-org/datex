@@ -48,7 +48,7 @@ mod tests {
             },
         },
     };
-    use core::assert_matches::assert_matches;
+    use core::assert_matches;
 
     #[test]
     fn parse_empty_list() {

@@ -752,7 +752,7 @@ mod tests {
             global_context::{GlobalContext, set_global_context},
             memory::Memory,
         },
-        stdlib::assert_matches::assert_matches,
+        stdlib::assert_matches,
         traits::value_eq::ValueEq,
     };
     use datex_core::values::core_values::map::Map;

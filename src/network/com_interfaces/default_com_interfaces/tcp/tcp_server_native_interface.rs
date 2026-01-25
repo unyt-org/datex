@@ -237,7 +237,7 @@ impl ComInterfaceAsyncFactory for TCPServerInterfaceSetupData {
 #[cfg(test)]
 mod tests {
     use datex_macros::async_test;
-    use std::assert_matches::assert_matches;
+    use std::assert_matches;
 
     use crate::{
         network::{

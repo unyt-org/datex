@@ -9,7 +9,7 @@ use datex_core::{
     },
     task::sleep,
 };
-use std::{assert_matches::assert_matches, time::Duration};
+use std::{assert_matches, time::Duration};
 
 use datex_core::{
     network::com_interfaces::{
