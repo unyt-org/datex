@@ -2,7 +2,6 @@
 #![feature(iter_from_coroutine)]
 #![feature(assert_matches)]
 #![feature(gen_blocks)]
-#![feature(let_chains)]
 #![feature(async_iterator)]
 #![feature(type_alias_impl_trait)]
 #![feature(trait_alias)]
@@ -16,9 +15,6 @@
 #![feature(thread_local)]
 #![allow(static_mut_refs)]
 #![cfg_attr(not(feature = "std"), no_std)]
-
-#[macro_use]
-extern crate mopa;
 
 extern crate num_integer;
 

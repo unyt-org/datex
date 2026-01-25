@@ -29,7 +29,6 @@ std_instead_of_alloc = "deny"
 [dependencies]
 # core dependencies
 strum = { version = "0.27.1", default-features = false, features = ["derive"] }
-mopa = { version = "0.2.2", default-features = false }
 num = { version = "0.4.3", default-features = false }
 num-bigint = { version = "0.4", default-features = false }
 num-integer = { version = "0.1", default-features = false }
@@ -290,7 +289,6 @@ nostd = [
     "futures-util/alloc",
     "futures-core/alloc",
     "futures/alloc",
-    "mopa/no_std",
     "hex/alloc",
     "num/alloc",
     "num/libm",
