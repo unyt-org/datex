@@ -1,6 +1,6 @@
 use std::{assert_matches, sync::Arc};
 
-use std_sync::Mutex;
+use std::sync::Mutex;
 
 use datex_core::{
     global::dxb_block::DXBBlock,
