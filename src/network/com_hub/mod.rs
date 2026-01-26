@@ -1076,7 +1076,7 @@ impl ComHub {
         endpoints: &[Endpoint],
         // currently only used for trace debugging (TODO: put behind debug flag)
         fork_count: Option<usize>,
-    ) -> MaybeAsyncResult<Option<Vec<u8>>, SendFailure, impl Future<Output = ()>> {
+    ) -> MaybeAsyncResult<Option<Vec<u8>>, SendFailure, impl Future<Output = Result<Option<Vec<u8>>, SendFailure>>> {
         block.set_receivers(endpoints);
 
         // assuming the distance was already increment during redirect, we
@@ -1288,7 +1288,7 @@ impl ComHub {
 
         let res = self.send_block_to_endpoints_via_socket(
             block,
-            &socket_uuid,
+            &socket_uuid.clone(),
             &[Endpoint::ANY],
             None,
         ).into_inner().await;
