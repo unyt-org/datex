@@ -99,7 +99,6 @@ impl BlockCollector {
             current_block: Vec::new(),
             current_block_specified_length: None,
         };
-        // TODO: use spawn_with_panic_notify, remove AsynContext
         spawn_with_panic_notify(
             async_context,
             run_block_collector_task(block_collector),

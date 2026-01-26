@@ -435,7 +435,7 @@ impl SocketsManager {
             .start_send(BlockSendEvent::NewSocket {
                 socket_uuid: socket_uuid.clone(),
             })
-            .expect("Can not send hello request to socket");
+            .expect("Cannot send BlockSendEvent::NewSocket");
 
         // call registered callbacks for socket registration
         if let Some(callbacks) =
