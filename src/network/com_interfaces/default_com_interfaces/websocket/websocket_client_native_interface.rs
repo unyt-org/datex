@@ -66,7 +66,7 @@ impl WebSocketClientInterfaceSetupData {
                                 }
                                 None => {
                                     warn!("WebSocket closed by peer");
-                                    return yield Err(())
+                                    return;
                                 }
                             }
                         }

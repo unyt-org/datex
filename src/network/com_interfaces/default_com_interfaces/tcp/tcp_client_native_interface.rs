@@ -8,7 +8,7 @@ use crate::{
     network::{
         com_hub::errors::ComInterfaceCreateError,
         com_interfaces::com_interface::{
-            ComInterfaceEvent, ComInterfaceProxy,
+            ComInterfaceEvent,
             error::ComInterfaceError,
             factory::{
                 ComInterfaceAsyncFactory, ComInterfaceAsyncFactoryResult,
@@ -23,20 +23,20 @@ use crate::{
 use core::{
     prelude::rust_2024::*, result::Result, str::FromStr, time::Duration,
 };
+use futures_util::lock::Mutex;
 use log::{error, warn};
-use std::sync::Mutex;
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::{TcpStream, tcp::OwnedWriteHalf},
     select,
 };
+use tungstenite::Message;
+use datex_core::network::com_interfaces::com_interface::factory::ComInterfaceConfiguration;
+use crate::network::com_interfaces::com_interface::factory::{SendCallback, SendFailure, SocketConfiguration, SocketProperties};
 
 /// Implementation of the TCP Client Native Interface
 impl TCPClientInterfaceSetupData {
-    async fn create_interface(
-        self,
-        com_interface_proxy: ComInterfaceProxy,
-    ) -> Result<InterfaceProperties, ComInterfaceCreateError> {
+    async fn create_interface(self) -> Result<ComInterfaceConfiguration, ComInterfaceCreateError> {
         let address = SocketAddr::from_str(&self.address)
             .map_err(ComInterfaceCreateError::invalid_setup_data)?;
 
@@ -44,103 +44,58 @@ impl TCPClientInterfaceSetupData {
             ComInterfaceError::connection_error_with_details(error)
         })?;
 
-        let (read_half, tx) = stream.into_split();
-
-        let (socket_uuid, sender) = com_interface_proxy
-            .create_and_init_socket(InterfaceDirection::InOut, 1);
-
-        let shutdown_signal = com_interface_proxy.shutdown_receiver();
-
-        spawn_with_panic_notify_default(async move {
-            Self::handle_receive(
-                read_half,
-                sender,
-                com_interface_proxy.state,
-                shutdown_signal,
-            )
-            .await;
-        });
-
-        spawn_with_panic_notify_default(Self::event_handler_task(
-            tx,
-            com_interface_proxy.event_receiver,
-        ));
-
-        Ok(InterfaceProperties {
-            name: Some(self.address),
-            created_sockets: Some(vec![socket_uuid]),
-            ..Self::get_default_properties()
-        })
-    }
-
-    /// Background task to handle incoming messages
-    async fn handle_receive(
-        read_half: tokio::net::tcp::OwnedReadHalf,
-        mut sender: UnboundedSender<Vec<u8>>,
-        state: Arc<Mutex<ComInterfaceStateWrapper>>,
-        mut shutdown_signal: Arc<ManualResetEvent>,
-    ) {
-        let mut reader = read_half;
-        let mut buffer = [0u8; 1024];
-        loop {
-            select! {
-                next = reader.read(&mut buffer) => {
-                    match next {
-                        Ok(0) => {
-                            warn!("Connection closed by peer");
-                            state.lock().unwrap().set(ComInterfaceState::Destroyed);
-                            break;
-                        }
-                        Ok(n) => {
-                            sender.start_send(buffer[..n].to_vec()).unwrap();
-                        }
-                        Err(e) => {
-                            error!("Failed to read from socket: {e}");
-                            state
-                                .try_lock()
-                                .unwrap()
-                                .set(ComInterfaceState::Destroyed);
-                            break;
+        let (mut read, write) = stream.into_split();
+        let write = Arc::new(Mutex::new(write));
+        
+        Ok(ComInterfaceConfiguration::new_single_socket(
+            InterfaceProperties {
+                name: Some(self.address),
+                ..Self::get_default_properties()
+            },
+            SocketConfiguration::new(
+                SocketProperties::new(
+                    InterfaceDirection::InOut,
+                    1,
+                ),
+                async gen move {
+                    loop {
+                        let mut buffer = [0u8; 1024];
+                        match read.read(&mut buffer).await {
+                            Ok(0) => {
+                                warn!("Connection closed by peer");
+                                return;
+                            }
+                            Ok(n) => {
+                                yield Ok(buffer[..n].to_vec());
+                            }
+                            Err(e) => {
+                                error!("Failed to read from socket: {e}");
+                                return yield Err(())
+                            }
                         }
                     }
-                }
-                _ = shutdown_signal.wait() => {
-                    break;
-                }
-            }
-        }
-    }
-
-    /// background task to handle com hub events (e.g. outgoing messages)
-    async fn event_handler_task(
-        mut write: OwnedWriteHalf,
-        mut receiver: UnboundedReceiver<ComInterfaceEvent>,
-    ) {
-        while let Some(event) = receiver.next().await {
-            match event {
-                ComInterfaceEvent::SendBlock(block, _) => {
-                    if let Err(e) = write.write_all(&block.to_bytes()).await {
-                        error!("Failed to send data: {}", e);
-                        // TODO: handle error properly
+                },
+                SendCallback::new_async(move |block| {
+                    let write = write.clone();
+                    async move {
+                        write
+                            .lock()
+                            .await
+                            .write_all(&block.to_bytes()).await
+                            .map_err(|e| {
+                                error!("WebSocket write error: {e}");
+                                SendFailure(block)
+                            })
                     }
-                }
-                ComInterfaceEvent::Destroy => {
-                    break;
-                }
-                _ => todo!(),
-            }
-        }
+                }),
+            ),
+        ))
     }
 }
 
 impl ComInterfaceAsyncFactory for TCPClientInterfaceSetupData {
-    fn create_interface(
-        self,
-        com_interface_proxy: ComInterfaceProxy,
-    ) -> ComInterfaceAsyncFactoryResult {
-        Box::pin(
-            async move { self.create_interface(com_interface_proxy).await },
-        )
+    fn create_interface(self) -> ComInterfaceAsyncFactoryResult {
+        Box::pin(self.create_interface())
     }
 
     fn get_default_properties() -> InterfaceProperties {

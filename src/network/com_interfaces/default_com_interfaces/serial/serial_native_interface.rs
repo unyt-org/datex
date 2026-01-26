@@ -17,12 +17,11 @@ use crate::{
 };
 use async_select::select;
 use core::{prelude::rust_2024::*, result::Result};
-use datex_core::network::com_interfaces::com_interface::ComInterfaceProxy;
 use log::{debug, error, warn};
 use serialport::SerialPort;
 use datex_core::network::com_interfaces::com_interface::factory::ComInterfaceConfiguration;
 use crate::global::dxb_block::DXBBlock;
-use crate::network::com_interfaces::com_interface::factory::{SocketConfiguration, SendCallback, SendFailure, _NewSocketsIterator, SocketProperties, SendSuccess};
+use crate::network::com_interfaces::com_interface::factory::{SocketConfiguration, SendCallback, SendFailure, SocketProperties, SendSuccess};
 use crate::network::com_interfaces::com_interface::socket::ComInterfaceSocketUUID;
 
 impl SerialInterfaceSetupData {
@@ -58,52 +57,49 @@ impl SerialInterfaceSetupData {
         let port = Arc::new(Mutex::new(port));
         let port_clone = port.clone();
 
-        Ok(ComInterfaceConfiguration {
-            properties: InterfaceProperties {
+        Ok(ComInterfaceConfiguration::new_single_socket(
+            InterfaceProperties {
                 name: Some(port_name),
                 ..Self::get_default_properties()
             },
-            close_callback: None,
-            new_sockets_iterator: _NewSocketsIterator::single(
-                SocketConfiguration::new(
-                    SocketProperties::new(InterfaceDirection::InOut, 1),
-                    async gen move {
-                        loop {
-                            let result = spawn_blocking({
-                                let port = port_clone.clone();
-                                move || {
-                                    let mut buffer = [0u8; Self::BUFFER_SIZE];
-                                    match port.try_lock().unwrap().read(&mut buffer) {
-                                        Ok(n) if n > 0 => Some(buffer[..n].to_vec()),
-                                        _ => None,
-                                    }
-                                }
-                            }).await;
-                            match result {
-                                Ok(Some(incoming)) => {
-                                    yield Ok(incoming);
-                                }
-                                _ => {
-                                    error!("Serial read error or shutdown");
-                                    return yield Err(());
+            SocketConfiguration::new(
+                SocketProperties::new(InterfaceDirection::InOut, 1),
+                async gen move {
+                    loop {
+                        let result = spawn_blocking({
+                            let port = port_clone.clone();
+                            move || {
+                                let mut buffer = [0u8; Self::BUFFER_SIZE];
+                                match port.try_lock().unwrap().read(&mut buffer) {
+                                    Ok(n) if n > 0 => Some(buffer[..n].to_vec()),
+                                    _ => None,
                                 }
                             }
+                        }).await;
+                        match result {
+                            Ok(Some(incoming)) => {
+                                yield Ok(incoming);
+                            }
+                            _ => {
+                                error!("Serial read error or shutdown");
+                                return yield Err(());
+                            }
                         }
-                    },
-                    SendCallback::new_sync(
-                        move |block: DXBBlock|
-                            port.lock()
-                                .unwrap()
-                                .write_all(block.to_bytes().as_slice())
-                                .map_err(|e| {
-                                    error!("Serial write error: {e}");
-                                    SendFailure(block)
-                                })
-                                .map(|_| SendSuccess::Sent)
-                    )
+                    }
+                },
+                SendCallback::new_sync(
+                    move |block: DXBBlock|
+                        port.lock()
+                            .unwrap()
+                            .write_all(block.to_bytes().as_slice())
+                            .map_err(|e| {
+                                error!("Serial write error: {e}");
+                                SendFailure(block)
+                            })
+                            .map(|_| SendSuccess::Sent)
                 )
             )
-        })
+        ))
     }
 }
 

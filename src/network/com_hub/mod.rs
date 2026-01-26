@@ -1256,7 +1256,7 @@ impl ComHub {
     }
 }
 
-#[cfg_attr(feature = "embassy_runtime", embassy_executor::task)]
+#[cfg_attr(feature = "embassy_runtime", embassy_executor::task())]
 async fn com_hub_event_task(
     mut receiver: UnboundedReceiver<BlockSendEvent>,
     com_hub_rc: Rc<ComHub>,
