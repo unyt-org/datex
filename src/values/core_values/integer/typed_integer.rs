@@ -23,7 +23,9 @@ use core::{
     fmt::Display,
     ops::{Add, AddAssign, Neg, Sub},
 };
+use num::{BigInt, Signed};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
+use num_traits::ToPrimitive;
 use serde::{Deserialize, Serialize};
 use strum::Display;
 use strum_macros::{AsRefStr, EnumIter, EnumString};
@@ -509,6 +511,43 @@ impl PartialEq for TypedInteger {
     }
 }
 
+fn bigint_to_signed_mod<const BITS: usize>(v: &Integer) -> i128 {
+    let v_bigint = &v.0;
+
+    // modulo = 2^BITS
+    let modulo = BigInt::from(1u128) << BITS;
+
+    // force value into [0, 2^BITS)
+    let mut m = v_bigint % &modulo;
+    if m.is_negative() {
+        m += &modulo;
+    }
+
+    // reinterpret as signed
+    let sign_bit = BigInt::from(1u128) << (BITS - 1);
+    if m >= sign_bit {
+        (m - modulo).to_i128().unwrap()
+    } else {
+        m.to_i128().unwrap()
+    }
+}
+
+fn bigint_to_unsigned_mod<const BITS: usize>(v: &Integer) -> u128 {
+    let v_bigint = &v.0;
+
+    // modulo = 2^BITS
+    let modulo = BigInt::from(1u128) << BITS;
+
+    // force value into [0, 2^BITS)
+    let mut m = v_bigint % &modulo;
+    if m.is_negative() {
+        m += &modulo;
+    }
+
+    // convert to u128 (will be in range [0, 2^BITS))
+    m.to_u128().unwrap()
+}
+
 impl Add for TypedInteger {
     type Output = TypedInteger;
 
@@ -525,20 +564,23 @@ impl Add for TypedInteger {
                 TypedInteger::U8(v2) => {
                     (v1 as i16).wrapping_add(v2 as i16) as i8
                 }
+
                 TypedInteger::U16(v2) => {
                     (v1 as i32).wrapping_add(v2 as i32) as i8
                 }
+
                 TypedInteger::U32(v2) => {
                     (v1 as i64).wrapping_add(v2 as i64) as i8
                 }
+
                 TypedInteger::U64(v2) => {
                     (v1 as i128).wrapping_add(v2 as i128) as i8
                 }
+
                 TypedInteger::U128(v2) => v1.wrapping_add(v2 as i8),
+
                 TypedInteger::Big(v2) => {
-                    let v2_i128 = v2
-                        .as_i128()
-                        .unwrap_or_else(|| v2.as_u128().unwrap_or(0) as i128);
+                    let v2_i128 = bigint_to_signed_mod::<8>(&v2);
                     (v1 as i128).wrapping_add(v2_i128) as i8
                 }
             }),
@@ -547,8 +589,11 @@ impl Add for TypedInteger {
                 TypedInteger::I8(v2) => v1.wrapping_add(v2 as i16),
                 TypedInteger::I16(v2) => v1.wrapping_add(v2),
                 TypedInteger::I32(v2) => (v1 as i32).wrapping_add(v2) as i16,
+
                 TypedInteger::I64(v2) => (v1 as i64).wrapping_add(v2) as i16,
+
                 TypedInteger::I128(v2) => (v1 as i128).wrapping_add(v2) as i16,
+
                 TypedInteger::U8(v2) => {
                     (v1 as i16).wrapping_add(v2 as i16) as i16
                 }
@@ -558,14 +603,13 @@ impl Add for TypedInteger {
                 TypedInteger::U32(v2) => {
                     (v1 as i64).wrapping_add(v2 as i64) as i16
                 }
+
                 TypedInteger::U64(v2) => {
                     (v1 as i128).wrapping_add(v2 as i128) as i16
                 }
                 TypedInteger::U128(v2) => (v1 as i16).wrapping_add(v2 as i16),
                 TypedInteger::Big(v2) => {
-                    let v2_i128 = v2
-                        .as_i128()
-                        .unwrap_or_else(|| v2.as_u128().unwrap_or(0) as i128);
+                    let v2_i128 = bigint_to_signed_mod::<16>(&v2);
                     (v1 as i128).wrapping_add(v2_i128) as i16
                 }
             }),
@@ -589,10 +633,9 @@ impl Add for TypedInteger {
                     (v1 as i128).wrapping_add(v2 as i128) as i32
                 }
                 TypedInteger::U128(v2) => (v1 as i32).wrapping_add(v2 as i32),
-                TypedInteger::Big(v2) => (v1 as i128).wrapping_add(
-                    v2.as_i128()
-                        .unwrap_or_else(|| v2.as_u128().unwrap_or(0) as i128),
-                ) as i32,
+                TypedInteger::Big(v2) => (v1 as i128)
+                    .wrapping_add(bigint_to_signed_mod::<32>(&v2))
+                    as i32,
             }),
 
             TypedInteger::I64(v1) => TypedInteger::I64(match rhs {
@@ -610,10 +653,9 @@ impl Add for TypedInteger {
                     (v1 as i128).wrapping_add(v2 as i128) as i64
                 }
                 TypedInteger::U128(v2) => (v1 as i64).wrapping_add(v2 as i64),
-                TypedInteger::Big(v2) => (v1 as i128).wrapping_add(
-                    v2.as_i128()
-                        .unwrap_or_else(|| v2.as_u128().unwrap_or(0) as i128),
-                ) as i64,
+                TypedInteger::Big(v2) => (v1 as i128)
+                    .wrapping_add(bigint_to_signed_mod::<64>(&v2))
+                    as i64,
             }),
 
             TypedInteger::I128(v1) => TypedInteger::I128(match rhs {
@@ -626,11 +668,14 @@ impl Add for TypedInteger {
                 TypedInteger::U16(v2) => v1.wrapping_add(v2 as i128),
                 TypedInteger::U32(v2) => v1.wrapping_add(v2 as i128),
                 TypedInteger::U64(v2) => v1.wrapping_add(v2 as i128),
-                TypedInteger::U128(v2) => (v1 as i128).wrapping_add(v2 as i128), // TODO: handle this edge case properly
-                TypedInteger::Big(v2) => v1.wrapping_add(
-                    v2.as_i128()
-                        .unwrap_or_else(|| v2.as_u128().unwrap_or(0) as i128),
-                ),
+                TypedInteger::U128(v2) => {
+                    let v2_mod =
+                        bigint_to_signed_mod::<128>(&Integer::from(v2));
+                    v1.wrapping_add(v2_mod)
+                }
+                TypedInteger::Big(v2) => {
+                    v1.wrapping_add(bigint_to_signed_mod::<128>(&v2))
+                }
             }),
 
             TypedInteger::U8(v1) => TypedInteger::U8(match rhs {
@@ -654,9 +699,9 @@ impl Add for TypedInteger {
                 TypedInteger::U32(v2) => (v1 as u32).wrapping_add(v2) as u8,
                 TypedInteger::U64(v2) => (v1 as u64).wrapping_add(v2) as u8,
                 TypedInteger::U128(v2) => (v1 as u128).wrapping_add(v2) as u8,
-                TypedInteger::Big(v2) => {
-                    (v1 as u16).wrapping_add(v2.as_u16().unwrap_or(0)) as u8
-                }
+                TypedInteger::Big(v2) => (v1 as u16)
+                    .wrapping_add(bigint_to_unsigned_mod::<8>(&v2) as u16)
+                    as u8,
             }),
 
             TypedInteger::U16(v1) => TypedInteger::U16(match rhs {
@@ -680,9 +725,9 @@ impl Add for TypedInteger {
                 TypedInteger::U32(v2) => (v1 as u32).wrapping_add(v2) as u16,
                 TypedInteger::U64(v2) => (v1 as u64).wrapping_add(v2) as u16,
                 TypedInteger::U128(v2) => (v1 as u128).wrapping_add(v2) as u16,
-                TypedInteger::Big(v2) => {
-                    (v1 as u32).wrapping_add(v2.as_u32().unwrap_or(0)) as u16
-                }
+                TypedInteger::Big(v2) => (v1 as u32)
+                    .wrapping_add(bigint_to_unsigned_mod::<16>(&v2) as u32)
+                    as u16,
             }),
 
             TypedInteger::U32(v1) => TypedInteger::U32(match rhs {
@@ -710,9 +755,9 @@ impl Add for TypedInteger {
                 TypedInteger::U128(v2) => {
                     (v1 as u128).wrapping_add(v2 as u128) as u32
                 }
-                TypedInteger::Big(v2) => {
-                    (v1 as u64).wrapping_add(v2.as_u64().unwrap_or(0)) as u32
-                }
+                TypedInteger::Big(v2) => (v1 as u64)
+                    .wrapping_add(bigint_to_unsigned_mod::<32>(&v2) as u64)
+                    as u32,
             }),
 
             TypedInteger::U64(v1) => TypedInteger::U64(match rhs {
@@ -738,9 +783,9 @@ impl Add for TypedInteger {
                 TypedInteger::U128(v2) => {
                     (v1 as u128).wrapping_add(v2 as u128) as u64
                 }
-                TypedInteger::Big(v2) => {
-                    (v1 as u128).wrapping_add(v2.as_u128().unwrap_or(0)) as u64
-                }
+                TypedInteger::Big(v2) => (v1 as u128)
+                    .wrapping_add(bigint_to_unsigned_mod::<64>(&v2))
+                    as u64,
             }),
 
             TypedInteger::U128(v1) => TypedInteger::U128(match rhs {
@@ -764,10 +809,9 @@ impl Add for TypedInteger {
                 TypedInteger::U32(v2) => v1.wrapping_add(v2 as u128),
                 TypedInteger::U64(v2) => v1.wrapping_add(v2 as u128),
                 TypedInteger::U128(v2) => v1.wrapping_add(v2),
-                TypedInteger::Big(v2) => (v1 as i128).wrapping_add(
-                    v2.as_i128()
-                        .unwrap_or_else(|| v2.as_u128().unwrap_or(0) as i128),
-                ) as u128,
+                TypedInteger::Big(v2) => {
+                    v1.wrapping_add(bigint_to_unsigned_mod::<128>(&v2))
+                }
             }),
         }
     }
@@ -809,7 +853,8 @@ impl Sub for TypedInteger {
                 TypedInteger::I128((v as i128).wrapping_neg())
             }
             TypedInteger::U128(v) => {
-                TypedInteger::I128((v as i128).wrapping_neg())
+                let v_mod = bigint_to_signed_mod::<128>(&Integer::from(v));
+                TypedInteger::I128(v_mod.wrapping_neg())
             }
             TypedInteger::Big(v) => TypedInteger::Big(v.neg()),
         };
