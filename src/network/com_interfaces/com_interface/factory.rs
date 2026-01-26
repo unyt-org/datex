@@ -1,5 +1,6 @@
-use std::async_iter::AsyncIterator;
-use std::pin::Pin;
+use core::async_iter::AsyncIterator;
+use core::future::poll_fn;
+use core::pin::Pin;
 pub(crate) use crate::network::com_hub::managers::interfaces_manager::ComInterfaceAsyncFactoryResult;
 use crate::{
     network::{
@@ -21,6 +22,18 @@ use crate::stdlib::boxed::Box;
 use crate::utils::async_callback::AsyncCallback;
 use crate::utils::uuid::UUID;
 use crate::values::core_values::endpoint::Endpoint;
+
+
+// utility function for async next
+pub async fn async_next<I>(iter: &mut Pin<Box<I>>) -> Option<I::Item>
+where
+    I: AsyncIterator + ?Sized,
+{
+    poll_fn(|cx| {
+        iter.as_mut().poll_next(cx)
+    })
+        .await
+}
 
 pub type NewSocketsIterator = Pin<Box<dyn AsyncIterator<Item = Result<SocketConfiguration, ()>> + Send>>;
 
@@ -64,13 +77,13 @@ impl SocketProperties {
 pub type SocketDataIterator = Pin<Box<dyn AsyncIterator<Item = Result<Vec<u8>, ()>> + Send>>;
 
 pub struct SocketConfiguration {
-    properties: SocketProperties,
+    pub properties: SocketProperties,
     /// An asynchronous iterator that yields incoming data from the socket as Vec<u8>
     /// It is driven by the com hub to receive data from the socket
-    iterator: Option<SocketDataIterator>,
+    pub iterator: Option<SocketDataIterator>,
     /// A callback that is called by the com hub to send data through the socket
     /// This can be either a synchronous or asynchronous callback depending on the interface implementation
-    send_callback: Option<SendCallback>
+    pub send_callback: Option<SendCallback>
 }
 impl SocketConfiguration {
     /// Creates a SocketDataIterator for a given socket with the provided parameters.
@@ -175,7 +188,7 @@ pub struct ComInterfaceConfiguration {
 }
 
 impl ComInterfaceConfiguration {
-    
+
     /// Creates a new ComInterfaceConfiguration with the given properties and socket iterator.
     pub fn new<I>(
         properties: InterfaceProperties,
@@ -188,7 +201,7 @@ impl ComInterfaceConfiguration {
             new_sockets_iterator: Box::pin(new_sockets_iterator),
         }
     }
-    
+
     /// Creates a new ComInterfaceConfiguration with a single socket configuration.
     pub fn new_single_socket(
         properties: InterfaceProperties,

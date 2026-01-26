@@ -8,3 +8,4 @@ pub mod time;
 pub mod time_native;
 pub mod uuid;
 pub mod async_callback;
+pub mod task_manager;
