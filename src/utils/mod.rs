@@ -7,3 +7,4 @@ pub mod time;
 #[cfg(all(feature = "native_time", feature = "std"))]
 pub mod time_native;
 pub mod uuid;
+pub mod async_callback;

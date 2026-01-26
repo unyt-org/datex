@@ -74,7 +74,7 @@ pub struct InterfaceProperties {
     // A list of UUIDs of sockets that were created by this interface
     // during initial connect. The com hub makes sure to await the registration of these
     // sockets before giving out the interface as fully connected.
-    // TODO: check where created_sockets have a useful effect, currently not really validated in tests
+    // TODO: remove
     pub created_sockets: Option<Vec<ComInterfaceSocketUUID>>,
 
     // A list of setup data for interfaces that can connect to this interface

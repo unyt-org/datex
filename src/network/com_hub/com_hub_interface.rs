@@ -3,7 +3,7 @@ use crate::{
     network::{
         com_hub::{
             ComHub, ComHubError, InterfacePriority,
-            errors::{InterfaceAddError, InterfaceCreateError},
+            errors::{InterfaceAddError, ComInterfaceCreateError},
             managers::interfaces_manager::{
                 DynInterfaceImplementationFactoryFn, InterfacesManager,
             },
@@ -123,7 +123,7 @@ impl ComHub {
         setup_data: ValueContainer,
         priority: InterfacePriority,
         async_context: AsyncContext,
-    ) -> Result<ComInterfaceUUID, InterfaceCreateError> {
+    ) -> Result<ComInterfaceUUID, ComInterfaceCreateError> {
         let (com_interface_uuid, receivers) =
             InterfacesManager::create_and_add_interface(
                 self.interface_manager.clone(),
@@ -166,7 +166,7 @@ impl ComHub {
         setup_data: ValueContainer,
         priority: InterfacePriority,
         async_context: AsyncContext,
-    ) -> Result<ComInterfaceUUID, InterfaceCreateError> {
+    ) -> Result<ComInterfaceUUID, ComInterfaceCreateError> {
         let mut interface_manager = self.interface_manager.borrow_mut();
         let (com_interface_uuid, receivers) = interface_manager
             .create_and_add_interface_sync(

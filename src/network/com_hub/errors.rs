@@ -26,7 +26,7 @@ impl Display for InterfaceAddError {
 }
 
 #[derive(Debug, PartialEq)]
-pub enum InterfaceCreateError {
+pub enum ComInterfaceCreateError {
     InterfaceError(ComInterfaceError),
     InterfaceAddError(InterfaceAddError),
     InterfaceCreationRequiresAsyncContext,
@@ -37,66 +37,66 @@ pub enum InterfaceCreateError {
     InvalidSetupData(String),
 }
 
-impl InterfaceCreateError {
+impl ComInterfaceCreateError {
     pub fn invalid_setup_data<T: Display>(details: T) -> Self {
-        InterfaceCreateError::InvalidSetupData(details.to_string())
+        ComInterfaceCreateError::InvalidSetupData(details.to_string())
     }
 }
 
-impl From<InterfaceAddError> for InterfaceCreateError {
+impl From<InterfaceAddError> for ComInterfaceCreateError {
     fn from(err: InterfaceAddError) -> Self {
-        InterfaceCreateError::InterfaceAddError(err)
+        ComInterfaceCreateError::InterfaceAddError(err)
     }
 }
 
-impl From<ComInterfaceError> for InterfaceCreateError {
+impl From<ComInterfaceError> for ComInterfaceCreateError {
     fn from(err: ComInterfaceError) -> Self {
-        InterfaceCreateError::InterfaceError(err)
+        ComInterfaceCreateError::InterfaceError(err)
     }
 }
 
-impl Display for InterfaceCreateError {
+impl Display for ComInterfaceCreateError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
-            InterfaceCreateError::Timeout => {
+            ComInterfaceCreateError::Timeout => {
                 core::write!(f, "InterfaceCreationError: Timeout")
             }
-            InterfaceCreateError::InterfaceError(_msg) => {
+            ComInterfaceCreateError::InterfaceError(_msg) => {
                 core::write!(f, "InterfaceCreationError: ComInterfaceError")
             }
-            InterfaceCreateError::InterfaceCreationRequiresAsyncContext => {
+            ComInterfaceCreateError::InterfaceCreationRequiresAsyncContext => {
                 core::write!(
                     f,
                     "InterfaceCreationError: Interface creation requires async context"
                 )
             }
-            InterfaceCreateError::InterfaceTypeNotRegistered(ty) => {
+            ComInterfaceCreateError::InterfaceTypeNotRegistered(ty) => {
                 core::write!(
                     f,
                     "InterfaceCreationError: Interface type '{}' is not registered",
                     ty
                 )
             }
-            InterfaceCreateError::InterfaceOpenFailed => {
+            ComInterfaceCreateError::InterfaceOpenFailed => {
                 core::write!(
                     f,
                     "InterfaceCreationError: Failed to open interface"
                 )
             }
-            InterfaceCreateError::SetupDataParseError => {
+            ComInterfaceCreateError::SetupDataParseError => {
                 core::write!(
                     f,
                     "InterfaceCreationError: Setup data parse error"
                 )
             }
-            InterfaceCreateError::InvalidSetupData(details) => {
+            ComInterfaceCreateError::InvalidSetupData(details) => {
                 core::write!(
                     f,
                     "InterfaceCreationError: Invalid setup data - {}",
                     details
                 )
             }
-            InterfaceCreateError::InterfaceAddError(add_err) => {
+            ComInterfaceCreateError::InterfaceAddError(add_err) => {
                 core::write!(
                     f,
                     "InterfaceCreationError: InterfaceAddError - {}",

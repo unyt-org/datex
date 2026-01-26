@@ -16,7 +16,7 @@ use crate::{
     global::dxb_block::DXBBlock,
     network::{
         com_hub::{
-            errors::InterfaceCreateError,
+            errors::ComInterfaceCreateError,
             managers::interfaces_manager::SyncComInterfaceImplementationFactoryFn,
         },
         com_interfaces::com_interface::properties::InterfaceDirection,
@@ -38,6 +38,7 @@ use core::fmt::{Debug, Display};
 use crate::channel::futures_intrusive::ManualResetEvent;
 use crate::stdlib::string::String;
 use crate::stdlib::vec::Vec;
+use crate::utils::async_callback::AsyncCallback;
 
 pub mod error;
 pub mod factory;
@@ -206,7 +207,7 @@ impl ComInterfaceProxy {
         &self,
         direction: InterfaceDirection,
         channel_factor: u32,
-    ) -> (ComInterfaceSocketUUID, UnboundedSender<Vec<u8>>) {
+    ) -> (ComInterfaceSocketUUID, AsyncCallback<Vec<u8>>) {
         self.create_and_init_socket_with_optional_endpoint(
             direction,
             channel_factor,
@@ -345,7 +346,7 @@ impl ComInterface {
         factory_fn: &SyncComInterfaceImplementationFactoryFn,
         setup_data: ValueContainer,
         async_context: AsyncContext,
-    ) -> Result<ComInterfaceWithReceivers, InterfaceCreateError> {
+    ) -> Result<ComInterfaceWithReceivers, ComInterfaceCreateError> {
         // Create a proxy for initialization
         let (com_interface_proxy, channels) =
             ComInterfaceProxy::new_with_channels(async_context);
@@ -365,7 +366,7 @@ impl ComInterface {
         factory_fn: &SyncOrAsyncComInterfaceImplementationFactoryFn,
         setup_data: ValueContainer,
         async_context: AsyncContext,
-    ) -> Result<ComInterfaceWithReceivers, InterfaceCreateError> {
+    ) -> Result<ComInterfaceWithReceivers, ComInterfaceCreateError> {
         // Create a proxy for initialization
         let (com_interface_proxy, channels) =
             ComInterfaceProxy::new_with_channels(async_context);
@@ -395,7 +396,7 @@ impl ComInterface {
     pub fn create_sync_from_setup_data<T: ComInterfaceSyncFactory>(
         setup_data: T,
         async_context: AsyncContext,
-    ) -> Result<ComInterfaceWithReceivers, InterfaceCreateError> {
+    ) -> Result<ComInterfaceWithReceivers, ComInterfaceCreateError> {
         // Create a proxy for initialization
         let (com_interface_proxy, channels) =
             ComInterfaceProxy::new_with_channels(async_context);
@@ -416,7 +417,7 @@ impl ComInterface {
     pub async fn create_async_from_setup_data<T: ComInterfaceAsyncFactory>(
         setup_data: T,
         async_context: AsyncContext,
-    ) -> Result<ComInterfaceWithReceivers, InterfaceCreateError> {
+    ) -> Result<ComInterfaceWithReceivers, ComInterfaceCreateError> {
         // Create a proxy for initialization
         let (com_interface_proxy, channels) =
             ComInterfaceProxy::new_with_channels(async_context);

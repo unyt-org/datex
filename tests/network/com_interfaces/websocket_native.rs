@@ -1,7 +1,7 @@
 use datex_core::{
     global::dxb_block::DXBBlock,
     network::{
-        com_hub::errors::InterfaceCreateError,
+        com_hub::errors::ComInterfaceCreateError,
         com_interfaces::default_com_interfaces::websocket::websocket_common::{
             WebSocketClientInterfaceSetupData,
             WebSocketServerInterfaceSetupData,
@@ -106,7 +106,7 @@ pub async fn test_construct_client() {
     .await;
     assert_matches!(
         client_res.unwrap_err(),
-        InterfaceCreateError::InvalidSetupData(_)
+        ComInterfaceCreateError::InvalidSetupData(_)
     );
 
     // We expect a connection error here, as the server can't be reached
@@ -120,7 +120,7 @@ pub async fn test_construct_client() {
 
     assert_matches!(
         client_res.unwrap_err(),
-        InterfaceCreateError::InterfaceError(
+        ComInterfaceCreateError::InterfaceError(
             ComInterfaceError::ConnectionError(_)
         )
     );

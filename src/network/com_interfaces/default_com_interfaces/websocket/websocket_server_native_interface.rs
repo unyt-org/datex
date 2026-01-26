@@ -8,7 +8,6 @@ use crate::{
     },
     std_sync::Mutex,
     stdlib::{collections::HashMap, net::SocketAddr, sync::Arc},
-    task::spawn_with_panic_notify_default,
 };
 use core::{
     prelude::rust_2024::*, result::Result, str::FromStr, time::Duration,
@@ -18,24 +17,17 @@ use futures_util::{SinkExt, StreamExt};
 use log::{error, info};
 use tokio::net::{TcpListener, TcpStream};
 use tungstenite::Message;
-
-use async_select::select;
-use futures_util::stream::SplitSink;
 use tokio_tungstenite::accept_async;
 
-use super::websocket_common::{
-    WebSocketClientInterfaceSetupData, WebSocketServerInterfaceSetupData,
-    parse_url,
-};
+use super::websocket_common::{WebSocketClientInterfaceSetupData, WebSocketServerInterfaceSetupData, parse_url, TLSMode};
 use crate::{
     network::{
-        com_hub::errors::InterfaceCreateError,
+        com_hub::errors::ComInterfaceCreateError,
         com_interfaces::com_interface::{
             ComInterfaceEvent,
             error::ComInterfaceError,
             factory::{
                 ComInterfaceAsyncFactory, ComInterfaceAsyncFactoryResult,
-                ComInterfaceSyncFactory,
             },
             properties::{InterfaceDirection, InterfaceProperties},
             socket::ComInterfaceSocketUUID,
@@ -43,19 +35,16 @@ use crate::{
     },
     runtime::RuntimeConfigInterface,
 };
-use datex_core::network::com_interfaces::com_interface::ComInterfaceProxy;
-use tokio_tungstenite::WebSocketStream;
+use crate::global::dxb_block::DXBBlock;
+use crate::network::com_interfaces::com_interface::factory::{ComInterfaceConfiguration, NewSocketsIterator, SendCallback, SendFailure, SendSuccess, SocketConfiguration, SocketDataIterator};
 
 type WebsocketStreamMap =
     HashMap<ComInterfaceSocketUUID, UnboundedSender<Vec<u8>>>;
 
 impl WebSocketServerInterfaceSetupData {
-    async fn create_interface(
-        self,
-        com_interface_proxy: ComInterfaceProxy,
-    ) -> Result<InterfaceProperties, InterfaceCreateError> {
+    async fn create_interface(self) -> Result<ComInterfaceConfiguration, ComInterfaceCreateError> {
         let addr = SocketAddr::from_str(&self.bind_address)
-            .map_err(InterfaceCreateError::invalid_setup_data)?;
+            .map_err(ComInterfaceCreateError::invalid_setup_data)?;
 
         info!("Spinning up server at {addr}");
 
@@ -63,252 +52,143 @@ impl WebSocketServerInterfaceSetupData {
             ComInterfaceError::connection_error_with_details(err)
         })?;
 
-        let websocket_streams_by_socket = Arc::new(Mutex::new(HashMap::new()));
+        let websocket_streams_by_socket = Arc::new(Mutex::<WebsocketStreamMap>::new(HashMap::new()));
         let websocket_streams_clone = websocket_streams_by_socket.clone();
-        let mut shutdown_signal = com_interface_proxy.shutdown_receiver();
-        let manager = com_interface_proxy.socket_manager;
-        let state = com_interface_proxy.state;
 
-        spawn_with_panic_notify_default(async move {
-            let manager = manager.clone();
-            info!("WebSocket server started at {addr}");
-            loop {
-                let manager = manager.clone();
-                select! {
-                    res = listener.accept() => {
-                        match res {
-                            Ok((stream, addr)) => {
-                                let state = state.clone();
-                                let websocket_streams = websocket_streams_clone.clone();
-                                info!("New connection from {addr}");
-                                match accept_async(stream).await {
-                                    Ok(ws_stream) => {
-                                        let (write, read) = ws_stream.split();
-                                        let (tx_sender, tx_receiver) = create_unbounded_channel::<Vec<u8>>();
-
-                                        info!("Accepted WebSocket connection from {addr}");
-                                        let manager = manager.clone();
-
-                                        let (socket_uuid, sender) = manager
-                                            .lock()
-                                            .unwrap()
-                                            .create_and_init_socket_with_optional_endpoint(InterfaceDirection::InOut, 1, None);
-
-                                        websocket_streams
-                                            .try_lock()
-                                            .unwrap()
-                                            .insert(socket_uuid.clone(), tx_sender);
-
-                                        let state_clone = state.clone();
-
-                                        // spawn read task
-                                        spawn_with_panic_notify_default(async move {
-                                            Self::client_read_task(
-                                                manager,
-                                                read,
-                                                sender,
-                                                addr,
-                                                websocket_streams,
-                                                state_clone,
-                                                socket_uuid
-                                            )
-                                            .await;
-                                        });
-
-                                        // spawn write task
-                                        spawn_with_panic_notify_default(async move {
-                                            Self::client_write_task(
-                                                write,
-                                                tx_receiver,
-                                                addr,
-                                                state,
-                                            )
-                                            .await;
-                                        });
-                                    }
-                                    Err(e) => {
-                                        error!("WebSocket handshake failed with {addr}: {e}");
-                                    }
-                                }
-                            }
-                            Err(e) => {
-                                error!("Failed to accept connection: {e}");
-                                continue;
-                            }
-                        };
+        Ok(ComInterfaceConfiguration {
+            properties: InterfaceProperties {
+                name: Some(addr.to_string()),
+                connectable_interfaces: Self::get_connectable_interface_configs_from_accept_addresses(
+                    self.accept_addresses
+                )?,
+                ..Self::get_default_properties()
+            },
+            send_callback: SendCallback::new_sync(move |(block, uuid): (DXBBlock, ComInterfaceSocketUUID)| {
+                let tx =
+                    &mut websocket_streams_by_socket.try_lock().unwrap();
+                let tx = tx.get_mut(&uuid);
+                match tx {
+                    Some(tx) => {
+                        tx.start_send(block.to_bytes()).expect(
+                            "Failed to send outgoing data to WebSocket",
+                        );
+                        Ok(SendSuccess::Sent)
                     }
-                    _ = shutdown_signal.wait() => {
-                        break;
+                    None => {
+                        error!(
+                                "Socket UUID {:?} not found for sending",
+                                uuid
+                            );
+                        Err(SendFailure(block))
                     }
                 }
-            }
-        });
+            }),
+            close_callback: None,
+            new_sockets_iterator: NewSocketsIterator::new_multiple(async gen move {
+                loop {
+                    // new sockets iterators are yielded on client connection
+                    let next_socket = listener.accept().await;
+                    match next_socket {
+                        Ok((stream, addr)) => {
+                            let websocket_streams = websocket_streams_clone.clone();
+                            info!("New connection from {addr}");
 
-        // start event handler task
-        let websocket_streams_clone = websocket_streams_by_socket.clone();
-        spawn_with_panic_notify_default(Self::event_handler_task(
-            websocket_streams_clone,
-            com_interface_proxy.event_receiver,
-        ));
+                            let socket_configuration =  SocketConfiguration::new(InterfaceDirection::InOut, 1);
+                            let socket_uuid = socket_configuration.uuid();
 
-        Ok(InterfaceProperties {
-            name: Some(addr.to_string()),
-            connectable_interfaces: self.accept_addresses.map(|addrs| {
-                addrs
-                    .into_iter()
-                    .map(|(address, tls_mode)| {
-                        let url = format!(
-                            "{}://{}",
-                            if tls_mode.is_some() { "wss" } else { "ws" },
-                            address
-                        );
-                        // parse and validate URL
-                        parse_url(&url).map_err(|_| {
-                            InterfaceCreateError::invalid_setup_data(
-                                format!("Invalid URL for WebSocket connection: {url}")
-                            )
-                        })?;
-                        RuntimeConfigInterface::new(
-                            "websocket-client",
-                            WebSocketClientInterfaceSetupData {
-                                url,
-                            },
-                        ).map_err(|e| {
-                            InterfaceCreateError::invalid_setup_data(
-                                format!("Failed to create connectable interface for WebSocket client: {e}")
-                            )
-                        })
-                    })
-                    .collect::<_>()
-            })
-                .transpose()?,
-            ..Self::get_default_properties()
+                            // yield new socket data
+                            yield Ok(SocketDataIterator::new(
+                                socket_configuration,
+                                async gen move {
+                                    match accept_async(stream).await {
+                                        Ok(ws_stream) => {
+                                            let (write, mut read) = ws_stream.split();
+                                            let (tx_sender, tx_receiver) = create_unbounded_channel::<Vec<u8>>();
+
+                                            info!("Accepted WebSocket connection from {addr}");
+
+                                            websocket_streams
+                                                .try_lock()
+                                                .unwrap()
+                                                .insert(socket_uuid, tx_sender);
+
+                                            // read blocks
+                                            loop {
+                                                match read.next().await {
+                                                    Some(Ok(Message::Binary(bin))) => {
+                                                        yield Ok(bin);
+                                                    }
+                                                    Some(Ok(_)) => {
+                                                        error!("Invalid message type received");
+                                                        return yield Err(());
+                                                    }
+                                                    Some(Err(e)) => {
+                                                        error!("WebSocket error from {addr}: {e}");
+                                                        return yield Err(())
+                                                    }
+                                                    None => {
+                                                        // Connection closed by peer
+                                                        return yield Err(())
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        Err(e) => {
+                                            error!("WebSocket handshake failed with {addr}: {e}");
+                                            // immediately close the socket again
+                                            yield Err(());
+                                        }
+                                    }
+                                }
+                            ));
+                        },
+                        Err(e) => {
+                            error!("Failed to accept connection: {e}");
+                            continue;
+                        }
+                    }
+                }
+            }),
         })
     }
 
-    async fn client_write_task(
-        mut write: SplitSink<WebSocketStream<TcpStream>, Message>,
-        mut receiver: UnboundedReceiver<Vec<u8>>,
-        addr: SocketAddr,
-        state: Arc<Mutex<ComInterfaceStateWrapper>>,
-    ) {
-        let mut shutdown_signal = state.try_lock().unwrap().shutdown_receiver();
-        loop {
-            select! {
-                // Receive next message to send
-                msg = receiver.next() => {
-                    match msg {
-                        Some(data) => {
-                            if let Err(e) = write.send(Message::Binary(data)).await {
-                                error!("WebSocket write error to {addr}: {e}");
-                                continue;
-                            }
-                        }
-                        None => {
-                            // Channel closed
-                            break;
-                        }
-                    }
-                }
-                // Shutdown signal received
-                _ = shutdown_signal.wait() => {
-                    info!("Shutdown signal received, stopping write_task for {addr}");
-                    break;
-                }
-            }
-        }
-    }
-
-    async fn client_read_task(
-        manager: Arc<Mutex<ComInterfaceSocketManager>>,
-        mut read: SplitStream<WebSocketStream<TcpStream>>,
-        mut sender: UnboundedSender<Vec<u8>>,
-        addr: SocketAddr,
-        websocket_streams: Arc<Mutex<WebsocketStreamMap>>,
-        state: Arc<Mutex<ComInterfaceStateWrapper>>,
-        socket_uuid: ComInterfaceSocketUUID,
-    ) {
-        let mut shutdown_signal = state.try_lock().unwrap().shutdown_receiver();
-
-        loop {
-            select! {
-                // Read next WebSocket message
-                msg = read.next() => {
-                    match msg {
-                        Some(Ok(Message::Binary(bin))) => {
-                            sender.start_send(bin).expect("Failed to send received data to ComHub");
-                        }
-                        Some(Ok(_)) => {
-                            // Ignore non-binary messages
-                            continue;
-                        }
-                        Some(Err(e)) => {
-                            error!("WebSocket error from {addr}: {e}");
-                            continue;
-                        }
-                        None => {
-                            // Connection closed by peer
-                            break;
-                        }
-                    }
-                }
-                // Shutdown signal received
-                _ = shutdown_signal.wait() => {
-                    info!("Shutdown signal received, stopping read_task for {addr}");
-                    break;
-                }
-            }
-        }
-
-        // cleanup on connection close
-        let mut streams = websocket_streams.try_lock().unwrap();
-        streams.remove(&socket_uuid);
-        manager.lock().unwrap().remove_socket(socket_uuid);
-        info!("WebSocket connection from {addr} closed");
-    }
-
-    /// background task to handle com hub events (e.g. outgoing messages)
-    async fn event_handler_task(
-        websocket_streams_by_socket: Arc<Mutex<WebsocketStreamMap>>,
-        mut receiver: UnboundedReceiver<ComInterfaceEvent>,
-    ) {
-        while let Some(event) = receiver.next().await {
-            match event {
-                ComInterfaceEvent::SendBlock(block, socket_uuid) => {
-                    let tx =
-                        &mut websocket_streams_by_socket.try_lock().unwrap();
-                    let tx = tx.get_mut(&socket_uuid);
-                    match tx {
-                        Some(tx) => {
-                            tx.start_send(block.to_bytes()).expect(
-                                "Failed to send outgoing data to WebSocket",
-                            );
-                        }
-                        None => {
-                            error!(
-                                "Socket UUID {:?} not found for sending",
-                                socket_uuid
-                            );
-                        }
-                    };
-                }
-                ComInterfaceEvent::Destroy => {
-                    break;
-                }
-                _ => todo!(),
-            }
-        }
+    fn get_connectable_interface_configs_from_accept_addresses(
+        accept_addresses: Option<Vec<(String, Option<TLSMode>)>>,
+    ) -> Result<Option<Vec<RuntimeConfigInterface>>, ComInterfaceCreateError> {
+        accept_addresses.map(|addrs| {
+            addrs
+                .into_iter()
+                .map(|(address, tls_mode)| {
+                    let url = format!(
+                        "{}://{}",
+                        if tls_mode.is_some() { "wss" } else { "ws" },
+                        address
+                    );
+                    // parse and validate URL
+                    parse_url(&url).map_err(|_| {
+                        ComInterfaceCreateError::invalid_setup_data(
+                            format!("Invalid URL for WebSocket connection: {url}")
+                        )
+                    })?;
+                    RuntimeConfigInterface::new(
+                        "websocket-client",
+                        WebSocketClientInterfaceSetupData {
+                            url,
+                        },
+                    ).map_err(|e| {
+                        ComInterfaceCreateError::invalid_setup_data(
+                            format!("Failed to create connectable interface for WebSocket client: {e}")
+                        )
+                    })
+                })
+                .collect::<_>()
+        }).transpose()
     }
 }
 
 impl ComInterfaceAsyncFactory for WebSocketServerInterfaceSetupData {
-    fn create_interface(
-        self,
-        com_interface_proxy: ComInterfaceProxy,
-    ) -> ComInterfaceAsyncFactoryResult {
-        Box::pin(
-            async move { self.create_interface(com_interface_proxy).await },
-        )
+    fn create_interface(self) -> ComInterfaceAsyncFactoryResult {
+        Box::pin(self.create_interface())
     }
 
     fn get_default_properties() -> InterfaceProperties {

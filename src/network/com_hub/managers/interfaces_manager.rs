@@ -10,7 +10,7 @@ use crate::{
     network::{
         com_hub::{
             ComHubError, InterfacePriority,
-            errors::{InterfaceAddError, InterfaceCreateError},
+            errors::{InterfaceAddError, ComInterfaceCreateError},
         },
         com_interfaces::com_interface::{
             ComInterface, ComInterfaceProxy, ComInterfaceReceivers,
@@ -22,6 +22,7 @@ use crate::{
     runtime::AsyncContext,
     values::value_container::ValueContainer,
 };
+use crate::network::com_interfaces::com_interface::factory::ComInterfaceConfiguration;
 
 type InterfaceMap =
     HashMap<ComInterfaceUUID, (ComInterface, InterfacePriority)>;
@@ -30,11 +31,11 @@ pub type SyncComInterfaceImplementationFactoryFn =
     fn(
         setup_data: ValueContainer,
         proxy: ComInterfaceProxy,
-    ) -> Result<InterfaceProperties, InterfaceCreateError>;
+    ) -> Result<ComInterfaceConfiguration, ComInterfaceCreateError>;
 
 pub type ComInterfaceAsyncFactoryResult = Pin<
     Box<
-        dyn Future<Output = Result<InterfaceProperties, InterfaceCreateError>>
+        dyn Future<Output = Result<ComInterfaceConfiguration, ComInterfaceCreateError>>
             + 'static,
     >,
 >;
@@ -116,7 +117,7 @@ impl InterfacesManager {
         setup_data: ValueContainer,
         priority: InterfacePriority,
         async_context: AsyncContext,
-    ) -> Result<(ComInterfaceUUID, ComInterfaceReceivers), InterfaceCreateError>
+    ) -> Result<(ComInterfaceUUID, ComInterfaceReceivers), ComInterfaceCreateError>
     {
         info!("creating interface {interface_type}");
         let factory = self_rc
@@ -151,7 +152,7 @@ impl InterfacesManager {
                 }
             }
         } else {
-            Err(InterfaceCreateError::InterfaceTypeNotRegistered(
+            Err(ComInterfaceCreateError::InterfaceTypeNotRegistered(
                 interface_type.to_string(),
             ))
         }
@@ -167,7 +168,7 @@ impl InterfacesManager {
         setup_data: ValueContainer,
         priority: InterfacePriority,
         async_context: AsyncContext,
-    ) -> Result<(ComInterfaceUUID, ComInterfaceReceivers), InterfaceCreateError>
+    ) -> Result<(ComInterfaceUUID, ComInterfaceReceivers), ComInterfaceCreateError>
     {
         info!("creating interface sync {interface_type}");
         if let Some(factory) = self.interface_factories.get(interface_type) {
@@ -187,11 +188,11 @@ impl InterfacesManager {
                 }
                 SyncOrAsyncComInterfaceImplementationFactoryFn::Async(_)
                 | SyncOrAsyncComInterfaceImplementationFactoryFn::Dyn(_) => Err(
-                    InterfaceCreateError::InterfaceCreationRequiresAsyncContext,
+                    ComInterfaceCreateError::InterfaceCreationRequiresAsyncContext,
                 ),
             }
         } else {
-            Err(InterfaceCreateError::InterfaceTypeNotRegistered(
+            Err(ComInterfaceCreateError::InterfaceTypeNotRegistered(
                 interface_type.to_string(),
             ))
         }

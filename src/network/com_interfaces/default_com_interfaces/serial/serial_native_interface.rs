@@ -2,7 +2,7 @@ use super::serial_common::SerialInterfaceSetupData;
 use crate::{
     channel::mpsc::UnboundedReceiver,
     network::{
-        com_hub::errors::InterfaceCreateError,
+        com_hub::errors::ComInterfaceCreateError,
         com_interfaces::com_interface::{
             ComInterfaceEvent,
             error::ComInterfaceError,
@@ -20,6 +20,10 @@ use core::{prelude::rust_2024::*, result::Result};
 use datex_core::network::com_interfaces::com_interface::ComInterfaceProxy;
 use log::{debug, error, warn};
 use serialport::SerialPort;
+use datex_core::network::com_interfaces::com_interface::factory::ComInterfaceConfiguration;
+use crate::global::dxb_block::DXBBlock;
+use crate::network::com_interfaces::com_interface::factory::{SocketDataIterator, SendCallback, SendFailure, NewSocketsIterator, SocketConfiguration, SendSuccess};
+use crate::network::com_interfaces::com_interface::socket::ComInterfaceSocketUUID;
 
 impl SerialInterfaceSetupData {
     const TIMEOUT: Duration = Duration::from_millis(1000);
@@ -34,16 +38,13 @@ impl SerialInterfaceSetupData {
             .collect()
     }
 
-    fn create_interface(
-        self,
-        com_interface_proxy: ComInterfaceProxy,
-    ) -> Result<InterfaceProperties, InterfaceCreateError> {
+    fn create_interface(self) -> Result<ComInterfaceConfiguration, ComInterfaceCreateError> {
         let port_name = self.port_name.clone().ok_or(
-            InterfaceCreateError::invalid_setup_data("Port name is required"),
+            ComInterfaceCreateError::invalid_setup_data("Port name is required"),
         )?;
 
         if port_name.is_empty() {
-            return Err(InterfaceCreateError::InvalidSetupData(
+            return Err(ComInterfaceCreateError::InvalidSetupData(
                 "Port name cannot be empty".to_string(),
             ));
         }
@@ -56,93 +57,59 @@ impl SerialInterfaceSetupData {
             })?;
         let port = Arc::new(Mutex::new(port));
         let port_clone = port.clone();
-
-        let (socket_uuid, mut sender) = com_interface_proxy
-            .create_and_init_socket(InterfaceDirection::InOut, 1);
-
-        let shutdown_signal = com_interface_proxy.shutdown_receiver();
-        spawn_with_panic_notify_default(async move {
-            loop {
-                select! {
-                    _ = shutdown_signal.wait() => {
-                        warn!("Shutting down serial task...");
-                        break;
-                    },
-                    result = spawn_blocking({
-                        let port = port_clone.clone();
-                        move || {
-                            let mut buffer = [0u8; Self::BUFFER_SIZE];
-                            match port.try_lock().unwrap().read(&mut buffer) {
-                                Ok(n) if n > 0 => Some(buffer[..n].to_vec()),
-                                _ => None,
-                            }
-                        }
-                    }) => {
-                        match result {
-                            Ok(Some(incoming)) => {
-                                let size = incoming.len();
-                                sender.start_send(incoming).unwrap();
-                                debug!(
-                                    "Received data from serial port: {size}"
-                                );
-                            }
-                            _ => {
-                                error!("Serial read error or shutdown");
-                                break;
-                            }
-                        }
-                    }
-                }
-            }
-            // FIXME #212 add reconnect logic (close gracefully and reopen)
-            com_interface_proxy
-                .state
-                .try_lock()
-                .unwrap()
-                .set(ComInterfaceState::Destroyed);
-            warn!("Serial socket closed");
-        });
-
-        spawn_with_panic_notify_default(Self::event_handler_task(
-            com_interface_proxy.event_receiver,
-            port.clone(),
-        ));
-
-        Ok(InterfaceProperties {
-            name: Some(port_name),
-            created_sockets: Some(vec![socket_uuid]),
-            ..Self::get_default_properties()
-        })
-    }
-
-    /// background task to handle com hub events (e.g. outgoing messages)
-    async fn event_handler_task(
-        mut receiver: UnboundedReceiver<ComInterfaceEvent>,
-        port: Arc<Mutex<Box<dyn SerialPort>>>,
-    ) {
-        while let Some(event) = receiver.next().await {
-            match event {
-                ComInterfaceEvent::SendBlock(block, _) => {
+        
+        Ok(ComInterfaceConfiguration {
+            properties: InterfaceProperties {
+                name: Some(port_name),
+                ..Self::get_default_properties()
+            },
+            close_callback: None,
+            send_callback: SendCallback::new_sync(
+                move |(block, _uuid): (DXBBlock, ComInterfaceSocketUUID)|
                     port.lock()
                         .unwrap()
                         .write_all(block.to_bytes().as_slice())
-                        .unwrap();
-                }
-                ComInterfaceEvent::Destroy => {
-                    break;
-                }
-                _ => todo!(),
-            }
-        }
+                        .map_err(|e| {
+                            error!("Serial write error: {e}");
+                            SendFailure(block)
+                        })
+                        .map(|_| SendSuccess::Sent)
+            ),
+            new_sockets_iterator: NewSocketsIterator::new_single(
+                SocketDataIterator::new(
+                    SocketConfiguration::new(InterfaceDirection::InOut,1),
+                    async gen move {
+                        loop {
+                            let result = spawn_blocking({
+                                let port = port_clone.clone();
+                                move || {
+                                    let mut buffer = [0u8; Self::BUFFER_SIZE];
+                                    match port.try_lock().unwrap().read(&mut buffer) {
+                                        Ok(n) if n > 0 => Some(buffer[..n].to_vec()),
+                                        _ => None,
+                                    }
+                                }
+                            }).await;
+                            match result {
+                                Ok(Some(incoming)) => {
+                                    yield Ok(incoming);
+                                }
+                                _ => {
+                                    error!("Serial read error or shutdown");
+                                    return yield Err(());
+                                }
+                            }
+                        }
+                    }
+                )
+            )
+        })
     }
 }
 
 impl ComInterfaceSyncFactory for SerialInterfaceSetupData {
-    fn create_interface(
-        self,
-        com_interface_proxy: ComInterfaceProxy,
-    ) -> Result<InterfaceProperties, InterfaceCreateError> {
-        self.create_interface(com_interface_proxy)
+    fn create_interface(self) -> Result<ComInterfaceConfiguration, ComInterfaceCreateError> {
+        self.create_interface()
     }
 
     fn get_default_properties() -> InterfaceProperties {

@@ -6,7 +6,7 @@ use crate::{
     },
     core::net::AddrParseError,
     network::{
-        com_hub::errors::InterfaceCreateError,
+        com_hub::errors::ComInterfaceCreateError,
         com_interfaces::com_interface::{
             ComInterfaceEvent, ComInterfaceProxy,
             error::ComInterfaceError,
@@ -36,17 +36,17 @@ impl TCPServerInterfaceSetupData {
     async fn create_interface(
         self,
         com_interface_proxy: ComInterfaceProxy,
-    ) -> Result<InterfaceProperties, InterfaceCreateError> {
+    ) -> Result<InterfaceProperties, ComInterfaceCreateError> {
         let host = self.host.clone().unwrap_or_else(|| "0.0.0.0".to_string());
 
         let address: SocketAddr = format!("{}:{}", host, self.port)
             .parse()
             .map_err(|e: AddrParseError| {
-                InterfaceCreateError::InvalidSetupData(e.to_string())
+                ComInterfaceCreateError::InvalidSetupData(e.to_string())
             })?;
 
         let listener = TcpListener::bind(address).await.map_err(|e| {
-            InterfaceCreateError::InterfaceError(
+            ComInterfaceCreateError::InterfaceError(
                 ComInterfaceError::connection_error_with_details(e),
             )
         })?;
@@ -241,7 +241,7 @@ mod tests {
 
     use crate::{
         network::{
-            com_hub::errors::InterfaceCreateError,
+            com_hub::errors::ComInterfaceCreateError,
             com_interfaces::{
                 com_interface::ComInterfaceProxy,
                 default_com_interfaces::tcp::tcp_common::TCPServerInterfaceSetupData,
@@ -278,7 +278,7 @@ mod tests {
                 ComInterfaceProxy::new_with_channels(AsyncContext::default()).0
             )
             .await,
-            Err(InterfaceCreateError::InvalidSetupData(_))
+            Err(ComInterfaceCreateError::InvalidSetupData(_))
         );
     }
 }

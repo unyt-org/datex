@@ -1,26 +1,25 @@
 use crate::{
     stdlib::{
-        sync::{Arc, Mutex},
+        sync::{Arc},
         time::Duration,
     },
     task::spawn_with_panic_notify,
 };
-use async_select::select;
 use core::{prelude::rust_2024::*, result::Result};
 use futures_util::{
     SinkExt, StreamExt,
     stream::{SplitSink, SplitStream},
 };
-use log::{error, info};
+use log::{error, info, warn};
 use tokio::net::TcpStream;
 use tungstenite::Message;
 use url::Url;
+use futures::lock::Mutex;
 
 use super::websocket_common::{WebSocketClientInterfaceSetupData, parse_url};
 use crate::{
-    channel::mpsc::{UnboundedReceiver, UnboundedSender},
     network::{
-        com_hub::errors::InterfaceCreateError,
+        com_hub::errors::ComInterfaceCreateError,
         com_interfaces::com_interface::{
             ComInterfaceEvent,
             error::ComInterfaceError,
@@ -32,109 +31,65 @@ use crate::{
         },
     },
 };
-use datex_core::network::com_interfaces::com_interface::ComInterfaceProxy;
 use tokio_tungstenite::{MaybeTlsStream, WebSocketStream};
+use crate::global::dxb_block::DXBBlock;
+use crate::network::com_interfaces::com_interface::factory::{ComInterfaceConfiguration, SocketDataIterator, NewSocketsIterator, SendCallback, SendFailure, SocketConfiguration};
+use crate::network::com_interfaces::com_interface::socket::ComInterfaceSocketUUID;
 
 impl WebSocketClientInterfaceSetupData {
     async fn create_interface(
         self,
-        com_interface_proxy: ComInterfaceProxy,
-    ) -> Result<InterfaceProperties, InterfaceCreateError> {
-        let (address, write, read) =
+    ) -> Result<ComInterfaceConfiguration, ComInterfaceCreateError> {
+        let (address, write, mut read) =
             self.create_websocket_client_connection().await?;
+        let write = Arc::new(Mutex::new(write));
 
-        let (socket_uuid, sender) = com_interface_proxy
-            .create_and_init_socket(InterfaceDirection::InOut, 1);
-
-        let state = com_interface_proxy.state;
-
-        spawn_with_panic_notify(
-            &com_interface_proxy.async_context,
-            Self::read_task(read, sender, state.clone()),
-        );
-
-        spawn_with_panic_notify(
-            &com_interface_proxy.async_context,
-            Self::event_handler_task(
-                write,
-                com_interface_proxy.event_receiver,
-                state,
-            ),
-        );
-
-        Ok(InterfaceProperties {
-            name: Some(address.to_string()),
-            created_sockets: Some(vec![socket_uuid]),
-            ..Self::get_default_properties()
-        })
-    }
-
-    /// background task to read messages from the websocket
-    async fn read_task(
-        mut read: SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>>,
-        mut sender: UnboundedSender<Vec<u8>>,
-        state: Arc<Mutex<ComInterfaceStateWrapper>>,
-    ) {
-        let mut shutdown_signal = state.try_lock().unwrap().shutdown_receiver();
-        loop {
-            select! {
-                msg = read.next() => {
-                    match msg {
-                        Some(Ok(Message::Binary(data))) => {
-                            sender.start_send(data).expect("Failed to send received data to ComHub")
-                        }
-                        Some(Ok(_)) => {
-                            error!("Invalid message type received");
-                        }
-                        Some(Err(e)) => {
-                            error!("WebSocket read error: {e}");
-                            // FIXME what about read errors that are not fatal?
-                            continue;
-                        }
-                        None => {
-                            log::warn!("WebSocket closed by peer");
-                            state.lock().unwrap().set(ComInterfaceState::Destroyed);
-                            break;
-                        }
-                    }
+        Ok(
+            ComInterfaceConfiguration {
+                properties: InterfaceProperties {
+                    name: Some(address.to_string()),
+                    ..Self::get_default_properties()
                 },
-                // Shutdown signal received
-                _ = shutdown_signal.wait() => {
-                    info!("Shutdown signal received, stopping read_task");
-                    break;
-                }
-            }
-        }
-    }
-
-    /// background task to handle com hub events (e.g. outgoing messages)
-    async fn event_handler_task(
-        mut write: SplitSink<
-            WebSocketStream<MaybeTlsStream<TcpStream>>,
-            Message,
-        >,
-        mut receiver: UnboundedReceiver<ComInterfaceEvent>,
-        state: Arc<Mutex<ComInterfaceStateWrapper>>,
-    ) {
-        while let Some(event) = receiver.next().await {
-            match event {
-                ComInterfaceEvent::SendBlock(block, _) => {
-                    if let Err(e) =
-                        write.send(Message::Binary(block.to_bytes())).await
-                    {
-                        // FIXME shall we retry?
-                        error!("WebSocket write error: {e}");
-                        state
-                            .try_lock()
-                            .unwrap()
-                            .set(ComInterfaceState::Destroyed);
-                        break;
+                send_callback: SendCallback::new_async(move |(block, _uuid): (DXBBlock, ComInterfaceSocketUUID)| {
+                    let write = write.clone();
+                    async move {
+                        write
+                            .lock()
+                            .await
+                            .send(Message::Binary(block.to_bytes())).await
+                            .map_err(|e| {
+                                error!("WebSocket write error: {e}");
+                                SendFailure(block)
+                            })
                     }
-                }
-                ComInterfaceEvent::Destroy => break,
-                _ => todo!(),
+                }),
+                close_callback: None,
+                new_sockets_iterator: NewSocketsIterator::new_single(SocketDataIterator::new(
+                    SocketConfiguration::new(InterfaceDirection::InOut, 1),
+                    async gen move {
+                        loop {
+                            match read.next().await {
+                                Some(Ok(Message::Binary(data))) => {
+                                    yield Ok(data);
+                                }
+                                Some(Ok(_)) => {
+                                    error!("Invalid message type received");
+                                    return yield Err(());
+                                }
+                                Some(Err(e)) => {
+                                    error!("WebSocket read error: {e}");
+                                    return yield Err(());
+                                }
+                                None => {
+                                    warn!("WebSocket closed by peer");
+                                    return yield Err(())
+                                }
+                            }
+                        }
+                    }
+                )),
             }
-        }
+        )
     }
 
     /// initialize a new websocket client connection
@@ -146,15 +101,15 @@ impl WebSocketClientInterfaceSetupData {
             SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>,
             SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>>,
         ),
-        InterfaceCreateError,
+        ComInterfaceCreateError,
     > {
         let address = parse_url(&self.url).map_err(|_| {
-            InterfaceCreateError::InvalidSetupData(
+            ComInterfaceCreateError::InvalidSetupData(
                 "Invalid WebSocket URL".to_string(),
             )
         })?;
         if address.scheme() != "ws" && address.scheme() != "wss" {
-            return Err(InterfaceCreateError::InvalidSetupData(
+            return Err(ComInterfaceCreateError::InvalidSetupData(
                 "Invalid WebSocket URL scheme".to_string(),
             ));
         }
@@ -163,7 +118,7 @@ impl WebSocketClientInterfaceSetupData {
             .await
             .map_err(|e| {
                 error!("Failed to connect to WebSocket server: {e}");
-                InterfaceCreateError::InterfaceError(
+                ComInterfaceCreateError::InterfaceError(
                     ComInterfaceError::connection_error_with_details(
                         e.to_string(),
                     ),
@@ -175,13 +130,8 @@ impl WebSocketClientInterfaceSetupData {
 }
 
 impl ComInterfaceAsyncFactory for WebSocketClientInterfaceSetupData {
-    fn create_interface(
-        self,
-        com_interface_proxy: ComInterfaceProxy,
-    ) -> ComInterfaceAsyncFactoryResult {
-        Box::pin(
-            async move { self.create_interface(com_interface_proxy).await },
-        )
+    fn create_interface(self) -> ComInterfaceAsyncFactoryResult {
+        Box::pin(self.create_interface())
     }
 
     fn get_default_properties() -> InterfaceProperties {

@@ -19,7 +19,7 @@ use core::fmt::Display;
 #[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
 #[cfg_attr(feature = "wasm_runtime", tsify(type = "string"))]
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct ComInterfaceSocketUUID(pub UUID);
+pub struct ComInterfaceSocketUUID(pub(crate) UUID);
 impl Display for ComInterfaceSocketUUID {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         core::write!(f, "socket::{}", self.0)
@@ -73,15 +73,9 @@ pub struct ComInterfaceSocket {
     pub connection_timestamp: u64,
     pub channel_factor: u32,
     pub direction: InterfaceDirection,
-    block_in_receiver: OnceConsumer<UnboundedReceiver<DXBBlock>>,
 }
 
 impl ComInterfaceSocket {
-    /// Received blocks coming from the interface (to be processed by the ComHub)
-    pub fn take_block_in_receiver(&mut self) -> UnboundedReceiver<DXBBlock> {
-        self.block_in_receiver.consume()
-    }
-
     pub fn can_send(&self) -> bool {
         self.direction == InterfaceDirection::Out
             || self.direction == InterfaceDirection::InOut
@@ -110,7 +104,6 @@ impl ComInterfaceSocket {
                 connection_timestamp: 0,
                 channel_factor,
                 direction,
-                block_in_receiver: OnceConsumer::new(block_in_receiver),
             },
             bytes_in_sender,
         )

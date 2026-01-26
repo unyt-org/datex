@@ -6,7 +6,7 @@ use crate::{
         mpsc::{UnboundedReceiver, UnboundedSender},
     },
     network::{
-        com_hub::errors::InterfaceCreateError,
+        com_hub::errors::ComInterfaceCreateError,
         com_interfaces::com_interface::{
             ComInterfaceEvent, ComInterfaceProxy,
             error::ComInterfaceError,
@@ -36,9 +36,9 @@ impl TCPClientInterfaceSetupData {
     async fn create_interface(
         self,
         com_interface_proxy: ComInterfaceProxy,
-    ) -> Result<InterfaceProperties, InterfaceCreateError> {
+    ) -> Result<InterfaceProperties, ComInterfaceCreateError> {
         let address = SocketAddr::from_str(&self.address)
-            .map_err(InterfaceCreateError::invalid_setup_data)?;
+            .map_err(ComInterfaceCreateError::invalid_setup_data)?;
 
         let stream = TcpStream::connect(address).await.map_err(|error| {
             ComInterfaceError::connection_error_with_details(error)

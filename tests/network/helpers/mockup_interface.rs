@@ -5,7 +5,7 @@ use datex_core::{
         dxb_block::DXBBlock, protocol_structures::block_header::BlockType,
     },
     network::{
-        com_hub::errors::InterfaceCreateError,
+        com_hub::errors::ComInterfaceCreateError,
         com_interfaces::com_interface::{
             ComInterfaceEvent, ComInterfaceProxy,
             error::ComInterfaceError,
@@ -29,7 +29,7 @@ impl MockupInterfaceSetupData {
     pub fn create_interface(
         mut self,
         proxy: ComInterfaceProxy,
-    ) -> Result<InterfaceProperties, InterfaceCreateError> {
+    ) -> Result<InterfaceProperties, ComInterfaceCreateError> {
         let outgoing_queue = Rc::new(RefCell::new(Vec::new()));
         let (socket_uuid, sender) =
             self.create_and_add_socket(proxy.socket_manager)?;
@@ -186,7 +186,7 @@ impl ComInterfaceSyncFactory for MockupInterfaceSetupData {
     fn create_interface(
         self,
         proxy: ComInterfaceProxy,
-    ) -> Result<InterfaceProperties, InterfaceCreateError> {
+    ) -> Result<InterfaceProperties, ComInterfaceCreateError> {
         self.create_interface(proxy)
     }
 

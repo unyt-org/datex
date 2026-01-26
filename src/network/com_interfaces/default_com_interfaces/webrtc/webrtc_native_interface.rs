@@ -25,7 +25,7 @@ use super::webrtc_common::{
 use crate::{
     channel::mpsc::UnboundedReceiver,
     network::{
-        com_hub::errors::InterfaceCreateError,
+        com_hub::errors::ComInterfaceCreateError,
         com_interfaces::com_interface::{
             ComInterfaceEvent,
             error::ComInterfaceError,
@@ -404,7 +404,7 @@ impl WebRTCInterfaceSetupData {
     async fn create_interface(
         self,
         com_interface_proxy: ComInterfaceProxy,
-    ) -> Result<InterfaceProperties, InterfaceCreateError> {
+    ) -> Result<InterfaceProperties, ComInterfaceCreateError> {
         let commons = WebRTCCommon::new(self.peer_endpoint);
         let interface = WebRTCNativeInterface {
             commons: Arc::new(Mutex::new(commons)),

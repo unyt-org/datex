@@ -5,7 +5,7 @@ use std::sync::Mutex;
 use datex_core::{
     global::dxb_block::DXBBlock,
     network::{
-        com_hub::errors::InterfaceCreateError,
+        com_hub::errors::ComInterfaceCreateError,
         com_interfaces::{
             com_interface::{ComInterface, socket::ComInterfaceSocketEvent},
             default_com_interfaces::tcp::tcp_common::{
@@ -28,7 +28,7 @@ pub async fn test_client_no_connection() {
         )
         .await
         .unwrap_err(),
-        InterfaceCreateError::InterfaceError(_)
+        ComInterfaceCreateError::InterfaceError(_)
     );
 }
 

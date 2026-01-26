@@ -16,7 +16,7 @@ use tokio_stream::wrappers::BroadcastStream;
 use super::http_common::{HTTPError, HTTPServerInterfaceSetupData};
 use crate::{
     network::{
-        com_hub::errors::InterfaceCreateError,
+        com_hub::errors::ComInterfaceCreateError,
         com_interfaces::com_interface::{
             ComInterfaceEvent,
             factory::{
@@ -167,13 +167,10 @@ impl HTTPServerInterfaceSetupData {
     //     }
     // }
 
-    async fn create_interface(
-        self,
-        com_interface_proxy: ComInterfaceProxy,
-    ) -> Result<InterfaceProperties, InterfaceCreateError> {
+    async fn create_interface(self) -> Result<InterfaceProperties, ComInterfaceCreateError> {
         let address: String = format!("http://0.0.0.0:{}", self.port);
         let address = Url::parse(&address)
-            .map_err(InterfaceCreateError::invalid_setup_data)?;
+            .map_err(ComInterfaceCreateError::invalid_setup_data)?;
 
         info!("Spinning up server at {address}");
 
@@ -189,10 +186,10 @@ impl HTTPServerInterfaceSetupData {
 
         let addr: SocketAddr = address
             .socket_addrs(|| None)
-            .map_err(InterfaceCreateError::invalid_setup_data)?
+            .map_err(ComInterfaceCreateError::invalid_setup_data)?
             .first()
             .cloned()
-            .ok_or(InterfaceCreateError::invalid_setup_data(
+            .ok_or(ComInterfaceCreateError::invalid_setup_data(
                 "Socket address invalid",
             ))?;
 
@@ -253,12 +250,9 @@ impl HTTPServerInterfaceSetupData {
 }
 
 impl ComInterfaceAsyncFactory for HTTPServerInterfaceSetupData {
-    fn create_interface(
-        self,
-        com_interface_proxy: ComInterfaceProxy,
-    ) -> ComInterfaceAsyncFactoryResult {
+    fn create_interface(self) -> ComInterfaceAsyncFactoryResult {
         Box::pin(
-            async move { self.create_interface(com_interface_proxy).await },
+            async move { self.create_interface().await },
         )
     }
 
