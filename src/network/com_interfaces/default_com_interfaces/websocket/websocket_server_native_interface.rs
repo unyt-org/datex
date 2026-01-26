@@ -6,25 +6,24 @@ use crate::{
         socket_manager::ComInterfaceSocketManager,
         state::ComInterfaceStateWrapper,
     },
-    std_sync::Mutex,
     stdlib::{collections::HashMap, net::SocketAddr, sync::Arc},
 };
 use core::{
     prelude::rust_2024::*, result::Result, str::FromStr, time::Duration,
 };
-use futures::stream::SplitStream;
 use futures_util::{SinkExt, StreamExt};
+use futures_util::stream::SplitSink;
 use log::{error, info};
 use tokio::net::{TcpListener, TcpStream};
 use tungstenite::Message;
-use tokio_tungstenite::accept_async;
+use tokio_tungstenite::{accept_async, WebSocketStream};
+use futures::lock::Mutex;
 
 use super::websocket_common::{WebSocketClientInterfaceSetupData, WebSocketServerInterfaceSetupData, parse_url, TLSMode};
 use crate::{
     network::{
         com_hub::errors::ComInterfaceCreateError,
         com_interfaces::com_interface::{
-            ComInterfaceEvent,
             error::ComInterfaceError,
             factory::{
                 ComInterfaceAsyncFactory, ComInterfaceAsyncFactoryResult,
@@ -39,7 +38,7 @@ use crate::global::dxb_block::DXBBlock;
 use crate::network::com_interfaces::com_interface::factory::{ComInterfaceConfiguration, NewSocketsIterator, SendCallback, SendFailure, SendSuccess, SocketConfiguration, SocketDataIterator};
 
 type WebsocketStreamMap =
-    HashMap<ComInterfaceSocketUUID, UnboundedSender<Vec<u8>>>;
+    HashMap<ComInterfaceSocketUUID, Arc<Mutex<SplitSink<WebSocketStream<TcpStream>, Message>>>>;
 
 impl WebSocketServerInterfaceSetupData {
     async fn create_interface(self) -> Result<ComInterfaceConfiguration, ComInterfaceCreateError> {
@@ -53,7 +52,7 @@ impl WebSocketServerInterfaceSetupData {
         })?;
 
         let websocket_streams_by_socket = Arc::new(Mutex::<WebsocketStreamMap>::new(HashMap::new()));
-        let websocket_streams_clone = websocket_streams_by_socket.clone();
+        let websocket_streams_by_socket_clone = websocket_streams_by_socket.clone();
 
         Ok(ComInterfaceConfiguration {
             properties: InterfaceProperties {
@@ -63,23 +62,30 @@ impl WebSocketServerInterfaceSetupData {
                 )?,
                 ..Self::get_default_properties()
             },
-            send_callback: SendCallback::new_sync(move |(block, uuid): (DXBBlock, ComInterfaceSocketUUID)| {
-                let tx =
-                    &mut websocket_streams_by_socket.try_lock().unwrap();
-                let tx = tx.get_mut(&uuid);
-                match tx {
-                    Some(tx) => {
-                        tx.start_send(block.to_bytes()).expect(
-                            "Failed to send outgoing data to WebSocket",
-                        );
-                        Ok(SendSuccess::Sent)
-                    }
-                    None => {
-                        error!(
+            send_callback: SendCallback::new_async(move |(block, uuid): (DXBBlock, ComInterfaceSocketUUID)| {
+                let websocket_streams_by_socket = websocket_streams_by_socket.clone();
+                async move {
+                    let tx =
+                        &mut websocket_streams_by_socket.try_lock().unwrap();
+                    let tx = tx.get_mut(&uuid);
+                    match tx {
+                        Some(write) => {
+                            write
+                                .lock()
+                                .await
+                                .send(Message::Binary(block.to_bytes())).await
+                                .map_err(|e| {
+                                    error!("WebSocket write error: {e}");
+                                    SendFailure(block)
+                                })
+                        }
+                        None => {
+                            error!(
                                 "Socket UUID {:?} not found for sending",
                                 uuid
                             );
-                        Err(SendFailure(block))
+                            Err(SendFailure(block))
+                        }
                     }
                 }
             }),
@@ -90,7 +96,7 @@ impl WebSocketServerInterfaceSetupData {
                     let next_socket = listener.accept().await;
                     match next_socket {
                         Ok((stream, addr)) => {
-                            let websocket_streams = websocket_streams_clone.clone();
+                            let websocket_streams_by_socket = websocket_streams_by_socket_clone.clone();
                             info!("New connection from {addr}");
 
                             let socket_configuration =  SocketConfiguration::new(InterfaceDirection::InOut, 1);
@@ -103,14 +109,13 @@ impl WebSocketServerInterfaceSetupData {
                                     match accept_async(stream).await {
                                         Ok(ws_stream) => {
                                             let (write, mut read) = ws_stream.split();
-                                            let (tx_sender, tx_receiver) = create_unbounded_channel::<Vec<u8>>();
 
                                             info!("Accepted WebSocket connection from {addr}");
 
-                                            websocket_streams
+                                            websocket_streams_by_socket
                                                 .try_lock()
                                                 .unwrap()
-                                                .insert(socket_uuid, tx_sender);
+                                                .insert(socket_uuid, Arc::new(Mutex::new(write)));
 
                                             // read blocks
                                             loop {
