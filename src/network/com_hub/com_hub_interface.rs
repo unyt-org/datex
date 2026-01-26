@@ -9,7 +9,7 @@ use crate::{
             },
         },
         com_interfaces::com_interface::{
-            ComInterface, ComInterfaceReceivers, ComInterfaceStateEvent,
+            ComInterfaceUtils, ComInterfaceReceivers, ComInterfaceStateEvent,
             ComInterfaceUUID, factory::ComInterfaceSyncFactory,
             socket::ComInterfaceSocketUUID,
         },
@@ -55,34 +55,7 @@ impl ComHub {
             .borrow_mut()
             .register_dyn_interface_factory(interface_type, factory);
     }
-    /// Adds a new interface to the ComHub
-    fn init_interface_event_listeners(
-        &self,
-        interface: &ComInterface,
-        event_receivers: ComInterfaceReceivers,
-    ) {
-        // handle interface events
-        self.handle_interface_events(interface, event_receivers.0);
-        // handle socket events
-        self.handle_interface_socket_events(interface, event_receivers.1);
-    }
-
-    /// Internal method to handle interface events
-    fn handle_interface_events(
-        &self,
-        interface: &ComInterface,
-        interface_event_receiver: UnboundedReceiver<ComInterfaceStateEvent>,
-    ) {
-        let uuid = interface.uuid().clone();
-        spawn_with_panic_notify(
-            &self.async_context,
-            handle_interface_events_task(
-                uuid,
-                interface_event_receiver,
-                self.interface_manager.clone(),
-            ),
-        );
-    }
+    
 
     /// Returns the com interface for a given socket UUID
     /// The interface and socket must be registered in the ComHub,
@@ -90,7 +63,7 @@ impl ComHub {
     pub(crate) fn dyn_interface_for_socket_uuid(
         &self,
         socket_uuid: &ComInterfaceSocketUUID,
-    ) -> Ref<'_, ComInterface> {
+    ) -> Ref<'_, ComInterfaceUtils> {
         let socket_manager = self.socket_manager.borrow();
         let socket = socket_manager.get_socket_by_uuid(socket_uuid);
         Ref::map(self.interface_manager.borrow(), |manager| {
@@ -99,7 +72,7 @@ impl ComHub {
     }
 
     /// Registers an existing com interface on the ComHub and sets up event handling
-    pub fn register_com_interface(
+    pub fn _register_com_interface(
         &self,
         com_interface_with_receivers: ComInterfaceWithReceivers,
         priority: InterfacePriority,
@@ -165,7 +138,6 @@ impl ComHub {
         interface_type: &str,
         setup_data: ValueContainer,
         priority: InterfacePriority,
-        async_context: AsyncContext,
     ) -> Result<ComInterfaceUUID, ComInterfaceCreateError> {
         let mut interface_manager = self.interface_manager.borrow_mut();
         let (com_interface_uuid, receivers) = interface_manager
@@ -173,7 +145,6 @@ impl ComHub {
                 interface_type,
                 setup_data,
                 priority,
-                async_context,
             )?;
         let interface_manager = self.interface_manager.borrow();
         self.init_interface_event_listeners(

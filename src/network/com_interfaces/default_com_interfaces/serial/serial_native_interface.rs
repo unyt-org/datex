@@ -22,7 +22,7 @@ use log::{debug, error, warn};
 use serialport::SerialPort;
 use datex_core::network::com_interfaces::com_interface::factory::ComInterfaceConfiguration;
 use crate::global::dxb_block::DXBBlock;
-use crate::network::com_interfaces::com_interface::factory::{SocketDataIterator, SendCallback, SendFailure, NewSocketsIterator, SocketConfiguration, SendSuccess};
+use crate::network::com_interfaces::com_interface::factory::{SocketConfiguration, SendCallback, SendFailure, _NewSocketsIterator, SocketProperties, SendSuccess};
 use crate::network::com_interfaces::com_interface::socket::ComInterfaceSocketUUID;
 
 impl SerialInterfaceSetupData {
@@ -57,27 +57,16 @@ impl SerialInterfaceSetupData {
             })?;
         let port = Arc::new(Mutex::new(port));
         let port_clone = port.clone();
-        
+
         Ok(ComInterfaceConfiguration {
             properties: InterfaceProperties {
                 name: Some(port_name),
                 ..Self::get_default_properties()
             },
             close_callback: None,
-            send_callback: SendCallback::new_sync(
-                move |(block, _uuid): (DXBBlock, ComInterfaceSocketUUID)|
-                    port.lock()
-                        .unwrap()
-                        .write_all(block.to_bytes().as_slice())
-                        .map_err(|e| {
-                            error!("Serial write error: {e}");
-                            SendFailure(block)
-                        })
-                        .map(|_| SendSuccess::Sent)
-            ),
-            new_sockets_iterator: NewSocketsIterator::new_single(
-                SocketDataIterator::new(
-                    SocketConfiguration::new(InterfaceDirection::InOut,1),
+            new_sockets_iterator: _NewSocketsIterator::single(
+                SocketConfiguration::new(
+                    SocketProperties::new(InterfaceDirection::InOut, 1),
                     async gen move {
                         loop {
                             let result = spawn_blocking({
@@ -100,7 +89,18 @@ impl SerialInterfaceSetupData {
                                 }
                             }
                         }
-                    }
+                    },
+                    SendCallback::new_sync(
+                        move |block: DXBBlock|
+                            port.lock()
+                                .unwrap()
+                                .write_all(block.to_bytes().as_slice())
+                                .map_err(|e| {
+                                    error!("Serial write error: {e}");
+                                    SendFailure(block)
+                                })
+                                .map(|_| SendSuccess::Sent)
+                    )
                 )
             )
         })

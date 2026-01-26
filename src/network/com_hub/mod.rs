@@ -38,6 +38,7 @@ use crate::{
 use core::{
     cmp::PartialEq, fmt::{Debug, Formatter}, panic, prelude::rust_2024::*, result::Result
 };
+use std::pin::Pin;
 use itertools::Itertools;
 use log::{debug, error, info, warn};
 use serde::{Deserialize, Serialize};
@@ -59,7 +60,9 @@ use crate::{
 };
 pub mod com_hub_interface;
 
-use crate::network::com_interfaces::com_interface::ComInterface;
+use crate::network::com_interfaces::com_interface::factory::{ComInterfaceConfiguration, ComInterfaceSyncFactory, SocketConfiguration, SocketDataIterator, NewSocketsIterator};
+use futures::stream::{FuturesUnordered};
+use std::async_iter::AsyncIterator;
 
 /// Maximum number of concurrent ComInterface sockets for Embassy runtime
 pub const MAX_CONCURRENT_COM_INTERFACE_SOCKETS_EMBASSY: usize = 2;
@@ -95,6 +98,10 @@ pub struct ComHub {
     outgoing_block_interceptors: RefCell<Vec<OutgoingBlockInterceptor>>,
 
     send_request_receiver: RefCell<Option<UnboundedReceiver<BlockSendEvent>>>,
+
+    // pub new_sockets_iterators: RefCell<FuturesUnordered<NewSocketsIterator>>,
+    pub new_sockets_iterators: RefCell<FuturesUnordered<Pin<Box<dyn Future<Output = ()>>>>>,
+    pub socket_data_iterators: RefCell<FuturesUnordered<SocketDataIterator>>,
 }
 
 impl Debug for ComHub {
@@ -140,26 +147,6 @@ impl Default for InterfacePriority {
     }
 }
 
-#[cfg_attr(feature = "embassy_runtime", embassy_executor::task)]
-async fn reconnect_interface_task(interface: ComInterface) {
-    /* FIXME Reconnect logic
-    let config = interface.properties_mut();
-    config.close_timestamp = None;
-
-    let current_attempts = config.reconnect_attempts.unwrap_or(0);
-    config.reconnect_attempts = Some(current_attempts + 1);
-    */
-
-    interface.reconnect();
-    // TODO: handle reconnection asynchronously (await for success/failure)
-    // if res {
-    //     interface.set_state(ComInterfaceState::Connected);
-    //     // config.reconnect_attempts = None;
-    // } else {
-    //     interface.set_state(ComInterfaceState::NotConnected);
-    // }
-}
-
 // #[cfg(test)]
 impl ComHub {
     pub fn socket_manager(&self) -> Rc<RefCell<SocketsManager>> {
@@ -194,23 +181,39 @@ impl ComHub {
             send_request_receiver: RefCell::new(Some(send_request_receiver)),
             incoming_block_interceptors: RefCell::new(Vec::new()),
             outgoing_block_interceptors: RefCell::new(Vec::new()),
+            new_sockets_iterators: RefCell::new(FuturesUnordered::new()),
+            socket_data_iterators: RefCell::new(FuturesUnordered::new()),
         });
 
         // add default local loopback interface
-        let local_interface = ComInterface::create_sync_from_setup_data(
-            LocalLoopbackInterfaceSetupData,
-            async_context,
-        )
-        .unwrap();
+        let local_interface = LocalLoopbackInterfaceSetupData::create_interface(LocalLoopbackInterfaceSetupData).unwrap();
 
         com_hub
-            .register_com_interface(local_interface, InterfacePriority::None)
-            .unwrap();
-
-        // start handling ComHub events
-        ComHub::handle_events(com_hub.clone());
+            .register_com_interface_handler(local_interface, InterfacePriority::None);
 
         com_hub
+    }
+
+
+    /// Async task to handle all events for the ComHub
+    async fn event_handler(self_rc: Rc<Self>) {
+        // iterate over new_socket_iterators
+        loop {
+            // check for new sockets from all iterators
+            let mut new_sockets_iterators = self_rc.new_sockets_iterators.borrow_mut();
+            let new_socket_fut = new_sockets_iterators.next();
+        }
+    }
+
+    /// Registers a new ComInterface on the ComHub by consuming its configuration into new_sockets_iterators
+    /// TODO: priority
+    fn register_com_interface_handler(&self, com_interface_configuration: ComInterfaceConfiguration, priority: InterfacePriority) {
+        let mut iterator = com_interface_configuration.new_sockets_iterator;
+        self.new_sockets_iterators.borrow_mut().push(Box::pin(async move {
+            while let Some(socket) = iterator.next().await {
+
+            }
+        }));
     }
 
     /// Checks if the given endpoint is the local endpoint, matching instances as well
@@ -218,18 +221,6 @@ impl ComHub {
         &self.endpoint == endpoint || endpoint.is_local()
     }
 
-    /// Starts handling ComHub events
-    fn handle_events(self_rc: Rc<Self>) {
-        let receiver = self_rc
-            .send_request_receiver
-            .take()
-            .expect("ComHub event receiver already taken");
-        let async_context = self_rc.async_context.clone();
-        spawn_with_panic_notify(
-            &self_rc.async_context.clone(),
-            com_hub_event_task(receiver, self_rc, async_context),
-        );
-    }
 
     /// Register an incoming block interceptor
     pub fn register_incoming_block_interceptor<F>(&self, interceptor: F)

@@ -3,7 +3,6 @@ use crate::{
         sync::{Arc},
         time::Duration,
     },
-    task::spawn_with_panic_notify,
 };
 use core::{prelude::rust_2024::*, result::Result};
 use futures_util::{
@@ -33,8 +32,7 @@ use crate::{
 };
 use tokio_tungstenite::{MaybeTlsStream, WebSocketStream};
 use crate::global::dxb_block::DXBBlock;
-use crate::network::com_interfaces::com_interface::factory::{ComInterfaceConfiguration, SocketDataIterator, NewSocketsIterator, SendCallback, SendFailure, SocketConfiguration};
-use crate::network::com_interfaces::com_interface::socket::ComInterfaceSocketUUID;
+use crate::network::com_interfaces::com_interface::factory::{ComInterfaceConfiguration, SocketConfiguration, SendCallback, SendFailure, SocketProperties};
 
 impl WebSocketClientInterfaceSetupData {
     async fn create_interface(
@@ -45,27 +43,13 @@ impl WebSocketClientInterfaceSetupData {
         let write = Arc::new(Mutex::new(write));
 
         Ok(
-            ComInterfaceConfiguration {
-                properties: InterfaceProperties {
+            ComInterfaceConfiguration::new_single_socket(
+                InterfaceProperties {
                     name: Some(address.to_string()),
                     ..Self::get_default_properties()
                 },
-                send_callback: SendCallback::new_async(move |(block, _uuid): (DXBBlock, ComInterfaceSocketUUID)| {
-                    let write = write.clone();
-                    async move {
-                        write
-                            .lock()
-                            .await
-                            .send(Message::Binary(block.to_bytes())).await
-                            .map_err(|e| {
-                                error!("WebSocket write error: {e}");
-                                SendFailure(block)
-                            })
-                    }
-                }),
-                close_callback: None,
-                new_sockets_iterator: NewSocketsIterator::new_single(SocketDataIterator::new(
-                    SocketConfiguration::new(InterfaceDirection::InOut, 1),
+                SocketConfiguration::new(
+                    SocketProperties::new(InterfaceDirection::InOut, 1),
                     async gen move {
                         loop {
                             match read.next().await {
@@ -86,9 +70,22 @@ impl WebSocketClientInterfaceSetupData {
                                 }
                             }
                         }
-                    }
-                )),
-            }
+                    },
+                    SendCallback::new_async(move |block: DXBBlock| {
+                        let write = write.clone();
+                        async move {
+                            write
+                                .lock()
+                                .await
+                                .send(Message::Binary(block.to_bytes())).await
+                                .map_err(|e| {
+                                    error!("WebSocket write error: {e}");
+                                    SendFailure(block)
+                                })
+                        }
+                    })
+                )
+            )
         )
     }
 

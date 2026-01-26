@@ -12,7 +12,7 @@ use core::{
     prelude::rust_2024::*, result::Result, str::FromStr, time::Duration,
 };
 use futures_util::{SinkExt, StreamExt};
-use futures_util::stream::SplitSink;
+use futures_util::stream::{SplitSink, SplitStream};
 use log::{error, info};
 use tokio::net::{TcpListener, TcpStream};
 use tungstenite::Message;
@@ -35,7 +35,7 @@ use crate::{
     runtime::RuntimeConfigInterface,
 };
 use crate::global::dxb_block::DXBBlock;
-use crate::network::com_interfaces::com_interface::factory::{ComInterfaceConfiguration, NewSocketsIterator, SendCallback, SendFailure, SendSuccess, SocketConfiguration, SocketDataIterator};
+use crate::network::com_interfaces::com_interface::factory::{ComInterfaceConfiguration, SendCallback, SendFailure, SendSuccess, SocketProperties, SocketConfiguration};
 
 type WebsocketStreamMap =
     HashMap<ComInterfaceSocketUUID, Arc<Mutex<SplitSink<WebSocketStream<TcpStream>, Message>>>>;
@@ -51,110 +51,98 @@ impl WebSocketServerInterfaceSetupData {
             ComInterfaceError::connection_error_with_details(err)
         })?;
 
-        let websocket_streams_by_socket = Arc::new(Mutex::<WebsocketStreamMap>::new(HashMap::new()));
-        let websocket_streams_by_socket_clone = websocket_streams_by_socket.clone();
-
-        Ok(ComInterfaceConfiguration {
-            properties: InterfaceProperties {
+        Ok(ComInterfaceConfiguration::new(
+            InterfaceProperties {
                 name: Some(addr.to_string()),
                 connectable_interfaces: Self::get_connectable_interface_configs_from_accept_addresses(
                     self.accept_addresses
                 )?,
                 ..Self::get_default_properties()
             },
-            send_callback: SendCallback::new_async(move |(block, uuid): (DXBBlock, ComInterfaceSocketUUID)| {
-                let websocket_streams_by_socket = websocket_streams_by_socket.clone();
-                async move {
-                    let tx =
-                        &mut websocket_streams_by_socket.try_lock().unwrap();
-                    let tx = tx.get_mut(&uuid);
-                    match tx {
-                        Some(write) => {
-                            write
-                                .lock()
-                                .await
-                                .send(Message::Binary(block.to_bytes())).await
-                                .map_err(|e| {
-                                    error!("WebSocket write error: {e}");
-                                    SendFailure(block)
-                                })
-                        }
-                        None => {
-                            error!(
-                                "Socket UUID {:?} not found for sending",
-                                uuid
-                            );
-                            Err(SendFailure(block))
-                        }
-                    }
-                }
-            }),
-            close_callback: None,
-            new_sockets_iterator: NewSocketsIterator::new_multiple(async gen move {
+            async gen move {
                 loop {
-                    // new sockets iterators are yielded on client connection
-                    let next_socket = listener.accept().await;
-                    match next_socket {
-                        Ok((stream, addr)) => {
-                            let websocket_streams_by_socket = websocket_streams_by_socket_clone.clone();
-                            info!("New connection from {addr}");
-
-                            let socket_configuration =  SocketConfiguration::new(InterfaceDirection::InOut, 1);
-                            let socket_uuid = socket_configuration.uuid();
-
+                    // get next websocket connection
+                    match Self::get_next_websocket_connection(&listener).await {
+                        Ok((mut read, write)) => {
+                            info!("Accepted WebSocket connection from {addr}");
                             // yield new socket data
-                            yield Ok(SocketDataIterator::new(
-                                socket_configuration,
+                            yield Ok(SocketConfiguration::new(
+                                SocketProperties::new(InterfaceDirection::InOut, 1),
+                                // socket incoming blocks iterator
                                 async gen move {
-                                    match accept_async(stream).await {
-                                        Ok(ws_stream) => {
-                                            let (write, mut read) = ws_stream.split();
-
-                                            info!("Accepted WebSocket connection from {addr}");
-
-                                            websocket_streams_by_socket
-                                                .try_lock()
-                                                .unwrap()
-                                                .insert(socket_uuid, Arc::new(Mutex::new(write)));
-
-                                            // read blocks
-                                            loop {
-                                                match read.next().await {
-                                                    Some(Ok(Message::Binary(bin))) => {
-                                                        yield Ok(bin);
-                                                    }
-                                                    Some(Ok(_)) => {
-                                                        error!("Invalid message type received");
-                                                        return yield Err(());
-                                                    }
-                                                    Some(Err(e)) => {
-                                                        error!("WebSocket error from {addr}: {e}");
-                                                        return yield Err(())
-                                                    }
-                                                    None => {
-                                                        // Connection closed by peer
-                                                        return yield Err(())
-                                                    }
-                                                }
+                                    // read blocks
+                                    loop {
+                                        match read.next().await {
+                                            Some(Ok(Message::Binary(bin))) => {
+                                                yield Ok(bin);
+                                            }
+                                            Some(Ok(_)) => {
+                                                error!("Invalid message type received");
+                                                return yield Err(());
+                                            }
+                                            Some(Err(e)) => {
+                                                error!("WebSocket error from {addr}: {e}");
+                                                return yield Err(())
+                                            }
+                                            None => {
+                                                // Connection closed by peer
+                                                return yield Err(())
                                             }
                                         }
-                                        Err(e) => {
-                                            error!("WebSocket handshake failed with {addr}: {e}");
-                                            // immediately close the socket again
-                                            yield Err(());
-                                        }
                                     }
-                                }
+                                },
+                                // socket send callback
+                                SendCallback::new_async(move |block: DXBBlock| {
+                                    let write = write.clone();
+                                    async move {
+                                        write
+                                            .lock()
+                                            .await
+                                            .send(Message::Binary(block.to_bytes())).await
+                                            .map_err(|e| {
+                                                error!("WebSocket write error: {e}");
+                                                SendFailure(block)
+                                            })
+                                    }
+                                })
                             ));
-                        },
-                        Err(e) => {
-                            error!("Failed to accept connection: {e}");
+                        }
+                        Err(_) => {
+                            // Failed to accept connection, continue to next
                             continue;
                         }
                     }
                 }
-            }),
-        })
+            }
+        ))
+    }
+
+    async fn get_next_websocket_connection(listener: &TcpListener) -> Result<
+        (SplitStream<WebSocketStream<TcpStream>>, Arc<Mutex<SplitSink<WebSocketStream<TcpStream>, Message>>>),
+        ()
+    > {
+        // new sockets iterators are yielded on client connection
+        let next_socket = listener.accept().await;
+        match next_socket {
+            Ok((stream, addr)) => {
+                info!("New connection from {addr}");
+                match accept_async(stream).await {
+                    Ok(ws_stream) => {
+                        let (write, mut read) = ws_stream.split();
+                        let write = Arc::new(Mutex::new(write));
+                        Ok((read, write))
+                    }
+                    Err(e) => {
+                        error!("WebSocket handshake failed with {addr}: {e}");
+                        Err(())
+                    }
+                }
+            }
+            Err(e) => {
+                error!("Failed to accept connection: {e}");
+                Err(())
+            }
+        }
     }
 
     fn get_connectable_interface_configs_from_accept_addresses(

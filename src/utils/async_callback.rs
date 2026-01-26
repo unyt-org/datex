@@ -6,15 +6,15 @@ use futures::future::BoxFuture;
 /// Can be cloned and called from multiple tasks.
 #[derive(Clone)]
 pub struct AsyncCallback<In, Out> {
-    inner: Arc<dyn Fn(In) -> BoxFuture<'static, Out> + Send>,
+    inner: Arc<dyn Fn(In) -> BoxFuture<'static, Out> + Send + Sync>,
 }
 
 impl<In, Out> AsyncCallback<In, Out> {
     /// Create a new AsyncCallback from an async function or closure.
     pub fn new<F, Fut>(f: F) -> Self
     where
-        F: Fn(In) -> Fut + Send + 'static,
-        Fut: core::future::Future<Output = Out> + Send + 'static,
+        F: Fn(In) -> Fut + Send + Sync + 'static,
+        Fut: core::future::Future<Output = Out> + Send + Sync + 'static,
     {
         Self {
             inner: Arc::new(move |arg| Box::pin(f(arg))),

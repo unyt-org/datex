@@ -13,7 +13,7 @@ use datex_core::{
     network::{
         com_hub::{ComHub, InterfacePriority},
         com_interfaces::com_interface::{
-            ComInterface, ComInterfaceEvent, ComInterfaceProxy,
+            ComInterfaceUtils, ComInterfaceEvent, ComInterfaceProxy,
             ComInterfaceUUID, ComInterfaceWithReceivers,
             properties::{InterfaceDirection, InterfaceProperties},
             socket::ComInterfaceSocketUUID,
@@ -120,7 +120,7 @@ pub fn get_mock_setup_with_interface(
 
     // add mockup interface to com_hub
     com_hub
-        .register_com_interface(interface, interface_priority)
+        ._register_com_interface(interface, interface_priority)
         .unwrap();
 
     com_hub
@@ -232,7 +232,7 @@ pub async fn get_mock_setup_with_runtime(
     // add mockup interface to com_hub
     runtime
         .com_hub()
-        .register_com_interface(interface, mock_setup_data.interface_priority)
+        ._register_com_interface(interface, mock_setup_data.interface_priority)
         .unwrap();
     (runtime, proxy)
 }

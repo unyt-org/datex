@@ -24,7 +24,7 @@ use datex_core::{
     network::{
         com_hub::{ComHub, InterfacePriority, metadata::ComHubMetadata},
         com_interfaces::com_interface::{
-            ComInterface, ComInterfaceProxy,
+            ComInterfaceUtils, ComInterfaceProxy,
             factory::ComInterfaceSyncFactory,
             properties::{InterfaceDirection, InterfaceProperties},
             state::ComInterfaceState,
@@ -48,7 +48,7 @@ fn create_mock_com_hub() -> Rc<ComHub> {
 pub async fn test_add_and_remove() {
     let com_hub = create_mock_com_hub();
     let mockup_interface_with_receivers =
-        ComInterface::create_sync_from_setup_data(
+        ComInterfaceUtils::create_sync_from_setup_data(
             MockupInterfaceSetupData::new("test"),
             AsyncContext::default(),
         )
@@ -57,7 +57,7 @@ pub async fn test_add_and_remove() {
     let uuid = mockup_interface_with_receivers.0.uuid().clone();
 
     com_hub
-        .register_com_interface(
+        ._register_com_interface(
             mockup_interface_with_receivers,
             InterfacePriority::default(),
         )
@@ -70,22 +70,22 @@ pub async fn test_add_and_remove() {
 pub async fn test_multiple_add() {
     let com_hub = create_mock_com_hub();
 
-    let mockup_interface1 = ComInterface::create_sync_from_setup_data(
+    let mockup_interface1 = ComInterfaceUtils::create_sync_from_setup_data(
         MockupInterfaceSetupData::new("mockup_interface1"),
         AsyncContext::default(),
     )
     .unwrap();
-    let mockup_interface2 = ComInterface::create_sync_from_setup_data(
+    let mockup_interface2 = ComInterfaceUtils::create_sync_from_setup_data(
         MockupInterfaceSetupData::new("mockup_interface2"),
         AsyncContext::default(),
     )
     .unwrap();
 
     com_hub
-        .register_com_interface(mockup_interface1, InterfacePriority::default())
+        ._register_com_interface(mockup_interface1, InterfacePriority::default())
         .unwrap();
     com_hub
-        .register_com_interface(mockup_interface2, InterfacePriority::default())
+        ._register_com_interface(mockup_interface2, InterfacePriority::default())
         .unwrap();
 }
 
@@ -676,7 +676,7 @@ pub async fn test_reconnect() {
 
     // add base_interface to com_hub
     com_hub
-        .register_com_interface(
+        ._register_com_interface(
             interface_with_receivers,
             InterfacePriority::default(),
         )

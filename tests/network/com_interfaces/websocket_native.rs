@@ -14,7 +14,7 @@ use std::{assert_matches, time::Duration};
 use datex_core::{
     network::com_interfaces::{
         com_interface::{
-            ComInterface, error::ComInterfaceError,
+            ComInterfaceUtils, error::ComInterfaceError,
             socket::ComInterfaceSocketEvent,
         },
         default_com_interfaces::websocket::websocket_common::TLSMode,
@@ -36,7 +36,7 @@ pub async fn test_create_socket_connection() {
         DXBBlock::new_with_body(b"Hello from server to client");
 
     let (server_interface, (_, mut server_interface_socket_event_receiver)) =
-        ComInterface::create_async_from_setup_data(
+        ComInterfaceUtils::create_async_from_setup_data(
             WebSocketServerInterfaceSetupData {
                 bind_address: ADDRESS.to_string(),
                 accept_addresses: None,
@@ -47,7 +47,7 @@ pub async fn test_create_socket_connection() {
         .expect("Failed to create WebSocketServerInterface");
 
     let (client_interface, (_, mut client_interface_socket_event_receiver)) =
-        ComInterface::create_async_from_setup_data(
+        ComInterfaceUtils::create_async_from_setup_data(
             WebSocketClientInterfaceSetupData {
                 url: format!("ws://{ADDRESS}"),
             },
@@ -97,7 +97,7 @@ pub async fn test_create_socket_connection() {
 #[async_test]
 pub async fn test_construct_client() {
     // Test with a invalid URL
-    let client_res = ComInterface::create_async_from_setup_data(
+    let client_res = ComInterfaceUtils::create_async_from_setup_data(
         WebSocketClientInterfaceSetupData {
             url: "ftp://localhost:1234".to_string(),
         },
@@ -110,7 +110,7 @@ pub async fn test_construct_client() {
     );
 
     // We expect a connection error here, as the server can't be reached
-    let client_res = ComInterface::create_async_from_setup_data(
+    let client_res = ComInterfaceUtils::create_async_from_setup_data(
         WebSocketClientInterfaceSetupData {
             url: "ws://localhost.invalid:1234".to_string(),
         },
@@ -145,7 +145,7 @@ pub async fn test_connectable_interface_config() {
         bind_address: ADDRESS.to_string(),
         accept_addresses: Some(accept_addresses.clone()),
     };
-    let (server_interface, ..) = ComInterface::create_async_from_setup_data(
+    let (server_interface, ..) = ComInterfaceUtils::create_async_from_setup_data(
         server_setup_data,
         AsyncContext::default(),
     )

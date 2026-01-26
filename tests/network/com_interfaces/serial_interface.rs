@@ -1,6 +1,6 @@
 use datex_core::{
     network::com_interfaces::{
-        com_interface::ComInterface,
+        com_interface::ComInterfaceUtils,
         default_com_interfaces::serial::serial_common::SerialInterfaceSetupData,
     },
     runtime::AsyncContext,
@@ -20,7 +20,7 @@ pub async fn test_construct() {
     if !available_ports.contains(&PORT_NAME.to_string()) {
         return;
     }
-    let mut interface = ComInterface::create_sync_from_setup_data(
+    let mut interface = ComInterfaceUtils::create_sync_from_setup_data(
         SerialInterfaceSetupData {
             port_name: Some(PORT_NAME.to_string()),
             baud_rate: BAUD_RATE,

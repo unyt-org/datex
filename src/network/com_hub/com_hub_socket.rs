@@ -6,7 +6,7 @@ use crate::{
             managers::sockets_manager::SocketsManager,
         },
         com_interfaces::com_interface::{
-            ComInterface, socket::ComInterfaceSocketEvent,
+            ComInterfaceUtils, socket::ComInterfaceSocketEvent,
         },
     },
     stdlib::{cell::RefCell, rc::Rc},
@@ -17,7 +17,7 @@ use crate::network::com_hub::MAX_CONCURRENT_COM_INTERFACES_EMBASSY;
 impl ComHub {
     pub(crate) fn handle_interface_socket_events(
         &self,
-        interface: &ComInterface,
+        interface: &ComInterfaceUtils,
         socket_event_receiver: UnboundedReceiver<ComInterfaceSocketEvent>,
     ) {
         let interface_uuid = interface.uuid();

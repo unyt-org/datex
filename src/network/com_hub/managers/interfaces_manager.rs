@@ -13,7 +13,7 @@ use crate::{
             errors::{InterfaceAddError, ComInterfaceCreateError},
         },
         com_interfaces::com_interface::{
-            ComInterface, ComInterfaceProxy, ComInterfaceReceivers,
+            ComInterfaceUtils, ComInterfaceReceivers,
             ComInterfaceStateEvent, ComInterfaceUUID,
             factory::{ComInterfaceAsyncFactory, ComInterfaceSyncFactory},
             properties::InterfaceProperties,
@@ -25,13 +25,10 @@ use crate::{
 use crate::network::com_interfaces::com_interface::factory::ComInterfaceConfiguration;
 
 type InterfaceMap =
-    HashMap<ComInterfaceUUID, (ComInterface, InterfacePriority)>;
+    HashMap<ComInterfaceUUID, (ComInterfaceConfiguration, InterfacePriority)>;
 
 pub type SyncComInterfaceImplementationFactoryFn =
-    fn(
-        setup_data: ValueContainer,
-        proxy: ComInterfaceProxy,
-    ) -> Result<ComInterfaceConfiguration, ComInterfaceCreateError>;
+    fn(setup_data: ValueContainer) -> Result<ComInterfaceConfiguration, ComInterfaceCreateError>;
 
 pub type ComInterfaceAsyncFactoryResult = Pin<
     Box<
@@ -41,13 +38,10 @@ pub type ComInterfaceAsyncFactoryResult = Pin<
 >;
 
 pub type AsyncComInterfaceImplementationFactoryFn =
-    fn(
-        setup_data: ValueContainer,
-        proxy: ComInterfaceProxy,
-    ) -> ComInterfaceAsyncFactoryResult;
+    fn(setup_data: ValueContainer) -> ComInterfaceAsyncFactoryResult;
 
 pub type DynInterfaceImplementationFactoryFn = Rc<
-    dyn Fn(ValueContainer, ComInterfaceProxy) -> ComInterfaceAsyncFactoryResult,
+    dyn Fn(ValueContainer) -> ComInterfaceAsyncFactoryResult,
 >;
 
 #[derive(Clone)]
@@ -116,8 +110,7 @@ impl InterfacesManager {
         interface_type: &str,
         setup_data: ValueContainer,
         priority: InterfacePriority,
-        async_context: AsyncContext,
-    ) -> Result<(ComInterfaceUUID, ComInterfaceReceivers), ComInterfaceCreateError>
+    ) -> Result<ComInterfaceUUID, ComInterfaceCreateError>
     {
         info!("creating interface {interface_type}");
         let factory = self_rc
@@ -132,23 +125,21 @@ impl InterfacesManager {
                         interface_type,
                         setup_data,
                         priority,
-                        async_context,
                     )
                 }
                 SyncOrAsyncComInterfaceImplementationFactoryFn::Async(_)
                 | SyncOrAsyncComInterfaceImplementationFactoryFn::Dyn(_) => {
-                    let (interface, receivers) =
-                        ComInterface::create_from_async_factory_fn(
+                    let com_interface_configuration =
+                        ComInterfaceUtils::create_from_async_factory_fn(
                             &factory,
                             setup_data,
-                            async_context,
                         )
                         .await?;
                     self_rc
                         .borrow_mut()
-                        .add_interface(interface, priority)
+                        .add_interface(com_interface_configuration, priority)
                         .map_err(|e| e.into())
-                        .map(|interface| (interface.uuid.clone(), receivers))
+                        .map(|interface| interface.uuid().clone())
                 }
             }
         } else {
@@ -167,8 +158,7 @@ impl InterfacesManager {
         interface_type: &str,
         setup_data: ValueContainer,
         priority: InterfacePriority,
-        async_context: AsyncContext,
-    ) -> Result<(ComInterfaceUUID, ComInterfaceReceivers), ComInterfaceCreateError>
+    ) -> Result<ComInterfaceUUID, ComInterfaceCreateError>
     {
         info!("creating interface sync {interface_type}");
         if let Some(factory) = self.interface_factories.get(interface_type) {
@@ -176,15 +166,14 @@ impl InterfacesManager {
                 SyncOrAsyncComInterfaceImplementationFactoryFn::Sync(
                     sync_factory,
                 ) => {
-                    let (interface, receivers) =
-                        ComInterface::create_from_sync_factory_fn(
+                    let com_interface_configuration =
+                        ComInterfaceUtils::create_from_sync_factory_fn(
                             sync_factory,
                             setup_data,
-                            async_context,
                         )?;
-                    self.add_interface(interface, priority)
+                    self.add_interface(com_interface_configuration, priority)
                         .map_err(|e| e.into())
-                        .map(|interface| (interface.uuid.clone(), receivers))
+                        .map(|interface| interface.uuid().clone())
                 }
                 SyncOrAsyncComInterfaceImplementationFactoryFn::Async(_)
                 | SyncOrAsyncComInterfaceImplementationFactoryFn::Dyn(_) => Err(
@@ -208,7 +197,7 @@ impl InterfacesManager {
     pub fn try_interface_by_uuid(
         &self,
         uuid: &ComInterfaceUUID,
-    ) -> Option<&ComInterface> {
+    ) -> Option<&ComInterfaceConfiguration> {
         self.interfaces.get(uuid).map(|(interface, _)| interface)
     }
 
@@ -218,7 +207,7 @@ impl InterfacesManager {
     pub fn get_interface_by_uuid(
         &self,
         interface_uuid: &ComInterfaceUUID,
-    ) -> &ComInterface {
+    ) -> &ComInterfaceConfiguration {
         self.try_interface_by_uuid(interface_uuid)
             .unwrap_or_else(|| {
                 core::panic!("Interface for uuid {interface_uuid} not found")
@@ -228,9 +217,9 @@ impl InterfacesManager {
     /// Adds an interface to the manager, checking for duplicates
     pub fn add_interface(
         &mut self,
-        interface: ComInterface,
+        interface: ComInterfaceConfiguration,
         priority: InterfacePriority,
-    ) -> Result<&ComInterface, InterfaceAddError> {
+    ) -> Result<&ComInterfaceConfiguration, InterfaceAddError> {
         let uuid = interface.uuid().clone();
         if self.interfaces.contains_key(&uuid) {
             return Err(InterfaceAddError::InterfaceAlreadyExists);
@@ -238,7 +227,7 @@ impl InterfacesManager {
 
         // make sure the interface can send if a priority is set
         if priority != InterfacePriority::None
-            && interface.properties().direction == InterfaceDirection::In
+            && interface.properties.direction == InterfaceDirection::In
         {
             return Err(
                 InterfaceAddError::InvalidInterfaceDirectionForFallbackInterface,

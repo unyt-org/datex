@@ -7,7 +7,7 @@ use datex_core::{
     network::{
         com_hub::errors::ComInterfaceCreateError,
         com_interfaces::{
-            com_interface::{ComInterface, socket::ComInterfaceSocketEvent},
+            com_interface::{ComInterfaceUtils, socket::ComInterfaceSocketEvent},
             default_com_interfaces::tcp::tcp_common::{
                 TCPClientInterfaceSetupData, TCPServerInterfaceSetupData,
             },
@@ -20,7 +20,7 @@ use datex_macros::async_test;
 #[async_test]
 pub async fn test_client_no_connection() {
     assert_matches!(
-        ComInterface::create_async_from_setup_data(
+        ComInterfaceUtils::create_async_from_setup_data(
             TCPClientInterfaceSetupData {
                 address: "0.0.0.0:9086".to_string(),
             },
@@ -41,7 +41,7 @@ pub async fn test_construct() {
         DXBBlock::new_with_body(b"Hello from server to client");
 
     let (server_interface, (_, mut server_interface_socket_event_receiver)) =
-        ComInterface::create_async_from_setup_data(
+        ComInterfaceUtils::create_async_from_setup_data(
             TCPServerInterfaceSetupData::new_with_port(PORT),
             AsyncContext::default(),
         )
@@ -49,7 +49,7 @@ pub async fn test_construct() {
         .unwrap();
 
     let (client_interface, (_, mut client_interface_socket_event_receiver)) =
-        ComInterface::create_async_from_setup_data(
+        ComInterfaceUtils::create_async_from_setup_data(
             TCPClientInterfaceSetupData {
                 address: format!("0.0.0.0:{PORT}"),
             },

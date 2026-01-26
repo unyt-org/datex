@@ -1,7 +1,7 @@
 use core::str::FromStr;
 use datex_core::{
     network::com_interfaces::{
-        com_interface::{ComInterface, socket::ComInterfaceSocketEvent},
+        com_interface::{ComInterfaceUtils, socket::ComInterfaceSocketEvent},
         default_com_interfaces::http::http_common::HTTPServerInterfaceSetupData,
     },
     runtime::AsyncContext,
@@ -14,7 +14,7 @@ use datex_macros::async_test;
 pub async fn test_construct() {
     const PORT: u16 = 8081;
 
-    let http_server_interface = ComInterface::create_async_from_setup_data(
+    let http_server_interface = ComInterfaceUtils::create_async_from_setup_data(
         HTTPServerInterfaceSetupData { port: PORT },
         AsyncContext::default(),
     )

@@ -614,7 +614,7 @@ impl Network {
         );
         runtime
             .com_hub()
-            .register_com_interface(com_interface, connection.priority)
+            ._register_com_interface(com_interface, connection.priority)
             .expect("Failed to register interface A");
 
         let shutdown_signal = proxy.shutdown_receiver();
