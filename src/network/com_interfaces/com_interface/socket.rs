@@ -95,7 +95,7 @@ impl ComInterfaceSocket {
         async_context: &AsyncContext,
     ) -> (ComInterfaceSocket, UnboundedSender<Vec<u8>>) {
         let (bytes_in_sender, block_in_receiver) =
-            BlockCollector::init(async_context);
+            BlockCollector::create(async_context);
         (
             ComInterfaceSocket {
                 direct_endpoint,

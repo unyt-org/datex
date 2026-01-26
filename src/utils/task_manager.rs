@@ -1,51 +1,59 @@
+
 use futures_util::FutureExt;
-use crate::stdlib::rc::Rc;
 use core::cell::RefCell;
-use futures::stream::{FuturesUnordered, StreamExt};
 use futures::future::Future;
 use core::pin::Pin;
+use std::rc::Rc;
 use async_select::select;
-use crate::channel::mpsc::{create_unbounded_channel, UnboundedReceiver, UnboundedSender};
+use futures_util::future::Fuse;
+use futures_util::stream::FuturesUnordered;
+use futures_util::StreamExt;
+use crate::channel::mpsc::{create_unbounded_channel, UnboundedSender};
 
-struct TaskManager {
-    tasks: RefCell<FuturesUnordered<Pin<Box<dyn Future<Output = ()>>>>>,
-    new_task_notifier: RefCell<UnboundedReceiver<()>>, // signals when a new task is added
-    new_task_sender: UnboundedSender<()>,
+pub type TaskFuture = Pin<Box<dyn Future<Output = ()>>>;
+
+pub struct TaskManager {
+    pub task_sender: RefCell<UnboundedSender<TaskFuture>>,
 }
 
 impl TaskManager {
-    fn new() -> Rc<Self> {
-        let (tx, rx) = create_unbounded_channel::<()>();
-        Rc::new(TaskManager {
-            tasks: RefCell::new(FuturesUnordered::new()),
-            new_task_notifier: RefCell::new(rx),
-            new_task_sender: tx,
-        })
-    }
+    /// Async task to handle all events for the ComHub
+    pub(crate) fn create() -> (
+        TaskManager,
+        impl Future<Output = ()>,
+    ) {
+        let (sender, mut receiver) = create_unbounded_channel::<TaskFuture>();
 
-    /// Starts the task handling loop
-    async fn handle_tasks(self: Rc<Self>) {
-        loop {
-            // temporarily take ownership of the tasks
-            let task_fut_opt = {
-                let mut tasks_ref = self.tasks.borrow_mut();
-                tasks_ref.next()
-            };
+        (
+            TaskManager {
+                task_sender: RefCell::new(sender),
+            },
+            async move {
+                let mut tasks = FuturesUnordered::<Fuse<TaskFuture>>::new();
 
-            match task_fut_opt.await {
-                Some(_) => {
-                    // `.next()` returns a future that borrows, so now we can await safely
-                }
-                None => {
-                    // no tasks, can yield to runtime or wait for a notifier
-                    futures::future::pending::<()>().await;
+                // iterate over new_socket_iterators
+                loop {
+                    // check for new sockets from all iterators
+                    select! {
+                        // Poll for completed futures
+                        Some(_) = tasks.next() => {}
+
+                        // Poll for new futures from channel
+                        Some(new_fut) = receiver.next().fuse() => {
+                            tasks.push(new_fut.fuse());
+                        }
+                        complete => unreachable!(),
+                    }
                 }
             }
-        }
+        )
     }
 
-    fn add_task(&mut self, fut: Pin<Box<dyn Future<Output = ()>>>) {
-        self.tasks.borrow_mut().push(fut);
-        let _ = self.new_task_sender.start_send(()); // notify
+    /// Registers a new task on the ComHub
+    pub(crate) fn register_task<F>(&self, fut: F)
+    where
+        F: Future<Output = ()> + 'static,
+    {
+        self.task_sender.borrow_mut().start_send(Box::pin(fut)).unwrap();
     }
 }

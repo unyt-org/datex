@@ -3,22 +3,15 @@ use crate::{
         UnboundedReceiver, UnboundedSender, create_unbounded_channel,
     },
     global::dxb_block::{DXBBlock, HeaderParsingError},
-    runtime::AsyncContext,
     stdlib::vec::Vec,
     task::spawn_with_panic_notify,
 };
 use core::prelude::rust_2024::*;
+use std::async_iter::AsyncIterator;
 use log::{error, info};
-use crate::network::com_hub::MAX_CONCURRENT_COM_INTERFACE_SOCKETS_EMBASSY;
 
 #[derive(Debug)]
 pub struct BlockCollector {
-    /// The receiver for incoming byte slices.
-    bytes_in_receiver: UnboundedReceiver<Vec<u8>>,
-
-    /// The sender for incoming DXB blocks that have been parsed from the byte slices.
-    block_in_sender: UnboundedSender<DXBBlock>,
-
     // The current block being received.
     current_block: Vec<u8>,
 
@@ -28,7 +21,7 @@ pub struct BlockCollector {
 
 /// Implements the logic to collect DXB blocks from incoming byte slices.
 impl BlockCollector {
-    async fn receive_slice(&mut self, slice: &[u8]) {
+    async fn receive_slice(&mut self, slice: &[u8]) -> Option<DXBBlock> {
         // Add the received data to the current block.
         self.current_block.extend_from_slice(slice);
 
@@ -66,8 +59,8 @@ impl BlockCollector {
 
                     match block_result {
                         Ok(block) => {
-                            self.block_in_sender.send(block).await.unwrap();
                             self.current_block_specified_length = None;
+                            return Some(block);
                         }
                         Err(err) => {
                             error!("Received invalid block header: {err:?}");
@@ -84,33 +77,32 @@ impl BlockCollector {
                 break;
             }
         }
+        None
     }
 
-    /// Starts the block collector task.
-    /// Returns the sender to send byte slices (socket) to and the receiver to receive collected DXB blocks (ComHub).
-    pub fn init(
-        async_context: &AsyncContext,
-    ) -> (UnboundedSender<Vec<u8>>, UnboundedReceiver<DXBBlock>) {
+    /// Returns a sender that accepts incoming byte slices and
+    /// an async iterator that yields DXB blocks collected from incoming byte slices.
+    pub fn create() -> (UnboundedSender<Vec<u8>>, impl AsyncIterator<Item = DXBBlock>) {
         let (bytes_in_sender, bytes_in_receiver) = create_unbounded_channel();
-        let (block_in_sender, block_in_receiver) = create_unbounded_channel();
         let block_collector = BlockCollector {
-            bytes_in_receiver,
-            block_in_sender,
             current_block: Vec::new(),
             current_block_specified_length: None,
         };
-        spawn_with_panic_notify(
-            async_context,
-            run_block_collector_task(block_collector),
-        );
-        (bytes_in_sender, block_in_receiver)
+
+        (
+            bytes_in_sender,
+            run_block_collector_task(block_collector, bytes_in_receiver),
+        )
     }
 }
 
-#[cfg_attr(feature = "embassy_runtime", embassy_executor::task(pool_size = MAX_CONCURRENT_COM_INTERFACE_SOCKETS_EMBASSY))]
-pub async fn run_block_collector_task(mut block_collector: BlockCollector) {
-    info!("BlockCollector task started");
-    while let Some(slice) = block_collector.bytes_in_receiver.next().await {
-        block_collector.receive_slice(&slice).await;
+pub fn run_block_collector_task(mut block_collector: BlockCollector, mut bytes_in_receiver: UnboundedReceiver<Vec<u8>>) -> impl AsyncIterator<Item = DXBBlock> {
+    async gen move {
+        info!("BlockCollector task started");
+        while let Some(slice) = bytes_in_receiver.next().await {
+            if let Some(block) = block_collector.receive_slice(&slice).await {
+                yield block;
+            };
+        }
     }
 }

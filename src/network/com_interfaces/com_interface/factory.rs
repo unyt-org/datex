@@ -25,7 +25,7 @@ use crate::values::core_values::endpoint::Endpoint;
 
 
 // utility function for async next
-pub async fn async_next<I>(iter: &mut Pin<Box<I>>) -> Option<I::Item>
+pub async fn async_next_pin_box<I>(iter: &mut Pin<Box<I>>) -> Option<I::Item>
 where
     I: AsyncIterator + ?Sized,
 {
@@ -34,6 +34,18 @@ where
     })
         .await
 }
+
+pub async fn async_next<I>(iter: &mut I) -> Option<I::Item>
+where
+    I: AsyncIterator + Unpin + ?Sized,
+{
+    poll_fn(|cx| {
+        Pin::new(iter).poll_next(cx)
+    })
+        .await
+}
+
+
 
 pub type NewSocketsIterator = Pin<Box<dyn AsyncIterator<Item = Result<SocketConfiguration, ()>> + Send>>;
 
@@ -158,7 +170,7 @@ pub enum SendSuccess {
     Sent,
     /// Indicates that the data was sent successfully and includes data received
     /// from the remote side (possibly in response to the sent data).
-    SentWithNewIncomingData(Vec<Vec<u8>>),
+    SentWithNewIncomingData(Vec<u8>),
 }
 
 pub struct SendFailure (pub DXBBlock);

@@ -60,10 +60,15 @@ use crate::{
 };
 pub mod com_hub_interface;
 
-use crate::network::com_interfaces::com_interface::factory::{ComInterfaceConfiguration, ComInterfaceSyncFactory, SocketConfiguration, SocketDataIterator, NewSocketsIterator, async_next};
+use crate::network::com_interfaces::com_interface::factory::{ComInterfaceConfiguration, ComInterfaceSyncFactory, SocketConfiguration, SocketDataIterator, NewSocketsIterator, async_next_pin_box, SendCallback, async_next, SendFailure, SendSuccess};
 use futures::stream::{FuturesUnordered};
 use std::async_iter::AsyncIterator;
-use futures_util::StreamExt;
+use async_select::select;
+use futures_util::{FutureExt, StreamExt};
+use futures_util::future::Fuse;
+use crate::network::com_interfaces::block_collector::BlockCollector;
+use crate::utils::maybe_async::MaybeAsyncResult;
+use crate::utils::task_manager::{TaskFuture, TaskManager};
 
 /// Maximum number of concurrent ComInterface sockets for Embassy runtime
 pub const MAX_CONCURRENT_COM_INTERFACE_SOCKETS_EMBASSY: usize = 2;
@@ -100,7 +105,8 @@ pub struct ComHub {
 
     send_request_receiver: RefCell<Option<UnboundedReceiver<BlockSendEvent>>>,
 
-    pub tasks: RefCell<FuturesUnordered<Pin<Box<dyn Future<Output = ()>>>>>,
+    pub task_manager: TaskManager,
+    pub socket_send_callbacks: RefCell<HashMap<ComInterfaceSocketUUID, SendCallback>>,
 }
 
 impl Debug for ComHub {
@@ -161,9 +167,11 @@ impl ComHub {
         endpoint: impl Into<Endpoint>,
         incoming_sections_sender: UnboundedSender<IncomingSection>,
         async_context: AsyncContext,
-    ) -> Rc<ComHub> {
+    ) -> (Rc<ComHub>, impl Future<Output = ()>) {
         let (block_send_sender, send_request_receiver) =
             create_unbounded_channel::<BlockSendEvent>();
+
+        let (task_manager, task_future) = TaskManager::create();
 
         let block_handler = BlockHandler::init(incoming_sections_sender);
         let com_hub = Rc::new(ComHub {
@@ -180,7 +188,8 @@ impl ComHub {
             send_request_receiver: RefCell::new(Some(send_request_receiver)),
             incoming_block_interceptors: RefCell::new(Vec::new()),
             outgoing_block_interceptors: RefCell::new(Vec::new()),
-            tasks: RefCell::new(FuturesUnordered::new()),
+            socket_send_callbacks: RefCell::new(HashMap::new()),
+            task_manager,
         });
 
         // add default local loopback interface
@@ -190,39 +199,64 @@ impl ComHub {
             .clone()
             .register_com_interface_handler(local_interface, InterfacePriority::None);
 
-        com_hub
+        (com_hub, task_future)
     }
 
-
-    /// Async task to handle all events for the ComHub
-    async fn task_handler(self: Rc<Self>) {
-        // iterate over new_socket_iterators
-        loop {
-            // check for new sockets from all iterators
-            let mut tasks = self.tasks.borrow_mut();
-            while let Some(_) = tasks.next().await {
-                // continue
-            }
-        }
-    }
 
     /// Registers a new ComInterface on the ComHub by adding tasks
     /// TODO: priority
     fn register_com_interface_handler(self: Rc<Self>, com_interface_configuration: ComInterfaceConfiguration, priority: InterfacePriority) {
         let mut iterator = com_interface_configuration.new_sockets_iterator;
         let self_clone = self.clone();
-        self.register_task(async move {
-            while let Some(socket) = async_next(&mut iterator).await {
+        self.task_manager.register_task(async move {
+            while let Some(socket) = async_next_pin_box(&mut iterator).await {
                 match socket {
                     Ok(socket_configuration) => {
                         // register socket
                         let socket_iterator = socket_configuration.iterator;
                         let send_callback = socket_configuration.send_callback;
                         let socket_properties = socket_configuration.properties;
+
+                        // register send callback
+                        if let Some(send_callback) = send_callback {
+                            self_clone.clone().socket_send_callbacks.borrow_mut().insert(
+                                socket_properties.uuid().clone(),
+                                send_callback,
+                            );
+                        }
+
+                        let self_clone = self_clone.clone();
                         if let Some(mut socket_iterator) = socket_iterator{
-                            self_clone.register_task(async move {
-                                while let Some(data) = async_next(&mut socket_iterator).await {
-                                    // handle incoming block data
+                            self_clone.clone().task_manager.register_task(async move {
+
+                                let (mut bytes_sender, block_iterator) = BlockCollector::create();
+                                let mut block_iterator = Box::pin(block_iterator);
+
+                                loop {
+                                    select! {
+                                        // receive new block data from socket
+                                        Some(data) = async_next_pin_box(&mut socket_iterator).fuse() => {
+                                            match data {
+                                                Ok(data) => {
+                                                    // send data to block collector
+                                                    if let Err(e) = bytes_sender.start_send(data) {
+                                                        error!("Error sending data to BlockCollector: {:?}", e);
+                                                        break;
+                                                    }
+                                                }
+                                                Err(e) => {
+                                                    error!("Error receiving data from socket iterator: {:?}", e);
+                                                    break;
+                                                }
+                                            }
+                                        },
+                                        // receive new blocks from block collector
+                                        Some(block) = async_next_pin_box(&mut block_iterator).fuse() => {
+                                            // handle incoming block
+                                            self_clone.receive_block(&block, socket_properties.uuid().clone()).await;
+                                        },
+                                        complete => break,
+                                    }
                                 }
                             });
                         }
@@ -235,14 +269,6 @@ impl ComHub {
                 }
             }
         });
-    }
-
-    /// Registers a new task on the ComHub
-    fn register_task<F>(&self, fut: F)
-    where
-        F: Future<Output = ()> + 'static,
-    {
-        self.tasks.borrow_mut().push(Box::pin(fut));
     }
 
 
@@ -1050,7 +1076,7 @@ impl ComHub {
         endpoints: &[Endpoint],
         // currently only used for trace debugging (TODO: put behind debug flag)
         fork_count: Option<usize>,
-    ) {
+    ) -> MaybeAsyncResult<Option<Vec<u8>>, SendFailure, impl Future<Output = ()>> {
         block.set_receivers(endpoints);
 
         // assuming the distance was already increment during redirect, we
@@ -1104,7 +1130,7 @@ impl ComHub {
             && let Some(direct_endpoint) = &socket.direct_endpoint
             && self.is_local_endpoint_exact(direct_endpoint)
         {
-            return;
+            return MaybeAsyncResult::Sync(Ok(None));
         }
         for interceptor in self.outgoing_block_interceptors.borrow().iter() {
             interceptor(&block, socket_uuid, endpoints);
@@ -1116,8 +1142,22 @@ impl ComHub {
         );
 
         // TODO #190: resend block if socket failed to send
-        let com_interface = self.dyn_interface_for_socket_uuid(socket_uuid);
-        com_interface.send_block(block, socket_uuid.clone());
+        if let Some(callback) = self.socket_send_callbacks.borrow().get(socket_uuid) {
+            match callback {
+                SendCallback::Sync(callback) => MaybeAsyncResult::Sync(
+                    callback(block).map(|send_success| match send_success {
+                        SendSuccess::SentWithNewIncomingData(data) => Some(data),
+                        _ => None
+                    })
+                ),
+                SendCallback::Async(callback) => MaybeAsyncResult::Async(async move {
+                    callback.call(block).await.map(|_| None)
+                })
+            }
+        }
+        else {
+            panic!("No send callback registered for socket {}", socket_uuid);
+        }
     }
 
     // TODO handle the reconnection logic event based (#684)
@@ -1246,12 +1286,12 @@ impl ComHub {
 
         let block = self.prepare_own_block(block).await?;
 
-        self.send_block_to_endpoints_via_socket(
+        let res = self.send_block_to_endpoints_via_socket(
             block,
             &socket_uuid,
             &[Endpoint::ANY],
             None,
-        );
+        ).into_inner().await;
         Ok(())
     }
 }
