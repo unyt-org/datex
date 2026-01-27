@@ -49,7 +49,7 @@ jobs:
 
             - name: Generate test result and coverage report
               run: |
-                  cargo install cargo-nextest;
+                  cargo install --locked cargo-nextest;
                   cargo nextest run --profile ci --features debug;
             - name: Run Struct Tests
               run: deno task test
