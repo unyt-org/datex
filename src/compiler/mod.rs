@@ -11,7 +11,7 @@ use core::cell::RefCell;
 
 use crate::ast::expressions::{
     BinaryOperation, ComparisonOperation, DatexExpression, DatexExpressionData,
-    DerefAssignment, Range, RemoteExecution, Slot, Statements, UnaryOperation,
+    DerefAssignment, RemoteExecution, Slot, Statements, UnaryOperation,
     UnboundedStatement, VariableAccess, VariableAssignment,
     VariableDeclaration, VariableKind,
 };
@@ -1284,6 +1284,7 @@ fn compile_expression(
                 &mut compilation_context.buffer,
                 InstructionCode::RANGE,
             );
+
             scope = compile_expression(
                 compilation_context,
                 RichAst::new(*range.start, &metadata),

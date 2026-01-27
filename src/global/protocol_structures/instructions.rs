@@ -689,12 +689,10 @@ pub struct TypeMetadata {
 }
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
-#[brw(big)]
+#[brw(little)]
 pub struct RangeData {
     pub ignored: u8,
-    pub more_ignored: u16,
-    pub start: i32,
+    pub start: Integer,
     pub other_ignored: u8,
-    pub more_other_ignored: u16,
-    pub end: i32,
+    pub end: Integer,
 }
