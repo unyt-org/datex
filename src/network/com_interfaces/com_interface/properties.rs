@@ -18,6 +18,25 @@ pub enum InterfaceDirection {
     InOut,
 }
 
+impl InterfaceDirection {
+    pub fn can_send(&self) -> bool {
+        match self {
+            InterfaceDirection::In => false,
+            InterfaceDirection::Out => true,
+            InterfaceDirection::InOut => true,
+        }
+    }
+
+    pub fn can_receive(&self) -> bool {
+        match self {
+            InterfaceDirection::In => true,
+            InterfaceDirection::Out => false,
+            InterfaceDirection::InOut => true,
+        }
+    }
+
+}
+
 #[serde_as]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]

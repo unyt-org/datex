@@ -26,14 +26,14 @@ impl ComInterfaceSyncFactory for LocalLoopbackInterfaceSetupData {
             ComInterfaceConfiguration::new_single_socket(
                 Self::get_default_properties(),
                 SocketConfiguration::new_out(
-                    SocketProperties::new_with_endpoint(
+                    SocketProperties::new_with_direct_endpoint(
                         InterfaceDirection::InOut,
                         1,
                         Endpoint::LOCAL.clone()
                     ),
                     SendCallback::new_sync(
                         move |block: DXBBlock| {
-                            Ok(SendSuccess::SentWithNewIncomingData(vec![block.to_bytes()]))
+                            Ok(SendSuccess::SentWithNewIncomingData(block.to_bytes()))
                         }
                     )
                 )

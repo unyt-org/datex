@@ -477,19 +477,20 @@ impl Runtime {
     /// Note: If the endpoint is not specified in the config, a random endpoint will be generated.
     /// This required setting the global context before using `set_global_context`,
     /// otherwise the runtime will panic here.
-    pub fn new(config: RuntimeConfig, async_context: AsyncContext) -> Runtime {
+    pub fn new(config: RuntimeConfig, async_context: AsyncContext) -> (Runtime, impl Future<Output = ()>) {
         let endpoint = config.endpoint.clone().unwrap_or_else(Endpoint::random);
 
         let (incoming_sections_sender, incoming_sections_receiver) =
             create_unbounded_channel::<IncomingSection>();
 
-        let com_hub = ComHub::create(
+        let (com_hub, task_future) = ComHub::create(
             endpoint.clone(),
             incoming_sections_sender,
             async_context.clone(),
         );
         let memory = RefCell::new(Memory::new(endpoint.clone()));
-        Runtime {
+
+        let runtime = Runtime {
             version: VERSION.to_string(),
             internal: Rc::new(RuntimeInternal {
                 endpoint,
@@ -502,16 +503,23 @@ impl Runtime {
                 execution_contexts: RefCell::new(HashMap::new()),
                 async_context,
             }),
-        }
+        };
+        let runtime_task_future = runtime.clone().handle_tasks(task_future);
+
+        (
+            runtime,
+            runtime_task_future
+        )
     }
 
     /// Initializes the runtime with the given configuration, global context, and async context.
     /// This function also sets up logging and logs the initialization time.
+    /// TODO: remove? just use new() function
     pub fn init(
         config: RuntimeConfig,
         global_context: GlobalContext,
         async_context: AsyncContext,
-    ) -> Runtime {
+    ) -> (Runtime, impl Future<Output = ()>) {
         set_global_context(global_context);
         if let Some(debug) = config.debug
             && debug
@@ -547,7 +555,7 @@ impl Runtime {
         feature = "std",
         not(feature = "embassy_runtime")
     ))]
-    pub fn init_native(config: RuntimeConfig) -> Runtime {
+    pub fn init_native(config: RuntimeConfig) -> (Runtime, impl Future<Output = ()>) {
         use crate::utils::time_native::TimeNative;
 
         Self::init(
@@ -559,7 +567,7 @@ impl Runtime {
 
     /// Initializes the runtime by creating all configured interfaces
     /// and starting the event handler tasks
-    pub async fn start(&self) {
+    pub async fn handle_tasks(self, com_hub_task_future: impl Future<Output = ()>) {
         info!("starting runtime...");
 
         // register interface factories
@@ -593,28 +601,19 @@ impl Runtime {
         }
 
         RuntimeInternal::handle_incoming_sections(self.internal());
+
+        // TODO: select
+        com_hub_task_future.await;
     }
 
     // inits a runtime and starts the update loop
-    pub async fn create(
+    // TODO: callback with application logic, spawn local task?
+    pub async fn run(
         config: RuntimeConfig,
         global_context: GlobalContext,
         async_context: AsyncContext,
     ) -> Runtime {
-        let runtime = Self::init(config, global_context, async_context);
-        runtime.start().await;
-        runtime
-    }
-
-    // inits a native runtime and starts the update loop
-    #[cfg(all(
-        feature = "native_crypto",
-        feature = "std",
-        not(feature = "embassy_runtime")
-    ))]
-    pub async fn create_native(config: RuntimeConfig) -> Runtime {
-        let runtime = Self::init_native(config);
-        runtime.start().await;
+        let (runtime, task_future) = Self::init(config, global_context, async_context);
         runtime
     }
 

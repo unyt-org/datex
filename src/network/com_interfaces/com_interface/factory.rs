@@ -20,6 +20,7 @@ use crate::network::com_interfaces::com_interface::properties::InterfaceDirectio
 use crate::network::com_interfaces::com_interface::socket::ComInterfaceSocketUUID;
 use crate::stdlib::boxed::Box;
 use crate::utils::async_callback::AsyncCallback;
+use crate::utils::time::Time;
 use crate::utils::uuid::UUID;
 use crate::values::core_values::endpoint::Endpoint;
 
@@ -35,24 +36,14 @@ where
         .await
 }
 
-pub async fn async_next<I>(iter: &mut I) -> Option<I::Item>
-where
-    I: AsyncIterator + Unpin + ?Sized,
-{
-    poll_fn(|cx| {
-        Pin::new(iter).poll_next(cx)
-    })
-        .await
-}
-
-
 
 pub type NewSocketsIterator = Pin<Box<dyn AsyncIterator<Item = Result<SocketConfiguration, ()>> + Send>>;
 
 pub struct SocketProperties {
     pub direction: InterfaceDirection,
     pub channel_factor: u16,
-    pub endpoint: Option<Endpoint>,
+    pub direct_endpoint: Option<Endpoint>,
+    pub connection_timestamp: u64,
     uuid: ComInterfaceSocketUUID,
 }
 
@@ -64,11 +55,12 @@ impl SocketProperties {
         SocketProperties {
             direction,
             channel_factor,
-            endpoint: None,
+            direct_endpoint: None,
+            connection_timestamp: Time::now(),
             uuid: ComInterfaceSocketUUID(UUID::new()),
         }
     }
-    pub fn new_with_endpoint(
+    pub fn new_with_direct_endpoint(
         direction: InterfaceDirection,
         channel_factor: u16,
         endpoint: Endpoint,
@@ -76,7 +68,8 @@ impl SocketProperties {
         SocketProperties {
             direction,
             channel_factor,
-            endpoint: Some(endpoint),
+            direct_endpoint: Some(endpoint),
+            connection_timestamp: Time::now(),
             uuid: ComInterfaceSocketUUID(UUID::new()),
         }
     }

@@ -3,16 +3,8 @@ use core::prelude::rust_2024::*;
 use serde::Serialize;
 
 use crate::{
-    channel::mpsc::{UnboundedReceiver, UnboundedSender},
-    global::dxb_block::DXBBlock,
-    network::com_interfaces::{
-        block_collector::BlockCollector,
-        com_interface::{ComInterfaceUUID, properties::InterfaceDirection},
-    },
-    runtime::AsyncContext,
     stdlib::{string::String, string::ToString, vec::Vec},
-    utils::{once_consumer::OnceConsumer, uuid::UUID},
-    values::core_values::endpoint::Endpoint,
+    utils::{uuid::UUID},
 };
 use core::fmt::Display;
 
@@ -52,60 +44,5 @@ impl<'de> serde::Deserialize<'de> for ComInterfaceSocketUUID {
         ComInterfaceSocketUUID::try_from(s).map_err(|_| {
             serde::de::Error::custom("Invalid ComInterfaceSocketUUID")
         })
-    }
-}
-
-#[derive(Debug)]
-pub enum ComInterfaceSocketEvent {
-    NewSocket(ComInterfaceSocket),
-    /// indicates that the socket can no longer be used and should be removed
-    /// optionally includes a block that could not be sent out since the socket can no longer be used
-    /// This event may be triggered multiple times for the same socket close if asynchronously scheduled
-    /// blocks are still being processed after the first close event.
-    CloseSocket(ComInterfaceSocketUUID, Option<DXBBlock>),
-}
-
-#[derive(Debug)]
-pub struct ComInterfaceSocket {
-    pub direct_endpoint: Option<Endpoint>,
-    pub uuid: ComInterfaceSocketUUID,
-    pub interface_uuid: ComInterfaceUUID,
-    pub connection_timestamp: u64,
-    pub channel_factor: u32,
-    pub direction: InterfaceDirection,
-}
-
-impl ComInterfaceSocket {
-    pub fn can_send(&self) -> bool {
-        self.direction == InterfaceDirection::Out
-            || self.direction == InterfaceDirection::InOut
-    }
-
-    pub fn can_receive(&self) -> bool {
-        self.direction == InterfaceDirection::In
-            || self.direction == InterfaceDirection::InOut
-    }
-
-    /// Initializes a new ComInterfaceSocket, starts the BlockCollector task.
-    pub fn init(
-        interface_uuid: ComInterfaceUUID,
-        direction: InterfaceDirection,
-        channel_factor: u32,
-        direct_endpoint: Option<Endpoint>,
-        async_context: &AsyncContext,
-    ) -> (ComInterfaceSocket, UnboundedSender<Vec<u8>>) {
-        let (bytes_in_sender, block_in_receiver) =
-            BlockCollector::create(async_context);
-        (
-            ComInterfaceSocket {
-                direct_endpoint,
-                uuid: ComInterfaceSocketUUID(UUID::new()),
-                interface_uuid,
-                connection_timestamp: 0,
-                channel_factor,
-                direction,
-            },
-            bytes_in_sender,
-        )
     }
 }

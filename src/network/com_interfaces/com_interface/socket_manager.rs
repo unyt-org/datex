@@ -5,7 +5,7 @@ use crate::{
         ComInterfaceUUID,
         properties::InterfaceDirection,
         socket::{
-            ComInterfaceSocket, ComInterfaceSocketEvent, ComInterfaceSocketUUID,
+            ComInterfaceSocketUUID,
         },
     },
     runtime::AsyncContext,

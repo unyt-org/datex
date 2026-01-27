@@ -60,7 +60,7 @@ use crate::{
 };
 pub mod com_hub_interface;
 
-use crate::network::com_interfaces::com_interface::factory::{ComInterfaceConfiguration, ComInterfaceSyncFactory, SocketConfiguration, SocketDataIterator, NewSocketsIterator, async_next_pin_box, SendCallback, async_next, SendFailure, SendSuccess};
+use crate::network::com_interfaces::com_interface::factory::{ComInterfaceConfiguration, ComInterfaceSyncFactory, SocketConfiguration, SocketDataIterator, NewSocketsIterator, async_next_pin_box, SendCallback, SendFailure, SendSuccess};
 use futures::stream::{FuturesUnordered};
 use std::async_iter::AsyncIterator;
 use async_select::select;
