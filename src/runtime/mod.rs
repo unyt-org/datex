@@ -472,16 +472,15 @@ impl RuntimeConfig {
     }
 }
 
-/// publicly exposed wrapper impl for the Runtime
-/// around RuntimeInternal
-impl Runtime {
-    /// Creates a new runtime instance with the given configuration, global context, and async context.
+pub struct RuntimeRunner {
+    pub runtime: Runtime,
+    pub future: impl Future<Output = ()>,
+}
+
+impl RuntimeRunner {
+    /// Creates a new runtime instance with the given configuration and global context.
     /// Note: If the endpoint is not specified in the config, a random endpoint will be generated.
-    pub(crate) fn new(
-        config: RuntimeConfig,
-        global_context: GlobalContext,
-        async_context: AsyncContext,
-    ) -> (Runtime, impl Future<Output = ()>) {
+    pub fn new(config: RuntimeConfig, global_context: GlobalContext) -> Self {
         set_global_context(global_context);
         if let Some(debug) = config.debug
             && debug
@@ -523,26 +522,34 @@ impl Runtime {
         };
 
         let runtime_task_future = runtime.clone().handle_tasks(task_future);
+        RuntimeRunner {
+            runtime,
+            future: runtime_task_future,
+        }
+    }
 
-        (runtime, runtime_task_future)
+    #[cfg(all(
+        feature = "native_crypto",
+        feature = "std",
+        not(feature = "embassy_runtime")
+    ))]
+    pub fn new_native(config: RuntimeConfig) -> Self {
+        use crate::utils::time_native::TimeNative;
+        Self::new(
+            config,
+            GlobalContext::new(Arc::new(CryptoNative), Arc::new(TimeNative)),
+        )
     }
 
     // Starts the runtime, runs the provided app logic, and returns its result.
     // The runtime will exit when the app logic completes.
-    pub async fn run<T, F>(
-        config: RuntimeConfig,
-        global_context: GlobalContext,
-        async_context: AsyncContext,
-        app_logic: impl FnOnce(Runtime) -> F,
-    ) -> T
+    pub async fn run<T, F>(self, app_logic: impl FnOnce(Runtime) -> F) -> T
     where
         F: Future<Output = T>,
     {
-        let (runtime, task_future) =
-            Self::new(config, global_context, async_context);
-        let app_future = app_logic(runtime);
+        let app_future = app_logic(self.runtime);
         select! {
-            _ = task_future.fuse() => {
+            _ = self.future.fuse() => {
                 unreachable!("Runtime task future exited unexpectedly");
             },
             exit_value = app_future.fuse() => {
@@ -553,21 +560,21 @@ impl Runtime {
 
     /// Starts the runtime and runs indefinitely, executing the provided app logic.
     pub async fn run_forever<T, F>(
-        config: RuntimeConfig,
-        global_context: GlobalContext,
-        async_context: AsyncContext,
+        self,
         app_logic: impl FnOnce(Runtime) -> F,
     ) -> !
     where
         F: Future<Output = T>,
     {
-        let (runtime, task_future) =
-            Self::new(config, global_context, async_context);
-        let app_future = app_logic(runtime);
-        future::join(task_future, app_future).await;
+        let app_future = app_logic(self.runtime);
+        future::join(self.future, app_future).await;
         unreachable!("Both runtime and app logic futures exited unexpectedly");
     }
+}
 
+/// publicly exposed wrapper impl for the Runtime
+/// around RuntimeInternal
+impl Runtime {
     fn register_interface_factories(&self) {
         let com_hub = self.com_hub();
         #[cfg(feature = "native_websocket")]
@@ -600,22 +607,6 @@ impl Runtime {
 
     pub fn memory(&self) -> &RefCell<Memory> {
         &self.internal.memory
-    }
-
-    #[cfg(all(
-        feature = "native_crypto",
-        feature = "std",
-        not(feature = "embassy_runtime")
-    ))]
-    pub fn new_native(
-        config: RuntimeConfig,
-    ) -> (Runtime, impl Future<Output = ()>) {
-        use crate::utils::time_native::TimeNative;
-        Self::new(
-            config,
-            GlobalContext::new(Arc::new(CryptoNative), Arc::new(TimeNative)),
-            AsyncContext::new(),
-        )
     }
 
     /// Initializes the runtime by creating all configured interfaces

@@ -48,7 +48,6 @@ enum Signal {
 macro_rules! run_async {
     ($($body:tt)*) => {{
         datex_core::task::init_panic_notify();
-
         tokio::task::LocalSet::new()
             .run_until(async move {
                 let res = (async move { $($body)* }).await;

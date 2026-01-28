@@ -1,9 +1,15 @@
+use std::path::PathBuf;
+
 use proc_macro::TokenStream;
 use syn::{ItemFn, parse_macro_input};
 
-use crate::test::create_async_test;
+use crate::{
+    main::{ParsedAttributes, datex_main_impl},
+    test::create_async_test,
+};
 mod bitfield_macros;
 mod lib_types;
+mod main;
 mod test;
 mod value_macros;
 
@@ -33,7 +39,6 @@ pub fn async_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
     create_async_test(original_function).into()
 }
 
-
 /// An async test function that provides a DATEX runtime instance
 #[proc_macro_attribute]
 pub fn datex_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
@@ -43,7 +48,9 @@ pub fn datex_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
 
 /// The main entry point for a DATEX application, providing a DATEX runtime instance
 #[proc_macro_attribute]
-pub fn datex_main(_attr: TokenStream, item: TokenStream) -> TokenStream {
+pub fn datex_main(attr: TokenStream, item: TokenStream) -> TokenStream {
+    let parsed_attr = parse_macro_input!(attr as ParsedAttributes);
+
     let original_function = parse_macro_input!(item as ItemFn);
-    todo!()
+    datex_main_impl(parsed_attr, original_function)
 }

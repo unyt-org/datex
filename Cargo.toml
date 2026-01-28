@@ -275,7 +275,7 @@ std = [
     "hex/std",
     "bytes/std",
     "ringmap/std",
-    "futures-intrusive/default"
+    "futures-intrusive/default",
 ] # use std
 
 nostd = [
@@ -292,7 +292,7 @@ nostd = [
     "hex/alloc",
     "num/alloc",
     "num/libm",
-    "futures-intrusive/alloc"
+    "futures-intrusive/alloc",
 ]
 
 debug = ["dep:serde-big-array"]
