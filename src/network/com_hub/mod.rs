@@ -60,20 +60,28 @@ use crate::{
 };
 pub mod com_hub_interface;
 
-use crate::network::com_interfaces::com_interface::factory::{ComInterfaceConfiguration, ComInterfaceSyncFactory, SocketConfiguration, SocketDataIterator, NewSocketsIterator, async_next_pin_box, SendCallback, SendFailure, SendSuccess};
-use futures::stream::{FuturesUnordered};
-use std::async_iter::AsyncIterator;
+use crate::{
+    network::com_interfaces::{
+        block_collector::BlockCollector,
+        com_interface::factory::{
+            ComInterfaceConfiguration, ComInterfaceSyncFactory,
+            NewSocketsIterator, SendCallback, SendFailure, SendSuccess,
+            SocketConfiguration, SocketDataIterator, async_next_pin_box,
+        },
+    },
+    utils::{
+        maybe_async::MaybeAsyncResult,
+        task_manager::{TaskFuture, TaskManager},
+    },
+};
 use async_select::select;
-use futures_util::{FutureExt, StreamExt};
-use futures_util::future::Fuse;
-use crate::network::com_interfaces::block_collector::BlockCollector;
-use crate::utils::maybe_async::MaybeAsyncResult;
-use crate::utils::task_manager::{TaskFuture, TaskManager};
+use futures::stream::FuturesUnordered;
+use futures_util::{FutureExt, StreamExt, future::Fuse};
+use std::async_iter::AsyncIterator;
 
 /// Maximum number of concurrent ComInterface sockets for Embassy runtime
 pub const MAX_CONCURRENT_COM_INTERFACE_SOCKETS_EMBASSY: usize = 2;
 pub const MAX_CONCURRENT_COM_INTERFACES_EMBASSY: usize = 2;
-
 
 pub type IncomingBlockInterceptor =
     Box<dyn Fn(&DXBBlock, &ComInterfaceSocketUUID) + 'static>;
@@ -90,8 +98,6 @@ pub struct ComHub {
     /// the runtime endpoint of the hub (@me)
     pub endpoint: Endpoint,
 
-    pub async_context: AsyncContext,
-
     /// ComHub configuration options
     pub options: ComHubOptions,
 
@@ -106,7 +112,8 @@ pub struct ComHub {
     send_request_receiver: RefCell<Option<UnboundedReceiver<BlockSendEvent>>>,
 
     pub task_manager: TaskManager,
-    pub socket_send_callbacks: RefCell<HashMap<ComInterfaceSocketUUID, SendCallback>>,
+    pub socket_send_callbacks:
+        RefCell<HashMap<ComInterfaceSocketUUID, SendCallback>>,
 }
 
 impl Debug for ComHub {
@@ -166,7 +173,6 @@ impl ComHub {
     pub fn create(
         endpoint: impl Into<Endpoint>,
         incoming_sections_sender: UnboundedSender<IncomingSection>,
-        async_context: AsyncContext,
     ) -> (Rc<ComHub>, impl Future<Output = ()>) {
         let (block_send_sender, send_request_receiver) =
             create_unbounded_channel::<BlockSendEvent>();
@@ -176,7 +182,6 @@ impl ComHub {
         let block_handler = BlockHandler::init(incoming_sections_sender);
         let com_hub = Rc::new(ComHub {
             endpoint: endpoint.into(),
-            async_context: async_context.clone(),
             options: ComHubOptions::default(),
             block_handler,
             socket_manager: Rc::new(RefCell::new(SocketsManager::new(
@@ -193,19 +198,27 @@ impl ComHub {
         });
 
         // add default local loopback interface
-        let local_interface = LocalLoopbackInterfaceSetupData::create_interface(LocalLoopbackInterfaceSetupData).unwrap();
+        let local_interface =
+            LocalLoopbackInterfaceSetupData::create_interface(
+                LocalLoopbackInterfaceSetupData,
+            )
+            .unwrap();
 
-        com_hub
-            .clone()
-            .register_com_interface_handler(local_interface, InterfacePriority::None);
+        com_hub.clone().register_com_interface_handler(
+            local_interface,
+            InterfacePriority::None,
+        );
 
         (com_hub, task_future)
     }
 
-
     /// Registers a new ComInterface on the ComHub by adding tasks
     /// TODO: priority
-    fn register_com_interface_handler(self: Rc<Self>, com_interface_configuration: ComInterfaceConfiguration, priority: InterfacePriority) {
+    fn register_com_interface_handler(
+        self: Rc<Self>,
+        com_interface_configuration: ComInterfaceConfiguration,
+        priority: InterfacePriority,
+    ) {
         let mut iterator = com_interface_configuration.new_sockets_iterator;
         let self_clone = self.clone();
         self.task_manager.register_task(async move {
@@ -271,12 +284,10 @@ impl ComHub {
         });
     }
 
-
     /// Checks if the given endpoint is the local endpoint, matching instances as well
     pub fn is_local_endpoint_exact(&self, endpoint: &Endpoint) -> bool {
         &self.endpoint == endpoint || endpoint.is_local()
     }
-
 
     /// Register an incoming block interceptor
     pub fn register_incoming_block_interceptor<F>(&self, interceptor: F)
@@ -1076,7 +1087,11 @@ impl ComHub {
         endpoints: &[Endpoint],
         // currently only used for trace debugging (TODO: put behind debug flag)
         fork_count: Option<usize>,
-    ) -> MaybeAsyncResult<Option<Vec<u8>>, SendFailure, impl Future<Output = Result<Option<Vec<u8>>, SendFailure>>> {
+    ) -> MaybeAsyncResult<
+        Option<Vec<u8>>,
+        SendFailure,
+        impl Future<Output = Result<Option<Vec<u8>>, SendFailure>>,
+    > {
         block.set_receivers(endpoints);
 
         // assuming the distance was already increment during redirect, we
@@ -1142,20 +1157,25 @@ impl ComHub {
         );
 
         // TODO #190: resend block if socket failed to send
-        if let Some(callback) = self.socket_send_callbacks.borrow().get(socket_uuid) {
+        if let Some(callback) =
+            self.socket_send_callbacks.borrow().get(socket_uuid)
+        {
             match callback {
                 SendCallback::Sync(callback) => MaybeAsyncResult::Sync(
                     callback(block).map(|send_success| match send_success {
-                        SendSuccess::SentWithNewIncomingData(data) => Some(data),
-                        _ => None
-                    })
+                        SendSuccess::SentWithNewIncomingData(data) => {
+                            Some(data)
+                        }
+                        _ => None,
+                    }),
                 ),
-                SendCallback::Async(callback) => MaybeAsyncResult::Async(async move {
-                    callback.call(block).await.map(|_| None)
-                })
+                SendCallback::Async(callback) => {
+                    MaybeAsyncResult::Async(async move {
+                        callback.call(block).await.map(|_| None)
+                    })
+                }
             }
-        }
-        else {
+        } else {
             panic!("No send callback registered for socket {}", socket_uuid);
         }
     }
@@ -1286,65 +1306,67 @@ impl ComHub {
 
         let block = self.prepare_own_block(block).await?;
 
-        let res = self.send_block_to_endpoints_via_socket(
-            block,
-            &socket_uuid.clone(),
-            &[Endpoint::ANY],
-            None,
-        ).into_inner().await;
+        let res = self
+            .send_block_to_endpoints_via_socket(
+                block,
+                &socket_uuid.clone(),
+                &[Endpoint::ANY],
+                None,
+            )
+            .into_inner()
+            .await;
         Ok(())
     }
 }
 
-#[cfg_attr(feature = "embassy_runtime", embassy_executor::task())]
-async fn com_hub_event_task(
-    mut receiver: UnboundedReceiver<BlockSendEvent>,
-    com_hub_rc: Rc<ComHub>,
-    async_context: AsyncContext,
-) {
-    while let Some(event) = receiver.next().await {
-        match event {
-            BlockSendEvent::NewSocket { socket_uuid } => {
-                info!("New socket connected: {}", socket_uuid);
-                let (receiver, shall_send_hello) = {
-                    let mut socket_manager =
-                        com_hub_rc.socket_manager.borrow_mut();
-                    let socket =
-                        socket_manager.get_socket_by_uuid_mut(&socket_uuid);
+// #[cfg_attr(feature = "embassy_runtime", embassy_executor::task())]
+// async fn com_hub_event_task(
+//     mut receiver: UnboundedReceiver<BlockSendEvent>,
+//     com_hub_rc: Rc<ComHub>,
+// ) {
+//     while let Some(event) = receiver.next().await {
+//         match event {
+//             BlockSendEvent::NewSocket { socket_uuid } => {
+//                 info!("New socket connected: {}", socket_uuid);
+//                 let (receiver, shall_send_hello) = {
+//                     let mut socket_manager =
+//                         com_hub_rc.socket_manager.borrow_mut();
+//                     let socket =
+//                         socket_manager.get_socket_by_uuid_mut(&socket_uuid);
 
-                    let interface_manager = com_hub_rc.interface_manager();
-                    let auto_identify = interface_manager
-                        .borrow()
-                        .get_interface_by_uuid(&socket.interface_uuid)
-                        .properties()
-                        .auto_identify;
+//                     let interface_manager = com_hub_rc.interface_manager();
+//                     let auto_identify = interface_manager
+//                         .borrow()
+//                         .get_interface_by_uuid(&socket.interface_uuid)
+//                         .properties()
+//                         .auto_identify;
 
-                    (
-                        socket.take_block_in_receiver(),
-                        socket.can_send() && auto_identify, // Only send hello if auto_identify is enabled
-                    )
-                };
+//                     (
+//                         socket.take_block_in_receiver(),
+//                         socket.can_send() && auto_identify, // Only send hello if auto_identify is enabled
+//                     )
+//                 };
 
-                // spawn task to collect incoming blocks from this socket
-                spawn_with_panic_notify(
-                    &async_context,
-                    handle_incoming_socket_blocks_task(
-                        receiver,
-                        socket_uuid.clone(),
-                        com_hub_rc.clone(),
-                    ),
-                );
+//                 // spawn task to collect incoming blocks from this socket
+//                 spawn_with_panic_notify(
+//                     &async_context,
+//                     handle_incoming_socket_blocks_task(
+//                         receiver,
+//                         socket_uuid.clone(),
+//                         com_hub_rc.clone(),
+//                     ),
+//                 );
 
-                if shall_send_hello
-                    && let Err(err) =
-                        com_hub_rc.send_hello_block(socket_uuid).await
-                {
-                    error!("Failed to send hello block: {:?}", err);
-                }
-            }
-        }
-    }
-}
+//                 if shall_send_hello
+//                     && let Err(err) =
+//                         com_hub_rc.send_hello_block(socket_uuid).await
+//                 {
+//                     error!("Failed to send hello block: {:?}", err);
+//                 }
+//             }
+//         }
+//     }
+// }
 
 #[cfg_attr(feature = "embassy_runtime", embassy_executor::task(pool_size = MAX_CONCURRENT_COM_INTERFACE_SOCKETS_EMBASSY))]
 async fn handle_incoming_socket_blocks_task(

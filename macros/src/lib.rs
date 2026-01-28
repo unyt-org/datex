@@ -4,12 +4,12 @@ use proc_macro::TokenStream;
 use syn::{ItemFn, parse_macro_input};
 
 use crate::{
-    main::{ParsedAttributes, datex_main_impl},
+    entrypoint::{ParsedAttributes, datex_main_impl},
     test::create_async_test,
 };
 mod bitfield_macros;
+mod entrypoint;
 mod lib_types;
-mod main;
 mod test;
 mod value_macros;
 
@@ -52,5 +52,5 @@ pub fn datex_main(attr: TokenStream, item: TokenStream) -> TokenStream {
     let parsed_attr = parse_macro_input!(attr as ParsedAttributes);
 
     let original_function = parse_macro_input!(item as ItemFn);
-    datex_main_impl(parsed_attr, original_function)
+    datex_main_impl(parsed_attr, original_function).into()
 }

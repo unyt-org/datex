@@ -120,7 +120,6 @@ pub struct RuntimeInternal {
     /// active execution contexts, stored by context_id
     pub execution_contexts:
         RefCell<HashMap<IncomingEndpointContextSectionId, ExecutionContext>>,
-    pub async_context: AsyncContext,
 }
 
 macro_rules! get_execution_context {
@@ -472,15 +471,21 @@ impl RuntimeConfig {
     }
 }
 
-pub struct RuntimeRunner {
+pub struct RuntimeRunner<Fut: Future<Output = ()>> {
     pub runtime: Runtime,
-    pub future: impl Future<Output = ()>,
+    pub future: Fut,
 }
 
-impl RuntimeRunner {
+impl<TaskFuture> RuntimeRunner<TaskFuture>
+where
+    TaskFuture: Future<Output = ()>,
+{
     /// Creates a new runtime instance with the given configuration and global context.
     /// Note: If the endpoint is not specified in the config, a random endpoint will be generated.
-    pub fn new(config: RuntimeConfig, global_context: GlobalContext) -> Self {
+    pub fn new(
+        config: RuntimeConfig,
+        global_context: GlobalContext,
+    ) -> RuntimeRunner<impl Future<Output = ()>> {
         set_global_context(global_context);
         if let Some(debug) = config.debug
             && debug
@@ -499,11 +504,8 @@ impl RuntimeRunner {
         let (incoming_sections_sender, incoming_sections_receiver) =
             create_unbounded_channel::<IncomingSection>();
 
-        let (com_hub, task_future) = ComHub::create(
-            endpoint.clone(),
-            incoming_sections_sender,
-            async_context.clone(),
-        );
+        let (com_hub, task_future) =
+            ComHub::create(endpoint.clone(), incoming_sections_sender);
         let memory = RefCell::new(Memory::new(endpoint.clone()));
 
         let runtime = Runtime {
@@ -517,7 +519,6 @@ impl RuntimeRunner {
                     incoming_sections_receiver,
                 ),
                 execution_contexts: RefCell::new(HashMap::new()),
-                async_context,
             }),
         };
 
@@ -533,7 +534,9 @@ impl RuntimeRunner {
         feature = "std",
         not(feature = "embassy_runtime")
     ))]
-    pub fn new_native(config: RuntimeConfig) -> Self {
+    pub fn new_native(
+        config: RuntimeConfig,
+    ) -> RuntimeRunner<impl Future<Output = ()>> {
         use crate::utils::time_native::TimeNative;
         Self::new(
             config,
@@ -543,9 +546,12 @@ impl RuntimeRunner {
 
     // Starts the runtime, runs the provided app logic, and returns its result.
     // The runtime will exit when the app logic completes.
-    pub async fn run<T, F>(self, app_logic: impl FnOnce(Runtime) -> F) -> T
+    pub async fn run<AppReturn, AppFuture>(
+        self,
+        app_logic: impl FnOnce(Runtime) -> AppFuture,
+    ) -> AppReturn
     where
-        F: Future<Output = T>,
+        AppFuture: Future<Output = AppReturn>,
     {
         let app_future = app_logic(self.runtime);
         select! {
@@ -559,12 +565,12 @@ impl RuntimeRunner {
     }
 
     /// Starts the runtime and runs indefinitely, executing the provided app logic.
-    pub async fn run_forever<T, F>(
+    pub async fn run_forever<AppReturn, AppFuture>(
         self,
-        app_logic: impl FnOnce(Runtime) -> F,
+        app_logic: impl FnOnce(Runtime) -> AppFuture,
     ) -> !
     where
-        F: Future<Output = T>,
+        AppFuture: Future<Output = AppReturn>,
     {
         let app_future = app_logic(self.runtime);
         future::join(self.future, app_future).await;
@@ -625,12 +631,7 @@ impl Runtime {
             {
                 if let Err(err) = self
                     .com_hub()
-                    .create_interface(
-                        interface_type,
-                        config.clone(),
-                        *priority,
-                        self.internal.async_context.clone(),
-                    )
+                    .create_interface(interface_type, config.clone(), *priority)
                     .await
                 {
                     error!(

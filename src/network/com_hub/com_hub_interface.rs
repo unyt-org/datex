@@ -3,14 +3,16 @@ use crate::{
     network::{
         com_hub::{
             ComHub, ComHubError, InterfacePriority,
-            errors::{InterfaceAddError, ComInterfaceCreateError},
+            MAX_CONCURRENT_COM_INTERFACE_SOCKETS_EMBASSY,
+            MAX_CONCURRENT_COM_INTERFACES_EMBASSY,
+            errors::{ComInterfaceCreateError, InterfaceAddError},
             managers::interfaces_manager::{
                 DynInterfaceImplementationFactoryFn, InterfacesManager,
             },
         },
         com_interfaces::com_interface::{
-            ComInterfaceUtils, ComInterfaceReceivers, ComInterfaceStateEvent,
-            ComInterfaceUUID, factory::ComInterfaceSyncFactory,
+            ComInterfaceReceivers, ComInterfaceStateEvent, ComInterfaceUUID,
+            ComInterfaceUtils, factory::ComInterfaceSyncFactory,
             socket::ComInterfaceSocketUUID,
         },
     },
@@ -27,7 +29,6 @@ use core::{prelude::rust_2024::*, result::Result};
 use datex_core::network::com_interfaces::com_interface::{
     ComInterfaceWithReceivers, factory::ComInterfaceAsyncFactory,
 };
-use crate::network::com_hub::{MAX_CONCURRENT_COM_INTERFACES_EMBASSY, MAX_CONCURRENT_COM_INTERFACE_SOCKETS_EMBASSY};
 
 /// Interface management methods
 impl ComHub {
@@ -55,7 +56,6 @@ impl ComHub {
             .borrow_mut()
             .register_dyn_interface_factory(interface_type, factory);
     }
-    
 
     /// Returns the com interface for a given socket UUID
     /// The interface and socket must be registered in the ComHub,
@@ -95,7 +95,6 @@ impl ComHub {
         interface_type: &str,
         setup_data: ValueContainer,
         priority: InterfacePriority,
-        async_context: AsyncContext,
     ) -> Result<ComInterfaceUUID, ComInterfaceCreateError> {
         let (com_interface_uuid, receivers) =
             InterfacesManager::create_and_add_interface(
@@ -103,7 +102,6 @@ impl ComHub {
                 interface_type,
                 setup_data,
                 priority,
-                async_context,
             )
             .await?;
         let created_sockets;
