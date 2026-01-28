@@ -169,6 +169,11 @@ impl ComHub {
     }
 }
 
+enum PreReceiveAction {
+    Async,
+    Sync
+}
+
 impl ComHub {
     pub fn create(
         endpoint: impl Into<Endpoint>,
@@ -265,6 +270,20 @@ impl ComHub {
                                         },
                                         // receive new blocks from block collector
                                         Some(block) = async_next_pin_box(&mut block_iterator).fuse() => {
+                                            // Validate
+                                             // ignore invalid blocks (e.g. invalid signature)
+                                            match Self::validate_block(&block).await {
+                                                Ok(true) => { /* Ignored */ }
+                                                Ok(false) => {
+                                                    warn!("Block validation failed. Dropping block...");
+                                                    return;
+                                                }
+                                                Err(e) => {
+                                                    warn!("Error in block validation {e}. Dropping block...");
+                                                    return;
+                                                }
+                                            }
+                                            
                                             // handle incoming block
                                             self_clone.receive_block(&block, socket_properties.uuid().clone()).await;
                                         },
@@ -309,25 +328,8 @@ impl ComHub {
             .push(Box::new(interceptor));
     }
 
-    pub(crate) async fn receive_block(
-        &self,
-        block: &DXBBlock,
-        socket_uuid: ComInterfaceSocketUUID,
-    ) {
-        info!("{} received block: {}", self.endpoint, block);
-
-        // ignore invalid blocks (e.g. invalid signature)
-        match self.validate_block(block).await {
-            Ok(true) => { /* Ignored */ }
-            Ok(false) => {
-                warn!("Block validation failed. Dropping block...");
-                return;
-            }
-            Err(e) => {
-                warn!("Error in block validation {e}. Dropping block...");
-                return;
-            }
-        }
+    fn pre_receive(&self, socket_uuid: &ComInterfaceSocketUUID, block: &DXBBlock) -> bool {
+          info!("{} received block: {}", self.endpoint, block);
 
         for interceptor in self.incoming_block_interceptors.borrow().iter() {
             interceptor(block, &socket_uuid);
@@ -356,26 +358,6 @@ impl ComHub {
                     || e == &Endpoint::ANY_ALL_INSTANCES
             });
 
-            // handle blocks for own endpoint
-            if is_for_own && block_type != BlockType::Hello {
-                info!("Block is for this endpoint");
-
-                match block_type {
-                    BlockType::Trace => {
-                        self.handle_trace_block(block, socket_uuid.clone())
-                            .await;
-                    }
-                    BlockType::TraceBack => {
-                        self.handle_trace_back_block(
-                            block,
-                            socket_uuid.clone(),
-                        );
-                    }
-                    _ => {
-                        self.block_handler.handle_incoming_block(block.clone());
-                    }
-                };
-            }
 
             // TODO #177: handle this via TTL, not explicitly for Hello blocks
             let should_relay =
@@ -393,30 +375,69 @@ impl ComHub {
                     &receivers
                 };
 
-                // relay the block to all receivers
-                if !remaining_receivers.is_empty() {
-                    match block_type {
-                        BlockType::Trace | BlockType::TraceBack => {
-                            self.redirect_trace_block(
-                                block.clone_with_new_receivers(
-                                    remaining_receivers,
-                                ),
-                                socket_uuid.clone(),
-                                is_for_own,
-                            );
-                        }
-                        _ => {
-                            self.redirect_block(
-                                block.clone_with_new_receivers(
-                                    remaining_receivers,
-                                ),
-                                socket_uuid.clone(),
-                                is_for_own,
-                            );
-                        }
+                return PreReceiveAction::Async()
+            }
+        }
+        false
+    }
+
+    pub(crate) async fn receive_block(
+        &self,
+        block: &DXBBlock,
+        socket_uuid: ComInterfaceSocketUUID,
+    ) {
+        info!("{} received block: {}", self.endpoint, block);
+
+        // handle blocks for own endpoint
+        if is_for_own && block_type != BlockType::Hello {
+            info!("Block is for this endpoint");
+
+            match block_type {
+                BlockType::Trace => {
+                    self.handle_trace_block(block, socket_uuid.clone())
+                        .await;
+                }
+                BlockType::TraceBack => {
+                    self.handle_trace_back_block(
+                        block,
+                        socket_uuid.clone(),
+                    );
+                }
+                _ => {
+                    self.block_handler.handle_incoming_block(block.clone());
+                }
+            };
+        }
+
+        // relay the block to other endpoints
+        if should_relay {
+            
+            // relay the block to all receivers
+            if !remaining_receivers.is_empty() {
+                match block_type {
+                    BlockType::Trace | BlockType::TraceBack => {
+                        self.redirect_trace_block(
+                            block.clone_with_new_receivers(
+                                remaining_receivers,
+                            ),
+                            socket_uuid.clone(),
+                            is_for_own,
+                        )
+                        .await;
+                    }
+                    _ => {
+                        self.redirect_block(
+                            block.clone_with_new_receivers(
+                                remaining_receivers,
+                            ),
+                            socket_uuid.clone(),
+                            is_for_own,
+                        )
+                        .await;
                     }
                 }
             }
+
         }
 
         // add to block history
@@ -481,7 +502,7 @@ impl ComHub {
 
     /// Prepares a block and relays it to the given receivers.
     /// The routing distance is incremented by 1.
-    pub(crate) fn redirect_block(
+    pub(crate) async fn redirect_block(
         &self,
         mut block: DXBBlock,
         incoming_socket: ComInterfaceSocketUUID,
@@ -585,6 +606,8 @@ impl ComHub {
                         &unreachable_endpoints,
                         if forked { Some(0) } else { None },
                     )
+                    .into_inner()
+                    .await;
                 } else {
                     error!(
                         "Tried to send bounce back block, but cannot send back to incoming socket"
@@ -610,8 +633,7 @@ impl ComHub {
 
     /// Validates a block including it's signature if set
     /// TODO #378 @Norbert
-    pub async fn validate_block(
-        &self,
+     async fn validate_block(
         block: &DXBBlock,
     ) -> Result<bool, ComHubError> {
         // TODO #179 check for creation time, withdraw if too old (TBD) or in the future

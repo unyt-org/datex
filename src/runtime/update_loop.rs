@@ -18,7 +18,6 @@ use crate::{
 use core::{prelude::rust_2024::*, result::Result};
 use log::info;
 
-
 async fn handle_incoming_section_task(
     runtime_rc: Rc<RuntimeInternal>,
     section: IncomingSection,
@@ -67,14 +66,6 @@ async fn handle_incoming_sections_task(runtime_rc: Rc<RuntimeInternal>) {
 }
 
 impl RuntimeInternal {
-    /// Spawns a task that receives incoming sections from the ComHub and executes them in separate tasks
-    pub(crate) fn handle_incoming_sections(self_rc: Rc<RuntimeInternal>) {
-        spawn_with_panic_notify(
-            &self_rc.async_context.clone(),
-            handle_incoming_sections_task(self_rc),
-        );
-    }
-
     async fn send_response_block(
         self_rc: Rc<RuntimeInternal>,
         result: Result<Option<ValueContainer>, ExecutionError>,

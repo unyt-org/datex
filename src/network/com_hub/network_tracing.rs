@@ -459,7 +459,7 @@ impl ComHub {
         Some(())
     }
 
-    pub(crate) fn redirect_trace_block(
+    pub(crate) async fn redirect_trace_block(
         &self,
         block: DXBBlock,
         original_socket: ComInterfaceSocketUUID,
@@ -496,7 +496,7 @@ impl ComHub {
         );
 
         // resend trace block
-        self.redirect_block(block, original_socket, forked);
+        self.redirect_block(block, original_socket, forked).await;
 
         Some(())
     }
