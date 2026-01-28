@@ -1,11 +1,11 @@
-pub enum MaybeAsync<T, F: Future<Output = T> + 'static> {
+pub enum MaybeAsync<T, F: Future<Output = T>> {
     Sync(T),
     Async(F),
 }
 
 pub type MaybeAsyncResult<T, E, F> = MaybeAsync<Result<T, E>, F>;
 
-impl <T, F: Future<Output = T> + 'static> MaybeAsync<T, F> {
+impl<T, F: Future<Output = T>> MaybeAsync<T, F> {
     pub async fn into_inner(self) -> T {
         match self {
             MaybeAsync::Sync(value) => value,
@@ -13,20 +13,19 @@ impl <T, F: Future<Output = T> + 'static> MaybeAsync<T, F> {
         }
     }
 
-    /// Maps a MaybeAsync<T, F> to MaybeAsync<U, G> by applying the provided function to the contained value.
-    pub fn map<U, G: Future<Output = U> + 'static, Func>(self, func: Func) -> MaybeAsync<U, G>
+    pub fn map<U, Func>(
+        self,
+        func: Func,
+    ) -> MaybeAsync<U, impl Future<Output = U>>
     where
-        Func: FnOnce(T) -> U + 'static,
+        Func: FnOnce(T) -> U,
     {
         match self {
             MaybeAsync::Sync(value) => MaybeAsync::Sync(func(value)),
-            MaybeAsync::Async(fut) => {
-                let new_fut = async move {
-                    let value = fut.await;
-                    func(value)
-                };
-                MaybeAsync::Async(new_fut)
-            }
+            MaybeAsync::Async(fut) => MaybeAsync::Async(async move {
+                let value = fut.await;
+                func(value)
+            }),
         }
     }
 }

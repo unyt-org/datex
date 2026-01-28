@@ -41,12 +41,14 @@ use crate::{
         core_values::endpoint::Endpoint, value_container::ValueContainer,
     },
 };
+use async_select::select;
 use core::{
     fmt::Debug, prelude::rust_2024::*, result::Result, slice, unreachable,
 };
 use execution::context::{
     ExecutionContext, RemoteExecutionContext, ScriptExecutionError,
 };
+use futures::{FutureExt, future};
 use global_context::{GlobalContext, set_global_context};
 use log::{debug, error, info};
 use serde::{Deserialize, Serialize};
@@ -473,11 +475,26 @@ impl RuntimeConfig {
 /// publicly exposed wrapper impl for the Runtime
 /// around RuntimeInternal
 impl Runtime {
-    /// Creates a new runtime instance with the given configuration and async context.
+    /// Creates a new runtime instance with the given configuration, global context, and async context.
     /// Note: If the endpoint is not specified in the config, a random endpoint will be generated.
-    /// This required setting the global context before using `set_global_context`,
-    /// otherwise the runtime will panic here.
-    pub fn new(config: RuntimeConfig, async_context: AsyncContext) -> (Runtime, impl Future<Output = ()>) {
+    pub(crate) fn new(
+        config: RuntimeConfig,
+        global_context: GlobalContext,
+        async_context: AsyncContext,
+    ) -> (Runtime, impl Future<Output = ()>) {
+        set_global_context(global_context);
+        if let Some(debug) = config.debug
+            && debug
+        {
+            init_logger_debug();
+        } else {
+            init_logger();
+        }
+        info!(
+            "Runtime initialized - Version {VERSION} Time: {}",
+            Time::now()
+        );
+
         let endpoint = config.endpoint.clone().unwrap_or_else(Endpoint::random);
 
         let (incoming_sections_sender, incoming_sections_receiver) =
@@ -504,35 +521,70 @@ impl Runtime {
                 async_context,
             }),
         };
+
         let runtime_task_future = runtime.clone().handle_tasks(task_future);
 
-        (
-            runtime,
-            runtime_task_future
-        )
+        (runtime, runtime_task_future)
     }
 
-    /// Initializes the runtime with the given configuration, global context, and async context.
-    /// This function also sets up logging and logs the initialization time.
-    /// TODO: remove? just use new() function
-    pub fn init(
+    // Starts the runtime, runs the provided app logic, and returns its result.
+    // The runtime will exit when the app logic completes.
+    pub async fn run<T, F>(
         config: RuntimeConfig,
         global_context: GlobalContext,
         async_context: AsyncContext,
-    ) -> (Runtime, impl Future<Output = ()>) {
-        set_global_context(global_context);
-        if let Some(debug) = config.debug
-            && debug
-        {
-            init_logger_debug();
-        } else {
-            init_logger();
+        app_logic: impl FnOnce(Runtime) -> F,
+    ) -> T
+    where
+        F: Future<Output = T>,
+    {
+        let (runtime, task_future) =
+            Self::new(config, global_context, async_context);
+        let app_future = app_logic(runtime);
+        select! {
+            _ = task_future.fuse() => {
+                unreachable!("Runtime task future exited unexpectedly");
+            },
+            exit_value = app_future.fuse() => {
+                exit_value
+            },
         }
-        info!(
-            "Runtime initialized - Version {VERSION} Time: {}",
-            Time::now()
-        );
-        Self::new(config, async_context)
+    }
+
+    /// Starts the runtime and runs indefinitely, executing the provided app logic.
+    pub async fn run_forever<T, F>(
+        config: RuntimeConfig,
+        global_context: GlobalContext,
+        async_context: AsyncContext,
+        app_logic: impl FnOnce(Runtime) -> F,
+    ) -> !
+    where
+        F: Future<Output = T>,
+    {
+        let (runtime, task_future) =
+            Self::new(config, global_context, async_context);
+        let app_future = app_logic(runtime);
+        future::join(task_future, app_future).await;
+        unreachable!("Both runtime and app logic futures exited unexpectedly");
+    }
+
+    fn register_interface_factories(&self) {
+        let com_hub = self.com_hub();
+        #[cfg(feature = "native_websocket")]
+        {
+            com_hub.register_async_interface_factory::<crate::network::com_interfaces::default_com_interfaces::websocket::websocket_common::WebSocketClientInterfaceSetupData>();
+            com_hub.register_async_interface_factory::<crate::network::com_interfaces::default_com_interfaces::websocket::websocket_common::WebSocketServerInterfaceSetupData>();
+        }
+        #[cfg(feature = "native_serial")]
+        com_hub.register_sync_interface_factory::<crate::network::com_interfaces::default_com_interfaces::serial::serial_common::SerialInterfaceSetupData>();
+        #[cfg(feature = "native_tcp")]
+        {
+            com_hub.register_async_interface_factory::<crate::network::com_interfaces::default_com_interfaces::tcp::tcp_common::TCPClientInterfaceSetupData>();
+            com_hub.register_async_interface_factory::<crate::network::com_interfaces::default_com_interfaces::tcp::tcp_common::TCPServerInterfaceSetupData>();
+        }
+        // TODO #234:
+        // #[cfg(feature = "native_webrtc")]
+        // crate::network::com_interfaces::default_com_interfaces::webrtc::webrtc_native_interface::WebRTCNativeInterface::register_on_com_hub(self.com_hub());
     }
 
     pub fn com_hub(&self) -> Rc<ComHub> {
@@ -555,10 +607,11 @@ impl Runtime {
         feature = "std",
         not(feature = "embassy_runtime")
     ))]
-    pub fn init_native(config: RuntimeConfig) -> (Runtime, impl Future<Output = ()>) {
+    pub fn new_native(
+        config: RuntimeConfig,
+    ) -> (Runtime, impl Future<Output = ()>) {
         use crate::utils::time_native::TimeNative;
-
-        Self::init(
+        Self::new(
             config,
             GlobalContext::new(Arc::new(CryptoNative), Arc::new(TimeNative)),
             AsyncContext::new(),
@@ -567,9 +620,7 @@ impl Runtime {
 
     /// Initializes the runtime by creating all configured interfaces
     /// and starting the event handler tasks
-    pub async fn handle_tasks(self, com_hub_task_future: impl Future<Output = ()>) {
-        info!("starting runtime...");
-
+    async fn handle_tasks(self, com_hub_task_future: impl Future<Output = ()>) {
         // register interface factories
         self.register_interface_factories();
 
@@ -604,36 +655,6 @@ impl Runtime {
 
         // TODO: select
         com_hub_task_future.await;
-    }
-
-    // inits a runtime and starts the update loop
-    // TODO: callback with application logic, spawn local task?
-    pub async fn run(
-        config: RuntimeConfig,
-        global_context: GlobalContext,
-        async_context: AsyncContext,
-    ) -> Runtime {
-        let (runtime, task_future) = Self::init(config, global_context, async_context);
-        runtime
-    }
-
-    fn register_interface_factories(&self) {
-        let com_hub = self.com_hub();
-        #[cfg(feature = "native_websocket")]
-        {
-            com_hub.register_async_interface_factory::<crate::network::com_interfaces::default_com_interfaces::websocket::websocket_common::WebSocketClientInterfaceSetupData>();
-            com_hub.register_async_interface_factory::<crate::network::com_interfaces::default_com_interfaces::websocket::websocket_common::WebSocketServerInterfaceSetupData>();
-        }
-        #[cfg(feature = "native_serial")]
-        com_hub.register_sync_interface_factory::<crate::network::com_interfaces::default_com_interfaces::serial::serial_common::SerialInterfaceSetupData>();
-        #[cfg(feature = "native_tcp")]
-        {
-            com_hub.register_async_interface_factory::<crate::network::com_interfaces::default_com_interfaces::tcp::tcp_common::TCPClientInterfaceSetupData>();
-            com_hub.register_async_interface_factory::<crate::network::com_interfaces::default_com_interfaces::tcp::tcp_common::TCPServerInterfaceSetupData>();
-        }
-        // TODO #234:
-        // #[cfg(feature = "native_webrtc")]
-        // crate::network::com_interfaces::default_com_interfaces::webrtc::webrtc_native_interface::WebRTCNativeInterface::register_on_com_hub(self.com_hub());
     }
 
     #[cfg(feature = "compiler")]
