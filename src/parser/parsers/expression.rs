@@ -109,18 +109,25 @@ impl Parser {
             }
 
             Token::Range => {
-                self.advance()?; // consume the operator
-                let rhs = self.parse_expression(r_bp)?;
-                let span = lhs.span.start..rhs.span.end;
-                DatexExpression::new(
-                    DatexExpressionData::Range(
-                        crate::ast::expressions::Range {
-                            start: Box::new(lhs),
-                            end: Box::new(rhs),
-                        },
-                    ),
-                    span,
-                )
+                if matches!(lhs.data, DatexExpressionData::Range(_)) {
+                    return Err(SpannedParserError {
+                        error: ParserError::InvalidToken,
+                        span: lhs.span,
+                    });
+                } else {
+                    self.advance()?; // consume the operator
+                    let rhs = self.parse_expression(r_bp)?;
+                    let span = lhs.span.start..rhs.span.end;
+                    DatexExpression::new(
+                        DatexExpressionData::Range(
+                            crate::ast::expressions::Range {
+                                start: Box::new(lhs),
+                                end: Box::new(rhs),
+                            },
+                        ),
+                        span,
+                    )
+                }
             }
 
             // generic parameters or fall back to less than operator if not generic parameters
