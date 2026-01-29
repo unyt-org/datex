@@ -54,6 +54,10 @@ pub mod traits;
 pub mod types;
 pub mod utils;
 pub mod values;
+#[cfg(feature = "std")]
+pub mod native;
+#[cfg(feature = "std")]
+pub mod native_global_context;
 
 // reexport macros
 pub use datex_macros as macros;

@@ -6,7 +6,7 @@ use crate::{
     stdlib::vec::Vec,
 };
 use core::prelude::rust_2024::*;
-use std::async_iter::AsyncIterator;
+use core::async_iter::AsyncIterator;
 use log::{error, info};
 
 #[derive(Debug)]

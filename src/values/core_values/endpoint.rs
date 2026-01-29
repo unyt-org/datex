@@ -640,8 +640,7 @@ impl<'a> Deserialize<'a> for Endpoint {
 
 #[cfg(test)]
 mod tests {
-    use crate::utils::context::init_global_context;
-
+    use crate::native_global_context::init_global_context_native;
     use super::*;
 
     #[test]
@@ -930,7 +929,7 @@ mod tests {
 
     #[test]
     fn random_anonymous_endpoint() {
-        init_global_context();
+        init_global_context_native();
         let endpoint1 = Endpoint::random();
         let endpoint2 = Endpoint::random();
         assert_ne!(endpoint1, endpoint2);

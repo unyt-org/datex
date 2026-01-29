@@ -2,11 +2,10 @@ use core::async_iter::AsyncIterator;
 use core::future::poll_fn;
 use core::pin::Pin;
 use core::fmt::Debug;
-use std::sync::OnceLock;
 use crate::stdlib::sync::{Arc};
 use crate::std_sync::Mutex;
 use crate::stdlib::rc::Rc;
-pub(crate) use crate::network::com_hub::managers::interfaces_manager::ComInterfaceAsyncFactoryResult;
+pub(crate) use crate::network::com_hub::managers::com_interface_manager::ComInterfaceAsyncFactoryResult;
 use crate::{
     network::{
         com_hub::errors::ComInterfaceCreateError,
@@ -19,7 +18,6 @@ use crate::{
 };
 use serde::de::DeserializeOwned;
 use crate::global::dxb_block::DXBBlock;
-use crate::network::com_hub::InterfacePriority;
 use crate::network::com_interfaces::com_interface::ComInterfaceUUID;
 use crate::network::com_interfaces::com_interface::properties::InterfaceDirection;
 use crate::network::com_interfaces::com_interface::socket::ComInterfaceSocketUUID;
@@ -28,18 +26,6 @@ use crate::utils::async_callback::AsyncCallback;
 use crate::utils::time::Time;
 use crate::utils::uuid::UUID;
 use crate::values::core_values::endpoint::Endpoint;
-
-
-// utility function for async next
-pub async fn async_next_pin_box<I>(iter: &mut Pin<Box<I>>) -> Option<I::Item>
-where
-    I: AsyncIterator + ?Sized,
-{
-    poll_fn(|cx| {
-        iter.as_mut().poll_next(cx)
-    })
-        .await
-}
 
 
 pub type NewSocketsIterator = Pin<Box<dyn AsyncIterator<Item = Result<SocketConfiguration, ()>> + Send>>;
@@ -343,7 +329,7 @@ where
 /// use datex_core::network::com_interfaces::com_interface::ComInterfaceProxy;
 /// use datex_core::network::com_interfaces::com_interface::factory::ComInterfaceAsyncFactory;
 /// use datex_core::network::com_interfaces::com_interface::properties::ComInterfaceProperties;
-/// use datex_core::network::com_hub::managers::interfaces_manager::ComInterfaceAsyncFactoryResult;
+/// use datex_core::network::com_hub::managers::com_interface_manager::ComInterfaceAsyncFactoryResult;
 ///
 /// #[derive(Serialize, Deserialize)]
 /// struct ExampleInterfaceSetupData {

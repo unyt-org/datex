@@ -1,29 +1,25 @@
 use crate::{
-    channel::mpsc::UnboundedReceiver,
     network::{
         com_hub::{
             ComHub, ComHubError, InterfacePriority,
-            MAX_CONCURRENT_COM_INTERFACE_SOCKETS_EMBASSY,
-            MAX_CONCURRENT_COM_INTERFACES_EMBASSY,
             errors::{ComInterfaceCreateError, InterfaceAddError},
-            managers::interfaces_manager::{
-                DynInterfaceImplementationFactoryFn, InterfacesManager,
+            managers::com_interface_manager::{
+                DynInterfaceImplementationFactoryFn,
             },
         },
         com_interfaces::com_interface::{
             ComInterfaceUUID,
-            ComInterfaceUtils, factory::ComInterfaceSyncFactory,
+            factory::ComInterfaceSyncFactory,
             socket::ComInterfaceSocketUUID,
         },
     },
     stdlib::{
-        cell::{Ref, RefCell},
-        rc::Rc,
         string::String,
     },
     values::value_container::ValueContainer,
 };
 use core::{prelude::rust_2024::*, result::Result};
+use core::cell::Ref;
 use datex_core::network::com_interfaces::com_interface::{
     factory::ComInterfaceAsyncFactory,
 };
@@ -73,10 +69,6 @@ impl ComHub {
         let uuid = com_interface_configuration.uuid().clone();
         self.interfaces_manager
             .add_interface(com_interface_configuration, priority)?;
-        // self.init_interface_event_listeners(
-        //     self.interfaces_manager.get_interface_by_uuid(&uuid),
-        //     receivers,
-        // );
         Ok(())
     }
 
@@ -111,10 +103,6 @@ impl ComHub {
                 setup_data,
                 priority,
             )?;
-        // self.init_interface_event_listeners(
-        //     self.interfaces_manager.get_interface_by_uuid(&com_interface_uuid),
-        //     receivers,
-        // );
         Ok(com_interface_uuid)
     }
 

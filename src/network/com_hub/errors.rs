@@ -1,5 +1,5 @@
 use core::fmt::Display;
-use std::fmt::Debug;
+use core::fmt::Debug;
 use crate::stdlib::string::String;
 use crate::stdlib::string::ToString;
 use crate::network::com_interfaces::com_interface::error::ComInterfaceError;

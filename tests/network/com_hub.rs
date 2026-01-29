@@ -24,10 +24,7 @@ use datex_core::{
     network::{
         com_hub::{ComHub, InterfacePriority, metadata::ComHubMetadata},
         com_interfaces::com_interface::{
-            ComInterfaceUtils, ComInterfaceProxy,
-            factory::ComInterfaceSyncFactory,
             properties::{InterfaceDirection, ComInterfaceProperties},
-            state::ComInterfaceState,
         },
     },
     serde::serializer::to_value_container,
@@ -36,6 +33,7 @@ use datex_core::{
 };
 use datex_macros::async_test;
 use tokio::task::yield_now;
+use datex_core::network::com_hub::managers::com_interface_manager::ComInterfaceManager;
 
 /// Creates a mock ComHub for testing without a connected channel
 fn create_mock_com_hub() -> Rc<ComHub> {
@@ -47,7 +45,7 @@ fn create_mock_com_hub() -> Rc<ComHub> {
 pub async fn test_add_and_remove() {
     let com_hub = create_mock_com_hub();
     let mockup_interface_with_receivers =
-        ComInterfaceUtils::create_sync_from_setup_data(
+        ComInterfaceManager::create_interface_sync_from_setup_data(
             MockupInterfaceSetupData::new("test"),
         )
         .unwrap();
@@ -68,11 +66,11 @@ pub async fn test_add_and_remove() {
 pub async fn test_multiple_add() {
     let com_hub = create_mock_com_hub();
 
-    let mockup_interface1 = ComInterfaceUtils::create_sync_from_setup_data(
+    let mockup_interface1 = ComInterfaceManager::create_interface_sync_from_setup_data(
         MockupInterfaceSetupData::new("mockup_interface1"),
     )
     .unwrap();
-    let mockup_interface2 = ComInterfaceUtils::create_sync_from_setup_data(
+    let mockup_interface2 = ComInterfaceManager::create_interface_sync_from_setup_data(
         MockupInterfaceSetupData::new("mockup_interface2"),
     )
     .unwrap();

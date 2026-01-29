@@ -12,7 +12,7 @@ use crate::{
     json::{
         get_json_test_string, json_to_dxb, json_to_runtime_value_baseline_serde,
     },
-    runtime::runtime_init,
+    // runtime::runtime_init,
 };
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use datex_core::compiler::{CompileOptions, compile_script};
@@ -20,9 +20,9 @@ use datex_core::compiler::{CompileOptions, compile_script};
 mod json;
 mod runtime;
 
-fn bench_runtime(c: &mut Criterion) {
-    c.bench_function("runtime init", |b| b.iter(runtime_init));
-}
+// fn bench_runtime(c: &mut Criterion) {
+//     c.bench_function("runtime init", |b| b.iter(runtime_init));
+// }
 
 fn bench_json_file(c: &mut Criterion, file_path: &str) {
     // JSON benchmarks
@@ -199,10 +199,10 @@ criterion_group! {
     config = Criterion::default().sample_size(10);
     targets = bench_json
 }
-criterion_group! {
-    name = runtime;
-    config = Criterion::default().sample_size(10);
-    targets = bench_runtime
-}
+// criterion_group! {
+//     name = runtime;
+//     config = Criterion::default().sample_size(10);
+//     targets = bench_runtime
+// }
 
-criterion_main!(json, runtime);
+criterion_main!(json);

@@ -1,7 +1,7 @@
 use datex_core::{
     network::com_interfaces::{
         com_interface::ComInterfaceUtils,
-        default_com_interfaces::serial::serial_common::SerialInterfaceSetupData,
+        default_com_interfaces::serial::serial_client_setup_data::SerialInterfaceSetupData,
     },
     utils::context::init_global_context,
 };

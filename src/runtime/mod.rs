@@ -113,24 +113,6 @@ macro_rules! get_execution_context {
 }
 
 impl RuntimeInternal {
-    fn register_interface_factories(&self) {
-        let com_hub = &self.com_hub;
-        #[cfg(feature = "native_websocket")]
-        {
-            com_hub.register_async_interface_factory::<crate::network::com_interfaces::default_com_interfaces::websocket::websocket_common::WebSocketClientInterfaceSetupData>();
-            com_hub.register_async_interface_factory::<crate::network::com_interfaces::default_com_interfaces::websocket::websocket_common::WebSocketServerInterfaceSetupData>();
-        }
-        #[cfg(feature = "native_serial")]
-        com_hub.register_sync_interface_factory::<crate::network::com_interfaces::default_com_interfaces::serial::serial_common::SerialInterfaceSetupData>();
-        #[cfg(feature = "native_tcp")]
-        {
-            com_hub.register_async_interface_factory::<crate::network::com_interfaces::default_com_interfaces::tcp::tcp_common::TCPClientInterfaceSetupData>();
-            com_hub.register_async_interface_factory::<crate::network::com_interfaces::default_com_interfaces::tcp::tcp_common::TCPServerInterfaceSetupData>();
-        }
-        // TODO #234:
-        // #[cfg(feature = "native_webrtc")]
-        // crate::network::com_interfaces::default_com_interfaces::webrtc::webrtc_native_interface::WebRTCNativeInterface::register_on_com_hub(self.com_hub());
-    }
 
     /// Creates all interfaces configured in the runtime config
     async fn create_configured_interfaces(&self) {
@@ -545,8 +527,6 @@ impl RuntimeRunner {
             }),
         };
 
-        // register interface factories
-        runtime.internal.register_interface_factories();
         let runtime_internal = runtime.internal.clone();
 
         // await all task futures
@@ -565,22 +545,6 @@ impl RuntimeRunner {
             runtime,
             task_future: Box::pin(task_future),
         }
-    }
-
-    #[cfg(all(
-        feature = "native_crypto",
-        feature = "std",
-        not(feature = "embassy_runtime")
-    ))]
-    pub fn new_native(
-        config: RuntimeConfig,
-    ) -> RuntimeRunner {
-        use crate::utils::time_native::TimeNative;
-        use crate::crypto::crypto_native::CryptoNative;
-        Self::new(
-            config,
-            GlobalContext::new(Arc::new(CryptoNative), Arc::new(TimeNative)),
-        )
     }
 
     // Starts the runtime, runs the provided app logic, and returns its result.

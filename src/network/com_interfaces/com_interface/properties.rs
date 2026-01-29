@@ -90,12 +90,6 @@ pub struct ComInterfaceProperties {
     // after socket connection establishment
     pub auto_identify: bool,
 
-    // A list of UUIDs of sockets that were created by this interface
-    // during initial connect. The com hub makes sure to await the registration of these
-    // sockets before giving out the interface as fully connected.
-    // TODO: remove
-    pub created_sockets: Option<Vec<ComInterfaceSocketUUID>>,
-
     // A list of setup data for interfaces that can connect to this interface
     pub connectable_interfaces: Option<Vec<RuntimeConfigInterface>>,
 }
@@ -201,7 +195,6 @@ impl Default for ComInterfaceProperties {
             allow_redirects: true,
             is_secure_channel: false,
             reconnection_config: ReconnectionConfig::default(),
-            created_sockets: None,
             connectable_interfaces: None,
         }
     }

@@ -1,0 +1,706 @@
+use core::cell::{Ref, RefCell, RefMut};
+use crate::{
+    collections::{HashMap, HashSet},
+    network::{
+        com_hub::{
+            ComHubError, InterfacePriority,
+            SocketEndpointRegistrationError,
+        },
+        com_interfaces::com_interface::socket::{
+            ComInterfaceSocketUUID,
+        },
+    },
+};
+use futures::channel::oneshot::Receiver;
+use itertools::Itertools;
+use log::{debug, error, info, warn};
+use serde::{Deserialize, Serialize};
+use crate::stdlib::vec::Vec;
+use crate::stdlib::boxed::Box;
+use crate::stdlib::string::ToString;
+
+use crate::{
+    network::com_interfaces::com_interface::{
+        ComInterfaceUUID, properties::InterfaceDirection,
+    },
+    utils::time::Time,
+    values::core_values::endpoint::{Endpoint, EndpointInstance},
+};
+use crate::network::com_hub::SocketData;
+
+#[derive(Debug, Clone, Default)]
+pub struct EndpointIterateOptions<'a> {
+    pub only_direct: bool,
+    pub exact_instance: bool,
+    pub exclude_sockets: &'a [ComInterfaceSocketUUID],
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
+pub struct DynamicEndpointProperties {
+    pub known_since: u64,
+    pub distance: i8,
+    pub is_direct: bool,
+    pub channel_factor: u32,
+    pub direction: InterfaceDirection,
+}
+
+pub struct ComInterfaceSocketManager {
+    /// a list of all available sockets, keyed by their UUID
+    /// contains the socket itself and a list of endpoints currently associated with it
+    pub sockets: RefCell<HashMap<ComInterfaceSocketUUID, SocketData>>,
+
+    /// mapping of interface UUIDs to socket UUIDs
+    pub socket_uuids_by_interface_uuid:
+        RefCell<HashMap<ComInterfaceUUID, HashSet<ComInterfaceSocketUUID>>>,
+
+    /// a blacklist of sockets that are not allowed to be used for a specific endpoint
+    pub endpoint_sockets_blacklist:
+        RefCell<HashMap<Endpoint, HashSet<ComInterfaceSocketUUID>>>,
+
+    /// fallback sockets that are used if no direct endpoint reachable socket is available
+    /// sorted by priority
+    pub fallback_sockets:
+        RefCell<Vec<(ComInterfaceSocketUUID, u16, InterfaceDirection)>>,
+
+    /// a list of all available sockets for each endpoint, with additional
+    /// DynamicEndpointProperties metadata
+    pub endpoint_sockets: RefCell<HashMap<
+        Endpoint,
+        Vec<(ComInterfaceSocketUUID, DynamicEndpointProperties)>,
+    >>,
+
+    /// callbacks to be called when a socket is registered
+    socket_registered_callbacks:
+        RefCell<HashMap<ComInterfaceSocketUUID, Vec<Box<dyn FnOnce()>>>>,
+}
+impl ComInterfaceSocketManager {
+    pub fn new() -> ComInterfaceSocketManager {
+        ComInterfaceSocketManager {
+            sockets: RefCell::new(HashMap::new()),
+            socket_uuids_by_interface_uuid: RefCell::new(HashMap::new()),
+            endpoint_sockets_blacklist: RefCell::new(HashMap::new()),
+            fallback_sockets: RefCell::new(Vec::new()),
+            endpoint_sockets: RefCell::new(HashMap::new()),
+            socket_registered_callbacks:RefCell::new(HashMap::new()),
+        }
+    }
+}
+
+/// Manages all sockets registered in the ComHub
+/// Handles socket registration, endpoint registration and socket selection for endpoints
+/// Also manages fallback sockets for outgoing connections and other lifelcycle events
+impl ComInterfaceSocketManager {
+    /// Add a socket to the blocklist for a specific endpoint
+    pub fn add_to_endpoint_blocklist(
+        &self,
+        endpoint: Endpoint,
+        socket_uuid: &ComInterfaceSocketUUID,
+    ) {
+        self.endpoint_sockets_blacklist
+            .borrow_mut()
+            .entry(endpoint)
+            .or_default()
+            .insert(socket_uuid.clone());
+    }
+
+    /// Registers a new endpoint that is reachable over the socket if the socket is not
+    /// already registered, it will be added to the socket list.
+    /// If the provided endpoint is not the same as the socket endpoint, it is registered
+    /// as an indirect socket to the endpoint
+    pub fn register_socket_endpoint(
+        &self,
+        socket_uuid: ComInterfaceSocketUUID,
+        endpoint: Endpoint,
+        distance: i8,
+    ) -> Result<(), SocketEndpointRegistrationError> {
+        info!(
+            "Registering endpoint {} for socket {}",
+            endpoint, socket_uuid
+        );
+        let socket = self.get_socket_by_uuid_mut(&socket_uuid);
+
+        // if the registered endpoint is the same as the socket endpoint,
+        // this is a direct socket to the endpoint
+        let is_direct = socket.socket_properties.direct_endpoint == Some(endpoint.clone());
+
+        // check if the socket is already registered for the endpoint
+        if let Some(entries) = self.endpoint_sockets.borrow().get(&endpoint)
+            && entries
+                .iter()
+                .any(|(socket_uuid, _)| socket_uuid == &socket.socket_properties.uuid())
+        {
+            return Err(SocketEndpointRegistrationError::SocketEndpointAlreadyRegistered);
+        }
+
+        let socket_uuid = socket.socket_properties.uuid().clone();
+        let channel_factor = socket.socket_properties.channel_factor;
+        let direction = socket.socket_properties.direction.clone();
+
+        drop(socket);
+
+        // add endpoint to socket endpoint list
+        self.add_socket_endpoint(&socket_uuid, endpoint.clone());
+
+        // add socket to endpoint socket list
+        self.add_endpoint_socket(
+            &endpoint,
+            socket_uuid,
+            distance,
+            is_direct,
+            channel_factor,
+            direction,
+        );
+
+        // resort sockets for endpoint
+        self.sort_sockets(&endpoint);
+
+        Ok(())
+    }
+
+    /// Registers a callback to be called when the socket with the given UUID is registered
+    pub fn on_socket_registered(
+        &self,
+        socket_uuid: &ComInterfaceSocketUUID,
+        callback: impl FnOnce() + 'static,
+    ) {
+        if self.has_socket(socket_uuid) {
+            callback();
+        } else {
+            self.socket_registered_callbacks
+                .borrow_mut()
+                .entry(socket_uuid.clone())
+                .or_default()
+                .push(Box::new(callback));
+        }
+    }
+
+    /// Waits asynchronously until the socket with the given UUID is registered.
+    /// If the socket is already registered, the function returns immediately.
+    pub(crate) fn get_socket_registration_waiter(
+        &self,
+        socket_uuid: &ComInterfaceSocketUUID,
+    ) -> Receiver<()> {
+        if self.has_socket(socket_uuid) {
+            let (sender, receiver) = futures::channel::oneshot::channel();
+            let _ = sender.send(());
+            return receiver;
+        }
+
+        let (sender, receiver) = futures::channel::oneshot::channel();
+
+        self.on_socket_registered(socket_uuid, move || {
+            let _ = sender.send(());
+        });
+
+        receiver
+    }
+
+    /// Adds a socket to the socket list for a specific endpoint,
+    /// attaching metadata as DynamicEndpointProperties
+    fn add_endpoint_socket(
+        &self,
+        endpoint: &Endpoint,
+        socket_uuid: ComInterfaceSocketUUID,
+        distance: i8,
+        is_direct: bool,
+        channel_factor: u32,
+        direction: InterfaceDirection,
+    ) {
+        if !self.endpoint_sockets.borrow().contains_key(endpoint) {
+            self.endpoint_sockets.borrow_mut().insert(endpoint.clone(), Vec::new());
+        }
+
+        self.endpoint_sockets.borrow_mut().get_mut(endpoint).unwrap().push((
+            socket_uuid,
+            DynamicEndpointProperties {
+                known_since: Time::now(),
+                distance,
+                is_direct,
+                channel_factor,
+                direction,
+            },
+        ));
+    }
+
+    /// Adds an endpoint to the endpoint list of a specific socket
+    fn add_socket_endpoint(
+        &self,
+        socket_uuid: &ComInterfaceSocketUUID,
+        endpoint: Endpoint,
+    ) {
+        assert!(
+            self.sockets.borrow().contains_key(socket_uuid),
+            "Socket not found in ComHub"
+        );
+        // add endpoint to socket endpoint list
+        self.sockets
+            .borrow_mut()
+            .get_mut(socket_uuid)
+            .unwrap()
+            .endpoints
+            .insert(endpoint.clone());
+    }
+
+    /// Sorts the sockets for an endpoint:
+    /// - socket with send capability first
+    /// - then direct sockets
+    /// - then sort by channel channel_factor (latency, bandwidth)
+    /// - then sort by socket connect_timestamp
+    ///
+    /// When the global debug flag `enable_deterministic_behavior` is set,
+    /// Sockets are not sorted by their connect_timestamp to make sure that the order of
+    /// received blocks has no effect on the routing priorities
+    fn sort_sockets(&self, endpoint: &Endpoint) {
+        let mut endpoint_sockets = self.endpoint_sockets.borrow_mut();
+        let sockets = endpoint_sockets.get_mut(endpoint).unwrap();
+
+        sockets.sort_by(|(_, a), (_, b)| {
+            // sort by channel_factor
+            b.is_direct
+                .cmp(&a.is_direct)
+                .then_with(|| b.channel_factor.cmp(&a.channel_factor))
+                .then_with(|| b.distance.cmp(&a.distance))
+                .then_with(
+                    || {
+                        cfg_if::cfg_if! {
+                            if #[cfg(feature = "debug")] {
+                                use crate::runtime::global_context::get_global_context;
+                                use core::cmp::Ordering;
+                                if get_global_context().debug_flags.enable_deterministic_behavior {
+                                    Ordering::Equal
+                                }
+                                else {
+                                    b.known_since.cmp(&a.known_since)
+                                }
+                            }
+                            else {
+                                b.known_since.cmp(&a.known_since)
+                            }
+                        }
+                    }
+                )
+
+        });
+    }
+
+    /// Removes all sockets for a given interface UUID
+    pub fn remove_sockets_for_interface_uuid(
+        &self,
+        interface_uuid: &ComInterfaceUUID,
+    ) {
+        if let Some(socket_uuids) =
+            self.socket_uuids_by_interface_uuid.borrow_mut().remove(interface_uuid)
+        {
+            for socket_uuid in socket_uuids {
+                self.delete_socket(&socket_uuid);
+            }
+        }
+    }
+
+    /// Returns the socket for a given UUID
+    /// The socket must be registered in the ComHub,
+    /// otherwise a panic will be triggered
+    /// Applicable for TI
+    pub fn get_socket_by_uuid(
+        &self,
+        socket_uuid: &ComInterfaceSocketUUID,
+    ) -> Ref<'_, SocketData> {
+        let sockets = self.sockets.borrow();
+        Ref::map(sockets, |sockets| {
+            sockets.get(&socket_uuid).expect("No socket data found for socket")
+        })
+    }
+
+    /// Returns a mutable reference to the socket for a given UUID
+    /// Applicable for TI
+    pub fn get_socket_by_uuid_mut(
+        &self,
+        socket_uuid: &ComInterfaceSocketUUID,
+    ) -> RefMut<'_, SocketData> {
+        let sockets = self.sockets.borrow_mut();
+        RefMut::map(sockets, |sockets| {
+            sockets.get_mut(&socket_uuid).expect("No socket data found for socket")
+        })
+    }
+
+    /// Checks if a socket with the given UUID exists in the manager
+    pub fn has_socket(&self, socket_uuid: &ComInterfaceSocketUUID) -> bool {
+        self.sockets.borrow().contains_key(socket_uuid)
+    }
+
+    /// Adds a socket to the SocketManager
+    /// Panics if the socket already exists
+    fn add_socket_to_list(
+        &self,
+        socket_uuid: ComInterfaceSocketUUID,
+        socket: SocketData,
+    ) {
+        let direct_endpoint = socket.socket_properties.direct_endpoint.clone();
+        
+        if self.has_socket(&socket_uuid) {
+            core::panic!(
+                "Socket {} already exists in SocketManager",
+                socket_uuid
+            );
+        }
+
+        // store interface socket mapping
+        self.socket_uuids_by_interface_uuid
+            .borrow_mut()
+            .entry(socket.interface_uuid.clone())
+            .or_default()
+            .insert(socket_uuid.clone());
+        // add socket to socket list
+        self.sockets
+            .borrow_mut()
+            .insert(socket_uuid.clone(), socket);
+    
+
+        // if socket has direct endpoint, register it
+        if let Some(direct_endpoint) = direct_endpoint {
+            self.register_socket_endpoint(
+                socket_uuid.clone(),
+                direct_endpoint,
+                0,
+            )
+            .unwrap_or_else(|e| {
+                error!(
+                    "Failed to register direct endpoint for socket {}: {:?}",
+                    socket_uuid, e
+                )
+            });
+        }
+    }
+
+    /// Adds a socket to the socket list.
+    /// If the priority is not set to `InterfacePriority::None`, the socket
+    /// is also registered as a fallback socket for outgoing connections with the
+    /// specified priority.
+    pub fn register_socket(
+        &self,
+        socket: SocketData,
+        priority: InterfacePriority,
+    ) -> Result<(), ComHubError> {
+        let can_send = socket.socket_properties.direction.can_send();
+        let socket_uuid = socket.socket_properties.uuid().clone();
+        if self.has_socket(&socket_uuid) {
+            core::panic!("Socket {} already exists in ComHub", socket_uuid);
+        }
+
+        info!(
+            "Adding socket {} to ComHub with priority {:?}, direct endpoint: {}, direction: {:?}",
+            socket_uuid,
+            priority,
+            socket
+                .socket_properties
+                .direct_endpoint
+                .as_ref()
+                .map(|e| e.to_string())
+                .unwrap_or("None".to_string()),
+            socket.socket_properties.direction
+        );
+
+        let direction = socket.socket_properties.direction.clone();
+
+        self.add_socket_to_list(socket_uuid.clone(), socket);
+
+        // add outgoing socket to fallback sockets list if they have a priority flag
+        if can_send {
+            match priority {
+                InterfacePriority::None => {
+                    // do nothing
+                }
+                InterfacePriority::Priority(priority) => {
+                    // add socket to fallback sockets list
+                    self.add_fallback_socket(&socket_uuid, priority, direction);
+                }
+            }
+        }
+
+        // notify com hub about new socket so that it can init the socket task and optionally send a
+        // hello block
+
+        // self.block_event_sender
+        //     .start_send(BlockSendEvent::NewSocket {
+        //         socket_uuid: socket_uuid.clone(),
+        //     })
+        //     .expect("Cannot send BlockSendEvent::NewSocket");
+
+        // call registered callbacks for socket registration
+        if let Some(callbacks) =
+            self.socket_registered_callbacks.borrow_mut().remove(&socket_uuid)
+        {
+            for callback in callbacks {
+                callback();
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Registers a socket as a fallback socket for outgoing connections
+    /// that can be used if no known route exists for an endpoint
+    /// Note: only sockets that support sending data should be used as fallback sockets
+    pub fn add_fallback_socket(
+        &self,
+        socket_uuid: &ComInterfaceSocketUUID,
+        priority: u16,
+        direction: InterfaceDirection,
+    ) {
+        // add to vec
+        self.fallback_sockets
+            .borrow_mut()
+            .push((socket_uuid.clone(), priority, direction));
+        // first sort by direction (InOut before Out - only In is not allowed)
+        // second sort by priority
+        self.fallback_sockets.borrow_mut().sort_by_key(|(_, priority, direction)| {
+            let dir_rank = match direction {
+                InterfaceDirection::InOut => 0,
+                InterfaceDirection::Out => 1,
+                InterfaceDirection::In => {
+                    core::panic!("Socket {socket_uuid} is not allowed to be used as fallback socket")
+                }
+            };
+            (dir_rank, core::cmp::Reverse(*priority))
+        });
+    }
+
+    /// Removes a socket from the socket list
+    pub fn delete_socket(&self, socket_uuid: &ComInterfaceSocketUUID) {
+        if !self.has_socket(socket_uuid) {
+            warn!("Socket {socket_uuid} not found in ComHub, cannot delete");
+            return;
+        };
+
+        // get interface uuid before removing socket
+        let interface_uuid =
+            self.get_socket_by_uuid(socket_uuid).interface_uuid.clone();
+
+        // remove socket from endpoint socket list
+        // remove endpoint key from endpoint_sockets if not sockets present
+        self.endpoint_sockets.borrow_mut().retain(|_, sockets| {
+            sockets.retain(|(uuid, _)| uuid != socket_uuid);
+            !sockets.is_empty()
+        });
+
+        // remove socket from socket list
+        self.sockets.borrow_mut().remove(socket_uuid);
+
+        // remove socket if it is the default socket
+        self.fallback_sockets
+            .borrow_mut()
+            .retain(|(uuid, _, _)| uuid != socket_uuid);
+
+        // remove socket from interface socket mapping
+        if let Some(socket_uuids) =
+            self.socket_uuids_by_interface_uuid.borrow_mut().get_mut(&interface_uuid)
+        {
+            socket_uuids.remove(socket_uuid);
+            if socket_uuids.is_empty() {
+                self.socket_uuids_by_interface_uuid.borrow_mut().remove(&interface_uuid);
+            }
+        }
+    }
+
+    /// Returns an iterator over all sockets for a given endpoint
+    /// The sockets are yielded in the order of their priority, starting with the
+    /// highest priority socket (the best socket for sending data to the endpoint)
+    pub fn iterate_endpoint_sockets<'a>(
+        &'a self,
+        endpoint: &'a Endpoint,
+        options: EndpointIterateOptions<'a>,
+    ) -> impl Iterator<Item = ComInterfaceSocketUUID> + 'a {
+        core::iter::from_coroutine(
+            #[coroutine]
+            move || {
+                // TODO #183: can we optimize this to avoid cloning the endpoint_sockets vector?
+                let endpoint_sockets =
+                    self.endpoint_sockets.borrow().get(endpoint).cloned();
+                if endpoint_sockets.is_none() {
+                    return;
+                }
+                for (socket_uuid, _) in endpoint_sockets.unwrap() {
+                    {
+                        let socket = self.get_socket_by_uuid(&socket_uuid);
+
+                        // check if only_direct is set and the endpoint equals the direct endpoint of the socket
+                        if options.only_direct
+                            && socket.socket_properties.direct_endpoint.is_some()
+                            && socket.socket_properties.direct_endpoint.as_ref().unwrap()
+                                == endpoint
+                        {
+                            debug!(
+                                "No direct socket found for endpoint {endpoint}. Skipping..."
+                            );
+                            continue;
+                        }
+
+                        // check if the socket is excluded if exclude_socket is set
+                        if options.exclude_sockets.contains(&socket.socket_properties.uuid()) {
+                            debug!(
+                                "Socket {} is excluded for endpoint {}. Skipping...",
+                                socket.socket_properties.uuid(), endpoint
+                            );
+                            continue;
+                        }
+
+                        // TODO #184 optimize and separate outgoing/non-outgoing sockets for endpoint
+                        // only yield outgoing sockets
+                        // if a non-outgoing socket is found, all following sockets
+                        // will also be non-outgoing
+                        if !socket.socket_properties.direction.can_send() {
+                            info!(
+                                "Socket {} is not outgoing for endpoint {}. Skipping...",
+                                socket.socket_properties.uuid(), endpoint
+                            );
+                            return;
+                        }
+                    }
+
+                    debug!(
+                        "Found matching socket {socket_uuid} for endpoint {endpoint}"
+                    );
+                    yield socket_uuid.clone()
+                }
+            },
+        )
+    }
+
+    /// Finds the best matching socket over which an endpoint is known to be reachable.
+    pub fn find_known_endpoint_socket(
+        &self,
+        endpoint: &Endpoint,
+        exclude_socket: &[ComInterfaceSocketUUID],
+    ) -> Option<ComInterfaceSocketUUID> {
+        match endpoint.instance {
+            // find socket for any endpoint instance
+            EndpointInstance::Any => {
+                let options = EndpointIterateOptions {
+                    only_direct: false,
+                    exact_instance: false,
+                    exclude_sockets: exclude_socket,
+                };
+                if let Some(socket) =
+                    self.iterate_endpoint_sockets(endpoint, options).next()
+                {
+                    return Some(socket);
+                }
+                None
+            }
+
+            // find socket for exact instance
+            EndpointInstance::Instance(_) => {
+                // iterate over all sockets of all interfaces
+                let options = EndpointIterateOptions {
+                    only_direct: false,
+                    exact_instance: true,
+                    exclude_sockets: exclude_socket,
+                };
+                if let Some(socket) =
+                    self.iterate_endpoint_sockets(endpoint, options).next()
+                {
+                    return Some(socket);
+                }
+                None
+            }
+            // TODO #185: how to handle broadcasts?
+            EndpointInstance::All => {
+                core::todo!("#186 Undescribed by author.")
+            }
+        }
+    }
+
+    /// Finds the best socket over which to send a block to an endpoint.
+    /// If a known socket is found, it is returned, otherwise the default socket is returned, if it
+    /// exists and is not excluded.
+    fn find_best_endpoint_socket(
+        &self,
+        local_endpoint: &Endpoint,
+        endpoint: &Endpoint,
+        exclude_sockets: &[ComInterfaceSocketUUID],
+    ) -> Option<ComInterfaceSocketUUID> {
+        // if the endpoint is the same as the hub endpoint, try to find an interface
+        // that redirects @@local
+        if endpoint == local_endpoint
+            && let Some(socket) = self
+                .find_known_endpoint_socket(&Endpoint::LOCAL, exclude_sockets)
+        {
+            return Some(socket);
+        }
+
+        // find best known socket for endpoint
+        let matching_socket =
+            self.find_known_endpoint_socket(endpoint, exclude_sockets);
+
+        // if a matching socket is found, return it
+        if matching_socket.is_some() {
+            matching_socket
+        }
+        // otherwise, return the highest priority socket that is not excluded
+        else {
+            for (socket_uuid, _, _) in self.fallback_sockets.borrow().iter() {
+                let socket = self.get_socket_by_uuid(socket_uuid);
+                info!(
+                    "{}: Find best for {}: {} ({}); excluded:{}",
+                    local_endpoint,
+                    endpoint,
+                    socket_uuid,
+                    socket
+                        .socket_properties
+                        .direct_endpoint
+                        .clone()
+                        .map(|e| e.to_string())
+                        .unwrap_or("None".to_string()),
+                    exclude_sockets.contains(socket_uuid)
+                );
+                if !exclude_sockets.contains(socket_uuid) {
+                    return Some(socket_uuid.clone());
+                }
+            }
+            None
+        }
+    }
+
+    /// Returns all receivers to which the block has to be sent, grouped by the
+    /// outbound socket uuids
+    pub fn get_outbound_receiver_groups(
+        &self,
+        // TODO #187: do we need the block here for additional information (match conditions),
+        // otherwise receivers are enough
+        local_endpoint: &Endpoint,
+        receiver_endpoints: &Vec<Endpoint>,
+        mut exclude_sockets: Vec<ComInterfaceSocketUUID>,
+    ) -> Option<Vec<(Option<ComInterfaceSocketUUID>, Vec<Endpoint>)>> {
+        if !receiver_endpoints.is_empty() {
+            let endpoint_sockets = receiver_endpoints
+                .iter()
+                .map(|endpoint: &Endpoint| {
+                    // add sockets from endpoint blacklist
+                    if let Some(blacklist) =
+                        self.endpoint_sockets_blacklist.borrow().get(endpoint)
+                    {
+                        exclude_sockets.extend(blacklist.iter().cloned());
+                    }
+                    let socket = self.find_best_endpoint_socket(
+                        local_endpoint,
+                        endpoint,
+                        &exclude_sockets,
+                    );
+                    (socket, endpoint)
+                })
+                .chunk_by(|(socket, _)| socket.clone())
+                .into_iter()
+                .map(|(socket, group)| {
+                    let endpoints = group
+                        .map(|(_, endpoint)| endpoint.clone())
+                        .collect::<Vec<_>>();
+                    (socket, endpoints)
+                })
+                .collect::<Vec<_>>();
+            Some(endpoint_sockets)
+        } else {
+            None
+        }
+    }
+}

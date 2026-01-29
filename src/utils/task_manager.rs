@@ -4,7 +4,6 @@ use core::cell::RefCell;
 use futures::future::Future;
 use core::pin::Pin;
 use core::fmt::Debug;
-use std::rc::Rc;
 use async_select::select;
 use futures_util::future::Fuse;
 use futures_util::stream::FuturesUnordered;

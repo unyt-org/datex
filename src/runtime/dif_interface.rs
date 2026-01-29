@@ -241,6 +241,7 @@ mod tests {
     use core::cell::RefCell;
     use datex_core::runtime::RuntimeConfig;
     use datex_macros::async_test;
+    use crate::native_global_context::get_global_context_native;
     use crate::runtime::RuntimeRunner;
 
     #[test]
@@ -256,7 +257,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_create_and_observe_pointer() {
-        RuntimeRunner::new_native(RuntimeConfig::default()).run(async |runtime| {
+        RuntimeRunner::new(RuntimeConfig::default(), get_global_context_native()).run(async |runtime| {
             let runtime = runtime.internal;
 
             let pointer_address = runtime

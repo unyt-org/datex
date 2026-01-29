@@ -5,7 +5,6 @@ use core::{
 };
 use datex_core::{
     channel::{
-        futures_intrusive::ManualResetEvent,
         mpsc::{UnboundedReceiver, UnboundedSender},
     },
     network::{

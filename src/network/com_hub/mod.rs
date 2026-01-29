@@ -6,7 +6,7 @@ use crate::{
     },
     network::com_hub::{
         errors::{ComHubError, SocketEndpointRegistrationError},
-        managers::interfaces_manager::InterfacesManager,
+        managers::com_interface_manager::ComInterfaceManager,
         network_response::{
             Response, ResponseError, ResponseOptions,
             ResponseResolutionStrategy,
@@ -19,7 +19,7 @@ pub mod managers;
 
 #[cfg(feature = "debug")]
 pub mod metadata;
-use crate::network::com_hub::managers::sockets_manager::SocketsManager;
+use crate::network::com_hub::managers::socket_manager::ComInterfaceSocketManager;
 
 pub mod errors;
 pub mod network_response;
@@ -39,7 +39,7 @@ use log::{debug, error, info, warn};
 use serde::{Deserialize, Serialize};
 #[cfg(feature = "tokio_runtime")]
 use tokio::task::yield_now;
-use datex_core::network::com_interfaces::default_com_interfaces::local_loopback_interface::LocalLoopbackInterfaceSetupData;
+use crate::network::com_interfaces::local_loopback_interface::LocalLoopbackInterfaceSetupData;
 
 pub mod options;
 use crate::{
@@ -60,7 +60,7 @@ use crate::{
         com_interface::factory::{
             ComInterfaceConfiguration, ComInterfaceSyncFactory,
             NewSocketsIterator, SendCallback, SendFailure, SendSuccess,
-            SocketConfiguration, SocketDataIterator, async_next_pin_box,
+            SocketConfiguration, SocketDataIterator,
         },
     },
     utils::{
@@ -78,11 +78,9 @@ use datex_core::global::dxb_block::BlockId;
 use crate::network::com_interfaces::com_interface::ComInterfaceUUID;
 use crate::network::com_interfaces::com_interface::factory::SocketProperties;
 use crate::network::com_interfaces::com_interface::properties::ComInterfaceProperties;
+use crate::utils::async_iterators::async_next_pin_box;
 use crate::utils::maybe_async::{SyncOrAsync, SyncOrAsyncResult};
 
-/// Maximum number of concurrent ComInterface sockets for Embassy runtime
-pub const MAX_CONCURRENT_COM_INTERFACE_SOCKETS_EMBASSY: usize = 2;
-pub const MAX_CONCURRENT_COM_INTERFACES_EMBASSY: usize = 2;
 
 pub type IncomingBlockInterceptor =
     Box<dyn Fn(&DXBBlock, &ComInterfaceSocketUUID) + 'static>;
@@ -107,8 +105,8 @@ pub struct ComHub {
     /// ComHub configuration options
     pub options: ComHubOptions,
 
-    socket_manager: SocketsManager,
-    interfaces_manager: InterfacesManager,
+    socket_manager: ComInterfaceSocketManager,
+    interfaces_manager: ComInterfaceManager,
 
     pub block_handler: BlockHandler,
 
@@ -200,8 +198,8 @@ impl ComHub {
             endpoint: endpoint.into(),
             options: ComHubOptions::default(),
             block_handler,
-            socket_manager: SocketsManager::new(),
-            interfaces_manager: InterfacesManager::default(),
+            socket_manager: ComInterfaceSocketManager::new(),
+            interfaces_manager: ComInterfaceManager::default(),
             incoming_block_interceptors: RefCell::new(Vec::new()),
             outgoing_block_interceptors: RefCell::new(Vec::new()),
             task_manager,

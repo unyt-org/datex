@@ -1,13 +1,14 @@
-use datex_core::{
-    runtime::{Runtime, RuntimeConfig},
-    values::core_values::endpoint::Endpoint,
-};
-use log::info;
-
-// simple runtime initialization
-pub fn runtime_init() {
-    let runtime = Runtime::new(
-        RuntimeConfig::new_with_endpoint(Endpoint::new("@+bench")),
-    );
-    info!("Runtime version: {}", runtime.version);
-}
+// TODO: async initialization benchmark
+// use datex_core::{
+//     runtime::{Runtime, RuntimeConfig},
+//     values::core_values::endpoint::Endpoint,
+// };
+// use log::info;
+//
+// // simple runtime initialization
+// pub fn runtime_init() {
+//     let runtime = Runtime::new(
+//         RuntimeConfig::new_with_endpoint(Endpoint::new("@+bench")),
+//     );
+//     info!("Runtime version: {}", runtime.version);
+// }

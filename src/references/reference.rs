@@ -745,6 +745,7 @@ impl Apply for Reference {
 
 #[cfg(test)]
 mod tests {
+    use datex_core::native_global_context::get_global_context_native;
     use super::*;
     use crate::{
         assert_identical, assert_structural_eq, assert_value_eq,
@@ -905,7 +906,7 @@ mod tests {
 
     #[test]
     fn nested_references() {
-        set_global_context(GlobalContext::native());
+        set_global_context(get_global_context_native());
         let memory = &RefCell::new(Memory::default());
 
         let mut map_a = Map::default();

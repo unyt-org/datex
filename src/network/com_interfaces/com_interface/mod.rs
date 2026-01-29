@@ -1,5 +1,5 @@
 use crate::network::{
-    com_hub::managers::interfaces_manager::SyncOrAsyncComInterfaceImplementationFactoryFn,
+    com_hub::managers::com_interface_manager::SyncOrAsyncComInterfaceImplementationFactoryFn,
     com_interfaces::com_interface::{
         factory::{ComInterfaceAsyncFactory, ComInterfaceSyncFactory},
     },
@@ -13,7 +13,7 @@ use crate::{
     network::{
         com_hub::{
             errors::ComInterfaceCreateError,
-            managers::interfaces_manager::SyncComInterfaceImplementationFactoryFn,
+            managers::com_interface_manager::SyncComInterfaceImplementationFactoryFn,
         },
     },
     stdlib::{
@@ -25,17 +25,13 @@ use crate::{
     },
 };
 use core::fmt::{Debug, Display};
-use crate::channel::futures_intrusive::ManualResetEvent;
 use crate::network::com_interfaces::com_interface::factory::ComInterfaceConfiguration;
 use crate::stdlib::string::String;
-use crate::stdlib::vec::Vec;
-use crate::utils::async_callback::AsyncCallback;
 
 pub mod error;
 pub mod factory;
 pub mod properties;
 pub mod socket;
-pub mod state;
 
 #[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
 #[cfg_attr(feature = "wasm_runtime", tsify(type = "string"))]
@@ -54,13 +50,6 @@ impl TryFrom<String> for ComInterfaceUUID {
         let value = value.strip_prefix("com_interface::").ok_or(())?;
         Ok(ComInterfaceUUID(UUID::from_string(value.to_string())))
     }
-}
-
-#[derive(Debug, Clone)]
-pub enum ComInterfaceStateEvent {
-    Connected,
-    NotConnected,
-    Destroyed,
 }
 
 //
@@ -286,57 +275,3 @@ pub enum ComInterfaceStateEvent {
 //         (uuid_a, uuid_b)
 //     }
 // }
-
-/// A com interface that can be used by the com hub to manage communication
-/// Implementations can be created using factory functions or setup data structs
-#[deprecated]
-pub struct ComInterfaceUtils {
-
-}
-
-impl ComInterfaceUtils {
-    /// Initializes a new ComInterface with a specified implementation as returned by the factory function
-    pub fn create_from_sync_factory_fn(
-        factory_fn: &SyncComInterfaceImplementationFactoryFn,
-        setup_data: ValueContainer,
-    ) -> Result<ComInterfaceConfiguration, ComInterfaceCreateError> {
-        // Create the implementation using the factory function
-        factory_fn(setup_data)
-    }
-
-    pub async fn create_from_async_factory_fn(
-        factory_fn: &SyncOrAsyncComInterfaceImplementationFactoryFn,
-        setup_data: ValueContainer,
-    ) -> Result<ComInterfaceConfiguration, ComInterfaceCreateError> {
-        // Create the implementation using the factory function
-        match factory_fn {
-            SyncOrAsyncComInterfaceImplementationFactoryFn::Sync(sync_fn) => {
-                sync_fn(setup_data)
-            }
-            SyncOrAsyncComInterfaceImplementationFactoryFn::Async(async_fn) => {
-                async_fn(setup_data).await
-            }
-            SyncOrAsyncComInterfaceImplementationFactoryFn::Dyn(dyn_fn) => {
-                dyn_fn(setup_data).await
-            }
-        }
-    }
-
-    /// Creates a new ComInterface with the implementation of type T
-    /// only works for sync factories
-    pub fn create_sync_from_setup_data<T: ComInterfaceSyncFactory>(
-        setup_data: T,
-    ) -> Result<ComInterfaceConfiguration, ComInterfaceCreateError> {
-        // Create the implementation using the factory function
-        T::create_interface(setup_data)
-    }
-
-    /// Creates a new ComInterface with the implementation of type T
-    /// only works for async factories
-    pub async fn create_async_from_setup_data<T: ComInterfaceAsyncFactory>(
-        setup_data: T,
-    ) -> Result<ComInterfaceConfiguration, ComInterfaceCreateError> {
-        // Create the implementation using the factory function
-        T::create_interface(setup_data).await
-    }
-}

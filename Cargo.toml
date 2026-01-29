@@ -110,7 +110,6 @@ web-time = { version = "1.1.0", optional = true }
 embedded-time = "0.12.1"
 async-select = "0.3.0"
 async-broadcast = { version = "0.7.2", optional = true }
-futures-intrusive = { version = "0.5.0", default-features = false }
 async_tiny = "0.4.0"
 
 
@@ -276,7 +275,7 @@ std = [
     "hex/std",
     "bytes/std",
     "ringmap/std",
-    "futures-intrusive/default",
+
 ] # use std
 
 nostd = [
@@ -293,7 +292,7 @@ nostd = [
     "hex/alloc",
     "num/alloc",
     "num/libm",
-    "futures-intrusive/alloc",
+
 ]
 
 debug = ["dep:serde-big-array"]

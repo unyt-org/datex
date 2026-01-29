@@ -9,8 +9,8 @@ use crate::{
     utils::buffers::write_u16, values::core_values::endpoint::Endpoint,
 };
 use binrw::{
-    BinRead, BinWrite,
-    io::{Cursor, Read},
+    io::{Cursor, Read}, BinRead,
+    BinWrite,
 };
 use core::{
     fmt::Display, prelude::rust_2024::*, result::Result, unimplemented,
@@ -275,7 +275,7 @@ impl DXBBlock {
                 set_global_context(GlobalContext::native());
                 let crypto = get_global_context().crypto;
                 */
-                use crate::crypto::crypto_native::CryptoNative;
+                use crate::native_global_context::crypto::CryptoNative;
                 use crate::crypto::crypto::CryptoTrait;
                 let crypto = CryptoNative {};
 
@@ -397,7 +397,7 @@ impl DXBBlock {
     pub fn sender(&self) -> &Endpoint {
         &self.routing_header.sender
     }
-    
+
     pub fn block_type(&self) -> BlockType {
         self.block_header.flags_and_timestamp.block_type()
     }
@@ -456,7 +456,7 @@ mod tests {
     use core::str::FromStr;
 
     use crate::{
-        crypto::{crypto::CryptoTrait, crypto_native::CryptoNative},
+        crypto::crypto::CryptoTrait,
         global::{
             dxb_block::DXBBlock,
             protocol_structures::{
@@ -466,6 +466,7 @@ mod tests {
         },
         values::core_values::endpoint::Endpoint,
     };
+    use crate::native_global_context::crypto::CryptoNative;
 
     #[tokio::test]
     pub async fn test_recalculate() {

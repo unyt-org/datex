@@ -2,6 +2,7 @@ use crate::{
     crypto::crypto::CryptoTrait, stdlib::sync::Arc, utils::time::TimeTrait,
 };
 use core::prelude::rust_2024::*;
+
 #[cfg(feature = "debug")]
 #[derive(Clone, Debug)]
 pub struct DebugFlags {
@@ -35,23 +36,6 @@ impl GlobalContext {
         GlobalContext {
             crypto,
             time,
-            #[cfg(feature = "debug")]
-            debug_flags: DebugFlags::default(),
-        }
-    }
-
-    #[cfg(all(
-        feature = "native_crypto",
-        feature = "std",
-        feature = "native_time"
-    ))]
-    pub fn native() -> GlobalContext {
-        use crate::{
-            crypto::crypto_native::CryptoNative, utils::time_native::TimeNative,
-        };
-        GlobalContext {
-            crypto: Arc::new(CryptoNative),
-            time: Arc::new(TimeNative),
             #[cfg(feature = "debug")]
             debug_flags: DebugFlags::default(),
         }

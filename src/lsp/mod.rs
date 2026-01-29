@@ -403,7 +403,7 @@ mod tests {
 
     use crate::{
         runtime::{RuntimeConfig},
-        utils::context::init_global_context,
+        native_global_context::init_global_context_native,
         values::core_values::endpoint::Endpoint,
     };
 
@@ -412,16 +412,17 @@ mod tests {
         io::{AsyncReadExt, AsyncWriteExt, duplex},
         time::{Duration, timeout},
     };
-    use crate::runtime::global_context::GlobalContext;
+    use crate::native_global_context::get_global_context_native;
     use crate::runtime::RuntimeRunner;
 
     #[tokio::test(flavor = "current_thread")]
     async fn test_lsp_initialization() {
 
-        init_global_context();
+        init_global_context_native();
 
-        RuntimeRunner::new_native(
+        RuntimeRunner::new(
             RuntimeConfig::new_with_endpoint(Endpoint::from_str("@lspler").unwrap()),
+            get_global_context_native()
         ).run(async |runtime| {
             let (mut client_read, server_write) = duplex(1024);
             let (server_read, mut client_write) = duplex(1024);

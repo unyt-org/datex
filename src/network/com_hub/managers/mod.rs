@@ -1,2 +1,2 @@
-pub mod interfaces_manager;
-pub mod sockets_manager;
+pub mod com_interface_manager;
+pub mod socket_manager;
