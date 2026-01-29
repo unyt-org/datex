@@ -1235,9 +1235,7 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
 #[cfg(test)]
 #[allow(clippy::std_instead_of_core, clippy::std_instead_of_alloc)]
 mod tests {
-    use std::{
-        assert_matches::assert_matches, cell::RefCell, rc::Rc, str::FromStr,
-    };
+    use std::{assert_matches, cell::RefCell, rc::Rc, str::FromStr};
 
     use crate::ast::expressions::{
         BinaryOperation, DatexExpression, DatexExpressionData, List, Map,

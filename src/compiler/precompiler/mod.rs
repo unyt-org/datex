@@ -599,7 +599,7 @@ mod tests {
     use crate::ast::type_expressions::{StructuralMap, TypeExpressionData};
     use crate::parser::Parser;
     use crate::references::reference::ReferenceMutability;
-    use crate::stdlib::assert_matches::assert_matches;
+    use crate::stdlib::assert_matches;
     use crate::values::core_values::integer::Integer;
     use crate::values::pointer::PointerAddress;
 

@@ -39,7 +39,7 @@ mod tests {
         parse, try_parse_and_collect_errors,
         try_parse_and_return_on_first_error,
     };
-    use core::assert_matches::assert_matches;
+    use core::assert_matches;
 
     #[test]
     fn parse_empty_list() {

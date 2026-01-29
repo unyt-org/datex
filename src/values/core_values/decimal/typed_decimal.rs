@@ -568,7 +568,7 @@ impl From<f64> for TypedDecimal {
 
 #[cfg(test)]
 mod tests {
-    use crate::stdlib::assert_matches::assert_matches;
+    use crate::stdlib::assert_matches;
 
     use super::*;
     use crate::values::core_values::decimal::Decimal;

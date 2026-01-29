@@ -226,7 +226,7 @@ fn get_local_pointer_value(
 
 #[cfg(test)]
 mod tests {
-    use crate::stdlib::assert_matches::assert_matches;
+    use crate::stdlib::assert_matches;
     use crate::stdlib::vec;
 
     use super::*;

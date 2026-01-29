@@ -41,7 +41,7 @@ use datex_core::parser::parser_result::{
 };
 use datex_core::references::reference::ReferenceMutability;
 use datex_core::stdlib::{
-    assert_matches::assert_matches, collections::HashMap, str::FromStr, vec,
+    assert_matches, collections::HashMap, str::FromStr, vec,
 };
 use datex_core::values::core_values::error::NumberParseError;
 

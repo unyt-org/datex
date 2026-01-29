@@ -608,7 +608,7 @@ mod tests {
     use crate::values::core_values::endpoint::Endpoint;
     use crate::values::core_values::map::Map;
 
-    use crate::stdlib::assert_matches::assert_matches;
+    use crate::stdlib::assert_matches;
     use crate::values::{
         core_value::CoreValue, value::Value, value_container::ValueContainer,
     };

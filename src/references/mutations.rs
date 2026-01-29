@@ -292,7 +292,7 @@ mod tests {
         ReferenceMutability,
     };
     use crate::runtime::memory::Memory;
-    use crate::stdlib::assert_matches::assert_matches;
+    use crate::stdlib::assert_matches;
     use crate::values::core_values::list::List;
     use crate::values::core_values::map::Map;
     use crate::{

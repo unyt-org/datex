@@ -331,7 +331,7 @@ mod tests {
     };
     use crate::values::core_values::integer::typed_integer::TypedInteger;
     use crate::values::pointer::PointerAddress;
-    use core::assert_matches::assert_matches;
+    use core::assert_matches;
 
     #[test]
     fn parse_boolean_true() {

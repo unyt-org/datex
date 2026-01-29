@@ -182,9 +182,7 @@ mod tests {
     use crate::references::observers::{ObserveOptions, TransceiverId};
     use crate::runtime::memory::Memory;
     use crate::stdlib::borrow::Cow;
-    use crate::stdlib::{
-        assert_matches::assert_matches, cell::RefCell, rc::Rc,
-    };
+    use crate::stdlib::{assert_matches, cell::RefCell, rc::Rc};
     use crate::values::core_values::map::Map;
     use crate::{
         dif::{

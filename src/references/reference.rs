@@ -746,7 +746,7 @@ mod tests {
     use super::*;
     use crate::runtime::global_context::{GlobalContext, set_global_context};
     use crate::runtime::memory::Memory;
-    use crate::stdlib::assert_matches::assert_matches;
+    use crate::stdlib::assert_matches;
     use crate::traits::value_eq::ValueEq;
     use crate::{assert_identical, assert_structural_eq, assert_value_eq};
     use datex_core::values::core_values::map::Map;
