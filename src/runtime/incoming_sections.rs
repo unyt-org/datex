@@ -10,7 +10,6 @@ use crate::{
     },
     runtime::{RuntimeInternal, execution::ExecutionError},
     stdlib::{borrow::ToOwned, rc::Rc, vec, vec::Vec},
-    task::spawn_with_panic_notify,
     values::{
         core_values::endpoint::Endpoint, value_container::ValueContainer,
     },

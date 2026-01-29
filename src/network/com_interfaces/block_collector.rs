@@ -4,7 +4,6 @@ use crate::{
     },
     global::dxb_block::{DXBBlock, HeaderParsingError},
     stdlib::vec::Vec,
-    task::spawn_with_panic_notify,
 };
 use core::prelude::rust_2024::*;
 use std::async_iter::AsyncIterator;
