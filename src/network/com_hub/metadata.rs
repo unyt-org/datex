@@ -136,10 +136,9 @@ impl ComHub {
             Vec<ComHubMetadataInterfaceSocket>,
         > = HashMap::new();
 
-        let socket_manager = self.socket_manager;
-        for (endpoint, sockets) in socket_manager.endpoint_sockets.borrow().iter() {
+        for (endpoint, sockets) in self.socket_manager.endpoint_sockets.borrow().iter() {
             for (socket_uuid, properties) in sockets {
-                let socket = socket_manager.get_socket_by_uuid(socket_uuid);
+                let socket = self.socket_manager.get_socket_by_uuid(socket_uuid);
                 let com_interface_uuid = socket.interface_uuid.clone();
                 if !sockets_by_com_interface_uuid
                     .contains_key(&com_interface_uuid)
@@ -159,7 +158,7 @@ impl ComHub {
             }
         }
 
-        for (socket_uuid, socket) in socket_manager.sockets.borrow().iter()
+        for (socket_uuid, socket) in self.socket_manager.sockets.borrow().iter()
         {
             // if no endpoints are registered, we consider it a socket without an endpoint
             if socket.endpoints.is_empty() {
@@ -182,13 +181,11 @@ impl ComHub {
                 continue;
             }
         }
-        drop(socket_manager);
-        let interface_manager = self.interfaces_manager;
 
-        for (interface, _) in interface_manager.interfaces.borrow().values() {
+        for (interface, _) in self.interfaces_manager.interfaces.borrow().values() {
             metadata.interfaces.push(ComHubMetadataInterface {
                 uuid: interface.uuid().to_string(),
-                properties: *interface.properties.clone(),
+                properties: (*interface.properties).clone(),
                 sockets: sockets_by_com_interface_uuid
                     .remove(&interface.uuid())
                     .unwrap_or_default(),

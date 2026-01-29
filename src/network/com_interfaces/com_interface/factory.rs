@@ -198,14 +198,21 @@ impl SendCallback {
     }
 }
 
-#[derive(Debug)]
 pub struct ComInterfaceConfiguration {
     uuid: ComInterfaceUUID,
     /// The properties of the interface instance
     pub properties: Rc<ComInterfaceProperties>,
     // TODO: docs
-    #[debug(skip)]
     pub new_sockets_iterator: NewSocketsIterator,
+}
+
+impl Debug for ComInterfaceConfiguration {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("ComInterfaceConfiguration")
+            .field("uuid", &self.uuid)
+            .field("properties", &self.properties)
+            .finish()
+    }
 }
 
 impl ComInterfaceConfiguration {
