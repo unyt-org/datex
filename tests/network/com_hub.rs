@@ -30,7 +30,6 @@ use datex_core::{
             state::ComInterfaceState,
         },
     },
-    runtime::AsyncContext,
     serde::serializer::to_value_container,
     stdlib::rc::Rc,
     values::core_values::endpoint::Endpoint,
@@ -41,7 +40,7 @@ use tokio::task::yield_now;
 /// Creates a mock ComHub for testing without a connected channel
 fn create_mock_com_hub() -> Rc<ComHub> {
     let (sender, receiver) = create_unbounded_channel();
-    ComHub::create(Endpoint::default(), sender, AsyncContext::new())
+    ComHub::create(Endpoint::default(), sender)
 }
 
 #[async_test]
@@ -50,7 +49,6 @@ pub async fn test_add_and_remove() {
     let mockup_interface_with_receivers =
         ComInterfaceUtils::create_sync_from_setup_data(
             MockupInterfaceSetupData::new("test"),
-            AsyncContext::default(),
         )
         .unwrap();
 
@@ -72,12 +70,10 @@ pub async fn test_multiple_add() {
 
     let mockup_interface1 = ComInterfaceUtils::create_sync_from_setup_data(
         MockupInterfaceSetupData::new("mockup_interface1"),
-        AsyncContext::default(),
     )
     .unwrap();
     let mockup_interface2 = ComInterfaceUtils::create_sync_from_setup_data(
         MockupInterfaceSetupData::new("mockup_interface2"),
-        AsyncContext::default(),
     )
     .unwrap();
 
@@ -645,7 +641,6 @@ pub async fn register_factory() {
             to_value_container(&MockupInterfaceSetupData::new("mockup"))
                 .unwrap(),
             InterfacePriority::default(),
-            AsyncContext::default(),
         )
         .await
         .unwrap();
@@ -671,7 +666,6 @@ pub async fn test_reconnect() {
     let (base_interface, interface_with_receivers) =
         ComInterfaceProxy::create_interface(
             ComInterfaceProperties::default(),
-            AsyncContext::default(),
         );
 
     // add base_interface to com_hub

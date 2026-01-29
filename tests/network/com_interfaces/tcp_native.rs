@@ -13,7 +13,6 @@ use datex_core::{
             },
         },
     },
-    runtime::AsyncContext,
 };
 use datex_macros::async_test;
 
@@ -24,7 +23,6 @@ pub async fn test_client_no_connection() {
             TCPClientInterfaceSetupData {
                 address: "0.0.0.0:9086".to_string(),
             },
-            AsyncContext::default()
         )
         .await
         .unwrap_err(),
@@ -43,7 +41,6 @@ pub async fn test_construct() {
     let (server_interface, (_, mut server_interface_socket_event_receiver)) =
         ComInterfaceUtils::create_async_from_setup_data(
             TCPServerInterfaceSetupData::new_with_port(PORT),
-            AsyncContext::default(),
         )
         .await
         .unwrap();
@@ -53,7 +50,6 @@ pub async fn test_construct() {
             TCPClientInterfaceSetupData {
                 address: format!("0.0.0.0:{PORT}"),
             },
-            AsyncContext::default(),
         )
         .await
         .unwrap();

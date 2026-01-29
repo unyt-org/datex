@@ -11,12 +11,11 @@ use crate::{
             },
         },
         com_interfaces::com_interface::{
-            ComInterfaceReceivers, ComInterfaceStateEvent, ComInterfaceUUID,
+            ComInterfaceUUID,
             ComInterfaceUtils, factory::ComInterfaceSyncFactory,
             socket::ComInterfaceSocketUUID,
         },
     },
-    runtime::AsyncContext,
     stdlib::{
         cell::{Ref, RefCell},
         rc::Rc,
@@ -27,14 +26,14 @@ use crate::{
 };
 use core::{prelude::rust_2024::*, result::Result};
 use datex_core::network::com_interfaces::com_interface::{
-    ComInterfaceWithReceivers, factory::ComInterfaceAsyncFactory,
+    factory::ComInterfaceAsyncFactory,
 };
 
 /// Interface management methods
 impl ComHub {
     /// Registers a new sync interface factory for the given interface type
     pub fn register_sync_interface_factory<T: ComInterfaceSyncFactory>(&self) {
-        self.interface_manager
+        self.interfaces_manager
             .borrow_mut()
             .register_sync_interface_factory::<T>();
     }
@@ -42,7 +41,7 @@ impl ComHub {
     pub fn register_async_interface_factory<T: ComInterfaceAsyncFactory>(
         &self,
     ) {
-        self.interface_manager
+        self.interfaces_manager
             .borrow_mut()
             .register_async_interface_factory::<T>();
     }
@@ -52,7 +51,7 @@ impl ComHub {
         interface_type: String,
         factory: DynInterfaceImplementationFactoryFn,
     ) {
-        self.interface_manager
+        self.interfaces_manager
             .borrow_mut()
             .register_dyn_interface_factory(interface_type, factory);
     }
@@ -66,7 +65,7 @@ impl ComHub {
     ) -> Ref<'_, ComInterfaceUtils> {
         let socket_manager = self.socket_manager.borrow();
         let socket = socket_manager.get_socket_by_uuid(socket_uuid);
-        Ref::map(self.interface_manager.borrow(), |manager| {
+        Ref::map(self.interfaces_manager.borrow(), |manager| {
             manager.get_interface_by_uuid(&socket.interface_uuid)
         })
     }
@@ -79,11 +78,11 @@ impl ComHub {
     ) -> Result<(), InterfaceAddError> {
         let (com_interface, receivers) = com_interface_with_receivers;
         let uuid = com_interface.uuid().clone();
-        self.interface_manager
+        self.interfaces_manager
             .borrow_mut()
             .add_interface(com_interface, priority)?;
         self.init_interface_event_listeners(
-            self.interface_manager.borrow().get_interface_by_uuid(&uuid),
+            self.interfaces_manager.borrow().get_interface_by_uuid(&uuid),
             receivers,
         );
         Ok(())
@@ -98,7 +97,7 @@ impl ComHub {
     ) -> Result<ComInterfaceUUID, ComInterfaceCreateError> {
         let (com_interface_uuid, receivers) =
             InterfacesManager::create_and_add_interface(
-                self.interface_manager.clone(),
+                self.interfaces_manager.clone(),
                 interface_type,
                 setup_data,
                 priority,
@@ -106,7 +105,7 @@ impl ComHub {
             .await?;
         let created_sockets;
         {
-            let interface_manager = self.interface_manager.borrow();
+            let interface_manager = self.interfaces_manager.borrow();
             let interface =
                 interface_manager.get_interface_by_uuid(&com_interface_uuid);
             created_sockets = interface.properties().created_sockets.clone();
@@ -137,14 +136,14 @@ impl ComHub {
         setup_data: ValueContainer,
         priority: InterfacePriority,
     ) -> Result<ComInterfaceUUID, ComInterfaceCreateError> {
-        let mut interface_manager = self.interface_manager.borrow_mut();
+        let mut interface_manager = self.interfaces_manager.borrow_mut();
         let (com_interface_uuid, receivers) = interface_manager
             .create_and_add_interface_sync(
                 interface_type,
                 setup_data,
                 priority,
             )?;
-        let interface_manager = self.interface_manager.borrow();
+        let interface_manager = self.interfaces_manager.borrow();
         self.init_interface_event_listeners(
             interface_manager.get_interface_by_uuid(&com_interface_uuid),
             receivers,
@@ -156,7 +155,7 @@ impl ComHub {
         &self,
         interface_uuid: ComInterfaceUUID,
     ) -> Result<(), ComHubError> {
-        self.interface_manager
+        self.interfaces_manager
             .borrow_mut()
             .destroy_interface(&interface_uuid)?;
 
@@ -168,7 +167,7 @@ impl ComHub {
     }
 
     pub fn has_interface(&self, interface_uuid: &ComInterfaceUUID) -> bool {
-        self.interface_manager
+        self.interfaces_manager
             .borrow()
             .has_interface(interface_uuid)
     }

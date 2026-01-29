@@ -15,8 +15,7 @@ use datex_core::{
             properties::{InterfaceDirection, ComInterfaceProperties},
         },
     },
-    runtime::{AsyncContext, Runtime, RuntimeConfig},
-    task::spawn_with_panic_notify_default,
+    runtime::{Runtime, RuntimeConfig},
     values::core_values::endpoint::Endpoint,
 };
 use log::info;
@@ -610,7 +609,6 @@ impl Network {
                 name: Some(connection.setup_data.name.clone()),
                 ..Default::default()
             },
-            AsyncContext::default(),
         );
         runtime
             .com_hub()

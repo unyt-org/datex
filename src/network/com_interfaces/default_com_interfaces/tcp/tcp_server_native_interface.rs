@@ -242,11 +242,9 @@ mod tests {
         network::{
             com_hub::errors::ComInterfaceCreateError,
             com_interfaces::{
-                com_interface::ComInterfaceProxy,
                 default_com_interfaces::tcp::tcp_common::TCPServerInterfaceSetupData,
             },
         },
-        runtime::AsyncContext,
     };
 
     #[async_test]

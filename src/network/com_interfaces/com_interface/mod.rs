@@ -15,14 +15,8 @@ use crate::{
             errors::ComInterfaceCreateError,
             managers::interfaces_manager::SyncComInterfaceImplementationFactoryFn,
         },
-        com_interfaces::com_interface::properties::InterfaceDirection,
     },
-    runtime::AsyncContext,
-    std_sync::Mutex,
     stdlib::{
-        cell::{Ref, RefCell},
-        rc::Rc,
-        sync::Arc,
         string::ToString,
     },
     utils::uuid::UUID,
@@ -41,7 +35,6 @@ pub mod error;
 pub mod factory;
 pub mod properties;
 pub mod socket;
-pub mod socket_manager;
 pub mod state;
 
 #[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]

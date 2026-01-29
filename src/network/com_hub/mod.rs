@@ -29,15 +29,11 @@ use crate::{
     stdlib::{
         boxed::Box, cell::RefCell, rc::Rc, string::ToString, vec, vec::Vec,
     },
-    channel::mpsc::{
-        UnboundedReceiver, create_unbounded_channel,
-    },
     utils::time::Time,
 };
 use core::{
     cmp::PartialEq, fmt::{Debug, Formatter}, panic, prelude::rust_2024::*, result::Result
 };
-use std::pin::Pin;
 use itertools::Itertools;
 use log::{debug, error, info, warn};
 use serde::{Deserialize, Serialize};
@@ -54,7 +50,6 @@ use crate::{
             NetworkTraceHop, NetworkTraceHopDirection, NetworkTraceHopSocket,
         },
     },
-    runtime::AsyncContext,
     values::core_values::endpoint::Endpoint,
 };
 pub mod com_hub_interface;
@@ -114,7 +109,7 @@ pub struct ComHub {
     pub options: ComHubOptions,
 
     socket_manager: SocketsManager,
-    interface_manager: Rc<RefCell<InterfacesManager>>,
+    interfaces_manager: InterfacesManager,
 
     pub block_handler: BlockHandler,
 
@@ -167,12 +162,6 @@ impl Default for InterfacePriority {
     }
 }
 
-// #[cfg(test)]
-impl ComHub {
-    pub fn interface_manager(&self) -> Rc<RefCell<InterfacesManager>> {
-        self.interface_manager.clone()
-    }
-}
 
 enum PreReceiveAction {
     Async,
@@ -213,9 +202,7 @@ impl ComHub {
             options: ComHubOptions::default(),
             block_handler,
             socket_manager: SocketsManager::new(),
-            interface_manager: Rc::new(RefCell::new(
-                InterfacesManager::default(),
-            )),
+            interfaces_manager: InterfacesManager::default(),
             incoming_block_interceptors: RefCell::new(Vec::new()),
             outgoing_block_interceptors: RefCell::new(Vec::new()),
             task_manager,
@@ -296,7 +283,7 @@ impl ComHub {
                 }
             }
         }
-        
+
         // interface closed, remove
         // TODO
     }

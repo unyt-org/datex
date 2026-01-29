@@ -1,10 +1,9 @@
 use core::str::FromStr;
 use datex_core::{
     network::com_interfaces::{
-        com_interface::{ComInterfaceUtils, socket::ComInterfaceSocketEvent},
+        com_interface::{ComInterfaceUtils},
         default_com_interfaces::http::http_common::HTTPServerInterfaceSetupData,
     },
-    runtime::AsyncContext,
     values::core_values::endpoint::Endpoint,
 };
 use datex_macros::async_test;
@@ -16,7 +15,6 @@ pub async fn test_construct() {
 
     let http_server_interface = ComInterfaceUtils::create_async_from_setup_data(
         HTTPServerInterfaceSetupData { port: PORT },
-        AsyncContext::default(),
     )
     .await
     .expect("Failed to create HTTP server interface");

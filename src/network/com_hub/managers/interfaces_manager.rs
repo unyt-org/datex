@@ -13,13 +13,12 @@ use crate::{
             errors::{InterfaceAddError, ComInterfaceCreateError},
         },
         com_interfaces::com_interface::{
-            ComInterfaceUtils, ComInterfaceReceivers,
+            ComInterfaceUtils,
             ComInterfaceStateEvent, ComInterfaceUUID,
             factory::{ComInterfaceAsyncFactory, ComInterfaceSyncFactory},
             properties::ComInterfaceProperties,
         },
     },
-    runtime::AsyncContext,
     values::value_container::ValueContainer,
 };
 use crate::network::com_interfaces::com_interface::factory::ComInterfaceConfiguration;
@@ -262,7 +261,7 @@ impl InterfacesManager {
             .0;
         {
             // Async close the interface (stop tasks, server, cleanup internal data)
-            interface.destroy();
+            interface.destroy(); // TODO
             // TODO: await until closed asynchronously?
         }
 

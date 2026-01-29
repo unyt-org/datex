@@ -3,7 +3,6 @@ use datex_core::{
         com_interface::ComInterfaceUtils,
         default_com_interfaces::serial::serial_common::SerialInterfaceSetupData,
     },
-    runtime::AsyncContext,
     utils::context::init_global_context,
 };
 use log::info;
@@ -25,7 +24,6 @@ pub async fn test_construct() {
             port_name: Some(PORT_NAME.to_string()),
             baud_rate: BAUD_RATE,
         },
-        AsyncContext::default(),
     )
     .unwrap();
 }

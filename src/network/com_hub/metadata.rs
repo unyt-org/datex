@@ -136,8 +136,8 @@ impl ComHub {
             Vec<ComHubMetadataInterfaceSocket>,
         > = HashMap::new();
 
-        let socket_manager = self.socket_manager.borrow();
-        for (endpoint, sockets) in socket_manager.endpoint_sockets.iter() {
+        let socket_manager = self.socket_manager;
+        for (endpoint, sockets) in socket_manager.endpoint_sockets.borrow().iter() {
             for (socket_uuid, properties) in sockets {
                 let socket = socket_manager.get_socket_by_uuid(socket_uuid);
                 let com_interface_uuid = socket.interface_uuid.clone();
@@ -153,16 +153,16 @@ impl ComHub {
                     .push(ComHubMetadataInterfaceSocket {
                         uuid: socket_uuid.to_string(),
                         endpoint: Some(endpoint.clone()),
-                        direction: socket.direction.clone(),
+                        direction: socket.socket_properties.direction.clone(),
                         properties: Some(properties.clone()),
                     });
             }
         }
 
-        for (socket_uuid, (socket, endpoints)) in socket_manager.sockets.iter()
+        for (socket_uuid, socket) in socket_manager.sockets.borrow().iter()
         {
             // if no endpoints are registered, we consider it a socket without an endpoint
-            if endpoints.is_empty() {
+            if socket.endpoints.is_empty() {
                 let com_interface_uuid = socket.interface_uuid.clone();
                 if !sockets_by_com_interface_uuid
                     .contains_key(&com_interface_uuid)
@@ -175,7 +175,7 @@ impl ComHub {
                     .unwrap()
                     .push(ComHubMetadataInterfaceSocket {
                         uuid: socket_uuid.to_string(),
-                        direction: socket.direction.clone(),
+                        direction: socket.socket_properties.direction.clone(),
                         endpoint: None,
                         properties: None,
                     });
@@ -183,7 +183,7 @@ impl ComHub {
             }
         }
         drop(socket_manager);
-        let interface_manager = self.interface_manager.borrow();
+        let interface_manager = self.interfaces_manager.borrow();
 
         for (interface, _) in interface_manager.interfaces.values() {
             metadata.interfaces.push(ComHubMetadataInterface {

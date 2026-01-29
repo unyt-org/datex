@@ -13,13 +13,13 @@ use datex_core::{
     network::{
         com_hub::{ComHub, InterfacePriority},
         com_interfaces::com_interface::{
-            ComInterfaceUtils, ComInterfaceEvent, ComInterfaceProxy,
-            ComInterfaceUUID, ComInterfaceWithReceivers,
+            ComInterfaceUtils,
+            ComInterfaceUUID,
             properties::{InterfaceDirection, ComInterfaceProperties},
             socket::ComInterfaceSocketUUID,
         },
     },
-    runtime::{AsyncContext, Runtime, RuntimeConfig},
+    runtime::{Runtime, RuntimeConfig},
     stdlib::{cell::RefCell, rc::Rc},
     values::core_values::endpoint::Endpoint,
 };
@@ -86,7 +86,6 @@ pub async fn get_mock_setup_with_com_hub(
     // init mockup interface
     let (proxy, interface) = ComInterfaceProxy::create_interface(
         mock_setup_data.interface_properties,
-        AsyncContext::default(),
     );
 
     // init com hub
@@ -115,7 +114,6 @@ pub fn get_mock_setup_with_interface(
         incoming_sections_sender.unwrap_or_else(|| {
             create_unbounded_channel::<IncomingSection>().0 // dummy sender
         }),
-        AsyncContext::new(),
     );
 
     // add mockup interface to com_hub
@@ -226,7 +224,6 @@ pub async fn get_mock_setup_with_runtime(
     // init mockup interface
     let (proxy, interface) = ComInterfaceProxy::create_interface(
         mock_setup_data.interface_properties,
-        AsyncContext::default(),
     );
 
     // add mockup interface to com_hub

@@ -20,7 +20,6 @@ use datex_core::{
         default_com_interfaces::websocket::websocket_common::TLSMode,
     },
     run_async,
-    runtime::AsyncContext,
     serde::deserializer::from_value_container,
 };
 use datex_macros::async_test;
@@ -41,7 +40,6 @@ pub async fn test_create_socket_connection() {
                 bind_address: ADDRESS.to_string(),
                 accept_addresses: None,
             },
-            AsyncContext::default(),
         )
         .await
         .expect("Failed to create WebSocketServerInterface");
@@ -51,7 +49,6 @@ pub async fn test_create_socket_connection() {
             WebSocketClientInterfaceSetupData {
                 url: format!("ws://{ADDRESS}"),
             },
-            AsyncContext::default(),
         )
         .await
         .expect("Failed to create WebSocketClientInterface");
@@ -101,7 +98,6 @@ pub async fn test_construct_client() {
         WebSocketClientInterfaceSetupData {
             url: "ftp://localhost:1234".to_string(),
         },
-        AsyncContext::default(),
     )
     .await;
     assert_matches!(
@@ -114,7 +110,6 @@ pub async fn test_construct_client() {
         WebSocketClientInterfaceSetupData {
             url: "ws://localhost.invalid:1234".to_string(),
         },
-        AsyncContext::default(),
     )
     .await;
 
@@ -147,7 +142,6 @@ pub async fn test_connectable_interface_config() {
     };
     let (server_interface, ..) = ComInterfaceUtils::create_async_from_setup_data(
         server_setup_data,
-        AsyncContext::default(),
     )
     .await
     .unwrap();

@@ -15,7 +15,6 @@ type LocalPanicChannel = Option<(
     Option<RefCell<UnboundedSender<Signal>>>,
     Option<UnboundedReceiver<Signal>>,
 )>;
-use datex_core::runtime::AsyncContext;
 
 #[cfg_attr(not(feature = "embassy_runtime"), thread_local)]
 static mut LOCAL_PANIC_CHANNEL: LocalPanicChannel = None;
@@ -45,6 +44,7 @@ enum Signal {
 /// }
 /// ```
 #[macro_export]
+#[deprecated]
 macro_rules! run_async {
     ($($body:tt)*) => {{
         datex_core::task::init_panic_notify();
@@ -62,6 +62,7 @@ macro_rules! run_async {
 /// The behavior is similar to `run_async! {}`, with the only difference being that
 /// it runs in a separate thread.
 #[macro_export]
+#[deprecated]
 macro_rules! run_async_thread {
     ($($body:tt)*) => {{
         thread::spawn(move || {
@@ -141,44 +142,7 @@ async fn send_panic(panic: String) {
         }
     }
 }
-#[cfg(feature = "embassy_runtime")]
-pub fn spawn_with_panic_notify<S>(
-    async_context: &AsyncContext,
-    spawn_token: embassy_executor::SpawnToken<S>,
-) {
-    async_context
-        .spawner
-        .spawn(spawn_token)
-        .expect("Spawn Error");
-}
 
-#[cfg(any(feature = "tokio_runtime", feature = "wasm_runtime"))]
-pub fn spawn_with_panic_notify<F>(_async_context: &AsyncContext, fut: F)
-where
-    F: Future<Output = ()> + 'static,
-{
-    spawn_with_panic_notify_default(fut);
-}
-
-#[cfg(any(feature = "tokio_runtime", feature = "wasm_runtime"))]
-pub fn spawn_with_panic_notify_default<F>(fut: F)
-where
-    F: Future<Output = ()> + 'static,
-{
-    spawn_local(async {
-        let result = core::panic::AssertUnwindSafe(fut).catch_unwind().await;
-        if let Err(err) = result {
-            let panic_msg = if let Some(s) = err.downcast_ref::<&str>() {
-                s.to_string()
-            } else if let Some(s) = err.downcast_ref::<String>() {
-                s.clone()
-            } else {
-                "Unknown panic type".to_string()
-            };
-            send_panic(panic_msg).await;
-        }
-    });
-}
 
 cfg_if! {
     if #[cfg(feature = "tokio_runtime")] {

@@ -1,5 +1,3 @@
-#[cfg(all(feature = "native_crypto", feature = "std"))]
-use crate::crypto::crypto_native::CryptoNative;
 use crate::{
     channel::mpsc::{UnboundedReceiver, create_unbounded_channel},
     collections::HashMap,
@@ -75,35 +73,6 @@ impl Debug for Runtime {
         f.debug_struct("Runtime")
             .field("version", &self.version)
             .finish()
-    }
-}
-
-#[derive(Clone)]
-pub struct AsyncContext {
-    #[cfg(feature = "embassy_runtime")]
-    pub spawner: embassy_executor::Spawner,
-}
-#[cfg(not(feature = "embassy_runtime"))]
-impl Default for AsyncContext {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl AsyncContext {
-    #[cfg(feature = "embassy_runtime")]
-    pub fn new(spawner: embassy_executor::Spawner) -> Self {
-        Self { spawner }
-    }
-    #[cfg(not(feature = "embassy_runtime"))]
-    pub fn new() -> Self {
-        Self {}
-    }
-}
-
-impl Debug for AsyncContext {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        core::write!(f, "AsyncContext")
     }
 }
 
@@ -584,7 +553,7 @@ where
         let runtime_internal = runtime.internal.clone();
 
         // await all task futures
-        let task_future = async { 
+        let task_future = async {
             join!(
                 // com hub task manager
                 com_hub_task_future,
@@ -592,7 +561,7 @@ where
                 runtime_task_future,
                 // runtime incoming sections handler
                 runtime_internal.handle_incoming_sections_task()
-            ); 
+            );
         };
 
         RuntimeRunner {
@@ -610,6 +579,7 @@ where
         config: RuntimeConfig,
     ) -> RuntimeRunner<impl Future<Output = ()>> {
         use crate::utils::time_native::TimeNative;
+        use crate::crypto::crypto_native::CryptoNative;
         Self::new(
             config,
             GlobalContext::new(Arc::new(CryptoNative), Arc::new(TimeNative)),
