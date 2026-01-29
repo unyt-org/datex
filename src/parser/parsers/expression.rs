@@ -109,7 +109,7 @@ impl Parser {
             }
 
             Token::Range => {
-                if matches!(lhs.data, DatexExpressionData::Range(_)) {
+                if !matches!(lhs.data, DatexExpressionData::Integer(_)) {
                     return Err(SpannedParserError {
                         error: ParserError::InvalidToken,
                         span: lhs.span,
@@ -117,6 +117,12 @@ impl Parser {
                 } else {
                     self.advance()?; // consume the operator
                     let rhs = self.parse_expression(r_bp)?;
+                    if !matches!(rhs.data, DatexExpressionData::Integer(_)) {
+                        return Err(SpannedParserError {
+                            error: ParserError::InvalidToken,
+                            span: rhs.span,
+                        });
+                    }
                     let span = lhs.span.start..rhs.span.end;
                     DatexExpression::new(
                         DatexExpressionData::Range(
