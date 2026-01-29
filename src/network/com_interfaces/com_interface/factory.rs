@@ -82,6 +82,15 @@ pub struct SocketConfiguration {
     /// This can be either a synchronous or asynchronous callback depending on the interface implementation
     pub send_callback: Option<SendCallback>
 }
+
+impl Debug for SocketConfiguration {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("SocketConfiguration")
+            .field("properties", &self.properties)
+            .finish()
+    }
+}
+
 impl SocketConfiguration {
     /// Creates a SocketDataIterator for a given socket with the provided parameters.
     /// Expects both an iterator for incoming data and a send callback for outgoing data.

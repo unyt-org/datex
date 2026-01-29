@@ -13,6 +13,7 @@
 #![feature(associated_type_defaults)]
 #![feature(core_float_math)]
 #![feature(thread_local)]
+#![feature(future_join)]
 #![allow(static_mut_refs)]
 #![cfg_attr(not(feature = "std"), no_std)]
 

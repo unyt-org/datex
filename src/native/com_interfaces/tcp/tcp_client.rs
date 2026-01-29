@@ -95,3 +95,23 @@ impl ComInterfaceAsyncFactory for TCPClientInterfaceSetupDataNative {
         TCPClientInterfaceSetupData::get_default_properties()
     }
 }
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::network::com_interfaces::default_setup_data::tcp::tcp_client::TCPClientInterfaceSetupData;
+    use crate::native_global_context::init_global_context_native;
+
+    #[tokio::test]
+    async fn test_construct_invalid_address() {
+        init_global_context_native();
+        const ADDRESS: &str = "1.2.3";
+        let result = TCPClientInterfaceSetupDataNative(TCPClientInterfaceSetupData {
+            address: ADDRESS.to_string(),
+        })
+            .create_interface()
+            .await;
+        assert!(matches!(result, Err(ComInterfaceCreateError::InvalidSetupData(_))));
+    }
+}

@@ -32,11 +32,11 @@ impl WebSocketServerInterfaceSetupDataNative {
         let addr = SocketAddr::from_str(&self.bind_address)
             .map_err(ComInterfaceCreateError::invalid_setup_data)?;
 
-        info!("Spinning up server at {addr}");
-
         let listener = TcpListener::bind(&addr).await.map_err(|err| {
             ComInterfaceCreateError::connection_error_with_details(err)
         })?;
+
+        info!("WebSocket Server listening on {addr}");
 
         Ok(ComInterfaceConfiguration::new(
             ComInterfaceProperties {
@@ -110,7 +110,6 @@ impl WebSocketServerInterfaceSetupDataNative {
         let next_socket = listener.accept().await;
         match next_socket {
             Ok((stream, addr)) => {
-                info!("New connection from {addr}");
                 match accept_async(stream).await {
                     Ok(ws_stream) => {
                         let (write, mut read) = ws_stream.split();
@@ -138,5 +137,51 @@ impl ComInterfaceAsyncFactory for WebSocketServerInterfaceSetupDataNative {
 
     fn get_default_properties() -> ComInterfaceProperties {
         WebSocketServerInterfaceSetupData::get_default_properties()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::assert_matches;
+    use datex_core::native_global_context::init_global_context_native;
+    use crate::{
+        network::{
+            com_hub::errors::ComInterfaceCreateError,
+        },
+    };
+    use super::*;
+
+    #[tokio::test]
+    async fn test_construct() {
+        init_global_context_native();
+        let address = "0.0.0.0:1234".to_string();
+
+        let interface_configuration =
+            WebSocketServerInterfaceSetupDataNative(WebSocketServerInterfaceSetupData {
+                bind_address: address.clone(),
+                accept_addresses: None,
+            })
+                .create_interface()
+                .await
+                .unwrap();
+
+        assert_eq!(
+            interface_configuration.properties.name,
+            Some(address)
+        );
+    }
+
+    #[tokio::test]
+    async fn test_construct_invalid_address() {
+        init_global_context_native();
+        assert_matches!(
+            WebSocketServerInterfaceSetupDataNative(WebSocketServerInterfaceSetupData {
+                bind_address: "1.2.3".to_string(),
+                accept_addresses: None,
+            })
+            .create_interface()
+            .await,
+            Err(ComInterfaceCreateError::InvalidSetupData(_))
+        );
     }
 }

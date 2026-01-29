@@ -123,7 +123,7 @@ impl ComInterfaceAsyncFactory for TCPServerInterfaceSetupDataNative {
 #[cfg(test)]
 mod tests {
     use std::assert_matches;
-
+    use datex_core::native_global_context::init_global_context_native;
     use crate::{
         network::{
             com_hub::errors::ComInterfaceCreateError,
@@ -133,6 +133,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_construct() {
+        init_global_context_native();
         const PORT: u16 = 5088;
         let interface_configuration =
             TCPServerInterfaceSetupDataNative(TCPServerInterfaceSetupData::new_with_port(PORT))
@@ -147,7 +148,8 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_invalid_address() {
+    async fn test_construct_invalid_address() {
+        init_global_context_native();
         assert_matches!(
             TCPServerInterfaceSetupDataNative(TCPServerInterfaceSetupData::new_with_host_and_port(
                 "invalid-address".to_string(),
