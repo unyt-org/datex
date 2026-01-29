@@ -3,6 +3,7 @@ use futures_util::FutureExt;
 use core::cell::RefCell;
 use futures::future::Future;
 use core::pin::Pin;
+use core::fmt::Debug;
 use std::rc::Rc;
 use async_select::select;
 use futures_util::future::Fuse;
@@ -14,6 +15,12 @@ pub type TaskFuture = Pin<Box<dyn Future<Output = ()>>>;
 
 pub struct TaskManager {
     pub task_sender: RefCell<UnboundedSender<TaskFuture>>,
+}
+
+impl Debug for TaskManager {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("TaskManager").finish()
+    }
 }
 
 impl TaskManager {

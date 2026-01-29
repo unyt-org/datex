@@ -18,62 +18,58 @@ use crate::{
 use core::{prelude::rust_2024::*, result::Result};
 use log::info;
 
-async fn handle_incoming_section_task(
-    runtime_rc: Rc<RuntimeInternal>,
-    section: IncomingSection,
-) {
-    let (result, endpoint, context_id) =
-        RuntimeInternal::execute_incoming_section(runtime_rc.clone(), section)
-            .await;
-    info!(
-        "Execution result (on {} from {}): {result:?}",
-        runtime_rc.endpoint, endpoint
-    );
-    // send response back to the sender
-    let _res = RuntimeInternal::send_response_block(
-        runtime_rc.clone(),
-        result,
-        endpoint,
-        context_id,
-    )
-    .await;
-    // TODO #231: handle errors in sending response
-}
-
-#[cfg_attr(feature = "embassy_runtime", embassy_executor::task)]
-async fn handle_incoming_sections_task(runtime_rc: Rc<RuntimeInternal>) {
-    let async_context_clone = runtime_rc.async_context.clone();
-    let mut sections_receiver =
-        runtime_rc.incoming_sections_receiver.borrow_mut();
-
-    while let Some(section) = sections_receiver.next().await {
-        let runtime_rc_clone = runtime_rc.clone();
-        // for embassy, run all sections in the same task to avoid spawning too many tasks
-        #[cfg(feature = "embassy_runtime")]
-        {
-            handle_incoming_section_task(runtime_rc_clone, section).await;
-            continue;
-        }
-        // otherwise, run each section in its own task
-        #[cfg(not(feature = "embassy_runtime"))]
-        {
-            spawn_with_panic_notify(
-                &async_context_clone,
-                handle_incoming_section_task(runtime_rc_clone, section),
-            );
-        }
-    }
-}
 
 impl RuntimeInternal {
+    pub(crate) async fn handle_incoming_sections_task(self: Rc<RuntimeInternal>) {
+        let mut sections_receiver =
+            self.incoming_sections_receiver.borrow_mut();
+
+        while let Some(section) = sections_receiver.next().await {
+            let self_clone = self.clone();
+            // for embassy, run all sections in the same task to avoid spawning too many tasks
+            #[cfg(feature = "embassy_runtime")]
+            {
+                self_clone.handle_incoming_section_task(section).await;
+                continue;
+            }
+            // otherwise, run each section in its own task
+            #[cfg(not(feature = "embassy_runtime"))]
+            {
+                // TODO: task
+                self.task_manager.register_task(self_clone.handle_incoming_section_task(section));
+            }
+        }
+    }
+    async fn handle_incoming_section_task(
+        self: Rc<RuntimeInternal>,
+        section: IncomingSection,
+    ) {
+        let (result, endpoint, context_id) =
+            RuntimeInternal::execute_incoming_section(self.clone(), section)
+                .await;
+        info!(
+        "Execution result (on {} from {}): {result:?}",
+        self.endpoint, endpoint
+    );
+        // send response back to the sender
+        let _res = RuntimeInternal::send_response_block(
+            self.clone(),
+            result,
+            endpoint,
+            context_id,
+        )
+            .await;
+        // TODO #231: handle errors in sending response
+    }
+
     async fn send_response_block(
-        self_rc: Rc<RuntimeInternal>,
+        self: Rc<RuntimeInternal>,
         result: Result<Option<ValueContainer>, ExecutionError>,
         receiver_endpoint: Endpoint,
         context_id: OutgoingContextId,
     ) -> Result<(), Vec<Endpoint>> {
         let routing_header: RoutingHeader = RoutingHeader::default()
-            .with_sender(self_rc.endpoint.clone())
+            .with_sender(self.endpoint.clone())
             .to_owned();
         let block_header = BlockHeader {
             context_id,
@@ -104,7 +100,7 @@ impl RuntimeInternal {
             );
             block.set_receivers(core::slice::from_ref(&receiver_endpoint));
 
-            self_rc.com_hub.send_own_block_async(block).await
+            self.com_hub.send_own_block_async(block).await
         } else {
             core::todo!("#233 Handle returning error response block");
         }

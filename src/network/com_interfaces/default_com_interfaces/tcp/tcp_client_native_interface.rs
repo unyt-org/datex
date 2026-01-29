@@ -8,7 +8,6 @@ use crate::{
     network::{
         com_hub::errors::ComInterfaceCreateError,
         com_interfaces::com_interface::{
-            ComInterfaceEvent,
             error::ComInterfaceError,
             factory::{
                 ComInterfaceAsyncFactory, ComInterfaceAsyncFactoryResult,

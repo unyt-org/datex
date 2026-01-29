@@ -1,12 +1,10 @@
 use super::serial_common::SerialInterfaceSetupData;
 use crate::{
-    channel::mpsc::UnboundedReceiver,
     network::{
         com_hub::errors::ComInterfaceCreateError,
         com_interfaces::com_interface::{
-            ComInterfaceEvent,
             error::ComInterfaceError,
-            factory::{ComInterfaceAsyncFactory, ComInterfaceSyncFactory},
+            factory::{ComInterfaceSyncFactory},
             properties::{InterfaceDirection, ComInterfaceProperties},
             state::ComInterfaceState,
         },
@@ -15,14 +13,11 @@ use crate::{
     stdlib::{sync::Arc, time::Duration},
     task::{spawn, spawn_blocking, spawn_with_panic_notify_default},
 };
-use async_select::select;
 use core::{prelude::rust_2024::*, result::Result};
-use log::{debug, error, warn};
-use serialport::SerialPort;
+use log::{error, warn};
 use datex_core::network::com_interfaces::com_interface::factory::ComInterfaceConfiguration;
 use crate::global::dxb_block::DXBBlock;
 use crate::network::com_interfaces::com_interface::factory::{SocketConfiguration, SendCallback, SendFailure, SocketProperties, SendSuccess};
-use crate::network::com_interfaces::com_interface::socket::ComInterfaceSocketUUID;
 
 impl SerialInterfaceSetupData {
     const TIMEOUT: Duration = Duration::from_millis(1000);

@@ -383,7 +383,7 @@ impl ComHub {
     ) -> Option<()> {
         let sender = block.routing_header.sender.clone();
         info!("Received trace block from {sender}");
-        let socket_data = self.get_socket_data(&original_socket);
+        let socket_data = self.socket_manager.get_socket_by_uuid(&original_socket);
 
         // get hops vector
         let mut hops = self.get_trace_data_from_block(block)?;
@@ -426,7 +426,7 @@ impl ComHub {
         block: &DXBBlock,
         original_socket: ComInterfaceSocketUUID,
     ) -> Option<()> {
-        let socket_data = self.get_socket_data(&original_socket);
+        let socket_data = self.socket_manager.get_socket_by_uuid(&original_socket);
         
         let mut block = block.clone();
         let sender = block.routing_header.sender.clone();
@@ -467,7 +467,7 @@ impl ComHub {
         let mut block = block.clone();
         let sender = block.routing_header.sender.clone();
         info!("Redirecting trace block from {sender}");
-        let socket_data = self.get_socket_data(&original_socket);
+        let socket_data = self.socket_manager.get_socket_by_uuid(&original_socket);
 
         let hops = self.get_trace_data_from_block(&block).unwrap_or_default();
         info!("{}", NetworkTraceResult::from_hops(hops));

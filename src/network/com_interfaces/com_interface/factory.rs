@@ -2,6 +2,7 @@ use core::async_iter::AsyncIterator;
 use core::future::poll_fn;
 use core::pin::Pin;
 use core::fmt::Debug;
+use std::sync::Arc;
 use crate::stdlib::rc::Rc;
 pub(crate) use crate::network::com_hub::managers::interfaces_manager::ComInterfaceAsyncFactoryResult;
 use crate::{
@@ -44,7 +45,7 @@ pub type NewSocketsIterator = Pin<Box<dyn AsyncIterator<Item = Result<SocketConf
 #[derive(Debug, Clone)]
 pub struct SocketProperties {
     pub direction: InterfaceDirection,
-    pub channel_factor: u16,
+    pub channel_factor: u32,
     pub direct_endpoint: Option<Endpoint>,
     pub connection_timestamp: u64,
     uuid: ComInterfaceSocketUUID,
@@ -53,7 +54,7 @@ pub struct SocketProperties {
 impl SocketProperties {
     pub fn new(
         direction: InterfaceDirection,
-        channel_factor: u16,
+        channel_factor: u32,
     ) -> Self {
         SocketProperties {
             direction,
@@ -65,7 +66,7 @@ impl SocketProperties {
     }
     pub fn new_with_direct_endpoint(
         direction: InterfaceDirection,
-        channel_factor: u16,
+        channel_factor: u32,
         endpoint: Endpoint,
     ) -> Self {
         SocketProperties {
@@ -148,7 +149,7 @@ pub enum SendCallback {
     /// The callback receives a DXBBlock and the UUID of the socket to send the data through.
     /// It returns a SendSuccess result which can contain already received data from the remote side.
     /// The failure case returns a SendFailure containing the original DXBBlock.
-    Sync(Box<dyn Fn(DXBBlock) -> Result<SendSuccess, SendFailure> + 'static + Send>),
+    Sync(Arc<dyn Fn(DXBBlock) -> Result<SendSuccess, SendFailure> + 'static + Send + Sync>),
     /// An asynchronous send callback.
     /// The callback receives a DXBBlock and the UUID of the socket to send the data through.
     /// It returns a future that resolves to a Result indicating success or failure.
@@ -178,13 +179,14 @@ pub enum SendSuccess {
     SentWithNewIncomingData(Vec<u8>),
 }
 
+#[derive(Debug, Clone)]
 pub struct SendFailure (pub DXBBlock);
 
 impl SendCallback {
     pub fn new_sync(
-        f: impl Fn(DXBBlock) -> Result<SendSuccess, SendFailure> + 'static + Send,
+        f: impl Fn(DXBBlock) -> Result<SendSuccess, SendFailure> + 'static + Send + Sync,
     ) -> Self {
-        SendCallback::Sync(Box::new(f))
+        SendCallback::Sync(Arc::new(f))
     }
 
     pub fn new_async<F, Fut>(f: F) -> Self

@@ -49,6 +49,7 @@ use execution::context::{
     ExecutionContext, RemoteExecutionContext, ScriptExecutionError,
 };
 use futures::{FutureExt, future};
+use futures_util::join;
 use global_context::{GlobalContext, set_global_context};
 use log::{debug, error, info};
 use serde::{Deserialize, Serialize};
@@ -57,7 +58,7 @@ pub mod dif_interface;
 pub mod execution;
 pub mod global_context;
 pub mod memory;
-mod update_loop;
+mod incoming_sections;
 
 use self::memory::Memory;
 
@@ -113,6 +114,8 @@ pub struct RuntimeInternal {
     pub endpoint: Endpoint,
     pub config: RuntimeConfig,
 
+    pub task_manager: TaskManager,
+
     // receiver for incoming sections from com hub
     pub(crate) incoming_sections_receiver:
         RefCell<UnboundedReceiver<IncomingSection>>,
@@ -141,6 +144,55 @@ macro_rules! get_execution_context {
 }
 
 impl RuntimeInternal {
+    fn register_interface_factories(&self) {
+        let com_hub = &self.com_hub;
+        #[cfg(feature = "native_websocket")]
+        {
+            com_hub.register_async_interface_factory::<crate::network::com_interfaces::default_com_interfaces::websocket::websocket_common::WebSocketClientInterfaceSetupData>();
+            com_hub.register_async_interface_factory::<crate::network::com_interfaces::default_com_interfaces::websocket::websocket_common::WebSocketServerInterfaceSetupData>();
+        }
+        #[cfg(feature = "native_serial")]
+        com_hub.register_sync_interface_factory::<crate::network::com_interfaces::default_com_interfaces::serial::serial_common::SerialInterfaceSetupData>();
+        #[cfg(feature = "native_tcp")]
+        {
+            com_hub.register_async_interface_factory::<crate::network::com_interfaces::default_com_interfaces::tcp::tcp_common::TCPClientInterfaceSetupData>();
+            com_hub.register_async_interface_factory::<crate::network::com_interfaces::default_com_interfaces::tcp::tcp_common::TCPServerInterfaceSetupData>();
+        }
+        // TODO #234:
+        // #[cfg(feature = "native_webrtc")]
+        // crate::network::com_interfaces::default_com_interfaces::webrtc::webrtc_native_interface::WebRTCNativeInterface::register_on_com_hub(self.com_hub());
+    }
+
+    /// Creates all interfaces configured in the runtime config
+    async fn create_configured_interfaces(&self) {
+        if let Some(interfaces) = &self.config.interfaces {
+            for RuntimeConfigInterface {
+                interface_type,
+                setup_data: config,
+                priority,
+            } in interfaces.iter()
+            {
+                if let Err(err) = self
+                    .com_hub
+                    .create_interface(interface_type, config.clone(), *priority)
+                    .await
+                {
+                    error!(
+                        "Failed to create interface {interface_type}: {err:?}"
+                    );
+                } else {
+                    info!("Created interface: {interface_type}");
+                }
+            }
+        }
+    }
+
+    /// Performs asynchronous initialization of the runtime
+    async fn init_async(&self) {
+        // create configured interfaces
+        self.create_configured_interfaces().await;
+    }
+
     #[cfg(feature = "compiler")]
     pub async fn execute(
         self_rc: Rc<RuntimeInternal>,
@@ -393,6 +445,8 @@ impl RuntimeInternal {
     }
 }
 use crate::network::com_hub::is_none_variant;
+use crate::utils::task_manager::TaskManager;
+
 #[derive(Debug, Deserialize, Serialize, Clone)]
 #[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
 pub struct RuntimeConfigInterface {
@@ -473,7 +527,7 @@ impl RuntimeConfig {
 
 pub struct RuntimeRunner<Fut: Future<Output = ()>> {
     pub runtime: Runtime,
-    pub future: Fut,
+    pub task_future: Fut,
 }
 
 impl<TaskFuture> RuntimeRunner<TaskFuture>
@@ -501,10 +555,12 @@ where
 
         let endpoint = config.endpoint.clone().unwrap_or_else(Endpoint::random);
 
+        let (task_manager, runtime_task_future) = TaskManager::create();
+
         let (incoming_sections_sender, incoming_sections_receiver) =
             create_unbounded_channel::<IncomingSection>();
 
-        let (com_hub, task_future) =
+        let (com_hub, com_hub_task_future) =
             ComHub::create(endpoint.clone(), incoming_sections_sender);
         let memory = RefCell::new(Memory::new(endpoint.clone()));
 
@@ -515,6 +571,7 @@ where
                 memory,
                 config,
                 com_hub,
+                task_manager,
                 incoming_sections_receiver: RefCell::new(
                     incoming_sections_receiver,
                 ),
@@ -522,10 +579,25 @@ where
             }),
         };
 
-        let runtime_task_future = runtime.clone().handle_tasks(task_future);
+        // register interface factories
+        runtime.internal.register_interface_factories();
+        let runtime_internal = runtime.internal.clone();
+
+        // await all task futures
+        let task_future = async { 
+            join!(
+                // com hub task manager
+                com_hub_task_future,
+                // runtime task manager
+                runtime_task_future,
+                // runtime incoming sections handler
+                runtime_internal.handle_incoming_sections_task()
+            ); 
+        };
+
         RuntimeRunner {
             runtime,
-            future: runtime_task_future,
+            task_future,
         }
     }
 
@@ -553,9 +625,14 @@ where
     where
         AppFuture: Future<Output = AppReturn>,
     {
+        // initialize the runtime
+        self.runtime.internal.init_async().await;
+        // start the app logic
         let app_future = app_logic(self.runtime);
+
+        // run until the app logic completes
         select! {
-            _ = self.future.fuse() => {
+            _ = self.task_future.fuse() => {
                 unreachable!("Runtime task future exited unexpectedly");
             },
             exit_value = app_future.fuse() => {
@@ -572,8 +649,13 @@ where
     where
         AppFuture: Future<Output = AppReturn>,
     {
+        // initialize the runtime
+        self.runtime.internal.init_async().await;
+        // start the app logic
         let app_future = app_logic(self.runtime);
-        future::join(self.future, app_future).await;
+
+        // run indefinitely (runtime future should never exit)
+        future::join(self.task_future, app_future).await;
         unreachable!("Both runtime and app logic futures exited unexpectedly");
     }
 }
@@ -581,24 +663,6 @@ where
 /// publicly exposed wrapper impl for the Runtime
 /// around RuntimeInternal
 impl Runtime {
-    fn register_interface_factories(&self) {
-        let com_hub = self.com_hub();
-        #[cfg(feature = "native_websocket")]
-        {
-            com_hub.register_async_interface_factory::<crate::network::com_interfaces::default_com_interfaces::websocket::websocket_common::WebSocketClientInterfaceSetupData>();
-            com_hub.register_async_interface_factory::<crate::network::com_interfaces::default_com_interfaces::websocket::websocket_common::WebSocketServerInterfaceSetupData>();
-        }
-        #[cfg(feature = "native_serial")]
-        com_hub.register_sync_interface_factory::<crate::network::com_interfaces::default_com_interfaces::serial::serial_common::SerialInterfaceSetupData>();
-        #[cfg(feature = "native_tcp")]
-        {
-            com_hub.register_async_interface_factory::<crate::network::com_interfaces::default_com_interfaces::tcp::tcp_common::TCPClientInterfaceSetupData>();
-            com_hub.register_async_interface_factory::<crate::network::com_interfaces::default_com_interfaces::tcp::tcp_common::TCPServerInterfaceSetupData>();
-        }
-        // TODO #234:
-        // #[cfg(feature = "native_webrtc")]
-        // crate::network::com_interfaces::default_com_interfaces::webrtc::webrtc_native_interface::WebRTCNativeInterface::register_on_com_hub(self.com_hub());
-    }
 
     pub fn com_hub(&self) -> Rc<ComHub> {
         self.internal.com_hub.clone()
@@ -613,40 +677,6 @@ impl Runtime {
 
     pub fn memory(&self) -> &RefCell<Memory> {
         &self.internal.memory
-    }
-
-    /// Initializes the runtime by creating all configured interfaces
-    /// and starting the event handler tasks
-    async fn handle_tasks(self, com_hub_task_future: impl Future<Output = ()>) {
-        // register interface factories
-        self.register_interface_factories();
-
-        // create interfaces
-        if let Some(interfaces) = &self.internal.config.interfaces {
-            for RuntimeConfigInterface {
-                interface_type,
-                setup_data: config,
-                priority,
-            } in interfaces.iter()
-            {
-                if let Err(err) = self
-                    .com_hub()
-                    .create_interface(interface_type, config.clone(), *priority)
-                    .await
-                {
-                    error!(
-                        "Failed to create interface {interface_type}: {err:?}"
-                    );
-                } else {
-                    info!("Created interface: {interface_type}");
-                }
-            }
-        }
-
-        RuntimeInternal::handle_incoming_sections(self.internal());
-
-        // TODO: select
-        com_hub_task_future.await;
     }
 
     #[cfg(feature = "compiler")]

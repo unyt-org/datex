@@ -79,7 +79,9 @@ use futures_util::{FutureExt, StreamExt, future::Fuse};
 use std::async_iter::AsyncIterator;
 use std::cell::Ref;
 use futures_util::future::join_all;
+use crate::collections::HashSet;
 use datex_core::global::dxb_block::BlockId;
+use crate::network::com_interfaces::com_interface::ComInterfaceUUID;
 use crate::network::com_interfaces::com_interface::factory::SocketProperties;
 use crate::network::com_interfaces::com_interface::properties::ComInterfaceProperties;
 use crate::utils::maybe_async::{SyncOrAsync, SyncOrAsyncResult};
@@ -94,16 +96,14 @@ pub type IncomingBlockInterceptor =
 pub type OutgoingBlockInterceptor =
     Box<dyn Fn(&DXBBlock, &ComInterfaceSocketUUID, &[Endpoint]) + 'static>;
 
-#[derive(Debug, Clone)]
-pub enum BlockSendEvent {
-    NewSocket { socket_uuid: ComInterfaceSocketUUID },
-}
 
 #[derive(Debug)]
 pub struct SocketData {
     socket_properties: SocketProperties,
+    interface_uuid: ComInterfaceUUID,
     interface_properties: Rc<ComInterfaceProperties>,
     send_callback: Option<SendCallback>,
+    endpoints: HashSet<Endpoint>,
 }
 
 pub struct ComHub {
@@ -113,7 +113,7 @@ pub struct ComHub {
     /// ComHub configuration options
     pub options: ComHubOptions,
 
-    socket_manager: Rc<RefCell<SocketsManager>>,
+    socket_manager: SocketsManager,
     interface_manager: Rc<RefCell<InterfacesManager>>,
 
     pub block_handler: BlockHandler,
@@ -121,10 +121,7 @@ pub struct ComHub {
     incoming_block_interceptors: RefCell<Vec<IncomingBlockInterceptor>>,
     outgoing_block_interceptors: RefCell<Vec<OutgoingBlockInterceptor>>,
 
-    send_request_receiver: RefCell<Option<UnboundedReceiver<BlockSendEvent>>>,
-
     pub task_manager: TaskManager,
-    pub sockets: RefCell<HashMap<ComInterfaceSocketUUID, SocketData>>,
 }
 
 impl Debug for ComHub {
@@ -172,9 +169,6 @@ impl Default for InterfacePriority {
 
 // #[cfg(test)]
 impl ComHub {
-    pub fn socket_manager(&self) -> Rc<RefCell<SocketsManager>> {
-        self.socket_manager.clone()
-    }
     pub fn interface_manager(&self) -> Rc<RefCell<InterfacesManager>> {
         self.interface_manager.clone()
     }
@@ -211,9 +205,6 @@ impl ComHub {
         endpoint: impl Into<Endpoint>,
         incoming_sections_sender: UnboundedSender<IncomingSection>,
     ) -> (Rc<ComHub>, impl Future<Output = ()>) {
-        let (block_send_sender, send_request_receiver) =
-            create_unbounded_channel::<BlockSendEvent>();
-
         let (task_manager, task_future) = TaskManager::create();
 
         let block_handler = BlockHandler::init(incoming_sections_sender);
@@ -221,16 +212,12 @@ impl ComHub {
             endpoint: endpoint.into(),
             options: ComHubOptions::default(),
             block_handler,
-            socket_manager: Rc::new(RefCell::new(SocketsManager::new(
-                block_send_sender,
-            ))),
+            socket_manager: SocketsManager::new(),
             interface_manager: Rc::new(RefCell::new(
                 InterfacesManager::default(),
             )),
-            send_request_receiver: RefCell::new(Some(send_request_receiver)),
             incoming_block_interceptors: RefCell::new(Vec::new()),
             outgoing_block_interceptors: RefCell::new(Vec::new()),
-            sockets: RefCell::new(HashMap::new()),
             task_manager,
         });
 
@@ -256,16 +243,25 @@ impl ComHub {
         com_interface_configuration: ComInterfaceConfiguration,
         priority: InterfacePriority,
     ) {
+        let com_interface_uuid = com_interface_configuration.uuid().clone();
         self.task_manager.register_task(
             self.clone().handle_sockets_task(
                 com_interface_configuration.new_sockets_iterator,
+                com_interface_uuid,
                 com_interface_configuration.properties.clone(),
+                priority,
             )
         );
     }
 
     /// Iterates over the given NewSocketsIterator for an interface and handles each socket
-    async fn handle_sockets_task(self: Rc<Self>, mut iterator: NewSocketsIterator, com_interface_properties: Rc<ComInterfaceProperties>) {
+    async fn handle_sockets_task(
+        self: Rc<Self>,
+        mut iterator: NewSocketsIterator,
+        com_interface_uuid: ComInterfaceUUID,
+        com_interface_properties: Rc<ComInterfaceProperties>,
+        interface_priority: InterfacePriority,
+    ) {
         while let Some(socket) = async_next_pin_box(&mut iterator).await {
             match socket {
                 Ok(socket_configuration) => {
@@ -274,14 +270,17 @@ impl ComHub {
                     let socket_properties = socket_configuration.properties;
 
                     // store socket info
-                    self.sockets.borrow_mut().insert(
-                        socket_properties.uuid().clone(),
+                    let res = self.socket_manager.register_socket(
                         SocketData {
                             socket_properties: socket_properties.clone(),
+                            interface_uuid: com_interface_uuid.clone(),
                             interface_properties: com_interface_properties.clone(),
                             send_callback,
+                            endpoints: HashSet::new(),
                         },
+                        interface_priority,
                     );
+                    // TODO: handle error
 
                     let self_clone = self.clone();
                     if let Some(socket_iterator) = socket_iterator{
@@ -297,6 +296,9 @@ impl ComHub {
                 }
             }
         }
+        
+        // interface closed, remove
+        // TODO
     }
 
     /// Handles incoming data from the given SocketDataIterator
@@ -330,6 +332,9 @@ impl ComHub {
                 complete => break,
             }
         }
+
+        // socket closed, remove
+        self.socket_manager.delete_socket(&socket_properties.uuid());
     }
 
     /// Handles an incoming block from a socket (async)
@@ -587,23 +592,22 @@ impl ComHub {
         socket_uuid: ComInterfaceSocketUUID,
         block: &DXBBlock,
     ) {
-        let mut socket_manager = self.socket_manager.borrow_mut();
-        let socket = socket_manager.get_socket_by_uuid_mut(&socket_uuid);
+        let mut socket = self.socket_manager.get_socket_by_uuid_mut(&socket_uuid);
 
         let distance = block.routing_header.distance;
         let sender = block.routing_header.sender.clone();
 
         // set as direct endpoint if distance = 0
-        if socket.direct_endpoint.is_none() && distance == 1 {
+        if socket.socket_properties.direct_endpoint.is_none() && distance == 1 {
             info!(
                 "Setting direct endpoint for socket {}: {}",
-                socket.uuid, sender
+                socket.socket_properties.uuid(), sender
             );
-            socket.direct_endpoint = Some(sender.clone());
+            socket.socket_properties.direct_endpoint = Some(sender.clone());
         }
-        let uuid = socket.uuid.clone();
+        let uuid = socket.socket_properties.uuid().clone();
 
-        match socket_manager.register_socket_endpoint(
+        match self.socket_manager.register_socket_endpoint(
             uuid,
             sender.clone(),
             distance,
@@ -642,7 +646,7 @@ impl ComHub {
                         "{}: Adding socket {} to blacklist for receiver {}",
                         self.endpoint, incoming_socket, receiver
                     );
-                    self.socket_manager.borrow_mut().add_to_endpoint_blocklist(
+                    self.socket_manager.add_to_endpoint_blocklist(
                         receiver.clone(),
                         &incoming_socket,
                     );
@@ -715,8 +719,9 @@ impl ComHub {
                     );
                 } else if self
                     .socket_manager
-                    .borrow_mut()
                     .get_socket_by_uuid(&send_back_socket)
+                    .socket_properties
+                    .direction
                     .can_send()
                 {
                     block.set_bounce_back(true);
@@ -1194,7 +1199,7 @@ impl ComHub {
         forked: bool,
     ) -> BlockSendSyncOrAsyncResult<impl Future<Output = Result<(), Vec<Endpoint>>>> {
         let outbound_receiver_groups =
-            self.socket_manager.borrow().get_outbound_receiver_groups(
+            self.socket_manager.get_outbound_receiver_groups(
                 &self.endpoint,
                 &block.receiver_endpoints(),
                 exclude_sockets,
@@ -1304,18 +1309,6 @@ impl ComHub {
         }
     }
 
-    /// Retrieves the socket data for a given socket UUID.
-    /// Panics if no socket data is found for the given socket UUID.
-    fn get_socket_data(
-        &self,
-        socket_uuid: &ComInterfaceSocketUUID,
-    ) -> Ref<'_, SocketData> {
-        let sockets = self.sockets.borrow();
-        Ref::map(sockets, |sockets| {
-            sockets.get(&socket_uuid).expect("No socket data found for socket")
-        })
-    }
-
     /// Sends a block via a socket to a list of endpoints.
     /// Before the block is sent, it is modified to include the list of endpoints as receivers.
     fn send_block_to_endpoints_via_socket(
@@ -1331,7 +1324,7 @@ impl ComHub {
         SendFailure,
         impl Future<Output = Result<(), SendFailure>>,
     > {
-        let socket_data = self.get_socket_data(&socket_uuid);
+        let socket_data = self.socket_manager.get_socket_by_uuid(&socket_uuid);
 
         block.set_receivers(&endpoints);
 

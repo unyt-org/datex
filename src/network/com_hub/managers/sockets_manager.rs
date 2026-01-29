@@ -1,9 +1,9 @@
+use core::cell::{Ref, RefCell, RefMut};
 use crate::{
-    channel::mpsc::UnboundedSender,
     collections::{HashMap, HashSet},
     network::{
         com_hub::{
-            BlockSendEvent, ComHubError, InterfacePriority,
+            ComHubError, InterfacePriority,
             SocketEndpointRegistrationError,
         },
         com_interfaces::com_interface::socket::{
@@ -26,9 +26,7 @@ use crate::{
     utils::time::Time,
     values::core_values::endpoint::{Endpoint, EndpointInstance},
 };
-
-pub type SocketsByUUID =
-    HashMap<ComInterfaceSocketUUID, (ComInterfaceSocket, HashSet<Endpoint>)>;
+use crate::network::com_hub::SocketData;
 
 #[derive(Debug, Clone, Default)]
 pub struct EndpointIterateOptions<'a> {
@@ -50,47 +48,41 @@ pub struct DynamicEndpointProperties {
 pub struct SocketsManager {
     /// a list of all available sockets, keyed by their UUID
     /// contains the socket itself and a list of endpoints currently associated with it
-    pub sockets: SocketsByUUID,
+    pub sockets: RefCell<HashMap<ComInterfaceSocketUUID, SocketData>>,
 
     /// mapping of interface UUIDs to socket UUIDs
     pub socket_uuids_by_interface_uuid:
-        HashMap<ComInterfaceUUID, HashSet<ComInterfaceSocketUUID>>,
+        RefCell<HashMap<ComInterfaceUUID, HashSet<ComInterfaceSocketUUID>>>,
 
     /// a blacklist of sockets that are not allowed to be used for a specific endpoint
     pub endpoint_sockets_blacklist:
-        HashMap<Endpoint, HashSet<ComInterfaceSocketUUID>>,
+        RefCell<HashMap<Endpoint, HashSet<ComInterfaceSocketUUID>>>,
 
     /// fallback sockets that are used if no direct endpoint reachable socket is available
     /// sorted by priority
     pub fallback_sockets:
-        Vec<(ComInterfaceSocketUUID, u16, InterfaceDirection)>,
+        RefCell<Vec<(ComInterfaceSocketUUID, u16, InterfaceDirection)>>,
 
     /// a list of all available sockets for each endpoint, with additional
     /// DynamicEndpointProperties metadata
-    pub endpoint_sockets: HashMap<
+    pub endpoint_sockets: RefCell<HashMap<
         Endpoint,
         Vec<(ComInterfaceSocketUUID, DynamicEndpointProperties)>,
-    >,
+    >>,
 
     /// callbacks to be called when a socket is registered
     socket_registered_callbacks:
-        HashMap<ComInterfaceSocketUUID, Vec<Box<dyn FnOnce()>>>,
-
-    /// sender to send hello requests to newly added sockets
-    block_event_sender: UnboundedSender<BlockSendEvent>,
+        RefCell<HashMap<ComInterfaceSocketUUID, Vec<Box<dyn FnOnce()>>>>,
 }
 impl SocketsManager {
-    pub fn new(
-        block_event_sender: UnboundedSender<BlockSendEvent>,
-    ) -> SocketsManager {
+    pub fn new() -> SocketsManager {
         SocketsManager {
-            sockets: HashMap::new(),
-            socket_uuids_by_interface_uuid: HashMap::new(),
-            endpoint_sockets_blacklist: HashMap::new(),
-            fallback_sockets: Vec::new(),
-            endpoint_sockets: HashMap::new(),
-            socket_registered_callbacks: HashMap::new(),
-            block_event_sender,
+            sockets: RefCell::new(HashMap::new()),
+            socket_uuids_by_interface_uuid: RefCell::new(HashMap::new()),
+            endpoint_sockets_blacklist: RefCell::new(HashMap::new()),
+            fallback_sockets: RefCell::new(Vec::new()),
+            endpoint_sockets: RefCell::new(HashMap::new()),
+            socket_registered_callbacks:RefCell::new(HashMap::new()),
         }
     }
 }
@@ -101,11 +93,12 @@ impl SocketsManager {
 impl SocketsManager {
     /// Add a socket to the blocklist for a specific endpoint
     pub fn add_to_endpoint_blocklist(
-        &mut self,
+        &self,
         endpoint: Endpoint,
         socket_uuid: &ComInterfaceSocketUUID,
     ) {
         self.endpoint_sockets_blacklist
+            .borrow_mut()
             .entry(endpoint)
             .or_default()
             .insert(socket_uuid.clone());
@@ -116,7 +109,7 @@ impl SocketsManager {
     /// If the provided endpoint is not the same as the socket endpoint, it is registered
     /// as an indirect socket to the endpoint
     pub fn register_socket_endpoint(
-        &mut self,
+        &self,
         socket_uuid: ComInterfaceSocketUUID,
         endpoint: Endpoint,
         distance: i8,
@@ -125,24 +118,24 @@ impl SocketsManager {
             "Registering endpoint {} for socket {}",
             endpoint, socket_uuid
         );
-        let socket = self.get_socket_by_uuid(&socket_uuid);
+        let socket = self.get_socket_by_uuid_mut(&socket_uuid);
 
         // if the registered endpoint is the same as the socket endpoint,
         // this is a direct socket to the endpoint
-        let is_direct = socket.direct_endpoint == Some(endpoint.clone());
+        let is_direct = socket.socket_properties.direct_endpoint == Some(endpoint.clone());
 
         // check if the socket is already registered for the endpoint
-        if let Some(entries) = self.endpoint_sockets.get(&endpoint)
+        if let Some(entries) = self.endpoint_sockets.borrow().get(&endpoint)
             && entries
                 .iter()
-                .any(|(socket_uuid, _)| socket_uuid == &socket.uuid)
+                .any(|(socket_uuid, _)| socket_uuid == &socket.socket_properties.uuid())
         {
             return Err(SocketEndpointRegistrationError::SocketEndpointAlreadyRegistered);
         }
 
-        let socket_uuid = socket.uuid.clone();
-        let channel_factor = socket.channel_factor;
-        let direction = socket.direction.clone();
+        let socket_uuid = socket.socket_properties.uuid().clone();
+        let channel_factor = socket.socket_properties.channel_factor;
+        let direction = socket.socket_properties.direction.clone();
 
         // add endpoint to socket endpoint list
         self.add_socket_endpoint(&socket_uuid, endpoint.clone());
@@ -165,7 +158,7 @@ impl SocketsManager {
 
     /// Registers a callback to be called when the socket with the given UUID is registered
     pub fn on_socket_registered(
-        &mut self,
+        &self,
         socket_uuid: &ComInterfaceSocketUUID,
         callback: impl FnOnce() + 'static,
     ) {
@@ -173,6 +166,7 @@ impl SocketsManager {
             callback();
         } else {
             self.socket_registered_callbacks
+                .borrow_mut()
                 .entry(socket_uuid.clone())
                 .or_default()
                 .push(Box::new(callback));
@@ -182,7 +176,7 @@ impl SocketsManager {
     /// Waits asynchronously until the socket with the given UUID is registered.
     /// If the socket is already registered, the function returns immediately.
     pub(crate) fn get_socket_registration_waiter(
-        &mut self,
+        &self,
         socket_uuid: &ComInterfaceSocketUUID,
     ) -> Receiver<()> {
         if self.has_socket(socket_uuid) {
@@ -203,7 +197,7 @@ impl SocketsManager {
     /// Adds a socket to the socket list for a specific endpoint,
     /// attaching metadata as DynamicEndpointProperties
     fn add_endpoint_socket(
-        &mut self,
+        &self,
         endpoint: &Endpoint,
         socket_uuid: ComInterfaceSocketUUID,
         distance: i8,
@@ -211,11 +205,11 @@ impl SocketsManager {
         channel_factor: u32,
         direction: InterfaceDirection,
     ) {
-        if !self.endpoint_sockets.contains_key(endpoint) {
-            self.endpoint_sockets.insert(endpoint.clone(), Vec::new());
+        if !self.endpoint_sockets.borrow().contains_key(endpoint) {
+            self.endpoint_sockets.borrow_mut().insert(endpoint.clone(), Vec::new());
         }
 
-        self.endpoint_sockets.get_mut(endpoint).unwrap().push((
+        self.endpoint_sockets.borrow_mut().get_mut(endpoint).unwrap().push((
             socket_uuid,
             DynamicEndpointProperties {
                 known_since: Time::now(),
@@ -229,19 +223,20 @@ impl SocketsManager {
 
     /// Adds an endpoint to the endpoint list of a specific socket
     fn add_socket_endpoint(
-        &mut self,
+        &self,
         socket_uuid: &ComInterfaceSocketUUID,
         endpoint: Endpoint,
     ) {
         assert!(
-            self.sockets.contains_key(socket_uuid),
+            self.sockets.borrow().contains_key(socket_uuid),
             "Socket not found in ComHub"
         );
         // add endpoint to socket endpoint list
         self.sockets
+            .borrow_mut()
             .get_mut(socket_uuid)
             .unwrap()
-            .1
+            .endpoints
             .insert(endpoint.clone());
     }
 
@@ -254,8 +249,9 @@ impl SocketsManager {
     /// When the global debug flag `enable_deterministic_behavior` is set,
     /// Sockets are not sorted by their connect_timestamp to make sure that the order of
     /// received blocks has no effect on the routing priorities
-    fn sort_sockets(&mut self, endpoint: &Endpoint) {
-        let sockets = self.endpoint_sockets.get_mut(endpoint).unwrap();
+    fn sort_sockets(&self, endpoint: &Endpoint) {
+        let mut endpoint_sockets = self.endpoint_sockets.borrow_mut();
+        let sockets = endpoint_sockets.get_mut(endpoint).unwrap();
 
         sockets.sort_by(|(_, a), (_, b)| {
             // sort by channel_factor
@@ -286,21 +282,13 @@ impl SocketsManager {
         });
     }
 
-    /// Returns all socket UUIDs for a given interface UUID
-    pub fn get_sockets_for_interface_uuid(
-        &self,
-        interface_uuid: &ComInterfaceUUID,
-    ) -> Option<&HashSet<ComInterfaceSocketUUID>> {
-        self.socket_uuids_by_interface_uuid.get(interface_uuid)
-    }
-
     /// Removes all sockets for a given interface UUID
     pub fn remove_sockets_for_interface_uuid(
-        &mut self,
+        &self,
         interface_uuid: &ComInterfaceUUID,
     ) {
         if let Some(socket_uuids) =
-            self.socket_uuids_by_interface_uuid.remove(interface_uuid)
+            self.socket_uuids_by_interface_uuid.borrow_mut().remove(interface_uuid)
         {
             for socket_uuid in socket_uuids {
                 self.delete_socket(&socket_uuid);
@@ -315,40 +303,36 @@ impl SocketsManager {
     pub fn get_socket_by_uuid(
         &self,
         socket_uuid: &ComInterfaceSocketUUID,
-    ) -> &ComInterfaceSocket {
-        self.sockets
-            .get(socket_uuid)
-            .map(|socket| &socket.0)
-            .unwrap_or_else(|| {
-                core::panic!("Socket for uuid {socket_uuid} not found")
-            })
+    ) -> Ref<'_, SocketData> {
+        let sockets = self.sockets.borrow();
+        Ref::map(sockets, |sockets| {
+            sockets.get(&socket_uuid).expect("No socket data found for socket")
+        })
     }
 
     /// Returns a mutable reference to the socket for a given UUID
     /// Applicable for TI
     pub fn get_socket_by_uuid_mut(
-        &mut self,
+        &self,
         socket_uuid: &ComInterfaceSocketUUID,
-    ) -> &mut ComInterfaceSocket {
-        self.sockets
-            .get_mut(socket_uuid)
-            .map(|socket| &mut socket.0)
-            .unwrap_or_else(|| {
-                core::panic!("Socket for uuid {socket_uuid} not found")
-            })
+    ) -> RefMut<'_, SocketData> {
+        let sockets = self.sockets.borrow_mut();
+        RefMut::map(sockets, |sockets| {
+            sockets.get_mut(&socket_uuid).expect("No socket data found for socket")
+        })
     }
 
     /// Checks if a socket with the given UUID exists in the manager
     pub fn has_socket(&self, socket_uuid: &ComInterfaceSocketUUID) -> bool {
-        self.sockets.contains_key(socket_uuid)
+        self.sockets.borrow().contains_key(socket_uuid)
     }
 
     /// Adds a socket to the SocketManager
     /// Panics if the socket already exists
     fn add_socket_to_list(
-        &mut self,
+        &self,
         socket_uuid: ComInterfaceSocketUUID,
-        socket: ComInterfaceSocket,
+        socket: SocketData,
     ) {
         if self.has_socket(&socket_uuid) {
             core::panic!(
@@ -357,16 +341,18 @@ impl SocketsManager {
             );
         }
 
-        let direct_endpoint = socket.direct_endpoint.clone();
+        let direct_endpoint = socket.socket_properties.direct_endpoint.clone();
 
         // store interface socket mapping
         self.socket_uuids_by_interface_uuid
+            .borrow_mut()
             .entry(socket.interface_uuid.clone())
             .or_default()
             .insert(socket_uuid.clone());
         // add socket to socket list
         self.sockets
-            .insert(socket_uuid.clone(), (socket, HashSet::new()));
+            .borrow_mut()
+            .insert(socket_uuid.clone(), socket);
 
         // if socket has direct endpoint, register it
         if let Some(direct_endpoint) = direct_endpoint {
@@ -388,30 +374,31 @@ impl SocketsManager {
     /// If the priority is not set to `InterfacePriority::None`, the socket
     /// is also registered as a fallback socket for outgoing connections with the
     /// specified priority.
-    fn handle_new_socket(
-        &mut self,
-        socket: ComInterfaceSocket,
+    pub fn register_socket(
+        &self,
+        socket: SocketData,
         priority: InterfacePriority,
     ) -> Result<(), ComHubError> {
-        let can_send = socket.can_send();
-        let socket_uuid = socket.uuid.clone();
-        if self.has_socket(&socket.uuid) {
-            core::panic!("Socket {} already exists in ComHub", socket.uuid);
+        let can_send = socket.socket_properties.direction.can_send();
+        let socket_uuid = socket.socket_properties.uuid().clone();
+        if self.has_socket(&socket_uuid) {
+            core::panic!("Socket {} already exists in ComHub", socket_uuid);
         }
 
         info!(
             "Adding socket {} to ComHub with priority {:?}, direct endpoint: {}, direction: {:?}",
-            socket.uuid,
+            socket_uuid,
             priority,
             socket
+                .socket_properties
                 .direct_endpoint
                 .as_ref()
                 .map(|e| e.to_string())
                 .unwrap_or("None".to_string()),
-            socket.direction
+            socket.socket_properties.direction
         );
 
-        let direction = socket.direction.clone();
+        let direction = socket.socket_properties.direction.clone();
 
         self.add_socket_to_list(socket_uuid.clone(), socket);
 
@@ -431,15 +418,15 @@ impl SocketsManager {
         // notify com hub about new socket so that it can init the socket task and optionally send a
         // hello block
 
-        self.block_event_sender
-            .start_send(BlockSendEvent::NewSocket {
-                socket_uuid: socket_uuid.clone(),
-            })
-            .expect("Cannot send BlockSendEvent::NewSocket");
+        // self.block_event_sender
+        //     .start_send(BlockSendEvent::NewSocket {
+        //         socket_uuid: socket_uuid.clone(),
+        //     })
+        //     .expect("Cannot send BlockSendEvent::NewSocket");
 
         // call registered callbacks for socket registration
         if let Some(callbacks) =
-            self.socket_registered_callbacks.remove(&socket_uuid)
+            self.socket_registered_callbacks.borrow_mut().remove(&socket_uuid)
         {
             for callback in callbacks {
                 callback();
@@ -453,17 +440,18 @@ impl SocketsManager {
     /// that can be used if no known route exists for an endpoint
     /// Note: only sockets that support sending data should be used as fallback sockets
     pub fn add_fallback_socket(
-        &mut self,
+        &self,
         socket_uuid: &ComInterfaceSocketUUID,
         priority: u16,
         direction: InterfaceDirection,
     ) {
         // add to vec
         self.fallback_sockets
+            .borrow_mut()
             .push((socket_uuid.clone(), priority, direction));
         // first sort by direction (InOut before Out - only In is not allowed)
         // second sort by priority
-        self.fallback_sockets.sort_by_key(|(_, priority, direction)| {
+        self.fallback_sockets.borrow_mut().sort_by_key(|(_, priority, direction)| {
             let dir_rank = match direction {
                 InterfaceDirection::InOut => 0,
                 InterfaceDirection::Out => 1,
@@ -476,7 +464,7 @@ impl SocketsManager {
     }
 
     /// Removes a socket from the socket list
-    pub fn delete_socket(&mut self, socket_uuid: &ComInterfaceSocketUUID) {
+    pub fn delete_socket(&self, socket_uuid: &ComInterfaceSocketUUID) {
         if !self.has_socket(socket_uuid) {
             warn!("Socket {socket_uuid} not found in ComHub, cannot delete");
             return;
@@ -488,25 +476,26 @@ impl SocketsManager {
 
         // remove socket from endpoint socket list
         // remove endpoint key from endpoint_sockets if not sockets present
-        self.endpoint_sockets.retain(|_, sockets| {
+        self.endpoint_sockets.borrow_mut().retain(|_, sockets| {
             sockets.retain(|(uuid, _)| uuid != socket_uuid);
             !sockets.is_empty()
         });
 
         // remove socket from socket list
-        self.sockets.remove(socket_uuid);
+        self.sockets.borrow_mut().remove(socket_uuid);
 
         // remove socket if it is the default socket
         self.fallback_sockets
+            .borrow_mut()
             .retain(|(uuid, _, _)| uuid != socket_uuid);
 
         // remove socket from interface socket mapping
         if let Some(socket_uuids) =
-            self.socket_uuids_by_interface_uuid.get_mut(&interface_uuid)
+            self.socket_uuids_by_interface_uuid.borrow_mut().get_mut(&interface_uuid)
         {
             socket_uuids.remove(socket_uuid);
             if socket_uuids.is_empty() {
-                self.socket_uuids_by_interface_uuid.remove(&interface_uuid);
+                self.socket_uuids_by_interface_uuid.borrow_mut().remove(&interface_uuid);
             }
         }
     }
@@ -524,7 +513,7 @@ impl SocketsManager {
             move || {
                 // TODO #183: can we optimize this to avoid cloning the endpoint_sockets vector?
                 let endpoint_sockets =
-                    self.endpoint_sockets.get(endpoint).cloned();
+                    self.endpoint_sockets.borrow().get(endpoint).cloned();
                 if endpoint_sockets.is_none() {
                     return;
                 }
@@ -534,8 +523,8 @@ impl SocketsManager {
 
                         // check if only_direct is set and the endpoint equals the direct endpoint of the socket
                         if options.only_direct
-                            && socket.direct_endpoint.is_some()
-                            && socket.direct_endpoint.as_ref().unwrap()
+                            && socket.socket_properties.direct_endpoint.is_some()
+                            && socket.socket_properties.direct_endpoint.as_ref().unwrap()
                                 == endpoint
                         {
                             debug!(
@@ -545,10 +534,10 @@ impl SocketsManager {
                         }
 
                         // check if the socket is excluded if exclude_socket is set
-                        if options.exclude_sockets.contains(&socket.uuid) {
+                        if options.exclude_sockets.contains(&socket.socket_properties.uuid()) {
                             debug!(
                                 "Socket {} is excluded for endpoint {}. Skipping...",
-                                socket.uuid, endpoint
+                                socket.socket_properties.uuid(), endpoint
                             );
                             continue;
                         }
@@ -557,10 +546,10 @@ impl SocketsManager {
                         // only yield outgoing sockets
                         // if a non-outgoing socket is found, all following sockets
                         // will also be non-outgoing
-                        if !socket.can_send() {
+                        if !socket.socket_properties.direction.can_send() {
                             info!(
                                 "Socket {} is not outgoing for endpoint {}. Skipping...",
-                                socket.uuid, endpoint
+                                socket.socket_properties.uuid(), endpoint
                             );
                             return;
                         }
@@ -647,7 +636,7 @@ impl SocketsManager {
         }
         // otherwise, return the highest priority socket that is not excluded
         else {
-            for (socket_uuid, _, _) in self.fallback_sockets.iter() {
+            for (socket_uuid, _, _) in self.fallback_sockets.borrow().iter() {
                 let socket = self.get_socket_by_uuid(socket_uuid);
                 info!(
                     "{}: Find best for {}: {} ({}); excluded:{}",
@@ -655,6 +644,7 @@ impl SocketsManager {
                     endpoint,
                     socket_uuid,
                     socket
+                        .socket_properties
                         .direct_endpoint
                         .clone()
                         .map(|e| e.to_string())
@@ -685,7 +675,7 @@ impl SocketsManager {
                 .map(|endpoint: &Endpoint| {
                     // add sockets from endpoint blacklist
                     if let Some(blacklist) =
-                        self.endpoint_sockets_blacklist.get(endpoint)
+                        self.endpoint_sockets_blacklist.borrow().get(endpoint)
                     {
                         exclude_sockets.extend(blacklist.iter().cloned());
                     }
