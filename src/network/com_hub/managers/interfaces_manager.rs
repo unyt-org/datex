@@ -3,6 +3,7 @@ use crate::{
     stdlib::rc::Rc, stdlib::string::String, stdlib::boxed::Box, stdlib::string::ToString,
 };
 use core::{cell::RefCell, pin::Pin};
+use core::cell::Ref;
 use log::info;
 
 use crate::{
@@ -194,8 +195,13 @@ impl InterfacesManager {
     pub fn try_interface_by_uuid(
         &self,
         uuid: &ComInterfaceUUID,
-    ) -> Option<&ComInterfaceConfiguration> {
-        self.interfaces.borrow().get(uuid).map(|(interface, _)| interface)
+    ) -> Option<Ref<ComInterfaceConfiguration>> {
+        let interfaces = self.interfaces.borrow();
+        let interface = Ref::filter_map(
+            interfaces, 
+            |map| map.get(uuid).map(|(conf,_)| conf)
+        );
+        interface.ok()
     }
 
     /// Returns the com interface for a given UUID
@@ -204,7 +210,7 @@ impl InterfacesManager {
     pub fn get_interface_by_uuid(
         &self,
         interface_uuid: &ComInterfaceUUID,
-    ) -> &ComInterfaceConfiguration {
+    ) -> Ref<ComInterfaceConfiguration> {
         self.try_interface_by_uuid(interface_uuid)
             .unwrap_or_else(|| {
                 core::panic!("Interface for uuid {interface_uuid} not found")
@@ -216,7 +222,7 @@ impl InterfacesManager {
         &self,
         interface: ComInterfaceConfiguration,
         priority: InterfacePriority,
-    ) -> Result<&ComInterfaceConfiguration, InterfaceAddError> {
+    ) -> Result<Ref<ComInterfaceConfiguration>, InterfaceAddError> {
         let uuid = interface.uuid().clone();
         if self.interfaces.borrow().contains_key(&uuid) {
             return Err(InterfaceAddError::InterfaceAlreadyExists);

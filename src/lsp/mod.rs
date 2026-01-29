@@ -412,6 +412,7 @@ mod tests {
         io::{AsyncReadExt, AsyncWriteExt, duplex},
         time::{Duration, timeout},
     };
+    use crate::runtime::global_context::GlobalContext;
     use crate::runtime::RuntimeRunner;
 
     #[tokio::test(flavor = "current_thread")]
@@ -420,7 +421,7 @@ mod tests {
         init_global_context();
 
         RuntimeRunner::new_native(
-            RuntimeConfig::new_with_endpoint(Endpoint::from_str("@lspler").unwrap())
+            RuntimeConfig::new_with_endpoint(Endpoint::from_str("@lspler").unwrap()),
         ).run(async |runtime| {
             let (mut client_read, server_write) = duplex(1024);
             let (server_read, mut client_write) = duplex(1024);

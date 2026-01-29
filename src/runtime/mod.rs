@@ -494,21 +494,18 @@ impl RuntimeConfig {
     }
 }
 
-pub struct RuntimeRunner<Fut: Future<Output = ()>> {
+pub struct RuntimeRunner {
     pub runtime: Runtime,
-    pub task_future: Fut,
+    pub task_future: Pin<Box<dyn Future<Output = ()>>>,
 }
 
-impl<TaskFuture> RuntimeRunner<TaskFuture>
-where
-    TaskFuture: Future<Output = ()>,
-{
+impl RuntimeRunner {
     /// Creates a new runtime instance with the given configuration and global context.
     /// Note: If the endpoint is not specified in the config, a random endpoint will be generated.
     pub fn new(
         config: RuntimeConfig,
         global_context: GlobalContext,
-    ) -> RuntimeRunner<impl Future<Output = ()>> {
+    ) -> RuntimeRunner {
         set_global_context(global_context);
         if let Some(debug) = config.debug
             && debug
@@ -566,7 +563,7 @@ where
 
         RuntimeRunner {
             runtime,
-            task_future,
+            task_future: Box::pin(task_future),
         }
     }
 
@@ -577,7 +574,7 @@ where
     ))]
     pub fn new_native(
         config: RuntimeConfig,
-    ) -> RuntimeRunner<impl Future<Output = ()>> {
+    ) -> RuntimeRunner {
         use crate::utils::time_native::TimeNative;
         use crate::crypto::crypto_native::CryptoNative;
         Self::new(

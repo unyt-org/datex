@@ -137,6 +137,8 @@ impl SocketsManager {
         let channel_factor = socket.socket_properties.channel_factor;
         let direction = socket.socket_properties.direction.clone();
 
+        drop(socket);
+
         // add endpoint to socket endpoint list
         self.add_socket_endpoint(&socket_uuid, endpoint.clone());
 
@@ -334,14 +336,14 @@ impl SocketsManager {
         socket_uuid: ComInterfaceSocketUUID,
         socket: SocketData,
     ) {
+        let direct_endpoint = socket.socket_properties.direct_endpoint.clone();
+        
         if self.has_socket(&socket_uuid) {
             core::panic!(
                 "Socket {} already exists in SocketManager",
                 socket_uuid
             );
         }
-
-        let direct_endpoint = socket.socket_properties.direct_endpoint.clone();
 
         // store interface socket mapping
         self.socket_uuids_by_interface_uuid
@@ -353,6 +355,7 @@ impl SocketsManager {
         self.sockets
             .borrow_mut()
             .insert(socket_uuid.clone(), socket);
+    
 
         // if socket has direct endpoint, register it
         if let Some(direct_endpoint) = direct_endpoint {

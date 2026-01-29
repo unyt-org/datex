@@ -69,10 +69,9 @@ use crate::{
     },
 };
 use async_select::select;
-use futures::stream::FuturesUnordered;
 use futures_util::{FutureExt, StreamExt, future::Fuse};
-use std::async_iter::AsyncIterator;
-use std::cell::Ref;
+use core::async_iter::AsyncIterator;
+use core::cell::Ref;
 use futures_util::future::join_all;
 use crate::collections::HashSet;
 use datex_core::global::dxb_block::BlockId;

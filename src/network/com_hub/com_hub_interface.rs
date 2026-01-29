@@ -59,7 +59,7 @@ impl ComHub {
     pub(crate) fn dyn_interface_for_socket_uuid(
         &self,
         socket_uuid: &ComInterfaceSocketUUID,
-    ) -> &ComInterfaceConfiguration {
+    ) -> Ref<ComInterfaceConfiguration> {
         let socket = self.socket_manager.get_socket_by_uuid(socket_uuid);
         self.interfaces_manager.get_interface_by_uuid(&socket.interface_uuid)
     }
