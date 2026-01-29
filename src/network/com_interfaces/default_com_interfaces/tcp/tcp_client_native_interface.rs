@@ -13,11 +13,9 @@ use crate::{
                 ComInterfaceAsyncFactory, ComInterfaceAsyncFactoryResult,
             },
             properties::{InterfaceDirection, ComInterfaceProperties},
-            state::{ComInterfaceState, ComInterfaceStateWrapper},
         },
     },
     stdlib::{net::SocketAddr, sync::Arc},
-    task::spawn_with_panic_notify_default,
 };
 use core::{
     prelude::rust_2024::*, result::Result, str::FromStr, time::Duration,

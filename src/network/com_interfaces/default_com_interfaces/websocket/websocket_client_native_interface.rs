@@ -25,7 +25,6 @@ use crate::{
                 ComInterfaceAsyncFactory, ComInterfaceAsyncFactoryResult,
             },
             properties::{InterfaceDirection, ComInterfaceProperties},
-            state::{ComInterfaceStateWrapper},
         },
     },
 };

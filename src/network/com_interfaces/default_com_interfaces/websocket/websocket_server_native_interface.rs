@@ -57,7 +57,7 @@ impl WebSocketServerInterfaceSetupData {
                     // get next websocket connection
                     match Self::get_next_websocket_connection(&listener).await {
                         Ok((mut read, write)) => {
-                            info!("Accepted WebSocket connection from {addr}");
+                            info!("Accepted new WebSocket connection");
                             // yield new socket data
                             yield Ok(SocketConfiguration::new(
                                 SocketProperties::new(InterfaceDirection::InOut, 1),
@@ -79,7 +79,7 @@ impl WebSocketServerInterfaceSetupData {
                                             }
                                             None => {
                                                 // Connection closed by peer
-                                                return yield Err(())
+                                                return;
                                             }
                                         }
                                     }

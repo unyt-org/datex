@@ -198,11 +198,13 @@ impl SendCallback {
     }
 }
 
+#[derive(Debug)]
 pub struct ComInterfaceConfiguration {
     uuid: ComInterfaceUUID,
     /// The properties of the interface instance
     pub properties: Rc<ComInterfaceProperties>,
     // TODO: docs
+    #[debug(skip)]
     pub new_sockets_iterator: NewSocketsIterator,
 }
 

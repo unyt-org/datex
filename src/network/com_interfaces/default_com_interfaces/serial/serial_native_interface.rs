@@ -11,7 +11,7 @@ use crate::{
     },
     std_sync::Mutex,
     stdlib::{sync::Arc, time::Duration},
-    task::{spawn, spawn_blocking, spawn_with_panic_notify_default},
+    task::{spawn, spawn_blocking},
 };
 use core::{prelude::rust_2024::*, result::Result};
 use log::{error, warn};
