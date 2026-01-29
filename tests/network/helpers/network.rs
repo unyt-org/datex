@@ -12,7 +12,7 @@ use datex_core::{
         com_hub::{InterfacePriority, network_tracing::TraceOptions},
         com_interfaces::com_interface::{
             ComInterfaceEvent, ComInterfaceProxy,
-            properties::{InterfaceDirection, InterfaceProperties},
+            properties::{InterfaceDirection, ComInterfaceProperties},
         },
     },
     runtime::{AsyncContext, Runtime, RuntimeConfig},
@@ -604,7 +604,7 @@ impl Network {
     ) {
         let interface_direction = connection.setup_data.direction.clone();
         let (proxy, com_interface) = ComInterfaceProxy::create_interface(
-            InterfaceProperties {
+            ComInterfaceProperties {
                 interface_type: "mockup".to_string(),
                 direction: interface_direction.clone(),
                 name: Some(connection.setup_data.name.clone()),

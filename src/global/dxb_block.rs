@@ -18,6 +18,7 @@ use core::{
 use log::error;
 use strum::Display;
 use thiserror::Error;
+use crate::global::protocol_structures::block_header::BlockType;
 
 #[derive(Debug, Display, Error)]
 pub enum HeaderParsingError {
@@ -395,6 +396,10 @@ impl DXBBlock {
 
     pub fn sender(&self) -> &Endpoint {
         &self.routing_header.sender
+    }
+    
+    pub fn block_type(&self) -> BlockType {
+        self.block_header.flags_and_timestamp.block_type()
     }
 
     pub fn get_endpoint_context_id(&self) -> IncomingEndpointContextId {

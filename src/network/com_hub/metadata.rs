@@ -13,7 +13,7 @@ use crate::{
 
 use crate::{
     network::com_interfaces::com_interface::{
-        properties::{InterfaceDirection, InterfaceProperties},
+        properties::{InterfaceDirection, ComInterfaceProperties},
         socket::ComInterfaceSocketUUID,
     },
     stdlib::{
@@ -47,7 +47,7 @@ pub struct ComHubMetadataInterfaceSocketWithoutEndpoint {
 #[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
 pub struct ComHubMetadataInterface {
     pub uuid: String,
-    pub properties: InterfaceProperties,
+    pub properties: ComInterfaceProperties,
     pub sockets: Vec<ComHubMetadataInterfaceSocket>,
 }
 
@@ -188,7 +188,7 @@ impl ComHub {
         for (interface, _) in interface_manager.interfaces.values() {
             metadata.interfaces.push(ComHubMetadataInterface {
                 uuid: interface.uuid().to_string(),
-                properties: interface.properties().clone(),
+                properties: interface.properties.clone(),
                 sockets: sockets_by_com_interface_uuid
                     .remove(&interface.uuid())
                     .unwrap_or_default(),

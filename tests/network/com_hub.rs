@@ -26,7 +26,7 @@ use datex_core::{
         com_interfaces::com_interface::{
             ComInterfaceUtils, ComInterfaceProxy,
             factory::ComInterfaceSyncFactory,
-            properties::{InterfaceDirection, InterfaceProperties},
+            properties::{InterfaceDirection, ComInterfaceProperties},
             state::ComInterfaceState,
         },
     },
@@ -670,7 +670,7 @@ pub async fn test_reconnect() {
     // create a new interface, open it and add it to the com_hub
     let (base_interface, interface_with_receivers) =
         ComInterfaceProxy::create_interface(
-            InterfaceProperties::default(),
+            ComInterfaceProperties::default(),
             AsyncContext::default(),
         );
 

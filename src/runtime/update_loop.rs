@@ -104,7 +104,7 @@ impl RuntimeInternal {
             );
             block.set_receivers(core::slice::from_ref(&receiver_endpoint));
 
-            self_rc.com_hub.send_own_block(block).await
+            self_rc.com_hub.send_own_block_async(block).await
         } else {
             core::todo!("#233 Handle returning error response block");
         }

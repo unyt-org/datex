@@ -173,16 +173,3 @@ impl ComHub {
             .has_interface(interface_uuid)
     }
 }
-
-#[cfg_attr(feature = "embassy_runtime", embassy_executor::task(pool_size = MAX_CONCURRENT_COM_INTERFACES_EMBASSY))]
-async fn handle_interface_events_task(
-    uuid: ComInterfaceUUID,
-    mut receiver_queue: UnboundedReceiver<ComInterfaceStateEvent>,
-    interface_manager: Rc<RefCell<InterfacesManager>>,
-) {
-    while let Some(event) = receiver_queue.next().await {
-        interface_manager
-            .borrow_mut()
-            .handle_interface_event(&uuid, event);
-    }
-}

@@ -13,7 +13,7 @@ use crate::{
         },
         options::ComHubOptions,
     },
-    task::{self, spawn_with_panic_notify},
+    task::{self},
 };
 pub mod managers;
 
@@ -21,7 +21,6 @@ pub mod managers;
 pub mod metadata;
 use crate::network::com_hub::managers::sockets_manager::SocketsManager;
 
-mod com_hub_socket;
 pub mod errors;
 pub mod network_response;
 pub mod network_tracing;
@@ -78,6 +77,12 @@ use async_select::select;
 use futures::stream::FuturesUnordered;
 use futures_util::{FutureExt, StreamExt, future::Fuse};
 use std::async_iter::AsyncIterator;
+use std::cell::Ref;
+use futures_util::future::join_all;
+use datex_core::global::dxb_block::BlockId;
+use crate::network::com_interfaces::com_interface::factory::SocketProperties;
+use crate::network::com_interfaces::com_interface::properties::ComInterfaceProperties;
+use crate::utils::maybe_async::{SyncOrAsync, SyncOrAsyncResult};
 
 /// Maximum number of concurrent ComInterface sockets for Embassy runtime
 pub const MAX_CONCURRENT_COM_INTERFACE_SOCKETS_EMBASSY: usize = 2;
@@ -92,6 +97,13 @@ pub type OutgoingBlockInterceptor =
 #[derive(Debug, Clone)]
 pub enum BlockSendEvent {
     NewSocket { socket_uuid: ComInterfaceSocketUUID },
+}
+
+#[derive(Debug)]
+pub struct SocketData {
+    socket_properties: SocketProperties,
+    interface_properties: Rc<ComInterfaceProperties>,
+    send_callback: Option<SendCallback>,
 }
 
 pub struct ComHub {
@@ -112,8 +124,7 @@ pub struct ComHub {
     send_request_receiver: RefCell<Option<UnboundedReceiver<BlockSendEvent>>>,
 
     pub task_manager: TaskManager,
-    pub socket_send_callbacks:
-        RefCell<HashMap<ComInterfaceSocketUUID, SendCallback>>,
+    pub sockets: RefCell<HashMap<ComInterfaceSocketUUID, SocketData>>,
 }
 
 impl Debug for ComHub {
@@ -174,6 +185,27 @@ enum PreReceiveAction {
     Sync
 }
 
+pub struct ReceiveBlockResult<F: Future<Output = ()>> {
+    own_received_block: Option<DXBBlock>,
+    async_handler: Option<F>
+}
+
+/// A received block for the local endpoint, either a Trace, which must be handled asynchronously,
+/// or another block type which may be handled directly
+pub enum OwnReceivedBlock {
+    Trace(DXBBlock),
+    Other(DXBBlock),
+}
+
+pub struct ReceiveBlockPreprocessResult {
+    relayed_block: Option<DXBBlock>,
+    own_received_block: Option<OwnReceivedBlock>,
+    block_id_for_history: Option<BlockId>,
+    is_for_own: bool,
+}
+
+pub type BlockSendSyncOrAsyncResult<F: Future<Output = Result<(), Vec<Endpoint>>>> = SyncOrAsyncResult<Option<Vec<Vec<u8>>>, (), Vec<Endpoint>, F>;
+
 impl ComHub {
     pub fn create(
         endpoint: impl Into<Endpoint>,
@@ -198,7 +230,7 @@ impl ComHub {
             send_request_receiver: RefCell::new(Some(send_request_receiver)),
             incoming_block_interceptors: RefCell::new(Vec::new()),
             outgoing_block_interceptors: RefCell::new(Vec::new()),
-            socket_send_callbacks: RefCell::new(HashMap::new()),
+            sockets: RefCell::new(HashMap::new()),
             task_manager,
         });
 
@@ -217,90 +249,115 @@ impl ComHub {
         (com_hub, task_future)
     }
 
-    /// Registers a new ComInterface on the ComHub by adding tasks
+    /// Registers the handle_sockets_task for the given ComInterfaceConfiguration
     /// TODO: priority
     fn register_com_interface_handler(
         self: Rc<Self>,
         com_interface_configuration: ComInterfaceConfiguration,
         priority: InterfacePriority,
     ) {
-        let mut iterator = com_interface_configuration.new_sockets_iterator;
-        let self_clone = self.clone();
-        self.task_manager.register_task(async move {
-            while let Some(socket) = async_next_pin_box(&mut iterator).await {
-                match socket {
-                    Ok(socket_configuration) => {
-                        // register socket
-                        let socket_iterator = socket_configuration.iterator;
-                        let send_callback = socket_configuration.send_callback;
-                        let socket_properties = socket_configuration.properties;
+        self.task_manager.register_task(
+            self.clone().handle_sockets_task(
+                com_interface_configuration.new_sockets_iterator,
+                com_interface_configuration.properties.clone(),
+            )
+        );
+    }
 
-                        // register send callback
-                        if let Some(send_callback) = send_callback {
-                            self_clone.clone().socket_send_callbacks.borrow_mut().insert(
-                                socket_properties.uuid().clone(),
-                                send_callback,
-                            );
-                        }
+    /// Iterates over the given NewSocketsIterator for an interface and handles each socket
+    async fn handle_sockets_task(self: Rc<Self>, mut iterator: NewSocketsIterator, com_interface_properties: Rc<ComInterfaceProperties>) {
+        while let Some(socket) = async_next_pin_box(&mut iterator).await {
+            match socket {
+                Ok(socket_configuration) => {
+                    let socket_iterator = socket_configuration.iterator;
+                    let send_callback = socket_configuration.send_callback;
+                    let socket_properties = socket_configuration.properties;
 
-                        let self_clone = self_clone.clone();
-                        if let Some(mut socket_iterator) = socket_iterator{
-                            self_clone.clone().task_manager.register_task(async move {
+                    // store socket info
+                    self.sockets.borrow_mut().insert(
+                        socket_properties.uuid().clone(),
+                        SocketData {
+                            socket_properties: socket_properties.clone(),
+                            interface_properties: com_interface_properties.clone(),
+                            send_callback,
+                        },
+                    );
 
-                                let (mut bytes_sender, block_iterator) = BlockCollector::create();
-                                let mut block_iterator = Box::pin(block_iterator);
-
-                                loop {
-                                    select! {
-                                        // receive new block data from socket
-                                        Some(data) = async_next_pin_box(&mut socket_iterator).fuse() => {
-                                            match data {
-                                                Ok(data) => {
-                                                    // send data to block collector
-                                                    if let Err(e) = bytes_sender.start_send(data) {
-                                                        error!("Error sending data to BlockCollector: {:?}", e);
-                                                        break;
-                                                    }
-                                                }
-                                                Err(e) => {
-                                                    error!("Error receiving data from socket iterator: {:?}", e);
-                                                    break;
-                                                }
-                                            }
-                                        },
-                                        // receive new blocks from block collector
-                                        Some(block) = async_next_pin_box(&mut block_iterator).fuse() => {
-                                            // Validate
-                                             // ignore invalid blocks (e.g. invalid signature)
-                                            match Self::validate_block(&block).await {
-                                                Ok(true) => { /* Ignored */ }
-                                                Ok(false) => {
-                                                    warn!("Block validation failed. Dropping block...");
-                                                    return;
-                                                }
-                                                Err(e) => {
-                                                    warn!("Error in block validation {e}. Dropping block...");
-                                                    return;
-                                                }
-                                            }
-                                            
-                                            // handle incoming block
-                                            self_clone.receive_block(&block, socket_properties.uuid().clone()).await;
-                                        },
-                                        complete => break,
-                                    }
-                                }
-                            });
-                        }
-                    }
-                    Err(e) => {
-                        error!("Error creating socket from iterator: {:?}", e);
-                        // TODO: end?
-                        return;
+                    let self_clone = self.clone();
+                    if let Some(socket_iterator) = socket_iterator{
+                        self_clone.task_manager.register_task(
+                            self_clone.clone().handle_socket_task(socket_properties, socket_iterator)
+                        );
                     }
                 }
+                Err(e) => {
+                    error!("Error creating socket from iterator: {:?}", e);
+                    // TODO: end?
+                    return;
+                }
             }
-        });
+        }
+    }
+
+    /// Handles incoming data from the given SocketDataIterator
+    async fn handle_socket_task(self: Rc<Self>, socket_properties: SocketProperties, mut socket_iterator: SocketDataIterator) {
+
+        let (mut bytes_sender, block_iterator) = BlockCollector::create();
+        let mut block_iterator = Box::pin(block_iterator);
+
+        loop {
+            select! {
+                // receive new block data from socket
+                Some(data) = async_next_pin_box(&mut socket_iterator).fuse() => {
+                    match data {
+                        Ok(data) => {
+                            // send data to block collector
+                            if let Err(e) = bytes_sender.start_send(data) {
+                                error!("Error sending data to BlockCollector: {:?}", e);
+                                break;
+                            }
+                        }
+                        Err(e) => {
+                            error!("Error receiving data from socket iterator: {:?}", e);
+                            break;
+                        }
+                    }
+                },
+                // receive new blocks from block collector
+                Some(block) = async_next_pin_box(&mut block_iterator).fuse() => {
+                    Self::handle_incoming_block_async(&self, block, &socket_properties).await;
+                },
+                complete => break,
+            }
+        }
+    }
+
+    /// Handles an incoming block from a socket (async)
+    async fn handle_incoming_block_async(self: &Rc<Self>, block: DXBBlock, socket_properties: &SocketProperties) {
+        // Validate
+        // ignore invalid blocks (e.g. invalid signature)
+        match Self::validate_block(&block).await {
+            Ok(true) => { /* Ignored */ }
+            Ok(false) => {
+                warn!("Block validation failed. Dropping block...");
+                return;
+            }
+            Err(e) => {
+                warn!("Error in block validation {e}. Dropping block...");
+                return;
+            }
+        }
+
+        // handle incoming block
+        let receive_block_result = self.receive_block(block, socket_properties.uuid().clone());
+        // handle own block if some
+        if let Some(own_received_block) = receive_block_result.own_received_block {
+            self.block_handler.handle_incoming_block(own_received_block);
+        }
+        // handle async logic if some
+        if let Some(async_handler) = receive_block_result.async_handler {
+            async_handler.await;
+        }
     }
 
     /// Checks if the given endpoint is the local endpoint, matching instances as well
@@ -328,17 +385,59 @@ impl ComHub {
             .push(Box::new(interceptor));
     }
 
-    fn pre_receive(&self, socket_uuid: &ComInterfaceSocketUUID, block: &DXBBlock) -> bool {
-          info!("{} received block: {}", self.endpoint, block);
+    /// Receives a block from a socket and handles it accordingly
+    /// Returns own received block if any and an optional async handler for further processing of relayed blocks and trace blocks
+    pub(crate) fn receive_block(
+        &self,
+        block: DXBBlock,
+        socket_uuid: ComInterfaceSocketUUID,
+    ) -> ReceiveBlockResult<impl Future<Output = ()>> {
+        let preprocess_result = self.receive_block_preprocess(&socket_uuid, block);
+
+        // map own received block
+        let (own_received_block, trace_block) = match preprocess_result.own_received_block {
+            Some(OwnReceivedBlock::Other(block)) => (Some(block), None),
+            Some(OwnReceivedBlock::Trace(block)) => (None, Some(block)),
+            None => (None, None),
+        };
+
+        // handle async logic for received blocks if needed
+        if preprocess_result.relayed_block.is_some() || trace_block.is_some() {
+            let async_handler = self.receive_block_async(
+                trace_block,
+                preprocess_result.relayed_block,
+                preprocess_result.block_id_for_history,
+                socket_uuid,
+                preprocess_result.is_for_own,
+            );
+
+            ReceiveBlockResult {
+                own_received_block,
+                async_handler: Some(async_handler),
+            }
+        }
+        // otherwise, return directly without async handler
+        else {
+            ReceiveBlockResult {
+                own_received_block,
+                async_handler: None,
+            }
+        }
+    }
+
+    /// Preprocesses a received block and returns relay receivers and own received block if any
+    fn receive_block_preprocess(&self, socket_uuid: &ComInterfaceSocketUUID, block: DXBBlock) -> ReceiveBlockPreprocessResult<> {
+        info!("{} received block: {}", self.endpoint, block);
 
         for interceptor in self.incoming_block_interceptors.borrow().iter() {
-            interceptor(block, &socket_uuid);
+            interceptor(&block, &socket_uuid);
         }
 
         let block_type = block.block_header.flags_and_timestamp.block_type();
 
         // register in block history
-        let is_new_block = !self.block_handler.is_block_in_history(block);
+        let is_new_block = !self.block_handler.is_block_in_history(&block);
+
         // assign endpoint to socket if none is assigned
         // only if a new block and the sender in not the local endpoint
         if is_new_block
@@ -346,104 +445,125 @@ impl ComHub {
         {
             self.register_socket_endpoint_from_incoming_block(
                 socket_uuid.clone(),
-                block,
+                &block,
             );
         }
 
-        let receivers = block.receiver_endpoints();
-        if !receivers.is_empty() {
-            let is_for_own = receivers.iter().any(|e| {
+        let all_receivers = block.receiver_endpoints();
+        let (relayed_block, own_received_block, is_for_own) = if !all_receivers.is_empty() {
+            let is_for_own = all_receivers.iter().any(|e| {
                 self.is_local_endpoint_exact(e)
                     || e == &Endpoint::ANY
                     || e == &Endpoint::ANY_ALL_INSTANCES
             });
 
+            // handle blocks for own endpoint
+            let own_received_block = if is_for_own && block_type != BlockType::Hello {
+                info!("Block is for this endpoint");
+
+                Some(
+                    match block_type {
+                        BlockType::Trace => OwnReceivedBlock::Trace(block.clone()),
+                        _ => OwnReceivedBlock::Other(block.clone()),
+                    }
+                )
+            } else {
+                None
+            };
 
             // TODO #177: handle this via TTL, not explicitly for Hello blocks
-            let should_relay =
-                // don't relay "Hello" blocks sent to own endpoint
-                !(
-                    is_for_own && block_type == BlockType::Hello
-                );
-
-            // relay the block to other endpoints
-            if should_relay {
-                // get all receivers that the block must be relayed to
-                let remaining_receivers = if is_for_own {
-                    &self.get_remote_receivers(&receivers)
-                } else {
-                    &receivers
-                };
-
-                return PreReceiveAction::Async()
-            }
-        }
-        false
-    }
-
-    pub(crate) async fn receive_block(
-        &self,
-        block: &DXBBlock,
-        socket_uuid: ComInterfaceSocketUUID,
-    ) {
-        info!("{} received block: {}", self.endpoint, block);
-
-        // handle blocks for own endpoint
-        if is_for_own && block_type != BlockType::Hello {
-            info!("Block is for this endpoint");
-
-            match block_type {
-                BlockType::Trace => {
-                    self.handle_trace_block(block, socket_uuid.clone())
-                        .await;
-                }
-                BlockType::TraceBack => {
-                    self.handle_trace_back_block(
-                        block,
-                        socket_uuid.clone(),
+            let relay_receivers = {
+                let should_relay =
+                    // don't relay "Hello" blocks sent to own endpoint
+                    !(
+                        is_for_own && block_type == BlockType::Hello
                     );
-                }
-                _ => {
-                    self.block_handler.handle_incoming_block(block.clone());
+
+                // relay the block to other endpoints
+                if should_relay {
+                    Some(
+                        if is_for_own {
+                            // get all receivers that the block must be relayed to
+                            self.get_remote_receivers(&all_receivers)
+                        } else {
+                            all_receivers
+                        }
+                    )
+                } else {
+                    None
                 }
             };
+
+            let relayed_block = relay_receivers.map(|receivers| block.clone_with_new_receivers(
+                receivers,
+            ));
+
+            (
+                relayed_block,
+                own_received_block,
+                is_for_own
+            )
+        } else {
+            (None, None, false)
+        };
+
+        // add to block history
+        let block_id_for_history = if is_new_block {
+            Some(block.get_block_id())
+        } else {
+            None
+        };
+
+        ReceiveBlockPreprocessResult {
+            relayed_block,
+            own_received_block,
+            block_id_for_history,
+            is_for_own
+        }
+    }
+
+    /// Handles async logic for received blocks (trace blocks, redirects to other endpoints)
+    pub(crate) async fn receive_block_async(
+        &self,
+        trace_block: Option<DXBBlock>,
+        relayed_block: Option<DXBBlock>,
+        block_id_for_history: Option<BlockId>,
+        socket_uuid: ComInterfaceSocketUUID,
+        is_for_own: bool,
+    ) {
+        // handle trace block asynchronously
+        if let Some(block) = trace_block {
+            info!("Handling trace block asynchronously");
+            self.handle_trace_block(&block, socket_uuid.clone())
+                .await;
         }
 
-        // relay the block to other endpoints
-        if should_relay {
-            
-            // relay the block to all receivers
-            if !remaining_receivers.is_empty() {
-                match block_type {
-                    BlockType::Trace | BlockType::TraceBack => {
-                        self.redirect_trace_block(
-                            block.clone_with_new_receivers(
-                                remaining_receivers,
-                            ),
-                            socket_uuid.clone(),
-                            is_for_own,
-                        )
+        // redirect block to other endpoints
+        if let Some(block) = relayed_block {
+            match block.block_type() {
+                BlockType::Trace | BlockType::TraceBack => {
+                    self.redirect_trace_block(
+                        block,
+                        socket_uuid.clone(),
+                        is_for_own,
+                    )
                         .await;
-                    }
-                    _ => {
-                        self.redirect_block(
-                            block.clone_with_new_receivers(
-                                remaining_receivers,
-                            ),
-                            socket_uuid.clone(),
-                            is_for_own,
-                        )
+                }
+                _ => {
+                    self.redirect_block(
+                        block,
+                        socket_uuid.clone(),
+                        is_for_own,
+                    )
                         .await;
-                    }
                 }
             }
-
         }
 
         // add to block history
-        if is_new_block {
+        if let Some(block_id) = block_id_for_history {
             self.block_handler
-                .add_block_to_history(block, Some(socket_uuid));
+                .add_block_id_to_history(block_id, Some(socket_uuid));
         }
     }
 
@@ -566,7 +686,7 @@ impl ComHub {
                 {
                     excluded_sockets.push(original_socket_uuid.clone())
                 }
-                self.send_block(block.clone(), excluded_sockets, forked)
+                self.send_block_async(block.clone(), excluded_sockets, forked).await
             }
         };
 
@@ -600,14 +720,15 @@ impl ComHub {
                     .can_send()
                 {
                     block.set_bounce_back(true);
-                    self.send_block_to_endpoints_via_socket(
+                    let res = self.send_block_to_endpoints_via_socket(
                         block,
-                        &send_back_socket,
-                        &unreachable_endpoints,
+                        send_back_socket,
+                        unreachable_endpoints,
                         if forked { Some(0) } else { None },
                     )
-                    .into_inner()
+                    .into_future()
                     .await;
+                    // TODO: handle result
                 } else {
                     error!(
                         "Tried to send bounce back block, but cannot send back to incoming socket"
@@ -618,7 +739,7 @@ impl ComHub {
             // and try to send it via other remaining sockets that are not on the blacklist for the
             // block receiver
             else {
-                self.send_block(block, vec![], forked).unwrap_or_else(|_| {
+                self.send_block_async(block, vec![], forked).await.unwrap_or_else(|_| {
                     error!(
                         "Failed to send out block to {}",
                         unreachable_endpoints
@@ -843,15 +964,23 @@ impl ComHub {
     }
 
     /// Public method to send an outgoing block from this endpoint. Called by the runtime.
-    pub async fn send_own_block(
+    pub async fn send_own_block_async(
         &self,
         mut block: DXBBlock,
     ) -> Result<(), Vec<Endpoint>> {
-        block = self.prepare_own_block(block).await.map_err(|_| vec![])?;
+        block = self.prepare_own_block(block).await.map_err(|_| vec![])?; // TODO: propagate signature error?
         // add own outgoing block to history
-        self.block_handler.add_block_to_history(&block, None);
-        self.send_block(block, vec![], false)
+        self.block_handler.add_block_id_to_history(block.get_block_id(), None);
+        self.send_block_async(block, vec![], false).await
     }
+
+    // TODO send_own_block sync
+    // pub fn send_own_block(
+    //     &self,
+    //     mut block: DXBBlock,
+    // ) -> BlockSendSyncOrAsyncResult<impl Future<Output = Result<(), Vec<Endpoint>>>> {
+    //
+    // }
 
     /// Sends a block and wait for a response block.
     /// Fix number of exact endpoints -> Expected responses are known at send time.
@@ -872,7 +1001,7 @@ impl ComHub {
         let has_exact_receiver_count = block.has_exact_receiver_count();
         let receivers = block.receiver_endpoints();
 
-        let res = self.send_own_block(block).await;
+        let res = self.send_own_block_async(block).await;
         let failed_endpoints = res.err().unwrap_or_default();
 
         // yield
@@ -1033,17 +1162,37 @@ impl ComHub {
     }
 
     /// Sends a block to all endpoints specified in the block header.
+    /// Awaits the result if any block was sent via an async interface.
+    /// See `send_block` for details.
+    pub async fn send_block_async(
+        &self,
+        block: DXBBlock,
+        exclude_sockets: Vec<ComInterfaceSocketUUID>,
+        forked: bool,
+    ) -> Result<(), Vec<Endpoint>> {
+        match self.send_block(block, exclude_sockets, forked) {
+            SyncOrAsyncResult::Sync(res) => {
+                // TODO: handle received blocks
+                res.map(|_| ())
+            },
+            SyncOrAsyncResult::Async(fut) => fut.await,
+        }
+    }
+
+    /// Sends a block to all endpoints specified in the block header.
     /// The routing algorithm decides which sockets are used to send the block, based on the endpoint.
     /// A block can be sent to multiple endpoints at the same time over a socket or to multiple sockets for each endpoint.
     /// The original_socket parameter is used to prevent sending the block back to the sender.
     /// When this method is called, the block is queued in the send queue.
-    /// Returns an Err with a list of unreachable endpoints if the block could not be sent to all endpoints.
+    /// Returns a SyncOrAsyncResult:
+    ///  - if all blocks were sent via sync interfaces, returns Sync with Ok containing an optional vector of received blocks (if any), or Err with a list of unreachable endpoints
+    ///  - if any block was sent via an async interface, returns Async with a Future that resolves to Ok(()) or Err with a list of unreachable endpoints
     pub fn send_block(
         &self,
         mut block: DXBBlock,
         exclude_sockets: Vec<ComInterfaceSocketUUID>,
         forked: bool,
-    ) -> Result<(), Vec<Endpoint>> {
+    ) -> BlockSendSyncOrAsyncResult<impl Future<Output = Result<(), Vec<Endpoint>>>> {
         let outbound_receiver_groups =
             self.socket_manager.borrow().get_outbound_receiver_groups(
                 &self.endpoint,
@@ -1053,7 +1202,7 @@ impl ComHub {
 
         if outbound_receiver_groups.is_none() {
             error!("No outbound receiver groups found for block");
-            return Err(vec![]);
+            return SyncOrAsyncResult::Sync(Err(vec![]));
         }
 
         let outbound_receiver_groups = outbound_receiver_groups.unwrap();
@@ -1072,14 +1221,16 @@ impl ComHub {
 
         block.set_bounce_back(false);
 
+        let mut results = Vec::new();
+
         for (receiver_socket, endpoints) in outbound_receiver_groups {
             if let Some(socket_uuid) = receiver_socket {
-                self.send_block_to_endpoints_via_socket(
+                results.push((endpoints.clone(), self.send_block_to_endpoints_via_socket(
                     block.clone(),
-                    &socket_uuid,
-                    &endpoints,
+                    socket_uuid,
+                    endpoints,
                     fork_count,
-                );
+                )));
             } else {
                 error!(
                     "{}: cannot send block, no receiver sockets found for endpoints {:?}",
@@ -1094,10 +1245,75 @@ impl ComHub {
             }
         }
 
+        // return error if any unreachable endpoints
         if !unreachable_endpoints.is_empty() {
-            return Err(unreachable_endpoints);
+            return SyncOrAsyncResult::Sync(Err(unreachable_endpoints));
         }
-        Ok(())
+
+        // if all results are sync, return sync
+        if results.iter().all(|(_, res)| matches!(res, SyncOrAsync::Sync(_))) {
+            let mut received_blocks = Vec::new();
+            for (endpoints, res) in results {
+                match res {
+                    SyncOrAsync::Sync(r) => {
+                        match r {
+                            Ok(Some(data)) => {
+                                received_blocks.push(data); // TODO: already DXBBlocks here?
+                            }
+                            Ok(None) => { /* no data */ }
+                            Err(_) => {
+                                unreachable_endpoints.extend(endpoints);
+                            }
+                        }
+                    }
+                    _ => unreachable!(),
+                }
+            }
+            if !unreachable_endpoints.is_empty() {
+                SyncOrAsyncResult::Sync(Err(unreachable_endpoints))
+            } else {
+                SyncOrAsyncResult::Sync(Ok(Some(received_blocks)))
+            }
+        }
+        // otherwise return async
+        else {
+            SyncOrAsyncResult::Async(async move {
+                let futures = results.into_iter().map(|(endpoints, res)| async move {
+                    match res {
+                        SyncOrAsync::Sync(r) => {
+                            // TODO directly process received blocks
+                            r
+                                .map(|data| {
+                                    ()
+                                })
+                                .map_err(|_| endpoints)
+                        },
+                        SyncOrAsync::Async(fut) => fut.await.map_err(|_| endpoints),
+                    }
+                });
+
+                let res = futures::future::join_all(futures).await;
+                // merge all unreachable endpoints and return err if any
+                let mut all_unreachable_endpoints = res.into_iter().filter_map(|r| r.err()).flatten().collect::<Vec<_>>();
+                if !all_unreachable_endpoints.is_empty() {
+                    Err(all_unreachable_endpoints)
+                } else {
+                    Ok(())
+                }
+            })
+        }
+    }
+
+    /// Retrieves the socket data for a given socket UUID.
+    /// Panics if no socket data is found for the given socket UUID.
+    fn get_socket_data(
+        &self,
+        socket_uuid: &ComInterfaceSocketUUID,
+    ) -> Ref<'_, SocketData> {
+        let sockets = self.sockets.borrow();
+        Ref::map(sockets, |sockets| {
+            sockets.get(&socket_uuid).expect("No socket data found for socket")
+        })
     }
 
     /// Sends a block via a socket to a list of endpoints.
@@ -1105,16 +1321,19 @@ impl ComHub {
     fn send_block_to_endpoints_via_socket(
         &self,
         mut block: DXBBlock,
-        socket_uuid: &ComInterfaceSocketUUID,
-        endpoints: &[Endpoint],
+        socket_uuid: ComInterfaceSocketUUID,
+        endpoints: Vec<Endpoint>,
         // currently only used for trace debugging (TODO: put behind debug flag)
         fork_count: Option<usize>,
-    ) -> MaybeAsyncResult<
+    ) -> SyncOrAsyncResult<
         Option<Vec<u8>>,
+        (),
         SendFailure,
-        impl Future<Output = Result<Option<Vec<u8>>, SendFailure>>,
+        impl Future<Output = Result<(), SendFailure>>,
     > {
-        block.set_receivers(endpoints);
+        let socket_data = self.get_socket_data(&socket_uuid);
+
+        block.set_receivers(&endpoints);
 
         // assuming the distance was already increment during redirect, we
         // effectively decrement the block distance by 1 if it is a bounce back
@@ -1135,9 +1354,7 @@ impl ComHub {
                         endpoint: self.endpoint.clone(),
                         distance,
                         socket: NetworkTraceHopSocket::new(
-                            &self
-                                .dyn_interface_for_socket_uuid(socket_uuid)
-                                .properties(),
+                            &socket_data.interface_properties,
                             socket_uuid.clone(),
                         ),
                         direction: NetworkTraceHopDirection::Outgoing,
@@ -1149,28 +1366,19 @@ impl ComHub {
             _ => {}
         }
 
-        let socket_manager = self.socket_manager.borrow();
-        let socket = socket_manager.get_socket_by_uuid(socket_uuid);
-        if !socket.can_send() {
-            panic!(
-                "Tried to send block via socket {}, but socket cannot send",
-                socket_uuid
-            );
-        }
-
         let is_broadcast = endpoints
             .iter()
             .any(|e| e == &Endpoint::ANY_ALL_INSTANCES || e == &Endpoint::ANY);
 
         // Break loop and don't relay broadcast blocks back to socket with direct endpoint set to self
         if is_broadcast
-            && let Some(direct_endpoint) = &socket.direct_endpoint
+            && let Some(direct_endpoint) = &socket_data.socket_properties.direct_endpoint
             && self.is_local_endpoint_exact(direct_endpoint)
         {
-            return MaybeAsyncResult::Sync(Ok(None));
+            return SyncOrAsyncResult::Sync(Ok(None));
         }
         for interceptor in self.outgoing_block_interceptors.borrow().iter() {
-            interceptor(&block, socket_uuid, endpoints);
+            interceptor(&block, &socket_uuid, &endpoints);
         }
         info!(
             "Sending block to socket {}: {}",
@@ -1179,11 +1387,9 @@ impl ComHub {
         );
 
         // TODO #190: resend block if socket failed to send
-        if let Some(callback) =
-            self.socket_send_callbacks.borrow().get(socket_uuid)
-        {
-            match callback {
-                SendCallback::Sync(callback) => MaybeAsyncResult::Sync(
+        if let Some(send_callback) = socket_data.send_callback.clone() {
+            match send_callback {
+                SendCallback::Sync(callback) => SyncOrAsyncResult::Sync(
                     callback(block).map(|send_success| match send_success {
                         SendSuccess::SentWithNewIncomingData(data) => {
                             Some(data)
@@ -1192,8 +1398,8 @@ impl ComHub {
                     }),
                 ),
                 SendCallback::Async(callback) => {
-                    MaybeAsyncResult::Async(async move {
-                        callback.call(block).await.map(|_| None)
+                    SyncOrAsyncResult::Async(async move {
+                        callback.call(block).await.map(|_| ())
                     })
                 }
             }
@@ -1331,12 +1537,13 @@ impl ComHub {
         let res = self
             .send_block_to_endpoints_via_socket(
                 block,
-                &socket_uuid.clone(),
-                &[Endpoint::ANY],
+                socket_uuid.clone(),
+                vec![Endpoint::ANY],
                 None,
             )
-            .into_inner()
+            .into_future()
             .await;
+        // TODO: handle result
         Ok(())
     }
 }
@@ -1389,14 +1596,3 @@ impl ComHub {
 //         }
 //     }
 // }
-
-#[cfg_attr(feature = "embassy_runtime", embassy_executor::task(pool_size = MAX_CONCURRENT_COM_INTERFACE_SOCKETS_EMBASSY))]
-async fn handle_incoming_socket_blocks_task(
-    mut socket_receive_queue: UnboundedReceiver<DXBBlock>,
-    socket_uuid: ComInterfaceSocketUUID,
-    com_hub_rc: Rc<ComHub>,
-) {
-    while let Some(block) = socket_receive_queue.next().await {
-        com_hub_rc.receive_block(&block, socket_uuid.clone()).await;
-    }
-}

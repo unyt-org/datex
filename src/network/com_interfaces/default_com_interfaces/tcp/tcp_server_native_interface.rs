@@ -13,7 +13,7 @@ use crate::{
             factory::{
                 ComInterfaceAsyncFactory, ComInterfaceAsyncFactoryResult,
             },
-            properties::{InterfaceDirection, InterfaceProperties},
+            properties::{InterfaceDirection, ComInterfaceProperties},
             socket::ComInterfaceSocketUUID,
         },
     },
@@ -36,7 +36,7 @@ impl TCPServerInterfaceSetupData {
     async fn create_interface(
         self,
         com_interface_proxy: ComInterfaceProxy,
-    ) -> Result<InterfaceProperties, ComInterfaceCreateError> {
+    ) -> Result<ComInterfaceProperties, ComInterfaceCreateError> {
         let host = self.host.clone().unwrap_or_else(|| "0.0.0.0".to_string());
 
         let address: SocketAddr = format!("{}:{}", host, self.port)
@@ -115,7 +115,7 @@ impl TCPServerInterfaceSetupData {
             tx_by_socket.clone(),
         ));
 
-        Ok(InterfaceProperties {
+        Ok(ComInterfaceProperties {
             name: Some(format!("{}:{}", host, self.port)),
             ..Self::get_default_properties()
         })
@@ -223,13 +223,13 @@ impl ComInterfaceAsyncFactory for TCPServerInterfaceSetupData {
         )
     }
 
-    fn get_default_properties() -> InterfaceProperties {
-        InterfaceProperties {
+    fn get_default_properties() -> ComInterfaceProperties {
+        ComInterfaceProperties {
             interface_type: "tcp-server".to_string(),
             channel: "tcp".to_string(),
             round_trip_time: Duration::from_millis(20),
             max_bandwidth: 1000,
-            ..InterfaceProperties::default()
+            ..ComInterfaceProperties::default()
         }
     }
 }

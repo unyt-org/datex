@@ -3,7 +3,7 @@ use crate::{
         com_hub::errors::ComInterfaceCreateError,
         com_interfaces::com_interface::{
             factory::ComInterfaceSyncFactory,
-            properties::{InterfaceDirection, InterfaceProperties},
+            properties::{InterfaceDirection, ComInterfaceProperties},
         },
     },
     stdlib::{string::ToString, vec, vec::Vec},
@@ -41,14 +41,14 @@ impl ComInterfaceSyncFactory for LocalLoopbackInterfaceSetupData {
         )
     }
 
-    fn get_default_properties() -> InterfaceProperties {
-        InterfaceProperties {
+    fn get_default_properties() -> ComInterfaceProperties {
+        ComInterfaceProperties {
             interface_type: "local".to_string(),
             channel: "local".to_string(),
             auto_identify: false,
             round_trip_time: Duration::from_millis(0),
             max_bandwidth: u32::MAX,
-            ..InterfaceProperties::default()
+            ..ComInterfaceProperties::default()
         }
     }
 }

@@ -13,7 +13,7 @@ use crate::{
             network_response::{Response, ResponseOptions},
         },
         com_interfaces::com_interface::{
-            properties::InterfaceProperties, socket::ComInterfaceSocketUUID,
+            properties::ComInterfaceProperties, socket::ComInterfaceSocketUUID,
         },
     },
     runtime::execution::{ExecutionInput, ExecutionOptions, execute_dxb_sync},
@@ -52,7 +52,7 @@ pub struct NetworkTraceHopSocket {
 
 impl NetworkTraceHopSocket {
     pub fn new(
-        com_interface_properties: &InterfaceProperties,
+        com_interface_properties: &ComInterfaceProperties,
         socket_uuid: ComInterfaceSocketUUID,
     ) -> Self {
         NetworkTraceHopSocket {
@@ -383,6 +383,7 @@ impl ComHub {
     ) -> Option<()> {
         let sender = block.routing_header.sender.clone();
         info!("Received trace block from {sender}");
+        let socket_data = self.get_socket_data(&original_socket);
 
         // get hops vector
         let mut hops = self.get_trace_data_from_block(block)?;
@@ -396,9 +397,7 @@ impl ComHub {
             endpoint: self.endpoint.clone(),
             distance: block.routing_header.distance,
             socket: NetworkTraceHopSocket::new(
-                &self
-                    .dyn_interface_for_socket_uuid(&original_socket)
-                    .properties(),
+                &socket_data.interface_properties,
                 original_socket.clone(),
             ),
             direction: NetworkTraceHopDirection::Incoming,
@@ -417,7 +416,7 @@ impl ComHub {
 
         // send trace back block
         // TODO #380: handle error and resend error and stuff
-        let _ = self.send_own_block(trace_back_block).await;
+        let _ = self.send_own_block_async(trace_back_block).await;
 
         Some(())
     }
@@ -427,6 +426,8 @@ impl ComHub {
         block: &DXBBlock,
         original_socket: ComInterfaceSocketUUID,
     ) -> Option<()> {
+        let socket_data = self.get_socket_data(&original_socket);
+        
         let mut block = block.clone();
         let sender = block.routing_header.sender.clone();
         info!("Received trace back block from {sender}");
@@ -443,9 +444,7 @@ impl ComHub {
                 endpoint: self.endpoint.clone(),
                 distance,
                 socket: NetworkTraceHopSocket::new(
-                    &self
-                        .dyn_interface_for_socket_uuid(&original_socket)
-                        .properties(),
+                    &socket_data.interface_properties,
                     original_socket.clone(),
                 ),
                 direction: NetworkTraceHopDirection::Incoming,
@@ -468,6 +467,7 @@ impl ComHub {
         let mut block = block.clone();
         let sender = block.routing_header.sender.clone();
         info!("Redirecting trace block from {sender}");
+        let socket_data = self.get_socket_data(&original_socket);
 
         let hops = self.get_trace_data_from_block(&block).unwrap_or_default();
         info!("{}", NetworkTraceResult::from_hops(hops));
@@ -484,9 +484,7 @@ impl ComHub {
                 endpoint: self.endpoint.clone(),
                 distance,
                 socket: NetworkTraceHopSocket::new(
-                    &self
-                        .dyn_interface_for_socket_uuid(&original_socket)
-                        .properties(),
+                    &socket_data.interface_properties,
                     original_socket.clone(),
                 ),
                 direction: NetworkTraceHopDirection::Incoming,

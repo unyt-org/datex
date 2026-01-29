@@ -10,7 +10,7 @@ use datex_core::{
             ComInterfaceEvent, ComInterfaceProxy,
             error::ComInterfaceError,
             factory::ComInterfaceSyncFactory,
-            properties::{InterfaceDirection, InterfaceProperties},
+            properties::{InterfaceDirection, ComInterfaceProperties},
             socket::ComInterfaceSocketUUID,
             socket_manager::ComInterfaceSocketManager,
         },
@@ -29,7 +29,7 @@ impl MockupInterfaceSetupData {
     pub fn create_interface(
         mut self,
         proxy: ComInterfaceProxy,
-    ) -> Result<InterfaceProperties, ComInterfaceCreateError> {
+    ) -> Result<ComInterfaceProperties, ComInterfaceCreateError> {
         let outgoing_queue = Rc::new(RefCell::new(Vec::new()));
         let (socket_uuid, sender) =
             self.create_and_add_socket(proxy.socket_manager)?;
@@ -49,7 +49,7 @@ impl MockupInterfaceSetupData {
             ));
         }
 
-        Ok(InterfaceProperties {
+        Ok(ComInterfaceProperties {
             interface_type: "mockup".to_string(),
             channel: "mockup".to_string(),
             name: Some(name),
@@ -186,12 +186,12 @@ impl ComInterfaceSyncFactory for MockupInterfaceSetupData {
     fn create_interface(
         self,
         proxy: ComInterfaceProxy,
-    ) -> Result<InterfaceProperties, ComInterfaceCreateError> {
+    ) -> Result<ComInterfaceProperties, ComInterfaceCreateError> {
         self.create_interface(proxy)
     }
 
-    fn get_default_properties() -> InterfaceProperties {
-        InterfaceProperties {
+    fn get_default_properties() -> ComInterfaceProperties {
+        ComInterfaceProperties {
             interface_type: "mockup".to_string(),
             channel: "mockup".to_string(),
             name: Some("mockup".to_string()),

@@ -7,7 +7,7 @@ use crate::{
             SocketEndpointRegistrationError,
         },
         com_interfaces::com_interface::socket::{
-            ComInterfaceSocket, ComInterfaceSocketEvent, ComInterfaceSocketUUID,
+            ComInterfaceSocketUUID,
         },
     },
 };
@@ -708,25 +708,6 @@ impl SocketsManager {
             Some(endpoint_sockets)
         } else {
             None
-        }
-    }
-
-    pub fn handle_socket_event(
-        &mut self,
-        event: ComInterfaceSocketEvent,
-        priority: InterfacePriority, // FIXME this is ugly, find a better way
-    ) {
-        match event {
-            ComInterfaceSocketEvent::NewSocket(socket) => {
-                self.handle_new_socket(socket, priority).unwrap(); // TODO: handle result
-            }
-            ComInterfaceSocketEvent::CloseSocket(
-                socket_uuid,
-                _unsent_block,
-            ) => {
-                // TODO: handle unsent block, put back to send queue
-                self.delete_socket(&socket_uuid);
-            }
         }
     }
 }

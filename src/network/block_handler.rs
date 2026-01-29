@@ -110,13 +110,12 @@ impl BlockHandler {
     /// Adds a block to the history of incoming blocks
     /// if the block is not already in the history
     /// returns true if the block was added and not already in the history
-    pub fn add_block_to_history(
+    pub fn add_block_id_to_history(
         &self,
-        block: &DXBBlock,
+        block_id: BlockId,
         original_socket_uuid: Option<ComInterfaceSocketUUID>,
     ) {
         let mut history = self.incoming_blocks_history.borrow_mut();
-        let block_id = block.get_block_id();
         // only add if original block
         if !history.contains_key(&block_id) {
             let block_data = BlockHistoryData {
@@ -142,6 +141,8 @@ impl BlockHandler {
         history.get(&block_id).cloned()
     }
 
+    /// Handles an incoming block by either putting it into the request queue
+    /// or calling the observer for the block if it is a response block
     pub fn handle_incoming_block(&self, block: DXBBlock) {
         info!("Handling incoming block...");
         let context_id = block.block_header.context_id;

@@ -40,7 +40,7 @@ impl InterfaceDirection {
 #[serde_as]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
-pub struct InterfaceProperties {
+pub struct ComInterfaceProperties {
     /// the type of the interface, by which it is identified
     /// e.g. "tcp-client", "websocket-server",
     /// multiple interfaces implementations (e.g. for native and web)
@@ -162,7 +162,7 @@ impl ReconnectionConfig {
     }
 }
 
-impl InterfaceProperties {
+impl ComInterfaceProperties {
     pub fn can_send(&self) -> bool {
         match self.direction {
             InterfaceDirection::In => false,
@@ -187,9 +187,9 @@ impl InterfaceProperties {
     }
 }
 
-impl Default for InterfaceProperties {
+impl Default for ComInterfaceProperties {
     fn default() -> Self {
-        InterfaceProperties {
+        ComInterfaceProperties {
             auto_identify: true,
             interface_type: "unknown".to_string(),
             channel: "unknown".to_string(),

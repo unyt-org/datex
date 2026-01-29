@@ -7,7 +7,7 @@ use crate::{
             ComInterfaceEvent,
             error::ComInterfaceError,
             factory::{ComInterfaceAsyncFactory, ComInterfaceSyncFactory},
-            properties::{InterfaceDirection, InterfaceProperties},
+            properties::{InterfaceDirection, ComInterfaceProperties},
             state::ComInterfaceState,
         },
     },
@@ -58,7 +58,7 @@ impl SerialInterfaceSetupData {
         let port_clone = port.clone();
 
         Ok(ComInterfaceConfiguration::new_single_socket(
-            InterfaceProperties {
+            ComInterfaceProperties {
                 name: Some(port_name),
                 ..Self::get_default_properties()
             },
@@ -108,13 +108,13 @@ impl ComInterfaceSyncFactory for SerialInterfaceSetupData {
         self.create_interface()
     }
 
-    fn get_default_properties() -> InterfaceProperties {
-        InterfaceProperties {
+    fn get_default_properties() -> ComInterfaceProperties {
+        ComInterfaceProperties {
             interface_type: "serial".to_string(),
             channel: "serial".to_string(),
             round_trip_time: Duration::from_millis(40),
             max_bandwidth: 100,
-            ..InterfaceProperties::default()
+            ..ComInterfaceProperties::default()
         }
     }
 }

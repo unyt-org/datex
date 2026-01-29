@@ -2,10 +2,6 @@ use crate::network::{
     com_hub::managers::interfaces_manager::SyncOrAsyncComInterfaceImplementationFactoryFn,
     com_interfaces::com_interface::{
         factory::{ComInterfaceAsyncFactory, ComInterfaceSyncFactory},
-        properties::InterfaceProperties,
-        socket::{ComInterfaceSocketEvent, ComInterfaceSocketUUID},
-        socket_manager::ComInterfaceSocketManager,
-        state::{ComInterfaceState, ComInterfaceStateWrapper},
     },
 };
 
@@ -74,12 +70,6 @@ pub enum ComInterfaceStateEvent {
     Destroyed,
 }
 
-#[derive(Debug, Clone)]
-pub enum ComInterfaceEvent {
-    SendBlock(DXBBlock, ComInterfaceSocketUUID),
-    Destroy,
-    Reconnect,
-}
 //
 // #[derive(Debug)]
 // pub struct ComInterfaceProxy {
@@ -310,13 +300,6 @@ pub enum ComInterfaceEvent {
 pub struct ComInterfaceUtils {
 
 }
-
-pub type ComInterfaceReceivers = (
-    UnboundedReceiver<ComInterfaceStateEvent>,
-    UnboundedReceiver<ComInterfaceSocketEvent>,
-);
-
-pub type ComInterfaceWithReceivers = (ComInterfaceUtils, ComInterfaceReceivers);
 
 impl ComInterfaceUtils {
     /// Initializes a new ComInterface with a specified implementation as returned by the factory function

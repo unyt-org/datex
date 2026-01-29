@@ -28,7 +28,7 @@ use crate::{
             factory::{
                 ComInterfaceAsyncFactory, ComInterfaceAsyncFactoryResult,
             },
-            properties::{InterfaceDirection, InterfaceProperties},
+            properties::{InterfaceDirection, ComInterfaceProperties},
             socket::ComInterfaceSocketUUID,
         },
     },
@@ -52,7 +52,7 @@ impl WebSocketServerInterfaceSetupData {
         })?;
 
         Ok(ComInterfaceConfiguration::new(
-            InterfaceProperties {
+            ComInterfaceProperties {
                 name: Some(addr.to_string()),
                 connectable_interfaces: Self::get_connectable_interface_configs_from_accept_addresses(
                     self.accept_addresses
@@ -184,13 +184,13 @@ impl ComInterfaceAsyncFactory for WebSocketServerInterfaceSetupData {
         Box::pin(self.create_interface())
     }
 
-    fn get_default_properties() -> InterfaceProperties {
-        InterfaceProperties {
+    fn get_default_properties() -> ComInterfaceProperties {
+        ComInterfaceProperties {
             interface_type: "websocket-server".to_string(),
             channel: "websocket".to_string(),
             round_trip_time: Duration::from_millis(40),
             max_bandwidth: 1000,
-            ..InterfaceProperties::default()
+            ..ComInterfaceProperties::default()
         }
     }
 }

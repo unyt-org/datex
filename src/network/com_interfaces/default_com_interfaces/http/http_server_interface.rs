@@ -23,7 +23,7 @@ use crate::{
                 ComInterfaceAsyncFactory, ComInterfaceAsyncFactoryResult,
                 ComInterfaceSyncFactory,
             },
-            properties::InterfaceProperties,
+            properties::ComInterfaceProperties,
             socket::ComInterfaceSocketUUID,
         },
     },
@@ -167,7 +167,7 @@ impl HTTPServerInterfaceSetupData {
     //     }
     // }
 
-    async fn create_interface(self) -> Result<InterfaceProperties, ComInterfaceCreateError> {
+    async fn create_interface(self) -> Result<ComInterfaceProperties, ComInterfaceCreateError> {
         let address: String = format!("http://0.0.0.0:{}", self.port);
         let address = Url::parse(&address)
             .map_err(ComInterfaceCreateError::invalid_setup_data)?;
@@ -256,13 +256,13 @@ impl ComInterfaceAsyncFactory for HTTPServerInterfaceSetupData {
         )
     }
 
-    fn get_default_properties() -> InterfaceProperties {
-        InterfaceProperties {
+    fn get_default_properties() -> ComInterfaceProperties {
+        ComInterfaceProperties {
             interface_type: "http-server".to_string(),
             channel: "http".to_string(),
             round_trip_time: Duration::from_millis(20),
             max_bandwidth: 1000,
-            ..InterfaceProperties::default()
+            ..ComInterfaceProperties::default()
         }
     }
 }

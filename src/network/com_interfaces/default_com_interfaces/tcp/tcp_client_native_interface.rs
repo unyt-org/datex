@@ -13,7 +13,7 @@ use crate::{
             factory::{
                 ComInterfaceAsyncFactory, ComInterfaceAsyncFactoryResult,
             },
-            properties::{InterfaceDirection, InterfaceProperties},
+            properties::{InterfaceDirection, ComInterfaceProperties},
             state::{ComInterfaceState, ComInterfaceStateWrapper},
         },
     },
@@ -48,7 +48,7 @@ impl TCPClientInterfaceSetupData {
         let write = Arc::new(Mutex::new(write));
         
         Ok(ComInterfaceConfiguration::new_single_socket(
-            InterfaceProperties {
+            ComInterfaceProperties {
                 name: Some(self.address),
                 ..Self::get_default_properties()
             },
@@ -98,13 +98,13 @@ impl ComInterfaceAsyncFactory for TCPClientInterfaceSetupData {
         Box::pin(self.create_interface())
     }
 
-    fn get_default_properties() -> InterfaceProperties {
-        InterfaceProperties {
+    fn get_default_properties() -> ComInterfaceProperties {
+        ComInterfaceProperties {
             interface_type: "tcp-client".to_string(),
             channel: "tcp".to_string(),
             round_trip_time: Duration::from_millis(20),
             max_bandwidth: 1000,
-            ..InterfaceProperties::default()
+            ..ComInterfaceProperties::default()
         }
     }
 }

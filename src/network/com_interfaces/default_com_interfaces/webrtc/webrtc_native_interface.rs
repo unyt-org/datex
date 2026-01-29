@@ -33,7 +33,7 @@ use crate::{
                 ComInterfaceAsyncFactory, ComInterfaceAsyncFactoryResult,
                 ComInterfaceSyncFactory,
             },
-            properties::InterfaceProperties,
+            properties::ComInterfaceProperties,
             socket_manager::ComInterfaceSocketManager,
         },
     },
@@ -404,7 +404,7 @@ impl WebRTCInterfaceSetupData {
     async fn create_interface(
         self,
         com_interface_proxy: ComInterfaceProxy,
-    ) -> Result<InterfaceProperties, ComInterfaceCreateError> {
+    ) -> Result<ComInterfaceProperties, ComInterfaceCreateError> {
         let commons = WebRTCCommon::new(self.peer_endpoint);
         let interface = WebRTCNativeInterface {
             commons: Arc::new(Mutex::new(commons)),
@@ -663,13 +663,13 @@ impl ComInterfaceAsyncFactory for WebRTCInterfaceSetupData {
         )
     }
 
-    fn get_default_properties() -> InterfaceProperties {
-        InterfaceProperties {
+    fn get_default_properties() -> ComInterfaceProperties {
+        ComInterfaceProperties {
             interface_type: "webrtc".to_string(),
             channel: "webrtc".to_string(),
             round_trip_time: Duration::from_millis(40),
             max_bandwidth: 1000,
-            ..InterfaceProperties::default()
+            ..ComInterfaceProperties::default()
         }
     }
 }

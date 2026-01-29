@@ -15,7 +15,7 @@ use datex_core::{
         com_interfaces::com_interface::{
             ComInterfaceUtils, ComInterfaceEvent, ComInterfaceProxy,
             ComInterfaceUUID, ComInterfaceWithReceivers,
-            properties::{InterfaceDirection, InterfaceProperties},
+            properties::{InterfaceDirection, ComInterfaceProperties},
             socket::ComInterfaceSocketUUID,
         },
     },
@@ -49,7 +49,7 @@ lazy_static::lazy_static! {
 
 pub struct MockupSetupData {
     pub local_endpoint: Endpoint,
-    pub interface_properties: InterfaceProperties,
+    pub interface_properties: ComInterfaceProperties,
     pub com_hub_sections_sender: Option<UnboundedSender<IncomingSection>>,
     pub interface_priority: InterfacePriority,
 }
@@ -57,7 +57,7 @@ impl Default for MockupSetupData {
     fn default() -> Self {
         Self {
             local_endpoint: TEST_ENDPOINT_ORIGIN.clone(),
-            interface_properties: InterfaceProperties::default(),
+            interface_properties: ComInterfaceProperties::default(),
             com_hub_sections_sender: None,
             interface_priority: InterfacePriority::default(),
         }
@@ -136,7 +136,7 @@ pub async fn get_default_mock_setup_with_com_hub() -> (
         create_unbounded_channel::<IncomingSection>();
 
     let (com_hub, proxy) = get_mock_setup_with_com_hub(MockupSetupData {
-        interface_properties: InterfaceProperties::default(),
+        interface_properties: ComInterfaceProperties::default(),
         com_hub_sections_sender: Some(com_hub_sections_sender),
         ..Default::default()
     })
@@ -167,7 +167,7 @@ pub async fn get_default_mock_setup_with_two_connected_com_hubs() -> (
 
     let (com_hub_mut_a, interface_proxy_a) =
         get_mock_setup_with_com_hub(MockupSetupData {
-            interface_properties: InterfaceProperties {
+            interface_properties: ComInterfaceProperties {
                 name: Some("A->B".to_string()),
                 channel: "mockup".to_string(),
                 interface_type: "mockup".to_string(),
@@ -181,7 +181,7 @@ pub async fn get_default_mock_setup_with_two_connected_com_hubs() -> (
 
     let (com_hub_mut_b, interface_proxy_b) =
         get_mock_setup_with_com_hub(MockupSetupData {
-            interface_properties: InterfaceProperties {
+            interface_properties: ComInterfaceProperties {
                 name: Some("B->A".to_string()),
                 channel: "mockup".to_string(),
                 interface_type: "mockup".to_string(),
@@ -261,7 +261,7 @@ pub async fn send_block_with_body(
         let mut block: DXBBlock = DXBBlock::default();
         block.set_receivers(to);
         block.body = body.to_vec();
-        com_hub.send_own_block(block.clone()).await.unwrap();
+        com_hub.send_own_block_async(block.clone()).await.unwrap();
         block
     };
 
@@ -276,7 +276,7 @@ pub async fn send_empty_block(
     let mut block: DXBBlock = DXBBlock::default();
     block.set_receivers(to);
     {
-        if let Ok(sent_block) = com_hub.send_own_block(block.clone()).await {
+        if let Ok(sent_block) = com_hub.send_own_block_async(block.clone()).await {
             info!("Sent block: {:?}", sent_block);
         } else {
             error!("Failed to send block");

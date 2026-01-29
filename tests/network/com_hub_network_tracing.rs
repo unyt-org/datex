@@ -10,7 +10,7 @@ use datex_core::{
     channel::mpsc::create_unbounded_channel,
     global::dxb_block::IncomingSection,
     network::com_interfaces::com_interface::{
-        ComInterfaceProxy, properties::InterfaceProperties,
+        ComInterfaceProxy, properties::ComInterfaceProperties,
     },
     run_async_thread,
     utils::context::init_global_context,
@@ -59,7 +59,7 @@ async fn create_network_trace_separate_threads() {
         init_global_context();
 
         let (com_hub_a, interface_proxy_a) = get_mock_setup_with_com_hub(MockupSetupData {
-             interface_properties: InterfaceProperties {
+             interface_properties: ComInterfaceProperties {
                 name: Some("A->B".to_string()),
                 interface_type: "mockup".to_string(),
                 channel: "mockup".to_string(),
@@ -101,7 +101,7 @@ async fn create_network_trace_separate_threads() {
         init_global_context();
 
         let (_, interface_proxy_b) = get_mock_setup_with_com_hub(MockupSetupData {
-             interface_properties: InterfaceProperties {
+             interface_properties: ComInterfaceProperties {
                 name: Some("B->A".to_string()),
                 interface_type: "mockup".to_string(),
                 channel: "mockup".to_string(),

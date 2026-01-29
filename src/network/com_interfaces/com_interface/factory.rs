@@ -1,12 +1,14 @@
 use core::async_iter::AsyncIterator;
 use core::future::poll_fn;
 use core::pin::Pin;
+use core::fmt::Debug;
+use crate::stdlib::rc::Rc;
 pub(crate) use crate::network::com_hub::managers::interfaces_manager::ComInterfaceAsyncFactoryResult;
 use crate::{
     network::{
         com_hub::errors::ComInterfaceCreateError,
         com_interfaces::com_interface::{
-            properties::InterfaceProperties,
+            properties::ComInterfaceProperties,
         },
     },
     serde::deserializer::from_value_container,
@@ -39,6 +41,7 @@ where
 
 pub type NewSocketsIterator = Pin<Box<dyn AsyncIterator<Item = Result<SocketConfiguration, ()>> + Send>>;
 
+#[derive(Debug, Clone)]
 pub struct SocketProperties {
     pub direction: InterfaceDirection,
     pub channel_factor: u16,
@@ -138,8 +141,8 @@ impl SocketConfiguration {
     }
 }
 
-
 /// A callback that is called by the com hub to send data through the interface.
+#[derive(Clone)]
 pub enum SendCallback {
     /// A synchronous send callback.
     /// The callback receives a DXBBlock and the UUID of the socket to send the data through.
@@ -153,6 +156,15 @@ pub enum SendCallback {
     /// through the receive iterator.
     /// The failure case returns a SendFailure containing the original DXBBlock.
     Async(AsyncCallback<DXBBlock, Result<(), SendFailure>>),
+}
+
+impl Debug for SendCallback {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            SendCallback::Sync(_) => write!(f, "SendCallback::Sync(...)"),
+            SendCallback::Async(_) => write!(f, "SendCallback::Async(...)"),
+        }
+    }
 }
 
 
@@ -187,7 +199,7 @@ impl SendCallback {
 pub struct ComInterfaceConfiguration {
     uuid: ComInterfaceUUID,
     /// The properties of the interface instance
-    pub properties: InterfaceProperties,
+    pub properties: Rc<ComInterfaceProperties>,
     // TODO: docs
     pub new_sockets_iterator: NewSocketsIterator,
 }
@@ -196,25 +208,25 @@ impl ComInterfaceConfiguration {
 
     /// Creates a new ComInterfaceConfiguration with the given properties and socket iterator.
     pub fn new<I>(
-        properties: InterfaceProperties,
+        properties: ComInterfaceProperties,
         new_sockets_iterator: I,
     ) -> Self
     where I: AsyncIterator<Item = Result<SocketConfiguration, ()>> + Send + 'static {
         ComInterfaceConfiguration {
             uuid: ComInterfaceUUID(UUID::new()),
-            properties,
+            properties: Rc::new(properties),
             new_sockets_iterator: Box::pin(new_sockets_iterator),
         }
     }
 
     /// Creates a new ComInterfaceConfiguration with a single socket configuration.
     pub fn new_single_socket(
-        properties: InterfaceProperties,
+        properties: ComInterfaceProperties,
         socket_configuration: SocketConfiguration,
     ) -> Self {
         ComInterfaceConfiguration {
             uuid: ComInterfaceUUID(UUID::new()),
-            properties,
+            properties: Rc::new(properties),
             new_sockets_iterator: Box::pin(async gen move {
                 yield Ok(socket_configuration);
             }),
@@ -240,7 +252,7 @@ pub type InterfaceCloseAsyncCallback = AsyncCallback<(), ()>;
 /// use datex_core::network::com_hub::errors::ComInterfaceCreateError;
 /// use datex_core::network::com_interfaces::com_interface::ComInterfaceProxy;
 /// use datex_core::network::com_interfaces::com_interface::factory::ComInterfaceSyncFactory;
-/// use datex_core::network::com_interfaces::com_interface::properties::InterfaceProperties;
+/// use datex_core::network::com_interfaces::com_interface::properties::ComInterfaceProperties;
 ///
 ///
 /// #[derive(Serialize, Deserialize)]
@@ -251,12 +263,12 @@ pub type InterfaceCloseAsyncCallback = AsyncCallback<(), ()>;
 /// impl ComInterfaceSyncFactory for ExampleInterfaceSetupData {
 ///     fn create_interface(
 ///         self,
-///     ) -> Result<InterfaceProperties, ComInterfaceCreateError> {
+///     ) -> Result<ComInterfaceProperties, ComInterfaceCreateError> {
 ///         todo!("Initialize the interface here")
 ///     }
 ///
-///     fn get_default_properties() -> InterfaceProperties {
-///         InterfaceProperties {
+///     fn get_default_properties() -> ComInterfaceProperties {
+///         ComInterfaceProperties {
 ///             interface_type: "example".to_string(),
 ///             ..Default::default()
 ///         }
@@ -285,7 +297,7 @@ where
     ) -> Result<ComInterfaceConfiguration, ComInterfaceCreateError>;
 
     /// Get the default interface properties for the interface.
-    fn get_default_properties() -> InterfaceProperties;
+    fn get_default_properties() -> ComInterfaceProperties;
 }
 
 /// This trait can be implemented to provide a factory with an asynchronous setup process
@@ -299,7 +311,7 @@ where
 /// use datex_core::network::com_hub::errors::ComInterfaceCreateError;
 /// use datex_core::network::com_interfaces::com_interface::ComInterfaceProxy;
 /// use datex_core::network::com_interfaces::com_interface::factory::ComInterfaceAsyncFactory;
-/// use datex_core::network::com_interfaces::com_interface::properties::InterfaceProperties;
+/// use datex_core::network::com_interfaces::com_interface::properties::ComInterfaceProperties;
 /// use datex_core::network::com_hub::managers::interfaces_manager::ComInterfaceAsyncFactoryResult;
 ///
 /// #[derive(Serialize, Deserialize)]
@@ -316,8 +328,8 @@ where
 ///             todo!()
 ///         })
 ///     }
-///     fn get_default_properties() -> InterfaceProperties {
-///         InterfaceProperties {
+///     fn get_default_properties() -> ComInterfaceProperties {
+///         ComInterfaceProperties {
 ///             interface_type: "example".to_string(),
 ///             ..Default::default()
 ///         }
@@ -348,5 +360,5 @@ where
     ) -> ComInterfaceAsyncFactoryResult;
 
     /// Get the default interface properties for the interface.
-    fn get_default_properties() -> InterfaceProperties;
+    fn get_default_properties() -> ComInterfaceProperties;
 }

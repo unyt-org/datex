@@ -16,7 +16,7 @@ use crate::{
             ComInterfaceUtils, ComInterfaceReceivers,
             ComInterfaceStateEvent, ComInterfaceUUID,
             factory::{ComInterfaceAsyncFactory, ComInterfaceSyncFactory},
-            properties::InterfaceProperties,
+            properties::ComInterfaceProperties,
         },
     },
     runtime::AsyncContext,
