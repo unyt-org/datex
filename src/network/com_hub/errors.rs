@@ -1,4 +1,5 @@
 use core::fmt::Display;
+use std::fmt::Debug;
 use crate::stdlib::string::String;
 use crate::stdlib::string::ToString;
 use crate::network::com_interfaces::com_interface::error::ComInterfaceError;
@@ -25,23 +26,15 @@ impl Display for InterfaceAddError {
     }
 }
 
-#[derive(Debug, PartialEq)]
 pub enum ComInterfaceCreateError {
-    InterfaceError(ComInterfaceError),
-    InterfaceAddError(InterfaceAddError),
+    ConnectionError(Option<Box<dyn Display>>),
     InterfaceCreationRequiresAsyncContext,
     InterfaceTypeNotRegistered(String),
-    InterfaceOpenFailed,
     SetupDataParseError,
-    Timeout,
     InvalidSetupData(String),
+    InterfaceAddError(InterfaceAddError),
 }
 
-impl ComInterfaceCreateError {
-    pub fn invalid_setup_data<T: Display>(details: T) -> Self {
-        ComInterfaceCreateError::InvalidSetupData(details.to_string())
-    }
-}
 
 impl From<InterfaceAddError> for ComInterfaceCreateError {
     fn from(err: InterfaceAddError) -> Self {
@@ -49,59 +42,109 @@ impl From<InterfaceAddError> for ComInterfaceCreateError {
     }
 }
 
-impl From<ComInterfaceError> for ComInterfaceCreateError {
-    fn from(err: ComInterfaceError) -> Self {
-        ComInterfaceCreateError::InterfaceError(err)
+impl ComInterfaceCreateError {
+    pub fn invalid_setup_data<T: Display>(details: T) -> Self {
+        ComInterfaceCreateError::InvalidSetupData(details.to_string())
+    }
+
+    pub fn connection_error_with_details<T: Display + 'static>(
+        details: T,
+    ) -> Self {
+        ComInterfaceCreateError::ConnectionError(Some(Box::new(details)))
+    }
+    pub fn connection_error() -> Self {
+        ComInterfaceCreateError::ConnectionError(None)
+    }
+}
+
+impl Debug for ComInterfaceCreateError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            ComInterfaceCreateError::InterfaceCreationRequiresAsyncContext => {
+                write!(
+                    f,
+                    "ComInterfaceCreateError::InterfaceCreationRequiresAsyncContext"
+                )
+            }
+            ComInterfaceCreateError::InterfaceTypeNotRegistered(ty) => {
+                write!(
+                    f,
+                    "ComInterfaceCreateError::InterfaceTypeNotRegistered({})",
+                    ty
+                )
+            }
+            ComInterfaceCreateError::SetupDataParseError => {
+                write!(f, "ComInterfaceCreateError::SetupDataParseError")
+            }
+            ComInterfaceCreateError::InvalidSetupData(details) => {
+                write!(
+                    f,
+                    "ComInterfaceCreateError::InvalidSetupData({})",
+                    details
+                )
+            }
+            ComInterfaceCreateError::InterfaceAddError(add_err) => {
+                write!(
+                    f,
+                    "ComInterfaceCreateError::InterfaceAddError({:?})",
+                    add_err
+                )
+            }
+            ComInterfaceCreateError::ConnectionError(Some(details)) => {
+                write!(
+                    f,
+                    "ComInterfaceCreateError::ConnectionError({})",
+                    details
+                )
+            }
+            ComInterfaceCreateError::ConnectionError(None) => {
+                write!(f, "ComInterfaceCreateError::ConnectionError(None)")
+            }
+        }
     }
 }
 
 impl Display for ComInterfaceCreateError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
-            ComInterfaceCreateError::Timeout => {
-                core::write!(f, "InterfaceCreationError: Timeout")
-            }
-            ComInterfaceCreateError::InterfaceError(_msg) => {
-                core::write!(f, "InterfaceCreationError: ComInterfaceError")
-            }
             ComInterfaceCreateError::InterfaceCreationRequiresAsyncContext => {
-                core::write!(
+                write!(
                     f,
-                    "InterfaceCreationError: Interface creation requires async context"
+                    "ComInterfaceCreateError: Interface creation requires async context"
                 )
             }
             ComInterfaceCreateError::InterfaceTypeNotRegistered(ty) => {
-                core::write!(
+                write!(
                     f,
-                    "InterfaceCreationError: Interface type '{}' is not registered",
+                    "ComInterfaceCreateError: Interface type '{}' is not registered",
                     ty
                 )
             }
-            ComInterfaceCreateError::InterfaceOpenFailed => {
-                core::write!(
-                    f,
-                    "InterfaceCreationError: Failed to open interface"
-                )
-            }
             ComInterfaceCreateError::SetupDataParseError => {
-                core::write!(
+                write!(
                     f,
-                    "InterfaceCreationError: Setup data parse error"
+                    "ComInterfaceCreateError: Setup data parse error"
                 )
             }
             ComInterfaceCreateError::InvalidSetupData(details) => {
-                core::write!(
+                write!(
                     f,
-                    "InterfaceCreationError: Invalid setup data - {}",
+                    "ComInterfaceCreateError: Invalid setup data - {}",
                     details
                 )
             }
             ComInterfaceCreateError::InterfaceAddError(add_err) => {
-                core::write!(
+                write!(
                     f,
                     "InterfaceCreationError: InterfaceAddError - {}",
                     add_err
                 )
+            }
+            ComInterfaceCreateError::ConnectionError(Some(details)) => {
+                write!(f, "ComInterfaceCreateError: Connection error: {}", details)
+            }
+            ComInterfaceCreateError::ConnectionError(None) => {
+                write!(f, "ComInterfaceCreateError: Connection error")
             }
         }
     }

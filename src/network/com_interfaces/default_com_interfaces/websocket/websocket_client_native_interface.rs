@@ -113,10 +113,8 @@ impl WebSocketClientInterfaceSetupData {
             .await
             .map_err(|e| {
                 error!("Failed to connect to WebSocket server: {e}");
-                ComInterfaceCreateError::InterfaceError(
-                    ComInterfaceError::connection_error_with_details(
-                        e.to_string(),
-                    ),
+                ComInterfaceCreateError::connection_error_with_details(
+                    e.to_string(),
                 )
             })?;
         let (write, read) = stream.split();

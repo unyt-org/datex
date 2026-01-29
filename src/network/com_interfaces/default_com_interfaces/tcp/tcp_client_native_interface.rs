@@ -38,7 +38,7 @@ impl TCPClientInterfaceSetupData {
             .map_err(ComInterfaceCreateError::invalid_setup_data)?;
 
         let stream = TcpStream::connect(address).await.map_err(|error| {
-            ComInterfaceError::connection_error_with_details(error)
+            ComInterfaceCreateError::connection_error_with_details(error)
         })?;
 
         let (mut read, write) = stream.into_split();

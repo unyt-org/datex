@@ -259,11 +259,6 @@ impl InterfacesManager {
             .get_mut(interface_uuid)
             .ok_or(ComHubError::InterfaceDoesNotExist)?
             .0;
-        {
-            // Async close the interface (stop tasks, server, cleanup internal data)
-            interface.destroy(); // TODO
-            // TODO: await until closed asynchronously?
-        }
 
         self.cleanup_interface(interface_uuid)?;
 

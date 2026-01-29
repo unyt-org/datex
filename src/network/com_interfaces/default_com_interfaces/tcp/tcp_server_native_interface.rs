@@ -39,9 +39,7 @@ impl TCPServerInterfaceSetupData {
             })?;
 
         let listener = TcpListener::bind(address).await.map_err(|e| {
-            ComInterfaceCreateError::InterfaceError(
-                ComInterfaceError::connection_error_with_details(e),
-            )
+            ComInterfaceCreateError::connection_error_with_details(e)
         })?;
         info!("TCP Server listening on {address}");
 

@@ -41,7 +41,7 @@ impl WebSocketServerInterfaceSetupData {
         info!("Spinning up server at {addr}");
 
         let listener = TcpListener::bind(&addr).await.map_err(|err| {
-            ComInterfaceError::connection_error_with_details(err)
+            ComInterfaceCreateError::connection_error_with_details(err)
         })?;
 
         Ok(ComInterfaceConfiguration::new(

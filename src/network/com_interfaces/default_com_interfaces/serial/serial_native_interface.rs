@@ -6,7 +6,6 @@ use crate::{
             error::ComInterfaceError,
             factory::{ComInterfaceSyncFactory},
             properties::{InterfaceDirection, ComInterfaceProperties},
-            state::ComInterfaceState,
         },
     },
     std_sync::Mutex,
@@ -47,7 +46,7 @@ impl SerialInterfaceSetupData {
             .timeout(Self::TIMEOUT)
             .open()
             .map_err(|err| {
-                ComInterfaceError::connection_error_with_details(err)
+                ComInterfaceCreateError::connection_error_with_details(err)
             })?;
         let port = Arc::new(Mutex::new(port));
         let port_clone = port.clone();

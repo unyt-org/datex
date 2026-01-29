@@ -33,6 +33,7 @@ impl ComInterfaceSyncFactory for LocalLoopbackInterfaceSetupData {
                     ),
                     SendCallback::new_sync(
                         move |block: DXBBlock| {
+                            // TODO: call runtime receive (sync) here
                             Ok(SendSuccess::SentWithNewIncomingData(block.to_bytes()))
                         }
                     )

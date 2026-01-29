@@ -2,7 +2,9 @@ use core::async_iter::AsyncIterator;
 use core::future::poll_fn;
 use core::pin::Pin;
 use core::fmt::Debug;
-use std::sync::Arc;
+use std::sync::OnceLock;
+use crate::stdlib::sync::{Arc};
+use crate::std_sync::Mutex;
 use crate::stdlib::rc::Rc;
 pub(crate) use crate::network::com_hub::managers::interfaces_manager::ComInterfaceAsyncFactoryResult;
 use crate::{
@@ -150,6 +152,7 @@ pub enum SendCallback {
     /// It returns a SendSuccess result which can contain already received data from the remote side.
     /// The failure case returns a SendFailure containing the original DXBBlock.
     Sync(Arc<dyn Fn(DXBBlock) -> Result<SendSuccess, SendFailure> + 'static + Send + Sync>),
+    SyncOnce(Arc<dyn Fn(DXBBlock) -> Result<SendSuccess, SendFailure> + Send + Sync>),
     /// An asynchronous send callback.
     /// The callback receives a DXBBlock and the UUID of the socket to send the data through.
     /// It returns a future that resolves to a Result indicating success or failure.
@@ -163,6 +166,7 @@ impl Debug for SendCallback {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             SendCallback::Sync(_) => write!(f, "SendCallback::Sync(...)"),
+            SendCallback::SyncOnce(_) => write!(f, "SendCallback::SyncOnce(...)"),
             SendCallback::Async(_) => write!(f, "SendCallback::Async(...)"),
         }
     }
@@ -187,6 +191,22 @@ impl SendCallback {
         f: impl Fn(DXBBlock) -> Result<SendSuccess, SendFailure> + 'static + Send + Sync,
     ) -> Self {
         SendCallback::Sync(Arc::new(f))
+    }
+
+    // Sync send callback that can only be called once - after that, it returns SendFailure
+    pub fn new_sync_once(
+        f: impl FnOnce(DXBBlock) -> Result<SendSuccess, SendFailure> + 'static + Send + Sync,
+    ) -> Self {
+        let once_fn = Box::new(Mutex::new(Some(f)));
+        let wrapper = move |block: DXBBlock| {
+            let mut lock = once_fn.lock().unwrap();
+            if let Some(func) = lock.take() {
+                func(block)
+            } else {
+                Err(SendFailure(block))
+            }
+        };
+        SendCallback::SyncOnce(Arc::new(wrapper))
     }
 
     pub fn new_async<F, Fut>(f: F) -> Self

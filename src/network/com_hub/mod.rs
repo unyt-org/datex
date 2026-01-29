@@ -1369,7 +1369,7 @@ impl ComHub {
         // TODO #190: resend block if socket failed to send
         if let Some(send_callback) = socket_data.send_callback.clone() {
             match send_callback {
-                SendCallback::Sync(callback) => SyncOrAsyncResult::Sync(
+                SendCallback::Sync(callback) | SendCallback::SyncOnce(callback) => SyncOrAsyncResult::Sync(
                     callback(block).map(|send_success| match send_success {
                         SendSuccess::SentWithNewIncomingData(data) => {
                             Some(data)
