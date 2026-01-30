@@ -408,15 +408,14 @@ impl BlockHandler {
 
 #[cfg(test)]
 mod tests {
-    use std::str::FromStr;
-    use log::info;
+    use core::str::FromStr;
     use ntest_timeout::timeout;
-    use tokio::task::yield_now;
-    use datex_macros::async_test;
+    use datex_core::global::protocol_structures::routing_header::Receivers;
+    use super::*;
     use crate::global::dxb_block::{DXBBlock, IncomingSection};
     use crate::global::protocol_structures::block_header::{BlockHeader, BlockType, FlagsAndTimestamp};
     use crate::global::protocol_structures::routing_header::RoutingHeader;
-    use crate::network::com_interfaces::com_interface::properties::InterfaceDirection;
+    use crate::native_global_context::init_global_context_native;
     use crate::values::core_values::endpoint::Endpoint;
 
     lazy_static::lazy_static! {
@@ -425,473 +424,446 @@ mod tests {
         pub static ref TEST_ENDPOINT_B: Endpoint = Endpoint::from_str("@test-b").unwrap();
     }
 
-    // #[tokio::test]
-    // async fn receive_single_block() {
-    //     let (com_hub, interface_proxy, mut com_hub_sections_receiver) =
-    //         get_default_mock_setup_with_com_hub().await;
-    //
-    //     let context_id = com_hub.block_handler.get_new_context_id();
-    //
-    //     // Create a single DXB block
-    //     let mut block = DXBBlock {
-    //         block_header: BlockHeader {
-    //             context_id,
-    //             flags_and_timestamp: FlagsAndTimestamp::new()
-    //                 .with_is_end_of_section(true)
-    //                 .with_is_end_of_context(true),
-    //             ..BlockHeader::default()
-    //         },
-    //         routing_header: RoutingHeader::default()
-    //             .with_sender(TEST_ENDPOINT_A.clone())
-    //             .to_owned(),
-    //         ..DXBBlock::default()
-    //     };
-    //     block.set_receivers(vec![TEST_ENDPOINT_ORIGIN.clone()]);
-    //     let block_endpoint_context_id = block.get_endpoint_context_id();
-    //
-    //     // Send as incoming data into the interface
-    //     let (_, mut interface_in_sender) =
-    //         interface_proxy.create_and_init_socket(InterfaceDirection::InOut, 0);
-    //     interface_in_sender.send(block.to_bytes()).await.unwrap();
-    //
-    //     // wait a tick to allow processing
-    //     yield_now().await;
-    //
-    //     // block must be in incoming_sections_queue
-    //     let block = get_next_received_single_block_from_receiver(
-    //         &mut com_hub_sections_receiver,
-    //     )
-    //         .await;
-    //
-    //     assert_eq!(block.get_endpoint_context_id(), block_endpoint_context_id);
-    // }
-    //
-    // #[async_test]
-    // async fn receive_multiple_blocks() {
-    //     let (com_hub, com_interface, mut com_hub_sections_receiver) =
-    //         get_default_mock_setup_with_com_hub().await;
-    //
-    //     let context_id = com_hub.block_handler.get_new_context_id();
-    //     let section_index = 42;
-    //
-    //     // Create a single DXB block
-    //     let mut blocks = vec![
-    //         DXBBlock {
-    //             block_header: BlockHeader {
-    //                 context_id,
-    //                 section_index,
-    //                 block_number: 0,
-    //                 flags_and_timestamp: FlagsAndTimestamp::new()
-    //                     .with_is_end_of_section(false)
-    //                     .with_is_end_of_context(false),
-    //                 ..BlockHeader::default()
-    //             },
-    //             routing_header: RoutingHeader::default()
-    //                 .with_sender(TEST_ENDPOINT_A.clone())
-    //                 .to_owned(),
-    //             ..DXBBlock::default()
-    //         },
-    //         DXBBlock {
-    //             block_header: BlockHeader {
-    //                 context_id,
-    //                 section_index,
-    //                 block_number: 1,
-    //                 flags_and_timestamp: FlagsAndTimestamp::new()
-    //                     .with_is_end_of_section(true)
-    //                     .with_is_end_of_context(true),
-    //                 ..BlockHeader::default()
-    //             },
-    //             routing_header: RoutingHeader::default()
-    //                 .with_sender(TEST_ENDPOINT_A.clone())
-    //                 .to_owned(),
-    //             ..DXBBlock::default()
-    //         },
-    //     ];
-    //
-    //     // Set receiver for each block
-    //     for block in &mut blocks {
-    //         block.set_receivers(vec![TEST_ENDPOINT_ORIGIN.clone()]);
-    //     }
-    //
-    //     let (_, mut interface_in_sender) =
-    //         com_interface.create_and_init_socket(InterfaceDirection::InOut, 0);
-    //
-    //     // 1. Send first block
-    //     let block_bytes = blocks[0].to_bytes();
-    //     interface_in_sender.send(block_bytes).await.unwrap();
-    //
-    //     // wait a tick to allow processing
-    //     yield_now().await;
-    //
-    //     // block must be in incoming_sections_queue
-    //     let mut section = com_hub_sections_receiver.next().await.unwrap();
-    //     match &section {
-    //         IncomingSection::BlockStream((
-    //                                          Some(blocks),
-    //                                          incoming_context_section_id,
-    //                                      )) => {
-    //             // section must match
-    //             assert_eq!(
-    //                 incoming_context_section_id.section_index,
-    //                 section_index
-    //             );
-    //             // blocks queue must contain the first block
-    //             assert!(section.next().await.is_some());
-    //         }
-    //         _ => core::panic!("Expected a BlockStream section"),
-    //     }
-    //
-    //     // 2. Send second block
-    //     let block_bytes = blocks[1].to_bytes();
-    //     interface_in_sender.send(block_bytes).await.unwrap();
-    //
-    //     // wait a tick to allow processing
-    //     yield_now().await;
-    //
-    //     // no new incoming sections, old section receives new blocks
-    //     // block must be a block stream
-    //     match &section {
-    //         IncomingSection::BlockStream((
-    //                                          Some(blocks),
-    //                                          incoming_context_section_id,
-    //                                      )) => {
-    //             // section must match
-    //             assert_eq!(
-    //                 incoming_context_section_id.section_index,
-    //                 section_index
-    //             );
-    //             // blocks queue length must be 2 (was not yet drained)
-    //             assert_eq!(section.drain().await.len(), 1);
-    //         }
-    //         _ => core::panic!("Expected a BlockStream section"),
-    //     }
-    // }
-    //
-    // #[async_test]
-    // async fn receive_multiple_blocks_wrong_order() {
-    //     let (com_hub, com_interface, mut com_hub_sections_receiver) =
-    //         get_default_mock_setup_with_com_hub().await;
-    //
-    //     let context_id = com_hub.block_handler.get_new_context_id();
-    //     let section_index = 42;
-    //
-    //     // Create a single DXB block
-    //     let mut blocks = vec![
-    //         DXBBlock {
-    //             block_header: BlockHeader {
-    //                 context_id,
-    //                 section_index,
-    //                 block_number: 1,
-    //                 flags_and_timestamp: FlagsAndTimestamp::new()
-    //                     .with_is_end_of_section(true)
-    //                     .with_is_end_of_context(true),
-    //                 ..BlockHeader::default()
-    //             },
-    //             routing_header: RoutingHeader::default()
-    //                 .with_sender(TEST_ENDPOINT_A.clone())
-    //                 .to_owned(),
-    //             ..DXBBlock::default()
-    //         },
-    //         DXBBlock {
-    //             block_header: BlockHeader {
-    //                 context_id,
-    //                 section_index,
-    //                 block_number: 0,
-    //                 flags_and_timestamp: FlagsAndTimestamp::new()
-    //                     .with_is_end_of_section(false)
-    //                     .with_is_end_of_context(false),
-    //                 ..BlockHeader::default()
-    //             },
-    //             routing_header: RoutingHeader::default()
-    //                 .with_sender(TEST_ENDPOINT_A.clone())
-    //                 .to_owned(),
-    //             ..DXBBlock::default()
-    //         },
-    //     ];
-    //
-    //     // Set receiver for each block
-    //     for block in &mut blocks {
-    //         block.set_receivers(vec![TEST_ENDPOINT_ORIGIN.clone()]);
-    //     }
-    //
-    //     let (_, mut interface_in_sender) =
-    //         com_interface.create_and_init_socket(InterfaceDirection::InOut, 0);
-    //
-    //     // 1. Send first block
-    //     let block_bytes = blocks[0].to_bytes();
-    //     interface_in_sender.send(block_bytes).await.unwrap();
-    //
-    //     yield_now().await;
-    //
-    //     // 2. Send second block
-    //     let block_bytes = blocks[1].to_bytes();
-    //     interface_in_sender.send(block_bytes).await.unwrap();
-    //
-    //     yield_now().await;
-    //
-    //     // block must be in incoming_sections_queue
-    //     let mut section = com_hub_sections_receiver.next().await.unwrap();
-    //     // block must be a block stream
-    //     match &section {
-    //         IncomingSection::BlockStream((
-    //                                          Some(blocks),
-    //                                          incoming_context_section_id,
-    //                                      )) => {
-    //             // section must match
-    //             assert_eq!(
-    //                 incoming_context_section_id.section_index.clone(),
-    //                 section_index
-    //             );
-    //             // blocks queue length must be 2
-    //             let blocks = section.drain().await;
-    //             assert_eq!(blocks.len(), 2);
-    //
-    //             // check order:
-    //             // first block must have block number 0
-    //             let block = blocks.first().unwrap();
-    //             assert_eq!(block.block_header.block_number, 0);
-    //             // second block must have block number 1
-    //             let block = blocks.get(1).unwrap();
-    //             assert_eq!(block.block_header.block_number, 1);
-    //         }
-    //         _ => core::panic!("Expected a BlockStream section"),
-    //     }
-    // }
-    //
-    // #[async_test]
-    // async fn receive_multiple_sections() {
-    //     let (com_hub, com_interface, mut com_hub_sections_receiver) =
-    //         get_default_mock_setup_with_com_hub().await;
-    //
-    //     let context_id = com_hub.block_handler.get_new_context_id();
-    //     let section_index_1 = 42;
-    //     let section_index_2 = 43;
-    //
-    //     // Create a single DXB block
-    //     let mut blocks = vec![
-    //         // first section
-    //         DXBBlock {
-    //             block_header: BlockHeader {
-    //                 context_id,
-    //                 section_index: section_index_1,
-    //                 block_number: 0,
-    //                 flags_and_timestamp: FlagsAndTimestamp::new()
-    //                     .with_is_end_of_section(false)
-    //                     .with_is_end_of_context(false),
-    //                 ..BlockHeader::default()
-    //             },
-    //             routing_header: RoutingHeader::default()
-    //                 .with_sender(TEST_ENDPOINT_A.clone())
-    //                 .to_owned(),
-    //             ..DXBBlock::default()
-    //         },
-    //         DXBBlock {
-    //             block_header: BlockHeader {
-    //                 context_id,
-    //                 section_index: section_index_1,
-    //                 block_number: 1,
-    //                 flags_and_timestamp: FlagsAndTimestamp::new()
-    //                     .with_is_end_of_section(true)
-    //                     .with_is_end_of_context(false),
-    //                 ..BlockHeader::default()
-    //             },
-    //             routing_header: RoutingHeader::default()
-    //                 .with_sender(TEST_ENDPOINT_A.clone())
-    //                 .to_owned(),
-    //             ..DXBBlock::default()
-    //         },
-    //         // second section, end of context
-    //         DXBBlock {
-    //             block_header: BlockHeader {
-    //                 context_id,
-    //                 section_index: section_index_2,
-    //                 block_number: 2,
-    //                 flags_and_timestamp: FlagsAndTimestamp::new()
-    //                     .with_is_end_of_section(false)
-    //                     .with_is_end_of_context(false),
-    //                 ..BlockHeader::default()
-    //             },
-    //             routing_header: RoutingHeader::default()
-    //                 .with_sender(TEST_ENDPOINT_A.clone())
-    //                 .to_owned(),
-    //             ..DXBBlock::default()
-    //         },
-    //         DXBBlock {
-    //             block_header: BlockHeader {
-    //                 context_id,
-    //                 section_index: section_index_2,
-    //                 block_number: 3,
-    //                 flags_and_timestamp: FlagsAndTimestamp::new()
-    //                     .with_is_end_of_section(true)
-    //                     .with_is_end_of_context(true),
-    //                 ..BlockHeader::default()
-    //             },
-    //             routing_header: RoutingHeader::default()
-    //                 .with_sender(TEST_ENDPOINT_A.clone())
-    //                 .to_owned(),
-    //             ..DXBBlock::default()
-    //         },
-    //     ];
-    //
-    //     // Set receiver for each block
-    //     for block in &mut blocks {
-    //         block.set_receivers(vec![TEST_ENDPOINT_ORIGIN.clone()]);
-    //     }
-    //
-    //     let (_, mut interface_in_sender) =
-    //         com_interface.create_and_init_socket(InterfaceDirection::InOut, 0);
-    //
-    //     // 1. Send first block
-    //     let block_bytes = blocks[0].to_bytes();
-    //     interface_in_sender.send(block_bytes).await.unwrap();
-    //
-    //     yield_now().await;
-    //
-    //     // block must be in incoming_sections_queue
-    //     let mut section = com_hub_sections_receiver.next().await.unwrap();
-    //     // block must be a block stream
-    //     match &section {
-    //         IncomingSection::BlockStream((
-    //                                          Some(blocks),
-    //                                          incoming_context_section_id,
-    //                                      )) => {
-    //             // section must match
-    //             assert_eq!(
-    //                 incoming_context_section_id.section_index,
-    //                 section_index_1
-    //             );
-    //             // block queue must contain the first block
-    //             assert!(section.next().await.is_some());
-    //         }
-    //         _ => core::panic!("Expected a BlockStream section"),
-    //     }
-    //
-    //     // 2. Send second block
-    //     let block_bytes = blocks[1].to_bytes();
-    //     interface_in_sender.send(block_bytes).await.unwrap();
-    //
-    //     yield_now().await;
-    //
-    //     // block must be a block stream
-    //     match &section {
-    //         IncomingSection::BlockStream((
-    //                                          Some(blocks),
-    //                                          incoming_context_section_id,
-    //                                      )) => {
-    //             // section must match
-    //             assert_eq!(
-    //                 incoming_context_section_id.section_index,
-    //                 section_index_1
-    //             );
-    //
-    //             // blocks queue length must be 1
-    //             assert_eq!(section.drain().await.len(), 1);
-    //         }
-    //         _ => core::panic!("Expected a BlockStream section"),
-    //     }
-    //
-    //     // 3. Send third block
-    //     let block_bytes = blocks[2].to_bytes();
-    //     interface_in_sender.send(block_bytes).await.unwrap();
-    //
-    //     yield_now().await;
-    //
-    //     // block must be in incoming_sections_queue
-    //     let mut section = com_hub_sections_receiver.next().await.unwrap();
-    //     // block must be a block stream
-    //     match &section {
-    //         IncomingSection::BlockStream((
-    //                                          Some(blocks),
-    //                                          incoming_context_section_id,
-    //                                      )) => {
-    //             // section must match
-    //             assert_eq!(
-    //                 incoming_context_section_id.section_index,
-    //                 section_index_2
-    //             );
-    //             // block queue must contain the first block
-    //             assert!(section.next().await.is_some());
-    //         }
-    //         _ => core::panic!("Expected a BlockStream section"),
-    //     }
-    //
-    //     // 4. Send fourth block
-    //     let block_bytes = blocks[3].to_bytes();
-    //     interface_in_sender.send(block_bytes).await.unwrap();
-    //
-    //     yield_now().await;
-    //
-    //     // block must not be in incoming_sections_queue
-    //     // block must be a block stream
-    //     match &section {
-    //         IncomingSection::BlockStream((
-    //                                          Some(blocks),
-    //                                          incoming_context_section_id,
-    //                                      )) => {
-    //             // section must match
-    //             assert_eq!(
-    //                 incoming_context_section_id.section_index,
-    //                 section_index_2
-    //             );
-    //             // blocks queue length must be 1
-    //             assert_eq!(section.drain().await.len(), 1);
-    //         }
-    //         _ => core::panic!("Expected a BlockStream section"),
-    //     }
-    // }
-    //
-    // #[async_test]
-    // #[timeout(2000)]
-    // async fn await_response_block() {
-    //     let (com_hub, com_interface, mut com_hub_sections_receiver) =
-    //         get_default_mock_setup_with_com_hub().await;
-    //
-    //     let context_id = com_hub.block_handler.get_new_context_id();
-    //     let section_index = 42;
-    //
-    //     // Create a single DXB block
-    //     let mut block = DXBBlock {
-    //         block_header: BlockHeader {
-    //             context_id,
-    //             section_index,
-    //             flags_and_timestamp: FlagsAndTimestamp::new()
-    //                 .with_block_type(BlockType::Response)
-    //                 .with_is_end_of_section(true)
-    //                 .with_is_end_of_context(true),
-    //             ..BlockHeader::default()
-    //         },
-    //         routing_header: RoutingHeader::default()
-    //             .with_sender(TEST_ENDPOINT_A.clone())
-    //             .to_owned(),
-    //         ..DXBBlock::default()
-    //     };
-    //     block.set_receivers(vec![TEST_ENDPOINT_ORIGIN.clone()]);
-    //
-    //     let (_, mut interface_in_sender) =
-    //         com_interface.create_and_init_socket(InterfaceDirection::InOut, 0);
-    //
-    //     // set observer for the block
-    //     let mut rx = com_hub
-    //         .block_handler
-    //         .register_incoming_block_observer(context_id, section_index);
-    //
-    //     // Put into incoming queue of mock interface
-    //     let block_bytes = block.to_bytes();
-    //     interface_in_sender.send(block_bytes).await.unwrap();
-    //
-    //     yield_now().await;
-    //
-    //     // await receiver
-    //     let response = rx.next().await.unwrap();
-    //
-    //     // IncomingSection must be a SingleBlock
-    //     match response {
-    //         IncomingSection::SingleBlock((Some(block), _)) => {
-    //             info!("section: {block:?}");
-    //             assert_eq!(block.block_header.context_id, context_id);
-    //             assert_eq!(block.block_header.section_index, section_index);
-    //         }
-    //         _ => core::panic!("Expected a SingleBlock section"),
-    //     }
-    // }
+    #[tokio::test]
+    async fn receive_single_block() {
+        let (incoming_sections_sender, mut incoming_sections_receiver) =
+            create_unbounded_channel::<IncomingSection>();
+
+        let block_handler = BlockHandler::init(incoming_sections_sender);
+        let context_id = block_handler.get_new_context_id();
+
+        // Create a single DXB block
+        let mut block = DXBBlock {
+            block_header: BlockHeader {
+                context_id,
+                flags_and_timestamp: FlagsAndTimestamp::new()
+                    .with_is_end_of_section(true)
+                    .with_is_end_of_context(true),
+                ..BlockHeader::default()
+            },
+            routing_header: RoutingHeader::default()
+                .with_sender(TEST_ENDPOINT_A.clone())
+                .with_receivers(Receivers::Endpoints(vec![TEST_ENDPOINT_ORIGIN.clone()]))
+                .to_owned(),
+            ..DXBBlock::default()
+        };
+        let block_endpoint_context_id = block.get_endpoint_context_id();
+
+        // Send incoming block to block handler
+        block_handler.handle_incoming_block(block);
+
+        // block must be in incoming_sections_receiver
+        let incoming_block = incoming_sections_receiver.next().await.unwrap();
+        match &incoming_block {
+            IncomingSection::SingleBlock((Some(received_block), ..)) => {
+                assert_eq!(received_block.get_endpoint_context_id(), block_endpoint_context_id);
+            }
+            _ => panic!("Expected a SingleBlock section"),
+        }
+    }
+
+    #[tokio::test]
+    async fn receive_multiple_blocks() {
+        init_global_context_native();
+
+        let (incoming_sections_sender, mut incoming_sections_receiver) =
+            create_unbounded_channel::<IncomingSection>();
+
+        let block_handler = BlockHandler::init(incoming_sections_sender);
+
+        let context_id = block_handler.get_new_context_id();
+        let section_index = 42;
+
+        // Create multiple DXB blocks for the same context and section
+        let mut blocks = gen move {
+
+            yield DXBBlock {
+                block_header: BlockHeader {
+                    context_id,
+                    section_index,
+                    block_number: 0,
+                    flags_and_timestamp: FlagsAndTimestamp::new()
+                        .with_is_end_of_section(false)
+                        .with_is_end_of_context(false),
+                    ..BlockHeader::default()
+                },
+                routing_header: RoutingHeader::default()
+                    .with_sender(TEST_ENDPOINT_A.clone())
+                    .with_receivers(Receivers::Endpoints(vec![TEST_ENDPOINT_ORIGIN.clone()]))
+                    .to_owned(),
+                ..DXBBlock::default()
+            };
+
+            yield DXBBlock {
+                block_header: BlockHeader {
+                    context_id,
+                    section_index,
+                    block_number: 1,
+                    flags_and_timestamp: FlagsAndTimestamp::new()
+                        .with_is_end_of_section(true)
+                        .with_is_end_of_context(true),
+                    ..BlockHeader::default()
+                },
+                routing_header: RoutingHeader::default()
+                    .with_sender(TEST_ENDPOINT_A.clone())
+                    .with_receivers(Receivers::Endpoints(vec![TEST_ENDPOINT_ORIGIN.clone()]))
+                    .to_owned(),
+                ..DXBBlock::default()
+            };
+        };
+
+        // 1. Send first block
+        block_handler.handle_incoming_block(blocks.next().unwrap());
+
+        info!("Checking incoming sections...");
+
+        // block must be in incoming_sections_queue
+        let mut section = incoming_sections_receiver.next().await.unwrap();
+        match &section {
+            IncomingSection::BlockStream((
+                 Some(blocks),
+                 incoming_context_section_id,
+             )) => {
+                // section must match
+                assert_eq!(
+                    incoming_context_section_id.section_index,
+                    section_index
+                );
+
+                // blocks queue must contain the first block
+                assert!(section.next().await.is_some());
+            }
+            _ => core::panic!("Expected a BlockStream section"),
+        }
+
+        // 2. Send second block
+        block_handler.handle_incoming_block(blocks.next().unwrap());
+
+        // no new incoming sections, old section receives new blocks
+        // block must be a block stream
+        match &section {
+            IncomingSection::BlockStream((
+                 Some(blocks),
+                 incoming_context_section_id,
+             )) => {
+                // section must match
+                assert_eq!(
+                    incoming_context_section_id.section_index,
+                    section_index
+                );
+                // blocks queue length must be 2 (was not yet drained)
+                assert_eq!(section.drain().await.len(), 1);
+            }
+            _ => core::panic!("Expected a BlockStream section"),
+        }
+    }
+
+    #[tokio::test]
+    async fn receive_multiple_blocks_wrong_order() {
+        init_global_context_native();
+
+        let (incoming_sections_sender, mut incoming_sections_receiver) =
+            create_unbounded_channel::<IncomingSection>();
+
+        let block_handler = BlockHandler::init(incoming_sections_sender);
+
+        let context_id = block_handler.get_new_context_id();
+        let section_index = 42;
+
+        // Create multiple DXB blocks for the same context and section in wrong order
+        let mut blocks = gen move {
+            yield DXBBlock {
+                block_header: BlockHeader {
+                    context_id,
+                    section_index,
+                    block_number: 1,
+                    flags_and_timestamp: FlagsAndTimestamp::new()
+                        .with_is_end_of_section(true)
+                        .with_is_end_of_context(true),
+                    ..BlockHeader::default()
+                },
+                routing_header: RoutingHeader::default()
+                    .with_sender(TEST_ENDPOINT_A.clone())
+                    .with_receivers(Receivers::Endpoints(vec![TEST_ENDPOINT_ORIGIN.clone()]))
+                    .to_owned(),
+                ..DXBBlock::default()
+            };
+
+            yield DXBBlock {
+                block_header: BlockHeader {
+                    context_id,
+                    section_index,
+                    block_number: 0,
+                    flags_and_timestamp: FlagsAndTimestamp::new()
+                        .with_is_end_of_section(false)
+                        .with_is_end_of_context(false),
+                    ..BlockHeader::default()
+                },
+                routing_header: RoutingHeader::default()
+                    .with_sender(TEST_ENDPOINT_A.clone())
+                    .with_receivers(Receivers::Endpoints(vec![TEST_ENDPOINT_ORIGIN.clone()]))
+                    .to_owned(),
+                ..DXBBlock::default()
+            };
+        };
+
+        // 1. Send first block
+        block_handler.handle_incoming_block(blocks.next().unwrap());
+
+        // 2. Send second block
+        block_handler.handle_incoming_block(blocks.next().unwrap());
+
+        // block must be in incoming_sections_queue
+        let mut section = incoming_sections_receiver.next().await.unwrap();
+        // block must be a block stream
+        match &section {
+            IncomingSection::BlockStream((
+                 Some(blocks),
+                 incoming_context_section_id,
+             )) => {
+                // section must match
+                assert_eq!(
+                    incoming_context_section_id.section_index.clone(),
+                    section_index
+                );
+                // blocks queue length must be 2
+                let blocks = section.drain().await;
+                assert_eq!(blocks.len(), 2);
+
+                // check order:
+                // first block must have block number 0
+                let block = blocks.first().unwrap();
+                assert_eq!(block.block_header.block_number, 0);
+                // second block must have block number 1
+                let block = blocks.get(1).unwrap();
+                assert_eq!(block.block_header.block_number, 1);
+            }
+            _ => core::panic!("Expected a BlockStream section"),
+        }
+    }
+
+    #[tokio::test]
+    async fn receive_multiple_sections() {
+        init_global_context_native();
+
+        let (incoming_sections_sender, mut incoming_sections_receiver) =
+            create_unbounded_channel::<IncomingSection>();
+
+        let block_handler = BlockHandler::init(incoming_sections_sender);
+
+        let context_id = block_handler.get_new_context_id();
+        let section_index_1 = 42;
+        let section_index_2 = 43;
+
+        // Create multiple DXB blocks for two sections
+        let mut blocks = gen move {
+            // first section
+            yield DXBBlock {
+                block_header: BlockHeader {
+                    context_id,
+                    section_index: section_index_1,
+                    block_number: 0,
+                    flags_and_timestamp: FlagsAndTimestamp::new()
+                        .with_is_end_of_section(false)
+                        .with_is_end_of_context(false),
+                    ..BlockHeader::default()
+                },
+                routing_header: RoutingHeader::default()
+                    .with_sender(TEST_ENDPOINT_A.clone())
+                    .with_receivers(Receivers::Endpoints(vec![TEST_ENDPOINT_ORIGIN.clone()]))
+                    .to_owned(),
+                ..DXBBlock::default()
+            };
+
+            yield DXBBlock {
+                block_header: BlockHeader {
+                    context_id,
+                    section_index: section_index_1,
+                    block_number: 1,
+                    flags_and_timestamp: FlagsAndTimestamp::new()
+                        .with_is_end_of_section(true)
+                        .with_is_end_of_context(false),
+                    ..BlockHeader::default()
+                },
+                routing_header: RoutingHeader::default()
+                    .with_sender(TEST_ENDPOINT_A.clone())
+                    .with_receivers(Receivers::Endpoints(vec![TEST_ENDPOINT_ORIGIN.clone()]))
+                    .to_owned(),
+                ..DXBBlock::default()
+            };
+
+            // second section, end of context
+            yield DXBBlock {
+                block_header: BlockHeader {
+                    context_id,
+                    section_index: section_index_2,
+                    block_number: 2,
+                    flags_and_timestamp: FlagsAndTimestamp::new()
+                        .with_is_end_of_section(false)
+                        .with_is_end_of_context(false),
+                    ..BlockHeader::default()
+                },
+                routing_header: RoutingHeader::default()
+                    .with_sender(TEST_ENDPOINT_A.clone())
+                    .with_receivers(Receivers::Endpoints(vec![TEST_ENDPOINT_ORIGIN.clone()]))
+                    .to_owned(),
+                ..DXBBlock::default()
+            };
+
+            yield DXBBlock {
+                block_header: BlockHeader {
+                    context_id,
+                    section_index: section_index_2,
+                    block_number: 3,
+                    flags_and_timestamp: FlagsAndTimestamp::new()
+                        .with_is_end_of_section(true)
+                        .with_is_end_of_context(true),
+                    ..BlockHeader::default()
+                },
+                routing_header: RoutingHeader::default()
+                    .with_sender(TEST_ENDPOINT_A.clone())
+                    .with_receivers(Receivers::Endpoints(vec![TEST_ENDPOINT_ORIGIN.clone()]))
+                    .to_owned(),
+                ..DXBBlock::default()
+            };
+        };
+
+        // 1. Send first block
+        block_handler.handle_incoming_block(blocks.next().unwrap());
+
+        // block must be in incoming_sections_queue
+        let mut section = incoming_sections_receiver.next().await.unwrap();
+        // block must be a block stream
+        match &section {
+            IncomingSection::BlockStream((
+                 Some(blocks),
+                 incoming_context_section_id,
+             )) => {
+                // section must match
+                assert_eq!(
+                    incoming_context_section_id.section_index,
+                    section_index_1
+                );
+                // block queue must contain the first block
+                assert!(section.next().await.is_some());
+            }
+            _ => core::panic!("Expected a BlockStream section"),
+        }
+
+        // 2. Send second block
+        block_handler.handle_incoming_block(blocks.next().unwrap());
+
+        // block must be a block stream
+        match &section {
+            IncomingSection::BlockStream((
+                 Some(blocks),
+                 incoming_context_section_id,
+             )) => {
+                // section must match
+                assert_eq!(
+                    incoming_context_section_id.section_index,
+                    section_index_1
+                );
+
+                // blocks queue length must be 1
+                assert_eq!(section.drain().await.len(), 1);
+            }
+            _ => core::panic!("Expected a BlockStream section"),
+        }
+
+        // 3. Send third block
+        block_handler.handle_incoming_block(blocks.next().unwrap());
+
+        // block must be in incoming_sections_queue
+        let mut section = incoming_sections_receiver.next().await.unwrap();
+        // block must be a block stream
+        match &section {
+            IncomingSection::BlockStream((
+                 Some(blocks),
+                 incoming_context_section_id,
+             )) => {
+                // section must match
+                assert_eq!(
+                    incoming_context_section_id.section_index,
+                    section_index_2
+                );
+                // block queue must contain the first block
+                assert!(section.next().await.is_some());
+            }
+            _ => core::panic!("Expected a BlockStream section"),
+        }
+
+        // 4. Send fourth block
+        block_handler.handle_incoming_block(blocks.next().unwrap());
+
+        // block must not be in incoming_sections_queue
+        // block must be a block stream
+        match &section {
+            IncomingSection::BlockStream((
+                 Some(blocks),
+                 incoming_context_section_id,
+             )) => {
+                // section must match
+                assert_eq!(
+                    incoming_context_section_id.section_index,
+                    section_index_2
+                );
+                // blocks queue length must be 1
+                assert_eq!(section.drain().await.len(), 1);
+            }
+            _ => core::panic!("Expected a BlockStream section"),
+        }
+    }
+
+    #[tokio::test]
+    #[timeout(2000)]
+    async fn await_response_block() {
+        init_global_context_native();
+
+        let (incoming_sections_sender, mut incoming_sections_receiver) =
+            create_unbounded_channel::<IncomingSection>();
+
+        let block_handler = BlockHandler::init(incoming_sections_sender);
+
+        let context_id = block_handler.get_new_context_id();
+        let section_index = 42;
+
+        // Create a single DXB block
+        let block = DXBBlock {
+            block_header: BlockHeader {
+                context_id,
+                section_index,
+                flags_and_timestamp: FlagsAndTimestamp::new()
+                    .with_block_type(BlockType::Response)
+                    .with_is_end_of_section(true)
+                    .with_is_end_of_context(true),
+                ..BlockHeader::default()
+            },
+            routing_header: RoutingHeader::default()
+                .with_sender(TEST_ENDPOINT_A.clone())
+                .with_receivers(Receivers::Endpoints(vec![TEST_ENDPOINT_ORIGIN.clone()]))
+                .to_owned(),
+            ..DXBBlock::default()
+        };
+
+        // set observer for the block
+        let mut rx = block_handler
+            .register_incoming_block_observer(context_id, section_index);
+
+        // Put into incoming queue of mock interface
+        block_handler.handle_incoming_block(block);
+
+        // await receiver
+        let response = rx.next().await.unwrap();
+
+        // IncomingSection must be a SingleBlock
+        match response {
+            IncomingSection::SingleBlock((Some(block), _)) => {
+                info!("section: {block:?}");
+                assert_eq!(block.block_header.context_id, context_id);
+                assert_eq!(block.block_header.section_index, section_index);
+            }
+            _ => core::panic!("Expected a SingleBlock section"),
+        }
+    }
 }
