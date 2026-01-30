@@ -205,24 +205,12 @@ impl ComHub {
             task_manager,
         });
 
-        // add default local loopback interface
-        let local_interface =
-            LocalLoopbackInterfaceSetupData::create_interface(
-                LocalLoopbackInterfaceSetupData,
-            )
-            .unwrap();
-
-        com_hub.clone().register_com_interface_handler(
-            local_interface,
-            InterfacePriority::None,
-        );
-
         (com_hub, task_future)
     }
 
     /// Registers the handle_sockets_task for the given ComInterfaceConfiguration
     /// TODO: priority
-    fn register_com_interface_handler(
+    pub(crate) fn register_com_interface_handler(
         self: Rc<Self>,
         com_interface_configuration: ComInterfaceConfiguration,
         priority: InterfacePriority,

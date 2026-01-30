@@ -125,6 +125,7 @@ impl RuntimeInternal {
             {
                 if let Err(err) = self
                     .com_hub
+                    .clone()
                     .create_interface(interface_type, config.clone(), *priority)
                     .await
                 {
@@ -396,6 +397,7 @@ impl RuntimeInternal {
     }
 }
 use crate::network::com_hub::is_none_variant;
+use crate::network::com_interfaces::local_loopback_interface::LocalLoopbackInterfaceSetupData;
 use crate::utils::task_manager::TaskManager;
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -526,8 +528,11 @@ impl RuntimeRunner {
                 execution_contexts: RefCell::new(HashMap::new()),
             }),
         };
-
+        runtime.init_local_loopback_interface();
+        
         let runtime_internal = runtime.internal.clone();
+
+        
 
         // await all task futures
         let task_future = async {
@@ -594,6 +599,20 @@ impl RuntimeRunner {
 /// publicly exposed wrapper impl for the Runtime
 /// around RuntimeInternal
 impl Runtime {
+
+    fn init_local_loopback_interface(&self) {
+        // add default local loopback interface
+        let local_interface =
+            LocalLoopbackInterfaceSetupData {
+                runtime: self.clone()
+            }.create_interface()
+                .unwrap();
+
+        self.com_hub().register_com_interface_handler(
+            local_interface,
+            InterfacePriority::None,
+        );
+    }
 
     pub fn com_hub(&self) -> Rc<ComHub> {
         self.internal.com_hub.clone()

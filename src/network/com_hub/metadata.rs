@@ -182,12 +182,12 @@ impl ComHub {
             }
         }
 
-        for (interface, _) in self.interfaces_manager.interfaces.borrow().values() {
+        for (uuid, (interface_properties, _)) in self.interfaces_manager.interfaces.borrow().iter() {
             metadata.interfaces.push(ComHubMetadataInterface {
-                uuid: interface.uuid().to_string(),
-                properties: (*interface.properties).clone(),
+                uuid: uuid.to_string(),
+                properties: interface_properties.as_ref().clone(),
                 sockets: sockets_by_com_interface_uuid
-                    .remove(&interface.uuid())
+                    .remove(&uuid)
                     .unwrap_or_default(),
             });
         }

@@ -2,7 +2,6 @@ use crate::{
     network::{
         com_hub::errors::ComInterfaceCreateError,
         com_interfaces::com_interface::{
-            factory::ComInterfaceSyncFactory,
             properties::{InterfaceDirection, ComInterfaceProperties},
         },
     },
@@ -10,18 +9,19 @@ use crate::{
     values::core_values::endpoint::Endpoint,
 };
 use core::{prelude::rust_2024::*, result::Result, time::Duration};
-use serde::Deserialize;
 use datex_core::network::com_interfaces::com_interface::factory::{SendCallback, SendSuccess};
 use crate::global::dxb_block::DXBBlock;
 use crate::network::com_interfaces::com_interface::factory::{ComInterfaceConfiguration, SocketProperties, SocketConfiguration};
+use crate::runtime::{Runtime};
 
 /// A simple local loopback interface that puts outgoing data
 /// back into the incoming queue.
-#[derive(Deserialize)]
-pub struct LocalLoopbackInterfaceSetupData;
+pub struct LocalLoopbackInterfaceSetupData {
+    pub(crate) runtime: Runtime
+}
 
-impl ComInterfaceSyncFactory for LocalLoopbackInterfaceSetupData {
-    fn create_interface(self) -> Result<ComInterfaceConfiguration, ComInterfaceCreateError> {
+impl LocalLoopbackInterfaceSetupData {
+    pub(crate) fn create_interface(self) -> Result<ComInterfaceConfiguration, ComInterfaceCreateError> {
         Ok(
             ComInterfaceConfiguration::new_single_socket(
                 Self::get_default_properties(),

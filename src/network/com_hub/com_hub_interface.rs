@@ -20,10 +20,12 @@ use crate::{
 };
 use core::{prelude::rust_2024::*, result::Result};
 use core::cell::Ref;
+use crate::stdlib::rc::Rc;
 use datex_core::network::com_interfaces::com_interface::{
     factory::ComInterfaceAsyncFactory,
 };
 use crate::network::com_interfaces::com_interface::factory::ComInterfaceConfiguration;
+use crate::network::com_interfaces::com_interface::properties::ComInterfaceProperties;
 
 /// Interface management methods
 impl ComHub {
@@ -55,7 +57,7 @@ impl ComHub {
     pub(crate) fn dyn_interface_for_socket_uuid(
         &self,
         socket_uuid: &ComInterfaceSocketUUID,
-    ) -> Ref<ComInterfaceConfiguration> {
+    ) -> Rc<ComInterfaceProperties> {
         let socket = self.socket_manager.get_socket_by_uuid(socket_uuid);
         self.interfaces_manager.get_interface_by_uuid(&socket.interface_uuid)
     }
@@ -63,47 +65,57 @@ impl ComHub {
     /// Registers an existing com interface on the ComHub and sets up event handling
     pub fn _register_com_interface(
         &self,
-        com_interface_configuration: ComInterfaceConfiguration,
+        uuid: ComInterfaceUUID,
+        com_interface_properties: Rc<ComInterfaceProperties>,
         priority: InterfacePriority,
     ) -> Result<(), InterfaceAddError> {
-        let uuid = com_interface_configuration.uuid().clone();
         self.interfaces_manager
-            .add_interface(com_interface_configuration, priority)?;
+            .add_interface(uuid, com_interface_properties, priority)?;
         Ok(())
     }
 
     /// Creates a new interface of the given type with the provided setup data
     pub async fn create_interface(
-        &self,
+        self: Rc<Self>,
         interface_type: &str,
         setup_data: ValueContainer,
         priority: InterfacePriority,
     ) -> Result<ComInterfaceUUID, ComInterfaceCreateError> {
-        let com_interface_uuid =
+        let interface_configuration =
             self.interfaces_manager.create_and_add_interface(
                 interface_type,
                 setup_data,
-                priority,
+                priority.clone(),
             )
             .await?;
-        Ok(com_interface_uuid)
+        
+        let uuid = interface_configuration.uuid();
+        // add event handler task
+        self.register_com_interface_handler(interface_configuration, priority);
+
+        Ok(uuid)
     }
 
     /// Creates a new interface of the given type with the provided setup data
     /// If the interface does not support sync initialization, an error is returned
     pub fn create_interface_sync(
-        &self,
+        self: Rc<Self>,
         interface_type: &str,
         setup_data: ValueContainer,
         priority: InterfacePriority,
     ) -> Result<ComInterfaceUUID, ComInterfaceCreateError> {
-        let com_interface_uuid = self.interfaces_manager
+        let interface_configuration = self.interfaces_manager
             .create_and_add_interface_sync(
                 interface_type,
                 setup_data,
                 priority,
             )?;
-        Ok(com_interface_uuid)
+
+        let uuid = interface_configuration.uuid();
+        // add event handler task
+        self.register_com_interface_handler(interface_configuration, priority);
+        
+        Ok(uuid)
     }
 
     pub fn remove_interface(
