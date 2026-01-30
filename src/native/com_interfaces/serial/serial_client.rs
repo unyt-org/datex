@@ -84,7 +84,7 @@ impl SerialClientInterfaceSetupDataNative {
                             .write_all(block.to_bytes().as_slice())
                             .map_err(|e| {
                                 error!("Serial write error: {e}");
-                                SendFailure(block)
+                                SendFailure(Box::new(block))
                             })
                             .map(|_| SendSuccess::Sent)
                 )

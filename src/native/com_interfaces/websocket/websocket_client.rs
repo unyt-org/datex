@@ -79,7 +79,7 @@ impl WebSocketClientInterfaceSetupDataNative {
                                 .send(Message::Binary(block.to_bytes())).await
                                 .map_err(|e| {
                                     error!("WebSocket write error: {e}");
-                                    SendFailure(block)
+                                    SendFailure(Box::new(block))
                                 })
                         }
                     })

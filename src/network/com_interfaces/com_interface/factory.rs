@@ -179,7 +179,7 @@ pub enum SendSuccess {
 }
 
 #[derive(Debug, Clone)]
-pub struct SendFailure (pub DXBBlock);
+pub struct SendFailure (pub Box<DXBBlock>);
 
 impl SendCallback {
     pub fn new_sync(
@@ -198,7 +198,7 @@ impl SendCallback {
             if let Some(func) = lock.take() {
                 func(block)
             } else {
-                Err(SendFailure(block))
+                Err(SendFailure(Box::new(block)))
             }
         };
         SendCallback::SyncOnce(Arc::new(wrapper))

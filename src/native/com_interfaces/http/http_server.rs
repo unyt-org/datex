@@ -60,7 +60,7 @@ impl HTTPServerInterfaceSetupDataNative {
                             let response = Response::from_data(block.to_bytes());
                             request.respond(response)
                                 .map_err(|e| {
-                                    SendFailure(block)
+                                    SendFailure(Box::new(block))
                                 })
                                 .map(|_| {
                                     debug!("HTTP response sent successfully");

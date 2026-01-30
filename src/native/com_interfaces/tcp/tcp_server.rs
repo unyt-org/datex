@@ -86,7 +86,7 @@ impl TCPServerInterfaceSetupDataNative {
                                             .await
                                             .map_err(|e| {
                                                 error!("TCP write error: {e}");
-                                                SendFailure(block)
+                                                SendFailure(Box::new(block))
                                             })
                                     }
                                 })

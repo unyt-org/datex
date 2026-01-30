@@ -22,8 +22,8 @@ use crate::global::protocol_structures::block_header::BlockType;
 
 #[derive(Debug, Display, Error)]
 pub enum HeaderParsingError {
-    InvalidBlock,
     InsufficientLength,
+    InvalidMagicNumber,
 }
 
 // TODO #110: RawDXBBlock that is received in com_hub, only containing RoutingHeader, BlockHeader and raw bytes
@@ -155,6 +155,26 @@ pub struct BlockId {
     pub current_block_number: IncomingBlockNumber,
 }
 
+#[derive(Debug)]
+pub enum DXBBlockParseError {
+    IOError(crate::stdlib::io::Error),
+    ParseError(binrw::Error),
+    MissingSignature,
+    InvalidSignature,
+}
+
+impl From<binrw::Error> for DXBBlockParseError {
+    fn from(err: binrw::Error) -> Self {
+        DXBBlockParseError::ParseError(err)
+    }
+}
+
+impl From<crate::stdlib::io::Error> for DXBBlockParseError {
+    fn from(err: crate::stdlib::io::Error) -> Self {
+        DXBBlockParseError::IOError(err)
+    }
+}
+
 impl DXBBlock {
     pub fn new_with_body(body: &[u8]) -> DXBBlock {
         let mut block = DXBBlock {
@@ -216,15 +236,21 @@ impl DXBBlock {
         if dxb.len() < SIZE_BYTE_POSITION + SIZE_BYTES {
             return Err(HeaderParsingError::InsufficientLength);
         }
-        let routing_header = RoutingHeader::read(&mut Cursor::new(dxb))
-            .map_err(|e| {
-                error!("Failed to read routing header: {e:?}");
-                HeaderParsingError::InvalidBlock
-            })?;
-        Ok(routing_header.block_size)
+        
+        // make sure magic number is correct
+        if !DXBBlock::has_dxb_magic_number(dxb) {
+            return Err(HeaderParsingError::InvalidMagicNumber);
+        }
+        
+        // block size is u16 at SIZE_BYTE_POSITION
+        let block_size_bytes =
+            &dxb[SIZE_BYTE_POSITION..SIZE_BYTE_POSITION + SIZE_BYTES];
+        Ok(u16::from_le_bytes(
+            block_size_bytes.try_into().unwrap(),
+        ))
     }
 
-    pub async fn from_bytes(bytes: &[u8]) -> Result<DXBBlock, binrw::Error> {
+    pub async fn from_bytes(bytes: &[u8]) -> Result<DXBBlock, DXBBlockParseError> {
         let mut reader = Cursor::new(bytes);
         let routing_header = RoutingHeader::read(&mut reader)?;
 
@@ -283,7 +309,7 @@ impl DXBBlock {
                     SignatureType::Encrypted => {
                         let raw_sign = signature
                             .as_ref()
-                            .ok_or(binrw::Error::Custom { pos: 0u64, err: Box::new(HeaderParsingError::InvalidBlock) })?;
+                            .ok_or(DXBBlockParseError::MissingSignature)?;
                         let (enc_sign, pub_key) = raw_sign.split_at(64);
                         let hash = crypto.hkdf_sha256(pub_key, &[0u8; 16])
                             .await
@@ -310,16 +336,14 @@ impl DXBBlock {
 
                         if !ver {
                             return Err(
-                                binrw::Error::Custom {
-                                    pos: 0u64,
-                                    err: Box::new("Something is off with the signature.")
-                                });
+                                DXBBlockParseError::InvalidSignature
+                            );
                         }
                     },
                     SignatureType::Unencrypted => {
                         let raw_sign = signature
                             .as_ref()
-                            .ok_or(binrw::Error::Custom { pos: 0u64, err: Box::new(HeaderParsingError::InvalidBlock) })?;
+                            .ok_or(DXBBlockParseError::MissingSignature)?;
                         let (signature, pub_key) = raw_sign.split_at(64);
 
                         let raw_signed = [
@@ -339,10 +363,8 @@ impl DXBBlock {
 
                         if !ver {
                             return Err(
-                                binrw::Error::Custom {
-                                    pos: 0u64,
-                                    err: Box::new("Something is off with the signature.")
-                                });
+                                DXBBlockParseError::InvalidSignature
+                            );
                         }
                     },
                     SignatureType::None => {
@@ -466,7 +488,9 @@ mod tests {
         },
         values::core_values::endpoint::Endpoint,
     };
+    use crate::global::dxb_block::DXBBlockParseError;
     use crate::native_global_context::crypto::CryptoNative;
+    use core::assert_matches;
 
     #[tokio::test]
     pub async fn test_recalculate() {
@@ -552,9 +576,9 @@ mod tests {
         let block_bytes2 = block.to_bytes();
         let block3 = DXBBlock::from_bytes(&block_bytes2).await;
         assert!(block3.is_err());
-        assert_eq!(
-            block3.unwrap_err().to_string(),
-            "Something is off with the signature. at 0x0"
+        assert_matches!(
+            block3.unwrap_err(),
+            DXBBlockParseError::InvalidSignature
         )
     }
 }
