@@ -178,7 +178,7 @@ pub fn ast_from_bytecode(
                                 }
                                 RegularInstruction::Range(range_data) => {
                                     DatexExpressionData::Range(
-                                        crate::ast::expressions::Range {
+                                        crate::ast::expressions::RangeDeclaration {
                                             start: Box::new(
                                                 DatexExpressionData::Integer(
                                                     range_data

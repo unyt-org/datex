@@ -1,4 +1,3 @@
-use alloc::format;
 use serde::Serialize;
 use url::Url;
 use crate::network::com_hub::errors::ComInterfaceCreateError;

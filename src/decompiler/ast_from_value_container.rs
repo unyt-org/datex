@@ -58,7 +58,7 @@ fn value_to_datex_expression(value: &Value) -> DatexExpressionData {
         CoreValue::Text(text) => DatexExpressionData::Text(text.0.clone()),
 
         CoreValue::Range(range) => {
-            DatexExpressionData::Range(expressions::Range {
+            DatexExpressionData::Range(expressions::RangeDeclaration {
                 start: Box::new(
                     DatexExpressionData::Integer(range.clone().start)
                         .with_default_span(),
@@ -218,6 +218,7 @@ fn type_to_type_expression(type_value: &Type) -> TypeExpression {
 
 #[cfg(test)]
 mod tests {
+    use datex_core::values::core_values;
     use crate::{
         ast::{
             expressions::{DatexExpressionData, List},
@@ -232,15 +233,6 @@ mod tests {
             value_container::ValueContainer,
         },
     };
-    use crate::ast::expressions::{DatexExpressionData, List};
-    use crate::ast::spanned::Spanned;
-    use crate::values::core_values::decimal::Decimal;
-    use crate::values::core_values::decimal::typed_decimal::TypedDecimal;
-    use crate::values::core_values::integer::Integer;
-    use crate::values::core_values::integer::typed_integer::TypedInteger;
-    use crate::values::core_values::range::Range;
-    use crate::values::value::Value;
-    use crate::values::value_container::ValueContainer;
 
     #[test]
     fn test_integer_to_ast() {
@@ -251,14 +243,14 @@ mod tests {
 
     #[test]
     fn range_to_ast() {
-        let range = ValueContainer::from(Range::new(
+        let range = ValueContainer::from(core_values::range::Range::new(
             Integer::from(11),
             Integer::from(13),
         ));
         let ast = DatexExpressionData::from(&range);
         assert_eq!(
             ast,
-            DatexExpressionData::Range(crate::ast::expressions::Range {
+            DatexExpressionData::Range(crate::ast::expressions::RangeDeclaration {
                 start: Box::new(
                     DatexExpressionData::Integer(Integer::from(11))
                         .with_default_span()

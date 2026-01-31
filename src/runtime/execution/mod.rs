@@ -250,6 +250,8 @@ mod tests {
         },
     };
     use log::{debug, info};
+    use crate::libs::core::get_core_lib_type_reference;
+    use crate::references::reference::Reference;
 
     fn execute_datex_script_debug(
         datex_script: &str,

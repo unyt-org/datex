@@ -24,10 +24,13 @@ use crate::{
         value_container::ValueContainer,
     },
 };
+use crate::values::core_values;
+
 use core::{
     fmt::Display,
     ops::{Neg},
 };
+use crate::values::core_values::range::Range;
 
 #[derive(Clone, Debug)]
 /// An expression in the AST
@@ -50,7 +53,7 @@ impl Default for DatexExpression {
     }
 }
 impl DatexExpression {
-    pub fn new(data: DatexExpressionData, span: ops::Range<usize>) -> Self {
+    pub fn new(data: DatexExpressionData, span: core::ops::Range<usize>) -> Self {
         DatexExpression {
             data,
             span,
@@ -93,7 +96,7 @@ pub enum DatexExpressionData {
     /// Integer, e.g 123456789123456789
     Integer(Integer),
 
-    Range(Range),
+    Range(RangeDeclaration),
 
     /// Typed Integer, e.g. 123i8
     TypedInteger(TypedInteger),
@@ -188,7 +191,7 @@ pub enum DatexExpressionData {
 impl Spanned for DatexExpressionData {
     type Output = DatexExpression;
 
-    fn with_span<T: Into<ops::Range<usize>>>(self, span: T) -> Self::Output {
+    fn with_span<T: Into<core::ops::Range<usize>>>(self, span: T) -> Self::Output {
         DatexExpression {
             data: self,
             span: span.into(),
@@ -251,7 +254,7 @@ impl TryFrom<&DatexExpressionData> for ValueContainer {
                     .map(|e| ValueContainer::try_from(&e.data))
                     .collect::<Result<Vec<ValueContainer>, ()>>()?;
                 ValueContainer::from(
-                    datex_core::values::core_values::list::List::from(entries),
+                    core_values::list::List::from(entries),
                 )
             }
             DatexExpressionData::Map(pairs) => {
@@ -265,7 +268,7 @@ impl TryFrom<&DatexExpressionData> for ValueContainer {
                     })
                     .collect::<Result<Vec<(ValueContainer, ValueContainer)>, ()>>()?;
                 ValueContainer::from(
-                    crate::values::core_values::map::Map::from(entries),
+                    core_values::map::Map::from(entries),
                 )
             }
             DatexExpressionData::Range(range) => {
@@ -277,7 +280,7 @@ impl TryFrom<&DatexExpressionData> for ValueContainer {
                     DatexExpressionData::Integer(int) => int,
                     _ => panic!("OutReachedEnd"),
                 };
-                ValueContainer::from(range::Range::new(
+                ValueContainer::from(Range::new(
                     start.clone(),
                     end.clone(),
                 ))
@@ -296,12 +299,12 @@ pub struct BinaryOperation {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct Range {
+pub struct RangeDeclaration {
     pub start: Box<DatexExpression>,
     pub end: Box<DatexExpression>,
 }
 
-impl Display for Range {
+impl Display for RangeDeclaration {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         let start = match &self.start.data {
             DatexExpressionData::Integer(int) => int.to_string(),

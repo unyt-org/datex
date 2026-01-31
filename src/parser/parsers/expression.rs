@@ -130,7 +130,7 @@ impl Parser {
                     let span = lhs.span.start..rhs.span.end;
                     DatexExpression::new(
                         DatexExpressionData::Range(
-                            crate::ast::expressions::Range {
+                            crate::ast::expressions::RangeDeclaration {
                                 start: Box::new(lhs),
                                 end: Box::new(rhs),
                             },

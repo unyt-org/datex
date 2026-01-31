@@ -905,7 +905,7 @@ mod tests {
         assert_eq!(compact().format(&null_ast.with_default_span()), "null");
 
         let range_ast =
-            DatexExpressionData::Range(crate::ast::expressions::Range {
+            DatexExpressionData::Range(crate::ast::expressions::RangeDeclaration {
                 start: Box::new(
                     DatexExpressionData::Integer(11.into()).with_default_span(),
                 ),

@@ -172,14 +172,6 @@ impl Reference {
 
 #[cfg(test)]
 mod tests {
-    use crate::dif::r#type::DIFTypeDefinition;
-    use crate::dif::update::{DIFUpdate, DIFUpdateData};
-    use crate::references::observers::Observer;
-    use crate::references::observers::{ObserveOptions, TransceiverId};
-    use crate::runtime::memory::Memory;
-    use crate::stdlib::borrow::Cow;
-    use crate::stdlib::{assert_matches, cell::RefCell, rc::Rc};
-    use crate::values::core_values::map::Map;
     use crate::{
         dif::{
             representation::DIFValueRepresentation,

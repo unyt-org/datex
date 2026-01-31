@@ -4,7 +4,7 @@ use crate::{
         Conditional, CreateRef, DatexExpression, DatexExpressionData, Deref,
         DerefAssignment, GenericInstantiation, List, Map, PropertyAccess,
         PropertyAssignment, RemoteExecution, SlotAssignment, Statements,
-        TypeDeclaration, UnaryOperation, VariableAssignment, Range,
+        TypeDeclaration, UnaryOperation, VariableAssignment, RangeDeclaration,
         VariableDeclaration,
     },
     visitor::{
@@ -22,7 +22,7 @@ pub trait VisitableExpression<E> {
     ) -> Result<(), E>;
 }
 
-impl<E> VisitableExpression<E> for Range {
+impl<E> VisitableExpression<E> for RangeDeclaration {
     fn walk_children(
         &mut self,
         visitor: &mut impl ExpressionVisitor<E>,
