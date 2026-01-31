@@ -21,7 +21,7 @@ pub fn register_native_interface_factories(com_hub: &ComHub) {
     }
     #[cfg(feature = "native_serial")]
     {
-        com_hub.register_sync_interface_factory::<serial::serial_client::SerialClientInterfaceSetupDataNative>();
+        com_hub.register_async_interface_factory::<serial::serial_client::SerialClientInterfaceSetupDataNative>();
     }
     #[cfg(feature = "native_tcp")]
     {
@@ -31,6 +31,7 @@ pub fn register_native_interface_factories(com_hub: &ComHub) {
     #[cfg(feature = "native_http")]
     {
         com_hub.register_async_interface_factory::<http::http_server::HTTPServerInterfaceSetupDataNative>();
+        com_hub.register_async_interface_factory::<http::http_client::HTTPClientInterfaceSetupDataNative>();
     }
     // TODO:
     // #[cfg(feature = "native_webrtc")]
@@ -50,15 +51,15 @@ pub mod tests {
         client_socket_configuration: SocketConfiguration,
     ) {
         // send data from client to server
-        let message = DXBBlock::default();
-        test_send_block(&client_socket_configuration.send_callback, message.clone()).await;
+        let message = DXBBlock::new_with_body(b"Hello, World!");
+        test_send_block_async_callback(&client_socket_configuration.send_callback, message.clone()).await;
 
         // receive data on server
         test_receive_block(&mut server_socket_configuration.iterator.unwrap(), message).await;
 
         // send data from server to client
-        let response_message = DXBBlock::default();
-        test_send_block(&server_socket_configuration.send_callback, response_message.clone()).await;
+        let response_message = DXBBlock::new_with_body(b"Hello back!");
+        test_send_block_async_callback(&server_socket_configuration.send_callback, response_message.clone()).await;
 
         // receive data on client
         test_receive_block(&mut client_socket_configuration.iterator.unwrap(), response_message).await;
@@ -92,7 +93,7 @@ pub mod tests {
 
     /// Test utility function to send a block using the provided send callback.
     /// Asserts that the callback is asynchronous and successfully sends the block.
-    async fn test_send_block(send_callback: &Option<SendCallback>, block: DXBBlock) {
+    pub(crate) async fn test_send_block_async_callback(send_callback: &Option<SendCallback>, block: DXBBlock) {
         match send_callback {
             Some(SendCallback::Async(callback)) => {
                 callback.call(block).await.unwrap();
@@ -100,10 +101,21 @@ pub mod tests {
             _ => panic!("Expected async send callback"),
         }
     }
+
+    /// Test utility function to send a block using the provided send callback.
+    /// Asserts that the callback is asynchronous and successfully sends the block.
+    pub(crate) fn test_send_block_sync_once_callback(send_callback: &Option<SendCallback>, block: DXBBlock) {
+        match send_callback {
+            Some(SendCallback::SyncOnce(callback)) => {
+                callback(block).unwrap();
+            }
+            _ => panic!("Expected sync once callback"),
+        }
+    }
     
     /// Test utility function to receive a block from the provided socket data iterator.
     /// Asserts that the received block matches the provided block.
-    async fn test_receive_block(block_iterator: &mut SocketDataIterator, matches_block: DXBBlock) {
+    pub(crate) async fn test_receive_block(block_iterator: &mut SocketDataIterator, matches_block: DXBBlock) {
         let received_block = async_next_pin_box(block_iterator).await;
         assert!(received_block.is_some());
         let received_block = received_block.unwrap();

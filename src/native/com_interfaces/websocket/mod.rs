@@ -1,6 +1,7 @@
 pub mod websocket_client;
 pub mod websocket_server;
 
+// TODO: move to integration tests once this is a separate crate
 #[cfg(test)]
 mod tests {
     use ntest_timeout::timeout;
@@ -33,7 +34,7 @@ mod tests {
         let (client_interface_configuration, server_socket) = join!(
             // create client interface connection
             WebSocketClientInterfaceSetupDataNative(WebSocketClientInterfaceSetupData {
-                url: format!("ws://{}/", address),
+                url: format!("ws://{}", address),
             })
                 .create_interface(),
             // await connections on server side
@@ -48,7 +49,7 @@ mod tests {
         // check client properties
         assert_eq!(
             client_interface_configuration.properties.name,
-            Some(format!("ws://{}/", address)),
+            Some(format!("ws://{}", address)),
         );
         assert_eq!(
             client_interface_configuration.properties.channel,

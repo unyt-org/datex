@@ -2,32 +2,25 @@ use crate::network::com_interfaces::default_setup_data::serial::serial_client::S
 use crate::{derive_setup_data, network::{
     com_hub::errors::ComInterfaceCreateError,
     com_interfaces::com_interface::{
-        factory::{ComInterfaceSyncFactory},
         properties::{InterfaceDirection, ComInterfaceProperties},
     },
-}, std_sync::Mutex, stdlib::{sync::Arc, time::Duration}, task::{spawn, spawn_blocking}};
+}, stdlib::{sync::Arc, time::Duration}};
 use core::{prelude::rust_2024::*, result::Result};
+use crate::std_sync::Mutex;
 use log::{error};
 use datex_core::network::com_interfaces::com_interface::factory::ComInterfaceConfiguration;
 use crate::global::dxb_block::DXBBlock;
-use crate::network::com_interfaces::com_interface::factory::{SocketConfiguration, SendCallback, SendFailure, SocketProperties, SendSuccess};
+use crate::network::com_hub::managers::com_interface_manager::ComInterfaceAsyncFactoryResult;
+use crate::network::com_interfaces::com_interface::factory::{SocketConfiguration, SendCallback, SendFailure, SocketProperties, SendSuccess, ComInterfaceAsyncFactory};
+use crate::task::spawn_blocking;
 
 derive_setup_data!(SerialClientInterfaceSetupDataNative, SerialClientInterfaceSetupData);
 
 impl SerialClientInterfaceSetupDataNative {
     const TIMEOUT: Duration = Duration::from_millis(1000);
     const BUFFER_SIZE: usize = 1024;
-    const DEFAULT_BAUD_RATE: u32 = 115200;
 
-    pub fn get_available_ports() -> Vec<String> {
-        serialport::available_ports()
-            .unwrap_or_default()
-            .into_iter()
-            .filter_map(|port| port.port_name.into())
-            .collect()
-    }
-
-    fn create_interface(self) -> Result<ComInterfaceConfiguration, ComInterfaceCreateError> {
+    async fn create_interface(self) -> Result<ComInterfaceConfiguration, ComInterfaceCreateError> {
         let port_name = self.port_name.clone().ok_or(
             ComInterfaceCreateError::invalid_setup_data("Port name is required"),
         )?;
@@ -38,12 +31,14 @@ impl SerialClientInterfaceSetupDataNative {
             ));
         }
 
-        let port = serialport::new(port_name.clone(), self.baud_rate)
-            .timeout(Self::TIMEOUT)
-            .open()
-            .map_err(|err| {
-                ComInterfaceCreateError::connection_error_with_details(err)
-            })?;
+        let port_name_clone = port_name.clone();
+        let port = spawn_blocking(move || {
+            serialport::new(port_name_clone, self.baud_rate)
+                .timeout(Self::TIMEOUT)
+                .open()
+        }).await.unwrap().map_err(|err| {
+            ComInterfaceCreateError::connection_error_with_details(err)
+        })?;
         let port = Arc::new(Mutex::new(port));
         let port_clone = port.clone();
 
@@ -93,9 +88,9 @@ impl SerialClientInterfaceSetupDataNative {
     }
 }
 
-impl ComInterfaceSyncFactory for SerialClientInterfaceSetupDataNative {
-    fn create_interface(self) -> Result<ComInterfaceConfiguration, ComInterfaceCreateError> {
-        self.create_interface()
+impl ComInterfaceAsyncFactory for SerialClientInterfaceSetupDataNative {
+    fn create_interface(self) -> ComInterfaceAsyncFactoryResult {
+        Box::pin(self.create_interface())
     }
 
     fn get_default_properties() -> ComInterfaceProperties {

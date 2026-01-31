@@ -1,6 +1,5 @@
 use crate::{derive_setup_data, stdlib::{
     sync::{Arc},
-    time::Duration,
 }};
 use core::{prelude::rust_2024::*, result::Result};
 use futures_util::{
@@ -18,7 +17,6 @@ use crate::{
     network::{
         com_hub::errors::ComInterfaceCreateError,
         com_interfaces::com_interface::{
-            error::ComInterfaceError,
             factory::{
                 ComInterfaceAsyncFactory, ComInterfaceAsyncFactoryResult,
             },
@@ -27,9 +25,9 @@ use crate::{
     },
 };
 use tokio_tungstenite::{MaybeTlsStream, WebSocketStream};
+use datex_core::network::com_interfaces::default_setup_data::http_common::parse_url;
 use crate::global::dxb_block::DXBBlock;
 use crate::network::com_interfaces::com_interface::factory::{ComInterfaceConfiguration, SocketConfiguration, SendCallback, SendFailure, SocketProperties};
-use crate::network::com_interfaces::default_setup_data::websocket::parse_url;
 
 derive_setup_data!(WebSocketClientInterfaceSetupDataNative, WebSocketClientInterfaceSetupData);
 
@@ -44,7 +42,7 @@ impl WebSocketClientInterfaceSetupDataNative {
         Ok(
             ComInterfaceConfiguration::new_single_socket(
                 ComInterfaceProperties {
-                    name: Some(address.to_string()),
+                    name: Some(self.url.clone()),
                     ..Self::get_default_properties()
                 },
                 SocketConfiguration::new(

@@ -1,5 +1,5 @@
-use crate::{derive_setup_data, stdlib::{net::SocketAddr, rc::Rc, sync::Arc}};
-use core::time::Duration;
+use crate::{derive_setup_data, stdlib::{net::SocketAddr}};
+use core::str::FromStr;
 use async_tiny::{Response, Server};
 
 use crate::network::com_interfaces::default_setup_data::http::http_server::{HTTPServerInterfaceSetupData};
@@ -14,8 +14,6 @@ use crate::{
         },
     },
 };
-use log::{debug};
-use url::Url;
 use datex_core::network::com_interfaces::com_interface::properties::InterfaceDirection;
 use crate::global::dxb_block::DXBBlock;
 use crate::network::com_interfaces::com_interface::factory::{ComInterfaceConfiguration, SendCallback, SendFailure, SendSuccess, SocketConfiguration, SocketProperties};
@@ -24,29 +22,25 @@ derive_setup_data!(HTTPServerInterfaceSetupDataNative, HTTPServerInterfaceSetupD
 
 impl HTTPServerInterfaceSetupDataNative {
     async fn create_interface(self) -> Result<ComInterfaceConfiguration, ComInterfaceCreateError> {
-        let address: String = format!("http://0.0.0.0:{}", self.port);
-        let address = Url::parse(&address)
+        let addr = SocketAddr::from_str(&self.bind_address)
             .map_err(ComInterfaceCreateError::invalid_setup_data)?;
 
-        let addr: SocketAddr = address
-            .socket_addrs(|| None)
-            .map_err(ComInterfaceCreateError::invalid_setup_data)?
-            .first()
-            .cloned()
-            .ok_or(ComInterfaceCreateError::invalid_setup_data(
-                "Socket address invalid",
-            ))?;
-
-        println!("HTTP server starting on http://{addr}");
         let mut server = Server::http(&addr.to_string(), false).await.map_err(|e| {
             ComInterfaceCreateError::connection_error_with_details(e)
         })?;
 
+        println!("HTTP server running on http://{addr}");
+
         Ok(ComInterfaceConfiguration::new(
-            Self::get_default_properties(),
+            ComInterfaceProperties {
+                name: Some(addr.to_string()),
+                connectable_interfaces: HTTPServerInterfaceSetupData::get_clients_setup_data(self.0.accept_addresses)?,
+                ..Self::get_default_properties()
+            },
             async gen move {
                 // create new tmp socket for each new incoming request
                 while let Some(request) = server.next().await {
+                    println!("Accepted new HTTP request: {} {}", request.method(), request.url());
                     let request_body = request.body().to_vec();
                     // yield new socket data
                     yield Ok(SocketConfiguration::new(
@@ -60,10 +54,10 @@ impl HTTPServerInterfaceSetupDataNative {
                             let response = Response::from_data(block.to_bytes());
                             request.respond(response)
                                 .map_err(|e| {
+                                    println!("HTTP response send error: {:#?}", e);
                                     SendFailure(Box::new(block))
                                 })
                                 .map(|_| {
-                                    debug!("HTTP response sent successfully");
                                     SendSuccess::Sent
                                 })
                         })

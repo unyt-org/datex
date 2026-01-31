@@ -8,6 +8,7 @@ pub mod tcp;
 pub mod webrtc;
 #[cfg(feature = "com_websocket")]
 pub mod websocket;
+pub mod http_common;
 
 /// Creates a new type that wraps the given setup data type and implements Deref to it so that
 /// factory traits can be implemented on it in external crates.

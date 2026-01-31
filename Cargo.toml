@@ -109,8 +109,6 @@ hashbrown = { version = "0.16.0", features = ["serde"], optional = true }
 web-time = { version = "1.1.0", optional = true }
 embedded-time = "0.12.1"
 async-select = "0.3.0"
-async-broadcast = { version = "0.7.2", optional = true }
-async_tiny = "0.4.0"
 
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
@@ -123,10 +121,13 @@ tokio-tungstenite = { version = "0.21.0", optional = true, features = [
 ] }
 tungstenite = { version = "0.21.0", optional = true }
 openssl = { version = "0.10.73", optional = true }
+reqwest = { version = "0.13.1", optional = true }
 
 wasm-bindgen-futures = { optional = true, version = "0.4.29" }
 gloo-timers = { optional = true, version = "0.3.0", features = ["futures"] }
 tsify = { optional = true, version = "0.5.6", features = ["js"] }
+async_tiny = { version = "0.4.0", optional = true }
+
 # wasm-bindgen is required for tsify
 wasm-bindgen = { optional = true, version = "=0.2.105" }
 
@@ -209,7 +210,13 @@ com_serial = []
 com_websocket = []
 
 # native com intefaces
-native_http = ["com_http", "axum", "hyper", "tokio-stream"]
+native_http = [
+    "com_http",
+    "dep:async_tiny",
+    "dep:reqwest",
+    "hyper",
+    "tokio-stream",
+]
 native_websocket = [
     "com_websocket",
     "tokio-tungstenite",
@@ -230,14 +237,14 @@ esp_logger = ["dep:esp-println"]
 env_logger = []
 
 # runtime
-tokio_runtime = ["dep:tokio", "dep:async-broadcast"]
+tokio_runtime = ["dep:tokio"]
 wasm_runtime = [
     "dep:wasm-bindgen-futures",
     "dep:gloo-timers",
     "dep:tsify",
     "dep:web-time",
 
-    "dep:async-broadcast",
+
     #    "dep:wasm-bindgen",
 
 ]
