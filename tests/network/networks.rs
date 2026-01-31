@@ -9,11 +9,11 @@ use crate::network::helpers::{
 };
 use core::{str::FromStr, time::Duration};
 use datex_core::{
+    native_global_context::init_global_context_native,
     network::com_hub::{
         InterfacePriority, network_response::ResponseOptions,
         network_tracing::TraceOptions,
     },
-    utils::context::init_global_context,
     values::core_values::endpoint::Endpoint,
 };
 use datex_macros::async_test;
@@ -27,7 +27,7 @@ async fn create_network_with_two_nodes() {
     let local = task::LocalSet::new();
     local
         .run_until(async {
-            init_global_context();
+            init_global_context_native();
 
             let mut network = Network::new(vec![
                 // @test-a
@@ -191,7 +191,7 @@ async fn network_routing_with_four_nodes_1() {
     let local = task::LocalSet::new();
     local
         .run_until(async {
-            init_global_context();
+            init_global_context_native();
 
             let network = get_test_network_1().await;
 
@@ -237,7 +237,7 @@ async fn network_routing_with_four_nodes_2() {
     let local = task::LocalSet::new();
     local
         .run_until(async {
-            init_global_context();
+            init_global_context_native();
 
             let network = get_test_network_1().await;
 
@@ -268,12 +268,7 @@ async fn network_routing_with_four_nodes_2() {
             info!("Network trace:\n{}", network_trace.as_ref().unwrap());
 
             // clear endpoint blacklist to make sure it has no influence on the following routing
-            runtime_c
-                .com_hub()
-                .socket_manager()
-                .borrow_mut()
-                .endpoint_sockets_blacklist
-                .clear();
+            runtime_c.com_hub().clear_endpoint_blacklist();
 
             // send trace from C to A again
             let network_trace = runtime_c
@@ -302,7 +297,7 @@ async fn network_routing_with_four_nodes_3() {
     let local = task::LocalSet::new();
     local
         .run_until(async {
-            init_global_context();
+            init_global_context_native();
 
             let network = get_test_network_1().await;
 
@@ -352,7 +347,7 @@ async fn network_routing_with_four_nodes_4() {
     let local = task::LocalSet::new();
     local
         .run_until(async {
-            init_global_context();
+            init_global_context_native();
 
             let network = get_test_network_1().await;
 
@@ -383,12 +378,7 @@ async fn network_routing_with_four_nodes_4() {
             info!("Network trace:\n{}", network_trace.as_ref().unwrap());
 
             // clear endpoint blacklist to make sure it has no influence on the following routing
-            runtime_c
-                .com_hub()
-                .socket_manager()
-                .borrow_mut()
-                .endpoint_sockets_blacklist
-                .clear();
+            runtime_c.com_hub().clear_endpoint_blacklist();
 
             // send trace from B to D again
             let network_trace = runtime_b
@@ -417,7 +407,7 @@ async fn network_routing_with_four_nodes_5_deterministic_priorities() {
     let local = task::LocalSet::new();
     local
         .run_until(async {
-            init_global_context();
+            init_global_context_native();
 
             let network =
                 get_test_network_1_with_deterministic_priorities().await;
@@ -465,7 +455,7 @@ async fn network_routing_with_four_nodes_6_deterministic_priorities() {
     let local = task::LocalSet::new();
     local
         .run_until(async {
-            init_global_context();
+            init_global_context_native();
 
             let network =
                 get_test_network_1_with_deterministic_priorities().await;

@@ -66,8 +66,8 @@ use crate::{
         com_interface::{
             ComInterfaceUUID,
             factory::{
-                ComInterfaceConfiguration,
-                NewSocketsIterator, SendCallback, SendFailure, SendSuccess, SocketDataIterator, SocketProperties,
+                ComInterfaceConfiguration, NewSocketsIterator, SendCallback,
+                SendFailure, SendSuccess, SocketDataIterator, SocketProperties,
             },
             properties::ComInterfaceProperties,
         },
@@ -80,9 +80,7 @@ use crate::{
 };
 use async_select::select;
 use datex_core::global::dxb_block::BlockId;
-use futures_util::{
-    FutureExt, StreamExt,
-};
+use futures_util::{FutureExt, StreamExt};
 
 pub type IncomingBlockInterceptor =
     Box<dyn Fn(&DXBBlock, &ComInterfaceSocketUUID) + 'static>;
@@ -179,9 +177,8 @@ pub struct ReceiveBlockPreprocessResult {
     is_for_own: bool,
 }
 
-pub type BlockSendSyncOrAsyncResult<
-    F,
-> = SyncOrAsyncResult<Option<Vec<Vec<u8>>>, (), Vec<Endpoint>, F>;
+pub type BlockSendSyncOrAsyncResult<F> =
+    SyncOrAsyncResult<Option<Vec<Vec<u8>>>, (), Vec<Endpoint>, F>;
 
 pub type PrepareOwnBlockFuture<'a> =
     Pin<Box<dyn Future<Output = Result<DXBBlock, ComHubError>> + 'a>>;
@@ -1560,6 +1557,13 @@ impl ComHub {
             SyncOrAsyncResolved::Sync(r) => r.map(|_| ()),
             SyncOrAsyncResolved::Async(fut) => fut,
         }
+    }
+
+    pub fn clear_endpoint_blacklist(&self) {
+        self.socket_manager
+            .endpoint_sockets_blacklist
+            .borrow_mut()
+            .clear();
     }
 }
 

@@ -10,7 +10,7 @@ pub fn create_async_test(input: ItemFn) -> TokenStream {
         #[tokio::test]
         async fn #fn_name() {
             datex_core::run_async! {
-                datex_core::utils::context::init_global_context();
+                datex_core::native_global_context::init_global_context_native();
                 #fn_body
             }
         }

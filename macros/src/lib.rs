@@ -32,7 +32,6 @@ pub fn derive_lib_type_string(input: TokenStream) -> TokenStream {
     lib_types::derive_lib_type_string(input).into()
 }
 
-// TODO: deprecate in favor of datex_test
 #[proc_macro_attribute]
 pub fn async_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let original_function = parse_macro_input!(item as ItemFn);
