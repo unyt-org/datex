@@ -44,7 +44,7 @@ num-traits = { version = "0.2.19", default-features = false }
 hex = { version = "0.4.3", default-features = false }
 log = { version = "0.4", default-features = false, features = ["serde"] }
 bytes = { version = "1", default-features = false }
-futures-util = { version = "0.3", default-features = false }
+futures-util = { version = "0.3", default-features = false, features = ["async-await-macro"] }
 futures = { version = "0.3", default-features = false }
 indexmap = { version = "2.9.0", default-features = false }
 ordered-float = { version = "5.0.0", default-features = false }
