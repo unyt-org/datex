@@ -1,4 +1,4 @@
-# Contributing to **DATEX Core**
+# Contributing to **DATEX**
 
 This document describes the workflow, branch strategy, coding standards, and
 quality gates for contributing to the

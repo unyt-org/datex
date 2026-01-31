@@ -13,3 +13,4 @@ pub mod values;
 pub mod dif;
 pub mod json;
 pub mod parser;
+mod mock_globals;

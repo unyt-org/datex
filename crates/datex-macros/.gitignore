@@ -1,3 +1,6 @@
+target
+**/*.rs.bk
+bin
 .DS_Store
 .idea
 rustc-ice-*
