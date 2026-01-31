@@ -14,6 +14,7 @@ use crate::{
         options::ComHubOptions,
     },
     task::{self},
+    utils::maybe_async::SyncOrAsyncResolved,
 };
 pub mod managers;
 
@@ -623,7 +624,7 @@ impl ComHub {
         incoming_socket: ComInterfaceSocketUUID,
         // only for debugging traces
         forked: bool,
-    ) {
+    ) -> Result<(), Vec<Endpoint>> {
         let receivers = block.receiver_endpoints();
 
         // check if block has already passed this endpoint (-> bounced back block)
@@ -657,11 +658,11 @@ impl ComHub {
         else if block.routing_header.ttl == 1 {
             block.routing_header.ttl -= 1;
             warn!("Block TTL expired. Dropping block...");
-            return;
+            return Ok(());
         // else ttl must be zero
         } else {
             warn!("Block TTL expired. Dropping block...");
-            return;
+            return Ok(());
         }
 
         let mut prefer_incoming_socket_for_bounce_back = false;
@@ -709,6 +710,7 @@ impl ComHub {
                         "{}: Tried to send bounce back block back to incoming socket, but this is not allowed",
                         self.endpoint
                     );
+                    Ok(())
                 } else if self
                     .socket_manager
                     .get_socket_by_uuid(&send_back_socket)
@@ -717,38 +719,43 @@ impl ComHub {
                     .can_send()
                 {
                     block.set_bounce_back(true);
-                    let res = self
+                    self
                         .send_block_to_endpoints_via_socket(
                             block,
                             send_back_socket,
-                            unreachable_endpoints,
+                            unreachable_endpoints.clone(),
                             if forked { Some(0) } else { None },
                         )
-                        .into_future()
-                        .await;
-                    // TODO: handle result
+                        .into_error_future()
+                        .await
+                    .map_or(Ok(()), |e| {
+                        error!(
+                            "{}: Failed to send bounce back block to socket: {:?}",
+                            self.endpoint, e
+                        );
+                        Err(unreachable_endpoints)
+                    })
                 } else {
                     error!(
                         "Tried to send bounce back block, but cannot send back to incoming socket"
-                    )
+                    );
+                    Err(unreachable_endpoints)
                 }
             }
             // Otherwise, the block originated from this endpoint, we can just call send again
             // and try to send it via other remaining sockets that are not on the blacklist for the
             // block receiver
             else {
-                self.send_block_async(block, vec![], forked)
-                    .await
-                    .unwrap_or_else(|_| {
-                        error!(
-                            "Failed to send out block to {}",
-                            unreachable_endpoints
-                                .iter()
-                                .map(|e| e.to_string())
-                                .join(",")
-                        );
-                    });
+                self.send_block_async(block, vec![], forked).await.map_or(Ok(()), |e| {
+                    error!(
+                        "{}: Failed to send bounce back block to socket: {:?}",
+                        self.endpoint, e
+                    );
+                    Err(unreachable_endpoints)
+                })
             }
+        } else {
+            Ok(())
         }
     }
 
@@ -1518,10 +1525,12 @@ impl ComHub {
     //     }
     // }
 
+    /// Sends a hello block via the specified socket.
+    /// Returns Ok(()) if the block was sent successfully, or Err(SendFailure) if sending failed.
     pub async fn send_hello_block(
         &self,
         socket_uuid: ComInterfaceSocketUUID,
-    ) -> Result<(), ComHubError> {
+    ) -> Result<(), SendFailure> {
         let mut block: DXBBlock = DXBBlock::default();
         block
             .block_header
@@ -1533,9 +1542,15 @@ impl ComHub {
             .set_signature_type(SignatureType::Unencrypted);
         // TODO #182 include fingerprint of the own public key into body
 
-        let block = self.prepare_own_block(block).into_result().await?;
+        let block = self
+            .prepare_own_block(block)
+            .into_result()
+            .await
+            .unwrap_or_else(|e| {
+                panic!("Error preparing own block for sending: {:?}", e)
+            });
 
-        let res = self
+        match self
             .send_block_to_endpoints_via_socket(
                 block,
                 socket_uuid.clone(),
@@ -1543,9 +1558,11 @@ impl ComHub {
                 None,
             )
             .into_future()
-            .await;
-        // TODO: handle result
-        Ok(())
+            .await
+        {
+            SyncOrAsyncResolved::Sync(r) => r.map(|_| ()),
+            SyncOrAsyncResolved::Async(fut) => fut,
+        }
     }
 }
 
