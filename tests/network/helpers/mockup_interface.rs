@@ -1,81 +1,52 @@
-use core::cell::RefCell;
 use datex_core::{
     channel::mpsc::{UnboundedReceiver, UnboundedSender},
-    global::{
-        dxb_block::DXBBlock, protocol_structures::block_header::BlockType,
-    },
     network::{
         com_hub::errors::ComInterfaceCreateError,
         com_interfaces::com_interface::{
-            ComInterfaceEvent, ComInterfaceProxy,
-            error::ComInterfaceError,
             factory::ComInterfaceSyncFactory,
             properties::{InterfaceDirection, ComInterfaceProperties},
-            socket::ComInterfaceSocketUUID,
-            socket_manager::ComInterfaceSocketManager,
         },
     },
-    task::spawn_with_panic_notify_default,
     values::core_values::endpoint::Endpoint,
 };
 use serde::{Deserialize, Serialize};
 use std::{
     fmt::Debug,
-    rc::Rc,
-    sync::{Arc, Mutex},
 };
+use std::sync::{Arc, Mutex};
+use datex_core::channel::mpsc::create_unbounded_channel;
+use datex_core::global::dxb_block::DXBBlock;
+use datex_core::network::com_interfaces::com_interface::factory::{ComInterfaceConfiguration, SendCallback, SendSuccess, SocketConfiguration, SocketProperties};
 
 impl MockupInterfaceSetupData {
-    pub fn create_interface(
-        mut self,
-        proxy: ComInterfaceProxy,
-    ) -> Result<ComInterfaceProperties, ComInterfaceCreateError> {
-        let outgoing_queue = Rc::new(RefCell::new(Vec::new()));
-        let (socket_uuid, sender) =
-            self.create_and_add_socket(proxy.socket_manager)?;
+    pub fn create_interface(self) -> Result<ComInterfaceConfiguration, ComInterfaceCreateError> {
+        let (sender, mut receiver) = create_unbounded_channel::<Vec<u8>>();
+        let sender = Arc::new(Mutex::new(sender));
 
-        let name = self.name.clone();
-        let direction = self.direction.clone();
-
-        // setup event handler task
-        spawn_with_panic_notify_default(Self::event_handler_task(
-            outgoing_queue.clone(),
-            self.sender_out.take(),
-            proxy.event_receiver,
-        ));
-        if let Some(receiver) = self.receiver_in.take() {
-            spawn_with_panic_notify_default(Self::send_incoming_blocks_task(
-                receiver, sender,
-            ));
-        }
-
-        Ok(ComInterfaceProperties {
-            interface_type: "mockup".to_string(),
-            channel: "mockup".to_string(),
-            name: Some(name),
-            direction,
-            ..Default::default()
-        })
-    }
-
-    fn create_and_add_socket(
-        &self,
-        socket_manager: Arc<Mutex<ComInterfaceSocketManager>>,
-    ) -> Result<
-        (ComInterfaceSocketUUID, UnboundedSender<Vec<u8>>),
-        ComInterfaceError,
-    > {
-        let direction = self.direction.clone();
-        let (socket_uuid, sender) = socket_manager
-            .lock()
-            .unwrap()
-            .create_and_init_socket_with_optional_endpoint(
-                direction,
-                1,
-                self.endpoint.clone(),
-            );
-
-        Ok((socket_uuid, sender))
+        Ok(ComInterfaceConfiguration::new_single_socket(
+            ComInterfaceProperties {
+                interface_type: "mockup".to_string(),
+                channel: "mockup".to_string(),
+                name: Some(self.name),
+                direction: self.direction.clone(),
+                ..Default::default()
+            },
+            SocketConfiguration::new(
+                SocketProperties::new_with_maybe_direct_endpoint(self.direction, 1, self.endpoint),
+                async gen move {
+                    while let Some(block_bytes) = receiver.next().await {
+                        yield Ok(block_bytes);
+                    }
+                },
+                SendCallback::new_sync(move |block: DXBBlock| {
+                    let bytes = block.to_bytes();
+                    sender.lock().unwrap().start_send(bytes).expect(
+                        "Failed to send outgoing block from MockupInterface",
+                    );
+                    Ok(SendSuccess::Sent)
+                })
+            )
+        ))
     }
 }
 
@@ -84,11 +55,6 @@ pub struct MockupInterfaceSetupData {
     pub name: String,
     pub endpoint: Option<Endpoint>,
     pub direction: InterfaceDirection,
-
-    #[serde(skip)]
-    pub sender_out: Option<UnboundedSender<Vec<u8>>>,
-    #[serde(skip)]
-    pub receiver_in: Option<UnboundedReceiver<Vec<u8>>>,
 }
 impl Default for MockupInterfaceSetupData {
     fn default() -> Self {
@@ -96,8 +62,6 @@ impl Default for MockupInterfaceSetupData {
             name: "mockup".to_string(),
             endpoint: None,
             direction: InterfaceDirection::InOut,
-            sender_out: None,
-            receiver_in: None,
         }
     }
 }
@@ -151,43 +115,11 @@ impl MockupInterfaceSetupData {
                 .expect("Failed to send incoming block to MockupInterface");
         }
     }
-
-    /// background task to handle com hub events (e.g. outgoing messages)
-    async fn event_handler_task(
-        outgoing_queue: Rc<RefCell<Vec<(ComInterfaceSocketUUID, Vec<u8>)>>>,
-        mut sender: Option<UnboundedSender<Vec<u8>>>,
-        mut receiver: UnboundedReceiver<ComInterfaceEvent>,
-    ) {
-        while let Some(event) = receiver.next().await {
-            match event {
-                ComInterfaceEvent::SendBlock(block, socket_uuid) => {
-                    let is_hello =
-                        block.block_header.flags_and_timestamp.block_type()
-                            == BlockType::Hello;
-                    let bytes = block.to_bytes();
-                    if !is_hello {
-                        outgoing_queue
-                            .borrow_mut()
-                            .push((socket_uuid, bytes.clone()));
-                    }
-                    if let Some(sender) = sender.as_mut() {
-                        sender.start_send(bytes).expect(
-                            "Failed to send outgoing block from MockupInterface",
-                        );
-                    }
-                }
-                _ => {}
-            }
-        }
-    }
 }
 
 impl ComInterfaceSyncFactory for MockupInterfaceSetupData {
-    fn create_interface(
-        self,
-        proxy: ComInterfaceProxy,
-    ) -> Result<ComInterfaceProperties, ComInterfaceCreateError> {
-        self.create_interface(proxy)
+    fn create_interface(self) -> Result<ComInterfaceConfiguration, ComInterfaceCreateError> {
+        self.create_interface()
     }
 
     fn get_default_properties() -> ComInterfaceProperties {

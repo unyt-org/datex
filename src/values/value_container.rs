@@ -24,6 +24,8 @@ use core::{
     ops::{Add, FnOnce, Neg, Sub},
 };
 use serde::{Deserialize, de::DeserializeOwned};
+use crate::serde::error::SerializationError;
+use crate::serde::serializer::to_value_container;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum ValueError {
@@ -362,10 +364,17 @@ impl ValueContainer {
     }
 
     /// Casts the contained Value or Reference to the desired type T using serde deserialization.
-    pub fn cast_to<T: DeserializeOwned>(
+    pub fn cast_to_deserializable<T: DeserializeOwned>(
         &self,
     ) -> Result<T, DeserializationError> {
         from_value_container::<T>(self)
+    }
+
+    /// Creates a ValueContainer from a serializable value T using serde serialization.
+    pub fn from_serializable<T: serde::Serialize>(
+        value: &T,
+    ) -> Result<ValueContainer, SerializationError> {
+        to_value_container(value)
     }
 
     /// Returns the contained Reference if it is a Reference, otherwise returns None.

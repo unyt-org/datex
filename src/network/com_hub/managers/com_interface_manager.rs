@@ -236,7 +236,7 @@ impl ComInterfaceManager {
 
     /// Returns the com interface properties for a given UUID
     /// The interface is returned as a dynamic trait object
-    pub fn try_interface_by_uuid(
+    pub fn try_get_interface_by_uuid(
         &self,
         uuid: &ComInterfaceUUID,
     ) -> Option<Rc<ComInterfaceProperties>> {
@@ -251,7 +251,7 @@ impl ComInterfaceManager {
         &self,
         interface_uuid: &ComInterfaceUUID,
     ) -> Rc<ComInterfaceProperties> {
-        self.try_interface_by_uuid(interface_uuid)
+        self.try_get_interface_by_uuid(interface_uuid)
             .unwrap_or_else(|| {
                 core::panic!("Interface for uuid {interface_uuid} not found")
             })
@@ -323,5 +323,192 @@ impl ComInterfaceManager {
             .remove(interface_uuid)
             .ok_or(ComHubError::InterfaceDoesNotExist)
             .map(|_| ())
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use serde::{Deserialize, Serialize};
+    use datex_core::native_global_context::init_global_context_native;
+    use crate::network::com_interfaces::com_interface::factory::{SendCallback, SendSuccess, SocketConfiguration, SocketProperties};
+    use super::*;
+
+    #[derive(Deserialize, Serialize)]
+    struct MockSetupData {
+        name: String,
+    }
+
+    impl MockSetupData {
+        fn create_interface(self) -> Result<ComInterfaceConfiguration, ComInterfaceCreateError> {
+            Ok(ComInterfaceConfiguration::new_single_socket(
+                ComInterfaceProperties {
+                    name: Some(self.name),
+                    ..<MockSetupData as ComInterfaceSyncFactory>::get_default_properties()
+                },
+                SocketConfiguration::new(
+                    SocketProperties::new(InterfaceDirection::InOut, 1),
+                    async gen move {
+                        // mock socket incoming data iterator
+                        loop {
+                            yield Ok(vec![]);
+                        }
+                    },
+                    SendCallback::new_sync(|_block| Ok(SendSuccess::Sent))
+                )
+            ))
+        }
+    }
+
+    impl ComInterfaceSyncFactory for MockSetupData {
+        fn create_interface(self) -> Result<ComInterfaceConfiguration, ComInterfaceCreateError> {
+            self.create_interface()
+        }
+
+        fn get_default_properties() -> ComInterfaceProperties {
+            ComInterfaceProperties {
+                interface_type: "mock".to_string(),
+                channel: "mock".to_string(),
+                ..Default::default()
+            }
+        }
+    }
+
+    impl ComInterfaceAsyncFactory for MockSetupData {
+        fn create_interface(self) -> ComInterfaceAsyncFactoryResult {
+            Box::pin(async move {
+                self.create_interface()
+            })
+        }
+
+        fn get_default_properties() -> ComInterfaceProperties {
+            ComInterfaceProperties {
+                interface_type: "mock".to_string(),
+                channel: "mock".to_string(),
+                ..Default::default()
+            }
+        }
+    }
+
+    #[test]
+    fn test_create_interface_from_sync_factory() {
+        init_global_context_native();
+
+        let interface_manager = ComInterfaceManager::default();
+
+        interface_manager.register_sync_interface_factory::<MockSetupData>();
+        let setup_data = MockSetupData {
+            name: "test_interface".to_string(),
+        };
+        let com_interface_configuration = interface_manager
+            .create_and_add_interface_sync(
+                "mock",
+                ValueContainer::from_serializable(&setup_data).unwrap(),
+                InterfacePriority::None,
+            )
+            .unwrap();
+
+        assert_eq!(
+            com_interface_configuration.properties.channel,
+            "mock".to_string()
+        );
+
+        assert_eq!(
+            com_interface_configuration.properties.name,
+            Some("test_interface".to_string())
+        );
+        
+        // Clean up
+        interface_manager
+            .destroy_interface(&com_interface_configuration.uuid())
+            .unwrap();
+        
+        // Verify removal
+        assert!(!interface_manager.has_interface(&com_interface_configuration.uuid()));
+    }
+
+    #[tokio::test]
+    async fn test_create_interface_from_async_factory() {
+        init_global_context_native();
+
+        let interface_manager = ComInterfaceManager::default();
+
+        interface_manager.register_async_interface_factory::<MockSetupData>();
+        let setup_data = MockSetupData {
+            name: "test_interface".to_string(),
+        };
+        let com_interface_configuration = interface_manager
+            .create_and_add_interface(
+                "mock",
+                ValueContainer::from_serializable(&setup_data).unwrap(),
+                InterfacePriority::None,
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(
+            com_interface_configuration.properties.channel,
+            "mock".to_string()
+        );
+
+        assert_eq!(
+            com_interface_configuration.properties.name,
+            Some("test_interface".to_string())
+        );
+        
+        // Clean up
+        interface_manager
+            .destroy_interface(&com_interface_configuration.uuid())
+            .unwrap();
+        
+        // Verify removal
+        assert!(!interface_manager.has_interface(&com_interface_configuration.uuid()));
+    }
+    
+    #[tokio::test]
+    async fn test_create_interface_from_dyn_factory() {
+        init_global_context_native();
+        let interface_manager = ComInterfaceManager::default();
+        let dyn_factory: DynInterfaceImplementationFactoryFn = Rc::new(
+            |setup_data: ValueContainer| {
+                Box::pin(async move {
+                    let setup: MockSetupData = setup_data.cast_to_deserializable().unwrap();
+                    setup.create_interface()
+                })
+            },
+        );
+        interface_manager.register_dyn_interface_factory(
+            "mock".to_string(),
+            dyn_factory,
+        );
+        let setup_data = MockSetupData {
+            name: "test_interface".to_string(),
+        };
+        let com_interface_configuration = interface_manager
+            .create_and_add_interface(
+                "mock",
+                ValueContainer::from_serializable(&setup_data).unwrap(),
+                InterfacePriority::None,
+            )
+            .await
+            .unwrap();
+        
+        assert_eq!(
+            com_interface_configuration.properties.channel,
+            "mock".to_string()
+        );
+        
+        assert_eq!(
+            com_interface_configuration.properties.name,
+            Some("test_interface".to_string())
+        );
+        
+        // Clean up
+        interface_manager
+            .destroy_interface(&com_interface_configuration.uuid())
+            .unwrap();
+        
+        // Verify removal
+        assert!(!interface_manager.has_interface(&com_interface_configuration.uuid()));
     }
 }

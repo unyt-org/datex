@@ -13,7 +13,6 @@ use datex_core::{
     network::{
         com_hub::{ComHub, InterfacePriority},
         com_interfaces::com_interface::{
-            ComInterfaceUtils,
             ComInterfaceUUID,
             properties::{InterfaceDirection, ComInterfaceProperties},
             socket::ComInterfaceSocketUUID,
@@ -82,7 +81,7 @@ impl From<Endpoint> for MockupSetupData {
 /// Helper function to create a mock setup with a com hub and a mockup interface
 pub async fn get_mock_setup_with_com_hub(
     mock_setup_data: MockupSetupData,
-) -> (Rc<ComHub>, ComInterfaceProxy) {
+) -> Rc<ComHub> {
     // init mockup interface
     let (proxy, interface) = ComInterfaceProxy::create_interface(
         mock_setup_data.interface_properties,
@@ -127,7 +126,6 @@ pub fn get_mock_setup_with_interface(
 /// Helper function to create a default mock setup with initialized channels for com hub and mockup interface
 pub async fn get_default_mock_setup_with_com_hub() -> (
     Rc<ComHub>,
-    ComInterfaceProxy,
     UnboundedReceiver<IncomingSection>,
 ) {
     let (com_hub_sections_sender, com_hub_sections_receiver) =
@@ -142,7 +140,7 @@ pub async fn get_default_mock_setup_with_com_hub() -> (
 
     yield_now().await;
 
-    (com_hub, proxy, com_hub_sections_receiver)
+    (com_hub, com_hub_sections_receiver)
 }
 
 /// Helper function to create a default mock setup with two com hubs connected to each other via mock interface channels

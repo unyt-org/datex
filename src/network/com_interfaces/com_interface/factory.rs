@@ -64,6 +64,20 @@ impl SocketProperties {
             uuid: ComInterfaceSocketUUID(UUID::new()),
         }
     }
+    
+    pub fn new_with_maybe_direct_endpoint(
+        direction: InterfaceDirection,
+        channel_factor: u32,
+        maybe_endpoint: Option<Endpoint>,
+    ) -> Self {
+        SocketProperties {
+            direction,
+            channel_factor,
+            direct_endpoint: maybe_endpoint,
+            connection_timestamp: Time::now(),
+            uuid: ComInterfaceSocketUUID(UUID::new()),
+        }
+    }
 
     pub fn uuid(&self) -> ComInterfaceSocketUUID {
         self.uuid.clone()

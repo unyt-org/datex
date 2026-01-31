@@ -3,6 +3,7 @@
 #![feature(coroutines)]
 #![feature(thread_local)]
 #![feature(box_patterns)]
+#![feature(gen_blocks)]
 #![allow(static_mut_refs)]
 extern crate core;
 

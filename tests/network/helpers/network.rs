@@ -10,7 +10,6 @@ use datex_core::{
     network::{
         com_hub::{InterfacePriority, network_tracing::TraceOptions},
         com_interfaces::com_interface::{
-            ComInterfaceEvent, ComInterfaceProxy,
             properties::{InterfaceDirection, ComInterfaceProperties},
         },
     },
@@ -21,6 +20,8 @@ use log::info;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, env, fs, path::Path, sync::Arc};
 use tokio::task::yield_now;
+use datex_core::native_global_context::get_global_context_native;
+use datex_core::runtime::RuntimeRunner;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct MockupInterfaceSetupData {
@@ -532,10 +533,10 @@ impl Network {
         // iterate over all endpoints and set up runtimes
         for node in self.endpoints.iter_mut() {
             info!("creating runtime for endpoint {}", node.endpoint);
-            let runtime = Runtime::create_native(
+            let runtime_runner = RuntimeRunner::new(
                 RuntimeConfig::new_with_endpoint(node.endpoint.clone()),
-            )
-            .await;
+                get_global_context_native(),
+            );
             node.runtime = Some(runtime.clone());
 
             for connection in node.connections.iter() {
