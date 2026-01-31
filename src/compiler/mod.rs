@@ -1286,6 +1286,25 @@ fn compile_expression(
                 scope,
             )?;
         }
+        DatexExpressionData::Range(range) => {
+            append_instruction_code(
+                &mut compilation_context.buffer,
+                InstructionCode::RANGE,
+            );
+
+            scope = compile_expression(
+                compilation_context,
+                RichAst::new(*range.start, &metadata),
+                CompileMetadata::default(),
+                scope,
+            )?;
+            scope = compile_expression(
+                compilation_context,
+                RichAst::new(*range.end, &metadata),
+                CompileMetadata::default(),
+                scope,
+            )?;
+        }
 
         DatexExpressionData::Deref(deref) => {
             compilation_context.mark_has_non_static_value();
@@ -1428,7 +1447,9 @@ pub mod tests {
         compile_script, compile_script_or_return_static_value,
         compile_template, parse_datex_script_to_rich_ast_simple_error,
     };
-    use crate::stdlib::{assert_matches, io::Read, vec};
+    use core::assert_matches;
+    use crate::stdlib::io::Read;
+    use crate::stdlib::vec;
 
     use crate::{
         compiler::scope::CompilationScope,
@@ -1834,6 +1855,68 @@ pub mod tests {
         let datex_script = format!("{val}u8"); // 42
         let result = compile_and_log(&datex_script);
         assert_eq!(result, vec![InstructionCode::UINT_8.into(), val,]);
+    }
+
+    #[test]
+    fn range_u8() {
+        init_logger_debug();
+        let start = 11i64;
+        let end = 13i64;
+        let datex_script = format!("{start}..{end}");
+        let result = compile_and_log(&datex_script);
+        let x = start as u8;
+        let y = end as u8;
+        assert_eq!(
+            result,
+            vec![
+                InstructionCode::RANGE.into(),
+                InstructionCode::INT.into(),
+                InstructionCode::SHORT_STATEMENTS.into(),
+                InstructionCode::STATEMENTS.into(),
+                0,
+                0,
+                0,
+                x,
+                InstructionCode::INT.into(),
+                InstructionCode::SHORT_STATEMENTS.into(),
+                InstructionCode::STATEMENTS.into(),
+                0,
+                0,
+                0,
+                y,
+            ]
+        );
+    }
+    #[test]
+    fn range_i64() {
+        init_logger_debug();
+        let start = 128i64;
+        let end = 256i64;
+        let datex_script = format!("{start}..{end}");
+        let result = compile_and_log(&datex_script);
+        let x = start as u8;
+        let y = end as u8;
+        assert_eq!(
+            result,
+            vec![
+                InstructionCode::RANGE.into(),
+                InstructionCode::INT.into(),
+                InstructionCode::SHORT_STATEMENTS.into(),
+                InstructionCode::STATEMENTS.into(),
+                0,
+                0,
+                0,
+                x,
+                InstructionCode::INT.into(),
+                InstructionCode::SHORT_STATEMENTS.into(),
+                InstructionCode::SHORT_STATEMENTS.into(),
+                0,
+                0,
+                0,
+                1,
+                0,
+            ]
+        );
     }
 
     // Test for decimal

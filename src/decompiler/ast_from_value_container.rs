@@ -19,6 +19,8 @@ use datex_core::{
     ast::expressions::CallableDeclaration, libs::core::CoreLibPointerId,
 };
 
+use crate::ast::expressions;
+
 impl From<&ValueContainer> for DatexExpressionData {
     /// Converts a ValueContainer into a DatexExpression AST.
     /// This AST can then be further processed or decompiled into human-readable DATEX code.
@@ -54,6 +56,20 @@ fn value_to_datex_expression(value: &Value) -> DatexExpressionData {
         }
         CoreValue::Boolean(boolean) => DatexExpressionData::Boolean(boolean.0),
         CoreValue::Text(text) => DatexExpressionData::Text(text.0.clone()),
+
+        CoreValue::Range(range) => {
+            DatexExpressionData::Range(expressions::Range {
+                start: Box::new(
+                    DatexExpressionData::Integer(range.clone().start)
+                        .with_default_span(),
+                ),
+                end: Box::new(
+                    DatexExpressionData::Integer(range.clone().end)
+                        .with_default_span(),
+                ),
+            })
+        }
+
         CoreValue::Endpoint(endpoint) => {
             DatexExpressionData::Endpoint(endpoint.clone())
         }
@@ -216,12 +232,43 @@ mod tests {
             value_container::ValueContainer,
         },
     };
+    use crate::ast::expressions::{DatexExpressionData, List};
+    use crate::ast::spanned::Spanned;
+    use crate::values::core_values::decimal::Decimal;
+    use crate::values::core_values::decimal::typed_decimal::TypedDecimal;
+    use crate::values::core_values::integer::Integer;
+    use crate::values::core_values::integer::typed_integer::TypedInteger;
+    use crate::values::core_values::range::Range;
+    use crate::values::value::Value;
+    use crate::values::value_container::ValueContainer;
 
     #[test]
     fn test_integer_to_ast() {
         let value = ValueContainer::from(Integer::from(42));
         let ast = DatexExpressionData::from(&value);
         assert_eq!(ast, DatexExpressionData::Integer(Integer::from(42)));
+    }
+
+    #[test]
+    fn range_to_ast() {
+        let range = ValueContainer::from(Range::new(
+            Integer::from(11),
+            Integer::from(13),
+        ));
+        let ast = DatexExpressionData::from(&range);
+        assert_eq!(
+            ast,
+            DatexExpressionData::Range(crate::ast::expressions::Range {
+                start: Box::new(
+                    DatexExpressionData::Integer(Integer::from(11))
+                        .with_default_span()
+                ),
+                end: Box::new(
+                    DatexExpressionData::Integer(Integer::from(13))
+                        .with_default_span()
+                ),
+            })
+        );
     }
 
     #[test]

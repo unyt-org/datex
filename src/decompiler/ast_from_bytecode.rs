@@ -176,6 +176,30 @@ pub fn ast_from_bytecode(
                                 RegularInstruction::Integer(integer_data) => {
                                     DatexExpressionData::Integer(integer_data.0)
                                 }
+                                RegularInstruction::Range(range_data) => {
+                                    DatexExpressionData::Range(
+                                        crate::ast::expressions::Range {
+                                            start: Box::new(
+                                                DatexExpressionData::Integer(
+                                                    range_data
+                                                        .clone()
+                                                        .start
+                                                        .into(),
+                                                )
+                                                .with_default_span(),
+                                            ),
+                                            end: Box::new(
+                                                DatexExpressionData::Integer(
+                                                    range_data
+                                                        .clone()
+                                                        .end
+                                                        .into(),
+                                                )
+                                                .with_default_span(),
+                                            ),
+                                        },
+                                    )
+                                }
                                 RegularInstruction::Endpoint(endpoint) => {
                                     DatexExpressionData::Endpoint(endpoint)
                                 }

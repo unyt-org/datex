@@ -484,6 +484,7 @@ impl AstToSourceCodeConverter {
             }
             DatexExpressionData::Noop => "".to_string(),
             DatexExpressionData::Integer(i) => i.to_string(),
+            DatexExpressionData::Range(range) => range.to_string(),
             DatexExpressionData::TypedInteger(ti) => {
                 if self.add_variant_suffix() {
                     ti.to_string_with_suffix()
@@ -902,6 +903,18 @@ mod tests {
 
         let null_ast = DatexExpressionData::Null;
         assert_eq!(compact().format(&null_ast.with_default_span()), "null");
+
+        let range_ast =
+            DatexExpressionData::Range(crate::ast::expressions::Range {
+                start: Box::new(
+                    DatexExpressionData::Integer(11.into()).with_default_span(),
+                ),
+                end: Box::new(
+                    DatexExpressionData::Integer(13.into()).with_default_span(),
+                ),
+            });
+
+        assert_eq!(compact().format(&range_ast.with_default_span()), "11..13");
     }
 
     #[test]

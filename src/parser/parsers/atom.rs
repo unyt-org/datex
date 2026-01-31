@@ -348,6 +348,8 @@ mod tests {
             pointer::PointerAddress,
         },
     };
+    use crate::values::core_values::integer::typed_integer::TypedInteger;
+    use crate::values::pointer::PointerAddress;
     use core::assert_matches;
 
     #[test]

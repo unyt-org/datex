@@ -27,7 +27,7 @@ use num_integer::Integer as NumInteger;
 use num_traits::ToPrimitive;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, PartialEq, Hash, Eq)]
+#[derive(Debug, Clone, PartialEq, PartialOrd, Hash, Eq)]
 pub struct Integer(pub BigInt);
 
 impl Serialize for Integer {

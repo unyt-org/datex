@@ -4,68 +4,54 @@ mod runtime_value;
 mod slots;
 pub mod state;
 
-use crate::{
-    core_compiler::value_compiler::compile_value_container,
-    dxb_parser::{
-        body::{DXBParserError, iterate_instructions},
-        instruction_collector::{
-            CollectedResults, CollectionResultsPopper, FullOrPartialResult,
-            InstructionCollector, LastUnboundedResultCollector,
-            ResultCollector, StatementResultCollectionStrategy,
-        },
-    },
-    global::{
-        instruction_codes::InstructionCode,
-        operators::{
-            AssignmentOperator, BinaryOperator, ComparisonOperator,
-            UnaryOperator,
-        },
-        protocol_structures::instructions::{
-            ApplyData, DecimalData, Float32Data, Float64Data, FloatAsInt16Data,
-            FloatAsInt32Data, Instruction, IntegerData, RawPointerAddress,
-            RegularInstruction, ShortTextData, SlotAddress, TextData,
-            TypeInstruction,
-        },
-    },
-    references::reference::{Reference, ReferenceMutability},
-    runtime::execution::{
-        ExecutionError, InvalidProgramError,
-        execution_loop::{
-            interrupts::{
-                ExecutionInterrupt, ExternalExecutionInterrupt,
-                InterruptProvider, InterruptResult,
-            },
-            operations::{
-                handle_assignment_operation, handle_binary_operation,
-                handle_comparison_operation, handle_unary_operation,
-                set_property,
-            },
-            runtime_value::RuntimeValue,
-            slots::get_internal_slot_value,
-            state::RuntimeExecutionState,
-        },
-        macros::{
-            interrupt, interrupt_with_maybe_value, interrupt_with_value,
-            yield_unwrap,
-        },
-    },
-    stdlib::{boxed::Box, rc::Rc, vec::Vec},
-    types::definition::TypeDefinition,
-    utils::buffers::append_u32,
-    values::{
-        core_value::CoreValue,
-        core_values::{
-            decimal::{Decimal, typed_decimal::TypedDecimal},
-            integer::typed_integer::TypedInteger,
-            list::List,
-            map::{Map, MapKey},
-            r#type::Type,
-        },
-        pointer::PointerAddress,
-        value::Value,
-        value_container::{OwnedValueKey, ValueContainer},
-    },
+use crate::core_compiler::value_compiler::compile_value_container;
+use crate::dxb_parser::body::{DXBParserError, iterate_instructions};
+use crate::dxb_parser::instruction_collector::{
+    CollectedResults, CollectionResultsPopper, FullOrPartialResult,
+    InstructionCollector, LastUnboundedResultCollector, ResultCollector,
+    StatementResultCollectionStrategy,
 };
+use crate::global::instruction_codes::InstructionCode;
+use crate::global::operators::{
+    AssignmentOperator, BinaryOperator, ComparisonOperator, UnaryOperator,
+};
+use crate::global::protocol_structures::instructions::{
+    ApplyData, DecimalData, Float32Data, Float64Data, FloatAsInt16Data,
+    FloatAsInt32Data, Instruction, IntegerData, RangeData, RawPointerAddress,
+    RegularInstruction, ShortTextData, SlotAddress, TextData, TypeInstruction,
+};
+use crate::references::reference::{Reference, ReferenceMutability};
+use crate::runtime::execution::execution_loop::interrupts::{
+    ExecutionInterrupt, ExternalExecutionInterrupt, InterruptProvider,
+    InterruptResult,
+};
+use crate::runtime::execution::execution_loop::operations::{
+    handle_assignment_operation, handle_binary_operation,
+    handle_comparison_operation, handle_unary_operation, set_property,
+};
+use crate::runtime::execution::execution_loop::runtime_value::RuntimeValue;
+use crate::runtime::execution::execution_loop::slots::get_internal_slot_value;
+use crate::runtime::execution::execution_loop::state::RuntimeExecutionState;
+use crate::runtime::execution::macros::{
+    interrupt, interrupt_with_maybe_value, interrupt_with_value, yield_unwrap,
+};
+use crate::runtime::execution::{ExecutionError, InvalidProgramError};
+use crate::stdlib::boxed::Box;
+use crate::stdlib::rc::Rc;
+use crate::stdlib::vec::Vec;
+use crate::types::definition::TypeDefinition;
+use crate::utils::buffers::append_u32;
+use crate::values::core_value::CoreValue;
+use crate::values::core_values::decimal::Decimal;
+use crate::values::core_values::decimal::typed_decimal::TypedDecimal;
+use crate::values::core_values::integer::typed_integer::TypedInteger;
+use crate::values::core_values::list::List;
+use crate::values::core_values::map::{Map, MapKey};
+use crate::values::core_values::range::Range;
+use crate::values::core_values::r#type::Type;
+use crate::values::pointer::PointerAddress;
+use crate::values::value::Value;
+use crate::values::value_container::{OwnedValueKey, ValueContainer};
 use core::cell::RefCell;
 use datex_core::runtime::execution::execution_loop::slots::get_slot_value;
 
@@ -344,6 +330,10 @@ pub fn inner_execution_loop(
                             }
                             RegularInstruction::Decimal(DecimalData(big_decimal)) => {
                                 Some(ValueContainer::from(big_decimal).into())
+                            }
+
+                            RegularInstruction::Range(range) => {
+                                Some(ValueContainer::from(Range::new(range.start.into(), range.end.into())).into())
                             }
 
                             // endpoint

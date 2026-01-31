@@ -289,17 +289,17 @@ impl Reference {
 
 #[cfg(test)]
 mod tests {
+    use crate::references::reference::{
+        AccessError, AssignmentError, IndexOutOfBoundsError,
+        ReferenceMutability,
+    };
+    use crate::runtime::memory::Memory;
+    use core::assert_matches;
+    use crate::values::core_values::list::List;
+    use crate::values::core_values::map::Map;
     use crate::{
-        references::reference::{
-            AccessError, AssignmentError, IndexOutOfBoundsError, Reference,
-            ReferenceMutability,
-        },
-        runtime::memory::Memory,
-        stdlib::assert_matches,
-        values::{
-            core_values::{list::List, map::Map},
-            value_container::ValueContainer,
-        },
+        references::reference::Reference,
+        values::value_container::ValueContainer,
     };
     use core::cell::RefCell;
 

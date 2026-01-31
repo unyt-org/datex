@@ -15,10 +15,10 @@ use crate::{
     decompiler::ast_to_source_code::AstToSourceCodeConverter,
 };
 
-use crate::{
-    decompiler::ast_from_bytecode::ast_from_bytecode,
-    dxb_parser::body::DXBParserError, values::value_container::ValueContainer,
-};
+use crate::decompiler::ast_from_bytecode::ast_from_bytecode;
+use crate::dxb_parser::body::DXBParserError;
+use crate::values::value_container::ValueContainer;
+
 #[cfg(feature = "syntax_highlighting_legacy")]
 use syntect::{
     easy::HighlightLines,

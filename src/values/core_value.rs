@@ -35,6 +35,9 @@ use core::{
     ops::{Add, AddAssign, Neg, Not, Sub},
 };
 
+use crate::values::core_values::range::Range;
+
+
 #[derive(Clone, Debug, PartialEq, Eq, Hash, FromCoreValue)]
 pub enum CoreValue {
     Null,
@@ -49,6 +52,7 @@ pub enum CoreValue {
     Map(Map),
     Type(Type),
     Callable(Callable),
+    Range(Range),
 }
 impl StructuralEq for CoreValue {
     fn structural_eq(&self, other: &Self) -> bool {
@@ -99,6 +103,10 @@ impl StructuralEq for CoreValue {
             (CoreValue::Type(a), CoreValue::Type(b)) => a.structural_eq(b),
             (CoreValue::Callable(a), CoreValue::Callable(b)) => {
                 a.structural_eq(b)
+            }
+
+            (CoreValue::Range(a), CoreValue::Range(b)) => {
+                a.start.structural_eq(&b.start) && a.end.structural_eq(&b.end)
             }
             _ => false,
         }
@@ -233,6 +241,7 @@ impl From<&CoreValue> for CoreLibPointerId {
             CoreValue::Null => CoreLibPointerId::Null,
             CoreValue::Type(_) => CoreLibPointerId::Type,
             CoreValue::Callable(_) => CoreLibPointerId::Callable,
+            CoreValue::Range(_) => CoreLibPointerId::Range,
         }
     }
 }
@@ -769,6 +778,7 @@ impl Display for CoreValue {
             CoreValue::Decimal(decimal) => core::write!(f, "{decimal}"),
             CoreValue::List(list) => core::write!(f, "{list}"),
             CoreValue::Callable(_callable) => core::write!(f, "[[ callable ]]"), // TODO #605
+            CoreValue::Range(range) => core::write!(f, "{range}"),
         }
     }
 }
@@ -789,6 +799,15 @@ mod tests {
         init_logger_debug();
         let a = CoreValue::from(42i32);
         assert_eq!(a.default_type_definition().to_string(), "integer/i32");
+    }
+
+    #[test]
+    pub fn range_from_core() {
+        assert_eq!(
+            CoreValue::from(Range::new(Integer::from(11), Integer::from(13),))
+                .to_string(),
+            "11..13"
+        );
     }
 
     #[test]

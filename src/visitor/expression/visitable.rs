@@ -4,7 +4,7 @@ use crate::{
         Conditional, CreateRef, DatexExpression, DatexExpressionData, Deref,
         DerefAssignment, GenericInstantiation, List, Map, PropertyAccess,
         PropertyAssignment, RemoteExecution, SlotAssignment, Statements,
-        TypeDeclaration, UnaryOperation, VariableAssignment,
+        TypeDeclaration, UnaryOperation, VariableAssignment, Range,
         VariableDeclaration,
     },
     visitor::{
@@ -20,6 +20,17 @@ pub trait VisitableExpression<E> {
         &mut self,
         visitor: &mut impl ExpressionVisitor<E>,
     ) -> Result<(), E>;
+}
+
+impl<E> VisitableExpression<E> for Range {
+    fn walk_children(
+        &mut self,
+        visitor: &mut impl ExpressionVisitor<E>,
+    ) -> Result<(), E> {
+        visitor.visit_datex_expression(&mut self.start)?;
+        visitor.visit_datex_expression(&mut self.end)?;
+        Ok(())
+    }
 }
 
 impl<E> VisitableExpression<E> for BinaryOperation {
@@ -308,6 +319,8 @@ impl<E> VisitableExpression<E> for DatexExpression {
             DatexExpressionData::RemoteExecution(remote_execution) => {
                 remote_execution.walk_children(visitor)
             }
+
+            DatexExpressionData::Range(range) => range.walk_children(visitor),
 
             DatexExpressionData::Noop
             | DatexExpressionData::NativeImplementationIndicator

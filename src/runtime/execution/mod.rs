@@ -223,11 +223,8 @@ fn get_local_pointer_value(
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        libs::core::get_core_lib_type_reference,
-        references::reference::Reference,
-        stdlib::{assert_matches, vec},
-    };
+    use core::assert_matches;
+    use crate::stdlib::vec;
 
     use super::*;
     use crate::{

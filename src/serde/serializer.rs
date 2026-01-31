@@ -608,12 +608,9 @@ mod tests {
         values::core_values::{endpoint::Endpoint, map::Map},
     };
 
-    use crate::{
-        stdlib::assert_matches,
-        values::{
-            core_value::CoreValue, value::Value,
-            value_container::ValueContainer,
-        },
+    use crate::stdlib::assert_matches;
+    use crate::values::{
+        core_value::CoreValue, value::Value, value_container::ValueContainer,
     };
     use serde::{Deserialize, Serialize};
 

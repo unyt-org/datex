@@ -594,18 +594,15 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
-        ast::{
-            expressions::{CreateRef, Deref},
-            resolved_variable::ResolvedVariable,
-            src_id::SrcId,
-            type_expressions::{StructuralMap, TypeExpressionData},
-        },
-        parser::Parser,
-        references::reference::ReferenceMutability,
-        stdlib::assert_matches,
-        values::{core_values::integer::Integer, pointer::PointerAddress},
-    };
+    use crate::ast::expressions::{CreateRef, Deref};
+    use crate::ast::resolved_variable::ResolvedVariable;
+    use crate::ast::src_id::SrcId;
+    use crate::ast::type_expressions::{StructuralMap, TypeExpressionData};
+    use crate::parser::Parser;
+    use crate::references::reference::ReferenceMutability;
+    use core::assert_matches;
+    use crate::values::core_values::integer::Integer;
+    use crate::values::pointer::PointerAddress;
 
     fn precompile(
         ast: DatexExpression,

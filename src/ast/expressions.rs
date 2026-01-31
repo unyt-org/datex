@@ -26,14 +26,14 @@ use crate::{
 };
 use core::{
     fmt::Display,
-    ops::{Neg, Range},
+    ops::{Neg},
 };
 
 #[derive(Clone, Debug)]
 /// An expression in the AST
 pub struct DatexExpression {
     pub data: DatexExpressionData,
-    pub span: Range<usize>,
+    pub span: core::ops::Range<usize>,
     pub ty: Option<Type>,
 }
 impl Default for DatexExpression {
@@ -50,7 +50,7 @@ impl Default for DatexExpression {
     }
 }
 impl DatexExpression {
-    pub fn new(data: DatexExpressionData, span: Range<usize>) -> Self {
+    pub fn new(data: DatexExpressionData, span: ops::Range<usize>) -> Self {
         DatexExpression {
             data,
             span,
@@ -92,6 +92,8 @@ pub enum DatexExpressionData {
 
     /// Integer, e.g 123456789123456789
     Integer(Integer),
+
+    Range(Range),
 
     /// Typed Integer, e.g. 123i8
     TypedInteger(TypedInteger),
@@ -186,7 +188,7 @@ pub enum DatexExpressionData {
 impl Spanned for DatexExpressionData {
     type Output = DatexExpression;
 
-    fn with_span<T: Into<Range<usize>>>(self, span: T) -> Self::Output {
+    fn with_span<T: Into<ops::Range<usize>>>(self, span: T) -> Self::Output {
         DatexExpression {
             data: self,
             span: span.into(),
@@ -266,6 +268,20 @@ impl TryFrom<&DatexExpressionData> for ValueContainer {
                     crate::values::core_values::map::Map::from(entries),
                 )
             }
+            DatexExpressionData::Range(range) => {
+                let start = match &range.start.data {
+                    DatexExpressionData::Integer(int) => int,
+                    _ => panic!("OutReachedStart"),
+                };
+                let end = match &range.end.data {
+                    DatexExpressionData::Integer(int) => int,
+                    _ => panic!("OutReachedEnd"),
+                };
+                ValueContainer::from(range::Range::new(
+                    start.clone(),
+                    end.clone(),
+                ))
+            }
             _ => Err(())?,
         })
     }
@@ -277,6 +293,26 @@ pub struct BinaryOperation {
     pub left: Box<DatexExpression>,
     pub right: Box<DatexExpression>,
     pub ty: Option<Type>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct Range {
+    pub start: Box<DatexExpression>,
+    pub end: Box<DatexExpression>,
+}
+
+impl Display for Range {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        let start = match &self.start.data {
+            DatexExpressionData::Integer(int) => int.to_string(),
+            _ => panic!("CompilerOutRanged"),
+        };
+        let end = match &self.end.data {
+            DatexExpressionData::Integer(int) => int.to_string(),
+            _ => panic!("CompilerOutRanged"),
+        };
+        core::write!(f, "{}..{}", start, end)
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
