@@ -37,7 +37,7 @@ crate and provides a command line interface for the DATEX Runtime.
     containers
 - [benches/](./benches) - Benchmarks for the crate for performance testing
 - [tests/](./tests) - Integration tests for the crate
-- [macros/](./macros) - Procedural macros for the crate
+- [macros/](crates/macros) - Procedural macros for the crate
 - [docs/](./docs) - Documentation for the crate
   - [guide/](./docs/guide) - Collection of guides for contributing to the crate
 

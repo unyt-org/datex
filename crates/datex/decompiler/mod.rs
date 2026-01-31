@@ -73,10 +73,10 @@ pub fn apply_syntax_highlighting(
 
     // load datex syntax + custom theme
     static DATEX_SCRIPT_DEF: &str = include_str!(
-        "../../datex-language/datex.tmbundle/Syntaxes/datex.sublime-text"
+        "../../../datex-language/datex.tmbundle/Syntaxes/datex.sublime-text"
     );
     static DATEX_THEME_DEF: &str =
-        include_str!("../../datex-language/themes/datex-dark.tmTheme");
+        include_str!("../../../datex-language/themes/datex-dark.tmTheme");
     let mut builder = SyntaxSetBuilder::new();
     let syntax = SyntaxDefinition::load_from_str(DATEX_SCRIPT_DEF, true, None)
         .expect("Failed to load syntax definition");
