@@ -2,13 +2,13 @@ use crate::{
     channel::mpsc::{
         UnboundedReceiver, UnboundedSender, create_unbounded_channel,
     },
-    stdlib::string::{String, ToString},
+    stdlib::string::String,
 };
 use cfg_if::cfg_if;
 use core::{
     cell::RefCell, clone::Clone, future::Future, prelude::rust_2024::*,
 };
-use futures_util::{FutureExt, SinkExt, StreamExt};
+use futures_util::{SinkExt, StreamExt};
 use log::info;
 
 type LocalPanicChannel = Option<(

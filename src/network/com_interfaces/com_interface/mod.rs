@@ -1,8 +1,3 @@
-use crate::network::{
-    com_interfaces::com_interface::{
-        factory::{ComInterfaceAsyncFactory, ComInterfaceSyncFactory},
-    },
-};
 
 use crate::{
     stdlib::{
@@ -11,7 +6,6 @@ use crate::{
     utils::uuid::UUID,
 };
 use core::fmt::{Debug, Display};
-use crate::network::com_interfaces::com_interface::factory::ComInterfaceConfiguration;
 use crate::stdlib::string::String;
 
 pub mod error;

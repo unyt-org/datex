@@ -74,6 +74,12 @@ pub struct ComInterfaceSocketManager {
     socket_registered_callbacks:
         RefCell<HashMap<ComInterfaceSocketUUID, Vec<Box<dyn FnOnce()>>>>,
 }
+impl Default for ComInterfaceSocketManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ComInterfaceSocketManager {
     pub fn new() -> ComInterfaceSocketManager {
         ComInterfaceSocketManager {
@@ -308,7 +314,7 @@ impl ComInterfaceSocketManager {
     ) -> Ref<'_, SocketData> {
         let sockets = self.sockets.borrow();
         Ref::map(sockets, |sockets| {
-            sockets.get(&socket_uuid).expect("No socket data found for socket")
+            sockets.get(socket_uuid).expect("No socket data found for socket")
         })
     }
 
@@ -320,7 +326,7 @@ impl ComInterfaceSocketManager {
     ) -> RefMut<'_, SocketData> {
         let sockets = self.sockets.borrow_mut();
         RefMut::map(sockets, |sockets| {
-            sockets.get_mut(&socket_uuid).expect("No socket data found for socket")
+            sockets.get_mut(socket_uuid).expect("No socket data found for socket")
         })
     }
 

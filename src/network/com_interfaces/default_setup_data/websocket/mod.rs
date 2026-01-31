@@ -1,5 +1,4 @@
 use core::fmt::Display;
-use url::Url;
 
 pub mod websocket_client;
 pub mod websocket_server;

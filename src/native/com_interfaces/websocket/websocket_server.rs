@@ -112,7 +112,7 @@ impl WebSocketServerInterfaceSetupDataNative {
             Ok((stream, addr)) => {
                 match accept_async(stream).await {
                     Ok(ws_stream) => {
-                        let (write, mut read) = ws_stream.split();
+                        let (write, read) = ws_stream.split();
                         let write = Arc::new(Mutex::new(write));
                         Ok((read, write))
                     }

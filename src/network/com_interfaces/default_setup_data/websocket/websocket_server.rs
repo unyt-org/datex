@@ -2,7 +2,7 @@ use core::time::Duration;
 use serde::Serialize;
 use crate::network::com_hub::errors::ComInterfaceCreateError;
 use crate::network::com_interfaces::com_interface::properties::ComInterfaceProperties;
-use crate::network::com_interfaces::default_setup_data::http_common::{get_clients_setup_data, parse_url, AcceptAddresses};
+use crate::network::com_interfaces::default_setup_data::http_common::{get_clients_setup_data, AcceptAddresses};
 use super::websocket_client::WebSocketClientInterfaceSetupData;
 use crate::runtime::RuntimeConfigInterface;
 use crate::serde::Deserialize;

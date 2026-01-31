@@ -66,25 +66,22 @@ use crate::{
         com_interface::{
             ComInterfaceUUID,
             factory::{
-                ComInterfaceConfiguration, ComInterfaceSyncFactory,
-                NewSocketsIterator, SendCallback, SendFailure, SendSuccess,
-                SocketConfiguration, SocketDataIterator, SocketProperties,
+                ComInterfaceConfiguration,
+                NewSocketsIterator, SendCallback, SendFailure, SendSuccess, SocketDataIterator, SocketProperties,
             },
             properties::ComInterfaceProperties,
         },
     },
     utils::{
         async_iterators::async_next_pin_box,
-        maybe_async::{MaybeAsyncResult, SyncOrAsync, SyncOrAsyncResult},
-        task_manager::{TaskFuture, TaskManager},
+        maybe_async::{SyncOrAsync, SyncOrAsyncResult},
+        task_manager::TaskManager,
     },
 };
 use async_select::select;
-use core::{async_iter::AsyncIterator, cell::Ref};
 use datex_core::global::dxb_block::BlockId;
 use futures_util::{
     FutureExt, StreamExt,
-    future::{Fuse, join_all},
 };
 
 pub type IncomingBlockInterceptor =
@@ -183,7 +180,7 @@ pub struct ReceiveBlockPreprocessResult {
 }
 
 pub type BlockSendSyncOrAsyncResult<
-    F: Future<Output = Result<(), Vec<Endpoint>>>,
+    F,
 > = SyncOrAsyncResult<Option<Vec<Vec<u8>>>, (), Vec<Endpoint>, F>;
 
 pub type PrepareOwnBlockFuture<'a> =
@@ -250,7 +247,7 @@ impl ComHub {
                     let socket_properties = socket_configuration.properties;
 
                     // store socket info
-                    let res = self.socket_manager.register_socket(
+                    let _res = self.socket_manager.register_socket(
                         SocketData {
                             socket_properties: socket_properties.clone(),
                             interface_uuid: com_interface_uuid.clone(),
@@ -435,7 +432,7 @@ impl ComHub {
         info!("{} received block: {}", self.endpoint, block);
 
         for interceptor in self.incoming_block_interceptors.borrow().iter() {
-            interceptor(&block, &socket_uuid);
+            interceptor(&block, socket_uuid);
         }
 
         let block_type = block.block_header.flags_and_timestamp.block_type();
@@ -1298,7 +1295,7 @@ impl ComHub {
                         match res {
                             SyncOrAsync::Sync(r) => {
                                 // TODO directly process received blocks
-                                r.map(|data| ()).map_err(|_| endpoints)
+                                r.map(|_data| ()).map_err(|_| endpoints)
                             }
                             SyncOrAsync::Async(fut) => {
                                 fut.await.map_err(|_| endpoints)

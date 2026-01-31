@@ -35,7 +35,7 @@ impl WebSocketClientInterfaceSetupDataNative {
     async fn create_interface(
         self,
     ) -> Result<ComInterfaceConfiguration, ComInterfaceCreateError> {
-        let (address, write, mut read) =
+        let (_address, write, mut read) =
             self.create_websocket_client_connection().await?;
         let write = Arc::new(Mutex::new(write));
 

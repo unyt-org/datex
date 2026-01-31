@@ -187,7 +187,7 @@ impl ComHub {
                 uuid: uuid.to_string(),
                 properties: interface_properties.as_ref().clone(),
                 sockets: sockets_by_com_interface_uuid
-                    .remove(&uuid)
+                    .remove(uuid)
                     .unwrap_or_default(),
             });
         }

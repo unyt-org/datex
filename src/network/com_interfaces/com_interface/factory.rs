@@ -1,5 +1,4 @@
 use core::async_iter::AsyncIterator;
-use core::future::poll_fn;
 use core::pin::Pin;
 use core::fmt::Debug;
 use crate::stdlib::sync::{Arc};

@@ -3,7 +3,6 @@ use crate::{
     stdlib::rc::Rc, stdlib::string::String, stdlib::boxed::Box, stdlib::string::ToString,
 };
 use core::{cell::RefCell, pin::Pin};
-use core::cell::Ref;
 use log::info;
 
 use crate::{
@@ -301,7 +300,7 @@ impl ComInterfaceManager {
         interface_uuid: &ComInterfaceUUID,
     ) -> Result<(), ComHubError> {
         info!("Removing interface {interface_uuid}");
-        let interface = &mut self
+        let _interface = &mut self
             .interfaces
             .borrow_mut()
             .get_mut(interface_uuid)

@@ -3,7 +3,6 @@ use crate::network::com_interfaces::default_setup_data::tcp::tcp_client::TCPClie
 use crate::{derive_setup_data, network::{
     com_hub::errors::ComInterfaceCreateError,
     com_interfaces::com_interface::{
-        error::ComInterfaceError,
         factory::{
             ComInterfaceAsyncFactory, ComInterfaceAsyncFactoryResult,
         },
@@ -11,14 +10,13 @@ use crate::{derive_setup_data, network::{
     },
 }, stdlib::{net::SocketAddr, sync::Arc}};
 use core::{
-    prelude::rust_2024::*, result::Result, str::FromStr, time::Duration,
+    prelude::rust_2024::*, result::Result, str::FromStr,
 };
 use futures_util::lock::Mutex;
 use log::{error, warn};
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::{TcpStream},
-    select,
 };
 use datex_core::network::com_interfaces::com_interface::factory::ComInterfaceConfiguration;
 use crate::network::com_interfaces::com_interface::factory::{SendCallback, SendFailure, SocketConfiguration, SocketProperties};

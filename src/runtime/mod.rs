@@ -29,7 +29,6 @@ use crate::{
         pin::Pin,
         rc::Rc,
         string::{String, ToString},
-        sync::Arc,
         vec,
         vec::Vec,
     },

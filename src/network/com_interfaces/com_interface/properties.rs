@@ -1,5 +1,4 @@
 use crate::{
-    network::com_interfaces::com_interface::socket::ComInterfaceSocketUUID,
     runtime::RuntimeConfigInterface,
     stdlib::string::{String, ToString},
     utils::time::Time,

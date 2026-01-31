@@ -6,10 +6,9 @@ use crate::{core::net::AddrParseError, derive_setup_data, network::{
             ComInterfaceAsyncFactory, ComInterfaceAsyncFactoryResult,
         },
         properties::{InterfaceDirection, ComInterfaceProperties},
-        socket::ComInterfaceSocketUUID,
     },
-}, stdlib::{collections::HashMap, net::SocketAddr, sync::Arc}};
-use core::{prelude::rust_2024::*, result::Result, time::Duration};
+}, stdlib::{net::SocketAddr, sync::Arc}};
+use core::{prelude::rust_2024::*, result::Result};
 use std::io;
 use log::{error, info, warn};
 use tokio::{
@@ -22,7 +21,6 @@ use tokio::{
 use crate::global::dxb_block::DXBBlock;
 use crate::network::com_interfaces::com_interface::factory::{ComInterfaceConfiguration, SendCallback, SendFailure, SocketConfiguration, SocketProperties};
 use futures::lock::Mutex;
-use crate::network::com_interfaces::default_setup_data::tcp::tcp_client::TCPClientInterfaceSetupData;
 
 derive_setup_data!(TCPServerInterfaceSetupDataNative, TCPServerInterfaceSetupData);
 

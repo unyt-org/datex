@@ -15,7 +15,6 @@ use binrw::{
 use core::{
     fmt::Display, prelude::rust_2024::*, result::Result, unimplemented,
 };
-use log::error;
 use strum::Display;
 use thiserror::Error;
 use crate::global::protocol_structures::block_header::BlockType;

@@ -19,12 +19,10 @@ use crate::{
     values::value_container::ValueContainer,
 };
 use core::{prelude::rust_2024::*, result::Result};
-use core::cell::Ref;
 use crate::stdlib::rc::Rc;
 use datex_core::network::com_interfaces::com_interface::{
     factory::ComInterfaceAsyncFactory,
 };
-use crate::network::com_interfaces::com_interface::factory::ComInterfaceConfiguration;
 use crate::network::com_interfaces::com_interface::properties::ComInterfaceProperties;
 
 /// Interface management methods
@@ -85,7 +83,7 @@ impl ComHub {
             self.interfaces_manager.create_and_add_interface(
                 interface_type,
                 setup_data,
-                priority.clone(),
+                priority,
             )
             .await?;
         
