@@ -433,18 +433,20 @@ fn function_simple() {
     let val = parse_unwrap_data(src);
     assert_eq!(
         val,
-        DatexExpressionData::CallableDeclaration(CallableDeclaration {
-            name: Some("myFunction".to_string()),
-            kind: CallableKind::Function,
-            parameters: Vec::new(),
-            rest_parameter: None,
-            return_type: None,
-            yeet_type: None,
-            body: Box::new(
-                DatexExpressionData::Integer(Integer::from(42))
-                    .with_default_span()
-            ),
-        })
+        DatexExpressionData::CallableDeclaration(Box::new(
+            CallableDeclaration {
+                name: Some("myFunction".to_string()),
+                kind: CallableKind::Function,
+                parameters: Vec::new(),
+                rest_parameter: None,
+                return_type: None,
+                yeet_type: None,
+                body: Box::new(
+                    DatexExpressionData::Integer(Integer::from(42))
+                        .with_default_span()
+                ),
+            }
+        ))
     );
 }
 
@@ -458,22 +460,24 @@ fn function_with_params() {
     let val = parse_unwrap_data(src);
     assert_eq!(
         val,
-        DatexExpressionData::CallableDeclaration(CallableDeclaration {
-            name: Some("myFunction".to_string()),
-            kind: CallableKind::Function,
-            parameters: vec![(
-                "x".to_string(),
-                TypeExpressionData::Identifier("integer".to_owned())
-                    .with_default_span()
-            )],
-            rest_parameter: None,
-            return_type: None,
-            yeet_type: None,
-            body: Box::new(
-                DatexExpressionData::Integer(Integer::from(42))
-                    .with_default_span()
-            ),
-        })
+        DatexExpressionData::CallableDeclaration(Box::new(
+            CallableDeclaration {
+                name: Some("myFunction".to_string()),
+                kind: CallableKind::Function,
+                parameters: vec![(
+                    "x".to_string(),
+                    TypeExpressionData::Identifier("integer".to_owned())
+                        .with_default_span()
+                )],
+                rest_parameter: None,
+                return_type: None,
+                yeet_type: None,
+                body: Box::new(
+                    DatexExpressionData::Integer(Integer::from(42))
+                        .with_default_span()
+                ),
+            }
+        ))
     );
 
     let src = r#"
@@ -484,47 +488,55 @@ fn function_with_params() {
     let val = parse_unwrap_data(src);
     assert_eq!(
         val,
-        DatexExpressionData::CallableDeclaration(CallableDeclaration {
-            name: Some("myFunction".to_string()),
-            kind: CallableKind::Function,
-            parameters: vec![
-                (
-                    "x".to_string(),
-                    TypeExpressionData::Identifier("integer".to_owned())
-                        .with_default_span()
+        DatexExpressionData::CallableDeclaration(Box::new(
+            CallableDeclaration {
+                name: Some("myFunction".to_string()),
+                kind: CallableKind::Function,
+                parameters: vec![
+                    (
+                        "x".to_string(),
+                        TypeExpressionData::Identifier("integer".to_owned())
+                            .with_default_span()
+                    ),
+                    (
+                        "y".to_string(),
+                        TypeExpressionData::Identifier("integer".to_owned())
+                            .with_default_span()
+                    )
+                ],
+                rest_parameter: None,
+                return_type: None,
+                yeet_type: None,
+                body: Box::new(
+                    DatexExpressionData::Statements(
+                        Statements::new_terminated(vec![
+                            DatexExpressionData::BinaryOperation(
+                                BinaryOperation {
+                                    operator: BinaryOperator::Arithmetic(
+                                        ArithmeticOperator::Add
+                                    ),
+                                    left: Box::new(
+                                        DatexExpressionData::Integer(
+                                            Integer::from(1)
+                                        )
+                                        .with_default_span()
+                                    ),
+                                    right: Box::new(
+                                        DatexExpressionData::Integer(
+                                            Integer::from(2)
+                                        )
+                                        .with_default_span()
+                                    ),
+                                    ty: None
+                                }
+                            )
+                            .with_default_span()
+                        ])
+                    )
+                    .with_default_span()
                 ),
-                (
-                    "y".to_string(),
-                    TypeExpressionData::Identifier("integer".to_owned())
-                        .with_default_span()
-                )
-            ],
-            rest_parameter: None,
-            return_type: None,
-            yeet_type: None,
-            body: Box::new(
-                DatexExpressionData::Statements(Statements::new_terminated(
-                    vec![
-                        DatexExpressionData::BinaryOperation(BinaryOperation {
-                            operator: BinaryOperator::Arithmetic(
-                                ArithmeticOperator::Add
-                            ),
-                            left: Box::new(
-                                DatexExpressionData::Integer(Integer::from(1))
-                                    .with_default_span()
-                            ),
-                            right: Box::new(
-                                DatexExpressionData::Integer(Integer::from(2))
-                                    .with_default_span()
-                            ),
-                            ty: None
-                        })
-                        .with_default_span()
-                    ]
-                ))
-                .with_default_span()
-            ),
-        })
+            }
+        ))
     );
 }
 
@@ -538,30 +550,32 @@ fn test_function_with_return_type() {
     let val = parse_unwrap_data(src);
     assert_eq!(
         val,
-        DatexExpressionData::CallableDeclaration(CallableDeclaration {
-            name: Some("myFunction".to_string()),
-            kind: CallableKind::Function,
-            parameters: vec![(
-                "x".to_string(),
-                TypeExpressionData::Identifier("integer".to_owned())
-                    .with_default_span()
-            )],
-            rest_parameter: None,
-            return_type: Some(
-                TypeExpressionData::Union(Union(vec![
+        DatexExpressionData::CallableDeclaration(Box::new(
+            CallableDeclaration {
+                name: Some("myFunction".to_string()),
+                kind: CallableKind::Function,
+                parameters: vec![(
+                    "x".to_string(),
                     TypeExpressionData::Identifier("integer".to_owned())
-                        .with_default_span(),
-                    TypeExpressionData::Identifier("text".to_owned())
                         .with_default_span()
-                ]))
-                .with_default_span()
-            ),
-            yeet_type: None,
-            body: Box::new(
-                DatexExpressionData::Integer(Integer::from(42))
+                )],
+                rest_parameter: None,
+                return_type: Some(
+                    TypeExpressionData::Union(Union(vec![
+                        TypeExpressionData::Identifier("integer".to_owned())
+                            .with_default_span(),
+                        TypeExpressionData::Identifier("text".to_owned())
+                            .with_default_span()
+                    ]))
                     .with_default_span()
-            ),
-        })
+                ),
+                yeet_type: None,
+                body: Box::new(
+                    DatexExpressionData::Integer(Integer::from(42))
+                        .with_default_span()
+                ),
+            }
+        ))
     );
 }
 

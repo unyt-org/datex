@@ -41,8 +41,8 @@ impl Parser {
 
         // parse function body
         let body = self.parse_parenthesized_statements()?;
-        Ok(
-            DatexExpressionData::CallableDeclaration(CallableDeclaration {
+        Ok(DatexExpressionData::CallableDeclaration(Box::new(
+            CallableDeclaration {
                 name: Some(name),
                 kind,
                 parameters,
@@ -50,9 +50,9 @@ impl Parser {
                 return_type,
                 yeet_type: None, // TODO #663
                 body: Box::new(body),
-            })
-            .with_span(start_pos..self.get_current_source_position()),
-        )
+            },
+        ))
+        .with_span(start_pos..self.get_current_source_position()))
     }
 
     fn parse_callable_parameters(
@@ -103,22 +103,24 @@ mod tests {
         let expr = parse("function test() ()");
         assert_eq!(
             expr.data,
-            DatexExpressionData::CallableDeclaration(CallableDeclaration {
-                name: Some(String::from("test")),
-                kind: CallableKind::Function,
-                parameters: vec![],
-                rest_parameter: None,
-                return_type: None,
-                yeet_type: None,
-                body: Box::new(
-                    DatexExpressionData::Statements(Statements {
-                        statements: vec![],
-                        is_terminated: false,
-                        unbounded: None,
-                    })
-                    .with_default_span()
-                ),
-            })
+            DatexExpressionData::CallableDeclaration(Box::new(
+                CallableDeclaration {
+                    name: Some(String::from("test")),
+                    kind: CallableKind::Function,
+                    parameters: vec![],
+                    rest_parameter: None,
+                    return_type: None,
+                    yeet_type: None,
+                    body: Box::new(
+                        DatexExpressionData::Statements(Statements {
+                            statements: vec![],
+                            is_terminated: false,
+                            unbounded: None,
+                        })
+                        .with_default_span()
+                    ),
+                }
+            ))
         );
     }
 
@@ -127,22 +129,24 @@ mod tests {
         let expr = parse("procedure doSomething() ()");
         assert_eq!(
             expr.data,
-            DatexExpressionData::CallableDeclaration(CallableDeclaration {
-                name: Some(String::from("doSomething")),
-                kind: CallableKind::Procedure,
-                parameters: vec![],
-                rest_parameter: None,
-                return_type: None,
-                yeet_type: None,
-                body: Box::new(
-                    DatexExpressionData::Statements(Statements {
-                        statements: vec![],
-                        is_terminated: false,
-                        unbounded: None,
-                    })
-                    .with_default_span()
-                ),
-            })
+            DatexExpressionData::CallableDeclaration(Box::new(
+                CallableDeclaration {
+                    name: Some(String::from("doSomething")),
+                    kind: CallableKind::Procedure,
+                    parameters: vec![],
+                    rest_parameter: None,
+                    return_type: None,
+                    yeet_type: None,
+                    body: Box::new(
+                        DatexExpressionData::Statements(Statements {
+                            statements: vec![],
+                            is_terminated: false,
+                            unbounded: None,
+                        })
+                        .with_default_span()
+                    ),
+                }
+            ))
         );
     }
 
@@ -151,36 +155,42 @@ mod tests {
         let expr = parse("function add(a: integer, b: integer) -> integer ( )");
         assert_eq!(
             expr.data,
-            DatexExpressionData::CallableDeclaration(CallableDeclaration {
-                name: Some("add".to_string()),
-                kind: CallableKind::Function,
-                parameters: vec![
-                    (
-                        "a".to_string(),
+            DatexExpressionData::CallableDeclaration(Box::new(
+                CallableDeclaration {
+                    name: Some("add".to_string()),
+                    kind: CallableKind::Function,
+                    parameters: vec![
+                        (
+                            "a".to_string(),
+                            TypeExpressionData::Identifier(
+                                "integer".to_string()
+                            )
+                            .with_default_span()
+                        ),
+                        (
+                            "b".to_string(),
+                            TypeExpressionData::Identifier(
+                                "integer".to_string()
+                            )
+                            .with_default_span()
+                        ),
+                    ],
+                    rest_parameter: None,
+                    return_type: Some(
                         TypeExpressionData::Identifier("integer".to_string())
                             .with_default_span()
                     ),
-                    (
-                        "b".to_string(),
-                        TypeExpressionData::Identifier("integer".to_string())
-                            .with_default_span()
-                    ),
-                ],
-                rest_parameter: None,
-                return_type: Some(
-                    TypeExpressionData::Identifier("integer".to_string())
+                    yeet_type: None,
+                    body: Box::new(
+                        DatexExpressionData::Statements(Statements {
+                            statements: vec![],
+                            is_terminated: false,
+                            unbounded: None,
+                        })
                         .with_default_span()
-                ),
-                yeet_type: None,
-                body: Box::new(
-                    DatexExpressionData::Statements(Statements {
-                        statements: vec![],
-                        is_terminated: false,
-                        unbounded: None,
-                    })
-                    .with_default_span()
-                ),
-            })
+                    ),
+                }
+            ))
         );
     }
 
@@ -190,38 +200,44 @@ mod tests {
             parse("function greet(name: text) -> text ( \"Hello, \" + name )");
         assert_eq!(
             expr.data,
-            DatexExpressionData::CallableDeclaration(CallableDeclaration {
-                name: Some("greet".to_string()),
-                kind: CallableKind::Function,
-                parameters: vec![(
-                    "name".to_string(),
-                    TypeExpressionData::Identifier("text".to_string())
-                        .with_default_span()
-                )],
-                rest_parameter: None,
-                return_type: Some(
-                    TypeExpressionData::Identifier("text".to_string())
-                        .with_default_span()
-                ),
-                yeet_type: None,
-                body: Box::new(
-                    DatexExpressionData::BinaryOperation(BinaryOperation {
-                        left: Box::new(
-                            DatexExpressionData::Text("Hello, ".to_string())
+            DatexExpressionData::CallableDeclaration(Box::new(
+                CallableDeclaration {
+                    name: Some("greet".to_string()),
+                    kind: CallableKind::Function,
+                    parameters: vec![(
+                        "name".to_string(),
+                        TypeExpressionData::Identifier("text".to_string())
+                            .with_default_span()
+                    )],
+                    rest_parameter: None,
+                    return_type: Some(
+                        TypeExpressionData::Identifier("text".to_string())
+                            .with_default_span()
+                    ),
+                    yeet_type: None,
+                    body: Box::new(
+                        DatexExpressionData::BinaryOperation(BinaryOperation {
+                            left: Box::new(
+                                DatexExpressionData::Text(
+                                    "Hello, ".to_string()
+                                )
                                 .with_default_span()
-                        ),
-                        operator: BinaryOperator::Arithmetic(
-                            ArithmeticOperator::Add
-                        ),
-                        right: Box::new(
-                            DatexExpressionData::Identifier("name".to_string())
+                            ),
+                            operator: BinaryOperator::Arithmetic(
+                                ArithmeticOperator::Add
+                            ),
+                            right: Box::new(
+                                DatexExpressionData::Identifier(
+                                    "name".to_string()
+                                )
                                 .with_default_span()
-                        ),
-                        ty: None,
-                    })
-                    .with_default_span(),
-                )
-            })
+                            ),
+                            ty: None,
+                        })
+                        .with_default_span(),
+                    )
+                }
+            ))
         );
     }
 }

@@ -131,7 +131,7 @@ pub enum DatexExpressionData {
     TypeExpression(TypeExpression),
 
     /// callable (function/procedure) declaration, e.g. function my_function() -> type ( ... )
-    CallableDeclaration(CallableDeclaration),
+    CallableDeclaration(Box<CallableDeclaration>),
 
     // TODO #613 combine
     /// Reference, e.g. &x or &mut x

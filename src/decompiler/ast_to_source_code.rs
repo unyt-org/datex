@@ -627,15 +627,16 @@ impl AstToSourceCodeConverter {
                     self.type_expression_to_source_code(value)
                 )
             }
-            DatexExpressionData::CallableDeclaration(CallableDeclaration {
-                name,
-                kind,
-                parameters,
-                rest_parameter,
-                return_type,
-                yeet_type,
-                body,
-            }) => {
+            DatexExpressionData::CallableDeclaration(callable) => {
+                let CallableDeclaration {
+                    name,
+                    kind,
+                    parameters,
+                    rest_parameter,
+                    return_type,
+                    yeet_type,
+                    body,
+                } = &**callable;
                 let mut params_code: Vec<String> = parameters
                     .iter()
                     .map(|(param_name, param_type)| {
