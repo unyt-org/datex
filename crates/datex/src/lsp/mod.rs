@@ -2,6 +2,8 @@ mod errors;
 mod type_hint_collector;
 mod utils;
 mod variable_declaration_finder;
+use core::cell::RefCell;
+
 use crate::{
     ast::expressions::{
         DatexExpressionData, VariableAccess, VariableAssignment,
@@ -16,7 +18,6 @@ use crate::{
         variable_declaration_finder::VariableDeclarationFinder,
     },
     runtime::Runtime,
-    compat::{borrow::Cow, cell::RefCell},
     values::core_values::r#type::Type,
     visitor::expression::ExpressionVisitor,
 };
@@ -25,6 +26,8 @@ use realhydroper_lsp::{
     jsonrpc::{Error, ErrorCode},
     lsp_types::*,
 };
+
+use crate::prelude::*;
 
 #[cfg(feature = "lsp_wasm")]
 use futures::io::{AsyncRead, AsyncWrite};
@@ -402,28 +405,26 @@ mod tests {
     use core::str::FromStr;
 
     use crate::{
-        runtime::{RuntimeConfig},
-        native_global_context::init_global_context_native,
+        prelude::*, runtime::RuntimeConfig,
         values::core_values::endpoint::Endpoint,
     };
 
     use super::*;
+    use crate::runtime::RuntimeRunner;
     use tokio::{
         io::{AsyncReadExt, AsyncWriteExt, duplex},
         time::{Duration, timeout},
     };
-    use crate::native_global_context::get_global_context_native;
-    use crate::runtime::RuntimeRunner;
 
     #[tokio::test(flavor = "current_thread")]
     async fn test_lsp_initialization() {
-
-        init_global_context_native();
-
         RuntimeRunner::new(
-            RuntimeConfig::new_with_endpoint(Endpoint::from_str("@lspler").unwrap()),
-            get_global_context_native()
-        ).run(async |runtime| {
+            RuntimeConfig::new_with_endpoint(
+                Endpoint::from_str("@lspler").unwrap(),
+            ),
+            get_global_context_native(),
+        )
+        .run(async |runtime| {
             let (mut client_read, server_write) = duplex(1024);
             let (server_read, mut client_write) = duplex(1024);
 
@@ -455,17 +456,16 @@ mod tests {
 
             // Read response
             let mut buffer = vec![0; 1024];
-            let n = timeout(
-                Duration::from_secs(2),
-                client_read.read(&mut buffer),
-            )
-                .await
-                .unwrap()
-                .unwrap();
+            let n =
+                timeout(Duration::from_secs(2), client_read.read(&mut buffer))
+                    .await
+                    .unwrap()
+                    .unwrap();
 
             let response = String::from_utf8_lossy(&buffer[..n]);
             assert!(response.contains(r#""id":1"#));
             lsp_handle.abort();
-        }).await;
+        })
+        .await;
     }
 }

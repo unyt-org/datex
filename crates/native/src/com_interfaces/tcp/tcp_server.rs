@@ -132,7 +132,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_construct() {
-        init_global_context_native();
+        
         const PORT: u16 = 5088;
         let interface_configuration =
             TCPServerInterfaceSetupDataNative(TCPServerInterfaceSetupData::new_with_port(PORT))
@@ -148,7 +148,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_construct_invalid_address() {
-        init_global_context_native();
+        
         assert_matches!(
             TCPServerInterfaceSetupDataNative(TCPServerInterfaceSetupData::new_with_host_and_port(
                 "invalid-address".to_string(),

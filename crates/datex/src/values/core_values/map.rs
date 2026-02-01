@@ -1,7 +1,7 @@
 use crate::{
     collections::HashMap,
     references::reference::KeyNotFoundError,
-    std_random::RandomState,
+    random::RandomState,
     compat::{borrow::Cow, format, string::String, vec::Vec},
     traits::structural_eq::StructuralEq,
     values::{

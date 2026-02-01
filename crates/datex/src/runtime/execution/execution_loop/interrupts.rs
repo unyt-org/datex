@@ -3,10 +3,10 @@ use crate::{
         RawFullPointerAddress, RawInternalPointerAddress,
         RawLocalPointerAddress,
     },
-    compat::{cell::RefCell, rc::Rc, vec::Vec},
     values::value_container::ValueContainer,
 };
 
+use crate::prelude::*;
 #[derive(Debug)]
 pub enum ExecutionInterrupt {
     // used for intermediate results in unbounded scopes

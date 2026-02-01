@@ -8,9 +8,10 @@ use crate::{
         ExecutionError, ExecutionInput, MemoryDump, execute_dxb,
         execute_dxb_sync,
     },
-    compat::{format, vec::Vec},
     values::value_container::ValueContainer,
 };
+
+use crate::prelude::*;
 pub use local::*;
 use log::info;
 pub use remote::*;

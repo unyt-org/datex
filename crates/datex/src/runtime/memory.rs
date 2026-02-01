@@ -6,7 +6,6 @@ use crate::{
         reference::Reference, type_reference::TypeReference,
         value_reference::ValueReference,
     },
-    compat::{rc::Rc, vec::Vec},
     types::error::IllegalTypeError,
     utils::time::Time,
     values::{core_values::endpoint::Endpoint, pointer::PointerAddress},
@@ -149,7 +148,7 @@ impl Memory {
 
     /// Creates a new unique local PointerAddress.
     pub fn get_new_local_address(&mut self) -> PointerAddress {
-        let timestamp = Time::now();
+        let timestamp = crate::time::Instant::now();
         // new timestamp, reset counter
         if timestamp != self.last_timestamp {
             self.last_timestamp = timestamp;

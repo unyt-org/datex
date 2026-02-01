@@ -20,7 +20,7 @@ mod tests {
     #[tokio::test]
     #[timeout(2000)]
     async fn test_connect_and_communicate() {
-        init_global_context_native();
+        
         const PORT: u16 = 12456;
         let address= format!("0.0.0.0:{}", PORT);
 

@@ -929,7 +929,7 @@ mod tests {
 
     #[test]
     fn random_anonymous_endpoint() {
-        init_global_context_native();
+        
         let endpoint1 = Endpoint::random();
         let endpoint2 = Endpoint::random();
         assert_ne!(endpoint1, endpoint2);

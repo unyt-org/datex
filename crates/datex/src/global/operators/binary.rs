@@ -1,12 +1,11 @@
-use crate::{
-    global::{
-        instruction_codes::InstructionCode,
-        protocol_structures::instructions::RegularInstruction,
-    },
-    compat::string::ToString,
-};
-use core::{fmt::Display, prelude::rust_2024::*};
+use core::fmt::Display;
 
+use crate::global::{
+    instruction_codes::InstructionCode,
+    protocol_structures::instructions::RegularInstruction,
+};
+
+use crate::prelude::*;
 #[derive(Clone, Debug, PartialEq, Copy)]
 pub enum BinaryOperator {
     Arithmetic(ArithmeticOperator),

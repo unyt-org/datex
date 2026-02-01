@@ -3,6 +3,7 @@ use core::{
     ops::Range,
 };
 
+use crate::prelude::*;
 use logos::{Lexer, Logos};
 
 pub type SourceId = usize;

@@ -103,7 +103,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_construct_invalid_address() {
-        init_global_context_native();
+        
         const ADDRESS: &str = "1.2.3";
         let result = TCPClientInterfaceSetupDataNative(TCPClientInterfaceSetupData {
             address: ADDRESS.to_string(),

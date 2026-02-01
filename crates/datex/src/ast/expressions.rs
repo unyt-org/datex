@@ -1,17 +1,16 @@
-pub use crate::values::core_values::callable::CallableKind;
+use core::fmt::Display;
+
 use crate::{
     ast::{
         resolved_variable::{ResolvedVariable, VariableId},
         spanned::Spanned,
         type_expressions::TypeExpression,
     },
-    compat::heap::{boxed::Box, vec::Vec},
     global::operators::{
         ArithmeticUnaryOperator, BinaryOperator, ComparisonOperator,
         UnaryOperator, assignment::AssignmentOperator,
     },
     references::reference::ReferenceMutability,
-    string::String,
     values::{
         core_value::CoreValue,
         core_values,
@@ -26,9 +25,9 @@ use crate::{
         value_container::ValueContainer,
     },
 };
+pub use crate::{prelude::*, values::core_values::callable::CallableKind};
 
 use crate::values::core_values::range::Range;
-use core::{fmt::Display, ops::Neg};
 
 #[derive(Clone, Debug)]
 /// An expression in the AST

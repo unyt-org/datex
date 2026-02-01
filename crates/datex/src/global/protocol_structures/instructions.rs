@@ -3,13 +3,14 @@ use crate::{
         operators::AssignmentOperator,
         type_instruction_codes::TypeMutabilityCode,
     },
-    compat::{string::String, vec::Vec},
     values::core_values::{
         decimal::{Decimal, utils::decimal_to_string},
         endpoint::{Endpoint, EndpointParsingError},
         integer::Integer,
     },
 };
+
+use crate::prelude::*;
 use binrw::{BinRead, BinWrite};
 use core::{fmt::Display, prelude::rust_2024::*};
 use datex_core::values::pointer::PointerAddress;

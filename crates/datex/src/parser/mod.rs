@@ -16,6 +16,7 @@ use itertools::Itertools;
 use parser_result::ParserResult;
 // TODO #658: move to different module
 
+use crate::prelude::*;
 pub mod errors;
 pub mod lexer;
 pub mod parser_result;

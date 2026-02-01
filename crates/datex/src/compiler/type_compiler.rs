@@ -1,18 +1,16 @@
 use crate::{
     ast::type_expressions::{TypeExpression, TypeExpressionData},
-    compat::heap::{boxed::Box, vec},
     compiler::{
         context::CompilationContext, error::CompilerError,
         precompiler::precompiled_ast::AstMetadata, scope::CompilationScope,
     },
     core_compiler::value_compiler::append_big_integer,
     global::type_instruction_codes::TypeInstructionCode,
-    rc::Rc,
-    string::String,
     utils::buffers::{append_u8, append_u32},
     values::core_values::integer::Integer,
-    vec::Vec,
 };
+
+use crate::prelude::*;
 use alloc::format;
 use core::cell::RefCell;
 /// Compilation functions for type expressions.

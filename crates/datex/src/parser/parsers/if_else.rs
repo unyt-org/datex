@@ -6,6 +6,7 @@ use crate::{
     parser::{Parser, SpannedParserError, lexer::Token},
 };
 
+use crate::prelude::*;
 impl Parser {
     pub(crate) fn parse_if_else(
         &mut self,

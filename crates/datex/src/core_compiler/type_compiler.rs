@@ -1,12 +1,12 @@
 use crate::{
     core_compiler::value_compiler::append_get_ref,
     global::type_instruction_codes::{TypeInstructionCode, TypeMutabilityCode},
-    compat::heap::vec::Vec,
     types::definition::TypeDefinition,
     utils::buffers::append_u8,
     values::core_values::r#type::Type,
 };
 
+use crate::prelude::*;
 /// Compiles a given type container to a DXB body
 pub fn compile_type(ty: &Type) -> Vec<u8> {
     let mut buffer = Vec::with_capacity(256);

@@ -16,6 +16,9 @@ use crate::{
     task::{self},
     utils::maybe_async::SyncOrAsyncResolved,
 };
+
+use crate::prelude::*;
+
 pub mod managers;
 
 #[cfg(feature = "debug")]
@@ -24,15 +27,11 @@ use crate::network::com_hub::managers::socket_manager::ComInterfaceSocketManager
 
 pub mod errors;
 pub mod network_response;
+
 pub mod network_tracing;
-use crate::{
-    network::com_interfaces::com_interface::socket::ComInterfaceSocketUUID,
-    compat::{
-        boxed::Box, cell::RefCell, rc::Rc, string::ToString, vec, vec::Vec,
-    },
-    utils::time::Time,
-};
+use crate::network::com_interfaces::com_interface::socket::ComInterfaceSocketUUID;
 use core::{
+    cell::RefCell,
     cmp::PartialEq,
     fmt::{Debug, Formatter},
     panic,
@@ -871,7 +870,7 @@ impl ComHub {
             mut block: DXBBlock,
             endpoint: Endpoint,
         ) -> Result<DXBBlock, ComHubError> {
-            let now = Time::now();
+            let now = crate::time::Instant::now();
             block.routing_header.sender = endpoint;
             block
                 .block_header

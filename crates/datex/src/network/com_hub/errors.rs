@@ -1,8 +1,9 @@
-use core::fmt::Display;
-use core::fmt::Debug;
-use crate::compat::string::String;
-use crate::compat::string::ToString;
-use crate::network::com_interfaces::com_interface::error::ComInterfaceError;
+use core::fmt::{Debug, Display};
+
+use crate::{
+    network::com_interfaces::com_interface::error::ComInterfaceError,
+    prelude::*,
+};
 
 #[derive(Debug, PartialEq)]
 pub enum InterfaceAddError {
@@ -34,7 +35,6 @@ pub enum ComInterfaceCreateError {
     InvalidSetupData(String),
     InterfaceAddError(InterfaceAddError),
 }
-
 
 impl From<InterfaceAddError> for ComInterfaceCreateError {
     fn from(err: InterfaceAddError) -> Self {
@@ -121,10 +121,7 @@ impl Display for ComInterfaceCreateError {
                 )
             }
             ComInterfaceCreateError::SetupDataParseError => {
-                write!(
-                    f,
-                    "ComInterfaceCreateError: Setup data parse error"
-                )
+                write!(f, "ComInterfaceCreateError: Setup data parse error")
             }
             ComInterfaceCreateError::InvalidSetupData(details) => {
                 write!(
@@ -141,7 +138,11 @@ impl Display for ComInterfaceCreateError {
                 )
             }
             ComInterfaceCreateError::ConnectionError(Some(details)) => {
-                write!(f, "ComInterfaceCreateError: Connection error: {}", details)
+                write!(
+                    f,
+                    "ComInterfaceCreateError: Connection error: {}",
+                    details
+                )
             }
             ComInterfaceCreateError::ConnectionError(None) => {
                 write!(f, "ComInterfaceCreateError: Connection error")

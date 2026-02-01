@@ -1,6 +1,5 @@
 use crate::{
     references::{observers::Observer, reference::ReferenceMutability},
-    compat::rc::Rc,
     traits::value_eq::ValueEq,
     types::definition::TypeDefinition,
     utils::freemap::FreeHashMap,
@@ -8,6 +7,8 @@ use crate::{
         pointer::PointerAddress, value::Value, value_container::ValueContainer,
     },
 };
+
+use crate::prelude::*;
 use core::{cell::RefCell, fmt::Debug, prelude::rust_2024::*};
 
 pub struct ValueReference {

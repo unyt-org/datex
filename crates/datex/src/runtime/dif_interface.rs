@@ -14,11 +14,11 @@ use crate::{
         reference::{Reference, ReferenceMutability},
     },
     runtime::RuntimeInternal,
-    compat::{rc::Rc, vec::Vec},
     values::{pointer::PointerAddress, value_container::ValueContainer},
 };
-use core::{prelude::rust_2024::*, result::Result};
+use core::result::Result;
 
+use crate::prelude::*;
 impl RuntimeInternal {
     fn resolve_in_memory_reference(
         &self,
@@ -222,17 +222,18 @@ impl DIFInterface for RuntimeInternal {
 #[cfg(test)]
 mod tests {
     use crate::{
+        compat::rc::Rc,
         dif::{
             interface::DIFInterface,
             representation::DIFValueRepresentation,
             update::DIFUpdateData,
             value::{DIFValue, DIFValueContainer},
         },
+        native_global_context::get_global_context_native,
         references::{
             observers::ObserveOptions, reference::ReferenceMutability,
         },
-        runtime::{Runtime, memory::Memory},
-        compat::rc::Rc,
+        runtime::{Runtime, RuntimeRunner, memory::Memory},
         values::{
             core_values::{endpoint::Endpoint, map::Map},
             value_container::ValueContainer,
@@ -241,8 +242,6 @@ mod tests {
     use core::cell::RefCell;
     use datex_core::runtime::RuntimeConfig;
     use datex_macros::async_test;
-    use crate::native_global_context::get_global_context_native;
-    use crate::runtime::RuntimeRunner;
 
     #[test]
     fn struct_serde() {
@@ -257,13 +256,19 @@ mod tests {
 
     #[tokio::test]
     async fn test_create_and_observe_pointer() {
-        RuntimeRunner::new(RuntimeConfig::default(), get_global_context_native()).run(async |runtime| {
+        RuntimeRunner::new(
+            RuntimeConfig::default(),
+            get_global_context_native(),
+        )
+        .run(async |runtime| {
             let runtime = runtime.internal;
 
             let pointer_address = runtime
                 .create_pointer(
                     DIFValueContainer::Value(DIFValue::from(
-                        DIFValueRepresentation::String("Hello, world!".to_string()),
+                        DIFValueRepresentation::String(
+                            "Hello, world!".to_string(),
+                        ),
                     )),
                     None,
                     ReferenceMutability::Mutable,
@@ -306,7 +311,9 @@ mod tests {
                     1,
                     pointer_address.clone(),
                     &DIFUpdateData::replace(DIFValue::from(
-                        DIFValueRepresentation::String("Hello, Datex!".to_string()),
+                        DIFValueRepresentation::String(
+                            "Hello, Datex!".to_string(),
+                        ),
                     )),
                 )
                 .expect("Failed to update pointer");
@@ -329,6 +336,7 @@ mod tests {
                     )
                     .is_err()
             );
-        }).await;
+        })
+        .await;
     }
 }

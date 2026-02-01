@@ -19,15 +19,13 @@
 
 extern crate num_integer;
 
+extern crate alloc;
 #[cfg(feature = "std")]
 extern crate std;
 
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-extern crate alloc;
 pub mod channel;
 pub mod crypto;
 pub mod dif;
-pub mod mock_globals;
 pub mod prelude;
 
 #[cfg(feature = "ast")]
@@ -41,7 +39,7 @@ pub mod fmt;
 pub mod generator;
 pub mod global;
 pub mod libs;
-#[cfg(feature = "lsp")]
+#[cfg(all(feature = "lsp", feature = "std"))]
 pub mod lsp;
 pub mod network;
 #[cfg(feature = "compiler")]
@@ -56,6 +54,7 @@ pub mod visitor;
 pub mod core_compiler;
 pub mod dxb_parser;
 pub mod serde;
+mod stub;
 pub mod task;
 pub mod traits;
 pub mod types;
@@ -67,73 +66,13 @@ pub use datex_macros as macros;
 extern crate core;
 extern crate self as datex_core;
 
-pub mod compat {
-    // Always available
-    pub use core::{
-        cmp, fmt, hash, iter, mem, ops, option, result, slice, str,
-    };
-
-    // Heap types (Vec, String, Box)
-    #[cfg(any(feature = "std", feature = "alloc"))]
-    pub mod heap {
-        #[cfg(feature = "std")]
-        pub use std::{boxed, string, vec};
-
-        #[cfg(all(not(feature = "std"), feature = "alloc"))]
-        pub use alloc::{boxed, string, vec};
-
-        #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
-        compile_error!("Heap types require feature \"alloc\" or \"std\".");
-    }
-}
-
-pub mod vec {
-    // std: just re-export from std
-    #[cfg(feature = "std")]
-    pub use std::vec::{IntoIter, Vec};
-
-    // no_std + alloc: use alloc::vec
-    #[cfg(all(not(feature = "std"), feature = "alloc"))]
-    pub use alloc::vec::{IntoIter, Vec};
-
-    #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
-    compile_error!(
-        "Vec requires either feature \"alloc\" (no_std) or feature \"std\"."
-    );
-}
-
 // Note: always use collections mod for HashMap and HashSet
 pub mod collections {
     #[cfg(feature = "std")]
     pub use std::collections::{HashMap, HashSet};
 
-    #[cfg(all(not(feature = "std"), feature = "alloc"))]
+    #[cfg(all(not(feature = "std")))]
     pub use hashbrown::{HashMap, HashSet};
-
-    #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
-    compile_error!("HashMap/HashSet require feature \"alloc\" (or \"std\").");
-}
-
-pub mod string {
-    #[cfg(feature = "std")]
-    pub use std::string::String;
-
-    #[cfg(all(not(feature = "std"), feature = "alloc"))]
-    pub use alloc::string::String;
-
-    #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
-    compile_error!("String requires feature \"alloc\" or \"std\".");
-}
-
-pub mod rc {
-    #[cfg(feature = "std")]
-    pub use std::rc::Rc;
-
-    #[cfg(all(not(feature = "std"), feature = "alloc"))]
-    pub use alloc::rc::Rc;
-
-    #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
-    compile_error!("Rc requires feature \"alloc\" or \"std\".");
 }
 
 pub mod std_sync {
@@ -144,14 +83,20 @@ pub mod std_sync {
 }
 
 pub mod time {
-    #[cfg(all(not(target_arch = "wasm32"), not(feature = "std")))]
-    pub use embedded_time::*;
-    #[cfg(all(not(target_arch = "wasm32"), feature = "std"))]
-    pub use std::time::*;
-    #[cfg(target_arch = "wasm32")]
-    pub use web_time::*;
+    cfg_if::cfg_if! {
+        if #[cfg(target_arch = "wasm32")] {
+            pub use web_time::*;
+        } else if #[cfg(feature = "std")] {
+            pub use std::time::*;
+        } else if #[cfg(feature = "embedded")] {
+            pub use embedded_time::*;
+        } else {
+            pub use crate::stub::time::*;
+        }
+    }
 }
-pub mod std_random {
+
+pub mod random {
     #[cfg(not(feature = "std"))]
     pub use foldhash::fast::RandomState;
     #[cfg(feature = "std")]

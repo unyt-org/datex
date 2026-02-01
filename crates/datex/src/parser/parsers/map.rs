@@ -6,6 +6,7 @@ use crate::{
     parser::{Parser, SpannedParserError, lexer::Token},
 };
 
+use crate::prelude::*;
 impl Parser {
     pub fn parse_map(&mut self) -> Result<DatexExpression, SpannedParserError> {
         let start = self.expect(Token::LeftCurly)?.span.start;
@@ -28,6 +29,7 @@ impl Parser {
 
 #[cfg(test)]
 mod tests {
+
     use crate::{
         ast::{
             expressions::{BinaryOperation, DatexExpressionData, Map},
@@ -35,6 +37,7 @@ mod tests {
         },
         global::operators::{BinaryOperator, binary::ArithmeticOperator},
         parser::tests::{parse, try_parse_and_return_on_first_error},
+        prelude::*,
     };
 
     #[test]

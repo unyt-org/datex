@@ -6,17 +6,18 @@ use crate::{
             typed_decimal::{DecimalTypeVariant, TypedDecimal},
         },
         error::NumberParseError,
-        integer::typed_integer::TypedInteger,
+        integer::{
+            Integer,
+            typed_integer::{IntegerTypeVariant, TypedInteger},
+        },
     },
 };
 use core::{
     iter::Peekable,
     str::{Chars, FromStr},
 };
-use datex_core::values::core_values::integer::{
-    Integer, typed_integer::IntegerTypeVariant,
-};
 
+use crate::prelude::*;
 pub enum IntegerOrDecimal {
     Integer(Integer),
     Decimal(Decimal),

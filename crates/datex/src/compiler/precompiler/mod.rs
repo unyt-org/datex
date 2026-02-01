@@ -1,9 +1,10 @@
 use crate::{
-    collections::HashSet, compat::ops::Range, rc::Rc,
-    type_inference::infer_expression_type_detailed_errors,
+    collections::HashSet, type_inference::infer_expression_type_detailed_errors,
 };
+
+use crate::prelude::*;
 use alloc::format;
-use core::{cell::RefCell, str::FromStr, unreachable};
+use core::{cell::RefCell, ops::Range, str::FromStr, unreachable};
 pub mod options;
 pub mod precompiled_ast;
 pub mod scope;
@@ -29,7 +30,6 @@ use crate::{
     global::operators::{BinaryOperator, binary::ArithmeticOperator},
     libs::core::CoreLibPointerId,
     references::type_reference::{NominalTypeDeclaration, TypeReference},
-    string::String,
     types::definition::TypeDefinition,
     values::core_values::r#type::Type,
     visitor::{
@@ -602,8 +602,8 @@ mod tests {
             src_id::SrcId,
             type_expressions::{StructuralMap, TypeExpressionData},
         },
-        compat::heap::{boxed::Box, vec},
         parser::Parser,
+        prelude::*,
         references::reference::ReferenceMutability,
         values::{core_values::integer::Integer, pointer::PointerAddress},
     };

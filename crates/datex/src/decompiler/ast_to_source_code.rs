@@ -1,22 +1,18 @@
-use crate::{
-    ast::{
-        expressions::{
-            Apply, BinaryOperation, CallableDeclaration, ComparisonOperation,
-            Conditional, DatexExpression, DatexExpressionData, DerefAssignment,
-            List, Map, PropertyAccess, PropertyAssignment, RemoteExecution,
-            SlotAssignment, TypeDeclaration, VariableAccess,
-            VariableAssignment, VariableDeclaration, VariantAccess,
-        },
-        type_expressions::{
-            CallableTypeExpression, TypeExpression, TypeExpressionData,
-            TypeVariantAccess,
-        },
+use crate::ast::{
+    expressions::{
+        Apply, BinaryOperation, CallableDeclaration, ComparisonOperation,
+        Conditional, DatexExpression, DatexExpressionData, DerefAssignment,
+        List, Map, PropertyAccess, PropertyAssignment, RemoteExecution,
+        SlotAssignment, TypeDeclaration, VariableAccess, VariableAssignment,
+        VariableDeclaration, VariantAccess,
     },
-    compat::heap::{boxed::Box, vec},
-    rc::Rc,
-    string::String,
-    vec::Vec,
+    type_expressions::{
+        CallableTypeExpression, TypeExpression, TypeExpressionData,
+        TypeVariantAccess,
+    },
 };
+
+use crate::prelude::*;
 use alloc::format;
 use core::fmt::{self};
 

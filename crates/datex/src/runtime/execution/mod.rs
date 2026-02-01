@@ -10,11 +10,12 @@ use crate::{
             },
         },
     },
-    compat::rc::Rc,
     traits::apply::Apply,
     values::{pointer::PointerAddress, value_container::ValueContainer},
 };
-use core::{prelude::rust_2024::*, result::Result, unreachable};
+
+use crate::prelude::*;
+use core::{result::Result, unreachable};
 pub use errors::*;
 pub use execution_input::{ExecutionInput, ExecutionOptions};
 pub use memory_dump::*;
@@ -223,21 +224,23 @@ fn get_local_pointer_value(
 
 #[cfg(test)]
 mod tests {
-    use core::assert_matches;
     use crate::compat::heap::vec;
+    use core::assert_matches;
 
     use super::*;
     use crate::{
         assert_structural_eq, assert_value_eq,
+        compat::{string::ToString, vec::Vec},
         compiler::{CompileOptions, compile_script, scope::CompilationScope},
         datex_list,
         global::instruction_codes::InstructionCode,
+        libs::core::get_core_lib_type_reference,
         logger::init_logger_debug,
+        references::reference::Reference,
         runtime::execution::{
             context::{ExecutionContext, LocalExecutionContext},
             execution_input::ExecutionOptions,
         },
-        compat::{string::ToString, vec::Vec},
         traits::{structural_eq::StructuralEq, value_eq::ValueEq},
         values::{
             core_value::CoreValue,
@@ -250,8 +253,6 @@ mod tests {
         },
     };
     use log::{debug, info};
-    use crate::libs::core::get_core_lib_type_reference;
-    use crate::references::reference::Reference;
 
     fn execute_datex_script_debug(
         datex_script: &str,
@@ -445,7 +446,6 @@ mod tests {
 
     #[test]
     fn list_with_nested_scope() {
-        
         let result = execute_datex_script_debug_with_result("[1, (2 + 3), 4]");
         let expected = datex_list![
             Integer::from(1i8),
@@ -488,7 +488,6 @@ mod tests {
 
     #[test]
     fn integer() {
-        
         let result = execute_datex_script_debug_with_result("2");
         assert_eq!(result, Integer::from(2).into());
         assert_ne!(result, 2_u8.into());
@@ -497,7 +496,6 @@ mod tests {
 
     #[test]
     fn typed_integer() {
-        
         let result = execute_datex_script_debug_with_result("-2i16");
         assert_eq!(result, TypedInteger::from(-2i16).into());
         assert_structural_eq!(result, ValueContainer::from(-2_i16));
@@ -549,7 +547,6 @@ mod tests {
 
     #[test]
     fn map() {
-        
         let result =
             execute_datex_script_debug_with_result("{x: 1, y: 2, z: 42}");
         let map: CoreValue = result.clone().to_value().borrow().clone().inner;
@@ -588,7 +585,6 @@ mod tests {
 
     #[test]
     fn empty_map() {
-        
         let result = execute_datex_script_debug_with_result("{}");
         let map: CoreValue = result.clone().to_value().borrow().clone().inner;
         let map: Map = map.try_into().unwrap();
@@ -602,28 +598,24 @@ mod tests {
 
     #[test]
     fn statements() {
-        
         let result = execute_datex_script_debug_with_result("1; 2; 3");
         assert_eq!(result, Integer::from(3).into());
     }
 
     #[test]
     fn single_terminated_statement() {
-        
         let result = execute_datex_script_debug("1;");
         assert_eq!(result, None);
     }
 
     #[test]
     fn const_declaration() {
-        
         let result = execute_datex_script_debug_with_result("const x = 42; x");
         assert_eq!(result, Integer::from(42).into());
     }
 
     #[test]
     fn const_declaration_with_addition() {
-        
         let result =
             execute_datex_script_debug_with_result("const x = 1 + 2; x");
         assert_eq!(result, Integer::from(3).into());
@@ -631,7 +623,6 @@ mod tests {
 
     #[test]
     fn deref() {
-        
         let result =
             execute_datex_script_debug_with_result("const x = &42; *x");
         assert_eq!(result, ValueContainer::from(Integer::from(42)));
@@ -639,7 +630,6 @@ mod tests {
 
     #[test]
     fn ref_assignment() {
-        
         let result =
             execute_datex_script_debug_with_result("const x = &mut 42; x");
         assert_matches!(result, ValueContainer::Reference(..));
@@ -648,7 +638,6 @@ mod tests {
 
     #[test]
     fn ref_add_assignment() {
-        
         let result = execute_datex_script_debug_with_result(
             "const x = &mut 42; *x += 1",
         );
@@ -664,7 +653,6 @@ mod tests {
 
     #[test]
     fn ref_sub_assignment() {
-        
         let result = execute_datex_script_debug_with_result(
             "const x = &mut 42; *x -= 1",
         );
@@ -682,21 +670,18 @@ mod tests {
 
     #[test]
     fn endpoint_slot() {
-        
         let result = execute_datex_script_debug_with_error("#endpoint");
         assert_matches!(result.unwrap_err(), ExecutionError::RequiresRuntime);
     }
 
     #[test]
     fn shebang() {
-        
         let result = execute_datex_script_debug_with_result("#!datex\n42");
         assert_eq!(result, Integer::from(42).into());
     }
 
     #[test]
     fn single_line_comment() {
-        
         let result =
             execute_datex_script_debug_with_result("// this is a comment\n42");
         assert_eq!(result, Integer::from(42).into());
@@ -709,7 +694,6 @@ mod tests {
 
     #[test]
     fn multi_line_comment() {
-        
         let result = execute_datex_script_debug_with_result(
             "/* this is a comment */\n42",
         );

@@ -27,7 +27,7 @@ async fn create_network_with_two_nodes() {
     let local = task::LocalSet::new();
     local
         .run_until(async {
-            init_global_context_native();
+            
 
             let mut network = Network::new(vec![
                 // @test-a
@@ -191,7 +191,7 @@ async fn network_routing_with_four_nodes_1() {
     let local = task::LocalSet::new();
     local
         .run_until(async {
-            init_global_context_native();
+            
 
             let network = get_test_network_1().await;
 
@@ -237,7 +237,7 @@ async fn network_routing_with_four_nodes_2() {
     let local = task::LocalSet::new();
     local
         .run_until(async {
-            init_global_context_native();
+            
 
             let network = get_test_network_1().await;
 
@@ -297,7 +297,7 @@ async fn network_routing_with_four_nodes_3() {
     let local = task::LocalSet::new();
     local
         .run_until(async {
-            init_global_context_native();
+            
 
             let network = get_test_network_1().await;
 
@@ -347,7 +347,7 @@ async fn network_routing_with_four_nodes_4() {
     let local = task::LocalSet::new();
     local
         .run_until(async {
-            init_global_context_native();
+            
 
             let network = get_test_network_1().await;
 
@@ -407,7 +407,7 @@ async fn network_routing_with_four_nodes_5_deterministic_priorities() {
     let local = task::LocalSet::new();
     local
         .run_until(async {
-            init_global_context_native();
+            
 
             let network =
                 get_test_network_1_with_deterministic_priorities().await;
@@ -455,7 +455,7 @@ async fn network_routing_with_four_nodes_6_deterministic_priorities() {
     let local = task::LocalSet::new();
     local
         .run_until(async {
-            init_global_context_native();
+            
 
             let network =
                 get_test_network_1_with_deterministic_priorities().await;

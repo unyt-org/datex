@@ -19,6 +19,7 @@ use crate::{
         errors::{ParserError, SpannedParserError},
         lexer::{SpannedToken, Token},
     },
+    prelude::*,
     references::reference::ReferenceMutability,
     values::core_values::error::NumberParseError,
 };
@@ -542,6 +543,7 @@ impl Parser {
 
 #[cfg(test)]
 mod tests {
+
     use crate::{
         ast::{
             expressions::{
@@ -563,6 +565,7 @@ mod tests {
             errors::ParserError,
             tests::{parse, try_parse_and_return_on_first_error},
         },
+        prelude::*,
         references::reference::ReferenceMutability,
     };
 

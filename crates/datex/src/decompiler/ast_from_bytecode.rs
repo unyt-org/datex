@@ -9,7 +9,6 @@ use crate::{
         spanned::Spanned,
         type_expressions::{TypeExpression, TypeExpressionData},
     },
-    compat::heap::{boxed::Box, vec},
     dxb_parser::{
         body::{DXBParserError, iterate_instructions},
         instruction_collector::{
@@ -24,8 +23,6 @@ use crate::{
         },
         slots::InternalSlot,
     },
-    rc::Rc,
-    string::String,
     values::{
         core_values::{
             decimal::{Decimal, typed_decimal::TypedDecimal},
@@ -33,8 +30,9 @@ use crate::{
         },
         pointer::PointerAddress,
     },
-    vec::Vec,
 };
+
+use crate::prelude::*;
 use alloc::format;
 use core::cell::RefCell;
 use num_enum::TryFromPrimitive;
@@ -116,11 +114,9 @@ pub fn ast_from_bytecode(
                         StatementResultCollectionStrategy::Full,
                     );
 
-                let expr: Option<DatexExpression> = if let Some(
-                    regular_instruction,
-                ) = regular_instruction
-                {
-                    Some(
+                let expr: Option<DatexExpression> =
+                    if let Some(regular_instruction) = regular_instruction {
+                        Some(
                         match regular_instruction {
                             // Handle different regular instructions here
                             RegularInstruction::Int8(integer_data) => {
@@ -342,9 +338,9 @@ pub fn ast_from_bytecode(
                         }
                         .with_default_span(),
                     )
-                } else {
-                    None
-                };
+                    } else {
+                        None
+                    };
 
                 expr.map(CollectedAstResult::from)
             }

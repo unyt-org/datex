@@ -3,7 +3,6 @@ use crate::{
     global::instruction_codes::InstructionCode,
     libs::core::{CoreLibPointerId, get_core_lib_type_definition},
     references::reference::ReferenceMutability,
-    compat::heap::vec::Vec,
     types::definition::TypeDefinition,
     utils::buffers::{
         append_f32, append_f64, append_i8, append_i16, append_i32, append_i64,
@@ -23,8 +22,8 @@ use crate::{
     },
 };
 use binrw::{BinWrite, io::Cursor};
-use core::prelude::rust_2024::*;
 
+use crate::prelude::*;
 /// Compiles a given value container to a DXB body
 pub fn compile_value_container(value_container: &ValueContainer) -> Vec<u8> {
     let mut buffer = Vec::with_capacity(256);

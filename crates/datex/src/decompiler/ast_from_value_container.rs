@@ -6,9 +6,6 @@ use crate::{
             Intersection, TypeExpression, TypeExpressionData, Union,
         },
     },
-    compat::heap::{boxed::Box, vec},
-    rc::Rc,
-    string::String,
     types::{
         definition::TypeDefinition,
         structural_type_definition::StructuralTypeDefinition,
@@ -17,8 +14,9 @@ use crate::{
         core_value::CoreValue, core_values::r#type::Type, value::Value,
         value_container::ValueContainer,
     },
-    vec::Vec,
 };
+
+use crate::prelude::*;
 use alloc::format;
 use datex_core::{
     ast::expressions::CallableDeclaration, libs::core::CoreLibPointerId,
@@ -228,9 +226,6 @@ mod tests {
             expressions::{DatexExpressionData, List},
             spanned::Spanned,
         },
-        compat::heap::{boxed::Box, vec},
-        rc::Rc,
-        string::String,
         values::{
             core_values::{
                 decimal::{Decimal, typed_decimal::TypedDecimal},
@@ -239,8 +234,9 @@ mod tests {
             value::Value,
             value_container::ValueContainer,
         },
-        vec::Vec,
     };
+
+    use crate::prelude::*;
     use alloc::format;
     use datex_core::values::core_values;
     #[test]

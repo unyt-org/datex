@@ -5,13 +5,9 @@ use crate::{
 use core::{prelude::rust_2024::*, result::Result};
 
 use crate::{
+    prelude::*,
     references::value_reference::ValueReference,
     runtime::execution::ExecutionError,
-    compat::{
-        boxed::Box,
-        rc::Rc,
-        string::{String, ToString},
-    },
     traits::{
         apply::Apply, identity::Identity, structural_eq::StructuralEq,
         value_eq::ValueEq,
@@ -156,8 +152,7 @@ pub enum ReferenceMutability {
 
 pub mod mutability_as_int {
     use super::ReferenceMutability;
-    use crate::compat::format;
-    use core::prelude::rust_2024::*;
+    use crate::prelude::*;
     use serde::{Deserialize, Deserializer, Serializer, de::Error};
 
     pub fn serialize<S>(
@@ -194,8 +189,8 @@ pub mod mutability_as_int {
 }
 pub mod mutability_option_as_int {
     use super::ReferenceMutability;
-    use crate::compat::format;
-    use core::prelude::rust_2024::*;
+
+    use crate::prelude::*;
     use serde::{Deserialize, Deserializer, Serializer, de::Error};
 
     pub fn serialize<S>(
@@ -745,15 +740,15 @@ impl Apply for Reference {
 
 #[cfg(test)]
 mod tests {
-    use datex_core::native_global_context::get_global_context_native;
     use super::*;
-    use crate::runtime::global_context::{GlobalContext, set_global_context};
-    use crate::runtime::memory::Memory;
-    use crate::compat::assert_matches;
-    use crate::traits::value_eq::ValueEq;
-    use crate::{assert_identical, assert_structural_eq, assert_value_eq};
+    use crate::{
+        assert_identical, assert_structural_eq, assert_value_eq,
+        runtime::memory::Memory, traits::value_eq::ValueEq,
+    };
+    use core::assert_matches;
     use datex_core::values::core_values::map::Map;
 
+    use crate::prelude::*;
     #[test]
     fn try_mut_from() {
         // creating a mutable reference from a value should work

@@ -17,6 +17,8 @@ use crate::{
         endpoint::Endpoint,
     },
 };
+
+use crate::prelude::*;
 use core::str::FromStr;
 
 impl Parser {

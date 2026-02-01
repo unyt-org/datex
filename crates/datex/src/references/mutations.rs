@@ -8,7 +8,6 @@ use crate::{
         reference::{AccessError, Reference},
     },
     runtime::memory::Memory,
-    compat::{format, vec::Vec},
     values::{
         core_value::CoreValue,
         value_container::{ValueContainer, ValueKey},
@@ -16,6 +15,7 @@ use crate::{
 };
 use core::{cell::RefCell, ops::FnOnce, prelude::rust_2024::*};
 
+use crate::prelude::*;
 pub enum DIFUpdateDataOrMemory<'a> {
     Update(&'a DIFUpdateData),
     Memory(&'a RefCell<Memory>),
@@ -289,19 +289,19 @@ impl Reference {
 
 #[cfg(test)]
 mod tests {
-    use crate::references::reference::{
-        AccessError, AssignmentError, IndexOutOfBoundsError,
-        ReferenceMutability,
-    };
-    use crate::runtime::memory::Memory;
-    use core::assert_matches;
-    use crate::values::core_values::list::List;
-    use crate::values::core_values::map::Map;
     use crate::{
-        references::reference::Reference,
-        values::value_container::ValueContainer,
+        prelude::*,
+        references::reference::{
+            AccessError, AssignmentError, IndexOutOfBoundsError, Reference,
+            ReferenceMutability,
+        },
+        runtime::memory::Memory,
+        values::{
+            core_values::{list::List, map::Map},
+            value_container::ValueContainer,
+        },
     };
-    use core::cell::RefCell;
+    use core::{assert_matches, cell::RefCell};
 
     #[test]
     fn push() {

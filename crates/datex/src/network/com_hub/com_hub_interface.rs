@@ -3,27 +3,21 @@ use crate::{
         com_hub::{
             ComHub, ComHubError, InterfacePriority,
             errors::{ComInterfaceCreateError, InterfaceAddError},
-            managers::com_interface_manager::{
-                DynInterfaceImplementationFactoryFn,
-            },
+            managers::com_interface_manager::DynInterfaceImplementationFactoryFn,
         },
         com_interfaces::com_interface::{
-            ComInterfaceUUID,
-            factory::ComInterfaceSyncFactory,
+            ComInterfaceUUID, factory::ComInterfaceSyncFactory,
             socket::ComInterfaceSocketUUID,
         },
     },
-    compat::{
-        string::String,
-    },
     values::value_container::ValueContainer,
 };
-use core::{prelude::rust_2024::*, result::Result};
-use crate::compat::rc::Rc;
-use datex_core::network::com_interfaces::com_interface::{
-    factory::ComInterfaceAsyncFactory,
+
+use crate::{
+    network::com_interfaces::com_interface::properties::ComInterfaceProperties,
+    prelude::*,
 };
-use crate::network::com_interfaces::com_interface::properties::ComInterfaceProperties;
+use datex_core::network::com_interfaces::com_interface::factory::ComInterfaceAsyncFactory;
 
 /// Interface management methods
 impl ComHub {
@@ -57,7 +51,8 @@ impl ComHub {
         socket_uuid: &ComInterfaceSocketUUID,
     ) -> Rc<ComInterfaceProperties> {
         let socket = self.socket_manager.get_socket_by_uuid(socket_uuid);
-        self.interfaces_manager.get_interface_by_uuid(&socket.interface_uuid)
+        self.interfaces_manager
+            .get_interface_by_uuid(&socket.interface_uuid)
     }
 
     /// Registers an existing com interface on the ComHub and sets up event handling
@@ -67,8 +62,11 @@ impl ComHub {
         com_interface_properties: Rc<ComInterfaceProperties>,
         priority: InterfacePriority,
     ) -> Result<(), InterfaceAddError> {
-        self.interfaces_manager
-            .add_interface(uuid, com_interface_properties, priority)?;
+        self.interfaces_manager.add_interface(
+            uuid,
+            com_interface_properties,
+            priority,
+        )?;
         Ok(())
     }
 
@@ -79,14 +77,11 @@ impl ComHub {
         setup_data: ValueContainer,
         priority: InterfacePriority,
     ) -> Result<ComInterfaceUUID, ComInterfaceCreateError> {
-        let interface_configuration =
-            self.interfaces_manager.create_and_add_interface(
-                interface_type,
-                setup_data,
-                priority,
-            )
+        let interface_configuration = self
+            .interfaces_manager
+            .create_and_add_interface(interface_type, setup_data, priority)
             .await?;
-        
+
         let uuid = interface_configuration.uuid();
         // add event handler task
         self.register_com_interface_handler(interface_configuration, priority);
@@ -102,8 +97,8 @@ impl ComHub {
         setup_data: ValueContainer,
         priority: InterfacePriority,
     ) -> Result<ComInterfaceUUID, ComInterfaceCreateError> {
-        let interface_configuration = self.interfaces_manager
-            .create_and_add_interface_sync(
+        let interface_configuration =
+            self.interfaces_manager.create_and_add_interface_sync(
                 interface_type,
                 setup_data,
                 priority,
@@ -112,7 +107,7 @@ impl ComHub {
         let uuid = interface_configuration.uuid();
         // add event handler task
         self.register_com_interface_handler(interface_configuration, priority);
-        
+
         Ok(uuid)
     }
 
@@ -120,8 +115,7 @@ impl ComHub {
         &self,
         interface_uuid: ComInterfaceUUID,
     ) -> Result<(), ComHubError> {
-        self.interfaces_manager
-            .destroy_interface(&interface_uuid)?;
+        self.interfaces_manager.destroy_interface(&interface_uuid)?;
 
         self.socket_manager
             .remove_sockets_for_interface_uuid(&interface_uuid);
@@ -130,7 +124,6 @@ impl ComHub {
     }
 
     pub fn has_interface(&self, interface_uuid: &ComInterfaceUUID) -> bool {
-        self.interfaces_manager
-            .has_interface(interface_uuid)
+        self.interfaces_manager.has_interface(interface_uuid)
     }
 }

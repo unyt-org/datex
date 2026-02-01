@@ -10,6 +10,7 @@ use crate::{
     parser::{Parser, SpannedParserError, lexer::Token},
 };
 
+use crate::prelude::*;
 impl Parser {
     pub(crate) fn parse_callable_definition(
         &mut self,
@@ -85,6 +86,7 @@ impl Parser {
 
 #[cfg(test)]
 mod tests {
+
     use crate::{
         ast::{
             expressions::{
@@ -96,6 +98,7 @@ mod tests {
         },
         global::operators::{BinaryOperator, binary::ArithmeticOperator},
         parser::tests::parse,
+        prelude::*,
     };
 
     #[test]

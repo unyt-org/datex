@@ -2,13 +2,14 @@ use crate::{
     dif::{DIFConvertible, representation::DIFTypeRepresentation},
     references::reference::ReferenceMutability,
     runtime::memory::Memory,
-    compat::{boxed::Box, format, string::String, vec::Vec},
     types::{
         definition::TypeDefinition,
         structural_type_definition::StructuralTypeDefinition,
     },
     values::{core_values::r#type::Type, pointer::PointerAddress},
 };
+
+use crate::prelude::*;
 use core::{cell::RefCell, prelude::rust_2024::*};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{

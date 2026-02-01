@@ -9,6 +9,7 @@ use crate::{
     parser::{Parser, SpannedParserError, errors::ParserError, lexer::Token},
 };
 
+use crate::prelude::*;
 impl Parser {
     pub(crate) fn parse_variable_declaration(
         &mut self,
@@ -64,6 +65,7 @@ impl Parser {
 
 #[cfg(test)]
 mod tests {
+
     use crate::{
         ast::{
             expressions::{
@@ -73,6 +75,7 @@ mod tests {
             type_expressions::{TypeExpressionData, Union},
         },
         parser::tests::{parse, try_parse_and_return_on_first_error},
+        prelude::*,
     };
 
     #[test]

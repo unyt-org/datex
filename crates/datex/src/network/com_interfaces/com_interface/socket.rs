@@ -1,11 +1,7 @@
-use core::prelude::rust_2024::*;
-
+use crate::prelude::*;
 use serde::Serialize;
 
-use crate::{
-    compat::{string::String, string::ToString},
-    utils::{uuid::UUID},
-};
+use crate::utils::uuid::UUID;
 use core::fmt::Display;
 
 #[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]

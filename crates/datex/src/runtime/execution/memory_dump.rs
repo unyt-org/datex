@@ -1,10 +1,11 @@
 use crate::{
     runtime::execution::execution_loop::state::RuntimeExecutionSlots,
-    compat::heap::vec::Vec, values::value_container::ValueContainer,
+    values::value_container::ValueContainer,
 };
 use core::fmt::Display;
 use itertools::Itertools;
 
+use crate::prelude::*;
 pub struct MemoryDump {
     pub slots: Vec<(u32, Option<ValueContainer>)>,
 }

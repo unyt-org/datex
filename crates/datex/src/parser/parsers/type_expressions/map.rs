@@ -6,6 +6,7 @@ use crate::{
     parser::{Parser, SpannedParserError, lexer::Token},
 };
 
+use crate::prelude::*;
 impl Parser {
     pub fn parse_type_map(
         &mut self,
@@ -31,6 +32,7 @@ impl Parser {
 
 #[cfg(test)]
 mod tests {
+
     use crate::{
         ast::{
             spanned::Spanned,
@@ -39,6 +41,7 @@ mod tests {
             },
         },
         parser::parsers::type_expressions::tests::parse_type_expression,
+        prelude::*,
     };
 
     #[test]

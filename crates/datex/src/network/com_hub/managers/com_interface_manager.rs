@@ -1,46 +1,49 @@
 use crate::{
-    network::com_interfaces::com_interface::properties::InterfaceDirection,
-    compat::rc::Rc, compat::string::String, compat::boxed::Box, compat::string::ToString,
-};
-use core::{cell::RefCell, pin::Pin};
-use log::info;
-
-use crate::{
     collections::HashMap,
     network::{
         com_hub::{
             ComHubError, InterfacePriority,
-            errors::{InterfaceAddError, ComInterfaceCreateError},
+            errors::{ComInterfaceCreateError, InterfaceAddError},
         },
         com_interfaces::com_interface::{
             ComInterfaceUUID,
-            factory::{ComInterfaceAsyncFactory, ComInterfaceSyncFactory},
+            factory::{
+                ComInterfaceAsyncFactory, ComInterfaceConfiguration,
+                ComInterfaceSyncFactory,
+            },
+            properties::{ComInterfaceProperties, InterfaceDirection},
         },
     },
+    prelude::*,
     values::value_container::ValueContainer,
 };
-use crate::network::com_interfaces::com_interface::factory::ComInterfaceConfiguration;
-use crate::network::com_interfaces::com_interface::properties::ComInterfaceProperties;
+use core::{cell::RefCell, pin::Pin};
+use log::info;
 
 type InterfaceMap =
     HashMap<ComInterfaceUUID, (Rc<ComInterfaceProperties>, InterfacePriority)>;
 
 pub type SyncComInterfaceImplementationFactoryFn =
-    fn(setup_data: ValueContainer) -> Result<ComInterfaceConfiguration, ComInterfaceCreateError>;
+    fn(
+        setup_data: ValueContainer,
+    ) -> Result<ComInterfaceConfiguration, ComInterfaceCreateError>;
 
 pub type ComInterfaceAsyncFactoryResult = Pin<
     Box<
-        dyn Future<Output = Result<ComInterfaceConfiguration, ComInterfaceCreateError>>
-            + 'static,
+        dyn Future<
+                Output = Result<
+                    ComInterfaceConfiguration,
+                    ComInterfaceCreateError,
+                >,
+            > + 'static,
     >,
 >;
 
 pub type AsyncComInterfaceImplementationFactoryFn =
     fn(setup_data: ValueContainer) -> ComInterfaceAsyncFactoryResult;
 
-pub type DynInterfaceImplementationFactoryFn = Rc<
-    dyn Fn(ValueContainer) -> ComInterfaceAsyncFactoryResult,
->;
+pub type DynInterfaceImplementationFactoryFn =
+    Rc<dyn Fn(ValueContainer) -> ComInterfaceAsyncFactoryResult>;
 
 #[derive(Clone)]
 pub enum SyncOrAsyncComInterfaceImplementationFactoryFn {
@@ -52,8 +55,9 @@ pub enum SyncOrAsyncComInterfaceImplementationFactoryFn {
 #[derive(Default)]
 pub struct ComInterfaceManager {
     /// a list of all available interface factories, keyed by their interface type
-    pub interface_factories:
-        RefCell<HashMap<String, SyncOrAsyncComInterfaceImplementationFactoryFn>>,
+    pub interface_factories: RefCell<
+        HashMap<String, SyncOrAsyncComInterfaceImplementationFactoryFn>,
+    >,
 
     /// a list of all available interfaces, keyed by their UUID
     pub interfaces: RefCell<InterfaceMap>,
@@ -65,9 +69,7 @@ pub struct ComInterfaceManager {
 impl ComInterfaceManager {
     /// Registers a new sync interface factory for a specific interface implementation.
     /// This allows the ComHub to create new instances of the interface on demand.
-    pub fn register_sync_interface_factory<T: ComInterfaceSyncFactory>(
-        &self,
-    ) {
+    pub fn register_sync_interface_factory<T: ComInterfaceSyncFactory>(&self) {
         let interface_type = T::get_default_properties().interface_type;
         self.interface_factories.borrow_mut().insert(
             interface_type,
@@ -108,8 +110,7 @@ impl ComInterfaceManager {
         interface_type: &str,
         setup_data: ValueContainer,
         priority: InterfacePriority,
-    ) -> Result<ComInterfaceConfiguration, ComInterfaceCreateError>
-    {
+    ) -> Result<ComInterfaceConfiguration, ComInterfaceCreateError> {
         info!("creating interface {interface_type}");
         let factory = self
             .interface_factories
@@ -118,25 +119,26 @@ impl ComInterfaceManager {
             .cloned();
         if let Some(factory) = factory {
             match factory {
-                SyncOrAsyncComInterfaceImplementationFactoryFn::Sync(_) => {
-                    self.create_and_add_interface_sync(
+                SyncOrAsyncComInterfaceImplementationFactoryFn::Sync(_) => self
+                    .create_and_add_interface_sync(
                         interface_type,
                         setup_data,
                         priority,
-                    )
-                }
+                    ),
                 SyncOrAsyncComInterfaceImplementationFactoryFn::Async(_)
                 | SyncOrAsyncComInterfaceImplementationFactoryFn::Dyn(_) => {
                     let com_interface_configuration =
                         Self::create_interface_from_async_factory_fn(
-                            &factory,
-                            setup_data,
+                            &factory, setup_data,
                         )
                         .await?;
-                    self
-                        .add_interface(com_interface_configuration.uuid(), com_interface_configuration.properties.clone(), priority)
-                        .map_err(|e| e.into())
-                        .map(|_| com_interface_configuration)
+                    self.add_interface(
+                        com_interface_configuration.uuid(),
+                        com_interface_configuration.properties.clone(),
+                        priority,
+                    )
+                    .map_err(|e| e.into())
+                    .map(|_| com_interface_configuration)
                 }
             }
         } else {
@@ -155,10 +157,11 @@ impl ComInterfaceManager {
         interface_type: &str,
         setup_data: ValueContainer,
         priority: InterfacePriority,
-    ) -> Result<ComInterfaceConfiguration, ComInterfaceCreateError>
-    {
+    ) -> Result<ComInterfaceConfiguration, ComInterfaceCreateError> {
         info!("creating interface sync {interface_type}");
-        if let Some(factory) = self.interface_factories.borrow().get(interface_type) {
+        if let Some(factory) =
+            self.interface_factories.borrow().get(interface_type)
+        {
             match factory {
                 SyncOrAsyncComInterfaceImplementationFactoryFn::Sync(
                     sync_factory,
@@ -222,7 +225,9 @@ impl ComInterfaceManager {
 
     /// Creates a new ComInterface with the implementation of type T
     /// only works for async factories
-    pub async fn create_interface_async_from_setup_data<T: ComInterfaceAsyncFactory>(
+    pub async fn create_interface_async_from_setup_data<
+        T: ComInterfaceAsyncFactory,
+    >(
         setup_data: T,
     ) -> Result<ComInterfaceConfiguration, ComInterfaceCreateError> {
         // Create the implementation using the factory function
@@ -241,7 +246,9 @@ impl ComInterfaceManager {
         uuid: &ComInterfaceUUID,
     ) -> Option<Rc<ComInterfaceProperties>> {
         let interfaces = self.interfaces.borrow();
-        interfaces.get(uuid).map(|(properties, _)| properties.clone())
+        interfaces
+            .get(uuid)
+            .map(|(properties, _)| properties.clone())
     }
 
     /// Returns the com interface  properties for a given UUID
@@ -277,7 +284,9 @@ impl ComInterfaceManager {
             );
         }
 
-        self.interfaces.borrow_mut().insert(uuid.clone(), (properties, priority));
+        self.interfaces
+            .borrow_mut()
+            .insert(uuid.clone(), (properties, priority));
 
         Ok(())
     }
@@ -326,13 +335,15 @@ impl ComInterfaceManager {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
-    use serde::{Deserialize, Serialize};
-    use datex_core::native_global_context::init_global_context_native;
-    use crate::network::com_interfaces::com_interface::factory::{SendCallback, SendSuccess, SocketConfiguration, SocketProperties};
     use super::*;
+    use crate::network::com_interfaces::com_interface::factory::{
+        SendCallback, SendSuccess, SocketConfiguration, SocketProperties,
+    };
+
+    use crate::prelude::*;
+    use serde::{Deserialize, Serialize};
 
     #[derive(Deserialize, Serialize)]
     struct MockSetupData {
@@ -340,7 +351,10 @@ mod tests {
     }
 
     impl MockSetupData {
-        fn create_interface(self) -> Result<ComInterfaceConfiguration, ComInterfaceCreateError> {
+        fn create_interface(
+            self,
+        ) -> Result<ComInterfaceConfiguration, ComInterfaceCreateError>
+        {
             Ok(ComInterfaceConfiguration::new_single_socket(
                 ComInterfaceProperties {
                     name: Some(self.name),
@@ -361,7 +375,10 @@ mod tests {
     }
 
     impl ComInterfaceSyncFactory for MockSetupData {
-        fn create_interface(self) -> Result<ComInterfaceConfiguration, ComInterfaceCreateError> {
+        fn create_interface(
+            self,
+        ) -> Result<ComInterfaceConfiguration, ComInterfaceCreateError>
+        {
             self.create_interface()
         }
 
@@ -376,9 +393,7 @@ mod tests {
 
     impl ComInterfaceAsyncFactory for MockSetupData {
         fn create_interface(self) -> ComInterfaceAsyncFactoryResult {
-            Box::pin(async move {
-                self.create_interface()
-            })
+            Box::pin(async move { self.create_interface() })
         }
 
         fn get_default_properties() -> ComInterfaceProperties {
@@ -392,8 +407,6 @@ mod tests {
 
     #[test]
     fn test_create_interface_from_sync_factory() {
-        init_global_context_native();
-
         let interface_manager = ComInterfaceManager::default();
 
         interface_manager.register_sync_interface_factory::<MockSetupData>();
@@ -417,20 +430,21 @@ mod tests {
             com_interface_configuration.properties.name,
             Some("test_interface".to_string())
         );
-        
+
         // Clean up
         interface_manager
             .destroy_interface(&com_interface_configuration.uuid())
             .unwrap();
-        
+
         // Verify removal
-        assert!(!interface_manager.has_interface(&com_interface_configuration.uuid()));
+        assert!(
+            !interface_manager
+                .has_interface(&com_interface_configuration.uuid())
+        );
     }
 
     #[tokio::test]
     async fn test_create_interface_from_async_factory() {
-        init_global_context_native();
-
         let interface_manager = ComInterfaceManager::default();
 
         interface_manager.register_async_interface_factory::<MockSetupData>();
@@ -455,32 +469,32 @@ mod tests {
             com_interface_configuration.properties.name,
             Some("test_interface".to_string())
         );
-        
+
         // Clean up
         interface_manager
             .destroy_interface(&com_interface_configuration.uuid())
             .unwrap();
-        
+
         // Verify removal
-        assert!(!interface_manager.has_interface(&com_interface_configuration.uuid()));
+        assert!(
+            !interface_manager
+                .has_interface(&com_interface_configuration.uuid())
+        );
     }
-    
+
     #[tokio::test]
     async fn test_create_interface_from_dyn_factory() {
-        init_global_context_native();
         let interface_manager = ComInterfaceManager::default();
-        let dyn_factory: DynInterfaceImplementationFactoryFn = Rc::new(
-            |setup_data: ValueContainer| {
+        let dyn_factory: DynInterfaceImplementationFactoryFn =
+            Rc::new(|setup_data: ValueContainer| {
                 Box::pin(async move {
-                    let setup: MockSetupData = setup_data.cast_to_deserializable().unwrap();
+                    let setup: MockSetupData =
+                        setup_data.cast_to_deserializable().unwrap();
                     setup.create_interface()
                 })
-            },
-        );
-        interface_manager.register_dyn_interface_factory(
-            "mock".to_string(),
-            dyn_factory,
-        );
+            });
+        interface_manager
+            .register_dyn_interface_factory("mock".to_string(), dyn_factory);
         let setup_data = MockSetupData {
             name: "test_interface".to_string(),
         };
@@ -492,23 +506,26 @@ mod tests {
             )
             .await
             .unwrap();
-        
+
         assert_eq!(
             com_interface_configuration.properties.channel,
             "mock".to_string()
         );
-        
+
         assert_eq!(
             com_interface_configuration.properties.name,
             Some("test_interface".to_string())
         );
-        
+
         // Clean up
         interface_manager
             .destroy_interface(&com_interface_configuration.uuid())
             .unwrap();
-        
+
         // Verify removal
-        assert!(!interface_manager.has_interface(&com_interface_configuration.uuid()));
+        assert!(
+            !interface_manager
+                .has_interface(&com_interface_configuration.uuid())
+        );
     }
 }

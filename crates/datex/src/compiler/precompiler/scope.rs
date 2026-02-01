@@ -1,4 +1,7 @@
-use crate::{collections::HashMap, string::String};
+use crate::collections::HashMap;
+
+use crate::prelude::*;
+
 #[derive(Default, Debug, Clone)]
 pub struct PrecompilerScope {
     pub realm_index: usize,

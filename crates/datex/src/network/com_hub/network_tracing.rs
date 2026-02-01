@@ -1,3 +1,5 @@
+use core::{fmt::Display, time::Duration};
+
 use crate::{
     core_compiler::value_compiler::compile_value_container,
     global::{
@@ -17,13 +19,6 @@ use crate::{
         },
     },
     runtime::execution::{ExecutionInput, ExecutionOptions, execute_dxb_sync},
-    compat::{
-        borrow::ToOwned,
-        format,
-        string::{String, ToString},
-        vec,
-        vec::Vec,
-    },
     utils::time::Time,
     values::{
         core_value::CoreValue,
@@ -35,9 +30,8 @@ use crate::{
         value_container::ValueContainer,
     },
 };
-use core::{
-    fmt::Display, prelude::rust_2024::*, time::Duration, unreachable, writeln,
-};
+
+use crate::prelude::*;
 use log::{error, info};
 use serde::{Deserialize, Serialize};
 use serde_with::{DisplayFromStr, serde_as};
@@ -299,7 +293,7 @@ impl ComHub {
         };
 
         // measure round trip time
-        let start_time = Time::now();
+        let start_time = crate::time::Instant::now();
 
         let responses = self
             .send_own_block_await_response(
@@ -307,7 +301,7 @@ impl ComHub {
                 options.response_options,
             )
             .await;
-        let end_time = Time::now();
+        let end_time = crate::time::Instant::now();
         let round_trip_time = Duration::from_millis(end_time - start_time);
 
         let mut results = vec![];
@@ -383,7 +377,8 @@ impl ComHub {
     ) -> Option<()> {
         let sender = block.routing_header.sender.clone();
         info!("Received trace block from {sender}");
-        let socket_data = self.socket_manager.get_socket_by_uuid(&original_socket);
+        let socket_data =
+            self.socket_manager.get_socket_by_uuid(&original_socket);
 
         // get hops vector
         let mut hops = self.get_trace_data_from_block(block)?;
@@ -426,8 +421,9 @@ impl ComHub {
         block: &DXBBlock,
         original_socket: ComInterfaceSocketUUID,
     ) -> Option<()> {
-        let socket_data = self.socket_manager.get_socket_by_uuid(&original_socket);
-        
+        let socket_data =
+            self.socket_manager.get_socket_by_uuid(&original_socket);
+
         let mut block = block.clone();
         let sender = block.routing_header.sender.clone();
         info!("Received trace back block from {sender}");
@@ -467,7 +463,8 @@ impl ComHub {
         let mut block = block.clone();
         let sender = block.routing_header.sender.clone();
         info!("Redirecting trace block from {sender}");
-        let socket_data = self.socket_manager.get_socket_by_uuid(&original_socket);
+        let socket_data =
+            self.socket_manager.get_socket_by_uuid(&original_socket);
 
         let hops = self.get_trace_data_from_block(&block).unwrap_or_default();
         info!("{}", NetworkTraceResult::from_hops(hops));

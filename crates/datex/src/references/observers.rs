@@ -1,9 +1,12 @@
 use crate::{
     dif::update::{DIFUpdate, DIFUpdateData},
     references::{reference::Reference, value_reference::ValueReference},
-    compat::{cell::RefCell, rc::Rc, vec, vec::Vec},
 };
-use core::{fmt::Display, prelude::rust_2024::*, result::Result};
+
+use crate::prelude::*;
+use core::{
+    cell::RefCell, fmt::Display, prelude::rust_2024::*, result::Result,
+};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug)]
@@ -179,6 +182,7 @@ mod tests {
             update::{DIFUpdate, DIFUpdateData},
             value::{DIFValue, DIFValueContainer},
         },
+        prelude::*,
         references::{
             observers::{
                 ObserveOptions, Observer, ObserverError, TransceiverId,
@@ -186,11 +190,9 @@ mod tests {
             reference::{Reference, ReferenceMutability},
         },
         runtime::memory::Memory,
-        compat::{borrow::Cow, cell::RefCell, rc::Rc},
         values::{core_values::map::Map, value_container::ValueContainer},
     };
-    use std::assert_matches;
-
+    use core::{assert_matches, cell::RefCell};
     /// Helper function to record DIF updates observed on a reference
     /// Returns a Rc<RefCell<Vec<DIFUpdate>>> that contains all observed updates
     /// The caller can borrow this to inspect the updates after performing operations on the reference

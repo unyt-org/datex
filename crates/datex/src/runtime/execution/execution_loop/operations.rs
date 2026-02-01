@@ -6,15 +6,14 @@ use crate::{
         binary::{ArithmeticOperator, BitwiseOperator, LogicalOperator},
     },
     references::reference::Reference,
-    runtime::execution::ExecutionError,
-    compat::rc::Rc,
+    runtime::{RuntimeInternal, execution::ExecutionError},
     traits::{
         identity::Identity, structural_eq::StructuralEq, value_eq::ValueEq,
     },
     values::value_container::{OwnedValueKey, ValueContainer},
 };
-use datex_core::runtime::RuntimeInternal;
 
+use crate::prelude::*;
 pub fn set_property(
     runtime_internal: &Option<Rc<RuntimeInternal>>,
     target: &mut ValueContainer,

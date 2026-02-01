@@ -1,13 +1,7 @@
-
-use crate::{
-    compat::{
-        string::ToString,
-    },
-    utils::uuid::UUID,
-};
+use crate::utils::uuid::UUID;
 use core::fmt::{Debug, Display};
-use crate::compat::string::String;
 
+use crate::prelude::*;
 pub mod error;
 pub mod factory;
 pub mod properties;

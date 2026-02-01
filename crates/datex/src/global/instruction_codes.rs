@@ -277,6 +277,7 @@ pub enum InstructionCode {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use log::info;
     use strum::IntoEnumIterator;
 
     #[ignore]
@@ -284,7 +285,7 @@ mod tests {
     fn test_instruction_code_values() {
         // print a list of all instruction codes and their values for debugging purposes
         for code in InstructionCode::iter() {
-            println!("{:?} = {:2X}", code, code as u8);
+            info!("{:?} = {:2X}", code, code as u8);
         }
     }
 }

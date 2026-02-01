@@ -1,16 +1,14 @@
 #[cfg(feature = "compiler")]
 use crate::compiler::scope::CompilationScope;
-use crate::{
-    runtime::{
-        RuntimeInternal,
-        execution::{
-            ExecutionOptions, context::ExecutionContext,
-            execution_loop::state::ExecutionLoopState,
-        },
+use crate::runtime::{
+    RuntimeInternal,
+    execution::{
+        ExecutionOptions, context::ExecutionContext,
+        execution_loop::state::ExecutionLoopState,
     },
-    compat::rc::Rc,
 };
 
+use crate::prelude::*;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum ExecutionMode {
     /// A single execution of a program that is completely known at compile time.

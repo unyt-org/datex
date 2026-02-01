@@ -488,7 +488,7 @@ impl RuntimeRunner {
         set_global_context(global_context);
         info!(
             "Runtime initialized - Version {VERSION} Time: {}",
-            Time::now()
+            crate::time::Instant::now();
         );
 
         let endpoint = config.endpoint.clone().unwrap_or_else(Endpoint::random);

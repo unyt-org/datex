@@ -1,7 +1,5 @@
-use crate::compat::format;
+use crate::prelude::*;
 use core::fmt::{Debug, Display};
-use crate::compat::boxed::Box;
-
 pub enum ComInterfaceError {
     SocketNotFound,
     SocketAlreadyExists,

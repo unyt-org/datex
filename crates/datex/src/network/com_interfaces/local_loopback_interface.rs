@@ -1,45 +1,50 @@
 use crate::{
     network::{
         com_hub::errors::ComInterfaceCreateError,
-        com_interfaces::com_interface::{
-            properties::{InterfaceDirection, ComInterfaceProperties},
+        com_interfaces::com_interface::properties::{
+            ComInterfaceProperties, InterfaceDirection,
         },
     },
-    compat::string::ToString,
     values::core_values::endpoint::Endpoint,
 };
-use core::{prelude::rust_2024::*, result::Result, time::Duration};
-use datex_core::network::com_interfaces::com_interface::factory::{SendCallback, SendSuccess};
-use crate::global::dxb_block::DXBBlock;
-use crate::network::com_interfaces::com_interface::factory::{ComInterfaceConfiguration, SocketProperties, SocketConfiguration};
-use crate::runtime::{Runtime};
+
+use crate::{
+    global::dxb_block::DXBBlock,
+    network::com_interfaces::com_interface::factory::{
+        ComInterfaceConfiguration, SocketConfiguration, SocketProperties,
+    },
+    prelude::*,
+    runtime::Runtime,
+};
+use core::time::Duration;
+use datex_core::network::com_interfaces::com_interface::factory::{
+    SendCallback, SendSuccess,
+};
 
 /// A simple local loopback interface that puts outgoing data
 /// back into the incoming queue.
 pub struct LocalLoopbackInterfaceSetupData {
-    pub(crate) runtime: Runtime
+    pub(crate) runtime: Runtime,
 }
 
 impl LocalLoopbackInterfaceSetupData {
-    pub(crate) fn create_interface(self) -> Result<ComInterfaceConfiguration, ComInterfaceCreateError> {
-        Ok(
-            ComInterfaceConfiguration::new_single_socket(
-                Self::get_default_properties(),
-                SocketConfiguration::new_out(
-                    SocketProperties::new_with_direct_endpoint(
-                        InterfaceDirection::InOut,
-                        1,
-                        Endpoint::LOCAL.clone()
-                    ),
-                    SendCallback::new_sync(
-                        move |block: DXBBlock| {
-                            // TODO: call runtime receive (sync) here
-                            Ok(SendSuccess::SentWithNewIncomingData(block.to_bytes()))
-                        }
-                    )
-                )
-            )
-        )
+    pub(crate) fn create_interface(
+        self,
+    ) -> Result<ComInterfaceConfiguration, ComInterfaceCreateError> {
+        Ok(ComInterfaceConfiguration::new_single_socket(
+            Self::get_default_properties(),
+            SocketConfiguration::new_out(
+                SocketProperties::new_with_direct_endpoint(
+                    InterfaceDirection::InOut,
+                    1,
+                    Endpoint::LOCAL.clone(),
+                ),
+                SendCallback::new_sync(move |block: DXBBlock| {
+                    // TODO: call runtime receive (sync) here
+                    Ok(SendSuccess::SentWithNewIncomingData(block.to_bytes()))
+                }),
+            ),
+        ))
     }
 
     fn get_default_properties() -> ComInterfaceProperties {

@@ -19,7 +19,7 @@ mod tests {
     #[tokio::test]
     #[timeout(2000)]
     async fn test_connect_and_communicate() {
-        init_global_context_native();
+        
         let address= "0.0.0.0:45678".to_string();
 
         let mut server_interface_configuration =

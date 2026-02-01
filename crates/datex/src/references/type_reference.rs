@@ -1,16 +1,16 @@
-use core::{prelude::rust_2024::*, result::Result};
+use core::{
+    cell::RefCell,
+    fmt::{Display, Formatter},
+    prelude::rust_2024::*,
+    result::Result,
+};
 use serde::{Deserialize, Serialize};
 
 use crate::{
     libs::core::CoreLibPointerId,
+    prelude::*,
     references::reference::ReferenceMutability,
     runtime::execution::ExecutionError,
-    compat::{
-        cell::RefCell,
-        fmt::{Display, Formatter},
-        rc::Rc,
-        string::{String, ToString},
-    },
     traits::apply::Apply,
     types::{
         definition::TypeDefinition,

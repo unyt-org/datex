@@ -1,10 +1,9 @@
 use crate::{
     ast::expressions::{DatexExpression, VariableKind},
-    rc::Rc,
-    string::String,
     values::core_values::r#type::Type,
-    vec::Vec,
 };
+
+use crate::prelude::*;
 use core::{cell::RefCell, fmt::Display};
 #[derive(Clone, Debug)]
 pub struct VariableMetadata {

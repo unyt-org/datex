@@ -5,12 +5,6 @@ use crate::{
     },
     libs::core::{CoreLibPointerId, get_core_lib_type_definition},
     runtime::memory::Memory,
-    compat::{
-        boxed::Box,
-        string::{String, ToString},
-        vec,
-        vec::Vec,
-    },
     types::structural_type_definition::StructuralTypeDefinition,
     values::{
         core_value::CoreValue,
@@ -23,6 +17,8 @@ use crate::{
         value_container::ValueContainer,
     },
 };
+
+use crate::prelude::*;
 use core::{cell::RefCell, fmt, prelude::rust_2024::*, result::Result};
 use datex_core::values::core_values::integer::typed_integer::TypedInteger;
 use indexmap::IndexMap;

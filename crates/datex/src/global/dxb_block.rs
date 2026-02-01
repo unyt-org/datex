@@ -5,7 +5,6 @@ use super::protocol_structures::{
 };
 use crate::{
     channel::mpsc::UnboundedReceiver,
-    compat::heap::vec::Vec,
     global::protocol_structures::{
         block_header::BlockType, routing_header::Receivers,
     },
@@ -16,12 +15,11 @@ use binrw::{
     BinRead, BinWrite,
     io::{Cursor, Read},
 };
-use core::{
-    fmt::Display, prelude::rust_2024::*, result::Result, unimplemented,
-};
+use core::{fmt::Display, result::Result, unimplemented};
 use strum::Display;
 use thiserror::Error;
 
+use crate::prelude::*;
 #[derive(Debug, Display, Error)]
 pub enum HeaderParsingError {
     InsufficientLength,
@@ -159,7 +157,7 @@ pub struct BlockId {
 
 #[derive(Debug)]
 pub enum DXBBlockParseError {
-    IOError(crate::compat::io::Error),
+    IOError(String),
     ParseError(binrw::Error),
     MissingSignature,
     InvalidSignature,
@@ -171,8 +169,8 @@ impl From<binrw::Error> for DXBBlockParseError {
     }
 }
 
-impl From<crate::compat::io::Error> for DXBBlockParseError {
-    fn from(err: crate::compat::io::Error) -> Self {
+impl From<String> for DXBBlockParseError {
+    fn from(err: String) -> Self {
         DXBBlockParseError::IOError(err)
     }
 }
@@ -260,7 +258,12 @@ impl DXBBlock {
             SignatureType::Encrypted => {
                 // extract next 255 bytes as the signature
                 let mut signature = Vec::from([0u8; 108]);
-                reader.read_exact(&mut signature)?;
+                reader.read_exact(&mut signature).map_err(|e| {
+                    DXBBlockParseError::IOError(format!(
+                        "Failed to read encrypted signature: {}",
+                        e
+                    ))
+                })?;
 
                 // TODO #111: decrypt the signature
                 Some(signature)
@@ -268,7 +271,12 @@ impl DXBBlock {
             SignatureType::Unencrypted => {
                 // extract next 255 bytes as the signature
                 let mut signature = Vec::from([0u8; 108]);
-                reader.read_exact(&mut signature)?;
+                reader.read_exact(&mut signature).map_err(|e| {
+                    DXBBlockParseError::IOError(format!(
+                        "Failed to read unencrypted signature: {}",
+                        e
+                    ))
+                })?;
                 Some(signature)
             }
             SignatureType::None => None,
@@ -279,7 +287,12 @@ impl DXBBlock {
             EncryptionType::Encrypted => {
                 // TODO #113: decrypt the body
                 let mut decrypted_bytes = Vec::from([0u8; 255]);
-                reader.read_exact(&mut decrypted_bytes)?;
+                reader.read_exact(&mut decrypted_bytes).map_err(|e| {
+                    DXBBlockParseError::IOError(format!(
+                        "Failed to read encrypted body: {}",
+                        e
+                    ))
+                })?;
                 decrypted_bytes
             }
             EncryptionType::None => {
@@ -488,6 +501,7 @@ mod tests {
                 routing_header::{RoutingHeader, SignatureType},
             },
         },
+        prelude::*,
         values::core_values::endpoint::Endpoint,
     };
     use core::assert_matches;

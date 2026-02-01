@@ -4,6 +4,7 @@ use crate::{
 };
 use core::ops::Range;
 
+use crate::prelude::*;
 impl Parser {
     pub(crate) fn parse_generic_parameters(
         &mut self,

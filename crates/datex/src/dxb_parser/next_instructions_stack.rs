@@ -1,5 +1,4 @@
-use crate::compat::{vec, vec::Vec};
-
+use crate::prelude::*;
 #[derive(Debug, Clone)]
 pub enum NextScopeInstruction {
     /// number of regular instructions expected to follow

@@ -1,11 +1,9 @@
-use crate::compat::heap::vec::Vec;
+use crate::prelude::*;
 use binrw::{
     BinWrite,
     io::Cursor,
     meta::{ReadEndian, WriteEndian},
 };
-use core::prelude::rust_2024::*;
-
 pub trait Serializable: BinWrite + ReadEndian + WriteEndian {
     fn to_bytes(&self) -> Result<Vec<u8>, binrw::Error>
     where

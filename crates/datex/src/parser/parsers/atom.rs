@@ -22,6 +22,7 @@ use crate::{
 };
 use core::str::FromStr;
 
+use crate::prelude::*;
 impl Parser {
     pub(crate) fn parse_atom(
         &mut self,
@@ -325,6 +326,7 @@ impl Parser {
 
 #[cfg(test)]
 mod tests {
+
     use crate::{
         ast::{
             expressions::{DatexExpressionData, Slot, Statements},
@@ -339,6 +341,7 @@ mod tests {
                 try_parse_and_return_on_first_error,
             },
         },
+        prelude::*,
         values::{
             core_values::{
                 decimal::{Decimal, typed_decimal::TypedDecimal},

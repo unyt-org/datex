@@ -2,16 +2,12 @@ use crate::{
     dif::{DIFConvertible, value::DIFValueContainer},
     references::observers::TransceiverId,
     runtime::memory::Memory,
-    compat::{
-        borrow::Cow,
-        string::{String, ToString},
-        vec::Vec,
-    },
     values::value_container::ValueKey,
 };
 use core::{cell::RefCell, prelude::rust_2024::*};
 use serde::{Deserialize, Serialize};
 
+use crate::prelude::*;
 /// Represents a key in the Datex Interface Format (DIF).
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "lowercase", content = "value")]

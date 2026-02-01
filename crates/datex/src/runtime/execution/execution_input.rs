@@ -1,19 +1,17 @@
-use crate::{
-    runtime::{
-        RuntimeInternal,
-        execution::{
-            ExecutionError,
-            execution_loop::{
-                execution_loop,
-                interrupts::{ExternalExecutionInterrupt, InterruptProvider},
-                state::{ExecutionLoopState, RuntimeExecutionState},
-            },
+use crate::runtime::{
+    RuntimeInternal,
+    execution::{
+        ExecutionError,
+        execution_loop::{
+            execution_loop,
+            interrupts::{ExternalExecutionInterrupt, InterruptProvider},
+            state::{ExecutionLoopState, RuntimeExecutionState},
         },
     },
-    compat::{boxed::Box, rc::Rc},
 };
 use core::cell::RefCell;
 
+use crate::prelude::*;
 #[derive(Debug, Clone, Default)]
 pub struct ExecutionOptions {
     pub verbose: bool,

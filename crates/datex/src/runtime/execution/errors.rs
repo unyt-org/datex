@@ -5,12 +5,12 @@ use crate::{
         AccessError, AssignmentError, ReferenceCreationError,
     },
     runtime::execution::execution_loop::state::ExecutionLoopState,
-    compat::string::String,
     types::error::IllegalTypeError,
     values::value_container::{ValueContainer, ValueError},
 };
 use core::fmt::Display;
 
+use crate::prelude::*;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum InvalidProgramError {
     // any unterminated sequence, e.g. missing key in key-value pair

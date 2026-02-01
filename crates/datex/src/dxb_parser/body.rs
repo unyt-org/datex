@@ -10,7 +10,7 @@ use crate::{
             ApplyData, DecimalData, Float32Data, Float64Data, FloatAsInt16Data,
             FloatAsInt32Data, ImplTypeData, Instruction, InstructionBlockData,
             Int8Data, Int16Data, Int32Data, Int64Data, Int128Data, IntegerData,
-            ListData, MapData, RawFullPointerAddress, RangeData,
+            ListData, MapData, RangeData, RawFullPointerAddress,
             RawInternalPointerAddress, RawLocalPointerAddress,
             RegularInstruction, ShortListData, ShortMapData,
             ShortStatementsData, ShortTextData, ShortTextDataRaw, SlotAddress,
@@ -21,19 +21,15 @@ use crate::{
         type_instruction_codes::TypeInstructionCode,
     },
     runtime::execution::macros::yield_unwrap,
-    compat::{
-        rc::Rc,
-        string::{FromUtf8Error, String},
-        vec::Vec,
-    },
     values::core_values::endpoint::Endpoint,
 };
+
+use crate::prelude::*;
+use alloc::string::FromUtf8Error;
 use binrw::{BinRead, io::Cursor};
 use core::{
-    cell::RefCell, convert::TryFrom, fmt, fmt::Display, prelude::rust_2024::*,
-    result::Result,
+    cell::RefCell, convert::TryFrom, fmt, fmt::Display, result::Result,
 };
-
 #[derive(Debug)]
 pub enum DXBParserError {
     InvalidEndpoint(String),
@@ -601,8 +597,6 @@ pub fn iterate_instructions(
                         InstructionCode::RANGE => {
                             let range_data =
                                 RangeData::read(&mut reader).unwrap();
-                            println!("Awesome debug print...");
-                            println!("RangeData: {:?}", range_data);
                             RegularInstruction::Range(range_data)
                         }
 

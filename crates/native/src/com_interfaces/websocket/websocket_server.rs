@@ -153,7 +153,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_construct() {
-        init_global_context_native();
+        
         let address = "0.0.0.0:1234".to_string();
 
         let interface_configuration =
@@ -173,7 +173,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_construct_invalid_address() {
-        init_global_context_native();
+        
         assert_matches!(
             WebSocketServerInterfaceSetupDataNative(WebSocketServerInterfaceSetupData {
                 bind_address: "1.2.3".to_string(),

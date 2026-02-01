@@ -18,6 +18,7 @@ use crate::{
         errors::{ParserError, SpannedParserError},
         lexer::{SpannedToken, Token},
     },
+    prelude::*,
     values::core_values::error::NumberParseError,
 };
 
@@ -200,6 +201,7 @@ impl Parser {
 
 #[cfg(test)]
 mod tests {
+
     use crate::{
         ast::{
             spanned::Spanned,
@@ -210,6 +212,7 @@ mod tests {
         parser::{
             Parser, ParserOptions, lexer::get_spanned_tokens_from_source,
         },
+        prelude::*,
     };
 
     pub fn parse_type_expression(src: &str) -> TypeExpression {

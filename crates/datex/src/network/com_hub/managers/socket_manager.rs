@@ -1,32 +1,30 @@
-use core::cell::{Ref, RefCell, RefMut};
 use crate::{
     collections::{HashMap, HashSet},
     network::{
         com_hub::{
-            ComHubError, InterfacePriority,
-            SocketEndpointRegistrationError,
+            ComHubError, InterfacePriority, SocketEndpointRegistrationError,
         },
-        com_interfaces::com_interface::socket::{
-            ComInterfaceSocketUUID,
-        },
+        com_interfaces::com_interface::socket::ComInterfaceSocketUUID,
     },
 };
+use core::cell::{Ref, RefCell, RefMut};
 use futures::channel::oneshot::Receiver;
 use itertools::Itertools;
 use log::{debug, error, info, warn};
 use serde::{Deserialize, Serialize};
-use crate::compat::heap::vec::Vec;
-use crate::compat::boxed::Box;
-use crate::compat::string::ToString;
+
+use crate::prelude::*;
 
 use crate::{
-    network::com_interfaces::com_interface::{
-        ComInterfaceUUID, properties::InterfaceDirection,
+    network::{
+        com_hub::SocketData,
+        com_interfaces::com_interface::{
+            ComInterfaceUUID, properties::InterfaceDirection,
+        },
     },
     utils::time::Time,
     values::core_values::endpoint::{Endpoint, EndpointInstance},
 };
-use crate::network::com_hub::SocketData;
 
 #[derive(Debug, Clone, Default)]
 pub struct EndpointIterateOptions<'a> {
@@ -65,10 +63,12 @@ pub struct ComInterfaceSocketManager {
 
     /// a list of all available sockets for each endpoint, with additional
     /// DynamicEndpointProperties metadata
-    pub endpoint_sockets: RefCell<HashMap<
-        Endpoint,
-        Vec<(ComInterfaceSocketUUID, DynamicEndpointProperties)>,
-    >>,
+    pub endpoint_sockets: RefCell<
+        HashMap<
+            Endpoint,
+            Vec<(ComInterfaceSocketUUID, DynamicEndpointProperties)>,
+        >,
+    >,
 
     /// callbacks to be called when a socket is registered
     socket_registered_callbacks:
@@ -88,7 +88,7 @@ impl ComInterfaceSocketManager {
             endpoint_sockets_blacklist: RefCell::new(HashMap::new()),
             fallback_sockets: RefCell::new(Vec::new()),
             endpoint_sockets: RefCell::new(HashMap::new()),
-            socket_registered_callbacks:RefCell::new(HashMap::new()),
+            socket_registered_callbacks: RefCell::new(HashMap::new()),
         }
     }
 }
@@ -128,13 +128,14 @@ impl ComInterfaceSocketManager {
 
         // if the registered endpoint is the same as the socket endpoint,
         // this is a direct socket to the endpoint
-        let is_direct = socket.socket_properties.direct_endpoint == Some(endpoint.clone());
+        let is_direct =
+            socket.socket_properties.direct_endpoint == Some(endpoint.clone());
 
         // check if the socket is already registered for the endpoint
         if let Some(entries) = self.endpoint_sockets.borrow().get(&endpoint)
-            && entries
-                .iter()
-                .any(|(socket_uuid, _)| socket_uuid == &socket.socket_properties.uuid())
+            && entries.iter().any(|(socket_uuid, _)| {
+                socket_uuid == &socket.socket_properties.uuid()
+            })
         {
             return Err(SocketEndpointRegistrationError::SocketEndpointAlreadyRegistered);
         }
@@ -214,19 +215,25 @@ impl ComInterfaceSocketManager {
         direction: InterfaceDirection,
     ) {
         if !self.endpoint_sockets.borrow().contains_key(endpoint) {
-            self.endpoint_sockets.borrow_mut().insert(endpoint.clone(), Vec::new());
+            self.endpoint_sockets
+                .borrow_mut()
+                .insert(endpoint.clone(), Vec::new());
         }
 
-        self.endpoint_sockets.borrow_mut().get_mut(endpoint).unwrap().push((
-            socket_uuid,
-            DynamicEndpointProperties {
-                known_since: Time::now(),
-                distance,
-                is_direct,
-                channel_factor,
-                direction,
-            },
-        ));
+        self.endpoint_sockets
+            .borrow_mut()
+            .get_mut(endpoint)
+            .unwrap()
+            .push((
+                socket_uuid,
+                DynamicEndpointProperties {
+                    known_since: crate::time::Instant::now();,
+                    distance,
+                    is_direct,
+                    channel_factor,
+                    direction,
+                },
+            ));
     }
 
     /// Adds an endpoint to the endpoint list of a specific socket
@@ -295,8 +302,10 @@ impl ComInterfaceSocketManager {
         &self,
         interface_uuid: &ComInterfaceUUID,
     ) {
-        if let Some(socket_uuids) =
-            self.socket_uuids_by_interface_uuid.borrow_mut().remove(interface_uuid)
+        if let Some(socket_uuids) = self
+            .socket_uuids_by_interface_uuid
+            .borrow_mut()
+            .remove(interface_uuid)
         {
             for socket_uuid in socket_uuids {
                 self.delete_socket(&socket_uuid);
@@ -314,7 +323,9 @@ impl ComInterfaceSocketManager {
     ) -> Ref<'_, SocketData> {
         let sockets = self.sockets.borrow();
         Ref::map(sockets, |sockets| {
-            sockets.get(socket_uuid).expect("No socket data found for socket")
+            sockets
+                .get(socket_uuid)
+                .expect("No socket data found for socket")
         })
     }
 
@@ -326,7 +337,9 @@ impl ComInterfaceSocketManager {
     ) -> RefMut<'_, SocketData> {
         let sockets = self.sockets.borrow_mut();
         RefMut::map(sockets, |sockets| {
-            sockets.get_mut(socket_uuid).expect("No socket data found for socket")
+            sockets
+                .get_mut(socket_uuid)
+                .expect("No socket data found for socket")
         })
     }
 
@@ -343,7 +356,7 @@ impl ComInterfaceSocketManager {
         socket: SocketData,
     ) {
         let direct_endpoint = socket.socket_properties.direct_endpoint.clone();
-        
+
         if self.has_socket(&socket_uuid) {
             core::panic!(
                 "Socket {} already exists in SocketManager",
@@ -361,7 +374,6 @@ impl ComInterfaceSocketManager {
         self.sockets
             .borrow_mut()
             .insert(socket_uuid.clone(), socket);
-    
 
         // if socket has direct endpoint, register it
         if let Some(direct_endpoint) = direct_endpoint {
@@ -434,8 +446,10 @@ impl ComInterfaceSocketManager {
         //     .expect("Cannot send BlockSendEvent::NewSocket");
 
         // call registered callbacks for socket registration
-        if let Some(callbacks) =
-            self.socket_registered_callbacks.borrow_mut().remove(&socket_uuid)
+        if let Some(callbacks) = self
+            .socket_registered_callbacks
+            .borrow_mut()
+            .remove(&socket_uuid)
         {
             for callback in callbacks {
                 callback();
@@ -455,9 +469,11 @@ impl ComInterfaceSocketManager {
         direction: InterfaceDirection,
     ) {
         // add to vec
-        self.fallback_sockets
-            .borrow_mut()
-            .push((socket_uuid.clone(), priority, direction));
+        self.fallback_sockets.borrow_mut().push((
+            socket_uuid.clone(),
+            priority,
+            direction,
+        ));
         // first sort by direction (InOut before Out - only In is not allowed)
         // second sort by priority
         self.fallback_sockets.borrow_mut().sort_by_key(|(_, priority, direction)| {
@@ -499,12 +515,16 @@ impl ComInterfaceSocketManager {
             .retain(|(uuid, _, _)| uuid != socket_uuid);
 
         // remove socket from interface socket mapping
-        if let Some(socket_uuids) =
-            self.socket_uuids_by_interface_uuid.borrow_mut().get_mut(&interface_uuid)
+        if let Some(socket_uuids) = self
+            .socket_uuids_by_interface_uuid
+            .borrow_mut()
+            .get_mut(&interface_uuid)
         {
             socket_uuids.remove(socket_uuid);
             if socket_uuids.is_empty() {
-                self.socket_uuids_by_interface_uuid.borrow_mut().remove(&interface_uuid);
+                self.socket_uuids_by_interface_uuid
+                    .borrow_mut()
+                    .remove(&interface_uuid);
             }
         }
     }
@@ -532,8 +552,15 @@ impl ComInterfaceSocketManager {
 
                         // check if only_direct is set and the endpoint equals the direct endpoint of the socket
                         if options.only_direct
-                            && socket.socket_properties.direct_endpoint.is_some()
-                            && socket.socket_properties.direct_endpoint.as_ref().unwrap()
+                            && socket
+                                .socket_properties
+                                .direct_endpoint
+                                .is_some()
+                            && socket
+                                .socket_properties
+                                .direct_endpoint
+                                .as_ref()
+                                .unwrap()
                                 == endpoint
                         {
                             debug!(
@@ -543,10 +570,14 @@ impl ComInterfaceSocketManager {
                         }
 
                         // check if the socket is excluded if exclude_socket is set
-                        if options.exclude_sockets.contains(&socket.socket_properties.uuid()) {
+                        if options
+                            .exclude_sockets
+                            .contains(&socket.socket_properties.uuid())
+                        {
                             debug!(
                                 "Socket {} is excluded for endpoint {}. Skipping...",
-                                socket.socket_properties.uuid(), endpoint
+                                socket.socket_properties.uuid(),
+                                endpoint
                             );
                             continue;
                         }
@@ -558,7 +589,8 @@ impl ComInterfaceSocketManager {
                         if !socket.socket_properties.direction.can_send() {
                             info!(
                                 "Socket {} is not outgoing for endpoint {}. Skipping...",
-                                socket.socket_properties.uuid(), endpoint
+                                socket.socket_properties.uuid(),
+                                endpoint
                             );
                             return;
                         }

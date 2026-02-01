@@ -9,6 +9,7 @@ use crate::{
     parser::{Parser, SpannedParserError, errors::ParserError, lexer::Token},
 };
 
+use crate::prelude::*;
 impl Parser {
     pub(crate) fn parse_type_declaration(
         &mut self,

@@ -10,10 +10,11 @@ use crate::{
         OutgoingSectionIndex,
     },
     network::com_interfaces::com_interface::socket::ComInterfaceSocketUUID,
-    std_random::RandomState,
-    compat::{boxed::Box, collections::BTreeMap, rc::Rc, vec, vec::Vec},
+    random::RandomState,
     utils::time::Time,
 };
+
+use crate::prelude::*;
 use core::{cell::RefCell, fmt::Debug, prelude::rust_2024::*};
 use log::info;
 use ringmap::RingMap;
@@ -39,7 +40,7 @@ impl Default for ScopeContext {
         ScopeContext {
             next_section_index: 0,
             next_block_number: 0,
-            keep_alive_timestamp: Time::now(),
+            keep_alive_timestamp: crate::time::Instant::now(),
             current_queue_sender: None,
             cached_blocks: BTreeMap::new(),
         }
@@ -405,18 +406,22 @@ impl BlockHandler {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
-    use core::str::FromStr;
-    use ntest_timeout::timeout;
-    use datex_core::global::protocol_structures::routing_header::Receivers;
     use super::*;
-    use crate::global::dxb_block::{DXBBlock, IncomingSection};
-    use crate::global::protocol_structures::block_header::{BlockHeader, BlockType, FlagsAndTimestamp};
-    use crate::global::protocol_structures::routing_header::RoutingHeader;
-    use crate::native_global_context::init_global_context_native;
-    use crate::values::core_values::endpoint::Endpoint;
+    use crate::{
+        global::{
+            dxb_block::{DXBBlock, IncomingSection},
+            protocol_structures::{
+                block_header::{BlockHeader, BlockType, FlagsAndTimestamp},
+                routing_header::RoutingHeader,
+            },
+        },
+        values::core_values::endpoint::Endpoint,
+    };
+    use core::str::FromStr;
+    use datex_core::global::protocol_structures::routing_header::Receivers;
+    use ntest_timeout::timeout;
 
     lazy_static::lazy_static! {
         pub static ref TEST_ENDPOINT_ORIGIN: Endpoint = Endpoint::from_str("@origin").unwrap();
@@ -443,7 +448,9 @@ mod tests {
             },
             routing_header: RoutingHeader::default()
                 .with_sender(TEST_ENDPOINT_A.clone())
-                .with_receivers(Receivers::Endpoints(vec![TEST_ENDPOINT_ORIGIN.clone()]))
+                .with_receivers(Receivers::Endpoints(vec![
+                    TEST_ENDPOINT_ORIGIN.clone(),
+                ]))
                 .to_owned(),
             ..DXBBlock::default()
         };
@@ -456,7 +463,10 @@ mod tests {
         let incoming_block = incoming_sections_receiver.next().await.unwrap();
         match &incoming_block {
             IncomingSection::SingleBlock((Some(received_block), ..)) => {
-                assert_eq!(received_block.get_endpoint_context_id(), block_endpoint_context_id);
+                assert_eq!(
+                    received_block.get_endpoint_context_id(),
+                    block_endpoint_context_id
+                );
             }
             _ => panic!("Expected a SingleBlock section"),
         }
@@ -464,8 +474,6 @@ mod tests {
 
     #[tokio::test]
     async fn receive_multiple_blocks() {
-        init_global_context_native();
-
         let (incoming_sections_sender, mut incoming_sections_receiver) =
             create_unbounded_channel::<IncomingSection>();
 
@@ -476,7 +484,6 @@ mod tests {
 
         // Create multiple DXB blocks for the same context and section
         let mut blocks = gen move {
-
             yield DXBBlock {
                 block_header: BlockHeader {
                     context_id,
@@ -489,7 +496,9 @@ mod tests {
                 },
                 routing_header: RoutingHeader::default()
                     .with_sender(TEST_ENDPOINT_A.clone())
-                    .with_receivers(Receivers::Endpoints(vec![TEST_ENDPOINT_ORIGIN.clone()]))
+                    .with_receivers(Receivers::Endpoints(vec![
+                        TEST_ENDPOINT_ORIGIN.clone(),
+                    ]))
                     .to_owned(),
                 ..DXBBlock::default()
             };
@@ -506,7 +515,9 @@ mod tests {
                 },
                 routing_header: RoutingHeader::default()
                     .with_sender(TEST_ENDPOINT_A.clone())
-                    .with_receivers(Receivers::Endpoints(vec![TEST_ENDPOINT_ORIGIN.clone()]))
+                    .with_receivers(Receivers::Endpoints(vec![
+                        TEST_ENDPOINT_ORIGIN.clone(),
+                    ]))
                     .to_owned(),
                 ..DXBBlock::default()
             };
@@ -521,9 +532,9 @@ mod tests {
         let mut section = incoming_sections_receiver.next().await.unwrap();
         match &section {
             IncomingSection::BlockStream((
-                 Some(blocks),
-                 incoming_context_section_id,
-             )) => {
+                Some(blocks),
+                incoming_context_section_id,
+            )) => {
                 // section must match
                 assert_eq!(
                     incoming_context_section_id.section_index,
@@ -543,9 +554,9 @@ mod tests {
         // block must be a block stream
         match &section {
             IncomingSection::BlockStream((
-                 Some(blocks),
-                 incoming_context_section_id,
-             )) => {
+                Some(blocks),
+                incoming_context_section_id,
+            )) => {
                 // section must match
                 assert_eq!(
                     incoming_context_section_id.section_index,
@@ -560,8 +571,6 @@ mod tests {
 
     #[tokio::test]
     async fn receive_multiple_blocks_wrong_order() {
-        init_global_context_native();
-
         let (incoming_sections_sender, mut incoming_sections_receiver) =
             create_unbounded_channel::<IncomingSection>();
 
@@ -584,7 +593,9 @@ mod tests {
                 },
                 routing_header: RoutingHeader::default()
                     .with_sender(TEST_ENDPOINT_A.clone())
-                    .with_receivers(Receivers::Endpoints(vec![TEST_ENDPOINT_ORIGIN.clone()]))
+                    .with_receivers(Receivers::Endpoints(vec![
+                        TEST_ENDPOINT_ORIGIN.clone(),
+                    ]))
                     .to_owned(),
                 ..DXBBlock::default()
             };
@@ -601,7 +612,9 @@ mod tests {
                 },
                 routing_header: RoutingHeader::default()
                     .with_sender(TEST_ENDPOINT_A.clone())
-                    .with_receivers(Receivers::Endpoints(vec![TEST_ENDPOINT_ORIGIN.clone()]))
+                    .with_receivers(Receivers::Endpoints(vec![
+                        TEST_ENDPOINT_ORIGIN.clone(),
+                    ]))
                     .to_owned(),
                 ..DXBBlock::default()
             };
@@ -618,9 +631,9 @@ mod tests {
         // block must be a block stream
         match &section {
             IncomingSection::BlockStream((
-                 Some(blocks),
-                 incoming_context_section_id,
-             )) => {
+                Some(blocks),
+                incoming_context_section_id,
+            )) => {
                 // section must match
                 assert_eq!(
                     incoming_context_section_id.section_index.clone(),
@@ -644,8 +657,6 @@ mod tests {
 
     #[tokio::test]
     async fn receive_multiple_sections() {
-        init_global_context_native();
-
         let (incoming_sections_sender, mut incoming_sections_receiver) =
             create_unbounded_channel::<IncomingSection>();
 
@@ -670,7 +681,9 @@ mod tests {
                 },
                 routing_header: RoutingHeader::default()
                     .with_sender(TEST_ENDPOINT_A.clone())
-                    .with_receivers(Receivers::Endpoints(vec![TEST_ENDPOINT_ORIGIN.clone()]))
+                    .with_receivers(Receivers::Endpoints(vec![
+                        TEST_ENDPOINT_ORIGIN.clone(),
+                    ]))
                     .to_owned(),
                 ..DXBBlock::default()
             };
@@ -687,7 +700,9 @@ mod tests {
                 },
                 routing_header: RoutingHeader::default()
                     .with_sender(TEST_ENDPOINT_A.clone())
-                    .with_receivers(Receivers::Endpoints(vec![TEST_ENDPOINT_ORIGIN.clone()]))
+                    .with_receivers(Receivers::Endpoints(vec![
+                        TEST_ENDPOINT_ORIGIN.clone(),
+                    ]))
                     .to_owned(),
                 ..DXBBlock::default()
             };
@@ -705,7 +720,9 @@ mod tests {
                 },
                 routing_header: RoutingHeader::default()
                     .with_sender(TEST_ENDPOINT_A.clone())
-                    .with_receivers(Receivers::Endpoints(vec![TEST_ENDPOINT_ORIGIN.clone()]))
+                    .with_receivers(Receivers::Endpoints(vec![
+                        TEST_ENDPOINT_ORIGIN.clone(),
+                    ]))
                     .to_owned(),
                 ..DXBBlock::default()
             };
@@ -722,7 +739,9 @@ mod tests {
                 },
                 routing_header: RoutingHeader::default()
                     .with_sender(TEST_ENDPOINT_A.clone())
-                    .with_receivers(Receivers::Endpoints(vec![TEST_ENDPOINT_ORIGIN.clone()]))
+                    .with_receivers(Receivers::Endpoints(vec![
+                        TEST_ENDPOINT_ORIGIN.clone(),
+                    ]))
                     .to_owned(),
                 ..DXBBlock::default()
             };
@@ -736,9 +755,9 @@ mod tests {
         // block must be a block stream
         match &section {
             IncomingSection::BlockStream((
-                 Some(blocks),
-                 incoming_context_section_id,
-             )) => {
+                Some(blocks),
+                incoming_context_section_id,
+            )) => {
                 // section must match
                 assert_eq!(
                     incoming_context_section_id.section_index,
@@ -756,9 +775,9 @@ mod tests {
         // block must be a block stream
         match &section {
             IncomingSection::BlockStream((
-                 Some(blocks),
-                 incoming_context_section_id,
-             )) => {
+                Some(blocks),
+                incoming_context_section_id,
+            )) => {
                 // section must match
                 assert_eq!(
                     incoming_context_section_id.section_index,
@@ -779,9 +798,9 @@ mod tests {
         // block must be a block stream
         match &section {
             IncomingSection::BlockStream((
-                 Some(blocks),
-                 incoming_context_section_id,
-             )) => {
+                Some(blocks),
+                incoming_context_section_id,
+            )) => {
                 // section must match
                 assert_eq!(
                     incoming_context_section_id.section_index,
@@ -800,9 +819,9 @@ mod tests {
         // block must be a block stream
         match &section {
             IncomingSection::BlockStream((
-                 Some(blocks),
-                 incoming_context_section_id,
-             )) => {
+                Some(blocks),
+                incoming_context_section_id,
+            )) => {
                 // section must match
                 assert_eq!(
                     incoming_context_section_id.section_index,
@@ -818,8 +837,6 @@ mod tests {
     #[tokio::test]
     #[timeout(2000)]
     async fn await_response_block() {
-        init_global_context_native();
-
         let (incoming_sections_sender, mut incoming_sections_receiver) =
             create_unbounded_channel::<IncomingSection>();
 
@@ -841,7 +858,9 @@ mod tests {
             },
             routing_header: RoutingHeader::default()
                 .with_sender(TEST_ENDPOINT_A.clone())
-                .with_receivers(Receivers::Endpoints(vec![TEST_ENDPOINT_ORIGIN.clone()]))
+                .with_receivers(Receivers::Endpoints(vec![
+                    TEST_ENDPOINT_ORIGIN.clone(),
+                ]))
                 .to_owned(),
             ..DXBBlock::default()
         };

@@ -20,7 +20,6 @@ use crate::{
         Statements, UnaryOperation, UnboundedStatement, VariableAccess,
         VariableAssignment, VariableDeclaration, VariableKind,
     },
-    compat::heap::boxed::Box,
     compiler::{
         context::{CompilationContext, VirtualSlot},
         error::{
@@ -33,10 +32,8 @@ use crate::{
     },
     global::{instruction_codes::InstructionCode, slots::InternalSlot},
     libs::core::CoreLibPointerId,
-    string::String,
-    vec::Vec,
+    prelude::*,
 };
-use alloc::format;
 
 use crate::{
     ast::resolved_variable::VariableId,
@@ -64,7 +61,7 @@ use precompiler::{
     precompiled_ast::{AstMetadata, RichAst, VariableMetadata},
 };
 
-use crate::{compat::heap::vec, rc::Rc};
+use crate::prelude::*;
 
 pub mod context;
 pub mod error;
@@ -1453,25 +1450,23 @@ pub mod tests {
         compile_template, parse_datex_script_to_rich_ast_simple_error,
     };
     use crate::{
-        compat::heap::{boxed::Box, vec},
         compiler::scope::CompilationScope,
         global::{
             instruction_codes::InstructionCode,
             type_instruction_codes::TypeInstructionCode,
         },
         libs::core::CoreLibPointerId,
-        rc::Rc,
         runtime::execution::{
             ExecutionError,
             context::{ExecutionContext, ExecutionMode, LocalExecutionContext},
         },
-        string::String,
         values::{
             core_values::integer::Integer, pointer::PointerAddress,
             value_container::ValueContainer,
         },
-        vec::Vec,
     };
+
+    use crate::prelude::*;
     use alloc::format;
     use core::assert_matches;
     use datex_core::{

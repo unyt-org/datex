@@ -5,14 +5,6 @@ use crate::{
         type_reference::{NominalTypeDeclaration, TypeReference},
     },
     runtime::memory::Memory,
-    compat::{
-        boxed::Box,
-        format,
-        rc::Rc,
-        string::{String, ToString},
-        vec,
-        vec::Vec,
-    },
     types::definition::TypeDefinition,
     values::{
         core_value::CoreValue,
@@ -28,6 +20,8 @@ use crate::{
         value_container::ValueContainer,
     },
 };
+
+use crate::prelude::*;
 use core::{cell::RefCell, iter::once, prelude::rust_2024::*, result::Result};
 use datex_macros::LibTypeString;
 use log::info;
@@ -500,7 +494,8 @@ mod tests {
     use crate::values::core_values::endpoint::Endpoint;
 
     use super::*;
-    use crate::compat::{assert_matches, str::FromStr};
+
+    use crate::prelude::*;
     use itertools::Itertools;
 
     #[test]
@@ -534,7 +529,7 @@ mod tests {
     fn debug() {
         let mut memory = Memory::new(Endpoint::LOCAL);
         load_core_lib(&mut memory);
-        println!(
+        info!(
             "{}",
             memory
                 .get_value_reference(&CoreLibPointerId::Core.into())
@@ -648,6 +643,7 @@ mod tests {
 
     #[ignore]
     #[test]
+    #[cfg(feature = "std")]
     fn print_core_lib_addresses_as_hex() {
         with_full_core_lib(|core_lib_types, _| {
             let sorted_entries = core_lib_types
@@ -663,6 +659,7 @@ mod tests {
 
     #[test]
     #[ignore]
+    #[cfg(feature = "std")]
     /// Generates a TypeScript mapping of core type addresses to their names.
     /// Run this test and copy the output into `src/dif/definitions.ts`.
     ///

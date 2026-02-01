@@ -1,33 +1,28 @@
-use core::async_iter::AsyncIterator;
-use core::pin::Pin;
-use core::fmt::Debug;
-use crate::compat::sync::{Arc};
 use crate::std_sync::Mutex;
-use crate::compat::rc::Rc;
+use core::{async_iter::AsyncIterator, fmt::Debug, pin::Pin};
+
 pub use crate::network::com_hub::managers::com_interface_manager::ComInterfaceAsyncFactoryResult;
 use crate::{
+    global::dxb_block::DXBBlock,
     network::{
         com_hub::errors::ComInterfaceCreateError,
         com_interfaces::com_interface::{
-            properties::ComInterfaceProperties,
+            ComInterfaceUUID,
+            properties::{ComInterfaceProperties, InterfaceDirection},
+            socket::ComInterfaceSocketUUID,
         },
     },
+    prelude::*,
     serde::deserializer::from_value_container,
-    values::value_container::ValueContainer,
+    utils::{async_callback::AsyncCallback, time::Time, uuid::UUID},
+    values::{
+        core_values::endpoint::Endpoint, value_container::ValueContainer,
+    },
 };
 use serde::de::DeserializeOwned;
-use crate::global::dxb_block::DXBBlock;
-use crate::network::com_interfaces::com_interface::ComInterfaceUUID;
-use crate::network::com_interfaces::com_interface::properties::InterfaceDirection;
-use crate::network::com_interfaces::com_interface::socket::ComInterfaceSocketUUID;
-use crate::compat::boxed::Box;
-use crate::utils::async_callback::AsyncCallback;
-use crate::utils::time::Time;
-use crate::utils::uuid::UUID;
-use crate::values::core_values::endpoint::Endpoint;
 
-
-pub type NewSocketsIterator = Pin<Box<dyn AsyncIterator<Item = Result<SocketConfiguration, ()>> + Send>>;
+pub type NewSocketsIterator =
+    Pin<Box<dyn AsyncIterator<Item = Result<SocketConfiguration, ()>> + Send>>;
 
 #[derive(Debug, Clone)]
 pub struct SocketProperties {
@@ -39,15 +34,12 @@ pub struct SocketProperties {
 }
 
 impl SocketProperties {
-    pub fn new(
-        direction: InterfaceDirection,
-        channel_factor: u32,
-    ) -> Self {
+    pub fn new(direction: InterfaceDirection, channel_factor: u32) -> Self {
         SocketProperties {
             direction,
             channel_factor,
             direct_endpoint: None,
-            connection_timestamp: Time::now(),
+            connection_timestamp: crate::time::Instant::now(),
             uuid: ComInterfaceSocketUUID(UUID::new()),
         }
     }
@@ -60,11 +52,11 @@ impl SocketProperties {
             direction,
             channel_factor,
             direct_endpoint: Some(endpoint),
-            connection_timestamp: Time::now(),
+            connection_timestamp: crate::time::Instant::now(),
             uuid: ComInterfaceSocketUUID(UUID::new()),
         }
     }
-    
+
     pub fn new_with_maybe_direct_endpoint(
         direction: InterfaceDirection,
         channel_factor: u32,
@@ -74,7 +66,7 @@ impl SocketProperties {
             direction,
             channel_factor,
             direct_endpoint: maybe_endpoint,
-            connection_timestamp: Time::now(),
+            connection_timestamp: crate::time::Instant::now(),
             uuid: ComInterfaceSocketUUID(UUID::new()),
         }
     }
@@ -84,7 +76,8 @@ impl SocketProperties {
     }
 }
 
-pub type SocketDataIterator = Pin<Box<dyn AsyncIterator<Item = Result<Vec<u8>, ()>> + Send>>;
+pub type SocketDataIterator =
+    Pin<Box<dyn AsyncIterator<Item = Result<Vec<u8>, ()>> + Send>>;
 
 pub struct SocketConfiguration {
     pub properties: SocketProperties,
@@ -93,7 +86,7 @@ pub struct SocketConfiguration {
     pub iterator: Option<SocketDataIterator>,
     /// A callback that is called by the com hub to send data through the socket
     /// This can be either a synchronous or asynchronous callback depending on the interface implementation
-    pub send_callback: Option<SendCallback>
+    pub send_callback: Option<SendCallback>,
 }
 
 impl Debug for SocketConfiguration {
@@ -113,7 +106,7 @@ impl SocketConfiguration {
         send_callback: SendCallback,
     ) -> Self
     where
-        I: AsyncIterator<Item=Result<Vec<u8>, ()>> + Send + 'static,
+        I: AsyncIterator<Item = Result<Vec<u8>, ()>> + Send + 'static,
     {
         SocketConfiguration {
             properties: socket_configuration,
@@ -129,11 +122,19 @@ impl SocketConfiguration {
         maybe_iter: Option<I>,
     ) -> Self
     where
-        I: AsyncIterator<Item=Result<Vec<u8>, ()>> + Send + 'static,
+        I: AsyncIterator<Item = Result<Vec<u8>, ()>> + Send + 'static,
     {
         SocketConfiguration {
             properties: socket_configuration,
-            iterator: maybe_iter.map(|it| Box::pin(it) as Pin<Box<dyn AsyncIterator<Item=Result<Vec<u8>, ()>> + Send>>),
+            iterator: maybe_iter.map(|it| {
+                Box::pin(it)
+                    as Pin<
+                        Box<
+                            dyn AsyncIterator<Item = Result<Vec<u8>, ()>>
+                                + Send,
+                        >,
+                    >
+            }),
             send_callback: None,
         }
     }
@@ -159,8 +160,17 @@ pub enum SendCallback {
     /// The callback receives a DXBBlock and the UUID of the socket to send the data through.
     /// It returns a SendSuccess result which can contain already received data from the remote side.
     /// The failure case returns a SendFailure containing the original DXBBlock.
-    Sync(Arc<dyn Fn(DXBBlock) -> Result<SendSuccess, SendFailure> + 'static + Send + Sync>),
-    SyncOnce(Arc<dyn Fn(DXBBlock) -> Result<SendSuccess, SendFailure> + Send + Sync>),
+    Sync(
+        Arc<
+            dyn Fn(DXBBlock) -> Result<SendSuccess, SendFailure>
+                + 'static
+                + Send
+                + Sync,
+        >,
+    ),
+    SyncOnce(
+        Arc<dyn Fn(DXBBlock) -> Result<SendSuccess, SendFailure> + Send + Sync>,
+    ),
     /// An asynchronous send callback.
     /// The callback receives a DXBBlock and the UUID of the socket to send the data through.
     /// It returns a future that resolves to a Result indicating success or failure.
@@ -174,12 +184,13 @@ impl Debug for SendCallback {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             SendCallback::Sync(_) => write!(f, "SendCallback::Sync(...)"),
-            SendCallback::SyncOnce(_) => write!(f, "SendCallback::SyncOnce(...)"),
+            SendCallback::SyncOnce(_) => {
+                write!(f, "SendCallback::SyncOnce(...)")
+            }
             SendCallback::Async(_) => write!(f, "SendCallback::Async(...)"),
         }
     }
 }
-
 
 #[derive(Default)]
 pub enum SendSuccess {
@@ -192,18 +203,24 @@ pub enum SendSuccess {
 }
 
 #[derive(Debug, Clone)]
-pub struct SendFailure (pub Box<DXBBlock>);
+pub struct SendFailure(pub Box<DXBBlock>);
 
 impl SendCallback {
     pub fn new_sync(
-        f: impl Fn(DXBBlock) -> Result<SendSuccess, SendFailure> + 'static + Send + Sync,
+        f: impl Fn(DXBBlock) -> Result<SendSuccess, SendFailure>
+        + 'static
+        + Send
+        + Sync,
     ) -> Self {
         SendCallback::Sync(Arc::new(f))
     }
 
     // Sync send callback that can only be called once - after that, it returns SendFailure
     pub fn new_sync_once(
-        f: impl FnOnce(DXBBlock) -> Result<SendSuccess, SendFailure> + 'static + Send + Sync,
+        f: impl FnOnce(DXBBlock) -> Result<SendSuccess, SendFailure>
+        + 'static
+        + Send
+        + Sync,
     ) -> Self {
         let once_fn = Box::new(Mutex::new(Some(f)));
         let wrapper = move |block: DXBBlock| {
@@ -220,7 +237,10 @@ impl SendCallback {
     pub fn new_async<F, Fut>(f: F) -> Self
     where
         F: Fn(DXBBlock) -> Fut + Send + Sync + 'static,
-        Fut: core::future::Future<Output = Result<(), SendFailure>> + Send + Sync + 'static,
+        Fut: core::future::Future<Output = Result<(), SendFailure>>
+            + Send
+            + Sync
+            + 'static,
     {
         SendCallback::Async(AsyncCallback::new(f))
     }
@@ -244,13 +264,16 @@ impl Debug for ComInterfaceConfiguration {
 }
 
 impl ComInterfaceConfiguration {
-
     /// Creates a new ComInterfaceConfiguration with the given properties and socket iterator.
     pub fn new<I>(
         properties: ComInterfaceProperties,
         new_sockets_iterator: I,
     ) -> Self
-    where I: AsyncIterator<Item = Result<SocketConfiguration, ()>> + Send + 'static {
+    where
+        I: AsyncIterator<Item = Result<SocketConfiguration, ()>>
+            + Send
+            + 'static,
+    {
         ComInterfaceConfiguration {
             uuid: ComInterfaceUUID(UUID::new()),
             properties: Rc::new(properties),
@@ -278,7 +301,6 @@ impl ComInterfaceConfiguration {
 }
 
 pub type InterfaceCloseAsyncCallback = AsyncCallback<(), ()>;
-
 
 /// This trait can be implemented to provide a factory with a synchronous setup process
 /// for a ComInterface implementation that can be registered on a ComHub.
@@ -381,9 +403,7 @@ where
     /// The factory method that is called from the ComHub on a registered interface
     /// to create a new instance of the interface.
     /// The setup data is passed as a ValueContainer and has to be downcasted
-    fn factory(
-        setup_data: ValueContainer,
-    ) -> ComInterfaceAsyncFactoryResult {
+    fn factory(setup_data: ValueContainer) -> ComInterfaceAsyncFactoryResult {
         Box::pin(async move {
             let setup_data = from_value_container::<Self>(&setup_data)
                 .map_err(|_| ComInterfaceCreateError::SetupDataParseError)?;
@@ -394,9 +414,7 @@ where
     /// Create a new instance of the interface with the given setup data.
     /// If no instance could be created with the given setup data,
     /// None is returned.
-    fn create_interface(
-        self,
-    ) -> ComInterfaceAsyncFactoryResult;
+    fn create_interface(self) -> ComInterfaceAsyncFactoryResult;
 
     /// Get the default interface properties for the interface.
     fn get_default_properties() -> ComInterfaceProperties;

@@ -1,6 +1,7 @@
-use crate::{runtime::global_context::get_global_context, compat::heap::vec::Vec};
+use crate::runtime::global_context::get_global_context;
 use core::convert::TryInto;
 
+use crate::prelude::*;
 pub fn random_bytes_slice<const SIZE: usize>() -> [u8; SIZE] {
     let crypto = get_global_context().crypto;
     crypto.random_bytes(SIZE).try_into().unwrap()

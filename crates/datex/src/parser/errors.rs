@@ -7,6 +7,8 @@ use crate::{
         endpoint::InvalidEndpointError, error::NumberParseError,
     },
 };
+
+use crate::prelude::*;
 use core::ops::Range;
 
 #[derive(Debug, Clone, PartialEq, Eq)]

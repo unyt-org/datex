@@ -13,16 +13,13 @@ use crate::{
 
 use crate::{
     network::com_interfaces::com_interface::{
-        properties::{InterfaceDirection, ComInterfaceProperties},
+        properties::{ComInterfaceProperties, InterfaceDirection},
         socket::ComInterfaceSocketUUID,
-    },
-    compat::{
-        format,
-        string::{String, ToString},
-        vec::Vec,
     },
     values::core_values::endpoint::Endpoint,
 };
+
+use crate::prelude::*;
 use core::fmt::Display;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
@@ -136,9 +133,12 @@ impl ComHub {
             Vec<ComHubMetadataInterfaceSocket>,
         > = HashMap::new();
 
-        for (endpoint, sockets) in self.socket_manager.endpoint_sockets.borrow().iter() {
+        for (endpoint, sockets) in
+            self.socket_manager.endpoint_sockets.borrow().iter()
+        {
             for (socket_uuid, properties) in sockets {
-                let socket = self.socket_manager.get_socket_by_uuid(socket_uuid);
+                let socket =
+                    self.socket_manager.get_socket_by_uuid(socket_uuid);
                 let com_interface_uuid = socket.interface_uuid.clone();
                 if !sockets_by_com_interface_uuid
                     .contains_key(&com_interface_uuid)
@@ -182,7 +182,9 @@ impl ComHub {
             }
         }
 
-        for (uuid, (interface_properties, _)) in self.interfaces_manager.interfaces.borrow().iter() {
+        for (uuid, (interface_properties, _)) in
+            self.interfaces_manager.interfaces.borrow().iter()
+        {
             metadata.interfaces.push(ComHubMetadataInterface {
                 uuid: uuid.to_string(),
                 properties: interface_properties.as_ref().clone(),

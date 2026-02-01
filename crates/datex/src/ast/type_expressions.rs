@@ -1,10 +1,11 @@
+use alloc::{boxed::Box, string::String};
+
 use crate::{
     ast::{
         expressions::VariableAccess, resolved_variable::ResolvedVariable,
         spanned::Spanned,
     },
-    compat::heap::boxed::Box,
-    string::String,
+    prelude::*,
     values::{
         core_values::{
             callable::CallableKind,
@@ -15,8 +16,8 @@ use crate::{
         },
         pointer::PointerAddress,
     },
-    vec::Vec,
 };
+
 use core::ops;
 #[derive(Clone, Debug, PartialEq)]
 /// The different kinds of type expressions in the AST

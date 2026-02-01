@@ -1,13 +1,12 @@
 use crate::{
     ast::expressions::DatexExpression,
-    compat::heap::boxed::Box,
     compiler::precompiler::precompiled_ast::RichAst,
     parser::errors::{ParserError, SpannedParserError},
     serde::error::DeserializationError,
-    string::String,
     type_inference::error::{DetailedTypeErrors, SpannedTypeError, TypeError},
-    vec::Vec,
 };
+
+use crate::prelude::*;
 use alloc::format;
 use core::{
     fmt::{Display, Formatter},

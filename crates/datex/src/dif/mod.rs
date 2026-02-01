@@ -1,4 +1,4 @@
-use crate::compat::string::String;
+use crate::prelude::*;
 use serde::{Deserialize, Serialize};
 
 pub mod interface;
@@ -67,7 +67,6 @@ mod tests {
                 ty: None,
             }));
         let serialized = dif_update.as_json();
-        println!("Serialized DIFUpdate: {}", serialized);
         let deserialized: DIFUpdateData = DIFUpdateData::from_json(&serialized);
         assert_eq!(dif_update, deserialized);
 
@@ -80,7 +79,6 @@ mod tests {
             }),
         );
         let serialized = dif_update.as_json();
-        println!("Serialized DIFUpdate: {}", serialized);
         let deserialized: DIFUpdateData = DIFUpdateData::from_json(&serialized);
         assert_eq!(dif_update, deserialized);
     }
@@ -92,7 +90,6 @@ mod tests {
             ty: Some(DIFTypeDefinition::Unit),
         };
         let serialized = value.as_json();
-        println!("Serialized DIFValue: {}", serialized);
         let deserialized = DIFValue::from_json(&serialized);
         assert_eq!(value, deserialized);
     }
