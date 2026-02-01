@@ -602,9 +602,8 @@ mod tests {
             src_id::SrcId,
             type_expressions::{StructuralMap, TypeExpressionData},
         },
-        compat::heap::vec,
+        compat::heap::{boxed::Box, vec},
         parser::Parser,
-        prelude::*,
         references::reference::ReferenceMutability,
         values::{core_values::integer::Integer, pointer::PointerAddress},
     };
