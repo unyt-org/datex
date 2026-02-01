@@ -8,7 +8,7 @@ use crate::{
             execution_loop::state::ExecutionLoopState,
         },
     },
-    stdlib::rc::Rc,
+    compat::rc::Rc,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]

@@ -1,6 +1,6 @@
 use crate::{
     crypto::random,
-    stdlib::{
+    compat::{
         format,
         string::{String, ToString},
         vec::Vec,

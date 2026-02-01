@@ -1,6 +1,6 @@
 use crate::{
     libs::core::CoreLibPointerId,
-    stdlib::{
+    compat::{
         format,
         string::{String, ToString},
         vec::Vec,

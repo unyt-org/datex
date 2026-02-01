@@ -1,9 +1,9 @@
 use core::async_iter::AsyncIterator;
 use core::pin::Pin;
 use core::fmt::Debug;
-use crate::stdlib::sync::{Arc};
+use crate::compat::sync::{Arc};
 use crate::std_sync::Mutex;
-use crate::stdlib::rc::Rc;
+use crate::compat::rc::Rc;
 pub use crate::network::com_hub::managers::com_interface_manager::ComInterfaceAsyncFactoryResult;
 use crate::{
     network::{
@@ -20,7 +20,7 @@ use crate::global::dxb_block::DXBBlock;
 use crate::network::com_interfaces::com_interface::ComInterfaceUUID;
 use crate::network::com_interfaces::com_interface::properties::InterfaceDirection;
 use crate::network::com_interfaces::com_interface::socket::ComInterfaceSocketUUID;
-use crate::stdlib::boxed::Box;
+use crate::compat::boxed::Box;
 use crate::utils::async_callback::AsyncCallback;
 use crate::utils::time::Time;
 use crate::utils::uuid::UUID;

@@ -7,7 +7,7 @@ use crate::{
     references::{
         reference::ReferenceMutability, type_reference::TypeReference,
     },
-    stdlib::rc::Rc,
+    compat::rc::Rc,
     type_inference::{error::TypeError, options::ErrorHandling},
     types::definition::TypeDefinition,
 };

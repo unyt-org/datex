@@ -5,7 +5,7 @@ use crate::{
             properties::{InterfaceDirection, ComInterfaceProperties},
         },
     },
-    stdlib::string::ToString,
+    compat::string::ToString,
     values::core_values::endpoint::Endpoint,
 };
 use core::{prelude::rust_2024::*, result::Result, time::Duration};

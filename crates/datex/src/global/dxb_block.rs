@@ -5,19 +5,22 @@ use super::protocol_structures::{
 };
 use crate::{
     channel::mpsc::UnboundedReceiver,
-    global::protocol_structures::routing_header::Receivers, stdlib::vec::Vec,
-    utils::buffers::write_u16, values::core_values::endpoint::Endpoint,
+    compat::heap::vec::Vec,
+    global::protocol_structures::{
+        block_header::BlockType, routing_header::Receivers,
+    },
+    utils::buffers::write_u16,
+    values::core_values::endpoint::Endpoint,
 };
 use binrw::{
-    io::{Cursor, Read}, BinRead,
-    BinWrite,
+    BinRead, BinWrite,
+    io::{Cursor, Read},
 };
 use core::{
     fmt::Display, prelude::rust_2024::*, result::Result, unimplemented,
 };
 use strum::Display;
 use thiserror::Error;
-use crate::global::protocol_structures::block_header::BlockType;
 
 #[derive(Debug, Display, Error)]
 pub enum HeaderParsingError {
@@ -156,7 +159,7 @@ pub struct BlockId {
 
 #[derive(Debug)]
 pub enum DXBBlockParseError {
-    IOError(crate::stdlib::io::Error),
+    IOError(crate::compat::io::Error),
     ParseError(binrw::Error),
     MissingSignature,
     InvalidSignature,
@@ -168,8 +171,8 @@ impl From<binrw::Error> for DXBBlockParseError {
     }
 }
 
-impl From<crate::stdlib::io::Error> for DXBBlockParseError {
-    fn from(err: crate::stdlib::io::Error) -> Self {
+impl From<crate::compat::io::Error> for DXBBlockParseError {
+    fn from(err: crate::compat::io::Error) -> Self {
         DXBBlockParseError::IOError(err)
     }
 }
@@ -235,21 +238,21 @@ impl DXBBlock {
         if dxb.len() < SIZE_BYTE_POSITION + SIZE_BYTES {
             return Err(HeaderParsingError::InsufficientLength);
         }
-        
+
         // make sure magic number is correct
         if !DXBBlock::has_dxb_magic_number(dxb) {
             return Err(HeaderParsingError::InvalidMagicNumber);
         }
-        
+
         // block size is u16 at SIZE_BYTE_POSITION
         let block_size_bytes =
             &dxb[SIZE_BYTE_POSITION..SIZE_BYTE_POSITION + SIZE_BYTES];
-        Ok(u16::from_le_bytes(
-            block_size_bytes.try_into().unwrap(),
-        ))
+        Ok(u16::from_le_bytes(block_size_bytes.try_into().unwrap()))
     }
 
-    pub async fn from_bytes(bytes: &[u8]) -> Result<DXBBlock, DXBBlockParseError> {
+    pub async fn from_bytes(
+        bytes: &[u8],
+    ) -> Result<DXBBlock, DXBBlockParseError> {
         let mut reader = Cursor::new(bytes);
         let routing_header = RoutingHeader::read(&mut reader)?;
 
@@ -479,7 +482,7 @@ mod tests {
     use crate::{
         crypto::crypto::CryptoTrait,
         global::{
-            dxb_block::DXBBlock,
+            dxb_block::{DXBBlock, DXBBlockParseError},
             protocol_structures::{
                 encrypted_header::{self, EncryptedHeader},
                 routing_header::{RoutingHeader, SignatureType},
@@ -487,7 +490,6 @@ mod tests {
         },
         values::core_values::endpoint::Endpoint,
     };
-    use crate::global::dxb_block::DXBBlockParseError;
     use core::assert_matches;
 
     #[tokio::test]

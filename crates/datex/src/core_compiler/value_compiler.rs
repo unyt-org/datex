@@ -3,7 +3,7 @@ use crate::{
     global::instruction_codes::InstructionCode,
     libs::core::{CoreLibPointerId, get_core_lib_type_definition},
     references::reference::ReferenceMutability,
-    stdlib::vec::Vec,
+    compat::heap::vec::Vec,
     types::definition::TypeDefinition,
     utils::buffers::{
         append_f32, append_f64, append_i8, append_i16, append_i32, append_i64,

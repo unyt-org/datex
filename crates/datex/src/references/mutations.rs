@@ -8,7 +8,7 @@ use crate::{
         reference::{AccessError, Reference},
     },
     runtime::memory::Memory,
-    stdlib::{format, vec::Vec},
+    compat::{format, vec::Vec},
     values::{
         core_value::CoreValue,
         value_container::{ValueContainer, ValueKey},

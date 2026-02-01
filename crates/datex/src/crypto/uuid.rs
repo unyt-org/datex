@@ -1,5 +1,5 @@
 use crate::{
-    runtime::global_context::get_global_context, stdlib::string::String,
+    runtime::global_context::get_global_context, compat::string::String,
 };
 
 pub fn generate_uuid_string() -> String {

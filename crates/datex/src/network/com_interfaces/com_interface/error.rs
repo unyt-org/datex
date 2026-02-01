@@ -1,6 +1,6 @@
-use crate::stdlib::format;
+use crate::compat::format;
 use core::fmt::{Debug, Display};
-use crate::stdlib::boxed::Box;
+use crate::compat::boxed::Box;
 
 pub enum ComInterfaceError {
     SocketNotFound,

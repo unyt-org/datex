@@ -2,7 +2,7 @@ use crate::{
     libs::core::CoreLibPointerId,
     references::{reference::AccessError, type_reference::TypeReference},
     runtime::execution::ExecutionError,
-    stdlib::{
+    compat::{
         boxed::Box,
         format,
         string::{String, ToString},

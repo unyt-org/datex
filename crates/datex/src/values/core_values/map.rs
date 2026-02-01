@@ -2,7 +2,7 @@ use crate::{
     collections::HashMap,
     references::reference::KeyNotFoundError,
     std_random::RandomState,
-    stdlib::{borrow::Cow, format, string::String, vec::Vec},
+    compat::{borrow::Cow, format, string::String, vec::Vec},
     traits::structural_eq::StructuralEq,
     values::{
         core_value::CoreValue,

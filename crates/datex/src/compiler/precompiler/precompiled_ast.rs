@@ -1,6 +1,6 @@
 use crate::{
     ast::expressions::{DatexExpression, VariableKind},
-    stdlib::{cell::RefCell, rc::Rc},
+    compat::{cell::RefCell, rc::Rc},
     values::core_values::r#type::Type,
 };
 use core::fmt::Display;

@@ -3,7 +3,7 @@ pub mod typed_integer;
 pub mod utils;
 
 use crate::{
-    stdlib::{
+    compat::{
         string::{String, ToString},
         vec,
     },

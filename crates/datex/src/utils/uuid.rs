@@ -1,4 +1,4 @@
-use crate::{crypto::uuid::generate_uuid_string, stdlib::string::String};
+use crate::{crypto::uuid::generate_uuid_string, compat::string::String};
 use core::{fmt::Display, prelude::rust_2024::*};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

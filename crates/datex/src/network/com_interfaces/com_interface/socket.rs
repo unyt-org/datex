@@ -3,7 +3,7 @@ use core::prelude::rust_2024::*;
 use serde::Serialize;
 
 use crate::{
-    stdlib::{string::String, string::ToString},
+    compat::{string::String, string::ToString},
     utils::{uuid::UUID},
 };
 use core::fmt::Display;

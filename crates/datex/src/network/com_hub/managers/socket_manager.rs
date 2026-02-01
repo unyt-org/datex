@@ -15,9 +15,9 @@ use futures::channel::oneshot::Receiver;
 use itertools::Itertools;
 use log::{debug, error, info, warn};
 use serde::{Deserialize, Serialize};
-use crate::stdlib::vec::Vec;
-use crate::stdlib::boxed::Box;
-use crate::stdlib::string::ToString;
+use crate::compat::heap::vec::Vec;
+use crate::compat::boxed::Box;
+use crate::compat::string::ToString;
 
 use crate::{
     network::com_interfaces::com_interface::{

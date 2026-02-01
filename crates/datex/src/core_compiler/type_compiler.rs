@@ -1,7 +1,7 @@
 use crate::{
     core_compiler::value_compiler::append_get_ref,
     global::type_instruction_codes::{TypeInstructionCode, TypeMutabilityCode},
-    stdlib::vec::Vec,
+    compat::heap::vec::Vec,
     types::definition::TypeDefinition,
     utils::buffers::append_u8,
     values::core_values::r#type::Type,

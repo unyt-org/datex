@@ -16,7 +16,7 @@ use crate::{
         variable_declaration_finder::VariableDeclarationFinder,
     },
     runtime::Runtime,
-    stdlib::{borrow::Cow, cell::RefCell},
+    compat::{borrow::Cow, cell::RefCell},
     values::core_values::r#type::Type,
     visitor::expression::ExpressionVisitor,
 };

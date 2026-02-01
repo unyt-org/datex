@@ -5,7 +5,7 @@ use crate::{
     libs::core::CoreLibPointerId,
     references::reference::ReferenceMutability,
     runtime::execution::ExecutionError,
-    stdlib::{
+    compat::{
         cell::RefCell,
         fmt::{Display, Formatter},
         rc::Rc,

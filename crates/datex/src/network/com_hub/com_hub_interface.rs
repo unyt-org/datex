@@ -13,13 +13,13 @@ use crate::{
             socket::ComInterfaceSocketUUID,
         },
     },
-    stdlib::{
+    compat::{
         string::String,
     },
     values::value_container::ValueContainer,
 };
 use core::{prelude::rust_2024::*, result::Result};
-use crate::stdlib::rc::Rc;
+use crate::compat::rc::Rc;
 use datex_core::network::com_interfaces::com_interface::{
     factory::ComInterfaceAsyncFactory,
 };

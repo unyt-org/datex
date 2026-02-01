@@ -1,4 +1,4 @@
-use datex::{derive_setup_data, stdlib::{net::SocketAddr}};
+use datex::{derive_setup_data, compat::{net::SocketAddr}};
 use core::str::FromStr;
 use async_tiny::{Response, Server};
 

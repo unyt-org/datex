@@ -5,7 +5,7 @@ use crate::{
         AccessError, AssignmentError, ReferenceCreationError,
     },
     runtime::execution::execution_loop::state::ExecutionLoopState,
-    stdlib::string::String,
+    compat::string::String,
     types::error::IllegalTypeError,
     values::value_container::{ValueContainer, ValueError},
 };

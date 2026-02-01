@@ -1,7 +1,7 @@
 use crate::{
     dif::update::{DIFUpdate, DIFUpdateData},
     references::{reference::Reference, value_reference::ValueReference},
-    stdlib::{cell::RefCell, rc::Rc, vec, vec::Vec},
+    compat::{cell::RefCell, rc::Rc, vec, vec::Vec},
 };
 use core::{fmt::Display, prelude::rust_2024::*, result::Result};
 use serde::{Deserialize, Serialize};
@@ -186,7 +186,7 @@ mod tests {
             reference::{Reference, ReferenceMutability},
         },
         runtime::memory::Memory,
-        stdlib::{borrow::Cow, cell::RefCell, rc::Rc},
+        compat::{borrow::Cow, cell::RefCell, rc::Rc},
         values::{core_values::map::Map, value_container::ValueContainer},
     };
     use std::assert_matches;

@@ -16,7 +16,7 @@ use crate::{
         properties::{InterfaceDirection, ComInterfaceProperties},
         socket::ComInterfaceSocketUUID,
     },
-    stdlib::{
+    compat::{
         format,
         string::{String, ToString},
         vec::Vec,

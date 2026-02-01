@@ -8,7 +8,7 @@ use datex::{derive_setup_data, network::{
         },
         properties::{InterfaceDirection, ComInterfaceProperties},
     },
-}, stdlib::{net::SocketAddr, sync::Arc}};
+}, compat::{net::SocketAddr, sync::Arc}};
 use core::{
     prelude::rust_2024::*, result::Result, str::FromStr,
 };

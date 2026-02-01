@@ -27,7 +27,7 @@ pub mod network_response;
 pub mod network_tracing;
 use crate::{
     network::com_interfaces::com_interface::socket::ComInterfaceSocketUUID,
-    stdlib::{
+    compat::{
         boxed::Box, cell::RefCell, rc::Rc, string::ToString, vec, vec::Vec,
     },
     utils::time::Time,

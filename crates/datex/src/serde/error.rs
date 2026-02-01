@@ -2,7 +2,7 @@
 use crate::compiler::error::{CompilerError, SpannedCompilerError};
 use crate::{
     runtime::execution::ExecutionError,
-    stdlib::{
+    compat::{
         io,
         string::{String, ToString},
     },

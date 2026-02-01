@@ -4,7 +4,7 @@ pub mod typed_decimal;
 pub mod utils;
 
 use crate::{
-    stdlib::{string::ToString, vec, vec::Vec},
+    compat::{string::ToString, vec, vec::Vec},
     traits::{structural_eq::StructuralEq, value_eq::ValueEq},
     values::core_values::{
         decimal::typed_decimal::TypedDecimal, error::NumberParseError,

@@ -1,5 +1,5 @@
 use datex::crypto::crypto::{CryptoError, CryptoResult, CryptoTrait};
-use datex::stdlib::sync::{
+use datex::compat::sync::{
     OnceLock,
     atomic::{AtomicU64, Ordering},
 };

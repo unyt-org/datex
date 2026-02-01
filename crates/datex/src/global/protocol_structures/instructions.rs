@@ -3,7 +3,7 @@ use crate::{
         operators::AssignmentOperator,
         type_instruction_codes::TypeMutabilityCode,
     },
-    stdlib::{string::String, vec::Vec},
+    compat::{string::String, vec::Vec},
     values::core_values::{
         decimal::{Decimal, utils::decimal_to_string},
         endpoint::{Endpoint, EndpointParsingError},

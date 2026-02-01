@@ -1,4 +1,4 @@
-use crate::stdlib::vec::Vec;
+use crate::compat::heap::vec::Vec;
 use binrw::{
     BinWrite,
     io::Cursor,

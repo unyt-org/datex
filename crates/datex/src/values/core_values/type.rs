@@ -7,7 +7,7 @@ use crate::{
     references::{
         reference::ReferenceMutability, type_reference::TypeReference,
     },
-    stdlib::{format, rc::Rc, string::ToString, vec::Vec},
+    compat::{format, rc::Rc, string::ToString, vec::Vec},
     traits::structural_eq::StructuralEq,
     types::{
         definition::TypeDefinition,

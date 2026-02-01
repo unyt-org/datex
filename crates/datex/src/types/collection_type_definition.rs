@@ -1,4 +1,4 @@
-use crate::{stdlib::boxed::Box, values::core_values::r#type::Type};
+use crate::{compat::boxed::Box, values::core_values::r#type::Type};
 use core::{fmt::Display, prelude::rust_2024::*};
 
 // TODO #377: Rename to Generic type definition?

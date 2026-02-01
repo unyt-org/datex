@@ -2,7 +2,7 @@ use crate::{
     references::{
         reference::ReferenceMutability, type_reference::TypeReference,
     },
-    stdlib::{
+    compat::{
         boxed::Box,
         cell::RefCell,
         format,

@@ -3,7 +3,7 @@ use crate::{
         HashMap,
         hash_map::{Iter, IterMut},
     },
-    stdlib::vec::Vec,
+    compat::heap::vec::Vec,
 };
 use core::prelude::rust_2024::*;
 

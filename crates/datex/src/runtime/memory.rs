@@ -6,7 +6,7 @@ use crate::{
         reference::Reference, type_reference::TypeReference,
         value_reference::ValueReference,
     },
-    stdlib::{rc::Rc, vec::Vec},
+    compat::{rc::Rc, vec::Vec},
     types::error::IllegalTypeError,
     utils::time::Time,
     values::{core_values::endpoint::Endpoint, pointer::PointerAddress},

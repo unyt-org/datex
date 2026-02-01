@@ -21,7 +21,7 @@ use crate::{
     },
     runtime::execution::{ExecutionError, context::ExecutionMode},
     serde::{error::SerializationError, serializer::to_value_container},
-    stdlib::{
+    compat::{
         borrow::ToOwned,
         boxed::Box,
         cell::RefCell,

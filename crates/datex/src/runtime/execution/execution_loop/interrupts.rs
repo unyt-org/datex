@@ -3,7 +3,7 @@ use crate::{
         RawFullPointerAddress, RawInternalPointerAddress,
         RawLocalPointerAddress,
     },
-    stdlib::{cell::RefCell, rc::Rc, vec::Vec},
+    compat::{cell::RefCell, rc::Rc, vec::Vec},
     values::value_container::ValueContainer,
 };
 

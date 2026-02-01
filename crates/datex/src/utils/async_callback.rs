@@ -1,4 +1,4 @@
-use crate::stdlib::sync::Arc;
+use crate::compat::sync::Arc;
 use futures::future::BoxFuture;
 
 

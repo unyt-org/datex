@@ -3,7 +3,7 @@ use datex_macros::FromCoreValue;
 
 use crate::{
     libs::core::{CoreLibPointerId, get_core_lib_type_reference},
-    stdlib::{
+    compat::{
         string::{String, ToString},
         vec::Vec,
     },

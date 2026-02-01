@@ -1,6 +1,6 @@
 use crate::{
     references::{observers::Observer, reference::ReferenceMutability},
-    stdlib::rc::Rc,
+    compat::rc::Rc,
     traits::value_eq::ValueEq,
     types::definition::TypeDefinition,
     utils::freemap::FreeHashMap,

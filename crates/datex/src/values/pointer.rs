@@ -2,7 +2,7 @@ use crate::{
     global::protocol_structures::instructions::{
         RawInternalPointerAddress, RawPointerAddress,
     },
-    stdlib::{format, string::String},
+    compat::{format, string::String},
 };
 use core::{fmt::Display, prelude::rust_2024::*, result::Result};
 use datex_core::global::protocol_structures::instructions::{

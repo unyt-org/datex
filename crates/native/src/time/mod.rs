@@ -1,4 +1,4 @@
-use datex::stdlib::time::{SystemTime, UNIX_EPOCH};
+use datex::compat::time::{SystemTime, UNIX_EPOCH};
 use datex::utils::time::TimeTrait;
 
 pub struct TimeNative;

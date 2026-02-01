@@ -5,7 +5,7 @@ use crate::{
     },
     libs::core::{CoreLibPointerId, get_core_lib_type_definition},
     runtime::memory::Memory,
-    stdlib::{
+    compat::{
         boxed::Box,
         string::{String, ToString},
         vec,

@@ -2,7 +2,7 @@ use crate::{
     global::protocol_structures::instructions::{
         Instruction, RegularInstruction, TypeInstruction,
     },
-    stdlib::vec::Vec,
+    compat::heap::vec::Vec,
 };
 
 pub trait CollectionResultsPopper<Result, Val, Key, KeyVal, Type>:

@@ -10,7 +10,7 @@ use crate::{
             },
         },
     },
-    stdlib::rc::Rc,
+    compat::rc::Rc,
     traits::apply::Apply,
     values::{pointer::PointerAddress, value_container::ValueContainer},
 };
@@ -224,7 +224,7 @@ fn get_local_pointer_value(
 #[cfg(test)]
 mod tests {
     use core::assert_matches;
-    use crate::stdlib::vec;
+    use crate::compat::heap::vec;
 
     use super::*;
     use crate::{
@@ -237,7 +237,7 @@ mod tests {
             context::{ExecutionContext, LocalExecutionContext},
             execution_input::ExecutionOptions,
         },
-        stdlib::{string::ToString, vec::Vec},
+        compat::{string::ToString, vec::Vec},
         traits::{structural_eq::StructuralEq, value_eq::ValueEq},
         values::{
             core_value::CoreValue,

@@ -4,7 +4,7 @@ use datex::{derive_setup_data, network::{
     com_interfaces::com_interface::{
         properties::{InterfaceDirection, ComInterfaceProperties},
     },
-}, stdlib::{sync::Arc, time::Duration}};
+}, compat::{sync::Arc, time::Duration}};
 use core::{prelude::rust_2024::*, result::Result};
 use datex::std_sync::Mutex;
 use log::{error};

@@ -14,7 +14,7 @@ use crate::{
         reference::{Reference, ReferenceMutability},
     },
     runtime::RuntimeInternal,
-    stdlib::{rc::Rc, vec::Vec},
+    compat::{rc::Rc, vec::Vec},
     values::{pointer::PointerAddress, value_container::ValueContainer},
 };
 use core::{prelude::rust_2024::*, result::Result};
@@ -232,7 +232,7 @@ mod tests {
             observers::ObserveOptions, reference::ReferenceMutability,
         },
         runtime::{Runtime, memory::Memory},
-        stdlib::rc::Rc,
+        compat::rc::Rc,
         values::{
             core_values::{endpoint::Endpoint, map::Map},
             value_container::ValueContainer,

@@ -1,4 +1,4 @@
-use crate::stdlib::string::String;
+use crate::compat::string::String;
 use core::{fmt::Display, prelude::rust_2024::*};
 
 #[derive(Debug)]

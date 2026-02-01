@@ -1,7 +1,7 @@
 use crate::{
+    compat::{borrow::Cow, format, heap::vec::Vec, string::ToString, vec},
     runtime::execution::{ExecutionInput, ExecutionOptions, execute_dxb_sync},
     serde::error::DeserializationError,
-    stdlib::{borrow::Cow, format, string::ToString, vec},
     values::{
         core_value::CoreValue,
         core_values::{
@@ -21,7 +21,6 @@ use serde::{
     },
     forward_to_deserialize_any,
 };
-use crate::stdlib::vec::Vec;
 
 /// Deserialize a value of type T from a byte slice containing DXB data
 pub fn from_bytes<T>(input: &[u8]) -> Result<T, DeserializationError>

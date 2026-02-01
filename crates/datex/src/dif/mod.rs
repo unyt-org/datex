@@ -1,4 +1,4 @@
-use crate::stdlib::string::String;
+use crate::compat::string::String;
 use serde::{Deserialize, Serialize};
 
 pub mod interface;

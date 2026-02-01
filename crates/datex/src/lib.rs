@@ -1,5 +1,4 @@
-#![no_std]
-
+#![cfg_attr(not(feature = "std"), no_std)]
 #![feature(coroutines)]
 #![feature(iter_from_coroutine)]
 #![feature(assert_matches)]
@@ -17,9 +16,13 @@
 #![feature(thread_local)]
 #![feature(future_join)]
 #![allow(static_mut_refs)]
-#![cfg_attr(not(feature = "std"), no_std)]
 
 extern crate num_integer;
+
+#[cfg(feature = "std")]
+extern crate std;
+
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
 extern crate alloc;
 
 pub mod channel;
@@ -64,29 +67,62 @@ pub use datex_macros as macros;
 extern crate core;
 extern crate self as datex_core;
 
-pub mod stdlib {
-    #[cfg(not(feature = "std"))]
-    pub use nostd::{
-        any, borrow, boxed, cell, collections, fmt, format, future, hash, io,
-        ops, panic, pin, rc, string, sync, time, vec,
+pub mod compat {
+    // Always available
+    pub use core::{
+        cmp, fmt, hash, iter, mem, ops, option, result, slice, str,
     };
 
+    // Heap types (Vec, String, Box)
+    #[cfg(any(feature = "std", feature = "alloc"))]
+    pub mod heap {
+        #[cfg(feature = "std")]
+        pub use std::{boxed, string, vec};
+
+        #[cfg(all(not(feature = "std"), feature = "alloc"))]
+        pub use alloc::{boxed, string, vec};
+
+        #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+        compile_error!("Heap types require feature \"alloc\" or \"std\".");
+    }
+}
+
+pub mod vec {
+    // std: just re-export from std
     #[cfg(feature = "std")]
-    pub use std::*;
+    pub use std::vec::{IntoIter, Vec};
+
+    // no_std + alloc: use alloc::vec
+    #[cfg(all(not(feature = "std"), feature = "alloc"))]
+    pub use alloc::vec::{IntoIter, Vec};
+
+    #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+    compile_error!(
+        "Vec requires either feature \"alloc\" (no_std) or feature \"std\"."
+    );
 }
 
 // Note: always use collections mod for HashMap and HashSet
 pub mod collections {
-    #[cfg(not(feature = "std"))]
-    pub use hashbrown::hash_map;
-    #[cfg(not(feature = "std"))]
-    pub use hashbrown::hash_map::HashMap;
-    #[cfg(not(feature = "std"))]
-    pub use hashbrown::hash_set;
-    #[cfg(not(feature = "std"))]
-    pub use hashbrown::hash_set::HashSet;
     #[cfg(feature = "std")]
-    pub use std::collections::*;
+    pub use std::collections::{HashMap, HashSet};
+
+    #[cfg(all(not(feature = "std"), feature = "alloc"))]
+    pub use hashbrown::{HashMap, HashSet};
+
+    #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+    compile_error!("HashMap/HashSet require feature \"alloc\" (or \"std\").");
+}
+
+pub mod string {
+    #[cfg(feature = "std")]
+    pub use std::string::String;
+
+    #[cfg(all(not(feature = "std"), feature = "alloc"))]
+    pub use alloc::string::String;
+
+    #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+    compile_error!("String requires feature \"alloc\" or \"std\".");
 }
 
 pub mod std_sync {

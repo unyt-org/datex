@@ -1,5 +1,5 @@
 use crate::{
-    stdlib::string::{String, ToString},
+    compat::string::{String, ToString},
     traits::structural_eq::StructuralEq,
     values::value_container::{ValueContainer, ValueError},
 };

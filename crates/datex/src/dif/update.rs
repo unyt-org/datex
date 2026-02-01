@@ -2,7 +2,7 @@ use crate::{
     dif::{DIFConvertible, value::DIFValueContainer},
     references::observers::TransceiverId,
     runtime::memory::Memory,
-    stdlib::{
+    compat::{
         borrow::Cow,
         string::{String, ToString},
         vec::Vec,

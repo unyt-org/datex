@@ -1,4 +1,4 @@
-use datex::{derive_setup_data, stdlib::{net::SocketAddr, sync::Arc}};
+use datex::{derive_setup_data, compat::{net::SocketAddr, sync::Arc}};
 use core::{
     prelude::rust_2024::*, result::Result, str::FromStr,
 };

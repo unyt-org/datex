@@ -1,4 +1,4 @@
-use datex::{derive_setup_data, stdlib::{
+use datex::{derive_setup_data, compat::{
     sync::{Arc},
 }};
 use core::{prelude::rust_2024::*, result::Result};

@@ -10,7 +10,7 @@ use crate::{
             },
         },
     },
-    stdlib::{boxed::Box, rc::Rc, vec::Vec},
+    compat::{boxed::Box, rc::Rc, vec::Vec},
     values::value_container::ValueContainer,
 };
 use core::{cell::RefCell, fmt::Debug};

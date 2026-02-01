@@ -1,4 +1,4 @@
-use crate::stdlib::time::{SystemTime, UNIX_EPOCH};
+use crate::compat::time::{SystemTime, UNIX_EPOCH};
 use crate::utils::time::TimeTrait;
 
 pub struct TimeMock;

@@ -1,4 +1,4 @@
-use crate::stdlib::{vec, vec::Vec};
+use crate::compat::{vec, vec::Vec};
 
 #[derive(Debug, Clone)]
 pub enum NextScopeInstruction {

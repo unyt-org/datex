@@ -11,7 +11,7 @@ use crate::{
     },
     network::com_interfaces::com_interface::socket::ComInterfaceSocketUUID,
     std_random::RandomState,
-    stdlib::{boxed::Box, collections::BTreeMap, rc::Rc, vec, vec::Vec},
+    compat::{boxed::Box, collections::BTreeMap, rc::Rc, vec, vec::Vec},
     utils::time::Time,
 };
 use core::{cell::RefCell, fmt::Debug, prelude::rust_2024::*};

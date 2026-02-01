@@ -5,14 +5,16 @@ use crate::{
         spanned::Spanned,
         type_expressions::TypeExpression,
     },
+    compat::heap::{boxed::Box, vec::Vec},
     global::operators::{
         ArithmeticUnaryOperator, BinaryOperator, ComparisonOperator,
         UnaryOperator, assignment::AssignmentOperator,
     },
     references::reference::ReferenceMutability,
-    stdlib::vec::Vec,
+    string::String,
     values::{
         core_value::CoreValue,
+        core_values,
         core_values::{
             decimal::{Decimal, typed_decimal::TypedDecimal},
             endpoint::Endpoint,
@@ -24,13 +26,9 @@ use crate::{
         value_container::ValueContainer,
     },
 };
-use crate::values::core_values;
 
-use core::{
-    fmt::Display,
-    ops::{Neg},
-};
 use crate::values::core_values::range::Range;
+use core::{fmt::Display, ops::Neg};
 
 #[derive(Clone, Debug)]
 /// An expression in the AST
@@ -53,7 +51,10 @@ impl Default for DatexExpression {
     }
 }
 impl DatexExpression {
-    pub fn new(data: DatexExpressionData, span: core::ops::Range<usize>) -> Self {
+    pub fn new(
+        data: DatexExpressionData,
+        span: core::ops::Range<usize>,
+    ) -> Self {
         DatexExpression {
             data,
             span,
@@ -191,7 +192,10 @@ pub enum DatexExpressionData {
 impl Spanned for DatexExpressionData {
     type Output = DatexExpression;
 
-    fn with_span<T: Into<core::ops::Range<usize>>>(self, span: T) -> Self::Output {
+    fn with_span<T: Into<core::ops::Range<usize>>>(
+        self,
+        span: T,
+    ) -> Self::Output {
         DatexExpression {
             data: self,
             span: span.into(),
@@ -253,9 +257,7 @@ impl TryFrom<&DatexExpressionData> for ValueContainer {
                     .iter()
                     .map(|e| ValueContainer::try_from(&e.data))
                     .collect::<Result<Vec<ValueContainer>, ()>>()?;
-                ValueContainer::from(
-                    core_values::list::List::from(entries),
-                )
+                ValueContainer::from(core_values::list::List::from(entries))
             }
             DatexExpressionData::Map(pairs) => {
                 let entries = pairs
@@ -267,23 +269,22 @@ impl TryFrom<&DatexExpressionData> for ValueContainer {
                         Ok((key, value))
                     })
                     .collect::<Result<Vec<(ValueContainer, ValueContainer)>, ()>>()?;
-                ValueContainer::from(
-                    core_values::map::Map::from(entries),
-                )
+                ValueContainer::from(core_values::map::Map::from(entries))
             }
             DatexExpressionData::Range(range) => {
                 let start = match &range.start.data {
                     DatexExpressionData::Integer(int) => int,
-                    _ => unreachable!("Start of RangeDeclaration must be literal integer"),
+                    _ => unreachable!(
+                        "Start of RangeDeclaration must be literal integer"
+                    ),
                 };
                 let end = match &range.end.data {
                     DatexExpressionData::Integer(int) => int,
-                    _ => unreachable!("End of RangeDeclaration must be literal integer"),
+                    _ => unreachable!(
+                        "End of RangeDeclaration must be literal integer"
+                    ),
                 };
-                ValueContainer::from(Range::new(
-                    start.clone(),
-                    end.clone(),
-                ))
+                ValueContainer::from(Range::new(start.clone(), end.clone()))
             }
             _ => Err(())?,
         })
@@ -308,11 +309,15 @@ impl Display for RangeDeclaration {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         let start = match &self.start.data {
             DatexExpressionData::Integer(int) => int.to_string(),
-            _ => unreachable!("Start of RangeDeclaration must be literal integer"),
+            _ => unreachable!(
+                "Start of RangeDeclaration must be literal integer"
+            ),
         };
         let end = match &self.end.data {
             DatexExpressionData::Integer(int) => int.to_string(),
-            _ => unreachable!("End of RangeDeclaration must be literal integer"),
+            _ => {
+                unreachable!("End of RangeDeclaration must be literal integer")
+            }
         };
         core::write!(f, "{}..{}", start, end)
     }

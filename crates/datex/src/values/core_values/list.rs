@@ -1,6 +1,6 @@
 use crate::{
     references::reference::IndexOutOfBoundsError,
-    stdlib::{ops::Index, vec::Vec},
+    compat::{ops::Index, vec::Vec},
     traits::structural_eq::StructuralEq,
     values::{
         core_value::CoreValue,
@@ -175,7 +175,7 @@ impl Index<usize> for List {
 
 impl IntoIterator for List {
     type Item = ValueContainer;
-    type IntoIter = crate::stdlib::vec::IntoIter<ValueContainer>;
+    type IntoIter = crate::compat::heap::vec::IntoIter<ValueContainer>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.0.into_iter()

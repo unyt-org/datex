@@ -1,6 +1,9 @@
 use core::fmt;
 use internment::Intern;
 
+use crate::{string::String, vec::Vec};
+use alloc::vec;
+
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub struct SrcId(Intern<Vec<String>>);
 

@@ -1,6 +1,6 @@
 use crate::{
     libs::core::CoreLibPointerId,
-    stdlib::{
+    compat::{
         format,
         ops::{Add, AddAssign, Sub},
         string::String,
@@ -553,7 +553,7 @@ impl From<f64> for TypedDecimal {
 
 #[cfg(test)]
 mod tests {
-    use crate::stdlib::assert_matches;
+    use crate::compat::assert_matches;
 
     use super::*;
     use crate::{

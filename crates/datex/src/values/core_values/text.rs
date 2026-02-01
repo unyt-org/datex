@@ -1,6 +1,6 @@
 use crate::{
     references::reference::IndexOutOfBoundsError,
-    stdlib::{
+    compat::{
         ops::{Add, AddAssign},
         string::{String, ToString},
         vec::Vec,

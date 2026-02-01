@@ -17,7 +17,7 @@ use crate::{
         },
     },
     runtime::execution::{ExecutionInput, ExecutionOptions, execute_dxb_sync},
-    stdlib::{
+    compat::{
         borrow::ToOwned,
         format,
         string::{String, ToString},

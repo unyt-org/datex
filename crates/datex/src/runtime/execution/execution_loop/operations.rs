@@ -7,7 +7,7 @@ use crate::{
     },
     references::reference::Reference,
     runtime::execution::ExecutionError,
-    stdlib::rc::Rc,
+    compat::rc::Rc,
     traits::{
         identity::Identity, structural_eq::StructuralEq, value_eq::ValueEq,
     },

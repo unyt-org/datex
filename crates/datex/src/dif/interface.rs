@@ -13,7 +13,7 @@ use crate::{
         },
     },
     runtime::execution::ExecutionError,
-    stdlib::boxed::Box,
+    compat::boxed::Box,
     values::pointer::PointerAddress,
 };
 use core::{fmt::Display, prelude::rust_2024::*, result::Result};

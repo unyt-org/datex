@@ -36,9 +36,9 @@ use crate::runtime::execution::macros::{
     interrupt, interrupt_with_maybe_value, interrupt_with_value, yield_unwrap,
 };
 use crate::runtime::execution::{ExecutionError, InvalidProgramError};
-use crate::stdlib::boxed::Box;
-use crate::stdlib::rc::Rc;
-use crate::stdlib::vec::Vec;
+use crate::compat::boxed::Box;
+use crate::compat::rc::Rc;
+use crate::compat::heap::vec::Vec;
 use crate::types::definition::TypeDefinition;
 use crate::utils::buffers::append_u32;
 use crate::values::core_value::CoreValue;

@@ -23,7 +23,7 @@ use crate::{
         },
         slots::InternalSlot,
     },
-    stdlib::{format, rc::Rc},
+    compat::{format, rc::Rc},
     values::{
         core_values::{
             decimal::{Decimal, typed_decimal::TypedDecimal},

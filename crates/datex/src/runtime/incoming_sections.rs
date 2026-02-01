@@ -9,7 +9,7 @@ use crate::{
         },
     },
     runtime::{RuntimeInternal, execution::ExecutionError},
-    stdlib::{borrow::ToOwned, rc::Rc, vec, vec::Vec},
+    compat::{borrow::ToOwned, rc::Rc, vec, vec::Vec},
     values::{
         core_values::endpoint::Endpoint, value_container::ValueContainer,
     },

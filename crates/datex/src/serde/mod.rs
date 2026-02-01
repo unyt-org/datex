@@ -32,7 +32,7 @@ mod tests {
             deserializer::{from_bytes, from_value_container},
             serializer::{to_bytes, to_value_container},
         },
-        stdlib::collections::{HashMap, HashSet},
+        compat::collections::{HashMap, HashSet},
         traits::structural_eq::StructuralEq,
         values::value_container::ValueContainer,
     };

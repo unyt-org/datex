@@ -1,5 +1,5 @@
 use crate::{
-    crypto::crypto::CryptoTrait, stdlib::sync::Arc, utils::time::TimeTrait,
+    crypto::crypto::CryptoTrait, compat::sync::Arc, utils::time::TimeTrait,
 };
 use core::prelude::rust_2024::*;
 

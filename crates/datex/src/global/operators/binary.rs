@@ -3,7 +3,7 @@ use crate::{
         instruction_codes::InstructionCode,
         protocol_structures::instructions::RegularInstruction,
     },
-    stdlib::string::ToString,
+    compat::string::ToString,
 };
 use core::{fmt::Display, prelude::rust_2024::*};
 

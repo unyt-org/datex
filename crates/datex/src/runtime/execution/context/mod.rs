@@ -8,7 +8,7 @@ use crate::{
         ExecutionError, ExecutionInput, MemoryDump, execute_dxb,
         execute_dxb_sync,
     },
-    stdlib::{format, vec::Vec},
+    compat::{format, vec::Vec},
     values::value_container::ValueContainer,
 };
 pub use local::*;

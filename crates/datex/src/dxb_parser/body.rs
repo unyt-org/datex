@@ -21,7 +21,7 @@ use crate::{
         type_instruction_codes::TypeInstructionCode,
     },
     runtime::execution::macros::yield_unwrap,
-    stdlib::{
+    compat::{
         rc::Rc,
         string::{FromUtf8Error, String},
         vec::Vec,

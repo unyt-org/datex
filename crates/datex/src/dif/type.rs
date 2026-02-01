@@ -2,7 +2,7 @@ use crate::{
     dif::{DIFConvertible, representation::DIFTypeRepresentation},
     references::reference::ReferenceMutability,
     runtime::memory::Memory,
-    stdlib::{boxed::Box, format, string::String, vec::Vec},
+    compat::{boxed::Box, format, string::String, vec::Vec},
     types::{
         definition::TypeDefinition,
         structural_type_definition::StructuralTypeDefinition,

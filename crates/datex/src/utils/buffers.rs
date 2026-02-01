@@ -1,4 +1,4 @@
-use crate::stdlib::{
+use crate::compat::{
     string::{String, ToString},
     vec::Vec,
 };

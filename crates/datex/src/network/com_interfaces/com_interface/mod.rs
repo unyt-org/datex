@@ -1,12 +1,12 @@
 
 use crate::{
-    stdlib::{
+    compat::{
         string::ToString,
     },
     utils::uuid::UUID,
 };
 use core::fmt::{Debug, Display};
-use crate::stdlib::string::String;
+use crate::compat::string::String;
 
 pub mod error;
 pub mod factory;

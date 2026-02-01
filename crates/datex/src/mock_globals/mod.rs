@@ -1,7 +1,7 @@
 pub mod crypto;
 pub mod time;
 
-use crate::stdlib::sync::Arc;
+use crate::compat::sync::Arc;
 use crypto::CryptoMock;
 use crate::runtime::global_context::{set_global_context, GlobalContext};
 use crate::mock_globals::time::TimeMock;

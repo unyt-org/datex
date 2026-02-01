@@ -36,6 +36,7 @@ use crate::{
 
 use crate::{
     ast::resolved_variable::VariableId,
+    compat::{rc::Rc, vec::Vec},
     core_compiler::value_compiler::{
         append_boolean, append_decimal, append_encoded_integer,
         append_endpoint, append_float_as_i16, append_float_as_i32,
@@ -46,7 +47,6 @@ use crate::{
     parser::{Parser, ParserOptions},
     references::reference::ReferenceMutability,
     runtime::execution::context::ExecutionMode,
-    stdlib::{rc::Rc, vec::Vec},
     time::Instant,
     utils::buffers::{append_u8, append_u16, append_u32},
     values::{
@@ -1447,9 +1447,8 @@ pub mod tests {
         compile_script, compile_script_or_return_static_value,
         compile_template, parse_datex_script_to_rich_ast_simple_error,
     };
+    use crate::compat::{io::Read, vec};
     use core::assert_matches;
-    use crate::stdlib::io::Read;
-    use crate::stdlib::vec;
 
     use crate::{
         compiler::scope::CompilationScope,
@@ -2458,7 +2457,7 @@ pub mod tests {
         let file_path = std::path::Path::new(&file_path);
         let file =
             std::fs::File::open(file_path).expect("Failed to open test.json");
-        let mut reader = crate::stdlib::io::BufReader::new(file);
+        let mut reader = crate::compat::io::BufReader::new(file);
         let mut json_string = String::new();
         reader
             .read_to_string(&mut json_string)

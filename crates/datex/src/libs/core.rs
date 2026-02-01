@@ -5,7 +5,7 @@ use crate::{
         type_reference::{NominalTypeDeclaration, TypeReference},
     },
     runtime::memory::Memory,
-    stdlib::{
+    compat::{
         boxed::Box,
         format,
         rc::Rc,
@@ -500,7 +500,7 @@ mod tests {
     use crate::values::core_values::endpoint::Endpoint;
 
     use super::*;
-    use crate::stdlib::{assert_matches, str::FromStr};
+    use crate::compat::{assert_matches, str::FromStr};
     use itertools::Itertools;
 
     #[test]

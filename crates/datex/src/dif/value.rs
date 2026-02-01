@@ -5,7 +5,7 @@ use crate::{
     },
     libs::core::CoreLibPointerId,
     runtime::memory::Memory,
-    stdlib::string::ToString,
+    compat::string::ToString,
     types::definition::TypeDefinition,
     values::{
         core_value::CoreValue,

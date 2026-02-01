@@ -3,7 +3,7 @@ use crate::{
         UnboundedReceiver, UnboundedSender, create_unbounded_channel,
     },
     global::dxb_block::{DXBBlock, HeaderParsingError},
-    stdlib::vec::Vec,
+    compat::heap::vec::Vec,
 };
 use core::prelude::rust_2024::*;
 use core::async_iter::AsyncIterator;

@@ -1,4 +1,4 @@
-use crate::stdlib::{
+use crate::compat::{
     boxed::Box, future::Future, pin::Pin, string::String, vec::Vec,
 };
 use bs58;

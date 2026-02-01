@@ -2,7 +2,7 @@ use crate::{
     core_compiler::value_compiler::compile_value_container,
     runtime::execution::{ExecutionInput, ExecutionOptions, execute_dxb_sync},
     serde::error::SerializationError,
-    stdlib::{
+    compat::{
         format,
         string::{String, ToString},
         vec,
@@ -608,7 +608,7 @@ mod tests {
         values::core_values::{endpoint::Endpoint, map::Map},
     };
 
-    use crate::stdlib::assert_matches;
+    use crate::compat::assert_matches;
     use crate::values::{
         core_value::CoreValue, value::Value, value_container::ValueContainer,
     };

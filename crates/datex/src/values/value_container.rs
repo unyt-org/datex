@@ -13,7 +13,7 @@ use crate::{
         deserializer::{DatexDeserializer, from_value_container},
         error::DeserializationError,
     },
-    stdlib::{borrow::Cow, boxed::Box, rc::Rc, string::String},
+    compat::{borrow::Cow, boxed::Box, rc::Rc, string::String},
     traits::{apply::Apply, value_eq::ValueEq},
     types::definition::TypeDefinition,
     values::{core_value::CoreValue, core_values::r#type::Type},
