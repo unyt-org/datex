@@ -1,4 +1,5 @@
-use crate::compat::string::String;
+
+use crate::prelude::*;
 use core::{fmt::Display, ops::Range};
 
 use crate::{

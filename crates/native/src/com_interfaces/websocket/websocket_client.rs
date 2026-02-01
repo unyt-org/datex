@@ -1,7 +1,7 @@
 use datex::{derive_setup_data, compat::{
     sync::{Arc},
 }};
-use core::{prelude::rust_2024::*, result::Result};
+use core::{ result::Result};
 use futures_util::{
     SinkExt, StreamExt,
     stream::{SplitSink, SplitStream},

@@ -1,5 +1,5 @@
-use crate::{crypto::uuid::generate_uuid_string, compat::string::String};
-use core::{fmt::Display, prelude::rust_2024::*};
+use crate::{crypto::uuid::generate_uuid_string, prelude::*};
+use core::fmt::Display;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct UUID(String);

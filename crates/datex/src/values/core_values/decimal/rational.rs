@@ -1,11 +1,8 @@
-use crate::compat::{
-    format,
-    string::{String, ToString},
-};
+use crate::prelude::*;
+
 use core::{
     fmt::Display,
     ops::{Add, Neg},
-    prelude::rust_2024::*,
     result::Result,
 };
 use num::BigRational;

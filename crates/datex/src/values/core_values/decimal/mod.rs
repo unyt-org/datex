@@ -1,10 +1,10 @@
-use core::{prelude::rust_2024::*, result::Result};
+use core::result::Result;
 pub mod rational;
 pub mod typed_decimal;
 pub mod utils;
+use crate::prelude::*;
 
 use crate::{
-    compat::{string::ToString, vec, vec::Vec},
     traits::{structural_eq::StructuralEq, value_eq::ValueEq},
     values::core_values::{
         decimal::typed_decimal::TypedDecimal, error::NumberParseError,

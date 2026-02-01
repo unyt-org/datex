@@ -21,40 +21,31 @@ use crate::{
     },
     runtime::execution::{ExecutionError, context::ExecutionMode},
     serde::{error::SerializationError, serializer::to_value_container},
-    compat::{
-        borrow::ToOwned,
-        boxed::Box,
-        cell::RefCell,
-        pin::Pin,
-        rc::Rc,
-        string::{String, ToString},
-        vec,
-        vec::Vec,
-    },
     time::Instant,
     utils::time::Time,
     values::{
         core_values::endpoint::Endpoint, value_container::ValueContainer,
     },
 };
+
+use crate::prelude::*;
 use async_select::select;
 use core::{
-    fmt::Debug, prelude::rust_2024::*, result::Result, slice, unreachable,
+    cell::RefCell, fmt::Debug, pin::Pin,  result::Result,
+    slice, unreachable,
 };
 use execution::context::{
     ExecutionContext, RemoteExecutionContext, ScriptExecutionError,
 };
 use futures::{FutureExt, future};
 use futures_util::join;
-use global_context::{GlobalContext, set_global_context};
 use log::{debug, error, info};
 use serde::{Deserialize, Serialize};
 
 pub mod dif_interface;
 pub mod execution;
-pub mod global_context;
-pub mod memory;
 mod incoming_sections;
+pub mod memory;
 
 use self::memory::Memory;
 
@@ -111,7 +102,6 @@ macro_rules! get_execution_context {
 }
 
 impl RuntimeInternal {
-
     /// Creates all interfaces configured in the runtime config
     async fn create_configured_interfaces(&self) {
         if let Some(interfaces) = &self.config.interfaces {
@@ -394,9 +384,13 @@ impl RuntimeInternal {
         .await
     }
 }
-use crate::network::com_hub::is_none_variant;
-use crate::network::com_interfaces::local_loopback_interface::LocalLoopbackInterfaceSetupData;
-use crate::utils::task_manager::TaskManager;
+use crate::{
+    network::{
+        com_hub::is_none_variant,
+        com_interfaces::local_loopback_interface::LocalLoopbackInterfaceSetupData,
+    },
+    utils::task_manager::TaskManager,
+};
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 #[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
@@ -481,14 +475,10 @@ pub struct RuntimeRunner {
 impl RuntimeRunner {
     /// Creates a new runtime instance with the given configuration and global context.
     /// Note: If the endpoint is not specified in the config, a random endpoint will be generated.
-    pub fn new(
-        config: RuntimeConfig,
-        global_context: GlobalContext,
-    ) -> RuntimeRunner {
-        set_global_context(global_context);
+    pub fn new(config: RuntimeConfig) -> RuntimeRunner {
         info!(
             "Runtime initialized - Version {VERSION} Time: {}",
-            crate::time::Instant::now();
+            crate::time::Instant::now()
         );
 
         let endpoint = config.endpoint.clone().unwrap_or_else(Endpoint::random);
@@ -517,10 +507,8 @@ impl RuntimeRunner {
             }),
         };
         runtime.init_local_loopback_interface();
-        
-        let runtime_internal = runtime.internal.clone();
 
-        
+        let runtime_internal = runtime.internal.clone();
 
         // await all task futures
         let task_future = async {
@@ -587,14 +575,13 @@ impl RuntimeRunner {
 /// publicly exposed wrapper impl for the Runtime
 /// around RuntimeInternal
 impl Runtime {
-
     fn init_local_loopback_interface(&self) {
         // add default local loopback interface
-        let local_interface =
-            LocalLoopbackInterfaceSetupData {
-                runtime: self.clone()
-            }.create_interface()
-                .unwrap();
+        let local_interface = LocalLoopbackInterfaceSetupData {
+            runtime: self.clone(),
+        }
+        .create_interface()
+        .unwrap();
 
         self.com_hub().register_com_interface_handler(
             local_interface,

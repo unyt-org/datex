@@ -19,7 +19,7 @@ use crate::{
 };
 
 use crate::prelude::*;
-use core::{cell::RefCell, fmt, prelude::rust_2024::*, result::Result};
+use core::{cell::RefCell, fmt,  result::Result};
 use datex_core::values::core_values::integer::typed_integer::TypedInteger;
 use indexmap::IndexMap;
 use ordered_float::OrderedFloat;

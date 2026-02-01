@@ -1,12 +1,8 @@
 #[cfg(feature = "compiler")]
 use crate::compiler::error::{CompilerError, SpannedCompilerError};
-use crate::{
-    runtime::execution::ExecutionError,
-    compat::{
-        io,
-        string::{String, ToString},
-    },
-};
+use crate::runtime::execution::ExecutionError;
+
+use crate::prelude::*;
 use core::{fmt, fmt::Display, prelude::rust_2024::*};
 use serde::{
     de::Error,
@@ -33,9 +29,9 @@ impl Error for SerializationError {
     }
 }
 
-impl From<io::Error> for SerializationError {
-    fn from(e: io::Error) -> Self {
-        SerializationError::Custom(e.to_string())
+impl From<String> for SerializationError {
+    fn from(e: String) -> Self {
+        SerializationError::Custom(e)
     }
 }
 
@@ -84,8 +80,8 @@ impl Error for DeserializationError {
     }
 }
 
-impl From<io::Error> for DeserializationError {
-    fn from(e: io::Error) -> Self {
+impl From<String> for DeserializationError {
+    fn from(e: String) -> Self {
         DeserializationError::Custom(e.to_string())
     }
 }

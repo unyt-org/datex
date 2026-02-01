@@ -2,25 +2,20 @@ use crate::{
     core_compiler::value_compiler::compile_value_container,
     runtime::execution::{ExecutionInput, ExecutionOptions, execute_dxb_sync},
     serde::error::SerializationError,
-    compat::{
-        format,
-        string::{String, ToString},
-        vec,
-        vec::Vec,
-    },
     values::{
         core_value::CoreValue,
         core_values::{list::List, map::Map},
         value_container::ValueContainer,
     },
 };
-use core::{prelude::rust_2024::*, result::Result};
+use core::{ result::Result};
 use serde::ser::{
     Serialize, SerializeMap, SerializeSeq, SerializeStruct,
     SerializeStructVariant, SerializeTuple, SerializeTupleStruct,
     SerializeTupleVariant, Serializer,
 };
 
+use crate::prelude::*;
 pub struct DatexSerializer {}
 
 impl Default for DatexSerializer {
@@ -608,9 +603,12 @@ mod tests {
         values::core_values::{endpoint::Endpoint, map::Map},
     };
 
-    use crate::compat::assert_matches;
-    use crate::values::{
-        core_value::CoreValue, value::Value, value_container::ValueContainer,
+    use crate::{
+        compat::assert_matches,
+        values::{
+            core_value::CoreValue, value::Value,
+            value_container::ValueContainer,
+        },
     };
     use serde::{Deserialize, Serialize};
 

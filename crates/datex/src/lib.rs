@@ -72,7 +72,7 @@ pub mod collections {
     pub use std::collections::{HashMap, HashSet};
 
     #[cfg(all(not(feature = "std")))]
-    pub use hashbrown::{HashMap, HashSet};
+    pub use hashbrown::{HashMap, HashSet, hash_map, hash_set};
 }
 
 pub mod std_sync {

@@ -39,9 +39,7 @@ use crate::{
     },
 };
 use async_select::select;
-use core::{
-    fmt::Debug, prelude::rust_2024::*, result::Result, slice, unreachable,
-};
+use core::{fmt::Debug, result::Result, slice, unreachable};
 use execution::context::{
     ExecutionContext, RemoteExecutionContext, ScriptExecutionError,
 };

@@ -8,6 +8,7 @@ use crate::{
         TypeDeclaration, UnaryOperation, VariableAccess, VariableAssignment,
         VariableDeclaration, VariantAccess,
     },
+    prelude::*,
     values::{
         core_values::{
             decimal::{Decimal, typed_decimal::TypedDecimal},

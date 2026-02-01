@@ -11,8 +11,9 @@ use crate::{
     values::{core_values::endpoint::Endpoint, pointer::PointerAddress},
 };
 use binrw::io::Cursor;
-use core::{cell::RefCell, prelude::rust_2024::*, result::Result};
+use core::{cell::RefCell,  result::Result};
 
+use crate::prelude::*;
 #[derive(Debug, Default)]
 pub struct Memory {
     local_endpoint: Endpoint,

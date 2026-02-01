@@ -1,13 +1,17 @@
 use crate::{
+    prelude::*,
     references::reference::IndexOutOfBoundsError,
-    compat::{ops::Index, vec::Vec},
     traits::structural_eq::StructuralEq,
     values::{
         core_value::CoreValue,
         value_container::{ValueContainer, ValueError},
     },
 };
-use core::{fmt::Display, ops::Range, prelude::rust_2024::*, result::Result};
+use core::{
+    fmt::Display,
+    ops::{Index, Range},
+    result::Result,
+};
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct List(Vec<ValueContainer>);
@@ -172,10 +176,11 @@ impl Index<usize> for List {
         &self.0[index]
     }
 }
+use crate::prelude::*;
 
 impl IntoIterator for List {
     type Item = ValueContainer;
-    type IntoIter = crate::compat::heap::vec::IntoIter<ValueContainer>;
+    type IntoIter = vec::IntoIter<ValueContainer>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.0.into_iter()
@@ -195,7 +200,7 @@ impl<'a> IntoIterator for &'a List {
 macro_rules! datex_list {
     ( $( $x:expr ),* ) => {
         {
-            let list = vec![$( $crate::values::value_container::ValueContainer::from($x) ),*];
+            let list = alloc::vec![$( $crate::values::value_container::ValueContainer::from($x) ),*];
             $crate::values::core_values::list::List::new(list)
         }
     };

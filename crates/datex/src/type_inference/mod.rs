@@ -7,7 +7,6 @@ use crate::{
     references::{
         reference::ReferenceMutability, type_reference::TypeReference,
     },
-    compat::rc::Rc,
     type_inference::{error::TypeError, options::ErrorHandling},
     types::definition::TypeDefinition,
 };
@@ -31,6 +30,7 @@ use crate::{
     },
     compiler::precompiler::precompiled_ast::{AstMetadata, RichAst},
     libs::core::{CoreLibPointerId, get_core_lib_type},
+    prelude::*,
     type_inference::{
         error::{
             DetailedTypeErrors, SimpleOrDetailedTypeError, SpannedTypeError,
@@ -1232,7 +1232,7 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
 #[cfg(test)]
 #[allow(clippy::std_instead_of_core, clippy::std_instead_of_alloc)]
 mod tests {
-    use std::{assert_matches, cell::RefCell, rc::Rc, str::FromStr};
+    use core::{assert_matches, cell::RefCell};
 
     use crate::{
         ast::{
@@ -1252,6 +1252,7 @@ mod tests {
             CoreLibPointerId, get_core_lib_type, get_core_lib_type_reference,
         },
         parser::Parser,
+        prelude::*,
         references::type_reference::{NominalTypeDeclaration, TypeReference},
         type_inference::{
             error::{SpannedTypeError, TypeError},

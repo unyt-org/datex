@@ -4,10 +4,10 @@ use crate::{
     libs::core::{
         CoreLibPointerId, get_core_lib_type, get_core_lib_type_reference,
     },
+    prelude::*,
     references::{
         reference::ReferenceMutability, type_reference::TypeReference,
     },
-    compat::{format, rc::Rc, string::ToString, vec::Vec},
     traits::structural_eq::StructuralEq,
     types::{
         definition::TypeDefinition,
@@ -28,7 +28,6 @@ use core::{
     cell::RefCell,
     fmt::Display,
     hash::{Hash, Hasher},
-    prelude::rust_2024::*,
     result::Result,
     unimplemented,
 };
@@ -526,6 +525,8 @@ impl TryFrom<&DatexExpressionData> for Type {
 
 #[cfg(test)]
 mod tests {
+    use crate::prelude::*;
+
     use crate::{
         libs::core::{CoreLibPointerId, get_core_lib_type},
         values::{

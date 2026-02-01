@@ -1,5 +1,4 @@
 use crate::{
-    compat::{borrow::Cow, format, heap::vec::Vec, string::ToString, vec},
     runtime::execution::{ExecutionInput, ExecutionOptions, execute_dxb_sync},
     serde::error::DeserializationError,
     values::{
@@ -12,7 +11,7 @@ use crate::{
         value_container::ValueContainer,
     },
 };
-use core::{prelude::rust_2024::*, result::Result, unreachable};
+use core::{ result::Result, unreachable};
 use serde::{
     Deserialize, Deserializer,
     de::{
@@ -22,6 +21,7 @@ use serde::{
     forward_to_deserialize_any,
 };
 
+use crate::prelude::*;
 /// Deserialize a value of type T from a byte slice containing DXB data
 pub fn from_bytes<T>(input: &[u8]) -> Result<T, DeserializationError>
 where
@@ -966,12 +966,12 @@ mod tests {
     use super::*;
     use crate::{
         compiler::{CompileOptions, compile_script},
-        logger::init_logger,
         serde::serializer::to_bytes,
         values::core_values::endpoint::Endpoint,
     };
     use serde::{Deserialize, Serialize};
 
+    use crate::prelude::*;
     #[derive(Deserialize, Serialize, Debug, PartialEq)]
     struct TestStruct {
         field1: String,
@@ -1044,7 +1044,6 @@ mod tests {
 
     #[test]
     fn from_script() {
-        init_logger();
         let script = r#"
             {
                 field1: "Hello",

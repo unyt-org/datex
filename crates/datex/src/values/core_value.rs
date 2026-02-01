@@ -1,12 +1,9 @@
-use core::{prelude::rust_2024::*, result::Result};
+use crate::prelude::*;
+use core::result::Result;
 use datex_macros::FromCoreValue;
 
 use crate::{
     libs::core::{CoreLibPointerId, get_core_lib_type_reference},
-    compat::{
-        string::{String, ToString},
-        vec::Vec,
-    },
     traits::{structural_eq::StructuralEq, value_eq::ValueEq},
     types::definition::TypeDefinition,
     values::{
@@ -36,7 +33,6 @@ use core::{
 };
 
 use crate::values::core_values::range::Range;
-
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, FromCoreValue)]
 pub enum CoreValue {
@@ -790,13 +786,10 @@ impl Display for CoreValue {
 mod tests {
     use log::{debug, info};
 
-    use crate::logger::init_logger_debug;
-
     use super::*;
 
     #[test]
     fn type_construct() {
-        
         let a = CoreValue::from(42i32);
         assert_eq!(a.default_type_definition().to_string(), "integer/i32");
     }
@@ -812,7 +805,6 @@ mod tests {
 
     #[test]
     fn addition() {
-        
         let a = CoreValue::from(42i32);
         let b = CoreValue::from(11i32);
         let c = CoreValue::from("11");

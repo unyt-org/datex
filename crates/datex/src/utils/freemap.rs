@@ -1,11 +1,9 @@
-use crate::{
-    collections::{
-        HashMap,
-        hash_map::{Iter, IterMut},
-    },
-    compat::heap::vec::Vec,
+use crate::collections::{
+    HashMap,
+    hash_map::{Iter, IterMut},
 };
-use core::prelude::rust_2024::*;
+
+use crate::prelude::*;
 
 pub trait NextKey: Copy + Eq + core::hash::Hash + Default {
     fn next_key(&mut self) -> Self;

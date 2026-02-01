@@ -1,6 +1,6 @@
 use crate::{
+    prelude::*,
     runtime::execution::ExecutionError,
-    compat::{boxed::Box, string::String, vec::Vec},
     traits::{apply::Apply, structural_eq::StructuralEq},
     values::{core_values::r#type::Type, value_container::ValueContainer},
 };

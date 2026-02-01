@@ -224,18 +224,16 @@ fn get_local_pointer_value(
 
 #[cfg(test)]
 mod tests {
-    use crate::compat::heap::vec;
+    use crate::prelude::*;
     use core::assert_matches;
 
     use super::*;
     use crate::{
         assert_structural_eq, assert_value_eq,
-        compat::{string::ToString, vec::Vec},
         compiler::{CompileOptions, compile_script, scope::CompilationScope},
         datex_list,
         global::instruction_codes::InstructionCode,
         libs::core::get_core_lib_type_reference,
-        logger::init_logger_debug,
         references::reference::Reference,
         runtime::execution::{
             context::{ExecutionContext, LocalExecutionContext},

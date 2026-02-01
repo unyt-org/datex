@@ -1,6 +1,5 @@
 use crate::values::core_values::integer::Integer;
-use core::fmt;
-use core::ops;
+use core::{fmt, ops};
 
 #[derive(Debug)]
 pub enum RangeError {
@@ -55,7 +54,7 @@ impl fmt::Display for Range {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::values::core_values::integer::Integer;
+    use crate::{prelude::*, values::core_values::integer::Integer};
 
     fn test_helper() -> (Integer, Integer, Integer) {
         (

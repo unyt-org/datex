@@ -9,7 +9,7 @@ use datex::{derive_setup_data, network::{
         properties::{InterfaceDirection, ComInterfaceProperties},
     },
 }, compat::{net::SocketAddr, sync::Arc}};
-use core::{prelude::rust_2024::*, result::Result};
+use core::{ result::Result};
 use std::io;
 use log::{error, info, warn};
 use tokio::{

@@ -5,6 +5,7 @@ use crate::{
 use core::result::Result;
 use serde::Serialize;
 
+use crate::prelude::*;
 pub use serde::Deserialize;
 pub mod deserializer;
 pub mod error;
@@ -27,16 +28,15 @@ mod tests {
     use crate::{
         assert_structural_eq,
         decompiler::DecompileOptions,
-        logger::init_logger_debug,
         serde::{
             deserializer::{from_bytes, from_value_container},
             serializer::{to_bytes, to_value_container},
         },
-        compat::collections::{HashMap, HashSet},
         traits::structural_eq::StructuralEq,
         values::value_container::ValueContainer,
     };
-    use datex_core::decompiler::decompile_body;
+
+    use crate::{decompiler::decompile_body, prelude::*};
     use log::info;
     use serde::{Deserialize, Serialize};
 
@@ -190,7 +190,6 @@ mod tests {
 
     #[test]
     fn struct_with_value_container_serde_bytes() {
-        
         // struct with value container
         let val = StructWithValueContainer {
             name: "test".to_string(),

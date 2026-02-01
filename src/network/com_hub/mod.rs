@@ -37,7 +37,6 @@ use core::{
     fmt::{Debug, Formatter},
     panic,
     pin::Pin,
-    prelude::rust_2024::*,
     result::Result,
 };
 use itertools::Itertools;

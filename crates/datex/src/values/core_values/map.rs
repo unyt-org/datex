@@ -1,8 +1,8 @@
 use crate::{
     collections::HashMap,
-    references::reference::KeyNotFoundError,
+    prelude::*,
     random::RandomState,
-    compat::{borrow::Cow, format, string::String, vec::Vec},
+    references::reference::KeyNotFoundError,
     traits::structural_eq::StructuralEq,
     values::{
         core_value::CoreValue,
@@ -10,10 +10,10 @@ use crate::{
         value_container::{ValueContainer, ValueKey},
     },
 };
+
 use core::{
     fmt::{self, Display},
     hash::{Hash, Hasher},
-    prelude::rust_2024::*,
     result::Result,
 };
 use indexmap::IndexMap;
@@ -739,7 +739,6 @@ mod tests {
 
         // new Zero value should also be found
         let new_zero_value = ValueContainer::from(Decimal::Zero);
-        println!("new_zero_value: {:?}", new_zero_value);
         assert!(map.has(&new_zero_value));
 
         // new NegZero value should also be found

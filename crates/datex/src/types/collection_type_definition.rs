@@ -1,11 +1,10 @@
-use crate::{compat::boxed::Box, values::core_values::r#type::Type};
-use core::{fmt::Display, prelude::rust_2024::*};
+use crate::{prelude::*, values::core_values::r#type::Type};
+use core::fmt::Display;
 
 // TODO #377: Rename to Generic type definition?
 #[derive(Debug, Clone, PartialEq, Hash, Eq)]
 pub enum CollectionTypeDefinition {
     // e.g. [integer]
-    List(Box<Type>),
 
     // e.g. [integer; 5]
     ListSlice(Box<Type>, usize),

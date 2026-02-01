@@ -1,12 +1,8 @@
 use crate::{
     libs::core::CoreLibPointerId,
+    prelude::*,
     references::{reference::AccessError, type_reference::TypeReference},
     runtime::execution::ExecutionError,
-    compat::{
-        boxed::Box,
-        format,
-        string::{String, ToString},
-    },
     traits::{apply::Apply, structural_eq::StructuralEq, value_eq::ValueEq},
     types::definition::TypeDefinition,
     values::{
@@ -18,10 +14,10 @@ use crate::{
         value_container::{ValueContainer, ValueError, ValueKey},
     },
 };
+
 use core::{
     fmt::{Display, Formatter},
     ops::{Add, AddAssign, Deref, Neg, Not, Sub},
-    prelude::rust_2024::*,
     result::Result,
 };
 use log::error;
@@ -338,7 +334,7 @@ mod tests {
     use crate::{
         assert_structural_eq, datex_list,
         libs::core::{get_core_lib_type, get_core_lib_type_reference},
-        logger::init_logger_debug,
+        prelude::*,
         values::core_values::{
             endpoint::Endpoint,
             integer::{Integer, typed_integer::TypedInteger},
@@ -350,7 +346,6 @@ mod tests {
 
     #[test]
     fn endpoint() {
-        
         let endpoint = Value::from(Endpoint::from_str("@test").unwrap());
         assert_eq!(endpoint.to_string(), "@test");
     }
@@ -375,7 +370,6 @@ mod tests {
 
     #[test]
     fn list() {
-        
         let mut a = List::from(vec![
             Value::from("42"),
             Value::from(42),
@@ -399,7 +393,6 @@ mod tests {
 
     #[test]
     fn boolean() {
-        
         let a = Value::from(true);
         let b = Value::from(false);
         let c = Value::from(false);
@@ -416,7 +409,6 @@ mod tests {
 
     #[test]
     fn equality_same_type() {
-        
         let a = Value::from(42i8);
         let b = Value::from(42i8);
         let c = Value::from(27i8);
@@ -431,7 +423,6 @@ mod tests {
 
     #[test]
     fn decimal() {
-        
         let a = Value::from(42.1f32);
         let b = Value::from(27f32);
 
@@ -442,8 +433,6 @@ mod tests {
 
     #[test]
     fn null() {
-        
-
         let null_value = Value::null();
         assert_eq!(null_value.to_string(), "null");
 
@@ -455,7 +444,6 @@ mod tests {
 
     #[test]
     fn addition() {
-        
         let a = Value::from(42i8);
         let b = Value::from(27i8);
 
@@ -466,7 +454,6 @@ mod tests {
 
     #[test]
     fn string_concatenation() {
-        
         let a = Value::from("Hello ");
         let b = Value::from(42i8);
 

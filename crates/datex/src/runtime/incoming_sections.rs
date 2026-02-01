@@ -9,17 +9,19 @@ use crate::{
         },
     },
     runtime::{RuntimeInternal, execution::ExecutionError},
-    compat::{borrow::ToOwned, rc::Rc, vec, vec::Vec},
     values::{
         core_values::endpoint::Endpoint, value_container::ValueContainer,
     },
 };
-use core::{prelude::rust_2024::*, result::Result};
+
+use crate::prelude::*;
+use core::{ result::Result};
 use log::info;
 
-
 impl RuntimeInternal {
-    pub(crate) async fn handle_incoming_sections_task(self: Rc<RuntimeInternal>) {
+    pub(crate) async fn handle_incoming_sections_task(
+        self: Rc<RuntimeInternal>,
+    ) {
         let mut sections_receiver =
             self.incoming_sections_receiver.borrow_mut();
 
@@ -35,7 +37,9 @@ impl RuntimeInternal {
             #[cfg(not(feature = "embassy_runtime"))]
             {
                 // TODO: task
-                self.task_manager.register_task(self_clone.handle_incoming_section_task(section));
+                self.task_manager.register_task(
+                    self_clone.handle_incoming_section_task(section),
+                );
             }
         }
     }
@@ -47,9 +51,9 @@ impl RuntimeInternal {
             RuntimeInternal::execute_incoming_section(self.clone(), section)
                 .await;
         info!(
-        "Execution result (on {} from {}): {result:?}",
-        self.endpoint, endpoint
-    );
+            "Execution result (on {} from {}): {result:?}",
+            self.endpoint, endpoint
+        );
         // send response back to the sender
         let _res = RuntimeInternal::send_response_block(
             self.clone(),
@@ -57,7 +61,7 @@ impl RuntimeInternal {
             endpoint,
             context_id,
         )
-            .await;
+        .await;
         // TODO #231: handle errors in sending response
     }
 

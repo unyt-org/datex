@@ -1,9 +1,10 @@
 use crate::{
-    compat::string::{String, ToString},
+    prelude::*,
     traits::structural_eq::StructuralEq,
     values::value_container::{ValueContainer, ValueError},
 };
-use core::{fmt::Display, ops::Not, prelude::rust_2024::*, result::Result};
+
+use core::{fmt::Display, ops::Not, result::Result};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]

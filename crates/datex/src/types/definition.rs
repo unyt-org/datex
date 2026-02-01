@@ -2,15 +2,6 @@ use crate::{
     references::{
         reference::ReferenceMutability, type_reference::TypeReference,
     },
-    compat::{
-        boxed::Box,
-        cell::RefCell,
-        format,
-        hash::Hash,
-        rc::Rc,
-        string::{String, ToString},
-        vec::Vec,
-    },
     traits::structural_eq::StructuralEq,
     types::{
         collection_type_definition::CollectionTypeDefinition,
@@ -21,8 +12,9 @@ use crate::{
         pointer::PointerAddress,
     },
 };
-use core::{fmt::Display, prelude::rust_2024::*};
+use core::{cell::RefCell, fmt::Display, hash::Hash, prelude::rust_2024::*};
 
+use crate::prelude::*;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TypeDefinition {
     /// { x: integer, y: text }

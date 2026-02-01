@@ -1,13 +1,12 @@
 use crate::{
-    references::reference::IndexOutOfBoundsError,
-    compat::{
-        ops::{Add, AddAssign},
-        string::{String, ToString},
-        vec::Vec,
-    },
+    prelude::*, references::reference::IndexOutOfBoundsError,
     traits::structural_eq::StructuralEq,
 };
-use core::{fmt::Display, prelude::rust_2024::*, result::Result};
+use core::{
+    fmt::Display,
+    ops::{Add, AddAssign},
+    result::Result,
+};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]

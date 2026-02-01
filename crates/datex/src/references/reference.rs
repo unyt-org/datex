@@ -2,7 +2,7 @@ use crate::{
     references::type_reference::{NominalTypeDeclaration, TypeReference},
     values::core_value::CoreValue,
 };
-use core::{prelude::rust_2024::*, result::Result};
+use core::{ result::Result};
 
 use crate::{
     prelude::*,

@@ -5,7 +5,7 @@ use crate::{
 
 use crate::prelude::*;
 use core::{
-    cell::RefCell, fmt::Display, prelude::rust_2024::*, result::Result,
+    cell::RefCell, fmt::Display,  result::Result,
 };
 use serde::{Deserialize, Serialize};
 

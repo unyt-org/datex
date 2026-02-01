@@ -1,15 +1,12 @@
-
-use futures_util::FutureExt;
-use core::cell::RefCell;
-use futures::future::Future;
-use core::pin::Pin;
-use core::fmt::Debug;
+use crate::channel::mpsc::{UnboundedSender, create_unbounded_channel};
 use async_select::select;
-use futures_util::future::Fuse;
-use futures_util::stream::FuturesUnordered;
-use futures_util::StreamExt;
-use crate::channel::mpsc::{create_unbounded_channel, UnboundedSender};
+use core::{cell::RefCell, fmt::Debug, pin::Pin};
+use futures::future::Future;
+use futures_util::{
+    FutureExt, StreamExt, future::Fuse, stream::FuturesUnordered,
+};
 
+use crate::prelude::*;
 pub type TaskFuture = Pin<Box<dyn Future<Output = ()>>>;
 
 pub struct TaskManager {
@@ -24,10 +21,7 @@ impl Debug for TaskManager {
 
 impl TaskManager {
     /// Async task to handle all events for the ComHub
-    pub(crate) fn create() -> (
-        TaskManager,
-        impl Future<Output = ()>,
-    ) {
+    pub(crate) fn create() -> (TaskManager, impl Future<Output = ()>) {
         let (sender, mut receiver) = create_unbounded_channel::<TaskFuture>();
 
         (
@@ -51,7 +45,7 @@ impl TaskManager {
                         complete => unreachable!(),
                     }
                 }
-            }
+            },
         )
     }
 
@@ -60,6 +54,9 @@ impl TaskManager {
     where
         F: Future<Output = ()> + 'static,
     {
-        self.task_sender.borrow_mut().start_send(Box::pin(fut)).unwrap();
+        self.task_sender
+            .borrow_mut()
+            .start_send(Box::pin(fut))
+            .unwrap();
     }
 }

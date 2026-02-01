@@ -1,12 +1,9 @@
-use core::{prelude::rust_2024::*, result::Result};
+use core::result::Result;
 pub mod typed_integer;
 pub mod utils;
+use crate::prelude::*;
 
 use crate::{
-    compat::{
-        string::{String, ToString},
-        vec,
-    },
     traits::structural_eq::StructuralEq,
     values::core_values::{
         error::NumberParseError, integer::typed_integer::TypedInteger,

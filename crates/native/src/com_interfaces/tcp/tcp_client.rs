@@ -10,7 +10,7 @@ use datex::{derive_setup_data, network::{
     },
 }, compat::{net::SocketAddr, sync::Arc}};
 use core::{
-    prelude::rust_2024::*, result::Result, str::FromStr,
+     result::Result, str::FromStr,
 };
 use futures_util::lock::Mutex;
 use log::{error, warn};

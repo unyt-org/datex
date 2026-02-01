@@ -1,16 +1,16 @@
 use crate::{
     libs::core::CoreLibPointerId,
-    compat::{
-        format,
-        ops::{Add, AddAssign, Sub},
-        string::String,
-    },
+    prelude::*,
     traits::{structural_eq::StructuralEq, value_eq::ValueEq},
     values::core_values::{decimal::Decimal, error::NumberParseError},
 };
+
 use core::{
-    fmt::Display, hash::Hash, num::ParseFloatError, ops::Neg,
-    prelude::rust_2024::*, result::Result,
+    fmt::Display,
+    hash::Hash,
+    num::ParseFloatError,
+    ops::{Add, AddAssign, Neg, Sub},
+    result::Result,
 };
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use num_traits::Zero;
@@ -553,13 +553,12 @@ impl From<f64> for TypedDecimal {
 
 #[cfg(test)]
 mod tests {
-    use crate::compat::assert_matches;
-
     use super::*;
     use crate::{
-        assert_structural_eq, assert_value_eq,
+        assert_structural_eq, assert_value_eq, prelude::*,
         values::core_values::decimal::Decimal,
     };
+    use core::assert_matches;
     use ordered_float::OrderedFloat;
 
     #[test]

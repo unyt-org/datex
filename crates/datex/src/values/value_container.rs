@@ -1,8 +1,9 @@
 use crate::traits::{identity::Identity, structural_eq::StructuralEq};
-use core::{cell::RefCell, prelude::rust_2024::*, result::Result};
+use core::{cell::RefCell, result::Result};
 
 use super::value::Value;
 use crate::{
+    prelude::*,
     references::{
         mutations::DIFUpdateDataOrMemory,
         observers::TransceiverId,
@@ -13,19 +14,18 @@ use crate::{
         deserializer::{DatexDeserializer, from_value_container},
         error::DeserializationError,
     },
-    compat::{borrow::Cow, boxed::Box, rc::Rc, string::String},
     traits::{apply::Apply, value_eq::ValueEq},
     types::definition::TypeDefinition,
     values::{core_value::CoreValue, core_values::r#type::Type},
 };
+
+use crate::serde::{error::SerializationError, serializer::to_value_container};
 use core::{
     fmt::Display,
     hash::{Hash, Hasher},
     ops::{Add, FnOnce, Neg, Sub},
 };
 use serde::{Deserialize, de::DeserializeOwned};
-use crate::serde::error::SerializationError;
-use crate::serde::serializer::to_value_container;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum ValueError {

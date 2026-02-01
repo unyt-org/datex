@@ -1,4 +1,4 @@
-use crate::values::core_values::r#type::Type;
+use crate::{prelude::*, values::core_values::r#type::Type};
 
 pub mod expression;
 pub mod type_expression;
@@ -36,6 +36,7 @@ mod tests {
         },
         global::operators::{BinaryOperator, binary::ArithmeticOperator},
         parser::Parser,
+        prelude::*,
         visitor::{
             VisitAction,
             expression::{ExpressionVisitor, visitable::ExpressionVisitResult},
@@ -85,9 +86,10 @@ mod tests {
             expression: &DatexExpression,
         ) -> Result<VisitAction<DatexExpression>, MyAstExpressionError>
         {
-            println!(
+            log::error!(
                 "Expression error: {:?} at {:?}. Aborting...",
-                error, expression.span
+                error,
+                expression.span
             );
             Err(error)
         }
@@ -130,7 +132,6 @@ mod tests {
         )
         .unwrap();
         MyAst.visit_datex_expression(&mut ast).unwrap();
-        println!("{:#?}", ast);
     }
 
     #[test]
@@ -180,6 +181,5 @@ mod tests {
         };
         let transformer = &mut MyAst;
         transformer.visit_datex_expression(&mut ast).unwrap();
-        println!("{:?}", ast);
     }
 }

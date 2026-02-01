@@ -2,9 +2,8 @@ use crate::{
     channel::mpsc::{
         UnboundedReceiver, UnboundedSender, create_unbounded_channel,
     },
-    prelude::*,
+    stdlib::string::String,
 };
-
 use cfg_if::cfg_if;
 use core::{cell::RefCell, clone::Clone, future::Future};
 use futures_util::{SinkExt, StreamExt};

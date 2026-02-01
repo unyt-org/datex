@@ -1,6 +1,6 @@
-use crate::compat::sync::Arc;
 use futures::future::BoxFuture;
 
+use crate::prelude::*;
 
 /// A generic async callback wrapper.
 /// Can be cloned and called from multiple tasks.

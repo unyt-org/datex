@@ -1,3 +1,5 @@
+use core::cell::RefCell;
+
 use crate::{
     global::protocol_structures::instructions::{
         RawFullPointerAddress, RawInternalPointerAddress,
@@ -49,7 +51,7 @@ impl InterruptProvider {
     }
 
     pub fn provide_result(&self, result: InterruptResult) {
-        *self.result.borrow_mut() = Some(result);
+        self.result.borrow_mut().replace(Some(result));
     }
 
     pub fn take_result(&self) -> Option<InterruptResult> {

@@ -1,6 +1,6 @@
 use datex::{derive_setup_data, compat::{net::SocketAddr, sync::Arc}};
 use core::{
-    prelude::rust_2024::*, result::Result, str::FromStr,
+     result::Result, str::FromStr,
 };
 use futures_util::{SinkExt, StreamExt};
 use futures_util::stream::{SplitSink, SplitStream};

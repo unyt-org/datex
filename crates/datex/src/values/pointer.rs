@@ -2,9 +2,10 @@ use crate::{
     global::protocol_structures::instructions::{
         RawInternalPointerAddress, RawPointerAddress,
     },
-    compat::{format, string::String},
+    prelude::*,
 };
-use core::{fmt::Display, prelude::rust_2024::*, result::Result};
+
+use core::{fmt::Display, result::Result};
 use datex_core::global::protocol_structures::instructions::{
     RawFullPointerAddress, RawLocalPointerAddress,
 };

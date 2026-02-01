@@ -1,7 +1,4 @@
-use crate::compat::{
-    string::{String, ToString},
-    vec::Vec,
-};
+use crate::prelude::*;
 use core::{convert::TryInto, fmt::Write, iter::FromIterator};
 use itertools::Itertools;
 
@@ -348,6 +345,7 @@ mod tests {
         buffer_to_hex, buffer_to_hex_advanced, hex_to_buffer,
         hex_to_buffer_advanced,
     };
+    use crate::prelude::*;
 
     /**
      * test byte array to hex string conversion, including seperator characters and fixed length padding

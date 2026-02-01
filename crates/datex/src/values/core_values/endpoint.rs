@@ -1,10 +1,6 @@
 use crate::{
     crypto::random,
-    compat::{
-        format,
-        string::{String, ToString},
-        vec::Vec,
-    },
+    prelude::*,
     traits::structural_eq::StructuralEq,
     utils::buffers::buffer_to_hex,
     values::{
@@ -12,11 +8,11 @@ use crate::{
         value_container::{ValueContainer, ValueError},
     },
 };
+
 use binrw::{BinRead, BinWrite, io::Cursor};
 use core::{
     fmt::{Debug, Display, Formatter},
     hash::Hash,
-    prelude::rust_2024::*,
     result::Result,
     str,
     str::FromStr,
@@ -640,7 +636,6 @@ impl<'a> Deserialize<'a> for Endpoint {
 
 #[cfg(test)]
 mod tests {
-    use crate::native_global_context::init_global_context_native;
     use super::*;
 
     #[test]
@@ -929,7 +924,6 @@ mod tests {
 
     #[test]
     fn random_anonymous_endpoint() {
-        
         let endpoint1 = Endpoint::random();
         let endpoint2 = Endpoint::random();
         assert_ne!(endpoint1, endpoint2);

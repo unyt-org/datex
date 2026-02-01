@@ -1,10 +1,6 @@
 use crate::{
     libs::core::CoreLibPointerId,
-    compat::{
-        format,
-        string::{String, ToString},
-        vec::Vec,
-    },
+    prelude::*,
     traits::structural_eq::StructuralEq,
     values::{
         core_value::CoreValue,
@@ -19,8 +15,7 @@ use crate::{
         value_container::ValueContainer,
     },
 };
-use core::{fmt::Display, hash::Hash, prelude::rust_2024::*, unimplemented};
-
+use core::{fmt::Display, hash::Hash,  unimplemented};
 #[derive(Debug, Clone, PartialEq, Hash, Eq)]
 pub enum StructuralTypeDefinition {
     Integer(Integer),
@@ -248,6 +243,7 @@ impl Display for StructuralTypeDefinition {
 #[cfg(test)]
 mod tests {
     use crate::{
+        prelude::*,
         types::structural_type_definition::StructuralTypeDefinition,
         values::{
             core_value::CoreValue,

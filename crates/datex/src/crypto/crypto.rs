@@ -1,7 +1,7 @@
 use crate::prelude::*;
 use alloc::format;
 use bs58;
-use core::{fmt::Display, pin::Pin, prelude::rust_2024::*, result::Result};
+use core::{fmt::Display, pin::Pin,  result::Result};
 pub type CryptoResult<'a, T> =
     Pin<Box<dyn Future<Output = Result<T, CryptoError>> + 'a>>;
 

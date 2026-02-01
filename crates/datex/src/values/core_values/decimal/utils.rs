@@ -1,7 +1,5 @@
-use crate::compat::{
-    format,
-    string::{String, ToString},
-};
+use crate::prelude::*;
+
 use core::{fmt::Display, prelude::rust_2024::*};
 use num_traits::Float;
 use ordered_float::OrderedFloat;

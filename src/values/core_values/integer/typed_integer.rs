@@ -10,10 +10,13 @@ use crate::values::{
 };
 
 use crate::{
-    libs::core::CoreLibPointerId, prelude::*,
+    libs::core::CoreLibPointerId,
+    stdlib::{
+        format,
+        string::{String, ToString},
+    },
     traits::structural_eq::StructuralEq,
 };
-
 use core::{
     fmt::Display,
     hash::Hash,

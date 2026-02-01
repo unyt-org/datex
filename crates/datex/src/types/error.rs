@@ -1,6 +1,6 @@
-use crate::compat::string::String;
-use core::{fmt::Display, prelude::rust_2024::*};
+use core::fmt::Display;
 
+use crate::prelude::*;
 #[derive(Debug)]
 pub enum IllegalTypeError {
     MutableRef(String),
