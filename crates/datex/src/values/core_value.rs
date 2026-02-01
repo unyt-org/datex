@@ -796,7 +796,7 @@ mod tests {
 
     #[test]
     fn type_construct() {
-        init_logger_debug();
+        
         let a = CoreValue::from(42i32);
         assert_eq!(a.default_type_definition().to_string(), "integer/i32");
     }
@@ -812,7 +812,7 @@ mod tests {
 
     #[test]
     fn addition() {
-        init_logger_debug();
+        
         let a = CoreValue::from(42i32);
         let b = CoreValue::from(11i32);
         let c = CoreValue::from("11");

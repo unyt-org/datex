@@ -1,17 +1,20 @@
 use crate::{
     ast::type_expressions::{TypeExpression, TypeExpressionData},
+    compat::heap::{boxed::Box, vec},
     compiler::{
         context::CompilationContext, error::CompilerError,
         precompiler::precompiled_ast::AstMetadata, scope::CompilationScope,
     },
     core_compiler::value_compiler::append_big_integer,
     global::type_instruction_codes::TypeInstructionCode,
-    compat::rc::Rc,
+    rc::Rc,
+    string::String,
     utils::buffers::{append_u8, append_u32},
     values::core_values::integer::Integer,
+    vec::Vec,
 };
+use alloc::format;
 use core::cell::RefCell;
-
 /// Compilation functions for type expressions.
 impl CompilationContext {
     pub fn append_type_instruction_code(&mut self, code: TypeInstructionCode) {

@@ -350,7 +350,7 @@ mod tests {
 
     #[test]
     fn endpoint() {
-        init_logger_debug();
+        
         let endpoint = Value::from(Endpoint::from_str("@test").unwrap());
         assert_eq!(endpoint.to_string(), "@test");
     }
@@ -375,7 +375,7 @@ mod tests {
 
     #[test]
     fn list() {
-        init_logger_debug();
+        
         let mut a = List::from(vec![
             Value::from("42"),
             Value::from(42),
@@ -399,7 +399,7 @@ mod tests {
 
     #[test]
     fn boolean() {
-        init_logger_debug();
+        
         let a = Value::from(true);
         let b = Value::from(false);
         let c = Value::from(false);
@@ -416,7 +416,7 @@ mod tests {
 
     #[test]
     fn equality_same_type() {
-        init_logger_debug();
+        
         let a = Value::from(42i8);
         let b = Value::from(42i8);
         let c = Value::from(27i8);
@@ -431,7 +431,7 @@ mod tests {
 
     #[test]
     fn decimal() {
-        init_logger_debug();
+        
         let a = Value::from(42.1f32);
         let b = Value::from(27f32);
 
@@ -442,7 +442,7 @@ mod tests {
 
     #[test]
     fn null() {
-        init_logger_debug();
+        
 
         let null_value = Value::null();
         assert_eq!(null_value.to_string(), "null");
@@ -455,7 +455,7 @@ mod tests {
 
     #[test]
     fn addition() {
-        init_logger_debug();
+        
         let a = Value::from(42i8);
         let b = Value::from(27i8);
 
@@ -466,7 +466,7 @@ mod tests {
 
     #[test]
     fn string_concatenation() {
-        init_logger_debug();
+        
         let a = Value::from("Hello ");
         let b = Value::from(42i8);
 

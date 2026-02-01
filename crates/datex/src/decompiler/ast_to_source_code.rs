@@ -1,16 +1,23 @@
-use crate::ast::{
-    expressions::{
-        Apply, BinaryOperation, CallableDeclaration, ComparisonOperation,
-        Conditional, DatexExpression, DatexExpressionData, DerefAssignment,
-        List, Map, PropertyAccess, PropertyAssignment, RemoteExecution,
-        SlotAssignment, TypeDeclaration, VariableAccess, VariableAssignment,
-        VariableDeclaration, VariantAccess,
+use crate::{
+    ast::{
+        expressions::{
+            Apply, BinaryOperation, CallableDeclaration, ComparisonOperation,
+            Conditional, DatexExpression, DatexExpressionData, DerefAssignment,
+            List, Map, PropertyAccess, PropertyAssignment, RemoteExecution,
+            SlotAssignment, TypeDeclaration, VariableAccess,
+            VariableAssignment, VariableDeclaration, VariantAccess,
+        },
+        type_expressions::{
+            CallableTypeExpression, TypeExpression, TypeExpressionData,
+            TypeVariantAccess,
+        },
     },
-    type_expressions::{
-        CallableTypeExpression, TypeExpression, TypeExpressionData,
-        TypeVariantAccess,
-    },
+    compat::heap::{boxed::Box, vec},
+    rc::Rc,
+    string::String,
+    vec::Vec,
 };
+use alloc::format;
 use core::fmt::{self};
 
 use crate::{
@@ -904,15 +911,16 @@ mod tests {
         let null_ast = DatexExpressionData::Null;
         assert_eq!(compact().format(&null_ast.with_default_span()), "null");
 
-        let range_ast =
-            DatexExpressionData::Range(crate::ast::expressions::RangeDeclaration {
+        let range_ast = DatexExpressionData::Range(
+            crate::ast::expressions::RangeDeclaration {
                 start: Box::new(
                     DatexExpressionData::Integer(11.into()).with_default_span(),
                 ),
                 end: Box::new(
                     DatexExpressionData::Integer(13.into()).with_default_span(),
                 ),
-            });
+            },
+        );
 
         assert_eq!(compact().format(&range_ast.with_default_span()), "11..13");
     }

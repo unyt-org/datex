@@ -1,8 +1,12 @@
-use crate::compat::{
-    boxed::Box, future::Future, pin::Pin, string::String, vec::Vec,
+use crate::{
+    compat::heap::{boxed::Box, vec},
+    rc::Rc,
+    string::String,
+    vec::Vec,
 };
+use alloc::format;
 use bs58;
-use core::{fmt::Display, prelude::rust_2024::*, result::Result};
+use core::{fmt::Display, pin::Pin, prelude::rust_2024::*, result::Result};
 pub type CryptoResult<'a, T> =
     Pin<Box<dyn Future<Output = Result<T, CryptoError>> + 'a>>;
 

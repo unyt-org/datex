@@ -190,7 +190,7 @@ mod tests {
 
     #[test]
     fn struct_with_value_container_serde_bytes() {
-        init_logger_debug();
+        
         // struct with value container
         let val = StructWithValueContainer {
             name: "test".to_string(),

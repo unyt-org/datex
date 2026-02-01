@@ -1,10 +1,11 @@
 use crate::{
     ast::expressions::{DatexExpression, VariableKind},
-    compat::{cell::RefCell, rc::Rc},
+    rc::Rc,
+    string::String,
     values::core_values::r#type::Type,
+    vec::Vec,
 };
-use core::fmt::Display;
-
+use core::{cell::RefCell, fmt::Display};
 #[derive(Clone, Debug)]
 pub struct VariableMetadata {
     pub original_realm_index: usize,

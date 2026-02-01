@@ -1,11 +1,15 @@
-use crate::compiler::{
-    error::CompilerError,
-    precompiler::{
-        precompiled_ast::{AstMetadata, VariableMetadata, VariableShape},
-        scope::PrecompilerScope,
+use crate::{
+    compat::heap::vec,
+    compiler::{
+        error::CompilerError,
+        precompiler::{
+            precompiled_ast::{AstMetadata, VariableMetadata, VariableShape},
+            scope::PrecompilerScope,
+        },
     },
+    string::String,
+    vec::Vec,
 };
-
 #[derive(Debug, Clone)]
 pub struct PrecompilerScopeStack {
     pub scopes: Vec<PrecompilerScope>,

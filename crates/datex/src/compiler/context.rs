@@ -1,5 +1,6 @@
 use crate::{
     collections::HashMap,
+    compat::heap::vec,
     core_compiler::value_compiler::{
         append_instruction_code, append_value_container,
     },
@@ -7,6 +8,7 @@ use crate::{
     runtime::execution::context::ExecutionMode,
     utils::buffers::append_u32,
     values::value_container::ValueContainer,
+    vec::Vec,
 };
 use core::cmp::PartialEq;
 use itertools::Itertools;

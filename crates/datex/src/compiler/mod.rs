@@ -20,6 +20,7 @@ use crate::{
         Statements, UnaryOperation, UnboundedStatement, VariableAccess,
         VariableAssignment, VariableDeclaration, VariableKind,
     },
+    compat::heap::boxed::Box,
     compiler::{
         context::{CompilationContext, VirtualSlot},
         error::{
@@ -32,11 +33,13 @@ use crate::{
     },
     global::{instruction_codes::InstructionCode, slots::InternalSlot},
     libs::core::CoreLibPointerId,
+    string::String,
+    vec::Vec,
 };
+use alloc::format;
 
 use crate::{
     ast::resolved_variable::VariableId,
-    compat::{rc::Rc, vec::Vec},
     core_compiler::value_compiler::{
         append_boolean, append_decimal, append_encoded_integer,
         append_endpoint, append_float_as_i16, append_float_as_i32,
@@ -60,6 +63,8 @@ use precompiler::{
     precompile_ast,
     precompiled_ast::{AstMetadata, RichAst, VariableMetadata},
 };
+
+use crate::{compat::heap::vec, rc::Rc};
 
 pub mod context;
 pub mod error;
@@ -1318,7 +1323,7 @@ fn compile_expression(
         }
 
         e => {
-            println!("Unhandled expression in compiler: {:?}", e);
+            log::error!("Unhandled expression in compiler: {:?}", e);
             return Err(CompilerError::UnexpectedTerm(Box::new(rich_ast.ast)));
         }
     }
@@ -1447,26 +1452,28 @@ pub mod tests {
         compile_script, compile_script_or_return_static_value,
         compile_template, parse_datex_script_to_rich_ast_simple_error,
     };
-    use crate::compat::{io::Read, vec};
-    use core::assert_matches;
-
     use crate::{
+        compat::heap::{boxed::Box, vec},
         compiler::scope::CompilationScope,
         global::{
             instruction_codes::InstructionCode,
             type_instruction_codes::TypeInstructionCode,
         },
         libs::core::CoreLibPointerId,
-        logger::init_logger_debug,
+        rc::Rc,
         runtime::execution::{
             ExecutionError,
             context::{ExecutionContext, ExecutionMode, LocalExecutionContext},
         },
+        string::String,
         values::{
             core_values::integer::Integer, pointer::PointerAddress,
             value_container::ValueContainer,
         },
+        vec::Vec,
     };
+    use alloc::format;
+    use core::assert_matches;
     use datex_core::{
         compiler::error::CompilerError,
         values::core_values::integer::typed_integer::TypedInteger,
@@ -1474,7 +1481,6 @@ pub mod tests {
     use log::*;
 
     fn compile_and_log(datex_script: &str) -> Vec<u8> {
-        init_logger_debug();
         let (result, _) =
             compile_script(datex_script, CompileOptions::default()).unwrap();
         info!(
@@ -1545,8 +1551,6 @@ pub mod tests {
 
     #[test]
     fn simple_multiplication() {
-        init_logger_debug();
-
         let lhs: u8 = 1;
         let rhs: u8 = 2;
         let datex_script = format!("{lhs}u8 * {rhs}u8"); // 1 * 2
@@ -1565,8 +1569,6 @@ pub mod tests {
 
     #[test]
     fn simple_multiplication_close() {
-        init_logger_debug();
-
         let lhs: u8 = 1;
         let rhs: u8 = 2;
         let datex_script = format!("{lhs}u8 * {rhs}u8;"); // 1 * 2
@@ -1588,8 +1590,6 @@ pub mod tests {
 
     #[test]
     fn is_operator() {
-        init_logger_debug();
-
         // TODO #151: compare refs
         let datex_script = "1u8 is 2u8".to_string();
         let result = compile_and_log(&datex_script);
@@ -1648,8 +1648,6 @@ pub mod tests {
 
     #[test]
     fn equality_operator() {
-        init_logger_debug();
-
         let lhs: u8 = 1;
         let rhs: u8 = 2;
         let datex_script = format!("{lhs}u8 == {rhs}u8"); // 1 == 2
@@ -1706,8 +1704,6 @@ pub mod tests {
 
     #[test]
     fn simple_addition() {
-        init_logger_debug();
-
         let lhs: u8 = 1;
         let rhs: u8 = 2;
         let datex_script = format!("{lhs}u8 + {rhs}u8"); // 1 + 2
@@ -1742,8 +1738,6 @@ pub mod tests {
 
     #[test]
     fn multi_addition() {
-        init_logger_debug();
-
         let op1: u8 = 1;
         let op2: u8 = 2;
         let op3: u8 = 3;
@@ -1771,8 +1765,6 @@ pub mod tests {
 
     #[test]
     fn mixed_calculation() {
-        init_logger_debug();
-
         let op1: u8 = 1;
         let op2: u8 = 2;
         let op3: u8 = 3;
@@ -1800,8 +1792,6 @@ pub mod tests {
 
     #[test]
     fn complex_addition() {
-        init_logger_debug();
-
         let a: u8 = 1;
         let b: u8 = 2;
         let c: u8 = 3;
@@ -1825,8 +1815,6 @@ pub mod tests {
 
     #[test]
     fn complex_addition_and_subtraction() {
-        init_logger_debug();
-
         let a: u8 = 1;
         let b: u8 = 2;
         let c: u8 = 3;
@@ -1849,7 +1837,6 @@ pub mod tests {
 
     #[test]
     fn integer_u8() {
-        init_logger_debug();
         let val = 42;
         let datex_script = format!("{val}u8"); // 42
         let result = compile_and_log(&datex_script);
@@ -1858,7 +1845,6 @@ pub mod tests {
 
     #[test]
     fn range_u8() {
-        init_logger_debug();
         let start = 11i64;
         let end = 13i64;
         let datex_script = format!("{start}..{end}");
@@ -1888,7 +1874,6 @@ pub mod tests {
     }
     #[test]
     fn range_i64() {
-        init_logger_debug();
         let start = 128i64;
         let end = 256i64;
         let datex_script = format!("{start}..{end}");
@@ -1921,7 +1906,6 @@ pub mod tests {
     // Test for decimal
     #[test]
     fn decimal() {
-        init_logger_debug();
         let datex_script = "42.0";
         let result = compile_and_log(datex_script);
         let bytes = 42_i16.to_le_bytes();
@@ -1936,7 +1920,6 @@ pub mod tests {
     /// Test for test that is less than 256 characters
     #[test]
     fn short_text() {
-        init_logger_debug();
         let val = "unyt";
         let datex_script = format!("\"{val}\""); // "unyt"
         let result = compile_and_log(&datex_script);
@@ -1949,7 +1932,6 @@ pub mod tests {
     // Test empty list
     #[test]
     fn empty_list() {
-        init_logger_debug();
         // TODO #437: support list constructor (apply on type)
         let datex_script = "[]";
         // const x = mut 42;
@@ -1964,7 +1946,6 @@ pub mod tests {
     // Test list with single element
     #[test]
     fn single_element_list() {
-        init_logger_debug();
         // TODO #438: support list constructor (apply on type)
         let datex_script = "[42u8]";
         let result = compile_and_log(datex_script);
@@ -1982,7 +1963,6 @@ pub mod tests {
     // Test list with multiple elements
     #[test]
     fn multi_element_list() {
-        init_logger_debug();
         let datex_script = "[1u8, 2u8, 3u8]";
         let result = compile_and_log(datex_script);
         assert_eq!(
@@ -2020,7 +2000,6 @@ pub mod tests {
     // Test list with expressions inside
     #[test]
     fn list_with_expressions() {
-        init_logger_debug();
         let datex_script = "[1u8 + 2u8, 3u8 * 4u8]";
         let result = compile_and_log(datex_script);
         assert_eq!(
@@ -2045,7 +2024,6 @@ pub mod tests {
     // Nested lists
     #[test]
     fn nested_lists() {
-        init_logger_debug();
         let datex_script = "[1u8, [2u8, 3u8], 4u8]";
         let result = compile_and_log(datex_script);
         assert_eq!(
@@ -2070,7 +2048,6 @@ pub mod tests {
     // map with text key
     #[test]
     fn map_with_text_key() {
-        init_logger_debug();
         let datex_script = "{\"key\": 42u8}";
         let result = compile_and_log(datex_script);
         let expected = vec![
@@ -2090,7 +2067,6 @@ pub mod tests {
     // map with integer key
     #[test]
     fn map_integer_key() {
-        init_logger_debug();
         let datex_script = "{(10u8): 42u8}";
         let result = compile_and_log(datex_script);
         let expected = vec![
@@ -2108,7 +2084,6 @@ pub mod tests {
     // map with long text key (>255 bytes)
     #[test]
     fn map_with_long_text_key() {
-        init_logger_debug();
         let long_key = "a".repeat(300);
         let datex_script = format!("{{\"{long_key}\": 42u8}}");
         let result = compile_and_log(&datex_script);
@@ -2127,7 +2102,6 @@ pub mod tests {
     // map with dynamic key (expression)
     #[test]
     fn map_with_dynamic_key() {
-        init_logger_debug();
         let datex_script = "{(1u8 + 2u8): 42u8}";
         let result = compile_and_log(datex_script);
         let expected = [
@@ -2148,7 +2122,6 @@ pub mod tests {
     // map with multiple keys (text, integer, expression)
     #[test]
     fn map_with_multiple_keys() {
-        init_logger_debug();
         let datex_script = "{key: 42u8, (4u8): 43u8, (1u8 + 2u8): 44u8}";
         let result = compile_and_log(datex_script);
         let expected = vec![
@@ -2181,7 +2154,6 @@ pub mod tests {
     // empty map
     #[test]
     fn empty_map() {
-        init_logger_debug();
         let datex_script = "{}";
         let result = compile_and_log(datex_script);
         let expected: Vec<u8> = vec![
@@ -2193,7 +2165,6 @@ pub mod tests {
 
     #[test]
     fn allocate_slot() {
-        init_logger_debug();
         let script = "const a = 42u8";
         let result = compile_and_log(script);
         assert_eq!(
@@ -2213,7 +2184,6 @@ pub mod tests {
 
     #[test]
     fn allocate_slot_with_value() {
-        init_logger_debug();
         let script = "const a = 42u8; a + 1u8";
         let result = compile_and_log(script);
         assert_eq!(
@@ -2245,7 +2215,6 @@ pub mod tests {
 
     #[test]
     fn allocate_scoped_slots() {
-        init_logger_debug();
         let script = "const a = 42u8; (const a = 43u8; a); a";
         let result = compile_and_log(script);
         assert_eq!(
@@ -2293,7 +2262,6 @@ pub mod tests {
 
     #[test]
     fn allocate_scoped_slots_with_parent_variables() {
-        init_logger_debug();
         let script =
             "const a = 42u8; const b = 41u8; (const a = 43u8; a; b); a";
         let result = compile_and_log(script);
@@ -2354,7 +2322,6 @@ pub mod tests {
 
     #[test]
     fn allocate_ref() {
-        init_logger_debug();
         let script = "const a = &mut 42u8";
         let result = compile_and_log(script);
         assert_eq!(
@@ -2375,7 +2342,6 @@ pub mod tests {
 
     #[test]
     fn read_ref() {
-        init_logger_debug();
         let script = "const a = &mut 42u8; a";
         let result = compile_and_log(script);
         assert_eq!(
@@ -2405,7 +2371,6 @@ pub mod tests {
 
     #[test]
     fn compile() {
-        init_logger_debug();
         let result = compile_template(
             "? + ?",
             &[
@@ -2428,7 +2393,6 @@ pub mod tests {
 
     #[test]
     fn compile_macro() {
-        init_logger_debug();
         let a = TypedInteger::from(1u8);
         let result = compile!("?", a);
         assert_eq!(result.unwrap().0, vec![InstructionCode::UINT_8.into(), 1,]);
@@ -2436,7 +2400,6 @@ pub mod tests {
 
     #[test]
     fn compile_macro_multi() {
-        init_logger_debug();
         let result =
             compile!("? + ?", TypedInteger::from(1u8), TypedInteger::from(2u8));
         assert_eq!(
@@ -2457,7 +2420,7 @@ pub mod tests {
         let file_path = std::path::Path::new(&file_path);
         let file =
             std::fs::File::open(file_path).expect("Failed to open test.json");
-        let mut reader = crate::compat::io::BufReader::new(file);
+        let mut reader = std::io::BufReader::new(file);
         let mut json_string = String::new();
         reader
             .read_to_string(&mut json_string)
@@ -2474,8 +2437,6 @@ pub mod tests {
 
     #[test]
     fn static_value_detection() {
-        init_logger_debug();
-
         // non-static
         let script = "1 + 2";
         let compilation_scope = get_compilation_context(script);
@@ -2618,7 +2579,6 @@ pub mod tests {
 
     #[test]
     fn remote_execution_injected_const() {
-        init_logger_debug();
         let script = "const x = 42u8; 1u8 :: x";
         let (res, _) =
             compile_script(script, CompileOptions::default()).unwrap();
@@ -2670,7 +2630,6 @@ pub mod tests {
 
     #[test]
     fn remote_execution_injected_var() {
-        init_logger_debug();
         // var x only refers to a value, not a ref, but since it is transferred to a
         // remote context, its state is synced via a ref (VariableReference model)
         let script = "var x = 42u8; 1u8 :: x; x = 43u8;";
@@ -3048,7 +3007,6 @@ pub mod tests {
 
     #[test]
     fn assignment_to_const() {
-        init_logger_debug();
         let script = "const a = 42; a = 43";
         let result = compile_script(script, CompileOptions::default())
             .map_err(|e| e.error);
@@ -3057,7 +3015,6 @@ pub mod tests {
 
     #[test]
     fn assignment_to_const_mut() {
-        init_logger_debug();
         let script = "const a = &mut 42; a = 43";
         let result = compile_script(script, CompileOptions::default())
             .map_err(|e| e.error);
@@ -3066,7 +3023,6 @@ pub mod tests {
 
     #[test]
     fn internal_assignment_to_const_mut() {
-        init_logger_debug();
         let script = "const a = &mut 42; *a = 43";
         let result = compile_script(script, CompileOptions::default());
         assert_matches!(result, Ok(_));
@@ -3074,7 +3030,6 @@ pub mod tests {
 
     #[test]
     fn addition_to_const_mut_ref() {
-        init_logger_debug();
         let script = "const a = &mut 42; *a += 1;";
         let result = compile_script(script, CompileOptions::default());
         assert_matches!(result, Ok(_));
@@ -3082,7 +3037,6 @@ pub mod tests {
 
     #[test]
     fn addition_to_const_variable() {
-        init_logger_debug();
         let script = "const a = 42; a += 1";
         let result = compile_script(script, CompileOptions::default())
             .map_err(|e| e.error);
@@ -3234,7 +3188,6 @@ pub mod tests {
 
     #[test]
     fn test_get_property_text() {
-        init_logger_debug();
         let datex_script = "'test'.example";
         let result = compile_and_log(datex_script);
         let expected = vec![
@@ -3260,7 +3213,6 @@ pub mod tests {
 
     #[test]
     fn test_get_property_text_quoted() {
-        init_logger_debug();
         let datex_script = "'test'.'example'";
         let result = compile_and_log(datex_script);
         let expected = vec![
@@ -3286,7 +3238,6 @@ pub mod tests {
 
     #[test]
     fn test_get_property_index() {
-        init_logger_debug();
         let datex_script = "'test'.42";
         let result = compile_and_log(datex_script);
         let expected = vec![
@@ -3309,7 +3260,6 @@ pub mod tests {
 
     #[test]
     fn test_get_property_dynamic() {
-        init_logger_debug();
         let datex_script = "'test'.(1u8 + 2u8)";
         let result = compile_and_log(datex_script);
         let expected = vec![
@@ -3333,7 +3283,6 @@ pub mod tests {
 
     #[test]
     fn test_set_property_text() {
-        init_logger_debug();
         let datex_script = "'test'.example = 42u8";
         let result = compile_and_log(datex_script);
         let expected = vec![
@@ -3362,7 +3311,6 @@ pub mod tests {
 
     #[test]
     fn test_set_property_index() {
-        init_logger_debug();
         let datex_script = "'test'.42 = 43u8";
         let result = compile_and_log(datex_script);
         let expected = vec![
@@ -3388,7 +3336,6 @@ pub mod tests {
 
     #[test]
     fn test_set_property_dynamic() {
-        init_logger_debug();
         let datex_script = "'test'.(1u8 + 2u8) = 43u8";
         let result = compile_and_log(datex_script);
         let expected = vec![
@@ -3415,7 +3362,6 @@ pub mod tests {
 
     #[test]
     fn test_apply_no_arguments() {
-        init_logger_debug();
         let datex_script = "'test'()";
         let result = compile_and_log(datex_script);
         let expected = vec![
@@ -3433,7 +3379,6 @@ pub mod tests {
 
     #[test]
     fn test_apply_one_argument() {
-        init_logger_debug();
         let datex_script = "'test' 42u8";
         let result = compile_and_log(datex_script);
         let expected = vec![
@@ -3454,7 +3399,6 @@ pub mod tests {
 
     #[test]
     fn test_apply_multiple_arguments() {
-        init_logger_debug();
         let datex_script = "'test'(1u8, 2u8, 3u8)";
         let result = compile_and_log(datex_script);
         let expected = vec![

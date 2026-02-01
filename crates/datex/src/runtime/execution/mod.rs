@@ -445,7 +445,7 @@ mod tests {
 
     #[test]
     fn list_with_nested_scope() {
-        init_logger_debug();
+        
         let result = execute_datex_script_debug_with_result("[1, (2 + 3), 4]");
         let expected = datex_list![
             Integer::from(1i8),
@@ -488,7 +488,7 @@ mod tests {
 
     #[test]
     fn integer() {
-        init_logger_debug();
+        
         let result = execute_datex_script_debug_with_result("2");
         assert_eq!(result, Integer::from(2).into());
         assert_ne!(result, 2_u8.into());
@@ -497,7 +497,7 @@ mod tests {
 
     #[test]
     fn typed_integer() {
-        init_logger_debug();
+        
         let result = execute_datex_script_debug_with_result("-2i16");
         assert_eq!(result, TypedInteger::from(-2i16).into());
         assert_structural_eq!(result, ValueContainer::from(-2_i16));
@@ -549,7 +549,7 @@ mod tests {
 
     #[test]
     fn map() {
-        init_logger_debug();
+        
         let result =
             execute_datex_script_debug_with_result("{x: 1, y: 2, z: 42}");
         let map: CoreValue = result.clone().to_value().borrow().clone().inner;
@@ -588,7 +588,7 @@ mod tests {
 
     #[test]
     fn empty_map() {
-        init_logger_debug();
+        
         let result = execute_datex_script_debug_with_result("{}");
         let map: CoreValue = result.clone().to_value().borrow().clone().inner;
         let map: Map = map.try_into().unwrap();
@@ -602,28 +602,28 @@ mod tests {
 
     #[test]
     fn statements() {
-        init_logger_debug();
+        
         let result = execute_datex_script_debug_with_result("1; 2; 3");
         assert_eq!(result, Integer::from(3).into());
     }
 
     #[test]
     fn single_terminated_statement() {
-        init_logger_debug();
+        
         let result = execute_datex_script_debug("1;");
         assert_eq!(result, None);
     }
 
     #[test]
     fn const_declaration() {
-        init_logger_debug();
+        
         let result = execute_datex_script_debug_with_result("const x = 42; x");
         assert_eq!(result, Integer::from(42).into());
     }
 
     #[test]
     fn const_declaration_with_addition() {
-        init_logger_debug();
+        
         let result =
             execute_datex_script_debug_with_result("const x = 1 + 2; x");
         assert_eq!(result, Integer::from(3).into());
@@ -631,7 +631,7 @@ mod tests {
 
     #[test]
     fn deref() {
-        init_logger_debug();
+        
         let result =
             execute_datex_script_debug_with_result("const x = &42; *x");
         assert_eq!(result, ValueContainer::from(Integer::from(42)));
@@ -639,7 +639,7 @@ mod tests {
 
     #[test]
     fn ref_assignment() {
-        init_logger_debug();
+        
         let result =
             execute_datex_script_debug_with_result("const x = &mut 42; x");
         assert_matches!(result, ValueContainer::Reference(..));
@@ -648,7 +648,7 @@ mod tests {
 
     #[test]
     fn ref_add_assignment() {
-        init_logger_debug();
+        
         let result = execute_datex_script_debug_with_result(
             "const x = &mut 42; *x += 1",
         );
@@ -664,7 +664,7 @@ mod tests {
 
     #[test]
     fn ref_sub_assignment() {
-        init_logger_debug();
+        
         let result = execute_datex_script_debug_with_result(
             "const x = &mut 42; *x -= 1",
         );
@@ -682,21 +682,21 @@ mod tests {
 
     #[test]
     fn endpoint_slot() {
-        init_logger_debug();
+        
         let result = execute_datex_script_debug_with_error("#endpoint");
         assert_matches!(result.unwrap_err(), ExecutionError::RequiresRuntime);
     }
 
     #[test]
     fn shebang() {
-        init_logger_debug();
+        
         let result = execute_datex_script_debug_with_result("#!datex\n42");
         assert_eq!(result, Integer::from(42).into());
     }
 
     #[test]
     fn single_line_comment() {
-        init_logger_debug();
+        
         let result =
             execute_datex_script_debug_with_result("// this is a comment\n42");
         assert_eq!(result, Integer::from(42).into());
@@ -709,7 +709,7 @@ mod tests {
 
     #[test]
     fn multi_line_comment() {
-        init_logger_debug();
+        
         let result = execute_datex_script_debug_with_result(
             "/* this is a comment */\n42",
         );

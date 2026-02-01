@@ -20,6 +20,14 @@ pub struct PrecompilerData {
     pub precompiler_scope_stack: RefCell<PrecompilerScopeStack>,
 }
 
+use crate::{
+    compat::heap::{boxed::Box, vec},
+    rc::Rc,
+    string::String,
+    vec::Vec,
+};
+use alloc::format;
+
 #[derive(Debug, Clone)]
 pub struct CompilationScope {
     /// List of variables, mapped by name to their slot address and type.
