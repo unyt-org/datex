@@ -24,11 +24,11 @@ extern crate std;
 
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 extern crate alloc;
-
 pub mod channel;
 pub mod crypto;
 pub mod dif;
 pub mod mock_globals;
+pub mod prelude;
 
 #[cfg(feature = "ast")]
 pub mod ast;
@@ -123,6 +123,17 @@ pub mod string {
 
     #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
     compile_error!("String requires feature \"alloc\" or \"std\".");
+}
+
+pub mod rc {
+    #[cfg(feature = "std")]
+    pub use std::rc::Rc;
+
+    #[cfg(all(not(feature = "std"), feature = "alloc"))]
+    pub use alloc::rc::Rc;
+
+    #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+    compile_error!("Rc requires feature \"alloc\" or \"std\".");
 }
 
 pub mod std_sync {

@@ -1,9 +1,9 @@
 use crate::{
-    compat::{cell::RefCell, collections::HashSet, ops::Range, rc::Rc},
+    collections::HashSet, compat::ops::Range, rc::Rc,
     type_inference::infer_expression_type_detailed_errors,
 };
-use core::{str::FromStr, unreachable};
-
+use alloc::format;
+use core::{cell::RefCell, str::FromStr, unreachable};
 pub mod options;
 pub mod precompiled_ast;
 pub mod scope;
@@ -29,6 +29,7 @@ use crate::{
     global::operators::{BinaryOperator, binary::ArithmeticOperator},
     libs::core::CoreLibPointerId,
     references::type_reference::{NominalTypeDeclaration, TypeReference},
+    string::String,
     types::definition::TypeDefinition,
     values::core_values::r#type::Type,
     visitor::{
@@ -601,7 +602,9 @@ mod tests {
             src_id::SrcId,
             type_expressions::{StructuralMap, TypeExpressionData},
         },
+        compat::heap::vec,
         parser::Parser,
+        prelude::*,
         references::reference::ReferenceMutability,
         values::{core_values::integer::Integer, pointer::PointerAddress},
     };
@@ -625,8 +628,7 @@ mod tests {
             "var x: integer = 34; var y = 10; x + y",
         )
         .unwrap();
-        let res = precompile(ast, options).unwrap();
-        println!("{:#?}", res.ast);
+        precompile(ast, options).expect("Should precompile without errors");
     }
 
     #[test]
@@ -653,7 +655,6 @@ mod tests {
         };
         let ast = Parser::parse_with_default_options("x + 10").unwrap();
         let result = precompile(ast, options);
-        println!("{:#?}", result);
         assert!(result.is_err());
     }
 
@@ -751,7 +752,6 @@ mod tests {
         let metadata = rich_ast.metadata.borrow();
         let var_meta = metadata.variable_metadata(0).unwrap();
         assert_eq!(var_meta.shape, VariableShape::Type);
-        println!("{:#?}", var_meta);
     }
 
     #[test]
