@@ -274,11 +274,11 @@ impl TryFrom<&DatexExpressionData> for ValueContainer {
             DatexExpressionData::Range(range) => {
                 let start = match &range.start.data {
                     DatexExpressionData::Integer(int) => int,
-                    _ => panic!("OutReachedStart"),
+                    _ => unreachable!("Start of RangeDeclaration must be literal integer"),
                 };
                 let end = match &range.end.data {
                     DatexExpressionData::Integer(int) => int,
-                    _ => panic!("OutReachedEnd"),
+                    _ => unreachable!("End of RangeDeclaration must be literal integer"),
                 };
                 ValueContainer::from(Range::new(
                     start.clone(),
@@ -308,11 +308,11 @@ impl Display for RangeDeclaration {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         let start = match &self.start.data {
             DatexExpressionData::Integer(int) => int.to_string(),
-            _ => panic!("CompilerOutRanged"),
+            _ => unreachable!("Start of RangeDeclaration must be literal integer"),
         };
         let end = match &self.end.data {
             DatexExpressionData::Integer(int) => int.to_string(),
-            _ => panic!("CompilerOutRanged"),
+            _ => unreachable!("End of RangeDeclaration must be literal integer"),
         };
         core::write!(f, "{}..{}", start, end)
     }
