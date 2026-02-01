@@ -46,10 +46,6 @@ impl<'a> Formatter<'a> {
 
         // handle Statements expression specially
         if let DatexExpressionData::Statements(statements) = &expression.data {
-            println!(
-                "DEBUG: Handling Statements bracketing: {:#?}",
-                statements
-            );
             return
                 // brackets definitely needed because multiple statements or terminated
                 if statements.statements.len() > 1 || statements.is_terminated {
@@ -242,9 +238,11 @@ impl<'a> Formatter<'a> {
 
 #[cfg(test)]
 mod tests {
-    use crate::fmt::options::{BracketStyle, FormattingOptions};
-
     use super::*;
+    use crate::{
+        fmt::options::{BracketStyle, FormattingOptions},
+        prelude::*,
+    };
 
     fn to_string(script: &str, options: FormattingOptions) -> String {
         let formatter = Formatter::new(script, options);

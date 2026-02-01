@@ -647,7 +647,6 @@ mod tests {
             type_definition: DIFTypeDefinition::Unit,
         };
         let serialized = dif_type.as_json();
-        println!("Serialized DIFType: {}", serialized);
         let deserialized = DIFType::from_json(&serialized);
         assert_eq!(dif_type, deserialized);
     }
@@ -723,9 +722,7 @@ mod tests {
             )),
         };
         let serialized = dif_type.as_json();
-        println!("Serialized DIFType: {}", serialized);
         let deserialized: DIFType = DIFType::from_json(&serialized);
-        println!("Deserialized DIFType: {:#?}", deserialized);
         assert_eq!(dif_type, deserialized);
     }
 }

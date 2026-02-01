@@ -18,7 +18,7 @@ use crate::{
         value_container::ValueContainer,
     },
 };
-use core::{cell::RefCell,  result::Result};
+use core::{cell::RefCell, result::Result};
 use serde::{Deserialize, Serialize};
 
 use crate::prelude::*;
@@ -334,9 +334,12 @@ mod tests {
         dif::{DIFConvertible, r#type::DIFTypeDefinition, value::DIFValue},
         libs::core::CoreLibPointerId,
         runtime::memory::Memory,
-        values::core_values::{
-            endpoint::Endpoint, integer::typed_integer::IntegerTypeVariant,
-            map::Map,
+        values::{
+            core_values::{
+                endpoint::Endpoint, integer::typed_integer::IntegerTypeVariant,
+                map::Map,
+            },
+            value_container::ValueContainer,
         },
     };
 

@@ -297,7 +297,7 @@ impl DXBBlock {
             }
             EncryptionType::None => {
                 let mut bytes = Vec::new();
-                reader.read_to_end(&mut bytes)?;
+                reader.read_to_end(&mut bytes).map_err(|e| e.to_string())?;
                 bytes
             }
         };
@@ -307,7 +307,7 @@ impl DXBBlock {
         let encrypted_header = EncryptedHeader::read(&mut reader)?;
 
         let mut body = Vec::new();
-        reader.read_to_end(&mut body)?;
+        reader.read_to_end(&mut body).map_err(|e| e.to_string())?;
 
         cfg_if::cfg_if! {
             if #[cfg(feature = "native_crypto")] {

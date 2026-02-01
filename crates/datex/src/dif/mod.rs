@@ -42,6 +42,7 @@ mod tests {
             value_container::ValueContainer,
         },
     };
+    use alloc::string::ToString;
     use core::cell::RefCell;
     use datex_core::{
         dif::r#type::DIFTypeDefinition, values::core_values::endpoint::Endpoint,

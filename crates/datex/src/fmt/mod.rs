@@ -16,6 +16,7 @@ use crate::{
     global::operators::{BinaryOperator, ComparisonOperator, UnaryOperator},
     libs::core::CoreLibPointerId,
     parser::ParserOptions,
+    prelude::*,
 };
 use pretty::{DocAllocator, DocBuilder, RcAllocator, RcDoc};
 
@@ -130,7 +131,6 @@ impl<'a> Formatter<'a> {
         type_expr: &'a TypeExpression,
     ) -> Format<'a> {
         let a = &self.alloc;
-        println!("formatting type expression: {:?}", type_expr);
         match &type_expr.data {
             TypeExpressionData::VariantAccess(TypeVariantAccess {
                 name,
@@ -535,6 +535,6 @@ mod tests {
     }
 
     fn print(script: &str, options: FormattingOptions) {
-        println!("{}", to_string(script, options));
+        log::info!("{}", to_string(script, options));
     }
 }

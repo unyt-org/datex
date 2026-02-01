@@ -2409,6 +2409,7 @@ pub mod tests {
         );
     }
 
+    #[cfg(feature = "std")]
     fn get_json_test_string(file_path: &str) -> String {
         // read json from test file
         let file_path = format!("benches/json/{file_path}");
@@ -2424,6 +2425,7 @@ pub mod tests {
     }
 
     #[test]
+    #[cfg(feature = "std")]
     fn json_to_dxb_large_file() {
         let json = get_json_test_string("test3.json");
         let _ = compile_script(&json, CompileOptions::default())
