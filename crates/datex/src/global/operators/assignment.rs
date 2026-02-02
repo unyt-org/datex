@@ -1,6 +1,6 @@
 use super::super::instruction_codes::InstructionCode;
 use core::{fmt::Display, prelude::rust_2024::*};
-use datex_core::global::protocol_structures::instructions::RegularInstruction;
+use crate::global::protocol_structures::instructions::RegularInstruction;
 
 #[derive(Clone, Debug, PartialEq, Copy)]
 pub enum AssignmentOperator {

@@ -13,7 +13,7 @@ use crate::{
 use crate::prelude::*;
 use binrw::{BinRead, BinWrite};
 use core::{fmt::Display, prelude::rust_2024::*};
-use datex_core::values::pointer::PointerAddress;
+use crate::values::pointer::PointerAddress;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq)]

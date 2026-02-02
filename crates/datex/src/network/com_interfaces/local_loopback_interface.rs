@@ -17,7 +17,7 @@ use crate::{
     runtime::Runtime,
 };
 use core::time::Duration;
-use datex_core::network::com_interfaces::com_interface::factory::{
+use crate::network::com_interfaces::com_interface::factory::{
     SendCallback, SendSuccess,
 };
 

@@ -271,7 +271,7 @@ mod tests {
             integer::typed_integer::{IntegerTypeVariant, TypedInteger},
         },
     };
-    use datex_core::parser::parsers::type_expressions::tests::parse_type_expression;
+    use crate::parser::parsers::type_expressions::tests::parse_type_expression;
 
     #[test]
     fn parse_boolean_true() {

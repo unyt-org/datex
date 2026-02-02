@@ -1469,7 +1469,7 @@ pub mod tests {
     use crate::prelude::*;
     use alloc::format;
     use core::assert_matches;
-    use datex_core::{
+    use crate::{
         compiler::error::CompilerError,
         values::core_values::integer::typed_integer::TypedInteger,
     };

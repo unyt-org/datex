@@ -1,12 +1,7 @@
-use crate::{
-    prelude::*,
-    traits::structural_eq::StructuralEq,
-    utils::buffers::buffer_to_hex,
-    values::{
-        core_value::CoreValue,
-        value_container::{ValueContainer, ValueError},
-    },
-};
+use crate::{prelude::*, random, traits::structural_eq::StructuralEq, utils::buffers::buffer_to_hex, values::{
+    core_value::CoreValue,
+    value_container::{ValueContainer, ValueError},
+}};
 
 use binrw::{BinRead, BinWrite, io::Cursor};
 use core::{
@@ -18,6 +13,8 @@ use core::{
 };
 use hex::decode;
 use serde::{Deserialize, Serialize};
+use datex_crypto_facade::crypto::Crypto;
+use crate::crypto::CryptoImpl;
 
 #[derive(
     BinWrite, BinRead, Debug, Clone, Copy, Hash, PartialEq, Eq, Default,
@@ -431,12 +428,12 @@ impl Endpoint {
     }
 
     fn random_anonymous_id() -> [u8; 18] {
-        let buffer = random::random_bytes_slice();
+        let buffer = CryptoImpl::random_bytes(18);
         if buffer.iter().any(|&b| b != 0) {
-            return buffer;
+            return buffer.try_into().unwrap();
         }
         // if all bytes are 0, we panic - this should not happen under normal circumstances
-        core::panic!("Could not generate random anonymous id");
+        panic!("Could not generate random anonymous id");
     }
 
     fn are_name_chars_valid(name: [u8; 18]) -> bool {

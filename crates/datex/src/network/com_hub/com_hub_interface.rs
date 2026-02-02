@@ -17,7 +17,7 @@ use crate::{
     network::com_interfaces::com_interface::properties::ComInterfaceProperties,
     prelude::*,
 };
-use datex_core::network::com_interfaces::com_interface::factory::ComInterfaceAsyncFactory;
+use crate::network::com_interfaces::com_interface::factory::ComInterfaceAsyncFactory;
 
 /// Interface management methods
 impl ComHub {

@@ -11,7 +11,12 @@ edition = "2024"
 license-file = "LICENSE"
 
 [lib]
-crate-type = ["cdylib", "rlib"]
+crate-type = ["rlib"]
+
+[lints.clippy]
+std_instead_of_core = "deny"
+alloc_instead_of_core = "deny"
+std_instead_of_alloc = "deny"
 
 [dependencies]
 datex-crypto-facade = { path = "../datex-crypto-facade", version = "0.0.1" }

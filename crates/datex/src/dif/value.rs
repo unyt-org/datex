@@ -345,7 +345,7 @@ mod tests {
 
     use crate::prelude::*;
     use core::cell::RefCell;
-    use datex_core::values::value::Value;
+    use crate::values::value::Value;
 
     fn get_mock_memory() -> RefCell<Memory> {
         RefCell::new(Memory::new(Endpoint::default()))

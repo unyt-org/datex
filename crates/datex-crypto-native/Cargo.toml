@@ -11,7 +11,7 @@ edition = "2024"
 license-file = "LICENSE"
 
 [lib]
-crate-type = ["cdylib", "rlib"]
+crate-type = ["rlib"]
 
 [dependencies]
 rand = { version = "0.9.2" }

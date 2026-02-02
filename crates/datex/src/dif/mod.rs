@@ -44,7 +44,7 @@ mod tests {
     };
     use alloc::string::ToString;
     use core::cell::RefCell;
-    use datex_core::{
+    use crate::{
         dif::r#type::DIFTypeDefinition, values::core_values::endpoint::Endpoint,
     };
 

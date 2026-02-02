@@ -6,7 +6,7 @@ use crate::{
 };
 
 use core::{fmt::Display, result::Result};
-use datex_core::global::protocol_structures::instructions::{
+use crate::global::protocol_structures::instructions::{
     RawFullPointerAddress, RawLocalPointerAddress,
 };
 use serde::{Deserialize, Serialize};

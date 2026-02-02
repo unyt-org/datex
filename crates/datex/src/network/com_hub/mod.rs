@@ -77,8 +77,10 @@ use crate::{
     },
 };
 use async_select::select;
-use datex_core::global::dxb_block::BlockId;
+use crate::global::dxb_block::BlockId;
 use futures_util::{FutureExt, StreamExt};
+use datex_crypto_facade::crypto::Crypto;
+use crate::crypto::CryptoImpl;
 
 pub type IncomingBlockInterceptor =
     Box<dyn Fn(&DXBBlock, &ComInterfaceSocketUUID) + 'static>;
@@ -890,23 +892,19 @@ impl ComHub {
                 let endpoint = self.endpoint.clone();
 
                 SyncOrAsync::Async(Box::pin(async move {
-                    let end_signer = crate::crypto::Ed25519Keypair::generate().expect(
-                        "Failed to generate temporary Ed25519 keypair for signing own block",
-                    );
+                    let (pub_key, pri_key) = CryptoImpl::gen_ed25519()
+                        .await
+                        .map_err(|_| ComHubError::SignatureError)?;
 
-                    let raw_signed = [
-                        end_signer.public_key_der().to_vec(),
-                        block.body.clone(),
-                    ]
-                    .concat();
+                    let raw_signed =
+                        [pub_key.clone(), block.body.clone()].concat();
+                    
                     let hashed_signed =
-                        crypto
-                            .hash_sha256(&raw_signed)
+                        CryptoImpl::hash_sha256(&raw_signed)
                             .await
                             .map_err(|_| ComHubError::SignatureError)?;
 
-                    let signature = crypto
-                        .sig_ed25519(&pri_key, &hashed_signed)
+                    let signature = CryptoImpl::sig_ed25519(&pri_key, &hashed_signed)
                         .await
                         .map_err(|_| ComHubError::SignatureError)?;
 
@@ -914,13 +912,12 @@ impl ComHub {
                         SignatureType::Unencrypted => signature.to_vec(),
 
                         SignatureType::Encrypted => {
-                            let hash = crypto
-                                .hkdf_sha256(&pub_key, &[0u8; 16])
+                            let hash = CryptoImpl
+                                ::hkdf_sha256(&pub_key, &[0u8; 16])
                                 .await
                                 .map_err(|_| ComHubError::SignatureError)?;
 
-                            crypto
-                                .aes_ctr_encrypt(&hash, &[0u8; 16], &signature)
+                            CryptoImpl::aes_ctr_encrypt(&hash, &[0u8; 16], &signature)
                                 .await
                                 .map_err(|_| ComHubError::SignatureError)?
                                 .to_vec()

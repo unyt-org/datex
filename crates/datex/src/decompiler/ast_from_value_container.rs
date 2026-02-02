@@ -18,7 +18,7 @@ use crate::{
 
 use crate::prelude::*;
 use alloc::format;
-use datex_core::{
+use crate::{
     ast::expressions::CallableDeclaration, libs::core::CoreLibPointerId,
 };
 
@@ -237,8 +237,7 @@ mod tests {
     };
 
     use crate::prelude::*;
-    use alloc::format;
-    use datex_core::values::core_values;
+    use crate::values::core_values;
     #[test]
     fn test_integer_to_ast() {
         let value = ValueContainer::from(Integer::from(42));

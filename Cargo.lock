@@ -802,19 +802,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "460fbee9c2c2f33933d720630a6a0bac33ba7053db5344fac858d4b8952d77d5"
 
 [[package]]
-name = "crypto"
-version = "0.5.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bf1e6e5492f8f0830c37f301f6349e0dac8b2466e4fe89eef90e9eef906cd046"
-dependencies = [
- "cipher",
- "crypto-common",
- "digest",
- "elliptic-curve",
- "signature",
-]
-
-[[package]]
 name = "crypto-bigint"
 version = "0.5.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1009,11 +996,10 @@ dependencies = [
  "cfg-if",
  "criterion",
  "criterion-macro",
- "crypto",
  "datex-crypto-embedded",
+ "datex-crypto-facade",
  "datex-crypto-native",
  "datex-macros",
- "ed25519",
  "embassy-executor",
  "embassy-futures",
  "embassy-time",
@@ -1034,7 +1020,6 @@ dependencies = [
  "logos",
  "matchbox_signaling",
  "modular-bitfield",
- "nostd",
  "ntest_timeout",
  "num",
  "num-bigint",
@@ -3011,16 +2996,6 @@ checksum = "d273983c5a657a70a3e8f2a01329822f3b8c8172b73826411a55751e404a0a4a"
 dependencies = [
  "memchr",
  "minimal-lexical",
-]
-
-[[package]]
-name = "nostd"
-version = "0.1.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "be18158ad99e2f673af96c9cf045e5bb3a0813a37a29cdef18454b89c3162373"
-dependencies = [
- "memchr",
- "rustversion",
 ]
 
 [[package]]

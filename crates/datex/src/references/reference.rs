@@ -746,7 +746,7 @@ mod tests {
         runtime::memory::Memory, traits::value_eq::ValueEq,
     };
     use core::assert_matches;
-    use datex_core::values::core_values::map::Map;
+    use crate::values::core_values::map::Map;
 
     use crate::prelude::*;
     #[test]
@@ -897,7 +897,6 @@ mod tests {
 
     #[test]
     fn nested_references() {
-        set_global_context(get_global_context_native());
         let memory = &RefCell::new(Memory::default());
 
         let mut map_a = Map::default();

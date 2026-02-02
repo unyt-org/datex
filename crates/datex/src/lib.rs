@@ -1,4 +1,5 @@
 #![cfg_attr(not(feature = "std"), no_std)]
+
 #![feature(coroutines)]
 #![feature(iter_from_coroutine)]
 #![feature(assert_matches)]
@@ -17,9 +18,13 @@
 #![feature(future_join)]
 #![allow(static_mut_refs)]
 
-extern crate num_integer;
 
+extern crate num_integer;
 extern crate alloc;
+
+#[cfg(test)]
+extern crate std;
+
 #[cfg(feature = "std")]
 extern crate std;
 
@@ -59,7 +64,6 @@ pub mod traits;
 pub mod types;
 pub mod utils;
 pub mod values;
-pub mod crypto_facade;
 
 // reexport macros
 pub use datex_macros as macros;
@@ -84,13 +88,13 @@ pub mod std_sync {
 pub mod crypto {
     cfg_if::cfg_if! {
         if #[cfg(any(target_arch = "xtensa-esp32s3-none-elf", target_arch = "xtensa-esp32-none-elf", target_arch = "riscv32imc-esp32c2-none-elf"))] {
-            pub use datex-crypto-native::crypto::CryptoNative as Crypto;
+            pub use datex-crypto-native::crypto::CryptoNative as CryptoImpl;
         } else if #[cfg(target_arch = "wasm32")] {
-            pub use datex-crypto-web::crypto::CryptoWeb as Crypto;
+            pub use datex-crypto-web::crypto::CryptoWeb as CryptoImpl;
         } else if #[cfg(feature = "std")] {
-            pub use datex-crypto-native::crypto::CryptoNative as Crypto;
+            pub use datex-crypto-native::crypto::CryptoNative as CryptoImpl;
         }  else {
-            pub use crate::stub::crypto::CryptoStub as Crypto;
+            pub use crate::stub::crypto::CryptoStub as CryptoImpl;
         }
     }
 }

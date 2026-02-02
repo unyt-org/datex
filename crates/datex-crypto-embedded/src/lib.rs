@@ -1,6 +1,13 @@
 #![no_std]
 #![feature(thread_local)]
 
+#[cfg(test)]
+extern crate std;
+
+#[cfg(test)]
+extern crate std;
+
+
 extern crate alloc;
 
 use core::future::Future;

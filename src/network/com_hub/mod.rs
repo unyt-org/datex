@@ -78,7 +78,7 @@ use crate::{
     },
 };
 use async_select::select;
-use datex_core::global::dxb_block::BlockId;
+use crate::global::dxb_block::BlockId;
 use futures_util::{FutureExt, StreamExt};
 
 pub type IncomingBlockInterceptor =

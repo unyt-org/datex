@@ -493,7 +493,6 @@ mod tests {
     use core::str::FromStr;
 
     use crate::{
-        crypto::crypto::Crypto,
         global::{
             dxb_block::{DXBBlock, DXBBlockParseError},
             protocol_structures::{
@@ -505,6 +504,8 @@ mod tests {
         values::core_values::endpoint::Endpoint,
     };
     use core::assert_matches;
+    use datex_crypto_facade::crypto::Crypto;
+    use crate::crypto::CryptoImpl;
 
     #[tokio::test]
     pub async fn test_recalculate() {
@@ -543,7 +544,6 @@ mod tests {
 
     #[tokio::test]
     pub async fn signature_to_and_from_bytes() {
-        let crypto = CryptoMock {};
         // setup block
         let mut routing_header = RoutingHeader::default()
             .with_sender(Endpoint::from_str("@test").unwrap())
@@ -564,12 +564,12 @@ mod tests {
             .flags
             .set_signature_type(SignatureType::Unencrypted);
 
-        let (pub_key, pri_key) = crypto.gen_ed25519().await.unwrap();
+        let (pub_key, pri_key) = CryptoImpl::gen_ed25519().await.unwrap();
         let raw_signed = [pub_key.clone(), block.body.clone()].concat();
-        let hashed_signed = crypto.hash_sha256(&raw_signed).await.unwrap();
+        let hashed_signed = CryptoImpl::hash_sha256(&raw_signed).await.unwrap();
 
         let signature =
-            crypto.sig_ed25519(&pri_key, &hashed_signed).await.unwrap();
+            CryptoImpl::sig_ed25519(&pri_key, &hashed_signed).await.unwrap();
         // 64 + 44 = 108
         block.signature = Some([signature.to_vec(), pub_key.clone()].concat());
 

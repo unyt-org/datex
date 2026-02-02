@@ -68,7 +68,7 @@ use crate::{
     },
 };
 use core::cell::RefCell;
-use datex_core::runtime::execution::execution_loop::slots::get_slot_value;
+use crate::runtime::execution::execution_loop::slots::get_slot_value;
 
 #[derive(Debug)]
 enum CollectedExecutionResult {
