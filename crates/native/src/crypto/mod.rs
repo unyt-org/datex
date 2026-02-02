@@ -1,9 +1,11 @@
-use datex::crypto::crypto::{CryptoError, CryptoResult, CryptoTrait};
-use datex::compat::sync::{
-    OnceLock,
-    atomic::{AtomicU64, Ordering},
-};
 use core::prelude::rust_2024::*;
+use datex::{
+    compat::sync::{
+        OnceLock,
+        atomic::{AtomicU64, Ordering},
+    },
+    crypto::crypto::{CryptoError, CryptoResult},
+};
 use openssl::{
     aes::{AesKey, unwrap_key, wrap_key},
     derive::Deriver,
@@ -17,231 +19,389 @@ use openssl::{
 use rand::Rng;
 use uuid::Uuid;
 
-static UUID_COUNTER: OnceLock<AtomicU64> = OnceLock::new();
+use core::prelude::rust_2024::*;
+use crypto::signature;
 
-fn init_counter() -> &'static AtomicU64 {
-    UUID_COUNTER.get_or_init(|| AtomicU64::new(1))
+use openssl::{
+    pkey::PKey,
+    sign::{Signer as OsslSigner, Verifier as OsslVerifier},
+};
+
+#[derive(Clone, Debug)]
+pub struct Ed25519Keypair {
+    pub_key_der: Vec<u8>,
+    pri_key_pkcs8: Vec<u8>,
 }
-fn generate_pseudo_uuid() -> String {
-    let counter = init_counter();
-    let count = counter.fetch_add(1, Ordering::Relaxed);
 
-    // Encode counter into last segment, keeping UUID-like structure
-    format!("00000000-0000-0000-0000-{count:012x}")
-}
+impl Ed25519Keypair {
+    pub fn generate() -> Result<Self, signature::Error> {
+        let key =
+            PKey::generate_ed25519().map_err(|_| signature::Error::new())?;
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct CryptoNative;
-impl CryptoTrait for CryptoNative {
-    fn create_uuid(&self) -> String {
-        Uuid::new_v4().to_string()
-    }
+        let pub_key_der = key
+            .public_key_to_der()
+            .map_err(|_| signature::Error::new())?;
+        let pri_key_pkcs8 = key
+            .private_key_to_pkcs8()
+            .map_err(|_| signature::Error::new())?;
 
-    fn random_bytes(&self, length: usize) -> Vec<u8> {
-        let mut rng = rand::thread_rng();
-        (0..length).map(|_| rng.r#gen()).collect()
-    }
-
-    fn hash_sha256<'a>(
-        &'a self,
-        to_digest: &'a [u8],
-    ) -> CryptoResult<'a, [u8; 32]> {
-        Box::pin(async move {
-            let hash = sha256(to_digest);
-            Ok(hash)
+        Ok(Self {
+            pub_key_der,
+            pri_key_pkcs8,
         })
     }
 
-    fn hkdf_sha256<'a>(
-        &'a self,
-        ikm: &'a [u8],
-        salt: &'a [u8],
-    ) -> CryptoResult<'a, [u8; 32]> {
-        Box::pin(async move {
-            let info = b"";
-            let mut ctx = PkeyCtx::new_id(Id::HKDF)
-                .map_err(|_| CryptoError::KeyGeneration)?;
-            ctx.derive_init().map_err(|_| CryptoError::KeyGeneration)?;
-            ctx.set_hkdf_mode(HkdfMode::EXTRACT_THEN_EXPAND)
-                .map_err(|_| CryptoError::KeyGeneration)?;
-            ctx.set_hkdf_md(Md::sha256())
-                .map_err(|_| CryptoError::KeyGeneration)?;
-            ctx.set_hkdf_salt(salt)
-                .map_err(|_| CryptoError::KeyGeneration)?;
-            ctx.set_hkdf_key(ikm)
-                .map_err(|_| CryptoError::KeyGeneration)?;
-            ctx.add_hkdf_info(info)
-                .map_err(|_| CryptoError::KeyGeneration)?;
-            let mut okm = [0u8; 32_usize];
-            ctx.derive(Some(&mut okm))
-                .map_err(|_| CryptoError::KeyGeneration)?;
-            Ok(okm)
-        })
-    }
-    // EdDSA keygen
-    fn gen_ed25519<'a>(&'a self) -> CryptoResult<'a, (Vec<u8>, Vec<u8>)> {
-        Box::pin(async move {
-            let key = PKey::generate_ed25519()
-                .map_err(|_| CryptoError::KeyGeneration)?;
-
-            let public_key: Vec<u8> = key
-                .public_key_to_der()
-                .map_err(|_| CryptoError::KeyGeneration)?;
-            let private_key: Vec<u8> = key
-                .private_key_to_pkcs8()
-                .map_err(|_| CryptoError::KeyGeneration)?;
-            Ok((public_key, private_key))
-        })
+    pub fn from_parts(
+        pub_key_der: impl Into<Vec<u8>>,
+        pri_key_pkcs8: impl Into<Vec<u8>>,
+    ) -> Self {
+        Self {
+            pub_key_der: pub_key_der.into(),
+            pri_key_pkcs8: pri_key_pkcs8.into(),
+        }
     }
 
-    // EdDSA signature
-    fn sig_ed25519<'a>(
-        &'a self,
-        pri_key: &'a [u8],
-        data: &'a [u8],
-    ) -> CryptoResult<'a, [u8; 64]> {
-        Box::pin(async move {
-            let sig_key = PKey::private_key_from_pkcs8(pri_key)
-                .map_err(|_| CryptoError::KeyImport)?;
-            let mut signer = Signer::new_without_digest(&sig_key)
-                .map_err(|_| CryptoError::Signing)?;
-            let signature = signer
-                .sign_oneshot_to_vec(data)
-                .map_err(|_| CryptoError::Signing)?;
-            let signature: [u8; 64] =
-                signature.try_into().expect("Invalid signature length");
-            Ok(signature)
-        })
+    pub fn public_key_der(&self) -> &[u8] {
+        &self.pub_key_der
     }
 
-    // EdDSA verification of signature
-    fn ver_ed25519<'a>(
-        &'a self,
-        pub_key: &'a [u8],
-        sig: &'a [u8],
-        data: &'a [u8],
-    ) -> CryptoResult<'a, bool> {
-        Box::pin(async move {
-            let public_key = PKey::public_key_from_der(pub_key)
-                .map_err(|_| CryptoError::KeyImport)?;
-            let mut verifier = Verifier::new_without_digest(&public_key)
-                .map_err(|_| CryptoError::KeyImport)?;
-            let verification = verifier
-                .verify_oneshot(sig, data)
-                .map_err(|_| CryptoError::Verification)?;
-            Ok(verification)
-        })
-    }
-
-    // AES CTR
-    fn aes_ctr_encrypt<'a>(
-        &'a self,
-        key: &'a [u8; 32],
-        iv: &'a [u8; 16],
-        plaintext: &'a [u8],
-    ) -> CryptoResult<'a, Vec<u8>> {
-        Box::pin(async move {
-            let cipher = Cipher::aes_256_ctr();
-            let mut enc = Crypter::new(cipher, Mode::Encrypt, key, Some(iv))
-                .map_err(|_| CryptoError::Encryption)?;
-
-            let mut out = vec![0u8; plaintext.len()];
-            let count = enc
-                .update(plaintext, &mut out)
-                .map_err(|_| CryptoError::Encryption)?;
-            out.truncate(count);
-            Ok(out)
-        })
-    }
-
-    fn aes_ctr_decrypt<'a>(
-        &'a self,
-        key: &'a [u8; 32],
-        iv: &'a [u8; 16],
-        ciphertext: &'a [u8],
-    ) -> CryptoResult<'a, Vec<u8>> {
-        self.aes_ctr_encrypt(key, iv, ciphertext)
-    }
-
-    // AES KW
-    fn key_upwrap<'a>(
-        &'a self,
-        kek_bytes: &'a [u8; 32],
-        rb: &'a [u8; 32],
-    ) -> CryptoResult<'a, [u8; 40]> {
-        Box::pin(async move {
-            // Key encryption key
-            let kek = AesKey::new_encrypt(kek_bytes)
-                .map_err(|_| CryptoError::Encryption)?;
-
-            // Key wrap
-            let mut wrapped = [0u8; 40];
-            let _length = wrap_key(&kek, None, &mut wrapped, rb);
-
-            Ok(wrapped)
-        })
-    }
-
-    fn key_unwrap<'a>(
-        &'a self,
-        kek_bytes: &'a [u8; 32],
-        cipher: &'a [u8; 40],
-    ) -> CryptoResult<'a, [u8; 32]> {
-        Box::pin(async move {
-            // Key encryption key
-            let kek = AesKey::new_decrypt(kek_bytes)
-                .map_err(|_| CryptoError::Decryption)?;
-
-            // Unwrap key
-            let mut unwrapped: [u8; 32] = [0u8; 32];
-            let _length = unwrap_key(&kek, None, &mut unwrapped, cipher);
-            Ok(unwrapped)
-        })
-    }
-
-    // Generate encryption keypair
-    fn gen_x25519<'a>(&'a self) -> CryptoResult<'a, ([u8; 44], [u8; 48])> {
-        Box::pin(async move {
-            let key = PKey::generate_x25519()
-                .map_err(|_| CryptoError::KeyGeneration)?;
-            let public_key: [u8; 44] = key
-                .public_key_to_der()
-                .map_err(|_| CryptoError::KeyGeneration)?
-                .try_into()
-                .map_err(|_| CryptoError::KeyGeneration)?;
-            let private_key: [u8; 48] = key
-                .private_key_to_pkcs8()
-                .map_err(|_| CryptoError::KeyGeneration)?
-                .try_into()
-                .map_err(|_| CryptoError::KeyGeneration)?;
-            Ok((public_key, private_key))
-        })
-    }
-
-    // Derive shared secret on x255109
-    fn derive_x25519<'a>(
-        &'a self,
-        pri_key: &'a [u8; 48],
-        peer_pub: &'a [u8; 44],
-    ) -> CryptoResult<'a, Vec<u8>> {
-        Box::pin(async move {
-            let peer_pub = PKey::public_key_from_der(peer_pub)
-                .map_err(|_| CryptoError::KeyImport)?;
-            let my_priv = PKey::private_key_from_pkcs8(pri_key)
-                .map_err(|_| CryptoError::KeyImport)?;
-
-            let mut deriver = Deriver::new(&my_priv)
-                .map_err(|_| CryptoError::KeyGeneration)?;
-            deriver
-                .set_peer(&peer_pub)
-                .map_err(|_| CryptoError::KeyGeneration)?;
-            let derived = deriver
-                .derive_to_vec()
-                .map_err(|_| CryptoError::KeyGeneration)?;
-            Ok(derived)
-        })
+    pub fn private_key_pkcs8(&self) -> &[u8] {
+        &self.pri_key_pkcs8
     }
 }
+
+impl signature::Signer<Sig> for Ed25519Keypair {
+    fn try_sign(&self, msg: &[u8]) -> Result<Sig, signature::Error> {
+        let key = PKey::private_key_from_pkcs8(&self.pri_key_pkcs8)
+            .map_err(|_| signature::Error::new())?;
+
+        let mut signer = OsslSigner::new_without_digest(&key)
+            .map_err(|_| signature::Error::new())?;
+
+        let sig_bytes = signer
+            .sign_oneshot_to_vec(msg)
+            .map_err(|_| signature::Error::new())?;
+
+        // Convert Vec<u8> (must be 64 bytes) -> ed25519::Signature
+        Sig::from_slice(&sig_bytes).map_err(|_| signature::Error::new())
+    }
+}
+
+impl signature::Verifier<Sig> for Ed25519Keypair {
+    fn verify(
+        &self,
+        msg: &[u8],
+        signature: &Sig,
+    ) -> Result<(), signature::Error> {
+        let key = PKey::public_key_from_der(&self.pub_key_der)
+            .map_err(|_| signature::Error::new())?;
+
+        let mut verifier = OsslVerifier::new_without_digest(&key)
+            .map_err(|_| signature::Error::new())?;
+
+        let ok = verifier
+            .verify_oneshot(&signature.to_bytes(), msg)
+            .map_err(|_| signature::Error::new())?;
+
+        if ok {
+            Ok(())
+        } else {
+            Err(signature::Error::new())
+        }
+    }
+}
+
+/// OpenSSL-backed Ed25519 signer.
+/// `private_key_pkcs8` is a PKCS#8 DER-encoded Ed25519 private key.
+///
+/// Works with RustCrypto's `signature` traits via the `crypto` facade.
+#[derive(Clone)]
+pub struct Ed25519Signer {
+    private_key_pkcs8: Vec<u8>,
+}
+
+impl Ed25519Signer {
+    pub fn new(private_key_pkcs8: impl Into<Vec<u8>>) -> Self {
+        Self {
+            private_key_pkcs8: private_key_pkcs8.into(),
+        }
+    }
+}
+
+/// OpenSSL-backed Ed25519 verifier.
+/// `public_key_der` is a DER-encoded Ed25519 public key (SubjectPublicKeyInfo).
+#[derive(Clone)]
+pub struct Ed25519Verifier {
+    public_key_der: Vec<u8>,
+}
+
+impl Ed25519Verifier {
+    pub fn new(public_key_der: impl Into<Vec<u8>>) -> Self {
+        Self {
+            public_key_der: public_key_der.into(),
+        }
+    }
+}
+
+impl signature::Signer<ed25519::Signature> for Ed25519Signer {
+    fn try_sign(
+        &self,
+        msg: &[u8],
+    ) -> Result<ed25519::Signature, signature::Error> {
+        let key = PKey::private_key_from_pkcs8(&self.private_key_pkcs8)
+            .map_err(|_| signature::Error::new())?;
+
+        // Ed25519 uses "no digest" mode in OpenSSL.
+        let mut signer = OsslSigner::new_without_digest(&key)
+            .map_err(|_| signature::Error::new())?;
+
+        let sig_bytes = signer
+            .sign_oneshot_to_vec(msg)
+            .map_err(|_| signature::Error::new())?;
+
+        // ed25519::Signature expects exactly 64 bytes
+        ed25519::Signature::from_slice(&sig_bytes)
+            .map_err(|_| signature::Error::new())
+    }
+}
+
+impl signature::Verifier<ed25519::Signature> for Ed25519Verifier {
+    fn verify(
+        &self,
+        msg: &[u8],
+        signature: &ed25519::Signature,
+    ) -> Result<(), signature::Error> {
+        let key = PKey::public_key_from_der(&self.public_key_der)
+            .map_err(|_| signature::Error::new())?;
+
+        let mut verifier = OsslVerifier::new_without_digest(&key)
+            .map_err(|_| signature::Error::new())?;
+
+        // ed25519::Signature can be converted to bytes via `to_bytes()`
+        let ok = verifier
+            .verify_oneshot(&signature.to_bytes(), msg)
+            .map_err(|_| signature::Error::new())?;
+
+        if ok {
+            Ok(())
+        } else {
+            Err(signature::Error::new())
+        }
+    }
+}
+
+// #[derive(Debug, Clone, PartialEq)]
+// pub struct CryptoNative;
+// impl CryptoTrait for CryptoNative {
+//     fn create_uuid(&self) -> String {
+//         Uuid::new_v4().to_string()
+//     }
+
+//     fn random_bytes(&self, length: usize) -> Vec<u8> {
+//         let mut rng = rand::thread_rng();
+//         (0..length).map(|_| rng.r#gen()).collect()
+//     }
+
+//     fn hash_sha256<'a>(
+//         &'a self,
+//         to_digest: &'a [u8],
+//     ) -> CryptoResult<'a, [u8; 32]> {
+//         Box::pin(async move {
+//             let hash = sha256(to_digest);
+//             Ok(hash)
+//         })
+//     }
+
+//     fn hkdf_sha256<'a>(
+//         &'a self,
+//         ikm: &'a [u8],
+//         salt: &'a [u8],
+//     ) -> CryptoResult<'a, [u8; 32]> {
+//         Box::pin(async move {
+//             let info = b"";
+//             let mut ctx = PkeyCtx::new_id(Id::HKDF)
+//                 .map_err(|_| CryptoError::KeyGeneration)?;
+//             ctx.derive_init().map_err(|_| CryptoError::KeyGeneration)?;
+//             ctx.set_hkdf_mode(HkdfMode::EXTRACT_THEN_EXPAND)
+//                 .map_err(|_| CryptoError::KeyGeneration)?;
+//             ctx.set_hkdf_md(Md::sha256())
+//                 .map_err(|_| CryptoError::KeyGeneration)?;
+//             ctx.set_hkdf_salt(salt)
+//                 .map_err(|_| CryptoError::KeyGeneration)?;
+//             ctx.set_hkdf_key(ikm)
+//                 .map_err(|_| CryptoError::KeyGeneration)?;
+//             ctx.add_hkdf_info(info)
+//                 .map_err(|_| CryptoError::KeyGeneration)?;
+//             let mut okm = [0u8; 32_usize];
+//             ctx.derive(Some(&mut okm))
+//                 .map_err(|_| CryptoError::KeyGeneration)?;
+//             Ok(okm)
+//         })
+//     }
+//     // EdDSA keygen
+//     fn gen_ed25519<'a>(&'a self) -> CryptoResult<'a, (Vec<u8>, Vec<u8>)> {
+//         Box::pin(async move {
+//             let key = PKey::generate_ed25519()
+//                 .map_err(|_| CryptoError::KeyGeneration)?;
+
+//             let public_key: Vec<u8> = key
+//                 .public_key_to_der()
+//                 .map_err(|_| CryptoError::KeyGeneration)?;
+//             let private_key: Vec<u8> = key
+//                 .private_key_to_pkcs8()
+//                 .map_err(|_| CryptoError::KeyGeneration)?;
+//             Ok((public_key, private_key))
+//         })
+//     }
+
+//     // EdDSA signature
+//     fn sig_ed25519<'a>(
+//         &'a self,
+//         pri_key: &'a [u8],
+//         data: &'a [u8],
+//     ) -> CryptoResult<'a, [u8; 64]> {
+//         Box::pin(async move {
+//             let sig_key = PKey::private_key_from_pkcs8(pri_key)
+//                 .map_err(|_| CryptoError::KeyImport)?;
+//             let mut signer = Signer::new_without_digest(&sig_key)
+//                 .map_err(|_| CryptoError::Signing)?;
+//             let signature = signer
+//                 .sign_oneshot_to_vec(data)
+//                 .map_err(|_| CryptoError::Signing)?;
+//             let signature: [u8; 64] =
+//                 signature.try_into().expect("Invalid signature length");
+//             Ok(signature)
+//         })
+//     }
+
+//     // EdDSA verification of signature
+//     fn ver_ed25519<'a>(
+//         &'a self,
+//         pub_key: &'a [u8],
+//         sig: &'a [u8],
+//         data: &'a [u8],
+//     ) -> CryptoResult<'a, bool> {
+//         Box::pin(async move {
+//             let public_key = PKey::public_key_from_der(pub_key)
+//                 .map_err(|_| CryptoError::KeyImport)?;
+//             let mut verifier = Verifier::new_without_digest(&public_key)
+//                 .map_err(|_| CryptoError::KeyImport)?;
+//             let verification = verifier
+//                 .verify_oneshot(sig, data)
+//                 .map_err(|_| CryptoError::Verification)?;
+//             Ok(verification)
+//         })
+//     }
+
+//     // AES CTR
+//     fn aes_ctr_encrypt<'a>(
+//         &'a self,
+//         key: &'a [u8; 32],
+//         iv: &'a [u8; 16],
+//         plaintext: &'a [u8],
+//     ) -> CryptoResult<'a, Vec<u8>> {
+//         Box::pin(async move {
+//             let cipher = Cipher::aes_256_ctr();
+//             let mut enc = Crypter::new(cipher, Mode::Encrypt, key, Some(iv))
+//                 .map_err(|_| CryptoError::Encryption)?;
+
+//             let mut out = vec![0u8; plaintext.len()];
+//             let count = enc
+//                 .update(plaintext, &mut out)
+//                 .map_err(|_| CryptoError::Encryption)?;
+//             out.truncate(count);
+//             Ok(out)
+//         })
+//     }
+
+//     fn aes_ctr_decrypt<'a>(
+//         &'a self,
+//         key: &'a [u8; 32],
+//         iv: &'a [u8; 16],
+//         ciphertext: &'a [u8],
+//     ) -> CryptoResult<'a, Vec<u8>> {
+//         self.aes_ctr_encrypt(key, iv, ciphertext)
+//     }
+
+//     // AES KW
+//     fn key_upwrap<'a>(
+//         &'a self,
+//         kek_bytes: &'a [u8; 32],
+//         rb: &'a [u8; 32],
+//     ) -> CryptoResult<'a, [u8; 40]> {
+//         Box::pin(async move {
+//             // Key encryption key
+//             let kek = AesKey::new_encrypt(kek_bytes)
+//                 .map_err(|_| CryptoError::Encryption)?;
+
+//             // Key wrap
+//             let mut wrapped = [0u8; 40];
+//             let _length = wrap_key(&kek, None, &mut wrapped, rb);
+
+//             Ok(wrapped)
+//         })
+//     }
+
+//     fn key_unwrap<'a>(
+//         &'a self,
+//         kek_bytes: &'a [u8; 32],
+//         cipher: &'a [u8; 40],
+//     ) -> CryptoResult<'a, [u8; 32]> {
+//         Box::pin(async move {
+//             // Key encryption key
+//             let kek = AesKey::new_decrypt(kek_bytes)
+//                 .map_err(|_| CryptoError::Decryption)?;
+
+//             // Unwrap key
+//             let mut unwrapped: [u8; 32] = [0u8; 32];
+//             let _length = unwrap_key(&kek, None, &mut unwrapped, cipher);
+//             Ok(unwrapped)
+//         })
+//     }
+
+//     // Generate encryption keypair
+//     fn gen_x25519<'a>(&'a self) -> CryptoResult<'a, ([u8; 44], [u8; 48])> {
+//         Box::pin(async move {
+//             let key = PKey::generate_x25519()
+//                 .map_err(|_| CryptoError::KeyGeneration)?;
+//             let public_key: [u8; 44] = key
+//                 .public_key_to_der()
+//                 .map_err(|_| CryptoError::KeyGeneration)?
+//                 .try_into()
+//                 .map_err(|_| CryptoError::KeyGeneration)?;
+//             let private_key: [u8; 48] = key
+//                 .private_key_to_pkcs8()
+//                 .map_err(|_| CryptoError::KeyGeneration)?
+//                 .try_into()
+//                 .map_err(|_| CryptoError::KeyGeneration)?;
+//             Ok((public_key, private_key))
+//         })
+//     }
+
+//     // Derive shared secret on x255109
+//     fn derive_x25519<'a>(
+//         &'a self,
+//         pri_key: &'a [u8; 48],
+//         peer_pub: &'a [u8; 44],
+//     ) -> CryptoResult<'a, Vec<u8>> {
+//         Box::pin(async move {
+//             let peer_pub = PKey::public_key_from_der(peer_pub)
+//                 .map_err(|_| CryptoError::KeyImport)?;
+//             let my_priv = PKey::private_key_from_pkcs8(pri_key)
+//                 .map_err(|_| CryptoError::KeyImport)?;
+
+//             let mut deriver = Deriver::new(&my_priv)
+//                 .map_err(|_| CryptoError::KeyGeneration)?;
+//             deriver
+//                 .set_peer(&peer_pub)
+//                 .map_err(|_| CryptoError::KeyGeneration)?;
+//             let derived = deriver
+//                 .derive_to_vec()
+//                 .map_err(|_| CryptoError::KeyGeneration)?;
+//             Ok(derived)
+//         })
+//     }
+// }
 
 #[cfg(test)]
 mod tests {

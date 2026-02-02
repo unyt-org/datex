@@ -24,7 +24,7 @@ extern crate alloc;
 extern crate std;
 
 pub mod channel;
-pub mod crypto;
+// pub mod crypto;
 pub mod dif;
 pub mod prelude;
 
@@ -80,6 +80,20 @@ pub mod std_sync {
     pub use spin::Mutex;
     #[cfg(feature = "std")]
     pub use std::sync::Mutex;
+}
+
+pub mod crypto {
+    cfg_if::cfg_if! {
+        if #[cfg(target_arch = "wasm32")] {
+            pub use crate::stub::crypto::*;
+        } else if #[cfg(feature = "std")] {
+            pub use datex_native::crypto::*;
+        } else if #[cfg(feature = "embedded")] {
+            compile_error!("No crypto implementation available for this target");
+        } else {
+            pub use crate::stub::crypto::*;
+        }
+    }
 }
 
 pub mod time {

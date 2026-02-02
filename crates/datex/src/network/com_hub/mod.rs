@@ -890,17 +890,15 @@ impl ComHub {
                 let endpoint = self.endpoint.clone();
 
                 SyncOrAsync::Async(Box::pin(async move {
-                    use crate::runtime::global_context::get_global_context;
+                    let end_signer = crate::crypto::Ed25519Keypair::generate().expect(
+                        "Failed to generate temporary Ed25519 keypair for signing own block",
+                    );
 
-                    let crypto = get_global_context().crypto;
-
-                    let (pub_key, pri_key) = crypto
-                        .gen_ed25519()
-                        .await
-                        .map_err(|_| ComHubError::SignatureError)?;
-
-                    let raw_signed =
-                        [pub_key.clone(), block.body.clone()].concat();
+                    let raw_signed = [
+                        end_signer.public_key_der().to_vec(),
+                        block.body.clone(),
+                    ]
+                    .concat();
                     let hashed_signed =
                         crypto
                             .hash_sha256(&raw_signed)
