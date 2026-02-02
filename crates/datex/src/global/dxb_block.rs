@@ -580,7 +580,7 @@ mod tests {
         assert_eq!(block.signature, block2.signature);
 
         // setup faulty signature
-        let mut other_sig = signature.clone();
+        let mut other_sig = signature;
         if other_sig[42] != 42u8 {
             other_sig[42] = 42u8;
         } else {

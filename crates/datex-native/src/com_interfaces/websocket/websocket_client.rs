@@ -1,7 +1,6 @@
-use datex::{derive_setup_data, compat::{
-    sync::{Arc},
-}};
+use datex::{derive_setup_data};
 use core::{ result::Result};
+use std::sync::Arc;
 use futures_util::{
     SinkExt, StreamExt,
     stream::{SplitSink, SplitStream},

@@ -1,5 +1,6 @@
-use datex::{derive_setup_data, compat::{net::SocketAddr}};
+use datex::{derive_setup_data};
 use core::str::FromStr;
+use std::net::SocketAddr;
 use async_tiny::{Response, Server};
 
 use datex::network::com_interfaces::default_setup_data::http::http_server::{HTTPServerInterfaceSetupData};

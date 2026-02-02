@@ -1104,11 +1104,14 @@ dependencies = [
  "futures",
  "futures-util",
  "log",
+ "ntest_timeout",
  "reqwest",
+ "serde",
  "serialport",
  "tokio",
  "tokio-tungstenite 0.21.0",
  "tungstenite 0.21.0",
+ "url",
 ]
 
 [[package]]

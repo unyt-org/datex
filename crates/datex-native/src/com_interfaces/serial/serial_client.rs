@@ -4,15 +4,16 @@ use datex::{derive_setup_data, network::{
     com_interfaces::com_interface::{
         properties::{InterfaceDirection, ComInterfaceProperties},
     },
-}, compat::{sync::Arc, time::Duration}};
+}};
 use core::{ result::Result};
-use datex::std_sync::Mutex;
+use std::sync::{Arc, Mutex};
+use std::time::Duration;
 use log::{error};
 use datex::network::com_interfaces::com_interface::factory::ComInterfaceConfiguration;
 use datex::global::dxb_block::DXBBlock;
 use datex::network::com_hub::managers::com_interface_manager::ComInterfaceAsyncFactoryResult;
 use datex::network::com_interfaces::com_interface::factory::{SocketConfiguration, SendCallback, SendFailure, SocketProperties, SendSuccess, ComInterfaceAsyncFactory};
-use datex::task::spawn_blocking;
+use tokio::task::spawn_blocking;
 
 derive_setup_data!(SerialClientInterfaceSetupDataNative, SerialClientInterfaceSetupData);
 

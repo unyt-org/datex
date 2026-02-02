@@ -1,7 +1,9 @@
-use datex::{derive_setup_data, compat::{net::SocketAddr, sync::Arc}};
+use datex::{derive_setup_data};
 use core::{
      result::Result, str::FromStr,
 };
+use std::net::SocketAddr;
+use std::sync::Arc;
 use futures_util::{SinkExt, StreamExt};
 use futures_util::stream::{SplitSink, SplitStream};
 use log::{error, info};
@@ -143,8 +145,7 @@ impl ComInterfaceAsyncFactory for WebSocketServerInterfaceSetupDataNative {
 #[cfg(test)]
 mod tests {
     use std::assert_matches;
-    use datex_core::native_global_context::init_global_context_native;
-    use crate::{
+    use datex::{
         network::{
             com_hub::errors::ComInterfaceCreateError,
         },

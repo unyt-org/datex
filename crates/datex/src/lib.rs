@@ -22,9 +22,6 @@
 extern crate num_integer;
 extern crate alloc;
 
-#[cfg(test)]
-extern crate std;
-
 #[cfg(feature = "std")]
 extern crate std;
 
@@ -88,12 +85,12 @@ pub mod std_sync {
 pub mod crypto {
     cfg_if::cfg_if! {
         if #[cfg(any(target_arch = "xtensa-esp32s3-none-elf", target_arch = "xtensa-esp32-none-elf", target_arch = "riscv32imc-esp32c2-none-elf"))] {
-            pub use datex-crypto-native::crypto::CryptoNative as CryptoImpl;
+            pub use datex_crypto_native::CryptoNative as CryptoImpl;
         } else if #[cfg(target_arch = "wasm32")] {
-            pub use datex-crypto-web::crypto::CryptoWeb as CryptoImpl;
-        } else if #[cfg(feature = "std")] {
-            pub use datex-crypto-native::crypto::CryptoNative as CryptoImpl;
-        }  else {
+            pub use datex_crypto_web::CryptoWeb as CryptoImpl;
+        } else if #[cfg(any(feature = "std", test))] {
+            pub use datex_crypto_native::CryptoNative as CryptoImpl;
+        } else {
             pub use crate::stub::crypto::CryptoStub as CryptoImpl;
         }
     }

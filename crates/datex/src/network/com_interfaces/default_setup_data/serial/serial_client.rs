@@ -1,5 +1,4 @@
-use crate::stdlib::string::String;
-use core::prelude::rust_2024::*;
+use crate::prelude::*;
 use core::time::Duration;
 use serde::{Deserialize, Serialize};
 use crate::network::com_interfaces::com_interface::properties::ComInterfaceProperties;

@@ -1,5 +1,5 @@
 use crate::{serde::Deserialize};
-use core::prelude::rust_2024::*;
+use crate::prelude::*;
 use core::time::Duration;
 use serde::Serialize;
 use crate::network::com_hub::errors::ComInterfaceCreateError;

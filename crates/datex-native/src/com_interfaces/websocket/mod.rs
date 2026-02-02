@@ -6,15 +6,14 @@ pub mod websocket_server;
 mod tests {
     use ntest_timeout::timeout;
     use tokio::join;
-    use crate::native::com_interfaces::tests::{test_client_server_interfaces, test_client_server_sockets};
-    use crate::native_global_context::init_global_context_native;
-    use crate::network::com_interfaces::com_interface::factory::{ComInterfaceAsyncFactory};
+    use crate::com_interfaces::tests::{test_client_server_interfaces, test_client_server_sockets};
+    use datex::network::com_interfaces::com_interface::factory::{ComInterfaceAsyncFactory};
 
-    use crate::network::com_interfaces::default_setup_data::websocket::websocket_server::WebSocketServerInterfaceSetupData;
-    use crate::native::com_interfaces::websocket::websocket_server::WebSocketServerInterfaceSetupDataNative;
-    use crate::network::com_interfaces::default_setup_data::websocket::websocket_client::WebSocketClientInterfaceSetupData;
-    use crate::native::com_interfaces::websocket::websocket_client::WebSocketClientInterfaceSetupDataNative;
-    use crate::utils::async_iterators::async_next_pin_box;
+    use datex::network::com_interfaces::default_setup_data::websocket::websocket_server::WebSocketServerInterfaceSetupData;
+    use crate::com_interfaces::websocket::websocket_server::WebSocketServerInterfaceSetupDataNative;
+    use datex::network::com_interfaces::default_setup_data::websocket::websocket_client::WebSocketClientInterfaceSetupData;
+    use crate::com_interfaces::websocket::websocket_client::WebSocketClientInterfaceSetupDataNative;
+    use datex::utils::async_iterators::async_next_pin_box;
 
     #[tokio::test]
     #[timeout(2000)]

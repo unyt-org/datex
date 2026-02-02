@@ -1,3 +1,4 @@
+use crate::prelude::*;
 use core::time::Duration;
 use serde::Serialize;
 use crate::network::com_interfaces::com_interface::properties::ComInterfaceProperties;

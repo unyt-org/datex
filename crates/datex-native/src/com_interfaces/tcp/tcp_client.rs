@@ -8,10 +8,12 @@ use datex::{derive_setup_data, network::{
         },
         properties::{InterfaceDirection, ComInterfaceProperties},
     },
-}, compat::{net::SocketAddr, sync::Arc}};
+}};
 use core::{
      result::Result, str::FromStr,
 };
+use std::net::SocketAddr;
+use std::sync::Arc;
 use futures_util::lock::Mutex;
 use log::{error, warn};
 use tokio::{
@@ -99,7 +101,6 @@ impl ComInterfaceAsyncFactory for TCPClientInterfaceSetupDataNative {
 mod tests {
     use super::*;
     use datex::network::com_interfaces::default_setup_data::tcp::tcp_client::TCPClientInterfaceSetupData;
-    use datex::native_global_context::init_global_context_native;
 
     #[tokio::test]
     async fn test_construct_invalid_address() {

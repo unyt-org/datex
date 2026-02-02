@@ -6,10 +6,9 @@ mod tests {
     use ntest_timeout::timeout;
     use tokio::join;
     use datex::global::dxb_block::DXBBlock;
-    use datex::native::com_interfaces::http::http_client::HTTPClientInterfaceSetupDataNative;
-    use datex::native::com_interfaces::http::http_server::HTTPServerInterfaceSetupDataNative;
-    use datex::native::com_interfaces::tests::{test_receive_block, test_send_block_async_callback, test_send_block_sync_once_callback};
-    use datex::native_global_context::init_global_context_native;
+    use crate::com_interfaces::http::http_client::HTTPClientInterfaceSetupDataNative;
+    use crate::com_interfaces::http::http_server::HTTPServerInterfaceSetupDataNative;
+    use crate::com_interfaces::tests::{test_receive_block, test_send_block_async_callback, test_send_block_sync_once_callback};
     use datex::network::com_interfaces::com_interface::factory::{ComInterfaceAsyncFactory};
 
     use datex::network::com_interfaces::default_setup_data::http::http_client::HTTPClientInterfaceSetupData;

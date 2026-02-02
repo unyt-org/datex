@@ -1,3 +1,4 @@
+use crate::prelude::*;
 use core::time::Duration;
 use serde::Serialize;
 use crate::network::com_hub::errors::ComInterfaceCreateError;
@@ -21,7 +22,7 @@ pub struct WebSocketServerInterfaceSetupData {
 
 impl WebSocketServerInterfaceSetupData {
     /// Returns the default properties for a WebSocket server interface
-    pub(crate) fn get_default_properties() -> ComInterfaceProperties {
+    pub fn get_default_properties() -> ComInterfaceProperties {
         ComInterfaceProperties {
             interface_type: "websocket-server".to_string(),
             channel: "websocket".to_string(),

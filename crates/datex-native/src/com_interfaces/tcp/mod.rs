@@ -4,10 +4,8 @@ pub mod tcp_server;
 
 #[cfg(test)]
 mod tests {
-    use log::info;
     use ntest_timeout::timeout;
     use tokio::join;
-    use datex::native_global_context::init_global_context_native;
     use datex::network::com_interfaces::com_interface::factory::{ComInterfaceAsyncFactory};
 
     use crate::com_interfaces::tcp::tcp_client::TCPClientInterfaceSetupDataNative;
