@@ -3,6 +3,10 @@ resolver = "3"
 members = [
     "crates/datex",
     "crates/datex-macros",
-    "crates/native",
-    "crates/native-macros",
+    "crates/datex-native",
+    "crates/datex-native-macros",
+    "crates/datex-crypto-native",
+    "crates/datex-crypto-facade",
+    "crates/datex-crypto-embedded",
+    "crates/datex-crypto-web"
 ]

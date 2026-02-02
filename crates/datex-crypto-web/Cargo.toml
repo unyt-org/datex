@@ -1,0 +1,59 @@
+[package]
+name = "datex-crypto-web"
+version = "0.0.1"
+description = "Web implementation of the DATEX Crypto facade for WASM targets"
+authors = [
+    "Benedikt Strehle <benedikt@unyt.org>",
+    "Jonas Strehle <jonas@unyt.org>",
+    "Norbert Brzezinski <norbert@unyt.org>",
+]
+edition = "2024"
+license-file = "LICENSE"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+datex-crypto-facade = { path = "../datex-crypto-facade", version = "0.0.1" }
+wasm-bindgen = { version = "=0.2.105", features = [] }
+wasm-bindgen-futures = "0.4.50"
+[dependencies.web-sys]
+version = "0.3.82"
+features = [
+    "Window",
+    "AesCtrParams",
+    "BinaryType",
+    "Blob",
+    "ErrorEvent",
+    "FileReader",
+    "MessageEvent",
+    "ProgressEvent",
+    "WebSocket",
+    "Crypto",
+    "SubtleCrypto",
+    "CryptoKey",
+    "CryptoKeyPair",
+    "Serial",
+    "SerialPort",
+    "Navigator",
+    "ReadableStream",
+    "WritableStream",
+    "SerialOptions",
+    "ReadableStreamDefaultReader",
+    "WritableStreamDefaultWriter",
+    "EventTarget",
+    "MessageEvent",
+    "RtcPeerConnection",
+    "RtcSignalingState",
+    "RtcSdpType",
+    "RtcIceCandidateInit",
+    "RtcIceConnectionState",
+    "RtcSessionDescriptionInit",
+    "RtcPeerConnectionIceEvent",
+    "RtcIceCandidate",
+    "RtcDataChannel",
+    "RtcDataChannelEvent",
+    "RtcConfiguration",
+    "RtcIceServer",
+    "MediaStream",
+]

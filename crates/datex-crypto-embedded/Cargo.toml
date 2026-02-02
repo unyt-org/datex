@@ -1,0 +1,31 @@
+[package]
+name = "datex-crypto-embedded"
+version = "0.0.1"
+description = "Embedded implementation of the DATEX Crypto facade"
+authors = [
+    "Benedikt Strehle <benedikt@unyt.org>",
+    "Jonas Strehle <jonas@unyt.org>",
+    "Norbert Brzezinski <norbert@unyt.org>",
+]
+edition = "2024"
+license-file = "LICENSE"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+datex-crypto-facade = { path = "../datex-crypto-facade", version = "0.0.1" }
+esp-hal = { version = "=1.0.0-rc.1", features = [
+    "unstable",
+    "psram",
+] }
+
+[target.'cfg(target_arch = "xtensa-esp32s3-none-elf")'.features]
+default = ["esp-hal/esp32s3"]
+[target.'cfg(target_arch = "xtensa-esp32-none-elf")'.features]
+default = ["esp-hal/esp32"]
+[target.'cfg(target_arch = "riscv32imc-esp32c2-none-elf")'.features]
+default = ["esp-hal/esp32c2"]
+
+[features]
+default = ["esp-hal/esp32"]

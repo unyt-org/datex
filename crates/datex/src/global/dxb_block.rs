@@ -317,7 +317,7 @@ impl DXBBlock {
                 let crypto = get_global_context().crypto;
                 */
                 use crate::native_global_context::crypto::CryptoNative;
-                use crate::crypto::crypto::CryptoTrait;
+                use crate::crypto::crypto::Crypto;
                 let crypto = CryptoNative {};
 
                 match routing_header.flags.signature_type() {
@@ -493,7 +493,7 @@ mod tests {
     use core::str::FromStr;
 
     use crate::{
-        crypto::crypto::CryptoTrait,
+        crypto::crypto::Crypto,
         global::{
             dxb_block::{DXBBlock, DXBBlockParseError},
             protocol_structures::{

@@ -74,7 +74,6 @@ serde-big-array = { version = "0.5.1", optional = true }
 realhydroper-lsp = { version = "0.22.0", optional = true, default-features = false, features = [
     "proposed",
 ] }
-bs58 = { version = "0.5.1", default-features = false }
 
 # macros
 strum_macros = { version = "0.27.1" }
@@ -112,10 +111,8 @@ async-unsync = { version = "0.3.0", optional = true, default-features = false, f
 ] }
 embassy-executor = { version = "0.9.1", optional = true }
 embassy-futures = { version = "0.1.2", optional = true, default-features = false }
-esp-println = { version = "0.16.1", optional = true }
 hashbrown = { version = "0.16.0", features = ["serde"] }
 web-time = { version = "1.1.0", optional = true }
-embedded-time = "0.12.1"
 async-select = "0.3.0"
 
 ed25519 = { version = "2.2.3" }
@@ -136,7 +133,12 @@ tsify = { optional = true, version = "0.5.6", features = ["js"] }
 # wasm-bindgen is required for tsify
 wasm-bindgen = { optional = true, version = "=0.2.105" }
 
+[target.'cfg(any(target_arch = "xtensa-esp32s3-none-elf", target_arch = "xtensa-esp32-none-elf", target_arch = "riscv32imc-esp32c2-none-elf"))'.dependencies]
+datex-crypto-embedded = { path = "../datex-crypto-embedded", version = "0.0.1" }
+
 [target.'cfg(target_arch = "wasm32")'.dependencies]
+datex-crypto-native = { path = "../datex-crypto-native", version = "0.0.1" }
+
 # TODO: required for rust-analyzer to resolve dependencies
 wasm-bindgen-futures = { version = "0.4.29" }
 gloo-timers = { version = "0.3.0", features = ["futures"] }

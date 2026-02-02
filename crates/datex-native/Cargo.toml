@@ -30,16 +30,7 @@ tokio-tungstenite = { version = "0.21.0", optional = true, features = [
 tungstenite = { version = "0.21.0", optional = true }
 reqwest = { version = "0.13.1", optional = true }
 serialport = { version = "4.7.1", optional = true }
-rand = { version = "0.8.5" }
-uuid = { version = "1.15.1", features = ["v4"] }
-openssl = { version = "0.10.73" }
-crypto = { version = "0.5.1", features = [
-    "signature",
-    "rand_core",
-    "elliptic-curve",
-    "cipher",
-    "digest",
-] }
+
 
 [features]
 com_interface_http = ["dep:async_tiny", "dep:reqwest"]

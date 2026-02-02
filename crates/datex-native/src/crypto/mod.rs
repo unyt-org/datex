@@ -192,7 +192,7 @@ impl signature::Verifier<ed25519::Signature> for Ed25519Verifier {
 
 // #[derive(Debug, Clone, PartialEq)]
 // pub struct CryptoNative;
-// impl CryptoTrait for CryptoNative {
+// impl Crypto for CryptoNative {
 //     fn create_uuid(&self) -> String {
 //         Uuid::new_v4().to_string()
 //     }

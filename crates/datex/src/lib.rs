@@ -24,7 +24,6 @@ extern crate alloc;
 extern crate std;
 
 pub mod channel;
-// pub mod crypto;
 pub mod dif;
 pub mod prelude;
 
@@ -60,11 +59,11 @@ pub mod traits;
 pub mod types;
 pub mod utils;
 pub mod values;
+pub mod crypto_facade;
 
 // reexport macros
 pub use datex_macros as macros;
 extern crate core;
-extern crate self as datex_core;
 
 // Note: always use collections mod for HashMap and HashSet
 pub mod collections {
@@ -84,14 +83,14 @@ pub mod std_sync {
 
 pub mod crypto {
     cfg_if::cfg_if! {
-        if #[cfg(target_arch = "wasm32")] {
-            pub use crate::stub::crypto::*;
+        if #[cfg(any(target_arch = "xtensa-esp32s3-none-elf", target_arch = "xtensa-esp32-none-elf", target_arch = "riscv32imc-esp32c2-none-elf"))] {
+            pub use datex-crypto-native::crypto::CryptoNative as Crypto;
+        } else if #[cfg(target_arch = "wasm32")] {
+            pub use datex-crypto-web::crypto::CryptoWeb as Crypto;
         } else if #[cfg(feature = "std")] {
-            pub use datex_native::crypto::*;
-        } else if #[cfg(feature = "embedded")] {
-            compile_error!("No crypto implementation available for this target");
-        } else {
-            pub use crate::stub::crypto::*;
+            pub use datex-crypto-native::crypto::CryptoNative as Crypto;
+        }  else {
+            pub use crate::stub::crypto::CryptoStub as Crypto;
         }
     }
 }
