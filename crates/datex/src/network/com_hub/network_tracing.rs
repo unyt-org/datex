@@ -19,7 +19,6 @@ use crate::{
         },
     },
     runtime::execution::{ExecutionInput, ExecutionOptions, execute_dxb_sync},
-    utils::time::Time,
     values::{
         core_value::CoreValue,
         core_values::{
@@ -302,7 +301,7 @@ impl ComHub {
             )
             .await;
         let end_time = crate::time::Instant::now();
-        let round_trip_time = Duration::from_millis(end_time - start_time);
+        let round_trip_time = end_time - start_time;
 
         let mut results = vec![];
 

@@ -1,6 +1,6 @@
 pub use crate::collections::*;
 pub use alloc::{
-    borrow::Cow,
+    borrow::{Cow, ToOwned},
     boxed::Box,
     collections::{BTreeMap, BTreeSet, BinaryHeap, VecDeque},
     format,

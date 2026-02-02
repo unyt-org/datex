@@ -85,13 +85,63 @@ pub mod std_sync {
 pub mod time {
     cfg_if::cfg_if! {
         if #[cfg(target_arch = "wasm32")] {
-            pub use web_time::*;
+            pub use web_time::{Duration, Instant};
         } else if #[cfg(feature = "std")] {
-            pub use std::time::*;
+            pub use std::time::{Duration, Instant};
         } else if #[cfg(feature = "embedded")] {
-            pub use embedded_time::*;
+            pub use embedded_time::{duration::*, Instant};
         } else {
-            pub use crate::stub::time::*;
+            pub use crate::stub::time::{Duration, Instant};
+        }
+    }
+
+    /// Monotonic nanoseconds since a crate-defined start point.
+    #[inline]
+    pub fn now_ns() -> u64 {
+        start_instant().elapsed().as_nanos() as u64
+    }
+    #[inline]
+    pub fn start_instant() -> Instant {
+        #[cfg(target_has_atomic = "ptr")]
+        {
+            use core::sync::atomic::{AtomicU8, Ordering};
+
+            static INIT: AtomicU8 = AtomicU8::new(0);
+
+            // Safety: we write START once, then only read it.
+            static mut START: core::mem::MaybeUninit<Instant> =
+                core::mem::MaybeUninit::uninit();
+
+            if INIT.load(Ordering::Acquire) == 0 {
+                // Try to become the initializer.
+                if INIT
+                    .compare_exchange(0, 1, Ordering::AcqRel, Ordering::Acquire)
+                    .is_ok()
+                {
+                    unsafe {
+                        START.write(Instant::now());
+                    }
+                    INIT.store(2, Ordering::Release);
+                } else {
+                    // Wait until initialized.
+                    while INIT.load(Ordering::Acquire) != 2 {
+                        core::hint::spin_loop();
+                    }
+                }
+            } else {
+                // Wait until initialized.
+                while INIT.load(Ordering::Acquire) != 2 {
+                    core::hint::spin_loop();
+                }
+            }
+
+            unsafe { START.assume_init_ref().clone() }
+        }
+
+        // No atomics: deterministic fallback (time starts "now" every call).
+        #[cfg(not(target_has_atomic = "ptr"))]
+        {
+            Instant::now()
         }
     }
 }

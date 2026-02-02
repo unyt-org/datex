@@ -1,4 +1,4 @@
-use crate::{runtime::RuntimeConfigInterface, utils::time::Time};
+use crate::{runtime::RuntimeConfigInterface, time::Instant};
 
 use crate::prelude::*;
 use core::time::Duration;
@@ -109,7 +109,7 @@ pub enum ReconnectionConfig {
 
 impl ReconnectionConfig {
     pub fn check_reconnect_timeout(
-        close_timestamp: Option<u64>,
+        close_timestamp: Option<Instant>,
         timeout: &Duration,
     ) -> bool {
         let close_timestamp = match close_timestamp {
@@ -117,7 +117,7 @@ impl ReconnectionConfig {
             None => return false,
         };
         let now = crate::time::Instant::now();
-        let elapsed = Duration::from_millis(now - close_timestamp);
+        let elapsed = now - close_timestamp;
         if elapsed < *timeout {
             return false;
         }

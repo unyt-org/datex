@@ -36,7 +36,6 @@ use core::{
     fmt::{Debug, Formatter},
     panic,
     pin::Pin,
-    
     result::Result,
 };
 use itertools::Itertools;
@@ -836,9 +835,9 @@ impl ComHub {
                 let endpoint = block.routing_header.sender.clone();
                 let is_trusted = {
                     cfg_if::cfg_if! {
-                        if #[cfg(feature = "debug")] {
-                            use crate::runtime::global_context::get_global_context;
-                            get_global_context().debug_flags.allow_unsigned_blocks
+                        // FIXME make this a config option
+                        if #[cfg(feature = "allow_unsigned_blocks")] {
+                            true
                         }
                         else {
                             // TODO #181 Check if the sender is trusted (endpoint + interface) connection

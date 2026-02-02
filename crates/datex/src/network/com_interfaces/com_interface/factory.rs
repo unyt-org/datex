@@ -14,7 +14,7 @@ use crate::{
     },
     prelude::*,
     serde::deserializer::from_value_container,
-    utils::{async_callback::AsyncCallback, time::Time, uuid::UUID},
+    utils::{async_callback::AsyncCallback, uuid::UUID},
     values::{
         core_values::endpoint::Endpoint, value_container::ValueContainer,
     },
@@ -39,7 +39,7 @@ impl SocketProperties {
             direction,
             channel_factor,
             direct_endpoint: None,
-            connection_timestamp: crate::time::Instant::now(),
+            connection_timestamp: crate::time::now_ns(),
             uuid: ComInterfaceSocketUUID(UUID::new()),
         }
     }
@@ -52,7 +52,7 @@ impl SocketProperties {
             direction,
             channel_factor,
             direct_endpoint: Some(endpoint),
-            connection_timestamp: crate::time::Instant::now(),
+            connection_timestamp: crate::time::now_ns(),
             uuid: ComInterfaceSocketUUID(UUID::new()),
         }
     }
@@ -66,7 +66,7 @@ impl SocketProperties {
             direction,
             channel_factor,
             direct_endpoint: maybe_endpoint,
-            connection_timestamp: crate::time::Instant::now(),
+            connection_timestamp: crate::time::now_ns(),
             uuid: ComInterfaceSocketUUID(UUID::new()),
         }
     }

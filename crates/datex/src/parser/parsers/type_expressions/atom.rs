@@ -261,6 +261,7 @@ impl Parser {
 mod tests {
     use crate::{
         ast::type_expressions::TypeExpressionData,
+        prelude::*,
         values::core_values::{
             decimal::{
                 Decimal,

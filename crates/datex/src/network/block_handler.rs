@@ -11,7 +11,6 @@ use crate::{
     },
     network::com_interfaces::com_interface::socket::ComInterfaceSocketUUID,
     random::RandomState,
-    utils::time::Time,
 };
 
 use crate::prelude::*;
@@ -40,7 +39,7 @@ impl Default for ScopeContext {
         ScopeContext {
             next_section_index: 0,
             next_block_number: 0,
-            keep_alive_timestamp: crate::time::Instant::now(),
+            keep_alive_timestamp: crate::time::now_ns(),
             current_queue_sender: None,
             cached_blocks: BTreeMap::new(),
         }
@@ -836,6 +835,7 @@ mod tests {
 
     #[tokio::test]
     #[timeout(2000)]
+    #[cfg(feature = "std")]
     async fn await_response_block() {
         let (incoming_sections_sender, mut incoming_sections_receiver) =
             create_unbounded_channel::<IncomingSection>();

@@ -22,7 +22,6 @@ use crate::{
             ComInterfaceUUID, properties::InterfaceDirection,
         },
     },
-    utils::time::Time,
     values::core_values::endpoint::{Endpoint, EndpointInstance},
 };
 
@@ -227,7 +226,7 @@ impl ComInterfaceSocketManager {
             .push((
                 socket_uuid,
                 DynamicEndpointProperties {
-                    known_since: crate::time::Instant::now();,
+                    known_since: crate::time::now_ns(),
                     distance,
                     is_direct,
                     channel_factor,
@@ -274,26 +273,16 @@ impl ComInterfaceSocketManager {
                 .cmp(&a.is_direct)
                 .then_with(|| b.channel_factor.cmp(&a.channel_factor))
                 .then_with(|| b.distance.cmp(&a.distance))
-                .then_with(
-                    || {
-                        cfg_if::cfg_if! {
-                            if #[cfg(feature = "debug")] {
-                                use crate::runtime::global_context::get_global_context;
-                                use core::cmp::Ordering;
-                                if get_global_context().debug_flags.enable_deterministic_behavior {
-                                    Ordering::Equal
-                                }
-                                else {
-                                    b.known_since.cmp(&a.known_since)
-                                }
-                            }
-                            else {
-                                b.known_since.cmp(&a.known_since)
-                            }
+                .then_with(|| {
+                    cfg_if::cfg_if! {
+                        if #[cfg(feature = "enable_deterministic_behavior")] {
+                            core::cmp::Ordering::Equal
+                        }
+                        else {
+                            b.known_since.cmp(&a.known_since)
                         }
                     }
-                )
-
+                })
         });
     }
 

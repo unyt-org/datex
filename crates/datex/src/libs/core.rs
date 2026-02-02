@@ -22,7 +22,7 @@ use crate::{
 };
 
 use crate::prelude::*;
-use core::{cell::RefCell, iter::once,  result::Result};
+use core::{cell::RefCell, iter::once, result::Result};
 use datex_macros::LibTypeString;
 use log::info;
 use strum::IntoEnumIterator;
@@ -491,6 +491,8 @@ fn create_core_type(
 
 #[cfg(test)]
 mod tests {
+    use core::str::FromStr;
+
     use crate::values::core_values::endpoint::Endpoint;
 
     use super::*;
