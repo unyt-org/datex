@@ -5,6 +5,7 @@ use core::fmt::Display;
 #[derive(Debug, Clone, PartialEq, Hash, Eq)]
 pub enum CollectionTypeDefinition {
     // e.g. [integer]
+    List(Box<Type>),
 
     // e.g. [integer; 5]
     ListSlice(Box<Type>, usize),

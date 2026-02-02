@@ -1,4 +1,4 @@
-use crate::{crypto::uuid::generate_uuid_string, prelude::*};
+use crate::prelude::*;
 use core::fmt::Display;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -6,7 +6,7 @@ pub struct UUID(String);
 
 impl UUID {
     pub(crate) fn new() -> UUID {
-        UUID(generate_uuid_string())
+        UUID("FIXME".to_string())
     }
     pub fn from_string(uuid: String) -> UUID {
         UUID(uuid)

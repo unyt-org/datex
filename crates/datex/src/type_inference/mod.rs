@@ -1232,7 +1232,7 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
 #[cfg(test)]
 #[allow(clippy::std_instead_of_core, clippy::std_instead_of_alloc)]
 mod tests {
-    use core::{assert_matches, cell::RefCell};
+    use core::{assert_matches, cell::RefCell, str::FromStr};
 
     use crate::{
         ast::{

@@ -644,12 +644,15 @@ impl TryFrom<CoreValue> for Map {
 
 #[cfg(test)]
 mod tests {
-    use crate::values::{
-        core_values::{
-            decimal::{Decimal, typed_decimal::TypedDecimal},
-            map::Map,
+    use crate::{
+        prelude::*,
+        values::{
+            core_values::{
+                decimal::{Decimal, typed_decimal::TypedDecimal},
+                map::Map,
+            },
+            value_container::ValueContainer,
         },
-        value_container::ValueContainer,
     };
 
     #[test]

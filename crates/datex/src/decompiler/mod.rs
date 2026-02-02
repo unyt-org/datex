@@ -67,7 +67,7 @@ pub fn apply_syntax_highlighting(
     Ok(datex_script)
 }
 
-#[cfg(feature = "syntax_highlighting_legacy")]
+#[cfg(all(feature = "std", feature = "syntax_highlighting_legacy"))]
 pub fn apply_syntax_highlighting(
     datex_script: String,
 ) -> Result<String, DXBParserError> {
@@ -99,4 +99,12 @@ pub fn apply_syntax_highlighting(
     // reset style
     core::write!(output, "\x1b[0m")?;
     Ok(output)
+}
+
+#[cfg(not(all(feature = "std", feature = "syntax_highlighting_legacy")))]
+pub fn apply_syntax_highlighting(
+    datex_script: String,
+) -> Result<String, DXBParserError> {
+    // no_std fallback: no highlighting
+    Ok(datex_script)
 }

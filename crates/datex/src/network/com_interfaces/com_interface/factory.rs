@@ -224,7 +224,7 @@ impl SendCallback {
     ) -> Self {
         let once_fn = Box::new(Mutex::new(Some(f)));
         let wrapper = move |block: DXBBlock| {
-            let mut lock = once_fn.lock().unwrap();
+            let mut lock = once_fn.try_lock().unwrap();
             if let Some(func) = lock.take() {
                 func(block)
             } else {

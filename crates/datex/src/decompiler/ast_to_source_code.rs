@@ -69,7 +69,7 @@ pub struct AstToSourceCodeConverter {
 #[macro_export]
 macro_rules! ast_fmt {
     ($fmtter:expr, $fmt:expr $(, $args:expr )* $(,)?) => {
-        $fmtter.fmt(std::format_args!($fmt $(, $args )*))
+        $fmtter.fmt(core::format_args!($fmt $(, $args )*))
     };
 }
 impl AstToSourceCodeConverter {
