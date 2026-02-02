@@ -50,35 +50,33 @@ impl<'a> ExecutionInput<'a> {
         impl Iterator<Item = Result<ExternalExecutionInterrupt, ExecutionError>>,
     ) {
         // use execution iterator if one already exists from previous execution
-        let mut loop_state =
-            if let Some(existing_loop_state) = self.loop_state.take() {
-                // update dxb so that instruction iterator can continue with next instructions
-                existing_loop_state
-                    .dxb_body
-                    .borrow_mut()
-                    .replace(self.dxb_body.to_vec());
-                existing_loop_state
-            }
-            // otherwise start a new execution loop
-            else {
-                let state = RuntimeExecutionState {
-                    runtime_internal: self.runtime.clone(),
-                    source_id: 0, // TODO #640: set proper source ID
-                    ..Default::default()
-                };
-                // TODO #641: optimize, don't clone the whole DXB body every time here
-                let dxb_rc = Rc::new(RefCell::new(self.dxb_body.to_vec()));
-                let interrupt_provider = InterruptProvider::new();
-                ExecutionLoopState {
-                    dxb_body: dxb_rc.clone(),
-                    iterator: Box::new(execution_loop(
-                        state,
-                        dxb_rc,
-                        interrupt_provider.clone(),
-                    )),
-                    interrupt_provider,
-                }
+        let mut loop_state = if let Some(existing_loop_state) =
+            self.loop_state.take()
+        {
+            // update dxb so that instruction iterator can continue with next instructions
+            *existing_loop_state.dxb_body.borrow_mut() = self.dxb_body.to_vec();
+            existing_loop_state
+        }
+        // otherwise start a new execution loop
+        else {
+            let state = RuntimeExecutionState {
+                runtime_internal: self.runtime.clone(),
+                source_id: 0, // TODO #640: set proper source ID
+                ..Default::default()
             };
+            // TODO #641: optimize, don't clone the whole DXB body every time here
+            let dxb_rc = Rc::new(RefCell::new(self.dxb_body.to_vec()));
+            let interrupt_provider = InterruptProvider::new();
+            ExecutionLoopState {
+                dxb_body: dxb_rc.clone(),
+                iterator: Box::new(execution_loop(
+                    state,
+                    dxb_rc,
+                    interrupt_provider.clone(),
+                )),
+                interrupt_provider,
+            }
+        };
         let interrupt_provider = loop_state.interrupt_provider.clone();
 
         // proxy the iterator, storing it back into state if interrupted to await more instructions

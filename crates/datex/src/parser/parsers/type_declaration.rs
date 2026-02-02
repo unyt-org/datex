@@ -85,6 +85,7 @@ mod tests {
             type_expressions::TypeExpressionData,
         },
         parser::tests::{parse, try_parse_and_return_on_first_error},
+        prelude::*,
     };
 
     #[test]

@@ -22,7 +22,6 @@ use crate::{
     runtime::execution::{ExecutionError, context::ExecutionMode},
     serde::{error::SerializationError, serializer::to_value_container},
     time::Instant,
-    utils::time::Time,
     values::{
         core_values::endpoint::Endpoint, value_container::ValueContainer,
     },
@@ -31,8 +30,7 @@ use crate::{
 use crate::prelude::*;
 use async_select::select;
 use core::{
-    cell::RefCell, fmt::Debug, pin::Pin,  result::Result,
-    slice, unreachable,
+    cell::RefCell, fmt::Debug, pin::Pin, result::Result, slice, unreachable,
 };
 use execution::context::{
     ExecutionContext, RemoteExecutionContext, ScriptExecutionError,
@@ -478,7 +476,7 @@ impl RuntimeRunner {
     pub fn new(config: RuntimeConfig) -> RuntimeRunner {
         info!(
             "Runtime initialized - Version {VERSION} Time: {}",
-            crate::time::Instant::now()
+            crate::time::now_ns()
         );
 
         let endpoint = config.endpoint.clone().unwrap_or_else(Endpoint::random);

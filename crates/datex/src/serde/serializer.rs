@@ -8,7 +8,7 @@ use crate::{
         value_container::ValueContainer,
     },
 };
-use core::{ result::Result};
+use core::result::Result;
 use serde::ser::{
     Serialize, SerializeMap, SerializeSeq, SerializeStruct,
     SerializeStructVariant, SerializeTuple, SerializeTupleStruct,
@@ -604,14 +604,14 @@ mod tests {
     };
 
     use crate::{
-        compat::assert_matches,
+        prelude::*,
         values::{
             core_value::CoreValue, value::Value,
             value_container::ValueContainer,
         },
     };
+    use core::assert_matches;
     use serde::{Deserialize, Serialize};
-
     #[derive(Serialize)]
     struct TestStruct {
         field1: String,

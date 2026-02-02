@@ -51,7 +51,7 @@ impl InterruptProvider {
     }
 
     pub fn provide_result(&self, result: InterruptResult) {
-        self.result.borrow_mut().replace(Some(result));
+        *self.result.borrow_mut() = Some(result);
     }
 
     pub fn take_result(&self) -> Option<InterruptResult> {

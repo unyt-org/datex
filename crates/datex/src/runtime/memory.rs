@@ -7,11 +7,10 @@ use crate::{
         value_reference::ValueReference,
     },
     types::error::IllegalTypeError,
-    utils::time::Time,
     values::{core_values::endpoint::Endpoint, pointer::PointerAddress},
 };
 use binrw::io::Cursor;
-use core::{cell::RefCell,  result::Result};
+use core::{cell::RefCell, result::Result};
 
 use crate::prelude::*;
 #[derive(Debug, Default)]
@@ -149,7 +148,7 @@ impl Memory {
 
     /// Creates a new unique local PointerAddress.
     pub fn get_new_local_address(&mut self) -> PointerAddress {
-        let timestamp = crate::time::Instant::now();
+        let timestamp = crate::time::now_ns();
         // new timestamp, reset counter
         if timestamp != self.last_timestamp {
             self.last_timestamp = timestamp;

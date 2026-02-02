@@ -54,8 +54,8 @@ mod tests {
             spanned::Spanned,
         },
         parser::tests::parse,
+        prelude::*,
     };
-
     #[test]
     fn parse_single_if() {
         let expr = parse("if (true) (42)");
