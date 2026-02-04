@@ -39,7 +39,7 @@ collaboration and development.
   developed in parallel with the implementation of the DATEX Core. The
   repository is currently private, but will be made public in the future and is
   available to contributors on [request](https://unyt.org/contact).
-- [DATEX Core JS](https://github.com/unyt-org/datex-core-js) - A JavaScript
+- [DATEX Core JS](https://github.com/unyt-org/datex-js) - A JavaScript
   interface to the DATEX Core, built on top of this crate. Includes a
   WebAssembly build for running DATEX in the browser or server-side with
   [Deno](https://deno.land/), [Node.js](https://nodejs.org/), and
@@ -50,11 +50,11 @@ collaboration and development.
 - [DATEX CLI](https://github.com/unyt-org/datex-cli) - A command line interface
   for the DATEX Core, built on top of this crate. Provides a simple way to run
   DATEX scripts and interact with the DATEX Runtime in a REPL-like environment.
-- [DATEX Core ESP32](https://github.com/unyt-org/datex-core-esp32) - A port of
+- [DATEX Core ESP32](https://github.com/unyt-org/datex-esp32) - A port of
   the DATEX Core to the
   [ESP32](https://www.espressif.com/en/products/socs/esp32) platform, allowing
   you to run DATEX on microcontrollers of the Espressif family.
-- [DATEX Core CPP](https://github.com/unyt-org/datex-core-cpp) - A C++ port of
+- [DATEX Core CPP](https://github.com/unyt-org/datex-cpp) - A C++ port of
   the DATEX Core, allowing you to run DATEX on platforms that support C++. _This
   port is still in development and not functional._
 - [DATEX Core JS (legacy)](https://github.com/unyt-org/datex-core-js-legacy) - A

@@ -168,7 +168,7 @@ datex-crypto-native = { path = "../datex-crypto-native" }
 
 
 [features]
-# alloc = [] see https://github.com/unyt-org/datex-core/issues/699
+# alloc = [] see https://github.com/unyt-org/datex/issues/699
 
 default = [
     "compiler",
