@@ -1,7 +1,7 @@
-# DATEX Native
-> This crate provides a set of native implementations for various DATEX functionalities, including communication interfaces.
+# DATEX Native Macros
+> This crate provides procedural macros to assist in the development of DATEX-related code in native environments.
 
-[![](https://img.shields.io/crates/v/datex-native.svg)](https://crates.io/crates/datex-native) [![Twitter badge][]][Twitter link] [![Discord badge][]][Discord link]
+[![](https://img.shields.io/crates/v/datex-native-macros.svg)](https://crates.io/crates/datex-native-macros) [![Twitter badge][]][Twitter link] [![Discord badge][]][Discord link]
 
 ## Contributing
 

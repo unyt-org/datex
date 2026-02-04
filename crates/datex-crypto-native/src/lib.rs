@@ -1,15 +1,19 @@
-use openssl::aes::{unwrap_key, wrap_key, AesKey};
-use openssl::derive::Deriver;
-use openssl::md::Md;
-use openssl::pkey::{Id, PKey};
-use openssl::pkey_ctx::{HkdfMode, PkeyCtx};
-use openssl::sha::sha256;
-use openssl::sign::{Signer, Verifier};
-use openssl::symm::{Cipher, Crypter, Mode};
+use datex_crypto_facade::{
+    crypto::{Crypto, CryptoResult},
+    error::CryptoError,
+};
+use openssl::{
+    aes::{AesKey, unwrap_key, wrap_key},
+    derive::Deriver,
+    md::Md,
+    pkey::{Id, PKey},
+    pkey_ctx::{HkdfMode, PkeyCtx},
+    sha::sha256,
+    sign::{Signer, Verifier},
+    symm::{Cipher, Crypter, Mode},
+};
 use rand::Rng;
 use uuid::Uuid;
-use datex_crypto_facade::crypto::{Crypto, CryptoResult};
-use datex_crypto_facade::error::CryptoError;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct CryptoNative;
@@ -19,13 +23,11 @@ impl Crypto for CryptoNative {
     }
 
     fn random_bytes(length: usize) -> Vec<u8> {
-        let mut rng = rand::thread_rng();
-        (0..length).map(|_| rng.r#gen()).collect()
+        let mut rng = rand::rng();
+        (0..length).map(|_| rng.random()).collect()
     }
 
-    fn hash_sha256(
-        to_digest: &[u8],
-    ) -> CryptoResult<[u8; 32]> {
+    fn hash_sha256(to_digest: &'_ [u8]) -> CryptoResult<'_, [u8; 32]> {
         Box::pin(async move {
             let hash = sha256(to_digest);
             Ok(hash)
@@ -212,5 +214,29 @@ impl Crypto for CryptoNative {
                 .map_err(|_| CryptoError::KeyGeneration)?;
             Ok(derived)
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::CryptoNative;
+    use datex_crypto_facade::crypto::Crypto;
+    #[test]
+    fn test_uuid() {
+        let uuid1 = CryptoNative::create_uuid();
+        let uuid2 = CryptoNative::create_uuid();
+        assert_ne!(uuid1, uuid2);
+
+        assert_eq!(uuid1.len(), 36);
+        assert_eq!(uuid2.len(), 36);
+    }
+
+    #[test]
+    fn test_random_bytes() {
+        let bytes1 = CryptoNative::random_bytes(16);
+        let bytes2 = CryptoNative::random_bytes(16);
+        assert_eq!(bytes1.len(), 16);
+        assert_eq!(bytes2.len(), 16);
+        assert_ne!(bytes1, bytes2);
     }
 }
