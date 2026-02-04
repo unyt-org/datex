@@ -2,7 +2,7 @@
 
 This document describes the workflow, branch strategy, coding standards, and
 quality gates for contributing to the
-[`datex-core`](https://github.com/unyt-org/datex) Rust crate.
+[`datex`](https://github.com/unyt-org/datex) Rust crate.
 
 ---
 
@@ -203,7 +203,7 @@ Before requesting review, ensure you have:
 
 ```bash
 git clone https://github.com/unyt-org/datex.git
-cd datex-core
+cd datex/crates/datex
 rustup override set nightly
 cargo test-debug
 cargo clippy --features debug
