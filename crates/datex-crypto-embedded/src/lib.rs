@@ -22,9 +22,9 @@ pub fn get_global_rng() -> &'static mut Rng {
 }
 
 #[derive(Debug, Clone)]
-pub struct EspCrypto;
+pub struct CryptoEmbedded;
 
-impl Crypto for EspCrypto {
+impl Crypto for CryptoEmbedded {
     fn create_uuid() -> String {
         // TODO: use uuid crate?
         let mut bytes = [0u8; 16];
@@ -63,16 +63,6 @@ impl Crypto for EspCrypto {
     ) -> CryptoResult<'a, [u8; 32]> {
         todo!()
     }
-
-    fn gen_ed25519() -> Pin<
-        Box<
-            dyn Future<Output = Result<(Vec<u8>, Vec<u8>), CryptoError>>
-                + 'static,
-        >,
-    > {
-        todo!()
-    }
-
     fn sig_ed25519<'a>(
         pri_key: &'a [u8],
         data: &'a [u8],
@@ -118,16 +108,18 @@ impl Crypto for EspCrypto {
         todo!()
     }
 
-    fn gen_x25519()
-    -> Pin<Box<dyn Future<Output = Result<([u8; 44], [u8; 48]), CryptoError>>>>
-    {
-        todo!()
-    }
-
     fn derive_x25519<'a>(
         pri_key: &'a [u8; 48],
         peer_pub: &'a [u8; 44],
     ) -> Pin<Box<dyn Future<Output = Result<Vec<u8>, CryptoError>> + 'a>> {
+        todo!()
+    }
+
+    fn gen_ed25519<'a>() -> CryptoResult<'a, (Vec<u8>, Vec<u8>)> {
+        todo!()
+    }
+
+    fn gen_x25519<'a>() -> CryptoResult<'a, ([u8; 44], [u8; 48])> {
         todo!()
     }
 }

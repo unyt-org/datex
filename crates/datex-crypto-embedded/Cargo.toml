@@ -37,3 +37,6 @@ esp-hal = { version = "=1.0.0-rc.1", features = [
     "unstable",
     "psram",
 ] }
+
+[dev-dependencies]
+esp-hal = { version = "=1.0.0-rc.1", features = ["esp32", "unstable", "psram"] }
