@@ -307,13 +307,10 @@ pub type InterfaceCloseAsyncCallback = AsyncCallback<(), ()>;
 /// The trait should be implemented for the setup data type of the interface.
 /// Example:
 /// ```
-/// # use core::cell::RefCell;
-/// # use datex_core::stdlib::rc::Rc;
 /// use serde::{Deserialize, Serialize};
-/// use datex_core::network::com_hub::errors::ComInterfaceCreateError;
-/// use datex_core::network::com_interfaces::com_interface::ComInterfaceProxy;
-/// use datex_core::network::com_interfaces::com_interface::factory::ComInterfaceSyncFactory;
-/// use datex_core::network::com_interfaces::com_interface::properties::ComInterfaceProperties;
+/// use datex::network::com_hub::errors::ComInterfaceCreateError;
+/// use datex::network::com_interfaces::com_interface::factory::{ComInterfaceSyncFactory,ComInterfaceConfiguration};
+/// use datex::network::com_interfaces::com_interface::properties::ComInterfaceProperties;
 ///
 ///
 /// #[derive(Serialize, Deserialize)]
@@ -324,7 +321,7 @@ pub type InterfaceCloseAsyncCallback = AsyncCallback<(), ()>;
 /// impl ComInterfaceSyncFactory for ExampleInterfaceSetupData {
 ///     fn create_interface(
 ///         self,
-///     ) -> Result<ComInterfaceProperties, ComInterfaceCreateError> {
+///     ) -> Result<ComInterfaceConfiguration, ComInterfaceCreateError> {
 ///         todo!("Initialize the interface here")
 ///     }
 ///
@@ -366,14 +363,11 @@ where
 /// The trait should be implemented for the setup data type of the interface.
 /// Example:
 /// ```
-/// # use core::cell::RefCell;
-/// # use datex_core::stdlib::rc::Rc;
 /// use serde::{Deserialize, Serialize};
-/// use datex_core::network::com_hub::errors::ComInterfaceCreateError;
-/// use datex_core::network::com_interfaces::com_interface::ComInterfaceProxy;
-/// use datex_core::network::com_interfaces::com_interface::factory::ComInterfaceAsyncFactory;
-/// use datex_core::network::com_interfaces::com_interface::properties::ComInterfaceProperties;
-/// use datex_core::network::com_hub::managers::com_interface_manager::ComInterfaceAsyncFactoryResult;
+/// use datex::network::com_hub::errors::ComInterfaceCreateError;
+/// use datex::network::com_interfaces::com_interface::factory::ComInterfaceAsyncFactory;
+/// use datex::network::com_interfaces::com_interface::properties::ComInterfaceProperties;
+/// use datex::network::com_hub::managers::com_interface_manager::ComInterfaceAsyncFactoryResult;
 ///
 /// #[derive(Serialize, Deserialize)]
 /// struct ExampleInterfaceSetupData {
@@ -381,8 +375,7 @@ where
 /// }
 /// impl ComInterfaceAsyncFactory for ExampleInterfaceSetupData {
 ///     fn create_interface(
-///         self,
-///         com_interface_proxy: ComInterfaceProxy,
+///         self
 ///     ) -> ComInterfaceAsyncFactoryResult {
 ///         Box::pin(async move {
 ///             // Initialize the interface here asynchronously

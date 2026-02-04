@@ -480,7 +480,7 @@ fn extract_static_value_from_ast(
 /// behaves like the format! macro.
 /// Example:
 /// ```
-/// use datex_core::compile;
+/// use datex::compile;
 /// compile!("4 + ?", 42);
 /// compile!("? + ?", 1, 2);
 #[macro_export]
@@ -1466,13 +1466,12 @@ pub mod tests {
         },
     };
 
-    use crate::prelude::*;
-    use alloc::format;
-    use core::assert_matches;
     use crate::{
-        compiler::error::CompilerError,
+        compiler::error::CompilerError, prelude::*,
         values::core_values::integer::typed_integer::TypedInteger,
     };
+    use alloc::format;
+    use core::assert_matches;
     use log::*;
 
     fn compile_and_log(datex_script: &str) -> Vec<u8> {
