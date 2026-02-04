@@ -290,7 +290,7 @@ impl ComInterfaceConfiguration {
             uuid: ComInterfaceUUID(UUID::new()),
             properties: Rc::new(properties),
             new_sockets_iterator: Box::pin(async gen move {
-                yield Ok(socket_configuration);
+                yield Ok(socket_configuration)
             }),
         }
     }

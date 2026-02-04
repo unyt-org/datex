@@ -1,5 +1,4 @@
 #![cfg_attr(not(feature = "std"), no_std)]
-
 #![feature(coroutines)]
 #![feature(iter_from_coroutine)]
 #![feature(assert_matches)]
@@ -18,9 +17,8 @@
 #![feature(future_join)]
 #![allow(static_mut_refs)]
 
-
-extern crate num_integer;
 extern crate alloc;
+extern crate num_integer;
 
 #[cfg(feature = "std")]
 extern crate std;
