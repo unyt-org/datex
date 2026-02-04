@@ -1,10 +1,19 @@
-use datex_core::{
-    ast::expressions::{RemoteExecution, Statements},
+use alloc::str::FromStr;
+use core::assert_matches;
+use datex::{
+    ast::{
+        expressions::{
+            RemoteExecution, Statements, TypeDeclaration, TypeDeclarationKind,
+        },
+        type_expressions::StructuralMap,
+    },
+    collections::HashMap,
     global::operators::{
         ArithmeticUnaryOperator, AssignmentOperator, BinaryOperator,
         ComparisonOperator, LogicalUnaryOperator, UnaryOperator,
         binary::{ArithmeticOperator, BitwiseOperator},
     },
+    prelude::*,
     values::{
         core_values::{
             decimal::Decimal,
@@ -16,21 +25,20 @@ use datex_core::{
     },
 };
 
-use datex_core::{
+use datex::{
     ast::{
         expressions::{
             Apply, BinaryOperation, CallableDeclaration, CallableKind,
             ComparisonOperation, Conditional, CreateRef, DatexExpression,
             DatexExpressionData, Deref, GenericInstantiation, List, Map,
-            PropertyAccess, PropertyAssignment, Slot, TypeDeclaration,
-            TypeDeclarationKind, UnaryOperation, VariableAssignment,
-            VariableDeclaration, VariableKind,
+            PropertyAccess, PropertyAssignment, Slot, UnaryOperation,
+            VariableAssignment, VariableDeclaration, VariableKind,
         },
         spanned::Spanned,
         src_id::SrcId,
         type_expressions::{
-            Intersection, StructuralList, StructuralMap, TypeExpression,
-            TypeExpressionData, TypeVariantAccess, Union,
+            Intersection, StructuralList, TypeExpressionData,
+            TypeVariantAccess, Union,
         },
     },
     parser::{
@@ -42,7 +50,6 @@ use datex_core::{
         },
     },
     references::reference::ReferenceMutability,
-    stdlib::{assert_matches, collections::HashMap, str::FromStr, vec},
     values::core_values::error::NumberParseError,
 };
 
@@ -3041,13 +3048,13 @@ fn json_to_value_container() {
         Decimal::from_string("0.5").unwrap().into(),
     ];
     let value_container_inner_map: ValueContainer =
-        ValueContainer::from(datex_core::values::core_values::map::Map::from(
+        ValueContainer::from(datex::values::core_values::map::Map::from(
             vec![("key".to_string(), "value".to_string().into())]
                 .into_iter()
                 .collect::<HashMap<String, ValueContainer>>(),
         ));
     let value_container_map: ValueContainer =
-        ValueContainer::from(datex_core::values::core_values::map::Map::from(
+        ValueContainer::from(datex::values::core_values::map::Map::from(
             vec![
                 ("name".to_string(), "Test".to_string().into()),
                 ("value".to_string(), Integer::from(42).into()),

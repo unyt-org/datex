@@ -32,21 +32,27 @@ mod tests {
         dif::{
             DIFConvertible,
             representation::DIFValueRepresentation,
+            r#type::{DIFType, DIFTypeDefinition},
             update::DIFUpdateData,
             value::{DIFValue, DIFValueContainer},
         },
         libs::core::CoreLibPointerId,
+        prelude::*,
         runtime::memory::Memory,
+        types::definition::TypeDefinition,
         values::{
-            core_values::integer::typed_integer::IntegerTypeVariant,
+            core_value::CoreValue,
+            core_values::{
+                endpoint::Endpoint, integer::typed_integer::IntegerTypeVariant,
+                r#type::Type,
+            },
+            pointer::PointerAddress,
+            value::Value,
             value_container::ValueContainer,
         },
     };
     use alloc::string::ToString;
     use core::cell::RefCell;
-    use crate::{
-        dif::r#type::DIFTypeDefinition, values::core_values::endpoint::Endpoint,
-    };
 
     fn dif_value_circle(value_container: ValueContainer) -> DIFValueContainer {
         let memory = RefCell::new(Memory::new(Endpoint::default()));
@@ -125,5 +131,51 @@ mod tests {
         } else {
             core::panic!("Expected DIFValueContainer::Value variant");
         }
+    }
+
+    #[test]
+    fn dif_value_no_type() {
+        let val = ValueContainer::Value(Value::null());
+        let memory = RefCell::new(Memory::new(Endpoint::default()));
+        let dif_val = DIFValueContainer::from_value_container(&val, &memory);
+        assert_eq!(
+            dif_val,
+            DIFValueContainer::Value(DIFValue::new(
+                DIFValueRepresentation::Null,
+                Option::<DIFTypeDefinition>::None,
+            ),)
+        );
+    }
+
+    #[test]
+    fn dif_value_with_type() {
+        let val = ValueContainer::Value(Value {
+            inner: CoreValue::Null,
+            actual_type: Box::new(TypeDefinition::ImplType(
+                Box::new(Type::integer()),
+                vec![PointerAddress::Local([0, 0, 0, 0, 0])],
+            )),
+        });
+
+        let memory = RefCell::new(Memory::new(Endpoint::default()));
+        let dif_val = DIFValueContainer::from_value_container(&val, &memory);
+        assert_eq!(
+            dif_val,
+            DIFValueContainer::Value(DIFValue {
+                value: DIFValueRepresentation::Null,
+                ty: Some(DIFTypeDefinition::ImplType(
+                    Box::new(DIFType {
+                        name: None,
+                        mutability: None,
+                        type_definition: DIFTypeDefinition::Reference(
+                            PointerAddress::from(CoreLibPointerId::Integer(
+                                None
+                            ))
+                        )
+                    }),
+                    vec![PointerAddress::Local([0, 0, 0, 0, 0])]
+                ))
+            })
+        );
     }
 }

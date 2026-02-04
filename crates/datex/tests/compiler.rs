@@ -1,9 +1,6 @@
-use datex_core::{
+use datex::{
     compiler::{CompileOptions, compile_script},
-    decompiler::{
-        DecompileOptions, FormattingMode, FormattingOptions, decompile_body,
-    },
-    logger::init_logger_debug,
+    decompiler::{DecompileOptions, FormattingOptions, decompile_body},
 };
 use log::info;
 
@@ -42,7 +39,6 @@ fn compare_compiled(datex_script: &str, expected: &str) {
 
 #[test]
 pub fn compile_literals() {
-    
     compare_compiled_with_decompiled("42;");
     compare_compiled_with_decompiled("4200000000000;");
     compare_compiled_with_decompiled("1.23;");
@@ -66,7 +62,6 @@ c";"#,
 
 #[test]
 pub fn compile_expressions() {
-    
     compare_compiled_with_decompiled("1+2;");
     compare_compiled_with_decompiled("[1,2]");
     // ARR_START 1 2 3 SCOPE_END

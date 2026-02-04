@@ -1,6 +1,9 @@
-use binrw::{BinRead, BinWrite};
+use binrw::{
+    BinRead, BinWrite,
+    io::{Cursor, Seek, SeekFrom},
+};
 use core::str::FromStr;
-use datex_core::{
+use datex::{
     global::{
         dxb_block::DXBBlock,
         protocol_structures::{
@@ -17,8 +20,7 @@ use datex_core::{
     },
 };
 use serde::Serialize;
-use serde_json::ser::{Formatter, PrettyFormatter};
-use std::io::{Cursor, Seek, SeekFrom};
+use serde_json::ser::PrettyFormatter;
 
 #[test]
 pub fn parse_encrypted_header() {
@@ -30,7 +32,6 @@ pub fn parse_encrypted_header() {
     let encrypted_header = EncryptedHeader {
         on_behalf_of: Some(endpoint.clone()),
         flags: encrypted_header::Flags::new().with_has_on_behalf_of(true),
-        ..EncryptedHeader::default()
     };
     let mut writer = Cursor::new(Vec::new());
     encrypted_header.write(&mut writer).unwrap();
