@@ -5,6 +5,7 @@ use super::protocol_structures::{
 };
 use crate::{
     channel::mpsc::UnboundedReceiver,
+    crypto::CryptoImpl,
     global::protocol_structures::{
         block_header::BlockType, routing_header::Receivers,
     },
@@ -16,6 +17,7 @@ use binrw::{
     io::{Cursor, Read},
 };
 use core::{fmt::Display, result::Result, unimplemented};
+use datex_crypto_facade::crypto::Crypto;
 use strum::Display;
 use thiserror::Error;
 
@@ -310,15 +312,12 @@ impl DXBBlock {
         reader.read_to_end(&mut body).map_err(|e| e.to_string())?;
 
         cfg_if::cfg_if! {
-            if #[cfg(feature = "native_crypto")] {
+            if #[cfg(not(feature = "allow_unsigned_blocks"))] {
                 /*
                 use crate::runtime::global_context::{GlobalContext, set_global_context, get_global_context};
                 set_global_context(GlobalContext::native());
                 let crypto = get_global_context().crypto;
                 */
-                use crate::native_global_context::crypto::CryptoNative;
-                use crate::crypto::crypto::Crypto;
-                let crypto = CryptoNative {};
 
                 match routing_header.flags.signature_type() {
                     SignatureType::Encrypted => {
@@ -326,11 +325,10 @@ impl DXBBlock {
                             .as_ref()
                             .ok_or(DXBBlockParseError::MissingSignature)?;
                         let (enc_sign, pub_key) = raw_sign.split_at(64);
-                        let hash = crypto.hkdf_sha256(pub_key, &[0u8; 16])
+                        let hash = CryptoImpl::hkdf_sha256(pub_key, &[0u8; 16])
                             .await
                             .map_err(|e| binrw::Error::Custom { pos: 0u64, err: Box::new(e) })?;
-                        let signature = crypto
-                            .aes_ctr_decrypt(&hash, &[0u8; 16], enc_sign)
+                        let signature = CryptoImpl::aes_ctr_decrypt(&hash, &[0u8; 16], enc_sign)
                             .await
                             .map_err(|e| binrw::Error::Custom { pos: 0u64, err: Box::new(e) })?;
 
@@ -339,13 +337,11 @@ impl DXBBlock {
                             &body.clone()
                             ]
                             .concat();
-                        let hashed_signed = crypto
-                            .hash_sha256(&raw_signed)
+                        let hashed_signed = CryptoImpl::hash_sha256(&raw_signed)
                             .await
                             .map_err(|e| binrw::Error::Custom { pos: 0u64, err: Box::new(e) })?;
 
-                        let ver = crypto
-                            .ver_ed25519(pub_key, &signature, &hashed_signed)
+                        let ver = CryptoImpl::ver_ed25519(pub_key, &signature, &hashed_signed)
                             .await
                             .map_err(|e| binrw::Error::Custom { pos: 0u64, err: Box::new(e) })?;
 
@@ -366,13 +362,11 @@ impl DXBBlock {
                             &body.clone()
                             ]
                             .concat();
-                        let hashed_signed = crypto
-                            .hash_sha256(&raw_signed)
+                        let hashed_signed = CryptoImpl::hash_sha256(&raw_signed)
                             .await
                             .map_err(|e| binrw::Error::Custom { pos: 0u64, err: Box::new(e) })?;
 
-                        let ver = crypto
-                            .ver_ed25519(pub_key, signature, &hashed_signed)
+                        let ver = CryptoImpl::ver_ed25519(pub_key, signature, &hashed_signed)
                             .await
                             .map_err(|e| binrw::Error::Custom { pos: 0u64, err: Box::new(e) })?;
 
@@ -493,6 +487,7 @@ mod tests {
     use core::str::FromStr;
 
     use crate::{
+        crypto::CryptoImpl,
         global::{
             dxb_block::{DXBBlock, DXBBlockParseError},
             protocol_structures::{
@@ -505,7 +500,6 @@ mod tests {
     };
     use core::assert_matches;
     use datex_crypto_facade::crypto::Crypto;
-    use crate::crypto::CryptoImpl;
 
     #[tokio::test]
     pub async fn test_recalculate() {
@@ -568,8 +562,9 @@ mod tests {
         let raw_signed = [pub_key.clone(), block.body.clone()].concat();
         let hashed_signed = CryptoImpl::hash_sha256(&raw_signed).await.unwrap();
 
-        let signature =
-            CryptoImpl::sig_ed25519(&pri_key, &hashed_signed).await.unwrap();
+        let signature = CryptoImpl::sig_ed25519(&pri_key, &hashed_signed)
+            .await
+            .unwrap();
         // 64 + 44 = 108
         block.signature = Some([signature.to_vec(), pub_key.clone()].concat());
 
