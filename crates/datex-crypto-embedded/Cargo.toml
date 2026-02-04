@@ -20,17 +20,20 @@ std_instead_of_alloc = "deny"
 
 [dependencies]
 datex-crypto-facade = { path = "../datex-crypto-facade", version = "0.0.1" }
+
+[target.'cfg(all(target_arch = "xtensa", target_vendor = "esp32s3"))'.dependencies]
 esp-hal = { version = "=1.0.0-rc.1", features = [
+    "esp32s3",
     "unstable",
     "psram",
 ] }
 
-[target.'cfg(target_arch = "xtensa-esp32s3-none-elf")'.features]
-default = ["esp-hal/esp32s3"]
-[target.'cfg(target_arch = "xtensa-esp32-none-elf")'.features]
-default = ["esp-hal/esp32"]
-[target.'cfg(target_arch = "riscv32imc-esp32c2-none-elf")'.features]
-default = ["esp-hal/esp32c2"]
+[target.'cfg(all(target_arch = "xtensa", target_vendor = "esp32"))'.dependencies]
+esp-hal = { version = "=1.0.0-rc.1", features = ["esp32", "unstable", "psram"] }
 
-[features]
-default = ["esp-hal/esp32"]
+[target.'cfg(target_arch = "riscv32")'.dependencies]
+esp-hal = { version = "=1.0.0-rc.1", features = [
+    "esp32c2",
+    "unstable",
+    "psram",
+] }

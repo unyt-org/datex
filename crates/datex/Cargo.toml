@@ -74,7 +74,6 @@ serde-big-array = { version = "0.5.1", optional = true }
 realhydroper-lsp = { version = "0.22.0", optional = true, default-features = false, features = [
     "proposed",
 ] }
-datex-crypto-native = { path = "../datex-crypto-native", version = "0.0.1" }
 
 
 # macros
@@ -116,6 +115,7 @@ embassy-futures = { version = "0.1.2", optional = true, default-features = false
 hashbrown = { version = "0.16.0", features = ["serde"] }
 web-time = { version = "1.1.0", optional = true }
 async-select = "0.3.0"
+datex-crypto-native = { path = "../datex-crypto-native", version = "0.0.1", optional = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 wasm-bindgen-futures = { optional = true, version = "0.4.29" }
@@ -125,10 +125,12 @@ tsify = { optional = true, version = "0.5.6", features = ["js"] }
 # wasm-bindgen is required for tsify
 wasm-bindgen = { optional = true, version = "=0.2.105" }
 
-[target.'cfg(any(target_arch = "xtensa-esp32s3-none-elf", target_arch = "xtensa-esp32-none-elf", target_arch = "riscv32imc-esp32c2-none-elf"))'.dependencies]
+[target.'cfg(any(target_arch = "xtensa", target_arch = "riscv32"))'.dependencies]
 datex-crypto-embedded = { path = "../datex-crypto-embedded", version = "0.0.1" }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
+datex-crypto-web = { path = "../datex-crypto-web", version = "0.0.1" }
+
 
 # TODO: required for rust-analyzer to resolve dependencies
 wasm-bindgen-futures = { version = "0.4.29" }
@@ -162,25 +164,24 @@ json-syntax = "0.12.5"
 lazy_static = "1.4.0"
 ntest_timeout = "0.9.3"
 indoc = "2.0.6"
+datex-crypto-native = { path = "../datex-crypto-native" }
 
 
 [features]
 # alloc = [] see https://github.com/unyt-org/datex-core/issues/699
 
-# default: build with all features enabled + native features (com interfaces, crypto)
 default = [
-    "tokio_runtime",
     "compiler",
     "decompiler",
     "syntax_highlighting_legacy",
-    "lsp_tokio",
+    "tokio_runtime",
 ]
 
 # embedded build
 embedded = ["embassy_runtime"]
 
 # runtime
-tokio_runtime = ["dep:tokio"]
+tokio_runtime = ["dep:tokio", "futures/std"]
 wasm_runtime = [
     "dep:wasm-bindgen-futures",
     "dep:gloo-timers",
@@ -222,6 +223,7 @@ std = [
     "hex/std",
     "bytes/std",
     "ringmap/std",
+    "dep:datex-crypto-native",
 ] # use std
 
 debug = ["dep:serde-big-array"]
