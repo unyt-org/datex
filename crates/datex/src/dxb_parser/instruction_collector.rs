@@ -105,7 +105,7 @@ impl<T> Default for CollectedResults<T> {
     }
 }
 
-trait GetResults<T> {
+pub(crate) trait GetResults<T> {
     fn get_results(&self) -> &Vec<T>;
     fn get_results_mut(&mut self) -> &mut Vec<T>;
 }

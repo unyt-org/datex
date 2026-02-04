@@ -59,6 +59,8 @@ pub mod com_hub_interface;
 
 use crate::{
     collections::HashSet,
+    crypto::CryptoImpl,
+    global::dxb_block::BlockId,
     network::com_interfaces::{
         block_collector::BlockCollector,
         com_interface::{
@@ -77,10 +79,8 @@ use crate::{
     },
 };
 use async_select::select;
-use crate::global::dxb_block::BlockId;
-use futures_util::{FutureExt, StreamExt};
 use datex_crypto_facade::crypto::Crypto;
-use crate::crypto::CryptoImpl;
+use futures_util::FutureExt;
 
 pub type IncomingBlockInterceptor =
     Box<dyn Fn(&DXBBlock, &ComInterfaceSocketUUID) + 'static>;
@@ -766,70 +766,63 @@ impl ComHub {
                 // TODO #180: verify signature and abort if invalid
                 // Check if signature is following in some later block and add them to
                 // a pool of incoming blocks awaiting some signature
-                cfg_if::cfg_if! {
-                    if #[cfg(feature = "native_crypto")] {
-                        use crate::runtime::global_context::get_global_context;
-                        match block.routing_header.flags.signature_type() {
-                            SignatureType::Encrypted => {
-                                let crypto = get_global_context().crypto;
-                                let raw_sign = block.signature
-                                    .as_ref()
-                                    .ok_or(ComHubError::SignatureError)?;
-                                let (enc_sign, pub_key) = raw_sign.split_at(64);
-                                let hash = crypto.hkdf_sha256(pub_key, &[0u8; 16])
-                                    .await
-                                    .map_err(|_| ComHubError::SignatureError)?;
-                                let signature = crypto
-                                    .aes_ctr_decrypt(&hash, &[0u8; 16], enc_sign)
-                                    .await
-                                    .map_err(|_| ComHubError::SignatureError)?;
+                match block.routing_header.flags.signature_type() {
+                    SignatureType::Encrypted => {
+                        let raw_sign = block
+                            .signature
+                            .as_ref()
+                            .ok_or(ComHubError::SignatureError)?;
+                        let (enc_sign, pub_key) = raw_sign.split_at(64);
+                        let hash = CryptoImpl::hkdf_sha256(pub_key, &[0u8; 16])
+                            .await
+                            .map_err(|_| ComHubError::SignatureError)?;
+                        let signature = CryptoImpl::aes_ctr_decrypt(
+                            &hash, &[0u8; 16], enc_sign,
+                        )
+                        .await
+                        .map_err(|_| ComHubError::SignatureError)?;
 
-                                let raw_signed = [
-                                    pub_key,
-                                    &block.body.clone()
-                                    ]
-                                    .concat();
-                                let hashed_signed = crypto
-                                    .hash_sha256(&raw_signed)
-                                    .await
-                                    .map_err(|_| ComHubError::SignatureError)?;
+                        let raw_signed =
+                            [pub_key, &block.body.clone()].concat();
+                        let hashed_signed =
+                            CryptoImpl::hash_sha256(&raw_signed)
+                                .await
+                                .map_err(|_| ComHubError::SignatureError)?;
 
-                                let ver = crypto
-                                    .ver_ed25519(pub_key, &signature, &hashed_signed)
-                                    .await
-                                    .map_err(|_| ComHubError::SignatureError)?;
-                                Ok(ver)
-                            },
-                            SignatureType::Unencrypted => {
-                                let crypto = get_global_context().crypto;
-                                let raw_sign = block.signature
-                                    .as_ref()
-                                    .ok_or(ComHubError::SignatureError)?;
-                                let (signature, pub_key) = raw_sign.split_at(64);
-
-                                let raw_signed = [
-                                    pub_key,
-                                    &block.body.clone()
-                                    ]
-                                    .concat();
-                                let hashed_signed = crypto
-                                    .hash_sha256(&raw_signed)
-                                    .await
-                                    .map_err(|_| ComHubError::SignatureError)?;
-
-                                let ver = crypto
-                                    .ver_ed25519(pub_key, signature, &hashed_signed)
-                                    .await
-                                    .map_err(|_| ComHubError::SignatureError)?;
-                                Ok(ver)
-                            },
-                            SignatureType::None => {
-                                unreachable!("If (is_signed == true) => !None");
-                            }
-                        }
+                        let ver = CryptoImpl::ver_ed25519(
+                            pub_key,
+                            &signature,
+                            &hashed_signed,
+                        )
+                        .await
+                        .map_err(|_| ComHubError::SignatureError)?;
+                        Ok(ver)
                     }
-                    else {
-                        Ok(true)
+                    SignatureType::Unencrypted => {
+                        let raw_sign = block
+                            .signature
+                            .as_ref()
+                            .ok_or(ComHubError::SignatureError)?;
+                        let (signature, pub_key) = raw_sign.split_at(64);
+
+                        let raw_signed =
+                            [pub_key, &block.body.clone()].concat();
+                        let hashed_signed =
+                            CryptoImpl::hash_sha256(&raw_signed)
+                                .await
+                                .map_err(|_| ComHubError::SignatureError)?;
+
+                        let ver = CryptoImpl::ver_ed25519(
+                            pub_key,
+                            signature,
+                            &hashed_signed,
+                        )
+                        .await
+                        .map_err(|_| ComHubError::SignatureError)?;
+                        Ok(ver)
+                    }
+                    SignatureType::None => {
+                        unreachable!("If (is_signed == true) => !None");
                     }
                 }
             }
@@ -898,29 +891,31 @@ impl ComHub {
 
                     let raw_signed =
                         [pub_key.clone(), block.body.clone()].concat();
-                    
-                    let hashed_signed =
-                        CryptoImpl::hash_sha256(&raw_signed)
-                            .await
-                            .map_err(|_| ComHubError::SignatureError)?;
 
-                    let signature = CryptoImpl::sig_ed25519(&pri_key, &hashed_signed)
+                    let hashed_signed = CryptoImpl::hash_sha256(&raw_signed)
                         .await
                         .map_err(|_| ComHubError::SignatureError)?;
+
+                    let signature =
+                        CryptoImpl::sig_ed25519(&pri_key, &hashed_signed)
+                            .await
+                            .map_err(|_| ComHubError::SignatureError)?;
 
                     let sig_bytes: Vec<u8> = match sig_ty {
                         SignatureType::Unencrypted => signature.to_vec(),
 
                         SignatureType::Encrypted => {
-                            let hash = CryptoImpl
-                                ::hkdf_sha256(&pub_key, &[0u8; 16])
-                                .await
-                                .map_err(|_| ComHubError::SignatureError)?;
+                            let hash =
+                                CryptoImpl::hkdf_sha256(&pub_key, &[0u8; 16])
+                                    .await
+                                    .map_err(|_| ComHubError::SignatureError)?;
 
-                            CryptoImpl::aes_ctr_encrypt(&hash, &[0u8; 16], &signature)
-                                .await
-                                .map_err(|_| ComHubError::SignatureError)?
-                                .to_vec()
+                            CryptoImpl::aes_ctr_encrypt(
+                                &hash, &[0u8; 16], &signature,
+                            )
+                            .await
+                            .map_err(|_| ComHubError::SignatureError)?
+                            .to_vec()
                         }
 
                         SignatureType::None => unreachable!("handled above"),

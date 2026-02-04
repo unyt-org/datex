@@ -313,12 +313,6 @@ impl DXBBlock {
 
         cfg_if::cfg_if! {
             if #[cfg(not(feature = "allow_unsigned_blocks"))] {
-                /*
-                use crate::runtime::global_context::{GlobalContext, set_global_context, get_global_context};
-                set_global_context(GlobalContext::native());
-                let crypto = get_global_context().crypto;
-                */
-
                 match routing_header.flags.signature_type() {
                     SignatureType::Encrypted => {
                         let raw_sign = signature

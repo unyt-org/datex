@@ -9,7 +9,6 @@
 #![feature(box_patterns)]
 #![feature(if_let_guard)]
 #![feature(try_trait_v2)]
-// FIXME #228: Clippy bug / Rust Rover bug?!
 // #![allow(unused_parens)]
 #![feature(associated_type_defaults)]
 #![feature(core_float_math)]
@@ -35,7 +34,6 @@ pub mod compiler;
 pub mod decompiler;
 #[cfg(feature = "compiler")]
 pub mod fmt;
-pub mod generator;
 pub mod global;
 pub mod libs;
 #[cfg(all(feature = "lsp", feature = "std"))]
@@ -64,15 +62,16 @@ pub mod values;
 pub use datex_macros as macros;
 extern crate core;
 
-// Note: always use collections mod for HashMap and HashSet
+// HashMap and HashSet that work in both std and no_std environments.
 pub mod collections {
     #[cfg(feature = "std")]
     pub use std::collections::{HashMap, HashSet};
 
-    #[cfg(all(not(feature = "std")))]
+    #[cfg(not(feature = "std"))]
     pub use hashbrown::{HashMap, HashSet, hash_map, hash_set};
 }
 
+/// Reexport of Mutex that works in both std and no_std environments.
 pub mod std_sync {
     #[cfg(not(feature = "std"))]
     pub use spin::Mutex;
@@ -80,9 +79,10 @@ pub mod std_sync {
     pub use std::sync::Mutex;
 }
 
+/// Crypto implementations selection based on target architecture and features.
 pub mod crypto {
     cfg_if::cfg_if! {
-        if #[cfg(any(target_arch = "xtensa-esp32s3-none-elf", target_arch = "xtensa-esp32-none-elf", target_arch = "riscv32imc-esp32c2-none-elf"))] {
+        if #[cfg(any(target_arch = "xtensa", target_arch = "riscv32"))] {
             pub use datex_crypto_native::CryptoNative as CryptoImpl;
         } else if #[cfg(target_arch = "wasm32")] {
             pub use datex_crypto_web::CryptoWeb as CryptoImpl;
@@ -147,7 +147,7 @@ pub mod time {
                 }
             }
 
-            unsafe { START.assume_init_ref().clone() }
+            unsafe { *START.assume_init_ref() }
         }
 
         // No atomics: deterministic fallback (time starts "now" every call).

@@ -418,12 +418,9 @@ mod tests {
 
     #[tokio::test(flavor = "current_thread")]
     async fn test_lsp_initialization() {
-        RuntimeRunner::new(
-            RuntimeConfig::new_with_endpoint(
-                Endpoint::from_str("@lspler").unwrap(),
-            ),
-            get_global_context_native(),
-        )
+        RuntimeRunner::new(RuntimeConfig::new_with_endpoint(
+            Endpoint::from_str("@lspler").unwrap(),
+        ))
         .run(async |runtime| {
             let (mut client_read, server_write) = duplex(1024);
             let (server_read, mut client_write) = duplex(1024);

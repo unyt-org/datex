@@ -1091,9 +1091,9 @@ mod tests {
                     DatexExpressionData::TypeDeclaration(TypeDeclaration {
                         id: Some(0),
                         name: "x".to_string(),
-                        definition: TypeExpressionData::Integer(
-                            Integer::from(10).into()
-                        )
+                        definition: TypeExpressionData::Integer(Integer::from(
+                            10
+                        ))
                         .with_default_span(),
                         hoisted: true,
                         kind: TypeDeclarationKind::Nominal

@@ -11,7 +11,6 @@ use crate::{
 };
 
 use crate::prelude::*;
-use alloc::format;
 use core::cell::RefCell;
 /// Compilation functions for type expressions.
 impl CompilationContext {

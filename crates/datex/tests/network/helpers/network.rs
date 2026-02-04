@@ -4,24 +4,20 @@ use core::{
     str::FromStr,
 };
 use datex_core::{
-    channel::{
-        mpsc::{UnboundedReceiver, UnboundedSender},
-    },
+    channel::mpsc::{UnboundedReceiver, UnboundedSender},
     network::{
         com_hub::{InterfacePriority, network_tracing::TraceOptions},
-        com_interfaces::com_interface::{
-            properties::{InterfaceDirection, ComInterfaceProperties},
+        com_interfaces::com_interface::properties::{
+            ComInterfaceProperties, InterfaceDirection,
         },
     },
-    runtime::{Runtime, RuntimeConfig},
+    runtime::{Runtime, RuntimeConfig, RuntimeRunner},
     values::core_values::endpoint::Endpoint,
 };
 use log::info;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, env, fs, path::Path, sync::Arc};
 use tokio::task::yield_now;
-use datex_core::native_global_context::get_global_context_native;
-use datex_core::runtime::RuntimeRunner;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct MockupInterfaceSetupData {
@@ -535,7 +531,6 @@ impl Network {
             info!("creating runtime for endpoint {}", node.endpoint);
             let runtime_runner = RuntimeRunner::new(
                 RuntimeConfig::new_with_endpoint(node.endpoint.clone()),
-                get_global_context_native(),
             );
             node.runtime = Some(runtime.clone());
 
@@ -602,14 +597,13 @@ impl Network {
         UnboundedSender<Vec<u8>>,
     ) {
         let interface_direction = connection.setup_data.direction.clone();
-        let (proxy, com_interface) = ComInterfaceProxy::create_interface(
-            ComInterfaceProperties {
+        let (proxy, com_interface) =
+            ComInterfaceProxy::create_interface(ComInterfaceProperties {
                 interface_type: "mockup".to_string(),
                 direction: interface_direction.clone(),
                 name: Some(connection.setup_data.name.clone()),
                 ..Default::default()
-            },
-        );
+            });
         runtime
             .com_hub()
             ._register_com_interface(com_interface, connection.priority)

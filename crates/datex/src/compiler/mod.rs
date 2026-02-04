@@ -61,8 +61,6 @@ use precompiler::{
     precompiled_ast::{AstMetadata, RichAst, VariableMetadata},
 };
 
-use crate::prelude::*;
-
 pub mod context;
 pub mod error;
 pub mod metadata;
