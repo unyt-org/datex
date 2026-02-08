@@ -67,7 +67,7 @@ fn value_to_datex_expression(value: &Value) -> DatexExpressionData {
                         .with_default_span(),
                 ),
                 end: Box::new(
-                    DatexExpressionData::from(&*range.start.clone())
+                    DatexExpressionData::from(&*range.end.clone())
                         .with_default_span(),
                 ),
             })
