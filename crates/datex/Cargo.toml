@@ -186,6 +186,7 @@ wasm_runtime = [
     "dep:wasm-bindgen-futures",
     "dep:gloo-timers",
     "dep:tsify",
+    "dep:wasm-bindgen",
     "dep:web-time",
 
 ]

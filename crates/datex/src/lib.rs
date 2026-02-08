@@ -65,7 +65,7 @@ extern crate core;
 // HashMap and HashSet that work in both std and no_std environments.
 pub mod collections {
     #[cfg(feature = "std")]
-    pub use std::collections::{HashMap, HashSet};
+    pub use std::collections::{HashMap, HashSet, hash_map, hash_set};
 
     #[cfg(not(feature = "std"))]
     pub use hashbrown::{HashMap, HashSet, hash_map, hash_set};

@@ -39,7 +39,7 @@ collaboration and development.
   developed in parallel with the implementation of the DATEX Core. The
   repository is currently private, but will be made public in the future and is
   available to contributors on [request](https://unyt.org/contact).
-- [DATEX Core JS](https://github.com/unyt-org/datex-js) - A JavaScript
+- [DATEX Web](https://github.com/unyt-org/datex-web) - A JavaScript
   interface to the DATEX Core, built on top of this crate. Includes a
   WebAssembly build for running DATEX in the browser or server-side with
   [Deno](https://deno.land/), [Node.js](https://nodejs.org/), and

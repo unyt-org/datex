@@ -6,7 +6,7 @@
 
 This repository contains the full DATEX library including networking, compiler
 and decompiler, written in Rust. The DATEX crate is used in
-[DATEX JS](https://github.com/unyt-org/datex-js), which provides a
+[DATEX Web](https://github.com/unyt-org/datex-web), which provides a
 JavaScript interface to the DATEX Runtime. The
 [DATEX CLI](https://github.com/unyt-org/datex-cli) is also built on top of this
 crate and provides a command line interface for the DATEX Runtime.
