@@ -10,10 +10,9 @@ use crate::{
     },
 };
 
-use crate::prelude::*;
+use crate::{prelude::*, values::pointer::PointerAddress};
 use binrw::{BinRead, BinWrite};
 use core::{fmt::Display, prelude::rust_2024::*};
-use crate::values::pointer::PointerAddress;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq)]
@@ -70,7 +69,7 @@ pub enum RegularInstruction {
 
     // default integer
     Integer(IntegerData),
-    Range(RangeData),
+    Range,
 
     Endpoint(Endpoint),
 
@@ -199,8 +198,8 @@ impl Display for RegularInstruction {
             RegularInstruction::UInt128(data) => {
                 core::write!(f, "UINT_128 {}", data.0)
             }
-            RegularInstruction::Range(data) => {
-                core::write!(f, "RANGE {} {}", data.start, data.end)
+            RegularInstruction::Range => {
+                core::write!(f, "RANGE")
             }
             RegularInstruction::Apply(count) => {
                 core::write!(f, "APPLY {}", count.arg_count)
@@ -688,13 +687,4 @@ pub struct TypeReferenceData {
 #[brw(little)]
 pub struct TypeMetadata {
     pub mutability: TypeMutabilityCode,
-}
-
-#[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
-#[brw(little)]
-pub struct RangeData {
-    pub ignored: u8,
-    pub start: Integer,
-    pub other_ignored: u8,
-    pub end: Integer,
 }

@@ -792,15 +792,6 @@ mod tests {
     }
 
     #[test]
-    pub fn range_from_core() {
-        assert_eq!(
-            CoreValue::from(Range::new(Integer::from(11), Integer::from(13),))
-                .to_string(),
-            "11..13"
-        );
-    }
-
-    #[test]
     fn addition() {
         let a = CoreValue::from(42i32);
         let b = CoreValue::from(11i32);

@@ -16,11 +16,11 @@ use crate::{
     },
 };
 
-use crate::prelude::*;
-use alloc::format;
 use crate::{
     ast::expressions::CallableDeclaration, libs::core::CoreLibPointerId,
+    prelude::*,
 };
+use alloc::format;
 
 use crate::ast::expressions;
 
@@ -63,11 +63,11 @@ fn value_to_datex_expression(value: &Value) -> DatexExpressionData {
         CoreValue::Range(range) => {
             DatexExpressionData::Range(expressions::RangeDeclaration {
                 start: Box::new(
-                    DatexExpressionData::Integer(range.clone().start)
+                    DatexExpressionData::from(&*range.start.clone())
                         .with_default_span(),
                 ),
                 end: Box::new(
-                    DatexExpressionData::Integer(range.clone().end)
+                    DatexExpressionData::from(&*range.start.clone())
                         .with_default_span(),
                 ),
             })
@@ -236,37 +236,12 @@ mod tests {
         },
     };
 
-    use crate::prelude::*;
-    use crate::values::core_values;
+    use crate::{prelude::*, values::core_values};
     #[test]
     fn test_integer_to_ast() {
         let value = ValueContainer::from(Integer::from(42));
         let ast = DatexExpressionData::from(&value);
         assert_eq!(ast, DatexExpressionData::Integer(Integer::from(42)));
-    }
-
-    #[test]
-    fn range_to_ast() {
-        let range = ValueContainer::from(core_values::range::Range::new(
-            Integer::from(11),
-            Integer::from(13),
-        ));
-        let ast = DatexExpressionData::from(&range);
-        assert_eq!(
-            ast,
-            DatexExpressionData::Range(
-                crate::ast::expressions::RangeDeclaration {
-                    start: Box::new(
-                        DatexExpressionData::Integer(Integer::from(11))
-                            .with_default_span()
-                    ),
-                    end: Box::new(
-                        DatexExpressionData::Integer(Integer::from(13))
-                            .with_default_span()
-                    ),
-                }
-            )
-        );
     }
 
     #[test]

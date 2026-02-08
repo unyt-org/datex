@@ -277,21 +277,6 @@ impl TryFrom<&DatexExpressionData> for ValueContainer {
                     .collect::<Result<Vec<(ValueContainer, ValueContainer)>, ()>>()?;
                 ValueContainer::from(core_values::map::Map::from(entries))
             }
-            DatexExpressionData::Range(range) => {
-                let start = match &range.start.data {
-                    DatexExpressionData::Integer(int) => int,
-                    _ => unreachable!(
-                        "Start of RangeDeclaration must be literal integer"
-                    ),
-                };
-                let end = match &range.end.data {
-                    DatexExpressionData::Integer(int) => int,
-                    _ => unreachable!(
-                        "End of RangeDeclaration must be literal integer"
-                    ),
-                };
-                ValueContainer::from(Range::new(start.clone(), end.clone()))
-            }
             _ => Err(())?,
         })
     }
@@ -309,24 +294,6 @@ pub struct BinaryOperation {
 pub struct RangeDeclaration {
     pub start: Box<DatexExpression>,
     pub end: Box<DatexExpression>,
-}
-
-impl Display for RangeDeclaration {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        let start = match &self.start.data {
-            DatexExpressionData::Integer(int) => int.to_string(),
-            _ => unreachable!(
-                "Start of RangeDeclaration must be literal integer"
-            ),
-        };
-        let end = match &self.end.data {
-            DatexExpressionData::Integer(int) => int.to_string(),
-            _ => {
-                unreachable!("End of RangeDeclaration must be literal integer")
-            }
-        };
-        core::write!(f, "{}..{}", start, end)
-    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
