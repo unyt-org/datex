@@ -4,7 +4,7 @@ use crate::{
             Apply, BinaryOperation, ComparisonOperation, CreateRef,
             DatexExpression, DatexExpressionData, Deref, DerefAssignment,
             GenericInstantiation, PropertyAccess, PropertyAssignment,
-            RemoteExecution, SlotAssignment, UnaryOperation,
+            RangeDeclaration, RemoteExecution, SlotAssignment, UnaryOperation,
             VariableAssignment,
         },
         spanned::Spanned,
@@ -113,35 +113,6 @@ impl Parser {
                 .with_span(span)
             }
 
-            Token::Range => {
-                if !matches!(lhs.data, DatexExpressionData::Integer(_)) {
-                    return Err(SpannedParserError {
-                        error: ParserError::InvalidToken,
-                        span: lhs.span,
-                    });
-                } else {
-                    self.advance()?; // consume the operator
-                    let rhs = self.parse_expression(r_bp)?;
-                    if !matches!(rhs.data, DatexExpressionData::Integer(_)) {
-                        return Err(SpannedParserError {
-                            error: ParserError::InvalidToken,
-                            span: rhs.span,
-                        });
-                    }
-                    let span = lhs.span.start..rhs.span.end;
-                    DatexExpression::new(
-                        DatexExpressionData::Range(
-                            crate::ast::expressions::RangeDeclaration {
-                                start: Box::new(lhs),
-                                end: Box::new(rhs),
-                            },
-                        ),
-                        span,
-                    )
-                }
-            }
-
-            // generic parameters or fall back to less than operator if not generic parameters
             Token::LeftAngle => {
                 let generic_params =
                     self.try_parse_generic_parameters_or_roll_back();
@@ -191,6 +162,18 @@ impl Parser {
                 })
                 .with_span(span)
             }
+
+            Token::Range => {
+                self.advance()?; // consume the operator
+                let rhs = self.parse_expression(r_bp)?;
+                let span = lhs.span.start..rhs.span.end;
+                DatexExpressionData::Range(RangeDeclaration {
+                    start: Box::new(lhs),
+                    end: Box::new(rhs),
+                })
+                .with_span(span)
+            }
+
             // apply
             _ => {
                 let (args, end) = self.parse_apply_arguments()?;
@@ -487,7 +470,7 @@ impl Parser {
     fn infix_binding_power(op: &Token) -> Option<(u8, u8)> {
         match op {
             // remote execution operator
-            Token::DoubleColon => Some((1, 2)),
+            Token::DoubleColon | Token::Range => Some((1, 2)),
             // assignment operators
             Token::Assign
             | Token::AddAssign
@@ -534,7 +517,6 @@ impl Parser {
             | Token::DecimalLiteral(_)
             | Token::PointerAddress(_)
             | Token::Slot(_)
-            | Token::Range
             | Token::Endpoint(_) => Some((23, 24)),
             _ => None,
         }

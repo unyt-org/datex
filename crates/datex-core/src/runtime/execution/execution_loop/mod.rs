@@ -41,7 +41,7 @@ use crate::{
                 set_property,
             },
             runtime_value::RuntimeValue,
-            slots::get_internal_slot_value,
+            slots::{get_internal_slot_value, get_slot_value},
             state::RuntimeExecutionState,
         },
         macros::{
@@ -67,7 +67,6 @@ use crate::{
     },
 };
 use core::cell::RefCell;
-use crate::runtime::execution::execution_loop::slots::get_slot_value;
 
 #[derive(Debug)]
 enum CollectedExecutionResult {
@@ -346,10 +345,6 @@ pub fn inner_execution_loop(
                                 Some(ValueContainer::from(big_decimal).into())
                             }
 
-                            RegularInstruction::Range(range) => {
-                                Some(ValueContainer::from(Range::new(range.start.into(), range.end.into())).into())
-                            }
-
                             // endpoint
                             RegularInstruction::Endpoint(endpoint) => Some(ValueContainer::from(endpoint).into()),
 
@@ -415,6 +410,7 @@ pub fn inner_execution_loop(
                             RegularInstruction::UnboundedStatements |
                             RegularInstruction::UnboundedStatementsEnd(_) |
                             RegularInstruction::List(_) |
+                            RegularInstruction::Range |
                             RegularInstruction::ShortList(_)  |
                             RegularInstruction::Map(_) |
                             RegularInstruction::ShortMap(_) |
@@ -604,6 +600,7 @@ pub fn inner_execution_loop(
                                 RegularInstruction::Add
                                 | RegularInstruction::Subtract
                                 | RegularInstruction::Multiply
+                                | RegularInstruction::Range
                                 | RegularInstruction::Divide => {
                                     let right = yield_unwrap!(
                                         collected_results
