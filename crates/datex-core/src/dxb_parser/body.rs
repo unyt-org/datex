@@ -10,7 +10,7 @@ use crate::{
             ApplyData, DecimalData, Float32Data, Float64Data, FloatAsInt16Data,
             FloatAsInt32Data, ImplTypeData, Instruction, InstructionBlockData,
             Int8Data, Int16Data, Int32Data, Int64Data, Int128Data, IntegerData,
-            ListData, MapData, RangeData, RawFullPointerAddress,
+            ListData, MapData, RawFullPointerAddress,
             RawInternalPointerAddress, RawLocalPointerAddress,
             RegularInstruction, ShortListData, ShortMapData,
             ShortStatementsData, ShortTextData, ShortTextDataRaw, SlotAddress,
@@ -594,11 +594,7 @@ pub fn iterate_instructions(
                             RegularInstruction::TypeExpression
                         }
 
-                        InstructionCode::RANGE => {
-                            let range_data =
-                                RangeData::read(&mut reader).unwrap();
-                            RegularInstruction::Range(range_data)
-                        }
+                        InstructionCode::RANGE => RegularInstruction::Range,
 
                         _ => {
                             return yield Err(

@@ -114,9 +114,11 @@ pub fn ast_from_bytecode(
                         StatementResultCollectionStrategy::Full,
                     );
 
-                let expr: Option<DatexExpression> =
-                    if let Some(regular_instruction) = regular_instruction {
-                        Some(
+                let expr: Option<DatexExpression> = if let Some(
+                    regular_instruction,
+                ) = regular_instruction
+                {
+                    Some(
                         match regular_instruction {
                             // Handle different regular instructions here
                             RegularInstruction::Int8(integer_data) => {
@@ -177,23 +179,8 @@ pub fn ast_from_bytecode(
                             RegularInstruction::Integer(integer_data) => {
                                 DatexExpressionData::Integer(integer_data.0)
                             }
-                            RegularInstruction::Range(range_data) => {
-                                DatexExpressionData::Range(
-                                    crate::ast::expressions::RangeDeclaration {
-                                        start: Box::new(
-                                            DatexExpressionData::Integer(
-                                                range_data.clone().start.into(),
-                                            )
-                                            .with_default_span(),
-                                        ),
-                                        end: Box::new(
-                                            DatexExpressionData::Integer(
-                                                range_data.clone().end.into(),
-                                            )
-                                            .with_default_span(),
-                                        ),
-                                    },
-                                )
+                            RegularInstruction::Range => {
+                                unreachable!("decompiler ast from bytcode ranges not implemented");
                             }
                             RegularInstruction::Endpoint(endpoint) => {
                                 DatexExpressionData::Endpoint(endpoint)
@@ -338,9 +325,9 @@ pub fn ast_from_bytecode(
                         }
                         .with_default_span(),
                     )
-                    } else {
-                        None
-                    };
+                } else {
+                    None
+                };
 
                 expr.map(CollectedAstResult::from)
             }

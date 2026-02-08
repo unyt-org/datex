@@ -3,14 +3,19 @@ use crate::{
         ArithmeticUnaryOperator, AssignmentOperator, BinaryOperator,
         ComparisonOperator, LogicalUnaryOperator, ReferenceUnaryOperator,
         UnaryOperator,
-        binary::{ArithmeticOperator, BitwiseOperator, LogicalOperator},
+        binary::{
+            ArithmeticOperator, BitwiseOperator, LogicalOperator, RangeOperator,
+        },
     },
     references::reference::Reference,
     runtime::{RuntimeInternal, execution::ExecutionError},
     traits::{
         identity::Identity, structural_eq::StructuralEq, value_eq::ValueEq,
     },
-    values::value_container::{OwnedValueKey, ValueContainer},
+    values::{
+        core_values::range::Range,
+        value_container::{OwnedValueKey, ValueContainer},
+    },
 };
 
 use crate::prelude::*;
@@ -198,6 +203,23 @@ pub fn handle_logical_operation(
     }
 }
 
+pub fn handle_range_operation(
+    operator: RangeOperator,
+    lhs: &ValueContainer,
+    rhs: &ValueContainer,
+) -> Result<ValueContainer, ExecutionError> {
+    // apply operation to active value
+    match operator {
+        RangeOperator::Inclusive => Ok(ValueContainer::from(Range {
+            end: Box::new(lhs.clone()),
+            start: Box::new(rhs.clone()),
+        })),
+        _ => {
+            core::todo!("Implement arithmetic operation for {:?}", operator);
+        }
+    }
+}
+
 pub fn handle_binary_operation(
     operator: BinaryOperator,
     lhs: &ValueContainer,
@@ -212,6 +234,9 @@ pub fn handle_binary_operation(
         }
         BinaryOperator::Logical(logical_op) => {
             handle_logical_operation(logical_op, lhs, rhs)
+        }
+        BinaryOperator::Range(range_op) => {
+            handle_range_operation(range_op, lhs, rhs)
         }
     }
 }

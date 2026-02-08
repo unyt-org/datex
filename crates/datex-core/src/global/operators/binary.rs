@@ -11,6 +11,7 @@ pub enum BinaryOperator {
     Arithmetic(ArithmeticOperator),
     Logical(LogicalOperator),
     Bitwise(BitwiseOperator),
+    Range(RangeOperator),
 }
 impl From<ArithmeticOperator> for BinaryOperator {
     fn from(op: ArithmeticOperator) -> Self {
@@ -102,6 +103,39 @@ pub enum BitwiseOperator {
     Not, // ~
 }
 
+#[derive(Clone, Debug, PartialEq, Copy)]
+pub enum RangeOperator {
+    Exclusive, // ..
+    Inclusive, // ..=
+}
+
+impl From<&RangeOperator> for InstructionCode {
+    fn from(op: &RangeOperator) -> Self {
+        match op {
+            RangeOperator::Inclusive => InstructionCode::RANGE,
+            _ => {
+                core::todo!(
+                    "Bitwise operator {:?} not implemented for InstructionCode",
+                    op
+                )
+            }
+        }
+    }
+}
+
+impl Display for RangeOperator {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        core::write!(
+            f,
+            "{}",
+            match self {
+                RangeOperator::Exclusive => "..",
+                RangeOperator::Inclusive => "..=",
+            }
+        )
+    }
+}
+
 impl From<&BitwiseOperator> for InstructionCode {
     fn from(op: &BitwiseOperator) -> Self {
         match op {
@@ -142,6 +176,7 @@ impl Display for BinaryOperator {
                 BinaryOperator::Arithmetic(op) => op.to_string(),
                 BinaryOperator::Logical(op) => op.to_string(),
                 BinaryOperator::Bitwise(op) => op.to_string(),
+                BinaryOperator::Range(op) => op.to_string(),
             }
         )
     }
@@ -153,6 +188,7 @@ impl From<&BinaryOperator> for InstructionCode {
             BinaryOperator::Arithmetic(op) => InstructionCode::from(op),
             BinaryOperator::Logical(op) => InstructionCode::from(op),
             BinaryOperator::Bitwise(op) => InstructionCode::from(op),
+            BinaryOperator::Range(op) => InstructionCode::from(op),
         }
     }
 }
@@ -190,6 +226,9 @@ impl From<&InstructionCode> for BinaryOperator {
             InstructionCode::OR => BinaryOperator::Logical(LogicalOperator::Or),
             InstructionCode::UNION => {
                 BinaryOperator::Bitwise(BitwiseOperator::And)
+            }
+            InstructionCode::RANGE => {
+                BinaryOperator::Range(RangeOperator::Inclusive)
             }
             _ => core::todo!(
                 "#154 Binary operator for {:?} not implemented",

@@ -1307,21 +1307,18 @@ fn compile_expression(
                 scope,
             )?;
         }
-        DatexExpressionData::Range(range) => {
-            append_instruction_code(
-                &mut compilation_context.buffer,
-                InstructionCode::RANGE,
-            );
+        DatexExpressionData::Range(range_dec) => {
+            compilation_context.append_instruction_code(InstructionCode::RANGE);
 
             scope = compile_expression(
                 compilation_context,
-                RichAst::new(*range.start, &metadata),
+                RichAst::new(*range_dec.start, &metadata),
                 CompileMetadata::default(),
                 scope,
             )?;
             scope = compile_expression(
                 compilation_context,
-                RichAst::new(*range.end, &metadata),
+                RichAst::new(*range_dec.end, &metadata),
                 CompileMetadata::default(),
                 scope,
             )?;
