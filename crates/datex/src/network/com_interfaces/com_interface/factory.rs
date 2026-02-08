@@ -21,8 +21,19 @@ use crate::{
 };
 use serde::de::DeserializeOwned;
 
-pub type NewSocketsIterator =
-    Pin<Box<dyn AsyncIterator<Item = Result<SocketConfiguration, ()>> + Send>>;
+#[cfg(target_arch = "wasm32")]
+pub type NewSocketsIterator = Pin<
+    Box<dyn AsyncIterator<Item = Result<SocketConfiguration, ()>> + 'static>,
+>;
+
+#[cfg(not(target_arch = "wasm32"))]
+pub type NewSocketsIterator = Pin<
+    Box<
+        dyn AsyncIterator<Item = Result<SocketConfiguration, ()>>
+            + Send
+            + 'static,
+    >,
+>;
 
 #[derive(Debug, Clone)]
 pub struct SocketProperties {
@@ -263,6 +274,28 @@ impl Debug for ComInterfaceConfiguration {
     }
 }
 
+#[cfg(target_arch = "wasm32")]
+pub trait NewSocketsIterBound:
+    AsyncIterator<Item = Result<SocketConfiguration, ()>> + 'static
+{
+}
+#[cfg(target_arch = "wasm32")]
+impl<T> NewSocketsIterBound for T where
+    T: AsyncIterator<Item = Result<SocketConfiguration, ()>> + 'static
+{
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+pub trait NewSocketsIterBound:
+    AsyncIterator<Item = Result<SocketConfiguration, ()>> + Send + 'static
+{
+}
+#[cfg(not(target_arch = "wasm32"))]
+impl<T> NewSocketsIterBound for T where
+    T: AsyncIterator<Item = Result<SocketConfiguration, ()>> + Send + 'static
+{
+}
+
 impl ComInterfaceConfiguration {
     /// Creates a new ComInterfaceConfiguration with the given properties and socket iterator.
     pub fn new<I>(
@@ -270,9 +303,7 @@ impl ComInterfaceConfiguration {
         new_sockets_iterator: I,
     ) -> Self
     where
-        I: AsyncIterator<Item = Result<SocketConfiguration, ()>>
-            + Send
-            + 'static,
+        I: NewSocketsIterBound,
     {
         ComInterfaceConfiguration {
             uuid: ComInterfaceUUID::new(),
