@@ -1,6 +1,6 @@
 # DATEX
 > The full DATEX library written in Rust.
-[![](https://img.shields.io/crates/v/datex.svg)](https://crates.io/crates/datex) [![Twitter badge][]][Twitter link] [![Discord badge][]][Discord link]
+[![](https://img.shields.io/crates/v/datex-core.svg)](https://crates.io/crates/datex-core) [![Twitter badge][]][Twitter link] [![Discord badge][]][Discord link]
 
 <img align="right" src="../../assets/datex-logo-light.svg" width="150px" alt="The DATEX logo">
 

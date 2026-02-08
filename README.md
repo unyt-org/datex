@@ -14,7 +14,7 @@ collaboration and development.
 
 ## Structure
 - [crates/](./crates) - Contains all the Rust crates for the DATEX ecosystem
-  - [datex/](./crates/datex) - The full DATEX library including networking,
+  - [datex-core/](./crates/datex-core) - The full DATEX library including networking,
   compiler and decompiler, written in Rust
   - [datex-crypto-facade/](./crates/datex-crypto-facade) - A facade crate
   providing a unified interface for different DATEX Crypto implementations
