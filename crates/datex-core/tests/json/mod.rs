@@ -1,4 +1,4 @@
-use datex::{
+use datex_core::{
     assert_structural_eq,
     compiler::{CompileOptions, compile_script},
     decompiler::{

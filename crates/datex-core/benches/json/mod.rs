@@ -1,4 +1,4 @@
-use datex::{
+use datex_core::{
     compiler::{
         CompileOptions, StaticValueOrDXB, compile_script,
         compile_script_or_return_static_value,

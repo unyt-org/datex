@@ -1,4 +1,4 @@
-use datex::{
+use datex_core::{
     runtime::{RuntimeConfig, RuntimeRunner},
     values::core_values::endpoint::Endpoint,
 };

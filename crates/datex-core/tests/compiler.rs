@@ -1,4 +1,4 @@
-use datex::{
+use datex_core::{
     compiler::{CompileOptions, compile_script},
     decompiler::{DecompileOptions, FormattingOptions, decompile_body},
 };

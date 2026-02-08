@@ -3,7 +3,7 @@ use binrw::{
     io::{Cursor, Seek, SeekFrom},
 };
 use core::str::FromStr;
-use datex::{
+use datex_core::{
     global::{
         dxb_block::DXBBlock,
         protocol_structures::{

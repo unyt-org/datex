@@ -15,7 +15,7 @@ use crate::{
     // runtime::runtime_init,
 };
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
-use datex::compiler::{CompileOptions, compile_script};
+use datex_core::compiler::{CompileOptions, compile_script};
 
 mod json;
 mod runtime;

@@ -339,9 +339,9 @@ pub type InterfaceCloseAsyncCallback = AsyncCallback<(), ()>;
 /// Example:
 /// ```
 /// use serde::{Deserialize, Serialize};
-/// use datex::network::com_hub::errors::ComInterfaceCreateError;
-/// use datex::network::com_interfaces::com_interface::factory::{ComInterfaceSyncFactory,ComInterfaceConfiguration};
-/// use datex::network::com_interfaces::com_interface::properties::ComInterfaceProperties;
+/// use datex_core::network::com_hub::errors::ComInterfaceCreateError;
+/// use datex_core::network::com_interfaces::com_interface::factory::{ComInterfaceSyncFactory,ComInterfaceConfiguration};
+/// use datex_core::network::com_interfaces::com_interface::properties::ComInterfaceProperties;
 ///
 ///
 /// #[derive(Serialize, Deserialize)]
@@ -395,10 +395,10 @@ where
 /// Example:
 /// ```
 /// use serde::{Deserialize, Serialize};
-/// use datex::network::com_hub::errors::ComInterfaceCreateError;
-/// use datex::network::com_interfaces::com_interface::factory::ComInterfaceAsyncFactory;
-/// use datex::network::com_interfaces::com_interface::properties::ComInterfaceProperties;
-/// use datex::network::com_hub::managers::com_interface_manager::ComInterfaceAsyncFactoryResult;
+/// use datex_core::network::com_hub::errors::ComInterfaceCreateError;
+/// use datex_core::network::com_interfaces::com_interface::factory::ComInterfaceAsyncFactory;
+/// use datex_core::network::com_interfaces::com_interface::properties::ComInterfaceProperties;
+/// use datex_core::network::com_hub::managers::com_interface_manager::ComInterfaceAsyncFactoryResult;
 ///
 /// #[derive(Serialize, Deserialize)]
 /// struct ExampleInterfaceSetupData {

@@ -1,6 +1,6 @@
 use alloc::str::FromStr;
 use core::assert_matches;
-use datex::{
+use datex_core::{
     ast::{
         expressions::{
             RemoteExecution, Statements, TypeDeclaration, TypeDeclarationKind,
@@ -25,7 +25,7 @@ use datex::{
     },
 };
 
-use datex::{
+use datex_core::{
     ast::{
         expressions::{
             Apply, BinaryOperation, CallableDeclaration, CallableKind,

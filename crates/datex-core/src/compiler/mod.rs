@@ -478,7 +478,7 @@ fn extract_static_value_from_ast(
 /// behaves like the format! macro.
 /// Example:
 /// ```
-/// use datex::compile;
+/// use datex_core::compile;
 /// compile!("4 + ?", 42);
 /// compile!("? + ?", 1, 2);
 #[macro_export]
