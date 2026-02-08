@@ -134,7 +134,6 @@ impl Sub<Instant> for Instant {
 /// In this stub:
 /// - `SystemTime::now()` returns `UNIX_EPOCH` (so it compiles deterministically).
 /// - `duration_since` / `elapsed` behave consistently based on that.
-/// If you prefer to make it error instead, tell me and I’ll flip it.
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
 pub struct SystemTime {
     // represent as duration since UNIX_EPOCH

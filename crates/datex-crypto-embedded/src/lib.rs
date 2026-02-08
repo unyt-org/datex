@@ -7,18 +7,34 @@ extern crate std;
 extern crate alloc;
 
 use alloc::{boxed::Box, format, string::String, vec, vec::Vec};
-use core::{future::Future, pin::Pin, result::Result};
+use core::{
+    future::Future,
+    pin::Pin,
+    ptr::NonNull,
+    result::Result,
+    sync::atomic::{AtomicPtr, Ordering},
+};
 use datex_crypto_facade::{
     crypto::{Crypto, CryptoResult},
     error::CryptoError,
 };
+use spin::Mutex;
+use static_cell::StaticCell;
+
 use esp_hal::rng::Rng;
 
-#[thread_local]
-static mut RNG: Rng = Rng::new();
+static CELL: StaticCell<Mutex<Rng>> = StaticCell::new();
+static PTR: AtomicPtr<Mutex<Rng>> = AtomicPtr::new(core::ptr::null_mut());
 
-pub fn get_global_rng() -> &'static mut Rng {
-    unsafe { &mut RNG }
+pub fn init_rng(rng: Rng) {
+    let m: &'static mut Mutex<Rng> = CELL.init(Mutex::new(rng));
+    PTR.store(m as *mut _, Ordering::Release);
+}
+
+pub fn rng() -> spin::MutexGuard<'static, Rng> {
+    let p = PTR.load(Ordering::Acquire);
+    let m = NonNull::new(p).expect("RNG not initialized");
+    unsafe { m.as_ref() }.lock()
 }
 
 #[derive(Debug, Clone)]
@@ -28,7 +44,7 @@ impl Crypto for CryptoEmbedded {
     fn create_uuid() -> String {
         // TODO: use uuid crate?
         let mut bytes = [0u8; 16];
-        get_global_rng().read(&mut bytes);
+        rng().read(&mut bytes);
 
         // set version to 4 -- random
         bytes[6] = (bytes[6] & 0x0F) | 0x40;
@@ -49,7 +65,7 @@ impl Crypto for CryptoEmbedded {
 
     fn random_bytes(length: usize) -> Vec<u8> {
         let mut bytes = vec![0u8; length];
-        get_global_rng().read(&mut bytes);
+        rng().read(&mut bytes);
         bytes
     }
 

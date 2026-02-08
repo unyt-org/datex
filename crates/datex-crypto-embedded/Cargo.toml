@@ -20,24 +20,17 @@ std_instead_of_alloc = "deny"
 
 [dependencies]
 datex-crypto-facade = { path = "../datex-crypto-facade", version = "0.0.1" }
-esp-hal = { version = "=1.0.0-rc.1", optional = true, features = [
-    "unstable",
-    "psram",
-] }
+spin = "0.10.0"
+static_cell = "2.1.1"
 
-[target.'cfg(all(target_arch = "xtensa", target_vendor = "esp32s3"))'.dependencies]
-esp-hal = { version = "=1.0.0-rc.1", features = [
-    "esp32s3",
-    "unstable",
-    "psram",
-] }
+[dev-dependencies]
+esp-hal = { version = "=1.0.0", features = ["esp32s3", "unstable", "psram"] }
 
-[target.'cfg(all(target_arch = "xtensa", target_vendor = "esp32"))'.dependencies]
-esp-hal = { version = "=1.0.0-rc.1", features = ["esp32", "unstable", "psram"] }
+[target.xtensa-esp32s3-none-elf.dependencies]
+esp-hal = { version = "=1.0.0", features = ["esp32s3", "unstable", "psram"] }
 
-[target.'cfg(target_arch = "riscv32")'.dependencies]
-esp-hal = { version = "=1.0.0-rc.1", features = [
-    "esp32c2",
-    "unstable",
-    "psram",
-] }
+[target.xtensa-esp32-none-elf.dependencies]
+esp-hal = { version = "=1.0.0", features = ["esp32", "unstable", "psram"] }
+
+[target.riscv32imc-unknown-none-elf.dependencies]
+esp-hal = { version = "=1.0.0", features = ["esp32c2", "unstable", "psram"] }
