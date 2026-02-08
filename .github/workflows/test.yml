@@ -45,12 +45,12 @@ jobs:
           key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('Cargo.lock') }}
 
       - name: Check formatting
-        run: cargo clippy --features debug
+        run: cargo clippy --workspace --exclude datex-crypto-embedded
 
       - name: Generate test result and coverage report
         run: |
           cargo install cargo-nextest --locked;
-          cargo nextest run --profile ci --features debug;
+          cargo nextest run --profile ci;
       - name: Run Struct Tests
         run: deno task test
 
@@ -66,11 +66,12 @@ jobs:
           check_name: Test Results
           github_token: ${{ secrets.GITHUB_TOKEN }}
           files: target/nextest/ci/report.xml
-  test-embedded:
+
+  test-nostd:
     runs-on: macos-latest
-    name: Test no-std/embedded build
+    name: Test no-std build
     concurrency:
-      group: ${{ github.workflow }}-${{ github.ref }}-test-embedded
+      group: ${{ github.workflow }}-${{ github.ref }}-test-nostd
       cancel-in-progress: true
     env:
       RUSTFLAGS: -Awarnings
