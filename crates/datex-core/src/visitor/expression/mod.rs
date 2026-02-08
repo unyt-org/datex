@@ -84,7 +84,7 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
                 self.visit_integer(i, &expr.span)
             }
             DatexExpressionData::Range(range) => {
-                self.visit_range_definition(range, &expr.span)
+                self.visit_range(range, &expr.span)
             }
             DatexExpressionData::TypedInteger(ti) => {
                 self.visit_typed_integer(ti, &expr.span)
@@ -625,13 +625,13 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
         Ok(VisitAction::SkipChildren)
     }
 
-    fn visit_range_definition(
+    fn visit_range(
         &mut self,
         range: &crate::ast::expressions::RangeDeclaration,
         span: &Range<usize>,
     ) -> ExpressionVisitResult<E> {
         let _ = span;
         let _ = range;
-        Ok(VisitAction::SkipChildren)
+        Ok(VisitAction::VisitChildren)
     }
 }

@@ -511,6 +511,7 @@ mod tests {
         assert!(has_core_lib_type(CoreLibPointerId::Text));
         assert!(has_core_lib_type(CoreLibPointerId::List));
         assert!(has_core_lib_type(CoreLibPointerId::Map));
+        assert!(has_core_lib_type(CoreLibPointerId::Range));
         assert!(has_core_lib_type(CoreLibPointerId::Callable));
         assert!(has_core_lib_type(CoreLibPointerId::Unit));
         assert!(has_core_lib_type(CoreLibPointerId::Never));

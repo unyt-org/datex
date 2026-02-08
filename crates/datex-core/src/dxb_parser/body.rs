@@ -594,11 +594,7 @@ pub fn iterate_instructions(
                             RegularInstruction::TypeExpression
                         }
 
-                        InstructionCode::RANGE => {
-                            let range_data =
-                                RangeData::read(&mut reader).unwrap();
-                            RegularInstruction::Range(range_data)
-                        }
+                        InstructionCode::RANGE => RegularInstruction::Range,
 
                         _ => {
                             return yield Err(

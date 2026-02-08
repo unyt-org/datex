@@ -193,7 +193,7 @@ impl DIFValue {
                 }
             }
             CoreValue::Range(range) => {
-                DIFValueRepresentation::String(range.to_string())
+                core::todo!("Range value not yet supported in DIF")
             }
             CoreValue::Decimal(decimal) => {
                 // TODO #384: optimize this and pass as decimal if in range
@@ -343,9 +343,8 @@ mod tests {
         },
     };
 
-    use crate::prelude::*;
+    use crate::{prelude::*, values::value::Value};
     use core::cell::RefCell;
-    use crate::values::value::Value;
 
     fn get_mock_memory() -> RefCell<Memory> {
         RefCell::new(Memory::new(Endpoint::default()))

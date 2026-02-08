@@ -437,6 +437,13 @@ impl<T> InstructionCollector<T> {
                 );
                 None
             }
+            RegularInstruction::Range => {
+                self.collect_full(
+                    Instruction::RegularInstruction(RegularInstruction::Range),
+                    2,
+                );
+                None
+            }
             RegularInstruction::Map(map_data)
             | RegularInstruction::ShortMap(map_data) => {
                 let count = map_data.element_count;

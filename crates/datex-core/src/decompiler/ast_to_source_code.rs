@@ -2,9 +2,9 @@ use crate::ast::{
     expressions::{
         Apply, BinaryOperation, CallableDeclaration, ComparisonOperation,
         Conditional, DatexExpression, DatexExpressionData, DerefAssignment,
-        List, Map, PropertyAccess, PropertyAssignment, RemoteExecution,
-        SlotAssignment, TypeDeclaration, VariableAccess, VariableAssignment,
-        VariableDeclaration, VariantAccess,
+        List, Map, PropertyAccess, PropertyAssignment, RangeDeclaration,
+        RemoteExecution, SlotAssignment, TypeDeclaration, VariableAccess,
+        VariableAssignment, VariableDeclaration, VariantAccess,
     },
     type_expressions::{
         CallableTypeExpression, TypeExpression, TypeExpressionData,
@@ -487,7 +487,11 @@ impl AstToSourceCodeConverter {
             }
             DatexExpressionData::Noop => "".to_string(),
             DatexExpressionData::Integer(i) => i.to_string(),
-            DatexExpressionData::Range(range) => range.to_string(),
+            DatexExpressionData::Range(RangeDeclaration { start, end }) => {
+                let left_code = self.key_expression_to_source_code(start);
+                let right_code = self.key_expression_to_source_code(end);
+                ast_fmt!(&self, "{}..{}", left_code, right_code)
+            }
             DatexExpressionData::TypedInteger(ti) => {
                 if self.add_variant_suffix() {
                     ti.to_string_with_suffix()
