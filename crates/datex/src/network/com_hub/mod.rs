@@ -1553,6 +1553,10 @@ impl ComHub {
             .borrow_mut()
             .clear();
     }
+
+    pub fn interfaces_manager(&self) -> &ComInterfaceManager {
+        &self.interfaces_manager
+    }
 }
 
 // #[cfg_attr(feature = "embassy_runtime", embassy_executor::task())]
