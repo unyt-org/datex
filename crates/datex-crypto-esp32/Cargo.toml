@@ -1,7 +1,7 @@
 [package]
-name = "datex-crypto-embedded"
+name = "datex-crypto-esp32"
 version = "0.0.1"
-description = "Embedded implementation of the DATEX Crypto facade"
+description = "Embedded ESP32 target implementation of the DATEX Crypto facade"
 authors = [
     "Benedikt Strehle <benedikt@unyt.org>",
     "Jonas Strehle <jonas@unyt.org>",

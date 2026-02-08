@@ -83,7 +83,7 @@ pub mod std_sync {
 pub mod crypto {
     cfg_if::cfg_if! {
         if #[cfg(any(target_arch = "xtensa", target_arch = "riscv32"))] {
-            pub use datex_crypto_embedded::CryptoEmbedded as CryptoImpl;
+            pub use datex_crypto_esp32::CryptoEsp32 as CryptoImpl;
         } else if #[cfg(target_arch = "wasm32")] {
             pub use datex_crypto_web::CryptoWeb as CryptoImpl;
         } else if #[cfg(any(feature = "std", test))] {

@@ -1,9 +1,8 @@
-# DATEX Crypto Embedded
+# DATEX Crypto ESP32
 > This crate provides embedded implementations of cryptographic functions for the
 > [DATEX Crypto Facade](https://github.com/unyt-org/datex/blob/main/crates/datex-crypto-facade) used in DATEX.
 
-[![](https://img.shields.io/crates/v/datex-crypto-embedded.svg)](https://crates.io/crates/datex-crypto-embedded) [![Twitter badge][]][Twitter link] [![Discord badge][]][Discord link]
-
+[![](https://img.shields.io/crates/v/datex-crypto-esp32.svg)](https://crates.io/crates/datex-crypto-esp32) [![Twitter badge][]][Twitter link] [![Discord badge][]][Discord link]
 ## Contributing
 
 **We welcome every contribution!**<br> Please take a look at the

@@ -38,9 +38,9 @@ pub fn rng() -> spin::MutexGuard<'static, Rng> {
 }
 
 #[derive(Debug, Clone)]
-pub struct CryptoEmbedded;
+pub struct CryptoEsp32;
 
-impl Crypto for CryptoEmbedded {
+impl Crypto for CryptoEsp32 {
     fn create_uuid() -> String {
         // TODO: use uuid crate?
         let mut bytes = [0u8; 16];

@@ -996,7 +996,7 @@ dependencies = [
  "cfg-if",
  "criterion",
  "criterion-macro",
- "datex-crypto-embedded",
+ "datex-crypto-esp32",
  "datex-crypto-facade",
  "datex-crypto-native",
  "datex-crypto-web",
@@ -1051,7 +1051,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "datex-crypto-embedded"
+name = "datex-crypto-esp32"
 version = "0.0.1"
 dependencies = [
  "datex-crypto-facade",
