@@ -112,7 +112,7 @@ async-unsync = { version = "0.3.0", optional = true, default-features = false, f
 ] }
 embassy-executor = { version = "0.9.1", optional = true }
 embassy-futures = { version = "0.1.2", optional = true, default-features = false }
-hashbrown = { version = "0.16.0", features = ["serde"] }
+hashbrown = { version = "0.16.0", features = ["serde"], optional = true }
 web-time = { version = "1.1.0", optional = true }
 async-select = "0.3.0"
 datex-crypto-native = { path = "../datex-crypto-native", version = "0.0.1", optional = true }
@@ -175,6 +175,7 @@ datex-crypto-native = { path = "../datex-crypto-native" }
 # alloc = [] see https://github.com/unyt-org/datex/issues/699
 
 default = [
+    "hashbrown",
     "compiler",
     "decompiler",
     "syntax_highlighting_legacy",
@@ -193,7 +194,6 @@ wasm_runtime = [
     "dep:tsify",
     "dep:wasm-bindgen",
     "dep:web-time",
-
 ]
 embassy_runtime = [
     "dep:embassy-executor",
