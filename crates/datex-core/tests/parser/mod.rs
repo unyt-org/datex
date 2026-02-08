@@ -3048,13 +3048,13 @@ fn json_to_value_container() {
         Decimal::from_string("0.5").unwrap().into(),
     ];
     let value_container_inner_map: ValueContainer =
-        ValueContainer::from(datex::values::core_values::map::Map::from(
+        ValueContainer::from(datex_core::values::core_values::map::Map::from(
             vec![("key".to_string(), "value".to_string().into())]
                 .into_iter()
                 .collect::<HashMap<String, ValueContainer>>(),
         ));
     let value_container_map: ValueContainer =
-        ValueContainer::from(datex::values::core_values::map::Map::from(
+        ValueContainer::from(datex_core::values::core_values::map::Map::from(
             vec![
                 ("name".to_string(), "Test".to_string().into()),
                 ("value".to_string(), Integer::from(42).into()),
