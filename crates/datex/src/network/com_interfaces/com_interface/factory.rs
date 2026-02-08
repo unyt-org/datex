@@ -40,7 +40,7 @@ impl SocketProperties {
             channel_factor,
             direct_endpoint: None,
             connection_timestamp: crate::time::now_ns(),
-            uuid: ComInterfaceSocketUUID(UUID::new()),
+            uuid: ComInterfaceSocketUUID::new(),
         }
     }
     pub fn new_with_direct_endpoint(
@@ -53,7 +53,7 @@ impl SocketProperties {
             channel_factor,
             direct_endpoint: Some(endpoint),
             connection_timestamp: crate::time::now_ns(),
-            uuid: ComInterfaceSocketUUID(UUID::new()),
+            uuid: ComInterfaceSocketUUID::new(),
         }
     }
 
@@ -67,7 +67,7 @@ impl SocketProperties {
             channel_factor,
             direct_endpoint: maybe_endpoint,
             connection_timestamp: crate::time::now_ns(),
-            uuid: ComInterfaceSocketUUID(UUID::new()),
+            uuid: ComInterfaceSocketUUID::new(),
         }
     }
 
@@ -275,7 +275,7 @@ impl ComInterfaceConfiguration {
             + 'static,
     {
         ComInterfaceConfiguration {
-            uuid: ComInterfaceUUID(UUID::new()),
+            uuid: ComInterfaceUUID::new(),
             properties: Rc::new(properties),
             new_sockets_iterator: Box::pin(new_sockets_iterator),
         }
@@ -287,7 +287,7 @@ impl ComInterfaceConfiguration {
         socket_configuration: SocketConfiguration,
     ) -> Self {
         ComInterfaceConfiguration {
-            uuid: ComInterfaceUUID(UUID::new()),
+            uuid: ComInterfaceUUID::new(),
             properties: Rc::new(properties),
             new_sockets_iterator: Box::pin(async gen move {
                 yield Ok(socket_configuration)

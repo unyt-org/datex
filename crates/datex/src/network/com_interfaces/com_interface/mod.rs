@@ -10,7 +10,18 @@ pub mod socket;
 #[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
 #[cfg_attr(feature = "wasm_runtime", tsify(type = "string"))]
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct ComInterfaceUUID(pub UUID);
+pub struct ComInterfaceUUID(UUID);
+
+#[allow(clippy::new_without_default)]
+impl ComInterfaceUUID {
+    pub fn new() -> Self {
+        ComInterfaceUUID(UUID::new())
+    }
+    pub fn uuid_string(&self) -> String {
+        self.0.to_string()
+    }
+}
+
 impl Display for ComInterfaceUUID {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         core::write!(f, "com_interface::{}", self.0)

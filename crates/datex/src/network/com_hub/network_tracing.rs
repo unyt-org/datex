@@ -52,7 +52,7 @@ impl NetworkTraceHopSocket {
             interface_type: com_interface_properties.interface_type.clone(),
             interface_name: com_interface_properties.name.clone(),
             channel: com_interface_properties.channel.clone(),
-            socket_uuid: socket_uuid.0.to_string(),
+            socket_uuid: socket_uuid.uuid_string(),
         }
     }
 }
