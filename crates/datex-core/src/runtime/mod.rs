@@ -575,11 +575,8 @@ impl RuntimeRunner {
 impl Runtime {
     fn init_local_loopback_interface(&self) {
         // add default local loopback interface
-        let local_interface_setup_data = LocalLoopbackInterfaceSetupData {
-            runtime: self.clone(),
-        }
-        .create_interface()
-        .unwrap();
+        let local_interface_setup_data =
+            LocalLoopbackInterfaceSetupData.create_interface().unwrap();
 
         self.com_hub()
             .add_interface_from_configuration(

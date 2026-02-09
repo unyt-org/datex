@@ -71,3 +71,44 @@ impl LocalLoopbackInterfaceSetupData {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::{
+        global::dxb_block::DXBBlock,
+        network::com_interfaces::{
+            com_interface::factory::SendCallback,
+            local_loopback_interface::LocalLoopbackInterfaceSetupData,
+        },
+        utils::async_iterators::async_next_pin_box,
+    };
+
+    #[tokio::test]
+    async fn test_local_loopback_interface() {
+        let mut interface_configuration =
+            LocalLoopbackInterfaceSetupData.create_interface().unwrap();
+        assert_eq!(interface_configuration.properties.interface_type, "local");
+
+        let socket = async_next_pin_box(
+            &mut interface_configuration.new_sockets_iterator,
+        )
+        .await
+        .unwrap()
+        .unwrap();
+
+        let block = DXBBlock::new_with_body(&[1, 2, 3]);
+        let block_bytes = block.to_bytes();
+        match socket.send_callback.unwrap() {
+            SendCallback::Sync(callback) => {
+                callback(block).unwrap();
+            }
+            _ => panic!("Expected sync send callback"),
+        }
+
+        let received_data = async_next_pin_box(&mut socket.iterator.unwrap())
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(block_bytes, received_data);
+    }
+}
