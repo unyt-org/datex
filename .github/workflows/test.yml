@@ -52,6 +52,7 @@ jobs:
           cargo install cargo-nextest --locked;
           cargo nextest run --profile ci -p datex-core;
       - name: Run Struct Tests
+        working-directory: crates/datex-core
         run: deno task test
 
       - name: Run cargo publish dry-run (release branches only)
