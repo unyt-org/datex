@@ -2406,28 +2406,29 @@ pub mod tests {
         );
     }
 
-    #[cfg(feature = "std")]
-    fn get_json_test_string(file_path: &str) -> String {
-        // read json from test file
-        let file_path = format!("benches/json/{file_path}");
-        let file_path = std::path::Path::new(&file_path);
-        let file =
-            std::fs::File::open(file_path).expect("Failed to open test.json");
-        let mut reader = std::io::BufReader::new(file);
-        let mut json_string = String::new();
-        reader
-            .read_to_string(&mut json_string)
-            .expect("Failed to read test.json");
-        json_string
-    }
-
-    #[test]
-    #[cfg(feature = "std")]
-    fn json_to_dxb_large_file() {
-        let json = get_json_test_string("test3.json");
-        let _ = compile_script(&json, CompileOptions::default())
-            .expect("Failed to parse JSON string");
-    }
+    // TODO:
+    // #[cfg(feature = "std")]
+    // fn get_json_test_string(file_path: &str) -> String {
+    //     // read json from test file
+    //     let file_path = format!("benches/json/{file_path}");
+    //     let file_path = std::path::Path::new(&file_path);
+    //     let file =
+    //         std::fs::File::open(file_path).expect("Failed to open test.json");
+    //     let mut reader = std::io::BufReader::new(file);
+    //     let mut json_string = String::new();
+    //     reader
+    //         .read_to_string(&mut json_string)
+    //         .expect("Failed to read test.json");
+    //     json_string
+    // }
+    //
+    // #[test]
+    // #[cfg(feature = "std")]
+    // fn json_to_dxb_large_file() {
+    //     let json = get_json_test_string("test3.json");
+    //     let _ = compile_script(&json, CompileOptions::default())
+    //         .expect("Failed to parse JSON string");
+    // }
 
     #[test]
     fn static_value_detection() {

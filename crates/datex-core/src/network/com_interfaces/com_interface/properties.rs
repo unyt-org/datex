@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use serde_with::{DurationMilliSeconds, serde_as};
 use strum::EnumString;
 
-#[derive(PartialEq, Debug, Clone, EnumString, Serialize, Deserialize)]
+#[derive(PartialEq, Eq, Debug, Clone, EnumString, Serialize, Deserialize)]
 #[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
 pub enum InterfaceDirection {
     In,
@@ -33,7 +33,7 @@ impl InterfaceDirection {
 }
 
 #[serde_as]
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
 pub struct ComInterfaceProperties {
     /// the type of the interface, by which it is identified
@@ -90,7 +90,7 @@ pub struct ComInterfaceProperties {
 }
 
 #[serde_as]
-#[derive(Debug, PartialEq, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Clone, Default, Serialize, Deserialize, Eq)]
 #[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
 pub enum ReconnectionConfig {
     #[default]

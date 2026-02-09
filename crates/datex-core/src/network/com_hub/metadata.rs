@@ -24,7 +24,7 @@ use core::fmt::Display;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 #[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
 pub struct ComHubMetadataInterfaceSocket {
     pub uuid: String,
@@ -40,7 +40,7 @@ pub struct ComHubMetadataInterfaceSocketWithoutEndpoint {
     pub direction: InterfaceDirection,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 #[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
 pub struct ComHubMetadataInterface {
     pub uuid: String,
@@ -48,7 +48,7 @@ pub struct ComHubMetadataInterface {
     pub sockets: Vec<ComHubMetadataInterfaceSocket>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 #[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
 pub struct ComHubMetadata {
     pub endpoint: Endpoint,

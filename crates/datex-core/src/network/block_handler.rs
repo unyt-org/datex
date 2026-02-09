@@ -419,6 +419,7 @@ mod tests {
         values::core_values::endpoint::Endpoint,
     };
     use core::str::FromStr;
+    use ntest_timeout::timeout;
 
     lazy_static::lazy_static! {
         pub static ref TEST_ENDPOINT_ORIGIN: Endpoint = Endpoint::from_str("@origin").unwrap();

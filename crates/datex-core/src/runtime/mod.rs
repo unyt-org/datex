@@ -390,7 +390,7 @@ use crate::{
     utils::task_manager::TaskManager,
 };
 
-#[derive(Debug, Deserialize, Serialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
 pub struct RuntimeConfigInterface {
     #[serde(rename = "type")]

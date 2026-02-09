@@ -21,7 +21,7 @@ use crate::prelude::*;
 
 pub mod managers;
 
-#[cfg(feature = "com_hub_metadata")]
+// #[cfg(feature = "com_hub_metadata")]
 pub mod metadata;
 use crate::network::com_hub::managers::socket_manager::ComInterfaceSocketManager;
 
@@ -81,6 +81,7 @@ use crate::{
 use async_select::select;
 use datex_crypto_facade::crypto::Crypto;
 use futures_util::FutureExt;
+use crate::network::com_interfaces::com_interface::properties::InterfaceDirection;
 
 pub type IncomingBlockInterceptor =
     Box<dyn Fn(&DXBBlock, &ComInterfaceSocketUUID) + 'static>;
@@ -242,6 +243,8 @@ impl ComHub {
                     let socket_iterator = socket_configuration.iterator;
                     let send_callback = socket_configuration.send_callback;
                     let socket_properties = socket_configuration.properties;
+                    let socket_uuid = socket_properties.uuid();
+                    let socket_direction = socket_properties.direction.clone();
 
                     // store socket info
                     let _res = self.socket_manager.register_socket(
@@ -266,6 +269,13 @@ impl ComHub {
                             ),
                         );
                     }
+
+                    // send hello block
+                    self.clone().send_socket_hello(
+                        socket_uuid,
+                        socket_direction,
+                        com_interface_properties.clone(),
+                    ).await;
                 }
                 Err(e) => {
                     error!("Error creating socket from iterator: {:?}", e);
@@ -277,6 +287,25 @@ impl ComHub {
 
         // interface closed, remove
         // TODO
+    }
+    
+    /// Sends a hello block via the given socket if the socket direction allows sending and auto_identify is enabled for the interface
+    async fn send_socket_hello(
+        self: Rc<Self>,
+        socket_uuid: ComInterfaceSocketUUID,
+        socket_direction: InterfaceDirection,
+        com_interface_properties: Rc<ComInterfaceProperties>
+    ) {
+        let send_hello = 
+            socket_direction.can_send() && 
+            com_interface_properties.auto_identify; // Only send hello if auto_identify is enabled
+        
+        if send_hello
+            && let Err(err) =
+                self.send_hello_block(socket_uuid).await
+        {
+            error!("Failed to send hello block: {:?}", err);
+        }
     }
 
     /// Handles incoming data from the given SocketDataIterator
@@ -592,6 +621,8 @@ impl ComHub {
             socket.socket_properties.direct_endpoint = Some(sender.clone());
         }
         let uuid = socket.socket_properties.uuid().clone();
+        
+        drop(socket);
 
         match self.socket_manager.register_socket_endpoint(
             uuid,

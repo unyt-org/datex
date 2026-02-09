@@ -118,6 +118,7 @@ async-select = "0.3.0"
 datex-crypto-native = { path = "../datex-crypto-native", version = "0.0.1", optional = true }
 datex-crypto-esp32 = { path = "../datex-crypto-esp32", version = "0.0.1", optional = true }
 embedded-time = { version = "0.12.1", optional = true }
+flexi_logger = { version = "0.31.8", optional = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 wasm-bindgen-futures = { optional = true, version = "0.4.29" }
@@ -233,6 +234,7 @@ std = [
     "bytes/std",
     "ringmap/std",
     "dep:datex-crypto-native",
+    "dep:flexi_logger"
 ] # use std
 
 debug = ["dep:serde-big-array"]

@@ -130,22 +130,14 @@ impl SocketConfiguration {
     /// Only handles incoming data; no send callback is provided.
     pub fn new_in<I>(
         socket_configuration: SocketProperties,
-        maybe_iter: Option<I>,
+        maybe_iter: I,
     ) -> Self
     where
         I: AsyncIterator<Item = Result<Vec<u8>, ()>> + Send + 'static,
     {
         SocketConfiguration {
             properties: socket_configuration,
-            iterator: maybe_iter.map(|it| {
-                Box::pin(it)
-                    as Pin<
-                        Box<
-                            dyn AsyncIterator<Item = Result<Vec<u8>, ()>>
-                                + Send,
-                        >,
-                    >
-            }),
+            iterator: Some(Box::pin(maybe_iter)),
             send_callback: None,
         }
     }
