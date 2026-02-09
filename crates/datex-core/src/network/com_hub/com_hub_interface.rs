@@ -6,7 +6,8 @@ use crate::{
             managers::com_interface_manager::DynInterfaceImplementationFactoryFn,
         },
         com_interfaces::com_interface::{
-            ComInterfaceUUID, factory::ComInterfaceSyncFactory,
+            ComInterfaceUUID,
+            factory::{ComInterfaceConfiguration, ComInterfaceSyncFactory},
             socket::ComInterfaceSocketUUID,
         },
     },
@@ -14,10 +15,11 @@ use crate::{
 };
 
 use crate::{
-    network::com_interfaces::com_interface::properties::ComInterfaceProperties,
+    network::com_interfaces::com_interface::{
+        factory::ComInterfaceAsyncFactory, properties::ComInterfaceProperties,
+    },
     prelude::*,
 };
-use crate::network::com_interfaces::com_interface::factory::ComInterfaceAsyncFactory;
 
 /// Interface management methods
 impl ComHub {
@@ -55,18 +57,19 @@ impl ComHub {
             .get_interface_by_uuid(&socket.interface_uuid)
     }
 
-    /// Registers an existing com interface on the ComHub and sets up event handling
-    pub fn _register_com_interface(
-        &self,
-        uuid: ComInterfaceUUID,
-        com_interface_properties: Rc<ComInterfaceProperties>,
+    /// Adds a new interface to the ComHub based on the provided configuration
+    pub fn add_interface_from_configuration(
+        self: Rc<Self>,
+        interface_configuration: ComInterfaceConfiguration,
         priority: InterfacePriority,
     ) -> Result<(), InterfaceAddError> {
+        let uuid = interface_configuration.uuid();
         self.interfaces_manager.add_interface(
             uuid,
-            com_interface_properties,
+            interface_configuration.properties.clone(),
             priority,
         )?;
+        self.register_com_interface_handler(interface_configuration, priority);
         Ok(())
     }
 
