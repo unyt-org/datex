@@ -202,6 +202,9 @@ embassy_runtime = [
     "dep:async-unsync",
 ]
 
+# Enabled ComHub metadata
+com_hub_metadata = []
+
 # only required for legacy syntax highlighting in decompiler, will be removed in the future
 syntax_highlighting_legacy = ["dep:syntect"]
 

@@ -21,7 +21,7 @@ use crate::prelude::*;
 
 pub mod managers;
 
-#[cfg(feature = "debug")]
+#[cfg(feature = "com_hub_metadata")]
 pub mod metadata;
 use crate::network::com_hub::managers::socket_manager::ComInterfaceSocketManager;
 
