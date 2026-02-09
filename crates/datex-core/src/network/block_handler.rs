@@ -413,13 +413,12 @@ mod tests {
             dxb_block::{DXBBlock, IncomingSection},
             protocol_structures::{
                 block_header::{BlockHeader, BlockType, FlagsAndTimestamp},
-                routing_header::RoutingHeader,
+                routing_header::{Receivers, RoutingHeader},
             },
         },
         values::core_values::endpoint::Endpoint,
     };
     use core::str::FromStr;
-    use crate::global::protocol_structures::routing_header::Receivers;
 
     lazy_static::lazy_static! {
         pub static ref TEST_ENDPOINT_ORIGIN: Endpoint = Endpoint::from_str("@origin").unwrap();
