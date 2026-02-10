@@ -1,4 +1,4 @@
-use futures::future::BoxFuture;
+use futures::future::LocalBoxFuture;
 
 use crate::prelude::*;
 
@@ -6,18 +6,18 @@ use crate::prelude::*;
 /// Can be cloned and called from multiple tasks.
 #[derive(Clone)]
 pub struct AsyncCallback<In, Out> {
-    inner: Arc<dyn Fn(In) -> BoxFuture<'static, Out> + Send + Sync>,
+    inner: Rc<dyn Fn(In) -> LocalBoxFuture<'static, Out>>,
 }
 
 impl<In, Out> AsyncCallback<In, Out> {
     /// Create a new AsyncCallback from an async function or closure.
     pub fn new<F, Fut>(f: F) -> Self
     where
-        F: Fn(In) -> Fut + Send + Sync + 'static,
-        Fut: core::future::Future<Output = Out> + Send + Sync + 'static,
+        F: Fn(In) -> Fut + 'static,
+        Fut: core::future::Future<Output = Out> + 'static,
     {
         Self {
-            inner: Arc::new(move |arg| Box::pin(f(arg))),
+            inner: Rc::new(move |arg| Box::pin(f(arg))),
         }
     }
 

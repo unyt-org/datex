@@ -6,7 +6,7 @@ use datex_core::{
         value_container::ValueContainer,
     },
 };
-use datex_macros::async_test;
+use datex_macros_internal::async_test;
 use tokio::task::yield_now;
 
 #[async_test]

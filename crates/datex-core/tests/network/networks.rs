@@ -16,7 +16,7 @@ use datex_core::{
     },
     values::core_values::endpoint::Endpoint,
 };
-use datex_macros::async_test;
+use datex_macros_internal::async_test;
 use log::info;
 use ntest_timeout::timeout;
 use tokio::task;
@@ -27,8 +27,6 @@ async fn create_network_with_two_nodes() {
     let local = task::LocalSet::new();
     local
         .run_until(async {
-            
-
             let mut network = Network::new(vec![
                 // @test-a
                 Node::new(TEST_ENDPOINT_A.clone()).with_connection(
@@ -191,8 +189,6 @@ async fn network_routing_with_four_nodes_1() {
     let local = task::LocalSet::new();
     local
         .run_until(async {
-            
-
             let network = get_test_network_1().await;
 
             // sleep 100ms
@@ -237,8 +233,6 @@ async fn network_routing_with_four_nodes_2() {
     let local = task::LocalSet::new();
     local
         .run_until(async {
-            
-
             let network = get_test_network_1().await;
 
             // sleep 100ms
@@ -297,8 +291,6 @@ async fn network_routing_with_four_nodes_3() {
     let local = task::LocalSet::new();
     local
         .run_until(async {
-            
-
             let network = get_test_network_1().await;
 
             // sleep 100ms
@@ -347,8 +339,6 @@ async fn network_routing_with_four_nodes_4() {
     let local = task::LocalSet::new();
     local
         .run_until(async {
-            
-
             let network = get_test_network_1().await;
 
             // sleep 100ms
@@ -407,8 +397,6 @@ async fn network_routing_with_four_nodes_5_deterministic_priorities() {
     let local = task::LocalSet::new();
     local
         .run_until(async {
-            
-
             let network =
                 get_test_network_1_with_deterministic_priorities().await;
 
@@ -455,8 +443,6 @@ async fn network_routing_with_four_nodes_6_deterministic_priorities() {
     let local = task::LocalSet::new();
     local
         .run_until(async {
-            
-
             let network =
                 get_test_network_1_with_deterministic_priorities().await;
 

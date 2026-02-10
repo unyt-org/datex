@@ -22,18 +22,21 @@ use datex_core::{
         },
     },
     network::{
-        com_hub::{ComHub, InterfacePriority, metadata::ComHubMetadata},
-        com_interfaces::com_interface::{
-            properties::{InterfaceDirection, ComInterfaceProperties},
+        com_hub::{
+            ComHub, InterfacePriority,
+            managers::com_interface_manager::ComInterfaceManager,
+            metadata::ComHubMetadata,
+        },
+        com_interfaces::com_interface::properties::{
+            ComInterfaceProperties, InterfaceDirection,
         },
     },
     serde::serializer::to_value_container,
     stdlib::rc::Rc,
     values::core_values::endpoint::Endpoint,
 };
-use datex_macros::async_test;
+use datex_macros_internal::async_test;
 use tokio::task::yield_now;
-use datex_core::network::com_hub::managers::com_interface_manager::ComInterfaceManager;
 
 /// Creates a mock ComHub for testing without a connected channel
 fn create_mock_com_hub() -> Rc<ComHub> {
@@ -66,20 +69,28 @@ pub async fn test_add_and_remove() {
 pub async fn test_multiple_add() {
     let com_hub = create_mock_com_hub();
 
-    let mockup_interface1 = ComInterfaceManager::create_interface_sync_from_setup_data(
-        MockupInterfaceSetupData::new("mockup_interface1"),
-    )
-    .unwrap();
-    let mockup_interface2 = ComInterfaceManager::create_interface_sync_from_setup_data(
-        MockupInterfaceSetupData::new("mockup_interface2"),
-    )
-    .unwrap();
+    let mockup_interface1 =
+        ComInterfaceManager::create_interface_sync_from_setup_data(
+            MockupInterfaceSetupData::new("mockup_interface1"),
+        )
+        .unwrap();
+    let mockup_interface2 =
+        ComInterfaceManager::create_interface_sync_from_setup_data(
+            MockupInterfaceSetupData::new("mockup_interface2"),
+        )
+        .unwrap();
 
     com_hub
-        ._register_com_interface(mockup_interface1, InterfacePriority::default())
+        ._register_com_interface(
+            mockup_interface1,
+            InterfacePriority::default(),
+        )
         .unwrap();
     com_hub
-        ._register_com_interface(mockup_interface2, InterfacePriority::default())
+        ._register_com_interface(
+            mockup_interface2,
+            InterfacePriority::default(),
+        )
         .unwrap();
 }
 
@@ -662,9 +673,7 @@ pub async fn test_reconnect() {
 
     // create a new interface, open it and add it to the com_hub
     let (base_interface, interface_with_receivers) =
-        ComInterfaceProxy::create_interface(
-            ComInterfaceProperties::default(),
-        );
+        ComInterfaceProxy::create_interface(ComInterfaceProperties::default());
 
     // add base_interface to com_hub
     com_hub

@@ -21,19 +21,18 @@ use crate::{
 };
 use serde::de::DeserializeOwned;
 
-#[cfg(target_arch = "wasm32")]
 pub type NewSocketsIterator = Pin<
     Box<dyn AsyncIterator<Item = Result<SocketConfiguration, ()>> + 'static>,
 >;
 
-#[cfg(not(target_arch = "wasm32"))]
-pub type NewSocketsIterator = Pin<
-    Box<
-        dyn AsyncIterator<Item = Result<SocketConfiguration, ()>>
-            + Send
-            + 'static,
-    >,
->;
+// #[cfg(not(target_arch = "wasm32"))]
+// pub type NewSocketsIterator = Pin<
+//     Box<
+//         dyn AsyncIterator<Item = Result<SocketConfiguration, ()>>
+//             + Send
+//             + 'static,
+//     >,
+// >;
 
 #[derive(Debug, Clone)]
 pub struct SocketProperties {
@@ -88,7 +87,7 @@ impl SocketProperties {
 }
 
 pub type SocketDataIterator =
-    Pin<Box<dyn AsyncIterator<Item = Result<Vec<u8>, ()>> + Send>>;
+    Pin<Box<dyn AsyncIterator<Item = Result<Vec<u8>, ()>>>>;
 
 pub struct SocketConfiguration {
     pub properties: SocketProperties,
@@ -117,7 +116,7 @@ impl SocketConfiguration {
         send_callback: SendCallback,
     ) -> Self
     where
-        I: AsyncIterator<Item = Result<Vec<u8>, ()>> + Send + 'static,
+        I: AsyncIterator<Item = Result<Vec<u8>, ()>> + 'static,
     {
         SocketConfiguration {
             properties: socket_configuration,
@@ -133,7 +132,7 @@ impl SocketConfiguration {
         maybe_iter: I,
     ) -> Self
     where
-        I: AsyncIterator<Item = Result<Vec<u8>, ()>> + Send + 'static,
+        I: AsyncIterator<Item = Result<Vec<u8>, ()>> + 'static,
     {
         SocketConfiguration {
             properties: socket_configuration,
@@ -163,17 +162,8 @@ pub enum SendCallback {
     /// The callback receives a DXBBlock and the UUID of the socket to send the data through.
     /// It returns a SendSuccess result which can contain already received data from the remote side.
     /// The failure case returns a SendFailure containing the original DXBBlock.
-    Sync(
-        Arc<
-            dyn Fn(DXBBlock) -> Result<SendSuccess, SendFailure>
-                + 'static
-                + Send
-                + Sync,
-        >,
-    ),
-    SyncOnce(
-        Arc<dyn Fn(DXBBlock) -> Result<SendSuccess, SendFailure> + Send + Sync>,
-    ),
+    Sync(Rc<dyn Fn(DXBBlock) -> Result<SendSuccess, SendFailure> + 'static>),
+    SyncOnce(Rc<dyn Fn(DXBBlock) -> Result<SendSuccess, SendFailure>>),
     /// An asynchronous send callback.
     /// The callback receives a DXBBlock and the UUID of the socket to send the data through.
     /// It returns a future that resolves to a Result indicating success or failure.
@@ -210,12 +200,9 @@ pub struct SendFailure(pub Box<DXBBlock>);
 
 impl SendCallback {
     pub fn new_sync(
-        f: impl Fn(DXBBlock) -> Result<SendSuccess, SendFailure>
-        + 'static
-        + Send
-        + Sync,
+        f: impl Fn(DXBBlock) -> Result<SendSuccess, SendFailure> + 'static,
     ) -> Self {
-        SendCallback::Sync(Arc::new(f))
+        SendCallback::Sync(Rc::new(f))
     }
 
     // Sync send callback that can only be called once - after that, it returns SendFailure
@@ -234,16 +221,13 @@ impl SendCallback {
                 Err(SendFailure(Box::new(block)))
             }
         };
-        SendCallback::SyncOnce(Arc::new(wrapper))
+        SendCallback::SyncOnce(Rc::new(wrapper))
     }
 
     pub fn new_async<F, Fut>(f: F) -> Self
     where
-        F: Fn(DXBBlock) -> Fut + Send + Sync + 'static,
-        Fut: core::future::Future<Output = Result<(), SendFailure>>
-            + Send
-            + Sync
-            + 'static,
+        F: Fn(DXBBlock) -> Fut + 'static,
+        Fut: core::future::Future<Output = Result<(), SendFailure>> + 'static,
     {
         SendCallback::Async(AsyncCallback::new(f))
     }

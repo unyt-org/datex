@@ -23,7 +23,7 @@ use crate::{
 
 use crate::prelude::*;
 use core::{cell::RefCell, iter::once, result::Result};
-use datex_macros::LibTypeString;
+use datex_macros_internal::LibTypeString;
 use log::info;
 use strum::IntoEnumIterator;
 

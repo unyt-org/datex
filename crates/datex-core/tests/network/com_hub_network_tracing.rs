@@ -15,7 +15,7 @@ use datex_core::{
     run_async_thread,
     utils::context::init_global_context,
 };
-use datex_macros::async_test;
+use datex_macros_internal::async_test;
 use log::info;
 use ntest_timeout::timeout;
 use std::thread;

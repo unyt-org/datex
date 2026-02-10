@@ -1,5 +1,3 @@
-use futures::lock::Mutex;
-
 use crate::{
     channel::mpsc::create_unbounded_channel,
     network::{
@@ -11,6 +9,7 @@ use crate::{
     values::core_values::endpoint::Endpoint,
 };
 
+pub use crate::std_sync::Mutex;
 use crate::{
     global::dxb_block::DXBBlock,
     network::com_interfaces::com_interface::factory::{
