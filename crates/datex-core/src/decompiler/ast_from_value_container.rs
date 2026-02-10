@@ -312,4 +312,28 @@ mod tests {
             ]))
         );
     }
+
+    #[test]
+    fn range_to_ast() {
+        let range = ValueContainer::from(core_values::range::Range {
+            start: alloc::boxed::Box::new(Integer::from(11).into()),
+            end: alloc::boxed::Box::new(Integer::from(13).into()),
+        });
+        let ast = DatexExpressionData::from(&range);
+        assert_eq!(
+            ast,
+            DatexExpressionData::Range(
+                crate::ast::expressions::RangeDeclaration {
+                    start: Box::new(
+                        DatexExpressionData::Integer(Integer::from(11))
+                            .with_default_span()
+                    ),
+                    end: Box::new(
+                        DatexExpressionData::Integer(Integer::from(13))
+                            .with_default_span()
+                    ),
+                }
+            )
+        );
+    }
 }
