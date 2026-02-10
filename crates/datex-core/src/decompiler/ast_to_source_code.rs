@@ -789,7 +789,7 @@ mod tests {
     use super::*;
     use crate::{
         ast::{
-            expressions::{Deref, VariableKind},
+            expressions::{Deref, RangeDeclaration, VariableKind},
             spanned::Spanned,
         },
         global::operators::assignment::AssignmentOperator,
@@ -919,16 +919,14 @@ mod tests {
         let null_ast = DatexExpressionData::Null;
         assert_eq!(compact().format(&null_ast.with_default_span()), "null");
 
-        let range_ast = DatexExpressionData::Range(
-            crate::ast::expressions::RangeDeclaration {
-                start: Box::new(
-                    DatexExpressionData::Integer(11.into()).with_default_span(),
-                ),
-                end: Box::new(
-                    DatexExpressionData::Integer(13.into()).with_default_span(),
-                ),
-            },
-        );
+        let range_ast = DatexExpressionData::Range(RangeDeclaration {
+            start: Box::new(
+                DatexExpressionData::Integer(11.into()).with_default_span(),
+            ),
+            end: Box::new(
+                DatexExpressionData::Integer(13.into()).with_default_span(),
+            ),
+        });
 
         assert_eq!(compact().format(&range_ast.with_default_span()), "11..13");
     }

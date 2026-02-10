@@ -208,14 +208,14 @@ pub fn handle_range_operation(
     lhs: &ValueContainer,
     rhs: &ValueContainer,
 ) -> Result<ValueContainer, ExecutionError> {
-    // apply operation to active value
+    // match operator and return range
     match operator {
         RangeOperator::Inclusive => Ok(ValueContainer::from(Range {
             start: Box::new(lhs.clone()),
             end: Box::new(rhs.clone()),
         })),
         _ => {
-            core::todo!("Implement arithmetic operation for {:?}", operator);
+            core::todo!("Implement range operation for {:?}", operator);
         }
     }
 }
