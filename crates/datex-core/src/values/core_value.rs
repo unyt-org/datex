@@ -21,6 +21,7 @@ use crate::{
             },
             list::List,
             map::Map,
+            range::Range,
             text::Text,
             r#type::Type,
         },
@@ -807,5 +808,17 @@ mod tests {
         let endpoint: Endpoint = CoreValue::from("@test").try_into().unwrap();
         debug!("Endpoint: {endpoint}");
         assert_eq!(endpoint.to_string(), "@test");
+    }
+
+    #[test]
+    pub fn range_from_core() {
+        assert_eq!(
+            CoreValue::from(Range {
+                start: Box::new(Integer::from(11).into()),
+                end: Box::new(Integer::from(13).into())
+            })
+            .to_string(),
+            "11..13"
+        );
     }
 }
