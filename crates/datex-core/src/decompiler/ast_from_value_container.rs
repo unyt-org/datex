@@ -222,6 +222,7 @@ fn type_to_type_expression(type_value: &Type) -> TypeExpression {
 #[cfg(test)]
 mod tests {
     use crate::{
+        alloc::boxed::Box,
         ast::{
             expressions::{DatexExpressionData, List},
             spanned::Spanned,
@@ -230,6 +231,7 @@ mod tests {
             core_values::{
                 decimal::{Decimal, typed_decimal::TypedDecimal},
                 integer::{Integer, typed_integer::TypedInteger},
+                range::Range,
             },
             value::Value,
             value_container::ValueContainer,
@@ -315,9 +317,9 @@ mod tests {
 
     #[test]
     fn range_to_ast() {
-        let range = ValueContainer::from(core_values::range::Range {
-            start: alloc::boxed::Box::new(Integer::from(11).into()),
-            end: alloc::boxed::Box::new(Integer::from(13).into()),
+        let range = ValueContainer::from(Range {
+            start: Box::new(Integer::from(11).into()),
+            end: Box::new(Integer::from(13).into()),
         });
         let ast = DatexExpressionData::from(&range);
         assert_eq!(
