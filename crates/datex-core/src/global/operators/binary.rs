@@ -259,6 +259,10 @@ impl From<&RegularInstruction> for BinaryOperator {
             RegularInstruction::Divide => {
                 BinaryOperator::Arithmetic(ArithmeticOperator::Divide)
             }
+            RegularInstruction::Range => {
+                BinaryOperator::Range(RangeOperator::Inclusive)
+            }
+
             _ => {
                 core::todo!(
                     "#155 Binary operator for instruction {:?} not implemented",
