@@ -17,7 +17,7 @@ pub trait Crypto: Send + Sync {
     fn hash_sha256<'a>(to_digest: &'a [u8]) -> CryptoResult<'a, [u8; 32]>;
 
     /// Encodes 32 bytes to base58
-    fn enc_b58<'a>(to_encode: &'a [u8; 32]) -> Result<[u8; 44], CryptoError> {
+    fn enc_b58(to_encode: &[u8; 32]) -> Result<[u8; 44], CryptoError> {
         let mut out_buf = [0u8; 44];
         bs58::encode(to_encode)
             .onto(&mut out_buf[..])
@@ -26,7 +26,7 @@ pub trait Crypto: Send + Sync {
     }
 
     /// Decodes 32 bytes from base58
-    fn dec_b58<'a>(to_decode: &'a [u8; 44]) -> Result<[u8; 32], CryptoError> {
+    fn dec_b58(to_decode: &[u8; 44]) -> Result<[u8; 32], CryptoError> {
         let mut out_buf = [0u8; 32];
         bs58::decode(to_decode)
             .onto(&mut out_buf[..])
