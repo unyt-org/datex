@@ -165,6 +165,13 @@ impl Parser {
 
             Token::Range => {
                 self.advance()?; // consume the operator
+                if matches!(lhs.data, DatexExpressionData::Range(_)) {
+                    return Err(SpannedParserError {
+                        error: ParserError::InvalidToken,
+                        span: lhs.span,
+                    });
+                }
+
                 let rhs = self.parse_expression(r_bp)?;
                 let span = lhs.span.start..rhs.span.end;
                 DatexExpressionData::Range(RangeDeclaration {
