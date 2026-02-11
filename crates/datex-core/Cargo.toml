@@ -180,7 +180,7 @@ datex-crypto-native = { path = "../datex-crypto-native" }
 # while still being compatible with std.
 default = [
     "hashbrown",
-    "embassy_runtime",
+    "tokio_runtime",              # FIXME: Change to be embassy_runtime
     "syntax_highlighting_legacy",
     "compiler",
 ]

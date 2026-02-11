@@ -24,6 +24,7 @@ impl Serialize for ValueContainer {
 }
 
 #[cfg(test)]
+#[cfg(feature = "decompiler")]
 mod tests {
     use crate::{
         assert_structural_eq,

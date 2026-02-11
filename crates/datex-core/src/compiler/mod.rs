@@ -656,7 +656,7 @@ fn compile_expression(
         }
         DatexExpressionData::Placeholder => {
             // FIXME
-            if true {
+            if false {
                 compilation_context
                     .append_instruction_code(InstructionCode::GET_SLOT);
                 compilation_context.insert_virtual_slot_address(
