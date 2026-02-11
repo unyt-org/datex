@@ -150,6 +150,7 @@ mod tests {
     use crate::network::com_interfaces::com_interface::ComInterfaceUUID;
     use crate::network::com_interfaces::com_interface::factory::{ComInterfaceConfiguration, SendCallback, SendSuccess, SocketConfiguration, SocketProperties};
     use crate::network::com_interfaces::com_interface::properties::{ComInterfaceProperties, InterfaceDirection};
+    use crate::task::timeout;
     use crate::values::core_values::endpoint::Endpoint;
 
     struct ComHubPeer {
@@ -309,7 +310,7 @@ mod tests {
         let (peer_a, peer_b) = get_bidirectionally_coupled_com_hubs();
 
         // run task futures for 10ms to allow sockets to connect
-        let _ = tokio::time::timeout(core::time::Duration::from_millis(10), join!(
+        let _ = timeout(core::time::Duration::from_millis(10), join!(
             peer_a.task_future,
             peer_b.task_future
         )).await;

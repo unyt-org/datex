@@ -25,14 +25,6 @@ pub type NewSocketsIterator = Pin<
     Box<dyn AsyncIterator<Item = Result<SocketConfiguration, ()>> + 'static>,
 >;
 
-// #[cfg(not(target_arch = "wasm32"))]
-// pub type NewSocketsIterator = Pin<
-//     Box<
-//         dyn AsyncIterator<Item = Result<SocketConfiguration, ()>>
-//             + Send
-//             + 'static,
-//     >,
-// >;
 
 #[derive(Debug, Clone)]
 pub struct SocketProperties {
@@ -250,27 +242,6 @@ impl Debug for ComInterfaceConfiguration {
     }
 }
 
-#[cfg(target_arch = "wasm32")]
-pub trait NewSocketsIterBound:
-    AsyncIterator<Item = Result<SocketConfiguration, ()>> + 'static
-{
-}
-#[cfg(target_arch = "wasm32")]
-impl<T> NewSocketsIterBound for T where
-    T: AsyncIterator<Item = Result<SocketConfiguration, ()>> + 'static
-{
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-pub trait NewSocketsIterBound:
-    AsyncIterator<Item = Result<SocketConfiguration, ()>> + Send + 'static
-{
-}
-#[cfg(not(target_arch = "wasm32"))]
-impl<T> NewSocketsIterBound for T where
-    T: AsyncIterator<Item = Result<SocketConfiguration, ()>> + Send + 'static
-{
-}
 
 impl ComInterfaceConfiguration {
     /// Creates a new ComInterfaceConfiguration with the given properties and socket iterator.
@@ -279,7 +250,7 @@ impl ComInterfaceConfiguration {
         new_sockets_iterator: I,
     ) -> Self
     where
-        I: NewSocketsIterBound,
+        I: AsyncIterator<Item = Result<SocketConfiguration, ()>> + 'static,
     {
         ComInterfaceConfiguration {
             uuid: ComInterfaceUUID::new(),

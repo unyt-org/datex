@@ -1,5 +1,6 @@
 use cfg_if::cfg_if;
 use core::future::Future;
+
 cfg_if! {
     if #[cfg(feature = "tokio_runtime")] {
         pub async fn timeout<T>(
@@ -98,9 +99,23 @@ cfg_if! {
                 Either::Second(_) => Err(()),
             }
         }
-
     }
     else {
-        compile_error!("Unsupported runtime. Please enable either 'tokio_runtime', 'embassy_runtime' or 'wasm_runtime' feature.");
+        use async_timer::Oneshot;
+
+        pub async fn sleep(dur: core::time::Duration) {
+            async_timer::oneshot::Timer::new(dur).await;
+        }
+
+        pub async fn timeout<T>(
+            duration: core::time::Duration,
+            fut: impl Future<Output = T>,
+        ) -> Result<T, ()> {
+            let work = unsafe {
+                async_timer::Timed::platform_new_unchecked(fut, duration)
+            };
+
+            work.await.map_err(|_| ())
+        }
     }
 }

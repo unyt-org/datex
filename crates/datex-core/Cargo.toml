@@ -119,6 +119,7 @@ datex-crypto-native = { path = "../datex-crypto-native", version = "0.0.1", opti
 datex-crypto-esp32 = { path = "../datex-crypto-esp32", version = "0.0.1", optional = true }
 embedded-time = { version = "0.12.1", optional = true }
 flexi_logger = { version = "0.31.8", optional = true }
+async-timer = "0.7.4"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 wasm-bindgen-futures = { optional = true, version = "0.4.29" }
@@ -180,9 +181,9 @@ datex-crypto-native = { path = "../datex-crypto-native" }
 # while still being compatible with std.
 default = [
     "hashbrown",
-    "tokio_runtime",              # FIXME: Change to be embassy_runtime
     "syntax_highlighting_legacy",
     "compiler",
+    "dep:async-unsync",
 ]
 
 # embedded build
@@ -202,7 +203,6 @@ embassy_runtime = [
     "dep:embassy-executor",
     "dep:embassy-time",
     "dep:embassy-futures",
-    "dep:async-unsync",
 ]
 
 # Enabled ComHub metadata

@@ -2,14 +2,15 @@ use cfg_if::cfg_if;
 use core::{clone::Clone, prelude::rust_2024::*};
 use futures_util::{SinkExt, StreamExt};
 
-#[cfg(feature = "embassy_runtime")]
-pub use async_unsync::bounded::{Receiver as _Receiver, Sender as _Sender};
-#[cfg(feature = "embassy_runtime")]
-pub use async_unsync::unbounded::{
-    UnboundedReceiver as _UnboundedReceiver,
-    UnboundedSender as _UnboundedSender,
+#[cfg(not(feature = "std"))]
+pub use async_unsync::{
+    bounded::{Receiver as _Receiver, Sender as _Sender},
+    unbounded::{
+        UnboundedReceiver as _UnboundedReceiver,
+        UnboundedSender as _UnboundedSender,
+    }
 };
-#[cfg(any(feature = "tokio_runtime", feature = "wasm_runtime"))]
+#[cfg(feature = "std")]
 use futures::channel::mpsc::{
     Receiver as _Receiver, Sender as _Sender,
     UnboundedReceiver as _UnboundedReceiver,
@@ -24,11 +25,11 @@ impl<T> Receiver<T> {
     }
 
     pub async fn next(&mut self) -> Option<T> {
-        #[cfg(any(feature = "tokio_runtime", feature = "wasm_runtime"))]
+        #[cfg(feature = "std")]
         {
             self.0.next().await
         }
-        #[cfg(feature = "embassy_runtime")]
+        #[cfg(not(feature = "std"))]
         {
             self.0.recv().await
         }
@@ -42,11 +43,11 @@ impl<T> UnboundedReceiver<T> {
         UnboundedReceiver(receiver)
     }
     pub async fn next(&mut self) -> Option<T> {
-        #[cfg(any(feature = "tokio_runtime", feature = "wasm_runtime"))]
+        #[cfg(feature = "std")]
         {
             self.0.next().await
         }
-        #[cfg(feature = "embassy_runtime")]
+        #[cfg(not(feature = "std"))]
         {
             self.0.recv().await
         }
@@ -67,33 +68,33 @@ impl<T> Sender<T> {
     }
 
     pub fn start_send(&mut self, item: T) -> Result<(), ()> {
-        #[cfg(any(feature = "tokio_runtime", feature = "wasm_runtime"))]
+        #[cfg(feature = "std")]
         {
             self.0.start_send(item).map_err(|_| ())
         }
-        #[cfg(feature = "embassy_runtime")]
+        #[cfg(not(feature = "std"))]
         {
             self.0.try_send(item).map_err(|_| ())
         }
     }
 
     pub async fn send(&mut self, item: T) -> Result<(), ()> {
-        #[cfg(any(feature = "tokio_runtime", feature = "wasm_runtime"))]
+        #[cfg(feature = "std")]
         {
             self.0.send(item).await.map_err(|_| ()).map(|_| ())
         }
-        #[cfg(feature = "embassy_runtime")]
+        #[cfg(not(feature = "std"))]
         {
             self.0.send(item).await.map(|_| ()).map_err(|_| ())
         }
     }
 
     pub fn close_channel(&mut self) {
-        #[cfg(any(feature = "tokio_runtime", feature = "wasm_runtime"))]
+        #[cfg(feature = "std")]
         {
             self.0.close_channel();
         }
-        #[cfg(feature = "embassy_runtime")]
+        #[cfg(not(feature = "std"))]
         {}
     }
 }
@@ -114,39 +115,39 @@ impl<T> UnboundedSender<T> {
     }
 
     pub fn start_send(&mut self, item: T) -> Result<(), ()> {
-        #[cfg(any(feature = "tokio_runtime", feature = "wasm_runtime"))]
+        #[cfg(feature = "std")]
         {
             self.0.start_send(item).map_err(|_| ())
         }
-        #[cfg(feature = "embassy_runtime")]
+        #[cfg(not(feature = "std"))]
         {
             self.0.send(item).map_err(|_| ())
         }
     }
 
     pub async fn send(&mut self, item: T) -> Result<(), ()> {
-        #[cfg(any(feature = "tokio_runtime", feature = "wasm_runtime"))]
+        #[cfg(feature = "std")]
         {
             self.0.send(item).await.map_err(|_| ()).map(|_| ())
         }
-        #[cfg(feature = "embassy_runtime")]
+        #[cfg(not(feature = "std"))]
         {
             self.0.send(item).map(|_| ()).map_err(|_| ())
         }
     }
 
     pub fn close_channel(&self) {
-        #[cfg(any(feature = "tokio_runtime", feature = "wasm_runtime"))]
+        #[cfg(feature = "std")]
         {
             self.0.close_channel();
         }
-        #[cfg(feature = "embassy_runtime")]
+        #[cfg(not(feature = "std"))]
         {}
     }
 }
 
 cfg_if! {
-    if #[cfg(any(feature = "tokio_runtime", feature = "wasm_runtime"))] {
+    if #[cfg(feature = "std")] {
         pub fn create_bounded_channel<T>(capacity: usize) -> (Sender<T>, Receiver<T>) {
             let (sender, receiver) = futures::channel::mpsc::channel::<T>(capacity);
             (Sender::new(sender), Receiver::new(receiver))
@@ -156,17 +157,14 @@ cfg_if! {
             (UnboundedSender::new(sender), UnboundedReceiver::new(receiver))
         }
     }
-    else if #[cfg(feature = "embassy_runtime")] {
+    else {
         pub fn create_bounded_channel<T>(capacity: usize) -> (Sender<T>, Receiver<T>) {
             let (sender, receiver) = async_unsync::bounded::channel::<T>(capacity).into_split();
             (Sender::new(sender), Receiver::new(receiver))
         }
-         pub fn create_unbounded_channel<T>() -> (UnboundedSender<T>, UnboundedReceiver<T>) {
+        pub fn create_unbounded_channel<T>() -> (UnboundedSender<T>, UnboundedReceiver<T>) {
             let (sender, receiver) = async_unsync::unbounded::channel::<T>().into_split();
             (UnboundedSender::new(sender), UnboundedReceiver::new(receiver))
         }
-    }
-    else {
-        compile_error!("Unsupported runtime. Please enable either 'tokio_runtime', 'embassy_runtime' or 'wasm_runtime' feature.");
     }
 }
