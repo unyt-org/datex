@@ -35,14 +35,14 @@ impl Debug for ExecutionLoopState {
 pub struct RuntimeExecutionState {
     /// Local memory slots for current execution context.
     /// TODO #643: replace this with a local stack and deprecate local slots?
-    pub(crate) slots: RuntimeExecutionSlots,
-    pub(crate) runtime_internal: Option<Rc<RuntimeInternal>>,
-    pub(crate) source_id: TransceiverId,
+    pub slots: RuntimeExecutionSlots,
+    pub runtime_internal: Option<Rc<RuntimeInternal>>,
+    pub source_id: TransceiverId,
 }
 
 #[derive(Debug, Default)]
 pub struct RuntimeExecutionSlots {
-    pub(crate) slots: HashMap<u32, Option<ValueContainer>>,
+    pub slots: HashMap<u32, Option<ValueContainer>>,
 }
 
 impl RuntimeExecutionSlots {

@@ -1,13 +1,11 @@
 use std::str::FromStr;
 
 use datex_core::{
-    compiler::{CompileOptions, compile_script, compile_template},
+    compiler::{CompileOptions, compile_template},
     values::{
-        core_values::integer::{
-            Integer,
-            typed_integer::{IntegerTypeVariant, TypedInteger},
+        core_values::integer::typed_integer::{
+            IntegerTypeVariant, TypedInteger,
         },
-        value::Value,
         value_container::ValueContainer,
     },
 };

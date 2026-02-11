@@ -655,13 +655,26 @@ fn compile_expression(
             }
         }
         DatexExpressionData::Placeholder => {
-            append_value_container(
-                &mut compilation_context.buffer,
+            // FIXME
+            if true {
                 compilation_context
-                    .inserted_values
-                    .get(compilation_context.inserted_value_index)
-                    .unwrap(),
-            );
+                    .append_instruction_code(InstructionCode::GET_SLOT);
+                compilation_context.insert_virtual_slot_address(
+                    VirtualSlot::local(
+                        compilation_context.inserted_value_index as u32,
+                    ),
+                );
+            } else {
+                append_value_container(
+                    &mut compilation_context.buffer,
+                    compilation_context
+                        .inserted_values
+                        .get(compilation_context.inserted_value_index)
+                        .expect(
+                            "Not enough inserted values provided for placeholders",
+                        ),
+                );
+            }
             compilation_context.inserted_value_index += 1;
         }
 
