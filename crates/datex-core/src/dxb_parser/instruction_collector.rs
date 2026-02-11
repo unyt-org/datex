@@ -609,6 +609,13 @@ impl<T> InstructionCollector<T> {
                 );
                 None
             }
+            TypeInstruction::Range => {
+                self.collect_full(
+                    Instruction::TypeInstruction(TypeInstruction::Range),
+                    2,
+                );
+                None
+            }
             TypeInstruction::ImplType(impl_type_data) => {
                 self.collect_full(
                     Instruction::TypeInstruction(TypeInstruction::ImplType(

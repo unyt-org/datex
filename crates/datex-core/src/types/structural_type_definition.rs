@@ -15,7 +15,7 @@ use crate::{
         value_container::ValueContainer,
     },
 };
-use core::{fmt::Display, hash::Hash,  unimplemented};
+use core::{fmt::Display, hash::Hash, unimplemented};
 #[derive(Debug, Clone, PartialEq, Hash, Eq)]
 pub enum StructuralTypeDefinition {
     Integer(Integer),
@@ -28,6 +28,7 @@ pub enum StructuralTypeDefinition {
     Null,
     List(Vec<Type>), // e.g. [&mut integer, text, boolean]
     Map(Vec<(Type, Type)>),
+    Range((Box<Type>, Box<Type>)),
 }
 
 macro_rules! impl_from_typed_int {
@@ -190,6 +191,7 @@ impl StructuralTypeDefinition {
             StructuralTypeDefinition::Endpoint(_) => CoreLibPointerId::Endpoint,
             StructuralTypeDefinition::Null => CoreLibPointerId::Null,
             StructuralTypeDefinition::List(_) => CoreLibPointerId::List,
+            StructuralTypeDefinition::Range(_) => CoreLibPointerId::Range,
             StructuralTypeDefinition::Map(_) => CoreLibPointerId::Map,
         }
     }
@@ -224,6 +226,9 @@ impl Display for StructuralTypeDefinition {
                 core::write!(f, "{}", endpoint)
             }
             StructuralTypeDefinition::Null => core::write!(f, "null"),
+            StructuralTypeDefinition::Range((start, end)) => {
+                core::write!(f, "{}..{}", start, end)
+            }
             StructuralTypeDefinition::List(types) => {
                 let types_str: Vec<String> =
                     types.iter().map(|t| t.to_string()).collect();

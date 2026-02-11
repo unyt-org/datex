@@ -17,15 +17,15 @@ use crate::{
             Apply, BinaryOperation, CallableDeclaration, ComparisonOperation,
             Conditional, CreateRef, DatexExpression, DatexExpressionData,
             Deref, DerefAssignment, GenericInstantiation, List, Map,
-            PropertyAccess, PropertyAssignment, RemoteExecution, Slot,
-            SlotAssignment, Statements, TypeDeclaration, UnaryOperation,
-            VariableAccess, VariableAssignment, VariableDeclaration,
-            VariantAccess,
+            PropertyAccess, PropertyAssignment, RangeDeclaration,
+            RemoteExecution, Slot, SlotAssignment, Statements, TypeDeclaration,
+            UnaryOperation, VariableAccess, VariableAssignment,
+            VariableDeclaration, VariantAccess,
         },
         type_expressions::{
             CallableTypeExpression, FixedSizeList, GenericAccess, Intersection,
-            SliceList, StructuralList, StructuralMap, TypeExpression,
-            TypeVariantAccess, Union,
+            RangeTypeExpr, SliceList, StructuralList, StructuralMap,
+            TypeExpression, TypeVariantAccess, Union,
         },
     },
     compiler::precompiler::precompiled_ast::{AstMetadata, RichAst},
@@ -844,6 +844,17 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
                 .map(|elem_type_expr| self.infer_expression(elem_type_expr))
                 .collect::<Result<Vec<_>, _>>()?,
         ))
+    }
+
+    fn visit_range(
+        &mut self,
+        range: &mut RangeDeclaration,
+        _span: &Range<usize>,
+    ) -> ExpressionVisitResult<SpannedTypeError> {
+        let x = self.infer_expression(&mut range.start)?;
+        let y = self.infer_expression(&mut range.end)?;
+        let z = StructuralTypeDefinition::Range((Box::new(x), Box::new(y)));
+        mark_structural_type(z)
     }
 
     fn visit_map(

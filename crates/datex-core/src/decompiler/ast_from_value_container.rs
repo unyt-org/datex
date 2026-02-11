@@ -5,7 +5,8 @@ use crate::{
         },
         spanned::Spanned,
         type_expressions::{
-            Intersection, TypeExpression, TypeExpressionData, Union,
+            Intersection, RangeTypeExpr, TypeExpression, TypeExpressionData,
+            Union,
         },
     },
     types::{
@@ -172,6 +173,15 @@ fn type_to_type_expression(type_value: &Type) -> TypeExpression {
             }
             StructuralTypeDefinition::Null => {
                 TypeExpressionData::Null.with_default_span()
+            }
+            StructuralTypeDefinition::Range((start_type, end_type)) => {
+                let x = type_to_type_expression(&start_type);
+                let y = type_to_type_expression(&end_type);
+                TypeExpressionData::Range(RangeTypeExpr {
+                    start: Box::new(x),
+                    end: Box::new(y),
+                })
+                .with_default_span()
             }
             _ => TypeExpressionData::Text(format!(
                 "[[STRUCTURAL TYPE {:?}]]",

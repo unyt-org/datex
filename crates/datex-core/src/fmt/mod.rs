@@ -180,6 +180,9 @@ impl<'a> Formatter<'a> {
                 self.wrap_collection(docs, ("[", "]"), ",")
             }
 
+            TypeExpressionData::Range(range_expr) => {
+                core::todo!("Range formartting not implemented")
+            }
             TypeExpressionData::FixedSizeList(_list) => {
                 core::todo!("#627 Undescribed by author.")
             }

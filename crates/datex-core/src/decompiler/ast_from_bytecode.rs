@@ -354,6 +354,7 @@ pub fn ast_from_bytecode(
                             // NOTE: make sure that each possible match case is either implemented in the default collection or here
                             // If an instruction is implemented in the default collection, it should be marked as unreachable!() here
                             TypeInstruction::List(_)
+                            | TypeInstruction::Range
                             | TypeInstruction::ImplType(_) => {
                                 unreachable!()
                             }
