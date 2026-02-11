@@ -18,9 +18,10 @@ use crate::{
     },
 };
 
-use crate::prelude::*;
-use core::{cell::RefCell, fmt,  result::Result};
-use crate::values::core_values::integer::typed_integer::TypedInteger;
+use crate::{
+    prelude::*, values::core_values::integer::typed_integer::TypedInteger,
+};
+use core::{cell::RefCell, fmt, result::Result};
 use indexmap::IndexMap;
 use ordered_float::OrderedFloat;
 use serde::{
@@ -245,6 +246,12 @@ impl DIFTypeRepresentation {
             }
             StructuralTypeDefinition::TypedInteger(i) => {
                 DIFTypeRepresentation::Number(i.as_i128().unwrap() as f64)
+            }
+            StructuralTypeDefinition::Range((start, end)) => {
+                DIFTypeRepresentation::Array(vec![
+                    DIFType::from_type(start, memory),
+                    DIFType::from_type(end, memory),
+                ])
             }
             StructuralTypeDefinition::Decimal(d) => {
                 DIFTypeRepresentation::Number(d.into_f64())

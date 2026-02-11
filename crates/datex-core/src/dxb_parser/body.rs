@@ -594,7 +594,11 @@ pub fn iterate_instructions(
                             RegularInstruction::TypeExpression
                         }
 
-                        InstructionCode::RANGE => RegularInstruction::Range,
+                        InstructionCode::RANGE => {
+                            // inline comment to keep clippy from breaking braces
+                            next_instructions_stack.push_next_regular(2);
+                            RegularInstruction::Range
+                        }
 
                         _ => {
                             return yield Err(
@@ -649,6 +653,11 @@ pub fn iterate_instructions(
                             TypeInstruction::TypeReference(yield_unwrap!(
                                 ref_data
                             ))
+                        }
+                        TypeInstructionCode::TYPE_RANGE => {
+                            // unreachable!("Type Range not fully implemented");
+                            next_instructions_stack.push_next_type(2);
+                            TypeInstruction::Range
                         }
                         _ => {
                             return yield Err(

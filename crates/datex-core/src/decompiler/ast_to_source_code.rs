@@ -246,6 +246,12 @@ impl AstToSourceCodeConverter {
                     .collect();
                 self.wrap_list_elements(elements)
             }
+            TypeExpressionData::Range(type_expr) => {
+                let x = self.type_expression_to_source_code(&type_expr.start);
+                let y = self.type_expression_to_source_code(&type_expr.end);
+                let z = [x, y].concat();
+                z
+            }
             TypeExpressionData::FixedSizeList(_fixed_size_list) => {
                 core::todo!("#472 Undescribed by author.")
             }

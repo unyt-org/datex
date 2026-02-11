@@ -8,7 +8,7 @@ use crate::{
     ast::{
         spanned::Spanned,
         type_expressions::{
-            Intersection, TypeExpression, TypeExpressionData,
+            Intersection, RangeTypeExpr, TypeExpression, TypeExpressionData,
             TypeVariantAccess, Union,
         },
     },
@@ -59,6 +59,16 @@ impl Parser {
                 let rhs = self.parse_type_expression(r_bp)?;
                 let span = lhs.span.start..rhs.span.end;
                 TypeExpressionData::Union(Union(vec![lhs, rhs])).with_span(span)
+            }
+            Token::Range => {
+                self.advance()?; // consume operator
+                let rhs = self.parse_type_expression(r_bp)?;
+                let span = lhs.span.start..rhs.span.end;
+                TypeExpressionData::Range(RangeTypeExpr {
+                    start: Box::new(lhs),
+                    end: Box::new(rhs),
+                })
+                .with_span(span)
             }
             // intersection type operator
             Token::Ampersand => {
@@ -193,7 +203,7 @@ impl Parser {
             // variant operator
             Token::Slash => Some((12, 13)),
             // property access
-            Token::Dot => Some((14, 15)),
+            Token::Dot | Token::Range => Some((14, 15)),
             _ => None,
         }
     }
@@ -206,7 +216,8 @@ mod tests {
         ast::{
             spanned::Spanned,
             type_expressions::{
-                Intersection, TypeExpression, TypeExpressionData, Union,
+                Intersection, RangeTypeExpr, TypeExpression,
+                TypeExpressionData, Union,
             },
         },
         parser::{
@@ -236,6 +247,24 @@ mod tests {
                 TypeExpressionData::Identifier("b".to_string())
                     .with_default_span()
             ]))
+        );
+    }
+
+    #[test]
+    fn parse_simple_range_expression() {
+        let expr = parse_type_expression("a .. b");
+        assert_eq!(
+            expr.data,
+            TypeExpressionData::Range(RangeTypeExpr {
+                start: Box::new(
+                    TypeExpressionData::Identifier("a".to_string())
+                        .with_default_span()
+                ),
+                end: Box::new(
+                    TypeExpressionData::Identifier("b".to_string())
+                        .with_default_span()
+                )
+            })
         );
     }
 

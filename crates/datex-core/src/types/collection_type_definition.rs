@@ -12,6 +12,7 @@ pub enum CollectionTypeDefinition {
 
     // e.g. {string: integer}
     Map { key: Box<Type>, value: Box<Type> },
+    Range { start: Box<Type>, end: Box<Type> },
 }
 
 impl Display for CollectionTypeDefinition {
@@ -23,6 +24,9 @@ impl Display for CollectionTypeDefinition {
             }
             CollectionTypeDefinition::Map { key, value } => {
                 core::write!(f, "Map<{}, {}>", key, value)
+            }
+            CollectionTypeDefinition::Range { start, end } => {
+                core::write!(f, "Range {}..{}", start, end)
             }
         }
     }

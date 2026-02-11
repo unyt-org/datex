@@ -1303,7 +1303,7 @@ fn compile_expression(
             scope = compile_type_expression(
                 compilation_context,
                 &type_expression,
-                metadata,
+                &metadata,
                 scope,
             )?;
         }

@@ -1,5 +1,7 @@
 use crate::{
-    ast::type_expressions::{TypeExpression, TypeExpressionData},
+    ast::type_expressions::{
+        RangeTypeExpr, TypeExpression, TypeExpressionData,
+    },
     compiler::{
         context::CompilationContext, error::CompilerError,
         precompiler::precompiled_ast::AstMetadata, scope::CompilationScope,
@@ -45,13 +47,15 @@ impl CompilationContext {
 
         self.buffer.extend_from_slice(bytes);
     }
+
+    pub fn instert_type_range(&mut self, range: &RangeTypeExpr) {}
 }
 
 pub fn compile_type_expression(
     ctx: &mut CompilationContext,
     expr: &TypeExpression,
-    _ast_metadata: Rc<RefCell<AstMetadata>>,
-    scope: CompilationScope,
+    _ast_metadata: &Rc<RefCell<AstMetadata>>,
+    mut scope: CompilationScope,
 ) -> Result<CompilationScope, CompilerError> {
     match &expr.data {
         TypeExpressionData::Integer(integer) => {
@@ -59,6 +63,21 @@ pub fn compile_type_expression(
         }
         TypeExpressionData::Text(text) => {
             ctx.insert_type_literal_text(text);
+        }
+        TypeExpressionData::Range(range) => {
+            ctx.append_type_instruction_code(TypeInstructionCode::TYPE_RANGE);
+            scope = compile_type_expression(
+                ctx,
+                &*range.end,
+                _ast_metadata,
+                scope,
+            )?;
+            scope = compile_type_expression(
+                ctx,
+                &*range.start,
+                _ast_metadata,
+                scope,
+            )?;
         }
         _ => core::todo!("#453 Undescribed by author."),
     }
