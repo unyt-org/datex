@@ -33,6 +33,7 @@ pub enum TypeInstructionCode {
     TYPE_TYPE,
 
     TYPE_LIST,
+    TYPE_RANGE,
 
     TYPE_LITERAL_INTEGER,
     TYPE_LITERAL_TEXT,

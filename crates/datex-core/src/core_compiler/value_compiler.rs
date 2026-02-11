@@ -132,8 +132,9 @@ pub fn append_value(buffer: &mut Vec<u8>, value: &Value) {
             }
         }
         CoreValue::Range(range) => {
-            append_value_container(buffer, &range.start);
-            append_value_container(buffer, &range.end);
+            append_instruction_code(buffer, InstructionCode::RANGE);
+            // append_value_container(buffer, &range.start);
+            // append_value_container(buffer, &range.end);
         }
     }
 }

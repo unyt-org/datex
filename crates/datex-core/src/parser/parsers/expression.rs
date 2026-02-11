@@ -477,7 +477,7 @@ impl Parser {
     fn infix_binding_power(op: &Token) -> Option<(u8, u8)> {
         match op {
             // remote execution operator
-            Token::DoubleColon | Token::Range => Some((1, 2)),
+            Token::DoubleColon => Some((1, 2)),
             // assignment operators
             Token::Assign
             | Token::AddAssign
@@ -524,6 +524,7 @@ impl Parser {
             | Token::DecimalLiteral(_)
             | Token::PointerAddress(_)
             | Token::Slot(_)
+            | Token::Range
             | Token::Endpoint(_) => Some((23, 24)),
             _ => None,
         }

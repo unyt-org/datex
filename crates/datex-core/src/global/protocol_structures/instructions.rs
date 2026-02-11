@@ -199,7 +199,7 @@ impl Display for RegularInstruction {
                 core::write!(f, "UINT_128 {}", data.0)
             }
             RegularInstruction::Range => {
-                core::write!(f, "RANGE")
+                core::write!(f, "RANGE regular instruction")
             }
             RegularInstruction::Apply(count) => {
                 core::write!(f, "APPLY {}", count.arg_count)
@@ -414,7 +414,7 @@ pub enum TypeInstruction {
     LiteralText(TextData),
     LiteralInteger(IntegerData),
     List(ListData),
-    // TODO #670: add more type instructions
+    Range, // TODO #670: add more type instructions
 }
 
 impl Display for TypeInstruction {
@@ -439,6 +439,9 @@ impl Display for TypeInstruction {
             }
             TypeInstruction::ImplType(data) => {
                 core::write!(f, "IMPL_TYPE ({} impls)", data.impl_count)
+            }
+            TypeInstruction::Range => {
+                core::write!(f, "Range type instruction")
             }
         }
     }
