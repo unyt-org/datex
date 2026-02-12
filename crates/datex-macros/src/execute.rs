@@ -50,7 +50,7 @@ impl Parse for ExecuteMacroInput {
     }
 }
 
-pub fn execute(input: ExecuteMacroInput) -> TokenStream {
+fn prepare_setup(input: ExecuteMacroInput) -> TokenStream {
     let script = input.program;
     let dxb = compile_template(&script, &vec![], CompileOptions::default());
     if let Err(e) = dxb {
@@ -83,20 +83,39 @@ pub fn execute(input: ExecuteMacroInput) -> TokenStream {
         .to_compile_error();
     }
     quote! {{
-        use datex_core::runtime::execution::execution_loop::state::{RuntimeExecutionState, RuntimeExecutionSlots};
+        use datex_core::runtime::execution::execution_loop::state::{
+            RuntimeExecutionState, RuntimeExecutionSlots
+        };
         use datex_core::values::value_container::ValueContainer;
         use datex_core::collections::HashMap;
-        use datex_core::runtime::execution::{execute_dxb_sync,ExecutionInput, ExecutionOptions};
+        use datex_core::runtime::execution::{ExecutionInput, ExecutionOptions};
 
         let mut slots: HashMap<u32, Option<ValueContainer>> = HashMap::new();
         #(#inserts)*
-        let runtime_execution_slots = RuntimeExecutionSlots { slots };
 
-        let dxb_body = vec![#(#dxb),*];
-        let execution_input = ExecutionInput::new_with_slots(&dxb_body, ExecutionOptions::default(), None, runtime_execution_slots);
-        execute_dxb_sync(execution_input)
-        // execute_dxb_sync(
-        //     ExecutionInput::new(vec![#(#dxb),*], loop_state, None).execution_loop()
-        // )
+        let runtime_execution_slots = RuntimeExecutionSlots { slots };
+        let dxb_body: &'static [u8] = &[#(#dxb),*];
+
+        ExecutionInput::new_with_slots(
+            &dxb_body,
+            ExecutionOptions::default(),
+            None,
+            runtime_execution_slots
+        )
+    }}
+}
+
+pub fn execute_sync(input: ExecuteMacroInput) -> TokenStream {
+    let setup = prepare_setup(input);
+    quote! {{
+        datex_core::runtime::execution::execute_dxb_sync(#setup)
+    }}
+}
+pub fn execute_async(input: ExecuteMacroInput) -> TokenStream {
+    let setup = prepare_setup(input);
+    quote! {{
+        async move {
+            datex_core::runtime::execution::execute_dxb(#setup).await
+        }
     }}
 }

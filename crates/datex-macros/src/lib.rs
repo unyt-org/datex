@@ -12,7 +12,13 @@ pub fn precompile(input: TokenStream) -> TokenStream {
 }
 
 #[proc_macro]
+pub fn execute_sync(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as ExecuteMacroInput);
+    execute::execute_sync(input).into()
+}
+
+#[proc_macro]
 pub fn execute(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as ExecuteMacroInput);
-    execute::execute(input).into()
+    execute::execute_async(input).into()
 }
