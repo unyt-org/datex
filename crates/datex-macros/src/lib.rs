@@ -1,5 +1,9 @@
+#![no_std]
+
 use proc_macro::TokenStream;
 use syn::parse_macro_input;
+
+extern crate alloc;
 
 use crate::{compile::PrecompileInput, execute::ExecuteMacroInput};
 mod compile;
