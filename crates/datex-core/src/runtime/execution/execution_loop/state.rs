@@ -6,7 +6,8 @@ use crate::{
         execution::{
             ExecutionError,
             execution_loop::{
-                ExternalExecutionInterrupt, interrupts::InterruptProvider,
+                ExternalExecutionInterrupt, execution_loop,
+                interrupts::InterruptProvider,
             },
         },
     },
@@ -21,6 +22,31 @@ pub struct ExecutionLoopState {
     >,
     pub dxb_body: Rc<RefCell<Vec<u8>>>,
     pub(crate) interrupt_provider: InterruptProvider,
+}
+impl ExecutionLoopState {
+    pub fn new(
+        dxb_body: Vec<u8>,
+        runtime: Option<Rc<RuntimeInternal>>,
+        slots: RuntimeExecutionSlots,
+    ) -> Self {
+        let state = RuntimeExecutionState {
+            runtime_internal: runtime.clone(),
+            source_id: 0, // TODO #640: set proper source ID
+            slots,
+        };
+        // TODO #641: optimize, don't clone the whole DXB body every time here
+        let dxb_rc = Rc::new(RefCell::new(dxb_body.to_vec()));
+        let interrupt_provider = InterruptProvider::new();
+        ExecutionLoopState {
+            dxb_body: dxb_rc.clone(),
+            iterator: Box::new(execution_loop(
+                state,
+                dxb_rc,
+                interrupt_provider.clone(),
+            )),
+            interrupt_provider,
+        }
+    }
 }
 
 impl Debug for ExecutionLoopState {

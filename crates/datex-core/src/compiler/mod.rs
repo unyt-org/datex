@@ -656,15 +656,9 @@ fn compile_expression(
         }
         DatexExpressionData::Placeholder => {
             // FIXME
-            if false {
-                compilation_context
-                    .append_instruction_code(InstructionCode::GET_SLOT);
-                compilation_context.insert_virtual_slot_address(
-                    VirtualSlot::local(
-                        compilation_context.inserted_value_index as u32,
-                    ),
-                );
-            } else {
+            let is_passed = compilation_context.inserted_value_index
+                < compilation_context.inserted_values.len();
+            if is_passed {
                 append_value_container(
                     &mut compilation_context.buffer,
                     compilation_context
@@ -673,6 +667,14 @@ fn compile_expression(
                         .expect(
                             "Not enough inserted values provided for placeholders",
                         ),
+                );
+            } else {
+                compilation_context
+                    .append_instruction_code(InstructionCode::GET_SLOT);
+                compilation_context.insert_virtual_slot_address(
+                    VirtualSlot::local(
+                        compilation_context.inserted_value_index as u32,
+                    ),
                 );
             }
             compilation_context.inserted_value_index += 1;

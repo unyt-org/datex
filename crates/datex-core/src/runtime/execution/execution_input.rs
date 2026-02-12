@@ -5,7 +5,10 @@ use crate::runtime::{
         execution_loop::{
             execution_loop,
             interrupts::{ExternalExecutionInterrupt, InterruptProvider},
-            state::{ExecutionLoopState, RuntimeExecutionState},
+            state::{
+                ExecutionLoopState, RuntimeExecutionSlots,
+                RuntimeExecutionState,
+            },
         },
     },
 };
@@ -42,6 +45,21 @@ impl<'a> ExecutionInput<'a> {
             runtime,
         }
     }
+    pub fn new_with_slots(
+        dxb_body: &'a [u8],
+        options: ExecutionOptions,
+        runtime: Option<Rc<RuntimeInternal>>,
+        slots: RuntimeExecutionSlots,
+    ) -> Self {
+        let state =
+            ExecutionLoopState::new(dxb_body.to_vec(), runtime.clone(), slots);
+        Self {
+            options,
+            dxb_body,
+            loop_state: Some(state),
+            runtime,
+        }
+    }
 
     pub fn execution_loop(
         mut self,
@@ -59,23 +77,11 @@ impl<'a> ExecutionInput<'a> {
         }
         // otherwise start a new execution loop
         else {
-            let state = RuntimeExecutionState {
-                runtime_internal: self.runtime.clone(),
-                source_id: 0, // TODO #640: set proper source ID
-                ..Default::default()
-            };
-            // TODO #641: optimize, don't clone the whole DXB body every time here
-            let dxb_rc = Rc::new(RefCell::new(self.dxb_body.to_vec()));
-            let interrupt_provider = InterruptProvider::new();
-            ExecutionLoopState {
-                dxb_body: dxb_rc.clone(),
-                iterator: Box::new(execution_loop(
-                    state,
-                    dxb_rc,
-                    interrupt_provider.clone(),
-                )),
-                interrupt_provider,
-            }
+            ExecutionLoopState::new(
+                self.dxb_body.to_vec(),
+                self.runtime.clone(),
+                Default::default(),
+            )
         };
         let interrupt_provider = loop_state.interrupt_provider.clone();
 

@@ -82,14 +82,6 @@ pub fn execute(input: ExecuteMacroInput) -> TokenStream {
         )
         .to_compile_error();
     }
-    // let runtime_execution_slots = RuntimeExecutionSlots { slots };
-
-    // let execution_state = RuntimeExecutionState {
-    //     slots: runtime_execution_slots,
-    //     runtime_internal: None,
-    //     source_id: 0,
-    // };
-
     quote! {{
         use datex_core::runtime::execution::execution_loop::state::{RuntimeExecutionState, RuntimeExecutionSlots};
         use datex_core::values::value_container::ValueContainer;
@@ -100,9 +92,8 @@ pub fn execute(input: ExecuteMacroInput) -> TokenStream {
         #(#inserts)*
         let runtime_execution_slots = RuntimeExecutionSlots { slots };
 
-        let execution_state = RuntimeExecutionState { slots: runtime_execution_slots, runtime_internal: None, source_id: 0 };
         let dxb_body = vec![#(#dxb),*];
-        let execution_input = ExecutionInput::new(&dxb_body, ExecutionOptions::default(), None);
+        let execution_input = ExecutionInput::new_with_slots(&dxb_body, ExecutionOptions::default(), None, runtime_execution_slots);
         execute_dxb_sync(execution_input)
         // execute_dxb_sync(
         //     ExecutionInput::new(vec![#(#dxb),*], loop_state, None).execution_loop()

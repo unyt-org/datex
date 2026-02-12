@@ -1,8 +1,8 @@
 use datex_macros::execute;
 
 #[test]
-fn test_execute() {
+fn execute() {
     let x = 42;
     let tokens = execute!("1 + ?", x);
-	println!("{:?}", tokens);
+    println!("{:?}", tokens);
 }
