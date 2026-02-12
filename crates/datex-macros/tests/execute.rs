@@ -8,6 +8,9 @@ fn execute_sync() {
     let x = 42;
     let result = execute_sync_unchecked!("1 + ?", x).unwrap();
     assert_eq!(result, Integer::new(43).into());
+
+    let result = execute_sync_unchecked!("1 + ?", 42).unwrap();
+    assert_eq!(result, Integer::new(43).into());
 }
 
 #[tokio::test]
