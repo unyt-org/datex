@@ -86,3 +86,18 @@ pub fn get_clients_setup_data<T: Serialize>(
             .collect::<_>()
     }).transpose()
 }
+
+/// Splits an address string into host and port components.
+/// Expects the address to be in the format "host:port".
+pub fn split_address_into_host_and_port(address: &str) -> Result<(String, u16), URLError> {
+    // split at ":" to separate host and port
+    let parts: Vec<&str> = address.rsplitn(2, ':').collect();
+    if parts.len() != 2 {
+        return Err(URLError::InvalidURL);
+    }
+    
+    let host = parts[1].to_string();
+    let port = parts[0].parse::<u16>().map_err(|_| URLError::InvalidURL)?;
+    
+    Ok((host, port))
+}
