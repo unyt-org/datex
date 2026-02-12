@@ -22,3 +22,15 @@ pub fn execute(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as ExecuteMacroInput);
     execute::execute_async(input).into()
 }
+
+#[proc_macro]
+pub fn execute_sync_unchecked(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as ExecuteMacroInput);
+    execute::execute_sync_unchecked(input).into()
+}
+
+#[proc_macro]
+pub fn execute_unchecked(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as ExecuteMacroInput);
+    execute::execute_async_unchecked(input).into()
+}

@@ -1,15 +1,18 @@
-use datex_macros::execute_sync;
+use datex_core::values::core_values::integer::Integer;
+use datex_macros::{
+    execute, execute_sync, execute_sync_unchecked, execute_unchecked,
+};
 
 #[test]
 fn execute_sync() {
     let x = 42;
-    let tokens = execute_sync!("1 + ?", x);
-    println!("{:?}", tokens);
+    let result = execute_sync_unchecked!("1 + ?", x).unwrap();
+    assert_eq!(result, Integer::new(43).into());
 }
 
 #[tokio::test]
 async fn execute_async() {
     let x = 42;
-    let tokens = datex_macros::execute!("1 + ?", x).await;
-    println!("{:?}", tokens);
+    let result = execute_unchecked!("1 + ?", x).await.unwrap();
+    assert_eq!(result, Integer::new(43).into());
 }

@@ -47,6 +47,9 @@ impl<'de> Deserialize<'de> for Integer {
 }
 
 impl Integer {
+    pub fn new<T: Into<BigInt>>(value: T) -> Self {
+        Integer(value.into())
+    }
     /// Parse an integer from a string in base 10.
     /// Returns an error if the string is not a valid integer.
     pub fn from_string(s: &str) -> Result<Self, NumberParseError> {

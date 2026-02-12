@@ -119,3 +119,17 @@ pub fn execute_async(input: ExecuteMacroInput) -> TokenStream {
         }
     }}
 }
+pub fn execute_sync_unchecked(input: ExecuteMacroInput) -> TokenStream {
+    let setup = prepare_setup(input);
+    quote! {{
+        datex_core::runtime::execution::execute_dxb_sync(#setup).expect("Failed to execute DXB")
+    }}
+}
+pub fn execute_async_unchecked(input: ExecuteMacroInput) -> TokenStream {
+    let setup = prepare_setup(input);
+    quote! {{
+        async move {
+            datex_core::runtime::execution::execute_dxb(#setup).await.expect("Failed to execute DXB")
+        }
+    }}
+}
