@@ -531,6 +531,7 @@ mod tests {
     }
 
     #[tokio::test]
+    // TODO: fixme - dynamically enable/disable signature checks for tests
     pub async fn signature_to_and_from_bytes() {
         // setup block
         let mut routing_header = RoutingHeader::default()
