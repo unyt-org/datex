@@ -10,31 +10,26 @@ use alloc::{boxed::Box, format, string::String, vec, vec::Vec};
 use core::{
     future::Future,
     pin::Pin,
-    ptr::NonNull,
     result::Result,
-    sync::atomic::{AtomicPtr, Ordering},
 };
 use datex_crypto_facade::{
     crypto::{Crypto, CryptoResult},
     error::CryptoError,
 };
-use spin::Mutex;
+use spin::{Mutex, Once};
 use static_cell::StaticCell;
 
 use esp_hal::rng::Rng;
 
-static CELL: StaticCell<Mutex<Rng>> = StaticCell::new();
-static PTR: AtomicPtr<Mutex<Rng>> = AtomicPtr::new(core::ptr::null_mut());
-
-pub fn init_rng(rng: Rng) {
-    let m: &'static mut Mutex<Rng> = CELL.init(Mutex::new(rng));
-    PTR.store(m as *mut _, Ordering::Release);
-}
+static RNG: StaticCell<Mutex<Rng>> = StaticCell::new();
+static INIT: Once<&'static Mutex<Rng>> = Once::new();
 
 pub fn rng() -> spin::MutexGuard<'static, Rng> {
-    let p = PTR.load(Ordering::Acquire);
-    let m = NonNull::new(p).expect("RNG not initialized");
-    unsafe { m.as_ref() }.lock()
+    let m = INIT.call_once(|| {
+        RNG.init(Mutex::new(Rng::new()))
+    });
+
+    m.lock()
 }
 
 #[derive(Debug, Clone)]

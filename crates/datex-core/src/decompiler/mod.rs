@@ -101,7 +101,7 @@ pub fn apply_syntax_highlighting(
     Ok(output)
 }
 
-#[cfg(not(all(feature = "std", feature = "syntax_highlighting_legacy")))]
+#[cfg(all(not(feature = "std"), feature = "syntax_highlighting_legacy"))]
 pub fn apply_syntax_highlighting(
     datex_script: String,
 ) -> Result<String, DXBParserError> {

@@ -288,7 +288,7 @@ impl ComHub {
         // interface closed, remove
         // TODO
     }
-    
+
     /// Sends a hello block via the given socket if the socket direction allows sending and auto_identify is enabled for the interface
     async fn send_socket_hello(
         self: Rc<Self>,
@@ -296,10 +296,10 @@ impl ComHub {
         socket_direction: InterfaceDirection,
         com_interface_properties: Rc<ComInterfaceProperties>
     ) {
-        let send_hello = 
-            socket_direction.can_send() && 
+        let send_hello =
+            socket_direction.can_send() &&
             com_interface_properties.auto_identify; // Only send hello if auto_identify is enabled
-        
+
         if send_hello
             && let Err(err) =
                 self.send_hello_block(socket_uuid).await
@@ -621,7 +621,7 @@ impl ComHub {
             socket.socket_properties.direct_endpoint = Some(sender.clone());
         }
         let uuid = socket.socket_properties.uuid().clone();
-        
+
         drop(socket);
 
         match self.socket_manager.register_socket_endpoint(
@@ -1552,7 +1552,7 @@ impl ComHub {
         block
             .routing_header
             .flags
-            .set_signature_type(SignatureType::Unencrypted);
+            .set_signature_type(SignatureType::None); // TODO: sign?
         // TODO #182 include fingerprint of the own public key into body
 
         let block = self
