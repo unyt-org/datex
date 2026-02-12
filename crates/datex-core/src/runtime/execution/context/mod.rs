@@ -70,7 +70,12 @@ impl ExecutionContext {
         // TODO #107: don't clone compile_scope if possible
         let res = compile_template(
             script,
-            inserted_values,
+            inserted_values
+                .iter()
+                .cloned()
+                .map(Some)
+                .collect::<Vec<_>>()
+                .as_slice(),
             CompileOptions::new_with_scope(compile_scope.clone()),
         );
         match res {

@@ -1,13 +1,6 @@
-use core::str::FromStr;
-
 use datex_core::{
     compiler::{CompileOptions, compile_template},
-    values::{
-        core_values::integer::typed_integer::{
-            IntegerTypeVariant, TypedInteger,
-        },
-        value_container::ValueContainer,
-    },
+    values::value_container::ValueContainer,
 };
 use proc_macro2::TokenStream;
 use quote::quote;
@@ -32,7 +25,7 @@ impl Parse for PrecompileInput {
         let args = Punctuated::<Expr, Comma>::parse_terminated(input)?
             .iter()
             .map(expr_to_value_container)
-            .collect::<Vec<_>>();
+            .collect::<Result<Vec<_>>>()?;
         Ok(Self {
             script: pattern.value(),
             args,
@@ -42,9 +35,13 @@ impl Parse for PrecompileInput {
 
 pub fn precompile(input: PrecompileInput) -> TokenStream {
     let PrecompileInput { script, args, .. } = input;
-    let dxb = compile_template(&script, &args, CompileOptions::default())
-        .unwrap()
-        .0;
+    let dxb = compile_template(
+        &script,
+        &args.iter().cloned().map(Some).collect::<Vec<_>>(),
+        CompileOptions::default(),
+    )
+    .unwrap()
+    .0;
     quote! {
         vec![#(#dxb),*]
     }

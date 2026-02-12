@@ -426,7 +426,7 @@ pub fn parse_datex_script_to_rich_ast_detailed_errors(
 /// Compiles a DATEX script template text with inserted values into a DXB body
 pub fn compile_template(
     datex_script: &str,
-    inserted_values: &[ValueContainer],
+    inserted_values: &[Option<ValueContainer>],
     mut options: CompileOptions,
 ) -> Result<(Vec<u8>, CompilationScope), SpannedCompilerError> {
     let ast = parse_datex_script_to_rich_ast_simple_error(
@@ -486,7 +486,7 @@ macro_rules! compile {
     ($fmt:literal $(, $arg:expr )* $(,)?) => {
         {
             let script: &str = $fmt.into();
-            let values: &[$crate::values::value_container::ValueContainer] = &[$($arg.into()),*];
+            let values: &[Option<$crate::values::value_container::ValueContainer>] = &[$(Some($arg.into())),*];
 
             $crate::compiler::compile_template(&script, values, $crate::compiler::CompileOptions::default())
         }
@@ -656,17 +656,14 @@ fn compile_expression(
         }
         DatexExpressionData::Placeholder => {
             // FIXME
-            let is_passed = compilation_context.inserted_value_index
-                < compilation_context.inserted_values.len();
-            if is_passed {
+            let placeholder = compilation_context
+                .inserted_values
+                .get(compilation_context.inserted_value_index)
+                .expect("Placeholder index out of bounds");
+            if let Some(value_container) = placeholder {
                 append_value_container(
                     &mut compilation_context.buffer,
-                    compilation_context
-                        .inserted_values
-                        .get(compilation_context.inserted_value_index)
-                        .expect(
-                            "Not enough inserted values provided for placeholders",
-                        ),
+                    value_container,
                 );
             } else {
                 compilation_context
@@ -2381,8 +2378,8 @@ pub mod tests {
         let result = compile_template(
             "? + ?",
             &[
-                TypedInteger::from(1u8).into(),
-                TypedInteger::from(2u8).into(),
+                Some(TypedInteger::from(1u8).into()),
+                Some(TypedInteger::from(2u8).into()),
             ],
             CompileOptions::default(),
         );

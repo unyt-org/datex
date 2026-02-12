@@ -21,25 +21,40 @@ use syn::{
     punctuated::Punctuated,
 };
 
+use crate::utils::expr_to_value_container;
+
+enum Placeholder {
+    ValueContainer(ValueContainer),
+    Expression(Expr),
+}
+
 pub struct ExecuteMacroInput {
     program: String,
-    args: Punctuated<Expr, Token![,]>,
+    args: Vec<Placeholder>,
 }
 
 impl Parse for ExecuteMacroInput {
     fn parse(input: ParseStream) -> Result<Self> {
         let program: LitStr = input.parse()?;
-        let mut args = Punctuated::<Expr, Token![,]>::new();
+        let mut tokened_args = Punctuated::<Expr, Token![,]>::new();
 
         if input.peek(Token![,]) {
             let _comma: Token![,] = input.parse()?;
             while !input.is_empty() {
-                args.push_value(input.parse()?);
+                tokened_args.push_value(input.parse()?);
                 if input.peek(Token![,]) {
-                    args.push_punct(input.parse()?);
+                    tokened_args.push_punct(input.parse()?);
                 } else {
                     break;
                 }
+            }
+        }
+        let mut args = Vec::new();
+        for arg in tokened_args.into_iter() {
+            if let Ok(value) = expr_to_value_container(&arg) {
+                args.push(Placeholder::ValueContainer(value));
+            } else {
+                args.push(Placeholder::Expression(arg));
             }
         }
 
@@ -52,7 +67,38 @@ impl Parse for ExecuteMacroInput {
 
 fn prepare_setup(input: ExecuteMacroInput) -> TokenStream {
     let script = input.program;
-    let dxb = compile_template(&script, &vec![], CompileOptions::default());
+
+    let placeholder_count = script.chars().filter(|&c| c == '?').count();
+    let arg_count = input.args.len();
+
+    let slot_inserts = input
+        .args
+        .iter()
+        .enumerate()
+        .map(|(i, placeholder)| {
+            let idx = i as u32;
+            match placeholder {
+                Placeholder::ValueContainer(_) => quote! {
+                    slots.insert(#idx, None);
+                },
+                Placeholder::Expression(expr) => quote! {
+                    slots.insert(#idx, Some(ValueContainer::from(#expr)));
+                },
+            }
+        })
+        .collect::<Vec<_>>();
+
+    let placeholders: Vec<Option<ValueContainer>> = input
+        .args
+        .into_iter()
+        .map(|p| match p {
+            Placeholder::ValueContainer(v) => Some(v),
+            Placeholder::Expression(_) => None,
+        })
+        .collect::<Vec<_>>();
+
+    let dxb =
+        compile_template(&script, &placeholders, CompileOptions::default());
     if let Err(e) = dxb {
         return syn::Error::new_spanned(
             script,
@@ -61,16 +107,6 @@ fn prepare_setup(input: ExecuteMacroInput) -> TokenStream {
         .to_compile_error();
     }
     let dxb = dxb.unwrap().0;
-
-    let placeholder_count = script.chars().filter(|&c| c == '?').count();
-    let arg_count = input.args.len();
-
-    let inserts = input.args.iter().enumerate().map(|(i, expr)| {
-        let idx = i as u32;
-        quote! {
-            slots.insert(#idx, Some(ValueContainer::from(#expr)));
-        }
-    });
 
     if placeholder_count != arg_count {
         return syn::Error::new_spanned(
@@ -91,7 +127,7 @@ fn prepare_setup(input: ExecuteMacroInput) -> TokenStream {
         use datex_core::runtime::execution::{ExecutionInput, ExecutionOptions};
 
         let mut slots: HashMap<u32, Option<ValueContainer>> = HashMap::new();
-        #(#inserts)*
+        #(#slot_inserts)*
 
         let runtime_execution_slots = RuntimeExecutionSlots { slots };
         let dxb_body: &'static [u8] = &[#(#dxb),*];

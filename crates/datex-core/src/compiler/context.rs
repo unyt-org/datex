@@ -61,7 +61,7 @@ impl VirtualSlot {
 pub struct CompilationContext {
     pub inserted_value_index: usize,
     pub buffer: Vec<u8>,
-    pub inserted_values: Vec<ValueContainer>,
+    pub inserted_values: Vec<Option<ValueContainer>>,
     /// this flag is set to true if any non-static value is encountered
     pub has_non_static_value: bool,
     pub execution_mode: ExecutionMode,
@@ -93,7 +93,7 @@ impl CompilationContext {
 
     pub fn new(
         buffer: Vec<u8>,
-        inserted_values: Vec<ValueContainer>,
+        inserted_values: Vec<Option<ValueContainer>>,
         execution_mode: ExecutionMode,
     ) -> Self {
         CompilationContext {

@@ -1,4 +1,4 @@
-use datex_core::values::core_values::integer::Integer;
+use datex_core::values::core_values::integer::{Integer, typed_integer::TypedInteger};
 use datex_macros::{
     execute, execute_sync, execute_sync_unchecked, execute_unchecked,
 };
@@ -11,6 +11,9 @@ fn execute_sync() {
 
     let result = execute_sync_unchecked!("1 + ?", 42).unwrap();
     assert_eq!(result, Integer::new(43).into());
+
+    let result = execute_sync_unchecked!("? + ?", x, 42).unwrap();
+    assert_eq!(result, 84.into());
 }
 
 #[tokio::test]
