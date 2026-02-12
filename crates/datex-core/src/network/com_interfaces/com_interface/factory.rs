@@ -41,7 +41,7 @@ impl SocketProperties {
             direction,
             channel_factor,
             direct_endpoint: None,
-            connection_timestamp: crate::time::now_ns(),
+            connection_timestamp: crate::time::now_ms(),
             uuid: ComInterfaceSocketUUID::new(),
         }
     }
@@ -54,7 +54,7 @@ impl SocketProperties {
             direction,
             channel_factor,
             direct_endpoint: Some(endpoint),
-            connection_timestamp: crate::time::now_ns(),
+            connection_timestamp: crate::time::now_ms(),
             uuid: ComInterfaceSocketUUID::new(),
         }
     }
@@ -68,7 +68,7 @@ impl SocketProperties {
             direction,
             channel_factor,
             direct_endpoint: maybe_endpoint,
-            connection_timestamp: crate::time::now_ns(),
+            connection_timestamp: crate::time::now_ms(),
             uuid: ComInterfaceSocketUUID::new(),
         }
     }

@@ -476,7 +476,7 @@ impl RuntimeRunner {
     pub fn new(config: RuntimeConfig) -> RuntimeRunner {
         info!(
             "Runtime initialized - Version {VERSION} Time: {}",
-            crate::time::now_ns()
+            crate::time::now_ms()
         );
 
         let endpoint = config.endpoint.clone().unwrap_or_else(Endpoint::random);

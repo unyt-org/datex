@@ -39,7 +39,7 @@ impl Default for ScopeContext {
         ScopeContext {
             next_section_index: 0,
             next_block_number: 0,
-            keep_alive_timestamp: crate::time::now_ns(),
+            keep_alive_timestamp: crate::time::now_ms(),
             current_queue_sender: None,
             cached_blocks: BTreeMap::new(),
         }

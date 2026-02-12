@@ -1,4 +1,5 @@
-use core::{fmt::Display, time::Duration};
+use core::{fmt::Display};
+use core::time::Duration;
 
 use crate::{
     core_compiler::value_compiler::compile_value_container,
@@ -292,7 +293,7 @@ impl ComHub {
         };
 
         // measure round trip time
-        let start_time = crate::time::Instant::now();
+        let start_time = crate::time::now();
 
         let responses = self
             .send_own_block_await_response(
@@ -300,8 +301,8 @@ impl ComHub {
                 options.response_options,
             )
             .await;
-        let end_time = crate::time::Instant::now();
-        let round_trip_time = end_time - start_time;
+        let end_time = crate::time::now();
+        let round_trip_time = Duration::from_millis((end_time - start_time).as_millis() as u64);
 
         let mut results = vec![];
 

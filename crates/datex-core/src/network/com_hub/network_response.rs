@@ -3,8 +3,9 @@ use crate::{
 };
 use core::{
     fmt::{Display, Formatter},
-    time::Duration,
 };
+use core::time::Duration;
+
 #[derive(Default, PartialEq, Debug)]
 pub enum ResponseResolutionStrategy {
     /// Promise.allSettled

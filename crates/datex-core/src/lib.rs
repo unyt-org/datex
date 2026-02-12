@@ -97,21 +97,32 @@ pub mod crypto {
 pub mod time {
     cfg_if::cfg_if! {
         if #[cfg(target_arch = "wasm32")] {
-            pub use web_time::{Duration, Instant};
+            pub use web_time::{Instant};
         } else if #[cfg(feature = "std")] {
-            pub use std::time::{Duration, Instant};
+            pub use std::time::{Instant};
         } else if #[cfg(feature = "embedded")] {
-            pub use embedded_time::{duration::*, Instant};
+            pub use embassy_time::{Instant};
         } else {
-            pub use crate::stub::time::{Duration, Instant};
+            pub use crate::stub::time::{Instant};
         }
     }
 
-    /// Monotonic nanoseconds since a crate-defined start point.
+    /// Monotonic microseconds since a crate-defined start point.
     #[inline]
-    pub fn now_ns() -> u64 {
-        start_instant().elapsed().as_nanos() as u64
+    pub fn now_us() -> u64 {
+        start_instant().elapsed().as_micros() as u64
     }
+
+    /// Monotonic milliseconds since a crate-defined start point.
+    pub fn now_ms() -> u64 {
+        start_instant().elapsed().as_millis() as u64
+    }
+
+    #[inline]
+    pub fn now() -> Instant {
+        start_instant()
+    }
+
     #[inline]
     pub fn start_instant() -> Instant {
         #[cfg(target_has_atomic = "ptr")]

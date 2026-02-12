@@ -895,7 +895,7 @@ impl ComHub {
             mut block: DXBBlock,
             endpoint: Endpoint,
         ) -> Result<DXBBlock, ComHubError> {
-            let now = crate::time::now_ns();
+            let now = crate::time::now_ms();
             block.routing_header.sender = endpoint;
             block
                 .block_header

@@ -148,7 +148,7 @@ impl Memory {
 
     /// Creates a new unique local PointerAddress.
     pub fn get_new_local_address(&mut self) -> PointerAddress {
-        let timestamp = crate::time::now_ns();
+        let timestamp = crate::time::now_ms();
         // new timestamp, reset counter
         if timestamp != self.last_timestamp {
             self.last_timestamp = timestamp;

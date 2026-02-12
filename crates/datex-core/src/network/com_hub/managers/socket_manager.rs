@@ -226,7 +226,7 @@ impl ComInterfaceSocketManager {
             .push((
                 socket_uuid,
                 DynamicEndpointProperties {
-                    known_since: crate::time::now_ns(),
+                    known_since: crate::time::now_ms(),
                     distance,
                     is_direct,
                     channel_factor,
