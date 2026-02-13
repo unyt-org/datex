@@ -57,6 +57,8 @@ pub mod traits;
 pub mod types;
 pub mod utils;
 pub mod values;
+#[cfg(all(feature = "macro_utils", feature = "std"))]
+pub mod macro_utils;
 
 // reexport macros
 pub use datex_macros_internal as macros;

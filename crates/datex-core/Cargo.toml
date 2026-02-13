@@ -120,6 +120,10 @@ datex-crypto-esp32 = { path = "../datex-crypto-esp32", version = "0.0.1", option
 flexi_logger = { version = "0.31.8", optional = true }
 async-timer = { version = "0.7.4", default-features = false, features = ["no_std"], optional = true}
 
+quote = { version = "1.0", optional = true}
+syn = { version = "2.0", features = ["full"], optional = true }
+proc-macro2 = { version = "1.0", features = ["span-locations"], optional = true }
+
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 wasm-bindgen-futures = { optional = true, version = "0.4.29" }
 gloo-timers = { optional = true, version = "0.3.0", features = ["futures"] }
@@ -190,6 +194,12 @@ no_std = [
     "dep:async-timer"
 ]
 
+macro_utils = [
+    "dep:quote",
+    "dep:syn",
+    "dep:proc-macro2",
+]
+
 # embedded build
 embedded = ["embassy_runtime"]
 esp32 = ["dep:datex-crypto-esp32"]
@@ -245,6 +255,7 @@ std = [
     "dep:datex-crypto-native",
     "dep:flexi_logger",
     "tokio_runtime",
+    "macro_utils"
 ] # use std
 
 debug = ["dep:serde-big-array"]
