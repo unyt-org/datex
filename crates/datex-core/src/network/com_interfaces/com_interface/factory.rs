@@ -1,6 +1,6 @@
 use crate::std_sync::Mutex;
 use core::{async_iter::AsyncIterator, fmt::Debug, pin::Pin};
-
+use futures::channel::oneshot::Sender;
 pub use crate::network::com_hub::managers::com_interface_manager::ComInterfaceAsyncFactoryResult;
 use crate::{
     global::dxb_block::DXBBlock,
@@ -20,6 +20,7 @@ use crate::{
     },
 };
 use serde::de::DeserializeOwned;
+use crate::channel::mpsc::{create_unbounded_channel, UnboundedReceiver};
 
 pub type NewSocketsIterator = Pin<
     Box<dyn AsyncIterator<Item = Result<SocketConfiguration, ()>> + 'static>,
@@ -102,7 +103,7 @@ impl Debug for SocketConfiguration {
 impl SocketConfiguration {
     /// Creates a SocketDataIterator for a given socket with the provided parameters.
     /// Expects both an iterator for incoming data and a send callback for outgoing data.
-    pub fn new<I>(
+    pub fn new_in_out<I>(
         socket_configuration: SocketProperties,
         iter: I,
         send_callback: SendCallback,
@@ -145,6 +146,32 @@ impl SocketConfiguration {
             send_callback: Some(send_callback),
         }
     }
+
+    /// Creates a SocketDataIterator with a combined approach for handling both incoming and outgoing data in the same async generator
+    pub fn new_combined<I>(
+        socket_configuration: SocketProperties,
+        generator_initializer: impl FnOnce(UnboundedReceiver<(DXBBlock, Sender<Result<(), SendFailure>>)>) -> I,
+    ) -> Self
+    where
+        I: AsyncIterator<Item = Result<Vec<u8>, ()>> + 'static,
+    {
+        let (out_sender, out_receiver) = create_unbounded_channel::<(DXBBlock, Sender<Result<(), SendFailure>>)>();
+        let out_sender = Rc::new(Mutex::new(out_sender));
+
+        SocketConfiguration::new_in_out(
+            socket_configuration,
+            generator_initializer(out_receiver),
+            SendCallback::new_async(move |block: DXBBlock| {
+                let out_sender = out_sender.clone();
+                async move {
+                    let (sender, receiver) = futures::channel::oneshot::channel::<Result<(), SendFailure>>();
+                    out_sender.try_lock().unwrap().send((block, sender)).await.unwrap();
+                    receiver.await.unwrap()
+                }
+            })
+        )
+    }
+
 }
 
 /// A callback that is called by the com hub to send data through the interface.

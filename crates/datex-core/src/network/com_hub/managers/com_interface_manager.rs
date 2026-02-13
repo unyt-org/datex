@@ -360,7 +360,7 @@ mod tests {
                     name: Some(self.name),
                     ..<MockSetupData as ComInterfaceSyncFactory>::get_default_properties()
                 },
-                SocketConfiguration::new(
+                SocketConfiguration::new_in_out(
                     SocketProperties::new(InterfaceDirection::InOut, 1),
                     async gen move {
                         // mock socket incoming data iterator

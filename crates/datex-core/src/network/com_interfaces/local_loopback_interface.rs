@@ -32,7 +32,7 @@ impl LocalLoopbackInterfaceSetupData {
         let tx = Arc::new(Mutex::new(tx));
         Ok(ComInterfaceConfiguration::new_single_socket(
             Self::get_default_properties(),
-            SocketConfiguration::new(
+            SocketConfiguration::new_in_out(
                 SocketProperties::new_with_direct_endpoint(
                     InterfaceDirection::InOut,
                     1,

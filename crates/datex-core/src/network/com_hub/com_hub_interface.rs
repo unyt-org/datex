@@ -185,7 +185,7 @@ mod tests {
                 direction: InterfaceDirection::InOut,
                 ..Default::default()
             },
-            SocketConfiguration::new(
+            SocketConfiguration::new_in_out(
                 SocketProperties::new(InterfaceDirection::InOut, 1),
                 async gen move {
                     while let Some(block) = receive_a_to_b.next().await {
@@ -208,7 +208,7 @@ mod tests {
                 direction: InterfaceDirection::InOut,
                 ..Default::default()
             },
-            SocketConfiguration::new(
+            SocketConfiguration::new_in_out(
                 SocketProperties::new(InterfaceDirection::InOut, 1),
                 async gen move {
                     while let Some(block) = receive_b_to_a.next().await {
@@ -270,7 +270,7 @@ mod tests {
     fn test_add_interface_from_configuration() {
         let configuration = ComInterfaceConfiguration::new_single_socket(
             ComInterfaceProperties::default(),
-            SocketConfiguration::new(
+            SocketConfiguration::new_in_out(
                 SocketProperties::new(InterfaceDirection::InOut, 1),
                 async gen move {},
                 SendCallback::new_sync(|_block| {
