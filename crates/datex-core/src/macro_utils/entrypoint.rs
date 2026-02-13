@@ -150,7 +150,7 @@ pub fn datex_main_impl(input: DatexMainInput) -> TokenStream {
         #(#additional_attributes)*
         #(#attrs)*
         #vis #sig {
-            use #core_namespace::runtime::{RuntimeRunner, RuntimeConfig, GlobalRuntimeContext, serde::deserializer};
+            use #core_namespace::{runtime::{RuntimeRunner, RuntimeConfig}, serde::deserializer};
 
             {#setup}
 
@@ -162,7 +162,7 @@ pub fn datex_main_impl(input: DatexMainInput) -> TokenStream {
             let runner = RuntimeRunner::new(config);
             runner.run(async move |#arg_ident| {
                 {
-                    let runtime = #arg_ident;
+                    let runtime = #arg_ident.clone();
                     #init
                 }
                 #body
@@ -174,7 +174,7 @@ pub fn datex_main_impl(input: DatexMainInput) -> TokenStream {
 }
 
 /// Helper function to get the compiled config as a byte array token stream, or None if no config path was provided
-pub fn get_config_compiled_token_stream(parsed_attr: &ParsedAttributes) -> Option<TokenStream> {
+pub fn get_config_compiled_token_stream(parsed_attr: &ParsedAttributes) -> TokenStream {
     // try to get config from config path
     let config = parsed_attr.config.as_ref()
         .map(|path| get_datex_config(path).expect("failed to parse DATEX config file"));
@@ -183,8 +183,9 @@ pub fn get_config_compiled_token_stream(parsed_attr: &ParsedAttributes) -> Optio
 
     config_bytes
         .map(|bytes| quote! {
-            &[#(#bytes),*]
+            Some(&[#(#bytes),*])
         })
+        .unwrap_or_else(|| quote! { None })
 }
 
 
