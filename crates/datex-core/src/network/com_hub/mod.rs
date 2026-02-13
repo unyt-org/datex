@@ -511,12 +511,18 @@ impl ComHub {
 
                 // relay the block to other endpoints
                 if should_relay {
-                    Some(if is_for_own {
+                    let relay_receivers = if is_for_own {
                         // get all receivers that the block must be relayed to
                         self.get_remote_receivers(&all_receivers)
                     } else {
                         all_receivers
-                    })
+                    };
+                    if relay_receivers.is_empty() {
+                        None
+                    }
+                    else {
+                        Some(relay_receivers)
+                    }
                 } else {
                     None
                 }
@@ -573,7 +579,7 @@ impl ComHub {
                 }
                 _ => {
                     self.redirect_block(block, socket_uuid.clone(), is_for_own)
-                        .await;
+                        .await.unwrap(); // TODO: handle error
                 }
             }
         }
