@@ -160,11 +160,11 @@ pub fn datex_main_impl(input: DatexMainInput) -> TokenStream {
             };
 
             let runner = RuntimeRunner::new(config);
+            {
+                let runtime = runner.runtime.clone();
+                #init
+            }
             runner.run(async move |#arg_ident| {
-                {
-                    let runtime = #arg_ident.clone();
-                    #init
-                }
                 #body
             }).await
         }
