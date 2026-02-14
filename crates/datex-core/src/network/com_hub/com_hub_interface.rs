@@ -287,7 +287,7 @@ mod tests {
 
         // add interface
         com_hub.clone().add_interface_from_configuration(configuration, InterfacePriority::default()).unwrap();
-        assert_eq!(com_hub.interfaces_manager.interfaces.borrow().get(&uuid).unwrap().0, properties);
+        assert_eq!(com_hub.interfaces_manager.interfaces.borrow().get(&uuid).unwrap().properties, properties);
 
         // remove interface
         com_hub.remove_interface(uuid.clone()).unwrap();

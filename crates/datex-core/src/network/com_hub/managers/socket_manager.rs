@@ -504,13 +504,15 @@ impl ComInterfaceSocketManager {
             .retain(|(uuid, _, _)| uuid != socket_uuid);
 
         // remove socket from interface socket mapping
-        if let Some(socket_uuids) = self
+        let mut socket_uuids_borrow = self
             .socket_uuids_by_interface_uuid
-            .borrow_mut()
+            .borrow_mut();
+        if let Some(socket_uuids) = socket_uuids_borrow
             .get_mut(&interface_uuid)
         {
             socket_uuids.remove(socket_uuid);
             if socket_uuids.is_empty() {
+                drop(socket_uuids_borrow);
                 self.socket_uuids_by_interface_uuid
                     .borrow_mut()
                     .remove(&interface_uuid);

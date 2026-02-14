@@ -219,12 +219,9 @@ impl ComHub {
         com_interface_configuration: ComInterfaceConfiguration,
         priority: InterfacePriority,
     ) {
-        let com_interface_uuid = com_interface_configuration.uuid().clone();
         self.task_manager
             .register_task(self.clone().handle_sockets_task(
-                com_interface_configuration.new_sockets_iterator,
-                com_interface_uuid,
-                com_interface_configuration.properties.clone(),
+                com_interface_configuration,
                 priority,
             ));
     }
@@ -232,11 +229,13 @@ impl ComHub {
     /// Iterates over the given NewSocketsIterator for an interface and handles each socket
     async fn handle_sockets_task(
         self: Rc<Self>,
-        mut iterator: NewSocketsIterator,
-        com_interface_uuid: ComInterfaceUUID,
-        com_interface_properties: Rc<ComInterfaceProperties>,
+        com_interface_configuration: ComInterfaceConfiguration,
         interface_priority: InterfacePriority,
     ) {
+        let com_interface_uuid = com_interface_configuration.uuid();
+        let mut iterator = com_interface_configuration.new_sockets_iterator;
+        let com_interface_properties = com_interface_configuration.properties;
+
         while let Some(socket) = async_next_pin_box(&mut iterator).await {
             match socket {
                 Ok(socket_configuration) => {
@@ -266,6 +265,7 @@ impl ComHub {
                             self_clone.clone().handle_socket_task(
                                 socket_properties,
                                 socket_iterator,
+                                com_interface_uuid.clone(),
                             ),
                         );
                     }
@@ -285,8 +285,8 @@ impl ComHub {
             }
         }
 
-        // interface closed, remove
-        // TODO
+        // indicate that interface is no longer waiting for new socket connections (e.g. for single socket interfaces)
+        self.interfaces_manager.set_interface_waiting_for_socket_connections(&com_interface_uuid, false);
     }
 
     /// Sends a hello block via the given socket if the socket direction allows sending and auto_identify is enabled for the interface
@@ -313,6 +313,7 @@ impl ComHub {
         self: Rc<Self>,
         socket_properties: SocketProperties,
         mut socket_iterator: SocketDataIterator,
+        com_interface_uuid: ComInterfaceUUID
     ) {
         let (mut bytes_sender, block_iterator) = BlockCollector::create();
         let mut block_iterator = Box::pin(block_iterator);
@@ -329,8 +330,8 @@ impl ComHub {
                                 break;
                             }
                         }
-                        Err(e) => {
-                            error!("Error receiving data from socket iterator: {:?}", e);
+                        Err(_) => {
+                            error!("Socket {} failed, removing socket", socket_properties.uuid());
                             break;
                         }
                     }
@@ -345,6 +346,14 @@ impl ComHub {
 
         // socket closed, remove
         self.socket_manager.delete_socket(&socket_properties.uuid());
+
+        // TODO: check if any other sockets are still registered for the interface, if not
+        // and if interface is no longer waiting for new socket connections (e.g. single socket interface), also remove the interface
+        if !self.interfaces_manager.is_interface_waiting_for_socket_connections(&com_interface_uuid) {
+            self.interfaces_manager.destroy_interface(&com_interface_uuid).unwrap();
+            info!("Destroyed interface {} as it is no longer waiting for socket connections", com_interface_uuid);
+            // TODO: reconnect logic?
+        }
     }
 
     /// Handles an incoming block from a socket (async)

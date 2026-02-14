@@ -21,7 +21,7 @@ use core::{cell::RefCell, pin::Pin};
 use log::info;
 
 type InterfaceMap =
-    HashMap<ComInterfaceUUID, (Rc<ComInterfaceProperties>, InterfacePriority)>;
+    HashMap<ComInterfaceUUID, InterfaceInfo>;
 
 pub type SyncComInterfaceImplementationFactoryFn =
     fn(
@@ -50,6 +50,13 @@ pub enum SyncOrAsyncComInterfaceImplementationFactoryFn {
     Sync(SyncComInterfaceImplementationFactoryFn),
     Async(AsyncComInterfaceImplementationFactoryFn),
     Dyn(DynInterfaceImplementationFactoryFn),
+}
+
+#[derive(Debug)]
+pub struct InterfaceInfo {
+    pub properties: Rc<ComInterfaceProperties>,
+    pub priority: InterfacePriority,
+    pub is_waiting_for_socket_connections: bool,
 }
 
 #[derive(Default)]
@@ -248,7 +255,7 @@ impl ComInterfaceManager {
         let interfaces = self.interfaces.borrow();
         interfaces
             .get(uuid)
-            .map(|(properties, _)| properties.clone())
+            .map(|InterfaceInfo{properties, ..}| properties.clone())
     }
 
     /// Returns the com interface  properties for a given UUID
@@ -262,6 +269,39 @@ impl ComInterfaceManager {
             .unwrap_or_else(|| {
                 core::panic!("Interface for uuid {interface_uuid} not found")
             })
+    }
+
+    /// Checks if the interface with the given UUID is currently waiting for a socket connection
+    pub fn is_interface_waiting_for_socket_connections(
+        &self,
+        interface_uuid: &ComInterfaceUUID,
+    ) -> bool {
+        if let Some(interface_info) = self
+            .interfaces
+            .borrow()
+            .get(interface_uuid)
+        {
+            interface_info.is_waiting_for_socket_connections
+        } else {
+            core::panic!("Interface for uuid {interface_uuid} not found");
+        }
+    }
+
+    /// Sets the waiting for socket connection state of the interface with the given UUID
+    pub fn set_interface_waiting_for_socket_connections(
+        &self,
+        interface_uuid: &ComInterfaceUUID,
+        is_waiting: bool,
+    ) {
+        if let Some(interface_info) = self
+            .interfaces
+            .borrow_mut()
+            .get_mut(interface_uuid)
+        {
+            interface_info.is_waiting_for_socket_connections = is_waiting;
+        } else {
+            core::panic!("Interface for uuid {interface_uuid} not found");
+        }
     }
 
     /// Adds an interface to the manager, checking for duplicates
@@ -286,7 +326,11 @@ impl ComInterfaceManager {
 
         self.interfaces
             .borrow_mut()
-            .insert(uuid.clone(), (properties, priority));
+            .insert(uuid.clone(), InterfaceInfo{
+                properties,
+                priority,
+                is_waiting_for_socket_connections: true
+            });
 
         Ok(())
     }
@@ -299,7 +343,7 @@ impl ComInterfaceManager {
         self.interfaces
             .borrow()
             .get(interface_uuid)
-            .map(|(_, priority)| *priority)
+            .map(|(InterfaceInfo { priority, ..})| *priority)
     }
 
     /// User can proactively remove an interface from the hub.
@@ -309,12 +353,13 @@ impl ComInterfaceManager {
         interface_uuid: &ComInterfaceUUID,
     ) -> Result<(), ComHubError> {
         info!("Removing interface {interface_uuid}");
-        let _interface = &mut self
-            .interfaces
-            .borrow_mut()
-            .get_mut(interface_uuid)
-            .ok_or(ComHubError::InterfaceDoesNotExist)?
-            .0;
+        // let _interface = &mut self
+        //     .interfaces
+        //     .borrow_mut()
+        //     .get_mut(interface_uuid)
+        //     .ok_or(ComHubError::InterfaceDoesNotExist)?
+        //     .0;
+        // TODO: destroy?
 
         self.cleanup_interface(interface_uuid)?;
 

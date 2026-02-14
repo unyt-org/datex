@@ -23,6 +23,7 @@ use crate::prelude::*;
 use core::fmt::Display;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
+use crate::network::com_hub::managers::com_interface_manager::InterfaceInfo;
 
 #[derive(Serialize, Deserialize, Debug)]
 #[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
@@ -46,6 +47,7 @@ pub struct ComHubMetadataInterface {
     pub uuid: String,
     pub properties: ComInterfaceProperties,
     pub sockets: Vec<ComHubMetadataInterfaceSocket>,
+    pub is_waiting_for_socket_connections: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -67,9 +69,14 @@ impl Display for ComHubMetadata {
         for interface in &self.interfaces {
             writeln!(
                 f,
-                "  {}/{}{}:",
+                "  {}/{}{}{}:",
                 interface.properties.interface_type,
                 interface.properties.channel,
+                if interface.is_waiting_for_socket_connections {
+                    " [accepting connections]"
+                } else {
+                    ""
+                },
                 interface
                     .properties
                     .name
@@ -182,15 +189,16 @@ impl ComHub {
             }
         }
 
-        for (uuid, (interface_properties, _)) in
+        for (uuid, InterfaceInfo {properties, is_waiting_for_socket_connections, ..}) in
             self.interfaces_manager.interfaces.borrow().iter()
         {
             metadata.interfaces.push(ComHubMetadataInterface {
                 uuid: uuid.to_string(),
-                properties: interface_properties.as_ref().clone(),
+                properties: properties.as_ref().clone(),
                 sockets: sockets_by_com_interface_uuid
                     .remove(uuid)
                     .unwrap_or_default(),
+                is_waiting_for_socket_connections: *is_waiting_for_socket_connections,
             });
         }
 

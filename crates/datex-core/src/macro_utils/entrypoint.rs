@@ -162,7 +162,7 @@ pub fn datex_main_impl_with_config(input: DatexMainInput, config: Option<Runtime
         #vis #sig {
             use #core_namespace::{runtime::{RuntimeRunner, RuntimeConfig}, serde::deserializer};
 
-            {#setup}
+            #setup
 
             let config = match (#config_bytes) {
                 Some(bytes) => deserializer::from_bytes(bytes).unwrap(),
