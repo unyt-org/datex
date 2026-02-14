@@ -545,6 +545,13 @@ impl AstToSourceCodeConverter {
                     self.type_expression_to_source_code(type_expr)
                 )
             }
+            DatexExpressionData::Compile(compile_expr) => {
+                ast_fmt!(
+                    &self,
+                    "compile (%n{}%n)",
+                    self.format(&compile_expr.expression)
+                )
+            }
             DatexExpressionData::Recover => unreachable!(
                 "DatexExpressionData::Recover should not appear in a valid AST"
             ),
