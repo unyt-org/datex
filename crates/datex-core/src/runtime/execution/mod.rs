@@ -667,8 +667,14 @@ mod tests {
     }
 
     #[test]
-    fn endpoint_slot() {
+    fn endpoint_slot_no_runtime() {
         let result = execute_datex_script_debug_with_error("#endpoint");
+        assert_matches!(result.unwrap_err(), ExecutionError::RequiresRuntime);
+    }
+
+    #[test]
+    fn env_slot_no_runtime() {
+        let result = execute_datex_script_debug_with_error("#env");
         assert_matches!(result.unwrap_err(), ExecutionError::RequiresRuntime);
     }
 

@@ -613,22 +613,20 @@ where
     }
 }
 
-impl From<IndexMap<ValueContainer, ValueContainer, RandomState>> for Map {
-    fn from(
-        map: IndexMap<ValueContainer, ValueContainer, RandomState>,
-    ) -> Self {
-        Map::new(map)
-    }
-}
-impl From<IndexMap<String, ValueContainer, RandomState>> for Map {
-    fn from(map: IndexMap<String, ValueContainer, RandomState>) -> Self {
+impl<K,V> From<IndexMap<K, V, RandomState>> for Map
+where
+    K: Into<ValueContainer>,
+    V: Into<ValueContainer>,
+{
+    fn from(map: IndexMap<K, V, RandomState>) -> Self {
         Map::new(
             map.into_iter()
-                .map(|(k, v)| (k.into(), v))
+                .map(|(k, v)| (k.into(), v.into()))
                 .collect::<IndexMap<ValueContainer, ValueContainer, RandomState>>(),
         )
     }
 }
+
 
 impl TryFrom<CoreValue> for Map {
     type Error = String;

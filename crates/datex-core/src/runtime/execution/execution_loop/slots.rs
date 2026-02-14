@@ -6,6 +6,7 @@ use crate::{
     values::value_container::ValueContainer,
 };
 use num_enum::TryFromPrimitive;
+use crate::values::core_values::map::Map;
 
 pub fn get_slot_value_mut(
     runtime_state: &mut RuntimeExecutionState,
@@ -33,6 +34,7 @@ pub fn get_internal_slot_value(
             InternalSlot::ENDPOINT => {
                 ValueContainer::from(runtime.endpoint.clone())
             }
+            InternalSlot::ENV => ValueContainer::from(Map::from(runtime.env.get_env())),
         };
         Ok(res)
     } else {

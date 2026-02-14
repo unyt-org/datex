@@ -123,6 +123,7 @@ async-timer = { version = "0.7.4", default-features = false, features = ["no_std
 quote = { version = "1.0", optional = true}
 syn = { version = "2.0", features = ["full"], optional = true }
 proc-macro2 = { version = "1.0", features = ["span-locations"], optional = true }
+dotenvy = { version = "0.15.7", optional = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 wasm-bindgen-futures = { optional = true, version = "0.4.29" }
@@ -255,7 +256,8 @@ std = [
     "dep:datex-crypto-native",
     "dep:flexi_logger",
     "tokio_runtime",
-    "macro_utils"
+    "macro_utils",
+    "dep:dotenvy"
 ] # use std
 
 debug = ["dep:serde-big-array"]

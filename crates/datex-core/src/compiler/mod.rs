@@ -1251,6 +1251,15 @@ fn compile_expression(
                         InternalSlot::ENDPOINT as u32,
                     );
                 }
+                "env" => {
+                    compilation_context.append_instruction_code(
+                        InstructionCode::GET_INTERNAL_SLOT,
+                    );
+                    append_u32(
+                        &mut compilation_context.buffer,
+                        InternalSlot::ENV as u32,
+                    );
+                }
                 "core" => append_get_ref(
                     &mut compilation_context.buffer,
                     &PointerAddress::from(CoreLibPointerId::Core),
