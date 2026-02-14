@@ -38,6 +38,7 @@ impl Parser {
             Token::Function | Token::Procedure => {
                 self.parse_callable_definition()?
             }
+            Token::Compile => self.parse_compile_expression()?,
 
             Token::Placeholder => self.parse_placeholder()?,
 

@@ -32,6 +32,7 @@ impl Parser {
             t @ Token::True
             | t @ Token::False
             | t @ Token::TypeDeclaration
+            | t @ Token::Compile
             | t @ Token::If
             | t @ Token::Else
             | t @ Token::Is

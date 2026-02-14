@@ -115,6 +115,9 @@ pub enum DatexExpressionData {
     /// reference access, e.g. &<ABCDEF>
     GetReference(PointerAddress),
 
+    /// compile ( ... )
+    Compile(CompileExpression),
+
     /// Conditional expression, e.g. if (true) { 1 } else { 2 }
     Conditional(Conditional),
 
@@ -462,6 +465,11 @@ pub struct VariableAssignment {
     pub id: Option<VariableId>,
     pub name: String,
     pub operator: AssignmentOperator,
+    pub expression: Box<DatexExpression>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct CompileExpression {
     pub expression: Box<DatexExpression>,
 }
 

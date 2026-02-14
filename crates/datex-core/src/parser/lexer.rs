@@ -226,6 +226,7 @@ pub enum Token {
     #[token("procedure")] Procedure,
     #[token("if")] If,
     #[token("else")] Else,
+    #[token("compile")] Compile,
 
     #[token("type")] TypeDeclaration,
     #[token("type<")] TypeExpressionStart,
@@ -349,6 +350,7 @@ impl Token {
             Token::Infinity => Some("infinity"),
             Token::Nan => Some("nan"),
             Token::TypeDeclaration => Some("type"),
+            Token::Compile => Some("compile"),
             Token::TypeExpressionStart => Some("type<"),
             Token::TypeAlias => Some("typealias"),
             Token::MutRef => Some("&mut"),

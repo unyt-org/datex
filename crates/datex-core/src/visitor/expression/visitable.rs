@@ -319,6 +319,9 @@ impl<E> VisitableExpression<E> for DatexExpression {
             DatexExpressionData::RemoteExecution(remote_execution) => {
                 remote_execution.walk_children(visitor)
             }
+            DatexExpressionData::Compile(compile_expression) => {
+                compile_expression.expression.walk_children(visitor)
+            }
 
             DatexExpressionData::Range(range) => range.walk_children(visitor),
 

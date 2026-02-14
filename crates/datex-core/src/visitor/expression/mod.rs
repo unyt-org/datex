@@ -24,6 +24,7 @@ use crate::{
     },
 };
 use core::ops::Range;
+use crate::ast::expressions::CompileExpression;
 
 pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
     /// Handle expression error
@@ -178,6 +179,9 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
             DatexExpressionData::Noop => Ok(VisitAction::SkipChildren),
             DatexExpressionData::NativeImplementationIndicator => {
                 Ok(VisitAction::SkipChildren)
+            }
+            DatexExpressionData::Compile(compile_expression) => {
+                self.visit_compile_expression(compile_expression, &expr.span)
             }
         };
 
@@ -374,6 +378,16 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
     ) -> ExpressionVisitResult<E> {
         let _ = span;
         let _ = function_declaration;
+        Ok(VisitAction::VisitChildren)
+    }
+
+    fn visit_compile_expression(
+        &mut self,
+        compile_expression: &mut CompileExpression,
+        span: &Range<usize>,
+    ) -> ExpressionVisitResult<E> {
+        let _ = span;
+        let _ = compile_expression;
         Ok(VisitAction::VisitChildren)
     }
 

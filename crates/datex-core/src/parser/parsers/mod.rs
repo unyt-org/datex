@@ -10,3 +10,4 @@ pub mod statements;
 pub mod type_declaration;
 pub mod type_expressions;
 pub mod variable_declaration;
+pub mod compile;
