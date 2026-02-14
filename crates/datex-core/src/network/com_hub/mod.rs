@@ -321,6 +321,9 @@ impl ComHub {
         loop {
             select! {
                 // receive new block data from socket
+                // note: the socket task does not exit when the socket iterator finishes, it still
+                // waits for outgoing blocks to send via the block iterator.
+                // To force the socket to close, the socket iterator must yield an error.
                 Some(data) = async_next_pin_box(&mut socket_iterator).fuse() => {
                     match data {
                         Ok(data) => {
@@ -331,7 +334,7 @@ impl ComHub {
                             }
                         }
                         Err(_) => {
-                            error!("Socket {} failed, removing socket", socket_properties.uuid());
+                            error!("Socket {} closed, removing socket", socket_properties.uuid());
                             break;
                         }
                     }
