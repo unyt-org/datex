@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use proc_macro2::{Span, TokenStream};
 use quote::quote;
 use std::{fs, env, str::FromStr};
-use syn::{FnArg, Ident, ItemFn, LitStr, Pat, PatIdent, Token, parse::{Parse, ParseStream}, Signature, Attribute};
+use syn::{FnArg, Ident, ItemFn, LitStr, Pat, PatIdent, Token, parse::{Parse, ParseStream}, Signature, Attribute, Type};
 use crate::compiler::{compile_script, CompileOptions};
 use crate::runtime::RuntimeConfig;
 use crate::serde::deserializer::{from_dx_file, DatexDeserializer};
@@ -122,7 +122,7 @@ pub fn datex_main_impl(input: DatexMainInput) -> TokenStream {
             .to_compile_error();
     }
 
-    let arg_ident = match get_arg_ident(0, &input.func, "expected an identifier argument like `runtime: Runtime`") {
+    let (runtime_arg_ident, runtime_arg_type) = match get_arg_ident_and_type(0, &input.func, "expected an identifier argument like `runtime: Runtime`") {
         Ok(ident) => ident,
         Err(err) => return err.to_compile_error(),
     };
@@ -164,7 +164,7 @@ pub fn datex_main_impl(input: DatexMainInput) -> TokenStream {
                 let runtime = runner.runtime.clone();
                 #init
             }
-            runner.run(async move |#arg_ident| {
+            runner.run(async move |#runtime_arg_ident: #runtime_arg_type| {
                 #body
             }).await
         }
@@ -189,11 +189,11 @@ pub fn get_config_compiled_token_stream(parsed_attr: &ParsedAttributes) -> Token
 }
 
 
-/// Helper function to get the identifier of the argument at the given index, or return a syn::Error if it's not an identifier or if it's a receiver (self)
-pub fn get_arg_ident(index: usize, func: &ItemFn, err_msg: &'static str) -> Result<Ident, syn::Error> {
+/// Helper function to get the identifier and type of the argument at the given index, or return a syn::Error if it's not an identifier or if it's a receiver (self)
+pub fn get_arg_ident_and_type(index: usize, func: &ItemFn, err_msg: &'static str) -> Result<(Ident, Box<Type>), syn::Error> {
     match func.sig.inputs.get(index).unwrap() {
         FnArg::Typed(pat_ty) => match &*pat_ty.pat {
-            Pat::Ident(PatIdent { ident, .. }) => Ok(ident.clone()),
+            Pat::Ident(PatIdent { ident, .. }) => Ok((ident.clone(), pat_ty.ty.clone())),
             other => {
                 Err(syn::Error::new_spanned(
                     other,
