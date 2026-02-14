@@ -52,6 +52,7 @@ pub fn datex_main(attr: TokenStream, item: TokenStream) -> TokenStream {
         datex_core_namespace: "datex_core",
         setup: None,
         init: None,
+        pre_body: None,
         additional_attributes: vec![parse_quote! {#[tokio::main]}],
         custom_main_inputs: vec![],
         enforce_main_name: false,

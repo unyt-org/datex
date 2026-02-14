@@ -4,10 +4,11 @@ use proc_macro2::{Span, TokenStream};
 use quote::quote;
 use std::{fs, env, str::FromStr};
 use syn::{FnArg, Ident, ItemFn, LitStr, Pat, PatIdent, Token, parse::{Parse, ParseStream}, Signature, Attribute, Type};
-use crate::compiler::{compile_script, CompileOptions};
+use crate::compiler::{compile_script, compile_template, CompileOptions};
 use crate::runtime::RuntimeConfig;
 use crate::serde::deserializer::{from_dx_file, DatexDeserializer};
 use crate::serde::error::DeserializationError;
+use crate::values::value_container::ValueContainer;
 
 #[derive(Debug)]
 pub struct ParsedAttributes {
@@ -93,8 +94,10 @@ pub struct DatexMainInput<'a> {
     pub datex_core_namespace: &'a str,
     /// optional setup code to run before creating the runtime, e.g. for setting environment variables
     pub setup: Option<TokenStream>,
-    /// optional initialization code to run after creating the runtime but before running the main function body
+    /// optional initialization code to run after creating, but before starting the runtime
     pub init: Option<TokenStream>,
+    /// optional code to run before the main function body, after the runtime has been started
+    pub pre_body: Option<TokenStream>,
     /// additional attributes to add to the generated main function
     pub additional_attributes: Vec<Attribute>,
     /// custom input arguments for the main function, e.g. for providing additional dependencies
@@ -104,14 +107,21 @@ pub struct DatexMainInput<'a> {
 }
 
 /// Main implementation function for the datex_main macro
-///
 pub fn datex_main_impl(input: DatexMainInput) -> TokenStream {
+    let config = get_config(&input.parsed_attributes);
+    datex_main_impl_with_config(input, config)
+}
+
+/// Main implementation function for the datex_main macro, with a provided config
+pub fn datex_main_impl_with_config(input: DatexMainInput, config: Option<RuntimeConfig>) -> TokenStream {
+    let config_bytes = get_config_compiled_token_stream(config);
+
     if input.func.sig.asyncness.is_none() {
         return syn::Error::new_spanned(
             input.func.sig.fn_token,
             "the function must be async",
         )
-            .to_compile_error();
+        .to_compile_error();
     }
 
     if input.enforce_main_name && input.func.sig.ident != "main" {
@@ -124,7 +134,7 @@ pub fn datex_main_impl(input: DatexMainInput) -> TokenStream {
 
     let (runtime_arg_ident, runtime_arg_type) = match get_arg_ident_and_type(0, &input.func, "expected an identifier argument like `runtime: Runtime`") {
         Ok(ident) => ident,
-        Err(err) => return err.to_compile_error(),
+        Err(err) => return err.to_compile_error()
     };
 
     let ItemFn {
@@ -139,14 +149,14 @@ pub fn datex_main_impl(input: DatexMainInput) -> TokenStream {
         sig.inputs.push(input);
     }
 
-    let config_bytes = get_config_compiled_token_stream(&input.parsed_attributes);
     let core_namespace = syn::parse_str::<syn::Path>(input.datex_core_namespace).expect("invalid datex_core namespace");
 
     let additional_attributes = input.additional_attributes;
     let setup = input.setup;
     let init = input.init;
+    let pre_body = input.pre_body;
 
-    let output = quote! {
+    quote! {
         #(#additional_attributes)*
         #(#attrs)*
         #vis #sig {
@@ -165,26 +175,30 @@ pub fn datex_main_impl(input: DatexMainInput) -> TokenStream {
                 #init
             }
             runner.run(async move |#runtime_arg_ident: #runtime_arg_type| {
-                #body
+                #pre_body
+                {
+                    #body
+                }
             }).await
         }
-    };
+    }
+}
 
-    output
+pub fn get_config(parsed_attr: &ParsedAttributes) -> Option<RuntimeConfig> {
+    // try to get config from config path
+    parsed_attr.config.as_ref()
+        .map(|path| get_datex_config(path).expect("failed to parse DATEX config file"))
 }
 
 /// Helper function to get the compiled config as a byte array token stream, or None if no config path was provided
-pub fn get_config_compiled_token_stream(parsed_attr: &ParsedAttributes) -> TokenStream {
-    // try to get config from config path
-    let config = parsed_attr.config.as_ref()
-        .map(|path| get_datex_config(path).expect("failed to parse DATEX config file"));
-    let config_bytes = parsed_attr.config.as_ref()
-        .map(|path| compile_datex_config(path));
+pub fn get_config_compiled_token_stream(config: Option<RuntimeConfig>) -> TokenStream {
+    let config_bytes = config.as_ref()
+        .map(|config| compile_datex_config(config));
 
     config_bytes
         .map(|bytes| quote! {
-            Some(&[#(#bytes),*])
-        })
+                Some(&[#(#bytes),*])
+            })
         .unwrap_or_else(|| quote! { None })
 }
 
@@ -216,8 +230,7 @@ fn get_datex_config(path: &PathBuf) -> Result<RuntimeConfig, DeserializationErro
     Ok(config)
 }
 
-fn compile_datex_config(path: &PathBuf) -> Vec<u8> {
-    let config_content = fs::read_to_string(path).expect("failed to read DATEX config file");
-    let (dxb, _) = compile_script(&config_content, CompileOptions::default()).expect("failed to compile DATEX config file");
+fn compile_datex_config(config: &RuntimeConfig) -> Vec<u8> {
+    let (dxb, _) = compile_template("?", &[Some(ValueContainer::from_serializable(config).unwrap())], CompileOptions::default()).expect("failed to compile DATEX config file");
     dxb
 }
