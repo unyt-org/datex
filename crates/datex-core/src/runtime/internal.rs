@@ -5,7 +5,6 @@ use core::slice;
 use core::cell::RefCell;
 use crate::collections::HashMap;
 use crate::time::Instant;
-use indexmap::IndexMap;
 use log::{debug, error, info};
 use crate::channel::mpsc::UnboundedReceiver;
 use crate::global::dxb_block::{DXBBlock, IncomingEndpointContextSectionId, IncomingSection, OutgoingContextId};
@@ -15,7 +14,6 @@ use crate::global::protocol_structures::routing_header::RoutingHeader;
 use crate::network::com_hub::ComHub;
 use crate::network::com_hub::network_response::ResponseOptions;
 use crate::runtime::{RuntimeConfig, RuntimeConfigInterface};
-use crate::runtime::env::RuntimeEnv;
 use crate::runtime::execution::context::{ExecutionContext, ExecutionMode, RemoteExecutionContext, ScriptExecutionError};
 use crate::runtime::execution::ExecutionError;
 use crate::runtime::memory::Memory;
@@ -29,9 +27,7 @@ pub struct RuntimeInternal {
     pub com_hub: Rc<ComHub>,
     pub endpoint: Endpoint,
     pub config: RuntimeConfig,
-
-    pub env: RuntimeEnv,
-
+    
     pub task_manager: TaskManager,
 
     // receiver for incoming sections from com hub
@@ -342,5 +338,9 @@ impl RuntimeInternal {
             end_execution,
         )
             .await
+    }
+    
+    pub fn get_env(&self) -> HashMap<String, String> {
+        self.config.env.clone().unwrap_or_default()
     }
 }

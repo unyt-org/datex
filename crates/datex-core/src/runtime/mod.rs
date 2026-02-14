@@ -30,7 +30,6 @@ pub mod memory;
 mod runner;
 mod config;
 mod internal;
-mod env;
 
 pub use runner::*;
 pub use config::*;

@@ -11,7 +11,6 @@ use crate::channel::mpsc::create_unbounded_channel;
 use crate::global::dxb_block::IncomingSection;
 use crate::network::com_hub::ComHub;
 use crate::runtime::{Runtime, RuntimeConfig, RuntimeInternal, VERSION};
-use crate::runtime::env::RuntimeEnv;
 use crate::runtime::memory::Memory;
 use crate::utils::task_manager::TaskManager;
 use crate::values::core_values::endpoint::Endpoint;
@@ -53,7 +52,6 @@ impl RuntimeRunner {
                     incoming_sections_receiver,
                 ),
                 execution_contexts: RefCell::new(HashMap::new()),
-                env: RuntimeEnv::default()
             }),
         };
         runtime.init_local_loopback_interface();
