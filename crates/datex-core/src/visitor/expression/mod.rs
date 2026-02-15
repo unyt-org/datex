@@ -627,7 +627,7 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
 
     fn visit_range(
         &mut self,
-        range: &crate::ast::expressions::RangeDeclaration,
+        range: &mut crate::ast::expressions::RangeDeclaration,
         span: &Range<usize>,
     ) -> ExpressionVisitResult<E> {
         let _ = span;

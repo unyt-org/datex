@@ -50,7 +50,10 @@ use crate::{
             yield_unwrap,
         },
     },
-    types::definition::TypeDefinition,
+    types::{
+        definition::TypeDefinition,
+        structural_type_definition::StructuralTypeDefinition,
+    },
     utils::buffers::append_u32,
     values::{
         core_value::CoreValue,
@@ -526,6 +529,7 @@ pub fn inner_execution_loop(
                             // NOTE: make sure that each possible match case is either implemented in the default collection or here
                             // If an instruction is implemented in the default collection, it should be marked as unreachable!() here
                             TypeInstruction::List(_)
+                            | TypeInstruction::Range
                             | TypeInstruction::ImplType(_) => unreachable!(),
                         })
                     } else {
@@ -1115,6 +1119,23 @@ pub fn inner_execution_loop(
                                             mutability.clone(),
                                         )
                                         .into()
+                                    }
+                                    TypeInstruction::Range => {
+                                        let type_start =
+                                            collected_results.pop_type_result();
+                                        let type_end =
+                                            collected_results.pop_type_result();
+                                        let x = Type::from(
+                                            TypeDefinition::structural(
+                                                StructuralTypeDefinition::Range(
+                                                    (
+                                                        Box::new(type_start),
+                                                        Box::new(type_end),
+                                                    ),
+                                                ),
+                                            ),
+                                        );
+                                        x.into()
                                     }
                                     _ => todo!("#649 Undescribed by author."),
                                 }

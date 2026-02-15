@@ -1,4 +1,4 @@
-use crate::prelude::*;
+use crate::{ast::type_expressions::RangeTypeExpr, prelude::*};
 use core::ops::Range;
 
 use crate::{
@@ -122,6 +122,9 @@ pub trait TypeExpressionVisitor<E>: Sized {
             }
             TypeExpressionData::Identifier(literal) => {
                 self.visit_literal_type(literal, &expr.span)
+            }
+            TypeExpressionData::Range(range) => {
+                self.visit_range_type(range, &expr.span)
             }
             TypeExpressionData::Recover => {
                 unreachable!("Recover expression should not be visited")
@@ -414,5 +417,15 @@ pub trait TypeExpressionVisitor<E>: Sized {
         let _ = span;
         let _ = var_access;
         Ok(VisitAction::SkipChildren)
+    }
+
+    fn visit_range_type(
+        &mut self,
+        range: &mut RangeTypeExpr,
+        span: &Range<usize>,
+    ) -> TypeExpressionVisitResult<E> {
+        let _ = span;
+        let _ = range;
+        Ok(VisitAction::VisitChildren)
     }
 }

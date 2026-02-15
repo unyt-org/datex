@@ -48,6 +48,8 @@ pub enum TypeExpressionData {
     // size known to compile time, arbitrary types
     StructuralList(StructuralList),
 
+    Range(RangeTypeExpr),
+
     // [text; 3], integer[10]
     // fixed size and known to compile time, only one type
     FixedSizeList(FixedSizeList),
@@ -162,4 +164,10 @@ pub struct TypeVariantAccess {
     pub name: String,
     pub variant: String,
     pub base: Option<ResolvedVariable>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct RangeTypeExpr {
+    pub start: Box<TypeExpression>,
+    pub end: Box<TypeExpression>,
 }

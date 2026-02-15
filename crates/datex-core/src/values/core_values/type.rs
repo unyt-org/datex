@@ -89,6 +89,9 @@ impl Type {
     pub fn ty() -> Self {
         get_core_lib_type(CoreLibPointerId::Type)
     }
+    pub fn range() -> Self {
+        get_core_lib_type(CoreLibPointerId::Range)
+    }
 }
 
 impl Type {
