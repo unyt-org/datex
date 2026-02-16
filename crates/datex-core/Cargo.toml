@@ -70,7 +70,7 @@ serde_with = { version = "3.12.0", default-features = false, features = [
 serde_json = { version = "1.0.140", default-features = false, features = [
     "alloc",
 ] }
-serde-big-array = { version = "0.5.1", optional = true }
+serde-big-array = { version = "0.5.1" }
 realhydroper-lsp = { version = "0.22.0", optional = true, default-features = false, features = [
     "proposed",
 ] }
@@ -99,7 +99,7 @@ syntect = { version = "5.2.0", default-features = false, optional = true, featur
 ] }
 pretty = { version = "0.12.5", optional = true }
 logos = { version = "0.15.0", optional = true }
-internment = { version = "0.8.6", optional = true }
+internment = { version = "0.8.6"  }
 foldhash = { version = "0.2.0", default-features = false }
 spin = { version = "0.10.0", default-features = false, features = [
     "spin_mutex",
@@ -183,8 +183,6 @@ datex-crypto-native = { path = "../datex-crypto-native" }
 # and allow for the minimum needed feature set for most use cases,
 # while still being compatible with std.
 default = [
-    "compiler", # TODO: remove from default features
-    #    "syntax_highlighting_legacy",
     "no_std"
 ]
 
@@ -259,16 +257,15 @@ std = [
     "dep:dotenvy"
 ] # use std
 
-debug = ["dep:serde-big-array"]
+parser = [
+    "dep:logos",
+]
 
-# note: compiler requires std
 compiler = [
-    # "std",
     "dep:ariadne",
     "dep:pretty",
-    "dep:logos",
-    "dep:internment",
     "ast",
+    "parser"
 ]
 
 webrtc = ["dep:webrtc"]

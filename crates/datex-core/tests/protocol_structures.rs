@@ -102,7 +102,7 @@ pub async fn parse_dxb_block() {
     assert_eq!(bytes, new_bytes);
 }
 
-#[cfg(feature = "debug")]
+#[cfg(feature = "std")]
 fn create_dxb_block_artifacts(block: &mut DXBBlock, name: &str) {
     use std::{fs, path::Path};
     let dir_path = Path::new("tests").join("structs").join(name);
@@ -125,7 +125,7 @@ fn create_dxb_block_artifacts(block: &mut DXBBlock, name: &str) {
 }
 
 #[test]
-#[cfg(feature = "debug")]
+#[cfg(feature = "std")]
 #[ignore = "Only run to create artifacts"]
 pub fn dxb_blocks() {
     {

@@ -15,9 +15,13 @@ extern crate core;
 // pub mod network;
 pub mod values;
 
-#[cfg(feature = "decompiler")]
+#[cfg(all(feature = "compiler", feature = "decompiler"))]
 pub mod compiler;
-#[cfg(feature = "decompiler")]
+#[cfg(all(feature = "compiler", feature = "decompiler"))]
 pub mod json;
 
+#[cfg(feature = "parser")]
 pub mod parser;
+
+#[cfg(feature = "compiler")]
+pub mod execution;

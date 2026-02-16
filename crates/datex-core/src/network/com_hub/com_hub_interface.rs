@@ -306,6 +306,7 @@ mod tests {
 
 
     #[tokio::test]
+    #[cfg(any(feature = "std", feature = "allow_unsigned_blocks"))]
     async fn test_connected_interfaces() {
         let (peer_a, peer_b) = get_bidirectionally_coupled_com_hubs();
 
