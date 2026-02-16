@@ -10,7 +10,7 @@ use core::{fmt::Display, prelude::rust_2024::*};
 use modular_bitfield::prelude::*;
 
 // 2 bit
-#[cfg_attr(feature = "debug", derive(serde::Serialize, serde::Deserialize))]
+#[derive(serde::Serialize, serde::Deserialize)]
 #[derive(Debug, PartialEq, Clone, Default, Specifier)]
 #[bits = 2]
 pub enum SignatureType {
@@ -21,7 +21,7 @@ pub enum SignatureType {
 }
 
 // 1 bit
-#[cfg_attr(feature = "debug", derive(serde::Serialize, serde::Deserialize))]
+#[derive(serde::Serialize, serde::Deserialize)]
 #[derive(Debug, PartialEq, Clone, Default, Specifier)]
 pub enum EncryptionType {
     #[default]
@@ -45,7 +45,6 @@ pub struct Flags {
     unused_2: bool,
 }
 
-#[cfg(feature = "debug")]
 mod flags_serde {
     use super::*;
     use crate::global::protocol_structures::routing_header::Flags;
@@ -92,7 +91,7 @@ mod flags_serde {
 }
 
 // 2 bit
-#[cfg_attr(feature = "debug", derive(serde::Serialize, serde::Deserialize))]
+#[derive(serde::Serialize, serde::Deserialize)]
 #[derive(Debug, PartialEq, Clone, Default, Specifier)]
 #[bits = 2]
 pub enum ReceiverType {
@@ -105,13 +104,13 @@ pub enum ReceiverType {
 
 // <count>: 1 byte + (21 byte * count)
 // min: 2 bytes
-#[cfg_attr(feature = "debug", derive(serde::Serialize, serde::Deserialize))]
+#[derive(serde::Serialize, serde::Deserialize)]
 #[derive(Debug, Clone, Default, BinWrite, BinRead, PartialEq)]
 pub struct ReceiverEndpoints {
-    #[cfg_attr(feature = "debug", serde(rename = "number_of_receivers"))]
+    #[serde(rename = "number_of_receivers")]
     pub count: u8,
     #[br(count = count)]
-    #[cfg_attr(feature = "debug", serde(rename = "receivers"))]
+    #[serde(rename = "receivers")]
     pub endpoints: Vec<Endpoint>,
 }
 
@@ -124,20 +123,20 @@ impl ReceiverEndpoints {
 
 // <count>: 1 byte + (21 byte * count) + (512 byte * count)
 // min: 2 bytes
-#[cfg_attr(feature = "debug", derive(serde::Serialize, serde::Deserialize))]
+#[derive(serde::Serialize, serde::Deserialize)]
 #[derive(Debug, Clone, Default, BinWrite, BinRead, PartialEq)]
 pub struct ReceiverEndpointsWithKeys {
-    #[cfg_attr(feature = "debug", serde(rename = "number_of_receivers"))]
+    #[serde(rename = "number_of_receivers")]
     count: u8,
     #[br(count = count)]
-    #[cfg_attr(feature = "debug", serde(rename = "receivers_with_keys"))]
+    #[serde(rename = "receivers_with_keys")]
     pub endpoints_with_keys: Vec<(Endpoint, Key512)>,
 }
 
-#[cfg_attr(feature = "debug", derive(serde::Serialize, serde::Deserialize))]
+#[derive(serde::Serialize, serde::Deserialize)]
 #[derive(Debug, Clone, BinWrite, BinRead, PartialEq)]
 pub struct Key512(
-    #[cfg_attr(feature = "debug", serde(with = "serde_big_array::BigArray"))]
+    #[serde(with = "serde_big_array::BigArray")]
     [u8; 512],
 );
 impl Default for Key512 {
@@ -168,7 +167,7 @@ impl ReceiverEndpointsWithKeys {
 }
 
 // min: 11 byte + 2 byte + 21 byte + 1 byte = 35 bytes
-#[cfg_attr(feature = "debug", derive(serde::Serialize, serde::Deserialize))]
+#[derive(serde::Serialize, serde::Deserialize)]
 #[derive(Debug, Clone, BinWrite, BinRead, PartialEq)]
 #[brw(little, magic = b"\x01\x64")]
 pub struct RoutingHeader {
@@ -188,10 +187,10 @@ pub struct RoutingHeader {
     #[brw(if(flags.receiver_type() == ReceiverType::Pointer))]
     receivers_pointer_id: Option<RawFullPointerAddress>,
     #[brw(if(flags.receiver_type() == ReceiverType::Receivers))]
-    #[cfg_attr(feature = "debug", serde(flatten))]
+    #[serde(flatten)]
     receivers_endpoints: Option<ReceiverEndpoints>,
     #[brw(if(flags.receiver_type() == ReceiverType::ReceiversWithKeys))]
-    #[cfg_attr(feature = "debug", serde(flatten))]
+    #[serde(flatten)]
     receivers_endpoints_with_keys: Option<ReceiverEndpointsWithKeys>,
 }
 

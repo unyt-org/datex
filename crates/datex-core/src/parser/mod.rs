@@ -4,7 +4,6 @@ use crate::{
         spanned::Spanned,
         type_expressions::{TypeExpression, TypeExpressionData},
     },
-    compiler::error::{ErrorCollector, MaybeAction, collect_or_pass_error},
     parser::{
         errors::{ParserError, SpannedParserError},
         lexer::{SpannedToken, Token},
@@ -17,6 +16,8 @@ use parser_result::ParserResult;
 // TODO #658: move to different module
 
 use crate::prelude::*;
+use crate::utils::maybe_action::{collect_or_pass_error, ErrorCollector, MaybeAction};
+
 pub mod errors;
 pub mod lexer;
 pub mod parser_result;

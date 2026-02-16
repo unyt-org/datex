@@ -1,6 +1,5 @@
 use crate::{
     ast::expressions::DatexExpression,
-    compiler::error::ErrorCollector,
     global::operators::UnaryOperator,
     parser::lexer::Token,
     values::core_values::{
@@ -10,6 +9,7 @@ use crate::{
 
 use crate::prelude::*;
 use core::ops::Range;
+use crate::utils::maybe_action::ErrorCollector;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ParserError {

@@ -23,9 +23,9 @@ use crate::{
     },
     compiler::error::{
         CompilerError, DetailedCompilerErrors,
-        DetailedCompilerErrorsWithRichAst, ErrorCollector, MaybeAction,
+        DetailedCompilerErrorsWithRichAst,
         SimpleCompilerErrorOrDetailedCompilerErrorWithRichAst,
-        SpannedCompilerError, collect_or_pass_error,
+        SpannedCompilerError,
     },
     global::operators::{BinaryOperator, binary::ArithmeticOperator},
     libs::core::CoreLibPointerId,
@@ -44,6 +44,7 @@ use options::PrecompilerOptions;
 use precompiled_ast::{AstMetadata, RichAst, VariableShape};
 use scope::NewScopeType;
 use scope_stack::PrecompilerScopeStack;
+use crate::utils::maybe_action::{collect_or_pass_error, ErrorCollector, MaybeAction};
 
 pub struct Precompiler<'a> {
     ast_metadata: Rc<RefCell<AstMetadata>>,

@@ -223,6 +223,7 @@ fn get_local_pointer_value(
 }
 
 #[cfg(test)]
+#[cfg(feature = "compiler")]
 mod tests {
     use crate::prelude::*;
     use core::assert_matches;

@@ -39,7 +39,7 @@ pub mod libs;
 #[cfg(all(feature = "lsp", feature = "std"))]
 pub mod lsp;
 pub mod network;
-#[cfg(feature = "compiler")]
+#[cfg(feature = "parser")]
 pub mod parser;
 pub mod references;
 pub mod runtime;
@@ -57,7 +57,7 @@ pub mod traits;
 pub mod types;
 pub mod utils;
 pub mod values;
-#[cfg(all(feature = "macro_utils", feature = "std"))]
+#[cfg(all(feature = "macro_utils", feature = "std", feature = "compiler"))]
 pub mod macro_utils;
 
 // reexport macros
