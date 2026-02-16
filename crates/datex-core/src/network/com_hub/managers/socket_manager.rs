@@ -732,4 +732,12 @@ impl ComInterfaceSocketManager {
             None
         }
     }
+
+    pub fn are_sockets_registered_for_interface(&self, interface_uuid: &ComInterfaceUUID) -> bool {
+        self.socket_uuids_by_interface_uuid
+            .borrow()
+            .get(interface_uuid)
+            .map(|socket_uuids| !socket_uuids.is_empty())
+            .unwrap_or(false)
+    }
 }
