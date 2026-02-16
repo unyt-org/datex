@@ -264,23 +264,14 @@ impl ComHub {
                                 socket_properties,
                                 socket_iterator,
                                 com_interface_uuid.clone(),
+                                com_interface_properties.auto_identify,
                             ),
                         );
                     }
-
-                    // send hello block
-                    self.clone()
-                        .send_socket_hello(
-                            socket_uuid,
-                            socket_direction,
-                            com_interface_properties.clone(),
-                        )
-                        .await;
                 }
                 Err(e) => {
                     error!("Error creating socket from iterator: {:?}", e);
-                    // TODO: end?
-                    return;
+                    break;
                 }
             }
         }
@@ -291,6 +282,20 @@ impl ComHub {
                 &com_interface_uuid,
                 false,
             );
+        
+        // if interface has no sockets, it can be destroyed
+        if !self
+            .socket_manager
+            .are_sockets_registered_for_interface(&com_interface_uuid)
+        {
+            self.interfaces_manager
+                .destroy_interface(&com_interface_uuid)
+                .unwrap();
+            info!(
+                "Destroyed interface {} as it has no sockets registered",
+                com_interface_uuid
+            );
+        }
     }
 
     /// Sends a hello block via the given socket if the socket direction allows sending and auto_identify is enabled for the interface
@@ -298,10 +303,10 @@ impl ComHub {
         self: Rc<Self>,
         socket_uuid: ComInterfaceSocketUUID,
         socket_direction: InterfaceDirection,
-        com_interface_properties: Rc<ComInterfaceProperties>,
+        auto_identify: bool,
     ) {
         let send_hello = socket_direction.can_send()
-            && com_interface_properties.auto_identify; // Only send hello if auto_identify is enabled
+            && auto_identify; // Only send hello if auto_identify is enabled
 
         if send_hello && let Err(err) = self.send_hello_block(socket_uuid).await
         {
@@ -315,7 +320,16 @@ impl ComHub {
         socket_properties: SocketProperties,
         mut socket_iterator: SocketDataIterator,
         com_interface_uuid: ComInterfaceUUID,
+        auto_identify: bool,
     ) {
+        // send hello block in background task
+        self.task_manager.register_task(self.clone()
+            .send_socket_hello(
+                socket_properties.uuid(),
+                socket_properties.direction.clone(),
+                auto_identify,
+            ));
+
         let (mut bytes_sender, block_iterator) = BlockCollector::create();
         let mut block_iterator = Box::pin(block_iterator);
 
