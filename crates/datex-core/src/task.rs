@@ -12,25 +12,7 @@ cfg_if! {
                 .map_err(|_| ())
         }
 
-        // pub fn spawn_local<F>(fut: F)-> tokio::task::JoinHandle<()>
-        // where
-        //     F: Future<Output = ()> + 'static,
-        // {
-        //     tokio::task::spawn_local(fut)
-        // }
-        // pub fn spawn<F>(fut: F) -> tokio::task::JoinHandle<F::Output>
-        // where
-        //     F: Future<Output = ()> + Send + 'static,
-        // {
-        //     tokio::spawn(fut)
-        // }
-        // pub fn spawn_blocking<F, R>(f: F) -> tokio::task::JoinHandle<R>
-        // where
-        //     F: FnOnce() -> R + Send + 'static,
-        //     R: Send + 'static,
-        // {
-        //     tokio::task::spawn_blocking(f)
-        // }
+
         pub async fn sleep(dur: core::time::Duration) {
             tokio::time::sleep(dur).await;
         }
@@ -56,25 +38,6 @@ cfg_if! {
         pub async fn sleep(dur: core::time::Duration) {
             gloo_timers::future::sleep(dur).await;
         }
-
-        // pub fn spawn_local<F>(fut: F)
-        // where
-        //     F: core::future::Future<Output = ()> + 'static,
-        // {
-        //     wasm_bindgen_futures::spawn_local(fut);
-        // }
-        // pub fn spawn<F>(fut: F)
-        // where
-        //     F: core::future::Future<Output = ()> + 'static,
-        // {
-        //     wasm_bindgen_futures::spawn_local(fut);
-        // }
-        // pub fn spawn_blocking<F>(_fut: F) -> !
-        // where
-        //     F: core::future::Future + 'static,
-        // {
-        //     core::panic!("`spawn_blocking` is not supported in the wasm runtime.");
-        // }
     }
 
     else if #[cfg(feature = "embassy_runtime")] {
@@ -101,19 +64,20 @@ cfg_if! {
         }
     }
     else {
-        use async_timer::Oneshot;
+        use alloc::boxed::Box;
+        use core::pin::Pin;
 
-        pub async fn sleep(dur: core::time::Duration) {
-            async_timer::oneshot::Timer::new(dur).await;
+        pub async fn sleep(duration: core::time::Duration) {
+            let mut interval = async_timer::Interval::platform_new(duration);
+            interval.wait().await;
         }
 
         pub async fn timeout<T>(
             duration: core::time::Duration,
             fut: impl Future<Output = T>,
         ) -> Result<T, ()> {
-            let work = unsafe {
-                async_timer::Timed::platform_new_unchecked(fut, duration)
-            };
+            let mut pinned_fut = Box::pin(fut);
+            let work = async_timer::Timed::platform_new(pinned_fut.as_mut(), duration);
 
             work.await.map_err(|_| ())
         }

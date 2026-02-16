@@ -47,10 +47,16 @@ jobs:
       - name: Check formatting
         run: cargo clippy --workspace --exclude datex-crypto-esp32
 
-      - name: Generate test result and coverage report
+      - name: Generate test result and coverage report (no_std)
         run: |
           cargo install cargo-nextest --locked;
-          cargo nextest run --profile ci -p datex-core --features decompiler,compiler,allow_unsigned_block
+          cargo nextest run --profile ci -p datex-core --features decompiler,compiler,allow_unsigned_blocks
+
+      - name: Generate test result and coverage report (std)
+        run: |
+          cargo install cargo-nextest --locked;
+          cargo nextest run --profile ci -p datex-core --features decompiler,compiler,std
+
       - name: Run Struct Tests
         working-directory: crates/datex-core
         run: deno task test
