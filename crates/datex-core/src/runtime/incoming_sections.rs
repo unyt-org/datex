@@ -31,7 +31,6 @@ impl RuntimeInternal {
             #[cfg(feature = "embassy_runtime")]
             {
                 self_clone.handle_incoming_section_task(section).await;
-                continue;
             }
             // otherwise, run each section in its own task
             #[cfg(not(feature = "embassy_runtime"))]

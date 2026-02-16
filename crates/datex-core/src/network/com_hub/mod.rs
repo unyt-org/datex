@@ -1597,10 +1597,20 @@ impl ComHub {
             .block_header
             .flags_and_timestamp
             .set_block_type(BlockType::Hello);
-        block
-            .routing_header
-            .flags
-            .set_signature_type(SignatureType::None); // TODO: sign?
+        #[cfg(feature = "allow_unsigned_blocks")]
+        {
+            block
+                .routing_header
+                .flags
+                .set_signature_type(SignatureType::None);
+        }
+        #[cfg(not(feature = "allow_unsigned_blocks"))]
+        {
+            block
+                .routing_header
+                .flags
+                .set_signature_type(SignatureType::Unencrypted);
+        }
         // TODO #182 include fingerprint of the own public key into body
 
         let block = self
