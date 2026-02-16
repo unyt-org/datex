@@ -24,13 +24,13 @@ spin = "0.10.0"
 static_cell = "2.1.1"
 
 [dev-dependencies]
-esp-hal = { version = "1.0.0-rc.1", features = ["esp32s3", "unstable", "psram"] }
+esp-hal = { version = "1.0.0", features = ["esp32s3", "unstable", "psram"] }
 
 [target.xtensa-esp32s3-none-elf.dependencies]
-esp-hal = { version = "1.0.0-rc.1", features = ["esp32s3", "unstable", "psram"] }
+esp-hal = { version = "1.0.0", features = ["esp32s3", "unstable", "psram"] }
 
 [target.xtensa-esp32-none-elf.dependencies]
-esp-hal = { version = "1.0.0-rc.1", features = ["esp32", "unstable", "psram"] }
+esp-hal = { version = "1.0.0", features = ["esp32", "unstable", "psram"] }
 
 [target.riscv32imc-unknown-none-elf.dependencies]
-esp-hal = { version = "1.0.0-rc.1", features = ["esp32c2", "unstable", "psram"] }
+esp-hal = { version = "1.0.0", features = ["esp32c2", "unstable", "psram"] }
