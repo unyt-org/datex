@@ -21,7 +21,6 @@ use crate::prelude::*;
 
 pub mod managers;
 
-// #[cfg(feature = "com_hub_metadata")]
 pub mod metadata;
 use crate::network::com_hub::managers::socket_manager::ComInterfaceSocketManager;
 
@@ -282,7 +281,7 @@ impl ComHub {
                 &com_interface_uuid,
                 false,
             );
-        
+
         // if interface has no sockets, it can be destroyed
         if !self
             .socket_manager

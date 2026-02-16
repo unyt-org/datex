@@ -7,7 +7,7 @@ use strum_macros::Display;
 
 // 4 bit
 #[derive(Debug, Display, PartialEq, Clone, Copy, Default, Specifier)]
-#[cfg_attr(feature = "debug", derive(serde::Serialize, serde::Deserialize))]
+#[derive(serde::Serialize, serde::Deserialize)]
 #[bits = 4]
 pub enum BlockType {
     #[default]
@@ -64,7 +64,6 @@ pub struct FlagsAndTimestamp {
     pub creation_timestamp: B43,
 }
 
-#[cfg(feature = "debug")]
 mod flags_and_timestamp_serde {
     use super::*;
     use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -149,7 +148,7 @@ impl Default for FlagsAndTimestamp {
 
 // min: 16 byte
 // max 8 + 8 byte + 4 byte + 21 byte + 16 byte = 57 byte
-#[cfg_attr(feature = "debug", derive(serde::Serialize, serde::Deserialize))]
+#[derive(serde::Serialize, serde::Deserialize)]
 #[derive(Debug, Clone, Default, BinWrite, BinRead, PartialEq)]
 #[brw(little)]
 pub struct BlockHeader {

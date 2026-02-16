@@ -5,7 +5,8 @@ use core::prelude::rust_2024::*;
 use modular_bitfield::{Specifier, bitfield};
 
 // 4 bit
-#[cfg_attr(feature = "debug", derive(serde::Serialize, serde::Deserialize))]
+#[derive(serde::Serialize, serde::Deserialize)]
+
 #[derive(Debug, PartialEq, Clone, Default, Specifier)]
 pub enum UserAgent {
     #[default]
@@ -58,7 +59,6 @@ pub struct Flags {
     unused_2: bool,
 }
 
-#[cfg(feature = "debug")]
 mod flags_serde {
     use super::*;
     use crate::global::protocol_structures::encrypted_header::Flags;
@@ -98,7 +98,7 @@ mod flags_serde {
 
 // min: 1 byte
 // max: 1 byte + 21 bytes = 22 bytes
-#[cfg_attr(feature = "debug", derive(serde::Serialize, serde::Deserialize))]
+#[derive(serde::Serialize, serde::Deserialize)]
 #[derive(Debug, Clone, Default, BinWrite, BinRead, PartialEq)]
 #[brw(little)]
 pub struct EncryptedHeader {

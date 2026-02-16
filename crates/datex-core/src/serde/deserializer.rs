@@ -962,6 +962,7 @@ impl<'de> VariantAccess<'de> for VariantDeserializer<'de> {
 }
 
 #[cfg(test)]
+#[cfg(feature = "compiler")]
 mod tests {
     use super::*;
     use crate::{
