@@ -1,0 +1,136 @@
+name: Test (datex-core)
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+env:
+  CARGO_INCREMENTAL: 0
+  RUSTFLAGS: -Awarnings
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    name: Clippy
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}-lint
+      cancel-in-progress: true
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install libudev-dev and pkg-config
+        run: |
+          sudo apt update
+          sudo apt install -y libudev-dev pkg-config
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: nightly
+          components: clippy
+
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/.crates.toml
+            ~/.cargo/.crates2.json
+            ~/.cargo/bin
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            target
+          key: ${{ runner.os }}-build-${{ hashFiles('Cargo.lock') }}
+
+      - name: Run clippy
+        run: cargo clippy --workspace --exclude datex-crypto-esp32
+
+
+  nextest:
+    runs-on: ubuntu-latest
+    name: Nextest (${{ matrix.profile }})
+    needs: lint
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - profile: no_std
+            features: decompiler,compiler,allow_unsigned_blocks
+          - profile: std
+            features: decompiler,compiler,std
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install libudev-dev and pkg-config
+        run: |
+          sudo apt update
+          sudo apt install -y libudev-dev pkg-config
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: nightly
+
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/.crates.toml
+            ~/.cargo/.crates2.json
+            ~/.cargo/bin
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            target
+          key: ${{ runner.os }}-build-${{ hashFiles('Cargo.lock') }}
+
+      - name: Install cargo-nextest
+        run: cargo install cargo-nextest --locked
+
+      - name: Run nextest (${{ matrix.profile }})
+        run: |
+          cargo nextest run \
+            --profile ci \
+            -p datex-core \
+            --features ${{ matrix.features }}
+
+      - name: Upload test results
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        with:
+          check_name: Test Results (${{ matrix.profile }})
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          files: target/nextest/ci/report.xml
+
+
+  struct-tests:
+    runs-on: ubuntu-latest
+    name: Struct Tests (Deno)
+    needs: nextest
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Run Struct Tests
+        working-directory: crates/datex-core
+        run: deno task test
+
+
+  publish-dry-run:
+    runs-on: ubuntu-latest
+    name: Cargo Publish Dry Run
+    if: startsWith(github.head_ref, 'release/')
+    needs: struct-tests
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: nightly
+
+      - name: Run cargo publish dry-run
+        run: |
+          echo "Running cargo publish dry-run..."
+          cargo publish --dry-run
