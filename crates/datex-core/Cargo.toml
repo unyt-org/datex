@@ -183,13 +183,13 @@ datex-crypto-native = { path = "../datex-crypto-native" }
 # and allow for the minimum needed feature set for most use cases,
 # while still being compatible with std.
 default = [
-    "no_std"
+    "no_std",
+    "dep:async-timer"
 ]
 
 no_std = [
     "hashbrown",
     "dep:async-unsync",
-    "dep:async-timer"
 ]
 
 macro_utils = [
