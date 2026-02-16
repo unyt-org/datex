@@ -35,7 +35,6 @@ use datex_core::{
             VariableAssignment, VariableDeclaration, VariableKind,
         },
         spanned::Spanned,
-        src_id::SrcId,
         type_expressions::{
             Intersection, StructuralList, TypeExpressionData,
             TypeVariantAccess, Union,
@@ -55,7 +54,6 @@ use datex_core::{
 
 /// Parse the given source code into a DatexExpression AST.
 fn parse_unwrap(src: &str) -> DatexExpression {
-    let src_id = SrcId::test();
     Parser::parse_with_default_options(src).unwrap()
 }
 
@@ -70,7 +68,6 @@ fn parse_unwrap_data(src: &str) -> DatexExpressionData {
 fn parse_print_error(
     src: &str,
 ) -> Result<DatexExpression, Vec<SpannedParserError>> {
-    let src_id = SrcId::test();
     let res = Parser::parse_collecting_with_default_options(src);
     match res {
         ParserResult::Invalid(InvalidDatexParseResult { errors, .. }) => {
