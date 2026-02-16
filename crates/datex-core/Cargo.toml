@@ -118,7 +118,7 @@ async-select = "0.3.0"
 datex-crypto-native = { path = "../datex-crypto-native", version = "0.0.1", optional = true }
 datex-crypto-esp32 = { path = "../datex-crypto-esp32", version = "0.0.1", optional = true }
 flexi_logger = { version = "0.31.8", optional = true }
-async-timer = { version = "0.7.4", default-features = false, features = ["no_std"], optional = true}
+async-timer = { version = "1.0.0-beta.15", default-features = false, optional = true}
 
 quote = { version = "1.0", optional = true}
 syn = { version = "2.0", features = ["full"], optional = true }
