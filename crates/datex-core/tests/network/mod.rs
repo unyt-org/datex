@@ -6,5 +6,4 @@ pub mod com_hub;
 mod com_hub_network_tracing;
 mod execution;
 pub mod helpers;
-#[cfg(feature = "debug")]
-mod networks;
+pub mod networks;

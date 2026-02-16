@@ -3,10 +3,10 @@ use crate::prelude::*;
 use core::{fmt::Display, ops::Range};
 
 use crate::{
-    compiler::error::ErrorCollector,
     global::operators::binary::ArithmeticOperator,
     values::core_values::r#type::Type,
 };
+use crate::utils::maybe_action::ErrorCollector;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum TypeError {

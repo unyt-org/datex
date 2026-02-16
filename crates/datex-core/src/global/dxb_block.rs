@@ -32,7 +32,7 @@ pub enum HeaderParsingError {
 
 // TODO #429 @Norbert
 // Add optional raw signature, and encrypted part
-#[cfg_attr(feature = "debug", derive(serde::Serialize, serde::Deserialize))]
+#[derive(serde::Serialize, serde::Deserialize)]
 #[derive(Debug, Clone, Default)]
 pub struct DXBBlock {
     pub routing_header: RoutingHeader,
@@ -41,7 +41,7 @@ pub struct DXBBlock {
     pub encrypted_header: EncryptedHeader,
     pub body: Vec<u8>,
 
-    #[cfg_attr(feature = "debug", serde(skip))]
+    #[serde(skip)]
     pub raw_bytes: Option<Vec<u8>>,
 }
 
@@ -531,6 +531,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[cfg(feature = "std")]
     // TODO: fixme - dynamically enable/disable signature checks for tests
     pub async fn signature_to_and_from_bytes() {
         // setup block

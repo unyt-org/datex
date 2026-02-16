@@ -22,11 +22,8 @@ pub async fn test_basic_remote_execution() {
 
     yield_now().await;
 
-    #[cfg(feature = "debug")]
-    {
-        runtime_a.com_hub().print_metadata();
-        runtime_b.com_hub().print_metadata();
-    }
+    runtime_a.com_hub().print_metadata();
+    runtime_b.com_hub().print_metadata();
 
     // create an execution context for @test_b
     let mut remote_execution_context =
@@ -62,9 +59,6 @@ pub async fn test_remote_execution_persistent_context() {
         .await;
 
     yield_now().await;
-
-    #[cfg(feature = "debug")]
-    runtime_a.com_hub().print_metadata();
 
     // create an execution context for @test_b
     let mut remote_execution_context =
@@ -102,9 +96,6 @@ pub async fn test_remote_inline() {
 
     yield_now().await;
 
-    #[cfg(feature = "debug")]
-    runtime_a.com_hub().print_metadata();
-
     // create an execution context for @test_b
     let mut execution_context = ExecutionContext::local_with_runtime_internal(
         runtime_a.internal.clone(),
@@ -132,9 +123,6 @@ pub async fn test_remote_inline_implicit_context() {
     .await;
 
     yield_now().await;
-
-    #[cfg(feature = "debug")]
-    runtime_a.com_hub().print_metadata();
 
     // execute script remotely on @test_b
     let result = runtime_a.execute("@test_b :: 1 + 2", &[], None).await;

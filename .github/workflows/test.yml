@@ -50,7 +50,7 @@ jobs:
       - name: Generate test result and coverage report
         run: |
           cargo install cargo-nextest --locked;
-          cargo nextest run --profile ci -p datex-core;
+          cargo nextest run --profile ci -p datex-core --features decompiler,compiler,allow_unsigned_block
       - name: Run Struct Tests
         working-directory: crates/datex-core
         run: deno task test
