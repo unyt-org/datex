@@ -185,8 +185,7 @@ datex-crypto-native = { path = "../datex-crypto-native" }
 default = [
     "compiler", # TODO: remove from default features
     #    "syntax_highlighting_legacy",
-    "no_std",
-    "allow_unsigned_blocks"
+    "no_std"
 ]
 
 no_std = [
