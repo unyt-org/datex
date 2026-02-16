@@ -1,0 +1,57 @@
+name: Test (datex-macros)
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+env:
+  CARGO_INCREMENTAL: 0
+  RUSTFLAGS: -Awarnings
+
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    name: Test (datex-macros)
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}-macros
+      cancel-in-progress: true
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install Rust (nightly + clippy)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: nightly
+          components: clippy
+
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/.crates.toml
+            ~/.cargo/.crates2.json
+            ~/.cargo/bin
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            target
+          key: ${{ runner.os }}-macros-${{ hashFiles('Cargo.lock') }}
+
+      - name: Install cargo-nextest
+        run: cargo install cargo-nextest --locked
+
+      - name: Run clippy (default features)
+        run: cargo clippy -p datex-macros --all-targets
+
+      - name: Run nextest (default features)
+        run: |
+          cargo nextest run \
+            --profile ci \
+            -p datex-macros
+
+      - name: Upload test results
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        with:
+          check_name: Test Results (datex-macros)
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          files: target/nextest/ci/report.xml
