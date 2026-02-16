@@ -99,7 +99,7 @@ syntect = { version = "5.2.0", default-features = false, optional = true, featur
 ] }
 pretty = { version = "0.12.5", optional = true }
 logos = { version = "0.15.0", optional = true }
-internment = { version = "0.8.6"  }
+internment = { version = "0.8.6", optional = true  }
 foldhash = { version = "0.2.0", default-features = false }
 spin = { version = "0.10.0", default-features = false, features = [
     "spin_mutex",
@@ -254,7 +254,8 @@ std = [
     "dep:flexi_logger",
     "tokio_runtime",
     "macro_utils",
-    "dep:dotenvy"
+    "dep:dotenvy",
+    "dep:internment"
 ] # use std
 
 parser = [

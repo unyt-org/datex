@@ -600,7 +600,6 @@ mod tests {
         ast::{
             expressions::{CreateRef, Deref},
             resolved_variable::ResolvedVariable,
-            src_id::SrcId,
             type_expressions::{StructuralMap, TypeExpressionData},
         },
         parser::Parser,
@@ -685,7 +684,6 @@ mod tests {
     }
 
     fn parse_unwrap(src: &str) -> DatexExpression {
-        let src_id = SrcId::test();
         Parser::parse_with_default_options(src).unwrap()
     }
 
