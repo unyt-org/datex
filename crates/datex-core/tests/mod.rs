@@ -25,3 +25,5 @@ pub mod parser;
 
 #[cfg(feature = "compiler")]
 pub mod execution;
+
+pub mod network;

@@ -255,7 +255,7 @@ std = [
     "tokio_runtime",
     "macro_utils",
     "dep:dotenvy",
-    "dep:internment"
+    "dep:internment",
 ] # use std
 
 parser = [
