@@ -1149,7 +1149,8 @@ impl ComHub {
                         }
                     }
                     // add to response for matching endpoint
-                    else if let Some(response) = responses.get_mut(&sender.any_instance_endpoint()) {
+                    else if let Some(matches_endpoint) = self.try_match_sender(&mut responses, &sender) {
+                        let response = responses.get_mut(&matches_endpoint).unwrap();
                         info!("Received resolved response from {} -> {}", &sender, &sender.any_instance_endpoint());
                         sender = sender.any_instance_endpoint();
                         // check if the receiver is already set (= current set response is Err)
@@ -1226,6 +1227,26 @@ impl ComHub {
 
             responses
         }
+    }
+
+    /// Tries to match the sender endpoint to a more generic endpoint in the responses map (e.g., @jonas/0001 -> @jonas or @@local/0001 -> @xyz) and returns the matching endpoint if found.
+    fn try_match_sender(&self, responses: &mut HashMap<Endpoint, Result<Response, ResponseError>>, sender: &Endpoint) -> Option<Endpoint> {
+        let matches = gen {
+            // match sender but with any wildcard instance
+            yield sender.any_instance_endpoint();
+            // match @@local if endpoint is local endpoint
+            if self.is_local_endpoint_exact(sender) {
+                yield Endpoint::LOCAL;
+                yield Endpoint::LOCAL_ALL_INSTANCES;
+            }
+        }.collect::<Vec<Endpoint>>();
+        for try_match_sender in matches {
+            let res = responses.get(&try_match_sender);
+            if let Some(response) = res {
+                return Some(try_match_sender);
+            }
+        }
+        None
     }
 
     /// Sends a block to all endpoints specified in the block header.
