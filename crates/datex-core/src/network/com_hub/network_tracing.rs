@@ -35,6 +35,7 @@ use crate::prelude::*;
 use log::{error, info};
 use serde::{Deserialize, Serialize};
 use serde_with::{DisplayFromStr, serde_as};
+use crate::global::protocol_structures::routing_header::SignatureType;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct NetworkTraceHopSocket {
@@ -518,6 +519,8 @@ impl ComHub {
         };
         self.set_trace_data_of_block(&mut trace_block, hops);
         trace_block.set_receivers(receiver_endpoint);
+        #[cfg(not(feature = "allow_unsigned_blocks"))]
+        trace_block.routing_header.flags.set_signature_type(SignatureType::Unencrypted);
 
         trace_block
     }

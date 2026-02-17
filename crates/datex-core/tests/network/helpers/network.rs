@@ -17,7 +17,11 @@ use datex_core::{
 use log::info;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, env, fs, path::Path, sync::Arc};
-use tokio::task::yield_now;
+use std::sync::Mutex;
+use tokio::task::{spawn_local, yield_now};
+use datex_core::channel::mpsc::create_unbounded_channel;
+use datex_core::global::dxb_block::DXBBlock;
+use datex_core::network::com_interfaces::com_interface::factory::{ComInterfaceConfiguration, SendCallback, SendSuccess, SocketConfiguration, SocketProperties};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct MockupInterfaceSetupData {
@@ -532,7 +536,11 @@ impl Network {
             let runtime_runner = RuntimeRunner::new(
                 RuntimeConfig::new_with_endpoint(node.endpoint.clone()),
             );
+
+            let runtime = runtime_runner.runtime.clone();
             node.runtime = Some(runtime.clone());
+
+            spawn_local(runtime_runner.run_forever(async move |runtime| {}));
 
             for connection in node.connections.iter() {
                 // save in channel pairs
@@ -581,64 +589,69 @@ impl Network {
 
         // print com hub status of each runtime
         for endpoint in self.endpoints.iter() {
-            let runtime = endpoint.runtime.as_ref().unwrap();
-            runtime.com_hub().print_metadata();
+            let runner = endpoint.runtime.as_ref().unwrap();
+            runner.com_hub().print_metadata();
         }
     }
 
     // Initializes a single mockup interface on a runtime with a given connection definition
+    // The returned receiver receives blocks that must be sent from the interface, and the sender can be used to send incoming blocks from the interface
     fn init_interface(
         runtime: &Runtime,
         connection: &InterfaceConnection,
         remote_endpoint: Option<Endpoint>,
     ) -> (
-        ComInterfaceProxy,
-        Arc<ManualResetEvent>,
+        UnboundedReceiver<DXBBlock>,
         UnboundedSender<Vec<u8>>,
     ) {
-        let interface_direction = connection.setup_data.direction.clone();
-        let (proxy, com_interface) =
-            ComInterfaceProxy::create_interface(ComInterfaceProperties {
+
+        let (incoming_data_sender, mut incoming_data_receiver) = create_unbounded_channel();
+        let (outgoing_data_sender, outgoing_data_receiver) = create_unbounded_channel();
+        let outgoing_data_sender = Arc::new(Mutex::new(outgoing_data_sender));
+
+        let configuration = ComInterfaceConfiguration::new_single_socket(
+            ComInterfaceProperties {
                 interface_type: "mockup".to_string(),
-                direction: interface_direction.clone(),
+                direction: connection.setup_data.direction.clone(),
                 name: Some(connection.setup_data.name.clone()),
                 ..Default::default()
-            });
+            },
+            SocketConfiguration::new_in_out(
+                SocketProperties::new_with_maybe_direct_endpoint(connection.setup_data.direction.clone(), 1, remote_endpoint),
+                async gen move {
+                    while let Some(block_bytes) = incoming_data_receiver.next().await {
+                        yield Ok(block_bytes);
+                    }
+                },
+                SendCallback::new_sync(move |block| {
+                    outgoing_data_sender.lock().unwrap().start_send(block).unwrap();
+                    Ok(SendSuccess::Sent)
+                })
+            ),
+        );
+
+        info!(
+            "Registering interface {} on runtime {}",
+            connection.setup_data.name,
+            runtime.endpoint(),
+        );
+
         runtime
             .com_hub()
-            ._register_com_interface(com_interface, connection.priority)
-            .expect("Failed to register interface A");
+            .add_interface_from_configuration(configuration, connection.priority)
+            .expect("Failed to register interface");
 
-        let shutdown_signal = proxy.shutdown_receiver();
-        let (_, socket_sender) = proxy
-            .create_and_init_socket_with_optional_endpoint(
-                interface_direction,
-                1,
-                remote_endpoint,
-            );
-
-        (proxy, shutdown_signal, socket_sender)
+        (outgoing_data_receiver, incoming_data_sender)
     }
 
     /// Spawns a task that forwards data blocks from a com interface event receiver to a socket sender
     fn spawn_socket_forwarding_task(
-        mut event_receiver: UnboundedReceiver<ComInterfaceEvent>,
-        mut shutdown_signal: Arc<ManualResetEvent>,
-        mut socket_sender: UnboundedSender<Vec<u8>>,
+        mut outgoing_receiver: UnboundedReceiver<DXBBlock>,
+        mut incoming_sender: UnboundedSender<Vec<u8>>,
     ) {
-        spawn_with_panic_notify_default(async move {
-            loop {
-                select! {
-                    Some(event) = event_receiver.next() => {
-                        if let ComInterfaceEvent::SendBlock(block, _socket_uuid) = event {
-                            // directly send the block to socket B
-                            socket_sender.start_send(block.to_bytes()).unwrap();
-                        }
-                    }
-                    _ = shutdown_signal.wait() => {
-                        break;
-                    }
-                }
+        spawn_local(async move {
+            while let Some(block) = outgoing_receiver.next().await {
+                incoming_sender.start_send(block.to_bytes()).unwrap();
             }
         });
     }
@@ -649,7 +662,7 @@ impl Network {
         runtime_b: (Runtime, InterfaceConnection),
     ) {
         let remote_endpoint_a = runtime_b.1.setup_data.endpoint.clone();
-        let (proxy_a, shutdown_signal_a, socket_a_sender) =
+        let (socket_a_outgoing_receiver, socket_a_incoming_sender) =
             Network::init_interface(
                 &runtime_a.0,
                 &runtime_a.1,
@@ -660,7 +673,7 @@ impl Network {
             interface_a_direction != InterfaceDirection::In;
 
         let remote_endpoint_b = runtime_a.1.setup_data.endpoint.clone();
-        let (proxy_b, shutdown_signal_b, socket_b_sender) =
+        let (socket_b_outgoing_receiver, socket_b_incoming_sender) =
             Network::init_interface(
                 &runtime_b.0,
                 &runtime_b.1,
@@ -673,17 +686,15 @@ impl Network {
         // connect the two interfaces
         if interface_a_can_send {
             Network::spawn_socket_forwarding_task(
-                proxy_a.event_receiver,
-                shutdown_signal_a,
-                socket_b_sender,
+                socket_a_outgoing_receiver,
+                socket_b_incoming_sender,
             );
         }
 
         if interface_b_can_send {
             Network::spawn_socket_forwarding_task(
-                proxy_b.event_receiver,
-                shutdown_signal_b,
-                socket_a_sender,
+                socket_b_outgoing_receiver,
+                socket_a_incoming_sender,
             );
         }
     }
