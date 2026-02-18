@@ -10,7 +10,6 @@ use crate::network::com_hub::{ComHub, InterfacePriority};
 use crate::network::com_interfaces::com_interface::ComInterfaceUUID;
 use crate::network::com_interfaces::com_interface::factory::{ComInterfaceConfiguration, SendCallback, SocketConfiguration, SocketProperties};
 use crate::network::com_interfaces::com_interface::properties::{ComInterfaceProperties, InterfaceDirection};
-use crate::task::sleep;
 use crate::values::core_values::endpoint::Endpoint;
 
 pub struct ComHubPeerWithFuture {

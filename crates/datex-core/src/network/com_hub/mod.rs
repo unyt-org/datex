@@ -55,7 +55,7 @@ use crate::{
     values::core_values::endpoint::Endpoint,
 };
 pub mod com_hub_interface;
-#[cfg(test)]
+#[cfg(all(test, feature = "std"))]
 pub(crate) mod test_utils;
 
 use crate::{

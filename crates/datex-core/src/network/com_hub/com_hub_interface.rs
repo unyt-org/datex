@@ -143,6 +143,7 @@ mod tests {
     use crate::global::protocol_structures::routing_header::SignatureType;
     use crate::network::com_hub::{ComHub, InterfacePriority};
     use crate::network::com_hub::metadata::ComHubMetadata;
+    #[cfg(feature = "std")]
     use crate::network::com_hub::test_utils::{get_coupled_com_hubs, run_with_coupled_com_hubs};
     use crate::network::com_interfaces::com_interface::ComInterfaceUUID;
     use crate::network::com_interfaces::com_interface::factory::{ComInterfaceConfiguration, SendCallback, SendSuccess, SocketConfiguration, SocketProperties};
@@ -204,7 +205,7 @@ mod tests {
 
 
     #[tokio::test]
-    #[cfg(any(feature = "std", feature = "allow_unsigned_blocks"))]
+    #[cfg(feature = "std")]
     async fn test_connected_interfaces() {
         let (peer_a, peer_b) = get_coupled_com_hubs();
 
