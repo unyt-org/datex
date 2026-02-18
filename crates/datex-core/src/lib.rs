@@ -75,7 +75,7 @@ pub mod collections {
 
 /// Reexport of Mutex that works in both std and no_std environments.
 pub mod std_sync {
-    #[cfg(not(feature = "std"))]
+    #[cfg(feature = "no_std")]
     pub use spin::Mutex;
     #[cfg(feature = "std")]
     pub use std::sync::Mutex;
@@ -88,7 +88,7 @@ pub mod crypto {
             pub use datex_crypto_esp32::CryptoEsp32 as CryptoImpl;
         } else if #[cfg(target_arch = "wasm32")] {
             pub use datex_crypto_web::CryptoWeb as CryptoImpl;
-        } else if #[cfg(any(feature = "std", test))] {
+        } else if #[cfg(any(feature = "native", test))] {
             pub use datex_crypto_native::CryptoNative as CryptoImpl;
         } else {
             pub use crate::stub::crypto::CryptoStub as CryptoImpl;

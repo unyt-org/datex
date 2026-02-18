@@ -55,7 +55,7 @@ jobs:
           - profile: no_std
             features: decompiler,compiler,allow_unsigned_blocks
           - profile: std
-            features: decompiler,compiler,std
+            features: decompiler,compiler,native
 
     steps:
       - uses: actions/checkout@v5
