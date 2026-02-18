@@ -82,6 +82,7 @@ use crate::{
 use async_select::select;
 use datex_crypto_facade::crypto::Crypto;
 use futures_util::FutureExt;
+use crate::global::dxb_block::SignatureValidationError;
 
 pub type IncomingBlockInterceptor =
     Box<dyn Fn(&DXBBlock, &ComInterfaceSocketUUID) + 'static>;
@@ -397,17 +398,10 @@ impl ComHub {
         socket_properties: &SocketProperties,
     ) {
         // Validate
-        // ignore invalid blocks (e.g. invalid signature)
-        match Self::validate_block(&block).await {
-            Ok(true) => { /* Ignored */ }
-            Ok(false) => {
-                warn!("Block validation failed. Dropping block...");
-                return;
-            }
-            Err(e) => {
-                warn!("Error in block validation {e}. Dropping block...");
-                return;
-            }
+        // drop invalid blocks (e.g. invalid signature)
+        if let Err(e) = block.validate_signature().await {
+            warn!("Error in block validation: {:?}. Dropping block...", e);
+            return;
         }
 
         // handle incoming block
@@ -537,7 +531,7 @@ impl ComHub {
                 info!("Block is for this endpoint");
 
                 Some(match block_type {
-                    BlockType::Trace => OwnReceivedBlock::Trace(block.clone()),
+                    BlockType::Trace | BlockType::TraceBack => OwnReceivedBlock::Trace(block.clone()),
                     _ => OwnReceivedBlock::Other(block.clone()),
                 })
             } else {
@@ -605,7 +599,15 @@ impl ComHub {
         // handle trace block asynchronously
         if let Some(block) = trace_block {
             info!("Handling trace block asynchronously");
-            self.handle_trace_block(&block, socket_uuid.clone()).await;
+            match block.block_type() {
+                BlockType::Trace => {
+                    self.handle_trace_block(&block, socket_uuid.clone()).await;
+                },
+                BlockType::TraceBack => {
+                    self.handle_trace_back_block(&block, socket_uuid.clone());
+                },
+                _ => unreachable!() // not a trace block, should never happen
+            }
         }
 
         // redirect block to other endpoints
@@ -835,110 +837,14 @@ impl ComHub {
 
     /// Validates a block including it's signature if set
     /// TODO #378 @Norbert
-    async fn validate_block(block: &DXBBlock) -> Result<bool, ComHubError> {
-        // TODO #179 check for creation time, withdraw if too old (TBD) or in the future
 
-        let is_signed =
-            block.routing_header.flags.signature_type() != SignatureType::None;
-
-        match is_signed {
-            true => {
-                // TODO #180: verify signature and abort if invalid
-                // Check if signature is following in some later block and add them to
-                // a pool of incoming blocks awaiting some signature
-                match block.routing_header.flags.signature_type() {
-                    SignatureType::Encrypted => {
-                        let raw_sign = block
-                            .signature
-                            .as_ref()
-                            .ok_or(ComHubError::SignatureError)?;
-                        let (enc_sign, pub_key) = raw_sign.split_at(64);
-                        let hash = CryptoImpl::hkdf_sha256(pub_key, &[0u8; 16])
-                            .await
-                            .map_err(|_| ComHubError::SignatureError)?;
-                        let signature = CryptoImpl::aes_ctr_decrypt(
-                            &hash, &[0u8; 16], enc_sign,
-                        )
-                        .await
-                        .map_err(|_| ComHubError::SignatureError)?;
-
-                        let raw_signed =
-                            [pub_key, &block.body.clone()].concat();
-                        let hashed_signed =
-                            CryptoImpl::hash_sha256(&raw_signed)
-                                .await
-                                .map_err(|_| ComHubError::SignatureError)?;
-
-                        let ver = CryptoImpl::ver_ed25519(
-                            pub_key,
-                            &signature,
-                            &hashed_signed,
-                        )
-                        .await
-                        .map_err(|_| ComHubError::SignatureError)?;
-                        Ok(ver)
-                    }
-                    SignatureType::Unencrypted => {
-                        let raw_sign = block
-                            .signature
-                            .as_ref()
-                            .ok_or(ComHubError::SignatureError)?;
-                        let (signature, pub_key) = raw_sign.split_at(64);
-
-                        let raw_signed =
-                            [pub_key, &block.body.clone()].concat();
-                        let hashed_signed =
-                            CryptoImpl::hash_sha256(&raw_signed)
-                                .await
-                                .map_err(|_| ComHubError::SignatureError)?;
-
-                        let ver = CryptoImpl::ver_ed25519(
-                            pub_key,
-                            signature,
-                            &hashed_signed,
-                        )
-                        .await
-                        .map_err(|_| ComHubError::SignatureError)?;
-                        Ok(ver)
-                    }
-                    SignatureType::None => {
-                        unreachable!("If (is_signed == true) => !None");
-                    }
-                }
-            }
-            false => {
-                let endpoint = block.routing_header.sender.clone();
-                let is_trusted = {
-                    cfg_if::cfg_if! {
-                        // FIXME make this a config option
-                        if #[cfg(feature = "allow_unsigned_blocks")] {
-                            true
-                        }
-                        else {
-                            // TODO #181 Check if the sender is trusted (endpoint + interface) connection
-                            false
-                        }
-                    }
-                };
-                match is_trusted {
-                    true => Ok(true),
-                    false => {
-                        warn!(
-                            "Block received by {endpoint} is not signed. Dropping block..."
-                        );
-                        Ok(false)
-                    }
-                }
-            }
-        }
-    }
 
     /// Prepares an own block for sending by setting sender, timestamp, distance and signing if needed.
     /// Will return either synchronously or asynchronously depending on the signature type.
-    pub fn prepare_own_block<'a>(
-        &'a self,
+    pub fn prepare_own_block(
+        &self,
         mut block: DXBBlock,
-    ) -> PrepareOwnBlockResult<'a> {
+    ) -> PrepareOwnBlockResult {
         /// Updates the sender and timestamp of the block
         fn update_sender_and_timestamp(
             mut block: DXBBlock,
@@ -967,19 +873,19 @@ impl ComHub {
                 SyncOrAsync::Async(Box::pin(async move {
                     let (pub_key, pri_key) = CryptoImpl::gen_ed25519()
                         .await
-                        .map_err(|_| ComHubError::SignatureError)?;
+                        .map_err(|_| ComHubError::SignatureCreationError)?;
 
                     let raw_signed =
                         [pub_key.clone(), block.body.clone()].concat();
 
                     let hashed_signed = CryptoImpl::hash_sha256(&raw_signed)
                         .await
-                        .map_err(|_| ComHubError::SignatureError)?;
+                        .map_err(|_| ComHubError::SignatureCreationError)?;
 
                     let signature =
                         CryptoImpl::sig_ed25519(&pri_key, &hashed_signed)
                             .await
-                            .map_err(|_| ComHubError::SignatureError)?;
+                            .map_err(|_| ComHubError::SignatureCreationError)?;
 
                     let sig_bytes: Vec<u8> = match sig_ty {
                         SignatureType::Unencrypted => signature.to_vec(),
@@ -988,13 +894,13 @@ impl ComHub {
                             let hash =
                                 CryptoImpl::hkdf_sha256(&pub_key, &[0u8; 16])
                                     .await
-                                    .map_err(|_| ComHubError::SignatureError)?;
+                                    .map_err(|_| ComHubError::SignatureCreationError)?;
 
                             CryptoImpl::aes_ctr_encrypt(
                                 &hash, &[0u8; 16], &signature,
                             )
                             .await
-                            .map_err(|_| ComHubError::SignatureError)?
+                            .map_err(|_| ComHubError::SignatureCreationError)?
                             .to_vec()
                         }
 
@@ -1619,20 +1525,7 @@ impl ComHub {
             .block_header
             .flags_and_timestamp
             .set_block_type(BlockType::Hello);
-        #[cfg(feature = "allow_unsigned_blocks")]
-        {
-            block
-                .routing_header
-                .flags
-                .set_signature_type(SignatureType::None);
-        }
-        #[cfg(not(feature = "allow_unsigned_blocks"))]
-        {
-            block
-                .routing_header
-                .flags
-                .set_signature_type(SignatureType::Unencrypted);
-        }
+        block.set_default_signature_type();
         // TODO #182 include fingerprint of the own public key into body
 
         let block = self
