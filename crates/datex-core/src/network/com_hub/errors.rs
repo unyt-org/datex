@@ -158,7 +158,7 @@ pub enum ComHubError {
     InterfaceDoesNotExist,
     InterfaceNotConnected,
     NoResponse,
-    SignatureError,
+    SignatureCreationError,
 }
 impl From<ComInterfaceError> for ComHubError {
     fn from(err: ComInterfaceError) -> Self {
@@ -184,7 +184,7 @@ impl Display for ComHubError {
             ComHubError::NoResponse => {
                 core::write!(f, "ComHubError: No response")
             }
-            ComHubError::SignatureError => {
+            ComHubError::SignatureCreationError => {
                 core::write!(f, "ComHubError: CryptoError")
             }
         }

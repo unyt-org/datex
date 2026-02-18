@@ -82,6 +82,8 @@ use crate::{
 use async_select::select;
 use datex_crypto_facade::crypto::Crypto;
 use futures_util::FutureExt;
+use crate::global::dxb_block::SignatureValidationError;
+use crate::utils::maybe_async::MaybeAsync;
 
 pub type IncomingBlockInterceptor =
     Box<dyn Fn(&DXBBlock, &ComInterfaceSocketUUID) + 'static>;
@@ -159,21 +161,10 @@ impl Default for InterfacePriority {
     }
 }
 
-pub struct ReceiveBlockResult<F: Future<Output = ()>> {
-    own_received_block: Option<DXBBlock>,
-    async_handler: Option<F>,
-}
-
-/// A received block for the local endpoint, either a Trace, which must be handled asynchronously,
-/// or another block type which may be handled directly
-pub enum OwnReceivedBlock {
-    Trace(DXBBlock),
-    Other(DXBBlock),
-}
 
 pub struct ReceiveBlockPreprocessResult {
     relayed_block: Option<DXBBlock>,
-    own_received_block: Option<OwnReceivedBlock>,
+    own_received_block: Option<DXBBlock>,
     block_id_for_history: Option<BlockId>,
     is_for_own: bool,
 }
@@ -190,6 +181,8 @@ pub type PrepareOwnBlockResult<'a> = SyncOrAsyncResult<
     ComHubError,
     PrepareOwnBlockFuture<'a>,
 >;
+
+pub type ReceiveBlockResult = Result<Option<DXBBlock>, SignatureValidationError>;
 
 impl ComHub {
     pub fn create(
@@ -364,7 +357,7 @@ impl ComHub {
                 },
                 // receive new blocks from block collector
                 Some(block) = async_next_pin_box(&mut block_iterator).fuse() => {
-                    Self::handle_incoming_block_async(&self, block, &socket_properties).await;
+                    Self::handle_incoming_block_async(self.clone(), block, &socket_properties).await;
                 },
                 complete => break,
             }
@@ -392,36 +385,27 @@ impl ComHub {
 
     /// Handles an incoming block from a socket (async)
     async fn handle_incoming_block_async(
-        self: &Rc<Self>,
+        self: Rc<Self>,
         block: DXBBlock,
         socket_properties: &SocketProperties,
     ) {
-        // Validate
-        // ignore invalid blocks (e.g. invalid signature)
-        match Self::validate_block(&block).await {
-            Ok(true) => { /* Ignored */ }
-            Ok(false) => {
-                warn!("Block validation failed. Dropping block...");
-                return;
-            }
-            Err(e) => {
-                warn!("Error in block validation {e}. Dropping block...");
-                return;
-            }
-        }
-
         // handle incoming block
         let receive_block_result =
-            self.receive_block(block, socket_properties.uuid().clone());
+            self.clone().receive_block(block, socket_properties.uuid().clone()).into_future().await;
+
+        let own_received_block = match receive_block_result {
+            Ok(own_received_block) => own_received_block,
+            Err(e) => {
+                error!("Failed to validate block signature: {:?}", e);
+                return;
+            }
+        };
+
         // handle own block if some
         if let Some(own_received_block) =
-            receive_block_result.own_received_block
+            own_received_block
         {
             self.block_handler.handle_incoming_block(own_received_block);
-        }
-        // handle async logic if some
-        if let Some(async_handler) = receive_block_result.async_handler {
-            async_handler.await;
         }
     }
 
@@ -451,45 +435,69 @@ impl ComHub {
     }
 
     /// Receives a block from a socket and handles it accordingly
-    /// Returns own received block if any and an optional async handler for further processing of relayed blocks and trace blocks
+    /// Returns a MaybeAsync which is async in the following cases:
+    /// * the block signature is validated because the block is for own endpoint and signature is set
+    /// * the block needs to be relayed to other endpoints or is a trace block, which requires async handling for the relay/trace logic
+    /// The MaybeAsync returns the own received block if the block is for own endpoint and signature is valid, otherwise None
     pub(crate) fn receive_block(
-        &self,
+        self: Rc<Self>,
         block: DXBBlock,
         socket_uuid: ComInterfaceSocketUUID,
-    ) -> ReceiveBlockResult<impl Future<Output = ()>> {
+    ) -> MaybeAsync<ReceiveBlockResult, impl Future<Output = ReceiveBlockResult>> {
+        // preprocess the block and get relay receivers and own received block if any
         let preprocess_result =
             self.receive_block_preprocess(&socket_uuid, block);
 
-        // map own received block
-        let (own_received_block, trace_block) =
-            match preprocess_result.own_received_block {
-                Some(OwnReceivedBlock::Other(block)) => (Some(block), None),
-                Some(OwnReceivedBlock::Trace(block)) => (None, Some(block)),
-                None => (None, None),
+        let self_clone = self.clone();
+
+        // validate block signature if sent to own endpoint
+        let validation_result = match preprocess_result.own_received_block {
+            // if block is for own endpoint, validate signature if set
+            Some(block) => {
+                block
+                    .validate_signature()
+                    .map(|validation| validation.map(Some))
+            },
+            // if block is not for own endpoint, don't validate signature and don't return own received block
+            None => MaybeAsync::Sync(Ok(None))
+        };
+
+        validation_result.map(move |validation_result| {
+            // handle async logic for received blocks if needed
+            let own_received_block = match validation_result {
+                Ok(block) => block,
+                Err(e) => return MaybeAsync::Sync(Err(e)),
             };
 
-        // handle async logic for received blocks if needed
-        if preprocess_result.relayed_block.is_some() || trace_block.is_some() {
-            let async_handler = self.receive_block_async(
-                trace_block,
-                preprocess_result.relayed_block,
-                preprocess_result.block_id_for_history,
-                socket_uuid,
-                preprocess_result.is_for_own,
-            );
+            let (trace_block, own_block) = match own_received_block {
+                Some(block) => {
+                    let block_type = block.block_type();
+                    match block_type {
+                        BlockType::Trace | BlockType::TraceBack => (Some(block), None),
+                        _ => (None, Some(block))
+                    }
+                }
+                None => (None, None)
+            };
 
-            ReceiveBlockResult {
-                own_received_block,
-                async_handler: Some(async_handler),
+            if preprocess_result.relayed_block.is_some() || trace_block.is_some() {
+                MaybeAsync::Async(async move {
+                    self_clone.receive_block_async(
+                        trace_block,
+                        preprocess_result.relayed_block,
+                        preprocess_result.block_id_for_history,
+                        socket_uuid,
+                        preprocess_result.is_for_own,
+                    ).await;
+
+                    Ok(own_block)
+                })
             }
-        }
-        // otherwise, return directly without async handler
-        else {
-            ReceiveBlockResult {
-                own_received_block,
-                async_handler: None,
+            // otherwise, return directly without async handler
+            else {
+                MaybeAsync::Sync(Ok(own_block))
             }
-        }
+        }).flatten()
     }
 
     /// Preprocesses a received block and returns relay receivers and own received block if any
@@ -536,10 +544,7 @@ impl ComHub {
             {
                 info!("Block is for this endpoint");
 
-                Some(match block_type {
-                    BlockType::Trace => OwnReceivedBlock::Trace(block.clone()),
-                    _ => OwnReceivedBlock::Other(block.clone()),
-                })
+                Some(block.clone()) // FIXME: no clone
             } else {
                 None
             };
@@ -595,7 +600,7 @@ impl ComHub {
 
     /// Handles async logic for received blocks (trace blocks, redirects to other endpoints)
     pub(crate) async fn receive_block_async(
-        &self,
+        self: Rc<Self>,
         trace_block: Option<DXBBlock>,
         relayed_block: Option<DXBBlock>,
         block_id_for_history: Option<BlockId>,
@@ -605,7 +610,16 @@ impl ComHub {
         // handle trace block asynchronously
         if let Some(block) = trace_block {
             info!("Handling trace block asynchronously");
-            self.handle_trace_block(&block, socket_uuid.clone()).await;
+
+            match block.block_type() {
+                BlockType::Trace => {
+                    self.handle_trace_block(&block, socket_uuid.clone()).await;
+                },
+                BlockType::TraceBack => {
+                    self.handle_trace_back_block(&block, socket_uuid.clone());
+                },
+                _ => unreachable!() // not a trace block, should never happen
+            }
         }
 
         // redirect block to other endpoints
@@ -835,110 +849,14 @@ impl ComHub {
 
     /// Validates a block including it's signature if set
     /// TODO #378 @Norbert
-    async fn validate_block(block: &DXBBlock) -> Result<bool, ComHubError> {
-        // TODO #179 check for creation time, withdraw if too old (TBD) or in the future
 
-        let is_signed =
-            block.routing_header.flags.signature_type() != SignatureType::None;
-
-        match is_signed {
-            true => {
-                // TODO #180: verify signature and abort if invalid
-                // Check if signature is following in some later block and add them to
-                // a pool of incoming blocks awaiting some signature
-                match block.routing_header.flags.signature_type() {
-                    SignatureType::Encrypted => {
-                        let raw_sign = block
-                            .signature
-                            .as_ref()
-                            .ok_or(ComHubError::SignatureError)?;
-                        let (enc_sign, pub_key) = raw_sign.split_at(64);
-                        let hash = CryptoImpl::hkdf_sha256(pub_key, &[0u8; 16])
-                            .await
-                            .map_err(|_| ComHubError::SignatureError)?;
-                        let signature = CryptoImpl::aes_ctr_decrypt(
-                            &hash, &[0u8; 16], enc_sign,
-                        )
-                        .await
-                        .map_err(|_| ComHubError::SignatureError)?;
-
-                        let raw_signed =
-                            [pub_key, &block.body.clone()].concat();
-                        let hashed_signed =
-                            CryptoImpl::hash_sha256(&raw_signed)
-                                .await
-                                .map_err(|_| ComHubError::SignatureError)?;
-
-                        let ver = CryptoImpl::ver_ed25519(
-                            pub_key,
-                            &signature,
-                            &hashed_signed,
-                        )
-                        .await
-                        .map_err(|_| ComHubError::SignatureError)?;
-                        Ok(ver)
-                    }
-                    SignatureType::Unencrypted => {
-                        let raw_sign = block
-                            .signature
-                            .as_ref()
-                            .ok_or(ComHubError::SignatureError)?;
-                        let (signature, pub_key) = raw_sign.split_at(64);
-
-                        let raw_signed =
-                            [pub_key, &block.body.clone()].concat();
-                        let hashed_signed =
-                            CryptoImpl::hash_sha256(&raw_signed)
-                                .await
-                                .map_err(|_| ComHubError::SignatureError)?;
-
-                        let ver = CryptoImpl::ver_ed25519(
-                            pub_key,
-                            signature,
-                            &hashed_signed,
-                        )
-                        .await
-                        .map_err(|_| ComHubError::SignatureError)?;
-                        Ok(ver)
-                    }
-                    SignatureType::None => {
-                        unreachable!("If (is_signed == true) => !None");
-                    }
-                }
-            }
-            false => {
-                let endpoint = block.routing_header.sender.clone();
-                let is_trusted = {
-                    cfg_if::cfg_if! {
-                        // FIXME make this a config option
-                        if #[cfg(feature = "allow_unsigned_blocks")] {
-                            true
-                        }
-                        else {
-                            // TODO #181 Check if the sender is trusted (endpoint + interface) connection
-                            false
-                        }
-                    }
-                };
-                match is_trusted {
-                    true => Ok(true),
-                    false => {
-                        warn!(
-                            "Block received by {endpoint} is not signed. Dropping block..."
-                        );
-                        Ok(false)
-                    }
-                }
-            }
-        }
-    }
 
     /// Prepares an own block for sending by setting sender, timestamp, distance and signing if needed.
     /// Will return either synchronously or asynchronously depending on the signature type.
-    pub fn prepare_own_block<'a>(
-        &'a self,
+    pub fn prepare_own_block(
+        &self,
         mut block: DXBBlock,
-    ) -> PrepareOwnBlockResult<'a> {
+    ) -> PrepareOwnBlockResult {
         /// Updates the sender and timestamp of the block
         fn update_sender_and_timestamp(
             mut block: DXBBlock,
@@ -967,19 +885,19 @@ impl ComHub {
                 SyncOrAsync::Async(Box::pin(async move {
                     let (pub_key, pri_key) = CryptoImpl::gen_ed25519()
                         .await
-                        .map_err(|_| ComHubError::SignatureError)?;
+                        .map_err(|_| ComHubError::SignatureCreationError)?;
 
                     let raw_signed =
                         [pub_key.clone(), block.body.clone()].concat();
 
                     let hashed_signed = CryptoImpl::hash_sha256(&raw_signed)
                         .await
-                        .map_err(|_| ComHubError::SignatureError)?;
+                        .map_err(|_| ComHubError::SignatureCreationError)?;
 
                     let signature =
                         CryptoImpl::sig_ed25519(&pri_key, &hashed_signed)
                             .await
-                            .map_err(|_| ComHubError::SignatureError)?;
+                            .map_err(|_| ComHubError::SignatureCreationError)?;
 
                     let sig_bytes: Vec<u8> = match sig_ty {
                         SignatureType::Unencrypted => signature.to_vec(),
@@ -988,13 +906,13 @@ impl ComHub {
                             let hash =
                                 CryptoImpl::hkdf_sha256(&pub_key, &[0u8; 16])
                                     .await
-                                    .map_err(|_| ComHubError::SignatureError)?;
+                                    .map_err(|_| ComHubError::SignatureCreationError)?;
 
                             CryptoImpl::aes_ctr_encrypt(
                                 &hash, &[0u8; 16], &signature,
                             )
                             .await
-                            .map_err(|_| ComHubError::SignatureError)?
+                            .map_err(|_| ComHubError::SignatureCreationError)?
                             .to_vec()
                         }
 
@@ -1619,20 +1537,7 @@ impl ComHub {
             .block_header
             .flags_and_timestamp
             .set_block_type(BlockType::Hello);
-        #[cfg(feature = "allow_unsigned_blocks")]
-        {
-            block
-                .routing_header
-                .flags
-                .set_signature_type(SignatureType::None);
-        }
-        #[cfg(not(feature = "allow_unsigned_blocks"))]
-        {
-            block
-                .routing_header
-                .flags
-                .set_signature_type(SignatureType::Unencrypted);
-        }
+        block.set_default_signature_type();
         // TODO #182 include fingerprint of the own public key into body
 
         let block = self

@@ -519,8 +519,7 @@ impl ComHub {
         };
         self.set_trace_data_of_block(&mut trace_block, hops);
         trace_block.set_receivers(receiver_endpoint);
-        #[cfg(not(feature = "allow_unsigned_blocks"))]
-        trace_block.routing_header.flags.set_signature_type(SignatureType::Unencrypted);
+        trace_block.set_default_signature_type();
 
         trace_block
     }
