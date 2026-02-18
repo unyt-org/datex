@@ -100,7 +100,7 @@ impl RuntimeConfig {
         self.env.get_or_insert_with(HashMap::new).extend(vars);
     }
 
-    #[cfg(feature = "std")]
+    #[cfg(feature = "native")]
     /// Adds all host environment variables to the runtime's custom environment variables.
     pub fn load_host_env_vars(&mut self) {
         // add all host environment variables to the runtime's custom environment variables
@@ -109,7 +109,7 @@ impl RuntimeConfig {
         }
     }
 
-    #[cfg(feature = "std")]
+    #[cfg(feature = "native")]
     /// Adds all environment variables from a .env file to the runtime's custom environment variables.
     pub fn add_env_vars_from_file(&mut self, path: &std::path::PathBuf) -> Result<(), dotenvy::Error> {
         let loader1 = dotenvy::from_path_iter(path)?;
