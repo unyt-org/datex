@@ -24,7 +24,7 @@ use tokio::task;
 #[timeout(2000)]
 async fn create_network_with_two_nodes() {
     flexi_logger::init();
-    // FIXME: hop count mismatch
+    // FIXME: InvalidSignature for trace blocks (signature validation?)
     let local = task::LocalSet::new();
     local
         .run_until(async {

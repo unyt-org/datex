@@ -338,6 +338,7 @@ impl DXBBlock {
         // if not crypto_enabled, but allow_unsigned_blocks is set, just return Ok(()) for all blocks, as signature validation is not possible
         #[cfg(all(not(feature = "crypto_enabled"), feature = "allow_unsigned_blocks"))]
         {
+            info!("Crypto and signature validation are disabled, allowing block without signature validation");
             return Ok(());
         }
 
@@ -405,6 +406,7 @@ impl DXBBlock {
                 cfg_if::cfg_if! {
                     // if unsigned blocks are allowed, return true
                     if #[cfg(feature = "allow_unsigned_blocks")] {
+                        info!("Signature validation is disabled, allowing block without signature validation");
                         true
                     }
                     // otherwise, only allow unsigned Trace and TraceBack blocks,
