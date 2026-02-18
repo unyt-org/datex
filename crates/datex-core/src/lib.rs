@@ -75,7 +75,7 @@ pub mod collections {
 
 /// Reexport of Mutex that works in both std and no_std environments.
 pub mod std_sync {
-    #[cfg(feature = "no_std")]
+    #[cfg(not(feature = "std"))]
     pub use spin::Mutex;
     #[cfg(feature = "std")]
     pub use std::sync::Mutex;

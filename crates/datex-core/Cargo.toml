@@ -175,7 +175,7 @@ ntest_timeout = "0.9.3"
 indoc = "2.0.6"
 # enables native crypto for tests
 datex-crypto-native = { path = "../datex-crypto-native" }
-flexi_logger = { version = "0.31.8", optional = true }
+flexi_logger = { version = "0.31.8"  }
 
 
 [features]
@@ -198,7 +198,7 @@ no_std = [
 
 # esp32 - no_std, embassy runtime
 target_esp32 = [
-    "default",
+    "no_std",
     "embassy_runtime",
     "dep:datex-crypto-esp32"
 ]
