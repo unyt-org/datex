@@ -88,7 +88,7 @@ pub mod crypto {
             pub use datex_crypto_esp32::CryptoEsp32 as CryptoImpl;
         } else if #[cfg(target_arch = "wasm32")] {
             pub use datex_crypto_web::CryptoWeb as CryptoImpl;
-        } else if #[cfg(any(feature = "native", test))] {
+        } else if #[cfg(any(feature = "target_native", test))] {
             pub use datex_crypto_native::CryptoNative as CryptoImpl;
         } else {
             pub use crate::stub::crypto::CryptoStub as CryptoImpl;
