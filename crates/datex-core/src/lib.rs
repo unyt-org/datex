@@ -84,9 +84,9 @@ pub mod std_sync {
 /// Crypto implementations selection based on target architecture and features.
 pub mod crypto {
     cfg_if::cfg_if! {
-        if #[cfg(any(target_arch = "xtensa", target_arch = "riscv32"))] {
+        if #[cfg(feature = "target_esp32")] {
             pub use datex_crypto_esp32::CryptoEsp32 as CryptoImpl;
-        } else if #[cfg(target_arch = "wasm32")] {
+        } else if #[cfg(feature = "target_wasm")] {
             pub use datex_crypto_web::CryptoWeb as CryptoImpl;
         } else if #[cfg(any(feature = "target_native", test))] {
             pub use datex_crypto_native::CryptoNative as CryptoImpl;
@@ -98,11 +98,11 @@ pub mod crypto {
 
 pub mod time {
     cfg_if::cfg_if! {
-        if #[cfg(target_arch = "wasm32")] {
+        if #[cfg(feature = "target_wasm")] {
             pub use web_time::{Instant};
         } else if #[cfg(feature = "std")] {
             pub use std::time::{Instant};
-        } else if #[cfg(feature = "embedded")] {
+        } else if #[cfg(feature = "embassy_runtime")] {
             pub use embassy_time::{Instant};
         } else {
             pub use crate::stub::time::{Instant};
