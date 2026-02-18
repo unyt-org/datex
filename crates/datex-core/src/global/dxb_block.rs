@@ -334,6 +334,13 @@ impl DXBBlock {
     /// Validates the signature of the block based on the signature type specified in the routing header.
     /// Returns Ok(()) if the signature is valid, or a SignatureValidationError if the signature is missing, cannot be parsed, or is invalid.
     pub async fn validate_signature(&self) -> Result<(), SignatureValidationError> {
+
+        // if not crypto_enabled, but allow_unsigned_blocks is set, just return Ok(()) for all blocks, as signature validation is not possible
+        #[cfg(all(not(feature = "crypto_enabled"), feature = "allow_unsigned_blocks"))]
+        {
+            return Ok(());
+        }
+
         // TODO #179 check for creation time, withdraw if too old (TBD) or in the future
         let is_valid_signature = match self.routing_header.flags.signature_type() {
 
