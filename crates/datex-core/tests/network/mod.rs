@@ -6,5 +6,4 @@
 // mod com_hub_network_tracing;
 // mod execution;
 pub mod helpers;
-#[cfg(feature = "allow_unsigned_blocks")] // TODO: remove?
 pub mod networks;

@@ -198,7 +198,11 @@ no_std = [
 target_esp32 = [
     "no_std",
     "embassy_runtime",
-    "dep:datex-crypto-esp32"
+    "dep:datex-crypto-esp32",
+    # FIXME: remove once crypto is fully implemented for esp32
+    "allow_unsigned_blocks",
+    # FIXME: enable once crypto is fully implemented for esp32
+    # "crypto_enabled"
 ]
 
 # native - std, tokio runtime
@@ -206,6 +210,7 @@ target_native = [
     "std",
     "tokio_runtime",
     "dep:datex-crypto-native",
+    "crypto_enabled",
     "dep:dotenvy",
 ]
 
@@ -213,6 +218,7 @@ target_native = [
 target_wasm = [
     "std",
     "wasm_runtime",
+    "crypto_enabled",
 ]
 
 
@@ -240,6 +246,9 @@ syntax_highlighting_legacy = ["dep:syntect"]
 
 # when enabled, unsigned DXB blocks are accepted
 allow_unsigned_blocks = []
+
+# when set, all crypto-related features are enabled
+crypto_enabled = []
 
 # Configuration for std
 std = [
