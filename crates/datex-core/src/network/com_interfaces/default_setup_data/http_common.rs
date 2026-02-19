@@ -36,8 +36,13 @@ pub enum TLSMode {
     },
 }
 
-pub type AcceptAddress = (String, Option<TLSMode>);
-pub type AcceptAddresses = Vec<AcceptAddress>;
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
+pub struct AcceptAddress {
+    address: String,
+    tls_mode: Option<TLSMode>
+}
+
 
 /// Parses a WebSocket URL and returns a `Url` object.
 /// If no protocol is specified, it defaults to `ws` or `wss` based on the `secure` parameter.
@@ -54,7 +59,7 @@ pub fn parse_url(address: &str) -> Result<Url, URLError> {
 
 /// Generates the setup data for client interfaces based on the server's accept addresses.
 pub fn get_clients_setup_data<T: Serialize>(
-    accept_addresses: Option<AcceptAddresses>,
+    accept_addresses: Option<Vec<AcceptAddress>>,
     protocols: (String, String),
     interface_type: String,
     generate_client_interface: fn(String) -> T,
@@ -62,7 +67,7 @@ pub fn get_clients_setup_data<T: Serialize>(
     accept_addresses.map(|addrs| {
         addrs
             .into_iter()
-            .map(|(address, tls_mode)| {
+            .map(|AcceptAddress { address, tls_mode }| {
                 let url = format!(
                     "{}://{}",
                     if tls_mode.is_some() { protocols.1.clone() } else { protocols.0.clone() },
