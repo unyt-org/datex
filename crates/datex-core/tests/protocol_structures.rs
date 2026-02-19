@@ -87,7 +87,7 @@ pub fn parse_routing_header() {
     );
 }
 
-#[tokio::test]
+#[test]
 pub async fn parse_dxb_block() {
     let block = DXBBlock {
         routing_header: RoutingHeader::default(),
@@ -96,7 +96,7 @@ pub async fn parse_dxb_block() {
 
     let bytes = block.to_bytes();
 
-    let new_block = DXBBlock::from_bytes(bytes.as_slice()).await.unwrap();
+    let new_block = DXBBlock::from_bytes(bytes.as_slice()).unwrap();
     let new_bytes = new_block.to_bytes();
 
     assert_eq!(bytes, new_bytes);

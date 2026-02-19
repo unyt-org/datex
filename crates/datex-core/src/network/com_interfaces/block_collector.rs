@@ -59,7 +59,7 @@ impl BlockCollector {
                         .drain(0..specified_length as usize)
                         .collect::<Vec<u8>>();
 
-                    let block_result = DXBBlock::from_bytes(&block_slice).await;
+                    let block_result = DXBBlock::from_bytes(&block_slice);
 
                     match block_result {
                         Ok(block) => {

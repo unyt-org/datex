@@ -83,6 +83,7 @@ use async_select::select;
 use datex_crypto_facade::crypto::Crypto;
 use futures_util::FutureExt;
 use crate::global::dxb_block::SignatureValidationError;
+use crate::utils::maybe_async::MaybeAsync;
 
 pub type IncomingBlockInterceptor =
     Box<dyn Fn(&DXBBlock, &ComInterfaceSocketUUID) + 'static>;
@@ -172,9 +173,18 @@ pub enum OwnReceivedBlock {
     Other(DXBBlock),
 }
 
+impl OwnReceivedBlock {
+    pub fn block(&self) -> DXBBlock {
+        match self {
+            OwnReceivedBlock::Trace(block) => block.clone(),
+            OwnReceivedBlock::Other(block) => block.clone(),
+        }
+    }
+}
+
 pub struct ReceiveBlockPreprocessResult {
     relayed_block: Option<DXBBlock>,
-    own_received_block: Option<OwnReceivedBlock>,
+    own_received_block: Option<DXBBlock>,
     block_id_for_history: Option<BlockId>,
     is_for_own: bool,
 }
@@ -397,13 +407,6 @@ impl ComHub {
         block: DXBBlock,
         socket_properties: &SocketProperties,
     ) {
-        // Validate
-        // drop invalid blocks (e.g. invalid signature)
-        if let Err(e) = block.validate_signature().await {
-            warn!("Error in block validation: {:?}. Dropping block...", e);
-            return;
-        }
-
         // handle incoming block
         let receive_block_result =
             self.receive_block(block, socket_properties.uuid().clone());
@@ -446,44 +449,66 @@ impl ComHub {
 
     /// Receives a block from a socket and handles it accordingly
     /// Returns own received block if any and an optional async handler for further processing of relayed blocks and trace blocks
-    pub(crate) fn receive_block(
-        &self,
+    pub(crate) fn receive_block<F, G>(
+        self: Rc<Self>,
         block: DXBBlock,
         socket_uuid: ComInterfaceSocketUUID,
-    ) -> ReceiveBlockResult<impl Future<Output = ()>> {
+    ) -> MaybeAsync<ReceiveBlockResult<F>, G>
+        where
+            F: Future<Output = ()>,
+            G: Future<Output = ReceiveBlockResult<F>>
+    {
         let preprocess_result =
             self.receive_block_preprocess(&socket_uuid, block);
 
-        // map own received block
-        let (own_received_block, trace_block) =
-            match preprocess_result.own_received_block {
-                Some(OwnReceivedBlock::Other(block)) => (Some(block), None),
-                Some(OwnReceivedBlock::Trace(block)) => (None, Some(block)),
-                None => (None, None),
+        let own_received_block = preprocess_result.own_received_block;
+
+        let self_clone = self.clone();
+
+        match own_received_block {
+            Some(block) => {
+                block.validate_signature().map(|validation| {
+                    // TODO: pass validation error
+                    Some(validation.unwrap())
+                })
+            },
+            None => MaybeAsync::Sync(None)
+        }.map(move |own_received_block| {
+            // handle async logic for received blocks if needed
+
+            let (trace_block, own_block) = match own_received_block {
+                Some(block) => {
+                    let block_type = block.block_type();
+                    match block_type {
+                        BlockType::Trace | BlockType::TraceBack => (Some(block), None),
+                        _ => (None, Some(block))
+                    }
+                }
+                None => (None, None)
             };
 
-        // handle async logic for received blocks if needed
-        if preprocess_result.relayed_block.is_some() || trace_block.is_some() {
-            let async_handler = self.receive_block_async(
-                trace_block,
-                preprocess_result.relayed_block,
-                preprocess_result.block_id_for_history,
-                socket_uuid,
-                preprocess_result.is_for_own,
-            );
+            if preprocess_result.relayed_block.is_some() || trace_block.is_some() {
+                let async_handler = self_clone.receive_block_async(
+                    trace_block,
+                    preprocess_result.relayed_block,
+                    preprocess_result.block_id_for_history,
+                    socket_uuid,
+                    preprocess_result.is_for_own,
+                );
 
-            ReceiveBlockResult {
-                own_received_block,
-                async_handler: Some(async_handler),
+                ReceiveBlockResult {
+                    own_received_block: own_block,
+                    async_handler: Some(async_handler),
+                }
             }
-        }
-        // otherwise, return directly without async handler
-        else {
-            ReceiveBlockResult {
-                own_received_block,
-                async_handler: None,
+            // otherwise, return directly without async handler
+            else {
+                ReceiveBlockResult {
+                    own_received_block: own_block,
+                    async_handler: None,
+                }
             }
-        }
+        })
     }
 
     /// Preprocesses a received block and returns relay receivers and own received block if any
@@ -530,10 +555,7 @@ impl ComHub {
             {
                 info!("Block is for this endpoint");
 
-                Some(match block_type {
-                    BlockType::Trace | BlockType::TraceBack => OwnReceivedBlock::Trace(block.clone()),
-                    _ => OwnReceivedBlock::Other(block.clone()),
-                })
+                Some(block)
             } else {
                 None
             };
@@ -589,7 +611,7 @@ impl ComHub {
 
     /// Handles async logic for received blocks (trace blocks, redirects to other endpoints)
     pub(crate) async fn receive_block_async(
-        &self,
+        self: Rc<Self>,
         trace_block: Option<DXBBlock>,
         relayed_block: Option<DXBBlock>,
         block_id_for_history: Option<BlockId>,
@@ -599,6 +621,7 @@ impl ComHub {
         // handle trace block asynchronously
         if let Some(block) = trace_block {
             info!("Handling trace block asynchronously");
+
             match block.block_type() {
                 BlockType::Trace => {
                     self.handle_trace_block(&block, socket_uuid.clone()).await;
