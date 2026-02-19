@@ -17,6 +17,7 @@ use binrw::{
     io::{Cursor, Read},
 };
 use core::{fmt::Display, result::Result, unimplemented};
+use log::info;
 use datex_crypto_facade::crypto::Crypto;
 use strum::Display;
 use thiserror::Error;
