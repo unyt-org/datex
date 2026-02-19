@@ -342,7 +342,7 @@ impl DXBBlock {
         #[cfg(all(not(feature = "crypto_enabled"), feature = "allow_unsigned_blocks"))]
         {
             info!("Crypto and signature validation are disabled, allowing block without signature validation");
-            return Ok(());
+            return MaybeAsync::Sync(Ok(self));
         }
 
         // TODO #179 check for creation time, withdraw if too old (TBD) or in the future
