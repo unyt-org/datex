@@ -1,3 +1,7 @@
+use core::pin::Pin;
+use core::task::Context;
+use core::task::Poll;
+
 pub enum MaybeAsync<T, F: Future<Output = T>> {
     Sync(T),
     Async(F),
@@ -13,10 +17,11 @@ impl<T, F: Future<Output = T>> MaybeAsync<T, F> {
         }
     }
 
+    /// Maps a function over the value inside the MaybeAsync, returning a new MaybeAsync with the mapped value.
     pub fn map<U, Func>(
         self,
         func: Func,
-    ) -> MaybeAsync<U, impl Future<Output = U>>
+    ) -> MaybeAsync<U, impl Future<Output=U>>
     where
         Func: FnOnce(T) -> U,
     {
@@ -29,6 +34,39 @@ impl<T, F: Future<Output = T>> MaybeAsync<T, F> {
         }
     }
 }
+
+impl<T, InnerF: Future<Output = T>, OuterF: Future<Output = MaybeAsync<T, InnerF>>> MaybeAsync<MaybeAsync<T, InnerF>, OuterF> {
+    /// Flattens a nested MaybeAsync into a single layer of MaybeAsync.
+    pub fn flatten(self) -> MaybeAsync<T, impl Future<Output = T>> {
+
+        enum Either<OuterF, InnerF> {
+            Outer(OuterF),
+            Inner(InnerF),
+        }
+
+        let fut = match self {
+            MaybeAsync::Sync(inner) => match inner {
+                MaybeAsync::Sync(value) => return MaybeAsync::Sync(value),
+                MaybeAsync::Async(fut) => Either::Inner(fut),
+            },
+            MaybeAsync::Async(outer_fut) => Either::Outer(outer_fut),
+        };
+
+        MaybeAsync::Async(async move {
+            match fut {
+                Either::Outer(outer_fut) => {
+                    let inner = outer_fut.await;
+                    match inner {
+                        MaybeAsync::Sync(value) => value,
+                        MaybeAsync::Async(fut) => fut.await,
+                    }
+                }
+                Either::Inner(inner_fut) => inner_fut.await,
+            }
+        })
+    }
+}
+
 
 pub enum SyncOrAsync<SyncValue, AsyncValue, F: Future<Output = AsyncValue>> {
     Sync(SyncValue),

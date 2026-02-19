@@ -420,19 +420,21 @@ impl DXBBlock {
            }
 
            SignatureType::None => {
-                let is_valid = cfg_if::cfg_if! {
-                    // if unsigned blocks are allowed, return true
-                    if #[cfg(feature = "allow_unsigned_blocks")] {
-                        info!("Signature validation is disabled, allowing block without signature validation");
-                        true
-                    }
-                    // otherwise, only allow unsigned Trace and TraceBack blocks,
-                    // as they are used for debugging and should not be used in production with real data
-                    else {
-                        match self.block_type() {
-                            BlockType::Trace | BlockType::TraceBack => true,
-                            // TODO #181 Check if the sender is trusted (endpoint + interface) connection
-                            _ => return Err(SignatureValidationError::MissingSignature)
+                let is_valid = {
+                    cfg_if::cfg_if! {
+                        // if unsigned blocks are allowed, return true
+                        if #[cfg(feature = "allow_unsigned_blocks")] {
+                            info!("Signature validation is disabled, allowing block without signature validation");
+                            true
+                        }
+                        // otherwise, only allow unsigned Trace and TraceBack blocks,
+                        // as they are used for debugging and should not be used in production with real data
+                        else {
+                            match self.block_type() {
+                                BlockType::Trace | BlockType::TraceBack => true,
+                                // TODO #181 Check if the sender is trusted (endpoint + interface) connection
+                                _ => return MaybeAsync::Sync(Err(SignatureValidationError::MissingSignature))
+                            }
                         }
                     }
                 };

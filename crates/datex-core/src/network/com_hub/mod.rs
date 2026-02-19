@@ -161,26 +161,6 @@ impl Default for InterfacePriority {
     }
 }
 
-pub struct ReceiveBlockResult<F: Future<Output = ()>> {
-    own_received_block: Option<DXBBlock>,
-    async_handler: Option<F>,
-}
-
-/// A received block for the local endpoint, either a Trace, which must be handled asynchronously,
-/// or another block type which may be handled directly
-pub enum OwnReceivedBlock {
-    Trace(DXBBlock),
-    Other(DXBBlock),
-}
-
-impl OwnReceivedBlock {
-    pub fn block(&self) -> DXBBlock {
-        match self {
-            OwnReceivedBlock::Trace(block) => block.clone(),
-            OwnReceivedBlock::Other(block) => block.clone(),
-        }
-    }
-}
 
 pub struct ReceiveBlockPreprocessResult {
     relayed_block: Option<DXBBlock>,
@@ -201,6 +181,8 @@ pub type PrepareOwnBlockResult<'a> = SyncOrAsyncResult<
     ComHubError,
     PrepareOwnBlockFuture<'a>,
 >;
+
+pub type ReceiveBlockResult = Result<Option<DXBBlock>, SignatureValidationError>;
 
 impl ComHub {
     pub fn create(
@@ -375,7 +357,7 @@ impl ComHub {
                 },
                 // receive new blocks from block collector
                 Some(block) = async_next_pin_box(&mut block_iterator).fuse() => {
-                    Self::handle_incoming_block_async(&self, block, &socket_properties).await;
+                    Self::handle_incoming_block_async(self.clone(), block, &socket_properties).await;
                 },
                 complete => break,
             }
@@ -403,22 +385,27 @@ impl ComHub {
 
     /// Handles an incoming block from a socket (async)
     async fn handle_incoming_block_async(
-        self: &Rc<Self>,
+        self: Rc<Self>,
         block: DXBBlock,
         socket_properties: &SocketProperties,
     ) {
         // handle incoming block
         let receive_block_result =
-            self.receive_block(block, socket_properties.uuid().clone());
+            self.clone().receive_block(block, socket_properties.uuid().clone()).into_future().await;
+
+        let own_received_block = match receive_block_result {
+            Ok(own_received_block) => own_received_block,
+            Err(e) => {
+                error!("Failed to validate block signature: {:?}", e);
+                return;
+            }
+        };
+
         // handle own block if some
         if let Some(own_received_block) =
-            receive_block_result.own_received_block
+            own_received_block
         {
             self.block_handler.handle_incoming_block(own_received_block);
-        }
-        // handle async logic if some
-        if let Some(async_handler) = receive_block_result.async_handler {
-            async_handler.await;
         }
     }
 
@@ -448,33 +435,39 @@ impl ComHub {
     }
 
     /// Receives a block from a socket and handles it accordingly
-    /// Returns own received block if any and an optional async handler for further processing of relayed blocks and trace blocks
-    pub(crate) fn receive_block<F, G>(
+    /// Returns a MaybeAsync which is async in the following cases:
+    /// * the block signature is validated because the block is for own endpoint and signature is set
+    /// * the block needs to be relayed to other endpoints or is a trace block, which requires async handling for the relay/trace logic
+    /// The MaybeAsync returns the own received block if the block is for own endpoint and signature is valid, otherwise None
+    pub(crate) fn receive_block(
         self: Rc<Self>,
         block: DXBBlock,
         socket_uuid: ComInterfaceSocketUUID,
-    ) -> MaybeAsync<ReceiveBlockResult<F>, G>
-        where
-            F: Future<Output = ()>,
-            G: Future<Output = ReceiveBlockResult<F>>
-    {
+    ) -> MaybeAsync<ReceiveBlockResult, impl Future<Output = ReceiveBlockResult>> {
+        // preprocess the block and get relay receivers and own received block if any
         let preprocess_result =
             self.receive_block_preprocess(&socket_uuid, block);
 
-        let own_received_block = preprocess_result.own_received_block;
-
         let self_clone = self.clone();
 
-        match own_received_block {
+        // validate block signature if sent to own endpoint
+        let validation_result = match preprocess_result.own_received_block {
+            // if block is for own endpoint, validate signature if set
             Some(block) => {
-                block.validate_signature().map(|validation| {
-                    // TODO: pass validation error
-                    Some(validation.unwrap())
-                })
+                block
+                    .validate_signature()
+                    .map(|validation| validation.map(Some))
             },
-            None => MaybeAsync::Sync(None)
-        }.map(move |own_received_block| {
+            // if block is not for own endpoint, don't validate signature and don't return own received block
+            None => MaybeAsync::Sync(Ok(None))
+        };
+
+        validation_result.map(move |validation_result| {
             // handle async logic for received blocks if needed
+            let own_received_block = match validation_result {
+                Ok(block) => block,
+                Err(e) => return MaybeAsync::Sync(Err(e)),
+            };
 
             let (trace_block, own_block) = match own_received_block {
                 Some(block) => {
@@ -488,27 +481,23 @@ impl ComHub {
             };
 
             if preprocess_result.relayed_block.is_some() || trace_block.is_some() {
-                let async_handler = self_clone.receive_block_async(
-                    trace_block,
-                    preprocess_result.relayed_block,
-                    preprocess_result.block_id_for_history,
-                    socket_uuid,
-                    preprocess_result.is_for_own,
-                );
+                MaybeAsync::Async(async move {
+                    self_clone.receive_block_async(
+                        trace_block,
+                        preprocess_result.relayed_block,
+                        preprocess_result.block_id_for_history,
+                        socket_uuid,
+                        preprocess_result.is_for_own,
+                    ).await;
 
-                ReceiveBlockResult {
-                    own_received_block: own_block,
-                    async_handler: Some(async_handler),
-                }
+                    Ok(own_block)
+                })
             }
             // otherwise, return directly without async handler
             else {
-                ReceiveBlockResult {
-                    own_received_block: own_block,
-                    async_handler: None,
-                }
+                MaybeAsync::Sync(Ok(own_block))
             }
-        })
+        }).flatten()
     }
 
     /// Preprocesses a received block and returns relay receivers and own received block if any
@@ -555,7 +544,7 @@ impl ComHub {
             {
                 info!("Block is for this endpoint");
 
-                Some(block)
+                Some(block.clone()) // FIXME: no clone
             } else {
                 None
             };
