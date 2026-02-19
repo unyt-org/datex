@@ -5,7 +5,7 @@ use serde::Serialize;
 use crate::network::com_hub::errors::ComInterfaceCreateError;
 use crate::network::com_interfaces::com_interface::properties::{ComInterfaceProperties, InterfaceDirection};
 use crate::network::com_interfaces::default_setup_data::http::http_client::HTTPClientInterfaceSetupData;
-use crate::network::com_interfaces::default_setup_data::http_common::{get_clients_setup_data, AcceptAddresses};
+use crate::network::com_interfaces::default_setup_data::http_common::{get_clients_setup_data, AcceptAddress};
 use crate::runtime::RuntimeConfigInterface;
 
 #[derive(Serialize, Deserialize)]
@@ -16,7 +16,7 @@ pub struct HTTPServerInterfaceSetupData {
     /// A list of addresses the server should accept connections from,
     /// along with their optional TLS mode.
     /// E.g., [("example.com", Some(TLSMode::WithCertificate { ... })), ("example.org:1234", None)]
-    pub accept_addresses: Option<AcceptAddresses>,
+    pub accept_addresses: Option<Vec<AcceptAddress>>,
 }
 
 impl HTTPServerInterfaceSetupData {
@@ -34,7 +34,7 @@ impl HTTPServerInterfaceSetupData {
     }
 
     /// Generates the setup data for HTTP client interfaces based on the server's accept addresses.
-    pub fn get_clients_setup_data(accept_addresses: Option<AcceptAddresses>) -> Result<Option<Vec<RuntimeConfigInterface>>, ComInterfaceCreateError> {
+    pub fn get_clients_setup_data(accept_addresses: Option<Vec<AcceptAddress>>) -> Result<Option<Vec<RuntimeConfigInterface>>, ComInterfaceCreateError> {
         get_clients_setup_data(
             accept_addresses,
             ("http".to_string(), "https".to_string()),
