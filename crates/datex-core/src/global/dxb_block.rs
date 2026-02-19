@@ -377,14 +377,13 @@ impl DXBBlock {
                                     .await
                                     .map_err(|_| SignatureValidationError::SignatureParseError)?;
 
-                            let is_valid = CryptoImpl::ver_ed25519(
+                            CryptoImpl::ver_ed25519(
                                 pub_key,
                                 &signature,
                                 &hashed_signed,
                             )
                                 .await
-                                .map_err(|_| SignatureValidationError::SignatureParseError)?;
-                            is_valid
+                                .map_err(|_| SignatureValidationError::SignatureParseError)?
                         }
 
                         SignatureType::Unencrypted => {
@@ -401,14 +400,13 @@ impl DXBBlock {
                                     .await
                                     .map_err(|_| SignatureValidationError::SignatureParseError)?;
 
-                            let is_valid = CryptoImpl::ver_ed25519(
+                            CryptoImpl::ver_ed25519(
                                 pub_key,
                                 signature,
                                 &hashed_signed,
                             )
                                 .await
-                                .map_err(|_| SignatureValidationError::SignatureParseError)?;
-                            is_valid
+                                .map_err(|_| SignatureValidationError::SignatureParseError)?
                         }
                         _ => unreachable!()
                     };
