@@ -2,3 +2,4 @@
 .idea
 rustc-ice-*
 target
+*.dbg
