@@ -162,6 +162,7 @@ pub struct BlockId {
 pub enum DXBBlockParseError {
     IOError(String),
     ParseError(binrw::Error),
+    IllegalState
 }
 
 #[derive(Debug)]
@@ -290,8 +291,7 @@ impl DXBBlock {
             }
             SignatureType::None => None,
         };
-
-        // TODO #112: validate the signature
+        
         let decrypted_bytes = match routing_header.flags.encryption_type() {
             EncryptionType::Encrypted => {
                 // TODO #113: decrypt the body
@@ -313,6 +313,18 @@ impl DXBBlock {
 
         let mut reader = Cursor::new(decrypted_bytes);
         let block_header = BlockHeader::read(&mut reader)?;
+
+        // invalid state: trace / trace back blocks with a signature
+        if signature.is_some()
+            && matches!(
+                block_header.flags_and_timestamp.block_type(),
+                BlockType::Trace | BlockType::TraceBack
+            )
+        {
+            return Err(DXBBlockParseError::IllegalState);
+        }
+
+
         let encrypted_header = EncryptedHeader::read(&mut reader)?;
 
         let mut body = Vec::new();
@@ -584,6 +596,7 @@ mod tests {
     };
     use core::assert_matches;
     use datex_crypto_facade::crypto::Crypto;
+    use crate::global::protocol_structures::block_header::BlockType;
 
     #[test]
     pub fn test_recalculate() {
@@ -675,5 +688,21 @@ mod tests {
             signature_validation.unwrap_err(),
             SignatureValidationError::InvalidSignature
         )
+    }
+    
+    #[test]
+    fn illegal_signed_trace_block() {
+        let mut block = DXBBlock::new_with_body(&[0x01, 0x02, 0x03]);
+        block.block_header.flags_and_timestamp.set_block_type(BlockType::Trace);
+        block.routing_header.flags.set_signature_type(SignatureType::Unencrypted);
+        block.signature = Some(vec![0u8; 108]);
+
+        let block_bytes = block.to_bytes();
+        let parse_result = DXBBlock::from_bytes(&block_bytes);
+        assert!(parse_result.is_err());
+        assert_matches!(
+            parse_result.unwrap_err(),
+            DXBBlockParseError::IllegalState
+        );
     }
 }
