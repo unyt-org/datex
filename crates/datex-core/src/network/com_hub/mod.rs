@@ -357,7 +357,10 @@ impl ComHub {
                 },
                 // receive new blocks from block collector
                 Some(block) = async_next_pin_box(&mut block_iterator).fuse() => {
-                    Self::handle_incoming_block_async(self.clone(), block, &socket_properties).await;
+                    // spawn as separate task to handle incoming block
+                    // this improves performance as multiple blocks can be handled in parallel
+                    // it's also required because the size of this future gets to big for embedded targets (heap allocation fails)
+                    self.task_manager.register_task(self.clone().handle_incoming_block_async(block, socket_properties.uuid()));
                 },
                 complete => break,
             }
@@ -387,11 +390,11 @@ impl ComHub {
     async fn handle_incoming_block_async(
         self: Rc<Self>,
         block: DXBBlock,
-        socket_properties: &SocketProperties,
+        socket_uuid: ComInterfaceSocketUUID,
     ) {
         // handle incoming block
         let receive_block_result =
-            self.clone().receive_block(block, socket_properties.uuid().clone()).into_future().await;
+            self.clone().receive_block(block, socket_uuid).into_future().await;
 
         let own_received_block = match receive_block_result {
             Ok(own_received_block) => own_received_block,
@@ -439,6 +442,7 @@ impl ComHub {
     /// * the block signature is validated because the block is for own endpoint and signature is set
     /// * the block needs to be relayed to other endpoints or is a trace block, which requires async handling for the relay/trace logic
     /// The MaybeAsync returns the own received block if the block is for own endpoint and signature is valid, otherwise None
+    // FIXME: this seams to generate a very big future which causes heap allocation to fail on embedded targets (!?)
     pub(crate) fn receive_block(
         self: Rc<Self>,
         block: DXBBlock,
