@@ -50,6 +50,8 @@ pub mod visitor;
 
 pub mod core_compiler;
 pub mod dxb_parser;
+#[cfg(all(feature = "macro_utils", feature = "std", feature = "compiler"))]
+pub mod macro_utils;
 pub mod serde;
 mod stub;
 pub mod task;
@@ -57,8 +59,6 @@ pub mod traits;
 pub mod types;
 pub mod utils;
 pub mod values;
-#[cfg(all(feature = "macro_utils", feature = "std", feature = "compiler"))]
-pub mod macro_utils;
 
 // reexport macros
 pub use datex_macros_internal as macros;
@@ -84,12 +84,12 @@ pub mod std_sync {
 /// Crypto implementations selection based on target architecture and features.
 pub mod crypto {
     cfg_if::cfg_if! {
-        if #[cfg(feature = "target_esp32")] {
+        if #[cfg(any(feature = "target_native", test))] {
+            pub use datex_crypto_native::CryptoNative as CryptoImpl;
+        } else if #[cfg(feature = "target_esp32")] {
             pub use datex_crypto_esp32::CryptoEsp32 as CryptoImpl;
         } else if #[cfg(feature = "target_wasm")] {
             pub use datex_crypto_web::CryptoWeb as CryptoImpl;
-        } else if #[cfg(any(feature = "target_native", test))] {
-            pub use datex_crypto_native::CryptoNative as CryptoImpl;
         } else {
             pub use crate::stub::crypto::CryptoStub as CryptoImpl;
         }
