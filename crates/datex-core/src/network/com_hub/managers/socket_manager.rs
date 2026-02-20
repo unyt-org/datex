@@ -425,15 +425,6 @@ impl ComInterfaceSocketManager {
             }
         }
 
-        // notify com hub about new socket so that it can init the socket task and optionally send a
-        // hello block
-
-        // self.block_event_sender
-        //     .start_send(BlockSendEvent::NewSocket {
-        //         socket_uuid: socket_uuid.clone(),
-        //     })
-        //     .expect("Cannot send BlockSendEvent::NewSocket");
-
         // call registered callbacks for socket registration
         if let Some(callbacks) = self
             .socket_registered_callbacks
