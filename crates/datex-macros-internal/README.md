@@ -1,7 +1,7 @@
-# DATEX Macros
-> This crate provides a set of procedural macros to assist in the development of DATEX-related code.
+# DATEX Macros Internal
+> This crate provides a set of procedural macros used in the internal implementation of the DATEX crate.
 
-[![](https://img.shields.io/crates/v/datex-macros.svg)](https://crates.io/crates/datex-macros) [![Twitter badge][]][Twitter link] [![Discord badge][]][Discord link]
+[![](https://img.shields.io/crates/v/datex-macros-internal.svg)](https://crates.io/crates/datex-macros-internal) [![Twitter badge][]][Twitter link] [![Discord badge][]][Discord link]
 
 ## Contributing
 
