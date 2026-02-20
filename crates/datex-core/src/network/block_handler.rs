@@ -81,7 +81,7 @@ impl Debug for BlockHandler {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("BlockHandler")
             .field("current_context_id", &self.current_context_id)
-            .field("block_cache", &self.block_cache)
+            // .field("block_cache", &self.block_cache)
             .field("incoming_blocks_history", &self.incoming_blocks_history)
             .finish()
     }
@@ -229,8 +229,9 @@ impl BlockHandler {
         );
 
         // get scope context if it already exists
-        let has_scope_context =
-            self.block_cache.borrow().contains_key(&endpoint_context_id);
+        let has_scope_context = {
+            self.block_cache.borrow().contains_key(&endpoint_context_id)
+        };
 
         // Case 1: shortcut if no scope context exists and the block is a single block
         if !has_scope_context
