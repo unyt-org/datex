@@ -7,29 +7,41 @@ extern crate std;
 extern crate alloc;
 
 use alloc::{boxed::Box, format, string::String, vec, vec::Vec};
-use core::{
-    future::Future,
-    pin::Pin,
-    result::Result,
-};
+use core::{future::Future, pin::Pin, result::Result};
 use datex_crypto_facade::{
     crypto::{Crypto, CryptoResult},
     error::CryptoError,
 };
-use spin::{Mutex, Once};
-use static_cell::StaticCell;
 
-use esp_hal::rng::Rng;
+#[cfg(any(target_arch = "xtensa", target_arch = "riscv32"))]
+mod hal {
+    use esp_hal::rng::Rng;
+    use once_cell::sync::OnceCell;
+    use spin::{Mutex, MutexGuard};
+    use static_cell::StaticCell;
 
-static RNG: StaticCell<Mutex<Rng>> = StaticCell::new();
-static INIT: Once<&'static Mutex<Rng>> = Once::new();
+    static RNG: StaticCell<Mutex<Rng>> = StaticCell::new();
+    static INIT: OnceCell<&'static Mutex<Rng>> = OnceCell::new();
 
-pub fn rng() -> spin::MutexGuard<'static, Rng> {
-    let m = INIT.call_once(|| {
-        RNG.init(Mutex::new(Rng::new()))
-    });
+    pub fn rng() -> MutexGuard<'static, Rng> {
+        let m = INIT.get_or_init(|| RNG.init(Mutex::new(Rng::new())));
+        m.lock()
+    }
+}
 
-    m.lock()
+#[cfg(any(target_arch = "xtensa", target_arch = "riscv32"))]
+pub use hal::rng;
+
+struct InfallibleRng;
+impl InfallibleRng {
+    fn read(&mut self, _: &mut [u8]) {
+        panic!("RNG not supported on this platform");
+    }
+}
+
+#[cfg(not(any(target_arch = "xtensa", target_arch = "riscv32")))]
+fn rng() -> InfallibleRng {
+    InfallibleRng
 }
 
 #[derive(Debug, Clone)]
