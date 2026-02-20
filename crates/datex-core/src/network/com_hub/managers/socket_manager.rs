@@ -503,10 +503,7 @@ impl ComInterfaceSocketManager {
         {
             socket_uuids.remove(socket_uuid);
             if socket_uuids.is_empty() {
-                drop(socket_uuids_borrow);
-                self.socket_uuids_by_interface_uuid
-                    .borrow_mut()
-                    .remove(&interface_uuid);
+                socket_uuids_borrow.remove(&interface_uuid);
             }
         }
     }
