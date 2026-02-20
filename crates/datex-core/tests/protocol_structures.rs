@@ -88,7 +88,7 @@ pub fn parse_routing_header() {
 }
 
 #[test]
-pub async fn parse_dxb_block() {
+pub fn parse_dxb_block() {
     let block = DXBBlock {
         routing_header: RoutingHeader::default(),
         ..DXBBlock::default()
