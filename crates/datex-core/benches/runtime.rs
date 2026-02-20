@@ -1,3 +1,15 @@
+use criterion::{Criterion, criterion_group};
+
+fn bench_runtime(c: &mut Criterion) {
+    c.bench_function("runtime init", |b| b.iter(|| 1 + 2));
+}
+
+criterion_group! {
+    name = runtime_benches;
+    config = Criterion::default().sample_size(10);
+    targets = bench_runtime
+}
+
 // TODO: async initialization benchmark
 // use datex_core::{
 //     runtime::{Runtime, RuntimeConfig},

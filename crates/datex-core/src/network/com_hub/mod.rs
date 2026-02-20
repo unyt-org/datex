@@ -61,7 +61,7 @@ pub(crate) mod test_utils;
 use crate::{
     collections::HashSet,
     crypto::CryptoImpl,
-    global::dxb_block::BlockId,
+    global::dxb_block::{BlockId, SignatureValidationError},
     network::com_interfaces::{
         block_collector::BlockCollector,
         com_interface::{
@@ -75,15 +75,13 @@ use crate::{
     },
     utils::{
         async_iterators::async_next_pin_box,
-        maybe_async::{SyncOrAsync, SyncOrAsyncResult},
+        maybe_async::{MaybeAsync, SyncOrAsync, SyncOrAsyncResult},
         task_manager::TaskManager,
     },
 };
 use async_select::select;
 use datex_crypto_facade::crypto::Crypto;
 use futures_util::FutureExt;
-use crate::global::dxb_block::SignatureValidationError;
-use crate::utils::maybe_async::MaybeAsync;
 
 pub type IncomingBlockInterceptor =
     Box<dyn Fn(&DXBBlock, &ComInterfaceSocketUUID) + 'static>;
@@ -161,7 +159,6 @@ impl Default for InterfacePriority {
     }
 }
 
-
 pub struct ReceiveBlockPreprocessResult {
     relayed_block: Option<DXBBlock>,
     own_received_block: Option<DXBBlock>,
@@ -182,7 +179,8 @@ pub type PrepareOwnBlockResult<'a> = SyncOrAsyncResult<
     PrepareOwnBlockFuture<'a>,
 >;
 
-pub type ReceiveBlockResult = Result<Option<DXBBlock>, SignatureValidationError>;
+pub type ReceiveBlockResult =
+    Result<Option<DXBBlock>, SignatureValidationError>;
 
 impl ComHub {
     pub fn create(
@@ -299,8 +297,7 @@ impl ComHub {
         socket_direction: InterfaceDirection,
         auto_identify: bool,
     ) {
-        let send_hello = socket_direction.can_send()
-            && auto_identify; // Only send hello if auto_identify is enabled
+        let send_hello = socket_direction.can_send() && auto_identify; // Only send hello if auto_identify is enabled
 
         if send_hello && let Err(err) = self.send_hello_block(socket_uuid).await
         {
@@ -317,8 +314,8 @@ impl ComHub {
         auto_identify: bool,
     ) {
         // send hello block in background task
-        self.task_manager.register_task(self.clone()
-            .send_socket_hello(
+        self.task_manager
+            .register_task(self.clone().send_socket_hello(
                 socket_properties.uuid(),
                 socket_properties.direction.clone(),
                 auto_identify,
@@ -393,8 +390,11 @@ impl ComHub {
         socket_uuid: ComInterfaceSocketUUID,
     ) {
         // handle incoming block
-        let receive_block_result =
-            self.clone().receive_block(block, socket_uuid).into_future().await;
+        let receive_block_result = self
+            .clone()
+            .receive_block(block, socket_uuid)
+            .into_future()
+            .await;
 
         let own_received_block = match receive_block_result {
             Ok(own_received_block) => own_received_block,
@@ -405,9 +405,7 @@ impl ComHub {
         };
 
         // handle own block if some
-        if let Some(own_received_block) =
-            own_received_block
-        {
+        if let Some(own_received_block) = own_received_block {
             self.block_handler.handle_incoming_block(own_received_block);
         }
     }
@@ -447,7 +445,8 @@ impl ComHub {
         self: Rc<Self>,
         block: DXBBlock,
         socket_uuid: ComInterfaceSocketUUID,
-    ) -> MaybeAsync<ReceiveBlockResult, impl Future<Output = ReceiveBlockResult>> {
+    ) -> MaybeAsync<ReceiveBlockResult, impl Future<Output = ReceiveBlockResult>>
+    {
         // preprocess the block and get relay receivers and own received block if any
         let preprocess_result =
             self.receive_block_preprocess(&socket_uuid, block);
@@ -457,51 +456,57 @@ impl ComHub {
         // validate block signature if sent to own endpoint
         let validation_result = match preprocess_result.own_received_block {
             // if block is for own endpoint, validate signature if set
-            Some(block) => {
-                block
-                    .validate_signature()
-                    .map(|validation| validation.map(Some))
-            },
+            Some(block) => block
+                .validate_signature()
+                .map(|validation| validation.map(Some)),
             // if block is not for own endpoint, don't validate signature and don't return own received block
-            None => MaybeAsync::Sync(Ok(None))
+            None => MaybeAsync::Sync(Ok(None)),
         };
 
-        validation_result.map(move |validation_result| {
-            // handle async logic for received blocks if needed
-            let own_received_block = match validation_result {
-                Ok(block) => block,
-                Err(e) => return MaybeAsync::Sync(Err(e)),
-            };
+        validation_result
+            .map(move |validation_result| {
+                // handle async logic for received blocks if needed
+                let own_received_block = match validation_result {
+                    Ok(block) => block,
+                    Err(e) => return MaybeAsync::Sync(Err(e)),
+                };
 
-            let (trace_block, own_block) = match own_received_block {
-                Some(block) => {
-                    let block_type = block.block_type();
-                    match block_type {
-                        BlockType::Trace | BlockType::TraceBack => (Some(block), None),
-                        _ => (None, Some(block))
+                let (trace_block, own_block) = match own_received_block {
+                    Some(block) => {
+                        let block_type = block.block_type();
+                        match block_type {
+                            BlockType::Trace | BlockType::TraceBack => {
+                                (Some(block), None)
+                            }
+                            _ => (None, Some(block)),
+                        }
                     }
+                    None => (None, None),
+                };
+
+                if preprocess_result.relayed_block.is_some()
+                    || trace_block.is_some()
+                {
+                    MaybeAsync::Async(async move {
+                        self_clone
+                            .receive_block_async(
+                                trace_block,
+                                preprocess_result.relayed_block,
+                                preprocess_result.block_id_for_history,
+                                socket_uuid,
+                                preprocess_result.is_for_own,
+                            )
+                            .await;
+
+                        Ok(own_block)
+                    })
                 }
-                None => (None, None)
-            };
-
-            if preprocess_result.relayed_block.is_some() || trace_block.is_some() {
-                MaybeAsync::Async(async move {
-                    self_clone.receive_block_async(
-                        trace_block,
-                        preprocess_result.relayed_block,
-                        preprocess_result.block_id_for_history,
-                        socket_uuid,
-                        preprocess_result.is_for_own,
-                    ).await;
-
-                    Ok(own_block)
-                })
-            }
-            // otherwise, return directly without async handler
-            else {
-                MaybeAsync::Sync(Ok(own_block))
-            }
-        }).flatten()
+                // otherwise, return directly without async handler
+                else {
+                    MaybeAsync::Sync(Ok(own_block))
+                }
+            })
+            .flatten()
     }
 
     /// Preprocesses a received block and returns relay receivers and own received block if any
@@ -533,59 +538,57 @@ impl ComHub {
         }
 
         let all_receivers = block.receiver_endpoints();
-        let (relayed_block, own_received_block, is_for_own) = if !all_receivers
-            .is_empty()
-        {
-            let is_for_own = all_receivers.iter().any(|e| {
-                self.is_local_endpoint_exact(e)
-                    || e == &Endpoint::ANY
-                    || e == &Endpoint::ANY_ALL_INSTANCES
-            });
+        let (relayed_block, own_received_block, is_for_own) =
+            if !all_receivers.is_empty() {
+                let is_for_own = all_receivers.iter().any(|e| {
+                    self.is_local_endpoint_exact(e)
+                        || e == &Endpoint::ANY
+                        || e == &Endpoint::ANY_ALL_INSTANCES
+                });
 
-            // handle blocks for own endpoint
-            let own_received_block = if is_for_own
-                && block_type != BlockType::Hello
-            {
-                info!("Block is for this endpoint");
+                // handle blocks for own endpoint
+                let own_received_block =
+                    if is_for_own && block_type != BlockType::Hello {
+                        info!("Block is for this endpoint");
 
-                Some(block.clone()) // FIXME: no clone
-            } else {
-                None
-            };
+                        Some(block.clone()) // FIXME: no clone
+                    } else {
+                        None
+                    };
 
-            // TODO #177: handle this via TTL, not explicitly for Hello blocks
-            let relay_receivers = {
-                let should_relay =
+                // TODO #177: handle this via TTL, not explicitly for Hello blocks
+                let relay_receivers = {
+                    let should_relay =
                     // don't relay "Hello" blocks sent to own endpoint
                     !(
                         is_for_own && block_type == BlockType::Hello
                     );
 
-                // relay the block to other endpoints
-                if should_relay {
-                    let relay_receivers = if is_for_own {
-                        // get all receivers that the block must be relayed to
-                        self.get_remote_receivers(&all_receivers)
+                    // relay the block to other endpoints
+                    if should_relay {
+                        let relay_receivers = if is_for_own {
+                            // get all receivers that the block must be relayed to
+                            self.get_remote_receivers(&all_receivers)
+                        } else {
+                            all_receivers
+                        };
+                        if relay_receivers.is_empty() {
+                            None
+                        } else {
+                            Some(relay_receivers)
+                        }
                     } else {
-                        all_receivers
-                    };
-                    if relay_receivers.is_empty() {
                         None
-                    } else {
-                        Some(relay_receivers)
                     }
-                } else {
-                    None
-                }
+                };
+
+                let relayed_block = relay_receivers
+                    .map(|receivers| block.clone_with_new_receivers(receivers));
+
+                (relayed_block, own_received_block, is_for_own)
+            } else {
+                (None, None, false)
             };
-
-            let relayed_block = relay_receivers
-                .map(|receivers| block.clone_with_new_receivers(receivers));
-
-            (relayed_block, own_received_block, is_for_own)
-        } else {
-            (None, None, false)
-        };
 
         // add to block history
         let block_id_for_history = if is_new_block {
@@ -618,11 +621,11 @@ impl ComHub {
             match block.block_type() {
                 BlockType::Trace => {
                     self.handle_trace_block(&block, socket_uuid.clone()).await;
-                },
+                }
                 BlockType::TraceBack => {
                     self.handle_trace_back_block(&block, socket_uuid.clone());
-                },
-                _ => unreachable!() // not a trace block, should never happen
+                }
+                _ => unreachable!(), // not a trace block, should never happen
             }
         }
 
@@ -854,7 +857,6 @@ impl ComHub {
     /// Validates a block including it's signature if set
     /// TODO #378 @Norbert
 
-
     /// Prepares an own block for sending by setting sender, timestamp, distance and signing if needed.
     /// Will return either synchronously or asynchronously depending on the signature type.
     pub fn prepare_own_block(
@@ -910,7 +912,9 @@ impl ComHub {
                             let hash =
                                 CryptoImpl::hkdf_sha256(&pub_key, &[0u8; 16])
                                     .await
-                                    .map_err(|_| ComHubError::SignatureCreationError)?;
+                                    .map_err(|_| {
+                                        ComHubError::SignatureCreationError
+                                    })?;
 
                             CryptoImpl::aes_ctr_encrypt(
                                 &hash, &[0u8; 16], &signature,
@@ -1154,7 +1158,11 @@ impl ComHub {
     }
 
     /// Tries to match the sender endpoint to a more generic endpoint in the responses map (e.g., @jonas/0001 -> @jonas or @@local/0001 -> @xyz) and returns the matching endpoint if found.
-    fn try_match_sender(&self, responses: &mut HashMap<Endpoint, Result<Response, ResponseError>>, sender: &Endpoint) -> Option<Endpoint> {
+    fn try_match_sender(
+        &self,
+        responses: &mut HashMap<Endpoint, Result<Response, ResponseError>>,
+        sender: &Endpoint,
+    ) -> Option<Endpoint> {
         let matches = gen {
             // match sender but with any wildcard instance
             yield sender.any_instance_endpoint();
@@ -1163,7 +1171,8 @@ impl ComHub {
                 yield Endpoint::LOCAL;
                 yield Endpoint::LOCAL_ALL_INSTANCES;
             }
-        }.collect::<Vec<Endpoint>>();
+        }
+        .collect::<Vec<Endpoint>>();
         for try_match_sender in matches {
             let res = responses.get(&try_match_sender);
             if let Some(response) = res {
