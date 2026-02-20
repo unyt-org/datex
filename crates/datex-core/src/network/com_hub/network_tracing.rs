@@ -519,7 +519,6 @@ impl ComHub {
         };
         self.set_trace_data_of_block(&mut trace_block, hops);
         trace_block.set_receivers(receiver_endpoint);
-        trace_block.set_default_signature_type();
 
         trace_block
     }
