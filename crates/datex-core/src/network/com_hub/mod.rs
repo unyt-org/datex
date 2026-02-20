@@ -1362,6 +1362,8 @@ impl ComHub {
         }
 
         // if type is Trace or TraceBack, add the outgoing socket to the hops
+        // NOTE: the block body is modified here for trace blocks, which would invalidate any signature
+        // generated for the block. However, trace blocks are only used for debugging purposes and not expected to be signed.
         match block.block_header.flags_and_timestamp.block_type() {
             BlockType::Trace | BlockType::TraceBack => {
                 let distance = block.routing_header.distance;
