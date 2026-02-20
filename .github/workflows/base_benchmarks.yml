@@ -46,4 +46,4 @@ jobs:
           --err \
           --adapter rust_criterion \
           --github-actions '${{ secrets.GITHUB_TOKEN }}' \
-          cargo bench -p datex-core
+          cargo bench -p datex-core --features decompiler,compiler,std

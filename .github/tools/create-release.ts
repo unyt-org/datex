@@ -11,7 +11,7 @@ if (!["major", "minor", "patch"].includes(type)) {
     );
 }
 
-const cargoTomlPath = "./Cargo.toml";
+const cargoTomlPath = "./crates/datex-core/Cargo.toml";
 const cargoToml = await Deno.readTextFile(cargoTomlPath);
 
 // Extract version
