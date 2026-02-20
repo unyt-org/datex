@@ -360,7 +360,7 @@ impl ComHub {
                     // spawn as separate task to handle incoming block
                     // this improves performance as multiple blocks can be handled in parallel
                     // it's also required because the size of this future gets to big for embedded targets (heap allocation fails)
-                    self.task_manager.register_task(self.clone().handle_incoming_block_async(block, socket_properties.uuid()));
+                    self.clone().handle_incoming_block_async(block, socket_properties.uuid()).await;
                 },
                 complete => break,
             }
