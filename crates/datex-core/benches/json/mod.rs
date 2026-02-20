@@ -1,147 +1,183 @@
-use datex_core::{
-    compiler::{
-        CompileOptions, StaticValueOrDXB, compile_script,
-        compile_script_or_return_static_value,
-        extract_static_value_from_script,
-    },
-    core_compiler::value_compiler::compile_value_container,
-    decompiler::{DecompileOptions, decompile_body},
-    runtime::execution::{ExecutionInput, ExecutionOptions, execute_dxb_sync},
-    values::value_container::ValueContainer,
-};
-use json_syntax::Parse;
-use serde_json::Value;
-use std::io::Read;
+mod utils;
 
-pub fn get_json_test_string(file_path: &str) -> String {
-    // read json from test file
-    let file_path = format!("benches/json/{file_path}");
-    let file_path = std::path::Path::new(&file_path);
-    let file =
-        std::fs::File::open(file_path).expect("Failed to open test.json");
-    let mut reader = std::io::BufReader::new(file);
-    let mut json_string = String::new();
-    reader
-        .read_to_string(&mut json_string)
-        .expect("Failed to read test.json");
-    json_string
-}
+use core::hint::black_box;
+use criterion::{BenchmarkId, Criterion, criterion_group};
 
-pub fn json_to_serde_value(json: &str) -> Value {
-    serde_json::from_str::<Value>(json).expect("Failed to parse JSON string")
-}
+use crate::{json, json::utils::*};
+use datex_core::compiler::{CompileOptions, compile_script};
 
-pub fn json_to_json_syntax_value(json: &str) -> json_syntax::Value {
-    let (json_value, _) =
-        json_syntax::Value::parse_str(json).expect("Failed to parse JSON");
-    json_value
-}
-
-pub fn json_to_datex_value(json: &str) -> ValueContainer {
-    let (dxb, _) = compile_script(json, CompileOptions::default())
+fn bench_json_file(c: &mut Criterion, file_path: &str) {
+    // JSON benchmarks
+    // JSON string to runtime value
+    let json = get_json_test_string(file_path);
+    let (dxb, _) = compile_script(&json, CompileOptions::default())
         .expect("Failed to parse JSON string");
-    let exec_input =
-        ExecutionInput::new(&dxb, ExecutionOptions::default(), None);
-    execute_dxb_sync(exec_input).unwrap().unwrap()
-}
 
-// json -> value
-pub fn json_to_runtime_value_baseline_serde(json: &str) {
-    let json_value = serde_json::from_str::<Value>(json)
-        .expect("Failed to parse JSON string");
-    assert!(json_value.is_object(), "Expected JSON to be an object");
-}
-
-pub fn json_to_runtime_value_baseline_json_syntax(json: &str) {
-    let (json_value, _) =
-        json_syntax::Value::parse_str(json).expect("Failed to parse JSON");
-    assert!(json_value.is_object(), "Expected JSON to be an object");
-}
-
-pub fn json_to_runtime_value_datex<'a>(json: &'a str) {
-    let (dxb, _) = compile_script(
-        json,
-        CompileOptions {
-            ..CompileOptions::default()
+    // DATEX
+    c.bench_with_input(
+        BenchmarkId::new("json to runtime value datex", file_path),
+        &json,
+        |b, json| {
+            b.iter(|| {
+                json_to_runtime_value_datex(black_box(json));
+                black_box(());
+            })
         },
-    )
-    .expect("Failed to parse JSON string");
-    let exec_input =
-        ExecutionInput::new(&dxb, ExecutionOptions::default(), None);
-    let val = execute_dxb_sync(exec_input).unwrap().unwrap();
-    assert!(val.to_value().borrow().is_map());
-}
-
-pub fn json_to_runtime_value_datex_auto_static_detection(
-    json: &str,
-) -> ValueContainer {
-    let (dxb, _) = compile_script_or_return_static_value(
-        json,
-        CompileOptions {
-            ..CompileOptions::default()
+    );
+    // DATEX (automatic static value detection)
+    c.bench_with_input(
+        BenchmarkId::new(
+            "json to runtime value datex auto static detection",
+            file_path,
+        ),
+        &json,
+        |b, json| {
+            b.iter(|| {
+                json::json_to_runtime_value_datex_auto_static_detection(
+                    black_box(json),
+                );
+                black_box(());
+            })
         },
-    )
-    .unwrap();
-    if let StaticValueOrDXB::StaticValue(value) = dxb {
-        value.expect("Static Value should not be empty")
-    } else {
-        core::panic!("Expected static value, but got DXB");
-    }
-}
-
-pub fn json_to_runtime_value_datex_force_static_value(
-    json: &str,
-) -> ValueContainer {
-    let dxb = extract_static_value_from_script(json).unwrap();
-    dxb.expect("Static Value should not be empty")
-}
-
-pub fn json_to_dxb<'a>(json: &'a str) {
-    let (dxb, _) = compile_script(
-        json,
-        CompileOptions {
-            ..CompileOptions::default()
+    );
+    // DATEX (forced static value)
+    c.bench_with_input(
+        BenchmarkId::new(
+            "json to runtime value datex forced static",
+            file_path,
+        ),
+        &json,
+        |b, json| {
+            b.iter(|| {
+                json::json_to_runtime_value_datex_force_static_value(
+                    black_box(json),
+                );
+                black_box(());
+            })
         },
-    )
-    .expect("Failed to parse JSON string");
-    assert!(!dxb.is_empty(), "Expected DXB to be non-empty");
-}
+    );
 
-// DXB -> value
-pub fn dxb_to_runtime_value(dxb: &[u8]) {
-    let exec_input =
-        ExecutionInput::new(dxb, ExecutionOptions::default(), None);
-    let json_value = execute_dxb_sync(exec_input).unwrap().unwrap();
-    assert!(json_value.to_value().borrow().is_map());
-}
+    // JSON string to DXB
+    c.bench_with_input(
+        BenchmarkId::new("json to dxb", file_path),
+        &json,
+        |b, json| {
+            b.iter(|| {
+                json_to_dxb(black_box(json));
+                black_box(());
+            })
+        },
+    );
+    // DXB
+    c.bench_with_input(
+        BenchmarkId::new("dxb to runtime value", file_path),
+        &dxb,
+        |b, dxb| {
+            b.iter(|| {
+                json::dxb_to_runtime_value(black_box(dxb));
+                black_box(());
+            })
+        },
+    );
 
-// value -> JSON
-pub fn runtime_value_to_json_baseline_serde_json(value: &Value) {
-    let string =
-        serde_json::to_string(value).expect("Failed to convert value to JSON");
-    assert!(!string.is_empty(), "Expected JSON string to be non-empty");
-}
+    // runtime value to JSON
+    let json_serde = json::json_to_serde_value(&json);
+    let json_syntax = json::json_to_json_syntax_value(&json);
+    let json_datex = json::json_to_datex_value(&json);
+    // serde
+    c.bench_with_input(
+        BenchmarkId::new("runtime value to json serde_json", file_path),
+        &json_serde,
+        |b, json_serde| {
+            b.iter(|| {
+                json::runtime_value_to_json_baseline_serde_json(black_box(
+                    json_serde,
+                ));
+                black_box(());
+            })
+        },
+    );
+    // json_syntax
+    c.bench_with_input(
+        BenchmarkId::new("runtime value to json json_syntax", file_path),
+        &json_syntax,
+        |b, json_syntax| {
+            b.iter(|| {
+                json::runtime_value_to_json_baseline_json_syntax(black_box(
+                    json_syntax,
+                ));
+                black_box(());
+            })
+        },
+    );
+    // DATEX
+    c.bench_with_input(
+        BenchmarkId::new("runtime value to json datex", file_path),
+        &json_datex,
+        |b, json_datex| {
+            b.iter(|| {
+                json::runtime_value_to_json_datex(black_box(json_datex));
+                black_box(());
+            })
+        },
+    );
+    // DXB
+    c.bench_with_input(
+        BenchmarkId::new("runtime value to dxb", file_path),
+        &json_datex,
+        |b, json_datex| {
+            b.iter(|| {
+                json::runtime_value_to_dxb(black_box(json_datex));
+                black_box(());
+            })
+        },
+    );
+    // DXB to JSON
+    c.bench_with_input(
+        BenchmarkId::new("dxb to json", file_path),
+        &dxb,
+        |b, dxb| {
+            b.iter(|| {
+                json::dxb_to_json(black_box(dxb));
+                black_box(());
+            })
+        },
+    );
 
-pub fn runtime_value_to_json_baseline_json_syntax(value: &json_syntax::Value) {
-    let string = value.to_string();
-    assert!(
-        !string.is_empty(),
-        "Expected JSON syntax string to be non-empty"
+    // serde
+    c.bench_with_input(
+        BenchmarkId::new("json to runtime value serde_json", file_path),
+        &json,
+        |b, json| {
+            b.iter(|| {
+                json_to_runtime_value_baseline_serde(black_box(json));
+                black_box(());
+            })
+        },
+    );
+    // json_syntax
+    c.bench_with_input(
+        BenchmarkId::new("json to runtime value json_syntax", file_path),
+        &json,
+        |b, json| {
+            b.iter(|| {
+                json::json_to_runtime_value_baseline_json_syntax(black_box(
+                    json,
+                ));
+                black_box(());
+            })
+        },
     );
 }
 
-pub fn runtime_value_to_json_datex(value: &ValueContainer) {
-    let dxb = compile_value_container(value);
-    let string = decompile_body(&dxb, DecompileOptions::json_compat()).unwrap();
-    assert!(!string.is_empty(), "Expected DATEX string to be non-empty");
+fn bench_json(c: &mut Criterion) {
+    bench_json_file(c, "test1.json");
+    bench_json_file(c, "test2.json");
+    // bench_json_file(c, "test3.json");
 }
 
-pub fn runtime_value_to_dxb(value: &ValueContainer) {
-    let dxb = compile_value_container(value);
-    assert!(!dxb.is_empty(), "Expected DXB to be non-empty");
-}
-
-pub fn dxb_to_json(dxb: &[u8]) {
-    let string = decompile_body(dxb, DecompileOptions::json_compat()).unwrap();
-    assert!(!string.is_empty(), "Expected DATEX string to be non-empty");
+criterion_group! {
+    name = json_benches;
+    config = Criterion::default().sample_size(10);
+    targets = bench_json
 }
