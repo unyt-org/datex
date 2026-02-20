@@ -10,6 +10,7 @@ authors = [
 edition = "2024"
 license-file = "LICENSE"
 
+
 [lib]
 crate-type = ["rlib"]
 

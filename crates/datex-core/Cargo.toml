@@ -91,8 +91,8 @@ datex-macros-internal = { path = "../datex-macros-internal", version = "0.0.1" }
 hashbrown = { version = "0.16.0", features = ["serde"], optional = true }
 async-unsync = { version = "0.3.0", default-features = false, features = [
     "alloc",
-], optional = true}
-async-timer = { version = "1.0.0-beta.15", default-features = false, optional = true}
+], optional = true }
+async-timer = { version = "1.0.0-beta.15", default-features = false, optional = true }
 spin = { version = "0.10.0", default-features = false, features = [
     "spin_mutex",
     "mutex",
@@ -100,7 +100,7 @@ spin = { version = "0.10.0", default-features = false, features = [
 ], optional = true }
 
 # std-only dependencies (optional)
-internment = { version = "0.8.6", optional = true  }
+internment = { version = "0.8.6", optional = true }
 
 
 # lsp dependencies (optional)
@@ -126,7 +126,7 @@ embassy-futures = { version = "0.1.2", optional = true, default-features = false
 # wasm dependencies (optional)
 web-time = { version = "1.1.0", optional = true }
 wasm-bindgen-futures = { version = "0.4.29", optional = true }
-tsify = { version = "0.5.6", features = ["js"], optional = true}
+tsify = { version = "0.5.6", features = ["js"], optional = true }
 wasm-bindgen = { version = "=0.2.105", optional = true }
 gloo-timers = { version = "0.3.0", features = ["futures"], optional = true }
 
@@ -149,9 +149,11 @@ datex-crypto-web = { path = "../datex-crypto-web", version = "0.0.1", optional =
 
 
 # macro_utils dependencies (optional)
-quote = { version = "1.0", optional = true}
+quote = { version = "1.0", optional = true }
 syn = { version = "2.0", features = ["full"], optional = true }
-proc-macro2 = { version = "1.0", features = ["span-locations"], optional = true }
+proc-macro2 = { version = "1.0", features = [
+    "span-locations",
+], optional = true }
 
 # webrtc features (optional)
 webrtc = { version = "0.13.0", optional = true }
@@ -174,23 +176,16 @@ tokio = { version = "1.43.0", features = [
     "rt",
     "time",
 ], default-features = false }
-flexi_logger = { version = "0.31.8"  }
+flexi_logger = { version = "0.31.8" }
 
 [features]
 # alloc = [] see https://github.com/unyt-org/datex/issues/699
 
 # When using the "std" feature, the "default" feature should not be enabled since
 # it includes no_std-specific dependencies
-default = [
-    "no_std",
-    "dep:async-timer"
-]
+default = ["no_std", "dep:async-timer"]
 
-no_std = [
-    "dep:hashbrown",
-    "dep:async-unsync",
-    "dep:spin"
-]
+no_std = ["dep:hashbrown", "dep:async-unsync", "dep:spin"]
 
 ### features for specific targets #############################################
 
@@ -215,18 +210,11 @@ target_native = [
 ]
 
 # wasm - std, wasm runtime
-target_wasm = [
-    "std",
-    "wasm_runtime",
-    "crypto_enabled",
-]
+target_wasm = ["std", "wasm_runtime", "crypto_enabled"]
 
 
 ### runtimes ##################################################################
-tokio_runtime = [
-    "dep:tokio",
-    "futures/std",
-]
+tokio_runtime = ["dep:tokio", "futures/std"]
 wasm_runtime = [
     "dep:wasm-bindgen-futures",
     "dep:gloo-timers",
@@ -283,20 +271,11 @@ std = [
 # ast structures, needed by compiler, decompiler, and lsp
 ast = []
 
-parser = [
-    "dep:logos",
-]
+parser = ["dep:logos"]
 
-compiler = [
-    "ast",
-    "parser",
-    "dep:ariadne",
-    "dep:pretty"
-]
+compiler = ["ast", "parser", "dep:ariadne", "dep:pretty"]
 
-decompiler = [
-    "ast"
-]
+decompiler = ["ast"]
 
 
 ### LSP-related features ######################################################
@@ -310,11 +289,7 @@ lsp_wasm = ["lsp", "realhydroper-lsp/runtime-agnostic"]
 
 ### Utils for creating macros #################################################
 
-macro_utils = [
-    "dep:quote",
-    "dep:syn",
-    "dep:proc-macro2",
-]
+macro_utils = ["dep:quote", "dep:syn", "dep:proc-macro2"]
 
 
 ### interface-related features ################################################
