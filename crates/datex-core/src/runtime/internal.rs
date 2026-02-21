@@ -67,19 +67,23 @@ impl RuntimeInternal {
                 interface_type,
                 setup_data: config,
                 priority,
-            } in interfaces.iter()
-            {
-                if let Err(err) = self
+            } in interfaces.iter() {
+                let create_future = self
                     .com_hub
                     .clone()
                     .create_interface(interface_type, config.clone(), *priority)
-                    .await
-                {
-                    error!(
-                        "Failed to create interface {interface_type}: {err:?}"
-                    );
-                } else {
-                    info!("Created interface: {interface_type}");
+                    .await;
+                match create_future {
+                    Err(err) => {
+                        error!(
+                            "Failed to create interface {interface_type}: {err:?}"
+                        )
+                    },
+                    Ok((_, ready_receiver)) => {
+                        if let Some(ready_receiver) = ready_receiver {
+                            let _ = ready_receiver.await;
+                        }
+                    }
                 }
             }
         }
