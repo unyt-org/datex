@@ -5,9 +5,15 @@ use core::prelude::rust_2024::*;
 use modular_bitfield::{Specifier, bitfield};
 
 // 4 bit
-#[derive(serde::Serialize, serde::Deserialize)]
-
-#[derive(Debug, PartialEq, Clone, Default, Specifier)]
+#[derive(
+    serde::Serialize,
+    serde::Deserialize,
+    Debug,
+    PartialEq,
+    Clone,
+    Default,
+    Specifier,
+)]
 pub enum UserAgent {
     #[default]
     Unknown = 0,
@@ -43,7 +49,7 @@ pub enum UserAgent {
 
 // 4 bit + 4 bit = 8 bit
 #[bitfield]
-#[derive(BinWrite, BinRead, Clone, Default, Copy, Debug, PartialEq)]
+#[derive(BinWrite, BinRead, Clone, Copy, Debug, PartialEq)]
 #[bw(map = |&x| Self::into_bytes(x))]
 #[br(map = Self::from_bytes)]
 
@@ -57,6 +63,13 @@ pub struct Flags {
     unused_1: bool,
     #[allow(unused)]
     unused_2: bool,
+}
+impl Default for Flags {
+    fn default() -> Self {
+        Self::new()
+            .with_user_agent(UserAgent::default())
+            .with_has_on_behalf_of(false)
+    }
 }
 
 mod flags_serde {
@@ -98,8 +111,16 @@ mod flags_serde {
 
 // min: 1 byte
 // max: 1 byte + 21 bytes = 22 bytes
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Debug, Clone, Default, BinWrite, BinRead, PartialEq)]
+#[derive(
+    serde::Serialize,
+    serde::Deserialize,
+    Debug,
+    Clone,
+    Default,
+    BinWrite,
+    BinRead,
+    PartialEq,
+)]
 #[brw(little)]
 pub struct EncryptedHeader {
     pub flags: Flags,
