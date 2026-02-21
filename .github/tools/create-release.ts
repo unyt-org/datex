@@ -1,8 +1,13 @@
-const [type] = Deno.args;
+import { join } from "https://deno.land/std@0.224.0/path/join.ts";
+import { exists } from "https://deno.land/std@0.224.0/fs/exists.ts";
+
+const [path, type] = Deno.args;
 
 const ghOutput = Deno.env.get("GITHUB_OUTPUT")!;
 if (!ghOutput) {
-    throw new Error("Can not find GITHUB_OUTPUT environment variable");
+    throw new Error(
+        "Job must be run in a GitHub Actions environment with GITHUB_OUTPUT set.",
+    );
 }
 
 if (!["major", "minor", "patch"].includes(type)) {
@@ -11,7 +16,17 @@ if (!["major", "minor", "patch"].includes(type)) {
     );
 }
 
-const cargoTomlPath = "./crates/datex-core/Cargo.toml";
+console.info(
+    `Bumping version in '${path}' with type ${type}...`,
+);
+
+const cargoTomlPath = path.endsWith("Cargo.toml")
+    ? path
+    : join(path, "Cargo.toml");
+
+if (!await exists(cargoTomlPath)) {
+    throw new Error(`Cargo.toml not found at ${cargoTomlPath}`);
+}
 const cargoToml = await Deno.readTextFile(cargoTomlPath);
 
 // Extract version
@@ -48,4 +63,4 @@ await Deno.writeTextFile(ghOutput, `NEW_VERSION=${newVersion}`, {
     append: true,
 });
 
-console.log(`Version updated to ${newVersion}`, ghOutput);
+console.info(`Version updated to ${newVersion}`);
