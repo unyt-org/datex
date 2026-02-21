@@ -1,5 +1,4 @@
-use core::{fmt::Display};
-use core::time::Duration;
+use core::{fmt::Display, time::Duration};
 
 use crate::{
     core_compiler::value_compiler::compile_value_container,
@@ -31,11 +30,12 @@ use crate::{
     },
 };
 
-use crate::prelude::*;
+use crate::{
+    global::protocol_structures::routing_header::SignatureType, prelude::*,
+};
 use log::{error, info};
 use serde::{Deserialize, Serialize};
 use serde_with::{DisplayFromStr, serde_as};
-use crate::global::protocol_structures::routing_header::SignatureType;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct NetworkTraceHopSocket {
@@ -303,7 +303,8 @@ impl ComHub {
             )
             .await;
         let end_time = crate::time::now();
-        let round_trip_time = Duration::from_millis((end_time - start_time).as_millis() as u64);
+        let round_trip_time =
+            Duration::from_millis((end_time - start_time).as_millis() as u64);
 
         let mut results = vec![];
 
@@ -506,7 +507,7 @@ impl ComHub {
         max_hops: Option<u8>,
     ) -> DXBBlock {
         let mut trace_block = DXBBlock {
-            routing_header: RoutingHeader::default()
+            routing_header: RoutingHeader::unsigned()
                 .with_ttl(max_hops.unwrap_or(42))
                 .to_owned(),
             block_header: BlockHeader {
@@ -519,7 +520,6 @@ impl ComHub {
         };
         self.set_trace_data_of_block(&mut trace_block, hops);
         trace_block.set_receivers(receiver_endpoint);
-
         trace_block
     }
 
