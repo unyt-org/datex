@@ -9,7 +9,6 @@ use crate::{
 };
 use core::cell::{Ref, RefCell, RefMut};
 use futures::channel::oneshot;
-use futures::channel::oneshot::{Receiver, Sender};
 use futures_util::future::join_all;
 use futures_util::FutureExt;
 use itertools::Itertools;
@@ -55,7 +54,8 @@ pub struct SocketData {
     pub(crate) interface_properties: Rc<ComInterfaceProperties>,
     pub(crate) send_callback: Option<SendCallback>,
     pub(crate) endpoints: HashSet<Endpoint>,
-    pub(crate) close_sender: Option<Sender<oneshot::Sender<()>>>,
+    pub(crate) close_sender: Option<oneshot::Sender<oneshot::Sender<()>>>,
+    pub(crate) socket_ready_sender: Option<oneshot::Sender<Result<(),()>>>,
 }
 
 pub struct ComInterfaceSocketManager {
@@ -167,7 +167,7 @@ impl ComInterfaceSocketManager {
         // add socket to endpoint socket list
         self.add_endpoint_socket(
             &endpoint,
-            socket_uuid,
+            socket_uuid.clone(),
             distance,
             is_direct,
             channel_factor,
@@ -176,6 +176,15 @@ impl ComInterfaceSocketManager {
 
         // resort sockets for endpoint
         self.sort_sockets(&endpoint);
+
+        // if direct endpoint, send socket ready signal
+        if is_direct {
+            let mut socket = self.get_socket_by_uuid_mut(&socket_uuid);
+            if let Some(sender) = socket.socket_ready_sender.take() {
+                info!("Socket {} is fully connected with direct endpoint {}, sending ready signal", socket_uuid, endpoint);
+                let _ = sender.send(Ok(()));
+            }
+        }
 
         Ok(())
     }
@@ -202,7 +211,7 @@ impl ComInterfaceSocketManager {
     pub(crate) fn get_socket_registration_waiter(
         &self,
         socket_uuid: &ComInterfaceSocketUUID,
-    ) -> Receiver<()> {
+    ) -> oneshot::Receiver<()> {
         if self.has_socket(socket_uuid) {
             let (sender, receiver) = futures::channel::oneshot::channel();
             let _ = sender.send(());
@@ -421,6 +430,8 @@ impl ComInterfaceSocketManager {
         priority: InterfacePriority,
     ) -> Result<(), ComHubError> {
         let can_send = socket.socket_properties.direction.can_send();
+        let can_receive = socket.socket_properties.direction.can_receive();
+        let has_direct_endpoint = socket.socket_properties.direct_endpoint.is_some();
         let socket_uuid = socket.socket_properties.uuid().clone();
         if self.has_socket(&socket_uuid) {
             core::panic!("Socket {} already exists in ComHub", socket_uuid);
@@ -453,6 +464,16 @@ impl ComInterfaceSocketManager {
                     // add socket to fallback sockets list
                     self.add_fallback_socket(&socket_uuid, priority, direction);
                 }
+            }
+        }
+        
+        // if socket cannot receive, directly send ready signal since we will never receive any blocks from the peer endpoint
+        // or if direct endpoint is already explicitly set, assuming that no hello blocks might be sent
+        if !can_receive || has_direct_endpoint {
+            let mut socket = self.get_socket_by_uuid_mut(&socket_uuid);
+            if let Some(sender) = socket.socket_ready_sender.take() {
+                info!("Sending ready signal immediately for socket {} since it cannot receive or has direct endpoint already set", socket_uuid);
+                let _ = sender.send(Ok(()));
             }
         }
 
@@ -510,11 +531,11 @@ impl ComInterfaceSocketManager {
         let remove_future = self.trigger_remove_socket(&socket_uuid);
         self.cleanup_socket(&socket_uuid);
         let _ = remove_future.await;
-        
+
         Ok(())
     }
 
-    pub fn trigger_remove_socket(&self, socket_uuid: &ComInterfaceSocketUUID) -> Receiver<()> {
+    pub fn trigger_remove_socket(&self, socket_uuid: &ComInterfaceSocketUUID) -> oneshot::Receiver<()> {
         let (closed_sender, closed_receiver) = oneshot::channel();
         let mut socket_data = self
             .get_socket_by_uuid_mut(socket_uuid);

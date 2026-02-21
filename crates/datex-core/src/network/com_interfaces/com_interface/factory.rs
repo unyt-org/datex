@@ -256,6 +256,10 @@ pub struct ComInterfaceConfiguration {
     uuid: ComInterfaceUUID,
     /// The properties of the interface instance
     pub properties: Rc<ComInterfaceProperties>,
+    /// Indicates that this interface only establishes a single socket connection
+    /// And stops the sockets iterator after yielding the first socket configuration.
+    /// When set to true, the first socket connection is awaited on interface creation.
+    pub has_single_socket: bool,
     // TODO: docs
     pub new_sockets_iterator: NewSocketsIterator,
 }
@@ -282,6 +286,7 @@ impl ComInterfaceConfiguration {
         ComInterfaceConfiguration {
             uuid: ComInterfaceUUID::new(),
             properties: Rc::new(properties),
+            has_single_socket: false,
             new_sockets_iterator: Box::pin(new_sockets_iterator),
         }
     }
@@ -294,6 +299,7 @@ impl ComInterfaceConfiguration {
         ComInterfaceConfiguration {
             uuid: ComInterfaceUUID::new(),
             properties: Rc::new(properties),
+            has_single_socket: true,
             new_sockets_iterator: Box::pin(async gen move {
                 yield Ok(socket_configuration)
             }),
