@@ -119,6 +119,8 @@ pub fn run_block_collector_task(
 
 #[cfg(test)]
 mod tests {
+    use crate::global::protocol_structures::routing_header::SignatureType;
+
     use super::*;
 
     #[tokio::test]
@@ -128,7 +130,13 @@ mod tests {
             current_block_specified_length: None,
         };
 
-        let block_bytes = DXBBlock::new_with_body(b"TestBody").to_bytes();
+        let mut block = DXBBlock::new_with_body(b"TestBody");
+        block
+            .routing_header
+            .flags
+            .set_signature_type(SignatureType::None);
+        let block_bytes = block.to_bytes();
+
         let received_block = block_collector.receive_slice(&block_bytes).await;
         assert!(received_block.is_some());
         assert_eq!(received_block.unwrap().body, b"TestBody");
@@ -141,7 +149,12 @@ mod tests {
             current_block_specified_length: None,
         };
 
-        let block_bytes = DXBBlock::new_with_body(b"TestBody").to_bytes();
+        let mut block = DXBBlock::new_with_body(b"TestBody");
+        block
+            .routing_header
+            .flags
+            .set_signature_type(SignatureType::None);
+        let block_bytes = block.to_bytes();
         let part1 = &block_bytes[0..5]; // contains full magic number and block length
         let part2 = &block_bytes[5..];
 
@@ -165,7 +178,13 @@ mod tests {
             current_block_specified_length: None,
         };
 
-        let block_bytes = DXBBlock::new_with_body(b"TestBody").to_bytes();
+        let mut block = DXBBlock::new_with_body(b"TestBody");
+        block
+            .routing_header
+            .flags
+            .set_signature_type(SignatureType::None);
+        let block_bytes = block.to_bytes();
+
         let part1 = &block_bytes[0..2]; // smaller than header
         let part2 = &block_bytes[2..];
 
@@ -192,8 +211,13 @@ mod tests {
         assert!(block_collector.current_partial_block.is_empty());
         assert!(block_collector.current_block_specified_length.is_none());
 
-        let valid_block_bytes =
-            DXBBlock::new_with_body(b"ValidBody").to_bytes();
+        let mut block = DXBBlock::new_with_body(b"ValidBody");
+        block
+            .routing_header
+            .flags
+            .set_signature_type(SignatureType::None);
+
+        let valid_block_bytes = block.to_bytes();
         let received_block =
             block_collector.receive_slice(&valid_block_bytes).await;
         assert!(received_block.is_some());

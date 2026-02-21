@@ -584,11 +584,12 @@ mod tests {
         let mut routing_header = RoutingHeader::default()
             .with_sender(Endpoint::from_str("@test").unwrap())
             .to_owned();
+        routing_header.flags.set_signature_type(SignatureType::None);
         routing_header.set_size(420);
         let mut block = DXBBlock {
             body: vec![0x01, 0x02, 0x03],
             encrypted_header: EncryptedHeader {
-                flags: encrypted_header::Flags::new()
+                flags: encrypted_header::Flags::default()
                     .with_user_agent(encrypted_header::UserAgent::Unused11),
                 ..Default::default()
             },

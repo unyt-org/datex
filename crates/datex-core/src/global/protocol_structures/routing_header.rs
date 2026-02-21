@@ -265,6 +265,15 @@ pub struct RoutingHeader {
 
 impl Serializable for RoutingHeader {}
 
+impl RoutingHeader {
+    pub fn unsigned() -> Self {
+        RoutingHeader {
+            flags: Flags::new().with_signature_type(SignatureType::None),
+            ..RoutingHeader::default()
+        }
+    }
+}
+
 impl Default for RoutingHeader {
     fn default() -> Self {
         RoutingHeader {

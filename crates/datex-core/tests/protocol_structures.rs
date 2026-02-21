@@ -90,7 +90,7 @@ pub fn parse_routing_header() {
 #[test]
 pub fn parse_dxb_block() {
     let block = DXBBlock {
-        routing_header: RoutingHeader::default(),
+        routing_header: RoutingHeader::unsigned(),
         ..DXBBlock::default()
     };
 
