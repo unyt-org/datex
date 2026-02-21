@@ -22,7 +22,7 @@ use crate::prelude::*;
 pub mod managers;
 
 pub mod metadata;
-use crate::network::com_hub::managers::socket_manager::ComInterfaceSocketManager;
+use crate::network::com_hub::managers::socket_manager::{ComInterfaceSocketManager, SocketCloseReceiver, SocketData};
 
 pub mod errors;
 pub mod network_response;
@@ -80,8 +80,12 @@ use crate::{
     },
 };
 use async_select::select;
+use futures::channel::oneshot;
+use futures::channel::oneshot::Sender;
+use futures_util::future::{select, Either};
 use datex_crypto_facade::crypto::Crypto;
 use futures_util::FutureExt;
+use crate::network::com_hub::managers::com_interface_manager::InterfaceCloseReceiver;
 
 pub type IncomingBlockInterceptor =
     Box<dyn Fn(&DXBBlock, &ComInterfaceSocketUUID) + 'static>;
@@ -89,14 +93,6 @@ pub type IncomingBlockInterceptor =
 pub type OutgoingBlockInterceptor =
     Box<dyn Fn(&DXBBlock, &ComInterfaceSocketUUID, &[Endpoint]) + 'static>;
 
-#[derive(Debug)]
-pub struct SocketData {
-    socket_properties: SocketProperties,
-    interface_uuid: ComInterfaceUUID,
-    interface_properties: Rc<ComInterfaceProperties>,
-    send_callback: Option<SendCallback>,
-    endpoints: HashSet<Endpoint>,
-}
 
 pub struct ComHub {
     /// the runtime endpoint of the hub (@me)
@@ -209,10 +205,11 @@ impl ComHub {
         self: Rc<Self>,
         com_interface_configuration: ComInterfaceConfiguration,
         priority: InterfacePriority,
+        close_receiver: InterfaceCloseReceiver,
     ) {
         self.task_manager.register_task(
             self.clone()
-                .handle_sockets_task(com_interface_configuration, priority),
+                .handle_sockets_task(com_interface_configuration, priority, close_receiver),
         );
     }
 
@@ -221,72 +218,98 @@ impl ComHub {
         self: Rc<Self>,
         com_interface_configuration: ComInterfaceConfiguration,
         interface_priority: InterfacePriority,
+        close_receiver: InterfaceCloseReceiver,
     ) {
         let com_interface_uuid = com_interface_configuration.uuid();
         let mut iterator = com_interface_configuration.new_sockets_iterator;
         let com_interface_properties = com_interface_configuration.properties;
 
-        while let Some(socket) = async_next_pin_box(&mut iterator).await {
-            match socket {
-                Ok(socket_configuration) => {
-                    let socket_iterator = socket_configuration.iterator;
-                    let send_callback = socket_configuration.send_callback;
-                    let socket_properties = socket_configuration.properties;
-                    let socket_uuid = socket_properties.uuid();
-                    let socket_direction = socket_properties.direction.clone();
+        let closed_sender = select!(
+            _ = async {
+                while let Some(socket) = async_next_pin_box(&mut iterator).await {
 
-                    // store socket info
-                    let _res = self.socket_manager.register_socket(
-                        SocketData {
-                            socket_properties: socket_properties.clone(),
-                            interface_uuid: com_interface_uuid.clone(),
-                            interface_properties: com_interface_properties
-                                .clone(),
-                            send_callback,
-                            endpoints: HashSet::new(),
-                        },
-                        interface_priority,
-                    );
-                    // TODO: handle error
+                    if !self.interfaces_manager.has_interface(&com_interface_uuid) {
+                        info!("Interface {} was removed while waiting for new socket connections, stopping socket handler task", com_interface_uuid);
+                        break;
+                    }
 
-                    let self_clone = self.clone();
-                    if let Some(socket_iterator) = socket_iterator {
-                        self_clone.task_manager.register_task(
-                            self_clone.clone().handle_socket_task(
-                                socket_properties,
-                                socket_iterator,
-                                com_interface_uuid.clone(),
-                                com_interface_properties.auto_identify,
-                            ),
-                        );
+                    match socket {
+                        Ok(socket_configuration) => {
+                            let socket_iterator = socket_configuration.iterator;
+                            let send_callback = socket_configuration.send_callback;
+                            let socket_properties = socket_configuration.properties;
+                            let socket_uuid = socket_properties.uuid();
+                            let socket_direction = socket_properties.direction.clone();
+                            let (close_sender, close_receiver) = oneshot::channel();
+
+                            // store socket info
+                            let _res = self.socket_manager.register_socket(
+                                SocketData {
+                                    socket_properties: socket_properties.clone(),
+                                    interface_uuid: com_interface_uuid.clone(),
+                                    interface_properties: com_interface_properties
+                                        .clone(),
+                                    send_callback,
+                                    endpoints: HashSet::new(),
+                                    close_sender: Some(close_sender),
+                                },
+                                interface_priority,
+                            );
+                            // TODO: handle error
+
+                            let self_clone = self.clone();
+                            if let Some(socket_iterator) = socket_iterator {
+                                self_clone.task_manager.register_task(
+                                    self_clone.clone().handle_socket_task(
+                                        socket_properties,
+                                        socket_iterator,
+                                        com_interface_uuid.clone(),
+                                        com_interface_properties.auto_identify,
+                                        close_receiver,
+                                    ),
+                                );
+                            }
+                        }
+                        Err(e) => {
+                            error!("Error creating socket from iterator: {:?}", e);
+                            break;
+                        }
                     }
                 }
-                Err(e) => {
-                    error!("Error creating socket from iterator: {:?}", e);
-                    break;
-                }
+            } => {
+                None
+            },
+            sender = close_receiver => {
+                Some(sender.unwrap())
+            }
+        );
+
+        // only if interface still exists
+        if self.interfaces_manager.has_interface(&com_interface_uuid) {
+            // indicate that interface is no longer waiting for new socket connections (e.g. for single socket interfaces)
+            self.interfaces_manager
+                .set_interface_waiting_for_socket_connections(
+                    &com_interface_uuid,
+                    false,
+                );
+
+            // if interface has no sockets, it can be destroyed
+            if !self
+                .socket_manager
+                .are_sockets_registered_for_interface(&com_interface_uuid)
+            {
+                self.interfaces_manager
+                    .cleanup_interface(&com_interface_uuid)
+                    .unwrap();
+                info!(
+                    "Destroyed interface {} as it has no sockets registered",
+                    com_interface_uuid
+                );
             }
         }
 
-        // indicate that interface is no longer waiting for new socket connections (e.g. for single socket interfaces)
-        self.interfaces_manager
-            .set_interface_waiting_for_socket_connections(
-                &com_interface_uuid,
-                false,
-            );
-
-        // if interface has no sockets, it can be destroyed
-        if !self
-            .socket_manager
-            .are_sockets_registered_for_interface(&com_interface_uuid)
-        {
-            self.interfaces_manager
-                .destroy_interface(&com_interface_uuid)
-                .unwrap();
-            info!(
-                "Destroyed interface {} as it has no sockets registered",
-                com_interface_uuid
-            );
+        if let Some(closed_sender) = closed_sender {
+            closed_sender.send(()).unwrap();
         }
     }
 
@@ -312,7 +335,10 @@ impl ComHub {
         mut socket_iterator: SocketDataIterator,
         com_interface_uuid: ComInterfaceUUID,
         auto_identify: bool,
+        close_receiver: SocketCloseReceiver,
     ) {
+        info!("start handle socket task");
+
         // send hello block in background task
         self.task_manager
             .register_task(self.clone().send_socket_hello(
@@ -324,62 +350,78 @@ impl ComHub {
         let (mut bytes_sender, block_iterator) = BlockCollector::create();
         let mut block_iterator = Box::pin(block_iterator);
 
-        loop {
-            select! {
-                // receive new block data from socket
-                data = async_next_pin_box(&mut socket_iterator).fuse() => {
-                    match data {
+        let closed_sender = select!(
+            _ = async {
+                loop {
+                    select! {
+                        // receive new block data from socket
+                        data = async_next_pin_box(&mut socket_iterator).fuse() => {
+                            match data {
 
-                        // next data block
-                        Some(Ok(data)) => {
-                            // send data to block collector
-                            if let Err(e) = bytes_sender.start_send(data) {
-                                error!("Error sending data to BlockCollector: {:?}", e);
-                                break;
+                                // next data block
+                                Some(Ok(data)) => {
+                                    // send data to block collector
+                                    if let Err(e) = bytes_sender.start_send(data) {
+                                        error!("Error sending data to BlockCollector: {:?}", e);
+                                        break;
+                                    }
+                                }
+
+                                // got error
+                                Some(Err(_)) => {
+                                    error!("Socket {} closed, removing socket", socket_properties.uuid());
+                                    break;
+                                }
+
+                                // no more data, gracefull exit
+                                None => {
+                                    error!("Socket {} closed (iterator finished), removing socket", socket_properties.uuid());
+                                    break;
+                                }
                             }
-                        }
+                        },
+                        // receive new blocks from block collector
+                        Some(block) = async_next_pin_box(&mut block_iterator).fuse() => {
+                            // spawn as separate task to handle incoming block
+                            // this improves performance as multiple blocks can be handled in parallel
+                            // it's also required because the size of this future gets to big for embedded targets (heap allocation fails)
+                            self.clone().handle_incoming_block_async(block, socket_properties.uuid()).await;
+                        },
 
-                        // got error
-                        Some(Err(_)) => {
-                            error!("Socket {} closed, removing socket", socket_properties.uuid());
-                            break;
-                        }
-
-                        // no more data, gracefull exit
-                        None => {
-                            error!("Socket {} closed (iterator finished), removing socket", socket_properties.uuid());
-                            break;
-                        }
+                        complete => break,
                     }
-                },
-                // receive new blocks from block collector
-                Some(block) = async_next_pin_box(&mut block_iterator).fuse() => {
-                    // spawn as separate task to handle incoming block
-                    // this improves performance as multiple blocks can be handled in parallel
-                    // it's also required because the size of this future gets to big for embedded targets (heap allocation fails)
-                    self.clone().handle_incoming_block_async(block, socket_properties.uuid()).await;
-                },
-                complete => break,
+                }
+            } => None,
+            closed_sender = close_receiver => {
+                info!("received socket close signal for socket removing socket");
+                Some(closed_sender.unwrap())
             }
-        }
+        );
 
         // socket closed, remove
-        self.socket_manager.delete_socket(&socket_properties.uuid());
+        self.socket_manager.cleanup_socket(&socket_properties.uuid());
 
-        // TODO: check if any other sockets are still registered for the interface, if not
-        // and if interface is no longer waiting for new socket connections (e.g. single socket interface), also remove the interface
-        if !self
-            .interfaces_manager
-            .is_interface_waiting_for_socket_connections(&com_interface_uuid)
-        {
-            self.interfaces_manager
-                .destroy_interface(&com_interface_uuid)
-                .unwrap();
-            info!(
+        // only if interface still exists
+        if self.interfaces_manager.has_interface(&com_interface_uuid) {
+            // TODO: check if any other sockets are still registered for the interface, if not
+            // and if interface is no longer waiting for new socket connections (e.g. single socket interface), also remove the interface
+            if !self
+                .interfaces_manager
+                .is_interface_waiting_for_socket_connections(&com_interface_uuid)
+            {
+                self.interfaces_manager
+                    .cleanup_interface(&com_interface_uuid)
+                    .unwrap();
+                info!(
                 "Destroyed interface {} as it is no longer waiting for socket connections",
                 com_interface_uuid
             );
-            // TODO: reconnect logic?
+                // TODO: reconnect logic?
+            }
+        }
+
+        if let Some(closed_sender) = closed_sender {
+            closed_sender.send(()).unwrap();
         }
     }
 
@@ -806,12 +848,12 @@ impl ComHub {
                         self.endpoint
                     );
                     Ok(())
-                } else if self
-                    .socket_manager
-                    .get_socket_by_uuid(&send_back_socket)
-                    .socket_properties
-                    .direction
-                    .can_send()
+                } else if let Some(socket) = self
+                        .socket_manager
+                        .get_socket_by_uuid(&send_back_socket) &&
+                    socket.socket_properties
+                        .direction
+                        .can_send()
                 {
                     block.set_bounce_back(true);
                     self
@@ -1351,9 +1393,15 @@ impl ComHub {
         SendFailure,
         impl Future<Output = Result<(), SendFailure>>,
     > {
-        let socket_data = self.socket_manager.get_socket_by_uuid(&socket_uuid);
-
         block.set_receivers(&endpoints);
+
+        let socket_data = match self.socket_manager.get_socket_by_uuid(&socket_uuid) {
+            Some(socket_data) => socket_data,
+            None => {
+                return SyncOrAsyncResult::Sync(Err(SendFailure(Box::new(block))));
+            }
+        };
+
 
         // assuming the distance was already increment during redirect, we
         // effectively decrement the block distance by 1 if it is a bounce back

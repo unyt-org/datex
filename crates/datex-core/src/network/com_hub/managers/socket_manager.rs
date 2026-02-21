@@ -8,7 +8,10 @@ use crate::{
     },
 };
 use core::cell::{Ref, RefCell, RefMut};
-use futures::channel::oneshot::Receiver;
+use futures::channel::oneshot;
+use futures::channel::oneshot::{Receiver, Sender};
+use futures_util::future::join_all;
+use futures_util::FutureExt;
 use itertools::Itertools;
 use log::{debug, error, info, warn};
 use serde::{Deserialize, Serialize};
@@ -17,13 +20,14 @@ use crate::prelude::*;
 
 use crate::{
     network::{
-        com_hub::SocketData,
         com_interfaces::com_interface::{
             ComInterfaceUUID, properties::InterfaceDirection,
         },
     },
     values::core_values::endpoint::{Endpoint, EndpointInstance},
 };
+use crate::network::com_interfaces::com_interface::factory::{SendCallback, SocketProperties};
+use crate::network::com_interfaces::com_interface::properties::ComInterfaceProperties;
 
 #[derive(Debug, Clone, Default)]
 pub struct EndpointIterateOptions<'a> {
@@ -40,6 +44,18 @@ pub struct DynamicEndpointProperties {
     pub is_direct: bool,
     pub channel_factor: u32,
     pub direction: InterfaceDirection,
+}
+
+pub type SocketCloseReceiver = oneshot::Receiver<oneshot::Sender<()>>;
+
+#[derive(Debug)]
+pub struct SocketData {
+    pub(crate) socket_properties: SocketProperties,
+    pub(crate) interface_uuid: ComInterfaceUUID,
+    pub(crate) interface_properties: Rc<ComInterfaceProperties>,
+    pub(crate) send_callback: Option<SendCallback>,
+    pub(crate) endpoints: HashSet<Endpoint>,
+    pub(crate) close_sender: Option<Sender<oneshot::Sender<()>>>,
 }
 
 pub struct ComInterfaceSocketManager {
@@ -287,19 +303,25 @@ impl ComInterfaceSocketManager {
     }
 
     /// Removes all sockets for a given interface UUID
-    pub fn remove_sockets_for_interface_uuid(
+    pub async fn remove_sockets_for_interface_uuid(
         &self,
         interface_uuid: &ComInterfaceUUID,
     ) {
-        if let Some(socket_uuids) = self
+        let socket_uuids = self
             .socket_uuids_by_interface_uuid
             .borrow_mut()
-            .remove(interface_uuid)
-        {
+            .remove(interface_uuid);
+
+        let mut remove_socket_futures = vec![];
+
+        if let Some(socket_uuids) = socket_uuids {
             for socket_uuid in socket_uuids {
-                self.delete_socket(&socket_uuid);
+                info!("....Removing socket {:?}", socket_uuid);
+                remove_socket_futures.push(self.remove_socket(socket_uuid.clone()));
             }
         }
+
+        join_all(remove_socket_futures).await;
     }
 
     /// Returns the socket for a given UUID
@@ -309,13 +331,12 @@ impl ComInterfaceSocketManager {
     pub fn get_socket_by_uuid(
         &self,
         socket_uuid: &ComInterfaceSocketUUID,
-    ) -> Ref<'_, SocketData> {
+    ) -> Option<Ref<'_, SocketData>> {
         let sockets = self.sockets.borrow();
-        Ref::map(sockets, |sockets| {
+        Ref::filter_map(sockets, |sockets| {
             sockets
                 .get(socket_uuid)
-                .expect("No socket data found for socket")
-        })
+        }).ok()
     }
 
     /// Returns a mutable reference to the socket for a given UUID
@@ -352,6 +373,16 @@ impl ComInterfaceSocketManager {
                 socket_uuid
             );
         }
+
+        info!("add socket to interface {}: socket {}, direct endpoint: {}, direction: {:?}",
+            socket.interface_uuid,
+            socket_uuid,
+            direct_endpoint
+                .as_ref()
+                .map(|e| e.to_string())
+                .unwrap_or("None".to_string()),
+            socket.socket_properties.direction
+        );
 
         // store interface socket mapping
         self.socket_uuids_by_interface_uuid
@@ -468,8 +499,33 @@ impl ComInterfaceSocketManager {
         });
     }
 
+    /// Removes a socke by triggering the close signal, the actual cleanup will be done when the socket close event is handled
+    pub async fn remove_socket(
+        &self,
+        socket_uuid: ComInterfaceSocketUUID,
+    ) -> Result<(), ()> {
+        if !self.has_socket(&socket_uuid) {
+            return Err(());
+        }
+        let remove_future = self.trigger_remove_socket(&socket_uuid);
+        self.cleanup_socket(&socket_uuid);
+        let _ = remove_future.await;
+        
+        Ok(())
+    }
+
+    pub fn trigger_remove_socket(&self, socket_uuid: &ComInterfaceSocketUUID) -> Receiver<()> {
+        let (closed_sender, closed_receiver) = oneshot::channel();
+        let mut socket_data = self
+            .get_socket_by_uuid_mut(socket_uuid);
+        socket_data.close_sender.take().unwrap().send(closed_sender).unwrap();
+
+        closed_receiver
+    }
+
     /// Removes a socket from the socket list
-    pub fn delete_socket(&self, socket_uuid: &ComInterfaceSocketUUID) {
+    pub(crate) fn cleanup_socket(&self, socket_uuid: &ComInterfaceSocketUUID) {
+        info!("Deleting socket {socket_uuid} from ComHub");
         if !self.has_socket(socket_uuid) {
             warn!("Socket {socket_uuid} not found in ComHub, cannot delete");
             return;
@@ -477,7 +533,7 @@ impl ComInterfaceSocketManager {
 
         // get interface uuid before removing socket
         let interface_uuid =
-            self.get_socket_by_uuid(socket_uuid).interface_uuid.clone();
+            self.get_socket_by_uuid(socket_uuid).unwrap().interface_uuid.clone();
 
         // remove socket from endpoint socket list
         // remove endpoint key from endpoint_sockets if not sockets present
@@ -527,7 +583,7 @@ impl ComInterfaceSocketManager {
                 }
                 for (socket_uuid, _) in endpoint_sockets.unwrap() {
                     {
-                        let socket = self.get_socket_by_uuid(&socket_uuid);
+                        let socket = self.get_socket_by_uuid(&socket_uuid).unwrap();
 
                         // check if only_direct is set and the endpoint equals the direct endpoint of the socket
                         if options.only_direct
@@ -657,7 +713,7 @@ impl ComInterfaceSocketManager {
         // otherwise, return the highest priority socket that is not excluded
         else {
             for (socket_uuid, _, _) in self.fallback_sockets.borrow().iter() {
-                let socket = self.get_socket_by_uuid(socket_uuid);
+                let socket = self.get_socket_by_uuid(socket_uuid).unwrap();
                 info!(
                     "{}: Find best for {}: {} ({}); excluded:{}",
                     local_endpoint,

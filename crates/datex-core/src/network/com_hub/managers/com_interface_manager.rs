@@ -18,6 +18,7 @@ use crate::{
     values::value_container::ValueContainer,
 };
 use core::{cell::RefCell, pin::Pin};
+use futures::channel::oneshot;
 use log::info;
 
 type InterfaceMap =
@@ -52,11 +53,14 @@ pub enum SyncOrAsyncComInterfaceImplementationFactoryFn {
     Dyn(DynInterfaceImplementationFactoryFn),
 }
 
+pub type InterfaceCloseReceiver = oneshot::Receiver<oneshot::Sender<()>>;
+
 #[derive(Debug)]
 pub struct InterfaceInfo {
     pub properties: Rc<ComInterfaceProperties>,
     pub priority: InterfacePriority,
     pub is_waiting_for_socket_connections: bool,
+    pub close_sender: Option<oneshot::Sender<oneshot::Sender<()>>>,
 }
 
 #[derive(Default)]
@@ -117,7 +121,7 @@ impl ComInterfaceManager {
         interface_type: &str,
         setup_data: ValueContainer,
         priority: InterfacePriority,
-    ) -> Result<ComInterfaceConfiguration, ComInterfaceCreateError> {
+    ) -> Result<(ComInterfaceConfiguration, InterfaceCloseReceiver), ComInterfaceCreateError> {
         info!("creating interface {interface_type}");
         let factory = self
             .interface_factories
@@ -145,7 +149,7 @@ impl ComInterfaceManager {
                         priority,
                     )
                     .map_err(|e| e.into())
-                    .map(|_| com_interface_configuration)
+                    .map(|close_receiver| (com_interface_configuration, close_receiver))
                 }
             }
         } else {
@@ -164,7 +168,7 @@ impl ComInterfaceManager {
         interface_type: &str,
         setup_data: ValueContainer,
         priority: InterfacePriority,
-    ) -> Result<ComInterfaceConfiguration, ComInterfaceCreateError> {
+    ) -> Result<(ComInterfaceConfiguration, InterfaceCloseReceiver), ComInterfaceCreateError> {
         info!("creating interface sync {interface_type}");
         if let Some(factory) =
             self.interface_factories.borrow().get(interface_type)
@@ -180,7 +184,7 @@ impl ComInterfaceManager {
                         )?;
                     self.add_interface(com_interface_configuration.uuid(), com_interface_configuration.properties.clone(), priority)
                         .map_err(|e| e.into())
-                        .map(|_| com_interface_configuration)
+                        .map(|close_receiver| (com_interface_configuration, close_receiver))
                 }
                 SyncOrAsyncComInterfaceImplementationFactoryFn::Async(_)
                 | SyncOrAsyncComInterfaceImplementationFactoryFn::Dyn(_) => Err(
@@ -310,7 +314,10 @@ impl ComInterfaceManager {
         uuid: ComInterfaceUUID,
         properties: Rc<ComInterfaceProperties>,
         priority: InterfacePriority,
-    ) -> Result<(), InterfaceAddError> {
+    ) -> Result<InterfaceCloseReceiver, InterfaceAddError> {
+
+        let (close_sender, close_receiver) = oneshot::channel();
+
         if self.interfaces.borrow().contains_key(&uuid) {
             return Err(InterfaceAddError::InterfaceAlreadyExists);
         }
@@ -326,13 +333,28 @@ impl ComInterfaceManager {
 
         self.interfaces
             .borrow_mut()
-            .insert(uuid.clone(), InterfaceInfo{
+            .insert(uuid.clone(), InterfaceInfo {
                 properties,
                 priority,
-                is_waiting_for_socket_connections: true
+                is_waiting_for_socket_connections: true,
+                close_sender: Some(close_sender),
             });
 
-        Ok(())
+        Ok(close_receiver)
+    }
+
+    /// Removes an interface by triggering the close signal
+    pub async fn remove_interface(&self, uuid: &ComInterfaceUUID) {
+        let closed_receiver = self.trigger_remove_interface(uuid);
+        // wait for the interface to confirm it has been closed
+        let _ = closed_receiver.await;
+    }
+    
+    pub fn trigger_remove_interface(&self, uuid: &ComInterfaceUUID) -> oneshot::Receiver<()> {
+        let (closed_sender, closed_receiver) = oneshot::channel();
+        let close_sender = self.interfaces.borrow_mut().get_mut(uuid).unwrap().close_sender.take().unwrap();
+        close_sender.send(closed_sender).unwrap();
+        closed_receiver
     }
 
     /// Returns the priority of the interface with the given UUID
@@ -346,36 +368,18 @@ impl ComInterfaceManager {
             .map(|(InterfaceInfo { priority, ..})| *priority)
     }
 
-    /// User can proactively remove an interface from the hub.
-    /// This will destroy the interface and it's sockets (perform deep cleanup)
-    pub fn destroy_interface(
-        &self,
-        interface_uuid: &ComInterfaceUUID,
-    ) -> Result<(), ComHubError> {
-        info!("Removing interface {interface_uuid}");
-        // let _interface = &mut self
-        //     .interfaces
-        //     .borrow_mut()
-        //     .get_mut(interface_uuid)
-        //     .ok_or(ComHubError::InterfaceDoesNotExist)?
-        //     .0;
-        // TODO: destroy?
-
-        self.cleanup_interface(interface_uuid)?;
-
-        Ok(())
-    }
-
     /// The internal cleanup function that removes the interface from the hub
     /// and disabled the default interface if it was set to this interface
-    fn cleanup_interface(
+    pub(crate) fn cleanup_interface(
         &self,
         interface_uuid: &ComInterfaceUUID,
-    ) -> Result<(), ComHubError> {
+    ) -> Result<(), ()> {
+        info!("Cleaning up interface {interface_uuid}");
+
         self.interfaces
             .borrow_mut()
             .remove(interface_uuid)
-            .ok_or(ComHubError::InterfaceDoesNotExist)
+            .ok_or(())
             .map(|_| ())
     }
 }
@@ -458,7 +462,7 @@ mod tests {
         let setup_data = MockSetupData {
             name: "test_interface".to_string(),
         };
-        let com_interface_configuration = interface_manager
+        let (com_interface_configuration, _) = interface_manager
             .create_and_add_interface_sync(
                 "mock",
                 ValueContainer::from_serializable(&setup_data).unwrap(),
@@ -478,7 +482,7 @@ mod tests {
 
         // Clean up
         interface_manager
-            .destroy_interface(&com_interface_configuration.uuid())
+            .cleanup_interface(&com_interface_configuration.uuid())
             .unwrap();
 
         // Verify removal
@@ -496,7 +500,7 @@ mod tests {
         let setup_data = MockSetupData {
             name: "test_interface".to_string(),
         };
-        let com_interface_configuration = interface_manager
+        let (com_interface_configuration, _) = interface_manager
             .create_and_add_interface(
                 "mock",
                 ValueContainer::from_serializable(&setup_data).unwrap(),
@@ -517,7 +521,7 @@ mod tests {
 
         // Clean up
         interface_manager
-            .destroy_interface(&com_interface_configuration.uuid())
+            .cleanup_interface(&com_interface_configuration.uuid())
             .unwrap();
 
         // Verify removal
@@ -543,7 +547,7 @@ mod tests {
         let setup_data = MockSetupData {
             name: "test_interface".to_string(),
         };
-        let com_interface_configuration = interface_manager
+        let (com_interface_configuration, _) = interface_manager
             .create_and_add_interface(
                 "mock",
                 ValueContainer::from_serializable(&setup_data).unwrap(),
@@ -564,7 +568,7 @@ mod tests {
 
         // Clean up
         interface_manager
-            .destroy_interface(&com_interface_configuration.uuid())
+            .cleanup_interface(&com_interface_configuration.uuid())
             .unwrap();
 
         // Verify removal
