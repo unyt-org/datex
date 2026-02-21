@@ -10,19 +10,43 @@ use core::{fmt::Display, prelude::rust_2024::*};
 use modular_bitfield::prelude::*;
 
 // 2 bit
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Debug, PartialEq, Clone, Default, Specifier)]
+#[derive(
+    serde::Serialize, serde::Deserialize, Debug, PartialEq, Clone, Specifier,
+)]
 #[bits = 2]
 pub enum SignatureType {
-    #[default]
     None = 0b00,
     Unencrypted = 0b10,
     Encrypted = 0b11,
 }
 
+#[allow(clippy::derivable_impls)]
+impl Default for SignatureType {
+    /// Sets the default signature type based on whether the "crypto_enabled" feature is enabled.
+    /// When "crypto_enabled" is enabled, the default signature type is set to Unencrypted
+    /// Otherwise, it is set to None.
+    fn default() -> Self {
+        #[cfg(not(feature = "crypto_enabled"))]
+        {
+            SignatureType::None
+        }
+        #[cfg(feature = "crypto_enabled")]
+        {
+            SignatureType::Unencrypted
+        }
+    }
+}
+
 // 1 bit
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Debug, PartialEq, Clone, Default, Specifier)]
+#[derive(
+    serde::Serialize,
+    serde::Deserialize,
+    Debug,
+    PartialEq,
+    Clone,
+    Default,
+    Specifier,
+)]
 pub enum EncryptionType {
     #[default]
     None = 0b0,
@@ -31,7 +55,7 @@ pub enum EncryptionType {
 
 // 2 bit + 1 bit + 2 bit + 1 bit + 1 bit + 1 bit = 1 byte
 #[bitfield]
-#[derive(BinWrite, BinRead, Clone, Default, Copy, Debug, PartialEq)]
+#[derive(BinWrite, BinRead, Clone, Copy, Debug, PartialEq)]
 #[bw(map = |&x| Self::into_bytes(x))]
 #[br(map = Self::from_bytes)]
 pub struct Flags {
@@ -43,6 +67,17 @@ pub struct Flags {
 
     #[allow(unused)]
     unused_2: bool,
+}
+
+impl Default for Flags {
+    fn default() -> Self {
+        Flags::new()
+            .with_signature_type(SignatureType::default())
+            .with_encryption_type(EncryptionType::default())
+            .with_receiver_type(ReceiverType::default())
+            .with_is_bounce_back(false)
+            .with_has_checksum(false)
+    }
 }
 
 mod flags_serde {
@@ -91,8 +126,15 @@ mod flags_serde {
 }
 
 // 2 bit
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Debug, PartialEq, Clone, Default, Specifier)]
+#[derive(
+    serde::Serialize,
+    serde::Deserialize,
+    Debug,
+    PartialEq,
+    Clone,
+    Default,
+    Specifier,
+)]
 #[bits = 2]
 pub enum ReceiverType {
     #[default]
@@ -104,8 +146,16 @@ pub enum ReceiverType {
 
 // <count>: 1 byte + (21 byte * count)
 // min: 2 bytes
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Debug, Clone, Default, BinWrite, BinRead, PartialEq)]
+#[derive(
+    serde::Serialize,
+    serde::Deserialize,
+    Debug,
+    Clone,
+    Default,
+    BinWrite,
+    BinRead,
+    PartialEq,
+)]
 pub struct ReceiverEndpoints {
     #[serde(rename = "number_of_receivers")]
     pub count: u8,
@@ -123,8 +173,16 @@ impl ReceiverEndpoints {
 
 // <count>: 1 byte + (21 byte * count) + (512 byte * count)
 // min: 2 bytes
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Debug, Clone, Default, BinWrite, BinRead, PartialEq)]
+#[derive(
+    serde::Serialize,
+    serde::Deserialize,
+    Debug,
+    Clone,
+    Default,
+    BinWrite,
+    BinRead,
+    PartialEq,
+)]
 pub struct ReceiverEndpointsWithKeys {
     #[serde(rename = "number_of_receivers")]
     count: u8,
@@ -133,12 +191,16 @@ pub struct ReceiverEndpointsWithKeys {
     pub endpoints_with_keys: Vec<(Endpoint, Key512)>,
 }
 
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Debug, Clone, BinWrite, BinRead, PartialEq)]
-pub struct Key512(
-    #[serde(with = "serde_big_array::BigArray")]
-    [u8; 512],
-);
+#[derive(
+    serde::Serialize,
+    serde::Deserialize,
+    Debug,
+    Clone,
+    BinWrite,
+    BinRead,
+    PartialEq,
+)]
+pub struct Key512(#[serde(with = "serde_big_array::BigArray")] [u8; 512]);
 impl Default for Key512 {
     fn default() -> Self {
         Key512([0u8; 512])
@@ -167,8 +229,15 @@ impl ReceiverEndpointsWithKeys {
 }
 
 // min: 11 byte + 2 byte + 21 byte + 1 byte = 35 bytes
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Debug, Clone, BinWrite, BinRead, PartialEq)]
+#[derive(
+    serde::Serialize,
+    serde::Deserialize,
+    Debug,
+    Clone,
+    BinWrite,
+    BinRead,
+    PartialEq,
+)]
 #[brw(little, magic = b"\x01\x64")]
 pub struct RoutingHeader {
     pub version: u8,
@@ -202,7 +271,7 @@ impl Default for RoutingHeader {
             version: 1,
             distance: 0,
             ttl: 42,
-            flags: Flags::new(),
+            flags: Flags::default(),
             checksum: None,
             block_size: 0,
             sender: Endpoint::default(),
