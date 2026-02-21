@@ -431,7 +431,6 @@ impl ComInterfaceSocketManager {
     ) -> Result<(), ComHubError> {
         let can_send = socket.socket_properties.direction.can_send();
         let can_receive = socket.socket_properties.direction.can_receive();
-        let has_direct_endpoint = socket.socket_properties.direct_endpoint.is_some();
         let socket_uuid = socket.socket_properties.uuid().clone();
         if self.has_socket(&socket_uuid) {
             core::panic!("Socket {} already exists in ComHub", socket_uuid);
@@ -466,10 +465,10 @@ impl ComInterfaceSocketManager {
                 }
             }
         }
-        
+
         // if socket cannot receive, directly send ready signal since we will never receive any blocks from the peer endpoint
         // or if direct endpoint is already explicitly set, assuming that no hello blocks might be sent
-        if !can_receive || has_direct_endpoint {
+        if !can_receive {
             let mut socket = self.get_socket_by_uuid_mut(&socket_uuid);
             if let Some(sender) = socket.socket_ready_sender.take() {
                 info!("Sending ready signal immediately for socket {} since it cannot receive or has direct endpoint already set", socket_uuid);
