@@ -162,7 +162,7 @@ pub struct BlockId {
 pub enum DXBBlockParseError {
     IOError(String),
     ParseError(binrw::Error),
-    IllegalState
+    IllegalState,
 }
 
 #[derive(Debug)]
@@ -291,7 +291,7 @@ impl DXBBlock {
             }
             SignatureType::None => None,
         };
-        
+
         let decrypted_bytes = match routing_header.flags.encryption_type() {
             EncryptionType::Encrypted => {
                 // TODO #113: decrypt the body
@@ -323,7 +323,6 @@ impl DXBBlock {
         {
             return Err(DXBBlockParseError::IllegalState);
         }
-
 
         let encrypted_header = EncryptedHeader::read(&mut reader)?;
 
@@ -545,24 +544,6 @@ impl DXBBlock {
         new_block.set_receivers(new_receivers.into());
         new_block
     }
-
-    /// Sets the default signature type based on whether the "crypto_enabled" feature is enabled.
-    /// When "crypto_enabled" is enabled, the default signature type is set to Unencrypted
-    /// Otherwise, it is set to None.
-    pub fn set_default_signature_type(&mut self) {
-        #[cfg(not(feature = "crypto_enabled"))]
-        {
-            self.routing_header
-                .flags
-                .set_signature_type(SignatureType::None);
-        }
-        #[cfg(feature = "crypto_enabled")]
-        {
-            self.routing_header
-                .flags
-                .set_signature_type(SignatureType::Unencrypted);
-        }
-    }
 }
 
 impl Display for DXBBlock {
@@ -587,6 +568,7 @@ mod tests {
                 DXBBlock, DXBBlockParseError, SignatureValidationError,
             },
             protocol_structures::{
+                block_header::BlockType,
                 encrypted_header::{self, EncryptedHeader},
                 routing_header::{RoutingHeader, SignatureType},
             },
@@ -596,7 +578,6 @@ mod tests {
     };
     use core::assert_matches;
     use datex_crypto_facade::crypto::Crypto;
-    use crate::global::protocol_structures::block_header::BlockType;
 
     #[test]
     pub fn test_recalculate() {
@@ -689,12 +670,18 @@ mod tests {
             SignatureValidationError::InvalidSignature
         )
     }
-    
+
     #[test]
     fn illegal_signed_trace_block() {
         let mut block = DXBBlock::new_with_body(&[0x01, 0x02, 0x03]);
-        block.block_header.flags_and_timestamp.set_block_type(BlockType::Trace);
-        block.routing_header.flags.set_signature_type(SignatureType::Unencrypted);
+        block
+            .block_header
+            .flags_and_timestamp
+            .set_block_type(BlockType::Trace);
+        block
+            .routing_header
+            .flags
+            .set_signature_type(SignatureType::Unencrypted);
         block.signature = Some(vec![0u8; 108]);
 
         let block_bytes = block.to_bytes();
