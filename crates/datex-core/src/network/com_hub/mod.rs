@@ -2,7 +2,8 @@ use crate::{
     channel::mpsc::UnboundedSender,
     collections::HashMap,
     global::protocol_structures::{
-        block_header::BlockType, routing_header::SignatureType,
+        block_header::BlockType,
+        routing_header::{Flags, SignatureType},
     },
     network::com_hub::{
         errors::{ComHubError, SocketEndpointRegistrationError},
@@ -22,7 +23,9 @@ use crate::prelude::*;
 pub mod managers;
 
 pub mod metadata;
-use crate::network::com_hub::managers::socket_manager::{ComInterfaceSocketManager, SocketCloseReceiver, SocketData};
+use crate::network::com_hub::managers::socket_manager::{
+    ComInterfaceSocketManager, SocketCloseReceiver, SocketData,
+};
 
 pub mod errors;
 pub mod network_response;
@@ -62,15 +65,19 @@ use crate::{
     collections::HashSet,
     crypto::CryptoImpl,
     global::dxb_block::{BlockId, SignatureValidationError},
-    network::com_interfaces::{
-        block_collector::BlockCollector,
-        com_interface::{
-            ComInterfaceUUID,
-            factory::{
-                ComInterfaceConfiguration, NewSocketsIterator, SendCallback,
-                SendFailure, SendSuccess, SocketDataIterator, SocketProperties,
+    network::{
+        com_hub::managers::com_interface_manager::InterfaceCloseReceiver,
+        com_interfaces::{
+            block_collector::BlockCollector,
+            com_interface::{
+                ComInterfaceUUID,
+                factory::{
+                    ComInterfaceConfiguration, NewSocketsIterator,
+                    SendCallback, SendFailure, SendSuccess, SocketDataIterator,
+                    SocketProperties,
+                },
+                properties::{ComInterfaceProperties, InterfaceDirection},
             },
-            properties::{ComInterfaceProperties, InterfaceDirection},
         },
     },
     utils::{
@@ -80,19 +87,18 @@ use crate::{
     },
 };
 use async_select::select;
-use futures::channel::oneshot;
-use futures::channel::oneshot::Sender;
-use futures_util::future::{select, Either};
 use datex_crypto_facade::crypto::Crypto;
-use futures_util::FutureExt;
-use crate::network::com_hub::managers::com_interface_manager::InterfaceCloseReceiver;
+use futures::channel::{oneshot, oneshot::Sender};
+use futures_util::{
+    FutureExt,
+    future::{Either, select},
+};
 
 pub type IncomingBlockInterceptor =
     Box<dyn Fn(&DXBBlock, &ComInterfaceSocketUUID) + 'static>;
 
 pub type OutgoingBlockInterceptor =
     Box<dyn Fn(&DXBBlock, &ComInterfaceSocketUUID, &[Endpoint]) + 'static>;
-
 
 pub struct ComHub {
     /// the runtime endpoint of the hub (@me)
@@ -207,10 +213,12 @@ impl ComHub {
         priority: InterfacePriority,
         close_receiver: InterfaceCloseReceiver,
     ) {
-        self.task_manager.register_task(
-            self.clone()
-                .handle_sockets_task(com_interface_configuration, priority, close_receiver),
-        );
+        self.task_manager
+            .register_task(self.clone().handle_sockets_task(
+                com_interface_configuration,
+                priority,
+                close_receiver,
+            ));
     }
 
     /// Iterates over the given NewSocketsIterator for an interface and handles each socket
@@ -399,7 +407,8 @@ impl ComHub {
         );
 
         // socket closed, remove
-        self.socket_manager.cleanup_socket(&socket_properties.uuid());
+        self.socket_manager
+            .cleanup_socket(&socket_properties.uuid());
 
         // only if interface still exists
         if self.interfaces_manager.has_interface(&com_interface_uuid) {
@@ -407,15 +416,17 @@ impl ComHub {
             // and if interface is no longer waiting for new socket connections (e.g. single socket interface), also remove the interface
             if !self
                 .interfaces_manager
-                .is_interface_waiting_for_socket_connections(&com_interface_uuid)
+                .is_interface_waiting_for_socket_connections(
+                    &com_interface_uuid,
+                )
             {
                 self.interfaces_manager
                     .cleanup_interface(&com_interface_uuid)
                     .unwrap();
                 info!(
-                "Destroyed interface {} as it is no longer waiting for socket connections",
-                com_interface_uuid
-            );
+                    "Destroyed interface {} as it is no longer waiting for socket connections",
+                    com_interface_uuid
+                );
                 // TODO: reconnect logic?
             }
         }
@@ -848,12 +859,9 @@ impl ComHub {
                         self.endpoint
                     );
                     Ok(())
-                } else if let Some(socket) = self
-                        .socket_manager
-                        .get_socket_by_uuid(&send_back_socket) &&
-                    socket.socket_properties
-                        .direction
-                        .can_send()
+                } else if let Some(socket) =
+                    self.socket_manager.get_socket_by_uuid(&send_back_socket)
+                    && socket.socket_properties.direction.can_send()
                 {
                     block.set_bounce_back(true);
                     self
@@ -1395,13 +1403,15 @@ impl ComHub {
     > {
         block.set_receivers(&endpoints);
 
-        let socket_data = match self.socket_manager.get_socket_by_uuid(&socket_uuid) {
-            Some(socket_data) => socket_data,
-            None => {
-                return SyncOrAsyncResult::Sync(Err(SendFailure(Box::new(block))));
-            }
-        };
-
+        let socket_data =
+            match self.socket_manager.get_socket_by_uuid(&socket_uuid) {
+                Some(socket_data) => socket_data,
+                None => {
+                    return SyncOrAsyncResult::Sync(Err(SendFailure(
+                        Box::new(block),
+                    )));
+                }
+            };
 
         // assuming the distance was already increment during redirect, we
         // effectively decrement the block distance by 1 if it is a bounce back
@@ -1600,7 +1610,6 @@ impl ComHub {
             .block_header
             .flags_and_timestamp
             .set_block_type(BlockType::Hello);
-        block.set_default_signature_type();
         // TODO #182 include fingerprint of the own public key into body
 
         let block = self
