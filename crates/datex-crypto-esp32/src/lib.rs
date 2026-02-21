@@ -16,15 +16,17 @@ use datex_crypto_facade::{
 #[cfg(any(target_arch = "xtensa", target_arch = "riscv32"))]
 mod hal {
     use esp_hal::rng::Rng;
-    use once_cell::sync::OnceCell;
-    use spin::{Mutex, MutexGuard};
+    use spin::{Mutex, MutexGuard, Once};
     use static_cell::StaticCell;
 
     static RNG: StaticCell<Mutex<Rng>> = StaticCell::new();
-    static INIT: OnceCell<&'static Mutex<Rng>> = OnceCell::new();
+    static INIT: Once<&'static Mutex<Rng>> = Once::new();
 
     pub fn rng() -> MutexGuard<'static, Rng> {
-        let m = INIT.get_or_init(|| RNG.init(Mutex::new(Rng::new())));
+        let m = INIT.call_once(|| {
+            RNG.init(Mutex::new(Rng::new()))
+        });
+
         m.lock()
     }
 }
