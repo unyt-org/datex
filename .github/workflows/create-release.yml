@@ -28,9 +28,9 @@ jobs:
         with:
           deno-version: v2.x
 
-      - name: Bump version using Deno
+      - name: Bump version of datex-core
         id: bump_version
-        run: deno run -A .github/tools/create-release.ts ${{ inputs.bump_type }}
+        run: deno run -A .github/tools/create-release.ts crates/datex-core ${{ inputs.bump_type }}
 
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v5
@@ -40,8 +40,8 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           commit-message: "Bump version to ${{ env.NEW_VERSION }}"
           title: "Release (${{ env.NEW_VERSION }})"
-          body: "This PR bumps the Cargo.toml version to ${{ env.NEW_VERSION }}."
-          draft: false
+          body: "This PR bumps the version of datex-core to ${{ env.NEW_VERSION }}."
+          draft: true
           branch: "release/${{ env.NEW_VERSION }}"
           delete-branch: true
           labels: |
