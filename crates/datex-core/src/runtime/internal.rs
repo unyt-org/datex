@@ -108,10 +108,8 @@ impl RuntimeInternal {
     /// Performs asynchronous initialization of the runtime
     pub(crate) async fn init_async(&self) {
         // create local loopback interface and other configured interfaces
-        join(
-            self.init_local_loopback_interface(),
-            self.create_configured_interfaces()
-        ).await;
+        self.init_local_loopback_interface().await;
+        self.create_configured_interfaces().await;
     }
 
     #[cfg(feature = "compiler")]
