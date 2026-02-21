@@ -1,4 +1,4 @@
-name: Create release
+name: Version Bump
 
 on:
   workflow_dispatch:
@@ -30,7 +30,7 @@ jobs:
 
       - name: Bump version of datex-core
         id: bump_version
-        run: deno run -A .github/tools/create-release.ts crates/datex-core ${{ inputs.bump_type }}
+        run: deno run -A .github/tools/version-bump.ts crates/datex-core ${{ inputs.bump_type }}
 
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v5

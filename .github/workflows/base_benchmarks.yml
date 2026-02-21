@@ -1,3 +1,4 @@
+name: Base Branch Benchmarks
 on:
   push:
     branches: main
