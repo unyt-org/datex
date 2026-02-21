@@ -212,13 +212,25 @@ impl ComHub {
         com_interface_configuration: ComInterfaceConfiguration,
         priority: InterfacePriority,
         close_receiver: InterfaceCloseReceiver,
-    ) {
+    ) -> Option<oneshot::Receiver<Result<(),()>>> {
+        // For interfaces with a single socket, set up a oneshot receiver which resolves when the socket is
+        // either fully connected or failed to connect
+        let (socket_ready_sender, socket_ready_receiver) =
+            if com_interface_configuration.has_single_socket {
+                let (socket_ready_sender, socket_ready_receiver) = oneshot::channel();
+                (Some(socket_ready_sender), Some(socket_ready_receiver))
+            } else {
+                (None, None)
+            };
+
         self.task_manager
             .register_task(self.clone().handle_sockets_task(
                 com_interface_configuration,
                 priority,
                 close_receiver,
+                socket_ready_sender
             ));
+        socket_ready_receiver
     }
 
     /// Iterates over the given NewSocketsIterator for an interface and handles each socket
@@ -227,6 +239,7 @@ impl ComHub {
         com_interface_configuration: ComInterfaceConfiguration,
         interface_priority: InterfacePriority,
         close_receiver: InterfaceCloseReceiver,
+        mut socket_ready_sender: Option<Sender<Result<(),()>>>,
     ) {
         let com_interface_uuid = com_interface_configuration.uuid();
         let mut iterator = com_interface_configuration.new_sockets_iterator;
@@ -260,6 +273,7 @@ impl ComHub {
                                     send_callback,
                                     endpoints: HashSet::new(),
                                     close_sender: Some(close_sender),
+                                    socket_ready_sender: socket_ready_sender.take(),
                                 },
                                 interface_priority,
                             );
@@ -318,6 +332,11 @@ impl ComHub {
 
         if let Some(closed_sender) = closed_sender {
             closed_sender.send(()).unwrap();
+        }
+
+        // if socket_ready_sender is still Some, socket was never connected, send Error
+        if let Some(socket_ready_sender) = socket_ready_sender {
+            let _ = socket_ready_sender.send(Err(()));
         }
     }
 
@@ -1644,6 +1663,10 @@ impl ComHub {
 
     pub fn interfaces_manager(&self) -> &ComInterfaceManager {
         &self.interfaces_manager
+    }
+    
+    pub fn socket_manager(&self) -> &ComInterfaceSocketManager {
+        &self.socket_manager
     }
 }
 

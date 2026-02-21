@@ -1,3 +1,4 @@
+use futures::channel::oneshot;
 use log::info;
 use crate::{
     network::{
@@ -51,15 +52,15 @@ impl ComHub {
         self: Rc<Self>,
         interface_configuration: ComInterfaceConfiguration,
         priority: InterfacePriority,
-    ) -> Result<(), InterfaceAddError> {
+    ) -> Result<Option<oneshot::Receiver<Result<(),()>>>, InterfaceAddError> {
         let uuid = interface_configuration.uuid();
         let close_receiver = self.interfaces_manager.add_interface(
             uuid,
             interface_configuration.properties.clone(),
             priority,
         )?;
-        self.register_com_interface_handler(interface_configuration, priority, close_receiver);
-        Ok(())
+        let ready_signal = self.register_com_interface_handler(interface_configuration, priority, close_receiver);
+        Ok(ready_signal)
     }
 
     /// Creates a new interface of the given type with the provided setup data
@@ -68,7 +69,7 @@ impl ComHub {
         interface_type: &str,
         setup_data: ValueContainer,
         priority: InterfacePriority,
-    ) -> Result<ComInterfaceUUID, ComInterfaceCreateError> {
+    ) -> Result<(ComInterfaceUUID, Option<oneshot::Receiver<Result<(),()>>>), ComInterfaceCreateError> {
         let (interface_configuration, close_receiver) = self
             .interfaces_manager
             .create_and_add_interface(interface_type, setup_data, priority)
@@ -76,19 +77,18 @@ impl ComHub {
 
         let uuid = interface_configuration.uuid();
         // add event handler task
-        self.register_com_interface_handler(interface_configuration, priority, close_receiver);
-
-        Ok(uuid)
+        let ready_signal = self.register_com_interface_handler(interface_configuration, priority, close_receiver);
+        Ok((uuid, ready_signal))
     }
 
     /// Creates a new interface of the given type with the provided setup data
     /// If the interface does not support sync initialization, an error is returned
-    pub fn create_interface_sync(
+    pub async fn create_interface_sync(
         self: Rc<Self>,
         interface_type: &str,
         setup_data: ValueContainer,
         priority: InterfacePriority,
-    ) -> Result<ComInterfaceUUID, ComInterfaceCreateError> {
+    ) -> Result<(ComInterfaceUUID, Option<oneshot::Receiver<Result<(),()>>>), ComInterfaceCreateError> {
         let (interface_configuration, close_receiver) =
             self.interfaces_manager.create_and_add_interface_sync(
                 interface_type,
@@ -98,9 +98,9 @@ impl ComHub {
 
         let uuid = interface_configuration.uuid();
         // add event handler task
-        self.register_com_interface_handler(interface_configuration, priority, close_receiver);
-
-        Ok(uuid)
+        let ready_signal = self.register_com_interface_handler(interface_configuration, priority, close_receiver);
+        
+        Ok((uuid, ready_signal))
     }
 
     pub async fn remove_interface(

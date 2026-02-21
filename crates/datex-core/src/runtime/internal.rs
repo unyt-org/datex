@@ -3,6 +3,7 @@ use alloc::rc::Rc;
 use core::pin::Pin;
 use core::slice;
 use core::cell::RefCell;
+use futures_util::future::join;
 use crate::collections::HashMap;
 use crate::time::Instant;
 use log::{debug, error, info};
@@ -11,8 +12,9 @@ use crate::global::dxb_block::{DXBBlock, IncomingEndpointContextSectionId, Incom
 use crate::global::protocol_structures::block_header::BlockHeader;
 use crate::global::protocol_structures::encrypted_header::EncryptedHeader;
 use crate::global::protocol_structures::routing_header::RoutingHeader;
-use crate::network::com_hub::ComHub;
+use crate::network::com_hub::{ComHub, InterfacePriority};
 use crate::network::com_hub::network_response::ResponseOptions;
+use crate::network::com_interfaces::local_loopback_interface::LocalLoopbackInterfaceSetupData;
 use crate::runtime::{RuntimeConfig, RuntimeConfigInterface};
 use crate::runtime::execution::context::{ExecutionContext, ExecutionMode, RemoteExecutionContext, ScriptExecutionError};
 use crate::runtime::execution::ExecutionError;
@@ -83,10 +85,29 @@ impl RuntimeInternal {
         }
     }
 
+    async fn init_local_loopback_interface(&self) {
+        // add default local loopback interface
+        let local_interface_setup_data =
+            LocalLoopbackInterfaceSetupData.create_interface().unwrap();
+
+        let ready_signal = self.com_hub
+            .clone()
+            .add_interface_from_configuration(
+                local_interface_setup_data,
+                InterfacePriority::None,
+            ).expect("Failed to add local loopback interface");
+        // local loopback interface is single socket interface and should always return a ready signal
+        // which should always resolve to Ok
+        ready_signal.unwrap().await.unwrap().unwrap();
+    }
+
     /// Performs asynchronous initialization of the runtime
     pub(crate) async fn init_async(&self) {
-        // create configured interfaces
-        self.create_configured_interfaces().await;
+        // create local loopback interface and other configured interfaces
+        join(
+            self.init_local_loopback_interface(),
+            self.create_configured_interfaces()
+        ).await;
     }
 
     #[cfg(feature = "compiler")]
