@@ -125,9 +125,9 @@ embassy-futures = { version = "0.1.2", optional = true, default-features = false
 
 # wasm dependencies (optional)
 web-time = { version = "1.1.0", optional = true }
-wasm-bindgen-futures = { version = "0.4.29", optional = true }
+wasm-bindgen-futures = { version = "0.4.61", optional = true }
 tsify = { version = "0.5.6", features = ["js"], optional = true }
-wasm-bindgen = { version = "=0.2.105", optional = true }
+wasm-bindgen = { version = "=0.2.111", optional = true }
 gloo-timers = { version = "0.3.0", features = ["futures"], optional = true }
 
 # native dependencies (optional)
