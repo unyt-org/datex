@@ -1,4 +1,3 @@
-use crate::network::helpers::mock_setup::get_mock_setup_default_with_two_connected_runtimes;
 use datex_core::{
     runtime::execution::context::{ExecutionContext, ExecutionMode},
     values::{
@@ -6,10 +5,9 @@ use datex_core::{
         value_container::ValueContainer,
     },
 };
-use datex_macros_internal::async_test;
 use tokio::task::yield_now;
 
-#[async_test]
+#[tokio::test]
 pub async fn test_basic_remote_execution() {
     let endpoint_a = Endpoint::new("@test_a");
     let endpoint_b = Endpoint::new("@test_b");
@@ -47,7 +45,7 @@ pub async fn test_basic_remote_execution() {
     );
 }
 
-#[async_test]
+#[tokio::test]
 pub async fn test_remote_execution_persistent_context() {
     let endpoint_a = Endpoint::new("@test_a");
     let endpoint_b = Endpoint::new("@test_b");
@@ -83,7 +81,7 @@ pub async fn test_remote_execution_persistent_context() {
     );
 }
 
-#[async_test]
+#[tokio::test]
 pub async fn test_remote_inline() {
     let endpoint_a = Endpoint::new("@test_a");
     let endpoint_b = Endpoint::new("@test_b");
@@ -112,7 +110,7 @@ pub async fn test_remote_inline() {
     );
 }
 
-#[async_test]
+#[tokio::test]
 pub async fn test_remote_inline_implicit_context() {
     let endpoint_a = Endpoint::new("@test_a");
     let endpoint_b = Endpoint::new("@test_b");
