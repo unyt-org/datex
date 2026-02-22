@@ -29,7 +29,7 @@ impl TaskManager {
                 task_sender: RefCell::new(sender),
             },
             async move {
-                let mut tasks = FuturesUnordered::<Fuse<TaskFuture>>::new();
+                let mut tasks = FuturesUnordered::<TaskFuture>::new();
 
                 // iterate over new_socket_iterators
                 loop {
@@ -39,8 +39,8 @@ impl TaskManager {
                         Some(_) = tasks.next() => {}
 
                         // Poll for new futures from channel
-                        Some(new_fut) = receiver.next().fuse() => {
-                            tasks.push(new_fut.fuse());
+                        Some(new_fut) = receiver.next() => {
+                            tasks.push(new_fut);
                         }
                         complete => unreachable!(),
                     }

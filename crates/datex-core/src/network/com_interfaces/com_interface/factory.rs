@@ -1,6 +1,7 @@
 use crate::std_sync::Mutex;
 use core::{async_iter::AsyncIterator, fmt::Debug, pin::Pin};
 use futures::channel::oneshot::Sender;
+use futures_core::future::LocalBoxFuture;
 pub use crate::network::com_hub::managers::com_interface_manager::ComInterfaceAsyncFactoryResult;
 use crate::{
     global::dxb_block::DXBBlock,
@@ -89,7 +90,7 @@ pub type SocketDataIterator =
 #[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
 pub struct SocketConfiguration {
     pub properties: SocketProperties,
-    #[cfg_attr(feature = "wasm_runtime", tsify(type = "AsyncGenerator<ArrayBuffer>"))]
+    #[cfg_attr(feature = "wasm_runtime", tsify(type = "ReadableStream<ArrayBuffer>"))]
     /// An asynchronous iterator that yields incoming data from the socket as Vec<u8>
     /// It is driven by the com hub to receive data from the socket
     pub iterator: Option<SocketDataIterator>,
@@ -97,6 +98,9 @@ pub struct SocketConfiguration {
     /// A callback that is called by the com hub to send data through the socket
     /// This can be either a synchronous or asynchronous callback depending on the interface implementation
     pub send_callback: Option<SendCallback>,
+    /// An optional asynchronous callback that is called by the com hub when the socket is closed
+    #[cfg_attr(feature = "wasm_runtime", tsify(optional, type = "never"))]
+    pub close_async_callback: Option<CloseAsyncCallback>,
 }
 
 impl Debug for SocketConfiguration {
@@ -108,6 +112,32 @@ impl Debug for SocketConfiguration {
 }
 
 impl SocketConfiguration {
+    
+    /// Creates a SocketDataIterator for a given socket with the provided parameters.
+    /// This is the most general constructor for SocketConfiguration, allowing for optional incoming data iterator, send callback, and close callback.
+    pub fn new<I, F, Fut>(
+        socket_configuration: SocketProperties,
+        maybe_iter: Option<I>,
+        send_callback: Option<SendCallback>,
+        close_async_callback: Option<F>,
+    ) -> Self
+    where
+        I: AsyncIterator<Item = Result<Vec<u8>, ()>> + 'static,
+        F: FnOnce() -> Fut + 'static,
+        Fut: Future<Output = ()> + 'static,
+    {
+        SocketConfiguration {
+            properties: socket_configuration,
+            iterator: maybe_iter.map(|iter| Box::pin(iter) as SocketDataIterator),
+            send_callback,
+            close_async_callback: close_async_callback.map(|cb| {
+                Box::new(move || {
+                    Box::pin(cb()) as Pin<Box<dyn Future<Output = ()>>>
+                }) as CloseAsyncCallback
+            }),
+        }
+    }
+    
     /// Creates a SocketDataIterator for a given socket with the provided parameters.
     /// Expects both an iterator for incoming data and a send callback for outgoing data.
     pub fn new_in_out<I>(
@@ -122,6 +152,7 @@ impl SocketConfiguration {
             properties: socket_configuration,
             iterator: Some(Box::pin(iter)),
             send_callback: Some(send_callback),
+            close_async_callback: None,
         }
     }
 
@@ -138,6 +169,7 @@ impl SocketConfiguration {
             properties: socket_configuration,
             iterator: Some(Box::pin(maybe_iter)),
             send_callback: None,
+            close_async_callback: None,
         }
     }
 
@@ -151,6 +183,7 @@ impl SocketConfiguration {
             properties: socket_configuration,
             iterator: None,
             send_callback: Some(send_callback),
+            close_async_callback: None,
         }
     }
 
@@ -262,7 +295,7 @@ impl SendCallback {
 #[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
 pub struct ComInterfaceConfiguration {
     // should not be provided from JS side
-    #[cfg_attr(feature = "wasm_runtime", tsify(optional))]
+    #[cfg_attr(feature = "wasm_runtime", tsify(optional, type = "never"))]
     uuid: ComInterfaceUUID,
     /// The properties of the interface instance
     pub properties: Rc<ComInterfaceProperties>,
@@ -271,8 +304,11 @@ pub struct ComInterfaceConfiguration {
     /// When set to true, the first socket connection is awaited on interface creation.
     pub has_single_socket: bool,
     // TODO: docs
-    #[cfg_attr(feature = "wasm_runtime", tsify(type = "AsyncGenerator<SocketConfiguration>"))]
+    #[cfg_attr(feature = "wasm_runtime", tsify(type = "ReadableStream<SocketConfiguration>"))]
     pub new_sockets_iterator: NewSocketsIterator,
+    /// An optional asynchronous callback that is called by the com hub when the interface is closed
+    #[cfg_attr(feature = "wasm_runtime", tsify(optional, type = "never"))]
+    pub close_async_callback: Option<CloseAsyncCallback>,
 }
 
 impl Debug for ComInterfaceConfiguration {
@@ -284,10 +320,9 @@ impl Debug for ComInterfaceConfiguration {
     }
 }
 
-
 impl ComInterfaceConfiguration {
     /// Creates a new ComInterfaceConfiguration with the given properties and socket iterator.
-    pub fn new<I>(
+    pub fn new_multi_socket<I>(
         properties: ComInterfaceProperties,
         new_sockets_iterator: I,
     ) -> Self
@@ -299,6 +334,7 @@ impl ComInterfaceConfiguration {
             properties: Rc::new(properties),
             has_single_socket: false,
             new_sockets_iterator: Box::pin(new_sockets_iterator),
+            close_async_callback: None,
         }
     }
 
@@ -314,23 +350,32 @@ impl ComInterfaceConfiguration {
             new_sockets_iterator: Box::pin(async gen move {
                 yield Ok(socket_configuration)
             }),
+            close_async_callback: None,
         }
     }
 
-    /// Creates a new ComInterfaceConfiguration with the given properties, has_single_socket flag and socket iterator.
-    pub fn new_maybe_single_socket<I>(
+    /// Creates a new ComInterfaceConfiguration
+    pub fn new<I, F, Fut>(
         properties: ComInterfaceProperties,
         has_single_socket: bool,
         new_sockets_iterator: I,
+        close_async_callback: Option<F>
     ) -> Self
     where
         I: AsyncIterator<Item = Result<SocketConfiguration, ()>> + 'static,
+        F: FnOnce() -> Fut + 'static,
+        Fut: Future<Output = ()> + 'static,
     {
         ComInterfaceConfiguration {
             uuid: ComInterfaceUUID::new(),
             properties: Rc::new(properties),
             has_single_socket,
             new_sockets_iterator: Box::pin(new_sockets_iterator),
+            close_async_callback: close_async_callback.map(|cb| {
+                Box::new(move || {
+                    Box::pin(cb()) as Pin<Box<dyn Future<Output = ()>>>
+                }) as CloseAsyncCallback
+            }),
         }
     }
 
@@ -339,7 +384,7 @@ impl ComInterfaceConfiguration {
     }
 }
 
-pub type InterfaceCloseAsyncCallback = AsyncCallback<(), ()>;
+pub type CloseAsyncCallback = Box<dyn FnOnce() -> LocalBoxFuture<'static, ()>>; // Box<dyn FnOnce() -> Pin<Box<dyn Future<Output = ()>>> + 'static>;
 
 /// This trait can be implemented to provide a factory with a synchronous setup process
 /// for a ComInterface implementation that can be registered on a ComHub.
