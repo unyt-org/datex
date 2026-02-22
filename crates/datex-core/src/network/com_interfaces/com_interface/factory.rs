@@ -21,18 +21,22 @@ use crate::{
 };
 use serde::de::DeserializeOwned;
 use crate::channel::mpsc::{create_unbounded_channel, UnboundedReceiver};
+use serde::{Deserialize, Serialize};
 
 pub type NewSocketsIterator = Pin<
     Box<dyn AsyncIterator<Item = Result<SocketConfiguration, ()>> + 'static>,
 >;
 
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
 pub struct SocketProperties {
     pub direction: InterfaceDirection,
     pub channel_factor: u32,
     pub direct_endpoint: Option<Endpoint>,
     pub connection_timestamp: u64,
+    // should not be provided from JS side
+    #[cfg_attr(feature = "wasm_runtime", tsify(optional))]
     uuid: ComInterfaceSocketUUID,
 }
 
@@ -82,11 +86,14 @@ impl SocketProperties {
 pub type SocketDataIterator =
     Pin<Box<dyn AsyncIterator<Item = Result<Vec<u8>, ()>>>>;
 
+#[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
 pub struct SocketConfiguration {
     pub properties: SocketProperties,
+    #[cfg_attr(feature = "wasm_runtime", tsify(type = "AsyncGenerator<ArrayBuffer>"))]
     /// An asynchronous iterator that yields incoming data from the socket as Vec<u8>
     /// It is driven by the com hub to receive data from the socket
     pub iterator: Option<SocketDataIterator>,
+    #[cfg_attr(feature = "wasm_runtime", tsify(type = "(data: Uint8Array) => void"))]
     /// A callback that is called by the com hub to send data through the socket
     /// This can be either a synchronous or asynchronous callback depending on the interface implementation
     pub send_callback: Option<SendCallback>,
@@ -252,7 +259,10 @@ impl SendCallback {
     }
 }
 
+#[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
 pub struct ComInterfaceConfiguration {
+    // should not be provided from JS side
+    #[cfg_attr(feature = "wasm_runtime", tsify(optional))]
     uuid: ComInterfaceUUID,
     /// The properties of the interface instance
     pub properties: Rc<ComInterfaceProperties>,
@@ -261,6 +271,7 @@ pub struct ComInterfaceConfiguration {
     /// When set to true, the first socket connection is awaited on interface creation.
     pub has_single_socket: bool,
     // TODO: docs
+    #[cfg_attr(feature = "wasm_runtime", tsify(type = "AsyncGenerator<SocketConfiguration>"))]
     pub new_sockets_iterator: NewSocketsIterator,
 }
 
@@ -303,6 +314,23 @@ impl ComInterfaceConfiguration {
             new_sockets_iterator: Box::pin(async gen move {
                 yield Ok(socket_configuration)
             }),
+        }
+    }
+
+    /// Creates a new ComInterfaceConfiguration with the given properties, has_single_socket flag and socket iterator.
+    pub fn new_maybe_single_socket<I>(
+        properties: ComInterfaceProperties,
+        has_single_socket: bool,
+        new_sockets_iterator: I,
+    ) -> Self
+    where
+        I: AsyncIterator<Item = Result<SocketConfiguration, ()>> + 'static,
+    {
+        ComInterfaceConfiguration {
+            uuid: ComInterfaceUUID::new(),
+            properties: Rc::new(properties),
+            has_single_socket,
+            new_sockets_iterator: Box::pin(new_sockets_iterator),
         }
     }
 
