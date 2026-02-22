@@ -93,6 +93,7 @@ use futures_util::{
     FutureExt,
     future::{Either, select},
 };
+use crate::network::com_interfaces::com_interface::factory::CloseAsyncCallback;
 
 pub type IncomingBlockInterceptor =
     Box<dyn Fn(&DXBBlock, &ComInterfaceSocketUUID) + 'static>;
@@ -243,7 +244,8 @@ impl ComHub {
     ) {
         let com_interface_uuid = com_interface_configuration.uuid();
         let mut iterator = com_interface_configuration.new_sockets_iterator;
-        let com_interface_properties = com_interface_configuration.properties;
+        let com_interface_properties = com_interface_configuration.properties.clone();
+        let cleanup_callback = com_interface_configuration.close_async_callback;
 
         let closed_sender = select!(
             _ = async {
@@ -258,6 +260,7 @@ impl ComHub {
                         Ok(socket_configuration) => {
                             let socket_iterator = socket_configuration.iterator;
                             let send_callback = socket_configuration.send_callback;
+                            let cleanup_callback = socket_configuration.close_async_callback;
                             let socket_properties = socket_configuration.properties;
                             let socket_uuid = socket_properties.uuid();
                             let socket_direction = socket_properties.direction.clone();
@@ -288,6 +291,7 @@ impl ComHub {
                                         com_interface_uuid.clone(),
                                         com_interface_properties.auto_identify,
                                         socket_close_receiver,
+                                        cleanup_callback,
                                     ),
                                 );
                             }
@@ -305,6 +309,11 @@ impl ComHub {
                 Some(sender.unwrap())
             }
         );
+        
+        // call cleanup callback for interface if defined
+        if let Some(cleanup_callback) = cleanup_callback {
+            cleanup_callback().await;
+        }
 
         // only if interface still exists
         if self.interfaces_manager.has_interface(&com_interface_uuid) {
@@ -363,6 +372,7 @@ impl ComHub {
         com_interface_uuid: ComInterfaceUUID,
         auto_identify: bool,
         close_receiver: SocketCloseReceiver,
+        cleanup_callback: Option<CloseAsyncCallback>,
     ) {
         info!("start handle socket task");
 
@@ -425,6 +435,11 @@ impl ComHub {
             }
         );
 
+        // call cleanup callback for socket if defined
+        if let Some(cleanup_callback) = cleanup_callback {
+            cleanup_callback().await;
+        }
+        
         // socket closed, remove
         self.socket_manager
             .cleanup_socket(&socket_properties.uuid());
