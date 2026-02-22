@@ -93,7 +93,7 @@ pub struct SocketConfiguration {
     /// An asynchronous iterator that yields incoming data from the socket as Vec<u8>
     /// It is driven by the com hub to receive data from the socket
     pub iterator: Option<SocketDataIterator>,
-    #[cfg_attr(feature = "wasm_runtime", tsify(type = "(data: Uint8Array) => void"))]
+    #[cfg_attr(feature = "wasm_runtime", tsify(type = "(data: ArrayBuffer) => void"))]
     /// A callback that is called by the com hub to send data through the socket
     /// This can be either a synchronous or asynchronous callback depending on the interface implementation
     pub send_callback: Option<SendCallback>,

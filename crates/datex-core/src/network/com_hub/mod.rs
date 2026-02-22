@@ -238,7 +238,7 @@ impl ComHub {
         self: Rc<Self>,
         com_interface_configuration: ComInterfaceConfiguration,
         interface_priority: InterfacePriority,
-        close_receiver: InterfaceCloseReceiver,
+        interface_close_receiver: InterfaceCloseReceiver,
         mut socket_ready_sender: Option<Sender<Result<(),()>>>,
     ) {
         let com_interface_uuid = com_interface_configuration.uuid();
@@ -261,7 +261,7 @@ impl ComHub {
                             let socket_properties = socket_configuration.properties;
                             let socket_uuid = socket_properties.uuid();
                             let socket_direction = socket_properties.direction.clone();
-                            let (close_sender, close_receiver) = oneshot::channel();
+                            let (socket_close_sender, socket_close_receiver) = oneshot::channel();
 
                             // store socket info
                             let _res = self.socket_manager.register_socket(
@@ -272,7 +272,7 @@ impl ComHub {
                                         .clone(),
                                     send_callback,
                                     endpoints: HashSet::new(),
-                                    close_sender: Some(close_sender),
+                                    close_sender: Some(socket_close_sender),
                                     socket_ready_sender: socket_ready_sender.take(),
                                 },
                                 interface_priority,
@@ -287,7 +287,7 @@ impl ComHub {
                                         socket_iterator,
                                         com_interface_uuid.clone(),
                                         com_interface_properties.auto_identify,
-                                        close_receiver,
+                                        socket_close_receiver,
                                     ),
                                 );
                             }
@@ -301,7 +301,7 @@ impl ComHub {
             } => {
                 None
             },
-            sender = close_receiver => {
+            sender = interface_close_receiver => {
                 Some(sender.unwrap())
             }
         );
@@ -1664,7 +1664,7 @@ impl ComHub {
     pub fn interfaces_manager(&self) -> &ComInterfaceManager {
         &self.interfaces_manager
     }
-    
+
     pub fn socket_manager(&self) -> &ComInterfaceSocketManager {
         &self.socket_manager
     }
