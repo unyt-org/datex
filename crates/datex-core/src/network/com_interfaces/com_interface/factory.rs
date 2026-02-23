@@ -384,7 +384,7 @@ impl ComInterfaceConfiguration {
     }
 }
 
-pub type CloseAsyncCallback = Box<dyn FnOnce() -> LocalBoxFuture<'static, ()>>; // Box<dyn FnOnce() -> Pin<Box<dyn Future<Output = ()>>> + 'static>;
+pub type CloseAsyncCallback = Box<dyn FnOnce() -> LocalBoxFuture<'static, ()>>;
 
 /// This trait can be implemented to provide a factory with a synchronous setup process
 /// for a ComInterface implementation that can be registered on a ComHub.

@@ -21,7 +21,6 @@ pub struct BlockCollector {
 /// Implements the logic to collect DXB blocks from incoming byte slices.
 impl BlockCollector {
     async fn receive_slice(&mut self, slice: &[u8]) -> Option<DXBBlock> {
-        info!("Receive slice: {:?}", slice);
         // Add the received data to the current block.
         self.current_partial_block.extend_from_slice(slice);
 
