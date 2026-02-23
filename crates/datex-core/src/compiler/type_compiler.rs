@@ -47,8 +47,6 @@ impl CompilationContext {
 
         self.buffer.extend_from_slice(bytes);
     }
-
-    pub fn instert_type_range(&mut self, range: &RangeTypeExpr) {}
 }
 
 pub fn compile_type_expression(
