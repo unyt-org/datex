@@ -252,7 +252,7 @@ impl ComInterfaceManager {
 
     /// Returns the com interface properties for a given UUID
     /// The interface is returned as a dynamic trait object
-    pub fn try_get_interface_by_uuid(
+    pub fn try_get_interface_properties_by_uuid(
         &self,
         uuid: &ComInterfaceUUID,
     ) -> Option<Rc<ComInterfaceProperties>> {
@@ -265,11 +265,11 @@ impl ComInterfaceManager {
     /// Returns the com interface  properties for a given UUID
     /// The interface must be registered in the ComHub,
     /// otherwise a panic will be triggered
-    pub fn get_interface_by_uuid(
+    pub fn get_interface_properties_by_uuid(
         &self,
         interface_uuid: &ComInterfaceUUID,
     ) -> Rc<ComInterfaceProperties> {
-        self.try_get_interface_by_uuid(interface_uuid)
+        self.try_get_interface_properties_by_uuid(interface_uuid)
             .unwrap_or_else(|| {
                 core::panic!("Interface for uuid {interface_uuid} not found")
             })
@@ -315,9 +315,6 @@ impl ComInterfaceManager {
         properties: Rc<ComInterfaceProperties>,
         priority: InterfacePriority,
     ) -> Result<InterfaceCloseReceiver, InterfaceAddError> {
-
-        let (close_sender, close_receiver) = oneshot::channel();
-
         if self.interfaces.borrow().contains_key(&uuid) {
             return Err(InterfaceAddError::InterfaceAlreadyExists);
         }
@@ -330,6 +327,8 @@ impl ComInterfaceManager {
                 InterfaceAddError::InvalidInterfaceDirectionForFallbackInterface,
             );
         }
+
+        let (close_sender, close_receiver) = oneshot::channel();
 
         self.interfaces
             .borrow_mut()
@@ -355,17 +354,6 @@ impl ComInterfaceManager {
         let close_sender = self.interfaces.borrow_mut().get_mut(uuid).unwrap().close_sender.take().unwrap();
         close_sender.send(closed_sender).unwrap();
         closed_receiver
-    }
-
-    /// Returns the priority of the interface with the given UUID
-    pub fn interface_priority(
-        &self,
-        interface_uuid: &ComInterfaceUUID,
-    ) -> Option<InterfacePriority> {
-        self.interfaces
-            .borrow()
-            .get(interface_uuid)
-            .map(|(InterfaceInfo { priority, ..})| *priority)
     }
 
     /// The internal cleanup function that removes the interface from the hub

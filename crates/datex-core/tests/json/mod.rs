@@ -138,31 +138,26 @@ fn compare_datex_result_with_expected(
     );
 }
 
-fn iterate_test_cases<'a>() -> impl Iterator<Item = (PathBuf, PathBuf)> + 'a {
-    core::iter::from_coroutine(
-        #[coroutine]
-        move || {
-            // read test cases from directory ./test_cases/<filename>.json
-            let test_dir = std::path::Path::new("tests/json/test_cases");
-            // go through directory files in alphabetical order
-            for entry in std::fs::read_dir(test_dir)
-                .unwrap()
-                .map(|e| e.unwrap())
-                .sorted_by_key(|e| e.path())
-            {
-                if entry.file_type().unwrap().is_file()
-                    && entry.path().extension().unwrap() == "json"
-                {
-                    let input_path = entry.path();
-                    // output path is ./expected_results/<filename>.json
-                    let output_path =
-                        std::path::PathBuf::from("tests/json/expected_results")
-                            .join(entry.file_name());
-                    yield (input_path, output_path);
-                }
-            }
-        },
-    )
+gen fn iterate_test_cases() -> (PathBuf, PathBuf) {
+    // read test cases from directory ./test_cases/<filename>.json
+    let test_dir = std::path::Path::new("tests/json/test_cases");
+    // go through directory files in alphabetical order
+    for entry in std::fs::read_dir(test_dir)
+        .unwrap()
+        .map(|e| e.unwrap())
+        .sorted_by_key(|e| e.path())
+    {
+        if entry.file_type().unwrap().is_file()
+            && entry.path().extension().unwrap() == "json"
+        {
+            let input_path = entry.path();
+            // output path is ./expected_results/<filename>.json
+            let output_path =
+                std::path::PathBuf::from("tests/json/expected_results")
+                    .join(entry.file_name());
+            yield (input_path, output_path);
+        }
+    }
 }
 
 #[test]

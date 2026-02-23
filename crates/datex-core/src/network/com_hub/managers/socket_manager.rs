@@ -84,10 +84,6 @@ pub struct ComInterfaceSocketManager {
             Vec<(ComInterfaceSocketUUID, DynamicEndpointProperties)>,
         >,
     >,
-
-    /// callbacks to be called when a socket is registered
-    socket_registered_callbacks:
-        RefCell<HashMap<ComInterfaceSocketUUID, Vec<Box<dyn FnOnce()>>>>,
 }
 impl Default for ComInterfaceSocketManager {
     fn default() -> Self {
@@ -103,7 +99,6 @@ impl ComInterfaceSocketManager {
             endpoint_sockets_blacklist: RefCell::new(HashMap::new()),
             fallback_sockets: RefCell::new(Vec::new()),
             endpoint_sockets: RefCell::new(HashMap::new()),
-            socket_registered_callbacks: RefCell::new(HashMap::new()),
         }
     }
 }
@@ -187,44 +182,6 @@ impl ComInterfaceSocketManager {
         }
 
         Ok(())
-    }
-
-    /// Registers a callback to be called when the socket with the given UUID is registered
-    pub fn on_socket_registered(
-        &self,
-        socket_uuid: &ComInterfaceSocketUUID,
-        callback: impl FnOnce() + 'static,
-    ) {
-        if self.has_socket(socket_uuid) {
-            callback();
-        } else {
-            self.socket_registered_callbacks
-                .borrow_mut()
-                .entry(socket_uuid.clone())
-                .or_default()
-                .push(Box::new(callback));
-        }
-    }
-
-    /// Waits asynchronously until the socket with the given UUID is registered.
-    /// If the socket is already registered, the function returns immediately.
-    pub(crate) fn get_socket_registration_waiter(
-        &self,
-        socket_uuid: &ComInterfaceSocketUUID,
-    ) -> oneshot::Receiver<()> {
-        if self.has_socket(socket_uuid) {
-            let (sender, receiver) = futures::channel::oneshot::channel();
-            let _ = sender.send(());
-            return receiver;
-        }
-
-        let (sender, receiver) = futures::channel::oneshot::channel();
-
-        self.on_socket_registered(socket_uuid, move || {
-            let _ = sender.send(());
-        });
-
-        receiver
     }
 
     /// Adds a socket to the socket list for a specific endpoint,
@@ -476,17 +433,6 @@ impl ComInterfaceSocketManager {
             }
         }
 
-        // call registered callbacks for socket registration
-        if let Some(callbacks) = self
-            .socket_registered_callbacks
-            .borrow_mut()
-            .remove(&socket_uuid)
-        {
-            for callback in callbacks {
-                callback();
-            }
-        }
-
         Ok(())
     }
 
@@ -587,77 +533,72 @@ impl ComInterfaceSocketManager {
     /// Returns an iterator over all sockets for a given endpoint
     /// The sockets are yielded in the order of their priority, starting with the
     /// highest priority socket (the best socket for sending data to the endpoint)
-    pub fn iterate_endpoint_sockets<'a>(
+    pub gen fn iterate_endpoint_sockets<'a>(
         &'a self,
         endpoint: &'a Endpoint,
         options: EndpointIterateOptions<'a>,
-    ) -> impl Iterator<Item = ComInterfaceSocketUUID> + 'a {
-        core::iter::from_coroutine(
-            #[coroutine]
-            move || {
-                // TODO #183: can we optimize this to avoid cloning the endpoint_sockets vector?
-                let endpoint_sockets =
-                    self.endpoint_sockets.borrow().get(endpoint).cloned();
-                if endpoint_sockets.is_none() {
+    ) -> ComInterfaceSocketUUID {
+        // TODO #183: can we optimize this to avoid cloning the endpoint_sockets vector?
+        let endpoint_sockets =
+            self.endpoint_sockets.borrow().get(endpoint).cloned();
+        if endpoint_sockets.is_none() {
+            return;
+        }
+        for (socket_uuid, _) in endpoint_sockets.unwrap() {
+            {
+                let socket = self.get_socket_by_uuid(&socket_uuid).unwrap();
+
+                // check if only_direct is set and the endpoint equals the direct endpoint of the socket
+                if options.only_direct
+                    && socket
+                        .socket_properties
+                        .direct_endpoint
+                        .is_some()
+                    && socket
+                        .socket_properties
+                        .direct_endpoint
+                        .as_ref()
+                        .unwrap()
+                        == endpoint
+                {
+                    debug!(
+                        "No direct socket found for endpoint {endpoint}. Skipping..."
+                    );
+                    continue;
+                }
+
+                // check if the socket is excluded if exclude_socket is set
+                if options
+                    .exclude_sockets
+                    .contains(&socket.socket_properties.uuid())
+                {
+                    debug!(
+                        "Socket {} is excluded for endpoint {}. Skipping...",
+                        socket.socket_properties.uuid(),
+                        endpoint
+                    );
+                    continue;
+                }
+
+                // TODO #184 optimize and separate outgoing/non-outgoing sockets for endpoint
+                // only yield outgoing sockets
+                // if a non-outgoing socket is found, all following sockets
+                // will also be non-outgoing
+                if !socket.socket_properties.direction.can_send() {
+                    info!(
+                        "Socket {} is not outgoing for endpoint {}. Skipping...",
+                        socket.socket_properties.uuid(),
+                        endpoint
+                    );
                     return;
                 }
-                for (socket_uuid, _) in endpoint_sockets.unwrap() {
-                    {
-                        let socket = self.get_socket_by_uuid(&socket_uuid).unwrap();
+            }
 
-                        // check if only_direct is set and the endpoint equals the direct endpoint of the socket
-                        if options.only_direct
-                            && socket
-                                .socket_properties
-                                .direct_endpoint
-                                .is_some()
-                            && socket
-                                .socket_properties
-                                .direct_endpoint
-                                .as_ref()
-                                .unwrap()
-                                == endpoint
-                        {
-                            debug!(
-                                "No direct socket found for endpoint {endpoint}. Skipping..."
-                            );
-                            continue;
-                        }
-
-                        // check if the socket is excluded if exclude_socket is set
-                        if options
-                            .exclude_sockets
-                            .contains(&socket.socket_properties.uuid())
-                        {
-                            debug!(
-                                "Socket {} is excluded for endpoint {}. Skipping...",
-                                socket.socket_properties.uuid(),
-                                endpoint
-                            );
-                            continue;
-                        }
-
-                        // TODO #184 optimize and separate outgoing/non-outgoing sockets for endpoint
-                        // only yield outgoing sockets
-                        // if a non-outgoing socket is found, all following sockets
-                        // will also be non-outgoing
-                        if !socket.socket_properties.direction.can_send() {
-                            info!(
-                                "Socket {} is not outgoing for endpoint {}. Skipping...",
-                                socket.socket_properties.uuid(),
-                                endpoint
-                            );
-                            return;
-                        }
-                    }
-
-                    debug!(
-                        "Found matching socket {socket_uuid} for endpoint {endpoint}"
-                    );
-                    yield socket_uuid.clone()
-                }
-            },
-        )
+            debug!(
+                "Found matching socket {socket_uuid} for endpoint {endpoint}"
+            );
+            yield socket_uuid.clone()
+        }
     }
 
     /// Finds the best matching socket over which an endpoint is known to be reachable.

@@ -1,6 +1,4 @@
 #![feature(assert_matches)]
-#![feature(iter_from_coroutine)]
-#![feature(coroutines)]
 #![feature(thread_local)]
 #![feature(box_patterns)]
 #![feature(gen_blocks)]
