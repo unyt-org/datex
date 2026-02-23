@@ -27,6 +27,9 @@ pub mod execution_loop;
 pub mod macros;
 mod memory_dump;
 
+#[cfg(all(test, feature = "std"))]
+mod test_remote_execution;
+
 pub fn execute_dxb_sync(
     input: ExecutionInput,
 ) -> Result<Option<ValueContainer>, ExecutionError> {

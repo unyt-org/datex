@@ -156,7 +156,7 @@ mod tests {
     use crate::network::com_hub::{ComHub, InterfacePriority};
     use crate::network::com_hub::metadata::ComHubMetadata;
     #[cfg(feature = "std")]
-    use crate::network::com_hub::test_utils::{get_coupled_com_hubs, run_with_coupled_com_hubs};
+    use crate::network::com_hub::test_utils::{get_coupled_com_hubs, run_with_coupled_com_hubs, TEST_ENDPOINT_A, TEST_ENDPOINT_B};
     use crate::network::com_interfaces::com_interface::ComInterfaceUUID;
     use crate::network::com_interfaces::com_interface::factory::{ComInterfaceConfiguration, SendCallback, SendSuccess, SocketConfiguration, SocketProperties};
     use crate::network::com_interfaces::com_interface::properties::{ComInterfaceProperties, InterfaceDirection};
@@ -276,12 +276,13 @@ mod tests {
     #[tokio::test]
     #[cfg(feature = "std")]
     async fn test_connected_interfaces() {
-        let (peer_a, peer_b) = get_coupled_com_hubs();
+        let (peer_a, peer_b, init_future) = get_coupled_com_hubs().await;
 
         // run task futures for 10ms to allow sockets to connect
-        let _ = timeout(core::time::Duration::from_millis(10), join!(
+        let _ = timeout(Duration::from_millis(10), join!(
             peer_a.task_future,
-            peer_b.task_future
+            peer_b.task_future,
+            init_future
         )).await;
 
         let sockets_a = get_metadata_sockets(peer_a.com_hub.get_metadata());
@@ -291,8 +292,8 @@ mod tests {
         assert_eq!(sockets_a.len(), 1);
         assert_eq!(sockets_b.len(), 1);
 
-        assert_eq!(sockets_a[0].0.as_ref().unwrap().to_string(), "@test-b");
-        assert_eq!(sockets_b[0].0.as_ref().unwrap().to_string(), "@test-a");
+        assert_eq!(sockets_a[0].0.clone().unwrap(), TEST_ENDPOINT_B.clone());
+        assert_eq!(sockets_b[0].0.clone().unwrap(), TEST_ENDPOINT_A.clone());
     }
 
     #[tokio::test]

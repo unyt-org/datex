@@ -1,7 +1,4 @@
 use crate::network::helpers::{
-    mock_setup::{
-        TEST_ENDPOINT_A, TEST_ENDPOINT_B, TEST_ENDPOINT_C, TEST_ENDPOINT_D,
-    },
     network::{
         InterfaceConnection, MockupInterfaceSetupData, Network, Node, Route,
         RouteAssertionError, test_routes,
@@ -15,10 +12,17 @@ use datex_core::{
     },
     values::core_values::endpoint::Endpoint,
 };
-use datex_macros_internal::async_test;
 use log::info;
 use ntest_timeout::timeout;
 use tokio::task;
+
+
+lazy_static::lazy_static! {
+    pub static ref TEST_ENDPOINT_A: Endpoint = Endpoint::from_str("@test-a").unwrap();
+    pub static ref TEST_ENDPOINT_B: Endpoint = Endpoint::from_str("@test-b").unwrap();
+    pub static ref TEST_ENDPOINT_C: Endpoint = Endpoint::from_str("@test-c").unwrap();
+    pub static ref TEST_ENDPOINT_D: Endpoint = Endpoint::from_str("@test-d").unwrap();
+}
 
 #[tokio::test]
 #[timeout(2000)]
