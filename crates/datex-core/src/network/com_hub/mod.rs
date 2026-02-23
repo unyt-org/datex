@@ -1753,6 +1753,8 @@ pub mod tests {
     };
     use crate::channel::mpsc::{UnboundedReceiver, UnboundedSender};
     use crate::global::dxb_block::{DXBBlock, IncomingSection};
+    use crate::global::protocol_structures::block_header::{BlockHeader, FlagsAndTimestamp};
+    use crate::global::protocol_structures::routing_header::RoutingHeader;
     use crate::network::com_hub::errors::ComInterfaceCreateError;
     use crate::network::com_hub::managers::com_interface_manager::ComInterfaceAsyncFactoryResult;
     use crate::network::com_hub::test_utils::{get_endpoints_from_com_hub_metadata, run_with_coupled_com_hubs, TEST_ENDPOINT_A, TEST_ENDPOINT_B, TEST_ENDPOINT_C};
@@ -1831,6 +1833,104 @@ pub mod tests {
         }).await
     }
 
+    async fn send_blocks_to_endpoint(
+        com_hub: Rc<ComHub>,
+        incoming_data_sender: &mut UnboundedSender<Vec<u8>>,
+        endpoint: Endpoint,
+        blocks: &mut Vec<DXBBlock>
+    ) {
+        for mut block in blocks {
+            block.set_receivers(vec![endpoint.clone()]);
+
+            *block = com_hub.prepare_own_block(block.clone()).into_result()
+                .await
+                .unwrap();
+
+            let block_bytes = block.to_bytes();
+            incoming_data_sender
+                .start_send(block_bytes.as_slice().to_vec())
+                .unwrap();
+        }
+    }
+
+    #[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
+    pub enum CollectedBlockType {
+        #[default]
+        All,
+        SingleBocks,
+        BlockStream,
+    }
+
+    impl CollectedBlockType {
+        pub fn matches_section(&self, section: &IncomingSection) -> bool {
+            match self {
+                CollectedBlockType::SingleBocks => {
+                    matches!(section, IncomingSection::SingleBlock(_))
+                }
+                CollectedBlockType::BlockStream => {
+                    matches!(section, IncomingSection::BlockStream(_))
+                }
+                CollectedBlockType::All => true,
+            }
+        }
+    }
+
+    pub async fn get_collected_received_blocks_from_receiver(
+        sections_receiver: &mut UnboundedReceiver<IncomingSection>,
+        collected_type: CollectedBlockType,
+        count: usize,
+    ) -> Vec<DXBBlock> {
+        let mut blocks = vec![];
+
+        let mut received_count = 0;
+
+        while let Some(section) = sections_receiver.next().await {
+            if !collected_type.matches_section(&section) {
+                panic!(
+                    "Received section does not match collected block type {:?}",
+                    collected_type
+                );
+            }
+
+            match section {
+                IncomingSection::SingleBlock((Some(block), ..)) => {
+                    blocks.push(block.clone());
+                    received_count += 1;
+                    info!("Received single block");
+                }
+                IncomingSection::BlockStream((Some(mut block_stream), ..)) => {
+                    info!("[START] block stream");
+                    while let Some(block) = block_stream.next().await {
+                        received_count += 1;
+                        blocks.push(block.clone());
+                        info!("Received block from stream");
+
+                        if received_count >= count {
+                            break;
+                        }
+                    }
+                    info!("[END] receiving block stream");
+                }
+                _ => {
+                    panic!("Received section does not contain a block");
+                }
+            }
+
+            if received_count >= count {
+                break;
+            }
+        }
+
+        if blocks.len() != count {
+            panic!(
+                "Expected to receive {} blocks, but got {}",
+                count,
+                blocks.len()
+            );
+        }
+
+        blocks
+    }
 
     #[derive(Debug, Clone, Deserialize)]
     struct MockupInterfaceSetupData {
@@ -1956,6 +2056,24 @@ pub mod tests {
     }
 
     #[tokio::test]
+    pub async fn test_send_between_com_hubs() {
+        run_with_coupled_com_hubs(async |a, mut b| {
+            // send block via com hub to proxy interface
+            let mut block = DXBBlock::new_with_body(b"Hello world!");
+            block.set_receivers(vec![TEST_ENDPOINT_B.clone()]);
+            a.com_hub.send_own_block_async(block).await.unwrap();
+
+            // get received single block on com hub b
+            let next_block = b.incoming_sections_receiver.next().await.unwrap();
+            if let IncomingSection::SingleBlock((Some(block), _)) = next_block {
+                assert_eq!(block.body, b"Hello world!");
+            } else {
+                panic!("Expected single block section");
+            }
+        }).await;
+    }
+
+    #[tokio::test]
     pub async fn test_send_block_to_invalid_receiver() {
         run_with_com_hub_and_proxy_interface(async move |com_hub, _, _, _| {
             let mut block = DXBBlock::new_with_body(b"Hello world!");
@@ -1966,10 +2084,8 @@ pub mod tests {
         }).await;
     }
 
-
     #[tokio::test]
     pub async fn send_block_via_multiple_interfaces() {
-        flexi_logger::init();
         run_with_com_hub(|com_hub, _| async move {
             let (_sender_b, mut outgoing_block_receiver_b) =
                 add_proxy_interface_to_com_hub(com_hub.clone(), TEST_ENDPOINT_B.clone()).await;
@@ -1998,8 +2114,7 @@ pub mod tests {
 
     #[tokio::test]
     pub async fn test_receive() {
-        flexi_logger::init();
-        run_with_com_hub_and_proxy_interface(async move |com_hub, mut incoming_data_sender, x, mut incoming_sections_receiver| {
+        run_with_com_hub_and_proxy_interface(async move |com_hub, mut incoming_data_sender, _, mut incoming_sections_receiver| {
             // create block and send it via the incoming data sender to the com hub
             let mut block = DXBBlock::new_with_body(b"Hello world!");
             block.set_receivers(vec![TEST_ENDPOINT_A.clone()]);
@@ -2013,8 +2128,6 @@ pub mod tests {
                 .start_send(block_bytes.as_slice().to_vec())
                 .unwrap();
 
-            yield_now().await;
-
             let incoming_section = incoming_sections_receiver.next().await.unwrap();
             if let IncomingSection::SingleBlock((Some(block), _)) = incoming_section {
                 assert_eq!(block.raw_bytes.clone().unwrap(), block_bytes);
@@ -2024,54 +2137,120 @@ pub mod tests {
         }).await;
     }
 
-    //
-    // #[async_test]
-    // pub async fn send_blocks_to_multiple_endpoint_sockets() {
-    //     let (com_hub, mut interface_proxy, _) =
-    //         get_default_mock_setup_with_com_hub().await;
-    //
-    //     // create two separate sockets for each endpoint
-    //
-    //     let (socket_uuid_a, _) = interface_proxy
-    //         .create_and_init_socket_with_direct_endpoint(
-    //             InterfaceDirection::InOut,
-    //             1,
-    //             TEST_ENDPOINT_A.clone(),
-    //         );
-    //     yield_now().await;
-    //
-    //     let (socket_uuid_b, _) = interface_proxy
-    //         .create_and_init_socket_with_direct_endpoint(
-    //             InterfaceDirection::InOut,
-    //             1,
-    //             TEST_ENDPOINT_B.clone(),
-    //         );
-    //     yield_now().await;
-    //
-    //     // send block to multiple receivers
-    //     assert!(
-    //         send_empty_block(
-    //             &[TEST_ENDPOINT_A.clone(), TEST_ENDPOINT_B.clone()],
-    //             &com_hub,
-    //         )
-    //         .await
-    //         .is_ok()
-    //     );
-    //
-    //     let blocks = get_collected_outgoing_blocks_from_receiver(
-    //         &mut interface_proxy.event_receiver,
-    //         2,
-    //     )
-    //     .await;
-    //     let block_uuids = blocks
-    //         .into_iter()
-    //         .map(|(_, socket_uuid)| socket_uuid)
-    //         .collect::<Vec<_>>();
-    //
-    //     assert!(block_uuids.contains(&socket_uuid_a));
-    //     assert!(block_uuids.contains(&socket_uuid_b));
-    // }
-    //
+    #[tokio::test]
+    pub async fn test_receive_multiple_blocks_single_section() {
+        run_with_com_hub_and_proxy_interface(async move |com_hub, mut incoming_data_sender, _, mut incoming_sections_receiver| {
+            let mut blocks = vec![
+                DXBBlock {
+                    routing_header: RoutingHeader::default(),
+                    block_header: BlockHeader {
+                        section_index: 0,
+                        block_number: 0,
+                        flags_and_timestamp: FlagsAndTimestamp::new()
+                            .with_is_end_of_section(false)
+                            .with_is_end_of_context(false),
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                },
+                DXBBlock {
+                    routing_header: RoutingHeader::default(),
+                    block_header: BlockHeader {
+                        section_index: 0,
+                        block_number: 1,
+                        flags_and_timestamp: FlagsAndTimestamp::new()
+                            .with_is_end_of_section(false)
+                            .with_is_end_of_context(false),
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                },
+                DXBBlock {
+                    routing_header: RoutingHeader::default(),
+                    block_header: BlockHeader {
+                        section_index: 0,
+                        block_number: 2,
+                        flags_and_timestamp: FlagsAndTimestamp::new()
+                            .with_is_end_of_section(true)
+                            .with_is_end_of_context(true),
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                },
+            ];
+            let blocks_count = blocks.len();
+
+            send_blocks_to_endpoint(
+                com_hub.clone(),
+                &mut incoming_data_sender,
+                TEST_ENDPOINT_A.clone(),
+                &mut blocks,
+            ).await;
+
+            let incoming_blocks = get_collected_received_blocks_from_receiver(
+                &mut incoming_sections_receiver,
+                CollectedBlockType::BlockStream,
+                blocks_count,
+            ).await;
+
+            for (incoming_block, block) in incoming_blocks.iter().zip(blocks.iter()) {
+                assert_eq!(incoming_block.raw_bytes.clone().unwrap(), block.to_bytes());
+            }
+        }).await;
+    }
+
+    #[tokio::test]
+    pub async fn test_receive_multiple_separate_blocks() {
+        run_with_com_hub_and_proxy_interface(async move |com_hub, mut incoming_data_sender, _, mut incoming_sections_receiver| {
+            let mut blocks = vec![
+                DXBBlock {
+                    routing_header: RoutingHeader::default(),
+                    block_header: BlockHeader {
+                        section_index: 1,
+                        block_number: 0,
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                },
+                DXBBlock {
+                    routing_header: RoutingHeader::default(),
+                    block_header: BlockHeader {
+                        section_index: 2,
+                        block_number: 0,
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                },
+                DXBBlock {
+                    routing_header: RoutingHeader::default(),
+                    block_header: BlockHeader {
+                        section_index: 3,
+                        block_number: 0,
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                },
+            ];
+            let blocks_count = blocks.len();
+
+            send_blocks_to_endpoint(
+                com_hub.clone(),
+                &mut incoming_data_sender,
+                TEST_ENDPOINT_A.clone(),
+                &mut blocks,
+            ).await;
+
+            let incoming_blocks = get_collected_received_blocks_from_receiver(
+                &mut incoming_sections_receiver,
+                CollectedBlockType::SingleBocks,
+                blocks_count,
+            ).await;
+
+            for (incoming_block, block) in incoming_blocks.iter().zip(blocks.iter()) {
+                assert_eq!(incoming_block.raw_bytes.clone().unwrap(), block.to_bytes());
+            }
+        }).await;
+    }
 
     // #[async_test]
     // pub async fn unencrypted_signature_prepare_block_com_hub() {
@@ -2163,264 +2342,7 @@ pub mod tests {
     //     assert!(com_hub.validate_block(&last_block).await.unwrap());
     // }
     //
-    // #[async_test]
-    // pub async fn test_receive_multiple_blocks_single_section() {
-    //     let (_, interface_proxy, mut incoming_sections_receiver) =
-    //         get_default_mock_setup_with_com_hub().await;
     //
-    //     let mut blocks = vec![
-    //         DXBBlock {
-    //             routing_header: RoutingHeader::default(),
-    //             block_header: BlockHeader {
-    //                 section_index: 0,
-    //                 block_number: 0,
-    //                 flags_and_timestamp: FlagsAndTimestamp::new()
-    //                     .with_is_end_of_section(false)
-    //                     .with_is_end_of_context(false),
-    //                 ..Default::default()
-    //             },
-    //             ..Default::default()
-    //         },
-    //         DXBBlock {
-    //             routing_header: RoutingHeader::default(),
-    //             block_header: BlockHeader {
-    //                 section_index: 0,
-    //                 block_number: 1,
-    //                 flags_and_timestamp: FlagsAndTimestamp::new()
-    //                     .with_is_end_of_section(false)
-    //                     .with_is_end_of_context(false),
-    //                 ..Default::default()
-    //             },
-    //             ..Default::default()
-    //         },
-    //         DXBBlock {
-    //             routing_header: RoutingHeader::default(),
-    //             block_header: BlockHeader {
-    //                 section_index: 0,
-    //                 block_number: 2,
-    //                 flags_and_timestamp: FlagsAndTimestamp::new()
-    //                     .with_is_end_of_section(true)
-    //                     .with_is_end_of_context(true),
-    //                 ..Default::default()
-    //             },
-    //             ..Default::default()
-    //         },
-    //     ];
-    //     let blocks_count = blocks.len();
-    //
-    //     let (_, mut incoming_blocks_sender) =
-    //         interface_proxy.create_and_init_socket(InterfaceDirection::In, 0);
-    //     yield_now().await;
-    //
-    //     // send blocks via incoming_blocks_sender
-    //     send_multiple_blocks_to_local(&mut incoming_blocks_sender, &mut blocks)
-    //         .await;
-    //
-    //     // collect received blocks from incoming_sections_receiver
-    //     let incoming_blocks = get_collected_received_blocks_from_receiver(
-    //         &mut incoming_sections_receiver,
-    //         CollectedBlockType::BlockStream,
-    //         blocks_count,
-    //     )
-    //     .await;
-    //
-    //     for (incoming_block, block) in incoming_blocks.iter().zip(blocks.iter()) {
-    //         assert_eq!(incoming_block.raw_bytes.clone().unwrap(), block.to_bytes());
-    //     }
-    // }
-    //
-    // #[async_test]
-    // pub async fn test_receive_multiple_separate_blocks() {
-    //     let (_, interface_proxy, mut incoming_sections_receiver) =
-    //         get_default_mock_setup_with_com_hub().await;
-    //
-    //     let mut blocks = vec![
-    //         DXBBlock {
-    //             routing_header: RoutingHeader::default(),
-    //             block_header: BlockHeader {
-    //                 section_index: 1,
-    //                 block_number: 0,
-    //                 ..Default::default()
-    //             },
-    //             ..Default::default()
-    //         },
-    //         DXBBlock {
-    //             routing_header: RoutingHeader::default(),
-    //             block_header: BlockHeader {
-    //                 section_index: 2,
-    //                 block_number: 0,
-    //                 ..Default::default()
-    //             },
-    //             ..Default::default()
-    //         },
-    //         DXBBlock {
-    //             routing_header: RoutingHeader::default(),
-    //             block_header: BlockHeader {
-    //                 section_index: 3,
-    //                 block_number: 0,
-    //                 ..Default::default()
-    //             },
-    //             ..Default::default()
-    //         },
-    //     ];
-    //     let blocks_count = blocks.len();
-    //
-    //     let (_, mut incoming_blocks_sender) =
-    //         interface_proxy.create_and_init_socket(InterfaceDirection::In, 0);
-    //     yield_now().await;
-    //
-    //     // send blocks via incoming_blocks_sender
-    //     send_multiple_blocks_to_local(&mut incoming_blocks_sender, &mut blocks)
-    //         .await;
-    //
-    //     // collect received blocks from incoming_sections_receiver
-    //     let incoming_blocks = get_collected_received_blocks_from_receiver(
-    //         &mut incoming_sections_receiver,
-    //         CollectedBlockType::SingleBocks,
-    //         blocks_count,
-    //     )
-    //     .await;
-    //
-    //     for (incoming_block, block) in incoming_blocks.iter().zip(blocks.iter()) {
-    //         assert_eq!(incoming_block.raw_bytes.clone().unwrap(), block.to_bytes());
-    //     }
-    // }
-    //
-    // #[async_test]
-    // pub async fn test_add_and_remove_interface_and_sockets() {
-    //     let (com_hub, interface_proxy, _) =
-    //         get_default_mock_setup_with_com_hub().await;
-    //
-    //     // initial state with loopback interface and mockup interface
-    //     {
-    //         let interface_manager = com_hub.interface_manager();
-    //         let socket_manager = com_hub.socket_manager();
-    //         assert_eq!(interface_manager.borrow().interfaces.len(), 2); // loopback + mockup interface
-    //         assert_eq!(socket_manager.borrow().sockets.len(), 1); // loopback
-    //         assert_eq!(socket_manager.borrow().endpoint_sockets.len(), 1);
-    //     }
-    //
-    //     assert_eq!(
-    //         interface_proxy.state.lock().unwrap().get(),
-    //         ComInterfaceState::Connected
-    //     );
-    //
-    //     // add new socket without direct endpoint
-    //     let (socket_uuid, _) =
-    //         interface_proxy.create_and_init_socket(InterfaceDirection::InOut, 1);
-    //     yield_now().await;
-    //
-    //     {
-    //         let socket_manager = com_hub.socket_manager();
-    //         assert!(socket_manager.borrow().has_socket(&socket_uuid));
-    //         assert_eq!(socket_manager.borrow().sockets.len(), 2);
-    //         assert_eq!(socket_manager.borrow().endpoint_sockets.len(), 1);
-    //     }
-    //
-    //     // add new socket with direct endpoint
-    //     let (socket_uuid, _) = interface_proxy
-    //         .create_and_init_socket_with_direct_endpoint(
-    //             InterfaceDirection::InOut,
-    //             1,
-    //             TEST_ENDPOINT_A.clone(),
-    //         );
-    //     yield_now().await;
-    //
-    //     {
-    //         let socket_manager = com_hub.socket_manager();
-    //         assert!(socket_manager.borrow().has_socket(&socket_uuid));
-    //         assert_eq!(socket_manager.borrow().sockets.len(), 3);
-    //         assert_eq!(socket_manager.borrow().endpoint_sockets.len(), 2);
-    //     }
-    //
-    //     let interface_uuid = interface_proxy.uuid.clone();
-    //
-    //     // remove interface
-    //     assert!(com_hub.remove_interface(interface_uuid).is_ok());
-    //
-    //     {
-    //         let interface_manager = com_hub.interface_manager();
-    //         let socket_manager = com_hub.socket_manager();
-    //         assert_eq!(interface_manager.borrow().interfaces.len(), 1); // loopback interface
-    //         assert_eq!(socket_manager.borrow().sockets.len(), 1); // loopback socket
-    //         assert_eq!(socket_manager.borrow().endpoint_sockets.len(), 1);
-    //     }
-    //
-    //     assert_eq!(
-    //         interface_proxy.state.lock().unwrap().get(),
-    //         ComInterfaceState::Destroyed
-    //     );
-    //
-    //     let socket_manager = com_hub.socket_manager();
-    //     assert!(!socket_manager.borrow().has_socket(&socket_uuid))
-    // }
-    //
-    // #[async_test]
-    // pub async fn test_basic_routing() {
-    //     let ((com_hub_mut_a, ..), (_, mut incoming_sections_receiver_b, _)) =
-    //         get_default_mock_setup_with_two_connected_com_hubs().await;
-    //
-    //     yield_now().await;
-    //     yield_now().await;
-    //
-    //     let block_a_to_b = send_block_with_body(
-    //         std::slice::from_ref(&TEST_ENDPOINT_B),
-    //         b"Hello world",
-    //         &com_hub_mut_a,
-    //     )
-    //     .await;
-    //
-    //     yield_now().await;
-    //
-    //     let last_block = get_next_received_single_block_from_receiver(
-    //         &mut incoming_sections_receiver_b,
-    //     )
-    //     .await;
-    //     assert_eq!(block_a_to_b.body, last_block.body);
-    // }
-    //
-    // #[async_test]
-    // pub async fn register_factory() {
-    //     let com_hub = create_mock_com_hub();
-    //     com_hub.register_sync_interface_factory::<MockupInterfaceSetupData>();
-    //
-    //     assert_eq!(
-    //         com_hub
-    //             .interface_manager()
-    //             .borrow()
-    //             .interface_factories
-    //             .len(),
-    //         1
-    //     );
-    //     assert!(
-    //         com_hub
-    //             .interface_manager()
-    //             .borrow()
-    //             .interface_factories
-    //             .contains_key("mockup")
-    //     );
-    //
-    //     // create a new mockup interface from the com_hub
-    //     let interface_uuid = com_hub
-    //         .create_interface(
-    //             "mockup",
-    //             to_value_container(&MockupInterfaceSetupData::new("mockup"))
-    //                 .unwrap(),
-    //             InterfacePriority::default(),
-    //         )
-    //         .await
-    //         .unwrap();
-    //
-    //     assert_eq!(
-    //         com_hub
-    //             .interface_manager()
-    //             .borrow()
-    //             .get_interface_by_uuid(&interface_uuid)
-    //             .properties()
-    //             .interface_type,
-    //         "mockup"
-    //     );
-    // }
     //
     // #[async_test]
     // pub async fn test_reconnect() {
