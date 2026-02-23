@@ -494,8 +494,8 @@ impl AstToSourceCodeConverter {
             DatexExpressionData::Noop => "".to_string(),
             DatexExpressionData::Integer(i) => i.to_string(),
             DatexExpressionData::Range(RangeDeclaration { start, end }) => {
-                let left_code = self.key_expression_to_source_code(start);
-                let right_code = self.key_expression_to_source_code(end);
+                let left_code = self.format(start);
+                let right_code = self.format(end);
                 ast_fmt!(&self, "{}..{}", left_code, right_code)
             }
             DatexExpressionData::TypedInteger(ti) => {
