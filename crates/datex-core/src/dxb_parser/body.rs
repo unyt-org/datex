@@ -595,7 +595,6 @@ pub fn iterate_instructions(
                         }
 
                         InstructionCode::RANGE => {
-                            // inline comment to keep clippy from breaking braces
                             next_instructions_stack.push_next_regular(2);
                             RegularInstruction::Range
                         }
@@ -655,7 +654,6 @@ pub fn iterate_instructions(
                             ))
                         }
                         TypeInstructionCode::TYPE_RANGE => {
-                            // unreachable!("Type Range not fully implemented");
                             next_instructions_stack.push_next_type(2);
                             TypeInstruction::Range
                         }
