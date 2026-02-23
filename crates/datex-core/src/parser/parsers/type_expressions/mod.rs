@@ -22,7 +22,7 @@ use crate::{
     values::core_values::error::NumberParseError,
 };
 
-static UNARY_BP: u8 = 11; // less binding power than variant access and property access, but more than all other infix operators
+static UNARY_BP: u8 = 19; // less binding power than variant access and property access, but more than all other infix operators
 
 impl Parser {
     pub(crate) fn parse_type_expression(
@@ -202,8 +202,9 @@ impl Parser {
             Token::Plus => Some((5, 6)),
             // variant operator
             Token::Slash => Some((12, 13)),
+            Token::Range => Some((14, 15)),
             // property access
-            Token::Dot | Token::Range => Some((14, 15)),
+            Token::Dot => Some((20, 21)),
             _ => None,
         }
     }
