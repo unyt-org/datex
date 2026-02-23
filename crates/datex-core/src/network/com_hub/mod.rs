@@ -387,7 +387,7 @@ impl ComHub {
         socket_uuid: ComInterfaceSocketUUID,
         socket_direction: InterfaceDirection,
         auto_identify: bool,
-        mut hello_sent_sender: Option<Sender<Result<(),()>>>,
+        hello_sent_sender: Option<Sender<Result<(),()>>>,
     ) {
         let send_hello = socket_direction.can_send() && auto_identify; // Only send hello if auto_identify is enabled
 
@@ -400,10 +400,10 @@ impl ComHub {
             else {
                 hello_sent_sender.map(|sender| sender.send(Ok(())));
             }
-
         }
-
-
+        else {
+            hello_sent_sender.map(|sender| sender.send(Ok(())));
+        }
     }
 
     /// Handles incoming data from the given SocketDataIterator
