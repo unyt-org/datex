@@ -291,7 +291,6 @@ lsp_wasm = ["lsp", "realhydroper-lsp/runtime-agnostic"]
 
 macro_utils = ["dep:quote", "dep:syn", "dep:proc-macro2"]
 
-
 ### interface-related features ################################################
 
 webrtc = ["dep:webrtc"]

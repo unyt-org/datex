@@ -1,12 +1,8 @@
 use proc_macro::TokenStream;
-use syn::{ItemFn, parse_macro_input};
+use syn::parse_macro_input;
 
-use crate::{
-    test::create_async_test,
-};
 mod bitfield_macros;
 mod lib_types;
-mod test;
 mod value_macros;
 
 #[proc_macro_derive(FromCoreValue)]
@@ -26,17 +22,4 @@ pub fn derive_bitfield_serde(input: TokenStream) -> TokenStream {
 pub fn derive_lib_type_string(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as syn::DeriveInput);
     lib_types::derive_lib_type_string(input).into()
-}
-
-#[proc_macro_attribute]
-pub fn async_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
-    let original_function = parse_macro_input!(item as ItemFn);
-    create_async_test(original_function).into()
-}
-
-/// An async test function that provides a DATEX runtime instance
-#[proc_macro_attribute]
-pub fn datex_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
-    let original_function = parse_macro_input!(item as ItemFn);
-    todo!()
 }
