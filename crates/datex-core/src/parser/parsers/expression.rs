@@ -24,7 +24,7 @@ use crate::{
     values::core_values::error::NumberParseError,
 };
 
-static UNARY_BP: u8 = 22; // weaker than property access / apply, stronger than all other binary operators
+static UNARY_BP: u8 = 29; // weaker than property access / apply, stronger than all other binary operators
 
 impl Parser {
     pub(crate) fn parse_expression(
@@ -504,8 +504,9 @@ impl Parser {
             // bitwise operators
             Token::Pipe => Some((18, 19)),
             Token::Ampersand => Some((20, 21)),
+            Token::Range => Some((22, 23)),
             // property access
-            Token::Dot => Some((23, 24)),
+            Token::Dot => Some((30, 31)),
             // apply (function call, type cast), which has same binding power as member access
             Token::LeftParen
             | Token::LeftCurly
@@ -524,8 +525,7 @@ impl Parser {
             | Token::DecimalLiteral(_)
             | Token::PointerAddress(_)
             | Token::Slot(_)
-            | Token::Range
-            | Token::Endpoint(_) => Some((23, 24)),
+            | Token::Endpoint(_) => Some((30, 31)),
             _ => None,
         }
     }
