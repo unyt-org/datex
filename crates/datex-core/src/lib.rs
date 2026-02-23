@@ -1,6 +1,4 @@
 #![cfg_attr(not(feature = "std"), no_std)]
-#![feature(coroutines)]
-#![feature(iter_from_coroutine)]
 #![feature(assert_matches)]
 #![feature(gen_blocks)]
 #![feature(async_iterator)]

@@ -201,10 +201,10 @@ impl Parser {
             // interface operator
             Token::Plus => Some((5, 6)),
             // variant operator
-            Token::Slash => Some((12, 13)),
             Token::Range => Some((14, 15)),
+            Token::Slash => Some((20, 21)),
             // property access
-            Token::Dot => Some((20, 21)),
+            Token::Dot => Some((22, 23)),
             _ => None,
         }
     }

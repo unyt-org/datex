@@ -604,6 +604,7 @@ impl Network {
         UnboundedReceiver<DXBBlock>,
         UnboundedSender<Vec<u8>>,
     ) {
+        info!("init interface for {} with endpoint: {}/{} and direction: {:?}", runtime.endpoint(), remote_endpoint.as_ref().map(|x|x.to_string()).unwrap_or_else(||"x".to_string()), connection.endpoint.as_ref().map(|x|x.to_string()).unwrap_or_else(||"x".to_string()), connection.setup_data.direction);
 
         let (incoming_data_sender, mut incoming_data_receiver) = create_unbounded_channel();
         let (outgoing_data_sender, outgoing_data_receiver) = create_unbounded_channel();
@@ -690,12 +691,20 @@ impl Network {
                 socket_b_incoming_sender,
             );
         }
+        else {
+            Box::leak(Box::new(socket_a_outgoing_receiver));
+            Box::leak(Box::new(socket_b_incoming_sender));
+        }
 
         if interface_b_can_send {
             Network::spawn_socket_forwarding_task(
                 socket_b_outgoing_receiver,
                 socket_a_incoming_sender,
             );
+        }
+        else {
+            Box::leak(Box::new(socket_b_outgoing_receiver));
+            Box::leak(Box::new(socket_a_incoming_sender));
         }
     }
 

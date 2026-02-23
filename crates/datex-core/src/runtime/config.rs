@@ -1,5 +1,4 @@
 use crate::prelude::*;
-use crate::runtime::is_none_variant;
 use crate::collections::HashMap;
 use serde::Serialize;
 use crate::network::com_hub::InterfacePriority;
@@ -8,6 +7,10 @@ use crate::serde::error::SerializationError;
 use crate::serde::serializer::to_value_container;
 use crate::values::core_values::endpoint::Endpoint;
 use crate::values::value_container::ValueContainer;
+
+pub fn is_priority_none(v: &InterfacePriority) -> bool {
+    matches!(v, InterfacePriority::None)
+}
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
@@ -18,7 +21,7 @@ pub struct RuntimeConfigInterface {
     #[cfg_attr(feature = "wasm_runtime", tsify(type = "unknown"))]
     pub setup_data: ValueContainer,
 
-    #[serde(default, skip_serializing_if = "is_none_variant")]
+    #[serde(default, skip_serializing_if = "is_priority_none")]
     pub priority: InterfacePriority,
 }
 

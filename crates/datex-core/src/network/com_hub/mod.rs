@@ -36,8 +36,6 @@ use core::{
 use itertools::Itertools;
 use log::{debug, error, info, warn};
 use serde::{Deserialize, Serialize};
-#[cfg(feature = "tokio_runtime")]
-use tokio::task::yield_now;
 
 pub mod options;
 use crate::{
@@ -134,10 +132,6 @@ pub enum InterfacePriority {
     /// depending on the defined priority
     /// A higher number means a higher priority
     Priority(u16),
-}
-
-pub fn is_none_variant(v: &InterfacePriority) -> bool {
-    matches!(v, InterfacePriority::None)
 }
 
 impl From<Option<u16>> for InterfacePriority {
@@ -982,9 +976,6 @@ impl ComHub {
         }
     }
 
-    /// Validates a block including it's signature if set
-    /// TODO #378 @Norbert
-
     /// Prepares an own block for sending by setting sender, timestamp, distance and signing if needed.
     /// Will return either synchronously or asynchronously depending on the signature type.
     pub fn prepare_own_block(
@@ -1126,10 +1117,6 @@ impl ComHub {
 
         let res = self.send_own_block_async(block).await;
         let failed_endpoints = res.err().unwrap_or_default();
-
-        // yield
-        #[cfg(feature = "tokio_runtime")]
-        yield_now().await;
 
         let timeout = options
             .timeout
@@ -1567,115 +1554,6 @@ impl ComHub {
             panic!("No send callback registered for socket {}", socket_uuid);
         }
     }
-
-    // TODO handle the reconnection logic event based (#684)
-    // Updates all interfaces to handle reconnections if the interface can be reconnected
-    // or remove the interface if it cannot be reconnected.
-    // fn update_interfaces(&self) {
-    //     let mut to_remove = Vec::new();
-    //     for (interface, _) in self.interfaces.borrow().values() {
-    //         let uuid = interface.get_uuid().clone();
-    //         let state = interface.get_state();
-
-    //         // If the interface has been proactively destroyed, remove it from the hub
-    //         // and clean up the sockets. This happens when the user calls the destroy
-    //         // method on the interface and not the remove_interface on the ComHub.
-    //         if state.is_destroyed() {
-    //             info!("Destroying interface on the ComHub {uuid}");
-    //             to_remove.push(uuid);
-    //         } else if state.is_not_connected()
-    //             && interface.get_properties().shall_reconnect()
-    //         {
-    //             // If the interface is disconnected and the interface has
-    //             // reconnection enabled, check if the interface should be reconnected
-    //             let interface_rc = interface.clone();
-    //             let mut interface = interface.borrow_mut();
-
-    //             let already_connecting =
-    //                 interface.get_state() == ComInterfaceState::Connecting;
-
-    //             if !already_connecting {
-    //                 let config = interface.get_properties_mut();
-
-    //                 let reconnect_now = match &config.reconnection_config {
-    //                     ReconnectionConfig::InstantReconnect => true,
-    //                     ReconnectionConfig::ReconnectWithTimeout { timeout } => {
-    //                         ReconnectionConfig::check_reconnect_timeout(
-    //                             config.close_timestamp,
-    //                             timeout,
-    //                         )
-    //                     }
-    //                     ReconnectionConfig::ReconnectWithTimeoutAndAttempts {
-    //                         timeout,
-    //                         attempts,
-    //                     } => {
-    //                         let max_attempts = attempts;
-
-    //                         // check if the attempts are not exceeded
-    //                         let attempts = config.reconnect_attempts.unwrap_or(0);
-    //                         let attempts = attempts + 1;
-    //                         if attempts > *max_attempts {
-    //                             to_remove.push(uuid.clone());
-    //                             return;
-    //                         }
-
-    //                         config.reconnect_attempts = Some(attempts);
-
-    //                         ReconnectionConfig::check_reconnect_timeout(
-    //                             config.close_timestamp,
-    //                             timeout,
-    //                         )
-    //                     }
-    //                     ReconnectionConfig::NoReconnect => false,
-    //                 };
-    //                 if reconnect_now {
-    //                     debug!("Reconnecting interface {uuid}");
-    //                     interface.set_state(ComInterfaceState::Connecting);
-    //                     spawn_with_panic_notify(
-    //                         &self.async_context,
-    //                         reconnect_interface_task(interface_rc),
-    //                     );
-    //                 } else {
-    //                     debug!("Not reconnecting interface {uuid}");
-    //                 }
-    //             }
-    //         }
-    //     }
-
-    //     for uuid in to_remove {
-    //         self.cleanup_interface(uuid);
-    //     }
-    // }
-
-    // /// Collects all blocks from the receive queues of all sockets and process them
-    // /// in the receive_block method.
-    // async fn receive_incoming_blocks(&self) {
-    //     let mut blocks = vec![];
-    //     // iterate over all sockets
-    //     for (socket, _) in self.sockets.borrow().values() {
-    //         let mut socket_ref = socket.try_lock().unwrap();
-    //         let uuid = socket_ref.uuid.clone();
-    //         let block_queue = socket_ref.get_incoming_block_queue();
-    //         blocks.push((uuid, block_queue.drain(..).collect::<Vec<_>>()));
-    //     }
-    //
-    //     for (uuid, blocks) in blocks {
-    //         for block in blocks.iter() {
-    //             self.receive_block(block, uuid.clone()).await;
-    //         }
-    //     }
-    // }
-
-    // /// Sends all queued blocks from all interfaces.
-    // fn flush_outgoing_blocks(&self) {
-    //     let interfaces = self.interfaces.borrow();
-    //     for (interface, _) in interfaces.values() {
-    //         com_interface::flush_outgoing_blocks(
-    //             interface.clone(),
-    //             &self.async_context,
-    //         );
-    //     }
-    // }
 
     /// Sends a hello block via the specified socket.
     /// Returns Ok(()) if the block was sent successfully, or Err(SendFailure) if sending failed.
