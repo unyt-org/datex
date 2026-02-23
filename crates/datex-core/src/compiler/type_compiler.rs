@@ -68,13 +68,13 @@ pub fn compile_type_expression(
             ctx.append_type_instruction_code(TypeInstructionCode::TYPE_RANGE);
             scope = compile_type_expression(
                 ctx,
-                &*range.end,
+                &range.end,
                 _ast_metadata,
                 scope,
             )?;
             scope = compile_type_expression(
                 ctx,
-                &*range.start,
+                &range.start,
                 _ast_metadata,
                 scope,
             )?;
