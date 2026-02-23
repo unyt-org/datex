@@ -748,3 +748,28 @@ impl ComHub {
         self.set_trace_data_of_block(block, hops);
     }
 }
+
+
+#[cfg(all(test, feature = "std"))]
+pub mod tests {
+    use ntest_timeout::timeout;
+    use crate::network::com_hub::test_utils::{run_with_coupled_com_hubs, TEST_ENDPOINT_A, TEST_ENDPOINT_B};
+
+    #[tokio::test]
+    #[timeout(1000)]
+    async fn create_network_trace() {
+        run_with_coupled_com_hubs(async move |a, b| {
+            // send trace from A to B
+            let network_trace = a.com_hub.record_trace(TEST_ENDPOINT_B.clone()).await;
+            assert!(network_trace.is_some());
+            println!("Network trace:\n{}", network_trace.as_ref().unwrap());
+
+            network_trace.unwrap().assert_matches_hops(&[
+                (TEST_ENDPOINT_A.clone(), "test-interface"),
+                (TEST_ENDPOINT_B.clone(), "test-interface"),
+                (TEST_ENDPOINT_B.clone(), "test-interface"),
+                (TEST_ENDPOINT_A.clone(), "test-interface"),
+            ]);
+        }).await;
+    }
+}

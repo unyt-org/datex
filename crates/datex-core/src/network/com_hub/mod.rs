@@ -59,7 +59,7 @@ use crate::{
 };
 pub mod com_hub_interface;
 #[cfg(all(test, feature = "std"))]
-pub(crate) mod test_utils;
+pub mod test_utils;
 
 use crate::{
     collections::HashSet,
@@ -309,7 +309,7 @@ impl ComHub {
                 Some(sender.unwrap())
             }
         );
-        
+
         // call cleanup callback for interface if defined
         if let Some(cleanup_callback) = cleanup_callback {
             cleanup_callback().await;
@@ -439,7 +439,7 @@ impl ComHub {
         if let Some(cleanup_callback) = cleanup_callback {
             cleanup_callback().await;
         }
-        
+
         // socket closed, remove
         self.socket_manager
             .cleanup_socket(&socket_properties.uuid());
@@ -1684,52 +1684,3 @@ impl ComHub {
         &self.socket_manager
     }
 }
-
-// #[cfg_attr(feature = "embassy_runtime", embassy_executor::task())]
-// async fn com_hub_event_task(
-//     mut receiver: UnboundedReceiver<BlockSendEvent>,
-//     com_hub_rc: Rc<ComHub>,
-// ) {
-//     while let Some(event) = receiver.next().await {
-//         match event {
-//             BlockSendEvent::NewSocket { socket_uuid } => {
-//                 info!("New socket connected: {}", socket_uuid);
-//                 let (receiver, shall_send_hello) = {
-//                     let mut socket_manager =
-//                         com_hub_rc.socket_manager.borrow_mut();
-//                     let socket =
-//                         socket_manager.get_socket_by_uuid_mut(&socket_uuid);
-
-//                     let interface_manager = com_hub_rc.interface_manager();
-//                     let auto_identify = interface_manager
-//                         .borrow()
-//                         .get_interface_by_uuid(&socket.interface_uuid)
-//                         .properties()
-//                         .auto_identify;
-
-//                     (
-//                         socket.take_block_in_receiver(),
-//                         socket.can_send() && auto_identify, // Only send hello if auto_identify is enabled
-//                     )
-//                 };
-
-//                 // spawn task to collect incoming blocks from this socket
-//                 spawn_with_panic_notify(
-//                     &async_context,
-//                     handle_incoming_socket_blocks_task(
-//                         receiver,
-//                         socket_uuid.clone(),
-//                         com_hub_rc.clone(),
-//                     ),
-//                 );
-
-//                 if shall_send_hello
-//                     && let Err(err) =
-//                         com_hub_rc.send_hello_block(socket_uuid).await
-//                 {
-//                     error!("Failed to send hello block: {:?}", err);
-//                 }
-//             }
-//         }
-//     }
-// }
