@@ -102,7 +102,7 @@ impl RuntimeInternal {
             ).expect("Failed to add local loopback interface");
         // local loopback interface is single socket interface and should always return a ready signal
         // which should always resolve to Ok
-        ready_signal.unwrap().await.unwrap().unwrap();
+        ready_signal.unwrap().await.unwrap()
     }
 
     /// Performs asynchronous initialization of the runtime

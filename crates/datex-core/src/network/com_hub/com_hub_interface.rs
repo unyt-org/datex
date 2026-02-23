@@ -52,7 +52,7 @@ impl ComHub {
         self: Rc<Self>,
         interface_configuration: ComInterfaceConfiguration,
         priority: InterfacePriority,
-    ) -> Result<Option<oneshot::Receiver<Result<(),()>>>, InterfaceAddError> {
+    ) -> Result<Option<impl Future<Output = Result<(),()>>>, InterfaceAddError> {
         let uuid = interface_configuration.uuid();
         let close_receiver = self.interfaces_manager.add_interface(
             uuid,
@@ -69,7 +69,7 @@ impl ComHub {
         interface_type: &str,
         setup_data: ValueContainer,
         priority: InterfacePriority,
-    ) -> Result<(ComInterfaceUUID, Option<oneshot::Receiver<Result<(),()>>>), ComInterfaceCreateError> {
+    ) -> Result<(ComInterfaceUUID, Option<impl Future<Output = Result<(),()>>>), ComInterfaceCreateError> {
         let (interface_configuration, close_receiver) = self
             .interfaces_manager
             .create_and_add_interface(interface_type, setup_data, priority)
@@ -88,7 +88,7 @@ impl ComHub {
         interface_type: &str,
         setup_data: ValueContainer,
         priority: InterfacePriority,
-    ) -> Result<(ComInterfaceUUID, Option<oneshot::Receiver<Result<(),()>>>), ComInterfaceCreateError> {
+    ) -> Result<(ComInterfaceUUID, Option<impl Future<Output = Result<(),()>>>), ComInterfaceCreateError> {
         let (interface_configuration, close_receiver) =
             self.interfaces_manager.create_and_add_interface_sync(
                 interface_type,

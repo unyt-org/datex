@@ -31,7 +31,7 @@ mod runner;
 mod config;
 mod internal;
 
-#[cfg(all(test, feature = "std"))]
+#[cfg(test)]
 pub mod test_utils;
 
 pub use runner::*;
