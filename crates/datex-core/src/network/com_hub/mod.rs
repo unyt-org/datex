@@ -1,22 +1,15 @@
-use crate::{
-    channel::mpsc::UnboundedSender,
-    collections::HashMap,
-    global::protocol_structures::{
-        block_header::BlockType,
-        routing_header::{Flags, SignatureType},
+use crate::{channel::mpsc::UnboundedSender, collections::HashMap, global::protocol_structures::{
+    block_header::BlockType,
+    routing_header::{Flags, SignatureType},
+}, network::com_hub::{
+    errors::{ComHubError, SocketEndpointRegistrationError},
+    managers::com_interface_manager::ComInterfaceManager,
+    network_response::{
+        Response, ResponseError, ResponseOptions,
+        ResponseResolutionStrategy,
     },
-    network::com_hub::{
-        errors::{ComHubError, SocketEndpointRegistrationError},
-        managers::com_interface_manager::ComInterfaceManager,
-        network_response::{
-            Response, ResponseError, ResponseOptions,
-            ResponseResolutionStrategy,
-        },
-        options::ComHubOptions,
-    },
-    task::{self},
-    utils::maybe_async::SyncOrAsyncResolved,
-};
+    options::ComHubOptions,
+}, task, utils::maybe_async::SyncOrAsyncResolved};
 
 use crate::prelude::*;
 
@@ -58,7 +51,7 @@ use crate::{
     values::core_values::endpoint::Endpoint,
 };
 pub mod com_hub_interface;
-#[cfg(all(test, feature = "std"))]
+#[cfg(test)]
 pub mod test_utils;
 
 use crate::{
@@ -213,25 +206,54 @@ impl ComHub {
         com_interface_configuration: ComInterfaceConfiguration,
         priority: InterfacePriority,
         close_receiver: InterfaceCloseReceiver,
-    ) -> Option<oneshot::Receiver<Result<(),()>>> {
-        // For interfaces with a single socket, set up a oneshot receiver which resolves when the socket is
-        // either fully connected or failed to connect
-        let (socket_ready_sender, socket_ready_receiver) =
-            if com_interface_configuration.has_single_socket {
-                let (socket_ready_sender, socket_ready_receiver) = oneshot::channel();
-                (Some(socket_ready_sender), Some(socket_ready_receiver))
-            } else {
-                (None, None)
-            };
+    ) -> Option<impl Future<Output = Result<(),()>>> {
+        let (socket_ready_senders, socket_ready_fut) = if com_interface_configuration.has_single_socket {
+            let (r, f) = ComHub::get_ready_senders();
+            (Some(r), Some(f))
+        } else {
+            (None, None)
+        };
 
         self.task_manager
             .register_task(self.clone().handle_sockets_task(
                 com_interface_configuration,
                 priority,
                 close_receiver,
-                socket_ready_sender
+                socket_ready_senders
             ));
-        socket_ready_receiver
+        socket_ready_fut
+    }
+
+    /// Sets up two oneshot receivers:
+    /// The first one should resolve once the socket is fully connected, meaning the peer endpoint of the socket is known
+    /// The second one should resolve once the local endpoint has sent a Hello block
+    /// Returns a future that resolves once both oneshot receivers have resolved
+    fn get_ready_senders() -> (
+        (
+            Sender<Result<(),()>>,
+            Sender<Result<(),()>>
+        ),
+        impl Future<Output = Result<(),()>>,
+    ) {
+        let (socket_ready_sender, socket_ready_receiver) = oneshot::channel();
+        let (socket_hello_sent_sender, socket_hello_sent_receiver) = oneshot::channel();
+        let fut = async move {
+            match socket_ready_receiver.await {
+                Ok(Ok(())) => {
+                    match socket_hello_sent_receiver.await {
+                        Ok(Ok(())) => Ok(()),
+                        Ok(Err(())) => Err(()),
+                        Err(_) => Err(()),
+                    }
+                },
+                Ok(Err(())) => Err(()),
+                Err(_) => Err(()),
+            }
+        };
+        (
+            (socket_ready_sender, socket_hello_sent_sender),
+            fut
+        )
     }
 
     /// Iterates over the given NewSocketsIterator for an interface and handles each socket
@@ -240,12 +262,17 @@ impl ComHub {
         com_interface_configuration: ComInterfaceConfiguration,
         interface_priority: InterfacePriority,
         interface_close_receiver: InterfaceCloseReceiver,
-        mut socket_ready_sender: Option<Sender<Result<(),()>>>,
+        ready_senders: Option<(Sender<Result<(),()>>, Sender<Result<(),()>>)>,
     ) {
         let com_interface_uuid = com_interface_configuration.uuid();
         let mut iterator = com_interface_configuration.new_sockets_iterator;
         let com_interface_properties = com_interface_configuration.properties.clone();
         let cleanup_callback = com_interface_configuration.close_async_callback;
+
+        let (mut socket_ready_sender, mut hello_sent_sender) = match ready_senders {
+            Some((x, y)) => (Some(x), Some(y)),
+            None => (None, None),
+        };
 
         let closed_sender = select!(
             _ = async {
@@ -292,6 +319,7 @@ impl ComHub {
                                         com_interface_properties.auto_identify,
                                         socket_close_receiver,
                                         cleanup_callback,
+                                        hello_sent_sender.take()
                                     ),
                                 );
                             }
@@ -347,6 +375,10 @@ impl ComHub {
         if let Some(socket_ready_sender) = socket_ready_sender {
             let _ = socket_ready_sender.send(Err(()));
         }
+        // if hello_sent_sender is still Some, hello was never sent, send Error
+        if let Some(hello_sent_sender) = hello_sent_sender {
+            let _ = hello_sent_sender.send(Err(()));
+        }
     }
 
     /// Sends a hello block via the given socket if the socket direction allows sending and auto_identify is enabled for the interface
@@ -355,13 +387,23 @@ impl ComHub {
         socket_uuid: ComInterfaceSocketUUID,
         socket_direction: InterfaceDirection,
         auto_identify: bool,
+        mut hello_sent_sender: Option<Sender<Result<(),()>>>,
     ) {
         let send_hello = socket_direction.can_send() && auto_identify; // Only send hello if auto_identify is enabled
 
-        if send_hello && let Err(err) = self.send_hello_block(socket_uuid).await
-        {
-            error!("Failed to send hello block: {:?}", err);
+        if send_hello {
+            info!("Saying hello to {}", socket_uuid);
+            if let Err(err) = self.send_hello_block(socket_uuid).await {
+                error!("Failed to send hello block: {:?}", err);
+                hello_sent_sender.map(|sender| sender.send(Err(())));
+            }
+            else {
+                hello_sent_sender.map(|sender| sender.send(Ok(())));
+            }
+
         }
+
+
     }
 
     /// Handles incoming data from the given SocketDataIterator
@@ -373,6 +415,7 @@ impl ComHub {
         auto_identify: bool,
         close_receiver: SocketCloseReceiver,
         cleanup_callback: Option<CloseAsyncCallback>,
+        hello_sent_sender: Option<Sender<Result<(),()>>>,
     ) {
         info!("start handle socket task");
 
@@ -382,6 +425,7 @@ impl ComHub {
                 socket_properties.uuid(),
                 socket_properties.direction.clone(),
                 auto_identify,
+                hello_sent_sender,
             ));
 
         let (mut bytes_sender, block_iterator) = BlockCollector::create();
@@ -1683,4 +1727,768 @@ impl ComHub {
     pub fn socket_manager(&self) -> &ComInterfaceSocketManager {
         &self.socket_manager
     }
+}
+
+
+#[cfg(test)]
+pub mod tests {
+    use futures_util::{FutureExt};
+    use alloc::rc::Rc;
+    use async_select::select;
+    use log::info;
+    use crate::std_sync::Mutex;
+    use serde::Deserialize;
+    use tokio::task::yield_now;
+    use crate::{
+        channel::mpsc::create_unbounded_channel,
+        network::{
+            com_hub::{
+                ComHub, InterfacePriority,
+                managers::com_interface_manager::ComInterfaceManager,
+            },
+            com_interfaces::com_interface::properties::{
+                ComInterfaceProperties, InterfaceDirection,
+            },
+        },
+    };
+    use crate::channel::mpsc::{UnboundedReceiver, UnboundedSender};
+    use crate::global::dxb_block::{DXBBlock, IncomingSection};
+    use crate::network::com_hub::errors::ComInterfaceCreateError;
+    use crate::network::com_hub::managers::com_interface_manager::ComInterfaceAsyncFactoryResult;
+    use crate::network::com_hub::test_utils::{get_endpoints_from_com_hub_metadata, run_with_coupled_com_hubs, TEST_ENDPOINT_A, TEST_ENDPOINT_B, TEST_ENDPOINT_C};
+    use crate::network::com_interfaces::com_interface::factory::{ComInterfaceAsyncFactory, ComInterfaceConfiguration, ComInterfaceSyncFactory, SendCallback, SendSuccess, SocketConfiguration, SocketProperties};
+    use crate::prelude::*;
+    use crate::values::core_values::endpoint::Endpoint;
+
+    /// Creates a mock ComHub for testing without a connected channel
+    async fn run_with_com_hub<AppReturn, AppFuture>(
+        app_logic: impl FnOnce(Rc<ComHub>, UnboundedReceiver<IncomingSection>) -> AppFuture,
+    ) -> AppReturn
+    where
+        AppFuture: Future<Output = AppReturn>,
+    {
+        let (sender, receiver) = create_unbounded_channel();
+        let (com_hub, com_hub_future) = ComHub::create(TEST_ENDPOINT_A.clone(), sender);
+        select! {
+            app_result = app_logic(com_hub, receiver).fuse() => app_result,
+            _ = com_hub_future.fuse() => panic!("ComHub future should not complete during the test"),
+        }
+    }
+
+    async fn add_proxy_interface_to_com_hub(com_hub: Rc<ComHub>, endpoint: Endpoint) -> (UnboundedSender<Vec<u8>>, UnboundedReceiver<DXBBlock>) {
+        let (outgoing_block_sender, outgoing_block_receiver) = create_unbounded_channel();
+        let (incoming_data_sender, mut incoming_data_receiver) = create_unbounded_channel::<Vec<u8>>();
+        let outgoing_block_sender = Rc::new(Mutex::new(outgoing_block_sender));
+
+        let proxy_interface_configuration = ComInterfaceConfiguration::new_single_socket(
+            ComInterfaceProperties {
+                interface_type: "proxy".to_string(),
+                channel: "proxy".to_string(),
+                name: Some("proxy".to_string()),
+                ..Default::default()
+            },
+            SocketConfiguration::new_in_out(
+                SocketProperties::new_with_direct_endpoint(
+                    InterfaceDirection::InOut,
+                    1,
+                    endpoint
+                ),
+                async gen move {
+                    while let Some(block) = incoming_data_receiver.next().await {
+                        yield Ok(block)
+                    }
+                },
+                SendCallback::new_sync(move |block| {
+                    outgoing_block_sender
+                        .try_lock()
+                        .unwrap()
+                        .start_send(block).unwrap();
+                    Ok(SendSuccess::Sent)
+                })
+            )
+        );
+        com_hub
+            .clone()
+            .add_interface_from_configuration(
+                proxy_interface_configuration,
+                InterfacePriority::None,
+            )
+            .unwrap().unwrap().await.unwrap();
+
+        (incoming_data_sender, outgoing_block_receiver)
+    }
+
+    async fn run_with_com_hub_and_proxy_interface<AppReturn, AppFuture>(
+        app_logic: impl FnOnce(Rc<ComHub>, UnboundedSender<Vec<u8>>, UnboundedReceiver<DXBBlock>, UnboundedReceiver<IncomingSection>) -> AppFuture,
+    ) -> AppReturn
+    where
+        AppFuture: Future<Output = AppReturn>,
+    {
+        run_with_com_hub(|com_hub, incoming_sections_receiver| async move {
+            let (incoming_data_sender, outgoing_block_receiver) =
+                add_proxy_interface_to_com_hub(com_hub.clone(), TEST_ENDPOINT_B.clone()).await;
+            app_logic(com_hub, incoming_data_sender, outgoing_block_receiver, incoming_sections_receiver).await
+        }).await
+    }
+
+
+    #[derive(Debug, Clone, Deserialize)]
+    struct MockupInterfaceSetupData {
+        pub name: String,
+    }
+    impl MockupInterfaceSetupData {
+        pub fn new(name: &str) -> Self {
+            Self {
+                name: name.to_string(),
+            }
+        }
+    }
+
+    impl ComInterfaceSyncFactory for MockupInterfaceSetupData {
+        fn create_interface(self) -> Result<ComInterfaceConfiguration, ComInterfaceCreateError> {
+            Ok(ComInterfaceConfiguration::new_single_socket(
+                ComInterfaceProperties::default(),
+                SocketConfiguration::new_in_out(
+                    SocketProperties::new(InterfaceDirection::InOut, 1),
+                    async gen move {
+                        loop {
+                            yield Ok(vec![]);
+                        }
+                    },
+                    SendCallback::new_sync(|_| {
+                        Ok(SendSuccess::Sent)
+                    })
+                )
+            ))
+        }
+
+        fn get_default_properties() -> ComInterfaceProperties {
+            ComInterfaceProperties {
+                name: Some("mockup".to_string()),
+                ..Default::default()
+            }
+        }
+    }
+
+    impl ComInterfaceAsyncFactory for MockupInterfaceSetupData {
+        fn create_interface(self) -> ComInterfaceAsyncFactoryResult {
+            Box::pin(async move {
+                ComInterfaceSyncFactory::create_interface(self)
+            })
+        }
+        fn get_default_properties() -> ComInterfaceProperties {
+            <MockupInterfaceSetupData as ComInterfaceSyncFactory>::get_default_properties()
+        }
+    }
+
+    #[tokio::test]
+    pub async fn create_from_sync_factory() {
+        run_with_com_hub(|com_hub, _| async move {
+            let interface_configuration =
+                ComInterfaceManager::create_interface_sync_from_setup_data(
+                    MockupInterfaceSetupData::new("test"),
+                ).unwrap();
+            let uuid = interface_configuration.uuid().clone();
+
+            com_hub
+                .clone()
+                .add_interface_from_configuration(
+                    interface_configuration,
+                    InterfacePriority::default(),
+                )
+                .unwrap();
+
+            assert!(com_hub.remove_interface(uuid).await.is_ok());
+        }).await;
+    }
+
+    #[tokio::test]
+    pub async fn create_from_async_factory() {
+        run_with_com_hub(|com_hub, _| async move {
+            let interface_configuration =
+                ComInterfaceManager::create_interface_async_from_setup_data(
+                    MockupInterfaceSetupData::new("test"),
+                ).await.unwrap();
+            let uuid = interface_configuration.uuid().clone();
+
+            com_hub
+                .clone()
+                .add_interface_from_configuration(
+                    interface_configuration,
+                    InterfacePriority::default(),
+                )
+                .unwrap();
+
+            assert!(com_hub.remove_interface(uuid).await.is_ok());
+        }).await;
+    }
+
+    #[tokio::test]
+    async fn create_hello_connection() {
+        run_with_coupled_com_hubs(async |a, b| {
+            let com_hub_a_sockets = get_endpoints_from_com_hub_metadata(a.com_hub.get_metadata());
+            assert!(
+                com_hub_a_sockets.contains(&(Some(TEST_ENDPOINT_B.clone()), Some(1)))
+            );
+
+            let com_hub_b_sockets = get_endpoints_from_com_hub_metadata(b.com_hub.get_metadata());
+            assert!(
+                com_hub_b_sockets.contains(&(Some(TEST_ENDPOINT_A.clone()), Some(1)))
+            );
+        }).await;
+    }
+
+    #[tokio::test]
+    pub async fn test_send() {
+        run_with_com_hub_and_proxy_interface(async move |com_hub, _, mut outgoing_block_receiver, _| {
+            // send block via com hub to proxy interface
+            let mut block = DXBBlock::new_with_body(b"Hello world!");
+            block.set_receivers(vec![TEST_ENDPOINT_B.clone()]);
+            com_hub.send_own_block_async(block).await.unwrap();
+
+            // hello block, skip
+            outgoing_block_receiver.next().await.unwrap();
+
+            // get next outgoing block that was sent via the proxy interface
+            let outgoing_block = outgoing_block_receiver.next().await.unwrap();
+            assert_eq!(outgoing_block.body, b"Hello world!");
+        }).await;
+    }
+
+    #[tokio::test]
+    pub async fn test_send_block_to_invalid_receiver() {
+        run_with_com_hub_and_proxy_interface(async move |com_hub, _, _, _| {
+            let mut block = DXBBlock::new_with_body(b"Hello world!");
+            // cannot send to endpoint c, since only interface is not a fallback interface and only knows endpoint b
+            block.set_receivers(vec![TEST_ENDPOINT_C.clone()]);
+            let res = com_hub.send_own_block_async(block).await;
+            assert!(res.is_err());
+        }).await;
+    }
+
+
+    #[tokio::test]
+    pub async fn send_block_via_multiple_interfaces() {
+        flexi_logger::init();
+        run_with_com_hub(|com_hub, _| async move {
+            let (_sender_b, mut outgoing_block_receiver_b) =
+                add_proxy_interface_to_com_hub(com_hub.clone(), TEST_ENDPOINT_B.clone()).await;
+            let (_sender_c, mut outgoing_block_receiver_c) =
+                add_proxy_interface_to_com_hub(com_hub.clone(), TEST_ENDPOINT_C.clone()).await;
+            com_hub.print_metadata();
+
+            let mut block = DXBBlock::new_with_body(b"Hello world!");
+            block.set_receivers(vec![TEST_ENDPOINT_B.clone(), TEST_ENDPOINT_C.clone()]);
+            com_hub.send_own_block_async(block).await.unwrap();
+
+            // skip hello blocks
+            outgoing_block_receiver_b.next().await.unwrap();
+            outgoing_block_receiver_c.next().await.unwrap();
+
+            // block should be sent via both interfaces
+            let outgoing_block_b = outgoing_block_receiver_b.next().await.unwrap();
+            let outgoing_block_c = outgoing_block_receiver_c.next().await.unwrap();
+
+            info!("block sender b: {}", outgoing_block_b.sender());
+            info!("block sender c: {}", outgoing_block_c.sender());
+            assert_eq!(outgoing_block_b.body, b"Hello world!");
+            assert_eq!(outgoing_block_c.body, b"Hello world!");
+        }).await
+    }
+
+    #[tokio::test]
+    pub async fn test_receive() {
+        flexi_logger::init();
+        run_with_com_hub_and_proxy_interface(async move |com_hub, mut incoming_data_sender, x, mut incoming_sections_receiver| {
+            // create block and send it via the incoming data sender to the com hub
+            let mut block = DXBBlock::new_with_body(b"Hello world!");
+            block.set_receivers(vec![TEST_ENDPOINT_A.clone()]);
+
+            let block = com_hub.prepare_own_block(block).into_result()
+                .await
+                .unwrap();
+
+            let block_bytes = block.to_bytes();
+            incoming_data_sender
+                .start_send(block_bytes.as_slice().to_vec())
+                .unwrap();
+
+            yield_now().await;
+
+            let incoming_section = incoming_sections_receiver.next().await.unwrap();
+            if let IncomingSection::SingleBlock((Some(block), _)) = incoming_section {
+                assert_eq!(block.raw_bytes.clone().unwrap(), block_bytes);
+            } else {
+                panic!("Expected single block section");
+            }
+        }).await;
+    }
+
+    //
+    // #[async_test]
+    // pub async fn send_blocks_to_multiple_endpoint_sockets() {
+    //     let (com_hub, mut interface_proxy, _) =
+    //         get_default_mock_setup_with_com_hub().await;
+    //
+    //     // create two separate sockets for each endpoint
+    //
+    //     let (socket_uuid_a, _) = interface_proxy
+    //         .create_and_init_socket_with_direct_endpoint(
+    //             InterfaceDirection::InOut,
+    //             1,
+    //             TEST_ENDPOINT_A.clone(),
+    //         );
+    //     yield_now().await;
+    //
+    //     let (socket_uuid_b, _) = interface_proxy
+    //         .create_and_init_socket_with_direct_endpoint(
+    //             InterfaceDirection::InOut,
+    //             1,
+    //             TEST_ENDPOINT_B.clone(),
+    //         );
+    //     yield_now().await;
+    //
+    //     // send block to multiple receivers
+    //     assert!(
+    //         send_empty_block(
+    //             &[TEST_ENDPOINT_A.clone(), TEST_ENDPOINT_B.clone()],
+    //             &com_hub,
+    //         )
+    //         .await
+    //         .is_ok()
+    //     );
+    //
+    //     let blocks = get_collected_outgoing_blocks_from_receiver(
+    //         &mut interface_proxy.event_receiver,
+    //         2,
+    //     )
+    //     .await;
+    //     let block_uuids = blocks
+    //         .into_iter()
+    //         .map(|(_, socket_uuid)| socket_uuid)
+    //         .collect::<Vec<_>>();
+    //
+    //     assert!(block_uuids.contains(&socket_uuid_a));
+    //     assert!(block_uuids.contains(&socket_uuid_b));
+    // }
+    //
+
+    // #[async_test]
+    // pub async fn unencrypted_signature_prepare_block_com_hub() {
+    //     let (com_hub, interface_proxy, mut incoming_sections_receiver) =
+    //         get_default_mock_setup_with_com_hub().await;
+    //
+    //     // receive block
+    //     let mut block = DXBBlock {
+    //         body: vec![0x01, 0x02, 0x03],
+    //         encrypted_header: EncryptedHeader {
+    //             flags: encrypted_header::Flags::new()
+    //                 .with_user_agent(encrypted_header::UserAgent::Unused11),
+    //             ..Default::default()
+    //         },
+    //         ..DXBBlock::default()
+    //     };
+    //     block.set_receivers(vec![TEST_ENDPOINT_ORIGIN.clone()]);
+    //     block.recalculate_struct();
+    //     block
+    //         .routing_header
+    //         .flags
+    //         .set_signature_type(SignatureType::Unencrypted);
+    //     block = com_hub.prepare_own_block(block).await.unwrap();
+    //     let block_bytes = block.to_bytes();
+    //
+    //     let (_, mut incoming_blocks_sender) =
+    //         interface_proxy.create_and_init_socket(InterfaceDirection::In, 0);
+    //     yield_now().await;
+    //
+    //     incoming_blocks_sender
+    //         .start_send(block_bytes.as_slice().to_vec())
+    //         .unwrap();
+    //
+    //     yield_now().await;
+    //
+    //     let last_block = get_next_received_single_block_from_receiver(
+    //         &mut incoming_sections_receiver,
+    //     )
+    //     .await;
+    //     assert_eq!(last_block.raw_bytes.clone().unwrap(), block_bytes);
+    //     assert_eq!(block.signature, last_block.signature);
+    //
+    //     assert!(com_hub.validate_block(&last_block).await.unwrap());
+    // }
+    //
+    // #[async_test]
+    // pub async fn encrypted_signature_prepare_block_com_hub() {
+    //     let (com_hub, interface_proxy, mut incoming_sections_receiver) =
+    //         get_default_mock_setup_with_com_hub().await;
+    //
+    //     // receive block
+    //     let mut block = DXBBlock {
+    //         body: vec![0x01, 0x02, 0x03],
+    //         encrypted_header: EncryptedHeader {
+    //             flags: encrypted_header::Flags::new()
+    //                 .with_user_agent(encrypted_header::UserAgent::Unused11),
+    //             ..Default::default()
+    //         },
+    //         ..DXBBlock::default()
+    //     };
+    //
+    //     block.set_receivers(vec![TEST_ENDPOINT_ORIGIN.clone()]);
+    //     block.recalculate_struct();
+    //
+    //     block
+    //         .routing_header
+    //         .flags
+    //         .set_signature_type(SignatureType::Encrypted);
+    //     block = com_hub.prepare_own_block(block).await.unwrap();
+    //     let block_bytes = block.to_bytes();
+    //
+    //     let (_, mut incoming_blocks_sender) =
+    //         interface_proxy.create_and_init_socket(InterfaceDirection::In, 0);
+    //     yield_now().await;
+    //
+    //     incoming_blocks_sender
+    //         .start_send(block_bytes.as_slice().to_vec())
+    //         .unwrap();
+    //
+    //     yield_now().await;
+    //
+    //     let last_block = get_next_received_single_block_from_receiver(
+    //         &mut incoming_sections_receiver,
+    //     )
+    //     .await;
+    //     assert_eq!(last_block.raw_bytes.clone().unwrap(), block_bytes);
+    //     assert_eq!(block.signature, last_block.signature);
+    //
+    //     assert!(com_hub.validate_block(&last_block).await.unwrap());
+    // }
+    //
+    // #[async_test]
+    // pub async fn test_receive_multiple_blocks_single_section() {
+    //     let (_, interface_proxy, mut incoming_sections_receiver) =
+    //         get_default_mock_setup_with_com_hub().await;
+    //
+    //     let mut blocks = vec![
+    //         DXBBlock {
+    //             routing_header: RoutingHeader::default(),
+    //             block_header: BlockHeader {
+    //                 section_index: 0,
+    //                 block_number: 0,
+    //                 flags_and_timestamp: FlagsAndTimestamp::new()
+    //                     .with_is_end_of_section(false)
+    //                     .with_is_end_of_context(false),
+    //                 ..Default::default()
+    //             },
+    //             ..Default::default()
+    //         },
+    //         DXBBlock {
+    //             routing_header: RoutingHeader::default(),
+    //             block_header: BlockHeader {
+    //                 section_index: 0,
+    //                 block_number: 1,
+    //                 flags_and_timestamp: FlagsAndTimestamp::new()
+    //                     .with_is_end_of_section(false)
+    //                     .with_is_end_of_context(false),
+    //                 ..Default::default()
+    //             },
+    //             ..Default::default()
+    //         },
+    //         DXBBlock {
+    //             routing_header: RoutingHeader::default(),
+    //             block_header: BlockHeader {
+    //                 section_index: 0,
+    //                 block_number: 2,
+    //                 flags_and_timestamp: FlagsAndTimestamp::new()
+    //                     .with_is_end_of_section(true)
+    //                     .with_is_end_of_context(true),
+    //                 ..Default::default()
+    //             },
+    //             ..Default::default()
+    //         },
+    //     ];
+    //     let blocks_count = blocks.len();
+    //
+    //     let (_, mut incoming_blocks_sender) =
+    //         interface_proxy.create_and_init_socket(InterfaceDirection::In, 0);
+    //     yield_now().await;
+    //
+    //     // send blocks via incoming_blocks_sender
+    //     send_multiple_blocks_to_local(&mut incoming_blocks_sender, &mut blocks)
+    //         .await;
+    //
+    //     // collect received blocks from incoming_sections_receiver
+    //     let incoming_blocks = get_collected_received_blocks_from_receiver(
+    //         &mut incoming_sections_receiver,
+    //         CollectedBlockType::BlockStream,
+    //         blocks_count,
+    //     )
+    //     .await;
+    //
+    //     for (incoming_block, block) in incoming_blocks.iter().zip(blocks.iter()) {
+    //         assert_eq!(incoming_block.raw_bytes.clone().unwrap(), block.to_bytes());
+    //     }
+    // }
+    //
+    // #[async_test]
+    // pub async fn test_receive_multiple_separate_blocks() {
+    //     let (_, interface_proxy, mut incoming_sections_receiver) =
+    //         get_default_mock_setup_with_com_hub().await;
+    //
+    //     let mut blocks = vec![
+    //         DXBBlock {
+    //             routing_header: RoutingHeader::default(),
+    //             block_header: BlockHeader {
+    //                 section_index: 1,
+    //                 block_number: 0,
+    //                 ..Default::default()
+    //             },
+    //             ..Default::default()
+    //         },
+    //         DXBBlock {
+    //             routing_header: RoutingHeader::default(),
+    //             block_header: BlockHeader {
+    //                 section_index: 2,
+    //                 block_number: 0,
+    //                 ..Default::default()
+    //             },
+    //             ..Default::default()
+    //         },
+    //         DXBBlock {
+    //             routing_header: RoutingHeader::default(),
+    //             block_header: BlockHeader {
+    //                 section_index: 3,
+    //                 block_number: 0,
+    //                 ..Default::default()
+    //             },
+    //             ..Default::default()
+    //         },
+    //     ];
+    //     let blocks_count = blocks.len();
+    //
+    //     let (_, mut incoming_blocks_sender) =
+    //         interface_proxy.create_and_init_socket(InterfaceDirection::In, 0);
+    //     yield_now().await;
+    //
+    //     // send blocks via incoming_blocks_sender
+    //     send_multiple_blocks_to_local(&mut incoming_blocks_sender, &mut blocks)
+    //         .await;
+    //
+    //     // collect received blocks from incoming_sections_receiver
+    //     let incoming_blocks = get_collected_received_blocks_from_receiver(
+    //         &mut incoming_sections_receiver,
+    //         CollectedBlockType::SingleBocks,
+    //         blocks_count,
+    //     )
+    //     .await;
+    //
+    //     for (incoming_block, block) in incoming_blocks.iter().zip(blocks.iter()) {
+    //         assert_eq!(incoming_block.raw_bytes.clone().unwrap(), block.to_bytes());
+    //     }
+    // }
+    //
+    // #[async_test]
+    // pub async fn test_add_and_remove_interface_and_sockets() {
+    //     let (com_hub, interface_proxy, _) =
+    //         get_default_mock_setup_with_com_hub().await;
+    //
+    //     // initial state with loopback interface and mockup interface
+    //     {
+    //         let interface_manager = com_hub.interface_manager();
+    //         let socket_manager = com_hub.socket_manager();
+    //         assert_eq!(interface_manager.borrow().interfaces.len(), 2); // loopback + mockup interface
+    //         assert_eq!(socket_manager.borrow().sockets.len(), 1); // loopback
+    //         assert_eq!(socket_manager.borrow().endpoint_sockets.len(), 1);
+    //     }
+    //
+    //     assert_eq!(
+    //         interface_proxy.state.lock().unwrap().get(),
+    //         ComInterfaceState::Connected
+    //     );
+    //
+    //     // add new socket without direct endpoint
+    //     let (socket_uuid, _) =
+    //         interface_proxy.create_and_init_socket(InterfaceDirection::InOut, 1);
+    //     yield_now().await;
+    //
+    //     {
+    //         let socket_manager = com_hub.socket_manager();
+    //         assert!(socket_manager.borrow().has_socket(&socket_uuid));
+    //         assert_eq!(socket_manager.borrow().sockets.len(), 2);
+    //         assert_eq!(socket_manager.borrow().endpoint_sockets.len(), 1);
+    //     }
+    //
+    //     // add new socket with direct endpoint
+    //     let (socket_uuid, _) = interface_proxy
+    //         .create_and_init_socket_with_direct_endpoint(
+    //             InterfaceDirection::InOut,
+    //             1,
+    //             TEST_ENDPOINT_A.clone(),
+    //         );
+    //     yield_now().await;
+    //
+    //     {
+    //         let socket_manager = com_hub.socket_manager();
+    //         assert!(socket_manager.borrow().has_socket(&socket_uuid));
+    //         assert_eq!(socket_manager.borrow().sockets.len(), 3);
+    //         assert_eq!(socket_manager.borrow().endpoint_sockets.len(), 2);
+    //     }
+    //
+    //     let interface_uuid = interface_proxy.uuid.clone();
+    //
+    //     // remove interface
+    //     assert!(com_hub.remove_interface(interface_uuid).is_ok());
+    //
+    //     {
+    //         let interface_manager = com_hub.interface_manager();
+    //         let socket_manager = com_hub.socket_manager();
+    //         assert_eq!(interface_manager.borrow().interfaces.len(), 1); // loopback interface
+    //         assert_eq!(socket_manager.borrow().sockets.len(), 1); // loopback socket
+    //         assert_eq!(socket_manager.borrow().endpoint_sockets.len(), 1);
+    //     }
+    //
+    //     assert_eq!(
+    //         interface_proxy.state.lock().unwrap().get(),
+    //         ComInterfaceState::Destroyed
+    //     );
+    //
+    //     let socket_manager = com_hub.socket_manager();
+    //     assert!(!socket_manager.borrow().has_socket(&socket_uuid))
+    // }
+    //
+    // #[async_test]
+    // pub async fn test_basic_routing() {
+    //     let ((com_hub_mut_a, ..), (_, mut incoming_sections_receiver_b, _)) =
+    //         get_default_mock_setup_with_two_connected_com_hubs().await;
+    //
+    //     yield_now().await;
+    //     yield_now().await;
+    //
+    //     let block_a_to_b = send_block_with_body(
+    //         std::slice::from_ref(&TEST_ENDPOINT_B),
+    //         b"Hello world",
+    //         &com_hub_mut_a,
+    //     )
+    //     .await;
+    //
+    //     yield_now().await;
+    //
+    //     let last_block = get_next_received_single_block_from_receiver(
+    //         &mut incoming_sections_receiver_b,
+    //     )
+    //     .await;
+    //     assert_eq!(block_a_to_b.body, last_block.body);
+    // }
+    //
+    // #[async_test]
+    // pub async fn register_factory() {
+    //     let com_hub = create_mock_com_hub();
+    //     com_hub.register_sync_interface_factory::<MockupInterfaceSetupData>();
+    //
+    //     assert_eq!(
+    //         com_hub
+    //             .interface_manager()
+    //             .borrow()
+    //             .interface_factories
+    //             .len(),
+    //         1
+    //     );
+    //     assert!(
+    //         com_hub
+    //             .interface_manager()
+    //             .borrow()
+    //             .interface_factories
+    //             .contains_key("mockup")
+    //     );
+    //
+    //     // create a new mockup interface from the com_hub
+    //     let interface_uuid = com_hub
+    //         .create_interface(
+    //             "mockup",
+    //             to_value_container(&MockupInterfaceSetupData::new("mockup"))
+    //                 .unwrap(),
+    //             InterfacePriority::default(),
+    //         )
+    //         .await
+    //         .unwrap();
+    //
+    //     assert_eq!(
+    //         com_hub
+    //             .interface_manager()
+    //             .borrow()
+    //             .get_interface_by_uuid(&interface_uuid)
+    //             .properties()
+    //             .interface_type,
+    //         "mockup"
+    //     );
+    // }
+    //
+    // #[async_test]
+    // pub async fn test_reconnect() {
+    //     let com_hub = create_mock_com_hub();
+    //
+    //     // TODO: refactor using proxy
+    //
+    //     // create a new interface, open it and add it to the com_hub
+    //     let (base_interface, interface_with_receivers) =
+    //         ComInterfaceProxy::create_interface(ComInterfaceProperties::default());
+    //
+    //     // add base_interface to com_hub
+    //     com_hub
+    //         ._register_com_interface(
+    //             interface_with_receivers,
+    //             InterfacePriority::default(),
+    //         )
+    //         .unwrap();
+    //
+    //     // check that the interface is connected
+    //     assert_eq!(
+    //         base_interface.state.lock().unwrap().get(),
+    //         ComInterfaceState::Connected
+    //     );
+    //
+    //     // check that the interface is in the com_hub
+    //     assert_eq!(com_hub.interface_manager().borrow().interfaces.len(), 2); // loopback + base_interface
+    //     assert!(com_hub.has_interface(&base_interface.uuid));
+    //
+    //     // simulate a disconnection by closing the interface
+    //     // This action is normally done by the interface itself
+    //     // but we do it manually here to test the reconnection
+    //     // TODO: reconnect
+    //     // // check that the interface is not connected
+    //     // // and that the close_timestamp is set
+    //     // assert_eq!(
+    //     //     base_interface.state.lock().unwrap().get(),
+    //     //     ComInterfaceState::NotConnected
+    //     // );
+    //     //
+    //     // assert!(
+    //     //     base_interface
+    //     //         .com_interface
+    //     //         .properties()
+    //     //         .close_timestamp
+    //     //         .is_some()
+    //     // );
+    //     //
+    //     // // the interface should not be reconnected yet
+    //     // yield_now().await;
+    //     //
+    //     // assert_eq!(
+    //     //     base_interface.com_interface.current_state(),
+    //     //     ComInterfaceState::NotConnected
+    //     // );
+    //     //
+    //     // // wait for the reconnection to happen
+    //     // tokio::time::sleep(Duration::from_secs(1)).await;
+    //     //
+    //     // // check that the interface is connected again
+    //     // // and that the close_timestamp is reset
+    //     // yield_now().await;
+    //     //
+    //     // assert_eq!(
+    //     //     base_interface.com_interface.current_state(),
+    //     //     ComInterfaceState::Connected
+    //     // );
+    // }
+
+
 }

@@ -4,15 +4,16 @@ use core::pin::Pin;
 use alloc::sync::Arc;
 use core::str::FromStr;
 use futures_util::future::join;
-use futures_util::lock::Mutex;
 use tokio::task::{spawn_local, yield_now, LocalSet};
 use crate::channel::mpsc::{create_unbounded_channel, UnboundedReceiver};
 use crate::global::dxb_block::{DXBBlock, IncomingSection};
 use crate::network::com_hub::{ComHub, InterfacePriority};
+use crate::network::com_hub::metadata::ComHubMetadata;
 use crate::network::com_interfaces::com_interface::ComInterfaceUUID;
 use crate::network::com_interfaces::com_interface::factory::{ComInterfaceConfiguration, SendCallback, SocketConfiguration, SocketProperties};
 use crate::network::com_interfaces::com_interface::properties::{ComInterfaceProperties, InterfaceDirection};
 use crate::values::core_values::endpoint::Endpoint;
+use crate::std_sync::Mutex;
 
 lazy_static::lazy_static! {
     pub static ref TEST_ENDPOINT_A: Endpoint = Endpoint::from_str("@test-a").unwrap();
@@ -122,7 +123,7 @@ fn couple_com_hubs_internal(com_hub_a: Rc<ComHub>, com_hub_b: Rc<ComHub>) -> (
             SendCallback::new_async(move |block| {
                 let send_b_to_a = send_b_to_a.clone();
                 async move {
-                    send_b_to_a.lock().await.start_send(block).unwrap();
+                    send_b_to_a.try_lock().unwrap().start_send(block).unwrap();
                     Ok(())
                 }
             })
@@ -145,7 +146,7 @@ fn couple_com_hubs_internal(com_hub_a: Rc<ComHub>, com_hub_b: Rc<ComHub>) -> (
             SendCallback::new_async(move |block| {
                 let send_a_to_b = send_a_to_b.clone();
                 async move {
-                    send_a_to_b.lock().await.start_send(block).unwrap();
+                    send_a_to_b.try_lock().unwrap().start_send(block).unwrap();
                     Ok(())
                 }
             })
@@ -169,12 +170,12 @@ fn couple_com_hubs_internal(com_hub_a: Rc<ComHub>, com_hub_b: Rc<ComHub>) -> (
             join(
                 async {
                     if let Some(fut) = res_a {
-                        fut.await.unwrap().unwrap()
+                        fut.await.unwrap()
                     }
                 },
                 async {
                     if let Some(fut) = res_b {
-                        fut.await.unwrap().unwrap()
+                        fut.await.unwrap()
                     }
                 }
             ).await;
@@ -206,4 +207,19 @@ where
             test(peer_a, peer_b).await
         }
         ).await
+}
+
+
+pub fn get_endpoints_from_com_hub_metadata(
+    com_hub_metadata: ComHubMetadata,
+) -> Vec<(Option<Endpoint>, Option<i8>)> {
+    com_hub_metadata
+        .interfaces
+        .into_iter()
+        .flat_map(|e| {
+            e.sockets
+                .into_iter()
+                .map(|s| (s.endpoint, s.properties.map(|p| p.distance)))
+        })
+        .collect::<Vec<_>>()
 }
