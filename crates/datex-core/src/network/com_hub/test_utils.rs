@@ -2,6 +2,8 @@ use crate::prelude::*;
 use alloc::rc::Rc;
 use core::pin::Pin;
 use alloc::sync::Arc;
+use core::str::FromStr;
+use futures_util::future::join;
 use futures_util::lock::Mutex;
 use tokio::task::{spawn_local, yield_now, LocalSet};
 use crate::channel::mpsc::{create_unbounded_channel, UnboundedReceiver};
@@ -11,6 +13,13 @@ use crate::network::com_interfaces::com_interface::ComInterfaceUUID;
 use crate::network::com_interfaces::com_interface::factory::{ComInterfaceConfiguration, SendCallback, SocketConfiguration, SocketProperties};
 use crate::network::com_interfaces::com_interface::properties::{ComInterfaceProperties, InterfaceDirection};
 use crate::values::core_values::endpoint::Endpoint;
+
+lazy_static::lazy_static! {
+    pub static ref TEST_ENDPOINT_A: Endpoint = Endpoint::from_str("@test-a").unwrap();
+    pub static ref TEST_ENDPOINT_B: Endpoint = Endpoint::from_str("@test-b").unwrap();
+    pub static ref TEST_ENDPOINT_C: Endpoint = Endpoint::from_str("@test-c").unwrap();
+    pub static ref TEST_ENDPOINT_D: Endpoint = Endpoint::from_str("@test-d").unwrap();
+}
 
 pub struct ComHubPeerWithFuture {
     pub com_hub: Rc<ComHub>,
@@ -42,22 +51,60 @@ impl ComHubPeerWithFuture {
 }
 
 /// Creates two bidirectionally coupled ComInterfaceConfigurations for testing purposes.
-pub fn get_coupled_com_hubs() -> (ComHubPeerWithFuture, ComHubPeerWithFuture) {
+pub async fn get_coupled_com_hubs() -> (ComHubPeerWithFuture, ComHubPeerWithFuture, impl Future<Output = ()>) {
 
     let (incoming_sections_sender_a, incoming_sections_receiver_a) =
         create_unbounded_channel::<IncomingSection>();
-    let (com_hub_a, task_future_a) = ComHub::create(Endpoint::new("@test-a"), incoming_sections_sender_a);
+    let (com_hub_a, task_future_a) = ComHub::create(TEST_ENDPOINT_A.clone(), incoming_sections_sender_a);
 
     let (incoming_sections_sender_b, incoming_sections_receiver_b) =
         create_unbounded_channel::<IncomingSection>();
-    let (com_hub_b, task_future_b) = ComHub::create(Endpoint::new("@test-b"), incoming_sections_sender_b);
+    let (com_hub_b, task_future_b) = ComHub::create(TEST_ENDPOINT_B.clone(), incoming_sections_sender_b);
 
+    let res = couple_com_hubs_internal(com_hub_a.clone(), com_hub_b.clone());
 
+    let ((com_interface_uuid_a, com_interface_properties_a), (com_interface_uuid_b, com_interface_properties_b), init_future) = res;
+
+    (
+        ComHubPeerWithFuture {
+            com_hub: com_hub_a,
+            task_future: Box::pin(task_future_a),
+            incoming_sections_receiver: incoming_sections_receiver_a,
+            com_interface_uuid: com_interface_uuid_a,
+            com_interface_properties: com_interface_properties_a,
+        },
+        ComHubPeerWithFuture {
+            com_hub: com_hub_b,
+            task_future: Box::pin(task_future_b),
+            incoming_sections_receiver: incoming_sections_receiver_b,
+            com_interface_uuid: com_interface_uuid_b,
+            com_interface_properties: com_interface_properties_b,
+        },
+        init_future
+    )
+}
+
+/// Couples to existing ComHubs by adding bidirectional interfaces.
+pub async fn couple_com_hubs(com_hub_a: Rc<ComHub>, com_hub_b: Rc<ComHub>) -> (
+    (ComInterfaceUUID, Rc<ComInterfaceProperties>),
+    (ComInterfaceUUID, Rc<ComInterfaceProperties>),
+) {
+    let (a, b, init_future) = couple_com_hubs_internal(com_hub_a, com_hub_b);
+    init_future.await;
+    (a, b)
+}
+
+/// Couples to existing ComHubs by adding bidirectional interfaces.
+/// Returns the interface UUIDs and properties of the added interfaces, as well as a future that completes when the interfaces are fully connected and ready to use.
+fn couple_com_hubs_internal(com_hub_a: Rc<ComHub>, com_hub_b: Rc<ComHub>) -> (
+    (ComInterfaceUUID, Rc<ComInterfaceProperties>),
+    (ComInterfaceUUID, Rc<ComInterfaceProperties>),
+    impl Future<Output = ()>
+) {
     let (send_a_to_b, mut receive_a_to_b) = create_unbounded_channel::<DXBBlock>();
     let send_a_to_b = Arc::new(Mutex::new(send_a_to_b));
     let (send_b_to_a, mut receive_b_to_a) = create_unbounded_channel::<DXBBlock>();
     let send_b_to_a = Arc::new(Mutex::new(send_b_to_a));
-
 
     let config_b = ComInterfaceConfiguration::new_single_socket(
         ComInterfaceProperties {
@@ -84,7 +131,7 @@ pub fn get_coupled_com_hubs() -> (ComHubPeerWithFuture, ComHubPeerWithFuture) {
 
     let config_a = ComInterfaceConfiguration::new_single_socket(
         ComInterfaceProperties {
-            interface_type: "test_interface".to_string(),
+            interface_type: "test-interface".to_string(),
             direction: InterfaceDirection::InOut,
             ..Default::default()
         },
@@ -110,24 +157,27 @@ pub fn get_coupled_com_hubs() -> (ComHubPeerWithFuture, ComHubPeerWithFuture) {
     let com_interface_properties_a = config_a.properties.clone();
     let com_interface_properties_b = config_b.properties.clone();
 
-    com_hub_a.clone().add_interface_from_configuration(config_a, InterfacePriority::default()).unwrap();
-    com_hub_b.clone().add_interface_from_configuration(config_b, InterfacePriority::default()).unwrap();
+    // add and connect interfaces
+    let res_a = com_hub_a.clone().add_interface_from_configuration(config_a, InterfacePriority::default()).unwrap();
+    let res_b = com_hub_b.clone().add_interface_from_configuration(config_b, InterfacePriority::default()).unwrap();
 
 
     (
-        ComHubPeerWithFuture {
-            com_hub: com_hub_a,
-            task_future: Box::pin(task_future_a),
-            incoming_sections_receiver: incoming_sections_receiver_a,
-            com_interface_uuid: com_interface_uuid_a,
-            com_interface_properties: com_interface_properties_a,
-        },
-        ComHubPeerWithFuture {
-            com_hub: com_hub_b,
-            task_future: Box::pin(task_future_b),
-            incoming_sections_receiver: incoming_sections_receiver_b,
-            com_interface_uuid: com_interface_uuid_b,
-            com_interface_properties: com_interface_properties_b,
+        (com_interface_uuid_a, com_interface_properties_a),
+        (com_interface_uuid_b, com_interface_properties_b),
+        async {
+            join(
+                async {
+                    if let Some(fut) = res_a {
+                        fut.await.unwrap().unwrap()
+                    }
+                },
+                async {
+                    if let Some(fut) = res_b {
+                        fut.await.unwrap().unwrap()
+                    }
+                }
+            ).await;
         }
     )
 }
@@ -140,7 +190,7 @@ where
     let local = LocalSet::new();
     local
         .run_until(async {
-            let (peer_a_with_future, peer_b_with_future) = get_coupled_com_hubs();
+            let (peer_a_with_future, peer_b_with_future, init_future) = get_coupled_com_hubs().await;
 
             let (peer_a, peer_a_future) = peer_a_with_future.split();
             let (peer_b, peer_b_future) = peer_b_with_future.split();
@@ -148,6 +198,7 @@ where
             // run task futures in background
             spawn_local(peer_a_future);
             spawn_local(peer_b_future);
+            spawn_local(init_future);
 
             // allow sockets to connect
             yield_now().await;

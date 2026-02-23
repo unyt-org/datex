@@ -460,7 +460,7 @@ mod tests {
 
         interface_manager.register_sync_interface_factory::<MockSetupData>();
         let setup_data = MockSetupData {
-            name: "test_interface".to_string(),
+            name: "test-interface".to_string(),
         };
         let (com_interface_configuration, _) = interface_manager
             .create_and_add_interface_sync(
@@ -477,7 +477,7 @@ mod tests {
 
         assert_eq!(
             com_interface_configuration.properties.name,
-            Some("test_interface".to_string())
+            Some("test-interface".to_string())
         );
 
         // Clean up
@@ -498,7 +498,7 @@ mod tests {
 
         interface_manager.register_async_interface_factory::<MockSetupData>();
         let setup_data = MockSetupData {
-            name: "test_interface".to_string(),
+            name: "test-interface".to_string(),
         };
         let (com_interface_configuration, _) = interface_manager
             .create_and_add_interface(
@@ -516,7 +516,7 @@ mod tests {
 
         assert_eq!(
             com_interface_configuration.properties.name,
-            Some("test_interface".to_string())
+            Some("test-interface".to_string())
         );
 
         // Clean up
@@ -545,7 +545,7 @@ mod tests {
         interface_manager
             .register_dyn_interface_factory("mock".to_string(), dyn_factory);
         let setup_data = MockSetupData {
-            name: "test_interface".to_string(),
+            name: "test-interface".to_string(),
         };
         let (com_interface_configuration, _) = interface_manager
             .create_and_add_interface(
@@ -563,7 +563,7 @@ mod tests {
 
         assert_eq!(
             com_interface_configuration.properties.name,
-            Some("test_interface".to_string())
+            Some("test-interface".to_string())
         );
 
         // Clean up
