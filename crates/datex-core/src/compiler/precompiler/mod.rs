@@ -605,9 +605,9 @@ mod tests {
         parser::Parser,
         prelude::*,
         references::reference::ReferenceMutability,
-        stdlib::assert_matches,
         values::{core_values::integer::Integer, pointer::PointerAddress},
     };
+    use core::assert_matches;
 
     fn precompile(
         ast: DatexExpression,

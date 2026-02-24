@@ -744,15 +744,14 @@ mod tests {
     use crate::{
         assert_identical, assert_structural_eq, assert_value_eq,
         runtime::{
-            global_context::{GlobalContext, set_global_context},
             memory::Memory,
         },
-        stdlib::assert_matches,
         traits::value_eq::ValueEq,
     };
-    use datex_core::values::core_values::map::Map;
-
+    use core::assert_matches;
     use crate::prelude::*;
+    use crate::values::core_values::map::Map;
+
     #[test]
     fn try_mut_from() {
         // creating a mutable reference from a value should work
