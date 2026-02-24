@@ -30,9 +30,7 @@ use crate::{
     },
 };
 
-use crate::{
-    global::protocol_structures::routing_header::SignatureType, prelude::*,
-};
+use crate::prelude::*;
 use log::{error, info};
 use serde::{Deserialize, Serialize};
 use serde_with::{DisplayFromStr, serde_as};
