@@ -354,7 +354,7 @@ impl DXBBlock {
             feature = "allow_unsigned_blocks"
         ))]
         {
-            info!(
+            log::info!(
                 "Crypto and signature validation are disabled, allowing block without signature validation"
             );
             return MaybeAsync::Sync(Ok(self));
