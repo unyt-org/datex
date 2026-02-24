@@ -603,7 +603,6 @@ mod tests {
             type_expressions::{StructuralMap, TypeExpressionData},
         },
         parser::Parser,
-        prelude::*,
         references::reference::ReferenceMutability,
         values::{core_values::integer::Integer, pointer::PointerAddress},
     };
@@ -707,7 +706,7 @@ mod tests {
         assert_matches!(
             result,
             Err(SpannedCompilerError{ error: CompilerError::UndeclaredVariable(var_name), span })
-            if var_name == "x" && span == Some((0..1))
+            if var_name == "x" && span == Some(0..1 )
         );
     }
 

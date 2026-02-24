@@ -2,7 +2,7 @@ use crate::{
     collections::HashMap,
     network::{
         com_hub::{
-            ComHubError, InterfacePriority,
+            InterfacePriority,
             errors::{ComInterfaceCreateError, InterfaceAddError},
         },
         com_interfaces::com_interface::{

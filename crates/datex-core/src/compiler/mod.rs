@@ -1473,14 +1473,8 @@ pub mod tests {
             type_instruction_codes::TypeInstructionCode,
         },
         libs::core::CoreLibPointerId,
-        runtime::execution::{
-            ExecutionError,
-            context::{ExecutionContext, ExecutionMode, LocalExecutionContext},
-        },
-        values::{
-            core_values::integer::Integer, pointer::PointerAddress,
-            value_container::ValueContainer,
-        },
+        runtime::execution::context::ExecutionMode,
+        values::pointer::PointerAddress,
     };
 
     use crate::{
@@ -1890,7 +1884,7 @@ pub mod tests {
         let datex_script = format!("{start}..{end}");
         let result = compile_and_log(&datex_script);
         let x = start as u8;
-        let y = end as u8;
+        let _y = end as u8;
         assert_eq!(
             result,
             vec![

@@ -1,25 +1,21 @@
-use futures::channel::oneshot;
 use log::info;
 use crate::{
     network::{
         com_hub::{
-            ComHub, ComHubError, InterfacePriority,
+            ComHub, InterfacePriority,
             errors::{ComInterfaceCreateError, InterfaceAddError},
             managers::com_interface_manager::DynInterfaceImplementationFactoryFn,
         },
         com_interfaces::com_interface::{
             ComInterfaceUUID,
             factory::{ComInterfaceConfiguration, ComInterfaceSyncFactory},
-            socket::ComInterfaceSocketUUID,
         },
     },
     values::value_container::ValueContainer,
 };
 
 use crate::{
-    network::com_interfaces::com_interface::{
-        factory::ComInterfaceAsyncFactory, properties::ComInterfaceProperties,
-    },
+    network::com_interfaces::com_interface::factory::ComInterfaceAsyncFactory,
     prelude::*,
 };
 
