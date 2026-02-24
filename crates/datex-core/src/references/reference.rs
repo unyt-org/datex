@@ -2,7 +2,7 @@ use crate::{
     references::type_reference::{NominalTypeDeclaration, TypeReference},
     values::core_value::CoreValue,
 };
-use core::{ result::Result};
+use core::result::Result;
 
 use crate::{
     prelude::*,
@@ -742,15 +742,11 @@ impl Apply for Reference {
 mod tests {
     use super::*;
     use crate::{
-        assert_identical, assert_structural_eq, assert_value_eq,
-        runtime::{
-            memory::Memory,
-        },
-        traits::value_eq::ValueEq,
+        assert_identical, assert_structural_eq, assert_value_eq, prelude::*,
+        runtime::memory::Memory, traits::value_eq::ValueEq,
+        values::core_values::map::Map,
     };
     use core::assert_matches;
-    use crate::prelude::*;
-    use crate::values::core_values::map::Map;
 
     #[test]
     fn try_mut_from() {

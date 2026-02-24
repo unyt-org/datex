@@ -238,9 +238,12 @@ mod tests {
         global::instruction_codes::InstructionCode,
         libs::core::get_core_lib_type_reference,
         references::reference::Reference,
-        runtime::execution::{
-            context::{ExecutionContext, LocalExecutionContext},
-            execution_input::ExecutionOptions,
+        runtime::{
+            RuntimeConfig, RuntimeRunner,
+            execution::{
+                context::{ExecutionContext, LocalExecutionContext},
+                execution_input::ExecutionOptions,
+            },
         },
         traits::{structural_eq::StructuralEq, value_eq::ValueEq},
         values::{
@@ -254,7 +257,6 @@ mod tests {
         },
     };
     use log::{debug, info};
-    use crate::runtime::{RuntimeConfig, RuntimeRunner};
 
     fn execute_datex_script_debug(
         datex_script: &str,
@@ -342,14 +344,23 @@ mod tests {
         execute_dxb_sync(context)
     }
 
-    async fn execute_datex_script_with_runtime(config: RuntimeConfig, datex_script: &str) -> Result<Option<ValueContainer>, ExecutionError> {
-        RuntimeRunner::new(config).run(async |runtime| {
-            let (dxb, _) =
-                compile_script(datex_script, CompileOptions::default()).unwrap();
-            let context =
-                ExecutionInput::new(&dxb, ExecutionOptions { verbose: true }, Some(runtime.internal));
-            execute_dxb(context).await
-        }).await
+    async fn execute_datex_script_with_runtime(
+        config: RuntimeConfig,
+        datex_script: &str,
+    ) -> Result<Option<ValueContainer>, ExecutionError> {
+        RuntimeRunner::new(config)
+            .run(async |runtime| {
+                let (dxb, _) =
+                    compile_script(datex_script, CompileOptions::default())
+                        .unwrap();
+                let context = ExecutionInput::new(
+                    &dxb,
+                    ExecutionOptions { verbose: true },
+                    Some(runtime.internal),
+                );
+                execute_dxb(context).await
+            })
+            .await
     }
 
     #[test]
@@ -694,10 +705,18 @@ mod tests {
 
     #[tokio::test]
     async fn env_slot() {
-        let res = execute_datex_script_with_runtime(RuntimeConfig {
-            env: Some(HashMap::from([("TEST_ENV_VAR".to_string(), "test_value".to_string())])),
-            ..Default::default()
-        }, "#env").await.unwrap();
+        let res = execute_datex_script_with_runtime(
+            RuntimeConfig {
+                env: Some(HashMap::from([(
+                    "TEST_ENV_VAR".to_string(),
+                    "test_value".to_string(),
+                )])),
+                ..Default::default()
+            },
+            "#env",
+        )
+        .await
+        .unwrap();
         assert!(res.is_some());
         let env = res.unwrap().to_value().borrow().cast_to_map().unwrap();
         assert_eq!(env.get("TEST_ENV_VAR"), Ok(&"test_value".into()));

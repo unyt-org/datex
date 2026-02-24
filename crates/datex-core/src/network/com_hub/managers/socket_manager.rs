@@ -9,8 +9,7 @@ use crate::{
 };
 use core::cell::{Ref, RefCell, RefMut};
 use futures::channel::oneshot;
-use futures_util::future::join_all;
-use futures_util::FutureExt;
+use futures_util::{FutureExt, future::join_all};
 use itertools::Itertools;
 use log::{debug, error, info, warn};
 use serde::{Deserialize, Serialize};
@@ -18,15 +17,13 @@ use serde::{Deserialize, Serialize};
 use crate::prelude::*;
 
 use crate::{
-    network::{
-        com_interfaces::com_interface::{
-            ComInterfaceUUID, properties::InterfaceDirection,
-        },
+    network::com_interfaces::com_interface::{
+        ComInterfaceUUID,
+        factory::{SendCallback, SocketProperties},
+        properties::{ComInterfaceProperties, InterfaceDirection},
     },
     values::core_values::endpoint::{Endpoint, EndpointInstance},
 };
-use crate::network::com_interfaces::com_interface::factory::{SendCallback, SocketProperties};
-use crate::network::com_interfaces::com_interface::properties::ComInterfaceProperties;
 
 #[derive(Debug, Clone, Default)]
 pub struct EndpointIterateOptions<'a> {
@@ -55,7 +52,7 @@ pub struct SocketData {
     pub(crate) send_callback: Option<SendCallback>,
     pub(crate) endpoints: HashSet<Endpoint>,
     pub(crate) close_sender: Option<oneshot::Sender<oneshot::Sender<()>>>,
-    pub(crate) socket_ready_sender: Option<oneshot::Sender<Result<(),()>>>,
+    pub(crate) socket_ready_sender: Option<oneshot::Sender<Result<(), ()>>>,
 }
 
 pub struct ComInterfaceSocketManager {
@@ -176,7 +173,10 @@ impl ComInterfaceSocketManager {
         if is_direct {
             let mut socket = self.get_socket_by_uuid_mut(&socket_uuid);
             if let Some(sender) = socket.socket_ready_sender.take() {
-                info!("Socket {} is fully connected with direct endpoint {}, sending ready signal", socket_uuid, endpoint);
+                info!(
+                    "Socket {} is fully connected with direct endpoint {}, sending ready signal",
+                    socket_uuid, endpoint
+                );
                 let _ = sender.send(Ok(()));
             }
         }
@@ -283,7 +283,8 @@ impl ComInterfaceSocketManager {
         if let Some(socket_uuids) = socket_uuids {
             for socket_uuid in socket_uuids {
                 info!("....Removing socket {:?}", socket_uuid);
-                remove_socket_futures.push(self.remove_socket(socket_uuid.clone()));
+                remove_socket_futures
+                    .push(self.remove_socket(socket_uuid.clone()));
             }
         }
 
@@ -299,10 +300,7 @@ impl ComInterfaceSocketManager {
         socket_uuid: &ComInterfaceSocketUUID,
     ) -> Option<Ref<'_, SocketData>> {
         let sockets = self.sockets.borrow();
-        Ref::filter_map(sockets, |sockets| {
-            sockets
-                .get(socket_uuid)
-        }).ok()
+        Ref::filter_map(sockets, |sockets| sockets.get(socket_uuid)).ok()
     }
 
     /// Returns a mutable reference to the socket for a given UUID
@@ -340,7 +338,8 @@ impl ComInterfaceSocketManager {
             );
         }
 
-        info!("add socket to interface {}: socket {}, direct endpoint: {}, direction: {:?}",
+        info!(
+            "add socket to interface {}: socket {}, direct endpoint: {}, direction: {:?}",
             socket.interface_uuid,
             socket_uuid,
             direct_endpoint
@@ -428,7 +427,10 @@ impl ComInterfaceSocketManager {
         if !can_receive {
             let mut socket = self.get_socket_by_uuid_mut(&socket_uuid);
             if let Some(sender) = socket.socket_ready_sender.take() {
-                info!("Sending ready signal immediately for socket {} since it cannot receive or has direct endpoint already set", socket_uuid);
+                info!(
+                    "Sending ready signal immediately for socket {} since it cannot receive or has direct endpoint already set",
+                    socket_uuid
+                );
                 let _ = sender.send(Ok(()));
             }
         }
@@ -480,11 +482,18 @@ impl ComInterfaceSocketManager {
         Ok(())
     }
 
-    pub fn trigger_remove_socket(&self, socket_uuid: &ComInterfaceSocketUUID) -> oneshot::Receiver<()> {
+    pub fn trigger_remove_socket(
+        &self,
+        socket_uuid: &ComInterfaceSocketUUID,
+    ) -> oneshot::Receiver<()> {
         let (closed_sender, closed_receiver) = oneshot::channel();
-        let mut socket_data = self
-            .get_socket_by_uuid_mut(socket_uuid);
-        socket_data.close_sender.take().unwrap().send(closed_sender).unwrap();
+        let mut socket_data = self.get_socket_by_uuid_mut(socket_uuid);
+        socket_data
+            .close_sender
+            .take()
+            .unwrap()
+            .send(closed_sender)
+            .unwrap();
 
         closed_receiver
     }
@@ -498,8 +507,11 @@ impl ComInterfaceSocketManager {
         };
 
         // get interface uuid before removing socket
-        let interface_uuid =
-            self.get_socket_by_uuid(socket_uuid).unwrap().interface_uuid.clone();
+        let interface_uuid = self
+            .get_socket_by_uuid(socket_uuid)
+            .unwrap()
+            .interface_uuid
+            .clone();
 
         // remove socket from endpoint socket list
         // remove endpoint key from endpoint_sockets if not sockets present
@@ -517,11 +529,9 @@ impl ComInterfaceSocketManager {
             .retain(|(uuid, _, _)| uuid != socket_uuid);
 
         // remove socket from interface socket mapping
-        let mut socket_uuids_borrow = self
-            .socket_uuids_by_interface_uuid
-            .borrow_mut();
-        if let Some(socket_uuids) = socket_uuids_borrow
-            .get_mut(&interface_uuid)
+        let mut socket_uuids_borrow =
+            self.socket_uuids_by_interface_uuid.borrow_mut();
+        if let Some(socket_uuids) = socket_uuids_borrow.get_mut(&interface_uuid)
         {
             socket_uuids.remove(socket_uuid);
             if socket_uuids.is_empty() {
@@ -550,10 +560,7 @@ impl ComInterfaceSocketManager {
 
                 // check if only_direct is set and the endpoint equals the direct endpoint of the socket
                 if options.only_direct
-                    && socket
-                        .socket_properties
-                        .direct_endpoint
-                        .is_some()
+                    && socket.socket_properties.direct_endpoint.is_some()
                     && socket
                         .socket_properties
                         .direct_endpoint
@@ -738,7 +745,10 @@ impl ComInterfaceSocketManager {
         }
     }
 
-    pub fn are_sockets_registered_for_interface(&self, interface_uuid: &ComInterfaceUUID) -> bool {
+    pub fn are_sockets_registered_for_interface(
+        &self,
+        interface_uuid: &ComInterfaceUUID,
+    ) -> bool {
         self.socket_uuids_by_interface_uuid
             .borrow()
             .get(interface_uuid)

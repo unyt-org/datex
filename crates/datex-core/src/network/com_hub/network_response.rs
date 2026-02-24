@@ -3,8 +3,8 @@ use crate::{
 };
 use core::{
     fmt::{Display, Formatter},
+    time::Duration,
 };
-use core::time::Duration;
 
 #[derive(Default, PartialEq, Debug)]
 pub enum ResponseResolutionStrategy {
@@ -23,7 +23,6 @@ pub enum ResponseResolutionStrategy {
     ///   return immediately if one send fails early (e.g. endpoint not reachable)
     /// - For unknown receiver count:
     ///   return after timeout
-    ///
     ReturnOnAnyError,
 
     /// Promise.any

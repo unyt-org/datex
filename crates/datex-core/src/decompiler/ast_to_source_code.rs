@@ -787,7 +787,7 @@ impl AstToSourceCodeConverter {
 }
 
 #[cfg(test)]
-#[cfg(feature="compiler")]
+#[cfg(feature = "compiler")]
 mod tests {
     use indoc::indoc;
 

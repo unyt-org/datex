@@ -4,11 +4,18 @@ use core::{
     str::FromStr,
 };
 use datex_core::{
-    channel::mpsc::{UnboundedReceiver, UnboundedSender},
+    channel::mpsc::{
+        UnboundedReceiver, UnboundedSender, create_unbounded_channel,
+    },
+    global::dxb_block::DXBBlock,
     network::{
         com_hub::{InterfacePriority, network_tracing::TraceOptions},
-        com_interfaces::com_interface::properties::{
-            ComInterfaceProperties, InterfaceDirection,
+        com_interfaces::com_interface::{
+            factory::{
+                ComInterfaceConfiguration, SendCallback, SendSuccess,
+                SocketConfiguration, SocketProperties,
+            },
+            properties::{ComInterfaceProperties, InterfaceDirection},
         },
     },
     runtime::{Runtime, RuntimeConfig, RuntimeRunner},
@@ -16,12 +23,13 @@ use datex_core::{
 };
 use log::info;
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, env, fs, path::Path, sync::Arc};
-use std::sync::Mutex;
+use std::{
+    collections::HashMap,
+    env, fs,
+    path::Path,
+    sync::{Arc, Mutex},
+};
 use tokio::task::{spawn_local, yield_now};
-use datex_core::channel::mpsc::create_unbounded_channel;
-use datex_core::global::dxb_block::DXBBlock;
-use datex_core::network::com_interfaces::com_interface::factory::{ComInterfaceConfiguration, SendCallback, SendSuccess, SocketConfiguration, SocketProperties};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct MockupInterfaceSetupData {
@@ -600,14 +608,26 @@ impl Network {
         runtime: &Runtime,
         connection: &InterfaceConnection,
         remote_endpoint: Option<Endpoint>,
-    ) -> (
-        UnboundedReceiver<DXBBlock>,
-        UnboundedSender<Vec<u8>>,
-    ) {
-        info!("init interface for {} with endpoint: {}/{} and direction: {:?}", runtime.endpoint(), remote_endpoint.as_ref().map(|x|x.to_string()).unwrap_or_else(||"x".to_string()), connection.endpoint.as_ref().map(|x|x.to_string()).unwrap_or_else(||"x".to_string()), connection.setup_data.direction);
+    ) -> (UnboundedReceiver<DXBBlock>, UnboundedSender<Vec<u8>>) {
+        info!(
+            "init interface for {} with endpoint: {}/{} and direction: {:?}",
+            runtime.endpoint(),
+            remote_endpoint
+                .as_ref()
+                .map(|x| x.to_string())
+                .unwrap_or_else(|| "x".to_string()),
+            connection
+                .endpoint
+                .as_ref()
+                .map(|x| x.to_string())
+                .unwrap_or_else(|| "x".to_string()),
+            connection.setup_data.direction
+        );
 
-        let (incoming_data_sender, mut incoming_data_receiver) = create_unbounded_channel();
-        let (outgoing_data_sender, outgoing_data_receiver) = create_unbounded_channel();
+        let (incoming_data_sender, mut incoming_data_receiver) =
+            create_unbounded_channel();
+        let (outgoing_data_sender, outgoing_data_receiver) =
+            create_unbounded_channel();
         let outgoing_data_sender = Arc::new(Mutex::new(outgoing_data_sender));
 
         let configuration = ComInterfaceConfiguration::new_single_socket(
@@ -618,16 +638,26 @@ impl Network {
                 ..Default::default()
             },
             SocketConfiguration::new_in_out(
-                SocketProperties::new_with_maybe_direct_endpoint(connection.setup_data.direction.clone(), 1, remote_endpoint),
+                SocketProperties::new_with_maybe_direct_endpoint(
+                    connection.setup_data.direction.clone(),
+                    1,
+                    remote_endpoint,
+                ),
                 async gen move {
-                    while let Some(block_bytes) = incoming_data_receiver.next().await {
+                    while let Some(block_bytes) =
+                        incoming_data_receiver.next().await
+                    {
                         yield Ok(block_bytes);
                     }
                 },
                 SendCallback::new_sync(move |block| {
-                    outgoing_data_sender.lock().unwrap().start_send(block).unwrap();
+                    outgoing_data_sender
+                        .lock()
+                        .unwrap()
+                        .start_send(block)
+                        .unwrap();
                     Ok(SendSuccess::Sent)
-                })
+                }),
             ),
         );
 
@@ -639,7 +669,10 @@ impl Network {
 
         runtime
             .com_hub()
-            .add_interface_from_configuration(configuration, connection.priority)
+            .add_interface_from_configuration(
+                configuration,
+                connection.priority,
+            )
             .expect("Failed to register interface");
 
         (outgoing_data_receiver, incoming_data_sender)
@@ -690,8 +723,7 @@ impl Network {
                 socket_a_outgoing_receiver,
                 socket_b_incoming_sender,
             );
-        }
-        else {
+        } else {
             Box::leak(Box::new(socket_a_outgoing_receiver));
             Box::leak(Box::new(socket_b_incoming_sender));
         }
@@ -701,8 +733,7 @@ impl Network {
                 socket_b_outgoing_receiver,
                 socket_a_incoming_sender,
             );
-        }
-        else {
+        } else {
             Box::leak(Box::new(socket_b_outgoing_receiver));
             Box::leak(Box::new(socket_a_incoming_sender));
         }

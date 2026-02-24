@@ -6,8 +6,17 @@ use modular_bitfield::{Specifier, bitfield, prelude::B43};
 use strum_macros::Display;
 
 // 4 bit
-#[derive(Debug, Display, PartialEq, Clone, Copy, Default, Specifier)]
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(
+    Debug,
+    Display,
+    PartialEq,
+    Clone,
+    Copy,
+    Default,
+    Specifier,
+    serde::Serialize,
+    serde::Deserialize,
+)]
 #[bits = 4]
 pub enum BlockType {
     #[default]
@@ -148,8 +157,16 @@ impl Default for FlagsAndTimestamp {
 
 // min: 16 byte
 // max 8 + 8 byte + 4 byte + 21 byte + 16 byte = 57 byte
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Debug, Clone, Default, BinWrite, BinRead, PartialEq)]
+#[derive(
+    serde::Serialize,
+    serde::Deserialize,
+    Debug,
+    Clone,
+    Default,
+    BinWrite,
+    BinRead,
+    PartialEq,
+)]
 #[brw(little)]
 pub struct BlockHeader {
     /// A unique id that defines the context in which this block lives

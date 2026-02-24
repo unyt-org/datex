@@ -3,16 +3,11 @@ use crate::runtime::{
     execution::{
         ExecutionError,
         execution_loop::{
-            execution_loop,
             interrupts::{ExternalExecutionInterrupt, InterruptProvider},
-            state::{
-                ExecutionLoopState, RuntimeExecutionSlots,
-                RuntimeExecutionState,
-            },
+            state::{ExecutionLoopState, RuntimeExecutionSlots},
         },
     },
 };
-use core::cell::RefCell;
 
 use crate::prelude::*;
 #[derive(Debug, Clone, Default)]

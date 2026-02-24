@@ -1,8 +1,6 @@
-use crate::network::helpers::{
-    network::{
-        InterfaceConnection, MockupInterfaceSetupData, Network, Node, Route,
-        RouteAssertionError, test_routes,
-    },
+use crate::network::helpers::network::{
+    InterfaceConnection, MockupInterfaceSetupData, Network, Node, Route,
+    RouteAssertionError, test_routes,
 };
 use core::{str::FromStr, time::Duration};
 use datex_core::{
@@ -15,7 +13,6 @@ use datex_core::{
 use log::info;
 use ntest_timeout::timeout;
 use tokio::task;
-
 
 lazy_static::lazy_static! {
     pub static ref TEST_ENDPOINT_A: Endpoint = Endpoint::from_str("@test-a").unwrap();
@@ -601,42 +598,42 @@ async fn threesome_1() {
 #[timeout(7000)]
 async fn multi_tracing_1() {
     run_async! {
-        let mut network = Network::load("threesome.json");
-        network.start().await;
-        test_routes(
-            &[
-                Route::between("@msun", "@n7oe")
-                    .fork("0")
-                    .hop("@em68")
-                    .hop("@msun")
-                    .hop("@ajil")
-                    .hop("@arh0")
-                    .fork("00")
-                    .hop("@ajil")
-                    .hop("@msun")
-                    .hop("@fyig")
-                    .hop("@n7oe")
-                    .hop("@fyig")
-                    .hop("@msun"),
-                Route::between("@msun", "@arh0")
-                    .fork("0")
-                    .hop("@em68")
-                    .hop("@msun")
-                    .hop("@ajil")
-                    .hop("@arh0")
-                    .hop("@ajil")
-                    .hop("@msun"),
-                Route::between("@msun", "@ajil")
-                    .fork("1")
-                    .hop("@ajil")
-                    .hop("@msun"),
-            ],
-            &network,
-            TraceOptions::default(),
-        )
-        .await
-        .unwrap();
-        }
+    let mut network = Network::load("threesome.json");
+    network.start().await;
+    test_routes(
+        &[
+            Route::between("@msun", "@n7oe")
+                .fork("0")
+                .hop("@em68")
+                .hop("@msun")
+                .hop("@ajil")
+                .hop("@arh0")
+                .fork("00")
+                .hop("@ajil")
+                .hop("@msun")
+                .hop("@fyig")
+                .hop("@n7oe")
+                .hop("@fyig")
+                .hop("@msun"),
+            Route::between("@msun", "@arh0")
+                .fork("0")
+                .hop("@em68")
+                .hop("@msun")
+                .hop("@ajil")
+                .hop("@arh0")
+                .hop("@ajil")
+                .hop("@msun"),
+            Route::between("@msun", "@ajil")
+                .fork("1")
+                .hop("@ajil")
+                .hop("@msun"),
+        ],
+        &network,
+        TraceOptions::default(),
+    )
+    .await
+    .unwrap();
+    }
 }
 
 #[tokio::test]

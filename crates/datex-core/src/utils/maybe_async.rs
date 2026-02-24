@@ -132,7 +132,7 @@ where
 }
 
 pub type SyncOrAsyncResult<SyncOkValue, AsyncOkValue, E, F> =
-SyncOrAsync<Result<SyncOkValue, E>, Result<AsyncOkValue, E>, F>;
+    SyncOrAsync<Result<SyncOkValue, E>, Result<AsyncOkValue, E>, F>;
 
 pub struct ErrOptionFuture<Fut>(Fut);
 
@@ -159,7 +159,7 @@ pub struct OkOptionFuture<SyncOkValue, AsyncOkValue, E, Fut> {
 }
 
 impl<SyncOkValue, AsyncOkValue, E, Fut> Future
-for OkOptionFuture<SyncOkValue, AsyncOkValue, E, Fut>
+    for OkOptionFuture<SyncOkValue, AsyncOkValue, E, Fut>
 where
     Fut: Future<Output = Result<AsyncOkValue, E>>,
 {
@@ -179,7 +179,7 @@ where
 }
 
 impl<SyncOkValue, AsyncOkValue, E, F>
-SyncOrAsyncResult<SyncOkValue, AsyncOkValue, E, F>
+    SyncOrAsyncResult<SyncOkValue, AsyncOkValue, E, F>
 where
     F: Future<Output = Result<AsyncOkValue, E>>,
 {
@@ -301,12 +301,12 @@ pub struct MapAsyncResultToResolved<SyncOkValue, AsyncOkValue, E, Fut> {
 }
 
 impl<SyncOkValue, AsyncOkValue, E, Fut> Future
-for MapAsyncResultToResolved<SyncOkValue, AsyncOkValue, E, Fut>
+    for MapAsyncResultToResolved<SyncOkValue, AsyncOkValue, E, Fut>
 where
     Fut: Future<Output = Result<AsyncOkValue, E>>,
 {
     type Output =
-    SyncOrAsyncResolved<Result<SyncOkValue, E>, Result<AsyncOkValue, E>>;
+        SyncOrAsyncResolved<Result<SyncOkValue, E>, Result<AsyncOkValue, E>>;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         unsafe {
@@ -320,7 +320,7 @@ where
 }
 
 impl<SyncOkValue, AsyncOkValue, E, F>
-SyncOrAsyncResult<SyncOkValue, AsyncOkValue, E, F>
+    SyncOrAsyncResult<SyncOkValue, AsyncOkValue, E, F>
 where
     F: Future<Output = Result<AsyncOkValue, E>>,
 {

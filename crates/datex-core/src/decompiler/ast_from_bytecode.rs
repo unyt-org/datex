@@ -327,9 +327,9 @@ pub fn ast_from_bytecode(
                             }
                             .with_default_span(),
                         )
-                    } else {
-                        None
-                    };
+                } else {
+                    None
+                };
 
                 expr.map(CollectedAstResult::from)
             }

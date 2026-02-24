@@ -8,7 +8,7 @@ pub use async_unsync::{
     unbounded::{
         UnboundedReceiver as _UnboundedReceiver,
         UnboundedSender as _UnboundedSender,
-    }
+    },
 };
 #[cfg(feature = "std")]
 use futures::channel::mpsc::{

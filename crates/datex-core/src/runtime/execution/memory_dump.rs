@@ -2,7 +2,6 @@ use crate::{
     runtime::execution::execution_loop::state::RuntimeExecutionSlots,
     values::value_container::ValueContainer,
 };
-use core::fmt::Display;
 use itertools::Itertools;
 
 use crate::prelude::*;
@@ -11,7 +10,7 @@ pub struct MemoryDump {
 }
 
 #[cfg(feature = "decompiler")]
-impl Display for MemoryDump {
+impl core::fmt::Display for MemoryDump {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         for (address, value) in &self.slots {
             match value {

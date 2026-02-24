@@ -290,9 +290,9 @@ impl Reference {
 #[cfg(test)]
 mod tests {
     use crate::{
+        prelude::*,
         references::reference::{
-            AccessError, IndexOutOfBoundsError, Reference,
-            ReferenceMutability,
+            AccessError, IndexOutOfBoundsError, Reference, ReferenceMutability,
         },
         runtime::memory::Memory,
         values::{
@@ -301,7 +301,6 @@ mod tests {
         },
     };
     use core::{assert_matches, cell::RefCell};
-    use crate::prelude::*;
 
     #[test]
     fn push() {

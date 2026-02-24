@@ -4,9 +4,7 @@ use crate::{
 };
 
 use crate::prelude::*;
-use core::{
-    cell::RefCell, fmt::Display,  result::Result,
-};
+use core::{cell::RefCell, fmt::Display, result::Result};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug)]

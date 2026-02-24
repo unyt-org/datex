@@ -2,11 +2,11 @@ pub mod visitable;
 use crate::{
     ast::expressions::{
         Apply, BinaryOperation, CallableDeclaration, ComparisonOperation,
-        Conditional, CreateRef, DatexExpression, DatexExpressionData, Deref,
-        DerefAssignment, GenericInstantiation, List, Map, PropertyAccess,
-        PropertyAssignment, RemoteExecution, Slot, SlotAssignment, Statements,
-        TypeDeclaration, UnaryOperation, VariableAccess, VariableAssignment,
-        VariableDeclaration, VariantAccess,
+        CompileExpression, Conditional, CreateRef, DatexExpression,
+        DatexExpressionData, Deref, DerefAssignment, GenericInstantiation,
+        List, Map, PropertyAccess, PropertyAssignment, RemoteExecution, Slot,
+        SlotAssignment, Statements, TypeDeclaration, UnaryOperation,
+        VariableAccess, VariableAssignment, VariableDeclaration, VariantAccess,
     },
     prelude::*,
     values::{
@@ -24,7 +24,6 @@ use crate::{
     },
 };
 use core::ops::Range;
-use crate::ast::expressions::CompileExpression;
 
 pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
     /// Handle expression error

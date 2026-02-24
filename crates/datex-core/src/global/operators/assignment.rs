@@ -1,6 +1,6 @@
 use super::super::instruction_codes::InstructionCode;
-use core::{fmt::Display, prelude::rust_2024::*};
 use crate::global::protocol_structures::instructions::RegularInstruction;
+use core::{fmt::Display, prelude::rust_2024::*};
 
 #[derive(Clone, Debug, PartialEq, Copy)]
 pub enum AssignmentOperator {

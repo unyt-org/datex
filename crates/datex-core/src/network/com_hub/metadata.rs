@@ -19,11 +19,13 @@ use crate::{
     values::core_values::endpoint::Endpoint,
 };
 
-use crate::prelude::*;
+use crate::{
+    network::com_hub::managers::com_interface_manager::InterfaceInfo,
+    prelude::*,
+};
 use core::fmt::Display;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
-use crate::network::com_hub::managers::com_interface_manager::InterfaceInfo;
 
 #[derive(Serialize, Deserialize, Debug)]
 #[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
@@ -144,8 +146,10 @@ impl ComHub {
             self.socket_manager.endpoint_sockets.borrow().iter()
         {
             for (socket_uuid, properties) in sockets {
-                let socket =
-                    self.socket_manager.get_socket_by_uuid(socket_uuid).unwrap();
+                let socket = self
+                    .socket_manager
+                    .get_socket_by_uuid(socket_uuid)
+                    .unwrap();
                 let com_interface_uuid = socket.interface_uuid.clone();
                 if !sockets_by_com_interface_uuid
                     .contains_key(&com_interface_uuid)
@@ -189,8 +193,14 @@ impl ComHub {
             }
         }
 
-        for (uuid, InterfaceInfo {properties, is_waiting_for_socket_connections, ..}) in
-            self.interfaces_manager.interfaces.borrow().iter()
+        for (
+            uuid,
+            InterfaceInfo {
+                properties,
+                is_waiting_for_socket_connections,
+                ..
+            },
+        ) in self.interfaces_manager.interfaces.borrow().iter()
         {
             metadata.interfaces.push(ComHubMetadataInterface {
                 uuid: uuid.to_string(),
@@ -198,7 +208,8 @@ impl ComHub {
                 sockets: sockets_by_com_interface_uuid
                     .remove(uuid)
                     .unwrap_or_default(),
-                is_waiting_for_socket_connections: *is_waiting_for_socket_connections,
+                is_waiting_for_socket_connections:
+                    *is_waiting_for_socket_connections,
             });
         }
 

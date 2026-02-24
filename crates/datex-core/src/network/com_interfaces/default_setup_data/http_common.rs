@@ -40,9 +40,8 @@ pub enum TLSMode {
 #[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
 pub struct AcceptAddress {
     address: String,
-    tls_mode: Option<TLSMode>
+    tls_mode: Option<TLSMode>,
 }
-
 
 /// Parses a WebSocket URL and returns a `Url` object.
 /// If no protocol is specified, it defaults to `ws` or `wss` based on the `secure` parameter.
@@ -94,15 +93,17 @@ pub fn get_clients_setup_data<T: Serialize>(
 
 /// Splits an address string into host and port components.
 /// Expects the address to be in the format "host:port".
-pub fn split_address_into_host_and_port(address: &str) -> Result<(String, u16), URLError> {
+pub fn split_address_into_host_and_port(
+    address: &str,
+) -> Result<(String, u16), URLError> {
     // split at ":" to separate host and port
     let parts: Vec<&str> = address.rsplitn(2, ':').collect();
     if parts.len() != 2 {
         return Err(URLError::InvalidURL);
     }
-    
+
     let host = parts[1].to_string();
     let port = parts[0].parse::<u16>().map_err(|_| URLError::InvalidURL)?;
-    
+
     Ok((host, port))
 }

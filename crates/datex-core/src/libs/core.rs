@@ -497,7 +497,6 @@ mod tests {
 
     use super::*;
 
-    
     use itertools::Itertools;
 
     #[test]
