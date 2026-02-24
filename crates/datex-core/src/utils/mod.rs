@@ -3,7 +3,7 @@ pub mod async_iterators;
 pub mod buffers;
 pub mod color;
 pub mod freemap;
+pub mod maybe_action;
 pub mod maybe_async;
 pub mod task_manager;
 pub mod uuid;
-pub mod maybe_action;

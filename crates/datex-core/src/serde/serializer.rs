@@ -604,6 +604,7 @@ mod tests {
     };
 
     use crate::{
+        prelude::*,
         values::{
             core_value::CoreValue, value::Value,
             value_container::ValueContainer,
@@ -611,7 +612,6 @@ mod tests {
     };
     use core::assert_matches;
     use serde::{Deserialize, Serialize};
-    use crate::prelude::*;
 
     #[derive(Serialize)]
     struct TestStruct {

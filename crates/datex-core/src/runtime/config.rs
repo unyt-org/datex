@@ -1,12 +1,15 @@
-use crate::prelude::*;
-use crate::collections::HashMap;
+use crate::{
+    collections::HashMap,
+    network::com_hub::InterfacePriority,
+    prelude::*,
+    serde::{
+        Deserialize, error::SerializationError, serializer::to_value_container,
+    },
+    values::{
+        core_values::endpoint::Endpoint, value_container::ValueContainer,
+    },
+};
 use serde::Serialize;
-use crate::network::com_hub::InterfacePriority;
-use crate::serde::Deserialize;
-use crate::serde::error::SerializationError;
-use crate::serde::serializer::to_value_container;
-use crate::values::core_values::endpoint::Endpoint;
-use crate::values::value_container::ValueContainer;
 
 pub fn is_priority_none(v: &InterfacePriority) -> bool {
     matches!(v, InterfacePriority::None)
@@ -87,19 +90,12 @@ impl RuntimeConfig {
     }
 
     /// Adds a single environment variable to the runtime's custom environment variables.
-    pub fn add_env_var(
-        &mut self,
-        key: String,
-        value: String,
-    ) {
+    pub fn add_env_var(&mut self, key: String, value: String) {
         self.env.get_or_insert_with(HashMap::new).insert(key, value);
     }
 
     /// Adds multiple environment variables to the runtime's custom environment variables.
-    pub fn add_env_vars(
-        &mut self,
-        vars: HashMap<String, String>,
-    ) {
+    pub fn add_env_vars(&mut self, vars: HashMap<String, String>) {
         self.env.get_or_insert_with(HashMap::new).extend(vars);
     }
 
@@ -114,7 +110,10 @@ impl RuntimeConfig {
 
     #[cfg(feature = "target_native")]
     /// Adds all environment variables from a .env file to the runtime's custom environment variables.
-    pub fn add_env_vars_from_file(&mut self, path: &std::path::PathBuf) -> Result<(), dotenvy::Error> {
+    pub fn add_env_vars_from_file(
+        &mut self,
+        path: &std::path::PathBuf,
+    ) -> Result<(), dotenvy::Error> {
         let loader1 = dotenvy::from_path_iter(path)?;
         for item in loader1 {
             let (key, val) = item?;
@@ -126,8 +125,7 @@ impl RuntimeConfig {
 
 #[cfg(test)]
 pub mod tests {
-    use crate::prelude::*;
-    use crate::runtime::RuntimeConfig;
+    use crate::{prelude::*, runtime::RuntimeConfig};
 
     #[test]
     fn test_add_env_var() {

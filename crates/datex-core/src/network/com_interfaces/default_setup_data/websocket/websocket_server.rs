@@ -1,13 +1,20 @@
-use crate::prelude::*;
+use super::websocket_client::WebSocketClientInterfaceSetupData;
+use crate::{
+    network::{
+        com_hub::errors::ComInterfaceCreateError,
+        com_interfaces::{
+            com_interface::properties::ComInterfaceProperties,
+            default_setup_data::http_common::{
+                AcceptAddress, get_clients_setup_data,
+            },
+        },
+    },
+    prelude::*,
+    runtime::RuntimeConfigInterface,
+    serde::Deserialize,
+};
 use core::time::Duration;
 use serde::Serialize;
-use crate::network::com_hub::errors::ComInterfaceCreateError;
-use crate::network::com_interfaces::com_interface::properties::ComInterfaceProperties;
-use crate::network::com_interfaces::default_setup_data::http_common::{get_clients_setup_data, AcceptAddress};
-use super::websocket_client::WebSocketClientInterfaceSetupData;
-use crate::runtime::RuntimeConfigInterface;
-use crate::serde::Deserialize;
-
 
 #[derive(Debug, Serialize, Deserialize)]
 #[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
@@ -33,7 +40,10 @@ impl WebSocketServerInterfaceSetupData {
     }
 
     /// Generates the setup data for WebSocket client interfaces based on the server's accept addresses.
-    pub fn get_clients_setup_data(accept_addresses: Option<Vec<AcceptAddress>>) -> Result<Option<Vec<RuntimeConfigInterface>>, ComInterfaceCreateError> {
+    pub fn get_clients_setup_data(
+        accept_addresses: Option<Vec<AcceptAddress>>,
+    ) -> Result<Option<Vec<RuntimeConfigInterface>>, ComInterfaceCreateError>
+    {
         get_clients_setup_data(
             accept_addresses,
             ("ws".to_string(), "wss".to_string()),

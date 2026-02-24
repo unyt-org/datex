@@ -1,7 +1,5 @@
 use crate::{
-    ast::type_expressions::{
-        TypeExpression, TypeExpressionData,
-    },
+    ast::type_expressions::{TypeExpression, TypeExpressionData},
     compiler::{
         context::CompilationContext, error::CompilerError,
         precompiler::precompiled_ast::AstMetadata, scope::CompilationScope,
@@ -64,12 +62,8 @@ pub fn compile_type_expression(
         }
         TypeExpressionData::Range(range) => {
             ctx.append_type_instruction_code(TypeInstructionCode::TYPE_RANGE);
-            scope = compile_type_expression(
-                ctx,
-                &range.end,
-                _ast_metadata,
-                scope,
-            )?;
+            scope =
+                compile_type_expression(ctx, &range.end, _ast_metadata, scope)?;
             scope = compile_type_expression(
                 ctx,
                 &range.start,

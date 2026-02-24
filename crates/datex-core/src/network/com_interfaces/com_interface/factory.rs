@@ -1,9 +1,6 @@
-use crate::std_sync::Mutex;
-use core::{async_iter::AsyncIterator, fmt::Debug, pin::Pin};
-use futures::channel::oneshot::Sender;
-use futures_core::future::LocalBoxFuture;
 pub use crate::network::com_hub::managers::com_interface_manager::ComInterfaceAsyncFactoryResult;
 use crate::{
+    channel::mpsc::{UnboundedReceiver, create_unbounded_channel},
     global::dxb_block::DXBBlock,
     network::{
         com_hub::errors::ComInterfaceCreateError,
@@ -15,19 +12,20 @@ use crate::{
     },
     prelude::*,
     serde::deserializer::from_value_container,
+    std_sync::Mutex,
     utils::async_callback::AsyncCallback,
     values::{
         core_values::endpoint::Endpoint, value_container::ValueContainer,
     },
 };
-use serde::de::DeserializeOwned;
-use crate::channel::mpsc::{create_unbounded_channel, UnboundedReceiver};
-use serde::{Deserialize, Serialize};
+use core::{async_iter::AsyncIterator, fmt::Debug, pin::Pin};
+use futures::channel::oneshot::Sender;
+use futures_core::future::LocalBoxFuture;
+use serde::{Deserialize, Serialize, de::DeserializeOwned};
 
 pub type NewSocketsIterator = Pin<
     Box<dyn AsyncIterator<Item = Result<SocketConfiguration, ()>> + 'static>,
 >;
-
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
@@ -90,11 +88,17 @@ pub type SocketDataIterator =
 #[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
 pub struct SocketConfiguration {
     pub properties: SocketProperties,
-    #[cfg_attr(feature = "wasm_runtime", tsify(type = "ReadableStream<ArrayBuffer>"))]
+    #[cfg_attr(
+        feature = "wasm_runtime",
+        tsify(type = "ReadableStream<ArrayBuffer>")
+    )]
     /// An asynchronous iterator that yields incoming data from the socket as Vec<u8>
     /// It is driven by the com hub to receive data from the socket
     pub iterator: Option<SocketDataIterator>,
-    #[cfg_attr(feature = "wasm_runtime", tsify(type = "(data: ArrayBuffer) => void"))]
+    #[cfg_attr(
+        feature = "wasm_runtime",
+        tsify(type = "(data: ArrayBuffer) => void")
+    )]
     /// A callback that is called by the com hub to send data through the socket
     /// This can be either a synchronous or asynchronous callback depending on the interface implementation
     pub send_callback: Option<SendCallback>,
@@ -112,7 +116,6 @@ impl Debug for SocketConfiguration {
 }
 
 impl SocketConfiguration {
-    
     /// Creates a SocketDataIterator for a given socket with the provided parameters.
     /// This is the most general constructor for SocketConfiguration, allowing for optional incoming data iterator, send callback, and close callback.
     pub fn new<I, F, Fut>(
@@ -128,7 +131,8 @@ impl SocketConfiguration {
     {
         SocketConfiguration {
             properties: socket_configuration,
-            iterator: maybe_iter.map(|iter| Box::pin(iter) as SocketDataIterator),
+            iterator: maybe_iter
+                .map(|iter| Box::pin(iter) as SocketDataIterator),
             send_callback,
             close_async_callback: close_async_callback.map(|cb| {
                 Box::new(move || {
@@ -137,7 +141,7 @@ impl SocketConfiguration {
             }),
         }
     }
-    
+
     /// Creates a SocketDataIterator for a given socket with the provided parameters.
     /// Expects both an iterator for incoming data and a send callback for outgoing data.
     pub fn new_in_out<I>(
@@ -190,12 +194,17 @@ impl SocketConfiguration {
     /// Creates a SocketDataIterator with a combined approach for handling both incoming and outgoing data in the same async generator
     pub fn new_combined<I>(
         socket_configuration: SocketProperties,
-        generator_initializer: impl FnOnce(UnboundedReceiver<(DXBBlock, Sender<Result<(), SendFailure>>)>) -> I,
+        generator_initializer: impl FnOnce(
+            UnboundedReceiver<(DXBBlock, Sender<Result<(), SendFailure>>)>,
+        ) -> I,
     ) -> Self
     where
         I: AsyncIterator<Item = Result<Vec<u8>, ()>> + 'static,
     {
-        let (out_sender, out_receiver) = create_unbounded_channel::<(DXBBlock, Sender<Result<(), SendFailure>>)>();
+        let (out_sender, out_receiver) = create_unbounded_channel::<(
+            DXBBlock,
+            Sender<Result<(), SendFailure>>,
+        )>();
         let out_sender = Rc::new(Mutex::new(out_sender));
 
         SocketConfiguration::new_in_out(
@@ -204,14 +213,20 @@ impl SocketConfiguration {
             SendCallback::new_async(move |block: DXBBlock| {
                 let out_sender = out_sender.clone();
                 async move {
-                    let (sender, receiver) = futures::channel::oneshot::channel::<Result<(), SendFailure>>();
-                    out_sender.try_lock().unwrap().send((block, sender)).await.unwrap();
+                    let (sender, receiver) = futures::channel::oneshot::channel::<
+                        Result<(), SendFailure>,
+                    >();
+                    out_sender
+                        .try_lock()
+                        .unwrap()
+                        .send((block, sender))
+                        .await
+                        .unwrap();
                     receiver.await.unwrap()
                 }
-            })
+            }),
         )
     }
-
 }
 
 /// A callback that is called by the com hub to send data through the interface.
@@ -304,7 +319,10 @@ pub struct ComInterfaceConfiguration {
     /// When set to true, the first socket connection is awaited on interface creation.
     pub has_single_socket: bool,
     // TODO: docs
-    #[cfg_attr(feature = "wasm_runtime", tsify(type = "ReadableStream<SocketConfiguration>"))]
+    #[cfg_attr(
+        feature = "wasm_runtime",
+        tsify(type = "ReadableStream<SocketConfiguration>")
+    )]
     pub new_sockets_iterator: NewSocketsIterator,
     /// An optional asynchronous callback that is called by the com hub when the interface is closed
     #[cfg_attr(feature = "wasm_runtime", tsify(optional, type = "never"))]
@@ -359,7 +377,7 @@ impl ComInterfaceConfiguration {
         properties: ComInterfaceProperties,
         has_single_socket: bool,
         new_sockets_iterator: I,
-        close_async_callback: Option<F>
+        close_async_callback: Option<F>,
     ) -> Self
     where
         I: AsyncIterator<Item = Result<SocketConfiguration, ()>> + 'static,

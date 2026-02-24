@@ -24,8 +24,8 @@ use crate::{
         },
         type_expressions::{
             CallableTypeExpression, FixedSizeList, GenericAccess, Intersection,
-            RangeTypeExpr, SliceList, StructuralList, StructuralMap,
-            TypeExpression, TypeVariantAccess, Union,
+            SliceList, StructuralList, StructuralMap, TypeExpression,
+            TypeVariantAccess, Union,
         },
     },
     compiler::precompiler::precompiled_ast::{AstMetadata, RichAst},

@@ -176,7 +176,6 @@ impl Index<usize> for List {
         &self.0[index]
     }
 }
-use crate::prelude::*;
 
 impl IntoIterator for List {
     type Item = ValueContainer;

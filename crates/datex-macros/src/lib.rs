@@ -1,6 +1,8 @@
+use datex_core::macro_utils::entrypoint::{
+    DatexMainInput, ParsedAttributes, datex_main_impl,
+};
 use proc_macro::TokenStream;
-use syn::{parse_macro_input, parse_quote, Attribute, ItemFn};
-use datex_core::macro_utils::entrypoint::{datex_main_impl, DatexMainInput, ParsedAttributes};
+use syn::{ItemFn, parse_macro_input, parse_quote};
 
 extern crate alloc;
 
@@ -56,5 +58,6 @@ pub fn datex_main(attr: TokenStream, item: TokenStream) -> TokenStream {
         additional_attributes: vec![parse_quote! {#[tokio::main]}],
         custom_main_inputs: vec![],
         enforce_main_name: false,
-    }).into()
+    })
+    .into()
 }

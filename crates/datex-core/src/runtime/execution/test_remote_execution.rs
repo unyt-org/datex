@@ -1,12 +1,13 @@
 use crate::{
-    runtime::execution::context::{ExecutionContext},
+    runtime::{
+        execution::context::{ExecutionContext, ExecutionMode},
+        test_utils::use_mock_setup_with_two_connected_runtimes,
+    },
     values::{
         core_values::{endpoint::Endpoint, integer::Integer},
         value_container::ValueContainer,
     },
 };
-use crate::runtime::execution::context::ExecutionMode;
-use crate::runtime::test_utils::use_mock_setup_with_two_connected_runtimes;
 
 #[tokio::test]
 #[cfg(feature = "compiler")]
@@ -42,7 +43,8 @@ pub async fn test_basic_remote_execution() {
                 ValueContainer::from(Integer::from(5i8))
             );
         },
-    ).await;
+    )
+    .await;
 }
 
 #[tokio::test]
@@ -61,7 +63,11 @@ pub async fn test_remote_execution_persistent_context() {
 
             // execute script remotely on @test_b
             let result = runtime_a
-                .execute("const x = 10; x", &[], Some(&mut remote_execution_context))
+                .execute(
+                    "const x = 10; x",
+                    &[],
+                    Some(&mut remote_execution_context),
+                )
                 .await;
             assert_eq!(
                 result.unwrap().unwrap(),
@@ -77,7 +83,8 @@ pub async fn test_remote_execution_persistent_context() {
                 ValueContainer::from(Integer::from(15i8))
             );
         },
-    ).await;
+    )
+    .await;
 }
 
 #[tokio::test]
@@ -91,10 +98,11 @@ pub async fn test_remote_inline() {
         endpoint_b.clone(),
         async |runtime_a, _runtime_b| {
             // create an execution context for @test_b
-            let mut execution_context = ExecutionContext::local_with_runtime_internal(
-                runtime_a.internal.clone(),
-                ExecutionMode::unbounded(),
-            );
+            let mut execution_context =
+                ExecutionContext::local_with_runtime_internal(
+                    runtime_a.internal.clone(),
+                    ExecutionMode::unbounded(),
+                );
 
             // execute script remotely on @test_b
             let result = runtime_a
@@ -105,7 +113,8 @@ pub async fn test_remote_inline() {
                 ValueContainer::from(Integer::from(3i8))
             );
         },
-    ).await;
+    )
+    .await;
 }
 
 #[tokio::test]
@@ -125,5 +134,6 @@ pub async fn test_remote_inline_implicit_context() {
                 ValueContainer::from(Integer::from(3i8))
             );
         },
-    ).await;
+    )
+    .await;
 }

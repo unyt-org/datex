@@ -23,9 +23,7 @@ mod hal {
     static INIT: Once<&'static Mutex<Rng>> = Once::new();
 
     pub fn rng() -> MutexGuard<'static, Rng> {
-        let m = INIT.call_once(|| {
-            RNG.init(Mutex::new(Rng::new()))
-        });
+        let m = INIT.call_once(|| RNG.init(Mutex::new(Rng::new())));
 
         m.lock()
     }
@@ -78,64 +76,64 @@ impl Crypto for CryptoEsp32 {
         bytes
     }
 
-    fn hash_sha256<'a>(to_digest: &'a [u8]) -> CryptoResult<'a, [u8; 32]> {
+    fn hash_sha256<'a>(_to_digest: &'a [u8]) -> CryptoResult<'a, [u8; 32]> {
         todo!()
     }
 
     fn hkdf_sha256<'a>(
-        ikm: &'a [u8],
-        salt: &'a [u8],
+        _ikm: &'a [u8],
+        _salt: &'a [u8],
     ) -> CryptoResult<'a, [u8; 32]> {
         todo!()
     }
     fn sig_ed25519<'a>(
-        pri_key: &'a [u8],
-        data: &'a [u8],
+        _pri_key: &'a [u8],
+        _data: &'a [u8],
     ) -> Pin<Box<dyn Future<Output = Result<[u8; 64], CryptoError>> + 'a>> {
         todo!()
     }
 
     fn ver_ed25519<'a>(
-        pub_key: &'a [u8],
-        sig: &'a [u8],
-        data: &'a [u8],
+        _pub_key: &'a [u8],
+        _sig: &'a [u8],
+        _data: &'a [u8],
     ) -> Pin<Box<dyn Future<Output = Result<bool, CryptoError>> + 'a>> {
         todo!()
     }
 
     fn aes_ctr_encrypt<'a>(
-        key: &'a [u8; 32],
-        iv: &'a [u8; 16],
-        plaintext: &'a [u8],
+        _key: &'a [u8; 32],
+        _iv: &'a [u8; 16],
+        _plaintext: &'a [u8],
     ) -> Pin<Box<dyn Future<Output = Result<Vec<u8>, CryptoError>> + 'a>> {
         todo!()
     }
 
     fn aes_ctr_decrypt<'a>(
-        key: &'a [u8; 32],
-        iv: &'a [u8; 16],
-        cipher: &'a [u8],
+        _key: &'a [u8; 32],
+        _iv: &'a [u8; 16],
+        _cipher: &'a [u8],
     ) -> Pin<Box<dyn Future<Output = Result<Vec<u8>, CryptoError>> + 'a>> {
         todo!()
     }
 
     fn key_upwrap<'a>(
-        kek_bytes: &'a [u8; 32],
-        rb: &'a [u8; 32],
+        _kek_bytes: &'a [u8; 32],
+        _rb: &'a [u8; 32],
     ) -> Pin<Box<dyn Future<Output = Result<[u8; 40], CryptoError>> + 'a>> {
         todo!()
     }
 
     fn key_unwrap<'a>(
-        kek_bytes: &'a [u8; 32],
-        cipher: &'a [u8; 40],
+        _kek_bytes: &'a [u8; 32],
+        _cipher: &'a [u8; 40],
     ) -> Pin<Box<dyn Future<Output = Result<[u8; 32], CryptoError>> + 'a>> {
         todo!()
     }
 
     fn derive_x25519<'a>(
-        pri_key: &'a [u8; 48],
-        peer_pub: &'a [u8; 44],
+        _pri_key: &'a [u8; 48],
+        _peer_pub: &'a [u8; 44],
     ) -> Pin<Box<dyn Future<Output = Result<Vec<u8>, CryptoError>> + 'a>> {
         todo!()
     }

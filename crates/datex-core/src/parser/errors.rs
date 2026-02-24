@@ -7,9 +7,8 @@ use crate::{
     },
 };
 
-use crate::prelude::*;
+use crate::{prelude::*, utils::maybe_action::ErrorCollector};
 use core::ops::Range;
-use crate::utils::maybe_action::ErrorCollector;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ParserError {

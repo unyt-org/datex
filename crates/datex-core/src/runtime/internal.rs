@@ -1,26 +1,43 @@
-use crate::prelude::*;
+use crate::{
+    channel::mpsc::UnboundedReceiver,
+    collections::HashMap,
+    global::{
+        dxb_block::{
+            DXBBlock, IncomingEndpointContextSectionId, IncomingSection,
+            OutgoingContextId,
+        },
+        protocol_structures::{
+            block_header::BlockHeader, encrypted_header::EncryptedHeader,
+            routing_header::RoutingHeader,
+        },
+    },
+    network::{
+        com_hub::{
+            ComHub, InterfacePriority, network_response::ResponseOptions,
+        },
+        com_interfaces::local_loopback_interface::LocalLoopbackInterfaceSetupData,
+    },
+    prelude::*,
+    runtime::{
+        RuntimeConfig, RuntimeConfigInterface,
+        execution::{
+            ExecutionError,
+            context::{
+                ExecutionContext, ExecutionMode, RemoteExecutionContext,
+                ScriptExecutionError,
+            },
+        },
+        memory::Memory,
+    },
+    time::Instant,
+    utils::task_manager::TaskManager,
+    values::{
+        core_values::endpoint::Endpoint, value_container::ValueContainer,
+    },
+};
 use alloc::rc::Rc;
-use core::pin::Pin;
-use core::slice;
-use core::cell::RefCell;
-use crate::collections::HashMap;
-use crate::time::Instant;
+use core::{cell::RefCell, pin::Pin, slice};
 use log::{debug, error, info};
-use crate::channel::mpsc::UnboundedReceiver;
-use crate::global::dxb_block::{DXBBlock, IncomingEndpointContextSectionId, IncomingSection, OutgoingContextId};
-use crate::global::protocol_structures::block_header::BlockHeader;
-use crate::global::protocol_structures::encrypted_header::EncryptedHeader;
-use crate::global::protocol_structures::routing_header::RoutingHeader;
-use crate::network::com_hub::{ComHub, InterfacePriority};
-use crate::network::com_hub::network_response::ResponseOptions;
-use crate::network::com_interfaces::local_loopback_interface::LocalLoopbackInterfaceSetupData;
-use crate::runtime::{RuntimeConfig, RuntimeConfigInterface};
-use crate::runtime::execution::context::{ExecutionContext, ExecutionMode, RemoteExecutionContext, ScriptExecutionError};
-use crate::runtime::execution::ExecutionError;
-use crate::runtime::memory::Memory;
-use crate::utils::task_manager::TaskManager;
-use crate::values::core_values::endpoint::Endpoint;
-use crate::values::value_container::ValueContainer;
 
 #[derive(Debug)]
 pub struct RuntimeInternal {
@@ -28,7 +45,7 @@ pub struct RuntimeInternal {
     pub com_hub: Rc<ComHub>,
     pub endpoint: Endpoint,
     pub config: RuntimeConfig,
-    
+
     pub task_manager: TaskManager,
 
     // receiver for incoming sections from com hub
@@ -66,7 +83,8 @@ impl RuntimeInternal {
                 interface_type,
                 setup_data: config,
                 priority,
-            } in interfaces.iter() {
+            } in interfaces.iter()
+            {
                 let create_future = self
                     .com_hub
                     .clone()
@@ -77,7 +95,7 @@ impl RuntimeInternal {
                         error!(
                             "Failed to create interface {interface_type}: {err:?}"
                         )
-                    },
+                    }
                     Ok((_, ready_receiver)) => {
                         if let Some(ready_receiver) = ready_receiver {
                             let _ = ready_receiver.await;
@@ -93,12 +111,14 @@ impl RuntimeInternal {
         let local_interface_setup_data =
             LocalLoopbackInterfaceSetupData.create_interface().unwrap();
 
-        let ready_signal = self.com_hub
+        let ready_signal = self
+            .com_hub
             .clone()
             .add_interface_from_configuration(
                 local_interface_setup_data,
                 InterfacePriority::None,
-            ).expect("Failed to add local loopback interface");
+            )
+            .expect("Failed to add local loopback interface");
         // local loopback interface is single socket interface and should always return a ready signal
         // which should always resolve to Ok
         ready_signal.unwrap().await.unwrap()
@@ -133,8 +153,8 @@ impl RuntimeInternal {
             Some(execution_context),
             true,
         )
-            .await
-            .map_err(ScriptExecutionError::from);
+        .await
+        .map_err(ScriptExecutionError::from);
         debug!(
             "[Execution took {} ms]",
             execute_start.elapsed().as_millis()
@@ -164,7 +184,7 @@ impl RuntimeInternal {
             Some(execution_context),
             true,
         )
-            .map_err(ScriptExecutionError::from);
+        .map_err(ScriptExecutionError::from);
         debug!(
             "[Execution took {} ms]",
             execute_start.elapsed().as_millis()
@@ -180,7 +200,7 @@ impl RuntimeInternal {
     ) -> Pin<
         Box<
             dyn Future<Output = Result<Option<ValueContainer>, ExecutionError>>
-            + 'a,
+                + 'a,
         >,
     > {
         Box::pin(async move {
@@ -305,7 +325,7 @@ impl RuntimeInternal {
                     block.clone(),
                     Some(&mut context),
                 )
-                    .await;
+                .await;
                 if let Err(err) = res {
                     return (
                         Err(err),
@@ -359,9 +379,9 @@ impl RuntimeInternal {
             Some(execution_context),
             end_execution,
         )
-            .await
+        .await
     }
-    
+
     pub fn get_env(&self) -> HashMap<String, String> {
         self.config.env.clone().unwrap_or_default()
     }

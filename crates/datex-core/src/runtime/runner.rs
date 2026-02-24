@@ -1,21 +1,24 @@
-use crate::prelude::*;
-use futures_util::FutureExt;
-use alloc::rc::Rc;
-use core::cell::RefCell;
-use crate::collections::HashMap;
-use core::pin::Pin;
+use crate::{
+    channel::mpsc::create_unbounded_channel,
+    collections::HashMap,
+    global::dxb_block::IncomingSection,
+    network::com_hub::ComHub,
+    prelude::*,
+    runtime::{
+        Runtime, RuntimeConfig, RuntimeInternal, VERSION, memory::Memory,
+    },
+    utils::task_manager::TaskManager,
+    values::core_values::endpoint::Endpoint,
+};
 use async_select::select;
+use core::{cell::RefCell, pin::Pin};
 use futures::channel::oneshot;
-use futures_util::{future, join};
-use futures_util::future::{join, Join};
+use futures_util::{
+    future,
+    future::{Join, join},
+    join,
+};
 use log::info;
-use crate::channel::mpsc::create_unbounded_channel;
-use crate::global::dxb_block::IncomingSection;
-use crate::network::com_hub::ComHub;
-use crate::runtime::{Runtime, RuntimeConfig, RuntimeInternal, VERSION};
-use crate::runtime::memory::Memory;
-use crate::utils::task_manager::TaskManager;
-use crate::values::core_values::endpoint::Endpoint;
 
 pub struct RuntimeRunner {
     pub runtime: Runtime,
@@ -86,7 +89,8 @@ impl RuntimeRunner {
     where
         AppFuture: Future<Output = AppReturn>,
     {
-        let (runtime_future, app_future) = self.create_runtime_and_app_future(app_logic);
+        let (runtime_future, app_future) =
+            self.create_runtime_and_app_future(app_logic);
 
         // run until the app logic completes
         select! {
@@ -107,7 +111,8 @@ impl RuntimeRunner {
     where
         AppFuture: Future<Output = AppReturn>,
     {
-        let (runtime_future, app_future) = self.create_runtime_and_app_future(app_logic);
+        let (runtime_future, app_future) =
+            self.create_runtime_and_app_future(app_logic);
 
         // run indefinitely (runtime future should never exit)
         future::join(runtime_future, app_future).await;
@@ -118,9 +123,12 @@ impl RuntimeRunner {
     fn create_runtime_and_app_future<AppReturn, AppFuture>(
         self,
         app_logic: impl FnOnce(Runtime) -> AppFuture,
-    ) -> (Join<impl Future<Output = ()>, impl Future<Output = ()>>, impl Future<Output = AppReturn>)
+    ) -> (
+        Join<impl Future<Output = ()>, impl Future<Output = ()>>,
+        impl Future<Output = AppReturn>,
+    )
     where
-        AppFuture: Future<Output = AppReturn>
+        AppFuture: Future<Output = AppReturn>,
     {
         let (init_ready_sender, init_ready_receiver) = oneshot::channel();
         let runtime = self.runtime.clone();
@@ -131,7 +139,7 @@ impl RuntimeRunner {
                 init_ready_sender.send(()).unwrap();
             },
             // run tasks
-            self.task_future
+            self.task_future,
         );
 
         // start the app logic
@@ -145,7 +153,6 @@ impl RuntimeRunner {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -154,24 +161,31 @@ mod tests {
     async fn test_runtime_runner() {
         let runner = RuntimeRunner::new(RuntimeConfig::default());
         let mut runtime = None;
-        runner.run(async |runtime_inner| {
-            runtime = Some(runtime_inner);
-        }).await;
+        runner
+            .run(async |runtime_inner| {
+                runtime = Some(runtime_inner);
+            })
+            .await;
 
         assert!(runtime.is_some());
 
         // check if local loopback interface was fully initialized and is present in the com hub
         let com_hub = runtime.unwrap().com_hub();
         let interface_map = com_hub.interfaces_manager().interfaces.borrow();
-        let local_loopback_interface = interface_map.iter().find(|(uuid, interface)| {
-            interface.properties.interface_type == "local"
-        });
-        let (local_loopback_interface_uuid, _) = local_loopback_interface.expect("Local loopback interface not found in com hub");
+        let local_loopback_interface =
+            interface_map.iter().find(|(uuid, interface)| {
+                interface.properties.interface_type == "local"
+            });
+        let (local_loopback_interface_uuid, _) = local_loopback_interface
+            .expect("Local loopback interface not found in com hub");
 
         // check if socket for the local loopback interface is present in the com hub
         let socket_map = com_hub.socket_manager().sockets.borrow();
-        let local_loopback_socket = socket_map.values().find(|socket| {
-            &socket.interface_uuid == local_loopback_interface_uuid
-        }).expect("Local loopback socket not found in com hub");
+        let local_loopback_socket = socket_map
+            .values()
+            .find(|socket| {
+                &socket.interface_uuid == local_loopback_interface_uuid
+            })
+            .expect("Local loopback socket not found in com hub");
     }
 }

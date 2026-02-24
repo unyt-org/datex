@@ -31,6 +31,7 @@ use crate::{
     libs::core::CoreLibPointerId,
     references::type_reference::{NominalTypeDeclaration, TypeReference},
     types::definition::TypeDefinition,
+    utils::maybe_action::{ErrorCollector, MaybeAction, collect_or_pass_error},
     values::core_values::r#type::Type,
     visitor::{
         VisitAction,
@@ -44,7 +45,6 @@ use options::PrecompilerOptions;
 use precompiled_ast::{AstMetadata, RichAst, VariableShape};
 use scope::NewScopeType;
 use scope_stack::PrecompilerScopeStack;
-use crate::utils::maybe_action::{collect_or_pass_error, ErrorCollector, MaybeAction};
 
 pub struct Precompiler<'a> {
     ast_metadata: Rc<RefCell<AstMetadata>>,

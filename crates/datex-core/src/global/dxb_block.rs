@@ -445,7 +445,7 @@ impl DXBBlock {
                     cfg_if::cfg_if! {
                         // if unsigned blocks are allowed, return true
                         if #[cfg(feature = "allow_unsigned_blocks")] {
-                            info!("Signature validation is disabled, allowing block without signature validation");
+                            log::info!("Signature validation is disabled, allowing block without signature validation");
                             true
                         }
                         // otherwise, only allow unsigned Trace and TraceBack blocks,

@@ -1,10 +1,15 @@
+use datex_crypto_facade::{
+    crypto::{Crypto, CryptoResult},
+    error::CryptoError,
+};
 use wasm_bindgen::{JsCast, JsValue};
 use wasm_bindgen_futures::JsFuture;
-use web_sys::{AesCtrParams, CryptoKey, CryptoKeyPair, js_sys::{Array, ArrayBuffer, Object, Reflect, Uint8Array}, js_sys};
-use datex_crypto_facade::crypto::{Crypto, CryptoResult};
-use datex_crypto_facade::error::CryptoError;
+use web_sys::{
+    AesCtrParams, CryptoKey, CryptoKeyPair, js_sys,
+    js_sys::{Array, ArrayBuffer, Object, Reflect, Uint8Array},
+};
 mod utils;
-use utils::{js_array, js_object, TryAsByteSlice, AsByteSlice};
+use utils::{AsByteSlice, TryAsByteSlice, js_array, js_object};
 
 mod sealed {
     use super::*;
@@ -117,8 +122,8 @@ impl Crypto for CryptoWeb {
                     )
                     .map_err(|_| CryptoError::KeyImport)?,
             )
-                .await
-                .map_err(|_| CryptoError::KeyImport)?;
+            .await
+            .map_err(|_| CryptoError::KeyImport)?;
 
             let okm = Uint8Array::new(&bits).to_vec().try_into().unwrap();
             Ok(okm)
@@ -147,8 +152,8 @@ impl Crypto for CryptoWeb {
                     )
                     .map_err(|_| CryptoError::KeyImport)?,
             )
-                .await
-                .map_err(|_| CryptoError::KeyImport)?;
+            .await
+            .map_err(|_| CryptoError::KeyImport)?;
             let base_key: CryptoKey =
                 key_js.dyn_into().map_err(|_| CryptoError::KeyImport)?;
 
@@ -164,7 +169,7 @@ impl Crypto for CryptoWeb {
                 &"info".into(),
                 &Uint8Array::from(info.as_slice()),
             )
-                .map_err(|_| CryptoError::KeyImport)?;
+            .map_err(|_| CryptoError::KeyImport)?;
 
             let bit_len: u32 = 32_u32 * 8;
             let bits = JsFuture::from(
@@ -172,8 +177,8 @@ impl Crypto for CryptoWeb {
                     .derive_bits_with_object(&params, &base_key, bit_len)
                     .map_err(|_| CryptoError::KeyGeneration)?,
             )
-                .await
-                .map_err(|_| CryptoError::KeyGeneration)?;
+            .await
+            .map_err(|_| CryptoError::KeyGeneration)?;
 
             let okm: [u8; 32] =
                 Uint8Array::new(&bits).to_vec().try_into().unwrap();
@@ -194,8 +199,8 @@ impl Crypto for CryptoWeb {
                 true,
                 &["sign", "verify"],
             )
-                .await
-                .map_err(|_| CryptoError::KeyGeneration)?;
+            .await
+            .map_err(|_| CryptoError::KeyGeneration)?;
 
             let pub_key =
                 Self::export_crypto_key(&key_pair.get_public_key(), "spki")
@@ -219,7 +224,7 @@ impl Crypto for CryptoWeb {
                 &js_object(vec![("name", JsValue::from_str("Ed25519"))]),
                 &["sign"],
             )
-                .await?;
+            .await?;
 
             let sig_prom = Self::crypto_subtle()
                 .sign_with_object_and_u8_array(
@@ -256,7 +261,7 @@ impl Crypto for CryptoWeb {
                 &js_object(vec![("name", JsValue::from_str("Ed25519"))]),
                 &["verify"],
             )
-                .await?;
+            .await?;
 
             let verified_promise = Self::crypto_subtle()
                 .verify_with_object_and_u8_array_and_u8_array(
@@ -304,8 +309,8 @@ impl Crypto for CryptoWeb {
                     )
                     .map_err(|_| CryptoError::KeyImport)?,
             )
-                .await
-                .map_err(|_| CryptoError::KeyImport)?;
+            .await
+            .map_err(|_| CryptoError::KeyImport)?;
             let base_key: CryptoKey =
                 key_js.dyn_into().map_err(|_| CryptoError::KeyImport)?;
 
@@ -326,8 +331,8 @@ impl Crypto for CryptoWeb {
                     )
                     .map_err(|_| CryptoError::Encryption)?,
             )
-                .await
-                .map_err(|_| CryptoError::Encryption)?;
+            .await
+            .map_err(|_| CryptoError::Encryption)?;
 
             let ct_buf: ArrayBuffer =
                 ct.dyn_into().map_err(|_| CryptoError::Encryption)?;
@@ -363,8 +368,8 @@ impl Crypto for CryptoWeb {
                     )
                     .map_err(|_| CryptoError::KeyImport)?,
             )
-                .await
-                .map_err(|_| CryptoError::KeyImport)?;
+            .await
+            .map_err(|_| CryptoError::KeyImport)?;
             let base_key: CryptoKey =
                 key_js.dyn_into().map_err(|_| CryptoError::KeyImport)?;
 
@@ -385,8 +390,8 @@ impl Crypto for CryptoWeb {
                     )
                     .map_err(|_| CryptoError::Decryption)?,
             )
-                .await
-                .map_err(|_| CryptoError::Decryption)?;
+            .await
+            .map_err(|_| CryptoError::Decryption)?;
 
             let pt_buf: ArrayBuffer =
                 pt.dyn_into().map_err(|_| CryptoError::Decryption)?;
@@ -423,10 +428,10 @@ impl Crypto for CryptoWeb {
             let kek: CryptoKey = JsFuture::from(
                 kek_promise.map_err(|_| CryptoError::KeyImport)?,
             )
-                .await
-                .map_err(|_| CryptoError::KeyImport)?
-                .dyn_into()
-                .map_err(|_| CryptoError::KeyImport)?;
+            .await
+            .map_err(|_| CryptoError::KeyImport)?
+            .dyn_into()
+            .map_err(|_| CryptoError::KeyImport)?;
 
             // Import the key to be wrapped (AES-CTR key)
             let key_algorithm =
@@ -446,10 +451,10 @@ impl Crypto for CryptoWeb {
             let key_to_wrap: CryptoKey = JsFuture::from(
                 key_promise.map_err(|_| CryptoError::KeyImport)?,
             )
-                .await
-                .map_err(|_| CryptoError::KeyImport)?
-                .dyn_into()
-                .map_err(|_| CryptoError::KeyImport)?;
+            .await
+            .map_err(|_| CryptoError::KeyImport)?
+            .dyn_into()
+            .map_err(|_| CryptoError::KeyImport)?;
 
             // Wrap the key
             let wrap_promise = subtle.wrap_key_with_str(
@@ -462,8 +467,8 @@ impl Crypto for CryptoWeb {
             let wrapped_buffer = JsFuture::from(
                 wrap_promise.map_err(|_| CryptoError::KeyImport)?,
             )
-                .await
-                .map_err(|_| CryptoError::KeyImport)?;
+            .await
+            .map_err(|_| CryptoError::KeyImport)?;
 
             let uint8_array = Uint8Array::new(&wrapped_buffer);
             let mut result: [u8; 40] = vec![0u8; uint8_array.length() as usize]
@@ -500,10 +505,10 @@ impl Crypto for CryptoWeb {
             let kek: CryptoKey = JsFuture::from(
                 kek_promise.map_err(|_| CryptoError::KeyImport)?,
             )
-                .await
-                .map_err(|_| CryptoError::KeyImport)?
-                .dyn_into()
-                .map_err(|_| CryptoError::KeyImport)?;
+            .await
+            .map_err(|_| CryptoError::KeyImport)?
+            .dyn_into()
+            .map_err(|_| CryptoError::KeyImport)?;
 
             // Unwrap the key
             let unwrapped_algorithm =
@@ -529,10 +534,10 @@ impl Crypto for CryptoWeb {
             let unwrapped_key: CryptoKey = JsFuture::from(
                 unwrap_promise.map_err(|_| CryptoError::KeyExport)?,
             )
-                .await
-                .map_err(|_| CryptoError::KeyExport)?
-                .dyn_into()
-                .map_err(|_| CryptoError::KeyExport)?;
+            .await
+            .map_err(|_| CryptoError::KeyExport)?
+            .dyn_into()
+            .map_err(|_| CryptoError::KeyExport)?;
 
             // Export the unwrapped key as raw bytes
             let export_promise = subtle
@@ -564,8 +569,8 @@ impl Crypto for CryptoWeb {
                 true,
                 &["deriveKey", "deriveBits"],
             )
-                .await
-                .map_err(|_| CryptoError::KeyGeneration)?;
+            .await
+            .map_err(|_| CryptoError::KeyGeneration)?;
 
             let pub_key: [u8; 44] =
                 Self::export_crypto_key(&key_pair.get_public_key(), "spki")

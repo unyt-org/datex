@@ -15,7 +15,7 @@ use crate::{
     runtime::execution::ExecutionError,
     values::pointer::PointerAddress,
 };
-use core::{fmt::Display,  result::Result};
+use core::{fmt::Display, result::Result};
 
 use crate::prelude::*;
 #[derive(Debug)]

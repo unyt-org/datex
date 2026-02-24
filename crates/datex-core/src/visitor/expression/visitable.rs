@@ -3,8 +3,8 @@ use crate::{
         Apply, BinaryOperation, CallableDeclaration, ComparisonOperation,
         Conditional, CreateRef, DatexExpression, DatexExpressionData, Deref,
         DerefAssignment, GenericInstantiation, List, Map, PropertyAccess,
-        PropertyAssignment, RemoteExecution, SlotAssignment, Statements,
-        TypeDeclaration, UnaryOperation, VariableAssignment,
+        PropertyAssignment, RangeDeclaration, RemoteExecution, SlotAssignment,
+        Statements, TypeDeclaration, UnaryOperation, VariableAssignment,
         VariableDeclaration,
     },
     visitor::{
@@ -12,7 +12,6 @@ use crate::{
         type_expression::visitable::VisitableTypeExpression,
     },
 };
-use crate::ast::expressions::RangeDeclaration;
 
 pub type ExpressionVisitResult<E> = Result<VisitAction<DatexExpression>, E>;
 

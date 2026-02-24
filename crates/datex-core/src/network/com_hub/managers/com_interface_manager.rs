@@ -21,8 +21,7 @@ use core::{cell::RefCell, pin::Pin};
 use futures::channel::oneshot;
 use log::info;
 
-type InterfaceMap =
-    HashMap<ComInterfaceUUID, InterfaceInfo>;
+type InterfaceMap = HashMap<ComInterfaceUUID, InterfaceInfo>;
 
 pub type SyncComInterfaceImplementationFactoryFn =
     fn(
@@ -121,7 +120,10 @@ impl ComInterfaceManager {
         interface_type: &str,
         setup_data: ValueContainer,
         priority: InterfacePriority,
-    ) -> Result<(ComInterfaceConfiguration, InterfaceCloseReceiver), ComInterfaceCreateError> {
+    ) -> Result<
+        (ComInterfaceConfiguration, InterfaceCloseReceiver),
+        ComInterfaceCreateError,
+    > {
         info!("creating interface {interface_type}");
         let factory = self
             .interface_factories
@@ -149,7 +151,9 @@ impl ComInterfaceManager {
                         priority,
                     )
                     .map_err(|e| e.into())
-                    .map(|close_receiver| (com_interface_configuration, close_receiver))
+                    .map(|close_receiver| {
+                        (com_interface_configuration, close_receiver)
+                    })
                 }
             }
         } else {
@@ -168,7 +172,10 @@ impl ComInterfaceManager {
         interface_type: &str,
         setup_data: ValueContainer,
         priority: InterfacePriority,
-    ) -> Result<(ComInterfaceConfiguration, InterfaceCloseReceiver), ComInterfaceCreateError> {
+    ) -> Result<
+        (ComInterfaceConfiguration, InterfaceCloseReceiver),
+        ComInterfaceCreateError,
+    > {
         info!("creating interface sync {interface_type}");
         if let Some(factory) =
             self.interface_factories.borrow().get(interface_type)
@@ -259,7 +266,7 @@ impl ComInterfaceManager {
         let interfaces = self.interfaces.borrow();
         interfaces
             .get(uuid)
-            .map(|InterfaceInfo{properties, ..}| properties.clone())
+            .map(|InterfaceInfo { properties, .. }| properties.clone())
     }
 
     /// Returns the com interface  properties for a given UUID
@@ -280,10 +287,8 @@ impl ComInterfaceManager {
         &self,
         interface_uuid: &ComInterfaceUUID,
     ) -> bool {
-        if let Some(interface_info) = self
-            .interfaces
-            .borrow()
-            .get(interface_uuid)
+        if let Some(interface_info) =
+            self.interfaces.borrow().get(interface_uuid)
         {
             interface_info.is_waiting_for_socket_connections
         } else {
@@ -297,10 +302,8 @@ impl ComInterfaceManager {
         interface_uuid: &ComInterfaceUUID,
         is_waiting: bool,
     ) {
-        if let Some(interface_info) = self
-            .interfaces
-            .borrow_mut()
-            .get_mut(interface_uuid)
+        if let Some(interface_info) =
+            self.interfaces.borrow_mut().get_mut(interface_uuid)
         {
             interface_info.is_waiting_for_socket_connections = is_waiting;
         } else {
@@ -330,14 +333,15 @@ impl ComInterfaceManager {
 
         let (close_sender, close_receiver) = oneshot::channel();
 
-        self.interfaces
-            .borrow_mut()
-            .insert(uuid.clone(), InterfaceInfo {
+        self.interfaces.borrow_mut().insert(
+            uuid.clone(),
+            InterfaceInfo {
                 properties,
                 priority,
                 is_waiting_for_socket_connections: true,
                 close_sender: Some(close_sender),
-            });
+            },
+        );
 
         Ok(close_receiver)
     }
@@ -348,10 +352,20 @@ impl ComInterfaceManager {
         // wait for the interface to confirm it has been closed
         let _ = closed_receiver.await;
     }
-    
-    pub fn trigger_remove_interface(&self, uuid: &ComInterfaceUUID) -> oneshot::Receiver<()> {
+
+    pub fn trigger_remove_interface(
+        &self,
+        uuid: &ComInterfaceUUID,
+    ) -> oneshot::Receiver<()> {
         let (closed_sender, closed_receiver) = oneshot::channel();
-        let close_sender = self.interfaces.borrow_mut().get_mut(uuid).unwrap().close_sender.take().unwrap();
+        let close_sender = self
+            .interfaces
+            .borrow_mut()
+            .get_mut(uuid)
+            .unwrap()
+            .close_sender
+            .take()
+            .unwrap();
         close_sender.send(closed_sender).unwrap();
         closed_receiver
     }

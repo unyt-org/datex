@@ -1,8 +1,9 @@
-use core::sync::atomic::AtomicU32;
-use core::sync::atomic::Ordering;
-use core::cell::OnceCell;
-use datex_crypto_facade::crypto::{Crypto, CryptoResult};
 use crate::prelude::*;
+use core::{
+    cell::OnceCell,
+    sync::atomic::{AtomicU32, Ordering},
+};
+use datex_crypto_facade::crypto::{Crypto, CryptoResult};
 
 pub struct CryptoStub;
 
@@ -17,7 +18,6 @@ fn generate_pseudo_uuid() -> String {
     format!("00000000-0000-0000-0000-{count:012x}")
 }
 
-
 impl Crypto for CryptoStub {
     fn create_uuid() -> String {
         generate_pseudo_uuid()
@@ -27,11 +27,14 @@ impl Crypto for CryptoStub {
         vec![0u8; length]
     }
 
-    fn hash_sha256<'a>(to_digest: &'a [u8]) -> CryptoResult<'a, [u8; 32]> {
+    fn hash_sha256<'a>(_to_digest: &'a [u8]) -> CryptoResult<'a, [u8; 32]> {
         unimplemented!()
     }
 
-    fn hkdf_sha256<'a>(ikm: &'a [u8], salt: &'a [u8]) -> CryptoResult<'a, [u8; 32]> {
+    fn hkdf_sha256<'a>(
+        _ikm: &'a [u8],
+        _salt: &'a [u8],
+    ) -> CryptoResult<'a, [u8; 32]> {
         unimplemented!()
     }
 
@@ -39,27 +42,48 @@ impl Crypto for CryptoStub {
         unimplemented!()
     }
 
-    fn sig_ed25519<'a>(pri_key: &'a [u8], data: &'a [u8]) -> CryptoResult<'a, [u8; 64]> {
+    fn sig_ed25519<'a>(
+        _pri_key: &'a [u8],
+        _data: &'a [u8],
+    ) -> CryptoResult<'a, [u8; 64]> {
         unimplemented!()
     }
 
-    fn ver_ed25519<'a>(pub_key: &'a [u8], sig: &'a [u8], data: &'a [u8]) -> CryptoResult<'a, bool> {
+    fn ver_ed25519<'a>(
+        _pub_key: &'a [u8],
+        _sig: &'a [u8],
+        _data: &'a [u8],
+    ) -> CryptoResult<'a, bool> {
         unimplemented!()
     }
 
-    fn aes_ctr_encrypt<'a>(key: &'a [u8; 32], iv: &'a [u8; 16], plaintext: &'a [u8]) -> CryptoResult<'a, Vec<u8>> {
+    fn aes_ctr_encrypt<'a>(
+        _key: &'a [u8; 32],
+        _iv: &'a [u8; 16],
+        _plaintext: &'a [u8],
+    ) -> CryptoResult<'a, Vec<u8>> {
         unimplemented!()
     }
 
-    fn aes_ctr_decrypt<'a>(key: &'a [u8; 32], iv: &'a [u8; 16], cipher: &'a [u8]) -> CryptoResult<'a, Vec<u8>> {
+    fn aes_ctr_decrypt<'a>(
+        _key: &'a [u8; 32],
+        _iv: &'a [u8; 16],
+        _cipher: &'a [u8],
+    ) -> CryptoResult<'a, Vec<u8>> {
         unimplemented!()
     }
 
-    fn key_upwrap<'a>(kek_bytes: &'a [u8; 32], rb: &'a [u8; 32]) -> CryptoResult<'a, [u8; 40]> {
+    fn key_upwrap<'a>(
+        _kek_bytes: &'a [u8; 32],
+        _rb: &'a [u8; 32],
+    ) -> CryptoResult<'a, [u8; 40]> {
         unimplemented!()
     }
 
-    fn key_unwrap<'a>(kek_bytes: &'a [u8; 32], cipher: &'a [u8; 40]) -> CryptoResult<'a, [u8; 32]> {
+    fn key_unwrap<'a>(
+        _kek_bytes: &'a [u8; 32],
+        _cipher: &'a [u8; 40],
+    ) -> CryptoResult<'a, [u8; 32]> {
         unimplemented!()
     }
 
@@ -67,7 +91,10 @@ impl Crypto for CryptoStub {
         unimplemented!()
     }
 
-    fn derive_x25519<'a>(pri_key: &'a [u8; 48], peer_pub: &'a [u8; 44]) -> CryptoResult<'a, Vec<u8>> {
+    fn derive_x25519<'a>(
+        _pri_key: &'a [u8; 48],
+        _peer_pub: &'a [u8; 44],
+    ) -> CryptoResult<'a, Vec<u8>> {
         unimplemented!()
     }
 }

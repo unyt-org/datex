@@ -2,10 +2,7 @@ use crate::global::{
     instruction_codes::InstructionCode,
     protocol_structures::instructions::RegularInstruction,
 };
-use core::{
-    fmt::{Display, Formatter},
-    
-};
+use core::fmt::{Display, Formatter};
 
 #[derive(Clone, Debug, PartialEq, Copy, Eq)]
 pub enum UnaryOperator {
