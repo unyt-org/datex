@@ -18,7 +18,6 @@ use binrw::{
 };
 use core::{fmt::Display, result::Result, unimplemented};
 use datex_crypto_facade::crypto::Crypto;
-use log::info;
 use strum::Display;
 use thiserror::Error;
 

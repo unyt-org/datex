@@ -2,11 +2,11 @@ use std::path::PathBuf;
 
 use proc_macro2::{Span, TokenStream};
 use quote::quote;
-use std::{fs, env, str::FromStr};
-use syn::{FnArg, Ident, ItemFn, LitStr, Pat, PatIdent, Token, parse::{Parse, ParseStream}, Signature, Attribute, Type};
-use crate::compiler::{compile_script, compile_template, CompileOptions};
+use std::{env, str::FromStr};
+use syn::{FnArg, Ident, ItemFn, LitStr, Pat, PatIdent, Token, parse::{Parse, ParseStream}, Attribute, Type};
+use crate::compiler::{compile_template, CompileOptions};
 use crate::runtime::RuntimeConfig;
-use crate::serde::deserializer::{from_dx_file, DatexDeserializer};
+use crate::serde::deserializer::from_dx_file;
 use crate::serde::error::DeserializationError;
 use crate::values::value_container::ValueContainer;
 
@@ -193,7 +193,7 @@ pub fn get_config(parsed_attr: &ParsedAttributes) -> Option<RuntimeConfig> {
 /// Helper function to get the compiled config as a byte array token stream, or None if no config path was provided
 pub fn get_config_compiled_token_stream(config: Option<RuntimeConfig>) -> TokenStream {
     let config_bytes = config.as_ref()
-        .map(|config| compile_datex_config(config));
+        .map(compile_datex_config);
 
     config_bytes
         .map(|bytes| quote! {

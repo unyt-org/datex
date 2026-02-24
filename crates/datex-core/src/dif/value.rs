@@ -192,7 +192,7 @@ impl DIFValue {
                     }
                 }
             }
-            CoreValue::Range(range) => {
+            CoreValue::Range(_range) => {
                 core::todo!("Range value not yet supported in DIF")
             }
             CoreValue::Decimal(decimal) => {

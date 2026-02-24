@@ -1,6 +1,6 @@
 use crate::{
     ast::type_expressions::{
-        RangeTypeExpr, TypeExpression, TypeExpressionData,
+        TypeExpression, TypeExpressionData,
     },
     compiler::{
         context::CompilationContext, error::CompilerError,

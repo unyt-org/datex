@@ -1,11 +1,10 @@
 use crate::{
     ast::{
         expressions::{
-            CallableDeclaration, CallableKind, DatexExpression,
+            DatexExpression,
             DatexExpressionData,
         },
         spanned::Spanned,
-        type_expressions::TypeExpression,
     },
     parser::{Parser, SpannedParserError, lexer::Token},
 };

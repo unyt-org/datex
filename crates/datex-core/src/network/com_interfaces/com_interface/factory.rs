@@ -15,7 +15,7 @@ use crate::{
     },
     prelude::*,
     serde::deserializer::from_value_container,
-    utils::{async_callback::AsyncCallback, uuid::UUID},
+    utils::async_callback::AsyncCallback,
     values::{
         core_values::endpoint::Endpoint, value_container::ValueContainer,
     },
