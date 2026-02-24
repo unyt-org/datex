@@ -1465,7 +1465,6 @@ pub mod tests {
         compile_script, compile_script_or_return_static_value,
         compile_template, parse_datex_script_to_rich_ast_simple_error,
     };
-    use crate::stdlib::{assert_matches, io::Read, vec};
 
     use crate::{
         compiler::scope::CompilationScope,
