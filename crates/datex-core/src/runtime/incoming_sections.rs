@@ -15,7 +15,7 @@ use crate::{
 };
 
 use crate::prelude::*;
-use core::{ result::Result};
+use core::result::Result;
 use log::info;
 
 impl RuntimeInternal {

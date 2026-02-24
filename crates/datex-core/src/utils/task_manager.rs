@@ -2,9 +2,7 @@ use crate::channel::mpsc::{UnboundedSender, create_unbounded_channel};
 use async_select::select;
 use core::{cell::RefCell, fmt::Debug, pin::Pin};
 use futures::future::Future;
-use futures_util::{
-    FutureExt, StreamExt, future::Fuse, stream::FuturesUnordered,
-};
+use futures_util::{StreamExt, stream::FuturesUnordered};
 
 use crate::prelude::*;
 pub type TaskFuture = Pin<Box<dyn Future<Output = ()>>>;

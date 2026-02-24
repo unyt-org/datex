@@ -1,9 +1,9 @@
 pub mod http;
+pub mod http_common;
 pub mod serial;
 pub mod tcp;
 pub mod webrtc;
 pub mod websocket;
-pub mod http_common;
 
 /// Creates a new type that wraps the given setup data type and implements Deref to it so that
 /// factory traits can be implemented on it in external crates.

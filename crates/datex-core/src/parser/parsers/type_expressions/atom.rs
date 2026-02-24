@@ -261,6 +261,7 @@ impl Parser {
 mod tests {
     use crate::{
         ast::type_expressions::TypeExpressionData,
+        parser::parsers::type_expressions::tests::parse_type_expression,
         prelude::*,
         values::core_values::{
             decimal::{
@@ -271,7 +272,6 @@ mod tests {
             integer::typed_integer::{IntegerTypeVariant, TypedInteger},
         },
     };
-    use crate::parser::parsers::type_expressions::tests::parse_type_expression;
 
     #[test]
     fn parse_boolean_true() {

@@ -5,7 +5,6 @@ use crate::{
 use core::result::Result;
 use serde::Serialize;
 
-use crate::prelude::*;
 pub use serde::Deserialize;
 pub mod deserializer;
 pub mod error;

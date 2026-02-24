@@ -1,7 +1,9 @@
-use crate::prelude::*;
+use crate::{
+    network::com_interfaces::com_interface::properties::ComInterfaceProperties,
+    prelude::*,
+};
 use core::time::Duration;
 use serde::{Deserialize, Serialize};
-use crate::network::com_interfaces::com_interface::properties::ComInterfaceProperties;
 
 #[derive(Serialize, Deserialize)]
 #[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]

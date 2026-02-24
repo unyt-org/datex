@@ -117,7 +117,8 @@ impl ReconnectionConfig {
             None => return false,
         };
         let now = crate::time::now();
-        let elapsed = Duration::from_millis((now - close_timestamp).as_millis() as u64);
+        let elapsed =
+            Duration::from_millis((now - close_timestamp).as_millis() as u64);
         if elapsed < *timeout {
             return false;
         }

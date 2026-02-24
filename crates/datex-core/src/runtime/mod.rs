@@ -1,42 +1,31 @@
 use crate::{
-    network::{
-        com_hub::{
-            ComHub, InterfacePriority,
-        },
-        com_interfaces::com_interface::factory::{
-            ComInterfaceAsyncFactory, ComInterfaceSyncFactory,
-        },
-    },
-    runtime::execution::{ExecutionError, context::ExecutionMode},
+    network::com_hub::ComHub,
+    runtime::execution::ExecutionError,
     values::{
         core_values::endpoint::Endpoint, value_container::ValueContainer,
     },
 };
 
 use crate::prelude::*;
-use core::{
-    cell::RefCell, fmt::Debug, result::Result,
-};
+use core::{cell::RefCell, fmt::Debug, result::Result};
 use execution::context::{
     ExecutionContext, RemoteExecutionContext, ScriptExecutionError,
 };
-use futures::{FutureExt};
-use serde::{Deserialize, Serialize};
 
+mod config;
 pub mod dif_interface;
 pub mod execution;
 mod incoming_sections;
+mod internal;
 pub mod memory;
 mod runner;
-mod config;
-mod internal;
 
 #[cfg(test)]
 pub mod test_utils;
 
-pub use runner::*;
 pub use config::*;
 pub use internal::*;
+pub use runner::*;
 
 use self::memory::Memory;
 
@@ -55,7 +44,6 @@ impl Debug for Runtime {
             .finish()
     }
 }
-
 
 /// publicly exposed wrapper impl for the Runtime
 /// around RuntimeInternal

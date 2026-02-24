@@ -2,8 +2,7 @@ use crate::{
     channel::mpsc::UnboundedSender,
     collections::HashMap,
     global::protocol_structures::{
-        block_header::BlockType,
-        routing_header::SignatureType,
+        block_header::BlockType, routing_header::SignatureType,
     },
     network::com_hub::{
         errors::{ComHubError, SocketEndpointRegistrationError},
@@ -70,8 +69,9 @@ use crate::{
             com_interface::{
                 ComInterfaceUUID,
                 factory::{
-                    CloseAsyncCallback, ComInterfaceConfiguration, SendCallback, SendFailure, SendSuccess,
-                    SocketDataIterator, SocketProperties,
+                    CloseAsyncCallback, ComInterfaceConfiguration,
+                    SendCallback, SendFailure, SendSuccess, SocketDataIterator,
+                    SocketProperties,
                 },
                 properties::InterfaceDirection,
             },

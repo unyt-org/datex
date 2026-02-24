@@ -1,4 +1,3 @@
-use log::info;
 use crate::{
     network::{
         com_hub::{
@@ -13,6 +12,7 @@ use crate::{
     },
     values::value_container::ValueContainer,
 };
+use log::info;
 
 use crate::{
     network::com_interfaces::com_interface::factory::ComInterfaceAsyncFactory,
@@ -48,14 +48,19 @@ impl ComHub {
         self: Rc<Self>,
         interface_configuration: ComInterfaceConfiguration,
         priority: InterfacePriority,
-    ) -> Result<Option<impl Future<Output = Result<(),()>>>, InterfaceAddError> {
+    ) -> Result<Option<impl Future<Output = Result<(), ()>>>, InterfaceAddError>
+    {
         let uuid = interface_configuration.uuid();
         let close_receiver = self.interfaces_manager.add_interface(
             uuid,
             interface_configuration.properties.clone(),
             priority,
         )?;
-        let ready_signal = self.register_com_interface_handler(interface_configuration, priority, close_receiver);
+        let ready_signal = self.register_com_interface_handler(
+            interface_configuration,
+            priority,
+            close_receiver,
+        );
         Ok(ready_signal)
     }
 
@@ -65,7 +70,13 @@ impl ComHub {
         interface_type: &str,
         setup_data: ValueContainer,
         priority: InterfacePriority,
-    ) -> Result<(ComInterfaceUUID, Option<impl Future<Output = Result<(),()>>>), ComInterfaceCreateError> {
+    ) -> Result<
+        (
+            ComInterfaceUUID,
+            Option<impl Future<Output = Result<(), ()>>>,
+        ),
+        ComInterfaceCreateError,
+    > {
         let (interface_configuration, close_receiver) = self
             .interfaces_manager
             .create_and_add_interface(interface_type, setup_data, priority)
@@ -73,7 +84,11 @@ impl ComHub {
 
         let uuid = interface_configuration.uuid();
         // add event handler task
-        let ready_signal = self.register_com_interface_handler(interface_configuration, priority, close_receiver);
+        let ready_signal = self.register_com_interface_handler(
+            interface_configuration,
+            priority,
+            close_receiver,
+        );
         Ok((uuid, ready_signal))
     }
 
@@ -84,7 +99,13 @@ impl ComHub {
         interface_type: &str,
         setup_data: ValueContainer,
         priority: InterfacePriority,
-    ) -> Result<(ComInterfaceUUID, Option<impl Future<Output = Result<(),()>>>), ComInterfaceCreateError> {
+    ) -> Result<
+        (
+            ComInterfaceUUID,
+            Option<impl Future<Output = Result<(), ()>>>,
+        ),
+        ComInterfaceCreateError,
+    > {
         let (interface_configuration, close_receiver) =
             self.interfaces_manager.create_and_add_interface_sync(
                 interface_type,
@@ -94,8 +115,12 @@ impl ComHub {
 
         let uuid = interface_configuration.uuid();
         // add event handler task
-        let ready_signal = self.register_com_interface_handler(interface_configuration, priority, close_receiver);
-        
+        let ready_signal = self.register_com_interface_handler(
+            interface_configuration,
+            priority,
+            close_receiver,
+        );
+
         Ok((uuid, ready_signal))
     }
 
@@ -109,10 +134,15 @@ impl ComHub {
             return Err(());
         }
 
-        let interface_loop_active = self.interfaces_manager.is_interface_waiting_for_socket_connections(&interface_uuid);
+        let interface_loop_active = self
+            .interfaces_manager
+            .is_interface_waiting_for_socket_connections(&interface_uuid);
 
         let remove_future = if interface_loop_active {
-            Some(self.interfaces_manager.trigger_remove_interface(&interface_uuid))
+            Some(
+                self.interfaces_manager
+                    .trigger_remove_interface(&interface_uuid),
+            )
         } else {
             None
         };
@@ -121,7 +151,8 @@ impl ComHub {
 
         // clean up all associated sockets first, to trigger socket close callbacks and interface cleanup if necessary
         self.socket_manager
-            .remove_sockets_for_interface_uuid(&interface_uuid).await;
+            .remove_sockets_for_interface_uuid(&interface_uuid)
+            .await;
 
         // interface is still active, must be explicitly stopped
         // otherwise, the interface cleanup was called by the sockets after close
@@ -137,28 +168,38 @@ impl ComHub {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
-    use alloc::string::ToString;
-    use alloc::vec::Vec;
-    use core::future::join;
-    use core::time::Duration;
+    #[cfg(feature = "std")]
+    use crate::network::com_hub::test_utils::{
+        TEST_ENDPOINT_A, TEST_ENDPOINT_B, get_coupled_com_hubs,
+        run_with_coupled_com_hubs,
+    };
+    use crate::{
+        channel::mpsc::{UnboundedSender, create_unbounded_channel},
+        global::{
+            dxb_block::{DXBBlock, IncomingSection},
+            protocol_structures::routing_header::SignatureType,
+        },
+        network::{
+            com_hub::{ComHub, InterfacePriority, metadata::ComHubMetadata},
+            com_interfaces::com_interface::{
+                ComInterfaceUUID,
+                factory::{
+                    ComInterfaceConfiguration, SendCallback, SendSuccess,
+                    SocketConfiguration, SocketProperties,
+                },
+                properties::{ComInterfaceProperties, InterfaceDirection},
+            },
+        },
+        prelude::*,
+        task::{sleep, timeout},
+        values::core_values::endpoint::Endpoint,
+    };
+    use alloc::{string::ToString, vec::Vec};
+    use core::{future::join, time::Duration};
     use futures_util::future::select;
     use log::info;
-    use crate::channel::mpsc::{create_unbounded_channel, UnboundedSender};
-    use crate::global::dxb_block::{DXBBlock, IncomingSection};
-    use crate::global::protocol_structures::routing_header::SignatureType;
-    use crate::network::com_hub::{ComHub, InterfacePriority};
-    use crate::network::com_hub::metadata::ComHubMetadata;
-    #[cfg(feature = "std")]
-    use crate::network::com_hub::test_utils::{get_coupled_com_hubs, run_with_coupled_com_hubs, TEST_ENDPOINT_A, TEST_ENDPOINT_B};
-    use crate::network::com_interfaces::com_interface::ComInterfaceUUID;
-    use crate::network::com_interfaces::com_interface::factory::{ComInterfaceConfiguration, SendCallback, SendSuccess, SocketConfiguration, SocketProperties};
-    use crate::network::com_interfaces::com_interface::properties::{ComInterfaceProperties, InterfaceDirection};
-    use crate::task::{sleep, timeout};
-    use crate::values::core_values::endpoint::Endpoint;
-    use crate::prelude::*;
 
     fn get_metadata_sockets(
         com_hub_metadata: ComHubMetadata,
@@ -174,7 +215,8 @@ mod tests {
             .collect::<Vec<_>>()
     }
 
-    fn generate_test_com_hub_configuration() -> (Rc<ComHub>, impl Future<Output = ()>, ComInterfaceUUID) {
+    fn generate_test_com_hub_configuration()
+    -> (Rc<ComHub>, impl Future<Output = ()>, ComInterfaceUUID) {
         let configuration = ComInterfaceConfiguration::new_single_socket(
             ComInterfaceProperties::default(),
             SocketConfiguration::new_in_out(
@@ -186,28 +228,38 @@ mod tests {
                         yield Ok(vec![]);
                     }
                 },
-                SendCallback::new_sync(|_block| {
-                    Ok(SendSuccess::Sent)
-                })
-            )
+                SendCallback::new_sync(|_block| Ok(SendSuccess::Sent)),
+            ),
         );
         let interface_uuid = configuration.uuid();
         let properties = configuration.properties.clone();
 
         let (incoming_sections_sender, _incoming_sections_receiver) =
             create_unbounded_channel::<IncomingSection>();
-        let (com_hub, task_future) = ComHub::create(Endpoint::default(), incoming_sections_sender);
+        let (com_hub, task_future) =
+            ComHub::create(Endpoint::default(), incoming_sections_sender);
 
         // add interface
-        com_hub.clone().add_interface_from_configuration(configuration, InterfacePriority::default()).expect("failed to add interface");
+        com_hub
+            .clone()
+            .add_interface_from_configuration(
+                configuration,
+                InterfacePriority::default(),
+            )
+            .expect("failed to add interface");
         assert!(com_hub.has_interface(&interface_uuid));
-        assert_eq!(com_hub.interfaces_manager.interfaces.borrow().get(&interface_uuid).unwrap().properties, properties);
+        assert_eq!(
+            com_hub
+                .interfaces_manager
+                .interfaces
+                .borrow()
+                .get(&interface_uuid)
+                .unwrap()
+                .properties,
+            properties
+        );
 
-        (
-            com_hub,
-            task_future,
-            interface_uuid
-        )
+        (com_hub, task_future, interface_uuid)
     }
 
     #[test]
@@ -217,57 +269,71 @@ mod tests {
 
     #[tokio::test]
     async fn test_remove_interface_from_configuration_before_init() {
-        let (
-            com_hub,
-            task_future,
-            interface_uuid
-        ) = generate_test_com_hub_configuration();
+        let (com_hub, task_future, interface_uuid) =
+            generate_test_com_hub_configuration();
 
         // remove interface before the com interface is fully initialized
         select(
             Box::pin(async {
-                com_hub.remove_interface(interface_uuid.clone()).await.unwrap();
+                com_hub
+                    .remove_interface(interface_uuid.clone())
+                    .await
+                    .unwrap();
             }),
-            Box::pin(task_future)
-        ).await;
+            Box::pin(task_future),
+        )
+        .await;
 
         assert!(!com_hub.has_interface(&interface_uuid));
-        assert!(!com_hub.socket_manager.are_sockets_registered_for_interface(&interface_uuid));
+        assert!(
+            !com_hub
+                .socket_manager
+                .are_sockets_registered_for_interface(&interface_uuid)
+        );
     }
 
     #[tokio::test]
     async fn test_remove_interface_from_configuration_after_init() {
-        let (
-            com_hub,
-            task_future,
-            interface_uuid
-        ) = generate_test_com_hub_configuration();
+        let (com_hub, task_future, interface_uuid) =
+            generate_test_com_hub_configuration();
 
         // remove interface after the com interface is fully initialized
         select(
             Box::pin(async {
                 sleep(Duration::from_millis(20)).await;
                 // socket should be registered for interface
-                assert!(com_hub.socket_manager.are_sockets_registered_for_interface(&interface_uuid));
-                com_hub.remove_interface(interface_uuid.clone()).await.unwrap();
+                assert!(
+                    com_hub
+                        .socket_manager
+                        .are_sockets_registered_for_interface(&interface_uuid)
+                );
+                com_hub
+                    .remove_interface(interface_uuid.clone())
+                    .await
+                    .unwrap();
             }),
-            Box::pin(task_future)
-        ).await;
+            Box::pin(task_future),
+        )
+        .await;
 
         assert!(!com_hub.has_interface(&interface_uuid));
-        assert!(!com_hub.socket_manager.are_sockets_registered_for_interface(&interface_uuid));
+        assert!(
+            !com_hub
+                .socket_manager
+                .are_sockets_registered_for_interface(&interface_uuid)
+        );
     }
 
     #[tokio::test]
     async fn test_remove_nonexistent_interface() {
         let (incoming_sections_sender, _incoming_sections_receiver) =
             create_unbounded_channel::<IncomingSection>();
-        let (com_hub, _task_future) = ComHub::create(Endpoint::default(), incoming_sections_sender);
+        let (com_hub, _task_future) =
+            ComHub::create(Endpoint::default(), incoming_sections_sender);
 
         let result = com_hub.remove_interface(ComInterfaceUUID::new()).await;
         assert!(result.is_err());
     }
-
 
     #[tokio::test]
     #[cfg(feature = "std")]
@@ -275,11 +341,11 @@ mod tests {
         let (peer_a, peer_b, init_future) = get_coupled_com_hubs().await;
 
         // run task futures for 10ms to allow sockets to connect
-        let _ = timeout(Duration::from_millis(10), join!(
-            peer_a.task_future,
-            peer_b.task_future,
-            init_future
-        )).await;
+        let _ = timeout(
+            Duration::from_millis(10),
+            join!(peer_a.task_future, peer_b.task_future, init_future),
+        )
+        .await;
 
         let sockets_a = get_metadata_sockets(peer_a.com_hub.get_metadata());
         let sockets_b = get_metadata_sockets(peer_b.com_hub.get_metadata());
@@ -300,19 +366,28 @@ mod tests {
             let block_a_to_b_body = [1, 2, 3];
             let mut block_a_to_b = DXBBlock::new_with_body(&block_a_to_b_body);
             block_a_to_b.set_receivers(vec![peer_b.com_hub.endpoint.clone()]);
-            block_a_to_b.routing_header.flags.set_signature_type(SignatureType::Unencrypted);
+            block_a_to_b
+                .routing_header
+                .flags
+                .set_signature_type(SignatureType::Unencrypted);
 
             // send block from A to B
-            peer_a.com_hub.send_own_block_async(block_a_to_b).await.unwrap();
+            peer_a
+                .com_hub
+                .send_own_block_async(block_a_to_b)
+                .await
+                .unwrap();
 
             // receive block on B
-            let section = peer_b.incoming_sections_receiver.next().await.unwrap();
+            let section =
+                peer_b.incoming_sections_receiver.next().await.unwrap();
             match section {
                 IncomingSection::SingleBlock((Some(block), _)) => {
                     assert_eq!(block.body, block_a_to_b_body);
-                },
-                _ => panic!("Expected block section")
+                }
+                _ => panic!("Expected block section"),
             }
-        }).await;
+        })
+        .await;
     }
 }

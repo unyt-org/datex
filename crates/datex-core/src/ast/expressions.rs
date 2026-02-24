@@ -1,5 +1,3 @@
-use core::{fmt::Display, ops::Neg};
-use core::ops;
 use crate::{
     ast::{
         resolved_variable::{ResolvedVariable, VariableId},
@@ -26,6 +24,7 @@ use crate::{
     },
 };
 pub use crate::{prelude::*, values::core_values::callable::CallableKind};
+use core::{fmt::Display, ops, ops::Neg};
 
 #[derive(Clone, Debug)]
 /// An expression in the AST

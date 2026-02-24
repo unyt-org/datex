@@ -4,7 +4,6 @@ mod runtime_value;
 mod slots;
 pub mod state;
 
-use alloc::rc::Rc;
 use crate::{
     core_compiler::value_compiler::compile_value_container,
     dxb_parser::{
@@ -28,6 +27,7 @@ use crate::{
             TypeInstruction,
         },
     },
+    prelude::*,
     references::reference::{Reference, ReferenceMutability},
     runtime::execution::{
         ExecutionError, InvalidProgramError,
@@ -50,7 +50,10 @@ use crate::{
             yield_unwrap,
         },
     },
-    types::definition::TypeDefinition,
+    types::{
+        definition::TypeDefinition,
+        structural_type_definition::StructuralTypeDefinition,
+    },
     utils::buffers::append_u32,
     values::{
         core_value::CoreValue,
@@ -66,9 +69,8 @@ use crate::{
         value_container::{OwnedValueKey, ValueContainer},
     },
 };
+use alloc::rc::Rc;
 use core::cell::RefCell;
-use crate::types::structural_type_definition::StructuralTypeDefinition;
-use crate::prelude::*;
 
 #[derive(Debug)]
 enum CollectedExecutionResult {

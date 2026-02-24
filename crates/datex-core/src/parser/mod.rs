@@ -15,8 +15,10 @@ use itertools::Itertools;
 use parser_result::ParserResult;
 // TODO #658: move to different module
 
-use crate::prelude::*;
-use crate::utils::maybe_action::{collect_or_pass_error, ErrorCollector, MaybeAction};
+use crate::{
+    prelude::*,
+    utils::maybe_action::{ErrorCollector, MaybeAction, collect_or_pass_error},
+};
 
 pub mod errors;
 pub mod lexer;

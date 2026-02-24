@@ -613,7 +613,7 @@ where
     }
 }
 
-impl<K,V> From<IndexMap<K, V, RandomState>> for Map
+impl<K, V> From<IndexMap<K, V, RandomState>> for Map
 where
     K: Into<ValueContainer>,
     V: Into<ValueContainer>,
@@ -626,7 +626,6 @@ where
         )
     }
 }
-
 
 impl TryFrom<CoreValue> for Map {
     type Error = String;

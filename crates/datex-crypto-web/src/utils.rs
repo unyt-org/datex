@@ -1,6 +1,8 @@
 use wasm_bindgen::{JsError, JsValue};
-use web_sys::js_sys;
-use web_sys::js_sys::{Array, ArrayBuffer, Object, Reflect};
+use web_sys::{
+    js_sys,
+    js_sys::{Array, ArrayBuffer, Object, Reflect},
+};
 
 pub fn js_object<T: Into<JsValue>>(values: Vec<(&str, T)>) -> Object {
     let obj = Object::new();
@@ -23,8 +25,6 @@ where
 
     JsValue::from(js_array)
 }
-
-
 
 pub trait TryAsByteSlice {
     fn try_as_u8_slice(&self) -> Result<Vec<u8>, JsError>;

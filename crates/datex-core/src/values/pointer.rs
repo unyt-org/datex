@@ -5,10 +5,10 @@ use crate::{
     prelude::*,
 };
 
-use core::{fmt::Display, result::Result};
 use crate::global::protocol_structures::instructions::{
     RawFullPointerAddress, RawLocalPointerAddress,
 };
+use core::{fmt::Display, result::Result};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
