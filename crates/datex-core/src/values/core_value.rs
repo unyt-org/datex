@@ -769,6 +769,7 @@ impl Display for CoreValue {
             CoreValue::Null => core::write!(f, "null"),
             CoreValue::Endpoint(endpoint) => core::write!(f, "{endpoint}"),
             CoreValue::Map(map) => core::write!(f, "{map}"),
+            CoreValue::Range(range) => core::write!(f, "{}..{}", range.start, range.end),
             CoreValue::Integer(integer) => core::write!(f, "{integer}"),
             CoreValue::Decimal(decimal) => core::write!(f, "{decimal}"),
             CoreValue::List(list) => core::write!(f, "{list}"),

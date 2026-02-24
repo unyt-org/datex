@@ -4,6 +4,7 @@ mod runtime_value;
 mod slots;
 pub mod state;
 
+use alloc::rc::Rc;
 use crate::{
     core_compiler::value_compiler::compile_value_container,
     dxb_parser::{
@@ -49,7 +50,6 @@ use crate::{
             yield_unwrap,
         },
     },
-    stdlib::{boxed::Box, rc::Rc, vec::Vec},
     types::definition::TypeDefinition,
     utils::buffers::append_u32,
     values::{
@@ -67,6 +67,8 @@ use crate::{
     },
 };
 use core::cell::RefCell;
+use crate::types::structural_type_definition::StructuralTypeDefinition;
+use crate::prelude::*;
 
 #[derive(Debug)]
 enum CollectedExecutionResult {

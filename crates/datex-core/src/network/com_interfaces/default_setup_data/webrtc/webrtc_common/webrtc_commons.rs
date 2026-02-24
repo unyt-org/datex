@@ -1,5 +1,3 @@
-use crate::stdlib::collections::VecDeque;
-
 use log::error;
 use serde::{Deserialize, Serialize};
 

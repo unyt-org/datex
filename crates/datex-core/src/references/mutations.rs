@@ -291,17 +291,17 @@ impl Reference {
 mod tests {
     use crate::{
         references::reference::{
-            AccessError, AssignmentError, IndexOutOfBoundsError, Reference,
+            AccessError, IndexOutOfBoundsError, Reference,
             ReferenceMutability,
         },
         runtime::memory::Memory,
-        stdlib::assert_matches,
         values::{
             core_values::{list::List, map::Map},
             value_container::ValueContainer,
         },
     };
     use core::{assert_matches, cell::RefCell};
+    use crate::prelude::*;
 
     #[test]
     fn push() {

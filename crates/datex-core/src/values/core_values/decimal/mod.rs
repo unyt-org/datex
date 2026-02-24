@@ -523,7 +523,7 @@ impl From<f64> for Decimal {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::assert_matches;
+    use core::assert_matches;
 
     #[test]
     fn decimal_addition() {
