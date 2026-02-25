@@ -1,5 +1,0 @@
-{
-    "deno.enable": true,
-    "editor.formatOnSave": true,
-    "rust-analyzer.cargo.target": "xtensa-esp32-none-elf",
-}
