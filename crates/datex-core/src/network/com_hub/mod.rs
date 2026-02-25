@@ -57,6 +57,7 @@ use crate::{
 pub mod com_hub_interface;
 #[cfg(test)]
 pub mod test_utils;
+mod com_hub_socket;
 
 use crate::{
     collections::HashSet,
