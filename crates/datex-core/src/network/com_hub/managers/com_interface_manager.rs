@@ -376,8 +376,6 @@ impl ComInterfaceManager {
         &self,
         interface_uuid: &ComInterfaceUUID,
     ) -> Result<(), ()> {
-        info!("Cleaning up interface {interface_uuid}");
-
         self.interfaces
             .borrow_mut()
             .remove(interface_uuid)
