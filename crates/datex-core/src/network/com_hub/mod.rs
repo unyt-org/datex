@@ -87,6 +87,7 @@ use async_select::select;
 use datex_crypto_facade::crypto::Crypto;
 use futures::channel::{oneshot, oneshot::Sender};
 use futures_util::FutureExt;
+use crate::time::now_ms;
 
 pub type IncomingBlockInterceptor =
     Box<dyn Fn(&DXBBlock, &ComInterfaceSocketUUID) + 'static>;
@@ -983,7 +984,7 @@ impl ComHub {
             mut block: DXBBlock,
             endpoint: Endpoint,
         ) -> Result<DXBBlock, ComHubError> {
-            let now = crate::time::now_ms();
+            let now = now_ms();
             block.routing_header.sender = endpoint;
             block
                 .block_header

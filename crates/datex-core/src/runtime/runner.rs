@@ -19,7 +19,7 @@ use futures_util::{
     join,
 };
 use log::info;
-use crate::system_time::{SystemTime, UNIX_EPOCH};
+use crate::time::now_ms;
 
 pub struct RuntimeRunner {
     pub runtime: Runtime,
@@ -145,7 +145,7 @@ impl RuntimeRunner {
 
             info!(
                 "Runtime initialized - Version {VERSION} Time: {}",
-                SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()
+                now_ms()
             );
 
             app_logic(self.runtime).await
