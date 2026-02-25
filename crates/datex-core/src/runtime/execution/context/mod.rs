@@ -93,7 +93,7 @@ impl ExecutionContext {
             dxb.iter()
                 .map(|b| format!("{b:02x}"))
                 .collect::<Vec<_>>()
-                .join(", ")
+                .join(" ")
         );
 
         #[cfg(feature = "decompiler")]

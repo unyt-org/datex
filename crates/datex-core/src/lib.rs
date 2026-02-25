@@ -125,46 +125,47 @@ pub mod time {
 
     #[inline]
     pub fn start_instant() -> Instant {
-        #[cfg(target_has_atomic = "ptr")]
-        {
-            use core::sync::atomic::{AtomicU8, Ordering};
 
-            static INIT: AtomicU8 = AtomicU8::new(0);
-
-            // Safety: we write START once, then only read it.
-            static mut START: core::mem::MaybeUninit<Instant> =
-                core::mem::MaybeUninit::uninit();
-
-            if INIT.load(Ordering::Acquire) == 0 {
-                // Try to become the initializer.
-                if INIT
-                    .compare_exchange(0, 1, Ordering::AcqRel, Ordering::Acquire)
-                    .is_ok()
+        cfg_if::cfg_if! {
+            if #[cfg(all(feature = "no_std", target_has_atomic = "ptr"))] {
                 {
-                    unsafe {
-                        START.write(Instant::now());
+                    use core::sync::atomic::{AtomicU8, Ordering};
+
+                    static INIT: AtomicU8 = AtomicU8::new(0);
+
+                    // Safety: we write START once, then only read it.
+                    static mut START: core::mem::MaybeUninit<Instant> =
+                        core::mem::MaybeUninit::uninit();
+
+                    if INIT.load(Ordering::Acquire) == 0 {
+                        // Try to become the initializer.
+                        if INIT
+                            .compare_exchange(0, 1, Ordering::AcqRel, Ordering::Acquire)
+                            .is_ok()
+                        {
+                            unsafe {
+                                START.write(Instant::now());
+                            }
+                            INIT.store(2, Ordering::Release);
+                        } else {
+                            // Wait until initialized.
+                            while INIT.load(Ordering::Acquire) != 2 {
+                                core::hint::spin_loop();
+                            }
+                        }
+                    } else {
+                        // Wait until initialized.
+                        while INIT.load(Ordering::Acquire) != 2 {
+                            core::hint::spin_loop();
+                        }
                     }
-                    INIT.store(2, Ordering::Release);
-                } else {
-                    // Wait until initialized.
-                    while INIT.load(Ordering::Acquire) != 2 {
-                        core::hint::spin_loop();
-                    }
-                }
-            } else {
-                // Wait until initialized.
-                while INIT.load(Ordering::Acquire) != 2 {
-                    core::hint::spin_loop();
+
+                    unsafe { *START.assume_init_ref() }
                 }
             }
-
-            unsafe { *START.assume_init_ref() }
-        }
-
-        // No atomics: deterministic fallback (time starts "now" every call).
-        #[cfg(not(target_has_atomic = "ptr"))]
-        {
-            Instant::now()
+            else {
+                Instant::now()
+            }
         }
     }
 }
