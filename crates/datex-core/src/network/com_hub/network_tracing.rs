@@ -292,7 +292,7 @@ impl ComHub {
         };
 
         // measure round trip time
-        let start_time = crate::time::now();
+        let start_time = crate::time::now_ms();
 
         let responses = self
             .send_own_block_await_response(
@@ -300,9 +300,9 @@ impl ComHub {
                 options.response_options,
             )
             .await;
-        let end_time = crate::time::now();
+        let end_time = crate::time::now_ms();
         let round_trip_time =
-            Duration::from_millis((end_time - start_time).as_millis() as u64);
+            Duration::from_millis(end_time - start_time);
 
         let mut results = vec![];
 

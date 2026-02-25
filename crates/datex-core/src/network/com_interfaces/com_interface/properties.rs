@@ -5,6 +5,7 @@ use core::time::Duration;
 use serde::{Deserialize, Serialize};
 use serde_with::{DurationMilliSeconds, serde_as};
 use strum::EnumString;
+use crate::time::now_ms;
 
 #[derive(PartialEq, Eq, Debug, Clone, EnumString, Serialize, Deserialize)]
 #[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
@@ -109,16 +110,16 @@ pub enum ReconnectionConfig {
 
 impl ReconnectionConfig {
     pub fn check_reconnect_timeout(
-        close_timestamp: Option<Instant>,
+        close_timestamp: Option<u64>,
         timeout: &Duration,
     ) -> bool {
         let close_timestamp = match close_timestamp {
             Some(ts) => ts,
             None => return false,
         };
-        let now = crate::time::now();
+        let now = now_ms();
         let elapsed =
-            Duration::from_millis((now - close_timestamp).as_millis() as u64);
+            Duration::from_millis(now - close_timestamp);
         if elapsed < *timeout {
             return false;
         }
