@@ -13,7 +13,7 @@ jobs:
       - name: Extract version from Cargo.toml
         id: get_version
         run: |
-          VERSION=$(grep -E '^version\s*=\s*".*"' Cargo.toml | head -n 1 | sed 's/version = "\(.*\)"/\1/')
+          VERSION=$(grep -E '^version\s*=\s*".*"' ./crates/datex-core/Cargo.toml | head -n 1 | sed 's/version = "\(.*\)"/\1/')
           echo "Version found: $VERSION"
           echo "version=$VERSION" >> $GITHUB_ENV
 
