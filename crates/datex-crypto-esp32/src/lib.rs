@@ -12,7 +12,6 @@ use datex_crypto_facade::{
     crypto::{Crypto, CryptoResult},
     error::CryptoError,
 };
-use esp_hal::rtc_cntl::Rtc;
 
 #[cfg(any(target_arch = "xtensa", target_arch = "riscv32"))]
 mod hal {
@@ -148,9 +147,12 @@ impl Crypto for CryptoEsp32 {
     }
 }
 
-
-
+#[cfg(any(target_arch = "xtensa", target_arch = "riscv32"))]
 pub fn now_ms() -> u64 {
-    let rtc = Rtc::new(unsafe {esp_hal::peripherals::Peripherals::steal().LPWR.clone_unchecked()});
+    let rtc = esp_hal::rtc_cntl::Rtc::new(unsafe {
+        esp_hal::peripherals::Peripherals::steal()
+            .LPWR
+            .clone_unchecked()
+    });
     rtc.current_time_us() / 1000
 }
