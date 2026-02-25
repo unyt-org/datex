@@ -57,10 +57,6 @@ pub struct ComHubMetadataInterface {
 pub struct ComHubMetadata {
     pub endpoint: Endpoint,
     pub interfaces: Vec<ComHubMetadataInterface>,
-    pub endpoint_sockets: HashMap<
-        Endpoint,
-        Vec<(ComInterfaceSocketUUID, DynamicEndpointProperties)>,
-    >,
 }
 
 impl Display for ComHubMetadata {
@@ -134,7 +130,6 @@ impl ComHub {
         let mut metadata = ComHubMetadata {
             endpoint: self.endpoint.clone(),
             interfaces: Vec::new(),
-            endpoint_sockets: HashMap::new(),
         };
 
         let mut sockets_by_com_interface_uuid: HashMap<
