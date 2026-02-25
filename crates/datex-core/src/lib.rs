@@ -94,21 +94,18 @@ pub mod crypto {
     }
 }
 
-pub mod system_time {
-    cfg_if::cfg_if! {
-        if #[cfg(feature = "target_wasm")] {
-            pub use web_time::{SystemTime, UNIX_EPOCH};
-        } else if #[cfg(feature = "std")] {
-            pub use std::time::{SystemTime, UNIX_EPOCH};
-        } else if #[cfg(feature = "embassy_runtime")] {
-            todo!()
-        } else {
-            pub use crate::stub::time::{SystemTime, UNIX_EPOCH};
+pub mod time {
+
+    mod system_time {
+        cfg_if::cfg_if! {
+            if #[cfg(feature = "target_wasm")] {
+                pub use web_time::{SystemTime, UNIX_EPOCH};
+            } else if #[cfg(feature = "target_native")] {
+                pub use std::time::{SystemTime, UNIX_EPOCH};
+            }
         }
     }
-}
 
-pub mod time {
     cfg_if::cfg_if! {
         if #[cfg(feature = "target_wasm")] {
             pub use web_time::{Instant};
@@ -121,64 +118,19 @@ pub mod time {
         }
     }
 
-    /// Monotonic microseconds since a crate-defined start point.
-    #[inline]
-    pub fn now_us() -> u64 {
-        start_instant().elapsed().as_micros() as u64
-    }
-
-    /// Monotonic milliseconds since a crate-defined start point.
+    // current unix timestamp in milliseconds
     pub fn now_ms() -> u64 {
-        start_instant().elapsed().as_millis() as u64
-    }
-
-    #[inline]
-    pub fn now() -> Instant {
-        start_instant()
-    }
-
-    #[inline]
-    pub fn start_instant() -> Instant {
-
         cfg_if::cfg_if! {
-            if #[cfg(all(feature = "no_std", target_has_atomic = "ptr"))] {
-                {
-                    use core::sync::atomic::{AtomicU8, Ordering};
-
-                    static INIT: AtomicU8 = AtomicU8::new(0);
-
-                    // Safety: we write START once, then only read it.
-                    static mut START: core::mem::MaybeUninit<Instant> =
-                        core::mem::MaybeUninit::uninit();
-
-                    if INIT.load(Ordering::Acquire) == 0 {
-                        // Try to become the initializer.
-                        if INIT
-                            .compare_exchange(0, 1, Ordering::AcqRel, Ordering::Acquire)
-                            .is_ok()
-                        {
-                            unsafe {
-                                START.write(Instant::now());
-                            }
-                            INIT.store(2, Ordering::Release);
-                        } else {
-                            // Wait until initialized.
-                            while INIT.load(Ordering::Acquire) != 2 {
-                                core::hint::spin_loop();
-                            }
-                        }
-                    } else {
-                        // Wait until initialized.
-                        while INIT.load(Ordering::Acquire) != 2 {
-                            core::hint::spin_loop();
-                        }
-                    }
-
-                    unsafe { *START.assume_init_ref() }
-                }
-            }
-            else {
-                Instant::now()
+            if #[cfg(any(feature = "target_wasm", feature = "target_native"))] {
+                use system_time::{SystemTime, UNIX_EPOCH};
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .expect("System time is before UNIX_EPOCH")
+                    .as_millis() as u64
+            } else if #[cfg(feature = "target_esp32")] {
+                datex_crypto_esp32::now_ms()
+            } else {
+                Instant::now().elapsed().as_millis() as u64
             }
         }
     }
