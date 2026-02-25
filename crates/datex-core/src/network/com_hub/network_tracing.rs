@@ -33,9 +33,10 @@ use crate::{
 use crate::prelude::*;
 use log::{error, info};
 use serde::{Deserialize, Serialize};
-use serde_with::{DisplayFromStr, serde_as};
+use serde_with::{DurationMilliSeconds, serde_as};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+#[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
 pub struct NetworkTraceHopSocket {
     pub interface_type: String,
     pub interface_name: Option<String>,
@@ -60,6 +61,7 @@ impl NetworkTraceHopSocket {
 #[derive(
     Serialize, Deserialize, Debug, PartialEq, Clone, strum_macros::Display,
 )]
+#[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
 pub enum NetworkTraceHopDirection {
     Outgoing,
     Incoming,
@@ -67,8 +69,8 @@ pub enum NetworkTraceHopDirection {
 
 #[serde_as]
 #[derive(Serialize, Deserialize, Debug, Clone)]
+#[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
 pub struct NetworkTraceHop {
-    #[serde_as(as = "DisplayFromStr")]
     pub endpoint: Endpoint,
     pub distance: i8,
     pub socket: NetworkTraceHopSocket,
@@ -77,11 +79,15 @@ pub struct NetworkTraceHop {
     pub bounce_back: bool,
 }
 
-#[derive(Debug, Clone)]
+#[serde_as]
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
 pub struct NetworkTraceResult {
     pub sender: Endpoint,
     pub receiver: Endpoint,
     pub hops: Vec<NetworkTraceHop>,
+    #[serde_as(as = "DurationMilliSeconds")]
+    #[cfg_attr(feature = "wasm_runtime", tsify(type = "number"))]
     pub round_trip_time: Duration,
 }
 
