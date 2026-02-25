@@ -940,7 +940,16 @@ dependencies = [
 ]
 
 [[package]]
-name = "datex-macros"
+name = "datex-macros-internal"
+version = "0.0.1"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.117",
+]
+
+[[package]]
+name = "datex_macros"
 version = "0.1.4"
 dependencies = [
  "datex-core",
@@ -948,15 +957,6 @@ dependencies = [
  "quote",
  "syn 2.0.117",
  "tokio",
-]
-
-[[package]]
-name = "datex-macros-internal"
-version = "0.0.1"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.117",
 ]
 
 [[package]]

@@ -1,5 +1,5 @@
 [package]
-name = "datex-macros"
+name = "datex_macros"
 version = "0.1.4"
 edition = "2024"
 description = "The public macros for the DATEX Core Rust implementation"
@@ -16,7 +16,10 @@ proc-macro = true
 quote = "1.0"
 syn = { version = "2.0", features = ["full"] }
 proc-macro2 = { version = "1.0", features = ["span-locations"] }
-datex-core = { path = "../datex-core", version = "0.0.8", features = ["target_native", "compiler"] }
+datex-core = { path = "../datex-core", version = "0.0.8", features = [
+    "target_native",
+    "compiler",
+] }
 
 [dev-dependencies]
 tokio = { version = "1.43.0", features = [

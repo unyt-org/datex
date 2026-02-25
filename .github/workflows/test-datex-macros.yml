@@ -7,7 +7,6 @@ env:
   CARGO_INCREMENTAL: 0
   RUSTFLAGS: -Awarnings
 
-
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -41,17 +40,17 @@ jobs:
         run: cargo install cargo-nextest --locked
 
       - name: Run clippy (default features)
-        run: cargo clippy -p datex-macros --all-targets
+        run: cargo clippy -p datex_macros --all-targets
 
       - name: Run nextest (default features)
         run: |
           cargo nextest run \
             --profile ci \
-            -p datex-macros
+            -p datex_macros
 
       - name: Upload test results
         uses: EnricoMi/publish-unit-test-result-action@v2
         with:
-          check_name: Test Results (datex-macros)
+          check_name: Test Results (datex_macros)
           github_token: ${{ secrets.GITHUB_TOKEN }}
           files: target/nextest/ci/report.xml
