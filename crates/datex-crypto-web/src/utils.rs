@@ -17,7 +17,7 @@ pub fn js_array<T>(values: &[T]) -> JsValue
 where
     T: Into<JsValue> + Clone,
 {
-    // FIXME TODO can we avoid clone here?
+    // FIXME #704 TODO can we avoid clone here?
     let js_array = values
         .iter()
         .map(|x| <T as Into<JsValue>>::into(x.clone()))

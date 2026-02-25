@@ -318,7 +318,7 @@ pub struct ComInterfaceConfiguration {
     /// And stops the sockets iterator after yielding the first socket configuration.
     /// When set to true, the first socket connection is awaited on interface creation.
     pub has_single_socket: bool,
-    // TODO: docs
+    // TODO #725: docs
     #[cfg_attr(
         feature = "wasm_runtime",
         tsify(type = "ReadableStream<SocketConfiguration>")
@@ -424,7 +424,7 @@ pub type CloseAsyncCallback = Box<dyn FnOnce() -> LocalBoxFuture<'static, ()>>;
 ///     fn create_interface(
 ///         self,
 ///     ) -> Result<ComInterfaceConfiguration, ComInterfaceCreateError> {
-///         todo!("Initialize the interface here")
+///         todo!("#726 Initialize the interface here")
 ///     }
 ///
 ///     fn get_default_properties() -> ComInterfaceProperties {
@@ -481,7 +481,7 @@ where
 ///     ) -> ComInterfaceAsyncFactoryResult {
 ///         Box::pin(async move {
 ///             // Initialize the interface here asynchronously
-///             todo!()
+///             todo!("#727 Undescribed by author.")
 ///         })
 ///     }
 ///     fn get_default_properties() -> ComInterfaceProperties {

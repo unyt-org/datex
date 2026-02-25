@@ -148,7 +148,7 @@ impl Integer {
         unsafe { self.0.to_f64().unwrap_unchecked() } // Note: this is always Some for BigInt
     }
 
-    // TODO: this can be optimized and redundant code can be reduced
+    // TODO #722: this can be optimized and redundant code can be reduced
     /// Converts the integer to an i8, wrapping on overflow.
     pub fn as_wrapped_i8(&self) -> i8 {
         const MAX: i16 = u8::MAX as i16 + 1;

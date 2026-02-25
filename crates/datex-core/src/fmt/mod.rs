@@ -181,7 +181,7 @@ impl<'a> Formatter<'a> {
             }
 
             TypeExpressionData::Range(_range_expr) => {
-                core::todo!("Range formartting not implemented")
+                core::todo!("#719 Range formartting not implemented")
             }
             TypeExpressionData::FixedSizeList(_list) => {
                 core::todo!("#627 Undescribed by author.")

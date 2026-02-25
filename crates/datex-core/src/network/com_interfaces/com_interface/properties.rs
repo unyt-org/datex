@@ -77,7 +77,7 @@ pub struct ComInterfaceProperties {
     /// that is end-to-end and not interceptable by third parties
     pub is_secure_channel: bool,
 
-    // TODO move reconnection config to a separate struct and ot of properties
+    // TODO #728 move reconnection config to a separate struct and ot of properties
     // Defines the reconnection strategy for the interface
     // If the interface is not able to reconnect, it will be destroyed
     pub reconnection_config: ReconnectionConfig,

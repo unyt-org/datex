@@ -25,7 +25,7 @@ lazy_static::lazy_static! {
 #[timeout(2000)]
 async fn create_network_with_two_nodes() {
     flexi_logger::init();
-    // FIXME: InvalidSignature for trace blocks (signature validation?)
+    // FIXME #717: InvalidSignature for trace blocks (signature validation?)
     let local = task::LocalSet::new();
     local
         .run_until(async {

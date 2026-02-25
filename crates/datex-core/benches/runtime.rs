@@ -10,7 +10,7 @@ criterion_group! {
     targets = bench_runtime
 }
 
-// TODO: async initialization benchmark
+// TODO #718: async initialization benchmark
 // use datex_core::{
 //     runtime::{Runtime, RuntimeConfig},
 //     values::core_values::endpoint::Endpoint,

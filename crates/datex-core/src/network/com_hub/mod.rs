@@ -301,7 +301,7 @@ impl ComHub {
                                 },
                                 interface_priority,
                             );
-                            // TODO: handle error
+                            // TODO #729: handle error
 
                             let self_clone = self.clone();
                             if let Some(socket_iterator) = socket_iterator {
@@ -482,7 +482,7 @@ impl ComHub {
 
         // only if interface still exists
         if self.interfaces_manager.has_interface(&com_interface_uuid) {
-            // TODO: check if any other sockets are still registered for the interface, if not
+            // TODO #730: check if any other sockets are still registered for the interface, if not
             // and if interface is no longer waiting for new socket connections (e.g. single socket interface), also remove the interface
             if !self
                 .interfaces_manager
@@ -497,7 +497,7 @@ impl ComHub {
                     "Destroyed interface {} as it is no longer waiting for socket connections",
                     com_interface_uuid
                 );
-                // TODO: reconnect logic?
+                // TODO #731: reconnect logic?
             }
         }
 
@@ -563,7 +563,7 @@ impl ComHub {
     /// * the block signature is validated because the block is for own endpoint and signature is set
     /// * the block needs to be relayed to other endpoints or is a trace block, which requires async handling for the relay/trace logic
     /// The MaybeAsync returns the own received block if the block is for own endpoint and signature is valid, otherwise None
-    // FIXME: this seams to generate a very big future which causes heap allocation to fail on embedded targets (!?)
+    // FIXME #732: this seams to generate a very big future which causes heap allocation to fail on embedded targets (!?)
     pub(crate) fn receive_block(
         self: Rc<Self>,
         block: DXBBlock,
@@ -674,7 +674,7 @@ impl ComHub {
                     if is_for_own && block_type != BlockType::Hello {
                         info!("Block is for this endpoint");
 
-                        Some(block.clone()) // FIXME: no clone
+                        Some(block.clone()) // FIXME #733: no clone
                     } else {
                         None
                     };
@@ -766,7 +766,7 @@ impl ComHub {
                 _ => {
                     self.redirect_block(block, socket_uuid.clone(), is_for_own)
                         .await
-                        .unwrap(); // TODO: handle error
+                        .unwrap(); // TODO #734: handle error
                 }
             }
         }
@@ -1306,7 +1306,7 @@ impl ComHub {
     ) -> Result<(), Vec<Endpoint>> {
         match self.send_block(block, exclude_sockets, forked) {
             SyncOrAsyncResult::Sync(res) => {
-                // TODO: handle received blocks
+                // TODO #735: handle received blocks
                 res.map(|_| ())
             }
             SyncOrAsyncResult::Async(fut) => fut.await,
@@ -1400,7 +1400,7 @@ impl ComHub {
                     SyncOrAsync::Sync(r) => {
                         match r {
                             Ok(Some(data)) => {
-                                received_blocks.push(data); // TODO: already DXBBlocks here?
+                                received_blocks.push(data); // TODO #736: already DXBBlocks here?
                             }
                             Ok(None) => { /* no data */ }
                             Err(_) => {
@@ -1424,7 +1424,7 @@ impl ComHub {
                     results.into_iter().map(|(endpoints, res)| async move {
                         match res {
                             SyncOrAsync::Sync(r) => {
-                                // TODO directly process received blocks
+                                // TODO #737 directly process received blocks
                                 r.map(|_data| ()).map_err(|_| endpoints)
                             }
                             SyncOrAsync::Async(fut) => {
@@ -2343,7 +2343,7 @@ pub mod tests {
     // pub async fn test_reconnect() {
     //     let com_hub = create_mock_com_hub();
     //
-    //     // TODO: refactor using proxy
+    //     // TODO #738: refactor using proxy
     //
     //     // create a new interface, open it and add it to the com_hub
     //     let (base_interface, interface_with_receivers) =
@@ -2370,7 +2370,7 @@ pub mod tests {
     //     // simulate a disconnection by closing the interface
     //     // This action is normally done by the interface itself
     //     // but we do it manually here to test the reconnection
-    //     // TODO: reconnect
+    //     // TODO #739: reconnect
     //     // // check that the interface is not connected
     //     // // and that the close_timestamp is set
     //     // assert_eq!(

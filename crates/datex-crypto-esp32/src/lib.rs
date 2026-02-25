@@ -49,7 +49,7 @@ pub struct CryptoEsp32;
 
 impl Crypto for CryptoEsp32 {
     fn create_uuid() -> String {
-        // TODO: use uuid crate?
+        // TODO #705: use uuid crate?
         let mut bytes = [0u8; 16];
         rng().read(&mut bytes);
 
@@ -77,20 +77,20 @@ impl Crypto for CryptoEsp32 {
     }
 
     fn hash_sha256<'a>(_to_digest: &'a [u8]) -> CryptoResult<'a, [u8; 32]> {
-        todo!()
+        todo!("#706 Undescribed by author.")
     }
 
     fn hkdf_sha256<'a>(
         _ikm: &'a [u8],
         _salt: &'a [u8],
     ) -> CryptoResult<'a, [u8; 32]> {
-        todo!()
+        todo!("#707 Undescribed by author.")
     }
     fn sig_ed25519<'a>(
         _pri_key: &'a [u8],
         _data: &'a [u8],
     ) -> Pin<Box<dyn Future<Output = Result<[u8; 64], CryptoError>> + 'a>> {
-        todo!()
+        todo!("#708 Undescribed by author.")
     }
 
     fn ver_ed25519<'a>(
@@ -98,7 +98,7 @@ impl Crypto for CryptoEsp32 {
         _sig: &'a [u8],
         _data: &'a [u8],
     ) -> Pin<Box<dyn Future<Output = Result<bool, CryptoError>> + 'a>> {
-        todo!()
+        todo!("#709 Undescribed by author.")
     }
 
     fn aes_ctr_encrypt<'a>(
@@ -106,7 +106,7 @@ impl Crypto for CryptoEsp32 {
         _iv: &'a [u8; 16],
         _plaintext: &'a [u8],
     ) -> Pin<Box<dyn Future<Output = Result<Vec<u8>, CryptoError>> + 'a>> {
-        todo!()
+        todo!("#710 Undescribed by author.")
     }
 
     fn aes_ctr_decrypt<'a>(
@@ -114,36 +114,36 @@ impl Crypto for CryptoEsp32 {
         _iv: &'a [u8; 16],
         _cipher: &'a [u8],
     ) -> Pin<Box<dyn Future<Output = Result<Vec<u8>, CryptoError>> + 'a>> {
-        todo!()
+        todo!("#711 Undescribed by author.")
     }
 
     fn key_upwrap<'a>(
         _kek_bytes: &'a [u8; 32],
         _rb: &'a [u8; 32],
     ) -> Pin<Box<dyn Future<Output = Result<[u8; 40], CryptoError>> + 'a>> {
-        todo!()
+        todo!("#712 Undescribed by author.")
     }
 
     fn key_unwrap<'a>(
         _kek_bytes: &'a [u8; 32],
         _cipher: &'a [u8; 40],
     ) -> Pin<Box<dyn Future<Output = Result<[u8; 32], CryptoError>> + 'a>> {
-        todo!()
+        todo!("#713 Undescribed by author.")
     }
 
     fn derive_x25519<'a>(
         _pri_key: &'a [u8; 48],
         _peer_pub: &'a [u8; 44],
     ) -> Pin<Box<dyn Future<Output = Result<Vec<u8>, CryptoError>> + 'a>> {
-        todo!()
+        todo!("#714 Undescribed by author.")
     }
 
     fn gen_ed25519<'a>() -> CryptoResult<'a, (Vec<u8>, Vec<u8>)> {
-        todo!()
+        todo!("#715 Undescribed by author.")
     }
 
     fn gen_x25519<'a>() -> CryptoResult<'a, ([u8; 44], [u8; 48])> {
-        todo!()
+        todo!("#716 Undescribed by author.")
     }
 }
 

@@ -213,7 +213,7 @@ impl DXBBlock {
         block
     }
 
-    // TODO: guarantee that all unwraps are safe and no binrw::Error is possible
+    // TODO #743: guarantee that all unwraps are safe and no binrw::Error is possible
     pub fn to_bytes(&self) -> Vec<u8> {
         let mut writer = Cursor::new(Vec::new());
         self.routing_header.write(&mut writer).unwrap();

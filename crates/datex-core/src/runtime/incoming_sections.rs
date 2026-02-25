@@ -35,7 +35,7 @@ impl RuntimeInternal {
             // otherwise, run each section in its own task
             #[cfg(not(feature = "embassy_runtime"))]
             {
-                // TODO: task
+                // TODO #741: task
                 self.task_manager.register_task(
                     self_clone.handle_incoming_section_task(section),
                 );
