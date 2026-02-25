@@ -19,6 +19,7 @@ use futures_util::{
     join,
 };
 use log::info;
+use crate::system_time::{SystemTime, UNIX_EPOCH};
 
 pub struct RuntimeRunner {
     pub runtime: Runtime,
@@ -29,11 +30,6 @@ impl RuntimeRunner {
     /// Creates a new runtime instance with the given configuration and global context.
     /// Note: If the endpoint is not specified in the config, a random endpoint will be generated.
     pub fn new(config: RuntimeConfig) -> RuntimeRunner {
-        info!(
-            "Runtime initialized - Version {VERSION} Time: {}",
-            crate::time::now_ms()
-        );
-
         let endpoint = config.endpoint.clone().unwrap_or_else(Endpoint::random);
 
         let (task_manager, runtime_task_future) = TaskManager::create();
@@ -146,6 +142,12 @@ impl RuntimeRunner {
         let app_future = async move {
             // wait for runtime initialization to complete before starting app logic
             init_ready_receiver.await.unwrap();
+
+            info!(
+                "Runtime initialized - Version {VERSION} Time: {}",
+                SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()
+            );
+
             app_logic(self.runtime).await
         };
 
