@@ -152,5 +152,5 @@ impl Crypto for CryptoEsp32 {
 
 pub fn now_ms() -> u64 {
     let rtc = Rtc::new(unsafe {esp_hal::peripherals::Peripherals::steal().LPWR.clone_unchecked()});
-    rtc.current_time_us()
+    rtc.current_time_us() / 1000
 }
