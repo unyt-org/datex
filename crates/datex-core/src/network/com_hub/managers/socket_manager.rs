@@ -500,9 +500,7 @@ impl ComInterfaceSocketManager {
 
     /// Removes a socket from the socket list
     pub(crate) fn cleanup_socket(&self, socket_uuid: &ComInterfaceSocketUUID) {
-        info!("Deleting socket {socket_uuid} from ComHub");
         if !self.has_socket(socket_uuid) {
-            warn!("Socket {socket_uuid} not found in ComHub, cannot delete");
             return;
         };
 
