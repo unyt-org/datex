@@ -94,6 +94,20 @@ pub mod crypto {
     }
 }
 
+pub mod system_time {
+    cfg_if::cfg_if! {
+        if #[cfg(feature = "target_wasm")] {
+            pub use web_time::{SystemTime, UNIX_EPOCH};
+        } else if #[cfg(feature = "std")] {
+            pub use std::time::{SystemTime, UNIX_EPOCH};
+        } else if #[cfg(feature = "embassy_runtime")] {
+            todo!()
+        } else {
+            pub use crate::stub::time::{SystemTime, UNIX_EPOCH};
+        }
+    }
+}
+
 pub mod time {
     cfg_if::cfg_if! {
         if #[cfg(feature = "target_wasm")] {
