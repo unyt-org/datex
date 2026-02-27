@@ -11,7 +11,7 @@ use crate::{
     },
     references::{
         observers::{ObserveOptions, Observer, TransceiverId},
-        reference::{Reference, ReferenceMutability},
+        reference::{SharedValueContainer, ReferenceMutability},
     },
     runtime::RuntimeInternal,
     values::{pointer::PointerAddress, value_container::ValueContainer},
@@ -23,14 +23,14 @@ impl RuntimeInternal {
     fn resolve_in_memory_reference(
         &self,
         address: &PointerAddress,
-    ) -> Option<Reference> {
+    ) -> Option<SharedValueContainer> {
         self.memory.borrow().get_reference(address).cloned()
     }
     // FIXME #398 implement async resolution
     async fn resolve_reference(
         &self,
         address: &PointerAddress,
-    ) -> Option<Reference> {
+    ) -> Option<SharedValueContainer> {
         self.memory.borrow().get_reference(address).cloned()
     }
 }
@@ -140,7 +140,7 @@ impl DIFInterface for RuntimeInternal {
         } else {
             None
         };
-        let reference = Reference::try_new_from_value_container(
+        let reference = SharedValueContainer::try_new_from_value_container(
             container,
             type_container,
             None,

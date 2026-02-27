@@ -217,7 +217,7 @@ impl Value {
             }
             CoreValue::Text(ref mut text) => {
                 if let Some(index) = key.try_as_index() {
-                    if let ValueContainer::Value(v) = &val
+                    if let ValueContainer::Local(v) = &val
                         && let CoreValue::Text(new_char) = &v.inner
                         && new_char.0.len() == 1
                     {

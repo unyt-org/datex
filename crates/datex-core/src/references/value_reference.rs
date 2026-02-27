@@ -26,7 +26,7 @@ pub struct ValueReference {
 impl Default for ValueReference {
     fn default() -> Self {
         ValueReference {
-            value_container: ValueContainer::Value(Value::null()),
+            value_container: ValueContainer::Local(Value::null()),
             pointer_address: None,
             allowed_type: TypeDefinition::Unknown,
             observers: FreeHashMap::new(),

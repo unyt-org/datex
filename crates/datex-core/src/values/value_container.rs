@@ -7,7 +7,7 @@ use crate::{
     references::{
         mutations::DIFUpdateDataOrMemory,
         observers::TransceiverId,
-        reference::{AccessError, Reference},
+        reference::{AccessError, SharedValueContainer},
     },
     runtime::execution::ExecutionError,
     serde::{
@@ -131,7 +131,7 @@ impl<'a> ValueKey<'a> {
         if let ValueKey::Text(text) = self {
             Some(text)
         } else if let ValueKey::Value(val) = self
-            && let ValueContainer::Value(Value {
+            && let ValueContainer::Local(Value {
                 inner: CoreValue::Text(text),
                 ..
             }) = val.as_ref()
@@ -146,14 +146,14 @@ impl<'a> ValueKey<'a> {
         if let ValueKey::Index(index) = self {
             Some(*index)
         } else if let ValueKey::Value(value) = self
-            && let ValueContainer::Value(Value {
+            && let ValueContainer::Local(Value {
                 inner: CoreValue::Integer(index),
                 ..
             }) = value.as_ref()
         {
             index.as_i64()
         } else if let ValueKey::Value(value) = self
-            && let ValueContainer::Value(Value {
+            && let ValueContainer::Local(Value {
                 inner: CoreValue::TypedInteger(index),
                 ..
             }) = value.as_ref()
@@ -198,8 +198,8 @@ impl<'a> From<OwnedValueKey> for ValueKey<'a> {
 
 #[derive(Clone, Debug, Eq)]
 pub enum ValueContainer {
-    Value(Value),
-    Reference(Reference),
+    Local(Value),
+    Shared(SharedValueContainer),
 }
 
 impl<'a> Deserialize<'a> for ValueContainer {
@@ -219,8 +219,8 @@ impl<'a> Deserialize<'a> for ValueContainer {
 impl Hash for ValueContainer {
     fn hash<H: Hasher>(&self, state: &mut H) {
         match self {
-            ValueContainer::Value(value) => value.hash(state),
-            ValueContainer::Reference(pointer) => pointer.hash(state),
+            ValueContainer::Local(value) => value.hash(state),
+            ValueContainer::Shared(pointer) => pointer.hash(state),
         }
     }
 }
@@ -231,8 +231,8 @@ impl Hash for ValueContainer {
 impl PartialEq for ValueContainer {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (ValueContainer::Value(a), ValueContainer::Value(b)) => a == b,
-            (ValueContainer::Reference(a), ValueContainer::Reference(b)) => {
+            (ValueContainer::Local(a), ValueContainer::Local(b)) => a == b,
+            (ValueContainer::Shared(a), ValueContainer::Shared(b)) => {
                 a == b
             }
             _ => false,
@@ -245,14 +245,14 @@ impl PartialEq for ValueContainer {
 impl StructuralEq for ValueContainer {
     fn structural_eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (ValueContainer::Value(a), ValueContainer::Value(b)) => {
+            (ValueContainer::Local(a), ValueContainer::Local(b)) => {
                 a.structural_eq(b)
             }
-            (ValueContainer::Reference(a), ValueContainer::Reference(b)) => {
+            (ValueContainer::Shared(a), ValueContainer::Shared(b)) => {
                 a.structural_eq(b)
             }
-            (ValueContainer::Value(a), ValueContainer::Reference(b))
-            | (ValueContainer::Reference(b), ValueContainer::Value(a)) => {
+            (ValueContainer::Local(a), ValueContainer::Shared(b))
+            | (ValueContainer::Shared(b), ValueContainer::Local(a)) => {
                 a.structural_eq(&b.collapse_to_value().borrow())
             }
         }
@@ -264,14 +264,14 @@ impl StructuralEq for ValueContainer {
 impl ValueEq for ValueContainer {
     fn value_eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (ValueContainer::Value(a), ValueContainer::Value(b)) => {
+            (ValueContainer::Local(a), ValueContainer::Local(b)) => {
                 a.value_eq(b)
             }
-            (ValueContainer::Reference(a), ValueContainer::Reference(b)) => {
+            (ValueContainer::Shared(a), ValueContainer::Shared(b)) => {
                 a.value_eq(b)
             }
-            (ValueContainer::Value(a), ValueContainer::Reference(b))
-            | (ValueContainer::Reference(b), ValueContainer::Value(a)) => {
+            (ValueContainer::Local(a), ValueContainer::Shared(b))
+            | (ValueContainer::Shared(b), ValueContainer::Local(a)) => {
                 a.value_eq(&b.collapse_to_value().borrow())
             }
         }
@@ -283,8 +283,8 @@ impl ValueEq for ValueContainer {
 impl Identity for ValueContainer {
     fn identical(&self, other: &Self) -> bool {
         match (self, other) {
-            (ValueContainer::Value(_), ValueContainer::Value(_)) => false,
-            (ValueContainer::Reference(a), ValueContainer::Reference(b)) => {
+            (ValueContainer::Local(_), ValueContainer::Local(_)) => false,
+            (ValueContainer::Shared(a), ValueContainer::Shared(b)) => {
                 a.identical(b)
             }
             _ => false,
@@ -295,9 +295,9 @@ impl Identity for ValueContainer {
 impl Display for ValueContainer {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
-            ValueContainer::Value(value) => core::write!(f, "{value}"),
+            ValueContainer::Local(value) => core::write!(f, "{value}"),
             // TODO #118: only simple temporary way to distinguish between Value and Pointer
-            ValueContainer::Reference(reference) => {
+            ValueContainer::Shared(reference) => {
                 core::write!(f, "&({})", reference.collapse_to_value().borrow())
             }
         }
@@ -307,25 +307,25 @@ impl Display for ValueContainer {
 impl ValueContainer {
     pub fn to_value(&self) -> Rc<RefCell<Value>> {
         match self {
-            ValueContainer::Value(value) => {
+            ValueContainer::Local(value) => {
                 Rc::new(RefCell::new(value.clone()))
             }
-            ValueContainer::Reference(pointer) => pointer.collapse_to_value(),
+            ValueContainer::Shared(pointer) => pointer.collapse_to_value(),
         }
     }
 
     pub fn is_type(&self) -> bool {
         match self {
-            ValueContainer::Value(value) => value.is_type(),
-            ValueContainer::Reference(reference) => reference.is_type(),
+            ValueContainer::Local(value) => value.is_type(),
+            ValueContainer::Shared(reference) => reference.is_type(),
         }
     }
 
     /// Returns the actual type of the contained value, resolving references if necessary.
     pub fn actual_value_type(&self) -> TypeDefinition {
         match self {
-            ValueContainer::Value(value) => value.actual_type().clone(),
-            ValueContainer::Reference(reference) => {
+            ValueContainer::Local(value) => value.actual_type().clone(),
+            ValueContainer::Shared(reference) => {
                 reference.actual_type().clone()
             }
         }
@@ -334,10 +334,10 @@ impl ValueContainer {
     /// Returns the actual type that describes the value container (e.g. integer or &&mut integer).
     pub fn actual_container_type(&self) -> Type {
         match self {
-            ValueContainer::Value(value) => {
+            ValueContainer::Local(value) => {
                 Type::new(*value.actual_type.clone(), None)
             }
-            ValueContainer::Reference(reference) => {
+            ValueContainer::Shared(reference) => {
                 let inner_type =
                     reference.value_container().actual_container_type();
                 Type::new(
@@ -356,11 +356,11 @@ impl ValueContainer {
     }
 
     pub fn new_value<T: Into<Value>>(value: T) -> ValueContainer {
-        ValueContainer::Value(value.into())
+        ValueContainer::Local(value.into())
     }
 
-    pub fn new_reference<T: Into<Reference>>(value: T) -> ValueContainer {
-        ValueContainer::Reference(value.into())
+    pub fn new_reference<T: Into<SharedValueContainer>>(value: T) -> ValueContainer {
+        ValueContainer::Shared(value.into())
     }
 
     /// Casts the contained Value or Reference to the desired type T using serde deserialization.
@@ -378,8 +378,8 @@ impl ValueContainer {
     }
 
     /// Returns the contained Reference if it is a Reference, otherwise returns None.
-    pub fn maybe_reference(&self) -> Option<&Reference> {
-        if let ValueContainer::Reference(reference) = self {
+    pub fn maybe_reference(&self) -> Option<&SharedValueContainer> {
+        if let ValueContainer::Shared(reference) = self {
             Some(reference)
         } else {
             None
@@ -389,9 +389,9 @@ impl ValueContainer {
     /// Runs a closure with the contained Reference if it is a Reference, otherwise returns None.
     pub fn with_maybe_reference<F, R>(&self, f: F) -> Option<R>
     where
-        F: FnOnce(&Reference) -> R,
+        F: FnOnce(&SharedValueContainer) -> R,
     {
-        if let ValueContainer::Reference(reference) = self {
+        if let ValueContainer::Shared(reference) = self {
             Some(f(reference))
         } else {
             None
@@ -399,9 +399,9 @@ impl ValueContainer {
     }
 
     /// Returns a reference to the contained Reference, panics if it is not a Reference.
-    pub fn reference_unchecked(&self) -> &Reference {
+    pub fn reference_unchecked(&self) -> &SharedValueContainer {
         match self {
-            ValueContainer::Reference(reference) => reference,
+            ValueContainer::Shared(reference) => reference,
             _ => core::panic!("Cannot convert ValueContainer to Reference"),
         }
     }
@@ -412,8 +412,8 @@ impl ValueContainer {
         key: impl Into<ValueKey<'a>>,
     ) -> Result<ValueContainer, AccessError> {
         match self {
-            ValueContainer::Value(value) => value.try_get_property(key),
-            ValueContainer::Reference(reference) => {
+            ValueContainer::Local(value) => value.try_get_property(key),
+            ValueContainer::Shared(reference) => {
                 reference.try_get_property(key)
             }
         }
@@ -427,8 +427,8 @@ impl ValueContainer {
         val: ValueContainer,
     ) -> Result<(), AccessError> {
         match self {
-            ValueContainer::Value(v) => v.try_set_property(key, val),
-            ValueContainer::Reference(r) => r.try_set_property(
+            ValueContainer::Local(v) => v.try_set_property(key, val),
+            ValueContainer::Shared(r) => r.try_set_property(
                 source_id,
                 dif_update_data_or_memory,
                 key,
@@ -444,8 +444,8 @@ impl Apply for ValueContainer {
         args: &[ValueContainer],
     ) -> Result<Option<ValueContainer>, ExecutionError> {
         match self {
-            ValueContainer::Value(value) => value.apply(args),
-            ValueContainer::Reference(reference) => reference.apply(args),
+            ValueContainer::Local(value) => value.apply(args),
+            ValueContainer::Shared(reference) => reference.apply(args),
         }
     }
 
@@ -454,15 +454,15 @@ impl Apply for ValueContainer {
         arg: &ValueContainer,
     ) -> Result<Option<ValueContainer>, ExecutionError> {
         match self {
-            ValueContainer::Value(value) => value.apply_single(arg),
-            ValueContainer::Reference(reference) => reference.apply_single(arg),
+            ValueContainer::Local(value) => value.apply_single(arg),
+            ValueContainer::Shared(reference) => reference.apply_single(arg),
         }
     }
 }
 
 impl<T: Into<Value>> From<T> for ValueContainer {
     fn from(value: T) -> Self {
-        ValueContainer::Value(value.into())
+        ValueContainer::Local(value.into())
     }
 }
 
@@ -471,24 +471,24 @@ impl Add<ValueContainer> for ValueContainer {
 
     fn add(self, rhs: ValueContainer) -> Self::Output {
         match (self, rhs) {
-            (ValueContainer::Value(lhs), ValueContainer::Value(rhs)) => {
-                (lhs + rhs).map(ValueContainer::Value)
+            (ValueContainer::Local(lhs), ValueContainer::Local(rhs)) => {
+                (lhs + rhs).map(ValueContainer::Local)
             }
             (
-                ValueContainer::Reference(lhs),
-                ValueContainer::Reference(rhs),
+                ValueContainer::Shared(lhs),
+                ValueContainer::Shared(rhs),
             ) => {
                 let lhs_value = lhs.collapse_to_value().borrow().clone();
                 let rhs_value = rhs.collapse_to_value().borrow().clone();
-                (lhs_value + rhs_value).map(ValueContainer::Value)
+                (lhs_value + rhs_value).map(ValueContainer::Local)
             }
-            (ValueContainer::Value(lhs), ValueContainer::Reference(rhs)) => {
+            (ValueContainer::Local(lhs), ValueContainer::Shared(rhs)) => {
                 let rhs_value = rhs.collapse_to_value().borrow().clone();
-                (lhs + rhs_value).map(ValueContainer::Value)
+                (lhs + rhs_value).map(ValueContainer::Local)
             }
-            (ValueContainer::Reference(lhs), ValueContainer::Value(rhs)) => {
+            (ValueContainer::Shared(lhs), ValueContainer::Local(rhs)) => {
                 let lhs_value = lhs.collapse_to_value().borrow().clone();
-                (lhs_value + rhs).map(ValueContainer::Value)
+                (lhs_value + rhs).map(ValueContainer::Local)
             }
         }
     }
@@ -499,24 +499,24 @@ impl Add<&ValueContainer> for &ValueContainer {
 
     fn add(self, rhs: &ValueContainer) -> Self::Output {
         match (self, rhs) {
-            (ValueContainer::Value(lhs), ValueContainer::Value(rhs)) => {
-                (lhs + rhs).map(ValueContainer::Value)
+            (ValueContainer::Local(lhs), ValueContainer::Local(rhs)) => {
+                (lhs + rhs).map(ValueContainer::Local)
             }
             (
-                ValueContainer::Reference(lhs),
-                ValueContainer::Reference(rhs),
+                ValueContainer::Shared(lhs),
+                ValueContainer::Shared(rhs),
             ) => {
                 let lhs_value = lhs.collapse_to_value().borrow().clone();
                 let rhs_value = rhs.collapse_to_value().borrow().clone();
-                (lhs_value + rhs_value).map(ValueContainer::Value)
+                (lhs_value + rhs_value).map(ValueContainer::Local)
             }
-            (ValueContainer::Value(lhs), ValueContainer::Reference(rhs)) => {
+            (ValueContainer::Local(lhs), ValueContainer::Shared(rhs)) => {
                 let rhs_value = rhs.collapse_to_value().borrow().clone();
-                (lhs + &rhs_value).map(ValueContainer::Value)
+                (lhs + &rhs_value).map(ValueContainer::Local)
             }
-            (ValueContainer::Reference(lhs), ValueContainer::Value(rhs)) => {
+            (ValueContainer::Shared(lhs), ValueContainer::Local(rhs)) => {
                 let lhs_value = lhs.collapse_to_value().borrow().clone();
-                (&lhs_value + rhs).map(ValueContainer::Value)
+                (&lhs_value + rhs).map(ValueContainer::Local)
             }
         }
     }
@@ -527,24 +527,24 @@ impl Sub<ValueContainer> for ValueContainer {
 
     fn sub(self, rhs: ValueContainer) -> Self::Output {
         match (self, rhs) {
-            (ValueContainer::Value(lhs), ValueContainer::Value(rhs)) => {
-                (lhs - rhs).map(ValueContainer::Value)
+            (ValueContainer::Local(lhs), ValueContainer::Local(rhs)) => {
+                (lhs - rhs).map(ValueContainer::Local)
             }
             (
-                ValueContainer::Reference(lhs),
-                ValueContainer::Reference(rhs),
+                ValueContainer::Shared(lhs),
+                ValueContainer::Shared(rhs),
             ) => {
                 let lhs_value = lhs.collapse_to_value().borrow().clone();
                 let rhs_value = rhs.collapse_to_value().borrow().clone();
-                (lhs_value - rhs_value).map(ValueContainer::Value)
+                (lhs_value - rhs_value).map(ValueContainer::Local)
             }
-            (ValueContainer::Value(lhs), ValueContainer::Reference(rhs)) => {
+            (ValueContainer::Local(lhs), ValueContainer::Shared(rhs)) => {
                 let rhs_value = rhs.collapse_to_value().borrow().clone();
-                (lhs - rhs_value).map(ValueContainer::Value)
+                (lhs - rhs_value).map(ValueContainer::Local)
             }
-            (ValueContainer::Reference(lhs), ValueContainer::Value(rhs)) => {
+            (ValueContainer::Shared(lhs), ValueContainer::Local(rhs)) => {
                 let lhs_value = lhs.collapse_to_value().borrow().clone();
-                (lhs_value - rhs).map(ValueContainer::Value)
+                (lhs_value - rhs).map(ValueContainer::Local)
             }
         }
     }
@@ -555,24 +555,24 @@ impl Sub<&ValueContainer> for &ValueContainer {
 
     fn sub(self, rhs: &ValueContainer) -> Self::Output {
         match (self, rhs) {
-            (ValueContainer::Value(lhs), ValueContainer::Value(rhs)) => {
-                (lhs - rhs).map(ValueContainer::Value)
+            (ValueContainer::Local(lhs), ValueContainer::Local(rhs)) => {
+                (lhs - rhs).map(ValueContainer::Local)
             }
             (
-                ValueContainer::Reference(lhs),
-                ValueContainer::Reference(rhs),
+                ValueContainer::Shared(lhs),
+                ValueContainer::Shared(rhs),
             ) => {
                 let lhs_value = lhs.collapse_to_value().borrow().clone();
                 let rhs_value = rhs.collapse_to_value().borrow().clone();
-                (lhs_value - rhs_value).map(ValueContainer::Value)
+                (lhs_value - rhs_value).map(ValueContainer::Local)
             }
-            (ValueContainer::Value(lhs), ValueContainer::Reference(rhs)) => {
+            (ValueContainer::Local(lhs), ValueContainer::Shared(rhs)) => {
                 let rhs_value = rhs.collapse_to_value().borrow().clone();
-                (lhs - &rhs_value).map(ValueContainer::Value)
+                (lhs - &rhs_value).map(ValueContainer::Local)
             }
-            (ValueContainer::Reference(lhs), ValueContainer::Value(rhs)) => {
+            (ValueContainer::Shared(lhs), ValueContainer::Local(rhs)) => {
                 let lhs_value = lhs.collapse_to_value().borrow().clone();
-                (&lhs_value - rhs).map(ValueContainer::Value)
+                (&lhs_value - rhs).map(ValueContainer::Local)
             }
         }
     }
@@ -583,10 +583,10 @@ impl Neg for ValueContainer {
 
     fn neg(self) -> Self::Output {
         match self {
-            ValueContainer::Value(value) => (-value).map(ValueContainer::Value),
-            ValueContainer::Reference(reference) => {
+            ValueContainer::Local(value) => (-value).map(ValueContainer::Local),
+            ValueContainer::Shared(reference) => {
                 let value = reference.collapse_to_value().borrow().clone(); // FIXME #311: Avoid clone
-                (-value).map(ValueContainer::Value)
+                (-value).map(ValueContainer::Local)
             }
         }
     }
