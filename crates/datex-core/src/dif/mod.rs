@@ -135,7 +135,7 @@ mod tests {
 
     #[test]
     fn dif_value_no_type() {
-        let val = ValueContainer::Value(Value::null());
+        let val = ValueContainer::Local(Value::null());
         let memory = RefCell::new(Memory::new(Endpoint::default()));
         let dif_val = DIFValueContainer::from_value_container(&val, &memory);
         assert_eq!(
@@ -149,7 +149,7 @@ mod tests {
 
     #[test]
     fn dif_value_with_type() {
-        let val = ValueContainer::Value(Value {
+        let val = ValueContainer::Local(Value {
             inner: CoreValue::Null,
             actual_type: Box::new(TypeDefinition::ImplType(
                 Box::new(Type::integer()),

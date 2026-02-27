@@ -1,7 +1,7 @@
 use crate::{
     collections::HashMap,
     references::{
-        reference::Reference,
+        reference::SharedValueContainer,
         type_reference::{NominalTypeDeclaration, TypeReference},
     },
     runtime::memory::Memory,
@@ -206,7 +206,7 @@ pub fn get_core_lib_value(
         if let Some(ty) = core_lib_types.get(&id) {
             match &ty.type_definition {
                 TypeDefinition::Reference(tr) => {
-                    Some(ValueContainer::Reference(Reference::TypeReference(
+                    Some(ValueContainer::Shared(SharedValueContainer::TypeReference(
                         tr.clone(),
                     )))
                 }
@@ -247,9 +247,9 @@ pub fn load_core_lib(memory: &mut Memory) {
                         .unwrap()
                         .to_string();
                     let reference =
-                        Reference::TypeReference(type_reference.clone());
+                        SharedValueContainer::TypeReference(type_reference.clone());
                     memory.register_reference(&reference);
-                    (name, ValueContainer::Reference(reference))
+                    (name, ValueContainer::Shared(reference))
                 }
                 _ => core::panic!("Core lib type is not a TypeReference"),
             })
@@ -263,7 +263,7 @@ pub fn load_core_lib(memory: &mut Memory) {
 
         // TODO #455: dont store variants as separate entries in core_struct (e.g., integer/u8, integer/i32, only keep integer)
         // Import variants directly by variant access operator from base type (e.g., integer -> integer/u8)
-        let core_struct = Reference::from(ValueContainer::from(
+        let core_struct = SharedValueContainer::from(ValueContainer::from(
             Map::from_iter(types_structure),
         ));
         core_struct.set_pointer_address(CoreLibPointerId::Core.into());
@@ -392,7 +392,7 @@ pub fn integer_variant(
 pub fn print() -> (CoreLibPointerId, ValueContainer) {
     (
         CoreLibPointerId::Print,
-        ValueContainer::Value(Value::callable(
+        ValueContainer::Local(Value::callable(
             Some("print".to_string()),
             CallableSignature {
                 kind: CallableKind::Function,
@@ -410,7 +410,7 @@ pub fn print() -> (CoreLibPointerId, ValueContainer) {
                 let mut output = String::new();
 
                 // if first argument is a string value, print it directly
-                if let Some(ValueContainer::Value(Value {
+                if let Some(ValueContainer::Local(Value {
                     inner: CoreValue::Text(text),
                     ..
                 })) = args.first()

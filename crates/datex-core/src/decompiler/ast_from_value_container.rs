@@ -30,8 +30,8 @@ impl From<&ValueContainer> for DatexExpressionData {
     /// This AST can then be further processed or decompiled into human-readable DATEX code.
     fn from(value: &ValueContainer) -> Self {
         match value {
-            ValueContainer::Value(value) => value_to_datex_expression(value),
-            ValueContainer::Reference(reference) => {
+            ValueContainer::Local(value) => value_to_datex_expression(value),
+            ValueContainer::Shared(reference) => {
                 DatexExpressionData::CreateRef(CreateRef {
                     mutability: reference.mutability(),
                     expression: Box::new(
@@ -299,7 +299,7 @@ mod tests {
 
     #[test]
     fn test_null_to_ast() {
-        let value = ValueContainer::Value(Value::null());
+        let value = ValueContainer::Local(Value::null());
         let ast = DatexExpressionData::from(&value);
         assert_eq!(ast, DatexExpressionData::Null);
     }

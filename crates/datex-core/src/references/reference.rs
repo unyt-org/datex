@@ -238,19 +238,20 @@ impl Display for ReferenceMutability {
 }
 
 #[derive(Debug, Clone)]
-pub enum Reference {
+// TODO: convert to struct reuse store pointer address / common logic
+pub enum SharedValueContainer {
     ValueReference(Rc<RefCell<ValueReference>>),
     TypeReference(Rc<RefCell<TypeReference>>),
 }
 
-impl Display for Reference {
+impl Display for SharedValueContainer {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
-            Reference::ValueReference(vr) => {
+            SharedValueContainer::ValueReference(vr) => {
                 let vr = vr.borrow();
                 write!(f, "{} {}", vr.mutability, vr.value_container)
             }
-            Reference::TypeReference(tr) => {
+            SharedValueContainer::TypeReference(tr) => {
                 let tr = tr.borrow();
                 write!(f, "{}", tr)
             }
@@ -258,25 +259,25 @@ impl Display for Reference {
     }
 }
 
-impl From<ValueReference> for Reference {
+impl From<ValueReference> for SharedValueContainer {
     fn from(reference: ValueReference) -> Self {
-        Reference::ValueReference(Rc::new(RefCell::new(reference)))
+        SharedValueContainer::ValueReference(Rc::new(RefCell::new(reference)))
     }
 }
-impl From<TypeReference> for Reference {
+impl From<TypeReference> for SharedValueContainer {
     fn from(reference: TypeReference) -> Self {
-        Reference::TypeReference(Rc::new(RefCell::new(reference)))
+        SharedValueContainer::TypeReference(Rc::new(RefCell::new(reference)))
     }
 }
 
 /// Two references are identical if they point to the same data
-impl Identity for Reference {
+impl Identity for SharedValueContainer {
     fn identical(&self, other: &Self) -> bool {
         match (self, other) {
-            (Reference::ValueReference(a), Reference::ValueReference(b)) => {
+            (SharedValueContainer::ValueReference(a), SharedValueContainer::ValueReference(b)) => {
                 Rc::ptr_eq(a, b)
             }
-            (Reference::TypeReference(a), Reference::TypeReference(b)) => {
+            (SharedValueContainer::TypeReference(a), SharedValueContainer::TypeReference(b)) => {
                 Rc::ptr_eq(a, b)
             }
             _ => false,
@@ -284,22 +285,22 @@ impl Identity for Reference {
     }
 }
 
-impl Eq for Reference {}
+impl Eq for SharedValueContainer {}
 
 /// PartialEq corresponds to pointer equality / identity for `Reference`.
-impl PartialEq for Reference {
+impl PartialEq for SharedValueContainer {
     fn eq(&self, other: &Self) -> bool {
         self.identical(other)
     }
 }
 
-impl StructuralEq for Reference {
+impl StructuralEq for SharedValueContainer {
     fn structural_eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (Reference::TypeReference(a), Reference::TypeReference(b)) => {
+            (SharedValueContainer::TypeReference(a), SharedValueContainer::TypeReference(b)) => {
                 a.borrow().type_value.structural_eq(&b.borrow().type_value)
             }
-            (Reference::ValueReference(a), Reference::ValueReference(b)) => a
+            (SharedValueContainer::ValueReference(a), SharedValueContainer::ValueReference(b)) => a
                 .borrow()
                 .value_container
                 .structural_eq(&b.borrow().value_container),
@@ -308,14 +309,14 @@ impl StructuralEq for Reference {
     }
 }
 
-impl ValueEq for Reference {
+impl ValueEq for SharedValueContainer {
     fn value_eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (Reference::TypeReference(a), Reference::TypeReference(b)) => {
+            (SharedValueContainer::TypeReference(a), SharedValueContainer::TypeReference(b)) => {
                 // FIXME #281: Implement value_eq for type and use here instead (recursive)
                 a.borrow().type_value.structural_eq(&b.borrow().type_value)
             }
-            (Reference::ValueReference(a), Reference::ValueReference(b)) => a
+            (SharedValueContainer::ValueReference(a), SharedValueContainer::ValueReference(b)) => a
                 .borrow()
                 .value_container
                 .value_eq(&b.borrow().value_container),
@@ -324,14 +325,14 @@ impl ValueEq for Reference {
     }
 }
 
-impl Hash for Reference {
+impl Hash for SharedValueContainer {
     fn hash<H: Hasher>(&self, state: &mut H) {
         match self {
-            Reference::TypeReference(tr) => {
+            SharedValueContainer::TypeReference(tr) => {
                 let ptr = Rc::as_ptr(tr);
                 ptr.hash(state); // hash the address
             }
-            Reference::ValueReference(vr) => {
+            SharedValueContainer::ValueReference(vr) => {
                 let ptr = Rc::as_ptr(vr);
                 ptr.hash(state); // hash the address
             }
@@ -339,11 +340,11 @@ impl Hash for Reference {
     }
 }
 
-impl<T: Into<ValueContainer>> From<T> for Reference {
+impl<T: Into<ValueContainer>> From<T> for SharedValueContainer {
     /// Creates a new immutable reference from a value container.
     fn from(value_container: T) -> Self {
         let value_container = value_container.into();
-        Reference::try_new_from_value_container(
+        SharedValueContainer::try_new_from_value_container(
             value_container,
             None,
             None,
@@ -375,7 +376,7 @@ impl Display for ReferenceCreationError {
     }
 }
 
-impl Reference {
+impl SharedValueContainer {
     /// Runs a closure with the current value of this reference.
     pub(crate) fn with_value<R, F: FnOnce(&mut Value) -> R>(
         &self,
@@ -383,17 +384,17 @@ impl Reference {
     ) -> Option<R> {
         let reference = self.collapse_reference_chain();
         match reference {
-            Reference::ValueReference(vr) => {
+            SharedValueContainer::ValueReference(vr) => {
                 match &mut vr.borrow_mut().value_container {
-                    ValueContainer::Value(value) => Some(f(value)),
-                    ValueContainer::Reference(_) => {
+                    ValueContainer::Local(value) => Some(f(value)),
+                    ValueContainer::Shared(_) => {
                         unreachable!(
                             "Expected a ValueContainer::Value, but found a Reference"
                         )
                     }
                 }
             }
-            Reference::TypeReference(_) => None,
+            SharedValueContainer::TypeReference(_) => None,
         }
     }
 
@@ -407,13 +408,13 @@ impl Reference {
     }
 }
 
-impl Reference {
+impl SharedValueContainer {
     pub fn pointer_address(&self) -> Option<PointerAddress> {
         match self {
-            Reference::ValueReference(vr) => {
+            SharedValueContainer::ValueReference(vr) => {
                 vr.borrow().pointer_address().clone()
             }
-            Reference::TypeReference(tr) => tr.borrow().pointer_address.clone(),
+            SharedValueContainer::TypeReference(tr) => tr.borrow().pointer_address.clone(),
         }
     }
 
@@ -426,10 +427,10 @@ impl Reference {
             );
         }
         match self {
-            Reference::ValueReference(vr) => {
+            SharedValueContainer::ValueReference(vr) => {
                 vr.borrow_mut().pointer_address = Some(pointer_address)
             }
-            Reference::TypeReference(tr) => {
+            SharedValueContainer::TypeReference(tr) => {
                 tr.borrow_mut().pointer_address = Some(pointer_address)
             }
         }
@@ -439,8 +440,8 @@ impl Reference {
     /// TypeReferences are always immutable.
     pub(crate) fn mutability(&self) -> ReferenceMutability {
         match self {
-            Reference::ValueReference(vr) => vr.borrow().mutability.clone(),
-            Reference::TypeReference(_) => ReferenceMutability::Immutable,
+            SharedValueContainer::ValueReference(vr) => vr.borrow().mutability.clone(),
+            SharedValueContainer::TypeReference(_) => ReferenceMutability::Immutable,
         }
     }
 
@@ -451,8 +452,8 @@ impl Reference {
     /// the mutability check on the most inner ref.
     pub fn is_mutable(&self) -> bool {
         match self {
-            Reference::TypeReference(_) => false, // type references are always immutable
-            Reference::ValueReference(vr) => {
+            SharedValueContainer::TypeReference(_) => false, // type references are always immutable
+            SharedValueContainer::ValueReference(vr) => {
                 let vr_borrow = vr.borrow();
                 // if the current reference is immutable, whole chain is immutable
                 if vr_borrow.mutability != ReferenceMutability::Mutable {
@@ -461,8 +462,8 @@ impl Reference {
 
                 // otherwise, check if ref is pointing to another reference
                 match &vr_borrow.value_container {
-                    ValueContainer::Reference(inner) => inner.is_mutable(),
-                    ValueContainer::Value(_) => true,
+                    ValueContainer::Shared(inner) => inner.is_mutable(),
+                    ValueContainer::Local(_) => true,
                 }
             }
         }
@@ -477,14 +478,14 @@ impl Reference {
     ) -> Result<Self, ReferenceCreationError> {
         // FIXME #285 implement type check
         Ok(match value_container {
-            ValueContainer::Reference(ref reference) => {
+            ValueContainer::Shared(ref reference) => {
                 match reference {
-                    Reference::ValueReference(vr) => {
+                    SharedValueContainer::ValueReference(vr) => {
                         let allowed_type = allowed_type.unwrap_or_else(|| {
                             vr.borrow().allowed_type.clone()
                         });
                         // TODO #286: make sure allowed type is superset of reference's allowed type
-                        Reference::ValueReference(Rc::new(RefCell::new(
+                        SharedValueContainer::ValueReference(Rc::new(RefCell::new(
                             ValueReference::new(
                                 value_container,
                                 maybe_pointer_id,
@@ -493,13 +494,13 @@ impl Reference {
                             ),
                         )))
                     }
-                    Reference::TypeReference(tr) => {
+                    SharedValueContainer::TypeReference(tr) => {
                         if mutability == ReferenceMutability::Mutable {
                             return Err(
                                 ReferenceCreationError::MutableTypeReference,
                             );
                         }
-                        Reference::TypeReference(
+                        SharedValueContainer::TypeReference(
                             TypeReference::anonymous(
                                 Type::reference(tr.clone(), mutability),
                                 maybe_pointer_id,
@@ -509,7 +510,7 @@ impl Reference {
                     }
                 }
             }
-            ValueContainer::Value(value) => {
+            ValueContainer::Local(value) => {
                 match value.inner {
                     // create TypeReference if the value is a Type
                     CoreValue::Type(type_value) => {
@@ -522,7 +523,7 @@ impl Reference {
                                 ReferenceCreationError::MutableTypeReference,
                             );
                         }
-                        Reference::new_from_type(
+                        SharedValueContainer::new_from_type(
                             type_value,
                             maybe_pointer_id,
                             None,
@@ -533,9 +534,9 @@ impl Reference {
                         let allowed_type = allowed_type.unwrap_or_else(|| {
                             value.actual_type.as_ref().clone()
                         });
-                        Reference::ValueReference(Rc::new(RefCell::new(
+                        SharedValueContainer::ValueReference(Rc::new(RefCell::new(
                             ValueReference::new(
-                                ValueContainer::Value(value),
+                                ValueContainer::Local(value),
                                 maybe_pointer_id,
                                 allowed_type,
                                 mutability,
@@ -557,13 +558,13 @@ impl Reference {
             nominal_type_declaration: maybe_nominal_type_declaration,
             type_value,
         };
-        Reference::TypeReference(Rc::new(RefCell::new(type_reference)))
+        SharedValueContainer::TypeReference(Rc::new(RefCell::new(type_reference)))
     }
 
     pub fn try_mut_from(
         value_container: ValueContainer,
     ) -> Result<Self, ReferenceCreationError> {
-        Reference::try_new_from_value_container(
+        SharedValueContainer::try_new_from_value_container(
             value_container,
             None,
             None,
@@ -572,19 +573,19 @@ impl Reference {
     }
 
     /// Collapses the reference chain to most inner reference to which this reference points.
-    pub fn collapse_reference_chain(&self) -> Reference {
+    pub fn collapse_reference_chain(&self) -> SharedValueContainer {
         match self {
             // FIXME #288: Can we optimize this to avoid creating rc ref cells?
-            Reference::TypeReference(tr) => Reference::TypeReference(Rc::new(
+            SharedValueContainer::TypeReference(tr) => SharedValueContainer::TypeReference(Rc::new(
                 RefCell::new(tr.borrow().collapse_reference_chain()),
             )),
-            Reference::ValueReference(vr) => {
+            SharedValueContainer::ValueReference(vr) => {
                 match &vr.borrow().value_container {
-                    ValueContainer::Reference(reference) => {
+                    ValueContainer::Shared(reference) => {
                         // If this is a reference, resolve it to its current value
                         reference.collapse_reference_chain()
                     }
-                    ValueContainer::Value(_) => {
+                    ValueContainer::Local(_) => {
                         // If this is a value, return it directly
                         self.clone()
                     }
@@ -597,17 +598,17 @@ impl Reference {
     pub fn collapse_to_value(&self) -> Rc<RefCell<Value>> {
         let reference = self.collapse_reference_chain();
         match reference {
-            Reference::ValueReference(vr) => match &vr.borrow().value_container
+            SharedValueContainer::ValueReference(vr) => match &vr.borrow().value_container
             {
-                ValueContainer::Value(_) => {
+                ValueContainer::Local(_) => {
                     vr.borrow().value_container.to_value()
                 }
-                ValueContainer::Reference(_) => unreachable!(
+                ValueContainer::Shared(_) => unreachable!(
                     "Expected a ValueContainer::Value, but found a Reference"
                 ),
             },
             // TODO #289: can we optimize this to avoid cloning the type value?
-            Reference::TypeReference(tr) => Rc::new(RefCell::new(Value::from(
+            SharedValueContainer::TypeReference(tr) => Rc::new(RefCell::new(Value::from(
                 CoreValue::Type(tr.borrow().type_value.clone()),
             ))),
         }
@@ -616,10 +617,10 @@ impl Reference {
     // TODO #290: no clone?
     pub fn value_container(&self) -> ValueContainer {
         match self {
-            Reference::ValueReference(vr) => {
+            SharedValueContainer::ValueReference(vr) => {
                 vr.borrow().value_container.clone()
             }
-            Reference::TypeReference(tr) => ValueContainer::Value(Value::from(
+            SharedValueContainer::TypeReference(tr) => ValueContainer::Local(Value::from(
                 CoreValue::Type(tr.borrow().type_value.clone()),
             )),
         }
@@ -627,28 +628,28 @@ impl Reference {
 
     pub fn allowed_type(&self) -> TypeDefinition {
         match self {
-            Reference::ValueReference(vr) => vr.borrow().allowed_type.clone(),
-            Reference::TypeReference(_) => core::todo!("#293 type Type"),
+            SharedValueContainer::ValueReference(vr) => vr.borrow().allowed_type.clone(),
+            SharedValueContainer::TypeReference(_) => core::todo!("#293 type Type"),
         }
     }
 
     pub fn actual_type(&self) -> TypeDefinition {
         match self {
-            Reference::ValueReference(vr) => vr
+            SharedValueContainer::ValueReference(vr) => vr
                 .borrow()
                 .value_container
                 .to_value()
                 .borrow()
                 .actual_type()
                 .clone(),
-            Reference::TypeReference(_tr) => core::todo!("#294 type Type"),
+            SharedValueContainer::TypeReference(_tr) => core::todo!("#294 type Type"),
         }
     }
 
     pub fn is_type(&self) -> bool {
         match self {
-            Reference::TypeReference(_) => true,
-            Reference::ValueReference(vr) => {
+            SharedValueContainer::TypeReference(_) => true,
+            SharedValueContainer::ValueReference(vr) => {
                 vr.borrow().resolve_current_value().borrow().is_type()
             }
         }
@@ -657,8 +658,8 @@ impl Reference {
     /// Returns a mutable reference to the ValueReference if this is a mutable ValueReference.
     pub fn mutable_reference(&self) -> Option<Rc<RefCell<ValueReference>>> {
         match self {
-            Reference::TypeReference(_) => None,
-            Reference::ValueReference(vr) => {
+            SharedValueContainer::TypeReference(_) => None,
+            SharedValueContainer::ValueReference(vr) => {
                 if vr.borrow().is_mutable() {
                     Some(vr.clone())
                 } else {
@@ -675,10 +676,10 @@ impl Reference {
         new_value_container: ValueContainer,
     ) -> Result<(), AssignmentError> {
         match &self {
-            Reference::TypeReference(_) => {
+            SharedValueContainer::TypeReference(_) => {
                 Err(AssignmentError::ImmutableReference)
             }
-            Reference::ValueReference(vr) => {
+            SharedValueContainer::ValueReference(vr) => {
                 if self.is_mutable() {
                     // TODO #295: check type compatibility, handle observers
                     vr.borrow_mut().value_container = new_value_container;
@@ -691,7 +692,7 @@ impl Reference {
     }
 }
 /// Getter for references
-impl Reference {
+impl SharedValueContainer {
     /// Gets a property on the value if applicable (e.g. for map and structs)
     // FIXME #296 make this return a reference to a value container
     // Just for later as myRef.x += 1
@@ -710,14 +711,14 @@ impl Reference {
     }
 }
 
-impl Apply for Reference {
+impl Apply for SharedValueContainer {
     fn apply(
         &self,
         args: &[ValueContainer],
     ) -> Result<Option<ValueContainer>, ExecutionError> {
         match self {
-            Reference::TypeReference(tr) => tr.borrow().apply(args),
-            Reference::ValueReference(vr) => {
+            SharedValueContainer::TypeReference(tr) => tr.borrow().apply(args),
+            SharedValueContainer::ValueReference(vr) => {
                 vr.borrow().resolve_current_value().borrow().apply(args)
             }
         }
@@ -728,8 +729,8 @@ impl Apply for Reference {
         arg: &ValueContainer,
     ) -> Result<Option<ValueContainer>, ExecutionError> {
         match self {
-            Reference::TypeReference(tr) => tr.borrow().apply_single(arg),
-            Reference::ValueReference(vr) => vr
+            SharedValueContainer::TypeReference(tr) => tr.borrow().apply_single(arg),
+            SharedValueContainer::ValueReference(vr) => vr
                 .borrow()
                 .resolve_current_value()
                 .borrow()
@@ -752,15 +753,15 @@ mod tests {
     fn try_mut_from() {
         // creating a mutable reference from a value should work
         let value = ValueContainer::from(42);
-        let reference = Reference::try_mut_from(value).unwrap();
+        let reference = SharedValueContainer::try_mut_from(value).unwrap();
         assert_eq!(reference.mutability(), ReferenceMutability::Mutable);
 
         // creating a mutable reference from a type should fail
-        let type_value = ValueContainer::Reference(Reference::TypeReference(
+        let type_value = ValueContainer::Shared(SharedValueContainer::TypeReference(
             TypeReference::anonymous(Type::UNIT, None).as_ref_cell(),
         ));
         assert_matches!(
-            Reference::try_mut_from(type_value),
+            SharedValueContainer::try_mut_from(type_value),
             Err(ReferenceCreationError::MutableTypeReference)
         );
     }
@@ -770,7 +771,7 @@ mod tests {
         let mut map = Map::default();
         map.set("name", ValueContainer::from("Jonas"));
         map.set("age", ValueContainer::from(30));
-        let reference = Reference::from(ValueContainer::from(map));
+        let reference = SharedValueContainer::from(ValueContainer::from(map));
         assert_eq!(
             reference.try_get_property("name").unwrap(),
             ValueContainer::from("Jonas")
@@ -792,7 +793,7 @@ mod tests {
             ("name".to_string(), ValueContainer::from("Jonas")),
             ("age".to_string(), ValueContainer::from(30)),
         ]);
-        let reference = Reference::from(ValueContainer::from(struct_val));
+        let reference = SharedValueContainer::from(ValueContainer::from(struct_val));
         assert_eq!(
             reference.try_get_property("name").unwrap(),
             ValueContainer::from("Jonas")
@@ -815,7 +816,7 @@ mod tests {
             ValueContainer::from(2),
             ValueContainer::from(3),
         ];
-        let reference = Reference::from(ValueContainer::from(list));
+        let reference = SharedValueContainer::from(ValueContainer::from(list));
 
         assert_eq!(
             reference.try_get_property(0).unwrap(),
@@ -838,7 +839,7 @@ mod tests {
             }))
         );
 
-        let text_ref = Reference::from(ValueContainer::from("hello"));
+        let text_ref = SharedValueContainer::from(ValueContainer::from("hello"));
         assert_eq!(
             text_ref.try_get_property(1).unwrap(),
             ValueContainer::from("e".to_string())
@@ -855,27 +856,27 @@ mod tests {
     #[test]
     fn reference_identity() {
         let value = 42;
-        let reference1 = Reference::from(value);
+        let reference1 = SharedValueContainer::from(value);
         let reference2 = reference1.clone();
 
         // cloned reference should be equal (identical)
         assert_eq!(reference1, reference2);
         // value containers containing the references should also be equal
         assert_eq!(
-            ValueContainer::Reference(reference1.clone()),
-            ValueContainer::Reference(reference2.clone())
+            ValueContainer::Shared(reference1.clone()),
+            ValueContainer::Shared(reference2.clone())
         );
         // assert_identical! should also confirm identity
         assert_identical!(reference1.clone(), reference2);
         // separate reference containing the same value should not be equal
-        assert_ne!(reference1, Reference::from(value));
+        assert_ne!(reference1, SharedValueContainer::from(value));
     }
 
     #[test]
     fn reference_value_equality() {
         let value = 42;
-        let reference1 = ValueContainer::Reference(Reference::from(value));
-        let reference2 = ValueContainer::Reference(Reference::from(value));
+        let reference1 = ValueContainer::Shared(SharedValueContainer::from(value));
+        let reference2 = ValueContainer::Shared(SharedValueContainer::from(value));
 
         // different references should not be equal a.k.a. identical
         assert_ne!(reference1, reference2);
@@ -885,8 +886,8 @@ mod tests {
 
     #[test]
     fn reference_structural_equality() {
-        let reference1 = Reference::from(42.0);
-        let reference2 = Reference::from(42);
+        let reference1 = SharedValueContainer::from(42.0);
+        let reference2 = SharedValueContainer::from(42);
 
         // different references should not be equal a.k.a. identical
         assert_ne!(reference1, reference2);
@@ -906,7 +907,7 @@ mod tests {
         let map_a_original_ref = ValueContainer::new_reference(map_a);
 
         // create map_b as a reference
-        let map_b_ref = Reference::try_new_from_value_container(
+        let map_b_ref = SharedValueContainer::try_new_from_value_container(
             Map::default().into(),
             None,
             None,
@@ -926,17 +927,17 @@ mod tests {
         assert_eq!(map_a_ref, map_a_original_ref);
         assert_identical!(map_a_ref, map_a_original_ref);
         // map_a_ref should be a reference
-        assert_matches!(map_a_ref, ValueContainer::Reference(_));
+        assert_matches!(map_a_ref, ValueContainer::Shared(_));
         map_a_ref.with_maybe_reference(|a_ref| {
             // map_a_ref.number should be a value
             assert_matches!(
                 a_ref.try_get_property("number"),
-                Ok(ValueContainer::Value(_))
+                Ok(ValueContainer::Local(_))
             );
             // map_a_ref.obj should be a reference
             assert_matches!(
                 a_ref.try_get_property("obj"),
-                Ok(ValueContainer::Reference(_))
+                Ok(ValueContainer::Shared(_))
             );
         });
     }

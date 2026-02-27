@@ -1,7 +1,7 @@
 use crate::{
     dif::{r#type::DIFTypeDefinition, value::DIFValueContainer},
     references::reference::{
-        Reference, ReferenceMutability, mutability_as_int,
+        SharedValueContainer, ReferenceMutability, mutability_as_int,
     },
     runtime::memory::Memory,
 };
@@ -19,7 +19,7 @@ pub struct DIFReference {
 
 impl DIFReference {
     pub fn from_reference(
-        reference: &Reference,
+        reference: &SharedValueContainer,
         memory: &RefCell<Memory>,
     ) -> Self {
         let value = DIFValueContainer::from_value_container(

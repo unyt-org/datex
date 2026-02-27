@@ -3,7 +3,7 @@ use crate::{
     global::protocol_structures::instructions::RawFullPointerAddress,
     libs::core::{CoreLibPointerId, load_core_lib},
     references::{
-        reference::Reference, type_reference::TypeReference,
+        reference::SharedValueContainer, type_reference::TypeReference,
         value_reference::ValueReference,
     },
     types::error::IllegalTypeError,
@@ -18,7 +18,7 @@ pub struct Memory {
     local_endpoint: Endpoint,
     local_counter: u64,  // counter for local pointer ids
     last_timestamp: u64, // last timestamp used for a new local pointer id
-    pointers: HashMap<PointerAddress, Reference>, // all pointers
+    pointers: HashMap<PointerAddress, SharedValueContainer>, // all pointers
 }
 
 impl Memory {
@@ -40,7 +40,7 @@ impl Memory {
     /// Returns the PointerAddress of the registered reference.
     pub fn register_reference(
         &mut self,
-        reference: &Reference,
+        reference: &SharedValueContainer,
     ) -> PointerAddress {
         let pointer_address = reference.pointer_address();
         // check if reference is already registered (if it has an address, we assume it is registered)
@@ -67,7 +67,7 @@ impl Memory {
     pub fn get_reference(
         &self,
         pointer_address: &PointerAddress,
-    ) -> Option<&Reference> {
+    ) -> Option<&SharedValueContainer> {
         self.pointers.get(pointer_address)
     }
 
@@ -76,7 +76,7 @@ impl Memory {
         pointer_address: &PointerAddress,
     ) -> Option<&Rc<RefCell<ValueReference>>> {
         self.get_reference(pointer_address).and_then(|r| match r {
-            Reference::ValueReference(v) => Some(v),
+            SharedValueContainer::ValueReference(v) => Some(v),
             _ => None,
         })
     }
@@ -86,7 +86,7 @@ impl Memory {
         pointer_address: &PointerAddress,
     ) -> Option<&Rc<RefCell<TypeReference>>> {
         self.get_reference(pointer_address).and_then(|r| match r {
-            Reference::TypeReference(t) => Some(t),
+            SharedValueContainer::TypeReference(t) => Some(t),
             _ => None,
         })
     }
@@ -95,7 +95,7 @@ impl Memory {
     pub fn get_core_reference(
         &self,
         pointer_id: CoreLibPointerId,
-    ) -> &Reference {
+    ) -> &SharedValueContainer {
         self.get_reference(&pointer_id.into())
             .expect("core reference not found in memory")
     }
@@ -109,7 +109,7 @@ impl Memory {
             .get_reference(&pointer_id.into())
             .ok_or(IllegalTypeError::TypeNotFound)?;
         match reference {
-            Reference::TypeReference(def) => Ok(def.clone()),
+            SharedValueContainer::TypeReference(def) => Ok(def.clone()),
             _ => Err(IllegalTypeError::TypeNotFound),
         }
     }
@@ -172,7 +172,7 @@ impl Memory {
     }
 }
 
-impl Reference {
+impl SharedValueContainer {
     /// Returns the PointerAddress of this reference, if it has one.
     /// Otherwise, it registers the reference in the given memory and returns the newly assigned PointerAddress.
     pub fn ensure_pointer_address(
