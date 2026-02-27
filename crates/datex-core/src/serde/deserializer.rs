@@ -150,7 +150,7 @@ impl<'de> Deserializer<'de> for DatexDeserializer<'de> {
             DatexDeserializer::Text(s) => visitor.visit_string(s.to_string()),
             DatexDeserializer::ValueContainer(value) => match value {
                 // TODO #148 implement missing mapping
-                ValueContainer::Value(value::Value { inner, .. }) => {
+                ValueContainer::Local(value::Value { inner, .. }) => {
                     match inner {
                         CoreValue::Null => visitor.visit_none(),
                         CoreValue::Boolean(b) => visitor.visit_bool(b.0),
@@ -312,7 +312,7 @@ impl<'de> Deserializer<'de> for DatexDeserializer<'de> {
     where
         V: Visitor<'de>,
     {
-        if let DatexDeserializer::ValueContainer(ValueContainer::Value(
+        if let DatexDeserializer::ValueContainer(ValueContainer::Local(
             Value {
                 inner: CoreValue::List(list),
                 ..
@@ -336,7 +336,7 @@ impl<'de> Deserializer<'de> for DatexDeserializer<'de> {
     where
         V: Visitor<'de>,
     {
-        if let DatexDeserializer::ValueContainer(ValueContainer::Value(
+        if let DatexDeserializer::ValueContainer(ValueContainer::Local(
             Value {
                 inner: CoreValue::Map(map),
                 ..
@@ -370,13 +370,13 @@ impl<'de> Deserializer<'de> for DatexDeserializer<'de> {
             DatexDeserializer::Text(s) => visitor.visit_string(s.to_string()),
             DatexDeserializer::ValueContainer(value) => match value {
                 // Direct text
-                ValueContainer::Value(Value {
+                ValueContainer::Local(Value {
                     inner: CoreValue::Text(s),
                     ..
                 }) => visitor.visit_string(s.0.clone()),
 
                 // Single-key map {"Identifier": ...}
-                ValueContainer::Value(Value {
+                ValueContainer::Local(Value {
                     inner: CoreValue::Map(o),
                     ..
                 }) => {
@@ -425,7 +425,7 @@ impl<'de> Deserializer<'de> for DatexDeserializer<'de> {
             }
             DatexDeserializer::ValueContainer(value) => match value {
                 // Default representation: ("Variant", value)
-                value @ ValueContainer::Value(Value {
+                value @ ValueContainer::Local(Value {
                     inner: CoreValue::List(t),
                     ..
                 }) => {
@@ -443,7 +443,7 @@ impl<'de> Deserializer<'de> for DatexDeserializer<'de> {
                 }
 
                 // Map with single key = variant name
-                ValueContainer::Value(Value {
+                ValueContainer::Local(Value {
                     inner: CoreValue::Map(o),
                     ..
                 }) => {
@@ -488,7 +488,7 @@ impl<'de> Deserializer<'de> for DatexDeserializer<'de> {
                 // }
 
                 // unit variants stored directly as text
-                ValueContainer::Value(Value {
+                ValueContainer::Local(Value {
                     inner: CoreValue::Text(s),
                     ..
                 }) => visitor.visit_enum(EnumDeserializer {

@@ -37,8 +37,8 @@ pub fn append_value_container(
     value_container: &ValueContainer,
 ) {
     match value_container {
-        ValueContainer::Value(value) => append_value(buffer, value),
-        ValueContainer::Reference(reference) => {
+        ValueContainer::Local(value) => append_value(buffer, value),
+        ValueContainer::Shared(reference) => {
             // TODO #160: in this case, the ref might also be inserted by pointer id, depending on the compiler settings
             // add CREATE_REF/CREATE_REF_MUT instruction
             if reference.mutability() == ReferenceMutability::Mutable {
@@ -356,7 +356,7 @@ pub fn append_key_value_pair(
     // insert key
     match key {
         // if text, append_key_string, else dynamic
-        ValueContainer::Value(Value {
+        ValueContainer::Local(Value {
             inner: CoreValue::Text(text),
             ..
         }) => {

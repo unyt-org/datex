@@ -223,7 +223,7 @@ impl TryFrom<&DatexExpressionData> for ValueContainer {
             }) => {
                 let value = ValueContainer::try_from(&expression.data)?;
                 match value {
-                    ValueContainer::Value(Value {
+                    ValueContainer::Local(Value {
                         inner: CoreValue::Integer(_) | CoreValue::Decimal(_),
                         ..
                     }) => match operator {
@@ -238,7 +238,7 @@ impl TryFrom<&DatexExpressionData> for ValueContainer {
                     _ => Err(())?,
                 }
             }
-            DatexExpressionData::Null => ValueContainer::Value(Value::null()),
+            DatexExpressionData::Null => ValueContainer::Local(Value::null()),
             DatexExpressionData::Boolean(b) => ValueContainer::from(*b),
             DatexExpressionData::Text(s) => ValueContainer::from(s.clone()),
             DatexExpressionData::Decimal(d) => ValueContainer::from(d.clone()),

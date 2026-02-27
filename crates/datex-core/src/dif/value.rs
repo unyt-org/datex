@@ -87,7 +87,7 @@ impl DIFValueContainer {
         memory: &RefCell<Memory>,
     ) -> Result<ValueContainer, DIFReferenceNotFoundError> {
         Ok(match self {
-            DIFValueContainer::Reference(address) => ValueContainer::Reference(
+            DIFValueContainer::Reference(address) => ValueContainer::Shared(
                 memory
                     .borrow()
                     .get_reference(address)
@@ -95,7 +95,7 @@ impl DIFValueContainer {
                     .clone(),
             ),
             DIFValueContainer::Value(v) => {
-                ValueContainer::Value(v.to_value(memory)?)
+                ValueContainer::Local(v.to_value(memory)?)
             }
         })
     }
@@ -123,12 +123,12 @@ impl DIFValueContainer {
         memory: &RefCell<Memory>,
     ) -> Self {
         match value_container {
-            ValueContainer::Reference(reference) => {
+            ValueContainer::Shared(reference) => {
                 // get pointer address, if not present register the reference in memory
                 let address = reference.ensure_pointer_address(memory);
                 DIFValueContainer::Reference(address)
             }
-            ValueContainer::Value(value) => {
+            ValueContainer::Local(value) => {
                 DIFValueContainer::Value(DIFValue::from_value(value, memory))
             }
         }

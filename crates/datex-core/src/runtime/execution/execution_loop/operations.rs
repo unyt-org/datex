@@ -7,7 +7,7 @@ use crate::{
             ArithmeticOperator, BitwiseOperator, LogicalOperator, RangeOperator,
         },
     },
-    references::reference::Reference,
+    references::reference::SharedValueContainer,
     runtime::{RuntimeInternal, execution::ExecutionError},
     traits::{
         identity::Identity, structural_eq::StructuralEq, value_eq::ValueEq,
@@ -44,13 +44,13 @@ pub fn handle_unary_reference_operation(
 ) -> Result<ValueContainer, ExecutionError> {
     Ok(match operator {
         ReferenceUnaryOperator::CreateRef => {
-            ValueContainer::Reference(Reference::from(value_container))
+            ValueContainer::Shared(SharedValueContainer::from(value_container))
         }
         ReferenceUnaryOperator::CreateRefMut => {
-            ValueContainer::Reference(Reference::try_mut_from(value_container)?)
+            ValueContainer::Shared(SharedValueContainer::try_mut_from(value_container)?)
         }
         ReferenceUnaryOperator::Deref => {
-            if let ValueContainer::Reference(reference) = value_container {
+            if let ValueContainer::Shared(reference) = value_container {
                 reference.value_container()
             } else {
                 return Err(ExecutionError::DerefOfNonReference);

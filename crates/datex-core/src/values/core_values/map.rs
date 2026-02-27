@@ -233,7 +233,7 @@ impl<'a> From<BorrowedMapKey<'a>> for ValueContainer {
     fn from(key: BorrowedMapKey) -> Self {
         match key {
             BorrowedMapKey::Text(text) => {
-                ValueContainer::Value(Value::from(text))
+                ValueContainer::Local(Value::from(text))
             }
             BorrowedMapKey::Value(value) => value.clone(),
         }
@@ -258,7 +258,7 @@ impl StructuralEq for BorrowedMapKey<'_> {
             }
             (BorrowedMapKey::Text(a), BorrowedMapKey::Value(b))
             | (BorrowedMapKey::Value(b), BorrowedMapKey::Text(a)) => {
-                if let ValueContainer::Value(Value {
+                if let ValueContainer::Local(Value {
                     inner: CoreValue::Text(text),
                     ..
                 }) = b
@@ -291,7 +291,7 @@ pub enum MapKey {
 impl From<MapKey> for ValueContainer {
     fn from(key: MapKey) -> Self {
         match key {
-            MapKey::Text(text) => ValueContainer::Value(Value::from(text)),
+            MapKey::Text(text) => ValueContainer::Local(Value::from(text)),
             MapKey::Value(value) => value,
         }
     }
@@ -330,7 +330,7 @@ impl<'a> Iterator for MapIterator<'a> {
                 self.index += 1;
                 item.map(|(k, v)| {
                     let key = match k {
-                        ValueContainer::Value(Value {
+                        ValueContainer::Local(Value {
                             inner: CoreValue::Text(text),
                             ..
                         }) => BorrowedMapKey::Text(&text.0),
@@ -344,7 +344,7 @@ impl<'a> Iterator for MapIterator<'a> {
                     let item = &vec[self.index];
                     self.index += 1;
                     let key = match &item.0 {
-                        ValueContainer::Value(Value {
+                        ValueContainer::Local(Value {
                             inner: CoreValue::Text(text),
                             ..
                         }) => BorrowedMapKey::Text(&text.0),
@@ -381,7 +381,7 @@ impl<'a> Iterator for MapMutIterator<'a> {
         match self {
             MapMutIterator::Dynamic(iter) => iter.next().map(|(k, v)| {
                 let key = match k {
-                    ValueContainer::Value(Value {
+                    ValueContainer::Local(Value {
                         inner: CoreValue::Text(text),
                         ..
                     }) => BorrowedMapKey::Text(&text.0),
@@ -391,7 +391,7 @@ impl<'a> Iterator for MapMutIterator<'a> {
             }),
             MapMutIterator::Fixed(iter) => iter.next().map(|(k, v)| {
                 let key = match k {
-                    ValueContainer::Value(Value {
+                    ValueContainer::Local(Value {
                         inner: CoreValue::Text(text),
                         ..
                     }) => BorrowedMapKey::Text(&text.0),
@@ -422,7 +422,7 @@ impl Iterator for IntoMapIterator {
                 self.index += 1;
                 item.map(|(k, v)| {
                     let key = match k {
-                        ValueContainer::Value(Value {
+                        ValueContainer::Local(Value {
                             inner: CoreValue::Text(text),
                             ..
                         }) => MapKey::Text(text.0.clone()),
@@ -436,7 +436,7 @@ impl Iterator for IntoMapIterator {
                     let item = &vec[self.index];
                     self.index += 1;
                     let key = match &item.0 {
-                        ValueContainer::Value(Value {
+                        ValueContainer::Local(Value {
                             inner: CoreValue::Text(text),
                             ..
                         }) => MapKey::Text(text.0.clone()),
@@ -561,7 +561,7 @@ impl From<Vec<(MapKey, ValueContainer)>> for Map {
             matches!(k, MapKey::Text(_))
                 || matches!(
                     k,
-                    MapKey::Value(ValueContainer::Value(Value {
+                    MapKey::Value(ValueContainer::Local(Value {
                         inner: CoreValue::Text(_),
                         ..
                     }))
@@ -576,7 +576,7 @@ impl From<Vec<(MapKey, ValueContainer)>> for Map {
                         entries.push((text, v));
                     }
                     MapKey::Value(value) => {
-                        if let ValueContainer::Value(Value {
+                        if let ValueContainer::Local(Value {
                             inner: CoreValue::Text(text),
                             ..
                         }) = value

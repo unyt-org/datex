@@ -28,7 +28,7 @@ use crate::{
         },
     },
     prelude::*,
-    references::reference::{Reference, ReferenceMutability},
+    references::reference::{SharedValueContainer, ReferenceMutability},
     runtime::execution::{
         ExecutionError, InvalidProgramError,
         execution_loop::{
@@ -507,13 +507,13 @@ pub fn inner_execution_loop(
 
                                 match val {
                                     // simple Type value
-                                    Some(ValueContainer::Value(Value {
+                                    Some(ValueContainer::Local(Value {
                                         inner: CoreValue::Type(ty),
                                         ..
                                     })) => ty,
                                     // Type Reference
-                                    Some(ValueContainer::Reference(
-                                        Reference::TypeReference(type_ref),
+                                    Some(ValueContainer::Shared(
+                                             SharedValueContainer::TypeReference(type_ref),
                                     )) => Type::new(
                                         TypeDefinition::Reference(type_ref),
                                         metadata.mutability.into(),
@@ -703,7 +703,7 @@ pub fn inner_execution_loop(
                                         collected_results.pop_type_result();
 
                                     match &mut value_container {
-                                        ValueContainer::Value(value) => {
+                                        ValueContainer::Local(value) => {
                                             // FIXME #647: only using type definition here, refactor and/or add checks
                                             *value.actual_type =
                                                 ty.type_definition;
@@ -723,7 +723,7 @@ pub fn inner_execution_loop(
                                     let ty =
                                         collected_results.pop_type_result();
                                     RuntimeValue::ValueContainer(
-                                        ValueContainer::Value(Value {
+                                        ValueContainer::Local(Value {
                                             inner: CoreValue::Type(ty),
                                             actual_type: Box::new(
                                                 TypeDefinition::Unknown,

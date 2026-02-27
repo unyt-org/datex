@@ -537,14 +537,14 @@ impl ComHub {
             ExecutionInput::new(&dxb, ExecutionOptions::default(), None);
         let hops_datex =
             execute_dxb_sync(exec_input).expect("Failed to execute DATEX");
-        if let Some(ValueContainer::Value(Value {
+        if let Some(ValueContainer::Local(Value {
             inner: CoreValue::List(list),
             ..
         })) = hops_datex
         {
             let mut hops: Vec<NetworkTraceHop> = vec![];
             for value in list {
-                if let ValueContainer::Value(Value {
+                if let ValueContainer::Local(Value {
                     inner: CoreValue::Map(obj),
                     ..
                 }) = value
@@ -567,7 +567,7 @@ impl ComHub {
 
                     let socket = obj.get("socket").unwrap();
                     let (interface_type, interface_name, channel, socket_uuid) =
-                        if let ValueContainer::Value(Value {
+                        if let ValueContainer::Local(Value {
                             inner: CoreValue::Map(socket_obj),
                             ..
                         }) = socket
@@ -580,7 +580,7 @@ impl ComHub {
                                 .cast_to_text()
                                 .0;
                             let interface_name =
-                                if let ValueContainer::Value(Value {
+                                if let ValueContainer::Local(Value {
                                     inner: CoreValue::Text(name),
                                     ..
                                 }) = socket_obj.get("interface_name").ok()?

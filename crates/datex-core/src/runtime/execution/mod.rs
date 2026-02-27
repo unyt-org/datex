@@ -169,7 +169,7 @@ fn get_pointer_value(
         // convert slot to InternalSlot enum
         Ok(memory
             .get_reference(&resolved_address)
-            .map(|r| ValueContainer::Reference(r.clone())))
+            .map(|r| ValueContainer::Shared(r.clone())))
     } else {
         Err(ExecutionError::RequiresRuntime)
     }
@@ -203,7 +203,7 @@ fn get_internal_pointer_value_from_memory(
     let pointer_address = PointerAddress::Internal(address.id);
     let memory = runtime_internal.memory.borrow();
     if let Some(reference) = memory.get_reference(&pointer_address) {
-        Ok(ValueContainer::Reference(reference.clone()))
+        Ok(ValueContainer::Shared(reference.clone()))
     } else {
         Err(ExecutionError::ReferenceNotFound)
     }
@@ -219,7 +219,7 @@ fn get_local_pointer_value(
             .memory
             .borrow()
             .get_reference(&PointerAddress::Local(address.id))
-            .map(|r| ValueContainer::Reference(r.clone())))
+            .map(|r| ValueContainer::Shared(r.clone())))
     } else {
         Err(ExecutionError::RequiresRuntime)
     }
@@ -237,7 +237,7 @@ mod tests {
         datex_list,
         global::instruction_codes::InstructionCode,
         libs::core::get_core_lib_type_reference,
-        references::reference::Reference,
+        references::reference::SharedValueContainer,
         runtime::{
             RuntimeConfig, RuntimeRunner,
             execution::{
@@ -655,7 +655,7 @@ mod tests {
     fn ref_assignment() {
         let result =
             execute_datex_script_debug_with_result("const x = &mut 42; x");
-        assert_matches!(result, ValueContainer::Reference(..));
+        assert_matches!(result, ValueContainer::Shared(..));
         assert_value_eq!(result, ValueContainer::from(Integer::from(42)));
     }
 
@@ -670,7 +670,7 @@ mod tests {
             "const x = &mut 42; *x += 1; x",
         );
 
-        assert_matches!(result, ValueContainer::Reference(..));
+        assert_matches!(result, ValueContainer::Shared(..));
         assert_value_eq!(result, ValueContainer::from(Integer::from(43)));
     }
 
@@ -771,12 +771,12 @@ mod tests {
             vec!["1", "integer", "integer"],
             vec![
                 Some(Integer::from(1).into()),
-                Some(ValueContainer::Reference(Reference::TypeReference(
+                Some(ValueContainer::Shared(SharedValueContainer::TypeReference(
                     get_core_lib_type_reference(CoreLibPointerId::Integer(
                         None,
                     )),
                 ))),
-                Some(ValueContainer::Reference(Reference::TypeReference(
+                Some(ValueContainer::Shared(SharedValueContainer::TypeReference(
                     get_core_lib_type_reference(CoreLibPointerId::Integer(
                         None,
                     )),

@@ -668,7 +668,7 @@ mod tests {
         let value_container = test_struct.serialize(&mut serializer).unwrap();
         assert_matches!(
             value_container,
-            ValueContainer::Value(Value {
+            ValueContainer::Local(Value {
                 inner: CoreValue::Map(_),
                 ..
             })
@@ -814,7 +814,7 @@ mod tests {
         let value_container = s.serialize(&mut serializer).unwrap();
         assert_matches!(
             value_container,
-            ValueContainer::Value(Value {
+            ValueContainer::Local(Value {
                 inner: CoreValue::Map(_),
                 ..
             })
