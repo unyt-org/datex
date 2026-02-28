@@ -11,5 +11,5 @@ pub mod unary;
 
 pub use unary::{
     ArithmeticUnaryOperator, BitwiseUnaryOperator, LogicalUnaryOperator,
-    ReferenceUnaryOperator, UnaryOperator,
+    SharedValueUnaryOperator, UnaryOperator,
 };

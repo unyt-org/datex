@@ -7,13 +7,6 @@ use crate::{
 };
 use num_enum::TryFromPrimitive;
 
-pub fn get_slot_value_mut(
-    runtime_state: &mut RuntimeExecutionState,
-    address: u32,
-) -> Result<&mut ValueContainer, ExecutionError> {
-    runtime_state.slots.get_slot_value_mut(address)
-}
-
 pub fn get_slot_value(
     runtime_state: &RuntimeExecutionState,
     address: u32,

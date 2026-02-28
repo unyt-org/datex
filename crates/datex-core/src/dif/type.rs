@@ -348,10 +348,9 @@ pub struct DIFStructuralTypeDefinition {
 impl DIFStructuralTypeDefinition {
     fn from_structural_definition(
         struct_def: &StructuralTypeDefinition,
-        memory: &RefCell<Memory>,
     ) -> Self {
         let value = DIFTypeRepresentation::from_structural_type_definition(
-            struct_def, memory,
+            struct_def,
         );
         let type_def =
             PointerAddress::from(struct_def.get_core_lib_type_pointer_id());
@@ -369,7 +368,6 @@ impl DIFStructuralTypeDefinition {
 impl DIFTypeDefinition {
     pub fn from_type_definition(
         type_def: &TypeDefinition,
-        memory: &RefCell<Memory>,
     ) -> Self {
         match type_def {
             TypeDefinition::Collection(_collection_def) => {
@@ -378,34 +376,34 @@ impl DIFTypeDefinition {
             TypeDefinition::Structural(struct_def) => {
                 DIFTypeDefinition::Structural(Box::new(
                     DIFStructuralTypeDefinition::from_structural_definition(
-                        struct_def, memory,
+                        struct_def
                     ),
                 ))
             }
             TypeDefinition::Reference(type_ref) => {
                 DIFTypeDefinition::Reference(
-                    type_ref.borrow().pointer_address.clone().unwrap(),
+                    type_ref.borrow().pointer.address().clone(),
                 )
             }
             TypeDefinition::Type(type_val) => DIFTypeDefinition::Type(
-                Box::new(DIFType::from_type(type_val.as_ref(), memory)),
+                Box::new(DIFType::from_type(type_val.as_ref())),
             ),
             TypeDefinition::Intersection(types) => {
                 DIFTypeDefinition::Intersection(
                     types
                         .iter()
-                        .map(|t| DIFType::from_type(t, memory))
+                        .map(|t| DIFType::from_type(t))
                         .collect(),
                 )
             }
             TypeDefinition::Union(types) => DIFTypeDefinition::Union(
                 types
                     .iter()
-                    .map(|t| DIFType::from_type(t, memory))
+                    .map(|t| DIFType::from_type(t))
                     .collect(),
             ),
             TypeDefinition::ImplType(ty, impls) => DIFTypeDefinition::ImplType(
-                Box::new(DIFType::from_type(ty, memory)),
+                Box::new(DIFType::from_type(ty)),
                 impls.clone(),
             ),
             TypeDefinition::Unit => DIFTypeDefinition::Unit,
@@ -416,22 +414,22 @@ impl DIFTypeDefinition {
                     .parameter_types
                     .iter()
                     .map(|(name, ty)| {
-                        (name.clone(), DIFType::from_type(ty, memory))
+                        (name.clone(), DIFType::from_type(ty))
                     })
                     .collect(),
                 rest_parameter: callable.rest_parameter_type.as_ref().map(
                     |(name, ty)| {
                         (
                             name.clone(),
-                            Box::new(DIFType::from_type(ty.as_ref(), memory)),
+                            Box::new(DIFType::from_type(ty.as_ref())),
                         )
                     },
                 ),
                 yeet_type: callable.yeet_type.as_ref().map(|ty| {
-                    Box::new(DIFType::from_type(ty.as_ref(), memory))
+                    Box::new(DIFType::from_type(ty.as_ref()))
                 }),
                 return_type: callable.return_type.as_ref().map(|ty| {
-                    Box::new(DIFType::from_type(ty.as_ref(), memory))
+                    Box::new(DIFType::from_type(ty.as_ref()))
                 }),
             },
         }
@@ -584,26 +582,24 @@ impl<'de> Deserialize<'de> for DIFType {
 }
 
 impl DIFType {
-    pub(crate) fn from_type(ty: &Type, memory: &RefCell<Memory>) -> Self {
+    pub(crate) fn from_type(ty: &Type) -> Self {
         DIFType {
             name: None,
             mutability: ty.reference_mutability.clone(),
             type_definition: DIFTypeDefinition::from_type_definition(
                 &ty.type_definition,
-                memory,
             ),
         }
     }
 
     pub(crate) fn from_type_definition(
         type_def: &TypeDefinition,
-        memory: &RefCell<Memory>,
     ) -> Self {
         DIFType {
             name: None,
             mutability: None,
             type_definition: DIFTypeDefinition::from_type_definition(
-                type_def, memory,
+                type_def,
             ),
         }
     }

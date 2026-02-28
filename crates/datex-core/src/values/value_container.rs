@@ -26,6 +26,8 @@ use core::{
     ops::{Add, FnOnce, Neg, Sub},
 };
 use serde::{Deserialize, de::DeserializeOwned};
+use crate::dif::update::DIFUpdateData;
+use crate::shared_values::pointer::Pointer;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum ValueError {
@@ -67,11 +69,11 @@ impl<'a> ValueKey<'a> {
         match self {
             ValueKey::Value(value_container) => callback(value_container),
             ValueKey::Text(text) => {
-                let value_container = ValueContainer::new_value(text.as_ref());
+                let value_container = ValueContainer::Local(text.as_ref().into());
                 callback(&value_container)
             }
             ValueKey::Index(index) => {
-                let value_container = ValueContainer::new_value(*index);
+                let value_container = ValueContainer::Local(Value::from(*index));
                 callback(&value_container)
             }
         }
@@ -169,9 +171,9 @@ impl<'a> From<ValueKey<'a>> for ValueContainer {
     fn from(value_key: ValueKey) -> Self {
         match value_key {
             ValueKey::Text(text) => {
-                ValueContainer::new_value(text.into_owned())
+                ValueContainer::Local(text.into_owned().into())
             }
-            ValueKey::Index(index) => ValueContainer::new_value(index),
+            ValueKey::Index(index) => ValueContainer::Local(index.into()),
             ValueKey::Value(value_container) => value_container.into_owned(),
         }
     }
@@ -355,14 +357,6 @@ impl ValueContainer {
         }
     }
 
-    pub fn new_value<T: Into<Value>>(value: T) -> ValueContainer {
-        ValueContainer::Local(value.into())
-    }
-
-    pub fn new_reference<T: Into<SharedContainer>>(value: T) -> ValueContainer {
-        ValueContainer::Shared(value.into())
-    }
-
     /// Casts the contained Value or Reference to the desired type T using serde deserialization.
     pub fn cast_to_deserializable<T: DeserializeOwned>(
         &self,
@@ -422,7 +416,7 @@ impl ValueContainer {
     pub fn try_set_property<'a>(
         &mut self,
         source_id: TransceiverId,
-        dif_update_data_or_memory: impl Into<DIFUpdateDataOrMemory<'a>>,
+        maybe_update_data: Option<&'a DIFUpdateData>,
         key: impl Into<ValueKey<'a>>,
         val: ValueContainer,
     ) -> Result<(), AccessError> {
@@ -430,7 +424,7 @@ impl ValueContainer {
             ValueContainer::Local(v) => v.try_set_property(key, val),
             ValueContainer::Shared(r) => r.try_set_property(
                 source_id,
-                dif_update_data_or_memory,
+                maybe_update_data,
                 key,
                 val,
             ),

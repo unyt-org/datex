@@ -20,15 +20,12 @@ pub struct DIFReference {
 impl DIFReference {
     pub fn from_reference(
         reference: &SharedContainer,
-        memory: &RefCell<Memory>,
     ) -> Self {
         let value = DIFValueContainer::from_value_container(
             &reference.value_container(),
-            memory,
         );
         let allowed_type = DIFTypeDefinition::from_type_definition(
             &reference.allowed_type(),
-            memory,
         );
         DIFReference {
             value,

@@ -22,6 +22,10 @@ pub enum PointerAddress {
     Internal([u8; 3]), // TODO #312 shrink down to 2 bytes?
 }
 
+impl PointerAddress {
+    pub const NULL: PointerAddress = PointerAddress::Owned([0u8; 5]);
+}
+
 impl TryFrom<String> for PointerAddress {
     type Error = &'static str;
     fn try_from(s: String) -> Result<Self, Self::Error> {

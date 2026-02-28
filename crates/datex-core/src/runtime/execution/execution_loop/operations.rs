@@ -1,7 +1,8 @@
+use core::cell::RefCell;
 use crate::{
     global::operators::{
         ArithmeticUnaryOperator, AssignmentOperator, BinaryOperator,
-        ComparisonOperator, LogicalUnaryOperator, ReferenceUnaryOperator,
+        ComparisonOperator, LogicalUnaryOperator, SharedValueUnaryOperator,
         UnaryOperator,
         binary::{
             ArithmeticOperator, BitwiseOperator, LogicalOperator, RangeOperator,
@@ -19,37 +20,40 @@ use crate::{
 };
 
 use crate::prelude::*;
+use crate::runtime::memory::Memory;
+
 pub fn set_property(
-    runtime_internal: &Option<Rc<RuntimeInternal>>,
     target: &mut ValueContainer,
     key: OwnedValueKey,
     value: ValueContainer,
 ) -> Result<(), ExecutionError> {
-    if let Some(runtime) = runtime_internal {
-        target.try_set_property(
-            0, // TODO #644: set correct source id
-            &runtime.memory,
-            key,
-            value,
-        )?;
-        Ok(())
-    } else {
-        Err(ExecutionError::RequiresRuntime)
-    }
+    target.try_set_property(
+        0, // TODO #644: set correct source id
+        None,
+        key,
+        value,
+    ).map_err(ExecutionError::from)
 }
 
-pub fn handle_unary_reference_operation(
-    operator: ReferenceUnaryOperator,
+pub fn handle_unary_shared_value_operation(
+    operator: SharedValueUnaryOperator,
     value_container: ValueContainer,
+    memory: &RefCell<Memory>,
 ) -> Result<ValueContainer, ExecutionError> {
     Ok(match operator {
-        ReferenceUnaryOperator::CreateRef => {
-            ValueContainer::Shared(SharedContainer::from(value_container))
+        SharedValueUnaryOperator::CreateOwned => {
+            ValueContainer::Shared(SharedContainer::new(
+                value_container,
+                memory.borrow_mut().get_new_local_pointer(),
+            ))
+        },
+        SharedValueUnaryOperator::CreateOwnedMut => {
+            ValueContainer::Shared(SharedContainer::try_new_mut(
+                value_container,
+                memory.borrow_mut().get_new_local_pointer(),
+            )?)
         }
-        ReferenceUnaryOperator::CreateRefMut => {
-            ValueContainer::Shared(SharedContainer::try_mut_from(value_container)?)
-        }
-        ReferenceUnaryOperator::Deref => {
+        SharedValueUnaryOperator::Deref => {
             if let ValueContainer::Shared(reference) = value_container {
                 reference.value_container()
             } else {
@@ -82,10 +86,11 @@ pub fn handle_unary_arithmetic_operation(
 pub fn handle_unary_operation(
     operator: UnaryOperator,
     value_container: ValueContainer,
+    memory: &RefCell<Memory>,
 ) -> Result<ValueContainer, ExecutionError> {
     match operator {
         UnaryOperator::Reference(reference) => {
-            handle_unary_reference_operation(reference, value_container)
+            handle_unary_shared_value_operation(reference, value_container, memory)
         }
         UnaryOperator::Logical(logical) => {
             handle_unary_logical_operation(logical, value_container)

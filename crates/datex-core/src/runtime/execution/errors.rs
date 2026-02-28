@@ -70,7 +70,7 @@ pub enum ExecutionError {
     InvalidTypeCast,
     ExpectedTypeValue,
     AssignmentError(AssignmentError),
-    ReferenceFromValueContainerError(ReferenceCreationError),
+    ReferenceCreationError(ReferenceCreationError),
     IntermediateResultWithState(
         Option<ValueContainer>,
         Option<ExecutionLoopState>,
@@ -79,7 +79,7 @@ pub enum ExecutionError {
 }
 impl From<ReferenceCreationError> for ExecutionError {
     fn from(error: ReferenceCreationError) -> Self {
-        ExecutionError::ReferenceFromValueContainerError(error)
+        ExecutionError::ReferenceCreationError(error)
     }
 }
 
@@ -128,7 +128,7 @@ impl From<AssignmentError> for ExecutionError {
 impl Display for ExecutionError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
-            ExecutionError::ReferenceFromValueContainerError(err) => {
+            ExecutionError::ReferenceCreationError(err) => {
                 core::write!(f, "Reference from value container error: {err}")
             }
             ExecutionError::ReferenceNotFound => {

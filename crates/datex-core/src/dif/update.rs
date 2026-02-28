@@ -22,12 +22,12 @@ pub enum DIFKey {
 }
 
 impl DIFKey {
-    pub fn from_value_key(key: &ValueKey, memory: &RefCell<Memory>) -> Self {
+    pub fn from_value_key(key: &ValueKey) -> Self {
         match key {
             ValueKey::Text(s) => DIFKey::Text(s.to_string()),
             ValueKey::Index(i) => DIFKey::Index(*i),
             ValueKey::Value(v) => DIFKey::Value(
-                DIFValueContainer::from_value_container(v, memory),
+                DIFValueContainer::from_value_container(v),
             ),
         }
     }
