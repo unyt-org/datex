@@ -4,16 +4,17 @@ use crate::{
         type_instruction_codes::TypeMutabilityCode,
     },
     values::core_values::{
-        decimal::{Decimal, utils::decimal_to_string},
+        decimal::{utils::decimal_to_string, Decimal},
         endpoint::{Endpoint, EndpointParsingError},
         integer::Integer,
     },
 };
 
-use crate::{prelude::*, values::pointer::PointerAddress};
+use crate::prelude::*;
 use binrw::{BinRead, BinWrite};
 use core::{fmt::Display, prelude::rust_2024::*};
 use serde::{Deserialize, Serialize};
+use crate::shared_values::pointer_address::PointerAddress;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Instruction {

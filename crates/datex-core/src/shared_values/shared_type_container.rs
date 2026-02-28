@@ -8,20 +8,21 @@ use serde::{Deserialize, Serialize};
 use crate::{
     libs::core::CoreLibPointerId,
     prelude::*,
-    shared_values::reference::ReferenceMutability,
     runtime::execution::ExecutionError,
+    shared_values::shared_container::ReferenceMutability,
     traits::apply::Apply,
     types::{
         definition::TypeDefinition,
         structural_type_definition::StructuralTypeDefinition,
     },
     values::{
-        core_values::r#type::Type, pointer::PointerAddress,
+        core_values::r#type::Type,
         value_container::ValueContainer,
     },
 };
 use core::option::Option;
 use crate::shared_values::pointer::Pointer;
+use crate::shared_values::pointer_address::PointerAddress;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct NominalTypeDeclaration {

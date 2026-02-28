@@ -1,4 +1,4 @@
-use crate::values::pointer::PointerAddress;
+use crate::shared_values::pointer_address::PointerAddress;
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Pointer {
     address: PointerAddress,

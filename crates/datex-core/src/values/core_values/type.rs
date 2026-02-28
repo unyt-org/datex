@@ -2,11 +2,11 @@
 use crate::ast::expressions::DatexExpressionData;
 use crate::{
     libs::core::{
-        CoreLibPointerId, get_core_lib_type, get_core_lib_type_reference,
+        get_core_lib_type, get_core_lib_type_reference, CoreLibPointerId,
     },
     prelude::*,
     shared_values::{
-        reference::ReferenceMutability, type_reference::SharedTypeContainer,
+        shared_container::ReferenceMutability, shared_type_container::SharedTypeContainer,
     },
     traits::structural_eq::StructuralEq,
     types::{
@@ -20,7 +20,6 @@ use crate::{
             decimal::typed_decimal::DecimalTypeVariant,
             integer::typed_integer::IntegerTypeVariant, text::Text,
         },
-        pointer::PointerAddress,
         value_container::ValueContainer,
     },
 };
@@ -31,6 +30,7 @@ use core::{
     result::Result,
     unimplemented,
 };
+use crate::shared_values::pointer_address::PointerAddress;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Type {
@@ -527,12 +527,12 @@ mod tests {
     use crate::prelude::*;
 
     use crate::{
-        libs::core::{CoreLibPointerId, get_core_lib_type},
+        libs::core::{get_core_lib_type, CoreLibPointerId},
         values::{
             core_values::{
-                integer::{Integer, typed_integer::TypedInteger},
-                text::Text,
+                integer::{typed_integer::TypedInteger, Integer},
                 r#type::Type,
+                text::Text,
             },
             value_container::ValueContainer,
         },

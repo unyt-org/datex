@@ -1,10 +1,10 @@
 use crate::{
     collections::HashMap,
-    shared_values::{
-        reference::SharedContainer,
-        type_reference::{NominalTypeDeclaration, SharedTypeContainer},
-    },
     runtime::memory::Memory,
+    shared_values::{
+        shared_container::SharedContainer,
+        shared_type_container::{NominalTypeDeclaration, SharedTypeContainer},
+    },
     types::definition::TypeDefinition,
     values::{
         core_value::CoreValue,
@@ -15,7 +15,6 @@ use crate::{
             map::Map,
             r#type::Type,
         },
-        pointer::PointerAddress,
         value::Value,
         value_container::ValueContainer,
     },
@@ -27,6 +26,7 @@ use datex_macros_internal::LibTypeString;
 use log::info;
 use strum::IntoEnumIterator;
 use crate::shared_values::pointer::Pointer;
+use crate::shared_values::pointer_address::PointerAddress;
 
 type CoreLibTypes = HashMap<CoreLibPointerId, Type>;
 type CoreLibVals = HashMap<CoreLibPointerId, ValueContainer>;

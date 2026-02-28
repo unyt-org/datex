@@ -10,7 +10,7 @@ use crate::{
         type_expressions::{TypeExpression, TypeExpressionData},
     },
     dxb_parser::{
-        body::{DXBParserError, iterate_instructions},
+        body::{iterate_instructions, DXBParserError},
         instruction_collector::{
             CollectedResults, CollectionResultsPopper, FullOrPartialResult,
             InstructionCollector, StatementResultCollectionStrategy,
@@ -23,12 +23,9 @@ use crate::{
         },
         slots::InternalSlot,
     },
-    values::{
-        core_values::{
-            decimal::{Decimal, typed_decimal::TypedDecimal},
-            integer::{Integer, typed_integer::TypedInteger},
-        },
-        pointer::PointerAddress,
+    values::core_values::{
+        decimal::{typed_decimal::TypedDecimal, Decimal},
+        integer::{typed_integer::TypedInteger, Integer},
     },
 };
 
@@ -36,6 +33,8 @@ use crate::prelude::*;
 use alloc::format;
 use core::cell::RefCell;
 use num_enum::TryFromPrimitive;
+use crate::shared_values::pointer_address::PointerAddress;
+
 #[derive(Debug)]
 enum CollectedAstResult {
     Expression(DatexExpression),
@@ -721,6 +720,11 @@ mod tests {
             type_instruction_codes::TypeInstructionCode,
         },
     };
+    use crate::ast::expressions::{DatexExpressionData, PropertyAssignment};
+    use crate::global::operators::AssignmentOperator;
+    use crate::prelude::*;
+    use crate::values::core_values::integer::Integer;
+    use crate::values::core_values::integer::typed_integer::TypedInteger;
 
     #[test]
     fn ast_from_bytecode_simple_integer() {

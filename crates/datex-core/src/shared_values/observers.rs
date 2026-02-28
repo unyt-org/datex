@@ -1,6 +1,6 @@
 use crate::{
     dif::update::{DIFUpdate, DIFUpdateData},
-    shared_values::{reference::SharedContainer, value_reference::SharedValueContainer},
+    shared_values::{shared_container::SharedContainer, shared_value_container::SharedValueContainer},
 };
 
 use crate::prelude::*;
@@ -185,7 +185,7 @@ mod tests {
             observers::{
                 ObserveOptions, Observer, ObserverError, TransceiverId,
             },
-            reference::{SharedContainer, ReferenceMutability},
+            shared_container::{SharedContainer, ReferenceMutability},
         },
         runtime::memory::Memory,
         values::{core_values::map::Map, value_container::ValueContainer},

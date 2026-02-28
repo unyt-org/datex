@@ -1,20 +1,19 @@
 use crate::{
     shared_values::{
-        reference::ReferenceMutability, type_reference::SharedTypeContainer,
+        shared_container::ReferenceMutability, shared_type_container::SharedTypeContainer,
     },
     traits::structural_eq::StructuralEq,
     types::{
         collection_type_definition::CollectionTypeDefinition,
         structural_type_definition::StructuralTypeDefinition,
     },
-    values::{
-        core_values::{callable::CallableSignature, r#type::Type},
-        pointer::PointerAddress,
-    },
+    values::core_values::{callable::CallableSignature, r#type::Type},
 };
 use core::{cell::RefCell, fmt::Display, hash::Hash, prelude::rust_2024::*};
 
 use crate::prelude::*;
+use crate::shared_values::pointer_address::PointerAddress;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TypeDefinition {
     /// { x: integer, y: text }

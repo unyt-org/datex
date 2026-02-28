@@ -15,7 +15,7 @@ macro_rules! interrupt_with_maybe_value {
 
         let res = interrupt!($input, $arg).unwrap();
         match res {
-            crate::runtime::execution::execution_loop::InterruptResult::ResolvedValue(value) => value,
+            crate::runtime::execution::execution_loop::interrupts::InterruptResult::ResolvedValue(value) => value,
             _ => unreachable!(),
         }
     }};

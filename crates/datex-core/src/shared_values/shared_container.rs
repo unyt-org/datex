@@ -1,13 +1,13 @@
 use crate::{
-    shared_values::type_reference::{NominalTypeDeclaration, SharedTypeContainer},
+    shared_values::shared_type_container::{NominalTypeDeclaration, SharedTypeContainer},
     values::core_value::CoreValue,
 };
 use core::result::Result;
 
 use crate::{
     prelude::*,
-    shared_values::value_reference::SharedValueContainer,
     runtime::execution::ExecutionError,
+    shared_values::shared_value_container::SharedValueContainer,
     traits::{
         apply::Apply, identity::Identity, structural_eq::StructuralEq,
         value_eq::ValueEq,
@@ -15,7 +15,6 @@ use crate::{
     types::definition::TypeDefinition,
     values::{
         core_values::{map::MapAccessError, r#type::Type},
-        pointer::PointerAddress,
         value::Value,
         value_container::{ValueContainer, ValueKey},
     },
@@ -32,6 +31,7 @@ use core::cell::Ref;
 use num_enum::TryFromPrimitive;
 use serde::{Deserialize, Serialize};
 use crate::shared_values::pointer::Pointer;
+use crate::shared_values::pointer_address::PointerAddress;
 
 #[derive(Debug)]
 pub struct IndexOutOfBoundsError {
@@ -155,7 +155,7 @@ pub enum ReferenceMutability {
 pub mod mutability_as_int {
     use super::ReferenceMutability;
     use crate::prelude::*;
-    use serde::{Deserialize, Deserializer, Serializer, de::Error};
+    use serde::{de::Error, Deserialize, Deserializer, Serializer};
 
     pub fn serialize<S>(
         value: &ReferenceMutability,
@@ -193,7 +193,7 @@ pub mod mutability_option_as_int {
     use super::ReferenceMutability;
 
     use crate::prelude::*;
-    use serde::{Deserialize, Deserializer, Serializer, de::Error};
+    use serde::{de::Error, Deserialize, Deserializer, Serializer};
 
     pub fn serialize<S>(
         value: &Option<ReferenceMutability>,
