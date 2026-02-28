@@ -18,7 +18,7 @@ use core::fmt::{self};
 
 use crate::{
     decompiler::{FormattingMode, FormattingOptions, IndentType},
-    references::reference::ReferenceMutability,
+    shared_values::reference::ReferenceMutability,
 };
 
 #[derive(Clone, Default)]

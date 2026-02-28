@@ -28,7 +28,7 @@ use crate::{
         },
     },
     prelude::*,
-    references::reference::{SharedValueContainer, ReferenceMutability},
+    shared_values::reference::{SharedContainer, ReferenceMutability},
     runtime::execution::{
         ExecutionError, InvalidProgramError,
         execution_loop::{
@@ -513,7 +513,7 @@ pub fn inner_execution_loop(
                                     })) => ty,
                                     // Type Reference
                                     Some(ValueContainer::Shared(
-                                             SharedValueContainer::TypeReference(type_ref),
+                                             SharedContainer::Type(type_ref),
                                     )) => Type::new(
                                         TypeDefinition::Reference(type_ref),
                                         metadata.mutability.into(),

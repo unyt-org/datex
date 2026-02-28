@@ -4,8 +4,8 @@ use crate::{
         AssignmentOperator, BinaryOperator, LogicalUnaryOperator, UnaryOperator,
     },
     libs::core::get_core_lib_type_reference,
-    references::{
-        reference::ReferenceMutability, type_reference::TypeReference,
+    shared_values::{
+        reference::ReferenceMutability, type_reference::SharedTypeContainer,
     },
     type_inference::{error::TypeError, options::ErrorHandling},
     types::definition::TypeDefinition,
@@ -552,7 +552,7 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
         let inner_type = self.infer_expression(&mut create_ref.expression)?;
         let ref_type = match inner_type.type_definition {
             TypeDefinition::Reference(reference) => reference,
-            _ => Rc::new(RefCell::new(TypeReference::anonymous(
+            _ => Rc::new(RefCell::new(SharedTypeContainer::anonymous(
                 inner_type, None,
             ))),
         };
@@ -1264,7 +1264,7 @@ mod tests {
         },
         parser::Parser,
         prelude::*,
-        references::type_reference::{NominalTypeDeclaration, TypeReference},
+        shared_values::type_reference::{NominalTypeDeclaration, SharedTypeContainer},
         type_inference::{
             error::{SpannedTypeError, TypeError},
             infer_expression_type_detailed_errors,
@@ -1625,7 +1625,7 @@ mod tests {
 
         let nominal_type_def = Type::new(
             TypeDefinition::Reference(Rc::new(RefCell::new(
-                TypeReference::nominal(
+                SharedTypeContainer::nominal(
                     get_core_lib_type(CoreLibPointerId::Integer(None)),
                     NominalTypeDeclaration::from("A".to_string()),
                     None,

@@ -9,9 +9,9 @@ use crate::{
         update::{DIFKey, DIFUpdateData},
         value::{DIFReferenceNotFoundError, DIFValueContainer},
     },
-    references::{
+    shared_values::{
         observers::{ObserveOptions, Observer, TransceiverId},
-        reference::{SharedValueContainer, ReferenceMutability},
+        reference::{SharedContainer, ReferenceMutability},
     },
     runtime::RuntimeInternal,
     values::{pointer::PointerAddress, value_container::ValueContainer},
@@ -23,14 +23,14 @@ impl RuntimeInternal {
     fn resolve_in_memory_reference(
         &self,
         address: &PointerAddress,
-    ) -> Option<SharedValueContainer> {
+    ) -> Option<SharedContainer> {
         self.memory.borrow().get_reference(address).cloned()
     }
     // FIXME #398 implement async resolution
     async fn resolve_reference(
         &self,
         address: &PointerAddress,
-    ) -> Option<SharedValueContainer> {
+    ) -> Option<SharedContainer> {
         self.memory.borrow().get_reference(address).cloned()
     }
 }
@@ -140,7 +140,7 @@ impl DIFInterface for RuntimeInternal {
         } else {
             None
         };
-        let reference = SharedValueContainer::try_new_from_value_container(
+        let reference = SharedContainer::try_new_from_value_container(
             container,
             type_container,
             None,
@@ -230,7 +230,7 @@ mod tests {
             value::{DIFValue, DIFValueContainer},
         },
         prelude::*,
-        references::{
+        shared_values::{
             observers::ObserveOptions, reference::ReferenceMutability,
         },
         runtime::{Runtime, RuntimeConfig, RuntimeRunner, memory::Memory},

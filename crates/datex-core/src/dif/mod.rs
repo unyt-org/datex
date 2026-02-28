@@ -153,7 +153,7 @@ mod tests {
             inner: CoreValue::Null,
             actual_type: Box::new(TypeDefinition::ImplType(
                 Box::new(Type::integer()),
-                vec![PointerAddress::Local([0, 0, 0, 0, 0])],
+                vec![PointerAddress::Owned([0, 0, 0, 0, 0])],
             )),
         });
 
@@ -173,7 +173,7 @@ mod tests {
                             ))
                         )
                     }),
-                    vec![PointerAddress::Local([0, 0, 0, 0, 0])]
+                    vec![PointerAddress::Owned([0, 0, 0, 0, 0])]
                 ))
             })
         );

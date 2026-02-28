@@ -1,7 +1,7 @@
 use crate::{
     libs::core::CoreLibPointerId,
     prelude::*,
-    references::{reference::AccessError, type_reference::TypeReference},
+    shared_values::{reference::AccessError, type_reference::SharedTypeContainer},
     runtime::execution::ExecutionError,
     traits::{apply::Apply, structural_eq::StructuralEq, value_eq::ValueEq},
     types::definition::TypeDefinition,
@@ -145,7 +145,7 @@ impl Value {
     pub fn has_default_type(&self) -> bool {
         if let TypeDefinition::Reference(type_reference) =
             self.actual_type.as_ref()
-            && let TypeReference {
+            && let SharedTypeContainer {
                 pointer_address: Some(pointer_address),
                 ..
             } = &*type_reference.borrow()

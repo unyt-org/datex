@@ -218,7 +218,7 @@ fn get_local_pointer_value(
         Ok(runtime
             .memory
             .borrow()
-            .get_reference(&PointerAddress::Local(address.id))
+            .get_reference(&PointerAddress::Owned(address.id))
             .map(|r| ValueContainer::Shared(r.clone())))
     } else {
         Err(ExecutionError::RequiresRuntime)
@@ -237,7 +237,7 @@ mod tests {
         datex_list,
         global::instruction_codes::InstructionCode,
         libs::core::get_core_lib_type_reference,
-        references::reference::SharedValueContainer,
+        shared_values::reference::SharedContainer,
         runtime::{
             RuntimeConfig, RuntimeRunner,
             execution::{
@@ -771,12 +771,12 @@ mod tests {
             vec!["1", "integer", "integer"],
             vec![
                 Some(Integer::from(1).into()),
-                Some(ValueContainer::Shared(SharedValueContainer::TypeReference(
+                Some(ValueContainer::Shared(SharedContainer::Type(
                     get_core_lib_type_reference(CoreLibPointerId::Integer(
                         None,
                     )),
                 ))),
-                Some(ValueContainer::Shared(SharedValueContainer::TypeReference(
+                Some(ValueContainer::Shared(SharedContainer::Type(
                     get_core_lib_type_reference(CoreLibPointerId::Integer(
                         None,
                     )),

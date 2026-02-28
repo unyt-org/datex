@@ -1,6 +1,6 @@
 use crate::{
     dif::{DIFConvertible, representation::DIFTypeRepresentation},
-    references::reference::ReferenceMutability,
+    shared_values::reference::ReferenceMutability,
     runtime::memory::Memory,
     types::{
         definition::TypeDefinition,
