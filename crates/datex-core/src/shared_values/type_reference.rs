@@ -21,6 +21,7 @@ use crate::{
     },
 };
 use core::option::Option;
+use crate::shared_values::pointer::Pointer;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct NominalTypeDeclaration {
@@ -61,15 +62,14 @@ pub struct SharedTypeContainer {
     pub type_value: Type,
     /// optional nominal type declaration
     pub nominal_type_declaration: Option<NominalTypeDeclaration>,
-    /// pointer id, can be initialized as None for local pointers
-    pub pointer_address: Option<PointerAddress>,
+    pub pointer: Pointer,
 }
 
 impl SharedTypeContainer {
     pub fn nominal<T>(
         type_value: Type,
         nominal_type_declaration: T,
-        pointer_address: Option<PointerAddress>,
+        pointer: Pointer,
     ) -> Self
     where
         T: Into<NominalTypeDeclaration>,
@@ -77,17 +77,17 @@ impl SharedTypeContainer {
         SharedTypeContainer {
             type_value,
             nominal_type_declaration: Some(nominal_type_declaration.into()),
-            pointer_address,
+            pointer,
         }
     }
     pub fn anonymous(
         type_value: Type,
-        pointer_address: Option<PointerAddress>,
+        pointer: Pointer,
     ) -> Self {
         SharedTypeContainer {
             type_value,
             nominal_type_declaration: None,
-            pointer_address,
+            pointer,
         }
     }
     pub fn as_ref_cell(self) -> Rc<RefCell<SharedTypeContainer>> {
@@ -119,9 +119,9 @@ impl SharedTypeContainer {
 }
 
 impl SharedTypeContainer {
-    // pub fn as_type(&self) -> &Type {
-    //     &self.type_value
-    // }
+    pub fn pointer_address(&self) -> &PointerAddress {
+        self.pointer.address()
+    }
 
     pub fn structural_type_definition(
         &self,
@@ -163,7 +163,7 @@ impl Apply for SharedTypeContainer {
     ) -> Result<Option<ValueContainer>, ExecutionError> {
         // TODO #303: ensure that we can guarantee that pointer_address is always Some here
         let core_lib_id =
-            CoreLibPointerId::try_from(self.pointer_address.as_ref().unwrap());
+            CoreLibPointerId::try_from(self.pointer.address());
         if let Ok(core_lib_id) = core_lib_id {
             match core_lib_id {
                 CoreLibPointerId::Integer(None) => arg
@@ -202,8 +202,8 @@ impl Display for SharedTypeContainer {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
         if let Some(nominal) = &self.nominal_type_declaration {
             // special exception: for Unit, display "()"
-            if self.pointer_address
-                == Some(PointerAddress::from(CoreLibPointerId::Unit))
+            if self.pointer.address()
+                == &PointerAddress::from(CoreLibPointerId::Unit)
             {
                 return core::write!(f, "()");
             }

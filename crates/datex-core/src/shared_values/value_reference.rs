@@ -10,9 +10,10 @@ use crate::{
 
 use crate::prelude::*;
 use core::{cell::RefCell, fmt::Debug, prelude::rust_2024::*};
+use crate::shared_values::pointer::Pointer;
 
 pub struct SharedValueContainer {
-    pub pointer_address: Option<PointerAddress>,
+    pub pointer: Pointer,
     /// the value that this reference points to
     pub value_container: ValueContainer,
     /// pointer id, can be initialized as None for local pointers
@@ -23,28 +24,16 @@ pub struct SharedValueContainer {
     pub mutability: ReferenceMutability,
 }
 
-impl Default for SharedValueContainer {
-    fn default() -> Self {
-        SharedValueContainer {
-            value_container: ValueContainer::Local(Value::null()),
-            pointer_address: None,
-            allowed_type: TypeDefinition::Unknown,
-            observers: FreeHashMap::new(),
-            mutability: ReferenceMutability::Immutable,
-        }
-    }
-}
-
 impl SharedValueContainer {
     pub fn new(
         value_container: ValueContainer,
-        pointer_address: Option<PointerAddress>,
+        pointer: Pointer,
         allowed_type: TypeDefinition,
         mutability: ReferenceMutability,
     ) -> Self {
         SharedValueContainer {
             value_container,
-            pointer_address,
+            pointer,
             allowed_type,
             observers: FreeHashMap::new(),
             mutability,
@@ -56,7 +45,7 @@ impl Debug for SharedValueContainer {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("ReferenceData")
             .field("value_container", &self.value_container)
-            .field("pointer", &self.pointer_address)
+            .field("pointer_address", &self.pointer_address())
             .field("allowed_type", &self.allowed_type)
             .field("observers", &self.observers.len())
             .finish()
@@ -71,8 +60,8 @@ impl PartialEq for SharedValueContainer {
 }
 
 impl SharedValueContainer {
-    pub fn pointer_address(&self) -> &Option<PointerAddress> {
-        &self.pointer_address
+    pub fn pointer_address(&self) -> &PointerAddress {
+        self.pointer.address()
     }
 
     pub fn current_value_container(&self) -> &ValueContainer {

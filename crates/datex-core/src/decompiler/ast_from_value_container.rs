@@ -208,17 +208,13 @@ fn type_to_type_expression(type_value: &Type) -> TypeExpression {
         TypeDefinition::Unit => TypeExpressionData::Unit.with_default_span(),
         TypeDefinition::Reference(type_reference) => {
             // try to resolve to core lib value
-            if let Some(address) = &type_reference.borrow().pointer_address {
-                if let Ok(core_lib_type) = CoreLibPointerId::try_from(address) {
-                    TypeExpressionData::Identifier(core_lib_type.to_string())
-                        .with_default_span()
-                } else {
-                    todo!(
-                        "#651 Handle non-core-lib type references in decompiler"
-                    );
-                }
+            if let Ok(core_lib_type) = CoreLibPointerId::try_from(type_reference.borrow().pointer.address()) {
+                TypeExpressionData::Identifier(core_lib_type.to_string())
+                    .with_default_span()
             } else {
-                panic!("Unresolved type reference in decompiler"); // TODO #652: how to handle properly?
+                todo!(
+                    "#651 Handle non-core-lib type references in decompiler"
+                );
             }
         }
         _ => TypeExpressionData::Text(format!(

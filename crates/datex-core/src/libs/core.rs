@@ -26,6 +26,7 @@ use core::{cell::RefCell, iter::once, result::Result};
 use datex_macros_internal::LibTypeString;
 use log::info;
 use strum::IntoEnumIterator;
+use crate::shared_values::pointer::Pointer;
 
 type CoreLibTypes = HashMap<CoreLibPointerId, Type>;
 type CoreLibVals = HashMap<CoreLibPointerId, ValueContainer>;
@@ -248,7 +249,7 @@ pub fn load_core_lib(memory: &mut Memory) {
                         .to_string();
                     let reference =
                         SharedContainer::Type(type_reference.clone());
-                    memory.register_reference(&reference);
+                    memory.register_shared_container(&reference);
                     (name, ValueContainer::Shared(reference))
                 }
                 _ => core::panic!("Core lib type is not a TypeReference"),
@@ -263,11 +264,11 @@ pub fn load_core_lib(memory: &mut Memory) {
 
         // TODO #455: dont store variants as separate entries in core_struct (e.g., integer/u8, integer/i32, only keep integer)
         // Import variants directly by variant access operator from base type (e.g., integer -> integer/u8)
-        let core_struct = SharedContainer::from(ValueContainer::from(
+        let core_struct = SharedContainer::new(
             Map::from_iter(types_structure),
-        ));
-        core_struct.set_pointer_address(CoreLibPointerId::Core.into());
-        memory.register_reference(&core_struct);
+            Pointer::new(CoreLibPointerId::Core.into())
+        );
+        memory.register_shared_container(&core_struct);
     });
 }
 
@@ -482,7 +483,7 @@ fn create_core_type(
                     reference_mutability: None,
                     type_definition: TypeDefinition::Unit,
                 },
-                pointer_address: Some(PointerAddress::from(pointer_id)),
+                pointer: Pointer::new(PointerAddress::from(pointer_id)),
             }))),
             None,
         ),

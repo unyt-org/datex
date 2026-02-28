@@ -50,9 +50,8 @@ fn append_type_definition(
             // TODO #636: ensure pointer_address exists here
             let type_ref = type_ref.borrow();
             let pointer_address = type_ref
-                .pointer_address
-                .as_ref()
-                .expect("Type reference must have a pointer address");
+                .pointer
+                .address();
             append_get_ref(buffer, pointer_address);
         }
         _ => todo!("#637 Type definition compilation not implemented yet"),

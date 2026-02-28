@@ -243,30 +243,26 @@ impl Type {
             }
             TypeDefinition::Reference(reference) => {
                 let type_ref = reference.borrow();
-                if let Some(pointer_address) = &type_ref.pointer_address {
-                    if let Ok(core_lib_id) =
-                        CoreLibPointerId::try_from(pointer_address)
-                    {
-                        match core_lib_id {
-                            // for integer and decimal variants, return the base type
-                            CoreLibPointerId::Integer(Some(_)) => {
-                                get_core_lib_type_reference(
-                                    CoreLibPointerId::Integer(None),
-                                )
-                            }
-                            CoreLibPointerId::Decimal(Some(_)) => {
-                                get_core_lib_type_reference(
-                                    CoreLibPointerId::Decimal(None),
-                                )
-                            }
-                            // otherwise, reference is already base type
-                            _ => reference.clone(),
+                if let Ok(core_lib_id) =
+                    CoreLibPointerId::try_from(type_ref.pointer.address())
+                {
+                    match core_lib_id {
+                        // for integer and decimal variants, return the base type
+                        CoreLibPointerId::Integer(Some(_)) => {
+                            get_core_lib_type_reference(
+                                CoreLibPointerId::Integer(None),
+                            )
                         }
-                    } else {
-                        todo!("#608 handle non-core lib type base type");
+                        CoreLibPointerId::Decimal(Some(_)) => {
+                            get_core_lib_type_reference(
+                                CoreLibPointerId::Decimal(None),
+                            )
+                        }
+                        // otherwise, reference is already base type
+                        _ => reference.clone(),
                     }
                 } else {
-                    todo!("#609 handle pointer address none");
+                    todo!("#608 handle non-core lib type base type");
                 }
             }
             _ => core::panic!("Unhandled type definition for base type"),

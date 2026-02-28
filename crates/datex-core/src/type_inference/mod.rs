@@ -59,6 +59,7 @@ use crate::{
     },
 };
 use core::{cell::RefCell, ops::Range, panic, str::FromStr};
+use crate::shared_values::pointer::Pointer;
 
 pub mod error;
 pub mod options;
@@ -553,7 +554,7 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
         let ref_type = match inner_type.type_definition {
             TypeDefinition::Reference(reference) => reference,
             _ => Rc::new(RefCell::new(SharedTypeContainer::anonymous(
-                inner_type, None,
+                inner_type, Pointer::NULL,
             ))),
         };
 
@@ -1087,9 +1088,8 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
                 // if it's a TypeReference and it has the pointer address set, we can
                 // remap the expression to a GetReference
                 if let Some(reference) = base_type.inner_reference()
-                    && let Some(addr) = &reference.borrow().pointer_address
                 {
-                    Ok(addr.clone())
+                    Ok(reference.borrow().pointer.address().clone())
                 } else {
                     Err(SpannedTypeError {
                         error: TypeError::Unimplemented(
@@ -1290,6 +1290,7 @@ mod tests {
             },
         },
     };
+    use crate::shared_values::pointer::Pointer;
 
     /// Infers type errors for the given source code.
     /// Panics if parsing or precompilation succeeds.
@@ -1628,7 +1629,7 @@ mod tests {
                 SharedTypeContainer::nominal(
                     get_core_lib_type(CoreLibPointerId::Integer(None)),
                     NominalTypeDeclaration::from("A".to_string()),
-                    None,
+                    Pointer::NULL,
                 ),
             ))),
             None,

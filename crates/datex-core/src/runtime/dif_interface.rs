@@ -17,7 +17,6 @@ use crate::{
     values::{pointer::PointerAddress, value_container::ValueContainer},
 };
 use core::result::Result;
-
 use crate::prelude::*;
 impl RuntimeInternal {
     fn resolve_in_memory_reference(
@@ -51,13 +50,13 @@ impl DIFInterface for RuntimeInternal {
                 match key {
                     DIFKey::Text(key) => reference.try_set_property(
                         source_id,
-                        update,
+                        Some(update),
                         key,
                         value_container,
                     )?,
                     DIFKey::Index(key) => reference.try_set_property(
                         source_id,
-                        update,
+                        Some(update),
                         *key,
                         value_container,
                     )?,
@@ -65,7 +64,7 @@ impl DIFInterface for RuntimeInternal {
                         let key = key.to_value_container(&self.memory)?;
                         reference.try_set_property(
                             source_id,
-                            update,
+                            Some(update),
                             &key,
                             value_container,
                         )?
@@ -74,25 +73,25 @@ impl DIFInterface for RuntimeInternal {
             }
             DIFUpdateData::Replace { value } => reference.try_replace(
                 source_id,
-                update,
+                Some(update),
                 value.to_value_container(&self.memory)?,
             )?,
             DIFUpdateData::Append { value } => reference.try_append_value(
                 source_id,
-                update,
+                Some(update),
                 value.to_value_container(&self.memory)?,
             )?,
             DIFUpdateData::Clear => reference.try_clear(source_id)?,
             DIFUpdateData::Delete { key } => match key {
                 DIFKey::Text(key) => {
-                    reference.try_delete_property(source_id, update, key)?
+                    reference.try_delete_property(source_id, Some(update), key)?
                 }
                 DIFKey::Index(key) => {
-                    reference.try_delete_property(source_id, update, *key)?
+                    reference.try_delete_property(source_id, Some(update), *key)?
                 }
                 DIFKey::Value(key) => {
                     let key = key.to_value_container(&self.memory)?;
-                    reference.try_delete_property(source_id, update, &key)?
+                    reference.try_delete_property(source_id, Some(update), &key)?
                 }
             },
             DIFUpdateData::ListSplice {
@@ -102,7 +101,7 @@ impl DIFInterface for RuntimeInternal {
             } => {
                 reference.try_list_splice(
                     source_id,
-                    update,
+                    Some(update),
                     *start..(start + delete_count),
                     items
                         .iter()
@@ -140,13 +139,17 @@ impl DIFInterface for RuntimeInternal {
         } else {
             None
         };
+
+        let pointer = self.memory.borrow_mut().get_new_local_pointer();
+        let address = pointer.address().clone();
+
         let reference = SharedContainer::try_new_from_value_container(
             container,
             type_container,
-            None,
+            pointer,
             mutability,
         )?;
-        let address = self.memory.borrow_mut().register_reference(&reference);
+        self.memory.borrow_mut().register_shared_container(&reference);
         Ok(address)
     }
 
@@ -156,7 +159,7 @@ impl DIFInterface for RuntimeInternal {
     ) -> Result<DIFReference, DIFResolveReferenceError> {
         let reference = self.resolve_in_memory_reference(&address);
         match reference {
-            Some(ptr) => Ok(DIFReference::from_reference(&ptr, &self.memory)),
+            Some(ptr) => Ok(DIFReference::from_reference(&ptr)),
             None => {
                 core::todo!("#399 Implement async resolution of references")
             }
@@ -169,7 +172,7 @@ impl DIFInterface for RuntimeInternal {
     ) -> Result<DIFReference, DIFResolveReferenceError> {
         let reference = self.resolve_in_memory_reference(&address);
         match reference {
-            Some(ptr) => Ok(DIFReference::from_reference(&ptr, &self.memory)),
+            Some(ptr) => Ok(DIFReference::from_reference(&ptr)),
             None => Err(DIFResolveReferenceError::ReferenceNotFound),
         }
     }
@@ -243,12 +246,11 @@ mod tests {
 
     #[test]
     fn struct_serde() {
-        let memory = RefCell::new(Memory::new(Endpoint::default()));
         let map = ValueContainer::from(Map::from(vec![
             ("a".to_string(), 1.into()),
             ("b".to_string(), "text".into()),
         ]));
-        let dif_value = DIFValueContainer::from_value_container(&map, &memory);
+        let dif_value = DIFValueContainer::from_value_container(&map);
         let _ = serde_json::to_string(&dif_value).unwrap();
     }
 

@@ -13,6 +13,8 @@ use binrw::io::Cursor;
 use core::{cell::RefCell, result::Result};
 
 use crate::prelude::*;
+use crate::shared_values::pointer::Pointer;
+
 #[derive(Debug, Default)]
 pub struct Memory {
     local_endpoint: Endpoint,
@@ -35,32 +37,19 @@ impl Memory {
         memory
     }
 
-    /// Registers a new reference in memory. If the reference has no PointerAddress, a new local one is generated.
+    /// Registers a new shared container in memory. If the reference has no PointerAddress, a new local one is generated.
     /// If the reference is already registered (has a PointerAddress), the existing address is returned and no new registration is done.
     /// Returns the PointerAddress of the registered reference.
-    pub fn register_reference(
+    pub fn register_shared_container(
         &mut self,
         reference: &SharedContainer,
-    ) -> PointerAddress {
+    ) {
         let pointer_address = reference.pointer_address();
         // check if reference is already registered (if it has an address, we assume it is registered)
-        if let Some(ref address) = pointer_address
-            && self.pointers.contains_key(address)
-        {
-            return address.clone();
+        if !self.pointers.contains_key(&*pointer_address) {
+            self.pointers
+                .insert(pointer_address.clone(), reference.clone());
         }
-        // auto-generate new local id if no id is set
-        let pointer_address = if let Some(address) = pointer_address {
-            address
-        } else {
-            let pointer_address = self.get_new_local_address();
-            reference.set_pointer_address(pointer_address.clone());
-            pointer_address
-        };
-
-        self.pointers
-            .insert(pointer_address.clone(), reference.clone());
-        pointer_address
     }
 
     /// Returns a reference stored at the given PointerAddress, if it exists.
@@ -146,8 +135,8 @@ impl Memory {
         }
     }
 
-    /// Creates a new unique local PointerAddress.
-    pub fn get_new_local_address(&mut self) -> PointerAddress {
+    /// Creates a new unique local pointer.
+    pub fn get_new_local_pointer(&mut self) -> Pointer {
         let timestamp = crate::time::now_ms();
         // new timestamp, reset counter
         if timestamp != self.last_timestamp {
@@ -168,18 +157,7 @@ impl Memory {
             timestamp as u8,
             (self.local_counter & 0xFF) as u8,
         ];
-        PointerAddress::Owned(id)
-    }
-}
 
-impl SharedContainer {
-    /// Returns the PointerAddress of this reference, if it has one.
-    /// Otherwise, it registers the reference in the given memory and returns the newly assigned PointerAddress.
-    pub fn ensure_pointer_address(
-        &self,
-        memory: &RefCell<Memory>,
-    ) -> PointerAddress {
-        self.pointer_address()
-            .unwrap_or_else(|| memory.borrow_mut().register_reference(self))
+        Pointer::new(PointerAddress::Owned(id))
     }
 }

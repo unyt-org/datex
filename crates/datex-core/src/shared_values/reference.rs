@@ -28,8 +28,10 @@ use core::{
     option::Option,
     unreachable, write,
 };
+use core::cell::Ref;
 use num_enum::TryFromPrimitive;
 use serde::{Deserialize, Serialize};
+use crate::shared_values::pointer::Pointer;
 
 #[derive(Debug)]
 pub struct IndexOutOfBoundsError {
@@ -324,6 +326,11 @@ impl ValueEq for SharedContainer {
     }
 }
 
+// x = mut shared {x: 1};
+// y = mut {a: 2};
+// mut shared {x: 1};
+// &mut shared {a: 3};
+
 impl Hash for SharedContainer {
     fn hash<H: Hasher>(&self, state: &mut H) {
         match self {
@@ -336,20 +343,6 @@ impl Hash for SharedContainer {
                 ptr.hash(state); // hash the address
             }
         }
-    }
-}
-
-impl<T: Into<ValueContainer>> From<T> for SharedContainer {
-    /// Creates a new immutable reference from a value container.
-    fn from(value_container: T) -> Self {
-        let value_container = value_container.into();
-        SharedContainer::try_new_from_value_container(
-            value_container,
-            None,
-            None,
-            ReferenceMutability::Immutable,
-        )
-        .unwrap()
     }
 }
 
@@ -408,29 +401,17 @@ impl SharedContainer {
 }
 
 impl SharedContainer {
-    pub fn pointer_address(&self) -> Option<PointerAddress> {
+    pub fn pointer_address(&self) -> Ref<PointerAddress> {
         match self {
             SharedContainer::Value(vr) => {
-                vr.borrow().pointer_address().clone()
-            }
-            SharedContainer::Type(tr) => tr.borrow().pointer_address.clone(),
-        }
-    }
-
-    /// Sets the pointer address of the reference.
-    /// Panics if the reference already has a pointer address.
-    pub fn set_pointer_address(&self, pointer_address: PointerAddress) {
-        if self.pointer_address().is_some() {
-            core::panic!(
-                "Cannot set pointer address on reference that already has one"
-            );
-        }
-        match self {
-            SharedContainer::Value(vr) => {
-                vr.borrow_mut().pointer_address = Some(pointer_address)
+                Ref::map(vr.borrow(), |r| {
+                    r.pointer_address()
+                })
             }
             SharedContainer::Type(tr) => {
-                tr.borrow_mut().pointer_address = Some(pointer_address)
+                Ref::map(tr.borrow(), |r| {
+                    r.pointer_address()
+                })
             }
         }
     }
@@ -472,7 +453,7 @@ impl SharedContainer {
     pub fn try_new_from_value_container(
         value_container: ValueContainer,
         allowed_type: Option<TypeDefinition>,
-        maybe_pointer_id: Option<PointerAddress>,
+        pointer: Pointer,
         mutability: ReferenceMutability,
     ) -> Result<Self, ReferenceCreationError> {
         // FIXME #285 implement type check
@@ -487,7 +468,7 @@ impl SharedContainer {
                         SharedContainer::Value(Rc::new(RefCell::new(
                             SharedValueContainer::new(
                                 value_container,
-                                maybe_pointer_id,
+                                pointer,
                                 allowed_type,
                                 mutability,
                             ),
@@ -502,7 +483,7 @@ impl SharedContainer {
                         SharedContainer::Type(
                             SharedTypeContainer::anonymous(
                                 Type::reference(tr.clone(), mutability),
-                                maybe_pointer_id,
+                                pointer,
                             )
                             .as_ref_cell(),
                         )
@@ -524,7 +505,7 @@ impl SharedContainer {
                         }
                         SharedContainer::new_from_type(
                             type_value,
-                            maybe_pointer_id,
+                            pointer,
                             None,
                         )
                     }
@@ -536,7 +517,7 @@ impl SharedContainer {
                         SharedContainer::Value(Rc::new(RefCell::new(
                             SharedValueContainer::new(
                                 ValueContainer::Local(value),
-                                maybe_pointer_id,
+                                pointer,
                                 allowed_type,
                                 mutability,
                             ),
@@ -549,26 +530,39 @@ impl SharedContainer {
 
     pub fn new_from_type(
         type_value: Type,
-        maybe_pointer_address: Option<PointerAddress>,
+        pointer: Pointer,
         maybe_nominal_type_declaration: Option<NominalTypeDeclaration>,
     ) -> Self {
         let type_reference = SharedTypeContainer {
-            pointer_address: maybe_pointer_address,
+            pointer,
             nominal_type_declaration: maybe_nominal_type_declaration,
             type_value,
         };
         SharedContainer::Type(Rc::new(RefCell::new(type_reference)))
     }
 
-    pub fn try_mut_from(
+    pub fn try_new_mut(
         value_container: ValueContainer,
+        pointer: Pointer,
     ) -> Result<Self, ReferenceCreationError> {
         SharedContainer::try_new_from_value_container(
             value_container,
             None,
-            None,
+            pointer,
             ReferenceMutability::Mutable,
         )
+    }
+
+    pub fn new(
+        value_container: impl Into<ValueContainer>,
+        pointer: Pointer,
+    ) -> Self {
+        SharedContainer::try_new_from_value_container(
+            value_container.into(),
+            None,
+            pointer,
+            ReferenceMutability::Immutable,
+        ).unwrap()
     }
 
     /// Collapses the reference chain to most inner reference to which this reference points.
@@ -750,17 +744,20 @@ mod tests {
 
     #[test]
     fn try_mut_from() {
-        // creating a mutable reference from a value should work
+        // creating a mutable shared container from a value should work
         let value = ValueContainer::from(42);
-        let reference = SharedContainer::try_mut_from(value).unwrap();
+        let reference = SharedContainer::try_new_mut(
+            value,
+            Pointer::NULL,
+        ).unwrap();
         assert_eq!(reference.mutability(), ReferenceMutability::Mutable);
 
         // creating a mutable reference from a type should fail
         let type_value = ValueContainer::Shared(SharedContainer::Type(
-            SharedTypeContainer::anonymous(Type::UNIT, None).as_ref_cell(),
+            SharedTypeContainer::anonymous(Type::UNIT, Pointer::NULL).as_ref_cell(),
         ));
         assert_matches!(
-            SharedContainer::try_mut_from(type_value),
+            SharedContainer::try_new_mut(type_value, Pointer::NULL),
             Err(ReferenceCreationError::MutableTypeReference)
         );
     }
@@ -770,7 +767,7 @@ mod tests {
         let mut map = Map::default();
         map.set("name", ValueContainer::from("Jonas"));
         map.set("age", ValueContainer::from(30));
-        let reference = SharedContainer::from(ValueContainer::from(map));
+        let reference = SharedContainer::new(ValueContainer::from(map), Pointer::NULL);
         assert_eq!(
             reference.try_get_property("name").unwrap(),
             ValueContainer::from("Jonas")
@@ -792,7 +789,7 @@ mod tests {
             ("name".to_string(), ValueContainer::from("Jonas")),
             ("age".to_string(), ValueContainer::from(30)),
         ]);
-        let reference = SharedContainer::from(ValueContainer::from(struct_val));
+        let reference = SharedContainer::new(ValueContainer::from(struct_val), Pointer::NULL);
         assert_eq!(
             reference.try_get_property("name").unwrap(),
             ValueContainer::from("Jonas")
@@ -815,7 +812,7 @@ mod tests {
             ValueContainer::from(2),
             ValueContainer::from(3),
         ];
-        let reference = SharedContainer::from(ValueContainer::from(list));
+        let reference = SharedContainer::new(ValueContainer::from(list), Pointer::NULL);
 
         assert_eq!(
             reference.try_get_property(0).unwrap(),
@@ -838,7 +835,7 @@ mod tests {
             }))
         );
 
-        let text_ref = SharedContainer::from(ValueContainer::from("hello"));
+        let text_ref = SharedContainer::new(ValueContainer::from("hello"), Pointer::NULL);
         assert_eq!(
             text_ref.try_get_property(1).unwrap(),
             ValueContainer::from("e".to_string())
@@ -855,7 +852,7 @@ mod tests {
     #[test]
     fn reference_identity() {
         let value = 42;
-        let reference1 = SharedContainer::from(value);
+        let reference1 = SharedContainer::new(value, Pointer::NULL);
         let reference2 = reference1.clone();
 
         // cloned reference should be equal (identical)
@@ -868,14 +865,14 @@ mod tests {
         // assert_identical! should also confirm identity
         assert_identical!(reference1.clone(), reference2);
         // separate reference containing the same value should not be equal
-        assert_ne!(reference1, SharedContainer::from(value));
+        assert_ne!(reference1, SharedContainer::new(value, Pointer::NULL));
     }
 
     #[test]
     fn reference_value_equality() {
         let value = 42;
-        let reference1 = ValueContainer::Shared(SharedContainer::from(value));
-        let reference2 = ValueContainer::Shared(SharedContainer::from(value));
+        let reference1 = ValueContainer::Shared(SharedContainer::new(value, Pointer::NULL));
+        let reference2 = ValueContainer::Shared(SharedContainer::new(value, Pointer::NULL));
 
         // different references should not be equal a.k.a. identical
         assert_ne!(reference1, reference2);
@@ -885,8 +882,8 @@ mod tests {
 
     #[test]
     fn reference_structural_equality() {
-        let reference1 = SharedContainer::from(42.0);
-        let reference2 = SharedContainer::from(42);
+        let reference1 = SharedContainer::new(42.0, Pointer::NULL);
+        let reference2 = SharedContainer::new(42, Pointer::NULL);
 
         // different references should not be equal a.k.a. identical
         assert_ne!(reference1, reference2);
@@ -900,16 +897,16 @@ mod tests {
 
         let mut map_a = Map::default();
         map_a.set("number", ValueContainer::from(42));
-        map_a.set("obj", ValueContainer::new_reference(Map::default()));
+        map_a.set("obj", ValueContainer::Shared(SharedContainer::new(Map::default(), Pointer::NULL)));
 
         // construct map_a as a value first
-        let map_a_original_ref = ValueContainer::new_reference(map_a);
+        let map_a_original_ref = ValueContainer::Shared(SharedContainer::new(map_a, Pointer::NULL));
 
         // create map_b as a reference
         let map_b_ref = SharedContainer::try_new_from_value_container(
             Map::default().into(),
             None,
-            None,
+            Pointer::NULL,
             ReferenceMutability::Mutable,
         )
         .unwrap();
@@ -917,7 +914,7 @@ mod tests {
         // set map_a as property of b. This should create a reference to a clone of map_a that
         // is upgraded to a reference
         map_b_ref
-            .try_set_property(0, memory, "a", map_a_original_ref.clone())
+            .try_set_property(0, None, "a", map_a_original_ref.clone())
             .unwrap();
 
         // assert that the reference to map_a is set correctly
