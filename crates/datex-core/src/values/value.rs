@@ -145,12 +145,8 @@ impl Value {
     pub fn has_default_type(&self) -> bool {
         if let TypeDefinition::Reference(type_reference) =
             self.actual_type.as_ref()
-            && let SharedTypeContainer {
-                pointer_address: Some(pointer_address),
-                ..
-            } = &*type_reference.borrow()
             && let Ok(actual_type_core_ptr_id) =
-                CoreLibPointerId::try_from(pointer_address)
+                CoreLibPointerId::try_from(type_reference.borrow().pointer.address())
         {
             // actual_type has core type pointer id which is equal to the default core type pointer id of self.inner
             let self_default_type_ptr_id = CoreLibPointerId::from(&self.inner);

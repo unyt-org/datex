@@ -55,9 +55,8 @@ mod tests {
     use core::cell::RefCell;
 
     fn dif_value_circle(value_container: ValueContainer) -> DIFValueContainer {
-        let memory = RefCell::new(Memory::new(Endpoint::default()));
         let dif_value_container: DIFValueContainer =
-            DIFValueContainer::from_value_container(&value_container, &memory);
+            DIFValueContainer::from_value_container(&value_container);
         let serialized = dif_value_container.as_json();
         let deserialized: DIFValueContainer =
             DIFValueContainer::from_json(&serialized);
@@ -136,8 +135,7 @@ mod tests {
     #[test]
     fn dif_value_no_type() {
         let val = ValueContainer::Local(Value::null());
-        let memory = RefCell::new(Memory::new(Endpoint::default()));
-        let dif_val = DIFValueContainer::from_value_container(&val, &memory);
+        let dif_val = DIFValueContainer::from_value_container(&val);
         assert_eq!(
             dif_val,
             DIFValueContainer::Value(DIFValue::new(
@@ -157,8 +155,7 @@ mod tests {
             )),
         });
 
-        let memory = RefCell::new(Memory::new(Endpoint::default()));
-        let dif_val = DIFValueContainer::from_value_container(&val, &memory);
+        let dif_val = DIFValueContainer::from_value_container(&val);
         assert_eq!(
             dif_val,
             DIFValueContainer::Value(DIFValue {

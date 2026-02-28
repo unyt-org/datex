@@ -2,12 +2,13 @@ use crate::{
     runtime::execution::{
         ExecutionError,
         execution_loop::{
-            slots::{get_slot_value, get_slot_value_mut},
+            slots::{get_slot_value},
             state::RuntimeExecutionState,
         },
     },
     values::value_container::ValueContainer,
 };
+use crate::runtime::execution::execution_loop::state::RuntimeExecutionSlots;
 
 /// Represents a value in the runtime execution context, which can either be a direct
 /// `ValueContainer` or a reference to a slot address where the value is stored.
@@ -34,7 +35,7 @@ impl RuntimeValue {
     /// If the `RuntimeValue` is a slot address, it retrieves the value from the runtime state.
     pub fn with_mut_value_container<F, R>(
         &mut self,
-        state: &mut RuntimeExecutionState,
+        slots: &mut RuntimeExecutionSlots,
         f: F,
     ) -> Result<R, ExecutionError>
     where
@@ -43,7 +44,7 @@ impl RuntimeValue {
         match self {
             RuntimeValue::ValueContainer(vc) => Ok(f(vc)),
             RuntimeValue::SlotAddress(addr) => {
-                let slot_value = get_slot_value_mut(state, *addr)?;
+                let slot_value =  slots.get_slot_value_mut( *addr)?;
                 Ok(f(slot_value))
             }
         }

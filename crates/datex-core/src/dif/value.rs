@@ -120,23 +120,20 @@ impl From<PointerAddress> for DIFValueContainer {
 impl DIFValueContainer {
     pub fn from_value_container(
         value_container: &ValueContainer,
-        memory: &RefCell<Memory>,
     ) -> Self {
         match value_container {
             ValueContainer::Shared(reference) => {
-                // get pointer address, if not present register the reference in memory
-                let address = reference.ensure_pointer_address(memory);
-                DIFValueContainer::Reference(address)
+                DIFValueContainer::Reference(reference.pointer_address().clone())
             }
             ValueContainer::Local(value) => {
-                DIFValueContainer::Value(DIFValue::from_value(value, memory))
+                DIFValueContainer::Value(DIFValue::from_value(value))
             }
         }
     }
 }
 
 impl DIFValue {
-    fn from_value(value: &Value, memory: &RefCell<Memory>) -> Self {
+    fn from_value(value: &Value) -> Self {
         let core_value = &value.inner;
 
         let mut is_empty_map = false;
@@ -216,7 +213,7 @@ impl DIFValue {
             }
             CoreValue::List(list) => DIFValueRepresentation::Array(
                 list.iter()
-                    .map(|v| DIFValueContainer::from_value_container(v, memory))
+                    .map(|v| DIFValueContainer::from_value_container(v))
                     .collect(),
             ),
             CoreValue::Map(map) => match map {
@@ -228,7 +225,7 @@ impl DIFValue {
                                 (
                                     k.clone(),
                                     DIFValueContainer::from_value_container(
-                                        v, memory,
+                                        v,
                                     ),
                                 )
                             })
@@ -256,12 +253,11 @@ impl DIFValue {
                                         _ => {
                                             DIFValueContainer::from_value_container(
                                                 &ValueContainer::from(k),
-                                                memory,
                                             )
                                         }
                                     },
                                     DIFValueContainer::from_value_container(
-                                        v, memory,
+                                        v
                                     ),
                                 )
                             })
@@ -275,7 +271,6 @@ impl DIFValue {
             value: dif_core_value,
             ty: get_type_if_non_default(
                 &value.actual_type,
-                memory,
                 is_empty_map,
             ),
         }
@@ -292,16 +287,13 @@ impl DIFValue {
 /// - Map (if not empty, otherwise we cannot distinguish between empty map and empty list since both are represented as [] in DIF)
 fn get_type_if_non_default(
     type_definition: &TypeDefinition,
-    memory: &RefCell<Memory>,
     is_empty_map: bool,
 ) -> Option<DIFTypeDefinition> {
     match type_definition {
         TypeDefinition::Reference(inner) => {
-            if let Some(Ok(address)) = inner
+            if let Ok(address) = CoreLibPointerId::try_from(inner
                 .borrow()
-                .pointer_address
-                .as_ref()
-                .map(CoreLibPointerId::try_from)
+                .pointer.address())
                 && (core::matches!(
                         address,
                         CoreLibPointerId::Decimal(Some(DecimalTypeVariant::F64))
@@ -317,13 +309,11 @@ fn get_type_if_non_default(
             } else {
                 Some(DIFTypeDefinition::from_type_definition(
                     type_definition,
-                    memory,
                 ))
             }
         }
         _ => Some(DIFTypeDefinition::from_type_definition(
             type_definition,
-            memory,
         )),
     }
 }
@@ -352,22 +342,20 @@ mod tests {
 
     #[test]
     fn default_type() {
-        let memory = get_mock_memory();
-        let dif = DIFValue::from_value(&Value::from(true), &memory);
+        let dif = DIFValue::from_value(&Value::from(true));
         assert!(dif.ty.is_none());
 
-        let dif = DIFValue::from_value(&Value::from("hello"), &memory);
+        let dif = DIFValue::from_value(&Value::from("hello"));
         assert!(dif.ty.is_none());
 
-        let dif = DIFValue::from_value(&Value::null(), &memory);
+        let dif = DIFValue::from_value(&Value::null());
         assert!(dif.ty.is_none());
 
-        let dif = DIFValue::from_value(&Value::from(3.5f64), &memory);
+        let dif = DIFValue::from_value(&Value::from(3.5f64));
         assert!(dif.ty.is_none());
 
         let dif = DIFValue::from_value(
             &Value::from(vec![Value::from(1), Value::from(2), Value::from(3)]),
-            &memory,
         );
         assert!(dif.ty.is_none());
 
@@ -376,15 +364,13 @@ mod tests {
                 ("a".to_string(), ValueContainer::from(1)),
                 ("b".to_string(), ValueContainer::from(2)),
             ])),
-            &memory,
         );
         assert!(dif.ty.is_none());
     }
 
     #[test]
     fn non_default_type() {
-        let memory = get_mock_memory();
-        let dif = DIFValue::from_value(&Value::from(123u16), &memory);
+        let dif = DIFValue::from_value(&Value::from(123u16));
         assert!(dif.ty.is_some());
         if let DIFTypeDefinition::Reference(reference) = dif.ty.unwrap() {
             assert_eq!(
@@ -395,7 +381,7 @@ mod tests {
             core::panic!("Expected reference type");
         }
 
-        let dif = DIFValue::from_value(&Value::from(123i64), &memory);
+        let dif = DIFValue::from_value(&Value::from(123i64));
         assert!(dif.ty.is_some());
         if let DIFTypeDefinition::Reference(reference) = dif.ty.unwrap() {
             assert_eq!(
@@ -409,8 +395,7 @@ mod tests {
 
     #[test]
     fn serde_dif_value() {
-        let memory = get_mock_memory();
-        let dif = DIFValue::from_value(&Value::from("Hello, world!"), &memory);
+        let dif = DIFValue::from_value(&Value::from("Hello, world!"));
         let serialized = dif.as_json();
         let deserialized = DIFValue::from_json(&serialized);
         assert_eq!(dif, deserialized);

@@ -678,13 +678,14 @@ pub fn inner_execution_loop(
                                             .pop_runtime_value_result_assert_existing()
                                     );
                                     let res = target.with_mut_value_container(
-                                        &mut state,
+                                        &mut state.slots,
                                         |target| {
                                             handle_unary_operation(
                                                 UnaryOperator::from(
                                                     regular_instruction,
                                                 ),
                                                 target.clone(), // TODO #646: is unary operation supposed to take ownership?
+                                                &state.runtime_internal.clone().unwrap().memory
                                             )
                                         },
                                     );
@@ -847,7 +848,7 @@ pub fn inner_execution_loop(
                                     let property_name = property_data.0;
 
                                     let res = target.with_mut_value_container(
-                                        &mut state,
+                                        &mut state.slots,
                                         |target| {
                                             target.try_get_property(
                                                 &property_name,
@@ -870,7 +871,7 @@ pub fn inner_execution_loop(
                                     let property_index = property_data.0;
 
                                     let res = target.with_mut_value_container(
-                                        &mut state,
+                                        &mut state.slots,
                                         |target| {
                                             target.try_get_property(
                                                 property_index,
@@ -894,7 +895,7 @@ pub fn inner_execution_loop(
                                     );
 
                                     let res = target.with_mut_value_container(
-                                        &mut state,
+                                        &mut state.slots,
                                         |target| target.try_get_property(&key),
                                     );
                                     RuntimeValue::ValueContainer(yield_unwrap!(
@@ -914,13 +915,10 @@ pub fn inner_execution_loop(
                                         collected_results
                                             .pop_cloned_value_container_result_assert_existing(&state)
                                     );
-                                    let runtime_internal =
-                                        state.runtime_internal.clone();
                                     let res = target.with_mut_value_container(
-                                        &mut state,
+                                        &mut state.slots,
                                         |target| {
                                             set_property(
-                                                &runtime_internal,
                                                 target,
                                                 OwnedValueKey::Text(
                                                     property_data.0,
@@ -945,13 +943,10 @@ pub fn inner_execution_loop(
                                             .pop_cloned_value_container_result_assert_existing(&state)
                                     );
 
-                                    let runtime_internal =
-                                        state.runtime_internal.clone();
                                     let res = target.with_mut_value_container(
-                                        &mut state,
+                                        &mut state.slots,
                                         |target| {
                                             set_property(
-                                                &runtime_internal,
                                                 target,
                                                 OwnedValueKey::Index(
                                                     property_data.0 as i64,
@@ -978,13 +973,10 @@ pub fn inner_execution_loop(
                                             .pop_cloned_value_container_result_assert_existing(&state)
                                     );
 
-                                    let runtime_internal =
-                                        state.runtime_internal.clone();
                                     let res = target.with_mut_value_container(
-                                        &mut state,
+                                        &mut state.slots,
                                         |target| {
                                             set_property(
-                                                &runtime_internal,
                                                 target,
                                                 OwnedValueKey::Value(key),
                                                 value,

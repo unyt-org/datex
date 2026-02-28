@@ -233,7 +233,6 @@ pub enum DeserializeMapOrArray<T> {
 impl DIFTypeRepresentation {
     pub fn from_structural_type_definition(
         struct_def: &StructuralTypeDefinition,
-        memory: &RefCell<Memory>,
     ) -> Self {
         match struct_def {
             StructuralTypeDefinition::Null => DIFTypeRepresentation::Null,
@@ -249,8 +248,8 @@ impl DIFTypeRepresentation {
             }
             StructuralTypeDefinition::Range((start, end)) => {
                 DIFTypeRepresentation::Array(vec![
-                    DIFType::from_type(start, memory),
-                    DIFType::from_type(end, memory),
+                    DIFType::from_type(start),
+                    DIFType::from_type(end),
                 ])
             }
             StructuralTypeDefinition::Decimal(d) => {
@@ -267,7 +266,7 @@ impl DIFTypeRepresentation {
             }
             StructuralTypeDefinition::List(arr) => {
                 DIFTypeRepresentation::Array(
-                    arr.iter().map(|v| DIFType::from_type(v, memory)).collect(),
+                    arr.iter().map(|v| DIFType::from_type(v)).collect(),
                 )
             }
             StructuralTypeDefinition::Map(fields) => {
@@ -276,8 +275,8 @@ impl DIFTypeRepresentation {
                         .iter()
                         .map(|(k, v)| {
                             (
-                                DIFType::from_type(k, memory),
-                                DIFType::from_type(v, memory),
+                                DIFType::from_type(k),
+                                DIFType::from_type(v),
                             )
                         })
                         .collect(),

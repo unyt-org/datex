@@ -191,6 +191,8 @@ mod tests {
         values::{core_values::map::Map, value_container::ValueContainer},
     };
     use core::{assert_matches, cell::RefCell};
+    use crate::shared_values::pointer::Pointer;
+
     /// Helper function to record DIF updates observed on a reference
     /// Returns a Rc<RefCell<Vec<DIFUpdate>>> that contains all observed updates
     /// The caller can borrow this to inspect the updates after performing operations on the reference
@@ -221,7 +223,7 @@ mod tests {
         let r = SharedContainer::try_new_from_value_container(
             42.into(),
             None,
-            None,
+            Pointer::NULL,
             ReferenceMutability::Immutable,
         )
         .unwrap();
@@ -233,7 +235,7 @@ mod tests {
         let r = SharedContainer::try_new_from_value_container(
             42.into(),
             None,
-            None,
+            Pointer::NULL,
             ReferenceMutability::Mutable,
         )
         .unwrap();
@@ -242,7 +244,7 @@ mod tests {
 
     #[test]
     fn observe_and_unobserve() {
-        let r = SharedContainer::try_mut_from(42.into()).unwrap();
+        let r = SharedContainer::try_new_mut(42.into(), Pointer::NULL).unwrap();
         assert!(!r.has_observers());
         let observer_id = r.observe(Observer::new(|_, _| {})).unwrap();
         assert!(observer_id == 0);
@@ -257,7 +259,7 @@ mod tests {
 
     #[test]
     fn observer_ids_incremental() {
-        let r = SharedContainer::try_mut_from(42.into()).unwrap();
+        let r = SharedContainer::try_new_mut(42.into(), Pointer::NULL).unwrap();
         let id1 = r.observe(Observer::new(|_, _| {})).unwrap();
         let id2 = r.observe(Observer::new(|_, _| {})).unwrap();
         assert!(id1 == 0);
@@ -271,15 +273,13 @@ mod tests {
 
     #[test]
     fn observe_replace() {
-        let memory = &RefCell::new(Memory::default());
-
-        let int_ref = SharedContainer::try_mut_from(42.into()).unwrap();
+        let int_ref = SharedContainer::try_new_mut(42.into(), Pointer::NULL).unwrap();
         let observed_updates =
             record_dif_updates(&int_ref, 0, ObserveOptions::default());
 
         // Update the value of the reference
         int_ref
-            .try_replace(1, memory, 43)
+            .try_replace(1, None, 43)
             .expect("Failed to set value");
 
         // Verify the observed update matches the expected change
@@ -288,7 +288,6 @@ mod tests {
             data: Cow::Owned(DIFUpdateData::replace(
                 DIFValueContainer::from_value_container(
                     &ValueContainer::from(43),
-                    memory,
                 ),
             )),
         };
@@ -298,15 +297,13 @@ mod tests {
 
     #[test]
     fn observe_replace_same_transceiver() {
-        let memory = &RefCell::new(Memory::default());
-
-        let int_ref = SharedContainer::try_mut_from(42.into()).unwrap();
+        let int_ref = SharedContainer::try_new_mut(42.into(), Pointer::NULL).unwrap();
         let observed_update =
             record_dif_updates(&int_ref, 0, ObserveOptions::default());
 
         // Update the value of the reference
         int_ref
-            .try_replace(0, memory, 43)
+            .try_replace(0, None, 43)
             .expect("Failed to set value");
 
         // No update triggered, same transceiver id
@@ -315,9 +312,7 @@ mod tests {
 
     #[test]
     fn observe_replace_same_transceiver_relay_own_updates() {
-        let memory = &RefCell::new(Memory::default());
-
-        let int_ref = SharedContainer::try_mut_from(42.into()).unwrap();
+        let int_ref = SharedContainer::try_new_mut(42.into(), Pointer::NULL).unwrap();
         let observed_update = record_dif_updates(
             &int_ref,
             0,
@@ -328,7 +323,7 @@ mod tests {
 
         // Update the value of the reference
         int_ref
-            .try_replace(0, memory, 43)
+            .try_replace(0, None, 43)
             .expect("Failed to set value");
 
         // update triggered, same transceiver id but relay_own_updates enabled
@@ -337,7 +332,6 @@ mod tests {
             data: Cow::Owned(DIFUpdateData::replace(
                 DIFValueContainer::from_value_container(
                     &ValueContainer::from(43),
-                    memory,
                 ),
             )),
         };
@@ -347,21 +341,20 @@ mod tests {
 
     #[test]
     fn observe_update_property() {
-        let memory = &RefCell::new(Memory::default());
-
-        let reference = SharedContainer::try_mut_from(
+        let reference = SharedContainer::try_new_mut(
             Map::from(vec![
                 ("a".to_string(), ValueContainer::from(1)),
                 ("b".to_string(), ValueContainer::from(2)),
             ])
             .into(),
+            Pointer::NULL
         )
         .unwrap();
         let observed_updates =
             record_dif_updates(&reference, 0, ObserveOptions::default());
         // Update a property
         reference
-            .try_set_property(1, memory, "a", "val".into())
+            .try_set_property(1, None, "a", "val".into())
             .expect("Failed to set property");
         // Verify the observed update matches the expected change
         let expected_update = DIFUpdate {

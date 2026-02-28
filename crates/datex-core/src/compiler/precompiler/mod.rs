@@ -45,6 +45,7 @@ use options::PrecompilerOptions;
 use precompiled_ast::{AstMetadata, RichAst, VariableShape};
 use scope::NewScopeType;
 use scope_stack::PrecompilerScopeStack;
+use crate::shared_values::pointer::Pointer;
 
 pub struct Precompiler<'a> {
     ast_metadata: Rc<RefCell<AstMetadata>>,
@@ -273,11 +274,11 @@ impl<'a> Precompiler<'a> {
                 Rc::new(RefCell::new(SharedTypeContainer::nominal(
                     Type::UNIT,
                     NominalTypeDeclaration::from(data.name.clone()),
-                    None,
+                    Pointer::NULL,
                 )))
             }
             TypeDeclarationKind::Structural => Rc::new(RefCell::new(
-                SharedTypeContainer::anonymous(Type::UNIT, None),
+                SharedTypeContainer::anonymous(Type::UNIT, Pointer::NULL),
             )),
         };
 
