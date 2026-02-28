@@ -1,6 +1,6 @@
 use crate::{
     dif::{DIFConvertible, value::DIFValueContainer},
-    references::observers::TransceiverId,
+    shared_values::observers::TransceiverId,
     runtime::memory::Memory,
     values::value_container::ValueKey,
 };

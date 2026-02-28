@@ -5,7 +5,7 @@ use crate::{
         update::DIFUpdateData,
         value::{DIFReferenceNotFoundError, DIFValueContainer},
     },
-    references::{
+    shared_values::{
         observers::{ObserveOptions, ObserverError, TransceiverId},
         reference::{
             AccessError, AssignmentError, ReferenceCreationError,

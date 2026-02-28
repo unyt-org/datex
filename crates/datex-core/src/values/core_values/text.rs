@@ -1,5 +1,5 @@
 use crate::{
-    prelude::*, references::reference::IndexOutOfBoundsError,
+    prelude::*, shared_values::reference::IndexOutOfBoundsError,
     traits::structural_eq::StructuralEq,
 };
 use core::{

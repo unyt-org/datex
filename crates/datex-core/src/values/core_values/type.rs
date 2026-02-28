@@ -5,8 +5,8 @@ use crate::{
         CoreLibPointerId, get_core_lib_type, get_core_lib_type_reference,
     },
     prelude::*,
-    references::{
-        reference::ReferenceMutability, type_reference::TypeReference,
+    shared_values::{
+        reference::ReferenceMutability, type_reference::SharedTypeContainer,
     },
     traits::structural_eq::StructuralEq,
     types::{
@@ -35,7 +35,7 @@ use core::{
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Type {
     pub type_definition: TypeDefinition,
-    pub base_type: Option<Rc<RefCell<TypeReference>>>,
+    pub base_type: Option<Rc<RefCell<SharedTypeContainer>>>,
     pub reference_mutability: Option<ReferenceMutability>,
 }
 
@@ -112,7 +112,7 @@ impl Type {
     pub fn is_reference(&self) -> bool {
         core::matches!(self.type_definition, TypeDefinition::Reference(_))
     }
-    pub fn inner_reference(&self) -> Option<Rc<RefCell<TypeReference>>> {
+    pub fn inner_reference(&self) -> Option<Rc<RefCell<SharedTypeContainer>>> {
         if let TypeDefinition::Reference(reference) = &self.type_definition {
             Some(reference.clone())
         } else {
@@ -155,7 +155,7 @@ impl Type {
 
     /// Creates a reference type pointing to the given TypeReference with the specified mutability
     pub fn reference(
-        type_definition: Rc<RefCell<TypeReference>>,
+        type_definition: Rc<RefCell<SharedTypeContainer>>,
         reference_mutability: ReferenceMutability,
     ) -> Self {
         Type {
@@ -225,7 +225,7 @@ impl Type {
     /// 42u8 -> integer
     /// 42 -> integer
     /// User/variant -> User
-    pub fn base_type_reference(&self) -> Option<Rc<RefCell<TypeReference>>> {
+    pub fn base_type_reference(&self) -> Option<Rc<RefCell<SharedTypeContainer>>> {
         // has direct base type (e.g. integer/u8 -> integer)
         if let Some(base_type) = &self.base_type {
             return Some(base_type.clone());

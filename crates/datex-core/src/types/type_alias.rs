@@ -1,7 +1,7 @@
 use core::fmt::Display;
 
 use crate::{
-    references::type_reference::NominalTypeDeclaration,
+    shared_values::type_reference::NominalTypeDeclaration,
     values::core_values::r#type::Type,
 };
 

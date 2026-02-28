@@ -2,7 +2,7 @@ use crate::{
     core_compiler::type_compiler::append_type,
     global::instruction_codes::InstructionCode,
     libs::core::{CoreLibPointerId, get_core_lib_type_definition},
-    references::reference::ReferenceMutability,
+    shared_values::reference::ReferenceMutability,
     types::definition::TypeDefinition,
     utils::buffers::{
         append_f32, append_f64, append_i8, append_i16, append_i32, append_i64,
@@ -337,7 +337,7 @@ pub fn append_get_ref(buffer: &mut Vec<u8>, address: &PointerAddress) {
             append_instruction_code(buffer, InstructionCode::GET_INTERNAL_REF);
             buffer.extend_from_slice(id);
         }
-        PointerAddress::Local(id) => {
+        PointerAddress::Owned(id) => {
             append_instruction_code(buffer, InstructionCode::GET_LOCAL_REF);
             buffer.extend_from_slice(id);
         }
