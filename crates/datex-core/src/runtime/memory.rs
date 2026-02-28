@@ -1,19 +1,20 @@
 use crate::{
     collections::HashMap,
     global::protocol_structures::instructions::RawFullPointerAddress,
-    libs::core::{CoreLibPointerId, load_core_lib},
+    libs::core::{load_core_lib, CoreLibPointerId},
     shared_values::{
-        reference::SharedContainer, type_reference::SharedTypeContainer,
-        value_reference::SharedValueContainer,
+        shared_container::SharedContainer, shared_type_container::SharedTypeContainer,
+        shared_value_container::SharedValueContainer,
     },
     types::error::IllegalTypeError,
-    values::{core_values::endpoint::Endpoint, pointer::PointerAddress},
+    values::core_values::endpoint::Endpoint,
 };
 use binrw::io::Cursor;
 use core::{cell::RefCell, result::Result};
 
 use crate::prelude::*;
 use crate::shared_values::pointer::Pointer;
+use crate::shared_values::pointer_address::PointerAddress;
 
 #[derive(Debug, Default)]
 pub struct Memory {

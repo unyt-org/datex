@@ -1,7 +1,7 @@
 use crate::{
     dif::{
-        DIFConvertible, representation::DIFValueRepresentation,
-        r#type::DIFTypeDefinition,
+        r#type::DIFTypeDefinition, representation::DIFValueRepresentation,
+        DIFConvertible,
     },
     libs::core::CoreLibPointerId,
     runtime::memory::Memory,
@@ -13,7 +13,6 @@ use crate::{
             integer::typed_integer::TypedInteger,
             map::{BorrowedMapKey, Map},
         },
-        pointer::PointerAddress,
         value::Value,
         value_container::ValueContainer,
     },
@@ -22,6 +21,8 @@ use core::{cell::RefCell, result::Result};
 use serde::{Deserialize, Serialize};
 
 use crate::prelude::*;
+use crate::shared_values::pointer_address::PointerAddress;
+
 #[derive(Debug)]
 pub struct DIFReferenceNotFoundError;
 
@@ -321,7 +322,7 @@ fn get_type_if_non_default(
 #[cfg(test)]
 mod tests {
     use crate::{
-        dif::{DIFConvertible, r#type::DIFTypeDefinition, value::DIFValue},
+        dif::{r#type::DIFTypeDefinition, value::DIFValue, DIFConvertible},
         libs::core::CoreLibPointerId,
         runtime::memory::Memory,
         values::{

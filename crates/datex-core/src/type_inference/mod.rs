@@ -5,7 +5,7 @@ use crate::{
     },
     libs::core::get_core_lib_type_reference,
     shared_values::{
-        reference::ReferenceMutability, type_reference::SharedTypeContainer,
+        shared_container::ReferenceMutability, shared_type_container::SharedTypeContainer,
     },
     type_inference::{error::TypeError, options::ErrorHandling},
     types::definition::TypeDefinition,
@@ -29,7 +29,7 @@ use crate::{
         },
     },
     compiler::precompiler::precompiled_ast::{AstMetadata, RichAst},
-    libs::core::{CoreLibPointerId, get_core_lib_type},
+    libs::core::{get_core_lib_type, CoreLibPointerId},
     prelude::*,
     type_inference::{
         error::{
@@ -38,28 +38,26 @@ use crate::{
         options::InferExpressionTypeOptions,
     },
     types::structural_type_definition::StructuralTypeDefinition,
-    values::{
-        core_values::{
-            boolean::Boolean,
-            callable::CallableSignature,
-            decimal::{Decimal, typed_decimal::TypedDecimal},
-            endpoint::Endpoint,
-            integer::{Integer, typed_integer::TypedInteger},
-            text::Text,
-            r#type::Type,
-        },
-        pointer::PointerAddress,
+    values::core_values::{
+        boolean::Boolean,
+        callable::CallableSignature,
+        decimal::{typed_decimal::TypedDecimal, Decimal},
+        endpoint::Endpoint,
+        integer::{typed_integer::TypedInteger, Integer},
+        r#type::Type,
+        text::Text,
     },
     visitor::{
-        VisitAction,
-        expression::{ExpressionVisitor, visitable::ExpressionVisitResult},
+        expression::{visitable::ExpressionVisitResult, ExpressionVisitor},
         type_expression::{
-            TypeExpressionVisitor, visitable::TypeExpressionVisitResult,
+            visitable::TypeExpressionVisitResult, TypeExpressionVisitor,
         },
+        VisitAction,
     },
 };
 use core::{cell::RefCell, ops::Range, panic, str::FromStr};
 use crate::shared_values::pointer::Pointer;
+use crate::shared_values::pointer_address::PointerAddress;
 
 pub mod error;
 pub mod options;
@@ -1258,13 +1256,13 @@ mod tests {
             precompiled_ast::{AstMetadata, RichAst},
             scope_stack::PrecompilerScopeStack,
         },
-        global::operators::{BinaryOperator, binary::ArithmeticOperator},
+        global::operators::{binary::ArithmeticOperator, BinaryOperator},
         libs::core::{
-            CoreLibPointerId, get_core_lib_type, get_core_lib_type_reference,
+            get_core_lib_type, get_core_lib_type_reference, CoreLibPointerId,
         },
         parser::Parser,
         prelude::*,
-        shared_values::type_reference::{NominalTypeDeclaration, SharedTypeContainer},
+        shared_values::shared_type_container::{NominalTypeDeclaration, SharedTypeContainer},
         type_inference::{
             error::{SpannedTypeError, TypeError},
             infer_expression_type_detailed_errors,
@@ -1280,11 +1278,11 @@ mod tests {
             core_values::{
                 boolean::Boolean,
                 callable::{CallableKind, CallableSignature},
-                decimal::{Decimal, typed_decimal::TypedDecimal},
+                decimal::{typed_decimal::TypedDecimal, Decimal},
                 endpoint::Endpoint,
                 integer::{
-                    Integer,
                     typed_integer::{IntegerTypeVariant, TypedInteger},
+                    Integer,
                 },
                 r#type::Type,
             },

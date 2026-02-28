@@ -7,7 +7,7 @@ use crate::{
     shared_values::{
         mutations::DIFUpdateDataOrMemory,
         observers::TransceiverId,
-        reference::{AccessError, SharedContainer},
+        shared_container::{AccessError, SharedContainer},
     },
     runtime::execution::ExecutionError,
     serde::{

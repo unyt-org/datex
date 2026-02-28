@@ -8,7 +8,7 @@ use crate::{
             ArithmeticOperator, BitwiseOperator, LogicalOperator, RangeOperator,
         },
     },
-    shared_values::reference::SharedContainer,
+    shared_values::shared_container::SharedContainer,
     runtime::{RuntimeInternal, execution::ExecutionError},
     traits::{
         identity::Identity, structural_eq::StructuralEq, value_eq::ValueEq,

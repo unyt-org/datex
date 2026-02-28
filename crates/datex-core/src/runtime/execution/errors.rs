@@ -1,7 +1,7 @@
 use crate::{
     dxb_parser::body::DXBParserError,
     network::com_hub::network_response::ResponseError,
-    shared_values::reference::{
+    shared_values::shared_container::{
         AccessError, AssignmentError, ReferenceCreationError,
     },
     runtime::execution::execution_loop::state::ExecutionLoopState,

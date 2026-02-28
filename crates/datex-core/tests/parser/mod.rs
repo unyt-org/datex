@@ -9,18 +9,17 @@ use datex_core::{
     },
     collections::HashMap,
     global::operators::{
-        ArithmeticUnaryOperator, AssignmentOperator, BinaryOperator,
-        ComparisonOperator, LogicalUnaryOperator, UnaryOperator,
-        binary::{ArithmeticOperator, BitwiseOperator},
+        binary::{ArithmeticOperator, BitwiseOperator}, ArithmeticUnaryOperator, AssignmentOperator,
+        BinaryOperator, ComparisonOperator, LogicalUnaryOperator,
+        UnaryOperator,
     },
     prelude::*,
     values::{
         core_values::{
             decimal::Decimal,
             endpoint::{Endpoint, InvalidEndpointError},
-            integer::{Integer, typed_integer::TypedInteger},
+            integer::{typed_integer::TypedInteger, Integer},
         },
-        pointer::PointerAddress,
         value_container::ValueContainer,
     },
 };
@@ -41,16 +40,17 @@ use datex_core::{
         },
     },
     parser::{
-        Parser,
         errors::{ParserError, SpannedParserError},
         lexer::Token,
         parser_result::{
             InvalidDatexParseResult, ParserResult, ValidDatexParseResult,
         },
+        Parser,
     },
-    shared_values::reference::ReferenceMutability,
+    shared_values::shared_container::ReferenceMutability,
     values::core_values::error::NumberParseError,
 };
+use datex_core::shared_values::pointer_address::PointerAddress;
 
 /// Parse the given source code into a DatexExpression AST.
 fn parse_unwrap(src: &str) -> DatexExpression {

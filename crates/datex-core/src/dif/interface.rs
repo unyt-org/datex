@@ -1,23 +1,24 @@
 use crate::{
     dif::{
-        reference::DIFReference,
         r#type::DIFTypeDefinition,
+        reference::DIFReference,
         update::DIFUpdateData,
         value::{DIFReferenceNotFoundError, DIFValueContainer},
     },
+    runtime::execution::ExecutionError,
     shared_values::{
         observers::{ObserveOptions, ObserverError, TransceiverId},
-        reference::{
+        shared_container::{
             AccessError, AssignmentError, ReferenceCreationError,
             ReferenceMutability, TypeError,
         },
     },
-    runtime::execution::ExecutionError,
-    values::pointer::PointerAddress,
 };
 use core::{fmt::Display, result::Result};
 
 use crate::prelude::*;
+use crate::shared_values::pointer_address::PointerAddress;
+
 #[derive(Debug)]
 pub enum DIFObserveError {
     ReferenceNotFound,

@@ -9,21 +9,19 @@ use crate::{
         VariableAccess, VariableAssignment, VariableDeclaration, VariantAccess,
     },
     prelude::*,
-    values::{
-        core_values::{
-            decimal::{Decimal, typed_decimal::TypedDecimal},
-            endpoint::Endpoint,
-            integer::{Integer, typed_integer::TypedInteger},
-        },
-        pointer::PointerAddress,
+    values::core_values::{
+        decimal::{typed_decimal::TypedDecimal, Decimal},
+        endpoint::Endpoint,
+        integer::{typed_integer::TypedInteger, Integer},
     },
     visitor::{
-        VisitAction,
         expression::visitable::{ExpressionVisitResult, VisitableExpression},
         type_expression::TypeExpressionVisitor,
+        VisitAction,
     },
 };
 use core::ops::Range;
+use crate::shared_values::pointer_address::PointerAddress;
 
 pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
     /// Handle expression error

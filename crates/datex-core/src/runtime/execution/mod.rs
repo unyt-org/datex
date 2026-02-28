@@ -1,17 +1,17 @@
 use crate::{
     global::protocol_structures::instructions::*,
-    libs::core::{CoreLibPointerId, get_core_lib_value},
+    libs::core::{get_core_lib_value, CoreLibPointerId},
     runtime::{
-        RuntimeInternal,
         execution::{
             context::{ExecutionMode, RemoteExecutionContext},
             execution_loop::interrupts::{
                 ExternalExecutionInterrupt, InterruptResult,
             },
         },
+        RuntimeInternal,
     },
     traits::apply::Apply,
-    values::{pointer::PointerAddress, value_container::ValueContainer},
+    values::value_container::ValueContainer,
 };
 
 use crate::prelude::*;
@@ -19,6 +19,7 @@ use core::{result::Result, unreachable};
 pub use errors::*;
 pub use execution_input::{ExecutionInput, ExecutionOptions};
 pub use memory_dump::*;
+use crate::shared_values::pointer_address::PointerAddress;
 
 pub mod context;
 mod errors;
@@ -220,24 +221,24 @@ mod tests {
     use super::*;
     use crate::{
         assert_structural_eq, assert_value_eq,
-        compiler::{CompileOptions, compile_script, scope::CompilationScope},
+        compiler::{compile_script, scope::CompilationScope, CompileOptions},
         datex_list,
         global::instruction_codes::InstructionCode,
         libs::core::get_core_lib_type_reference,
-        shared_values::reference::SharedContainer,
         runtime::{
-            RuntimeConfig, RuntimeRunner,
             execution::{
                 context::{ExecutionContext, LocalExecutionContext},
                 execution_input::ExecutionOptions,
-            },
+            }, RuntimeConfig,
+            RuntimeRunner,
         },
+        shared_values::shared_container::SharedContainer,
         traits::{structural_eq::StructuralEq, value_eq::ValueEq},
         values::{
             core_value::CoreValue,
             core_values::{
                 decimal::Decimal,
-                integer::{Integer, typed_integer::TypedInteger},
+                integer::{typed_integer::TypedInteger, Integer},
                 list::List,
                 map::Map,
             },

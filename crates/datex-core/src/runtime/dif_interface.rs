@@ -4,20 +4,22 @@ use crate::{
             DIFApplyError, DIFCreatePointerError, DIFInterface,
             DIFObserveError, DIFResolveReferenceError, DIFUpdateError,
         },
-        reference::DIFReference,
         r#type::DIFTypeDefinition,
+        reference::DIFReference,
         update::{DIFKey, DIFUpdateData},
         value::{DIFReferenceNotFoundError, DIFValueContainer},
     },
+    runtime::RuntimeInternal,
     shared_values::{
         observers::{ObserveOptions, Observer, TransceiverId},
-        reference::{SharedContainer, ReferenceMutability},
+        shared_container::{ReferenceMutability, SharedContainer},
     },
-    runtime::RuntimeInternal,
-    values::{pointer::PointerAddress, value_container::ValueContainer},
+    values::value_container::ValueContainer,
 };
 use core::result::Result;
 use crate::prelude::*;
+use crate::shared_values::pointer_address::PointerAddress;
+
 impl RuntimeInternal {
     fn resolve_in_memory_reference(
         &self,
@@ -233,12 +235,12 @@ mod tests {
             value::{DIFValue, DIFValueContainer},
         },
         prelude::*,
+        runtime::{RuntimeConfig, RuntimeRunner},
         shared_values::{
-            observers::ObserveOptions, reference::ReferenceMutability,
+            observers::ObserveOptions, shared_container::ReferenceMutability,
         },
-        runtime::{Runtime, RuntimeConfig, RuntimeRunner, memory::Memory},
         values::{
-            core_values::{endpoint::Endpoint, map::Map},
+            core_values::map::Map,
             value_container::ValueContainer,
         },
     };

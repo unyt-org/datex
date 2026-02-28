@@ -27,18 +27,18 @@ use crate::{
         SimpleCompilerErrorOrDetailedCompilerErrorWithRichAst,
         SpannedCompilerError,
     },
-    global::operators::{BinaryOperator, binary::ArithmeticOperator},
+    global::operators::{binary::ArithmeticOperator, BinaryOperator},
     libs::core::CoreLibPointerId,
-    shared_values::type_reference::{NominalTypeDeclaration, SharedTypeContainer},
+    shared_values::shared_type_container::{NominalTypeDeclaration, SharedTypeContainer},
     types::definition::TypeDefinition,
-    utils::maybe_action::{ErrorCollector, MaybeAction, collect_or_pass_error},
+    utils::maybe_action::{collect_or_pass_error, ErrorCollector, MaybeAction},
     values::core_values::r#type::Type,
     visitor::{
-        VisitAction,
-        expression::{ExpressionVisitor, visitable::ExpressionVisitResult},
+        expression::{visitable::ExpressionVisitResult, ExpressionVisitor},
         type_expression::{
-            TypeExpressionVisitor, visitable::TypeExpressionVisitResult,
+            visitable::TypeExpressionVisitResult, TypeExpressionVisitor,
         },
+        VisitAction,
     },
 };
 use options::PrecompilerOptions;
@@ -604,10 +604,11 @@ mod tests {
             type_expressions::{StructuralMap, TypeExpressionData},
         },
         parser::Parser,
-        shared_values::reference::ReferenceMutability,
-        values::{core_values::integer::Integer, pointer::PointerAddress},
+        shared_values::shared_container::ReferenceMutability,
+        values::core_values::integer::Integer,
     };
     use core::assert_matches;
+    use crate::shared_values::pointer_address::PointerAddress;
 
     fn precompile(
         ast: DatexExpression,

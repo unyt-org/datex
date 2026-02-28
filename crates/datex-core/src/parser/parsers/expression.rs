@@ -20,7 +20,7 @@ use crate::{
         lexer::{SpannedToken, Token},
     },
     prelude::*,
-    shared_values::reference::ReferenceMutability,
+    shared_values::shared_container::ReferenceMutability,
     values::core_values::error::NumberParseError,
 };
 
@@ -556,7 +556,7 @@ mod tests {
             tests::{parse, try_parse_and_return_on_first_error},
         },
         prelude::*,
-        shared_values::reference::ReferenceMutability,
+        shared_values::shared_container::ReferenceMutability,
     };
 
     #[test]

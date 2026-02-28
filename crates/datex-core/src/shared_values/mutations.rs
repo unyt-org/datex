@@ -5,7 +5,7 @@ use crate::{
     },
     shared_values::{
         observers::TransceiverId,
-        reference::{AccessError, SharedContainer},
+        shared_container::{AccessError, SharedContainer},
     },
     runtime::memory::Memory,
     values::{
@@ -284,7 +284,7 @@ impl SharedContainer {
 mod tests {
     use crate::{
         prelude::*,
-        shared_values::reference::{
+        shared_values::shared_container::{
             AccessError, IndexOutOfBoundsError, SharedContainer, ReferenceMutability,
         },
         runtime::memory::Memory,
