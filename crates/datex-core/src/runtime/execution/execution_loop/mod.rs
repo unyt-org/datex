@@ -685,7 +685,7 @@ pub fn inner_execution_loop(
                                                     regular_instruction,
                                                 ),
                                                 target.clone(), // TODO #646: is unary operation supposed to take ownership?
-                                                &state.runtime_internal.clone().unwrap().memory
+                                                &state.runtime_internal.memory
                                             )
                                         },
                                     );
