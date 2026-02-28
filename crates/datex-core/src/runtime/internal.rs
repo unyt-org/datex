@@ -38,6 +38,7 @@ use crate::{
 use alloc::rc::Rc;
 use core::{cell::RefCell, pin::Pin, slice};
 use log::{debug, error, info};
+use crate::channel::mpsc::create_unbounded_channel;
 
 #[derive(Debug)]
 pub struct RuntimeInternal {
@@ -69,13 +70,46 @@ macro_rules! get_execution_context {
                 context
             },
             None => {
-               &mut ExecutionContext::local_with_runtime_internal($self_rc.clone(), ExecutionMode::Static)
+               &mut ExecutionContext::local(ExecutionMode::Static, $self_rc.clone())
             }
         }
     };
 }
 
 impl RuntimeInternal {
+    pub(crate) fn new(
+        endpoint: Endpoint,
+        memory: RefCell<Memory>,
+        config: RuntimeConfig,
+        com_hub: Rc<ComHub>,
+        task_manager: TaskManager,
+        incoming_sections_receiver: UnboundedReceiver<IncomingSection>,
+    ) -> RuntimeInternal {
+        RuntimeInternal {
+            endpoint,
+            memory,
+            config,
+            com_hub,
+            task_manager,
+            incoming_sections_receiver: RefCell::new(
+                incoming_sections_receiver,
+            ),
+            execution_contexts: RefCell::new(HashMap::new()),
+        }
+    }
+
+    pub fn stub() -> RuntimeInternal {
+        let (sender, receiver) = create_unbounded_channel();
+        RuntimeInternal::new(
+            Endpoint::default(),
+            RefCell::new(Memory::default()),
+            RuntimeConfig::default(),
+            ComHub::create(Endpoint::default(), sender).0,
+            TaskManager::create().0,
+            receiver,
+        )
+    }
+
     /// Creates all interfaces configured in the runtime config
     async fn create_configured_interfaces(&self) {
         if let Some(interfaces) = &self.config.interfaces {
@@ -248,9 +282,9 @@ impl RuntimeInternal {
         if let Some(context) = execution_context {
             context
         } else {
-            ExecutionContext::local_with_runtime_internal(
-                self_rc.clone(),
+            ExecutionContext::local(
                 ExecutionMode::unbounded(),
+                self_rc.clone(),
             )
         }
     }

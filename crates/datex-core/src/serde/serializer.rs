@@ -16,6 +16,8 @@ use serde::ser::{
 };
 
 use crate::prelude::*;
+use crate::runtime::RuntimeInternal;
+
 pub struct DatexSerializer {}
 
 impl Default for DatexSerializer {
@@ -493,12 +495,13 @@ impl Serializer for &mut DatexSerializer {
                 .unwrap();
             Ok(ValueContainer::from(endpoint))
         } else if name == "datex::value" {
+            let runtime = RuntimeInternal::stub();
             // unsafe cast value to ValueContainer
             let bytes = unsafe { &*(value as *const T as *const Vec<u8>) };
             Ok(execute_dxb_sync(ExecutionInput::new(
                 bytes,
                 ExecutionOptions::default(),
-                None,
+                Rc::new(runtime),
             ))
             .unwrap()
             .unwrap())

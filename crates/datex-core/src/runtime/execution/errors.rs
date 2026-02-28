@@ -62,7 +62,6 @@ pub enum ExecutionError {
     SlotNotAllocated(u32),
     SlotNotInitialized(u32),
     RequiresAsyncExecution,
-    RequiresRuntime,
     ResponseError(ResponseError),
     IllegalTypeError(IllegalTypeError),
     ReferenceNotFound,
@@ -163,9 +162,6 @@ impl Display for ExecutionError {
             }
             ExecutionError::RequiresAsyncExecution => {
                 core::write!(f, "Program must be executed asynchronously")
-            }
-            ExecutionError::RequiresRuntime => {
-                core::write!(f, "Execution requires a runtime to be set")
             }
             ExecutionError::ResponseError(err) => {
                 core::write!(f, "Response error: {err}")

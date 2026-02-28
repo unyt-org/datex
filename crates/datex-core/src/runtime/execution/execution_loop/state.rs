@@ -26,7 +26,7 @@ pub struct ExecutionLoopState {
 impl ExecutionLoopState {
     pub fn new(
         dxb_body: Vec<u8>,
-        runtime: Option<Rc<RuntimeInternal>>,
+        runtime: Rc<RuntimeInternal>,
         slots: RuntimeExecutionSlots,
     ) -> Self {
         let state = RuntimeExecutionState {
@@ -57,12 +57,12 @@ impl Debug for ExecutionLoopState {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct RuntimeExecutionState {
     /// Local memory slots for current execution context.
     /// TODO #643: replace this with a local stack and deprecate local slots?
     pub slots: RuntimeExecutionSlots,
-    pub runtime_internal: Option<Rc<RuntimeInternal>>,
+    pub runtime_internal: Rc<RuntimeInternal>,
     pub source_id: TransceiverId,
 }
 

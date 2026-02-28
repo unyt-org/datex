@@ -41,20 +41,14 @@ impl RuntimeRunner {
             ComHub::create(endpoint.clone(), incoming_sections_sender);
         let memory = RefCell::new(Memory::new(endpoint.clone()));
 
-        let runtime = Runtime {
-            version: VERSION.to_string(),
-            internal: Rc::new(RuntimeInternal {
-                endpoint,
-                memory,
-                config,
-                com_hub,
-                task_manager,
-                incoming_sections_receiver: RefCell::new(
-                    incoming_sections_receiver,
-                ),
-                execution_contexts: RefCell::new(HashMap::new()),
-            }),
-        };
+        let runtime = Runtime::new(RuntimeInternal::new(
+            endpoint,
+            memory,
+            config,
+            com_hub,
+            task_manager,
+            incoming_sections_receiver,
+        ));
 
         let runtime_internal = runtime.internal.clone();
 
