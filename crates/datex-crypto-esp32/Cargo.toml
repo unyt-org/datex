@@ -1,6 +1,6 @@
 [package]
 name = "datex-crypto-esp32"
-version = "0.0.1"
+version = "0.0.2"
 description = "Embedded ESP32 target implementation of the DATEX Crypto facade"
 authors = [
     "Benedikt Strehle <benedikt@unyt.org>",
@@ -20,7 +20,7 @@ alloc_instead_of_core = "deny"
 std_instead_of_alloc = "deny"
 
 [dependencies]
-datex-crypto-facade = { path = "../datex-crypto-facade", version = "0.0.1" }
+datex-crypto-facade = { path = "../datex-crypto-facade", version = "0.0.2" }
 spin = "0.10.0"
 static_cell = "2.1.1"
 

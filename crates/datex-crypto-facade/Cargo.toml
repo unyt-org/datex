@@ -1,6 +1,6 @@
 [package]
 name = "datex-crypto-facade"
-version = "0.0.1"
+version = "0.0.2"
 description = "DATEX Crypto Trait used by the datex crate"
 authors = [
     "Benedikt Strehle <benedikt@unyt.org>",
@@ -14,4 +14,4 @@ license-file = "LICENSE"
 crate-type = ["rlib"]
 
 [dependencies]
-bs58 = { version = "0.5.1", default-features = false }
+bs58 = { version = "0.5.1", default-features = false, features = ["alloc"] }

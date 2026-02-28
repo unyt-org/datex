@@ -1,43 +1,92 @@
-use alloc::string::String;
 use core::fmt::Display;
-
-#[derive(Debug, Clone)]
-pub enum CryptoError {
-    Other(String),
-    KeyGeneration,
-    KeyExport,
-    KeyImport,
-    Encryption,
-    Decryption,
-    Signing,
-    Verification,
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum B58DecodeError {
+    InvalidBase58,
+    WrongLength { expected: usize, got: usize },
 }
-
-impl Display for CryptoError {
+impl Display for B58DecodeError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
-            CryptoError::Other(msg) => core::write!(f, "Crypto: {}", msg),
-            CryptoError::KeyGeneration => {
-                core::write!(f, "CryptoError: Key generation failed")
-            }
-            CryptoError::KeyExport => {
-                core::write!(f, "CryptoError: Key export failed")
-            }
-            CryptoError::KeyImport => {
-                core::write!(f, "CryptoError: Key import failed")
-            }
-            CryptoError::Encryption => {
-                core::write!(f, "CryptoError: Encryption failed")
-            }
-            CryptoError::Decryption => {
-                core::write!(f, "CryptoError: Decryption failed")
-            }
-            CryptoError::Signing => {
-                core::write!(f, "CryptoError: Signing failed")
-            }
-            CryptoError::Verification => {
-                core::write!(f, "CryptoError: Verification failed")
-            }
+            B58DecodeError::InvalidBase58 => write!(f, "Invalid Base58 string"),
+            B58DecodeError::WrongLength { expected, got } => write!(
+                f,
+                "Invalid length for Base58 decoded data: expected {} bytes, got {} bytes",
+                expected, got
+            ),
         }
     }
+}
+
+// crate::error.rs
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum BackendError {
+    /// The backend/platform cannot do this operation (algo not available, feature off).
+    Unsupported(&'static str),
+    /// The backend could do it, but is not currently usable (not initialized, no entropy, etc).
+    Unavailable(&'static str),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum RandomBytesError {
+    Backend(BackendError),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Sha256Error {
+    Backend(BackendError),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum HkdfError {
+    Backend(BackendError),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Ed25519GenError {
+    Backend(BackendError),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Ed25519SignError {
+    /// Private key bytes not acceptable (wrong length/format).
+    InvalidPrivateKey,
+    Backend(BackendError),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Ed25519VerifyError {
+    /// Public key bytes not acceptable (wrong length/format).
+    InvalidPublicKey,
+    /// Signature bytes not acceptable (wrong length/format).
+    InvalidSignature,
+    Backend(BackendError),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum AesCtrError {
+    Backend(BackendError),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum KeyWrapError {
+    Backend(BackendError),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum KeyUnwrapError {
+    IntegrityCheckFailed,
+    Backend(BackendError),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum X25519GenError {
+    Backend(BackendError),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum X25519DeriveError {
+    InvalidPrivateKey,
+    InvalidPeerPublicKey,
+    Backend(BackendError),
 }

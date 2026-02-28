@@ -1,5 +1,5 @@
 use datex_crypto_facade::{
-    crypto::{Crypto, CryptoResult},
+    crypto::{Crypto, AsyncCryptoResult},
     error::CryptoError,
 };
 use wasm_bindgen::{JsCast, JsValue};
@@ -110,7 +110,7 @@ impl Crypto for CryptoWeb {
         buffer.to_vec()
     }
 
-    fn hash_sha256<'a>(ikm: &'a [u8]) -> CryptoResult<'a, [u8; 32]> {
+    fn hash_sha256<'a>(ikm: &'a [u8]) -> AsyncCryptoResult<'a, [u8; 32]> {
         Box::pin(async move {
             let subtle = CryptoWeb::crypto_subtle();
 
@@ -133,7 +133,7 @@ impl Crypto for CryptoWeb {
     fn hkdf_sha256<'a>(
         ikm: &'a [u8],
         salt: &'a [u8],
-    ) -> CryptoResult<'a, [u8; 32]> {
+    ) -> AsyncCryptoResult<'a, [u8; 32]> {
         Box::pin(async move {
             let info = b"".to_vec();
             let subtle = CryptoWeb::crypto_subtle();
@@ -190,7 +190,7 @@ impl Crypto for CryptoWeb {
     }
 
     // Signature and Verification
-    fn gen_ed25519<'a>() -> CryptoResult<'a, (Vec<u8>, Vec<u8>)> {
+    fn gen_ed25519<'a>() -> AsyncCryptoResult<'a, (Vec<u8>, Vec<u8>)> {
         Box::pin(async move {
             let algorithm =
                 js_object(vec![("name", JsValue::from_str("Ed25519"))]);
@@ -216,7 +216,7 @@ impl Crypto for CryptoWeb {
     fn sig_ed25519<'a>(
         pri_key: &'a [u8],
         data: &'a [u8],
-    ) -> CryptoResult<'a, [u8; 64]> {
+    ) -> AsyncCryptoResult<'a, [u8; 64]> {
         Box::pin(async move {
             let key = Self::import_crypto_key(
                 pri_key,
@@ -253,7 +253,7 @@ impl Crypto for CryptoWeb {
         pub_key: &'a [u8],
         sig: &'a [u8],
         data: &'a [u8],
-    ) -> CryptoResult<'a, bool> {
+    ) -> AsyncCryptoResult<'a, bool> {
         Box::pin(async move {
             let key = Self::import_crypto_key(
                 pub_key,
@@ -287,7 +287,7 @@ impl Crypto for CryptoWeb {
         hash: &'a [u8; 32],
         iv: &'a [u8; 16],
         plaintext: &'a [u8],
-    ) -> CryptoResult<'a, Vec<u8>> {
+    ) -> AsyncCryptoResult<'a, Vec<u8>> {
         Box::pin(async move {
             let subtle = Self::crypto_subtle();
 
@@ -346,7 +346,7 @@ impl Crypto for CryptoWeb {
         hash: &'a [u8; 32],
         iv: &'a [u8; 16],
         ciphertext: &'a [u8],
-    ) -> CryptoResult<'a, Vec<u8>> {
+    ) -> AsyncCryptoResult<'a, Vec<u8>> {
         Box::pin(async move {
             let subtle = CryptoWeb::crypto_subtle();
 
@@ -406,7 +406,7 @@ impl Crypto for CryptoWeb {
         kek_bytes: &'a [u8; 32],
         // The AES-CTR key to wrap
         key_to_wrap_bytes: &'a [u8; 32],
-    ) -> CryptoResult<'a, [u8; 40]> {
+    ) -> AsyncCryptoResult<'a, [u8; 40]> {
         Box::pin(async move {
             let subtle = Self::crypto_subtle();
 
@@ -483,7 +483,7 @@ impl Crypto for CryptoWeb {
     fn key_unwrap<'a>(
         kek_bytes: &'a [u8; 32], // Key Encryption Key (same as used for wrapping)
         wrapped_key: &'a [u8; 40], // The wrapped key data
-    ) -> CryptoResult<'a, [u8; 32]> {
+    ) -> AsyncCryptoResult<'a, [u8; 32]> {
         Box::pin(async move {
             let subtle = CryptoWeb::crypto_subtle();
 
@@ -559,7 +559,7 @@ impl Crypto for CryptoWeb {
     }
 
     // x25519 key gen
-    fn gen_x25519<'a>() -> CryptoResult<'a, ([u8; 44], [u8; 48])> {
+    fn gen_x25519<'a>() -> AsyncCryptoResult<'a, ([u8; 44], [u8; 48])> {
         Box::pin(async move {
             let algorithm =
                 js_object(vec![("name", JsValue::from_str("X25519"))]);
@@ -592,7 +592,7 @@ impl Crypto for CryptoWeb {
     fn derive_x25519<'a>(
         my_raw: &'a [u8; 48],
         peer_pub: &'a [u8; 44],
-    ) -> CryptoResult<'a, Vec<u8>> {
+    ) -> AsyncCryptoResult<'a, Vec<u8>> {
         Box::pin(async move {
             let subtle = Self::crypto_subtle();
 
