@@ -1,6 +1,6 @@
 use binrw::{
-    BinRead, BinWrite,
-    io::{Cursor, Seek, SeekFrom},
+    io::{Cursor, Seek, SeekFrom}, BinRead,
+    BinWrite,
 };
 use core::str::FromStr;
 use datex_core::{
@@ -14,13 +14,11 @@ use datex_core::{
             serializable::Serializable,
         },
     },
-    values::{
-        core_values::endpoint::{Endpoint, EndpointInstance, EndpointType},
-        pointer::PointerAddress,
-    },
+    values::core_values::endpoint::{Endpoint, EndpointInstance, EndpointType},
 };
 use serde::Serialize;
 use serde_json::ser::PrettyFormatter;
+use datex_core::shared_values::pointer_address::PointerAddress;
 
 #[test]
 pub fn parse_encrypted_header() {

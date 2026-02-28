@@ -6,19 +6,18 @@ use crate::{
         spanned::Spanned,
     },
     prelude::*,
-    values::{
-        core_values::{
-            callable::CallableKind,
-            decimal::{Decimal, typed_decimal::TypedDecimal},
-            endpoint::Endpoint,
-            integer::{Integer, typed_integer::TypedInteger},
-            r#type::Type,
-        },
-        pointer::PointerAddress,
+    values::core_values::{
+        callable::CallableKind,
+        decimal::{typed_decimal::TypedDecimal, Decimal},
+        endpoint::Endpoint,
+        integer::{typed_integer::TypedInteger, Integer},
+        r#type::Type,
     },
 };
 
 use core::ops;
+use crate::shared_values::pointer_address::PointerAddress;
+
 #[derive(Clone, Debug, PartialEq)]
 /// The different kinds of type expressions in the AST
 pub enum TypeExpressionData {

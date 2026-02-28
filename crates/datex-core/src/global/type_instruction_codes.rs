@@ -1,5 +1,5 @@
 use crate::{
-    shared_values::reference::ReferenceMutability,
+    shared_values::shared_container::ReferenceMutability,
     types::definition::TypeDefinition,
 };
 use binrw::{BinRead, BinWrite};

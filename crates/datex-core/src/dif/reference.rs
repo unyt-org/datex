@@ -1,6 +1,6 @@
 use crate::{
     dif::{r#type::DIFTypeDefinition, value::DIFValueContainer},
-    shared_values::reference::{
+    shared_values::shared_container::{
         SharedContainer, ReferenceMutability, mutability_as_int,
     },
     runtime::memory::Memory,

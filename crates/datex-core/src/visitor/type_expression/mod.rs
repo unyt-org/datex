@@ -10,21 +10,20 @@ use crate::{
             TypeExpressionData, TypeVariantAccess, Union,
         },
     },
-    values::{
-        core_values::{
-            decimal::{Decimal, typed_decimal::TypedDecimal},
-            endpoint::Endpoint,
-            integer::{Integer, typed_integer::TypedInteger},
-        },
-        pointer::PointerAddress,
+    values::core_values::{
+        decimal::{typed_decimal::TypedDecimal, Decimal},
+        endpoint::Endpoint,
+        integer::{typed_integer::TypedInteger, Integer},
     },
     visitor::{
-        VisitAction,
         type_expression::visitable::{
             TypeExpressionVisitResult, VisitableTypeExpression,
         },
+        VisitAction,
     },
 };
+use crate::shared_values::pointer_address::PointerAddress;
+
 pub mod visitable;
 
 pub trait TypeExpressionVisitor<E>: Sized {

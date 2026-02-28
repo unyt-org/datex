@@ -2,7 +2,7 @@ use crate::{
     collections::HashMap,
     prelude::*,
     random::RandomState,
-    shared_values::reference::KeyNotFoundError,
+    shared_values::shared_container::KeyNotFoundError,
     traits::structural_eq::StructuralEq,
     values::{
         core_value::CoreValue,
@@ -652,8 +652,8 @@ mod tests {
         },
     };
     use crate::shared_values::pointer::Pointer;
-    use crate::shared_values::reference::SharedContainer;
-    use crate::shared_values::value_reference::SharedValueContainer;
+    use crate::shared_values::shared_container::SharedContainer;
+    use crate::shared_values::shared_value_container::SharedValueContainer;
 
     #[test]
     fn test_map() {

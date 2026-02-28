@@ -1,6 +1,6 @@
 use crate::{
     prelude::*,
-    shared_values::reference::IndexOutOfBoundsError,
+    shared_values::shared_container::IndexOutOfBoundsError,
     traits::structural_eq::StructuralEq,
     values::{
         core_value::CoreValue,

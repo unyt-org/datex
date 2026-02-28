@@ -5,26 +5,26 @@ use crate::{
         type_expressions::TypeExpression,
     },
     global::operators::{
-        ArithmeticUnaryOperator, BinaryOperator, ComparisonOperator,
-        UnaryOperator, assignment::AssignmentOperator,
+        assignment::AssignmentOperator, ArithmeticUnaryOperator, BinaryOperator,
+        ComparisonOperator, UnaryOperator,
     },
-    shared_values::reference::ReferenceMutability,
+    shared_values::shared_container::ReferenceMutability,
     values::{
         core_value::CoreValue,
         core_values,
         core_values::{
-            decimal::{Decimal, typed_decimal::TypedDecimal},
+            decimal::{typed_decimal::TypedDecimal, Decimal},
             endpoint::Endpoint,
-            integer::{Integer, typed_integer::TypedInteger},
+            integer::{typed_integer::TypedInteger, Integer},
             r#type::Type,
         },
-        pointer::PointerAddress,
         value::Value,
         value_container::ValueContainer,
     },
 };
 pub use crate::{prelude::*, values::core_values::callable::CallableKind};
 use core::{fmt::Display, ops, ops::Neg};
+use crate::shared_values::pointer_address::PointerAddress;
 
 #[derive(Clone, Debug)]
 /// An expression in the AST

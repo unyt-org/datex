@@ -1,20 +1,21 @@
 use crate::{
-    dif::{DIFConvertible, representation::DIFTypeRepresentation},
-    shared_values::reference::ReferenceMutability,
+    dif::{representation::DIFTypeRepresentation, DIFConvertible},
     runtime::memory::Memory,
+    shared_values::shared_container::ReferenceMutability,
     types::{
         definition::TypeDefinition,
         structural_type_definition::StructuralTypeDefinition,
     },
-    values::{core_values::r#type::Type, pointer::PointerAddress},
+    values::core_values::r#type::Type,
 };
 
 use crate::prelude::*;
 use core::{cell::RefCell, prelude::rust_2024::*};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{
-    Deserialize, Serialize, de::IntoDeserializer, ser::SerializeStruct,
+    de::IntoDeserializer, ser::SerializeStruct, Deserialize, Serialize,
 };
+use crate::shared_values::pointer_address::PointerAddress;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum DIFTypeDefinition {

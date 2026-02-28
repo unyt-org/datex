@@ -7,7 +7,7 @@ pub mod state;
 use crate::{
     core_compiler::value_compiler::compile_value_container,
     dxb_parser::{
-        body::{DXBParserError, iterate_instructions},
+        body::{iterate_instructions, DXBParserError},
         instruction_collector::{
             CollectedResults, CollectionResultsPopper, FullOrPartialResult,
             InstructionCollector, LastUnboundedResultCollector,
@@ -28,13 +28,11 @@ use crate::{
         },
     },
     prelude::*,
-    shared_values::reference::{SharedContainer, ReferenceMutability},
     runtime::execution::{
-        ExecutionError, InvalidProgramError,
         execution_loop::{
             interrupts::{
                 ExecutionInterrupt, ExternalExecutionInterrupt,
-                InterruptProvider, InterruptResult,
+                InterruptProvider,
             },
             operations::{
                 handle_assignment_operation, handle_binary_operation,
@@ -44,12 +42,14 @@ use crate::{
             runtime_value::RuntimeValue,
             slots::{get_internal_slot_value, get_slot_value},
             state::RuntimeExecutionState,
-        },
-        macros::{
+        }, macros::{
             interrupt, interrupt_with_maybe_value, interrupt_with_value,
             yield_unwrap,
         },
+        ExecutionError,
+        InvalidProgramError,
     },
+    shared_values::shared_container::{ReferenceMutability, SharedContainer},
     types::{
         definition::TypeDefinition,
         structural_type_definition::StructuralTypeDefinition,
@@ -58,19 +58,19 @@ use crate::{
     values::{
         core_value::CoreValue,
         core_values::{
-            decimal::{Decimal, typed_decimal::TypedDecimal},
+            decimal::{typed_decimal::TypedDecimal, Decimal},
             integer::typed_integer::TypedInteger,
             list::List,
             map::{Map, MapKey},
             r#type::Type,
         },
-        pointer::PointerAddress,
         value::Value,
         value_container::{OwnedValueKey, ValueContainer},
     },
 };
 use alloc::rc::Rc;
 use core::cell::RefCell;
+use crate::shared_values::pointer_address::PointerAddress;
 
 #[derive(Debug)]
 enum CollectedExecutionResult {

@@ -1,29 +1,30 @@
 use crate::{
     core_compiler::type_compiler::append_type,
     global::instruction_codes::InstructionCode,
-    libs::core::{CoreLibPointerId, get_core_lib_type_definition},
-    shared_values::reference::ReferenceMutability,
+    libs::core::{get_core_lib_type_definition, CoreLibPointerId},
+    shared_values::shared_container::ReferenceMutability,
     types::definition::TypeDefinition,
     utils::buffers::{
-        append_f32, append_f64, append_i8, append_i16, append_i32, append_i64,
-        append_i128, append_u8, append_u16, append_u32, append_u64,
-        append_u128,
+        append_f32, append_f64, append_i128, append_i16, append_i32, append_i64,
+        append_i8, append_u128, append_u16, append_u32, append_u64,
+        append_u8,
     },
     values::{
         core_value::CoreValue,
         core_values::{
-            decimal::{Decimal, typed_decimal::TypedDecimal},
+            decimal::{typed_decimal::TypedDecimal, Decimal},
             endpoint::Endpoint,
-            integer::{Integer, typed_integer::TypedInteger},
+            integer::{typed_integer::TypedInteger, Integer},
         },
-        pointer::PointerAddress,
         value::Value,
         value_container::ValueContainer,
     },
 };
-use binrw::{BinWrite, io::Cursor};
+use binrw::{io::Cursor, BinWrite};
 
 use crate::prelude::*;
+use crate::shared_values::pointer_address::PointerAddress;
+
 /// Compiles a given value container to a DXB body
 pub fn compile_value_container(value_container: &ValueContainer) -> Vec<u8> {
     let mut buffer = Vec::with_capacity(256);

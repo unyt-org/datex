@@ -45,12 +45,12 @@ use crate::{
         append_value_container,
     },
     parser::{Parser, ParserOptions},
-    shared_values::reference::ReferenceMutability,
     runtime::execution::context::ExecutionMode,
+    shared_values::shared_container::ReferenceMutability,
     time::Instant,
-    utils::buffers::{append_u8, append_u16, append_u32},
+    utils::buffers::{append_u16, append_u32, append_u8},
     values::{
-        core_values::decimal::Decimal, pointer::PointerAddress,
+        core_values::decimal::Decimal,
         value_container::ValueContainer,
     },
 };
@@ -60,6 +60,7 @@ use precompiler::{
     precompile_ast,
     precompiled_ast::{AstMetadata, RichAst, VariableMetadata},
 };
+use crate::shared_values::pointer_address::PointerAddress;
 
 pub mod context;
 pub mod error;
@@ -1461,9 +1462,9 @@ fn compile_dynamic_property_assignment(
 #[cfg(test)]
 pub mod tests {
     use super::{
-        CompilationContext, CompileOptions, StaticValueOrDXB, compile_ast,
-        compile_script, compile_script_or_return_static_value,
-        compile_template, parse_datex_script_to_rich_ast_simple_error,
+        compile_ast, compile_script, compile_script_or_return_static_value, compile_template,
+        parse_datex_script_to_rich_ast_simple_error, CompilationContext,
+        CompileOptions, StaticValueOrDXB,
     };
 
     use crate::{
@@ -1474,7 +1475,6 @@ pub mod tests {
         },
         libs::core::CoreLibPointerId,
         runtime::execution::context::ExecutionMode,
-        values::pointer::PointerAddress,
     };
 
     use crate::{
@@ -1484,6 +1484,7 @@ pub mod tests {
     use alloc::format;
     use core::assert_matches;
     use log::*;
+    use crate::shared_values::pointer_address::PointerAddress;
 
     fn compile_and_log(datex_script: &str) -> Vec<u8> {
         let (result, _) =
