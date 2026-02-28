@@ -1,6 +1,6 @@
 use crate::{
-    references::{
-        reference::ReferenceMutability, type_reference::TypeReference,
+    shared_values::{
+        reference::ReferenceMutability, type_reference::SharedTypeContainer,
     },
     traits::structural_eq::StructuralEq,
     types::{
@@ -25,7 +25,7 @@ pub enum TypeDefinition {
     Collection(CollectionTypeDefinition),
 
     /// type A = B
-    Reference(Rc<RefCell<TypeReference>>), // integer
+    Reference(Rc<RefCell<SharedTypeContainer>>), // integer
 
     /// type, used for nested types with references (e.g. &mut & x)
     Type(Box<Type>),
@@ -249,7 +249,7 @@ impl TypeDefinition {
     }
 
     /// Creates a new reference type.
-    pub fn reference(reference: Rc<RefCell<TypeReference>>) -> Self {
+    pub fn reference(reference: Rc<RefCell<SharedTypeContainer>>) -> Self {
         TypeDefinition::Reference(reference)
     }
 

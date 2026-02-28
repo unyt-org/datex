@@ -8,7 +8,7 @@ use crate::{
         ArithmeticUnaryOperator, BinaryOperator, ComparisonOperator,
         UnaryOperator, assignment::AssignmentOperator,
     },
-    references::reference::ReferenceMutability,
+    shared_values::reference::ReferenceMutability,
     values::{
         core_value::CoreValue,
         core_values,

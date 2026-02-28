@@ -2,9 +2,9 @@ use crate::{
     collections::HashMap,
     global::protocol_structures::instructions::RawFullPointerAddress,
     libs::core::{CoreLibPointerId, load_core_lib},
-    references::{
-        reference::SharedValueContainer, type_reference::TypeReference,
-        value_reference::ValueReference,
+    shared_values::{
+        reference::SharedContainer, type_reference::SharedTypeContainer,
+        value_reference::SharedValueContainer,
     },
     types::error::IllegalTypeError,
     values::{core_values::endpoint::Endpoint, pointer::PointerAddress},
@@ -18,7 +18,7 @@ pub struct Memory {
     local_endpoint: Endpoint,
     local_counter: u64,  // counter for local pointer ids
     last_timestamp: u64, // last timestamp used for a new local pointer id
-    pointers: HashMap<PointerAddress, SharedValueContainer>, // all pointers
+    pointers: HashMap<PointerAddress, SharedContainer>, // all pointers
 }
 
 impl Memory {
@@ -40,7 +40,7 @@ impl Memory {
     /// Returns the PointerAddress of the registered reference.
     pub fn register_reference(
         &mut self,
-        reference: &SharedValueContainer,
+        reference: &SharedContainer,
     ) -> PointerAddress {
         let pointer_address = reference.pointer_address();
         // check if reference is already registered (if it has an address, we assume it is registered)
@@ -67,16 +67,16 @@ impl Memory {
     pub fn get_reference(
         &self,
         pointer_address: &PointerAddress,
-    ) -> Option<&SharedValueContainer> {
+    ) -> Option<&SharedContainer> {
         self.pointers.get(pointer_address)
     }
 
     pub fn get_value_reference(
         &self,
         pointer_address: &PointerAddress,
-    ) -> Option<&Rc<RefCell<ValueReference>>> {
+    ) -> Option<&Rc<RefCell<SharedValueContainer>>> {
         self.get_reference(pointer_address).and_then(|r| match r {
-            SharedValueContainer::ValueReference(v) => Some(v),
+            SharedContainer::Value(v) => Some(v),
             _ => None,
         })
     }
@@ -84,9 +84,9 @@ impl Memory {
     pub fn get_type_reference(
         &self,
         pointer_address: &PointerAddress,
-    ) -> Option<&Rc<RefCell<TypeReference>>> {
+    ) -> Option<&Rc<RefCell<SharedTypeContainer>>> {
         self.get_reference(pointer_address).and_then(|r| match r {
-            SharedValueContainer::TypeReference(t) => Some(t),
+            SharedContainer::Type(t) => Some(t),
             _ => None,
         })
     }
@@ -95,7 +95,7 @@ impl Memory {
     pub fn get_core_reference(
         &self,
         pointer_id: CoreLibPointerId,
-    ) -> &SharedValueContainer {
+    ) -> &SharedContainer {
         self.get_reference(&pointer_id.into())
             .expect("core reference not found in memory")
     }
@@ -104,12 +104,12 @@ impl Memory {
     pub fn get_core_type_reference(
         &self,
         pointer_id: CoreLibPointerId,
-    ) -> Result<Rc<RefCell<TypeReference>>, IllegalTypeError> {
+    ) -> Result<Rc<RefCell<SharedTypeContainer>>, IllegalTypeError> {
         let reference = self
             .get_reference(&pointer_id.into())
             .ok_or(IllegalTypeError::TypeNotFound)?;
         match reference {
-            SharedValueContainer::TypeReference(def) => Ok(def.clone()),
+            SharedContainer::Type(def) => Ok(def.clone()),
             _ => Err(IllegalTypeError::TypeNotFound),
         }
     }
@@ -119,7 +119,7 @@ impl Memory {
     pub fn get_core_type_reference_unchecked(
         &self,
         pointer_id: CoreLibPointerId,
-    ) -> Rc<RefCell<TypeReference>> {
+    ) -> Rc<RefCell<SharedTypeContainer>> {
         // FIXME #415: Mark as unchecked
         self.get_core_type_reference(pointer_id)
             .expect("core type not found or cannot be used as a type")
@@ -136,7 +136,7 @@ impl Memory {
         {
             // TODO #639: check if it makes sense to take the last 5 bytes only here
             let last_bytes = &raw_address.id[raw_address.id.len() - 5..];
-            PointerAddress::Local(last_bytes.try_into().unwrap())
+            PointerAddress::Owned(last_bytes.try_into().unwrap())
         } else {
             // combine raw_address.endpoint and raw_address.id to [u8; 26]
             let writer = Cursor::new(Vec::new());
@@ -168,11 +168,11 @@ impl Memory {
             timestamp as u8,
             (self.local_counter & 0xFF) as u8,
         ];
-        PointerAddress::Local(id)
+        PointerAddress::Owned(id)
     }
 }
 
-impl SharedValueContainer {
+impl SharedContainer {
     /// Returns the PointerAddress of this reference, if it has one.
     /// Otherwise, it registers the reference in the given memory and returns the newly assigned PointerAddress.
     pub fn ensure_pointer_address(

@@ -3,9 +3,9 @@ use crate::{
         update::{DIFKey, DIFUpdateData},
         value::DIFValueContainer,
     },
-    references::{
+    shared_values::{
         observers::TransceiverId,
-        reference::{AccessError, SharedValueContainer},
+        reference::{AccessError, SharedContainer},
     },
     runtime::memory::Memory,
     values::{
@@ -33,7 +33,7 @@ impl<'a> From<&'a RefCell<Memory>> for DIFUpdateDataOrMemory<'a> {
     }
 }
 
-impl SharedValueContainer {
+impl SharedContainer {
     /// Internal function that handles updates
     /// - Checks if the reference is mutable
     /// - Calls the provided handler to perform the update and get the DIFUpdateData
@@ -291,8 +291,8 @@ impl SharedValueContainer {
 mod tests {
     use crate::{
         prelude::*,
-        references::reference::{
-            AccessError, IndexOutOfBoundsError, SharedValueContainer, ReferenceMutability,
+        shared_values::reference::{
+            AccessError, IndexOutOfBoundsError, SharedContainer, ReferenceMutability,
         },
         runtime::memory::Memory,
         values::{
@@ -311,7 +311,7 @@ mod tests {
             ValueContainer::from(3),
         ];
         let list_ref =
-            SharedValueContainer::try_mut_from(List::from(list).into()).unwrap();
+            SharedContainer::try_mut_from(List::from(list).into()).unwrap();
         list_ref
             .try_append_value(0, memory, ValueContainer::from(4))
             .expect("Failed to push value to list");
@@ -320,13 +320,13 @@ mod tests {
 
         // Try to push to immutable value
         let int_ref =
-            SharedValueContainer::from(List::from(vec![ValueContainer::from(42)]));
+            SharedContainer::from(List::from(vec![ValueContainer::from(42)]));
         let result =
             int_ref.try_append_value(0, memory, ValueContainer::from(99));
         assert_matches!(result, Err(AccessError::ImmutableReference));
 
         // Try to push to non-list value
-        let int_ref = SharedValueContainer::try_mut_from(42.into()).unwrap();
+        let int_ref = SharedContainer::try_mut_from(42.into()).unwrap();
         let result =
             int_ref.try_append_value(0, memory, ValueContainer::from(99));
         assert_matches!(result, Err(AccessError::InvalidOperation(_)));
@@ -341,7 +341,7 @@ mod tests {
             ("key2".to_string(), ValueContainer::from(2)),
         ]);
         let map_ref =
-            SharedValueContainer::try_mut_from(ValueContainer::from(map)).unwrap();
+            SharedContainer::try_mut_from(ValueContainer::from(map)).unwrap();
         // Set existing property
         map_ref
             .try_set_property(0, memory, "key1", ValueContainer::from(42))
@@ -371,7 +371,7 @@ mod tests {
             ValueContainer::from(3),
         ];
         let list_ref =
-            SharedValueContainer::try_mut_from(ValueContainer::from(list)).unwrap();
+            SharedContainer::try_mut_from(ValueContainer::from(list)).unwrap();
 
         // Set existing index
         list_ref
@@ -391,7 +391,7 @@ mod tests {
         );
 
         // Try to set index on non-map value
-        let int_ref = SharedValueContainer::try_mut_from(42.into()).unwrap();
+        let int_ref = SharedContainer::try_mut_from(42.into()).unwrap();
         let result =
             int_ref.try_set_property(0, memory, 0, ValueContainer::from(99));
         assert_matches!(result, Err(AccessError::InvalidOperation(_)));
@@ -406,7 +406,7 @@ mod tests {
             (ValueContainer::from("age"), ValueContainer::from(30)),
         ]);
         let struct_ref =
-            SharedValueContainer::try_mut_from(ValueContainer::from(struct_val)).unwrap();
+            SharedContainer::try_mut_from(ValueContainer::from(struct_val)).unwrap();
 
         // Set existing property
         struct_ref
@@ -425,7 +425,7 @@ mod tests {
         assert_matches!(result, Ok(()));
 
         // // Try to set property on non-struct value
-        let int_ref = SharedValueContainer::try_mut_from(42.into()).unwrap();
+        let int_ref = SharedContainer::try_mut_from(42.into()).unwrap();
         let result = int_ref.try_set_property(
             0,
             memory,
@@ -439,13 +439,13 @@ mod tests {
     fn immutable_reference_fails() {
         let memory = &RefCell::new(Memory::default());
 
-        let r = SharedValueContainer::from(42);
+        let r = SharedContainer::from(42);
         assert_matches!(
             r.try_replace(0, memory, 43),
             Err(AccessError::ImmutableReference)
         );
 
-        let r = SharedValueContainer::try_new_from_value_container(
+        let r = SharedContainer::try_new_from_value_container(
             42.into(),
             None,
             None,

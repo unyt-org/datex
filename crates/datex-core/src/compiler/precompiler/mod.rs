@@ -29,7 +29,7 @@ use crate::{
     },
     global::operators::{BinaryOperator, binary::ArithmeticOperator},
     libs::core::CoreLibPointerId,
-    references::type_reference::{NominalTypeDeclaration, TypeReference},
+    shared_values::type_reference::{NominalTypeDeclaration, SharedTypeContainer},
     types::definition::TypeDefinition,
     utils::maybe_action::{ErrorCollector, MaybeAction, collect_or_pass_error},
     values::core_values::r#type::Type,
@@ -270,14 +270,14 @@ impl<'a> Precompiler<'a> {
 
         let reference = match data.kind {
             TypeDeclarationKind::Nominal => {
-                Rc::new(RefCell::new(TypeReference::nominal(
+                Rc::new(RefCell::new(SharedTypeContainer::nominal(
                     Type::UNIT,
                     NominalTypeDeclaration::from(data.name.clone()),
                     None,
                 )))
             }
             TypeDeclarationKind::Structural => Rc::new(RefCell::new(
-                TypeReference::anonymous(Type::UNIT, None),
+                SharedTypeContainer::anonymous(Type::UNIT, None),
             )),
         };
 
@@ -603,7 +603,7 @@ mod tests {
             type_expressions::{StructuralMap, TypeExpressionData},
         },
         parser::Parser,
-        references::reference::ReferenceMutability,
+        shared_values::reference::ReferenceMutability,
         values::{core_values::integer::Integer, pointer::PointerAddress},
     };
     use core::assert_matches;

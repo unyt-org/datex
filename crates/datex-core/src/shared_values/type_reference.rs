@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     libs::core::CoreLibPointerId,
     prelude::*,
-    references::reference::ReferenceMutability,
+    shared_values::reference::ReferenceMutability,
     runtime::execution::ExecutionError,
     traits::apply::Apply,
     types::{
@@ -56,7 +56,7 @@ impl Display for NominalTypeDeclaration {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct TypeReference {
+pub struct SharedTypeContainer {
     /// the value that contains the type declaration
     pub type_value: Type,
     /// optional nominal type declaration
@@ -65,7 +65,7 @@ pub struct TypeReference {
     pub pointer_address: Option<PointerAddress>,
 }
 
-impl TypeReference {
+impl SharedTypeContainer {
     pub fn nominal<T>(
         type_value: Type,
         nominal_type_declaration: T,
@@ -74,7 +74,7 @@ impl TypeReference {
     where
         T: Into<NominalTypeDeclaration>,
     {
-        TypeReference {
+        SharedTypeContainer {
             type_value,
             nominal_type_declaration: Some(nominal_type_declaration.into()),
             pointer_address,
@@ -84,13 +84,13 @@ impl TypeReference {
         type_value: Type,
         pointer_address: Option<PointerAddress>,
     ) -> Self {
-        TypeReference {
+        SharedTypeContainer {
             type_value,
             nominal_type_declaration: None,
             pointer_address,
         }
     }
-    pub fn as_ref_cell(self) -> Rc<RefCell<TypeReference>> {
+    pub fn as_ref_cell(self) -> Rc<RefCell<SharedTypeContainer>> {
         Rc::new(RefCell::new(self))
     }
 
@@ -101,7 +101,7 @@ impl TypeReference {
         Type::reference(self.as_ref_cell(), mutability)
     }
 
-    pub fn collapse_reference_chain(&self) -> TypeReference {
+    pub fn collapse_reference_chain(&self) -> SharedTypeContainer {
         match &self.type_value.type_definition {
             TypeDefinition::Reference(reference) => {
                 // If this is a reference type, resolve it to its current reference
@@ -118,7 +118,7 @@ impl TypeReference {
     }
 }
 
-impl TypeReference {
+impl SharedTypeContainer {
     // pub fn as_type(&self) -> &Type {
     //     &self.type_value
     // }
@@ -129,13 +129,13 @@ impl TypeReference {
         self.type_value.structural_type_definition()
     }
 
-    pub fn base_type(&self) -> Option<Rc<RefCell<TypeReference>>> {
+    pub fn base_type(&self) -> Option<Rc<RefCell<SharedTypeContainer>>> {
         self.type_value.base_type_reference()
     }
 
     pub fn matches_reference(
         &self,
-        _other: Rc<RefCell<TypeReference>>,
+        _other: Rc<RefCell<SharedTypeContainer>>,
     ) -> bool {
         core::todo!("#300 implement type matching");
     }
@@ -149,7 +149,7 @@ impl TypeReference {
     }
 }
 
-impl Apply for TypeReference {
+impl Apply for SharedTypeContainer {
     fn apply(
         &self,
         _args: &[ValueContainer],
@@ -198,7 +198,7 @@ impl Apply for TypeReference {
     }
 }
 
-impl Display for TypeReference {
+impl Display for SharedTypeContainer {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
         if let Some(nominal) = &self.nominal_type_declaration {
             // special exception: for Unit, display "()"

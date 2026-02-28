@@ -1,6 +1,6 @@
 use crate::{
     collections::HashMap,
-    references::observers::TransceiverId,
+    shared_values::observers::TransceiverId,
     runtime::{
         RuntimeInternal,
         execution::{

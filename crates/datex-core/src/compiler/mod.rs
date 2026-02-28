@@ -45,7 +45,7 @@ use crate::{
         append_value_container,
     },
     parser::{Parser, ParserOptions},
-    references::reference::ReferenceMutability,
+    shared_values::reference::ReferenceMutability,
     runtime::execution::context::ExecutionMode,
     time::Instant,
     utils::buffers::{append_u8, append_u16, append_u32},

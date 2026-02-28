@@ -1,8 +1,8 @@
 use crate::{
     collections::HashMap,
-    references::{
-        reference::SharedValueContainer,
-        type_reference::{NominalTypeDeclaration, TypeReference},
+    shared_values::{
+        reference::SharedContainer,
+        type_reference::{NominalTypeDeclaration, SharedTypeContainer},
     },
     runtime::memory::Memory,
     types::definition::TypeDefinition,
@@ -188,7 +188,7 @@ pub fn get_core_lib_type(id: impl Into<CoreLibPointerId>) -> Type {
 
 pub fn get_core_lib_type_reference(
     id: impl Into<CoreLibPointerId>,
-) -> Rc<RefCell<TypeReference>> {
+) -> Rc<RefCell<SharedTypeContainer>> {
     let type_container = get_core_lib_type(id);
     match type_container.type_definition {
         TypeDefinition::Reference(tr) => tr,
@@ -206,7 +206,7 @@ pub fn get_core_lib_value(
         if let Some(ty) = core_lib_types.get(&id) {
             match &ty.type_definition {
                 TypeDefinition::Reference(tr) => {
-                    Some(ValueContainer::Shared(SharedValueContainer::TypeReference(
+                    Some(ValueContainer::Shared(SharedContainer::Type(
                         tr.clone(),
                     )))
                 }
@@ -247,7 +247,7 @@ pub fn load_core_lib(memory: &mut Memory) {
                         .unwrap()
                         .to_string();
                     let reference =
-                        SharedValueContainer::TypeReference(type_reference.clone());
+                        SharedContainer::Type(type_reference.clone());
                     memory.register_reference(&reference);
                     (name, ValueContainer::Shared(reference))
                 }
@@ -263,7 +263,7 @@ pub fn load_core_lib(memory: &mut Memory) {
 
         // TODO #455: dont store variants as separate entries in core_struct (e.g., integer/u8, integer/i32, only keep integer)
         // Import variants directly by variant access operator from base type (e.g., integer -> integer/u8)
-        let core_struct = SharedValueContainer::from(ValueContainer::from(
+        let core_struct = SharedContainer::from(ValueContainer::from(
             Map::from_iter(types_structure),
         ));
         core_struct.set_pointer_address(CoreLibPointerId::Core.into());
@@ -472,7 +472,7 @@ fn create_core_type(
     (
         pointer_id.clone(),
         Type::new(
-            TypeDefinition::reference(Rc::new(RefCell::new(TypeReference {
+            TypeDefinition::reference(Rc::new(RefCell::new(SharedTypeContainer {
                 nominal_type_declaration: Some(NominalTypeDeclaration {
                     name: name.to_string(),
                     variant,

@@ -2,7 +2,7 @@ use crate::{
     collections::HashMap,
     prelude::*,
     random::RandomState,
-    references::reference::KeyNotFoundError,
+    shared_values::reference::KeyNotFoundError,
     traits::structural_eq::StructuralEq,
     values::{
         core_value::CoreValue,

@@ -4,10 +4,10 @@ use core::{cell::RefCell, result::Result};
 use super::value::Value;
 use crate::{
     prelude::*,
-    references::{
+    shared_values::{
         mutations::DIFUpdateDataOrMemory,
         observers::TransceiverId,
-        reference::{AccessError, SharedValueContainer},
+        reference::{AccessError, SharedContainer},
     },
     runtime::execution::ExecutionError,
     serde::{
@@ -199,7 +199,7 @@ impl<'a> From<OwnedValueKey> for ValueKey<'a> {
 #[derive(Clone, Debug, Eq)]
 pub enum ValueContainer {
     Local(Value),
-    Shared(SharedValueContainer),
+    Shared(SharedContainer),
 }
 
 impl<'a> Deserialize<'a> for ValueContainer {
@@ -359,7 +359,7 @@ impl ValueContainer {
         ValueContainer::Local(value.into())
     }
 
-    pub fn new_reference<T: Into<SharedValueContainer>>(value: T) -> ValueContainer {
+    pub fn new_reference<T: Into<SharedContainer>>(value: T) -> ValueContainer {
         ValueContainer::Shared(value.into())
     }
 
@@ -378,7 +378,7 @@ impl ValueContainer {
     }
 
     /// Returns the contained Reference if it is a Reference, otherwise returns None.
-    pub fn maybe_reference(&self) -> Option<&SharedValueContainer> {
+    pub fn maybe_reference(&self) -> Option<&SharedContainer> {
         if let ValueContainer::Shared(reference) = self {
             Some(reference)
         } else {
@@ -389,7 +389,7 @@ impl ValueContainer {
     /// Runs a closure with the contained Reference if it is a Reference, otherwise returns None.
     pub fn with_maybe_reference<F, R>(&self, f: F) -> Option<R>
     where
-        F: FnOnce(&SharedValueContainer) -> R,
+        F: FnOnce(&SharedContainer) -> R,
     {
         if let ValueContainer::Shared(reference) = self {
             Some(f(reference))
@@ -399,7 +399,7 @@ impl ValueContainer {
     }
 
     /// Returns a reference to the contained Reference, panics if it is not a Reference.
-    pub fn reference_unchecked(&self) -> &SharedValueContainer {
+    pub fn reference_unchecked(&self) -> &SharedContainer {
         match self {
             ValueContainer::Shared(reference) => reference,
             _ => core::panic!("Cannot convert ValueContainer to Reference"),

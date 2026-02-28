@@ -48,7 +48,7 @@ use datex_core::{
             InvalidDatexParseResult, ParserResult, ValidDatexParseResult,
         },
     },
-    references::reference::ReferenceMutability,
+    shared_values::reference::ReferenceMutability,
     values::core_values::error::NumberParseError,
 };
 
@@ -3442,7 +3442,7 @@ fn pointer_address() {
     let expr = parse_unwrap_data(src);
     assert_eq!(
         expr,
-        DatexExpressionData::PointerAddress(PointerAddress::Local([
+        DatexExpressionData::PointerAddress(PointerAddress::Owned([
             0x12, 0x34, 0x56, 0x78, 0x9A
         ]))
     );
