@@ -11,12 +11,8 @@ pub trait Crypto: Send + Sync {
     /// Generate a new UUID (version 4). Returns the UUID as a string.
     fn create_uuid() -> String;
 
-    // Random bytes
-    type RandomBytesError: core::fmt::Debug + Send + Sync + 'static =
-        crate::error::RandomBytesError;
-
     /// Generate `length` random bytes.
-    fn random_bytes(length: usize) -> Result<Vec<u8>, Self::RandomBytesError>;
+    fn random_bytes(length: usize) -> Vec<u8>;
 
     // Hash
     type Sha256Error: core::fmt::Debug + Send + Sync + 'static =
@@ -168,9 +164,7 @@ mod tests {
             String::new()
         }
 
-        fn random_bytes(
-            length: usize,
-        ) -> Result<Vec<u8>, Self::RandomBytesError> {
+        fn random_bytes(length: usize) -> Vec<u8> {
             unimplemented!()
         }
 

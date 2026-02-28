@@ -23,8 +23,8 @@ impl Crypto for CryptoStub {
         generate_pseudo_uuid()
     }
 
-    fn random_bytes(length: usize) -> Result<Vec<u8>, Self::RandomBytesError> {
-        Ok(vec![0u8; length])
+    fn random_bytes(length: usize) -> Vec<u8> {
+        vec![0u8; length]
     }
 
     fn hash_sha256<'a>(
