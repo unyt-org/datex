@@ -26,14 +26,12 @@ impl Crypto for CryptoNative {
         Uuid::new_v4().to_string()
     }
 
-    fn random_bytes(length: usize) -> Result<Vec<u8>, Self::RandomBytesError> {
+    fn random_bytes(length: usize) -> Vec<u8> {
         let mut out = vec![0u8; length];
-        OsRng.try_fill_bytes(&mut out).map_err(|_| {
-            RandomBytesError::Backend(BackendError::Unavailable(
-                "OsRng failed to generate random bytes",
-            ))
-        })?;
-        Ok(out)
+        OsRng
+            .try_fill_bytes(&mut out)
+            .expect("CryptoNative random_bytes failed");
+        out
     }
     type Sha256Error = ();
 
@@ -406,8 +404,8 @@ mod tests {
 
     #[test]
     fn test_random_bytes() {
-        let bytes1 = CryptoNative::random_bytes(16).expect("random bytes");
-        let bytes2 = CryptoNative::random_bytes(16).expect("random bytes");
+        let bytes1 = CryptoNative::random_bytes(16);
+        let bytes2 = CryptoNative::random_bytes(16);
         assert_eq!(bytes1.len(), 16);
         assert_eq!(bytes2.len(), 16);
         assert_ne!(bytes1, bytes2);

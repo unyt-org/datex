@@ -104,7 +104,6 @@ impl CryptoWeb {
 }
 
 impl Crypto for CryptoWeb {
-    type RandomBytesError = JsError;
     type Sha256Error = JsError;
     type HkdfError = JsError;
     type Ed25519GenError = JsError;
@@ -119,12 +118,12 @@ impl Crypto for CryptoWeb {
     fn create_uuid() -> String {
         Self::crypto().random_uuid()
     }
-    fn random_bytes(length: usize) -> Result<Vec<u8>, Self::RandomBytesError> {
+    fn random_bytes(length: usize) -> Vec<u8> {
         let buffer = &mut vec![0u8; length];
         Self::crypto()
             .get_random_values_with_u8_array(buffer)
-            .map_err(jsvalue_to_jserror)?;
-        Ok(buffer.to_vec())
+            .expect("getRandomValues failed");
+        buffer.to_vec()
     }
 
     fn hash_sha256<'a>(
