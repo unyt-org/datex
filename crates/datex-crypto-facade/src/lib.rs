@@ -1,5 +1,5 @@
 #![no_std]
-
+#![feature(associated_type_defaults)]
 #[cfg(test)]
 extern crate std;
 

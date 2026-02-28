@@ -3,7 +3,7 @@ use core::{
     cell::OnceCell,
     sync::atomic::{AtomicU32, Ordering},
 };
-use datex_crypto_facade::crypto::{Crypto, CryptoResult};
+use datex_crypto_facade::crypto::{AsyncCryptoResult, Crypto};
 
 pub struct CryptoStub;
 
@@ -23,78 +23,82 @@ impl Crypto for CryptoStub {
         generate_pseudo_uuid()
     }
 
-    fn random_bytes(length: usize) -> Vec<u8> {
-        vec![0u8; length]
+    fn random_bytes(length: usize) -> Result<Vec<u8>, Self::RandomBytesError> {
+        Ok(vec![0u8; length])
     }
 
-    fn hash_sha256<'a>(_to_digest: &'a [u8]) -> CryptoResult<'a, [u8; 32]> {
+    fn hash_sha256<'a>(
+        to_digest: &'a [u8],
+    ) -> AsyncCryptoResult<'a, [u8; 32], Self::Sha256Error> {
         unimplemented!()
     }
 
     fn hkdf_sha256<'a>(
-        _ikm: &'a [u8],
-        _salt: &'a [u8],
-    ) -> CryptoResult<'a, [u8; 32]> {
+        ikm: &'a [u8],
+        salt: &'a [u8],
+    ) -> AsyncCryptoResult<'a, [u8; 32], Self::HkdfError> {
         unimplemented!()
     }
 
-    fn gen_ed25519<'a>() -> CryptoResult<'a, (Vec<u8>, Vec<u8>)> {
+    fn gen_ed25519<'a>()
+    -> AsyncCryptoResult<'a, (Vec<u8>, Vec<u8>), Self::Ed25519GenError> {
         unimplemented!()
     }
 
     fn sig_ed25519<'a>(
-        _pri_key: &'a [u8],
-        _data: &'a [u8],
-    ) -> CryptoResult<'a, [u8; 64]> {
+        pri_key: &'a [u8],
+        data: &'a [u8],
+    ) -> AsyncCryptoResult<'a, [u8; 64], Self::Ed25519SignError> {
         unimplemented!()
     }
 
     fn ver_ed25519<'a>(
-        _pub_key: &'a [u8],
-        _sig: &'a [u8],
-        _data: &'a [u8],
-    ) -> CryptoResult<'a, bool> {
+        pub_key: &'a [u8],
+        sig: &'a [u8],
+        data: &'a [u8],
+    ) -> AsyncCryptoResult<'a, bool, Self::Ed25519VerifyError> {
         unimplemented!()
     }
 
     fn aes_ctr_encrypt<'a>(
-        _key: &'a [u8; 32],
-        _iv: &'a [u8; 16],
-        _plaintext: &'a [u8],
-    ) -> CryptoResult<'a, Vec<u8>> {
+        key: &'a [u8; 32],
+        iv: &'a [u8; 16],
+        plaintext: &'a [u8],
+    ) -> AsyncCryptoResult<'a, Vec<u8>, Self::AesCtrError> {
         unimplemented!()
     }
 
     fn aes_ctr_decrypt<'a>(
-        _key: &'a [u8; 32],
-        _iv: &'a [u8; 16],
-        _cipher: &'a [u8],
-    ) -> CryptoResult<'a, Vec<u8>> {
+        key: &'a [u8; 32],
+        iv: &'a [u8; 16],
+        cipher: &'a [u8],
+    ) -> AsyncCryptoResult<'a, Vec<u8>, Self::AesCtrError> {
         unimplemented!()
     }
 
-    fn key_upwrap<'a>(
-        _kek_bytes: &'a [u8; 32],
-        _rb: &'a [u8; 32],
-    ) -> CryptoResult<'a, [u8; 40]> {
+    fn key_wrap_rfc3394<'a>(
+        kek: &'a [u8; 32],
+        key_to_wrap: &'a [u8; 32],
+    ) -> AsyncCryptoResult<'a, [u8; 40], Self::KeyWrapError> {
         unimplemented!()
     }
 
-    fn key_unwrap<'a>(
-        _kek_bytes: &'a [u8; 32],
-        _cipher: &'a [u8; 40],
-    ) -> CryptoResult<'a, [u8; 32]> {
+    fn key_unwrap_rfc3394<'a>(
+        kek: &'a [u8; 32],
+        wrapped: &'a [u8; 40],
+    ) -> AsyncCryptoResult<'a, [u8; 32], Self::KeyUnwrapError> {
         unimplemented!()
     }
 
-    fn gen_x25519<'a>() -> CryptoResult<'a, ([u8; 44], [u8; 48])> {
+    fn gen_x25519<'a>()
+    -> AsyncCryptoResult<'a, ([u8; 44], [u8; 48]), Self::X25519GenError> {
         unimplemented!()
     }
 
     fn derive_x25519<'a>(
-        _pri_key: &'a [u8; 48],
-        _peer_pub: &'a [u8; 44],
-    ) -> CryptoResult<'a, Vec<u8>> {
+        pri_key: &'a [u8; 48],
+        peer_pub: &'a [u8; 44],
+    ) -> AsyncCryptoResult<'a, [u8; 32], Self::X25519DeriveError> {
         unimplemented!()
     }
 }
