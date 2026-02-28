@@ -433,7 +433,8 @@ impl Endpoint {
     }
 
     fn random_anonymous_id() -> [u8; 18] {
-        let buffer = CryptoImpl::random_bytes(18);
+        let buffer = CryptoImpl::random_bytes(18)
+            .expect("Failed to generate random bytes for anonymous endpoint");
         if buffer.iter().any(|&b| b != 0) {
             return buffer.try_into().unwrap();
         }

@@ -9,7 +9,7 @@ extern crate alloc;
 use alloc::{boxed::Box, format, string::String, vec, vec::Vec};
 use core::{future::Future, pin::Pin, result::Result};
 use datex_crypto_facade::{
-    crypto::{Crypto, CryptoResult},
+    crypto::{Crypto, AsyncCryptoResult},
     error::CryptoError,
 };
 
@@ -76,14 +76,14 @@ impl Crypto for CryptoEsp32 {
         bytes
     }
 
-    fn hash_sha256<'a>(_to_digest: &'a [u8]) -> CryptoResult<'a, [u8; 32]> {
+    fn hash_sha256<'a>(_to_digest: &'a [u8]) -> AsyncCryptoResult<'a, [u8; 32]> {
         todo!("#706 Undescribed by author.")
     }
 
     fn hkdf_sha256<'a>(
         _ikm: &'a [u8],
         _salt: &'a [u8],
-    ) -> CryptoResult<'a, [u8; 32]> {
+    ) -> AsyncCryptoResult<'a, [u8; 32]> {
         todo!("#707 Undescribed by author.")
     }
     fn sig_ed25519<'a>(
@@ -138,11 +138,11 @@ impl Crypto for CryptoEsp32 {
         todo!("#714 Undescribed by author.")
     }
 
-    fn gen_ed25519<'a>() -> CryptoResult<'a, (Vec<u8>, Vec<u8>)> {
+    fn gen_ed25519<'a>() -> AsyncCryptoResult<'a, (Vec<u8>, Vec<u8>)> {
         todo!("#715 Undescribed by author.")
     }
 
-    fn gen_x25519<'a>() -> CryptoResult<'a, ([u8; 44], [u8; 48])> {
+    fn gen_x25519<'a>() -> AsyncCryptoResult<'a, ([u8; 44], [u8; 48])> {
         todo!("#716 Undescribed by author.")
     }
 }
