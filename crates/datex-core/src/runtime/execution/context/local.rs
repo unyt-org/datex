@@ -29,24 +29,24 @@ impl ExecutionMode {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct LocalExecutionContext {
     #[cfg(feature = "compiler")]
     pub compile_scope: CompilationScope,
     pub loop_state: Option<ExecutionLoopState>,
-    pub runtime: Option<Rc<RuntimeInternal>>,
+    pub runtime: Rc<RuntimeInternal>,
     pub execution_options: ExecutionOptions,
     pub verbose: bool,
     pub execution_mode: ExecutionMode,
 }
 
 impl LocalExecutionContext {
-    pub fn new(execution_mode: ExecutionMode) -> Self {
+    pub fn new(execution_mode: ExecutionMode, runtime: Rc<RuntimeInternal>) -> Self {
         LocalExecutionContext {
             #[cfg(feature = "compiler")]
             compile_scope: CompilationScope::new(execution_mode),
             loop_state: None,
-            runtime: None,
+            runtime,
             execution_options: ExecutionOptions::default(),
             verbose: false,
             execution_mode,
@@ -54,43 +54,15 @@ impl LocalExecutionContext {
     }
 
     /// Creates a new local execution context with the given compile scope.
-    pub fn debug(execution_mode: ExecutionMode) -> Self {
+    pub fn debug(execution_mode: ExecutionMode, runtime: Rc<RuntimeInternal>) -> Self {
         LocalExecutionContext {
             #[cfg(feature = "compiler")]
             compile_scope: CompilationScope::new(execution_mode),
             execution_options: ExecutionOptions { verbose: true },
+            loop_state: None,
+            runtime,
             verbose: true,
             execution_mode,
-            ..Default::default()
-        }
-    }
-
-    pub fn debug_with_runtime_internal(
-        runtime_internal: Rc<RuntimeInternal>,
-        execution_mode: ExecutionMode,
-    ) -> Self {
-        LocalExecutionContext {
-            #[cfg(feature = "compiler")]
-            compile_scope: CompilationScope::new(execution_mode),
-            loop_state: None,
-            runtime: Some(runtime_internal),
-            execution_options: ExecutionOptions { verbose: true },
-            verbose: true,
-            execution_mode,
-        }
-    }
-
-    pub fn new_with_runtime_internal(
-        runtime_internal: Rc<RuntimeInternal>,
-        execution_mode: ExecutionMode,
-    ) -> Self {
-        LocalExecutionContext {
-            #[cfg(feature = "compiler")]
-            compile_scope: CompilationScope::new(execution_mode),
-            loop_state: None,
-            runtime: Some(runtime_internal),
-            execution_mode,
-            ..Default::default()
         }
     }
 
@@ -98,54 +70,38 @@ impl LocalExecutionContext {
         &mut self,
         runtime_internal: Rc<RuntimeInternal>,
     ) {
-        self.runtime = Some(runtime_internal);
+        self.runtime = runtime_internal;
     }
 }
 
 impl ExecutionContext {
-    /// Creates a new local execution context (can only be used once).
-    pub fn local() -> Self {
+    pub fn local(execution_mode: ExecutionMode, runtime: Rc<RuntimeInternal>) -> Self {
+        ExecutionContext::Local(LocalExecutionContext::new(
+            execution_mode,
+            runtime,
+        ))
+    }
+
+
+    /// Creates a new local static execution context (can only be used once).
+    pub fn local_static(runtime: Rc<RuntimeInternal>) -> Self {
         ExecutionContext::Local(LocalExecutionContext::new(
             ExecutionMode::Static,
+            runtime,
         ))
     }
 
     /// Creates a new local execution context (can be used multiple times).
-    pub fn local_unbounded() -> Self {
+    pub fn local_unbounded(runtime: Rc<RuntimeInternal>) -> Self {
         ExecutionContext::Local(LocalExecutionContext::new(
             ExecutionMode::Unbounded { has_next: true },
+            runtime,
         ))
-    }
-
-    /// Creates a new local execution context with a runtime.
-    pub fn local_with_runtime_internal(
-        runtime_internal: Rc<RuntimeInternal>,
-        execution_mode: ExecutionMode,
-    ) -> Self {
-        ExecutionContext::Local(
-            LocalExecutionContext::new_with_runtime_internal(
-                runtime_internal,
-                execution_mode,
-            ),
-        )
     }
 
     /// Creates a new local execution context with verbose mode enabled,
     /// providing more log outputs for debugging purposes.
-    pub fn local_debug(execution_mode: ExecutionMode) -> Self {
-        ExecutionContext::Local(LocalExecutionContext::debug(execution_mode))
-    }
-
-    /// Creates a new local execution context with verbose mode enabled and a runtime.
-    pub fn local_debug_with_runtime_internal(
-        runtime_internal: Rc<RuntimeInternal>,
-        execution_mode: ExecutionMode,
-    ) -> Self {
-        ExecutionContext::Local(
-            LocalExecutionContext::debug_with_runtime_internal(
-                runtime_internal,
-                execution_mode,
-            ),
-        )
+    pub fn local_debug(execution_mode: ExecutionMode, runtime: Rc<RuntimeInternal>) -> Self {
+        ExecutionContext::Local(LocalExecutionContext::debug(execution_mode, runtime))
     }
 }

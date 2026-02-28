@@ -16,7 +16,7 @@ pub struct ExecutionOptions {
 }
 
 /// Input required to execute a DXB program.
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct ExecutionInput<'a> {
     /// Options for execution.
     pub options: ExecutionOptions,
@@ -24,14 +24,14 @@ pub struct ExecutionInput<'a> {
     pub dxb_body: &'a [u8],
     /// For persisting execution state across multiple executions (e.g., for REPL scenarios).
     pub loop_state: Option<ExecutionLoopState>,
-    pub runtime: Option<Rc<RuntimeInternal>>,
+    pub runtime: Rc<RuntimeInternal>,
 }
 
 impl<'a> ExecutionInput<'a> {
     pub fn new(
         dxb_body: &'a [u8],
         options: ExecutionOptions,
-        runtime: Option<Rc<RuntimeInternal>>,
+        runtime: Rc<RuntimeInternal>,
     ) -> Self {
         Self {
             options,
@@ -43,7 +43,7 @@ impl<'a> ExecutionInput<'a> {
     pub fn new_with_slots(
         dxb_body: &'a [u8],
         options: ExecutionOptions,
-        runtime: Option<Rc<RuntimeInternal>>,
+        runtime: Rc<RuntimeInternal>,
         slots: RuntimeExecutionSlots,
     ) -> Self {
         let state =

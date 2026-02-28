@@ -18,20 +18,17 @@ pub fn get_internal_slot_value(
     runtime_state: &RuntimeExecutionState,
     slot: u32,
 ) -> Result<ValueContainer, ExecutionError> {
-    if let Some(runtime) = &runtime_state.runtime_internal {
-        // convert slot to InternalSlot enum
-        let slot = InternalSlot::try_from_primitive(slot)
-            .map_err(|_| ExecutionError::SlotNotAllocated(slot))?;
-        let res = match slot {
-            InternalSlot::ENDPOINT => {
-                ValueContainer::from(runtime.endpoint.clone())
-            }
-            InternalSlot::ENV => {
-                ValueContainer::from(Map::from(runtime.get_env()))
-            }
-        };
-        Ok(res)
-    } else {
-        Err(ExecutionError::RequiresRuntime)
-    }
+    let runtime = &runtime_state.runtime_internal;
+    // convert slot to InternalSlot enum
+    let slot = InternalSlot::try_from_primitive(slot)
+        .map_err(|_| ExecutionError::SlotNotAllocated(slot))?;
+    let res = match slot {
+        InternalSlot::ENDPOINT => {
+            ValueContainer::from(runtime.endpoint.clone())
+        }
+        InternalSlot::ENV => {
+            ValueContainer::from(Map::from(runtime.get_env()))
+        }
+    };
+    Ok(res)
 }

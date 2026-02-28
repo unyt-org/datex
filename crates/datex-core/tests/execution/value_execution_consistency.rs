@@ -1,3 +1,4 @@
+use alloc::rc::Rc;
 /// Runtime execution tests that validate that values are consistent through
 /// the compile and execution process.
 /// Any value passed as input should be returned exactly as it was passed in after compilation and execution.
@@ -14,6 +15,7 @@ use datex_core::{
         value_container::ValueContainer,
     },
 };
+use datex_core::runtime::RuntimeInternal;
 
 fn compile_and_execute(input: ValueContainer) -> ValueContainer {
     let (dxb, _) = compile!("?", input.clone()).unwrap();
@@ -21,7 +23,7 @@ fn compile_and_execute(input: ValueContainer) -> ValueContainer {
     execute_dxb_sync(ExecutionInput::new(
         &dxb,
         ExecutionOptions { verbose: true },
-        None,
+        Rc::new(RuntimeInternal::stub()),
     ))
     .unwrap()
     .unwrap()

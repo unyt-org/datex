@@ -109,30 +109,26 @@ pub async fn execute_dxb(
                 );
             }
             ExternalExecutionInterrupt::RemoteExecution(receivers, body) => {
-                if let Some(runtime) = &runtime_internal {
-                    // assert that receivers is a single endpoint
-                    // TODO #230: support advanced receivers
-                    let receiver_endpoint = receivers
-                        .to_value()
-                        .borrow()
-                        .cast_to_endpoint()
-                        .unwrap();
-                    let mut remote_execution_context =
-                        RemoteExecutionContext::new(
-                            receiver_endpoint,
-                            ExecutionMode::Static,
-                        );
-                    let res = RuntimeInternal::execute_remote(
-                        runtime.clone(),
-                        &mut remote_execution_context,
-                        body,
-                    )
+                // assert that receivers is a single endpoint
+                // TODO #230: support advanced receivers
+                let receiver_endpoint = receivers
+                    .to_value()
+                    .borrow()
+                    .cast_to_endpoint()
+                    .unwrap();
+                let mut remote_execution_context =
+                    RemoteExecutionContext::new(
+                        receiver_endpoint,
+                        ExecutionMode::Static,
+                    );
+                let res = RuntimeInternal::execute_remote(
+                    runtime_internal.clone(),
+                    &mut remote_execution_context,
+                    body,
+                )
                     .await?;
-                    interrupt_provider
-                        .provide_result(InterruptResult::ResolvedValue(res));
-                } else {
-                    return Err(ExecutionError::RequiresRuntime);
-                }
+                interrupt_provider
+                    .provide_result(InterruptResult::ResolvedValue(res));
             }
             ExternalExecutionInterrupt::Apply(callee, args) => {
                 let res = handle_apply(&callee, &args)?;
@@ -159,29 +155,24 @@ fn handle_apply(
 }
 
 fn get_pointer_value(
-    runtime_internal: &Option<Rc<RuntimeInternal>>,
+    runtime_internal: &Rc<RuntimeInternal>,
     address: RawFullPointerAddress,
 ) -> Result<Option<ValueContainer>, ExecutionError> {
-    if let Some(runtime) = &runtime_internal {
-        let memory = runtime.memory.borrow();
-        let resolved_address =
-            memory.get_pointer_address_from_raw_full_address(address);
-        // convert slot to InternalSlot enum
-        Ok(memory
-            .get_reference(&resolved_address)
-            .map(|r| ValueContainer::Shared(r.clone())))
-    } else {
-        Err(ExecutionError::RequiresRuntime)
-    }
+    let memory = runtime_internal.memory.borrow();
+    let resolved_address =
+        memory.get_pointer_address_from_raw_full_address(address);
+    // convert slot to InternalSlot enum
+    Ok(memory
+        .get_reference(&resolved_address)
+        .map(|r| ValueContainer::Shared(r.clone())))
 }
 
 fn get_internal_pointer_value(
-    runtime_internal: &Option<Rc<RuntimeInternal>>,
+    runtime_internal: &Rc<RuntimeInternal>,
     address: RawInternalPointerAddress,
 ) -> Result<ValueContainer, ExecutionError> {
     // first try to get from memory
-    if let Some(runtime_internal) = runtime_internal
-        && let Ok(core_lib_id) =
+    if let Ok(core_lib_id) =
             get_internal_pointer_value_from_memory(runtime_internal, &address)
     {
         return Ok(core_lib_id);
@@ -210,26 +201,22 @@ fn get_internal_pointer_value_from_memory(
 }
 
 fn get_local_pointer_value(
-    runtime_internal: &Option<Rc<RuntimeInternal>>,
+    runtime_internal: &Rc<RuntimeInternal>,
     address: RawLocalPointerAddress,
 ) -> Result<Option<ValueContainer>, ExecutionError> {
-    if let Some(runtime) = &runtime_internal {
-        // convert slot to InternalSlot enum
-        Ok(runtime
-            .memory
-            .borrow()
-            .get_reference(&PointerAddress::Owned(address.id))
-            .map(|r| ValueContainer::Shared(r.clone())))
-    } else {
-        Err(ExecutionError::RequiresRuntime)
-    }
+    // convert slot to InternalSlot enum
+    Ok(runtime_internal
+        .memory
+        .borrow()
+        .get_reference(&PointerAddress::Owned(address.id))
+        .map(|r| ValueContainer::Shared(r.clone())))
 }
 
 #[cfg(test)]
 #[cfg(feature = "compiler")]
 mod tests {
     use core::assert_matches;
-
+    use binrw::meta::EndianKind::Runtime;
     use super::*;
     use crate::{
         assert_structural_eq, assert_value_eq,
@@ -264,7 +251,7 @@ mod tests {
         let (dxb, _) =
             compile_script(datex_script, CompileOptions::default()).unwrap();
         let context =
-            ExecutionInput::new(&dxb, ExecutionOptions { verbose: true }, None);
+            ExecutionInput::new(&dxb, ExecutionOptions { verbose: true }, Rc::new(RuntimeInternal::stub()));
         execute_dxb_sync(context).unwrap_or_else(|err| {
             core::panic!("Execution failed: {err}");
         })
@@ -277,7 +264,7 @@ mod tests {
         gen move {
             let datex_script_parts = datex_script_parts.collect::<Vec<_>>();
             let mut execution_context = ExecutionContext::Local(
-                LocalExecutionContext::new(ExecutionMode::unbounded()),
+                LocalExecutionContext::new(ExecutionMode::unbounded(), Rc::new(RuntimeInternal::stub())),
             );
             let mut compilation_scope =
                 CompilationScope::new(ExecutionMode::unbounded());
@@ -323,7 +310,7 @@ mod tests {
         let (dxb, _) =
             compile_script(datex_script, CompileOptions::default()).unwrap();
         let context =
-            ExecutionInput::new(&dxb, ExecutionOptions { verbose: true }, None);
+            ExecutionInput::new(&dxb, ExecutionOptions { verbose: true }, Rc::new(RuntimeInternal::stub()));
         execute_dxb_sync(context)
     }
 
@@ -339,7 +326,7 @@ mod tests {
         let context = ExecutionInput::new(
             dxb_body,
             ExecutionOptions { verbose: true },
-            None,
+            Rc::new(RuntimeInternal::stub()),
         );
         execute_dxb_sync(context)
     }
@@ -356,7 +343,7 @@ mod tests {
                 let context = ExecutionInput::new(
                     &dxb,
                     ExecutionOptions { verbose: true },
-                    Some(runtime.internal),
+                    runtime.internal,
                 );
                 execute_dxb(context).await
             })
@@ -689,18 +676,6 @@ mod tests {
         // is no longer a reference but a value what is incorrect.
         // assert_matches!(result, ValueContainer::Reference(..));
         assert_value_eq!(result, ValueContainer::from(Integer::from(41)));
-    }
-
-    #[test]
-    fn endpoint_slot_no_runtime() {
-        let result = execute_datex_script_debug_with_error("#endpoint");
-        assert_matches!(result.unwrap_err(), ExecutionError::RequiresRuntime);
-    }
-
-    #[test]
-    fn env_slot_no_runtime() {
-        let result = execute_datex_script_debug_with_error("#env");
-        assert_matches!(result.unwrap_err(), ExecutionError::RequiresRuntime);
     }
 
     #[tokio::test]

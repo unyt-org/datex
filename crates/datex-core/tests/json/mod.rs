@@ -1,3 +1,4 @@
+use alloc::rc::Rc;
 use datex_core::{
     assert_structural_eq,
     compiler::{CompileOptions, compile_script},
@@ -17,6 +18,7 @@ use indexmap::IndexMap;
 use itertools::Itertools;
 use json_syntax::Parse;
 use std::path::PathBuf;
+use datex_core::runtime::RuntimeInternal;
 
 fn json_value_to_datex_value(json: &json_syntax::Value) -> Value {
     match json {
@@ -75,7 +77,7 @@ fn compare_datex_result_with_json(json_string: &str) {
             verbose: false,
             ..ExecutionOptions::default()
         },
-        None,
+        Rc::new(RuntimeInternal::stub()),
     );
     let datex_value = execute_dxb_sync(exec_input).unwrap().unwrap();
     let json_value_converted = json_value_to_datex_value(&json_value);

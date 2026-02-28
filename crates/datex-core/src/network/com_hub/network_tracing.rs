@@ -34,6 +34,7 @@ use crate::prelude::*;
 use log::{error, info};
 use serde::{Deserialize, Serialize};
 use serde_with::{DurationMilliSeconds, serde_as};
+use crate::runtime::RuntimeInternal;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
@@ -533,8 +534,9 @@ impl ComHub {
     ) -> Option<Vec<NetworkTraceHop>> {
         // convert DATEX to hops
         let dxb = block.body.clone();
+        let runtime_stub = Rc::new(RuntimeInternal::stub());
         let exec_input =
-            ExecutionInput::new(&dxb, ExecutionOptions::default(), None);
+            ExecutionInput::new(&dxb, ExecutionOptions::default(), runtime_stub);
         let hops_datex =
             execute_dxb_sync(exec_input).expect("Failed to execute DATEX");
         if let Some(ValueContainer::Local(Value {
