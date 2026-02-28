@@ -6,12 +6,8 @@ extern crate std;
 
 extern crate alloc;
 
-use alloc::{boxed::Box, format, string::String, vec, vec::Vec};
-use core::{future::Future, pin::Pin, result::Result};
-use datex_crypto_facade::{
-    crypto::{Crypto, AsyncCryptoResult},
-    error::CryptoError,
-};
+use alloc::{format, string::String, vec, vec::Vec};
+use datex_crypto_facade::crypto::{AsyncCryptoResult, Crypto};
 
 #[cfg(any(target_arch = "xtensa", target_arch = "riscv32"))]
 mod hal {
@@ -76,74 +72,79 @@ impl Crypto for CryptoEsp32 {
         bytes
     }
 
-    fn hash_sha256<'a>(_to_digest: &'a [u8]) -> AsyncCryptoResult<'a, [u8; 32]> {
-        todo!("#706 Undescribed by author.")
+    fn hash_sha256<'a>(
+        to_digest: &'a [u8],
+    ) -> AsyncCryptoResult<'a, [u8; 32], Self::Sha256Error> {
+        todo!()
     }
 
     fn hkdf_sha256<'a>(
-        _ikm: &'a [u8],
-        _salt: &'a [u8],
-    ) -> AsyncCryptoResult<'a, [u8; 32]> {
-        todo!("#707 Undescribed by author.")
+        ikm: &'a [u8],
+        salt: &'a [u8],
+    ) -> AsyncCryptoResult<'a, [u8; 32], Self::HkdfError> {
+        todo!()
     }
+
+    fn gen_ed25519<'a>()
+    -> AsyncCryptoResult<'a, (Vec<u8>, Vec<u8>), Self::Ed25519GenError> {
+        todo!()
+    }
+
     fn sig_ed25519<'a>(
-        _pri_key: &'a [u8],
-        _data: &'a [u8],
-    ) -> Pin<Box<dyn Future<Output = Result<[u8; 64], CryptoError>> + 'a>> {
-        todo!("#708 Undescribed by author.")
+        pri_key: &'a [u8],
+        data: &'a [u8],
+    ) -> AsyncCryptoResult<'a, [u8; 64], Self::Ed25519SignError> {
+        todo!()
     }
 
     fn ver_ed25519<'a>(
-        _pub_key: &'a [u8],
-        _sig: &'a [u8],
-        _data: &'a [u8],
-    ) -> Pin<Box<dyn Future<Output = Result<bool, CryptoError>> + 'a>> {
-        todo!("#709 Undescribed by author.")
+        pub_key: &'a [u8],
+        sig: &'a [u8],
+        data: &'a [u8],
+    ) -> AsyncCryptoResult<'a, bool, Self::Ed25519VerifyError> {
+        todo!()
     }
 
     fn aes_ctr_encrypt<'a>(
-        _key: &'a [u8; 32],
-        _iv: &'a [u8; 16],
-        _plaintext: &'a [u8],
-    ) -> Pin<Box<dyn Future<Output = Result<Vec<u8>, CryptoError>> + 'a>> {
-        todo!("#710 Undescribed by author.")
+        key: &'a [u8; 32],
+        iv: &'a [u8; 16],
+        plaintext: &'a [u8],
+    ) -> AsyncCryptoResult<'a, Vec<u8>, Self::AesCtrError> {
+        todo!()
     }
 
     fn aes_ctr_decrypt<'a>(
-        _key: &'a [u8; 32],
-        _iv: &'a [u8; 16],
-        _cipher: &'a [u8],
-    ) -> Pin<Box<dyn Future<Output = Result<Vec<u8>, CryptoError>> + 'a>> {
-        todo!("#711 Undescribed by author.")
+        key: &'a [u8; 32],
+        iv: &'a [u8; 16],
+        cipher: &'a [u8],
+    ) -> AsyncCryptoResult<'a, Vec<u8>, Self::AesCtrError> {
+        todo!()
     }
 
-    fn key_upwrap<'a>(
-        _kek_bytes: &'a [u8; 32],
-        _rb: &'a [u8; 32],
-    ) -> Pin<Box<dyn Future<Output = Result<[u8; 40], CryptoError>> + 'a>> {
-        todo!("#712 Undescribed by author.")
+    fn key_wrap_rfc3394<'a>(
+        kek: &'a [u8; 32],
+        key_to_wrap: &'a [u8; 32],
+    ) -> AsyncCryptoResult<'a, [u8; 40], Self::KeyWrapError> {
+        todo!()
     }
 
-    fn key_unwrap<'a>(
-        _kek_bytes: &'a [u8; 32],
-        _cipher: &'a [u8; 40],
-    ) -> Pin<Box<dyn Future<Output = Result<[u8; 32], CryptoError>> + 'a>> {
-        todo!("#713 Undescribed by author.")
+    fn key_unwrap_rfc3394<'a>(
+        kek: &'a [u8; 32],
+        wrapped: &'a [u8; 40],
+    ) -> AsyncCryptoResult<'a, [u8; 32], Self::KeyUnwrapError> {
+        todo!()
+    }
+
+    fn gen_x25519<'a>()
+    -> AsyncCryptoResult<'a, ([u8; 44], [u8; 48]), Self::X25519GenError> {
+        todo!()
     }
 
     fn derive_x25519<'a>(
-        _pri_key: &'a [u8; 48],
-        _peer_pub: &'a [u8; 44],
-    ) -> Pin<Box<dyn Future<Output = Result<Vec<u8>, CryptoError>> + 'a>> {
-        todo!("#714 Undescribed by author.")
-    }
-
-    fn gen_ed25519<'a>() -> AsyncCryptoResult<'a, (Vec<u8>, Vec<u8>)> {
-        todo!("#715 Undescribed by author.")
-    }
-
-    fn gen_x25519<'a>() -> AsyncCryptoResult<'a, ([u8; 44], [u8; 48])> {
-        todo!("#716 Undescribed by author.")
+        pri_key: &'a [u8; 48],
+        peer_pub: &'a [u8; 44],
+    ) -> AsyncCryptoResult<'a, [u8; 32], Self::X25519DeriveError> {
+        todo!()
     }
 }
 
