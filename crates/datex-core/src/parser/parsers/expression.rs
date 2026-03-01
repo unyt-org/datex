@@ -24,6 +24,7 @@ use crate::{
     values::core_values::error::NumberParseError,
 };
 use crate::ast::expressions::{CreateMut, CreateShared};
+use crate::shared_values::pointer::PointerReferenceMutability;
 
 static UNARY_BP: u8 = 29; // weaker than property access / apply, stronger than all other binary operators
 
@@ -435,8 +436,20 @@ impl Parser {
             Token::Shared => {
                 let op = self.advance()?;
                 let rhs = self.parse_expression(UNARY_BP)?;
-                let span = op.span.start..rhs.span.end;
+                let mut span_end = rhs.span.end;
+
+                // check if next token is 'mut' to determine mutability of shared container
+                let mutability = if self.peek()?.token == Token::Mutable {
+                    let token = self.advance()?; // consume 'mut'
+                    span_end = token.span.end; // extend span to include 'mut'
+                    SharedContainerMutability::Mutable
+                } else {
+                    SharedContainerMutability::Immutable
+                };
+
+                let span = op.span.start..span_end;
                 Ok(DatexExpressionData::CreateShared(CreateShared {
+                    mutability,
                     expression: Box::new(rhs),
                 })
                     .with_span(span))
@@ -457,7 +470,7 @@ impl Parser {
                 let rhs = self.parse_expression(UNARY_BP)?;
                 let span = op.span.start..rhs.span.end;
                 Ok(DatexExpressionData::CreateRef(CreateRef {
-                    mutability: SharedContainerMutability::Immutable,
+                    mutability: PointerReferenceMutability::Immutable,
                     expression: Box::new(rhs),
                 })
                 .with_span(span))
@@ -468,7 +481,7 @@ impl Parser {
                 let rhs = self.parse_expression(UNARY_BP)?;
                 let span = op.span.start..rhs.span.end;
                 Ok(DatexExpressionData::CreateRef(CreateRef {
-                    mutability: SharedContainerMutability::Mutable,
+                    mutability: PointerReferenceMutability::Mutable,
                     expression: Box::new(rhs),
                 })
                     .with_span(span))
@@ -580,6 +593,7 @@ mod tests {
         shared_values::shared_container::SharedContainerMutability,
     };
     use crate::ast::expressions::{CreateMut, CreateShared};
+    use crate::shared_values::pointer::PointerReferenceMutability;
 
     #[test]
     fn parse_simple_binary_expression() {
@@ -1081,6 +1095,7 @@ mod tests {
         assert_eq!(
             expr.data,
             DatexExpressionData::CreateShared(CreateShared {
+                mutability: SharedContainerMutability::Immutable,
                 expression: Box::new(
                     DatexExpressionData::Identifier("myVar".to_string())
                         .with_default_span()
@@ -1109,16 +1124,10 @@ mod tests {
         assert_eq!(
             expr.data,
             DatexExpressionData::CreateShared(CreateShared {
+                mutability: SharedContainerMutability::Mutable,
                 expression: Box::new(
-                    DatexExpressionData::CreateMut(CreateMut {
-                        expression: Box::new(
-                            DatexExpressionData::Identifier(
-                                "myVar".to_string()
-                            )
-                            .with_default_span()
-                        ),
-                    })
-                    .with_default_span()
+                    DatexExpressionData::Identifier("myVar".to_string())
+                        .with_default_span()
                 ),
             })
         );
@@ -1130,7 +1139,7 @@ mod tests {
         assert_eq!(
             expr.data,
             DatexExpressionData::CreateRef(CreateRef {
-                mutability: SharedContainerMutability::Immutable,
+                mutability: PointerReferenceMutability::Immutable,
                 expression: Box::new(
                     DatexExpressionData::Identifier("myVar".to_string())
                         .with_default_span()
@@ -1145,7 +1154,7 @@ mod tests {
         assert_eq!(
             expr.data,
             DatexExpressionData::CreateRef(CreateRef {
-                mutability: SharedContainerMutability::Mutable,
+                mutability: PointerReferenceMutability::Mutable,
                 expression: Box::new(
                     DatexExpressionData::Identifier("myVar".to_string())
                         .with_default_span()
@@ -1160,7 +1169,7 @@ mod tests {
         assert_eq!(
             expr.data,
             DatexExpressionData::CreateRef(CreateRef {
-                mutability: SharedContainerMutability::Immutable,
+                mutability: PointerReferenceMutability::Immutable,
                 expression: Box::new(
                     DatexExpressionData::PropertyAccess(PropertyAccess {
                         base: Box::new(
@@ -1186,10 +1195,10 @@ mod tests {
         assert_eq!(
             expr.data,
             DatexExpressionData::CreateRef(CreateRef {
-                mutability: SharedContainerMutability::Mutable,
+                mutability: PointerReferenceMutability::Mutable,
                 expression: Box::new(
                     DatexExpressionData::CreateRef(CreateRef {
-                        mutability: SharedContainerMutability::Immutable,
+                        mutability: PointerReferenceMutability::Immutable,
                         expression: Box::new(
                             DatexExpressionData::Identifier(
                                 "myVar".to_string()
@@ -1225,7 +1234,7 @@ mod tests {
             DatexExpressionData::Deref(Deref {
                 expression: Box::new(
                     DatexExpressionData::CreateRef(CreateRef {
-                        mutability: SharedContainerMutability::Immutable,
+                        mutability: PointerReferenceMutability::Immutable,
                         expression: Box::new(
                             DatexExpressionData::Identifier(
                                 "myVar".to_string()

@@ -12,6 +12,7 @@ use crate::{
 use core::{cell::RefCell, fmt::Display, hash::Hash, prelude::rust_2024::*};
 
 use crate::prelude::*;
+use crate::shared_values::pointer::PointerReferenceMutability;
 use crate::shared_values::pointer_address::PointerAddress;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -264,7 +265,7 @@ impl TypeDefinition {
 
     pub fn into_type(
         self,
-        reference_mutability: Option<SharedContainerMutability>,
+        reference_mutability: Option<PointerReferenceMutability>,
     ) -> Type {
         Type {
             type_definition: self,

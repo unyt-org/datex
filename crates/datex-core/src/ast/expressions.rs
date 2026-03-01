@@ -24,6 +24,7 @@ use crate::{
 };
 pub use crate::{prelude::*, values::core_values::callable::CallableKind};
 use core::{fmt::Display, ops, ops::Neg};
+use crate::shared_values::pointer::PointerReferenceMutability;
 use crate::shared_values::pointer_address::PointerAddress;
 
 #[derive(Clone, Debug)]
@@ -530,12 +531,13 @@ pub struct Deref {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct CreateRef {
-    pub mutability: SharedContainerMutability,
+    pub mutability: PointerReferenceMutability,
     pub expression: Box<DatexExpression>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct CreateShared {
+    pub mutability: SharedContainerMutability,
     pub expression: Box<DatexExpression>,
 }
 

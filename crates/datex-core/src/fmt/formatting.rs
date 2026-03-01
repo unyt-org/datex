@@ -18,6 +18,8 @@ use crate::{
         integer::typed_integer::TypedInteger,
     },
 };
+use crate::shared_values::pointer::PointerReferenceMutability;
+
 impl<'a> Formatter<'a> {
     pub fn datex_expression_to_source_code(
         &'a self,
@@ -44,8 +46,8 @@ impl<'a> Formatter<'a> {
             DatexExpressionData::List(list) => self.list_to_source_code(list),
             DatexExpressionData::CreateRef(create_ref) => {
                 (match create_ref.mutability {
-                    SharedContainerMutability::Immutable => a.text("&"),
-                    SharedContainerMutability::Mutable => a.text("&mut "),
+                    PointerReferenceMutability::Immutable => a.text("&"),
+                    PointerReferenceMutability::Mutable => a.text("&mut "),
                 }) + self.format_datex_expression(&create_ref.expression)
             }
             DatexExpressionData::BinaryOperation(BinaryOperation {

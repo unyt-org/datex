@@ -34,6 +34,7 @@ impl From<&ValueContainer> for DatexExpressionData {
             ValueContainer::Local(value) => value_to_datex_expression(value),
             ValueContainer::Shared(shared) => {
                 DatexExpressionData::CreateShared(CreateShared {
+                    mutability: shared.mutability(),
                     expression: Box::new(
                         DatexExpressionData::from(&shared.value_container())
                             .with_default_span(),

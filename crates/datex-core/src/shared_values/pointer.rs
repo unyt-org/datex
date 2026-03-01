@@ -2,7 +2,7 @@ use alloc::borrow::Cow;
 use crate::shared_values::pointer_address::{LocalPointerAddress, PointerAddress};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum BorrowedPointerMutability {
+pub enum PointerReferenceMutability {
     Mutable,
     Immutable,
 }
@@ -19,7 +19,7 @@ pub struct OwnedPointer {
 pub struct PointerReference {
     /// Address of the borrowed pointer, can be a local or remote pointer address
     address: PointerAddress,
-    mutability: BorrowedPointerMutability
+    mutability: PointerReferenceMutability
 }
 
 
@@ -47,7 +47,7 @@ impl Pointer {
     }
     
     /// Creates a new borrowed pointer with the given pointer address and mutability
-    pub(crate) fn new_reference(address: PointerAddress, mutability: BorrowedPointerMutability) -> Self {
+    pub(crate) fn new_reference(address: PointerAddress, mutability: PointerReferenceMutability) -> Self {
         Pointer::Reference(PointerReference { address, mutability })
     }
 
@@ -56,7 +56,7 @@ impl Pointer {
         let address = self.address();
         PointerReference {
             address: address.into_owned(),
-            mutability: BorrowedPointerMutability::Immutable,
+            mutability: PointerReferenceMutability::Immutable,
         }
     }
     
@@ -69,13 +69,13 @@ impl Pointer {
         match self {
             Pointer::Owned(_) => Some(PointerReference {
                 address: address.into_owned(),
-                mutability: BorrowedPointerMutability::Mutable,
+                mutability: PointerReferenceMutability::Mutable,
             }),
             Pointer::Reference(reference) => {
-                if reference.mutability == BorrowedPointerMutability::Mutable {
+                if reference.mutability == PointerReferenceMutability::Mutable {
                     Some(PointerReference {
                         address: address.into_owned(),
-                        mutability: BorrowedPointerMutability::Mutable,
+                        mutability: PointerReferenceMutability::Mutable,
                     })
                 } else {
                     None
