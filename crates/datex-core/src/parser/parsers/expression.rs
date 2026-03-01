@@ -23,7 +23,7 @@ use crate::{
     shared_values::shared_container::SharedContainerMutability,
     values::core_values::error::NumberParseError,
 };
-use crate::ast::expressions::CreateShared;
+use crate::ast::expressions::{CreateMut, CreateShared};
 
 static UNARY_BP: u8 = 29; // weaker than property access / apply, stronger than all other binary operators
 
@@ -441,6 +441,16 @@ impl Parser {
                 })
                     .with_span(span))
             }
+            // mut
+            Token::Mutable => {
+                let op = self.advance()?;
+                let rhs = self.parse_expression(UNARY_BP)?;
+                let span = op.span.start..rhs.span.end;
+                Ok(DatexExpressionData::CreateMut(CreateMut {
+                    expression: Box::new(rhs),
+                })
+                    .with_span(span))
+            }
             // ref (&)
             Token::Ampersand => {
                 let op = self.advance()?;
@@ -569,6 +579,7 @@ mod tests {
         prelude::*,
         shared_values::shared_container::SharedContainerMutability,
     };
+    use crate::ast::expressions::{CreateMut, CreateShared};
 
     #[test]
     fn parse_simple_binary_expression() {
@@ -1060,6 +1071,55 @@ mod tests {
                     .with_default_span()
                 ),
                 ty: None,
+            })
+        );
+    }
+
+    #[test]
+    fn parse_shared() {
+        let expr = parse("shared myVar");
+        assert_eq!(
+            expr.data,
+            DatexExpressionData::CreateShared(CreateShared {
+                expression: Box::new(
+                    DatexExpressionData::Identifier("myVar".to_string())
+                        .with_default_span()
+                ),
+            })
+        );
+    }
+
+    #[test]
+    fn parse_mut() {
+        let expr = parse("mut myVar");
+        assert_eq!(
+            expr.data,
+            DatexExpressionData::CreateMut(CreateMut {
+                expression: Box::new(
+                    DatexExpressionData::Identifier("myVar".to_string())
+                        .with_default_span()
+                ),
+            })
+        );
+    }
+
+    #[test]
+    fn parse_shared_mut() {
+        let expr = parse("shared mut myVar");
+        assert_eq!(
+            expr.data,
+            DatexExpressionData::CreateShared(CreateShared {
+                expression: Box::new(
+                    DatexExpressionData::CreateMut(CreateMut {
+                        expression: Box::new(
+                            DatexExpressionData::Identifier(
+                                "myVar".to_string()
+                            )
+                            .with_default_span()
+                        ),
+                    })
+                    .with_default_span()
+                ),
             })
         );
     }
