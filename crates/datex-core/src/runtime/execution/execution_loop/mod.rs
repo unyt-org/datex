@@ -49,7 +49,7 @@ use crate::{
         ExecutionError,
         InvalidProgramError,
     },
-    shared_values::shared_container::{ReferenceMutability, SharedContainer},
+    shared_values::shared_container::{SharedContainerMutability, SharedContainer},
     types::{
         definition::TypeDefinition,
         structural_type_definition::StructuralTypeDefinition,
@@ -785,7 +785,7 @@ pub fn inner_execution_loop(
 
                                     // assignment value must be a reference
                                     if let Some(reference) =
-                                        ref_value_container.maybe_reference()
+                                        ref_value_container.maybe_shared()
                                     {
                                         let lhs = reference.value_container();
                                         let res = yield_unwrap!(
@@ -1092,7 +1092,7 @@ pub fn inner_execution_loop(
                                         impl_type_data,
                                     ) => {
                                         let mutability: Option<
-                                            ReferenceMutability,
+                                            SharedContainerMutability,
                                         > = impl_type_data
                                             .metadata
                                             .mutability

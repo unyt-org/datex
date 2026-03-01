@@ -604,7 +604,7 @@ mod tests {
             type_expressions::{StructuralMap, TypeExpressionData},
         },
         parser::Parser,
-        shared_values::shared_container::ReferenceMutability,
+        shared_values::shared_container::SharedContainerMutability,
         values::core_values::integer::Integer,
     };
     use core::assert_matches;
@@ -1166,7 +1166,7 @@ mod tests {
                             name: "x".to_string(),
                             init_expression: Box::new(
                                 DatexExpressionData::CreateRef(CreateRef {
-                                    mutability: ReferenceMutability::Immutable,
+                                    mutability: SharedContainerMutability::Immutable,
                                     expression: Box::new(
                                         DatexExpressionData::Integer(
                                             Integer::from(42)

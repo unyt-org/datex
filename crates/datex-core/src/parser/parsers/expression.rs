@@ -20,7 +20,7 @@ use crate::{
         lexer::{SpannedToken, Token},
     },
     prelude::*,
-    shared_values::shared_container::ReferenceMutability,
+    shared_values::shared_container::SharedContainerMutability,
     values::core_values::error::NumberParseError,
 };
 
@@ -436,7 +436,7 @@ impl Parser {
                 let rhs = self.parse_expression(UNARY_BP)?;
                 let span = op.span.start..rhs.span.end;
                 Ok(DatexExpressionData::CreateRef(CreateRef {
-                    mutability: ReferenceMutability::Immutable,
+                    mutability: SharedContainerMutability::Immutable,
                     expression: Box::new(rhs),
                 })
                 .with_span(span))
@@ -447,7 +447,7 @@ impl Parser {
                 let rhs = self.parse_expression(UNARY_BP)?;
                 let span = op.span.start..rhs.span.end;
                 Ok(DatexExpressionData::CreateRef(CreateRef {
-                    mutability: ReferenceMutability::Mutable,
+                    mutability: SharedContainerMutability::Mutable,
                     expression: Box::new(rhs),
                 })
                 .with_span(span))
@@ -556,7 +556,7 @@ mod tests {
             tests::{parse, try_parse_and_return_on_first_error},
         },
         prelude::*,
-        shared_values::shared_container::ReferenceMutability,
+        shared_values::shared_container::SharedContainerMutability,
     };
 
     #[test]
@@ -1059,7 +1059,7 @@ mod tests {
         assert_eq!(
             expr.data,
             DatexExpressionData::CreateRef(CreateRef {
-                mutability: ReferenceMutability::Immutable,
+                mutability: SharedContainerMutability::Immutable,
                 expression: Box::new(
                     DatexExpressionData::Identifier("myVar".to_string())
                         .with_default_span()
@@ -1074,7 +1074,7 @@ mod tests {
         assert_eq!(
             expr.data,
             DatexExpressionData::CreateRef(CreateRef {
-                mutability: ReferenceMutability::Mutable,
+                mutability: SharedContainerMutability::Mutable,
                 expression: Box::new(
                     DatexExpressionData::Identifier("myVar".to_string())
                         .with_default_span()
@@ -1089,7 +1089,7 @@ mod tests {
         assert_eq!(
             expr.data,
             DatexExpressionData::CreateRef(CreateRef {
-                mutability: ReferenceMutability::Immutable,
+                mutability: SharedContainerMutability::Immutable,
                 expression: Box::new(
                     DatexExpressionData::PropertyAccess(PropertyAccess {
                         base: Box::new(
@@ -1115,10 +1115,10 @@ mod tests {
         assert_eq!(
             expr.data,
             DatexExpressionData::CreateRef(CreateRef {
-                mutability: ReferenceMutability::Mutable,
+                mutability: SharedContainerMutability::Mutable,
                 expression: Box::new(
                     DatexExpressionData::CreateRef(CreateRef {
-                        mutability: ReferenceMutability::Immutable,
+                        mutability: SharedContainerMutability::Immutable,
                         expression: Box::new(
                             DatexExpressionData::Identifier(
                                 "myVar".to_string()
@@ -1154,7 +1154,7 @@ mod tests {
             DatexExpressionData::Deref(Deref {
                 expression: Box::new(
                     DatexExpressionData::CreateRef(CreateRef {
-                        mutability: ReferenceMutability::Immutable,
+                        mutability: SharedContainerMutability::Immutable,
                         expression: Box::new(
                             DatexExpressionData::Identifier(
                                 "myVar".to_string()

@@ -10,7 +10,7 @@ use crate::{
         observers::{ObserveOptions, ObserverError, TransceiverId},
         shared_container::{
             AccessError, AssignmentError, ReferenceCreationError,
-            ReferenceMutability, TypeError,
+            SharedContainerMutability, TypeError,
         },
     },
 };
@@ -179,7 +179,7 @@ pub trait DIFInterface {
         &self,
         value: DIFValueContainer,
         allowed_type: Option<DIFTypeDefinition>,
-        mutability: ReferenceMutability,
+        mutability: SharedContainerMutability,
     ) -> Result<PointerAddress, DIFCreatePointerError>;
 
     /// Resolves a pointer address of a pointer that may not be in memory.

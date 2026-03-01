@@ -1,7 +1,7 @@
 use crate::{
     dif::{r#type::DIFTypeDefinition, value::DIFValueContainer},
     shared_values::shared_container::{
-        SharedContainer, ReferenceMutability, mutability_as_int,
+        SharedContainer, SharedContainerMutability, mutability_as_int,
     },
     runtime::memory::Memory,
 };
@@ -14,7 +14,7 @@ pub struct DIFReference {
     pub allowed_type: DIFTypeDefinition,
     #[serde(rename = "mut")]
     #[serde(with = "mutability_as_int")]
-    pub mutability: ReferenceMutability,
+    pub mutability: SharedContainerMutability,
 }
 
 impl DIFReference {

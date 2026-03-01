@@ -12,7 +12,7 @@ use crate::{
     runtime::RuntimeInternal,
     shared_values::{
         observers::{ObserveOptions, Observer, TransceiverId},
-        shared_container::{ReferenceMutability, SharedContainer},
+        shared_container::{SharedContainerMutability, SharedContainer},
     },
     values::value_container::ValueContainer,
 };
@@ -131,7 +131,7 @@ impl DIFInterface for RuntimeInternal {
         &self,
         value: DIFValueContainer,
         allowed_type: Option<DIFTypeDefinition>,
-        mutability: ReferenceMutability,
+        mutability: SharedContainerMutability,
     ) -> Result<PointerAddress, DIFCreatePointerError> {
         let container = value.to_value_container(&self.memory)?;
         let type_container = if let Some(_allowed_type) = &allowed_type {
@@ -237,7 +237,7 @@ mod tests {
         prelude::*,
         runtime::{RuntimeConfig, RuntimeRunner},
         shared_values::{
-            observers::ObserveOptions, shared_container::ReferenceMutability,
+            observers::ObserveOptions, shared_container::SharedContainerMutability,
         },
         values::{
             core_values::map::Map,
@@ -270,7 +270,7 @@ mod tests {
                             ),
                         )),
                         None,
-                        ReferenceMutability::Mutable,
+                        SharedContainerMutability::Mutable,
                     )
                     .expect("Failed to create pointer");
 

@@ -47,7 +47,7 @@ use datex_core::{
         },
         Parser,
     },
-    shared_values::shared_container::ReferenceMutability,
+    shared_values::shared_container::SharedContainerMutability,
     values::core_values::error::NumberParseError,
 };
 use datex_core::shared_values::pointer_address::PointerAddress;
@@ -3514,7 +3514,7 @@ fn variable_declaration_mut() {
             type_annotation: None,
             init_expression: Box::new(
                 DatexExpressionData::CreateRef(CreateRef {
-                    mutability: ReferenceMutability::Mutable,
+                    mutability: SharedContainerMutability::Mutable,
                     expression: Box::new(
                         DatexExpressionData::List(List::new(vec![
                             DatexExpressionData::Integer(Integer::from(1))
@@ -3546,7 +3546,7 @@ fn variable_declaration_ref() {
             type_annotation: None,
             init_expression: Box::new(
                 DatexExpressionData::CreateRef(CreateRef {
-                    mutability: ReferenceMutability::Immutable,
+                    mutability: SharedContainerMutability::Immutable,
                     expression: Box::new(
                         DatexExpressionData::List(List::new(vec![
                             DatexExpressionData::Integer(Integer::from(1))

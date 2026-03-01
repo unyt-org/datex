@@ -9,7 +9,7 @@ use crate::{
     libs::core::CoreLibPointerId,
     prelude::*,
     runtime::execution::ExecutionError,
-    shared_values::shared_container::ReferenceMutability,
+    shared_values::shared_container::SharedContainerMutability,
     traits::apply::Apply,
     types::{
         definition::TypeDefinition,
@@ -98,7 +98,7 @@ impl SharedTypeContainer {
     /// Convert this TypeReference into a Type representing a reference to the underlying type
     pub fn as_type(self) -> Type {
         let mutability =
-            self.mutability().unwrap_or(ReferenceMutability::Immutable);
+            self.mutability().unwrap_or(SharedContainerMutability::Immutable);
         Type::reference(self.as_ref_cell(), mutability)
     }
 
@@ -114,7 +114,7 @@ impl SharedTypeContainer {
             }
         }
     }
-    pub fn mutability(&self) -> Option<ReferenceMutability> {
+    pub fn mutability(&self) -> Option<SharedContainerMutability> {
         self.type_value.reference_mutability()
     }
 }

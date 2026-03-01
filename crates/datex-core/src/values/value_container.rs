@@ -200,7 +200,7 @@ impl<'a> From<OwnedValueKey> for ValueKey<'a> {
 
 #[derive(Clone, Debug, Eq)]
 pub enum ValueContainer {
-    Local(Value),
+    Local(Value), // TODO: add references to local values (for recursive structures)
     Shared(SharedContainer),
 }
 
@@ -323,12 +323,12 @@ impl ValueContainer {
         }
     }
 
-    /// Returns the actual type of the contained value, resolving references if necessary.
+    /// Returns the actual type of the contained value, resolving shared values if necessary.
     pub fn actual_value_type(&self) -> TypeDefinition {
         match self {
-            ValueContainer::Local(value) => value.actual_type().clone(),
-            ValueContainer::Shared(reference) => {
-                reference.actual_type().clone()
+            ValueContainer::Local(local) => local.actual_type().clone(),
+            ValueContainer::Shared(shared) => {
+                shared.actual_type().clone()
             }
         }
     }
@@ -339,9 +339,9 @@ impl ValueContainer {
             ValueContainer::Local(value) => {
                 Type::new(*value.actual_type.clone(), None)
             }
-            ValueContainer::Shared(reference) => {
+            ValueContainer::Shared(shared) => {
                 let inner_type =
-                    reference.value_container().actual_container_type();
+                    shared.value_container().actual_container_type();
                 Type::new(
                     // when nesting references, we need to keep the reference information
                     if inner_type.is_reference_type() {
@@ -351,7 +351,7 @@ impl ValueContainer {
                     else {
                         inner_type.type_definition
                     },
-                    Some(reference.mutability()),
+                    Some(shared.mutability()),
                 )
             }
         }
@@ -371,36 +371,36 @@ impl ValueContainer {
         to_value_container(value)
     }
 
-    /// Returns the contained Reference if it is a Reference, otherwise returns None.
-    pub fn maybe_reference(&self) -> Option<&SharedContainer> {
-        if let ValueContainer::Shared(reference) = self {
-            Some(reference)
+    /// Returns the contained SharedContainer if it is a SharedContainer, otherwise returns None.
+    pub fn maybe_shared(&self) -> Option<&SharedContainer> {
+        if let ValueContainer::Shared(shared) = self {
+            Some(shared)
         } else {
             None
         }
     }
 
-    /// Runs a closure with the contained Reference if it is a Reference, otherwise returns None.
-    pub fn with_maybe_reference<F, R>(&self, f: F) -> Option<R>
+    /// Runs a closure with the contained SharedContainer if it is a SharedContainer, otherwise returns None.
+    pub fn with_maybe_shared<F, R>(&self, f: F) -> Option<R>
     where
         F: FnOnce(&SharedContainer) -> R,
     {
-        if let ValueContainer::Shared(reference) = self {
-            Some(f(reference))
+        if let ValueContainer::Shared(shared) = self {
+            Some(f(shared))
         } else {
             None
         }
     }
 
-    /// Returns a reference to the contained Reference, panics if it is not a Reference.
-    pub fn reference_unchecked(&self) -> &SharedContainer {
+    /// Returns a reference to the contained SharedContainer, panics if it is not a SharedContainer.
+    pub fn shared_unchecked(&self) -> &SharedContainer {
         match self {
-            ValueContainer::Shared(reference) => reference,
-            _ => core::panic!("Cannot convert ValueContainer to Reference"),
+            ValueContainer::Shared(shared) => shared,
+            _ => core::panic!("Cannot convert ValueContainer to SharedContainer"),
         }
     }
 
-    /// Tries to get a property from the contained Value or Reference.
+    /// Tries to get a property from the contained local or shared value
     pub fn try_get_property<'a>(
         &self,
         key: impl Into<ValueKey<'a>>,

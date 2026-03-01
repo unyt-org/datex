@@ -285,7 +285,7 @@ mod tests {
     use crate::{
         prelude::*,
         shared_values::shared_container::{
-            AccessError, IndexOutOfBoundsError, SharedContainer, ReferenceMutability,
+            AccessError, IndexOutOfBoundsError, SharedContainer, SharedContainerMutability,
         },
         runtime::memory::Memory,
         values::{
@@ -434,7 +434,7 @@ mod tests {
             42.into(),
             None,
             Pointer::NULL,
-            ReferenceMutability::Immutable,
+            SharedContainerMutability::Immutable,
         )
         .unwrap();
         assert_matches!(
