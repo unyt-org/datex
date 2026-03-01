@@ -149,7 +149,7 @@ impl<'a> Formatter<'a> {
                 let (prec, _, _) = self.unary_operator_info(op);
                 prec
             }
-            DatexExpressionData::CreateRef(_) => 40,
+            DatexExpressionData::CreateShared(_) => 40,
             _ => 255, // never need parens
         }
     }

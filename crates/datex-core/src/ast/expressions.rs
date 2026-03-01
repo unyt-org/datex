@@ -138,8 +138,9 @@ pub enum DatexExpressionData {
     /// callable (function/procedure) declaration, e.g. function my_function() -> type ( ... )
     CallableDeclaration(Box<CallableDeclaration>),
 
-    // TODO #613 combine
-    /// Reference, e.g. &x or &mut x
+    /// Create a new shared container
+    CreateShared(CreateShared),
+    /// Create a new reference
     CreateRef(CreateRef),
 
     /// Deref
@@ -527,5 +528,10 @@ pub struct Deref {
 #[derive(Clone, Debug, PartialEq)]
 pub struct CreateRef {
     pub mutability: SharedContainerMutability,
+    pub expression: Box<DatexExpression>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct CreateShared {
     pub expression: Box<DatexExpression>,
 }

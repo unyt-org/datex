@@ -116,7 +116,7 @@ pub trait TypeExpressionVisitor<E>: Sized {
             TypeExpressionData::Ref(type_ref) => {
                 self.visit_ref_type(type_ref, &expr.span)
             }
-            TypeExpressionData::RefMut(type_ref_mut) => {
+            TypeExpressionData::Shared(type_ref_mut) => {
                 self.visit_ref_mut_type(type_ref_mut, &expr.span)
             }
             TypeExpressionData::Identifier(literal) => {

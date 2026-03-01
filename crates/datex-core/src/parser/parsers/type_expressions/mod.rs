@@ -173,12 +173,12 @@ impl Parser {
                 let span = op.span.start..rhs.span.end;
                 Ok(TypeExpressionData::Ref(Box::new(rhs)).with_span(span))
             }
-            // mutable ref (&mut)
-            Token::MutRef => {
+            // shared
+            Token::Shared => {
                 let op = self.advance()?;
                 let rhs = self.parse_type_expression(UNARY_BP)?;
                 let span = op.span.start..rhs.span.end;
-                Ok(TypeExpressionData::RefMut(Box::new(rhs)).with_span(span))
+                Ok(TypeExpressionData::Shared(Box::new(rhs)).with_span(span))
             }
 
             // everything else is a value
@@ -315,7 +315,7 @@ mod tests {
         let expr = parse_type_expression("&mut MyType");
         assert_eq!(
             expr.data,
-            TypeExpressionData::RefMut(Box::new(
+            TypeExpressionData::Shared(Box::new(
                 TypeExpressionData::Identifier("MyType".to_string())
                     .with_default_span()
             ))
@@ -327,7 +327,7 @@ mod tests {
         let expr = parse_type_expression("&mut &MyType");
         assert_eq!(
             expr.data,
-            TypeExpressionData::RefMut(Box::new(
+            TypeExpressionData::Shared(Box::new(
                 TypeExpressionData::Ref(Box::new(
                     TypeExpressionData::Identifier("MyType".to_string())
                         .with_default_span()
@@ -342,7 +342,7 @@ mod tests {
         let expr = parse_type_expression("&mut integer/u8");
         assert_eq!(
             expr.data,
-            TypeExpressionData::RefMut(Box::new(
+            TypeExpressionData::Shared(Box::new(
                 TypeExpressionData::VariantAccess(
                     crate::ast::type_expressions::TypeVariantAccess {
                         name: "integer".to_string(),

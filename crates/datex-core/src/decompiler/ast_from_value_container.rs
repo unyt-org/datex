@@ -24,6 +24,7 @@ use crate::{
     prelude::*,
 };
 use alloc::format;
+use crate::ast::expressions::CreateShared;
 
 impl From<&ValueContainer> for DatexExpressionData {
     /// Converts a ValueContainer into a DatexExpression AST.
@@ -31,11 +32,10 @@ impl From<&ValueContainer> for DatexExpressionData {
     fn from(value: &ValueContainer) -> Self {
         match value {
             ValueContainer::Local(value) => value_to_datex_expression(value),
-            ValueContainer::Shared(reference) => {
-                DatexExpressionData::CreateRef(CreateRef {
-                    mutability: reference.mutability(),
+            ValueContainer::Shared(shared) => {
+                DatexExpressionData::CreateShared(CreateShared {
                     expression: Box::new(
-                        DatexExpressionData::from(&reference.value_container())
+                        DatexExpressionData::from(&shared.value_container())
                             .with_default_span(),
                     ),
                 })

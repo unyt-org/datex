@@ -74,7 +74,7 @@ pub enum TypeExpressionData {
 
     // modifiers
     Ref(Box<TypeExpression>),
-    RefMut(Box<TypeExpression>),
+    Shared(Box<TypeExpression>),
 
     VariantAccess(TypeVariantAccess),
 }
