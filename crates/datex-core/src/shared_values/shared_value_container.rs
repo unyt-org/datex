@@ -1,5 +1,5 @@
 use crate::{
-    shared_values::{observers::Observer, shared_container::ReferenceMutability},
+    shared_values::{observers::Observer, shared_container::SharedContainerMutability},
     traits::value_eq::ValueEq,
     types::definition::TypeDefinition,
     utils::freemap::FreeHashMap,
@@ -22,7 +22,7 @@ pub struct SharedValueContainer {
     pub allowed_type: TypeDefinition,
     /// list of observer callbacks
     pub observers: FreeHashMap<u32, Observer>,
-    pub mutability: ReferenceMutability,
+    pub mutability: SharedContainerMutability,
 }
 
 impl SharedValueContainer {
@@ -30,7 +30,7 @@ impl SharedValueContainer {
         value_container: ValueContainer,
         pointer: Pointer,
         allowed_type: TypeDefinition,
-        mutability: ReferenceMutability,
+        mutability: SharedContainerMutability,
     ) -> Self {
         SharedValueContainer {
             value_container,
@@ -74,6 +74,6 @@ impl SharedValueContainer {
     }
 
     pub fn is_mutable(&self) -> bool {
-        core::matches!(self.mutability, ReferenceMutability::Mutable)
+        core::matches!(self.mutability, SharedContainerMutability::Mutable)
     }
 }

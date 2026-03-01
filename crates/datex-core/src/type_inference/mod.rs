@@ -5,7 +5,7 @@ use crate::{
     },
     libs::core::get_core_lib_type_reference,
     shared_values::{
-        shared_container::ReferenceMutability, shared_type_container::SharedTypeContainer,
+        shared_container::SharedContainerMutability, shared_type_container::SharedTypeContainer,
     },
     type_inference::{error::TypeError, options::ErrorHandling},
     types::definition::TypeDefinition,
@@ -941,12 +941,12 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
                 type_definition: TypeDefinition::Type(Box::new(
                     inner_type.clone(),
                 )),
-                reference_mutability: Some(ReferenceMutability::Mutable),
+                reference_mutability: Some(SharedContainerMutability::Mutable),
                 base_type: None,
             },
             Some(r) => Type {
                 type_definition: TypeDefinition::Reference(r.clone()),
-                reference_mutability: Some(ReferenceMutability::Mutable),
+                reference_mutability: Some(SharedContainerMutability::Mutable),
                 base_type: None,
             },
         })
@@ -1171,7 +1171,7 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
         //     });
         // }
         if expression_type.reference_mutability()
-            != Some(ReferenceMutability::Mutable)
+            != Some(SharedContainerMutability::Mutable)
         {
             return Err(SpannedTypeError {
                 error: TypeError::AssignmentToImmutableReference(

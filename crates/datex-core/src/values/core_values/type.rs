@@ -6,7 +6,7 @@ use crate::{
     },
     prelude::*,
     shared_values::{
-        shared_container::ReferenceMutability, shared_type_container::SharedTypeContainer,
+        shared_container::SharedContainerMutability, shared_type_container::SharedTypeContainer,
     },
     traits::structural_eq::StructuralEq,
     types::{
@@ -36,7 +36,7 @@ use crate::shared_values::pointer_address::PointerAddress;
 pub struct Type {
     pub type_definition: TypeDefinition,
     pub base_type: Option<Rc<RefCell<SharedTypeContainer>>>,
-    pub reference_mutability: Option<ReferenceMutability>,
+    pub reference_mutability: Option<SharedContainerMutability>,
 }
 
 // x: &User; Type {reference: }
@@ -129,7 +129,7 @@ impl Type {
             None
         }
     }
-    pub fn reference_mutability(&self) -> Option<ReferenceMutability> {
+    pub fn reference_mutability(&self) -> Option<SharedContainerMutability> {
         self.reference_mutability.clone()
     }
 
@@ -144,7 +144,7 @@ impl Type {
     /// otherwise it must be None.
     pub fn new(
         type_definition: TypeDefinition,
-        reference_mutability: Option<ReferenceMutability>,
+        reference_mutability: Option<SharedContainerMutability>,
     ) -> Self {
         Type {
             type_definition,
@@ -156,7 +156,7 @@ impl Type {
     /// Creates a reference type pointing to the given TypeReference with the specified mutability
     pub fn reference(
         type_definition: Rc<RefCell<SharedTypeContainer>>,
-        reference_mutability: ReferenceMutability,
+        reference_mutability: SharedContainerMutability,
     ) -> Self {
         Type {
             type_definition: TypeDefinition::Reference(type_definition),
@@ -271,7 +271,7 @@ impl Type {
 
     pub fn base_type(&self) -> Option<Type> {
         self.base_type_reference()
-            .map(|r| Type::reference(r, ReferenceMutability::Immutable))
+            .map(|r| Type::reference(r, SharedContainerMutability::Immutable))
     }
 
     /// 1 matches 1 -> true
@@ -417,8 +417,8 @@ impl Display for Type {
             self.reference_mutability
                 .as_ref()
                 .map_or("".to_string(), |m| match m {
-                    ReferenceMutability::Immutable => "&".to_string(),
-                    ReferenceMutability::Mutable => "&mut ".to_string(),
+                    SharedContainerMutability::Immutable => "&".to_string(),
+                    SharedContainerMutability::Mutable => "&mut ".to_string(),
                 });
         let base = self
             .base_type

@@ -1,5 +1,5 @@
 use crate::{
-    shared_values::shared_container::ReferenceMutability,
+    shared_values::shared_container::SharedContainerMutability,
     types::definition::TypeDefinition,
 };
 use binrw::{BinRead, BinWrite};
@@ -106,13 +106,13 @@ pub enum TypeMutabilityCode {
     Value,
 }
 
-impl From<&Option<ReferenceMutability>> for TypeMutabilityCode {
-    fn from(value: &Option<ReferenceMutability>) -> Self {
+impl From<&Option<SharedContainerMutability>> for TypeMutabilityCode {
+    fn from(value: &Option<SharedContainerMutability>) -> Self {
         match value {
-            Some(ReferenceMutability::Mutable) => {
+            Some(SharedContainerMutability::Mutable) => {
                 TypeMutabilityCode::MutableReference
             }
-            Some(ReferenceMutability::Immutable) => {
+            Some(SharedContainerMutability::Immutable) => {
                 TypeMutabilityCode::ImmutableReference
             }
             None => TypeMutabilityCode::Value,
@@ -120,14 +120,14 @@ impl From<&Option<ReferenceMutability>> for TypeMutabilityCode {
     }
 }
 
-impl From<TypeMutabilityCode> for Option<ReferenceMutability> {
+impl From<TypeMutabilityCode> for Option<SharedContainerMutability> {
     fn from(value: TypeMutabilityCode) -> Self {
         match value {
             TypeMutabilityCode::MutableReference => {
-                Some(ReferenceMutability::Mutable)
+                Some(SharedContainerMutability::Mutable)
             }
             TypeMutabilityCode::ImmutableReference => {
-                Some(ReferenceMutability::Immutable)
+                Some(SharedContainerMutability::Immutable)
             }
             TypeMutabilityCode::Value => None,
         }

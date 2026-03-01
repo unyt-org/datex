@@ -1,6 +1,6 @@
 use crate::{
     shared_values::{
-        shared_container::ReferenceMutability, shared_type_container::SharedTypeContainer,
+        shared_container::SharedContainerMutability, shared_type_container::SharedTypeContainer,
     },
     traits::structural_eq::StructuralEq,
     types::{
@@ -264,7 +264,7 @@ impl TypeDefinition {
 
     pub fn into_type(
         self,
-        reference_mutability: Option<ReferenceMutability>,
+        reference_mutability: Option<SharedContainerMutability>,
     ) -> Type {
         Type {
             type_definition: self,

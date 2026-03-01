@@ -18,7 +18,7 @@ use core::fmt::{self};
 
 use crate::{
     decompiler::{FormattingMode, FormattingOptions, IndentType},
-    shared_values::shared_container::ReferenceMutability,
+    shared_values::shared_container::SharedContainerMutability,
 };
 
 #[derive(Clone, Default)]
@@ -521,10 +521,10 @@ impl AstToSourceCodeConverter {
             DatexExpressionData::List(list) => self.list_to_source_code(list),
             DatexExpressionData::CreateRef(create_ref) => {
                 match &create_ref.mutability {
-                    ReferenceMutability::Mutable => {
+                    SharedContainerMutability::Mutable => {
                         format!("&mut {}", self.format(&create_ref.expression))
                     }
-                    ReferenceMutability::Immutable => {
+                    SharedContainerMutability::Immutable => {
                         format!("&{}", self.format(&create_ref.expression))
                     }
                 }

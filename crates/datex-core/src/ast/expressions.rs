@@ -8,7 +8,7 @@ use crate::{
         assignment::AssignmentOperator, ArithmeticUnaryOperator, BinaryOperator,
         ComparisonOperator, UnaryOperator,
     },
-    shared_values::shared_container::ReferenceMutability,
+    shared_values::shared_container::SharedContainerMutability,
     values::{
         core_value::CoreValue,
         core_values,
@@ -526,6 +526,6 @@ pub struct Deref {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct CreateRef {
-    pub mutability: ReferenceMutability,
+    pub mutability: SharedContainerMutability,
     pub expression: Box<DatexExpression>,
 }

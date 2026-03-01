@@ -2,7 +2,7 @@ use crate::{
     core_compiler::type_compiler::append_type,
     global::instruction_codes::InstructionCode,
     libs::core::{get_core_lib_type_definition, CoreLibPointerId},
-    shared_values::shared_container::ReferenceMutability,
+    shared_values::shared_container::SharedContainerMutability,
     types::definition::TypeDefinition,
     utils::buffers::{
         append_f32, append_f64, append_i128, append_i16, append_i32, append_i64,
@@ -42,7 +42,7 @@ pub fn append_value_container(
         ValueContainer::Shared(reference) => {
             // TODO #160: in this case, the ref might also be inserted by pointer id, depending on the compiler settings
             // add CREATE_REF/CREATE_REF_MUT instruction
-            if reference.mutability() == ReferenceMutability::Mutable {
+            if reference.mutability() == SharedContainerMutability::Mutable {
                 append_instruction_code(
                     buffer,
                     InstructionCode::CREATE_REF_MUT,
