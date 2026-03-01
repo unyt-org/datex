@@ -124,7 +124,7 @@ impl DIFValueContainer {
     ) -> Self {
         match value_container {
             ValueContainer::Shared(reference) => {
-                DIFValueContainer::Reference(reference.pointer_address().clone())
+                DIFValueContainer::Reference(reference.pointer_address())
             }
             ValueContainer::Local(value) => {
                 DIFValueContainer::Value(DIFValue::from_value(value))

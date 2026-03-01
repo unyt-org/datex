@@ -25,7 +25,7 @@ use core::{cell::RefCell, iter::once, result::Result};
 use datex_macros_internal::LibTypeString;
 use log::info;
 use strum::IntoEnumIterator;
-use crate::shared_values::pointer::Pointer;
+use crate::shared_values::pointer::{BorrowedPointerMutability, Pointer};
 use crate::shared_values::pointer_address::PointerAddress;
 
 type CoreLibTypes = HashMap<CoreLibPointerId, Type>;
@@ -181,6 +181,16 @@ impl TryFrom<&PointerAddress> for CoreLibPointerId {
     }
 }
 
+impl<'a> TryFrom<Cow<'a, PointerAddress>> for CoreLibPointerId {
+    type Error = String;
+    fn try_from(value: Cow<'a, PointerAddress>) -> Result<Self, Self::Error> {
+        match value {
+            Cow::Borrowed(address) => CoreLibPointerId::try_from(address),
+            Cow::Owned(address) => CoreLibPointerId::try_from(&address),
+        }
+    }
+}
+
 pub fn get_core_lib_type(id: impl Into<CoreLibPointerId>) -> Type {
     with_core_lib_types(|core_lib_types| {
         core_lib_types.get(&id.into()).unwrap().clone()
@@ -266,7 +276,7 @@ pub fn load_core_lib(memory: &mut Memory) {
         // Import variants directly by variant access operator from base type (e.g., integer -> integer/u8)
         let core_struct = SharedContainer::new(
             Map::from_iter(types_structure),
-            Pointer::new(CoreLibPointerId::Core.into())
+            Pointer::new_borrowed(CoreLibPointerId::Core.into(), BorrowedPointerMutability::Immutable)
         );
         memory.register_shared_container(&core_struct);
     });
@@ -483,7 +493,7 @@ fn create_core_type(
                     reference_mutability: None,
                     type_definition: TypeDefinition::Unit,
                 },
-                pointer: Pointer::new(PointerAddress::from(pointer_id)),
+                pointer: Pointer::new_borrowed(PointerAddress::from(pointer_id), BorrowedPointerMutability::Immutable),
             }))),
             None,
         ),

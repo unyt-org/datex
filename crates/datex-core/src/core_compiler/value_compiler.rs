@@ -338,9 +338,9 @@ pub fn append_get_ref(buffer: &mut Vec<u8>, address: &PointerAddress) {
             append_instruction_code(buffer, InstructionCode::GET_INTERNAL_REF);
             buffer.extend_from_slice(id);
         }
-        PointerAddress::Owned(id) => {
+        PointerAddress::Local(local_address) => {
             append_instruction_code(buffer, InstructionCode::GET_LOCAL_REF);
-            buffer.extend_from_slice(id);
+            buffer.extend_from_slice(&local_address.address);
         }
         PointerAddress::Remote(id) => {
             append_instruction_code(buffer, InstructionCode::GET_REF);

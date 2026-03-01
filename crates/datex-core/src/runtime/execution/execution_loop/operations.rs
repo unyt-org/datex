@@ -44,13 +44,13 @@ pub fn handle_unary_shared_value_operation(
         SharedValueUnaryOperator::CreateOwned => {
             ValueContainer::Shared(SharedContainer::new(
                 value_container,
-                memory.borrow_mut().get_new_local_pointer(),
+                memory.borrow_mut().get_new_owned_local_pointer(),
             ))
         },
         SharedValueUnaryOperator::CreateOwnedMut => {
             ValueContainer::Shared(SharedContainer::try_new_mut(
                 value_container,
-                memory.borrow_mut().get_new_local_pointer(),
+                memory.borrow_mut().get_new_owned_local_pointer(),
             )?)
         }
         SharedValueUnaryOperator::Deref => {

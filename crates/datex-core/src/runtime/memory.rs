@@ -14,7 +14,7 @@ use core::{cell::RefCell, result::Result};
 
 use crate::prelude::*;
 use crate::shared_values::pointer::Pointer;
-use crate::shared_values::pointer_address::PointerAddress;
+use crate::shared_values::pointer_address::{LocalPointerAddress, PointerAddress};
 
 #[derive(Debug, Default)]
 pub struct Memory {
@@ -47,10 +47,7 @@ impl Memory {
     ) {
         let pointer_address = reference.pointer_address();
         // check if reference is already registered (if it has an address, we assume it is registered)
-        if !self.pointers.contains_key(&*pointer_address) {
-            self.pointers
-                .insert(pointer_address.clone(), reference.clone());
-        }
+        self.pointers.entry(pointer_address).or_insert_with(|| reference.clone());
     }
 
     /// Returns a reference stored at the given PointerAddress, if it exists.
@@ -126,7 +123,7 @@ impl Memory {
         {
             // TODO #639: check if it makes sense to take the last 5 bytes only here
             let last_bytes = &raw_address.id[raw_address.id.len() - 5..];
-            PointerAddress::Owned(last_bytes.try_into().unwrap())
+            PointerAddress::local(last_bytes.try_into().unwrap())
         } else {
             // combine raw_address.endpoint and raw_address.id to [u8; 26]
             let writer = Cursor::new(Vec::new());
@@ -136,8 +133,8 @@ impl Memory {
         }
     }
 
-    /// Creates a new unique local pointer.
-    pub fn get_new_local_pointer(&mut self) -> Pointer {
+    /// Creates a new unique local owned pointer.
+    pub fn get_new_owned_local_pointer(&mut self) -> Pointer {
         let timestamp = crate::time::now_ms();
         // new timestamp, reset counter
         if timestamp != self.last_timestamp {
@@ -159,6 +156,6 @@ impl Memory {
             (self.local_counter & 0xFF) as u8,
         ];
 
-        Pointer::new(PointerAddress::Owned(id))
+        Pointer::new_owned(LocalPointerAddress::new(id))
     }
 }

@@ -142,8 +142,8 @@ impl DIFInterface for RuntimeInternal {
             None
         };
 
-        let pointer = self.memory.borrow_mut().get_new_local_pointer();
-        let address = pointer.address().clone();
+        let pointer = self.memory.borrow_mut().get_new_owned_local_pointer();
+        let address = pointer.address().into_owned();
 
         let reference = SharedContainer::try_new_from_value_container(
             container,

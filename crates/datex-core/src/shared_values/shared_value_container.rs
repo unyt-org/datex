@@ -46,7 +46,7 @@ impl Debug for SharedValueContainer {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("ReferenceData")
             .field("value_container", &self.value_container)
-            .field("pointer_address", &self.pointer_address())
+            .field("pointer_address", &self.pointer.address())
             .field("allowed_type", &self.allowed_type)
             .field("observers", &self.observers.len())
             .finish()
@@ -61,10 +61,6 @@ impl PartialEq for SharedValueContainer {
 }
 
 impl SharedValueContainer {
-    pub fn pointer_address(&self) -> &PointerAddress {
-        self.pointer.address()
-    }
-
     pub fn current_value_container(&self) -> &ValueContainer {
         &self.value_container
     }
