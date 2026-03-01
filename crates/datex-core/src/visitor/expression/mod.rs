@@ -21,6 +21,7 @@ use crate::{
     },
 };
 use core::ops::Range;
+use crate::ast::expressions::CreateShared;
 use crate::shared_values::pointer_address::PointerAddress;
 
 pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
@@ -124,6 +125,9 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
             }
             DatexExpressionData::CreateRef(create_ref) => {
                 self.visit_create_ref(create_ref, &expr.span)
+            }
+            DatexExpressionData::CreateShared(create_shared) => {
+                self.visit_create_shared(create_shared, &expr.span)
             }
             DatexExpressionData::Deref(deref) => {
                 self.visit_deref(deref, &expr.span)
@@ -440,6 +444,17 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
     ) -> ExpressionVisitResult<E> {
         let _ = span;
         let _ = create_ref;
+        Ok(VisitAction::VisitChildren)
+    }
+    
+    /// Visit create shared value expression
+    fn visit_create_shared(
+        &mut self,        
+        create_shared: &mut CreateShared,
+        span: &Range<usize>,
+    ) -> ExpressionVisitResult<E> {
+        let _ = span;
+        let _ = create_shared;
         Ok(VisitAction::VisitChildren)
     }
 

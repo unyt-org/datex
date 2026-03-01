@@ -233,8 +233,8 @@ pub mod mutability_option_as_int {
 impl Display for SharedContainerMutability {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
-            SharedContainerMutability::Mutable => write!(f, "&mut"),
-            SharedContainerMutability::Immutable => write!(f, "&"),
+            SharedContainerMutability::Mutable => write!(f, "mut"),
+            SharedContainerMutability::Immutable => write!(f, ""),
         }
     }
 }

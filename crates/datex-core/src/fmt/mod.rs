@@ -148,7 +148,7 @@ impl<'a> Formatter<'a> {
             TypeExpressionData::Ref(inner) => {
                 a.text("&") + self.format_type_expression(inner)
             }
-            TypeExpressionData::RefMut(inner) => {
+            TypeExpressionData::Shared(inner) => {
                 a.text("&mut") + a.space() + self.format_type_expression(inner)
             }
             TypeExpressionData::Identifier(lit) => a.text(lit.to_string()),

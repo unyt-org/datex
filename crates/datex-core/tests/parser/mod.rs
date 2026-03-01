@@ -3513,7 +3513,7 @@ fn variable_declaration_mut() {
             name: "x".to_string(),
             type_annotation: None,
             init_expression: Box::new(
-                DatexExpressionData::CreateRef(CreateRef {
+                DatexExpressionData::CreateShared(CreateRef {
                     mutability: SharedContainerMutability::Mutable,
                     expression: Box::new(
                         DatexExpressionData::List(List::new(vec![
@@ -3545,7 +3545,7 @@ fn variable_declaration_ref() {
             name: "x".to_string(),
             type_annotation: None,
             init_expression: Box::new(
-                DatexExpressionData::CreateRef(CreateRef {
+                DatexExpressionData::CreateShared(CreateRef {
                     mutability: SharedContainerMutability::Immutable,
                     expression: Box::new(
                         DatexExpressionData::List(List::new(vec![
