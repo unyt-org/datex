@@ -58,6 +58,7 @@ use crate::{
 use core::{cell::RefCell, ops::Range, panic, str::FromStr};
 use crate::shared_values::pointer::{Pointer, PointerReferenceMutability};
 use crate::shared_values::pointer_address::PointerAddress;
+use crate::values::core_values::r#type::TypePrefix;
 
 pub mod error;
 pub mod options;
@@ -250,7 +251,7 @@ impl TypeInference {
 fn mark_structural_type<E>(
     definition: StructuralTypeDefinition,
 ) -> Result<VisitAction<E>, SpannedTypeError> {
-    mark_type(Type::structural(definition))
+    mark_type(Type::structural(definition, TypePrefix::default()))
 }
 fn mark_type<E>(ty: Type) -> Result<VisitAction<E>, SpannedTypeError> {
     Ok(VisitAction::SetTypeSkipChildren(ty))
