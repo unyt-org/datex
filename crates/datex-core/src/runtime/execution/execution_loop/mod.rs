@@ -71,6 +71,7 @@ use crate::{
 use alloc::rc::Rc;
 use core::cell::RefCell;
 use crate::shared_values::pointer_address::PointerAddress;
+use crate::values::core_values::r#type::TypePrefix;
 
 #[derive(Debug)]
 enum CollectedExecutionResult {
@@ -474,10 +475,10 @@ pub fn inner_execution_loop(
                     {
                         Some(match type_instruction {
                             TypeInstruction::LiteralInteger(integer) => {
-                                Type::structural(integer.0)
+                                Type::structural(integer.0, TypePrefix::default())
                             }
                             TypeInstruction::LiteralText(text_data) => {
-                                Type::structural(text_data.0)
+                                Type::structural(text_data.0, TypePrefix::default())
                             }
 
                             TypeInstruction::TypeReference(type_ref) => {
