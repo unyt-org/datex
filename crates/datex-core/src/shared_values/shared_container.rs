@@ -401,17 +401,13 @@ impl SharedContainer {
 }
 
 impl SharedContainer {
-    pub fn pointer_address(&self) -> Ref<PointerAddress> {
+    pub fn pointer_address(&self) -> PointerAddress {
         match self {
             SharedContainer::Value(vr) => {
-                Ref::map(vr.borrow(), |r| {
-                    r.pointer_address()
-                })
+                vr.borrow().pointer.address().into_owned()
             }
             SharedContainer::Type(tr) => {
-                Ref::map(tr.borrow(), |r| {
-                    r.pointer_address()
-                })
+                tr.borrow().pointer.address().into_owned()
             }
         }
     }

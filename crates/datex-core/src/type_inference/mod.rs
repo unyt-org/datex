@@ -1087,7 +1087,7 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
                 // remap the expression to a GetReference
                 if let Some(reference) = base_type.inner_reference()
                 {
-                    Ok(reference.borrow().pointer.address().clone())
+                    Ok(Cow::Owned(reference.borrow().pointer.address().into_owned()))
                 } else {
                     Err(SpannedTypeError {
                         error: TypeError::Unimplemented(
@@ -1097,7 +1097,7 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
                     })
                 }
             }
-            ResolvedVariable::PointerAddress(ref addr) => Ok(addr.clone()),
+            ResolvedVariable::PointerAddress(ref addr) => Ok(Cow::Borrowed(addr)),
         }?;
         let variant_type = resolve_type_variant_access(
             &pointer_address,

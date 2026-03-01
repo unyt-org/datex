@@ -383,7 +383,7 @@ impl DIFTypeDefinition {
             }
             TypeDefinition::Reference(type_ref) => {
                 DIFTypeDefinition::Reference(
-                    type_ref.borrow().pointer.address().clone(),
+                    type_ref.borrow().pointer.address().into_owned(),
                 )
             }
             TypeDefinition::Type(type_val) => DIFTypeDefinition::Type(

@@ -3442,7 +3442,7 @@ fn pointer_address() {
     let expr = parse_unwrap_data(src);
     assert_eq!(
         expr,
-        DatexExpressionData::PointerAddress(PointerAddress::Owned([
+        DatexExpressionData::PointerAddress(PointerAddress::Local([
             0x12, 0x34, 0x56, 0x78, 0x9A
         ]))
     );
