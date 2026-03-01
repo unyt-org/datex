@@ -41,17 +41,33 @@ pub fn handle_unary_shared_value_operation(
     memory: &RefCell<Memory>,
 ) -> Result<ValueContainer, ExecutionError> {
     Ok(match operator {
-        SharedValueUnaryOperator::CreateOwned => {
+        SharedValueUnaryOperator::CreateSharedOwned => {
             ValueContainer::Shared(SharedContainer::new(
                 value_container,
                 memory.borrow_mut().get_new_owned_local_pointer(),
             ))
-        },
-        SharedValueUnaryOperator::CreateOwnedMut => {
+        }
+        SharedValueUnaryOperator::CreateSharedOwnedMut => {
             ValueContainer::Shared(SharedContainer::try_new_mut(
                 value_container,
                 memory.borrow_mut().get_new_owned_local_pointer(),
             )?)
+        }
+        SharedValueUnaryOperator::GetReference => {
+            // value_container must be a shared value, otherwise we cannot create a reference to it
+            if let ValueContainer::Shared(shared) = value_container {
+                ValueContainer::Shared(shared.get_reference())
+            } else {
+                return Err(ExecutionError::ReferenceToNonSharedValue);
+            }
+        }
+        SharedValueUnaryOperator::GetReferenceMut => {
+            // value_container must be a shared value, otherwise we cannot create a reference to it
+            if let ValueContainer::Shared(shared) = value_container {
+                ValueContainer::Shared(shared.try_get_reference_mut().ok_or(ExecutionError::MutableReferenceToNonMutableValue)?)
+            } else {
+                return Err(ExecutionError::ReferenceToNonSharedValue);
+            }
         }
         SharedValueUnaryOperator::Deref => {
             if let ValueContainer::Shared(reference) = value_container {

@@ -41,14 +41,14 @@ pub fn append_value_container(
         ValueContainer::Local(value) => append_value(buffer, value),
         ValueContainer::Shared(reference) => {
             // TODO #160: in this case, the ref might also be inserted by pointer id, depending on the compiler settings
-            // add CREATE_REF/CREATE_REF_MUT instruction
+            // add CREATE_SHARED/CREATE_SHARED_MUT instruction
             if reference.mutability() == SharedContainerMutability::Mutable {
                 append_instruction_code(
                     buffer,
-                    InstructionCode::CREATE_REF_MUT,
+                    InstructionCode::CREATE_SHARED_MUT,
                 );
             } else {
-                append_instruction_code(buffer, InstructionCode::CREATE_REF);
+                append_instruction_code(buffer, InstructionCode::CREATE_SHARED);
             }
             // insert pointer id + value or only id
             // add pointer to memory if not there yet

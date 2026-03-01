@@ -513,11 +513,19 @@ pub fn iterate_instructions(
                         }
                         InstructionCode::CREATE_REF => {
                             next_instructions_stack.push_next_regular(1);
-                            RegularInstruction::CreateRef
+                            RegularInstruction::GetReference
                         }
                         InstructionCode::CREATE_REF_MUT => {
                             next_instructions_stack.push_next_regular(1);
-                            RegularInstruction::CreateRefMut
+                            RegularInstruction::GetReferenceMut
+                        }
+                        InstructionCode::CREATE_SHARED => {
+                            next_instructions_stack.push_next_regular(1);
+                            RegularInstruction::CreateShared
+                        }
+                        InstructionCode::CREATE_SHARED_MUT => {
+                            next_instructions_stack.push_next_regular(1);
+                            RegularInstruction::CreateSharedMut
                         }
 
                         // slots
