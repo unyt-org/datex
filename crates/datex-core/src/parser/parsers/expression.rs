@@ -23,6 +23,7 @@ use crate::{
     shared_values::shared_container::SharedContainerMutability,
     values::core_values::error::NumberParseError,
 };
+use crate::ast::expressions::CreateShared;
 
 static UNARY_BP: u8 = 29; // weaker than property access / apply, stronger than all other binary operators
 
@@ -430,6 +431,16 @@ impl Parser {
                 })
                 .with_span(span))
             }
+            // shared
+            Token::Shared => {
+                let op = self.advance()?;
+                let rhs = self.parse_expression(UNARY_BP)?;
+                let span = op.span.start..rhs.span.end;
+                Ok(DatexExpressionData::CreateShared(CreateShared {
+                    expression: Box::new(rhs),
+                })
+                    .with_span(span))
+            }
             // ref (&)
             Token::Ampersand => {
                 let op = self.advance()?;
@@ -442,7 +453,7 @@ impl Parser {
                 .with_span(span))
             }
             // mutable ref (&mut)
-            Token::MutRef => {
+            Token::RefMut => {
                 let op = self.advance()?;
                 let rhs = self.parse_expression(UNARY_BP)?;
                 let span = op.span.start..rhs.span.end;
@@ -450,7 +461,7 @@ impl Parser {
                     mutability: SharedContainerMutability::Mutable,
                     expression: Box::new(rhs),
                 })
-                .with_span(span))
+                    .with_span(span))
             }
             // deref (*)
             Token::Star => {

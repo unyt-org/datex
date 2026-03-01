@@ -214,7 +214,7 @@ impl AstToSourceCodeConverter {
             TypeExpressionData::Ref(inner) => {
                 format!("&{}", self.type_expression_to_source_code(inner,))
             }
-            TypeExpressionData::RefMut(inner) => {
+            TypeExpressionData::Shared(inner) => {
                 format!("&mut {}", self.type_expression_to_source_code(inner,))
             }
             TypeExpressionData::Identifier(literal) => literal.to_string(),
@@ -519,7 +519,7 @@ impl AstToSourceCodeConverter {
             DatexExpressionData::Identifier(l) => l.to_string(),
             DatexExpressionData::Map(map) => self.map_to_source_code(map),
             DatexExpressionData::List(list) => self.list_to_source_code(list),
-            DatexExpressionData::CreateRef(create_ref) => {
+            DatexExpressionData::CreateShared(create_ref) => {
                 match &create_ref.mutability {
                     SharedContainerMutability::Mutable => {
                         format!("&mut {}", self.format(&create_ref.expression))
