@@ -173,12 +173,26 @@ impl Parser {
                 let span = op.span.start..rhs.span.end;
                 Ok(TypeExpressionData::Ref(Box::new(rhs)).with_span(span))
             }
+            // ref (&)
+            Token::RefMut => {
+                let op = self.advance()?;
+                let rhs = self.parse_type_expression(UNARY_BP)?;
+                let span = op.span.start..rhs.span.end;
+                Ok(TypeExpressionData::RefMut(Box::new(rhs)).with_span(span))
+            }
             // shared
             Token::Shared => {
                 let op = self.advance()?;
                 let rhs = self.parse_type_expression(UNARY_BP)?;
                 let span = op.span.start..rhs.span.end;
                 Ok(TypeExpressionData::Shared(Box::new(rhs)).with_span(span))
+            }
+            // mut
+            Token::Mutable => {
+                let op = self.advance()?;
+                let rhs = self.parse_type_expression(UNARY_BP)?;
+                let span = op.span.start..rhs.span.end;
+                Ok(TypeExpressionData::Mut(Box::new(rhs)).with_span(span))
             }
 
             // everything else is a value
@@ -315,7 +329,7 @@ mod tests {
         let expr = parse_type_expression("&mut MyType");
         assert_eq!(
             expr.data,
-            TypeExpressionData::Shared(Box::new(
+            TypeExpressionData::RefMut(Box::new(
                 TypeExpressionData::Identifier("MyType".to_string())
                     .with_default_span()
             ))
@@ -327,7 +341,7 @@ mod tests {
         let expr = parse_type_expression("&mut &MyType");
         assert_eq!(
             expr.data,
-            TypeExpressionData::Shared(Box::new(
+            TypeExpressionData::RefMut(Box::new(
                 TypeExpressionData::Ref(Box::new(
                     TypeExpressionData::Identifier("MyType".to_string())
                         .with_default_span()
@@ -338,11 +352,11 @@ mod tests {
     }
 
     #[test]
-    fn parse_mut_keyword_variant_precedence() {
+    fn parse_mut_ref_keyword_variant_precedence() {
         let expr = parse_type_expression("&mut integer/u8");
         assert_eq!(
             expr.data,
-            TypeExpressionData::Shared(Box::new(
+            TypeExpressionData::RefMut(Box::new(
                 TypeExpressionData::VariantAccess(
                     crate::ast::type_expressions::TypeVariantAccess {
                         name: "integer".to_string(),
@@ -350,6 +364,63 @@ mod tests {
                         base: None,
                     }
                 )
+                .with_default_span()
+            ))
+        );
+    }
+
+    #[test]
+    fn parse_mut_keyword() {
+        let expr = parse_type_expression("mut MyType");
+        assert_eq!(
+            expr.data,
+            TypeExpressionData::Mut(Box::new(
+                TypeExpressionData::Identifier("MyType".to_string())
+                    .with_default_span()
+            ))
+        );
+    }
+
+    #[test]
+    fn parse_shared_keyword() {
+        let expr = parse_type_expression("shared MyType");
+        assert_eq!(
+            expr.data,
+            TypeExpressionData::Shared(Box::new(
+                TypeExpressionData::Identifier("MyType".to_string())
+                    .with_default_span()
+            ))
+        );
+    }
+
+    #[test]
+    fn parse_shared_mut_keyword() {
+        let expr = parse_type_expression("shared mut MyType");
+        assert_eq!(
+            expr.data,
+            TypeExpressionData::Shared(Box::new(
+                TypeExpressionData::Mut(Box::new(
+                    TypeExpressionData::Identifier("MyType".to_string())
+                        .with_default_span()
+                ))
+                .with_default_span()
+            ))
+        );
+    }
+
+    #[test]
+    fn parse_mut_ref_shared_mut() {
+        let expr = parse_type_expression("&mut shared mut MyType");
+        assert_eq!(
+            expr.data,
+            TypeExpressionData::RefMut(Box::new(
+                TypeExpressionData::Shared(Box::new(
+                    TypeExpressionData::Mut(Box::new(
+                        TypeExpressionData::Identifier("MyType".to_string())
+                            .with_default_span()
+                    ))
+                    .with_default_span()
+                ))
                 .with_default_span()
             ))
         );

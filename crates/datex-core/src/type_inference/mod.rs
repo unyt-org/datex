@@ -930,7 +930,7 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
             span: Some(span.clone()),
         })
     }
-    fn visit_create_mut(
+    fn visit_create_mut_ref(
         &mut self,
         datex_expression: &mut DatexExpression,
         _span: &Range<usize>,
