@@ -25,7 +25,7 @@ use core::{cell::RefCell, iter::once, result::Result};
 use datex_macros_internal::LibTypeString;
 use log::info;
 use strum::IntoEnumIterator;
-use crate::shared_values::pointer::{BorrowedPointerMutability, Pointer};
+use crate::shared_values::pointer::{PointerReferenceMutability, Pointer};
 use crate::shared_values::pointer_address::PointerAddress;
 
 type CoreLibTypes = HashMap<CoreLibPointerId, Type>;
@@ -276,7 +276,7 @@ pub fn load_core_lib(memory: &mut Memory) {
         // Import variants directly by variant access operator from base type (e.g., integer -> integer/u8)
         let core_struct = SharedContainer::new(
             Map::from_iter(types_structure),
-            Pointer::new_reference(CoreLibPointerId::Core.into(), BorrowedPointerMutability::Immutable)
+            Pointer::new_reference(CoreLibPointerId::Core.into(), PointerReferenceMutability::Immutable)
         );
         memory.register_shared_container(&core_struct);
     });
@@ -493,7 +493,7 @@ fn create_core_type(
                     reference_mutability: None,
                     type_definition: TypeDefinition::Unit,
                 },
-                pointer: Pointer::new_reference(PointerAddress::from(pointer_id), BorrowedPointerMutability::Immutable),
+                pointer: Pointer::new_reference(PointerAddress::from(pointer_id), PointerReferenceMutability::Immutable),
             }))),
             None,
         ),

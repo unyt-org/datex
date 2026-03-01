@@ -6,6 +6,7 @@ use binrw::{BinRead, BinWrite};
 use core::prelude::rust_2024::*;
 use num_enum::TryFromPrimitive;
 use strum::Display;
+use crate::shared_values::pointer::PointerReferenceMutability;
 
 #[allow(non_camel_case_types)]
 #[derive(
@@ -106,13 +107,13 @@ pub enum TypeMutabilityCode {
     Value,
 }
 
-impl From<&Option<SharedContainerMutability>> for TypeMutabilityCode {
-    fn from(value: &Option<SharedContainerMutability>) -> Self {
+impl From<&Option<PointerReferenceMutability>> for TypeMutabilityCode {
+    fn from(value: &Option<PointerReferenceMutability>) -> Self {
         match value {
-            Some(SharedContainerMutability::Mutable) => {
+            Some(PointerReferenceMutability::Mutable) => {
                 TypeMutabilityCode::MutableReference
             }
-            Some(SharedContainerMutability::Immutable) => {
+            Some(PointerReferenceMutability::Immutable) => {
                 TypeMutabilityCode::ImmutableReference
             }
             None => TypeMutabilityCode::Value,
@@ -120,14 +121,14 @@ impl From<&Option<SharedContainerMutability>> for TypeMutabilityCode {
     }
 }
 
-impl From<TypeMutabilityCode> for Option<SharedContainerMutability> {
+impl From<TypeMutabilityCode> for Option<PointerReferenceMutability> {
     fn from(value: TypeMutabilityCode) -> Self {
         match value {
             TypeMutabilityCode::MutableReference => {
-                Some(SharedContainerMutability::Mutable)
+                Some(PointerReferenceMutability::Mutable)
             }
             TypeMutabilityCode::ImmutableReference => {
-                Some(SharedContainerMutability::Immutable)
+                Some(PointerReferenceMutability::Immutable)
             }
             TypeMutabilityCode::Value => None,
         }

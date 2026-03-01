@@ -608,6 +608,7 @@ mod tests {
         values::core_values::integer::Integer,
     };
     use core::assert_matches;
+    use crate::shared_values::pointer::PointerReferenceMutability;
     use crate::shared_values::pointer_address::PointerAddress;
 
     fn precompile(
@@ -1166,7 +1167,7 @@ mod tests {
                             name: "x".to_string(),
                             init_expression: Box::new(
                                 DatexExpressionData::CreateRef(CreateRef {
-                                    mutability: SharedContainerMutability::Immutable,
+                                    mutability: PointerReferenceMutability::Immutable,
                                     expression: Box::new(
                                         DatexExpressionData::Integer(
                                             Integer::from(42)

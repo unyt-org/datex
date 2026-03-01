@@ -60,6 +60,7 @@ use precompiler::{
     precompile_ast,
     precompiled_ast::{AstMetadata, RichAst, VariableMetadata},
 };
+use crate::shared_values::pointer::PointerReferenceMutability;
 use crate::shared_values::pointer_address::PointerAddress;
 
 pub mod context;
@@ -1282,10 +1283,10 @@ fn compile_expression(
             compilation_context.mark_has_non_static_value();
             compilation_context.append_instruction_code(
                 match create_ref.mutability {
-                    SharedContainerMutability::Immutable => {
+                    PointerReferenceMutability::Immutable => {
                         InstructionCode::CREATE_REF
                     }
-                    SharedContainerMutability::Mutable => {
+                    PointerReferenceMutability::Mutable => {
                         InstructionCode::CREATE_REF_MUT
                     }
                 },
@@ -1303,7 +1304,7 @@ fn compile_expression(
             compilation_context.mark_has_non_static_value();
             // TODO: check if followed by Mut()
             let mutability = SharedContainerMutability::Immutable;
-            
+
             compilation_context.append_instruction_code(
                 match mutability {
                     SharedContainerMutability::Immutable => {

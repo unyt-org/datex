@@ -337,14 +337,14 @@ impl ValueContainer {
     pub fn actual_container_type(&self) -> Type {
         match self {
             ValueContainer::Local(value) => {
-                Type::new(*value.actual_type.clone(), None)
+                Type::new(*value.actual_type.clone())
             }
             ValueContainer::Shared(shared) => {
                 let inner_type =
                     shared.value_container().actual_container_type();
                 Type::new(
                     // when nesting references, we need to keep the reference information
-                    if inner_type.is_reference_type() {
+                    if inner_type.is_shared_type() {
                         TypeDefinition::Type(Box::new(inner_type))
                     }
                     // for simple non-ref type, we can collapse the definition
