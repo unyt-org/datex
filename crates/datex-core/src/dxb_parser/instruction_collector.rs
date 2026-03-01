@@ -488,8 +488,10 @@ impl<T> InstructionCollector<T> {
             RegularInstruction::UnaryMinus
             | RegularInstruction::UnaryPlus
             | RegularInstruction::BitwiseNot
-            | RegularInstruction::CreateRef
-            | RegularInstruction::CreateRefMut
+            | RegularInstruction::GetReference
+            | RegularInstruction::GetReferenceMut
+            | RegularInstruction::CreateShared
+            | RegularInstruction::CreateSharedMut
             | RegularInstruction::Deref
             | RegularInstruction::GetOrCreateRef(_)
             | RegularInstruction::GetOrCreateRefMut(_) => {

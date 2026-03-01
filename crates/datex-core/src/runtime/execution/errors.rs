@@ -2,7 +2,7 @@ use crate::{
     dxb_parser::body::DXBParserError,
     network::com_hub::network_response::ResponseError,
     shared_values::shared_container::{
-        AccessError, AssignmentError, ReferenceCreationError,
+        AccessError, AssignmentError, SharedValueCreationError,
     },
     runtime::execution::execution_loop::state::ExecutionLoopState,
     types::error::IllegalTypeError,
@@ -68,16 +68,18 @@ pub enum ExecutionError {
     DerefOfNonReference,
     InvalidTypeCast,
     ExpectedTypeValue,
+    ReferenceToNonSharedValue,
+    MutableReferenceToNonMutableValue,
     AssignmentError(AssignmentError),
-    ReferenceCreationError(ReferenceCreationError),
+    ReferenceCreationError(SharedValueCreationError),
     IntermediateResultWithState(
         Option<ValueContainer>,
         Option<ExecutionLoopState>,
     ),
     InvalidApply,
 }
-impl From<ReferenceCreationError> for ExecutionError {
-    fn from(error: ReferenceCreationError) -> Self {
+impl From<SharedValueCreationError> for ExecutionError {
+    fn from(error: SharedValueCreationError) -> Self {
         ExecutionError::ReferenceCreationError(error)
     }
 }
@@ -197,6 +199,18 @@ impl Display for ExecutionError {
             }
             ExecutionError::InvalidApply => {
                 core::write!(f, "Invalid apply operation")
+            }
+            ExecutionError::ReferenceToNonSharedValue => {
+                core::write!(
+                    f,
+                    "Tried to create a reference to a non-shared value"
+                )
+            }
+            ExecutionError::MutableReferenceToNonMutableValue => {
+                core::write!(
+                    f,
+                    "Tried to create a mutable reference to a non-mutable value"
+                )
             }
         }
     }

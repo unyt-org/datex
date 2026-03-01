@@ -9,7 +9,7 @@ use crate::{
     shared_values::{
         observers::{ObserveOptions, ObserverError, TransceiverId},
         shared_container::{
-            AccessError, AssignmentError, ReferenceCreationError,
+            AccessError, AssignmentError, SharedValueCreationError,
             SharedContainerMutability, TypeError,
         },
     },
@@ -115,7 +115,7 @@ impl Display for DIFApplyError {
 #[derive(Debug)]
 pub enum DIFCreatePointerError {
     ReferenceNotFound,
-    ReferenceCreationError(ReferenceCreationError),
+    ReferenceCreationError(SharedValueCreationError),
 }
 
 impl From<DIFReferenceNotFoundError> for DIFCreatePointerError {
@@ -151,8 +151,8 @@ impl Display for DIFResolveReferenceError {
     }
 }
 
-impl From<ReferenceCreationError> for DIFCreatePointerError {
-    fn from(err: ReferenceCreationError) -> Self {
+impl From<SharedValueCreationError> for DIFCreatePointerError {
+    fn from(err: SharedValueCreationError) -> Self {
         DIFCreatePointerError::ReferenceCreationError(err)
     }
 }

@@ -165,6 +165,9 @@ pub enum InstructionCode {
     CREATE_REF_MUT,        // &mut ()
     SET_REF,               // &aa = ...
 
+    CREATE_SHARED, // shared x
+    CREATE_SHARED_MUT, // shared mut x
+
     SET_REFERENCE_VALUE, // *x = 10;
 
     DEREF, // *x

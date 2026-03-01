@@ -35,11 +35,17 @@ impl From<&RegularInstruction> for UnaryOperator {
             RegularInstruction::BitwiseNot => {
                 UnaryOperator::Bitwise(BitwiseUnaryOperator::Not)
             }
-            RegularInstruction::CreateRef => {
-                UnaryOperator::Reference(SharedValueUnaryOperator::CreateOwned)
+            RegularInstruction::GetReference => {
+                UnaryOperator::Reference(SharedValueUnaryOperator::GetReference)
             }
-            RegularInstruction::CreateRefMut => {
-                UnaryOperator::Reference(SharedValueUnaryOperator::CreateOwnedMut)
+            RegularInstruction::GetReferenceMut => {
+                UnaryOperator::Reference(SharedValueUnaryOperator::GetReferenceMut)
+            }
+            RegularInstruction::CreateShared => {
+                UnaryOperator::Reference(SharedValueUnaryOperator::CreateSharedOwned)
+            }
+            RegularInstruction::CreateSharedMut => {
+                UnaryOperator::Reference(SharedValueUnaryOperator::CreateSharedOwnedMut)
             }
             RegularInstruction::Deref => {
                 UnaryOperator::Reference(SharedValueUnaryOperator::Deref)
@@ -73,18 +79,22 @@ impl Display for UnaryOperator {
 
 #[derive(Clone, Debug, PartialEq, Copy, Eq)]
 pub enum SharedValueUnaryOperator {
-    CreateOwned,    // &
-    CreateOwnedMut, // &mut
+    CreateSharedOwned,    // shared
+    CreateSharedOwnedMut, // shared mut
+    GetReference,      // &
+    GetReferenceMut,   // &mut
     Deref,        // *
 }
 
 impl From<&SharedValueUnaryOperator> for InstructionCode {
     fn from(op: &SharedValueUnaryOperator) -> Self {
         match op {
-            SharedValueUnaryOperator::CreateOwned => InstructionCode::CREATE_REF,
-            SharedValueUnaryOperator::CreateOwnedMut => {
-                InstructionCode::CREATE_REF_MUT
+            SharedValueUnaryOperator::CreateSharedOwned => InstructionCode::CREATE_SHARED,
+            SharedValueUnaryOperator::CreateSharedOwnedMut => {
+                InstructionCode::CREATE_SHARED_MUT
             }
+            SharedValueUnaryOperator::GetReference => InstructionCode::CREATE_REF,
+            SharedValueUnaryOperator::GetReferenceMut => InstructionCode::CREATE_REF_MUT,
             SharedValueUnaryOperator::Deref => InstructionCode::DEREF,
         }
     }
@@ -93,8 +103,10 @@ impl From<&SharedValueUnaryOperator> for InstructionCode {
 impl Display for SharedValueUnaryOperator {
     fn fmt(&self, f: &mut Formatter) -> core::fmt::Result {
         match self {
-            SharedValueUnaryOperator::CreateOwned => core::write!(f, "&"),
-            SharedValueUnaryOperator::CreateOwnedMut => core::write!(f, "&mut"),
+            SharedValueUnaryOperator::CreateSharedOwned => core::write!(f, "shared"),
+            SharedValueUnaryOperator::CreateSharedOwnedMut => core::write!(f, "shared mut"),
+            SharedValueUnaryOperator::GetReference => core::write!(f, "&"),
+            SharedValueUnaryOperator::GetReferenceMut => core::write!(f, "&mut"),
             SharedValueUnaryOperator::Deref => core::write!(f, "*"),
         }
     }

@@ -138,8 +138,11 @@ pub enum RegularInstruction {
     MultiplyAssign(SlotAddress),
     DivideAssign(SlotAddress),
 
-    CreateRef,
-    CreateRefMut,
+    GetReference,
+    GetReferenceMut,
+
+    CreateShared,
+    CreateSharedMut,
 
     // &ABCDE
     GetRef(RawFullPointerAddress),
@@ -339,9 +342,13 @@ impl Display for RegularInstruction {
                     hex::encode(address.id)
                 )
             }
-            RegularInstruction::CreateRef => core::write!(f, "CREATE_REF"),
-            RegularInstruction::CreateRefMut => {
+            RegularInstruction::GetReference => core::write!(f, "CREATE_REF"),
+            RegularInstruction::GetReferenceMut => {
                 core::write!(f, "CREATE_REF_MUT")
+            }
+            RegularInstruction::CreateShared => core::write!(f, "CREATE_SHARED"),
+            RegularInstruction::CreateSharedMut => {
+                core::write!(f, "CREATE_SHARED_MUT")
             }
             RegularInstruction::GetOrCreateRef(data) => {
                 core::write!(
