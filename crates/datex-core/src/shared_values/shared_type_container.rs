@@ -120,9 +120,6 @@ impl SharedTypeContainer {
 }
 
 impl SharedTypeContainer {
-    pub fn pointer_address(&self) -> &PointerAddress {
-        self.pointer.address()
-    }
 
     pub fn structural_type_definition(
         &self,
@@ -203,7 +200,7 @@ impl Display for SharedTypeContainer {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
         if let Some(nominal) = &self.nominal_type_declaration {
             // special exception: for Unit, display "()"
-            if self.pointer.address()
+            if self.pointer.address().as_ref()
                 == &PointerAddress::from(CoreLibPointerId::Unit)
             {
                 return core::write!(f, "()");
