@@ -12,7 +12,7 @@ use crate::{
         options::{StatementFormatting, VariantFormatting},
     },
     prelude::*,
-    shared_values::shared_container::ReferenceMutability,
+    shared_values::shared_container::SharedContainerMutability,
     values::core_values::{
         decimal::typed_decimal::TypedDecimal,
         integer::typed_integer::TypedInteger,
@@ -44,8 +44,8 @@ impl<'a> Formatter<'a> {
             DatexExpressionData::List(list) => self.list_to_source_code(list),
             DatexExpressionData::CreateRef(create_ref) => {
                 (match create_ref.mutability {
-                    ReferenceMutability::Immutable => a.text("&"),
-                    ReferenceMutability::Mutable => a.text("&mut "),
+                    SharedContainerMutability::Immutable => a.text("&"),
+                    SharedContainerMutability::Mutable => a.text("&mut "),
                 }) + self.format_datex_expression(&create_ref.expression)
             }
             DatexExpressionData::BinaryOperation(BinaryOperation {

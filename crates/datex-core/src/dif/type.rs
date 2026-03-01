@@ -1,7 +1,7 @@
 use crate::{
     dif::{representation::DIFTypeRepresentation, DIFConvertible},
     runtime::memory::Memory,
-    shared_values::shared_container::ReferenceMutability,
+    shared_values::shared_container::SharedContainerMutability,
     types::{
         definition::TypeDefinition,
         structural_type_definition::StructuralTypeDefinition,
@@ -479,7 +479,7 @@ impl DIFTypeDefinition {
 #[derive(Clone, Debug, PartialEq)]
 pub struct DIFType {
     pub name: Option<String>,
-    pub mutability: Option<ReferenceMutability>,
+    pub mutability: Option<SharedContainerMutability>,
     pub type_definition: DIFTypeDefinition,
 }
 impl DIFConvertible for DIFType {}
@@ -550,7 +550,7 @@ impl<'de> Deserialize<'de> for DIFType {
                 V: MapAccess<'de>,
             {
                 let mut name: Option<String> = None;
-                let mut mutability: Option<ReferenceMutability> = None;
+                let mut mutability: Option<SharedContainerMutability> = None;
                 let mut type_definition: Option<DIFTypeDefinition> = None;
 
                 while let Some(key) = map.next_key::<String>()? {
@@ -640,7 +640,7 @@ mod tests {
     fn dif_type_serialization() {
         let dif_type = DIFType {
             name: Some("ExampleType".to_string()),
-            mutability: Some(ReferenceMutability::Mutable),
+            mutability: Some(SharedContainerMutability::Mutable),
             type_definition: DIFTypeDefinition::Unit,
         };
         let serialized = dif_type.as_json();

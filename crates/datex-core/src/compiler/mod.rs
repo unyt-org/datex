@@ -46,7 +46,7 @@ use crate::{
     },
     parser::{Parser, ParserOptions},
     runtime::execution::context::ExecutionMode,
-    shared_values::shared_container::ReferenceMutability,
+    shared_values::shared_container::SharedContainerMutability,
     time::Instant,
     utils::buffers::{append_u16, append_u32, append_u8},
     values::{
@@ -1282,10 +1282,10 @@ fn compile_expression(
             compilation_context.mark_has_non_static_value();
             compilation_context.append_instruction_code(
                 match create_ref.mutability {
-                    ReferenceMutability::Immutable => {
+                    SharedContainerMutability::Immutable => {
                         InstructionCode::CREATE_REF
                     }
-                    ReferenceMutability::Mutable => {
+                    SharedContainerMutability::Mutable => {
                         InstructionCode::CREATE_REF_MUT
                     }
                 },

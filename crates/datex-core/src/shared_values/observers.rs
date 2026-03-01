@@ -185,7 +185,7 @@ mod tests {
             observers::{
                 ObserveOptions, Observer, ObserverError, TransceiverId,
             },
-            shared_container::{SharedContainer, ReferenceMutability},
+            shared_container::{SharedContainer, SharedContainerMutability},
         },
         runtime::memory::Memory,
         values::{core_values::map::Map, value_container::ValueContainer},
@@ -224,7 +224,7 @@ mod tests {
             42.into(),
             None,
             Pointer::NULL,
-            ReferenceMutability::Immutable,
+            SharedContainerMutability::Immutable,
         )
         .unwrap();
         assert_matches!(
@@ -236,7 +236,7 @@ mod tests {
             42.into(),
             None,
             Pointer::NULL,
-            ReferenceMutability::Mutable,
+            SharedContainerMutability::Mutable,
         )
         .unwrap();
         assert_matches!(r.observe(Observer::new(|_, _| {})), Ok(_));

@@ -147,39 +147,39 @@ impl Display for AssignmentError {
     Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, TryFromPrimitive,
 )]
 #[repr(u8)]
-pub enum ReferenceMutability {
+pub enum SharedContainerMutability {
     Mutable = 0,
     Immutable = 1,
 }
 
 pub mod mutability_as_int {
-    use super::ReferenceMutability;
+    use super::SharedContainerMutability;
     use crate::prelude::*;
     use serde::{de::Error, Deserialize, Deserializer, Serializer};
 
     pub fn serialize<S>(
-        value: &ReferenceMutability,
+        value: &SharedContainerMutability,
         serializer: S,
     ) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
         match value {
-            ReferenceMutability::Mutable => serializer.serialize_u8(0),
-            ReferenceMutability::Immutable => serializer.serialize_u8(1),
+            SharedContainerMutability::Mutable => serializer.serialize_u8(0),
+            SharedContainerMutability::Immutable => serializer.serialize_u8(1),
         }
     }
 
     pub fn deserialize<'de, D>(
         deserializer: D,
-    ) -> Result<ReferenceMutability, D::Error>
+    ) -> Result<SharedContainerMutability, D::Error>
     where
         D: Deserializer<'de>,
     {
         let opt = u8::deserialize(deserializer)?;
         Ok(match opt {
-            0 => ReferenceMutability::Mutable,
-            1 => ReferenceMutability::Immutable,
+            0 => SharedContainerMutability::Mutable,
+            1 => SharedContainerMutability::Immutable,
             x => {
                 return Err(D::Error::custom(format!(
                     "invalid mutability code: {}",
@@ -190,35 +190,35 @@ pub mod mutability_as_int {
     }
 }
 pub mod mutability_option_as_int {
-    use super::ReferenceMutability;
+    use super::SharedContainerMutability;
 
     use crate::prelude::*;
     use serde::{de::Error, Deserialize, Deserializer, Serializer};
 
     pub fn serialize<S>(
-        value: &Option<ReferenceMutability>,
+        value: &Option<SharedContainerMutability>,
         serializer: S,
     ) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
         match value {
-            Some(ReferenceMutability::Mutable) => serializer.serialize_u8(0),
-            Some(ReferenceMutability::Immutable) => serializer.serialize_u8(1),
+            Some(SharedContainerMutability::Mutable) => serializer.serialize_u8(0),
+            Some(SharedContainerMutability::Immutable) => serializer.serialize_u8(1),
             None => serializer.serialize_none(),
         }
     }
 
     pub fn deserialize<'de, D>(
         deserializer: D,
-    ) -> Result<Option<ReferenceMutability>, D::Error>
+    ) -> Result<Option<SharedContainerMutability>, D::Error>
     where
         D: Deserializer<'de>,
     {
         let opt = Option::<u8>::deserialize(deserializer)?;
         Ok(match opt {
-            Some(0) => Some(ReferenceMutability::Mutable),
-            Some(1) => Some(ReferenceMutability::Immutable),
+            Some(0) => Some(SharedContainerMutability::Mutable),
+            Some(1) => Some(SharedContainerMutability::Immutable),
             Some(x) => {
                 return Err(D::Error::custom(format!(
                     "invalid mutability code: {}",
@@ -230,11 +230,11 @@ pub mod mutability_option_as_int {
     }
 }
 
-impl Display for ReferenceMutability {
+impl Display for SharedContainerMutability {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
-            ReferenceMutability::Mutable => write!(f, "&mut"),
-            ReferenceMutability::Immutable => write!(f, "&"),
+            SharedContainerMutability::Mutable => write!(f, "&mut"),
+            SharedContainerMutability::Immutable => write!(f, "&"),
         }
     }
 }
@@ -418,10 +418,10 @@ impl SharedContainer {
 
     /// Gets the mutability of the reference.
     /// TypeReferences are always immutable.
-    pub(crate) fn mutability(&self) -> ReferenceMutability {
+    pub(crate) fn mutability(&self) -> SharedContainerMutability {
         match self {
             SharedContainer::Value(vr) => vr.borrow().mutability.clone(),
-            SharedContainer::Type(_) => ReferenceMutability::Immutable,
+            SharedContainer::Type(_) => SharedContainerMutability::Immutable,
         }
     }
 
@@ -436,7 +436,7 @@ impl SharedContainer {
             SharedContainer::Value(vr) => {
                 let vr_borrow = vr.borrow();
                 // if the current reference is immutable, whole chain is immutable
-                if vr_borrow.mutability != ReferenceMutability::Mutable {
+                if vr_borrow.mutability != SharedContainerMutability::Mutable {
                     return false;
                 }
 
@@ -454,7 +454,7 @@ impl SharedContainer {
         value_container: ValueContainer,
         allowed_type: Option<TypeDefinition>,
         pointer: Pointer,
-        mutability: ReferenceMutability,
+        mutability: SharedContainerMutability,
     ) -> Result<Self, ReferenceCreationError> {
         // FIXME #285 implement type check
         Ok(match value_container {
@@ -475,7 +475,7 @@ impl SharedContainer {
                         )))
                     }
                     SharedContainer::Type(tr) => {
-                        if mutability == ReferenceMutability::Mutable {
+                        if mutability == SharedContainerMutability::Mutable {
                             return Err(
                                 ReferenceCreationError::MutableTypeReference,
                             );
@@ -498,7 +498,7 @@ impl SharedContainer {
                         if allowed_type.is_some() {
                             return Err(ReferenceCreationError::InvalidType);
                         }
-                        if mutability == ReferenceMutability::Mutable {
+                        if mutability == SharedContainerMutability::Mutable {
                             return Err(
                                 ReferenceCreationError::MutableTypeReference,
                             );
@@ -549,7 +549,7 @@ impl SharedContainer {
             value_container,
             None,
             pointer,
-            ReferenceMutability::Mutable,
+            SharedContainerMutability::Mutable,
         )
     }
 
@@ -561,7 +561,7 @@ impl SharedContainer {
             value_container.into(),
             None,
             pointer,
-            ReferenceMutability::Immutable,
+            SharedContainerMutability::Immutable,
         ).unwrap()
     }
 
@@ -750,7 +750,7 @@ mod tests {
             value,
             Pointer::NULL,
         ).unwrap();
-        assert_eq!(reference.mutability(), ReferenceMutability::Mutable);
+        assert_eq!(reference.mutability(), SharedContainerMutability::Mutable);
 
         // creating a mutable reference from a type should fail
         let type_value = ValueContainer::Shared(SharedContainer::Type(
@@ -907,7 +907,7 @@ mod tests {
             Map::default().into(),
             None,
             Pointer::NULL,
-            ReferenceMutability::Mutable,
+            SharedContainerMutability::Mutable,
         )
         .unwrap();
 
@@ -924,7 +924,7 @@ mod tests {
         assert_identical!(map_a_ref, map_a_original_ref);
         // map_a_ref should be a reference
         assert_matches!(map_a_ref, ValueContainer::Shared(_));
-        map_a_ref.with_maybe_reference(|a_ref| {
+        map_a_ref.with_maybe_shared(|a_ref| {
             // map_a_ref.number should be a value
             assert_matches!(
                 a_ref.try_get_property("number"),
