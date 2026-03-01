@@ -50,6 +50,7 @@ use datex_core::{
     shared_values::shared_container::SharedContainerMutability,
     values::core_values::error::NumberParseError,
 };
+use datex_core::ast::expressions::{CreateMut, CreateShared};
 use datex_core::shared_values::pointer_address::PointerAddress;
 
 /// Parse the given source code into a DatexExpression AST.
@@ -3502,8 +3503,8 @@ fn variable_sub_assignment() {
 }
 
 #[test]
-fn variable_declaration_mut() {
-    let src = "const x = &mut [1, 2, 3]";
+fn variable_declaration_shared_mut() {
+    let src = "const x = shared mut [1, 2, 3]";
     let expr = parse_unwrap_data(src);
     assert_eq!(
         expr,
@@ -3513,19 +3514,20 @@ fn variable_declaration_mut() {
             name: "x".to_string(),
             type_annotation: None,
             init_expression: Box::new(
-                DatexExpressionData::CreateShared(CreateRef {
-                    mutability: SharedContainerMutability::Mutable,
-                    expression: Box::new(
-                        DatexExpressionData::List(List::new(vec![
-                            DatexExpressionData::Integer(Integer::from(1))
-                                .with_default_span(),
-                            DatexExpressionData::Integer(Integer::from(2))
-                                .with_default_span(),
-                            DatexExpressionData::Integer(Integer::from(3))
-                                .with_default_span(),
-                        ]))
-                        .with_default_span()
-                    )
+                DatexExpressionData::CreateShared(CreateShared {
+                    expression: Box::new(DatexExpressionData::CreateMut(CreateMut {
+                        expression: Box::new(
+                            DatexExpressionData::List(List::new(vec![
+                                DatexExpressionData::Integer(Integer::from(1))
+                                    .with_default_span(),
+                                DatexExpressionData::Integer(Integer::from(2))
+                                    .with_default_span(),
+                                DatexExpressionData::Integer(Integer::from(3))
+                                    .with_default_span(),
+                            ]))
+                                .with_default_span()
+                        )
+                    }).with_default_span())
                 })
                 .with_default_span()
             ),
@@ -3534,8 +3536,8 @@ fn variable_declaration_mut() {
 }
 
 #[test]
-fn variable_declaration_ref() {
-    let src = "const x = &[1, 2, 3]";
+fn variable_declaration_shared() {
+    let src = "const x = shared [1, 2, 3]";
     let expr = parse_unwrap_data(src);
     assert_eq!(
         expr,
@@ -3545,8 +3547,7 @@ fn variable_declaration_ref() {
             name: "x".to_string(),
             type_annotation: None,
             init_expression: Box::new(
-                DatexExpressionData::CreateShared(CreateRef {
-                    mutability: SharedContainerMutability::Immutable,
+                DatexExpressionData::CreateShared(CreateShared {
                     expression: Box::new(
                         DatexExpressionData::List(List::new(vec![
                             DatexExpressionData::Integer(Integer::from(1))

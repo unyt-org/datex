@@ -12,7 +12,7 @@ use crate::{
         type_expression::visitable::VisitableTypeExpression,
     },
 };
-use crate::ast::expressions::CreateShared;
+use crate::ast::expressions::{CreateMut, CreateShared};
 
 pub type ExpressionVisitResult<E> = Result<VisitAction<DatexExpression>, E>;
 
@@ -253,6 +253,16 @@ impl<E> VisitableExpression<E> for CreateShared {
     }
 }
 
+impl<E> VisitableExpression<E> for CreateMut {
+    fn walk_children(
+        &mut self,
+        visitor: &mut impl ExpressionVisitor<E>,
+    ) -> Result<(), E> {
+        visitor.visit_datex_expression(&mut self.expression)?;
+        Ok(())
+    }
+}
+
 impl<E> VisitableExpression<E> for PropertyAssignment {
     fn walk_children(
         &mut self,
@@ -305,6 +315,9 @@ impl<E> VisitableExpression<E> for DatexExpression {
             }
             DatexExpressionData::CreateShared(create_ref) => {
                 create_ref.walk_children(visitor)
+            }
+            DatexExpressionData::CreateMut(create_mut) => {
+                create_mut.walk_children(visitor)
             }
             DatexExpressionData::Deref(datex_expression) => {
                 datex_expression.walk_children(visitor)

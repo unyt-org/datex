@@ -142,6 +142,9 @@ pub enum DatexExpressionData {
     CreateShared(CreateShared),
     /// Create a new reference
     CreateRef(CreateRef),
+    
+    /// Creates a new mutable value
+    CreateMut(CreateMut),
 
     /// Deref
     Deref(Deref),
@@ -533,5 +536,10 @@ pub struct CreateRef {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct CreateShared {
+    pub expression: Box<DatexExpression>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct CreateMut {
     pub expression: Box<DatexExpression>,
 }

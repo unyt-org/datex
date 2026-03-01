@@ -116,8 +116,14 @@ pub trait TypeExpressionVisitor<E>: Sized {
             TypeExpressionData::Ref(type_ref) => {
                 self.visit_ref_type(type_ref, &expr.span)
             }
-            TypeExpressionData::Shared(type_ref_mut) => {
+            TypeExpressionData::RefMut(type_ref_mut) => {
                 self.visit_ref_mut_type(type_ref_mut, &expr.span)
+            }
+            TypeExpressionData::Shared(type_shared) => {
+                self.visit_shared_type(type_shared, &expr.span)
+            }
+            TypeExpressionData::Mut(type_mut) => {
+                self.visit_mut_type(type_mut, &expr.span)
             }
             TypeExpressionData::Identifier(literal) => {
                 self.visit_literal_type(literal, &expr.span)
@@ -287,6 +293,26 @@ pub trait TypeExpressionVisitor<E>: Sized {
     ) -> TypeExpressionVisitResult<E> {
         let _ = span;
         let _ = type_ref_mut;
+        Ok(VisitAction::VisitChildren)
+    }
+    
+    fn visit_shared_type(
+        &mut self,
+        type_shared: &mut TypeExpression,
+        span: &Range<usize>,
+    ) -> TypeExpressionVisitResult<E> {
+        let _ = span;
+        let _ = type_shared;
+        Ok(VisitAction::VisitChildren)
+    }
+    
+    fn visit_mut_type(
+        &mut self,
+        type_mut: &mut TypeExpression,
+        span: &Range<usize>,
+    ) -> TypeExpressionVisitResult<E> {
+        let _ = span;
+        let _ = type_mut;
         Ok(VisitAction::VisitChildren)
     }
 

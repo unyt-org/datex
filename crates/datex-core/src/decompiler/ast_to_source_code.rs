@@ -214,8 +214,14 @@ impl AstToSourceCodeConverter {
             TypeExpressionData::Ref(inner) => {
                 format!("&{}", self.type_expression_to_source_code(inner,))
             }
-            TypeExpressionData::Shared(inner) => {
+            TypeExpressionData::RefMut(inner) => {
                 format!("&mut {}", self.type_expression_to_source_code(inner,))
+            }
+            TypeExpressionData::Shared(inner) => {
+                format!("shared {}", self.type_expression_to_source_code(inner,))
+            }
+            TypeExpressionData::Mut(inner) => {
+                format!("mut {}", self.type_expression_to_source_code(inner,))
             }
             TypeExpressionData::Identifier(literal) => literal.to_string(),
             TypeExpressionData::VariableAccess(VariableAccess {
@@ -519,7 +525,7 @@ impl AstToSourceCodeConverter {
             DatexExpressionData::Identifier(l) => l.to_string(),
             DatexExpressionData::Map(map) => self.map_to_source_code(map),
             DatexExpressionData::List(list) => self.list_to_source_code(list),
-            DatexExpressionData::CreateShared(create_ref) => {
+            DatexExpressionData::CreateRef(create_ref) => {
                 match &create_ref.mutability {
                     SharedContainerMutability::Mutable => {
                         format!("&mut {}", self.format(&create_ref.expression))
@@ -528,6 +534,12 @@ impl AstToSourceCodeConverter {
                         format!("&{}", self.format(&create_ref.expression))
                     }
                 }
+            }
+            DatexExpressionData::CreateShared(create_shared) => {
+                format!("shared {}", self.format(&create_shared.expression))
+            }
+            DatexExpressionData::CreateMut(create_shared) => {
+                format!("mut {}", self.format(&create_shared.expression))
             }
             DatexExpressionData::BinaryOperation(BinaryOperation {
                 operator,

@@ -148,8 +148,14 @@ impl<'a> Formatter<'a> {
             TypeExpressionData::Ref(inner) => {
                 a.text("&") + self.format_type_expression(inner)
             }
+            TypeExpressionData::RefMut(inner) => {
+                a.text("&mut") + self.format_type_expression(inner)
+            }
             TypeExpressionData::Shared(inner) => {
-                a.text("&mut") + a.space() + self.format_type_expression(inner)
+                a.text("shared") + a.space() + self.format_type_expression(inner)
+            }
+            TypeExpressionData::Mut(inner) => {
+                a.text("mut") + a.space() + self.format_type_expression(inner)
             }
             TypeExpressionData::Identifier(lit) => a.text(lit.to_string()),
             TypeExpressionData::VariableAccess(VariableAccess {
@@ -408,10 +414,10 @@ mod tests {
 
     #[test]
     fn type_declarations() {
-        let expr = "type<&mut integer/u8>";
+        let expr = "type<shared mut integer/u8>";
         assert_eq!(
             to_string(expr, FormattingOptions::default()),
-            "type<&mut integer/u8>"
+            "type<shared mut integer/u8>"
         );
 
         let expr = "type<text | integer/u16 | decimal/f32>";
@@ -427,15 +433,15 @@ mod tests {
 
     #[test]
     fn variable_declaration() {
-        let expr = "var x: &mut integer/u8 = 42;";
+        let expr = "var x: shared mut integer/u8 = 42;";
         assert_eq!(
             to_string(expr, FormattingOptions::default()),
-            "var x: &mut integer/u8 = 42;"
+            "var x: shared mut integer/u8 = 42;"
         );
 
         assert_eq!(
             to_string(expr, FormattingOptions::compact()),
-            "var x:&mut integer/u8=42;"
+            "var x:shared mut integer/u8=42;"
         );
     }
 

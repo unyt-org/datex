@@ -152,6 +152,12 @@ impl<E> VisitableTypeExpression<E> for TypeExpression {
             TypeExpressionData::Ref(type_expression) => {
                 type_expression.walk_children(visitor)
             }
+            TypeExpressionData::RefMut(type_expression) => {
+                type_expression.walk_children(visitor)
+            }
+            TypeExpressionData::Mut(type_expression) => {
+                type_expression.walk_children(visitor)
+            }
             TypeExpressionData::Shared(type_expression) => {
                 type_expression.walk_children(visitor)
             }
