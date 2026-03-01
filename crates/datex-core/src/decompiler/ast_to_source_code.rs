@@ -20,6 +20,7 @@ use crate::{
     decompiler::{FormattingMode, FormattingOptions, IndentType},
     shared_values::shared_container::SharedContainerMutability,
 };
+use crate::shared_values::pointer::PointerReferenceMutability;
 
 #[derive(Clone, Default)]
 pub enum BraceStyle {
@@ -527,10 +528,10 @@ impl AstToSourceCodeConverter {
             DatexExpressionData::List(list) => self.list_to_source_code(list),
             DatexExpressionData::CreateRef(create_ref) => {
                 match &create_ref.mutability {
-                    SharedContainerMutability::Mutable => {
+                    PointerReferenceMutability::Mutable => {
                         format!("&mut {}", self.format(&create_ref.expression))
                     }
-                    SharedContainerMutability::Immutable => {
+                    PointerReferenceMutability::Immutable => {
                         format!("&{}", self.format(&create_ref.expression))
                     }
                 }

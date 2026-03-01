@@ -115,7 +115,7 @@ impl SharedTypeContainer {
         }
     }
     pub fn mutability(&self) -> Option<SharedContainerMutability> {
-        self.type_value.reference_mutability()
+        self.type_value.shared_reference_mutability()
     }
 }
 

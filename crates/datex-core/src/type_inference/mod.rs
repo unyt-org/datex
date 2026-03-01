@@ -56,7 +56,7 @@ use crate::{
     },
 };
 use core::{cell::RefCell, ops::Range, panic, str::FromStr};
-use crate::shared_values::pointer::Pointer;
+use crate::shared_values::pointer::{Pointer, PointerReferenceMutability};
 use crate::shared_values::pointer_address::PointerAddress;
 
 pub mod error;
@@ -941,12 +941,12 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
                 type_definition: TypeDefinition::Type(Box::new(
                     inner_type.clone(),
                 )),
-                reference_mutability: Some(SharedContainerMutability::Mutable),
+                reference_mutability: Some(PointerReferenceMutability::Mutable),
                 base_type: None,
             },
             Some(r) => Type {
                 type_definition: TypeDefinition::Reference(r.clone()),
-                reference_mutability: Some(SharedContainerMutability::Mutable),
+                reference_mutability: Some(PointerReferenceMutability::Mutable),
                 base_type: None,
             },
         })
@@ -1170,8 +1170,8 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
         //         span: Some(span.clone()),
         //     });
         // }
-        if expression_type.reference_mutability()
-            != Some(SharedContainerMutability::Mutable)
+        if expression_type.shared_reference_mutability()
+            != Some(PointerReferenceMutability::Mutable)
         {
             return Err(SpannedTypeError {
                 error: TypeError::AssignmentToImmutableReference(
