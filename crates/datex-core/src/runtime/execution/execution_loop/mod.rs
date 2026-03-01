@@ -444,8 +444,10 @@ pub fn inner_execution_loop(
                             RegularInstruction::SubtractAssign(_) |
                             RegularInstruction::MultiplyAssign(_) |
                             RegularInstruction::DivideAssign(_) |
-                            RegularInstruction::CreateRef |
-                            RegularInstruction::CreateRefMut |
+                            RegularInstruction::GetReference |
+                            RegularInstruction::GetReferenceMut |
+                            RegularInstruction::CreateShared |
+                            RegularInstruction::CreateSharedMut |
                             RegularInstruction::GetOrCreateRef(_) |
                             RegularInstruction::GetOrCreateRefMut(_) |
                             RegularInstruction::AllocateSlot(_) |
@@ -670,8 +672,10 @@ pub fn inner_execution_loop(
                                 RegularInstruction::UnaryMinus
                                 | RegularInstruction::UnaryPlus
                                 | RegularInstruction::BitwiseNot
-                                | RegularInstruction::CreateRef
-                                | RegularInstruction::CreateRefMut
+                                | RegularInstruction::GetReference
+                                | RegularInstruction::GetReferenceMut
+                                | RegularInstruction::CreateShared
+                                | RegularInstruction::CreateSharedMut
                                 | RegularInstruction::Deref => {
                                     let mut target = yield_unwrap!(
                                         collected_results

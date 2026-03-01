@@ -1298,6 +1298,30 @@ fn compile_expression(
             )?;
         }
 
+        // shared values
+        DatexExpressionData::CreateShared(create_shared) => {
+            compilation_context.mark_has_non_static_value();
+            // TODO: check if followed by Mut()
+            let mutability = SharedContainerMutability::Immutable;
+            
+            compilation_context.append_instruction_code(
+                match mutability {
+                    SharedContainerMutability::Immutable => {
+                        InstructionCode::CREATE_SHARED
+                    }
+                    SharedContainerMutability::Mutable => {
+                        InstructionCode::CREATE_SHARED_MUT
+                    }
+                },
+            );
+            scope = compile_expression(
+                compilation_context,
+                RichAst::new(*create_shared.expression, &metadata),
+                CompileMetadata::default(),
+                scope,
+            )?;
+        }
+
         DatexExpressionData::TypeExpression(type_expression) => {
             compilation_context
                 .append_instruction_code(InstructionCode::TYPE_EXPRESSION);

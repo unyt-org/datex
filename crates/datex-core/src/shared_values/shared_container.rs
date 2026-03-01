@@ -347,22 +347,22 @@ impl Hash for SharedContainer {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum ReferenceCreationError {
+pub enum SharedValueCreationError {
     InvalidType,
     MutableTypeReference,
 }
 
-impl Display for ReferenceCreationError {
+impl Display for SharedValueCreationError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
-            ReferenceCreationError::InvalidType => {
+            SharedValueCreationError::InvalidType => {
                 write!(
                     f,
-                    "Cannot create reference from value container: invalid type"
+                    "Cannot create shared value from value container: invalid type"
                 )
             }
-            ReferenceCreationError::MutableTypeReference => {
-                write!(f, "Cannot create mutable reference for type")
+            SharedValueCreationError::MutableTypeReference => {
+                write!(f, "Cannot create mutable shared value for type")
             }
         }
     }
@@ -412,6 +412,17 @@ impl SharedContainer {
         }
     }
 
+    pub fn pointer(&self) -> Ref<Pointer> {
+        match self {
+            SharedContainer::Value(vr) => {
+                Ref::map(vr.borrow(), |vr| &vr.pointer)
+            }
+            SharedContainer::Type(tr) => {
+                Ref::map(tr.borrow(), |tr| &tr.pointer)
+            }
+        }
+    }
+
     /// Gets the mutability of the reference.
     /// TypeReferences are always immutable.
     pub(crate) fn mutability(&self) -> SharedContainerMutability {
@@ -451,7 +462,7 @@ impl SharedContainer {
         allowed_type: Option<TypeDefinition>,
         pointer: Pointer,
         mutability: SharedContainerMutability,
-    ) -> Result<Self, ReferenceCreationError> {
+    ) -> Result<Self, SharedValueCreationError> {
         // FIXME #285 implement type check
         Ok(match value_container {
             ValueContainer::Shared(ref reference) => {
@@ -473,7 +484,7 @@ impl SharedContainer {
                     SharedContainer::Type(tr) => {
                         if mutability == SharedContainerMutability::Mutable {
                             return Err(
-                                ReferenceCreationError::MutableTypeReference,
+                                SharedValueCreationError::MutableTypeReference,
                             );
                         }
                         SharedContainer::Type(
@@ -492,11 +503,11 @@ impl SharedContainer {
                     CoreValue::Type(type_value) => {
                         // TODO #287: allowed_type "Type" is also allowed
                         if allowed_type.is_some() {
-                            return Err(ReferenceCreationError::InvalidType);
+                            return Err(SharedValueCreationError::InvalidType);
                         }
                         if mutability == SharedContainerMutability::Mutable {
                             return Err(
-                                ReferenceCreationError::MutableTypeReference,
+                                SharedValueCreationError::MutableTypeReference,
                             );
                         }
                         SharedContainer::new_from_type(
@@ -540,7 +551,7 @@ impl SharedContainer {
     pub fn try_new_mut(
         value_container: ValueContainer,
         pointer: Pointer,
-    ) -> Result<Self, ReferenceCreationError> {
+    ) -> Result<Self, SharedValueCreationError> {
         SharedContainer::try_new_from_value_container(
             value_container,
             None,
@@ -559,6 +570,42 @@ impl SharedContainer {
             pointer,
             SharedContainerMutability::Immutable,
         ).unwrap()
+    }
+
+    /// Gets an immutable reference to this shared container
+    pub fn get_reference(&self) -> Self {
+        let pointer = Pointer::Reference(self.pointer().get_reference());
+        let mut clone = self.clone();
+        match &mut clone {
+            SharedContainer::Value(vr) => {
+                vr.borrow_mut().pointer = pointer;
+            }
+            SharedContainer::Type(tr) => {
+                tr.borrow_mut().pointer = pointer;
+            }
+        }
+        clone
+    }
+    
+    /// Gets a mutable reference to this shared container if possible, otherwise returns None.
+    pub fn try_get_reference_mut(&self) -> Option<Self> {
+        // if the current shared container is not mutable, we cannot create a mutable reference to it
+        if !self.is_mutable() {
+            return None;
+        }
+        
+        let pointer = self.pointer().get_reference_mut()?;
+        let mut clone = self.clone();
+        match &mut clone {
+            SharedContainer::Value(vr) => {
+                vr.borrow_mut().pointer = Pointer::Reference(pointer);
+            }
+            SharedContainer::Type(_) => {
+                // type references cannot be mutable
+                return None;
+            }
+        }
+        Some(clone)
     }
 
     /// Collapses the reference chain to most inner reference to which this reference points.
@@ -754,7 +801,7 @@ mod tests {
         ));
         assert_matches!(
             SharedContainer::try_new_mut(type_value, Pointer::NULL),
-            Err(ReferenceCreationError::MutableTypeReference)
+            Err(SharedValueCreationError::MutableTypeReference)
         );
     }
 
