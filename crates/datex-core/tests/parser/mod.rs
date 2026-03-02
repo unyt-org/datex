@@ -29,7 +29,7 @@ use datex_core::{
         expressions::{
             Apply, BinaryOperation, CallableDeclaration, CallableKind,
             ComparisonOperation, Conditional, CreateRef, DatexExpression,
-            DatexExpressionData, Deref, GenericInstantiation, List, Map,
+            DatexExpressionData, Unbox, GenericInstantiation, List, Map,
             PropertyAccess, PropertyAssignment, Slot, UnaryOperation,
             VariableAssignment, VariableDeclaration, VariableKind,
         },
@@ -3390,7 +3390,7 @@ fn deref() {
     let expr = parse_unwrap_data(src);
     assert_eq!(
         expr,
-        DatexExpressionData::Deref(Deref {
+        DatexExpressionData::Unbox(Unbox {
             expression: Box::new(
                 DatexExpressionData::Identifier("x".to_string())
                     .with_default_span()
@@ -3405,9 +3405,9 @@ fn deref_multiple() {
     let expr = parse_unwrap_data(src);
     assert_eq!(
         expr,
-        DatexExpressionData::Deref(Deref {
+        DatexExpressionData::Unbox(Unbox {
             expression: Box::new(
-                DatexExpressionData::Deref(Deref {
+                DatexExpressionData::Unbox(Unbox {
                     expression: Box::new(
                         DatexExpressionData::Identifier("x".to_string())
                             .with_default_span()

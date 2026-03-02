@@ -16,7 +16,7 @@ use core::cell::RefCell;
 use crate::{
     ast::expressions::{
         BinaryOperation, ComparisonOperation, DatexExpression,
-        DatexExpressionData, DerefAssignment, RemoteExecution, Slot,
+        DatexExpressionData, UnboxAssignment, RemoteExecution, Slot,
         Statements, UnaryOperation, UnboundedStatement, VariableAccess,
         VariableAssignment, VariableDeclaration, VariableKind,
     },
@@ -62,6 +62,7 @@ use precompiler::{
 };
 use crate::shared_values::pointer::PointerReferenceMutability;
 use crate::shared_values::pointer_address::PointerAddress;
+use crate::values::core_values::r#type::LocalReferenceMutability;
 
 pub mod context;
 pub mod error;
@@ -1135,7 +1136,7 @@ fn compile_expression(
             )?;
         }
 
-        DatexExpressionData::DerefAssignment(DerefAssignment {
+        DatexExpressionData::UnboxAssignment(UnboxAssignment {
             operator,
             deref_expression,
             assigned_expression,
@@ -1283,10 +1284,10 @@ fn compile_expression(
             compilation_context.mark_has_non_static_value();
             compilation_context.append_instruction_code(
                 match create_ref.mutability {
-                    PointerReferenceMutability::Immutable => {
+                    LocalReferenceMutability::Immutable => {
                         InstructionCode::CREATE_REF
                     }
-                    PointerReferenceMutability::Mutable => {
+                    LocalReferenceMutability::Mutable => {
                         InstructionCode::CREATE_REF_MUT
                     }
                 },
@@ -1294,6 +1295,27 @@ fn compile_expression(
             scope = compile_expression(
                 compilation_context,
                 RichAst::new(*create_ref.expression, &metadata),
+                CompileMetadata::default(),
+                scope,
+            )?;
+        }
+
+        // shared refs
+        DatexExpressionData::CreateSharedRef(create_shared_ref) => {
+            compilation_context.mark_has_non_static_value();
+            compilation_context.append_instruction_code(
+                match create_shared_ref.mutability {
+                    PointerReferenceMutability::Immutable => {
+                        InstructionCode::CREATE_SHARED_REF
+                    }
+                    PointerReferenceMutability::Mutable => {
+                        InstructionCode::CREATE_SHARED_REF_MUT
+                    }
+                },
+            );
+            scope = compile_expression(
+                compilation_context,
+                RichAst::new(*create_shared_ref.expression, &metadata),
                 CompileMetadata::default(),
                 scope,
             )?;
@@ -1350,7 +1372,7 @@ fn compile_expression(
             )?;
         }
 
-        DatexExpressionData::Deref(deref) => {
+        DatexExpressionData::Unbox(deref) => {
             compilation_context.mark_has_non_static_value();
             compilation_context.append_instruction_code(InstructionCode::DEREF);
             scope = compile_expression(

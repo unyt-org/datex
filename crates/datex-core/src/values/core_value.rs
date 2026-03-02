@@ -260,7 +260,7 @@ impl CoreValue {
     /// type reference from the core library.
     /// For example, a CoreValue::TypedInteger(i32) will return the type ref integer/i32
     pub fn default_type_definition(&self) -> TypeDefinition {
-        TypeDefinition::Reference(get_core_lib_type_reference(
+        TypeDefinition::SharedReference(get_core_lib_type_reference(
             CoreLibPointerId::from(self),
         ))
     }

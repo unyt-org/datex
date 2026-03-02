@@ -162,7 +162,7 @@ mod tests {
                 ty: Some(DIFTypeDefinition::ImplType(
                     Box::new(DIFType {
                         name: None,
-                        mutability: None,
+                        prefix: None,
                         type_definition: DIFTypeDefinition::Reference(
                             PointerAddress::from(CoreLibPointerId::Integer(
                                 None

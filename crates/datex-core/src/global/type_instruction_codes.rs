@@ -77,7 +77,7 @@ impl From<&TypeDefinition> for TypeInstructionCode {
             TypeDefinition::ImplType(_, _) => {
                 TypeInstructionCode::TYPE_WITH_IMPLS
             }
-            TypeDefinition::Reference(_) => TypeInstructionCode::TYPE_REFERENCE,
+            TypeDefinition::SharedReference(_) => TypeInstructionCode::TYPE_REFERENCE,
             TypeDefinition::Unit => TypeInstructionCode::TYPE_UNIT,
             TypeDefinition::Unknown => TypeInstructionCode::TYPE_UNKNOWN,
             TypeDefinition::Never => TypeInstructionCode::TYPE_NEVER,

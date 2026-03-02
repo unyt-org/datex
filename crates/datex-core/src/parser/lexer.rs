@@ -223,6 +223,10 @@ pub enum Token {
     #[token("mut")] Mutable,
     #[token("shared")] Shared,
     #[token("&mut")] RefMut,
+
+    #[token("'")] SharedRef,
+    #[token("'mut")] SharedRefMut,
+
     #[token("function")] Function,
     #[token("procedure")] Procedure,
     #[token("if")] If,
@@ -277,8 +281,7 @@ pub enum Token {
     #[regex(r"\d+[_\d]*/\d+[_\d]*", allocated_string)]
     FractionLiteral(String),
 
-    #[regex(r#"[a-z0-9]*("(?:\\.|[^\\"])*"|'(?:\\.|[^\\'])*')"#, allocated_string)] StringLiteral(String),
-
+    #[regex(r#"[a-z0-9]*("(?:\\.|[^\\"])*")"#, allocated_string)] StringLiteral(String),
 
     #[regex(r"@[+@]?[a-zA-Z0-9_-]+", allocated_string)] Endpoint(String),
 
@@ -356,6 +359,8 @@ impl Token {
             Token::TypeAlias => Some("typealias"),
             Token::Shared => Some("shared"),
             Token::RefMut => Some("&mut"),
+            Token::SharedRef => Some("'"),
+            Token::SharedRefMut => Some("'mut"),
             Token::And => Some("and"),
             Token::Or => Some("or"),
             Token::Star => Some("*"),

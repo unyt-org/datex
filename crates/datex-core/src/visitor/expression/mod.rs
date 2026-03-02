@@ -3,7 +3,7 @@ use crate::{
     ast::expressions::{
         Apply, BinaryOperation, CallableDeclaration, ComparisonOperation,
         CompileExpression, Conditional, CreateRef, DatexExpression,
-        DatexExpressionData, Deref, DerefAssignment, GenericInstantiation,
+        DatexExpressionData, Unbox, UnboxAssignment, GenericInstantiation,
         List, Map, PropertyAccess, PropertyAssignment, RemoteExecution, Slot,
         SlotAssignment, Statements, TypeDeclaration, UnaryOperation,
         VariableAccess, VariableAssignment, VariableDeclaration, VariantAccess,
@@ -21,7 +21,7 @@ use crate::{
     },
 };
 use core::ops::Range;
-use crate::ast::expressions::{CreateMut, CreateShared};
+use crate::ast::expressions::{CreateMut, CreateShared, CreateSharedRef};
 use crate::shared_values::pointer_address::PointerAddress;
 
 pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
@@ -126,14 +126,17 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
             DatexExpressionData::CreateRef(create_ref) => {
                 self.visit_create_ref(create_ref, &expr.span)
             }
+            DatexExpressionData::CreateSharedRef(create_shared_ref) => {
+                self.visit_create_shared_ref(create_shared_ref, &expr.span)
+            }
             DatexExpressionData::CreateShared(create_shared) => {
                 self.visit_create_shared(create_shared, &expr.span)
             }
             DatexExpressionData::CreateMut(create_mut) => {
                 self.visit_create_mut(create_mut, &expr.span)
             }
-            DatexExpressionData::Deref(deref) => {
-                self.visit_deref(deref, &expr.span)
+            DatexExpressionData::Unbox(deref) => {
+                self.visit_unbox(deref, &expr.span)
             }
             DatexExpressionData::Slot(slot) => {
                 self.visit_slot(slot, &expr.span)
@@ -153,7 +156,7 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
                     &expr.span,
                 )
             }
-            DatexExpressionData::DerefAssignment(deref_assignment) => {
+            DatexExpressionData::UnboxAssignment(deref_assignment) => {
                 self.visit_deref_assignment(deref_assignment, &expr.span)
             }
             DatexExpressionData::Apply(apply_chain) => {
@@ -322,7 +325,7 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
     /// Visit dereference assignment
     fn visit_deref_assignment(
         &mut self,
-        deref_assignment: &mut DerefAssignment,
+        deref_assignment: &mut UnboxAssignment,
         span: &Range<usize>,
     ) -> ExpressionVisitResult<E> {
         let _ = span;
@@ -449,6 +452,17 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
         let _ = create_ref;
         Ok(VisitAction::VisitChildren)
     }
+
+    /// Visit create shared reference expression
+    fn visit_create_shared_ref(
+        &mut self,
+        create_shared_ref: &mut CreateSharedRef,
+        span: &Range<usize>,
+    ) -> ExpressionVisitResult<E> {
+        let _ = span;
+        let _ = create_shared_ref;
+        Ok(VisitAction::VisitChildren)
+    }
     
     /// Visit create shared value expression
     fn visit_create_shared(
@@ -471,22 +485,11 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
         let _ = create_mut;
         Ok(VisitAction::VisitChildren)
     }
-
-    /// Visit create mutable reference expression
-    fn visit_create_mut_ref(
-        &mut self,
-        datex_expression: &mut DatexExpression,
-        span: &Range<usize>,
-    ) -> ExpressionVisitResult<E> {
-        let _ = span;
-        let _ = datex_expression;
-        Ok(VisitAction::VisitChildren)
-    }
-
+    
     /// Visit dereference expression
-    fn visit_deref(
+    fn visit_unbox(
         &mut self,
-        deref: &mut Deref,
+        deref: &mut Unbox,
         span: &Range<usize>,
     ) -> ExpressionVisitResult<E> {
         let _ = span;

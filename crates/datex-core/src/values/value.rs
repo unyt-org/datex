@@ -143,7 +143,7 @@ impl Value {
     /// the variant must be included in the compiler output - so we need to handle theses cases as well.
     /// Generally speaking, all variants except the few integer variants should never be considered default types.
     pub fn has_default_type(&self) -> bool {
-        if let TypeDefinition::Reference(type_reference) =
+        if let TypeDefinition::SharedReference(type_reference) =
             self.actual_type.as_ref()
             && let Ok(actual_type_core_ptr_id) =
                 CoreLibPointerId::try_from(type_reference.borrow().pointer.address())

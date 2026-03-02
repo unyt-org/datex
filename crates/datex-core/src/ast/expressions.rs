@@ -26,6 +26,7 @@ pub use crate::{prelude::*, values::core_values::callable::CallableKind};
 use core::{fmt::Display, ops, ops::Neg};
 use crate::shared_values::pointer::PointerReferenceMutability;
 use crate::shared_values::pointer_address::PointerAddress;
+use crate::values::core_values::r#type::LocalReferenceMutability;
 
 #[derive(Clone, Debug)]
 /// An expression in the AST
@@ -144,11 +145,14 @@ pub enum DatexExpressionData {
     /// Create a new reference
     CreateRef(CreateRef),
     
+    /// Create a new shared reference
+    CreateSharedRef(CreateSharedRef),
+
     /// Creates a new mutable value
     CreateMut(CreateMut),
 
-    /// Deref
-    Deref(Deref),
+    /// Unbox
+    Unbox(Unbox),
 
     /// Slot, e.g. #1, #endpoint
     Slot(Slot),
@@ -165,8 +169,8 @@ pub enum DatexExpressionData {
     /// Comparison operation, e.g. x < y
     ComparisonOperation(ComparisonOperation),
 
-    /// Deref assignment, e.g. *x = y, **x += y
-    DerefAssignment(DerefAssignment),
+    /// Unbox assignment, e.g. *x = y, **x += y
+    UnboxAssignment(UnboxAssignment),
 
     /// Property assignment, e.g. obj.property = value
     PropertyAssignment(PropertyAssignment),
@@ -302,7 +306,7 @@ pub struct ComparisonOperation {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct DerefAssignment {
+pub struct UnboxAssignment {
     pub operator: AssignmentOperator,
     pub deref_expression: Box<DatexExpression>,
     pub assigned_expression: Box<DatexExpression>,
@@ -525,19 +529,25 @@ pub struct VariantAccess {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct Deref {
+pub struct Unbox {
     pub expression: Box<DatexExpression>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct CreateRef {
-    pub mutability: PointerReferenceMutability,
+    pub mutability: LocalReferenceMutability,
     pub expression: Box<DatexExpression>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct CreateShared {
     pub mutability: SharedContainerMutability,
+    pub expression: Box<DatexExpression>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct CreateSharedRef {
+    pub mutability: PointerReferenceMutability,
     pub expression: Box<DatexExpression>,
 }
 

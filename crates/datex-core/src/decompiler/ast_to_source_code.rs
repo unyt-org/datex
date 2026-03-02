@@ -1,7 +1,7 @@
 use crate::ast::{
     expressions::{
         Apply, BinaryOperation, CallableDeclaration, ComparisonOperation,
-        Conditional, DatexExpression, DatexExpressionData, DerefAssignment,
+        Conditional, DatexExpression, DatexExpressionData, UnboxAssignment,
         List, Map, PropertyAccess, PropertyAssignment, RangeDeclaration,
         RemoteExecution, SlotAssignment, TypeDeclaration, VariableAccess,
         VariableAssignment, VariableDeclaration, VariantAccess,
@@ -21,6 +21,7 @@ use crate::{
     shared_values::shared_container::SharedContainerMutability,
 };
 use crate::shared_values::pointer::PointerReferenceMutability;
+use crate::values::core_values::r#type::LocalReferenceMutability;
 
 #[derive(Clone, Default)]
 pub enum BraceStyle {
@@ -528,11 +529,21 @@ impl AstToSourceCodeConverter {
             DatexExpressionData::List(list) => self.list_to_source_code(list),
             DatexExpressionData::CreateRef(create_ref) => {
                 match &create_ref.mutability {
-                    PointerReferenceMutability::Mutable => {
+                    LocalReferenceMutability::Mutable => {
                         format!("&mut {}", self.format(&create_ref.expression))
                     }
-                    PointerReferenceMutability::Immutable => {
+                    LocalReferenceMutability::Immutable => {
                         format!("&{}", self.format(&create_ref.expression))
+                    }
+                }
+            }
+            DatexExpressionData::CreateSharedRef(create_shared_ref) => {
+                match &create_shared_ref.mutability {
+                    PointerReferenceMutability::Mutable => {
+                        format!("'mut {}", self.format(&create_shared_ref.expression))
+                    }
+                    PointerReferenceMutability::Immutable => {
+                        format!("'{}", self.format(&create_shared_ref.expression))
                     }
                 }
             }
@@ -726,7 +737,7 @@ impl AstToSourceCodeConverter {
                     body_code
                 )
             }
-            DatexExpressionData::Deref(deref) => {
+            DatexExpressionData::Unbox(deref) => {
                 format!("*{}", self.format(&deref.expression))
             }
             DatexExpressionData::Slot(slot) => slot.to_string(),
@@ -751,7 +762,7 @@ impl AstToSourceCodeConverter {
                     self.format(right)
                 )
             }
-            DatexExpressionData::DerefAssignment(DerefAssignment {
+            DatexExpressionData::UnboxAssignment(UnboxAssignment {
                 operator,
                 deref_expression,
                 assigned_expression,
@@ -804,16 +815,19 @@ impl AstToSourceCodeConverter {
 mod tests {
     use indoc::indoc;
 
-    use super::*;
     use crate::{
         ast::{
-            expressions::{Deref, RangeDeclaration, VariableKind},
+            expressions::{Unbox, RangeDeclaration, VariableKind},
             spanned::Spanned,
         },
         global::operators::assignment::AssignmentOperator,
         parser::Parser,
         values::core_values::decimal::Decimal,
     };
+    use crate::ast::expressions::{Apply, DatexExpression, DatexExpressionData, List, Map, PropertyAccess, UnboxAssignment, VariableAccess, VariableDeclaration};
+    use crate::ast::type_expressions::TypeExpressionData;
+    use crate::decompiler::options::FormattingOptions;
+    use super::{AstToSourceCodeConverter};
 
     fn compact() -> AstToSourceCodeConverter {
         AstToSourceCodeConverter::new(FormattingOptions::compact())
@@ -1031,8 +1045,8 @@ mod tests {
     }
 
     #[test]
-    fn test_deref() {
-        let deref_ast = DatexExpressionData::Deref(Deref {
+    fn test_unbox() {
+        let unbox_ast = DatexExpressionData::Unbox(Unbox {
             expression: Box::new(
                 DatexExpressionData::VariableAccess(VariableAccess {
                     id: 0,
@@ -1041,13 +1055,13 @@ mod tests {
                 .with_default_span(),
             ),
         });
-        assert_eq!(compact().format(&deref_ast.with_default_span()), "*ptr");
+        assert_eq!(compact().format(&unbox_ast.with_default_span()), "*ptr");
     }
 
     #[test]
-    fn test_deref_assignment() {
-        let deref_assign_ast =
-            DatexExpressionData::DerefAssignment(DerefAssignment {
+    fn test_unbox_assignment() {
+        let unbox_assign_ast =
+            DatexExpressionData::UnboxAssignment(UnboxAssignment {
                 operator: AssignmentOperator::Assign,
                 deref_expression: Box::new(
                     DatexExpressionData::VariableAccess(VariableAccess {
@@ -1061,7 +1075,7 @@ mod tests {
                 ),
             });
         assert_eq!(
-            compact().format(&deref_assign_ast.with_default_span()),
+            compact().format(&unbox_assign_ast.with_default_span()),
             "*ptr=42"
         );
     }
