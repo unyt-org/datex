@@ -291,7 +291,7 @@ fn get_type_if_non_default(
     is_empty_map: bool,
 ) -> Option<DIFTypeDefinition> {
     match type_definition {
-        TypeDefinition::Reference(inner) => {
+        TypeDefinition::SharedReference(inner) => {
             if let Ok(address) = CoreLibPointerId::try_from(inner
                 .borrow()
                 .pointer.address())

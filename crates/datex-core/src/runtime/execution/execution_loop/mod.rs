@@ -518,7 +518,7 @@ pub fn inner_execution_loop(
                                     Some(ValueContainer::Shared(
                                              SharedContainer::Type(type_ref),
                                     )) => Type::new(
-                                        TypeDefinition::Reference(type_ref),
+                                        TypeDefinition::SharedReference(type_ref),
                                         metadata.mutability.into(),
                                     ),
                                     _ => {

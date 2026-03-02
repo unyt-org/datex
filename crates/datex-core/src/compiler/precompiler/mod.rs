@@ -46,6 +46,7 @@ use precompiled_ast::{AstMetadata, RichAst, VariableShape};
 use scope::NewScopeType;
 use scope_stack::PrecompilerScopeStack;
 use crate::shared_values::pointer::Pointer;
+use crate::values::core_values::r#type::TypePrefix;
 
 pub struct Precompiler<'a> {
     ast_metadata: Rc<RefCell<AstMetadata>>,
@@ -283,7 +284,7 @@ impl<'a> Precompiler<'a> {
         };
 
         // register placeholder ref in metadata
-        let type_def = Type::new(TypeDefinition::reference(reference), None);
+        let type_def = Type::new(TypeDefinition::shared_reference(reference), TypePrefix::default());
         {
             self.ast_metadata
                 .borrow_mut()
@@ -599,7 +600,7 @@ mod tests {
     use super::*;
     use crate::{
         ast::{
-            expressions::{CreateRef, Deref},
+            expressions::{CreateRef, Unbox},
             resolved_variable::ResolvedVariable,
             type_expressions::{StructuralMap, TypeExpressionData},
         },
@@ -608,8 +609,10 @@ mod tests {
         values::core_values::integer::Integer,
     };
     use core::assert_matches;
+    use crate::ast::expressions::CreateSharedRef;
     use crate::shared_values::pointer::PointerReferenceMutability;
     use crate::shared_values::pointer_address::PointerAddress;
+    use crate::values::core_values::r#type::LocalReferenceMutability;
 
     fn precompile(
         ast: DatexExpression,
@@ -1167,7 +1170,7 @@ mod tests {
                             name: "x".to_string(),
                             init_expression: Box::new(
                                 DatexExpressionData::CreateRef(CreateRef {
-                                    mutability: PointerReferenceMutability::Immutable,
+                                    mutability: LocalReferenceMutability::Immutable,
                                     expression: Box::new(
                                         DatexExpressionData::Integer(
                                             Integer::from(42)
@@ -1181,7 +1184,7 @@ mod tests {
                         }
                     )
                     .with_default_span(),
-                    DatexExpressionData::Deref(Deref {
+                    DatexExpressionData::Unbox(Unbox {
                         expression: Box::new(
                             DatexExpressionData::VariableAccess(
                                 VariableAccess {
@@ -1196,6 +1199,54 @@ mod tests {
                 ]
             ))
             .with_default_span()
+        );
+    }
+
+    #[test]
+    fn test_deref_shared() {
+        let result = parse_and_precompile("const x = '42; *x");
+        assert!(result.is_ok());
+        let rich_ast = result.unwrap();
+        assert_eq!(
+            rich_ast.ast,
+            DatexExpressionData::Statements(Statements::new_unterminated(
+                vec![
+                    DatexExpressionData::VariableDeclaration(
+                        VariableDeclaration {
+                            id: Some(0),
+                            kind: VariableKind::Const,
+                            name: "x".to_string(),
+                            init_expression: Box::new(
+                                DatexExpressionData::CreateSharedRef(CreateSharedRef {
+                                    mutability: PointerReferenceMutability::Immutable,
+                                    expression: Box::new(
+                                        DatexExpressionData::Integer(
+                                            Integer::from(42)
+                                        )
+                                            .with_default_span()
+                                    )
+                                })
+                                    .with_default_span(),
+                            ),
+                            type_annotation: None,
+                        }
+                    )
+                        .with_default_span(),
+                    DatexExpressionData::Unbox(Unbox {
+                        expression: Box::new(
+                            DatexExpressionData::VariableAccess(
+                                VariableAccess {
+                                    id: 0,
+                                    name: "x".to_string()
+                                }
+                            )
+                                .with_default_span()
+                        )
+                    })
+                        .with_default_span(),
+                ]
+            ))
+                .with_default_span()
         );
     }
 }

@@ -38,6 +38,7 @@ pub enum PointerAddress {
     Internal([u8; 3]), // TODO #312 shrink down to 2 bytes?
 }
 
+
 impl PointerAddress {
     pub const NULL: PointerAddress = PointerAddress::Local(LocalPointerAddress::NULL);
     

@@ -104,7 +104,7 @@ impl SharedTypeContainer {
 
     pub fn collapse_reference_chain(&self) -> SharedTypeContainer {
         match &self.type_value.type_definition {
-            TypeDefinition::Reference(reference) => {
+            TypeDefinition::SharedReference(reference) => {
                 // If this is a reference type, resolve it to its current reference
                 reference.borrow().collapse_reference_chain()
             }

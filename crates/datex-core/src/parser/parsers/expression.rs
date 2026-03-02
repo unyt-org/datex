@@ -2,7 +2,7 @@ use crate::{
     ast::{
         expressions::{
             Apply, BinaryOperation, ComparisonOperation, CreateRef,
-            DatexExpression, DatexExpressionData, Deref, DerefAssignment,
+            DatexExpression, DatexExpressionData, Unbox, UnboxAssignment,
             GenericInstantiation, PropertyAccess, PropertyAssignment,
             RangeDeclaration, RemoteExecution, SlotAssignment, UnaryOperation,
             VariableAssignment,
@@ -23,8 +23,9 @@ use crate::{
     shared_values::shared_container::SharedContainerMutability,
     values::core_values::error::NumberParseError,
 };
-use crate::ast::expressions::{CreateMut, CreateShared};
+use crate::ast::expressions::{CreateMut, CreateShared, CreateSharedRef};
 use crate::shared_values::pointer::PointerReferenceMutability;
+use crate::values::core_values::r#type::LocalReferenceMutability;
 
 static UNARY_BP: u8 = 29; // weaker than property access / apply, stronger than all other binary operators
 
@@ -236,8 +237,8 @@ impl Parser {
                 })
             }
             // deref assignment
-            DatexExpressionData::Deref(deref) => {
-                DatexExpressionData::DerefAssignment(DerefAssignment {
+            DatexExpressionData::Unbox(deref) => {
+                DatexExpressionData::UnboxAssignment(UnboxAssignment {
                     operator: assignment_operator,
                     deref_expression: deref.expression,
                     assigned_expression: Box::new(rhs),
@@ -470,7 +471,7 @@ impl Parser {
                 let rhs = self.parse_expression(UNARY_BP)?;
                 let span = op.span.start..rhs.span.end;
                 Ok(DatexExpressionData::CreateRef(CreateRef {
-                    mutability: PointerReferenceMutability::Immutable,
+                    mutability: LocalReferenceMutability::Immutable,
                     expression: Box::new(rhs),
                 })
                 .with_span(span))
@@ -481,17 +482,39 @@ impl Parser {
                 let rhs = self.parse_expression(UNARY_BP)?;
                 let span = op.span.start..rhs.span.end;
                 Ok(DatexExpressionData::CreateRef(CreateRef {
+                    mutability: LocalReferenceMutability::Mutable,
+                    expression: Box::new(rhs),
+                })
+                    .with_span(span))
+            }
+            // shared ref (')
+            Token::SharedRef => {
+                let op = self.advance()?;
+                let rhs = self.parse_expression(UNARY_BP)?;
+                let span = op.span.start..rhs.span.end;
+                Ok(DatexExpressionData::CreateSharedRef(CreateSharedRef {
+                    mutability: PointerReferenceMutability::Immutable,
+                    expression: Box::new(rhs),
+                })
+                    .with_span(span))
+            }
+            // shared mutable ref ('mut)
+            Token::SharedRefMut => {
+                let op = self.advance()?;
+                let rhs = self.parse_expression(UNARY_BP)?;
+                let span = op.span.start..rhs.span.end;
+                Ok(DatexExpressionData::CreateSharedRef(CreateSharedRef {
                     mutability: PointerReferenceMutability::Mutable,
                     expression: Box::new(rhs),
                 })
                     .with_span(span))
             }
-            // deref (*)
+            // unbox (*)
             Token::Star => {
                 let op = self.advance()?;
                 let rhs = self.parse_expression(UNARY_BP)?;
                 let span = op.span.start..rhs.span.end;
-                Ok(DatexExpressionData::Deref(Deref {
+                Ok(DatexExpressionData::Unbox(Unbox {
                     expression: Box::new(rhs),
                 })
                 .with_span(span))
@@ -572,7 +595,7 @@ mod tests {
         ast::{
             expressions::{
                 Apply, BinaryOperation, ComparisonOperation, CreateRef,
-                DatexExpressionData, Deref, DerefAssignment,
+                DatexExpressionData, Unbox, UnboxAssignment,
                 GenericInstantiation, PropertyAccess, PropertyAssignment,
                 RemoteExecution, Slot, SlotAssignment, Statements,
                 UnaryOperation, VariableAssignment,
@@ -592,8 +615,9 @@ mod tests {
         prelude::*,
         shared_values::shared_container::SharedContainerMutability,
     };
-    use crate::ast::expressions::{CreateMut, CreateShared};
+    use crate::ast::expressions::{CreateMut, CreateShared, CreateSharedRef};
     use crate::shared_values::pointer::PointerReferenceMutability;
+    use crate::values::core_values::r#type::LocalReferenceMutability;
 
     #[test]
     fn parse_simple_binary_expression() {
@@ -1139,6 +1163,21 @@ mod tests {
         assert_eq!(
             expr.data,
             DatexExpressionData::CreateRef(CreateRef {
+                mutability: LocalReferenceMutability::Immutable,
+                expression: Box::new(
+                    DatexExpressionData::Identifier("myVar".to_string())
+                        .with_default_span()
+                ),
+            })
+        );
+    }
+
+    #[test]
+    fn parse_immutable_shared_reference() {
+        let expr = parse("'myVar");
+        assert_eq!(
+            expr.data,
+            DatexExpressionData::CreateSharedRef(CreateSharedRef {
                 mutability: PointerReferenceMutability::Immutable,
                 expression: Box::new(
                     DatexExpressionData::Identifier("myVar".to_string())
@@ -1154,7 +1193,7 @@ mod tests {
         assert_eq!(
             expr.data,
             DatexExpressionData::CreateRef(CreateRef {
-                mutability: PointerReferenceMutability::Mutable,
+                mutability: LocalReferenceMutability::Mutable,
                 expression: Box::new(
                     DatexExpressionData::Identifier("myVar".to_string())
                         .with_default_span()
@@ -1164,12 +1203,27 @@ mod tests {
     }
 
     #[test]
+    fn parse_mutable_shared_reference() {
+        let expr = parse("'mut myVar");
+        assert_eq!(
+            expr.data,
+            DatexExpressionData::CreateSharedRef(CreateSharedRef {
+                mutability: PointerReferenceMutability::Mutable,
+                expression: Box::new(
+                    DatexExpressionData::Identifier("myVar".to_string())
+                        .with_default_span()
+                ),
+            })
+        );
+    }
+    
+    #[test]
     fn parse_ref_of_property_access() {
         let expr = parse("&myObject.myProperty");
         assert_eq!(
             expr.data,
             DatexExpressionData::CreateRef(CreateRef {
-                mutability: PointerReferenceMutability::Immutable,
+                mutability: LocalReferenceMutability::Immutable,
                 expression: Box::new(
                     DatexExpressionData::PropertyAccess(PropertyAccess {
                         base: Box::new(
@@ -1190,15 +1244,42 @@ mod tests {
     }
 
     #[test]
+    fn parse_shared_ref_of_property_access() {
+        let expr = parse("'myObject.myProperty");
+        assert_eq!(
+            expr.data,
+            DatexExpressionData::CreateSharedRef(CreateSharedRef {
+                mutability: PointerReferenceMutability::Immutable,
+                expression: Box::new(
+                    DatexExpressionData::PropertyAccess(PropertyAccess {
+                        base: Box::new(
+                            DatexExpressionData::Identifier(
+                                "myObject".to_string()
+                            )
+                                .with_default_span()
+                        ),
+                        property: Box::new(
+                            DatexExpressionData::Text("myProperty".to_string())
+                                .with_default_span()
+                        ),
+                    })
+                        .with_default_span()
+                ),
+            })
+        );
+    }
+
+
+    #[test]
     fn parse_multiple_refs() {
         let expr = parse("&mut &myVar");
         assert_eq!(
             expr.data,
             DatexExpressionData::CreateRef(CreateRef {
-                mutability: PointerReferenceMutability::Mutable,
+                mutability: LocalReferenceMutability::Mutable,
                 expression: Box::new(
                     DatexExpressionData::CreateRef(CreateRef {
-                        mutability: PointerReferenceMutability::Immutable,
+                        mutability: LocalReferenceMutability::Immutable,
                         expression: Box::new(
                             DatexExpressionData::Identifier(
                                 "myVar".to_string()
@@ -1213,11 +1294,34 @@ mod tests {
     }
 
     #[test]
-    fn parse_dereference() {
+    fn parse_multiple_shared_refs() {
+        let expr = parse("'mut 'myVar");
+        assert_eq!(
+            expr.data,
+            DatexExpressionData::CreateSharedRef(CreateSharedRef {
+                mutability: PointerReferenceMutability::Mutable,
+                expression: Box::new(
+                    DatexExpressionData::CreateSharedRef(CreateSharedRef {
+                        mutability: PointerReferenceMutability::Immutable,
+                        expression: Box::new(
+                            DatexExpressionData::Identifier(
+                                "myVar".to_string()
+                            )
+                                .with_default_span()
+                        ),
+                    })
+                        .with_default_span()
+                ),
+            })
+        );
+    }
+
+    #[test]
+    fn parse_unbox() {
         let expr = parse("*myRef");
         assert_eq!(
             expr.data,
-            DatexExpressionData::Deref(Deref {
+            DatexExpressionData::Unbox(Unbox {
                 expression: Box::new(
                     DatexExpressionData::Identifier("myRef".to_string())
                         .with_default_span()
@@ -1227,14 +1331,14 @@ mod tests {
     }
 
     #[test]
-    fn parse_dereference_of_reference() {
+    fn parse_unbox_of_reference() {
         let expr = parse("*&myVar");
         assert_eq!(
             expr.data,
-            DatexExpressionData::Deref(Deref {
+            DatexExpressionData::Unbox(Unbox {
                 expression: Box::new(
                     DatexExpressionData::CreateRef(CreateRef {
-                        mutability: PointerReferenceMutability::Immutable,
+                        mutability: LocalReferenceMutability::Immutable,
                         expression: Box::new(
                             DatexExpressionData::Identifier(
                                 "myVar".to_string()
@@ -1249,13 +1353,36 @@ mod tests {
     }
 
     #[test]
+    fn parse_unbox_of_shared_reference() {
+        let expr = parse("*'myVar");
+        assert_eq!(
+            expr.data,
+            DatexExpressionData::Unbox(Unbox {
+                expression: Box::new(
+                    DatexExpressionData::CreateSharedRef(CreateSharedRef {
+                        mutability: PointerReferenceMutability::Immutable,
+                        expression: Box::new(
+                            DatexExpressionData::Identifier(
+                                "myVar".to_string()
+                            )
+                                .with_default_span()
+                        ),
+                    })
+                        .with_default_span()
+                ),
+            })
+        );
+    }
+
+
+    #[test]
     fn parse_multiple_dereferences() {
         let expr = parse("**myRef");
         assert_eq!(
             expr.data,
-            DatexExpressionData::Deref(Deref {
+            DatexExpressionData::Unbox(Unbox {
                 expression: Box::new(
-                    DatexExpressionData::Deref(Deref {
+                    DatexExpressionData::Unbox(Unbox {
                         expression: Box::new(
                             DatexExpressionData::Identifier(
                                 "myRef".to_string()
@@ -1276,7 +1403,7 @@ mod tests {
             expr.data,
             DatexExpressionData::BinaryOperation(BinaryOperation {
                 left: Box::new(
-                    DatexExpressionData::Deref(Deref {
+                    DatexExpressionData::Unbox(Unbox {
                         expression: Box::new(
                             DatexExpressionData::Identifier(
                                 "myRef".to_string()
@@ -1288,7 +1415,7 @@ mod tests {
                 ),
                 operator: BinaryOperator::Arithmetic(ArithmeticOperator::Add),
                 right: Box::new(
-                    DatexExpressionData::Deref(Deref {
+                    DatexExpressionData::Unbox(Unbox {
                         expression: Box::new(
                             DatexExpressionData::Identifier(
                                 "myRef2".to_string()
@@ -1397,7 +1524,7 @@ mod tests {
         let expr = parse("*myRef = 200");
         assert_eq!(
             expr.data,
-            DatexExpressionData::DerefAssignment(DerefAssignment {
+            DatexExpressionData::UnboxAssignment(UnboxAssignment {
                 operator: AssignmentOperator::Assign,
                 deref_expression: Box::new(
                     DatexExpressionData::Identifier("myRef".to_string())
@@ -1416,10 +1543,10 @@ mod tests {
         let expr = parse("**myRef = 300");
         assert_eq!(
             expr.data,
-            DatexExpressionData::DerefAssignment(DerefAssignment {
+            DatexExpressionData::UnboxAssignment(UnboxAssignment {
                 operator: AssignmentOperator::Assign,
                 deref_expression: Box::new(
-                    DatexExpressionData::Deref(Deref {
+                    DatexExpressionData::Unbox(Unbox {
                         expression: Box::new(
                             DatexExpressionData::Identifier(
                                 "myRef".to_string()

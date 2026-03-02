@@ -28,6 +28,7 @@ use core::{
 use serde::{Deserialize, de::DeserializeOwned};
 use crate::dif::update::DIFUpdateData;
 use crate::shared_values::pointer::Pointer;
+use crate::values::core_values::r#type::TypePrefix;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum ValueError {
@@ -337,7 +338,7 @@ impl ValueContainer {
     pub fn actual_container_type(&self) -> Type {
         match self {
             ValueContainer::Local(value) => {
-                Type::new(*value.actual_type.clone())
+                Type::new(*value.actual_type.clone(), TypePrefix::default())
             }
             ValueContainer::Shared(shared) => {
                 let inner_type =

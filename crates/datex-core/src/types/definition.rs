@@ -14,6 +14,7 @@ use core::{cell::RefCell, fmt::Display, hash::Hash, prelude::rust_2024::*};
 use crate::prelude::*;
 use crate::shared_values::pointer::PointerReferenceMutability;
 use crate::shared_values::pointer_address::PointerAddress;
+use crate::values::core_values::r#type::TypePrefix;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TypeDefinition {
@@ -25,7 +26,7 @@ pub enum TypeDefinition {
     Collection(CollectionTypeDefinition),
 
     /// type A = B
-    Reference(Rc<RefCell<SharedTypeContainer>>), // integer
+    SharedReference(Rc<RefCell<SharedTypeContainer>>), // integer
 
     /// type, used for nested types with references (e.g. &mut & x)
     Type(Box<Type>),
@@ -69,7 +70,7 @@ impl Hash for TypeDefinition {
             TypeDefinition::Structural(value) => {
                 value.hash(state);
             }
-            TypeDefinition::Reference(reference) => {
+            TypeDefinition::SharedReference(reference) => {
                 reference.borrow().hash(state);
             }
             TypeDefinition::Type(value) => {
@@ -115,7 +116,7 @@ impl Display for TypeDefinition {
         match self {
             TypeDefinition::Collection(value) => core::write!(f, "{}", value),
             TypeDefinition::Structural(value) => core::write!(f, "{}", value),
-            TypeDefinition::Reference(reference) => {
+            TypeDefinition::SharedReference(reference) => {
                 core::write!(f, "{}", reference.borrow())
             }
             TypeDefinition::Type(ty) => core::write!(f, "{}", ty),
@@ -135,7 +136,7 @@ impl Display for TypeDefinition {
                     core::matches!(
                         t.type_definition,
                         TypeDefinition::Structural(_)
-                            | TypeDefinition::Reference(_)
+                            | TypeDefinition::SharedReference(_)
                     )
                 });
                 let types_str: Vec<String> =
@@ -249,8 +250,8 @@ impl TypeDefinition {
     }
 
     /// Creates a new reference type.
-    pub fn reference(reference: Rc<RefCell<SharedTypeContainer>>) -> Self {
-        TypeDefinition::Reference(reference)
+    pub fn shared_reference(reference: Rc<RefCell<SharedTypeContainer>>) -> Self {
+        TypeDefinition::SharedReference(reference)
     }
 
     /// Creates a new callable type.
@@ -265,12 +266,12 @@ impl TypeDefinition {
 
     pub fn into_type(
         self,
-        reference_mutability: Option<PointerReferenceMutability>,
+        prefix: TypePrefix
     ) -> Type {
         Type {
             type_definition: self,
             base_type: None,
-            reference_mutability,
+            prefix,
         }
     }
 }
@@ -280,7 +281,7 @@ impl From<TypeDefinition> for Type {
         Type {
             type_definition,
             base_type: None,
-            reference_mutability: None,
+            prefix: TypePrefix::default(),
         }
     }
 }

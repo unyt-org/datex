@@ -635,7 +635,7 @@ mod tests {
     #[test]
     fn deref_shared() {
         let result =
-            execute_datex_script_debug_with_result("const x = &shared 42; *x");
+            execute_datex_script_debug_with_result("const x = shared 42; *x");
         assert_eq!(result, ValueContainer::from(Integer::from(42)));
     }
 
@@ -650,12 +650,12 @@ mod tests {
     #[test]
     fn shared_value_add_assignment() {
         let result = execute_datex_script_debug_with_result(
-            "const x = shared mut 42; x @+= 1", // TODO: good syntax for internal reassignment to shared value?
+            "var x = shared mut 42; *x += 1", // TODO: good syntax for internal reassignment to shared value?
         );
         assert_value_eq!(result, ValueContainer::from(Integer::from(43)));
 
         let result = execute_datex_script_debug_with_result(
-            "const x = &mut 42; x @+= 1; x",
+            "const x = 'mut 42; *x += 1; x",
         );
 
         assert_matches!(result, ValueContainer::Shared(..));
@@ -665,12 +665,12 @@ mod tests {
     #[test]
     fn shared_value_sub_assignment() {
         let result = execute_datex_script_debug_with_result(
-            "const x = &mut 42; x @-= 1",
+            "const x = 'mut 42; *x -= 1",
         );
         assert_value_eq!(result, ValueContainer::from(Integer::from(41)));
 
         let result = execute_datex_script_debug_with_result(
-            "const x = &mut 42; x @-= 1; x",
+            "const x = 'mut 42; *x -= 1; x",
         );
 
         // FIXME #414 due to addition the resulting value container of the slot
