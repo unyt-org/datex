@@ -1,11 +1,11 @@
 use crate::{
     core_compiler::value_compiler::append_get_ref,
-    global::type_instruction_codes::{TypeInstructionCode, TypeMutabilityCode},
+    global::type_instruction_codes::{TypeInstructionCode, TypeReferenceMutabilityCode},
     types::definition::TypeDefinition,
     utils::buffers::append_u8,
     values::core_values::r#type::Type,
 };
-
+use crate::global::protocol_structures::instructions::TypeMetadataBin;
 use crate::prelude::*;
 /// Compiles a given type container to a DXB body
 pub fn compile_type(ty: &Type) -> Vec<u8> {
@@ -20,9 +20,9 @@ pub fn append_type(buffer: &mut Vec<u8>, ty: &Type) {
     let instruction_code = TypeInstructionCode::from(&ty.type_definition);
     append_type_space_instruction_code(buffer, instruction_code);
 
-    // append mutability
-    let mutability_code = TypeMutabilityCode::from(&ty.reference_mutability);
-    append_type_mutability_code(buffer, mutability_code);
+    // append metadata
+    let metadata = TypeMetadataBin::from(&ty.metadata);
+    append_type_metadata(buffer, metadata);
 
     // append type definition
     append_type_definition(buffer, &ty.type_definition);
@@ -65,9 +65,9 @@ pub fn append_type_space_instruction_code(
     append_u8(buffer, code as u8);
 }
 
-pub fn append_type_mutability_code(
+pub fn append_type_metadata(
     buffer: &mut Vec<u8>,
-    code: TypeMutabilityCode,
+    code: TypeMetadataBin,
 ) {
-    append_u8(buffer, code as u8);
+    append_u8(buffer, code.into_bytes()[0]);
 }

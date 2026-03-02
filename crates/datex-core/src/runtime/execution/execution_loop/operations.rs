@@ -42,13 +42,13 @@ pub fn handle_unary_shared_value_operation(
 ) -> Result<ValueContainer, ExecutionError> {
     Ok(match operator {
         SharedValueUnaryOperator::CreateSharedOwned => {
-            ValueContainer::Shared(SharedContainer::new(
+            ValueContainer::Shared(SharedContainer::boxed(
                 value_container,
                 memory.borrow_mut().get_new_owned_local_pointer(),
             ))
         }
         SharedValueUnaryOperator::CreateSharedOwnedMut => {
-            ValueContainer::Shared(SharedContainer::try_new_mut(
+            ValueContainer::Shared(SharedContainer::boxed_mut(
                 value_container,
                 memory.borrow_mut().get_new_owned_local_pointer(),
             )?)

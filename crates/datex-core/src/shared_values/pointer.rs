@@ -1,5 +1,4 @@
-use alloc::borrow::Cow;
-use crate::shared_values::pointer_address::{LocalPointerAddress, PointerAddress};
+use crate::shared_values::pointer_address::{OwnedPointerAddress, PointerAddress, ReferencedPointerAddress};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum PointerReferenceMutability {
@@ -10,7 +9,7 @@ pub enum PointerReferenceMutability {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct OwnedPointer {
     /// Address of the owned pointer, must be a local pointer address
-    address: LocalPointerAddress,
+    address: OwnedPointerAddress,
     // TODO: additional fields will probably be added later, e.g. previous owners
     // subscribers: Vec<(Endpoint, Permissions)>,
 }
@@ -18,7 +17,7 @@ pub struct OwnedPointer {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PointerReference {
     /// Address of the borrowed pointer, can be a local or remote pointer address
-    address: PointerAddress,
+    address: ReferencedPointerAddress,
     mutability: PointerReferenceMutability
 }
 
@@ -31,56 +30,30 @@ pub enum Pointer {
 
 impl Pointer {
     pub const NULL: Pointer = Pointer::Owned(OwnedPointer {
-        address: LocalPointerAddress::NULL,
+        address: OwnedPointerAddress::NULL,
     });
 
-    pub fn address(&self) -> Cow<PointerAddress> {
+    pub fn address(&self) -> PointerAddress {
         match self {
-            Pointer::Owned(owned) => Cow::Owned(PointerAddress::Local(owned.address.clone())),
-            Pointer::Reference(borrowed) => Cow::Borrowed(&borrowed.address),
+            Pointer::Owned(owned) => PointerAddress::Owned(owned.address.clone()),
+            Pointer::Reference(borrowed) => PointerAddress::Referenced(borrowed.address.clone()),
+        }
+    }
+
+    pub fn reference_mutability(&self) -> Option<&PointerReferenceMutability> {
+        match self {
+            Pointer::Owned(_) => None,
+            Pointer::Reference(reference) => Some(&reference.mutability),
         }
     }
 
     /// Creates a new owned pointer with the given local pointer address
-    pub(crate) fn new_owned(address: LocalPointerAddress) -> Self {
+    pub(crate) fn new_owned(address: OwnedPointerAddress) -> Self {
         Pointer::Owned(OwnedPointer { address })
     }
     
     /// Creates a new borrowed pointer with the given pointer address and mutability
-    pub(crate) fn new_reference(address: PointerAddress, mutability: PointerReferenceMutability) -> Self {
+    pub(crate) fn new_reference(address: ReferencedPointerAddress, mutability: PointerReferenceMutability) -> Self {
         Pointer::Reference(PointerReference { address, mutability })
-    }
-
-    /// Gets an immutable reference to the pointer.
-    pub(crate) fn get_reference(&self) -> PointerReference {
-        let address = self.address();
-        PointerReference {
-            address: address.into_owned(),
-            mutability: PointerReferenceMutability::Immutable,
-        }
-    }
-
-    /// Gets a mutable reference to the pointer if possible, otherwise returns None.
-    /// For owned pointers, a mutable reference can always be created.
-    /// For borrowed pointers, a mutable reference can only be created if the original pointer is mutable.
-    pub fn get_reference_mut(&self) -> Option<PointerReference> {
-        let address = self.address();
-        // mutable reference from reference is only possible if the original pointer is owned or if it's a mutable reference
-        match self {
-            Pointer::Owned(_) => Some(PointerReference {
-                address: address.into_owned(),
-                mutability: PointerReferenceMutability::Mutable,
-            }),
-            Pointer::Reference(reference) => {
-                if reference.mutability == PointerReferenceMutability::Mutable {
-                    Some(PointerReference {
-                        address: address.into_owned(),
-                        mutability: PointerReferenceMutability::Mutable,
-                    })
-                } else {
-                    None
-                }
-            }
-        }
     }
 }

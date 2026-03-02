@@ -655,9 +655,9 @@ pub fn iterate_instructions(
                             next_instructions_stack.push_next_type(1);
                             TypeInstruction::ImplType(yield_unwrap!(impl_data))
                         }
-                        TypeInstructionCode::TYPE_REFERENCE => {
+                        TypeInstructionCode::SHARED_TYPE_REFERENCE => {
                             let ref_data = TypeReferenceData::read(&mut reader);
-                            TypeInstruction::TypeReference(yield_unwrap!(
+                            TypeInstruction::SharedTypeReference(yield_unwrap!(
                                 ref_data
                             ))
                         }

@@ -71,7 +71,7 @@ use crate::{
 use alloc::rc::Rc;
 use core::cell::RefCell;
 use crate::shared_values::pointer_address::PointerAddress;
-use crate::values::core_values::r#type::TypePrefix;
+use crate::values::core_values::r#type::TypeMetadata;
 
 #[derive(Debug)]
 enum CollectedExecutionResult {
@@ -475,14 +475,14 @@ pub fn inner_execution_loop(
                     {
                         Some(match type_instruction {
                             TypeInstruction::LiteralInteger(integer) => {
-                                Type::structural(integer.0, TypePrefix::default())
+                                Type::structural(integer.0, TypeMetadata::default())
                             }
                             TypeInstruction::LiteralText(text_data) => {
-                                Type::structural(text_data.0, TypePrefix::default())
+                                Type::structural(text_data.0, TypeMetadata::default())
                             }
 
-                            TypeInstruction::TypeReference(type_ref) => {
-                                let metadata = type_ref.metadata;
+                            TypeInstruction::SharedTypeReference(type_ref) => {
+                                let metadata = TypeMetadata::from(&type_ref.metadata);
                                 let val = interrupt_with_maybe_value!(
                                     interrupt_provider,
                                     match type_ref.address {
@@ -516,10 +516,10 @@ pub fn inner_execution_loop(
                                     })) => ty,
                                     // Type Reference
                                     Some(ValueContainer::Shared(
-                                             SharedContainer::Type(type_ref),
+                                         SharedContainer::Type(type_ref),
                                     )) => Type::new(
                                         TypeDefinition::SharedReference(type_ref),
-                                        metadata.mutability.into(),
+                                        metadata,
                                     ),
                                     _ => {
                                         return yield Err(
@@ -1096,12 +1096,7 @@ pub fn inner_execution_loop(
                                     TypeInstruction::ImplType(
                                         impl_type_data,
                                     ) => {
-                                        let mutability: Option<
-                                            SharedContainerMutability,
-                                        > = impl_type_data
-                                            .metadata
-                                            .mutability
-                                            .into();
+                                        let metadata = TypeMetadata::from(&impl_type_data.metadata);
                                         let base_type =
                                             collected_results.pop_type_result();
                                         Type::new(
@@ -1113,7 +1108,7 @@ pub fn inner_execution_loop(
                                                     .map(PointerAddress::from)
                                                     .collect(),
                                             ),
-                                            mutability.clone(),
+                                            metadata
                                         )
                                         .into()
                                     }
