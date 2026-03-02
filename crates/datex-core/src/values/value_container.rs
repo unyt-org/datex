@@ -28,7 +28,7 @@ use core::{
 use serde::{Deserialize, de::DeserializeOwned};
 use crate::dif::update::DIFUpdateData;
 use crate::shared_values::pointer::Pointer;
-use crate::values::core_values::r#type::TypePrefix;
+use crate::values::core_values::r#type::TypeMetadata;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum ValueError {
@@ -338,7 +338,7 @@ impl ValueContainer {
     pub fn actual_container_type(&self) -> Type {
         match self {
             ValueContainer::Local(value) => {
-                Type::new(*value.actual_type.clone(), TypePrefix::default())
+                Type::new(*value.actual_type.clone(), TypeMetadata::default())
             }
             ValueContainer::Shared(shared) => {
                 let inner_type =
@@ -352,9 +352,22 @@ impl ValueContainer {
                     else {
                         inner_type.type_definition
                     },
-                    Some(shared.mutability()),
+                    TypeMetadata::Shared {
+                        mutability: shared.mutability(),
+                        reference_mutability: shared.pointer().reference_mutability().cloned(),
+                    }
                 )
             }
+        }
+    }
+
+    /// Returns the allowed type of the value container
+    /// For local values, this is the same as the actual type.
+    /// For shared values, this is the defined allowed type
+    pub fn allowed_type(&self) -> TypeDefinition {
+        match self {
+            ValueContainer::Local(value) => *value.actual_type.clone(),
+            ValueContainer::Shared(shared) => shared.allowed_type(),
         }
     }
 
@@ -400,8 +413,7 @@ impl ValueContainer {
             _ => core::panic!("Cannot convert ValueContainer to SharedContainer"),
         }
     }
-
-    /// Tries to get a property from the contained local or shared value
+    
     pub fn try_get_property<'a>(
         &self,
         key: impl Into<ValueKey<'a>>,

@@ -347,7 +347,8 @@ pub fn ast_from_bytecode(
                             TypeInstruction::LiteralText(text_data) => {
                                 TypeExpressionData::Text(text_data.0)
                             }
-                            TypeInstruction::TypeReference(reference) => {
+                            TypeInstruction::SharedTypeReference(reference) => {
+                                // TODO: handle metadata
                                 TypeExpressionData::GetReference(
                                     PointerAddress::from(reference.address),
                                 )

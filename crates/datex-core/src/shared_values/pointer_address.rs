@@ -12,17 +12,25 @@ use core::{fmt::Display, result::Result};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct LocalPointerAddress {
+pub struct OwnedPointerAddress {
     pub(crate) address: [u8; 5],
 }
 
-impl LocalPointerAddress {
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum ReferencedPointerAddress {
+    // pointer with a remote endpoint as origin, contains the full pointers address
+    Remote([u8; 26]),
+    // globally unique internal pointer, e.g. for #core, #std
+    Internal([u8; 3]), // TODO #312 shrink down to 2 bytes?
+}
+
+impl OwnedPointerAddress {
     
     pub fn new(address: [u8; 5]) -> Self {
-        LocalPointerAddress { address }
+        OwnedPointerAddress { address }
     }
     
-    pub const NULL: LocalPointerAddress = LocalPointerAddress {
+    pub const NULL: OwnedPointerAddress = OwnedPointerAddress {
         address: [0u8; 5],
     };
 }
@@ -31,19 +39,17 @@ impl LocalPointerAddress {
 pub enum PointerAddress {
     // pointer with the local endpoint as origin
     // the full pointer id consists of the local endpoint id + this local id
-    Local(LocalPointerAddress),
+    Owned(OwnedPointerAddress),
     // pointer with a remote endpoint as origin, contains the full pointers address
-    Remote([u8; 26]),
-    // globally unique internal pointer, e.g. for #core, #std
-    Internal([u8; 3]), // TODO #312 shrink down to 2 bytes?
+    Referenced(ReferencedPointerAddress),
 }
 
 
 impl PointerAddress {
-    pub const NULL: PointerAddress = PointerAddress::Local(LocalPointerAddress::NULL);
+    pub const NULL: PointerAddress = PointerAddress::Owned(OwnedPointerAddress::NULL);
     
-    pub fn local(address: [u8; 5]) -> Self {
-        PointerAddress::Local(LocalPointerAddress::new(address))
+    pub fn owned(address: [u8; 5]) -> Self {
+        PointerAddress::Owned(OwnedPointerAddress::new(address))
     }
 }
 
@@ -66,17 +72,17 @@ impl TryFrom<&str> for PointerAddress {
             5 => {
                 let mut arr = [0u8; 5];
                 arr.copy_from_slice(&bytes);
-                Ok(PointerAddress::Local(LocalPointerAddress::new(arr)))
+                Ok(PointerAddress::Owned(OwnedPointerAddress::new(arr)))
             }
             26 => {
                 let mut arr = [0u8; 26];
                 arr.copy_from_slice(&bytes);
-                Ok(PointerAddress::Remote(arr))
+                Ok(PointerAddress::Referenced(ReferencedPointerAddress::Remote(arr)))
             }
             3 => {
                 let mut arr = [0u8; 3];
                 arr.copy_from_slice(&bytes);
-                Ok(PointerAddress::Internal(arr))
+                Ok(PointerAddress::Referenced(ReferencedPointerAddress::Internal(arr)))
             }
             _ => Err("PointerAddress must be 5, 26 or 3 bytes long"),
         }
@@ -91,30 +97,30 @@ impl From<RawPointerAddress> for PointerAddress {
 
 impl From<&RawLocalPointerAddress> for PointerAddress {
     fn from(raw: &RawLocalPointerAddress) -> Self {
-        PointerAddress::Local(LocalPointerAddress::new(raw.id))
+        PointerAddress::Owned(OwnedPointerAddress::new(raw.id))
     }
 }
 
 impl From<&RawInternalPointerAddress> for PointerAddress {
     fn from(raw: &RawInternalPointerAddress) -> Self {
-        PointerAddress::Internal(raw.id)
+        PointerAddress::Referenced(ReferencedPointerAddress::Internal(raw.id))
     }
 }
 
 impl From<&RawFullPointerAddress> for PointerAddress {
     fn from(raw: &RawFullPointerAddress) -> Self {
-        PointerAddress::Remote(raw.id)
+        PointerAddress::Referenced(ReferencedPointerAddress::Remote(raw.id))
     }
 }
 
 impl From<&RawPointerAddress> for PointerAddress {
     fn from(raw: &RawPointerAddress) -> Self {
         match raw {
-            RawPointerAddress::Local(bytes) => PointerAddress::Local(LocalPointerAddress::new(bytes.id)),
+            RawPointerAddress::Local(bytes) => PointerAddress::Owned(OwnedPointerAddress::new(bytes.id)),
             RawPointerAddress::Internal(bytes) => {
-                PointerAddress::Internal(bytes.id)
+                PointerAddress::Referenced(ReferencedPointerAddress::Internal(bytes.id))
             }
-            RawPointerAddress::Full(bytes) => PointerAddress::Remote(bytes.id),
+            RawPointerAddress::Full(bytes) => PointerAddress::Referenced(ReferencedPointerAddress::Remote(bytes.id)),
         }
     }
 }
@@ -122,9 +128,9 @@ impl From<&RawPointerAddress> for PointerAddress {
 impl PointerAddress {
     pub fn to_address_string(&self) -> String {
         match self {
-            PointerAddress::Local(local_address) => hex::encode(local_address.address),
-            PointerAddress::Remote(bytes) => hex::encode(bytes),
-            PointerAddress::Internal(bytes) => hex::encode(bytes),
+            PointerAddress::Owned(local_address) => hex::encode(local_address.address),
+            PointerAddress::Referenced(ReferencedPointerAddress::Remote(bytes)) => hex::encode(bytes),
+            PointerAddress::Referenced(ReferencedPointerAddress::Internal(bytes)) => hex::encode(bytes),
         }
     }
 }
@@ -162,9 +168,9 @@ impl<'de> Deserialize<'de> for PointerAddress {
 impl PointerAddress {
     pub fn bytes(&self) -> &[u8] {
         match self {
-            PointerAddress::Local(local_address) => &local_address.address,
-            PointerAddress::Remote(bytes) => bytes,
-            PointerAddress::Internal(bytes) => bytes,
+            PointerAddress::Owned(local_address) => &local_address.address,
+            PointerAddress::Referenced(ReferencedPointerAddress::Remote(bytes)) => bytes,
+            PointerAddress::Referenced(ReferencedPointerAddress::Internal(bytes)) => bytes,
         }
     }
 }

@@ -28,7 +28,7 @@ use strum::IntoEnumIterator;
 use crate::shared_values::pointer::{PointerReferenceMutability, Pointer};
 use crate::shared_values::pointer_address::PointerAddress;
 use crate::shared_values::shared_container::SharedContainerMutability;
-use crate::values::core_values::r#type::{LocalReferenceMutability, TypePrefix};
+use crate::values::core_values::r#type::{LocalReferenceMutability, TypeMetadata};
 
 type CoreLibTypes = HashMap<CoreLibPointerId, Type>;
 type CoreLibVals = HashMap<CoreLibPointerId, ValueContainer>;
@@ -276,7 +276,7 @@ pub fn load_core_lib(memory: &mut Memory) {
 
         // TODO #455: dont store variants as separate entries in core_struct (e.g., integer/u8, integer/i32, only keep integer)
         // Import variants directly by variant access operator from base type (e.g., integer -> integer/u8)
-        let core_struct = SharedContainer::new(
+        let core_struct = SharedContainer::boxed(
             Map::from_iter(types_structure),
             Pointer::new_reference(CoreLibPointerId::Core.into(), PointerReferenceMutability::Immutable)
         );
@@ -494,11 +494,11 @@ fn create_core_type(
                 type_value: Type {
                     base_type: base_type_ref,
                     type_definition: TypeDefinition::Unit,
-                    prefix: TypePrefix::default(),
+                    metadata: TypeMetadata::default(),
                 },
                 pointer: Pointer::new_reference(PointerAddress::from(pointer_id), PointerReferenceMutability::Immutable),
             }))),
-            TypePrefix::default(),
+            TypeMetadata::default(),
         ),
     )
 }

@@ -46,7 +46,7 @@ use precompiled_ast::{AstMetadata, RichAst, VariableShape};
 use scope::NewScopeType;
 use scope_stack::PrecompilerScopeStack;
 use crate::shared_values::pointer::Pointer;
-use crate::values::core_values::r#type::TypePrefix;
+use crate::values::core_values::r#type::TypeMetadata;
 
 pub struct Precompiler<'a> {
     ast_metadata: Rc<RefCell<AstMetadata>>,
@@ -284,7 +284,7 @@ impl<'a> Precompiler<'a> {
         };
 
         // register placeholder ref in metadata
-        let type_def = Type::new(TypeDefinition::shared_reference(reference), TypePrefix::default());
+        let type_def = Type::new(TypeDefinition::shared_reference(reference), TypeMetadata::default());
         {
             self.ast_metadata
                 .borrow_mut()
