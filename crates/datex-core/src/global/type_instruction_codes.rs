@@ -4,9 +4,11 @@ use crate::{
 };
 use binrw::{BinRead, BinWrite};
 use core::prelude::rust_2024::*;
+use modular_bitfield::Specifier;
 use num_enum::TryFromPrimitive;
 use strum::Display;
 use crate::shared_values::pointer::PointerReferenceMutability;
+use crate::values::core_values::r#type::{LocalMutability, LocalReferenceMutability};
 
 #[allow(non_camel_case_types)]
 #[derive(
@@ -21,7 +23,7 @@ use crate::shared_values::pointer::PointerReferenceMutability;
 )]
 #[repr(u8)]
 pub enum TypeInstructionCode {
-    TYPE_REFERENCE,
+    SHARED_TYPE_REFERENCE,
     TYPE_WITH_IMPLS,
     TYPE_UNIT,
     TYPE_UNKNOWN,
@@ -77,7 +79,7 @@ impl From<&TypeDefinition> for TypeInstructionCode {
             TypeDefinition::ImplType(_, _) => {
                 TypeInstructionCode::TYPE_WITH_IMPLS
             }
-            TypeDefinition::SharedReference(_) => TypeInstructionCode::TYPE_REFERENCE,
+            TypeDefinition::SharedReference(_) => TypeInstructionCode::SHARED_TYPE_REFERENCE,
             TypeDefinition::Unit => TypeInstructionCode::TYPE_UNIT,
             TypeDefinition::Unknown => TypeInstructionCode::TYPE_UNKNOWN,
             TypeDefinition::Never => TypeInstructionCode::TYPE_NEVER,
@@ -99,38 +101,101 @@ impl From<&TypeDefinition> for TypeInstructionCode {
     }
 }
 
-#[derive(BinRead, BinWrite, Clone, Debug, PartialEq, Display)]
-#[brw(little, repr(u8))]
-pub enum TypeMutabilityCode {
-    MutableReference,
-    ImmutableReference,
-    Value,
+#[derive(Clone, Debug, PartialEq, Display, Specifier)]
+#[bits = 2]
+pub enum TypeReferenceMutabilityCode {
+    MutableReference, // &mut / 'mut
+    ImmutableReference, // & / '
+    Value, // default
 }
 
-impl From<&Option<PointerReferenceMutability>> for TypeMutabilityCode {
+impl From<&TypeReferenceMutabilityCode> for Option<PointerReferenceMutability> {
+    fn from(value: &TypeReferenceMutabilityCode) -> Self {
+        match value {
+            TypeReferenceMutabilityCode::MutableReference => Some(PointerReferenceMutability::Mutable),
+            TypeReferenceMutabilityCode::ImmutableReference => Some(PointerReferenceMutability::Immutable),
+            TypeReferenceMutabilityCode::Value => None,
+        }
+    }
+}
+
+impl From<&Option<PointerReferenceMutability>> for TypeReferenceMutabilityCode {
     fn from(value: &Option<PointerReferenceMutability>) -> Self {
         match value {
-            Some(PointerReferenceMutability::Mutable) => {
-                TypeMutabilityCode::MutableReference
-            }
-            Some(PointerReferenceMutability::Immutable) => {
-                TypeMutabilityCode::ImmutableReference
-            }
-            None => TypeMutabilityCode::Value,
+            Some(PointerReferenceMutability::Mutable) => TypeReferenceMutabilityCode::MutableReference,
+            Some(PointerReferenceMutability::Immutable) => TypeReferenceMutabilityCode::ImmutableReference,
+            None => TypeReferenceMutabilityCode::Value,
         }
     }
 }
 
-impl From<TypeMutabilityCode> for Option<PointerReferenceMutability> {
-    fn from(value: TypeMutabilityCode) -> Self {
+impl From<&Option<LocalReferenceMutability>> for TypeReferenceMutabilityCode {
+    fn from(value: &Option<LocalReferenceMutability>) -> Self {
         match value {
-            TypeMutabilityCode::MutableReference => {
-                Some(PointerReferenceMutability::Mutable)
-            }
-            TypeMutabilityCode::ImmutableReference => {
-                Some(PointerReferenceMutability::Immutable)
-            }
-            TypeMutabilityCode::Value => None,
+            Some(LocalReferenceMutability::Mutable) => TypeReferenceMutabilityCode::MutableReference,
+            Some(LocalReferenceMutability::Immutable) => TypeReferenceMutabilityCode::ImmutableReference,
+            None => TypeReferenceMutabilityCode::Value,
         }
     }
+}
+
+impl From<&TypeReferenceMutabilityCode> for Option<LocalReferenceMutability> {
+    fn from(value: &TypeReferenceMutabilityCode) -> Self {
+        match value {
+            TypeReferenceMutabilityCode::MutableReference => Some(LocalReferenceMutability::Mutable),
+            TypeReferenceMutabilityCode::ImmutableReference => Some(LocalReferenceMutability::Immutable),
+            TypeReferenceMutabilityCode::Value => None,
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Display, Specifier)]
+#[bits = 1]
+pub enum TypeMutabilityCode {
+    Mutable, // mut / shared mut
+    Immutable, // default or shared
+}
+
+impl From<&TypeMutabilityCode> for SharedContainerMutability {
+    fn from(value: &TypeMutabilityCode) -> Self {
+        match value {
+            TypeMutabilityCode::Mutable => SharedContainerMutability::Mutable,
+            TypeMutabilityCode::Immutable => SharedContainerMutability::Immutable,
+        }
+    }
+}
+
+impl From<&SharedContainerMutability> for TypeMutabilityCode {
+    fn from(value: &SharedContainerMutability) -> Self {
+        match value {
+            SharedContainerMutability::Mutable => TypeMutabilityCode::Mutable,
+            SharedContainerMutability::Immutable => TypeMutabilityCode::Immutable,
+        }
+    }
+}
+
+impl From<&TypeMutabilityCode> for LocalMutability {
+    fn from(value: &TypeMutabilityCode) -> Self {
+        match value {
+            TypeMutabilityCode::Mutable => LocalMutability::Mutable,
+            TypeMutabilityCode::Immutable => LocalMutability::Immutable,
+        }
+    }
+}
+
+impl From<&LocalMutability> for TypeMutabilityCode {
+    fn from(value: &LocalMutability) -> Self {
+        match value {
+            LocalMutability::Mutable => TypeMutabilityCode::Mutable,
+            LocalMutability::Immutable => TypeMutabilityCode::Immutable,
+        }
+    }
+}
+
+
+#[derive(Clone, Debug, PartialEq, Display, Specifier)]
+#[bits = 1]
+pub enum TypeLocalOrShared {
+    Local, // default
+    Shared, // shared
 }

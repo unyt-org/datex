@@ -14,7 +14,7 @@ use core::{cell::RefCell, fmt::Display, hash::Hash, prelude::rust_2024::*};
 use crate::prelude::*;
 use crate::shared_values::pointer::PointerReferenceMutability;
 use crate::shared_values::pointer_address::PointerAddress;
-use crate::values::core_values::r#type::TypePrefix;
+use crate::values::core_values::r#type::TypeMetadata;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TypeDefinition {
@@ -266,12 +266,12 @@ impl TypeDefinition {
 
     pub fn into_type(
         self,
-        prefix: TypePrefix
+        prefix: TypeMetadata
     ) -> Type {
         Type {
             type_definition: self,
             base_type: None,
-            prefix,
+            metadata: prefix,
         }
     }
 }
@@ -281,7 +281,7 @@ impl From<TypeDefinition> for Type {
         Type {
             type_definition,
             base_type: None,
-            prefix: TypePrefix::default(),
+            metadata: TypeMetadata::default(),
         }
     }
 }

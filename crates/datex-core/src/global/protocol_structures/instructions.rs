@@ -1,7 +1,7 @@
 use crate::{
     global::{
         operators::AssignmentOperator,
-        type_instruction_codes::TypeMutabilityCode,
+        type_instruction_codes::TypeReferenceMutabilityCode,
     },
     values::core_values::{
         decimal::{utils::decimal_to_string, Decimal},
@@ -13,8 +13,12 @@ use crate::{
 use crate::prelude::*;
 use binrw::{BinRead, BinWrite};
 use core::{fmt::Display, prelude::rust_2024::*};
+use modular_bitfield::bitfield;
+use modular_bitfield::specifiers::B4;
 use serde::{Deserialize, Serialize};
+use crate::global::type_instruction_codes::{TypeLocalOrShared, TypeMutabilityCode};
 use crate::shared_values::pointer_address::PointerAddress;
+use crate::values::core_values::r#type::TypeMetadata;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Instruction {
@@ -418,7 +422,7 @@ impl Display for RegularInstruction {
 #[derive(Clone, Debug, PartialEq)]
 pub enum TypeInstruction {
     ImplType(ImplTypeData),
-    TypeReference(TypeReferenceData),
+    SharedTypeReference(TypeReferenceData),
     LiteralText(TextData),
     LiteralInteger(IntegerData),
     List(ListData),
@@ -437,11 +441,11 @@ impl Display for TypeInstruction {
             TypeInstruction::List(data) => {
                 core::write!(f, "LIST {}", data.element_count)
             }
-            TypeInstruction::TypeReference(reference_data) => {
+            TypeInstruction::SharedTypeReference(reference_data) => {
                 core::write!(
                     f,
-                    "TYPE_REFERENCE mutability: {}, address: {}",
-                    reference_data.metadata.mutability,
+                    "TYPE_REFERENCE mutability: {:?}, address: {}",
+                    TypeMetadata::from(&reference_data.metadata),
                     PointerAddress::from(&reference_data.address)
                 )
             }
@@ -681,7 +685,7 @@ pub struct ApplyData {
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
 #[brw(little)]
 pub struct ImplTypeData {
-    pub metadata: TypeMetadata,
+    pub metadata: TypeMetadataBin,
     pub impl_count: u8,
     #[br(count = impl_count)]
     pub impls: Vec<RawPointerAddress>,
@@ -690,12 +694,54 @@ pub struct ImplTypeData {
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
 #[brw(little)]
 pub struct TypeReferenceData {
-    pub metadata: TypeMetadata,
+    pub metadata: TypeMetadataBin,
     pub address: RawPointerAddress,
 }
 
-#[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
+#[bitfield]
+#[derive(BinWrite, BinRead, Clone, Copy, Debug, PartialEq)]
+#[bw(map = |&x| Self::into_bytes(x))]
+#[br(map = Self::from_bytes)]
 #[brw(little)]
-pub struct TypeMetadata {
+pub struct TypeMetadataBin {
+    pub reference_mutability: TypeReferenceMutabilityCode,
     pub mutability: TypeMutabilityCode,
+    pub type_local_or_shared: TypeLocalOrShared,
+    _unused: B4,
+}
+
+impl From<&TypeMetadataBin> for TypeMetadata {
+    fn from(value: &TypeMetadataBin) -> Self {
+        match value.type_local_or_shared() {
+            TypeLocalOrShared::Local => TypeMetadata::Local {
+                mutability: (&value.mutability()).into(),
+                reference_mutability: (&value.reference_mutability()).into(),
+            },
+            TypeLocalOrShared::Shared => TypeMetadata::Shared {
+                mutability: (&value.mutability()).into(),
+                reference_mutability: (&value.reference_mutability()).into(),
+            },
+        }
+    }
+}
+
+impl From<&TypeMetadata> for TypeMetadataBin {
+    fn from(value: &TypeMetadata) -> Self {
+        match value {
+            TypeMetadata::Local {
+                mutability,
+                reference_mutability,
+            } => Self::new()
+                .with_type_local_or_shared(TypeLocalOrShared::Local)
+                .with_mutability(mutability.into())
+                .with_reference_mutability(reference_mutability.into()),
+            TypeMetadata::Shared {
+                mutability,
+                reference_mutability,
+            } => Self::new()
+                .with_type_local_or_shared(TypeLocalOrShared::Shared)
+                .with_mutability(mutability.into())
+                .with_reference_mutability(reference_mutability.into()),
+        }
+    }
 }

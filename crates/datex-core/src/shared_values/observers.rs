@@ -220,7 +220,7 @@ mod tests {
 
     #[test]
     fn immutable_reference_observe_fails() {
-        let r = SharedContainer::try_new_from_value_container(
+        let r = SharedContainer::try_boxed(
             42.into(),
             None,
             Pointer::NULL,
@@ -232,7 +232,7 @@ mod tests {
             Err(ObserverError::ImmutableReference)
         );
 
-        let r = SharedContainer::try_new_from_value_container(
+        let r = SharedContainer::try_boxed(
             42.into(),
             None,
             Pointer::NULL,
@@ -244,7 +244,7 @@ mod tests {
 
     #[test]
     fn observe_and_unobserve() {
-        let r = SharedContainer::try_new_mut(42.into(), Pointer::NULL).unwrap();
+        let r = SharedContainer::boxed_mut(42.into(), Pointer::NULL).unwrap();
         assert!(!r.has_observers());
         let observer_id = r.observe(Observer::new(|_, _| {})).unwrap();
         assert!(observer_id == 0);
@@ -259,7 +259,7 @@ mod tests {
 
     #[test]
     fn observer_ids_incremental() {
-        let r = SharedContainer::try_new_mut(42.into(), Pointer::NULL).unwrap();
+        let r = SharedContainer::boxed_mut(42.into(), Pointer::NULL).unwrap();
         let id1 = r.observe(Observer::new(|_, _| {})).unwrap();
         let id2 = r.observe(Observer::new(|_, _| {})).unwrap();
         assert!(id1 == 0);
@@ -273,7 +273,7 @@ mod tests {
 
     #[test]
     fn observe_replace() {
-        let int_ref = SharedContainer::try_new_mut(42.into(), Pointer::NULL).unwrap();
+        let int_ref = SharedContainer::boxed_mut(42.into(), Pointer::NULL).unwrap();
         let observed_updates =
             record_dif_updates(&int_ref, 0, ObserveOptions::default());
 
@@ -297,7 +297,7 @@ mod tests {
 
     #[test]
     fn observe_replace_same_transceiver() {
-        let int_ref = SharedContainer::try_new_mut(42.into(), Pointer::NULL).unwrap();
+        let int_ref = SharedContainer::boxed_mut(42.into(), Pointer::NULL).unwrap();
         let observed_update =
             record_dif_updates(&int_ref, 0, ObserveOptions::default());
 
@@ -312,7 +312,7 @@ mod tests {
 
     #[test]
     fn observe_replace_same_transceiver_relay_own_updates() {
-        let int_ref = SharedContainer::try_new_mut(42.into(), Pointer::NULL).unwrap();
+        let int_ref = SharedContainer::boxed_mut(42.into(), Pointer::NULL).unwrap();
         let observed_update = record_dif_updates(
             &int_ref,
             0,
@@ -341,7 +341,7 @@ mod tests {
 
     #[test]
     fn observe_update_property() {
-        let reference = SharedContainer::try_new_mut(
+        let reference = SharedContainer::boxed_mut(
             Map::from(vec![
                 ("a".to_string(), ValueContainer::from(1)),
                 ("b".to_string(), ValueContainer::from(2)),

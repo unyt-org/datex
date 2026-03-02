@@ -24,6 +24,7 @@ use binrw::{io::Cursor, BinWrite};
 
 use crate::prelude::*;
 use crate::shared_values::pointer_address::PointerAddress;
+use crate::values::core_values::r#type::TypeMetadata;
 
 /// Compiles a given value container to a DXB body
 pub fn compile_value_container(value_container: &ValueContainer) -> Vec<u8> {
@@ -143,7 +144,7 @@ pub fn append_value(buffer: &mut Vec<u8>, value: &Value) {
 pub fn append_type_cast(buffer: &mut Vec<u8>, ty: &TypeDefinition) {
     append_instruction_code(buffer, InstructionCode::TYPED_VALUE);
     // TODO #634: optimize: avoid cloning
-    append_type(buffer, &(ty.clone().into_type(None)));
+    append_type(buffer, &(ty.clone().into_type(TypeMetadata::default())));
 }
 
 pub fn append_text(buffer: &mut Vec<u8>, string: &str) {
@@ -338,7 +339,7 @@ pub fn append_get_ref(buffer: &mut Vec<u8>, address: &PointerAddress) {
             append_instruction_code(buffer, InstructionCode::GET_INTERNAL_REF);
             buffer.extend_from_slice(id);
         }
-        PointerAddress::Local(local_address) => {
+        PointerAddress::Owned(local_address) => {
             append_instruction_code(buffer, InstructionCode::GET_LOCAL_REF);
             buffer.extend_from_slice(&local_address.address);
         }

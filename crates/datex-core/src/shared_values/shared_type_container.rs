@@ -99,7 +99,7 @@ impl SharedTypeContainer {
     pub fn as_type(self) -> Type {
         let mutability =
             self.mutability().unwrap_or(SharedContainerMutability::Immutable);
-        Type::reference(self.as_ref_cell(), mutability)
+        Type::shared_reference(self.as_ref_cell(), mutability)
     }
 
     pub fn collapse_reference_chain(&self) -> SharedTypeContainer {

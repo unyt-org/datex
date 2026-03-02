@@ -40,21 +40,33 @@ pub enum LocalReferenceMutability {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-/// Combination of &/&mut, shared and mut prefixes
-pub enum TypePrefix {
-    /// For local reference types, this is Some, for owned local types, this is None
-    Local(Option<LocalReferenceMutability>),
-    /// Shared types are always (shared or shared mut) and can optionally be an non-owned, reference type
-    /// with an additional reference mutability (e.g. &mut shared mut User)
+pub enum LocalMutability {
+    Mutable,
+    Immutable,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+/// Combination of &/&mut, '/'mut shared and mut prefixes
+pub enum TypeMetadata {
+    /// Local types can be mut or not, and can optionally be a reference type with an additional reference mutability (e.g. &mut User)
+    Local {
+        mutability: LocalMutability,
+        reference_mutability: Option<LocalReferenceMutability>
+    },
+    /// Shared types are always (shared or shared mut) and can optionally be a non-owned, reference type
+    /// with an additional reference mutability (e.g. 'mut shared mut User)
     Shared {
         mutability: SharedContainerMutability,
         reference_mutability: Option<PointerReferenceMutability>,
     },
 }
 
-impl Default for TypePrefix {
+impl Default for TypeMetadata {
     fn default() -> Self {
-        TypePrefix::Local(None)
+        TypeMetadata::Local {
+            mutability: LocalMutability::Immutable,
+            reference_mutability: None,
+        }
     }
 }
 
@@ -62,7 +74,7 @@ impl Default for TypePrefix {
 pub struct Type {
     pub type_definition: TypeDefinition,
     pub base_type: Option<Rc<RefCell<SharedTypeContainer>>>,
-    pub prefix: TypePrefix,
+    pub metadata: TypeMetadata,
 }
 
 // x: &User; Type {reference: }
@@ -70,7 +82,7 @@ pub struct Type {
 impl Hash for Type {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.type_definition.hash(state);
-        self.prefix.hash(state);
+        self.metadata.hash(state);
         if let Some(ptr) = &self.base_type {
             let ptr = Rc::as_ptr(ptr);
             ptr.hash(state); // hash the address
@@ -124,7 +136,10 @@ impl Type {
     pub const UNIT: Type = Type {
         type_definition: TypeDefinition::Unit,
         base_type: None,
-        prefix: TypePrefix::Local(None),
+        metadata: TypeMetadata::Local {
+            mutability: LocalMutability::Immutable,
+            reference_mutability: None,
+        },
     };
     pub fn is_structural(&self) -> bool {
         core::matches!(self.type_definition, TypeDefinition::Structural(_))
@@ -155,36 +170,36 @@ impl Type {
             None
         }
     }
-    
+
     /// Mutability for a reference to a shared type (e.g. &mut shared X), if applicable
     pub fn shared_reference_mutability(&self) -> Option<PointerReferenceMutability> {
-        match &self.prefix {
-            TypePrefix::Local(local_mutability) => None,
-            TypePrefix::Shared { reference_mutability, .. } => reference_mutability.clone(),
+        match &self.metadata {
+            TypeMetadata::Local { .. } => None,
+            TypeMetadata::Shared { reference_mutability, .. } => reference_mutability.clone(),
         }
     }
-    
+
     /// Mutability for a shared type (e.g. shared mut X / shared X), if applicable
     pub fn shared_mutability(&self) -> Option<SharedContainerMutability> {
-        match &self.prefix {
-            TypePrefix::Local(_) => None,
-            TypePrefix::Shared { mutability, .. } => Some(mutability.clone()),
+        match &self.metadata {
+            TypeMetadata::Local { .. } => None,
+            TypeMetadata::Shared { mutability, .. } => Some(mutability.clone()),
         }
     }
 
     /// Mutability for a reference to a local type (e.g. &mut X), if applicable
     pub fn local_reference_mutability(&self) -> Option<LocalReferenceMutability> {
-        match &self.prefix {
-            TypePrefix::Local(local_mutability) => local_mutability.clone(),
-            TypePrefix::Shared { .. } => None,
+        match &self.metadata {
+            TypeMetadata::Local { reference_mutability: local_reference_mutability, .. } => local_reference_mutability.clone(),
+            TypeMetadata::Shared { .. } => None,
         }
     }
-    
+
     /// Whether this type is a shared type (e.g. shared X, shared mut X, &shared X, &mut shared X)
     pub fn is_shared_type(&self) -> bool {
-        match &self.prefix {
-            TypePrefix::Shared { .. } => true,
-            TypePrefix::Local(_) => false,
+        match &self.metadata {
+            TypeMetadata::Shared { .. } => true,
+            TypeMetadata::Local { .. } => false,
         }
     }
 }
@@ -195,78 +210,78 @@ impl Type {
     /// otherwise it must be None.
     pub fn new(
         type_definition: TypeDefinition,
-        prefix: TypePrefix,
+        prefix: TypeMetadata,
     ) -> Self {
         Type {
             type_definition,
             base_type: None,
-            prefix,
+            metadata: prefix,
         }
     }
 
     /// Creates a reference type pointing to the given TypeReference
-    pub fn reference(
+    pub fn shared_reference(
         type_definition: Rc<RefCell<SharedTypeContainer>>,
-        prefix: TypePrefix,
+        prefix: TypeMetadata,
     ) -> Self {
         Type {
             type_definition: TypeDefinition::SharedReference(type_definition),
             base_type: None,
-            prefix,
+            metadata: prefix,
         }
     }
 
     /// Creates a structural type from the given structural type definition
     pub fn structural(
         structural_type: impl Into<StructuralTypeDefinition>,
-        prefix: TypePrefix,
+        prefix: TypeMetadata,
     ) -> Self {
         Type {
             type_definition: TypeDefinition::structural(structural_type),
             base_type: None,
-            prefix
+            metadata: prefix
         }
     }
 
     /// Creates a union type from the given member types
-    pub fn union<T>(types: Vec<T>, prefix: TypePrefix,) -> Self
+    pub fn union<T>(types: Vec<T>, prefix: TypeMetadata,) -> Self
     where
         T: Into<Type>,
     {
         Type {
             type_definition: TypeDefinition::union(types),
             base_type: None,
-            prefix,
+            metadata: prefix,
         }
     }
 
     /// Creates an intersection type from the given member types
-    pub fn intersection<T: Into<Type>>(members: Vec<T>, prefix: TypePrefix) -> Self {
+    pub fn intersection<T: Into<Type>>(members: Vec<T>, prefix: TypeMetadata) -> Self {
         Type {
             type_definition: TypeDefinition::intersection(members),
             base_type: None,
-            prefix,
+            metadata: prefix,
         }
     }
 
     /// Creates a function type from the given parameter types and return type
-    pub fn callable(signature: CallableSignature, prefix: TypePrefix) -> Self {
+    pub fn callable(signature: CallableSignature, prefix: TypeMetadata) -> Self {
         Type {
             type_definition: TypeDefinition::callable(signature),
             base_type: None,
-            prefix,
+            metadata: prefix,
         }
     }
 
     pub fn impl_type(
         base_type: impl Into<Type>,
         impl_types: Vec<PointerAddress>,
-        prefix: TypePrefix,
+        prefix: TypeMetadata,
     ) -> Self {
         Type {
             type_definition: TypeDefinition::impl_type(base_type, impl_types),
             base_type: None,
-            prefix,
+            metadata: prefix,
         }
     }
 }
@@ -324,7 +339,7 @@ impl Type {
 
     pub fn base_type(&self) -> Option<Type> {
         self.base_type_reference()
-            .map(|r| Type::reference(r, TypePrefix::default()))
+            .map(|r| Type::shared_reference(r, TypeMetadata::default()))
     }
 
     /// 1 matches 1 -> true
@@ -371,7 +386,7 @@ impl Type {
     /// An atomic type can be any type variant besides union or intersection
     pub fn atomic_matches_type(atomic_type: &Type, other: &Type) -> bool {
         // FIXME: match rules for prefixes are more nuanced than just equality, e.g. &mut T should match &T, ...
-        if atomic_type.prefix != other.prefix {
+        if atomic_type.metadata != other.metadata {
             return false;
         }
 
@@ -460,25 +475,34 @@ impl Type {
 impl StructuralEq for Type {
     fn structural_eq(&self, other: &Self) -> bool {
         self.type_definition.structural_eq(&other.type_definition)
-            && self.prefix == other.prefix
+            && self.metadata == other.metadata
     }
 }
 
 impl Display for Type {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        let prefix = match &self.prefix {
-            TypePrefix::Local(Some(LocalReferenceMutability::Immutable)) => "&".to_string(),
-            TypePrefix::Local(Some(LocalReferenceMutability::Mutable)) => "&mut ".to_string(),
-            TypePrefix::Local(None) => "".to_string(),
-            TypePrefix::Shared { mutability, reference_mutability } => {
+        let prefix = match &self.metadata {
+            TypeMetadata::Local { mutability, reference_mutability } => {
+                let ref_prefix = match reference_mutability {
+                    Some(LocalReferenceMutability::Immutable) => "&",
+                    Some(LocalReferenceMutability::Mutable) => "&mut ",
+                    None => "",
+                };
+                let mut_prefix = match mutability {
+                    LocalMutability::Immutable => "",
+                    LocalMutability::Mutable => "mut ",
+                };
+                format!("{}{}", ref_prefix, mut_prefix)
+            }
+            TypeMetadata::Shared { mutability, reference_mutability } => {
+                let ref_prefix = match reference_mutability {
+                    Some(PointerReferenceMutability::Immutable) => "'",
+                    Some(PointerReferenceMutability::Mutable) => "'mut ",
+                    None => "",
+                };
                 let shared_prefix = match mutability {
                     SharedContainerMutability::Immutable => "shared ",
                     SharedContainerMutability::Mutable => "shared mut ",
-                };
-                let ref_prefix = match reference_mutability {
-                    Some(PointerReferenceMutability::Immutable) => "&",
-                    Some(PointerReferenceMutability::Mutable) => "&mut ",
-                    None => "",
                 };
                 format!("{}{}", ref_prefix, shared_prefix)
             }
@@ -494,34 +518,34 @@ impl Display for Type {
 impl From<&CoreValue> for Type {
     fn from(value: &CoreValue) -> Self {
         match value {
-            CoreValue::Null => Type::structural(StructuralTypeDefinition::Null, TypePrefix::default()),
+            CoreValue::Null => Type::structural(StructuralTypeDefinition::Null, TypeMetadata::default()),
             CoreValue::Boolean(b) => {
-                Type::structural(StructuralTypeDefinition::Boolean(b.clone()), TypePrefix::default())
+                Type::structural(StructuralTypeDefinition::Boolean(b.clone()), TypeMetadata::default())
             }
-            CoreValue::Text(s) => Type::structural(s.clone(), TypePrefix::default()),
+            CoreValue::Text(s) => Type::structural(s.clone(), TypeMetadata::default()),
             CoreValue::Decimal(d) => {
-                Type::structural(StructuralTypeDefinition::Decimal(d.clone()), TypePrefix::default())
+                Type::structural(StructuralTypeDefinition::Decimal(d.clone()), TypeMetadata::default())
             }
             CoreValue::TypedDecimal(td) => Type::structural(
                 StructuralTypeDefinition::TypedDecimal(td.clone()),
-                TypePrefix::default()
+                TypeMetadata::default()
             ),
             CoreValue::Integer(i) => {
-                Type::structural(StructuralTypeDefinition::Integer(i.clone()), TypePrefix::default())
+                Type::structural(StructuralTypeDefinition::Integer(i.clone()), TypeMetadata::default())
             }
             CoreValue::TypedInteger(ti) => Type::structural(
                 StructuralTypeDefinition::TypedInteger(ti.clone()),
-                TypePrefix::default()
+                TypeMetadata::default()
             ),
             CoreValue::Endpoint(e) => {
-                Type::structural(StructuralTypeDefinition::Endpoint(e.clone()), TypePrefix::default())
+                Type::structural(StructuralTypeDefinition::Endpoint(e.clone()), TypeMetadata::default())
             }
             CoreValue::List(list) => {
                 let types = list
                     .iter()
                     .map(|v| Type::from(v.to_value().borrow().inner.clone()))
                     .collect::<Vec<_>>();
-                Type::structural(StructuralTypeDefinition::List(types), TypePrefix::default())
+                Type::structural(StructuralTypeDefinition::List(types), TypeMetadata::default())
             }
             CoreValue::Map(map) => {
                 let struct_types = map
@@ -539,7 +563,7 @@ impl From<&CoreValue> for Type {
                         )
                     })
                     .collect::<Vec<_>>();
-                Type::structural(StructuralTypeDefinition::Map(struct_types), TypePrefix::default())
+                Type::structural(StructuralTypeDefinition::Map(struct_types), TypeMetadata::default())
             }
             e => unimplemented!("Type conversion not implemented for {}", e),
         }
@@ -583,7 +607,7 @@ impl TryFrom<&DatexExpressionData> for Type {
     type Error = ();
 
     fn try_from(expr: &DatexExpressionData) -> Result<Self, Self::Error> {
-        Ok(Type::structural(StructuralTypeDefinition::try_from(expr)?, TypePrefix::default()))
+        Ok(Type::structural(StructuralTypeDefinition::try_from(expr)?, TypeMetadata::default()))
     }
 }
 
@@ -602,32 +626,32 @@ mod tests {
             value_container::ValueContainer,
         },
     };
-    use crate::values::core_values::r#type::TypePrefix;
+    use crate::values::core_values::r#type::TypeMetadata;
 
     #[test]
     fn test_match_equal_values() {
         // 1u8 matches 1u8
         assert!(Type::value_matches_type(
             &TypedInteger::from(1u8).into(),
-            &Type::structural(1u8, TypePrefix::default())
+            &Type::structural(1u8, TypeMetadata::default())
         ));
 
         // 1u16 matches 1u16
         assert!(Type::value_matches_type(
             &TypedInteger::from(1u16).into(),
-            &Type::structural(1u16, TypePrefix::default())
+            &Type::structural(1u16, TypeMetadata::default())
         ));
 
         // 1 matches 1
         assert!(Type::value_matches_type(
             &ValueContainer::from(Integer::from(1)),
-            &Type::structural(Integer::from(1), TypePrefix::default())
+            &Type::structural(Integer::from(1), TypeMetadata::default())
         ));
 
         // "test" matches "test"
         assert!(Type::value_matches_type(
             &ValueContainer::from(Text::from("test")),
-            &Type::structural(Text::from("test"), TypePrefix::default())
+            &Type::structural(Text::from("test"), TypeMetadata::default())
         ));
     }
 
@@ -637,10 +661,10 @@ mod tests {
         assert!(Type::value_matches_type(
             &ValueContainer::from(Integer::from(1)),
             &Type::union(vec![
-                Type::structural(Integer::from(1), TypePrefix::default()),
-                Type::structural(Integer::from(2), TypePrefix::default()),
-                Type::structural(Integer::from(3), TypePrefix::default()),
-            ], TypePrefix::default()),
+                Type::structural(Integer::from(1), TypeMetadata::default()),
+                Type::structural(Integer::from(2), TypeMetadata::default()),
+                Type::structural(Integer::from(3), TypeMetadata::default()),
+            ], TypeMetadata::default()),
         ))
     }
 
@@ -648,22 +672,22 @@ mod tests {
     fn type_matches_union_type() {
         // 1 matches (1 | 2 | 3)
         assert!(
-            Type::structural(Integer::from(1), TypePrefix::default()).matches_type(&Type::union(
+            Type::structural(Integer::from(1), TypeMetadata::default()).matches_type(&Type::union(
                 vec![
-                    Type::structural(Integer::from(1), TypePrefix::default()),
-                    Type::structural(Integer::from(2), TypePrefix::default()),
-                    Type::structural(Integer::from(3), TypePrefix::default()),
-                ], TypePrefix::default()
+                    Type::structural(Integer::from(1), TypeMetadata::default()),
+                    Type::structural(Integer::from(2), TypeMetadata::default()),
+                    Type::structural(Integer::from(3), TypeMetadata::default()),
+                ], TypeMetadata::default()
             ))
         );
 
         // 1 matches integer | text
         assert!(
-            Type::structural(Integer::from(1), TypePrefix::default()).matches_type(&Type::union(
+            Type::structural(Integer::from(1), TypeMetadata::default()).matches_type(&Type::union(
                 vec![
                     get_core_lib_type(CoreLibPointerId::Integer(None)),
                     get_core_lib_type(CoreLibPointerId::Text),
-                ], TypePrefix::default()
+                ], TypeMetadata::default()
             ))
         );
     }

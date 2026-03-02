@@ -14,7 +14,7 @@ use core::{cell::RefCell, result::Result};
 
 use crate::prelude::*;
 use crate::shared_values::pointer::Pointer;
-use crate::shared_values::pointer_address::{LocalPointerAddress, PointerAddress};
+use crate::shared_values::pointer_address::{OwnedPointerAddress, PointerAddress};
 
 #[derive(Debug, Default)]
 pub struct Memory {
@@ -123,7 +123,7 @@ impl Memory {
         {
             // TODO #639: check if it makes sense to take the last 5 bytes only here
             let last_bytes = &raw_address.id[raw_address.id.len() - 5..];
-            PointerAddress::local(last_bytes.try_into().unwrap())
+            PointerAddress::owned(last_bytes.try_into().unwrap())
         } else {
             // combine raw_address.endpoint and raw_address.id to [u8; 26]
             let writer = Cursor::new(Vec::new());
@@ -156,6 +156,6 @@ impl Memory {
             (self.local_counter & 0xFF) as u8,
         ];
 
-        Pointer::new_owned(LocalPointerAddress::new(id))
+        Pointer::new_owned(OwnedPointerAddress::new(id))
     }
 }
