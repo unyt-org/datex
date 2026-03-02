@@ -46,7 +46,7 @@ fn append_type_definition(
             // Append the base type
             append_type(buffer, ty);
         }
-        TypeDefinition::Reference(type_ref) => {
+        TypeDefinition::SharedReference(type_ref) => {
             // TODO #636: ensure pointer_address exists here
             let type_ref = type_ref.borrow();
             let pointer_address = type_ref

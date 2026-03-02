@@ -59,9 +59,9 @@ impl Pointer {
             mutability: PointerReferenceMutability::Immutable,
         }
     }
-    
+
     /// Gets a mutable reference to the pointer if possible, otherwise returns None.
-    /// For owned pointers, a mutable reference can always be created. 
+    /// For owned pointers, a mutable reference can always be created.
     /// For borrowed pointers, a mutable reference can only be created if the original pointer is mutable.
     pub fn get_reference_mut(&self) -> Option<PointerReference> {
         let address = self.address();

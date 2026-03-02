@@ -27,6 +27,8 @@ use log::info;
 use strum::IntoEnumIterator;
 use crate::shared_values::pointer::{PointerReferenceMutability, Pointer};
 use crate::shared_values::pointer_address::PointerAddress;
+use crate::shared_values::shared_container::SharedContainerMutability;
+use crate::values::core_values::r#type::{LocalReferenceMutability, TypePrefix};
 
 type CoreLibTypes = HashMap<CoreLibPointerId, Type>;
 type CoreLibVals = HashMap<CoreLibPointerId, ValueContainer>;
@@ -202,7 +204,7 @@ pub fn get_core_lib_type_reference(
 ) -> Rc<RefCell<SharedTypeContainer>> {
     let type_container = get_core_lib_type(id);
     match type_container.type_definition {
-        TypeDefinition::Reference(tr) => tr,
+        TypeDefinition::SharedReference(tr) => tr,
         _ => core::panic!("Core lib type is not a TypeReference"),
     }
 }
@@ -216,7 +218,7 @@ pub fn get_core_lib_value(
         // try types first
         if let Some(ty) = core_lib_types.get(&id) {
             match &ty.type_definition {
-                TypeDefinition::Reference(tr) => {
+                TypeDefinition::SharedReference(tr) => {
                     Some(ValueContainer::Shared(SharedContainer::Type(
                         tr.clone(),
                     )))
@@ -250,7 +252,7 @@ pub fn load_core_lib(memory: &mut Memory) {
         let mut types_structure = core_lib_types
             .values()
             .map(|ty| match &ty.type_definition {
-                TypeDefinition::Reference(type_reference) => {
+                TypeDefinition::SharedReference(type_reference) => {
                     let name = type_reference
                         .borrow()
                         .nominal_type_declaration
@@ -472,7 +474,7 @@ fn create_core_type(
 ) -> CoreLibTypeDefinition {
     let base_type_ref = match base_type {
         Some(Type {
-            type_definition: TypeDefinition::Reference(reference),
+            type_definition: TypeDefinition::SharedReference(reference),
             ..
         }) => Some(reference),
         Some(_) => {
@@ -483,19 +485,20 @@ fn create_core_type(
     (
         pointer_id.clone(),
         Type::new(
-            TypeDefinition::reference(Rc::new(RefCell::new(SharedTypeContainer {
+            // &shared type<()>
+            TypeDefinition::shared_reference(Rc::new(RefCell::new(SharedTypeContainer {
                 nominal_type_declaration: Some(NominalTypeDeclaration {
                     name: name.to_string(),
                     variant,
                 }),
                 type_value: Type {
                     base_type: base_type_ref,
-                    reference_mutability: None,
                     type_definition: TypeDefinition::Unit,
+                    prefix: TypePrefix::default(),
                 },
                 pointer: Pointer::new_reference(PointerAddress::from(pointer_id), PointerReferenceMutability::Immutable),
             }))),
-            None,
+            TypePrefix::default(),
         ),
     )
 }

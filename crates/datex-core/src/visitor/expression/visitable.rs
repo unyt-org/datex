@@ -1,8 +1,8 @@
 use crate::{
     ast::expressions::{
         Apply, BinaryOperation, CallableDeclaration, ComparisonOperation,
-        Conditional, CreateRef, DatexExpression, DatexExpressionData, Deref,
-        DerefAssignment, GenericInstantiation, List, Map, PropertyAccess,
+        Conditional, CreateRef, DatexExpression, DatexExpressionData, Unbox,
+        UnboxAssignment, GenericInstantiation, List, Map, PropertyAccess,
         PropertyAssignment, RangeDeclaration, RemoteExecution, SlotAssignment,
         Statements, TypeDeclaration, UnaryOperation, VariableAssignment,
         VariableDeclaration,
@@ -12,7 +12,7 @@ use crate::{
         type_expression::visitable::VisitableTypeExpression,
     },
 };
-use crate::ast::expressions::{CreateMut, CreateShared};
+use crate::ast::expressions::{CreateMut, CreateShared, CreateSharedRef};
 
 pub type ExpressionVisitResult<E> = Result<VisitAction<DatexExpression>, E>;
 
@@ -141,7 +141,7 @@ impl<E> VisitableExpression<E> for ComparisonOperation {
         Ok(())
     }
 }
-impl<E> VisitableExpression<E> for DerefAssignment {
+impl<E> VisitableExpression<E> for UnboxAssignment {
     fn walk_children(
         &mut self,
         visitor: &mut impl ExpressionVisitor<E>,
@@ -223,7 +223,7 @@ impl<E> VisitableExpression<E> for CallableDeclaration {
     }
 }
 
-impl<E> VisitableExpression<E> for Deref {
+impl<E> VisitableExpression<E> for Unbox {
     fn walk_children(
         &mut self,
         visitor: &mut impl ExpressionVisitor<E>,
@@ -242,6 +242,17 @@ impl<E> VisitableExpression<E> for CreateRef {
         Ok(())
     }
 }
+
+impl<E> VisitableExpression<E> for CreateSharedRef {
+    fn walk_children(
+        &mut self,
+        visitor: &mut impl ExpressionVisitor<E>,
+    ) -> Result<(), E> {
+        visitor.visit_datex_expression(&mut self.expression)?;
+        Ok(())
+    }
+}
+
 
 impl<E> VisitableExpression<E> for CreateShared {
     fn walk_children(
@@ -313,13 +324,16 @@ impl<E> VisitableExpression<E> for DatexExpression {
             DatexExpressionData::CreateRef(create_ref) => {
                 create_ref.walk_children(visitor)
             }
+            DatexExpressionData::CreateSharedRef(create_shared_ref) => {
+                create_shared_ref.walk_children(visitor)
+            }
             DatexExpressionData::CreateShared(create_ref) => {
                 create_ref.walk_children(visitor)
             }
             DatexExpressionData::CreateMut(create_mut) => {
                 create_mut.walk_children(visitor)
             }
-            DatexExpressionData::Deref(datex_expression) => {
+            DatexExpressionData::Unbox(datex_expression) => {
                 datex_expression.walk_children(visitor)
             }
             DatexExpressionData::SlotAssignment(slot_assignment) => {
@@ -328,7 +342,7 @@ impl<E> VisitableExpression<E> for DatexExpression {
             DatexExpressionData::ComparisonOperation(comparison_operation) => {
                 comparison_operation.walk_children(visitor)
             }
-            DatexExpressionData::DerefAssignment(deref_assignment) => {
+            DatexExpressionData::UnboxAssignment(deref_assignment) => {
                 deref_assignment.walk_children(visitor)
             }
             DatexExpressionData::UnaryOperation(unary_operation) => {

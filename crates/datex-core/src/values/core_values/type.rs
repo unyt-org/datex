@@ -34,7 +34,7 @@ use crate::shared_values::pointer::PointerReferenceMutability;
 use crate::shared_values::pointer_address::PointerAddress;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum LocalTypeReferenceMutability {
+pub enum LocalReferenceMutability {
     Mutable,
     Immutable,
 }
@@ -43,7 +43,7 @@ pub enum LocalTypeReferenceMutability {
 /// Combination of &/&mut, shared and mut prefixes
 pub enum TypePrefix {
     /// For local reference types, this is Some, for owned local types, this is None
-    Local(Option<LocalTypeReferenceMutability>),
+    Local(Option<LocalReferenceMutability>),
     /// Shared types are always (shared or shared mut) and can optionally be an non-owned, reference type
     /// with an additional reference mutability (e.g. &mut shared mut User)
     Shared {
@@ -136,10 +136,10 @@ impl Type {
         core::matches!(self.type_definition, TypeDefinition::Unit)
     }
     pub fn is_reference(&self) -> bool {
-        core::matches!(self.type_definition, TypeDefinition::Reference(_))
+        core::matches!(self.type_definition, TypeDefinition::SharedReference(_))
     }
     pub fn inner_reference(&self) -> Option<Rc<RefCell<SharedTypeContainer>>> {
-        if let TypeDefinition::Reference(reference) = &self.type_definition {
+        if let TypeDefinition::SharedReference(reference) = &self.type_definition {
             Some(reference.clone())
         } else {
             None
@@ -173,7 +173,7 @@ impl Type {
     }
 
     /// Mutability for a reference to a local type (e.g. &mut X), if applicable
-    pub fn local_reference_mutability(&self) -> Option<LocalTypeReferenceMutability> {
+    pub fn local_reference_mutability(&self) -> Option<LocalReferenceMutability> {
         match &self.prefix {
             TypePrefix::Local(local_mutability) => local_mutability.clone(),
             TypePrefix::Shared { .. } => None,
@@ -210,7 +210,7 @@ impl Type {
         prefix: TypePrefix,
     ) -> Self {
         Type {
-            type_definition: TypeDefinition::Reference(type_definition),
+            type_definition: TypeDefinition::SharedReference(type_definition),
             base_type: None,
             prefix,
         }
@@ -294,7 +294,7 @@ impl Type {
             TypeDefinition::Union(_) => {
                 core::todo!("#322 handle union base type"); // generic type base type / type
             }
-            TypeDefinition::Reference(reference) => {
+            TypeDefinition::SharedReference(reference) => {
                 let type_ref = reference.borrow();
                 if let Ok(core_lib_id) =
                     CoreLibPointerId::try_from(type_ref.pointer.address())
@@ -376,7 +376,7 @@ impl Type {
         }
 
         match &other.type_definition {
-            TypeDefinition::Reference(reference) => {
+            TypeDefinition::SharedReference(reference) => {
                 // compare base type of atomic_type with the referenced type
                 if let Some(atomic_base_type_reference) =
                     atomic_type.base_type_reference()
@@ -433,7 +433,7 @@ impl Type {
             TypeDefinition::Structural(structural_type) => {
                 structural_type.value_matches(value)
             }
-            TypeDefinition::Reference(_reference) => {
+            TypeDefinition::SharedReference(_reference) => {
                 core::todo!("#327 handle reference type matching");
                 //reference.value_matches(value)
             }
@@ -467,8 +467,8 @@ impl StructuralEq for Type {
 impl Display for Type {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         let prefix = match &self.prefix {
-            TypePrefix::Local(Some(LocalTypeReferenceMutability::Immutable)) => "&".to_string(),
-            TypePrefix::Local(Some(LocalTypeReferenceMutability::Mutable)) => "&mut ".to_string(),
+            TypePrefix::Local(Some(LocalReferenceMutability::Immutable)) => "&".to_string(),
+            TypePrefix::Local(Some(LocalReferenceMutability::Mutable)) => "&mut ".to_string(),
             TypePrefix::Local(None) => "".to_string(),
             TypePrefix::Shared { mutability, reference_mutability } => {
                 let shared_prefix = match mutability {
