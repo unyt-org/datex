@@ -312,7 +312,7 @@ impl Type {
             TypeDefinition::SharedReference(reference) => {
                 let type_ref = reference.borrow();
                 if let Ok(core_lib_id) =
-                    CoreLibPointerId::try_from(type_ref.pointer.address())
+                    CoreLibPointerId::try_from(&type_ref.pointer.address())
                 {
                     match core_lib_id {
                         // for integer and decimal variants, return the base type

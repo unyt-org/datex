@@ -256,6 +256,7 @@ mod tests {
             value_container::ValueContainer,
         },
     };
+    use crate::values::core_values::r#type::TypeMetadata;
 
     #[test]
     fn test_structural_type_display() {
@@ -268,23 +269,23 @@ mod tests {
         let list_type = StructuralTypeDefinition::List(vec![
             Type::structural(StructuralTypeDefinition::Integer(Integer::from(
                 1,
-            )))
+            )), TypeMetadata::default())
             .into(),
             Type::structural(StructuralTypeDefinition::Text(Text::from(
                 "World",
-            )))
+            )), TypeMetadata::default())
             .into(),
         ]);
         assert_eq!(list_type.to_string(), r#"[1, "World"]"#);
 
         let struct_type = StructuralTypeDefinition::Map(vec![
             (
-                Type::structural("id".to_string()).into(),
-                Type::structural(int_type.clone()).into(),
+                Type::structural("id".to_string(), TypeMetadata::default()).into(),
+                Type::structural(int_type.clone(), TypeMetadata::default()).into(),
             ),
             (
-                Type::structural("name".to_string()).into(),
-                Type::structural(text_type.clone()).into(),
+                Type::structural("name".to_string(), TypeMetadata::default()).into(),
+                Type::structural(text_type.clone(), TypeMetadata::default()).into(),
             ),
         ]);
         assert_eq!(struct_type.to_string(), r#"{"id": 42, "name": "Hello"}"#);

@@ -23,7 +23,7 @@ use crate::{
 use binrw::{io::Cursor, BinWrite};
 
 use crate::prelude::*;
-use crate::shared_values::pointer_address::PointerAddress;
+use crate::shared_values::pointer_address::{PointerAddress, ReferencedPointerAddress};
 use crate::values::core_values::r#type::TypeMetadata;
 
 /// Compiles a given value container to a DXB body
@@ -335,7 +335,7 @@ pub fn append_float_as_i32(buffer: &mut Vec<u8>, int: i32) {
 
 pub fn append_get_ref(buffer: &mut Vec<u8>, address: &PointerAddress) {
     match address {
-        PointerAddress::Internal(id) => {
+        PointerAddress::Referenced(ReferencedPointerAddress::Internal(id)) => {
             append_instruction_code(buffer, InstructionCode::GET_INTERNAL_REF);
             buffer.extend_from_slice(id);
         }
@@ -343,7 +343,7 @@ pub fn append_get_ref(buffer: &mut Vec<u8>, address: &PointerAddress) {
             append_instruction_code(buffer, InstructionCode::GET_LOCAL_REF);
             buffer.extend_from_slice(&local_address.address);
         }
-        PointerAddress::Remote(id) => {
+        PointerAddress::Referenced(ReferencedPointerAddress::Remote(id)) => {
             append_instruction_code(buffer, InstructionCode::GET_REF);
             buffer.extend_from_slice(id);
         }

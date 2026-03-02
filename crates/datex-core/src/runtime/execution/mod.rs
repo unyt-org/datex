@@ -19,7 +19,7 @@ use core::{result::Result, unreachable};
 pub use errors::*;
 pub use execution_input::{ExecutionInput, ExecutionOptions};
 pub use memory_dump::*;
-use crate::shared_values::pointer_address::PointerAddress;
+use crate::shared_values::pointer_address::{PointerAddress, ReferencedPointerAddress};
 
 pub mod context;
 mod errors;
@@ -180,7 +180,7 @@ fn get_internal_pointer_value(
     }
 
     let core_lib_id =
-        CoreLibPointerId::try_from(&PointerAddress::Internal(address.id));
+        CoreLibPointerId::try_from(&PointerAddress::Referenced(ReferencedPointerAddress::Internal(address.id)));
     core_lib_id
         .map_err(|_| ExecutionError::ReferenceNotFound)
         .map(|id| {
@@ -192,7 +192,7 @@ fn get_internal_pointer_value_from_memory(
     runtime_internal: &Rc<RuntimeInternal>,
     address: &RawInternalPointerAddress,
 ) -> Result<ValueContainer, ExecutionError> {
-    let pointer_address = PointerAddress::Internal(address.id);
+    let pointer_address = PointerAddress::Referenced(ReferencedPointerAddress::Internal(address.id));
     let memory = runtime_internal.memory.borrow();
     if let Some(reference) = memory.get_reference(&pointer_address) {
         Ok(ValueContainer::Shared(reference.clone()))

@@ -35,11 +35,8 @@ impl From<&RegularInstruction> for UnaryOperator {
             RegularInstruction::BitwiseNot => {
                 UnaryOperator::Bitwise(BitwiseUnaryOperator::Not)
             }
-            RegularInstruction::GetReference => {
+            RegularInstruction::CreateSharedReference => {
                 UnaryOperator::Reference(SharedValueUnaryOperator::GetReference)
-            }
-            RegularInstruction::GetReferenceMut => {
-                UnaryOperator::Reference(SharedValueUnaryOperator::GetReferenceMut)
             }
             RegularInstruction::CreateShared => {
                 UnaryOperator::Reference(SharedValueUnaryOperator::CreateSharedOwned)
@@ -81,8 +78,7 @@ impl Display for UnaryOperator {
 pub enum SharedValueUnaryOperator {
     CreateSharedOwned,    // shared
     CreateSharedOwnedMut, // shared mut
-    GetReference,      // &
-    GetReferenceMut,   // &mut
+    GetReference,      // ' / 'mut
     Deref,        // *
 }
 
@@ -93,8 +89,7 @@ impl From<&SharedValueUnaryOperator> for InstructionCode {
             SharedValueUnaryOperator::CreateSharedOwnedMut => {
                 InstructionCode::CREATE_SHARED_MUT
             }
-            SharedValueUnaryOperator::GetReference => InstructionCode::CREATE_REF,
-            SharedValueUnaryOperator::GetReferenceMut => InstructionCode::CREATE_REF_MUT,
+            SharedValueUnaryOperator::GetReference => InstructionCode::CREATE_SHARED_REF,
             SharedValueUnaryOperator::Deref => InstructionCode::DEREF,
         }
     }
@@ -105,8 +100,7 @@ impl Display for SharedValueUnaryOperator {
         match self {
             SharedValueUnaryOperator::CreateSharedOwned => core::write!(f, "shared"),
             SharedValueUnaryOperator::CreateSharedOwnedMut => core::write!(f, "shared mut"),
-            SharedValueUnaryOperator::GetReference => core::write!(f, "&"),
-            SharedValueUnaryOperator::GetReferenceMut => core::write!(f, "&mut"),
+            SharedValueUnaryOperator::GetReference => core::write!(f, "'"),
             SharedValueUnaryOperator::Deref => core::write!(f, "*"),
         }
     }

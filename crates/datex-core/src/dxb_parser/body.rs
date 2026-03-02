@@ -511,13 +511,9 @@ pub fn iterate_instructions(
                             next_instructions_stack.push_next_regular(1); // value to check
                             RegularInstruction::Matches
                         }
-                        InstructionCode::CREATE_REF => {
+                        InstructionCode::CREATE_SHARED_REF => {
                             next_instructions_stack.push_next_regular(1);
-                            RegularInstruction::GetReference
-                        }
-                        InstructionCode::CREATE_REF_MUT => {
-                            next_instructions_stack.push_next_regular(1);
-                            RegularInstruction::GetReferenceMut
+                            RegularInstruction::CreateSharedReference
                         }
                         InstructionCode::CREATE_SHARED => {
                             next_instructions_stack.push_next_regular(1);
