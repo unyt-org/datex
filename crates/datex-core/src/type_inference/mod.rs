@@ -57,7 +57,7 @@ use crate::{
 };
 use core::{cell::RefCell, ops::Range, panic, str::FromStr};
 use crate::shared_values::pointer::{Pointer, PointerReferenceMutability};
-use crate::shared_values::pointer_address::PointerAddress;
+use crate::shared_values::pointer_address::{PointerAddress, ReferencedPointerAddress};
 use crate::values::core_values::r#type::{LocalMutability, TypeMetadata};
 
 pub mod error;
@@ -381,7 +381,7 @@ impl TypeExpressionVisitor<SpannedTypeError> for TypeInference {
         pointer_address: &mut PointerAddress,
         _: &Range<usize>,
     ) -> TypeExpressionVisitResult<SpannedTypeError> {
-        if matches!(pointer_address, PointerAddress::Internal(_)) {
+        if matches!(pointer_address, PointerAddress::Referenced(ReferencedPointerAddress::Internal(_))) {
             mark_type(get_core_lib_type(
                 CoreLibPointerId::try_from(&pointer_address.to_owned())
                     .unwrap(),
@@ -521,7 +521,7 @@ fn resolve_type_variant_access(
     variant_name: &str,
 ) -> Option<PointerAddress> {
     match base {
-        PointerAddress::Internal(_) => {
+        PointerAddress::Referenced(ReferencedPointerAddress::Internal(_)) => {
             let base_ref = get_core_lib_type_reference(
                 CoreLibPointerId::try_from(base).unwrap(),
             );
@@ -1065,7 +1065,7 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
                 // remap the expression to a GetReference
                 if let Some(reference) = base_type.inner_reference()
                 {
-                    Ok(Cow::Owned(reference.borrow().pointer.address().into_owned()))
+                    Ok(reference.borrow().pointer.address())
                 } else {
                     Err(SpannedTypeError {
                         error: TypeError::Unimplemented(
@@ -1075,7 +1075,7 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
                     })
                 }
             }
-            ResolvedVariable::PointerAddress(ref addr) => Ok(Cow::Borrowed(addr)),
+            ResolvedVariable::PointerAddress(ref addr) => Ok(addr.clone()),
         }?;
         let variant_type = resolve_type_variant_access(
             &pointer_address,
@@ -1166,7 +1166,7 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
         span: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
         match pointer_address {
-            PointerAddress::Internal(_) => mark_type(get_core_lib_type(
+            PointerAddress::Referenced(ReferencedPointerAddress::Internal(_)) => mark_type(get_core_lib_type(
                 CoreLibPointerId::try_from(&pointer_address.to_owned())
                     .unwrap(),
             )),

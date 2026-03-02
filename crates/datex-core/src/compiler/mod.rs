@@ -1033,7 +1033,7 @@ fn compile_expression(
                     );
                     // indirect reference to the variable
                     compilation_context
-                        .append_instruction_code(InstructionCode::CREATE_REF);
+                        .append_instruction_code(InstructionCode::CREATE_SHARED_REF);
                     // append binary code to load variable
                     compilation_context
                         .append_instruction_code(InstructionCode::GET_SLOT);
@@ -1282,16 +1282,8 @@ fn compile_expression(
         // refs
         DatexExpressionData::CreateRef(create_ref) => {
             compilation_context.mark_has_non_static_value();
-            compilation_context.append_instruction_code(
-                match create_ref.mutability {
-                    LocalReferenceMutability::Immutable => {
-                        InstructionCode::CREATE_REF
-                    }
-                    LocalReferenceMutability::Mutable => {
-                        InstructionCode::CREATE_REF_MUT
-                    }
-                },
-            );
+            // TODO: handle lifetimes, mutability, correctly (in precompiler)
+            // TODO: handle move/clone
             scope = compile_expression(
                 compilation_context,
                 RichAst::new(*create_ref.expression, &metadata),
@@ -1304,14 +1296,7 @@ fn compile_expression(
         DatexExpressionData::CreateSharedRef(create_shared_ref) => {
             compilation_context.mark_has_non_static_value();
             compilation_context.append_instruction_code(
-                match create_shared_ref.mutability {
-                    PointerReferenceMutability::Immutable => {
-                        InstructionCode::CREATE_SHARED_REF
-                    }
-                    PointerReferenceMutability::Mutable => {
-                        InstructionCode::CREATE_SHARED_REF_MUT
-                    }
-                },
+                InstructionCode::CREATE_SHARED_REF
             );
             scope = compile_expression(
                 compilation_context,
@@ -2712,7 +2697,7 @@ pub mod tests {
                 0,
                 0,
                 // create ref
-                InstructionCode::CREATE_REF.into(),
+                InstructionCode::CREATE_SHARED_REF.into(),
                 // slot 0
                 InstructionCode::GET_SLOT.into(),
                 // slot index as u32

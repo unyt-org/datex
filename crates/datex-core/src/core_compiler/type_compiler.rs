@@ -52,7 +52,7 @@ fn append_type_definition(
             let pointer_address = type_ref
                 .pointer
                 .address();
-            append_get_ref(buffer, pointer_address.as_ref());
+            append_get_ref(buffer, &pointer_address);
         }
         _ => todo!("#637 Type definition compilation not implemented yet"),
     };

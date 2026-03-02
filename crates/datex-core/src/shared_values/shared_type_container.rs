@@ -161,7 +161,7 @@ impl Apply for SharedTypeContainer {
     ) -> Result<Option<ValueContainer>, ExecutionError> {
         // TODO #303: ensure that we can guarantee that pointer_address is always Some here
         let core_lib_id =
-            CoreLibPointerId::try_from(self.pointer.address());
+            CoreLibPointerId::try_from(&self.pointer.address());
         if let Ok(core_lib_id) = core_lib_id {
             match core_lib_id {
                 CoreLibPointerId::Integer(None) => arg
@@ -200,8 +200,8 @@ impl Display for SharedTypeContainer {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
         if let Some(nominal) = &self.nominal_type_declaration {
             // special exception: for Unit, display "()"
-            if self.pointer.address().as_ref()
-                == &PointerAddress::from(CoreLibPointerId::Unit)
+            if self.pointer.address()
+                == PointerAddress::from(CoreLibPointerId::Unit)
             {
                 return core::write!(f, "()");
             }
