@@ -310,8 +310,7 @@ pub fn ast_from_bytecode(
                                 | RegularInstruction::SubtractAssign(_)
                                 | RegularInstruction::MultiplyAssign(_)
                                 | RegularInstruction::DivideAssign(_)
-                                | RegularInstruction::GetReference
-                                | RegularInstruction::GetReferenceMut
+                                | RegularInstruction::CreateSharedReference
                                 | RegularInstruction::CreateShared
                                 | RegularInstruction::CreateSharedMut
                                 | RegularInstruction::GetOrCreateRef(_)
@@ -462,8 +461,7 @@ pub fn ast_from_bytecode(
                             RegularInstruction::UnaryMinus
                             | RegularInstruction::UnaryPlus
                             | RegularInstruction::BitwiseNot
-                            | RegularInstruction::GetReference
-                            | RegularInstruction::GetReferenceMut
+                            | RegularInstruction::CreateSharedReference
                             | RegularInstruction::CreateShared
                             | RegularInstruction::CreateSharedMut
                             | RegularInstruction::Deref => {

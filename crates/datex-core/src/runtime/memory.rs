@@ -14,7 +14,7 @@ use core::{cell::RefCell, result::Result};
 
 use crate::prelude::*;
 use crate::shared_values::pointer::Pointer;
-use crate::shared_values::pointer_address::{OwnedPointerAddress, PointerAddress};
+use crate::shared_values::pointer_address::{OwnedPointerAddress, PointerAddress, ReferencedPointerAddress};
 
 #[derive(Debug, Default)]
 pub struct Memory {
@@ -129,7 +129,7 @@ impl Memory {
             let writer = Cursor::new(Vec::new());
             let mut bytes = writer.into_inner();
             bytes.extend_from_slice(&raw_address.id);
-            PointerAddress::Remote(<[u8; 26]>::try_from(bytes).unwrap())
+            PointerAddress::Referenced(ReferencedPointerAddress::Remote(<[u8; 26]>::try_from(bytes).unwrap()))
         }
     }
 

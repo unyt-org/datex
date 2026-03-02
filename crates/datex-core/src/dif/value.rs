@@ -292,7 +292,7 @@ fn get_type_if_non_default(
 ) -> Option<DIFTypeDefinition> {
     match type_definition {
         TypeDefinition::SharedReference(inner) => {
-            if let Ok(address) = CoreLibPointerId::try_from(inner
+            if let Ok(address) = CoreLibPointerId::try_from(&inner
                 .borrow()
                 .pointer.address())
                 && (core::matches!(

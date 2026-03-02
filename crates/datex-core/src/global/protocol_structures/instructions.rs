@@ -17,7 +17,7 @@ use modular_bitfield::bitfield;
 use modular_bitfield::specifiers::B4;
 use serde::{Deserialize, Serialize};
 use crate::global::type_instruction_codes::{TypeLocalOrShared, TypeMutabilityCode};
-use crate::shared_values::pointer_address::PointerAddress;
+use crate::shared_values::pointer_address::{PointerAddress, ReferencedPointerAddress};
 use crate::values::core_values::r#type::TypeMetadata;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -142,8 +142,7 @@ pub enum RegularInstruction {
     MultiplyAssign(SlotAddress),
     DivideAssign(SlotAddress),
 
-    GetReference,
-    GetReferenceMut,
+    CreateSharedReference,
 
     CreateShared,
     CreateSharedMut,
@@ -346,10 +345,7 @@ impl Display for RegularInstruction {
                     hex::encode(address.id)
                 )
             }
-            RegularInstruction::GetReference => core::write!(f, "CREATE_REF"),
-            RegularInstruction::GetReferenceMut => {
-                core::write!(f, "CREATE_REF_MUT")
-            }
+            RegularInstruction::CreateSharedReference => core::write!(f, "CREATE_SHARED_REF"),
             RegularInstruction::CreateShared => core::write!(f, "CREATE_SHARED"),
             RegularInstruction::CreateSharedMut => {
                 core::write!(f, "CREATE_SHARED_MUT")
@@ -627,7 +623,7 @@ impl TryFrom<PointerAddress> for RawFullPointerAddress {
     type Error = PointerAddressConversionError;
     fn try_from(ptr: PointerAddress) -> Result<Self, Self::Error> {
         match ptr {
-            PointerAddress::Remote(bytes) => {
+            PointerAddress::Referenced(ReferencedPointerAddress::Remote(bytes)) => {
                 Ok(RawFullPointerAddress { id: bytes })
             }
             _ => Err(PointerAddressConversionError),

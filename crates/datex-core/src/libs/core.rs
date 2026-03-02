@@ -26,7 +26,7 @@ use datex_macros_internal::LibTypeString;
 use log::info;
 use strum::IntoEnumIterator;
 use crate::shared_values::pointer::{PointerReferenceMutability, Pointer};
-use crate::shared_values::pointer_address::PointerAddress;
+use crate::shared_values::pointer_address::{OwnedPointerAddress, PointerAddress, ReferencedPointerAddress};
 use crate::shared_values::shared_container::SharedContainerMutability;
 use crate::values::core_values::r#type::{LocalReferenceMutability, TypeMetadata};
 
@@ -156,9 +156,15 @@ impl CoreLibPointerId {
 
 impl From<CoreLibPointerId> for PointerAddress {
     fn from(id: CoreLibPointerId) -> Self {
+        PointerAddress::Referenced(ReferencedPointerAddress::from(&id))
+    }
+}
+
+impl From<&CoreLibPointerId> for ReferencedPointerAddress {
+    fn from(id: &CoreLibPointerId) -> Self {
         let id_bytes: [u8; 3] =
             (id.to_u16() as u32).to_le_bytes()[0..3].try_into().unwrap();
-        PointerAddress::Internal(id_bytes)
+        ReferencedPointerAddress::Internal(id_bytes)
     }
 }
 
@@ -166,7 +172,7 @@ impl TryFrom<&PointerAddress> for CoreLibPointerId {
     type Error = String;
     fn try_from(address: &PointerAddress) -> Result<Self, Self::Error> {
         match address {
-            PointerAddress::Internal(id_bytes) => {
+            PointerAddress::Referenced(ReferencedPointerAddress::Internal(id_bytes)) => {
                 let mut id_array = [0u8; 4];
                 id_array[0..3].copy_from_slice(id_bytes);
                 let id = u32::from_le_bytes(id_array);
@@ -179,16 +185,6 @@ impl TryFrom<&PointerAddress> for CoreLibPointerId {
                 "CoreLibPointerId can only be created from Internal PointerAddress, got: {:?}",
                 e
             )),
-        }
-    }
-}
-
-impl<'a> TryFrom<Cow<'a, PointerAddress>> for CoreLibPointerId {
-    type Error = String;
-    fn try_from(value: Cow<'a, PointerAddress>) -> Result<Self, Self::Error> {
-        match value {
-            Cow::Borrowed(address) => CoreLibPointerId::try_from(address),
-            Cow::Owned(address) => CoreLibPointerId::try_from(&address),
         }
     }
 }
@@ -278,7 +274,7 @@ pub fn load_core_lib(memory: &mut Memory) {
         // Import variants directly by variant access operator from base type (e.g., integer -> integer/u8)
         let core_struct = SharedContainer::boxed(
             Map::from_iter(types_structure),
-            Pointer::new_reference(CoreLibPointerId::Core.into(), PointerReferenceMutability::Immutable)
+            Pointer::new_reference(ReferencedPointerAddress::from(&CoreLibPointerId::Core), PointerReferenceMutability::Immutable)
         );
         memory.register_shared_container(&core_struct);
     });
@@ -496,7 +492,7 @@ fn create_core_type(
                     type_definition: TypeDefinition::Unit,
                     metadata: TypeMetadata::default(),
                 },
-                pointer: Pointer::new_reference(PointerAddress::from(pointer_id), PointerReferenceMutability::Immutable),
+                pointer: Pointer::new_reference(ReferencedPointerAddress::from(&pointer_id), PointerReferenceMutability::Immutable),
             }))),
             TypeMetadata::default(),
         ),

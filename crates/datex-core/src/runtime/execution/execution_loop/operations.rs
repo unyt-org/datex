@@ -56,15 +56,7 @@ pub fn handle_unary_shared_value_operation(
         SharedValueUnaryOperator::GetReference => {
             // value_container must be a shared value, otherwise we cannot create a reference to it
             if let ValueContainer::Shared(shared) = value_container {
-                ValueContainer::Shared(shared.get_reference())
-            } else {
-                return Err(ExecutionError::ReferenceToNonSharedValue);
-            }
-        }
-        SharedValueUnaryOperator::GetReferenceMut => {
-            // value_container must be a shared value, otherwise we cannot create a reference to it
-            if let ValueContainer::Shared(shared) = value_container {
-                ValueContainer::Shared(shared.try_get_reference_mut().ok_or(ExecutionError::MutableReferenceToNonMutableValue)?)
+                ValueContainer::Shared(shared.clone())
             } else {
                 return Err(ExecutionError::ReferenceToNonSharedValue);
             }
