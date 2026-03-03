@@ -662,7 +662,7 @@ mod tests {
     #[test]
     fn shared_value_add_assignment() {
         let result = execute_datex_script_debug_with_result(
-            "var x = shared mut 42; *x += 1", // TODO: good syntax for internal reassignment to shared value?
+            "var x = shared mut 42; *x += 1",
         );
         assert_value_eq!(result, ValueContainer::from(Integer::from(43)));
 
