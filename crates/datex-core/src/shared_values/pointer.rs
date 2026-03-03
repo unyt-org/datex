@@ -1,5 +1,7 @@
+use crate::shared_values::pointer_address::{
+    OwnedPointerAddress, PointerAddress, ReferencedPointerAddress,
+};
 use serde::{Deserialize, Serialize};
-use crate::shared_values::pointer_address::{OwnedPointerAddress, PointerAddress, ReferencedPointerAddress};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum PointerReferenceMutability {
@@ -16,17 +18,16 @@ pub struct OwnedPointer {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct PointerReference {
+pub struct ReferencedPointer {
     /// Address of the borrowed pointer, can be a local or remote pointer address
     address: ReferencedPointerAddress,
-    mutability: PointerReferenceMutability
+    mutability: PointerReferenceMutability,
 }
-
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Pointer {
     Owned(OwnedPointer),
-    Reference(PointerReference),
+    Referenced(ReferencedPointer),
 }
 
 impl Pointer {
@@ -36,15 +37,19 @@ impl Pointer {
 
     pub fn address(&self) -> PointerAddress {
         match self {
-            Pointer::Owned(owned) => PointerAddress::Owned(owned.address.clone()),
-            Pointer::Reference(borrowed) => PointerAddress::Referenced(borrowed.address.clone()),
+            Pointer::Owned(owned) => {
+                PointerAddress::Owned(owned.address.clone())
+            }
+            Pointer::Referenced(borrowed) => {
+                PointerAddress::Referenced(borrowed.address.clone())
+            }
         }
     }
 
     pub fn reference_mutability(&self) -> Option<&PointerReferenceMutability> {
         match self {
             Pointer::Owned(_) => None,
-            Pointer::Reference(reference) => Some(&reference.mutability),
+            Pointer::Referenced(reference) => Some(&reference.mutability),
         }
     }
 
@@ -52,9 +57,15 @@ impl Pointer {
     pub(crate) fn new_owned(address: OwnedPointerAddress) -> Self {
         Pointer::Owned(OwnedPointer { address })
     }
-    
+
     /// Creates a new borrowed pointer with the given pointer address and mutability
-    pub(crate) fn new_reference(address: ReferencedPointerAddress, mutability: PointerReferenceMutability) -> Self {
-        Pointer::Reference(PointerReference { address, mutability })
+    pub(crate) fn new_reference(
+        address: ReferencedPointerAddress,
+        mutability: PointerReferenceMutability,
+    ) -> Self {
+        Pointer::Referenced(ReferencedPointer {
+            address,
+            mutability,
+        })
     }
 }
