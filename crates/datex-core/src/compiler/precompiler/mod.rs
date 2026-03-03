@@ -27,26 +27,27 @@ use crate::{
         SimpleCompilerErrorOrDetailedCompilerErrorWithRichAst,
         SpannedCompilerError,
     },
-    global::operators::{binary::ArithmeticOperator, BinaryOperator},
+    global::operators::{BinaryOperator, binary::ArithmeticOperator},
     libs::core::CoreLibPointerId,
-    shared_values::shared_type_container::{NominalTypeDeclaration, SharedTypeContainer},
+    shared_values::{
+        pointer::Pointer,
+        shared_type_container::{NominalTypeDeclaration, SharedTypeContainer},
+    },
     types::definition::TypeDefinition,
-    utils::maybe_action::{collect_or_pass_error, ErrorCollector, MaybeAction},
-    values::core_values::r#type::Type,
+    utils::maybe_action::{ErrorCollector, MaybeAction, collect_or_pass_error},
+    values::core_values::r#type::{Type, TypeMetadata},
     visitor::{
-        expression::{visitable::ExpressionVisitResult, ExpressionVisitor},
-        type_expression::{
-            visitable::TypeExpressionVisitResult, TypeExpressionVisitor,
-        },
         VisitAction,
+        expression::{ExpressionVisitor, visitable::ExpressionVisitResult},
+        type_expression::{
+            TypeExpressionVisitor, visitable::TypeExpressionVisitResult,
+        },
     },
 };
 use options::PrecompilerOptions;
 use precompiled_ast::{AstMetadata, RichAst, VariableShape};
 use scope::NewScopeType;
 use scope_stack::PrecompilerScopeStack;
-use crate::shared_values::pointer::Pointer;
-use crate::values::core_values::r#type::TypeMetadata;
 
 pub struct Precompiler<'a> {
     ast_metadata: Rc<RefCell<AstMetadata>>,
@@ -284,7 +285,10 @@ impl<'a> Precompiler<'a> {
         };
 
         // register placeholder ref in metadata
-        let type_def = Type::new(TypeDefinition::shared_reference(reference), TypeMetadata::default());
+        let type_def = Type::new(
+            TypeDefinition::shared_reference(reference),
+            TypeMetadata::default(),
+        );
         {
             self.ast_metadata
                 .borrow_mut()
@@ -600,19 +604,21 @@ mod tests {
     use super::*;
     use crate::{
         ast::{
-            expressions::{CreateRef, Unbox},
+            expressions::{CreateRef, CreateSharedRef, Unbox},
             resolved_variable::ResolvedVariable,
             type_expressions::{StructuralMap, TypeExpressionData},
         },
         parser::Parser,
-        shared_values::shared_container::SharedContainerMutability,
-        values::core_values::integer::Integer,
+        shared_values::{
+            pointer::PointerReferenceMutability,
+            pointer_address::PointerAddress,
+            shared_container::SharedContainerMutability,
+        },
+        values::core_values::{
+            integer::Integer, r#type::LocalReferenceMutability,
+        },
     };
     use core::assert_matches;
-    use crate::ast::expressions::CreateSharedRef;
-    use crate::shared_values::pointer::PointerReferenceMutability;
-    use crate::shared_values::pointer_address::PointerAddress;
-    use crate::values::core_values::r#type::LocalReferenceMutability;
 
     fn precompile(
         ast: DatexExpression,
@@ -626,7 +632,7 @@ mod tests {
     }
 
     #[test]
-    fn test_precompiler_visit() {
+    fn precompiler_visit() {
         let options = PrecompilerOptions::default();
         let ast = Parser::parse_with_default_options(
             "var x: integer = 34; var y = 10; x + y",
@@ -960,7 +966,7 @@ mod tests {
     }
 
     #[test]
-    fn test_type_declaration_assigment() {
+    fn type_declaration_assigment() {
         let result = parse_and_precompile("type MyInt = 1; var x = MyInt;");
         assert!(result.is_ok());
         let rich_ast = result.unwrap();
@@ -997,7 +1003,7 @@ mod tests {
     }
 
     #[test]
-    fn test_type_declaration_hoisted_assigment() {
+    fn type_declaration_hoisted_assigment() {
         let result = parse_and_precompile("var x = MyInt; type MyInt = 1;");
         assert!(result.is_ok());
         let rich_ast = result.unwrap();
@@ -1034,7 +1040,7 @@ mod tests {
     }
 
     #[test]
-    fn test_type_declaration_hoisted_cross_assigment() {
+    fn type_declaration_hoisted_cross_assigment() {
         let result = parse_and_precompile("type x = MyInt; type MyInt = x;");
         assert!(result.is_ok());
         let rich_ast = result.unwrap();
@@ -1075,7 +1081,7 @@ mod tests {
     }
 
     #[test]
-    fn test_type_invalid_nested_type_declaration() {
+    fn type_invalid_nested_type_declaration() {
         let result = parse_and_precompile(
             "type x = NestedVar; (1; type NestedVar = x;)",
         );
@@ -1083,7 +1089,7 @@ mod tests {
     }
 
     #[test]
-    fn test_type_valid_nested_type_declaration() {
+    fn type_valid_nested_type_declaration() {
         let result =
             parse_and_precompile("type x = 10; (1; type NestedVar = x;)");
         assert!(result.is_ok());
@@ -1134,7 +1140,7 @@ mod tests {
     }
 
     #[test]
-    fn test_core_reference_type() {
+    fn core_reference_type() {
         let result = parse_and_precompile("type x = integer");
         assert!(result.is_ok());
         let rich_ast = result.unwrap();
@@ -1155,7 +1161,7 @@ mod tests {
     }
 
     #[test]
-    fn test_deref() {
+    fn unbox() {
         let result = parse_and_precompile("const x = &42; *x");
         assert!(result.is_ok());
         let rich_ast = result.unwrap();
@@ -1170,7 +1176,8 @@ mod tests {
                             name: "x".to_string(),
                             init_expression: Box::new(
                                 DatexExpressionData::CreateRef(CreateRef {
-                                    mutability: LocalReferenceMutability::Immutable,
+                                    mutability:
+                                        LocalReferenceMutability::Immutable,
                                     expression: Box::new(
                                         DatexExpressionData::Integer(
                                             Integer::from(42)
@@ -1203,7 +1210,7 @@ mod tests {
     }
 
     #[test]
-    fn test_deref_shared() {
+    fn unbox_shared() {
         let result = parse_and_precompile("const x = '42; *x");
         assert!(result.is_ok());
         let rich_ast = result.unwrap();

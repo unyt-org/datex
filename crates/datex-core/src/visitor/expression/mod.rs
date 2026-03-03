@@ -2,27 +2,27 @@ pub mod visitable;
 use crate::{
     ast::expressions::{
         Apply, BinaryOperation, CallableDeclaration, ComparisonOperation,
-        CompileExpression, Conditional, CreateRef, DatexExpression,
-        DatexExpressionData, Unbox, UnboxAssignment, GenericInstantiation,
-        List, Map, PropertyAccess, PropertyAssignment, RemoteExecution, Slot,
-        SlotAssignment, Statements, TypeDeclaration, UnaryOperation,
-        VariableAccess, VariableAssignment, VariableDeclaration, VariantAccess,
+        CompileExpression, Conditional, CreateMut, CreateRef, CreateShared,
+        CreateSharedRef, DatexExpression, DatexExpressionData,
+        GenericInstantiation, List, Map, PropertyAccess, PropertyAssignment,
+        RemoteExecution, Slot, SlotAssignment, Statements, TypeDeclaration,
+        UnaryOperation, Unbox, UnboxAssignment, VariableAccess,
+        VariableAssignment, VariableDeclaration, VariantAccess,
     },
     prelude::*,
+    shared_values::pointer_address::PointerAddress,
     values::core_values::{
-        decimal::{typed_decimal::TypedDecimal, Decimal},
+        decimal::{Decimal, typed_decimal::TypedDecimal},
         endpoint::Endpoint,
-        integer::{typed_integer::TypedInteger, Integer},
+        integer::{Integer, typed_integer::TypedInteger},
     },
     visitor::{
+        VisitAction,
         expression::visitable::{ExpressionVisitResult, VisitableExpression},
         type_expression::TypeExpressionVisitor,
-        VisitAction,
     },
 };
 use core::ops::Range;
-use crate::ast::expressions::{CreateMut, CreateShared, CreateSharedRef};
-use crate::shared_values::pointer_address::PointerAddress;
 
 pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
     /// Handle expression error
@@ -135,8 +135,8 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
             DatexExpressionData::CreateMut(create_mut) => {
                 self.visit_create_mut(create_mut, &expr.span)
             }
-            DatexExpressionData::Unbox(deref) => {
-                self.visit_unbox(deref, &expr.span)
+            DatexExpressionData::Unbox(unbox) => {
+                self.visit_unbox(unbox, &expr.span)
             }
             DatexExpressionData::Slot(slot) => {
                 self.visit_slot(slot, &expr.span)
@@ -156,8 +156,8 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
                     &expr.span,
                 )
             }
-            DatexExpressionData::UnboxAssignment(deref_assignment) => {
-                self.visit_deref_assignment(deref_assignment, &expr.span)
+            DatexExpressionData::UnboxAssignment(unbox_assignment) => {
+                self.visit_unbox_assignment(unbox_assignment, &expr.span)
             }
             DatexExpressionData::Apply(apply_chain) => {
                 self.visit_apply(apply_chain, &expr.span)
@@ -322,14 +322,14 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
         Ok(VisitAction::VisitChildren)
     }
 
-    /// Visit dereference assignment
-    fn visit_deref_assignment(
+    /// Visit unbox assignment
+    fn visit_unbox_assignment(
         &mut self,
-        deref_assignment: &mut UnboxAssignment,
+        unbox_assignment: &mut UnboxAssignment,
         span: &Range<usize>,
     ) -> ExpressionVisitResult<E> {
         let _ = span;
-        let _ = deref_assignment;
+        let _ = unbox_assignment;
         Ok(VisitAction::VisitChildren)
     }
 
@@ -463,10 +463,10 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
         let _ = create_shared_ref;
         Ok(VisitAction::VisitChildren)
     }
-    
+
     /// Visit create shared value expression
     fn visit_create_shared(
-        &mut self,        
+        &mut self,
         create_shared: &mut CreateShared,
         span: &Range<usize>,
     ) -> ExpressionVisitResult<E> {
@@ -485,15 +485,15 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
         let _ = create_mut;
         Ok(VisitAction::VisitChildren)
     }
-    
-    /// Visit dereference expression
+
+    /// Visit unbox expression
     fn visit_unbox(
         &mut self,
-        deref: &mut Unbox,
+        unbox: &mut Unbox,
         span: &Range<usize>,
     ) -> ExpressionVisitResult<E> {
         let _ = span;
-        let _ = deref;
+        let _ = unbox;
         Ok(VisitAction::VisitChildren)
     }
 

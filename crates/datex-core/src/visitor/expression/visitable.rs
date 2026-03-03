@@ -1,18 +1,17 @@
 use crate::{
     ast::expressions::{
         Apply, BinaryOperation, CallableDeclaration, ComparisonOperation,
-        Conditional, CreateRef, DatexExpression, DatexExpressionData, Unbox,
-        UnboxAssignment, GenericInstantiation, List, Map, PropertyAccess,
-        PropertyAssignment, RangeDeclaration, RemoteExecution, SlotAssignment,
-        Statements, TypeDeclaration, UnaryOperation, VariableAssignment,
-        VariableDeclaration,
+        Conditional, CreateMut, CreateRef, CreateShared, CreateSharedRef,
+        DatexExpression, DatexExpressionData, GenericInstantiation, List, Map,
+        PropertyAccess, PropertyAssignment, RangeDeclaration, RemoteExecution,
+        SlotAssignment, Statements, TypeDeclaration, UnaryOperation, Unbox,
+        UnboxAssignment, VariableAssignment, VariableDeclaration,
     },
     visitor::{
         VisitAction, expression::ExpressionVisitor,
         type_expression::visitable::VisitableTypeExpression,
     },
 };
-use crate::ast::expressions::{CreateMut, CreateShared, CreateSharedRef};
 
 pub type ExpressionVisitResult<E> = Result<VisitAction<DatexExpression>, E>;
 
@@ -147,7 +146,7 @@ impl<E> VisitableExpression<E> for UnboxAssignment {
         visitor: &mut impl ExpressionVisitor<E>,
     ) -> Result<(), E> {
         visitor.visit_datex_expression(&mut self.assigned_expression)?;
-        visitor.visit_datex_expression(&mut self.deref_expression)?;
+        visitor.visit_datex_expression(&mut self.unbox_expression)?;
         Ok(())
     }
 }
@@ -253,7 +252,6 @@ impl<E> VisitableExpression<E> for CreateSharedRef {
     }
 }
 
-
 impl<E> VisitableExpression<E> for CreateShared {
     fn walk_children(
         &mut self,
@@ -342,8 +340,8 @@ impl<E> VisitableExpression<E> for DatexExpression {
             DatexExpressionData::ComparisonOperation(comparison_operation) => {
                 comparison_operation.walk_children(visitor)
             }
-            DatexExpressionData::UnboxAssignment(deref_assignment) => {
-                deref_assignment.walk_children(visitor)
+            DatexExpressionData::UnboxAssignment(unbox_assignment) => {
+                unbox_assignment.walk_children(visitor)
             }
             DatexExpressionData::UnaryOperation(unary_operation) => {
                 unary_operation.walk_children(visitor)

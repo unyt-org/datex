@@ -5,18 +5,21 @@ use crate::{
         type_expressions::TypeExpression,
     },
     global::operators::{
-        assignment::AssignmentOperator, ArithmeticUnaryOperator, BinaryOperator,
-        ComparisonOperator, UnaryOperator,
+        ArithmeticUnaryOperator, BinaryOperator, ComparisonOperator,
+        UnaryOperator, assignment::AssignmentOperator,
     },
-    shared_values::shared_container::SharedContainerMutability,
+    shared_values::{
+        pointer::PointerReferenceMutability, pointer_address::PointerAddress,
+        shared_container::SharedContainerMutability,
+    },
     values::{
         core_value::CoreValue,
         core_values,
         core_values::{
-            decimal::{typed_decimal::TypedDecimal, Decimal},
+            decimal::{Decimal, typed_decimal::TypedDecimal},
             endpoint::Endpoint,
-            integer::{typed_integer::TypedInteger, Integer},
-            r#type::Type,
+            integer::{Integer, typed_integer::TypedInteger},
+            r#type::{LocalReferenceMutability, Type},
         },
         value::Value,
         value_container::ValueContainer,
@@ -24,9 +27,6 @@ use crate::{
 };
 pub use crate::{prelude::*, values::core_values::callable::CallableKind};
 use core::{fmt::Display, ops, ops::Neg};
-use crate::shared_values::pointer::PointerReferenceMutability;
-use crate::shared_values::pointer_address::PointerAddress;
-use crate::values::core_values::r#type::LocalReferenceMutability;
 
 #[derive(Clone, Debug)]
 /// An expression in the AST
@@ -144,7 +144,7 @@ pub enum DatexExpressionData {
     CreateShared(CreateShared),
     /// Create a new reference
     CreateRef(CreateRef),
-    
+
     /// Create a new shared reference
     CreateSharedRef(CreateSharedRef),
 
@@ -308,7 +308,7 @@ pub struct ComparisonOperation {
 #[derive(Clone, Debug, PartialEq)]
 pub struct UnboxAssignment {
     pub operator: AssignmentOperator,
-    pub deref_expression: Box<DatexExpression>,
+    pub unbox_expression: Box<DatexExpression>,
     pub assigned_expression: Box<DatexExpression>,
 }
 
