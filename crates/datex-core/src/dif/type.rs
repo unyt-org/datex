@@ -17,7 +17,7 @@ use serde::{
 };
 use crate::shared_values::pointer::PointerReferenceMutability;
 use crate::shared_values::pointer_address::PointerAddress;
-use crate::values::core_values::r#type::LocalReferenceMutability;
+use crate::values::core_values::r#type::{LocalMutability, LocalReferenceMutability, TypeMetadata};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum DIFTypeDefinition {
@@ -361,7 +361,7 @@ impl DIFStructuralTypeDefinition {
             value,
             ty: Some(DIFType {
                 type_definition: DIFTypeDefinition::Reference(type_def),
-                prefix: None,
+                metadata: DIFTypeMetadata::default(),
                 name: None,
             }),
         }
@@ -385,7 +385,7 @@ impl DIFTypeDefinition {
             }
             TypeDefinition::SharedReference(type_ref) => {
                 DIFTypeDefinition::Reference(
-                    type_ref.borrow().pointer.address().into_owned(),
+                    type_ref.borrow().pointer.address(),
                 )
             }
             TypeDefinition::Type(type_val) => DIFTypeDefinition::Type(
@@ -479,21 +479,72 @@ impl DIFTypeDefinition {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub enum DIFTypePrefix {
-    /// For local reference types, this is Some, for owned local types, this is None
-    Local(Option<LocalReferenceMutability>),
-    /// Shared types are always (shared or shared mut) and can optionally be an non-owned, reference type
-    /// with an additional reference mutability (e.g. &mut shared mut User)
+pub enum DIFTypeMetadata {
+    /// Local types can be mut or not, and can optionally be a reference type with an additional reference mutability (e.g. &mut User)
+    Local {
+        mutability: LocalMutability,
+        reference_mutability: Option<LocalReferenceMutability>
+    },
+    /// Shared types are always (shared or shared mut) and can optionally be a non-owned, reference type
+    /// with an additional reference mutability (e.g. 'mut shared mut User)
     Shared {
         mutability: SharedContainerMutability,
         reference_mutability: Option<PointerReferenceMutability>,
     },
 }
 
+impl Default for DIFTypeMetadata {
+    fn default() -> Self {
+        DIFTypeMetadata::Local {
+            mutability: LocalMutability::Immutable,
+            reference_mutability: None,
+        }
+    }
+}
+
+impl DIFTypeMetadata {
+    fn is_default(&self) -> bool {
+        matches!(
+            self,
+            DIFTypeMetadata::Local {
+                mutability: LocalMutability::Immutable,
+                reference_mutability: None,
+            }
+        )
+    }
+}
+
+impl From<TypeMetadata> for DIFTypeMetadata {
+    fn from(value: TypeMetadata) -> Self {
+        match value {
+            TypeMetadata::Local { mutability, reference_mutability } => {
+                DIFTypeMetadata::Local { mutability, reference_mutability }
+            }
+            TypeMetadata::Shared { mutability, reference_mutability } => {
+                DIFTypeMetadata::Shared { mutability, reference_mutability }
+            }
+        }
+    }
+}
+
+impl From<DIFTypeMetadata> for TypeMetadata {
+    fn from(value: DIFTypeMetadata) -> Self {
+        match value {
+            DIFTypeMetadata::Local { mutability, reference_mutability } => {
+                TypeMetadata::Local { mutability, reference_mutability }
+            }
+            DIFTypeMetadata::Shared { mutability, reference_mutability } => {
+                TypeMetadata::Shared { mutability, reference_mutability }
+            }
+        }
+    }
+}
+
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct DIFType {
     pub name: Option<String>,
-    pub prefix: DIFTypePrefix,
+    pub metadata: DIFTypeMetadata,
     pub type_definition: DIFTypeDefinition,
 }
 impl DIFConvertible for DIFType {}
@@ -507,7 +558,7 @@ impl Serialize for DIFType {
         S: serde::Serializer,
     {
         if self.name.is_none()
-            && self.prefix.is_none()
+            && !self.metadata.is_default()
             && let DIFTypeDefinition::Reference(_) = self.type_definition
         {
             return self.type_definition.serialize(serializer);
@@ -515,13 +566,26 @@ impl Serialize for DIFType {
 
         let field_count = 1
             + if self.name.is_some() { 1 } else { 0 }
-            + if self.prefix.is_some() { 1 } else { 0 };
+            + if self.metadata.is_default() { 1 } else { 0 };
         let mut state = serializer.serialize_struct("DIFType", field_count)?;
         if let Some(name) = &self.name {
             state.serialize_field("name", name)?;
         }
-        if let Some(mutability) = &self.prefix {
-            state.serialize_field("mut", mutability)?;
+        match &self.metadata {
+            DIFTypeMetadata::Local { mutability, reference_mutability } => {
+                state.serialize_field("shared", &false)?;
+                state.serialize_field("mut", mutability)?;
+                if let Some(reference_mutability) = reference_mutability {
+                    state.serialize_field("ref_mut", reference_mutability)?;
+                }
+            }
+            DIFTypeMetadata::Shared { mutability, reference_mutability } => {
+                state.serialize_field("shared", &true)?;
+                state.serialize_field("mut", mutability)?;
+                if let Some(reference_mutability) = reference_mutability {
+                    state.serialize_field("ref_mut", reference_mutability)?;
+                }
+            }
         }
         state.serialize_field("def", &self.type_definition)?;
         state.end()
@@ -554,7 +618,7 @@ impl<'de> Deserialize<'de> for DIFType {
                     DIFTypeDefinition::deserialize(v.into_deserializer())?;
                 Ok(DIFType {
                     name: None,
-                    prefix: None,
+                    metadata: DIFTypeMetadata::default(),
                     type_definition: type_def,
                 })
             }
@@ -564,13 +628,17 @@ impl<'de> Deserialize<'de> for DIFType {
                 V: MapAccess<'de>,
             {
                 let mut name: Option<String> = None;
-                let mut mutability: Option<SharedContainerMutability> = None;
                 let mut type_definition: Option<DIFTypeDefinition> = None;
+                let mut is_shared: bool = false;
+                let mut reference_mutability: Option<LocalReferenceMutability> = None;
+                let mut mutability: LocalMutability = LocalMutability::Immutable;
 
                 while let Some(key) = map.next_key::<String>()? {
                     match key.as_str() {
                         "name" => name = Some(map.next_value()?),
-                        "mut" => mutability = Some(map.next_value()?),
+                        "shared" => is_shared = map.next_value()?,
+                        "mut" => mutability = map.next_value()?,
+                        "ref_mut" => reference_mutability = Some(map.next_value()?),
                         "def" => type_definition = Some(map.next_value()?),
                         _ => {
                             return Err(de::Error::unknown_field(
@@ -584,9 +652,28 @@ impl<'de> Deserialize<'de> for DIFType {
                 let type_definition = type_definition
                     .ok_or_else(|| de::Error::missing_field("def"))?;
 
+                // map metadata
+                let metadata = if is_shared {
+                    DIFTypeMetadata::Shared {
+                        mutability: match mutability {
+                            LocalMutability::Mutable => SharedContainerMutability::Mutable,
+                            LocalMutability::Immutable => SharedContainerMutability::Immutable,
+                        },
+                        reference_mutability: reference_mutability.map(|rm| match rm {
+                            LocalReferenceMutability::Mutable => PointerReferenceMutability::Mutable,
+                            LocalReferenceMutability::Immutable => PointerReferenceMutability::Immutable,
+                        }),
+                    }
+                } else {
+                    DIFTypeMetadata::Local {
+                        mutability,
+                        reference_mutability,
+                    }
+                };
+
                 Ok(DIFType {
                     name,
-                    prefix: mutability,
+                    metadata,
                     type_definition,
                 })
             }
@@ -600,7 +687,7 @@ impl DIFType {
     pub(crate) fn from_type(ty: &Type) -> Self {
         DIFType {
             name: None,
-            prefix: ty.reference_mutability.clone(),
+            metadata: ty.metadata.clone().into(),
             type_definition: DIFTypeDefinition::from_type_definition(
                 &ty.type_definition,
             ),
@@ -612,7 +699,7 @@ impl DIFType {
     ) -> Self {
         DIFType {
             name: None,
-            prefix: None,
+            metadata: DIFTypeMetadata::default(),
             type_definition: DIFTypeDefinition::from_type_definition(
                 type_def,
             ),
@@ -621,7 +708,7 @@ impl DIFType {
 
     pub(crate) fn to_type(&self, memory: &RefCell<Memory>) -> Type {
         Type {
-            reference_mutability: self.prefix.clone(),
+            metadata: self.metadata.clone().into(),
             type_definition: self.to_type_definition(memory),
             base_type: None,
         }
@@ -639,7 +726,7 @@ impl From<DIFTypeRepresentation> for DIFType {
     fn from(value: DIFTypeRepresentation) -> Self {
         DIFType {
             name: None,
-            prefix: None,
+            metadata: DIFTypeMetadata::default(),
             type_definition: DIFTypeDefinition::Structural(Box::new(
                 DIFStructuralTypeDefinition { value, ty: None },
             )),
@@ -654,7 +741,7 @@ mod tests {
     fn dif_type_serialization() {
         let dif_type = DIFType {
             name: Some("ExampleType".to_string()),
-            prefix: Some(SharedContainerMutability::Mutable),
+            metadata: DIFTypeMetadata::default(),
             type_definition: DIFTypeDefinition::Unit,
         };
         let serialized = dif_type.as_json();
@@ -666,7 +753,7 @@ mod tests {
     fn object() {
         let dif_type = DIFType {
             name: None,
-            prefix: None,
+            metadata: DIFTypeMetadata::default(),
             type_definition: DIFTypeDefinition::Structural(Box::new(
                 DIFStructuralTypeDefinition {
                     value: DIFTypeRepresentation::Object(vec![
@@ -692,7 +779,7 @@ mod tests {
     fn map() {
         let dif_type = DIFType {
             name: None,
-            prefix: None,
+            metadata: DIFTypeMetadata::default(),
             type_definition: DIFTypeDefinition::Structural(Box::new(
                 DIFStructuralTypeDefinition {
                     value: DIFTypeRepresentation::Map(vec![
@@ -720,7 +807,7 @@ mod tests {
     fn array() {
         let dif_type = DIFType {
             name: None,
-            prefix: None,
+            metadata: DIFTypeMetadata::default(),
             type_definition: DIFTypeDefinition::Structural(Box::new(
                 DIFStructuralTypeDefinition {
                     value: DIFTypeRepresentation::Array(vec![

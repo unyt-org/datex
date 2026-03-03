@@ -1719,7 +1719,7 @@ mod tests {
             ), TypeMetadata::default())
         );
 
-        let inferred = infer_from_script("'hello world'");
+        let inferred = infer_from_script(r#""hello world""#);
         assert_eq!(
             inferred,
             Type::structural(StructuralTypeDefinition::Text(
@@ -1783,7 +1783,7 @@ mod tests {
         let inferred = infer_from_script("var x: boolean = true");
         assert_eq!(inferred, Type::boolean());
 
-        let inferred = infer_from_script("var x: text = 'hello'");
+        let inferred = infer_from_script(r#"var x: text = "hello""#);
         assert_eq!(inferred, Type::text());
     }
 
@@ -1846,7 +1846,7 @@ mod tests {
         let inferred = infer_from_script("10 + 32");
         assert_eq!(inferred, Type::integer());
 
-        let inferred = infer_from_script("10 + 'test'");
+        let inferred = infer_from_script(r#"10 + "test""#);
         assert_eq!(inferred, Type::never());
     }
 

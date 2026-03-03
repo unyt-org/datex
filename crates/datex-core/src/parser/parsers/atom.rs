@@ -385,12 +385,6 @@ mod tests {
             expr.data,
             DatexExpressionData::Text("Hello, World!".to_string())
         );
-
-        let expr2 = parse("'Single quotes'");
-        assert_eq!(
-            expr2.data,
-            DatexExpressionData::Text("Single quotes".to_string())
-        );
     }
 
     #[test]

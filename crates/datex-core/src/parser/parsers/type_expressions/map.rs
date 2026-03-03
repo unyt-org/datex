@@ -55,7 +55,7 @@ mod tests {
 
     #[test]
     fn parse_simple_map() {
-        let expr = parse_type_expression("{'key1': true, 'key2': false}");
+        let expr = parse_type_expression(r#"{"key1": true, "key2": false}"#);
         assert_eq!(
             expr.data,
             TypeExpressionData::StructuralMap(StructuralMap(vec![

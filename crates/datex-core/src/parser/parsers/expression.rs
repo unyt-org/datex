@@ -436,17 +436,17 @@ impl Parser {
             // shared
             Token::Shared => {
                 let op = self.advance()?;
-                let rhs = self.parse_expression(UNARY_BP)?;
-                let mut span_end = rhs.span.end;
 
                 // check if next token is 'mut' to determine mutability of shared container
-                let mutability = if self.peek()?.token == Token::Mutable {
+                let mutability = if let Ok(next) = self.peek() && next.token == Token::Mutable {
                     let token = self.advance()?; // consume 'mut'
-                    span_end = token.span.end; // extend span to include 'mut'
                     SharedContainerMutability::Mutable
                 } else {
                     SharedContainerMutability::Immutable
                 };
+
+                let rhs = self.parse_expression(UNARY_BP)?;
+                let span_end = rhs.span.end;
 
                 let span = op.span.start..span_end;
                 Ok(DatexExpressionData::CreateShared(CreateShared {
@@ -1216,7 +1216,7 @@ mod tests {
             })
         );
     }
-    
+
     #[test]
     fn parse_ref_of_property_access() {
         let expr = parse("&myObject.myProperty");
