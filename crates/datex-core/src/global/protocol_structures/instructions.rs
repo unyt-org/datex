@@ -4,21 +4,24 @@ use crate::{
         type_instruction_codes::TypeReferenceMutabilityCode,
     },
     values::core_values::{
-        decimal::{utils::decimal_to_string, Decimal},
+        decimal::{Decimal, utils::decimal_to_string},
         endpoint::{Endpoint, EndpointParsingError},
         integer::Integer,
     },
 };
 
-use crate::prelude::*;
+use crate::{
+    global::type_instruction_codes::{TypeLocalOrShared, TypeMutabilityCode},
+    prelude::*,
+    shared_values::pointer_address::{
+        PointerAddress, ReferencedPointerAddress,
+    },
+    values::core_values::r#type::TypeMetadata,
+};
 use binrw::{BinRead, BinWrite};
 use core::{fmt::Display, prelude::rust_2024::*};
-use modular_bitfield::bitfield;
-use modular_bitfield::specifiers::B4;
+use modular_bitfield::{bitfield, specifiers::B4};
 use serde::{Deserialize, Serialize};
-use crate::global::type_instruction_codes::{TypeLocalOrShared, TypeMutabilityCode};
-use crate::shared_values::pointer_address::{PointerAddress, ReferencedPointerAddress};
-use crate::values::core_values::r#type::TypeMetadata;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Instruction {
@@ -165,7 +168,7 @@ pub enum RegularInstruction {
     GetInternalSlot(SlotAddress),
 
     SetReferenceValue(AssignmentOperator),
-    Deref,
+    Unbox,
 
     TypedValue,
     TypeExpression,
@@ -322,7 +325,7 @@ impl Display for RegularInstruction {
             RegularInstruction::SetReferenceValue(operator) => {
                 core::write!(f, "SET_REFERENCE_VALUE ({})", operator)
             }
-            RegularInstruction::Deref => core::write!(f, "DEREF"),
+            RegularInstruction::Unbox => core::write!(f, "UNBOX"),
             RegularInstruction::GetRef(address) => {
                 core::write!(
                     f,
@@ -345,8 +348,12 @@ impl Display for RegularInstruction {
                     hex::encode(address.id)
                 )
             }
-            RegularInstruction::CreateSharedReference => core::write!(f, "CREATE_SHARED_REF"),
-            RegularInstruction::CreateShared => core::write!(f, "CREATE_SHARED"),
+            RegularInstruction::CreateSharedReference => {
+                core::write!(f, "CREATE_SHARED_REF")
+            }
+            RegularInstruction::CreateShared => {
+                core::write!(f, "CREATE_SHARED")
+            }
             RegularInstruction::CreateSharedMut => {
                 core::write!(f, "CREATE_SHARED_MUT")
             }
@@ -623,9 +630,9 @@ impl TryFrom<PointerAddress> for RawFullPointerAddress {
     type Error = PointerAddressConversionError;
     fn try_from(ptr: PointerAddress) -> Result<Self, Self::Error> {
         match ptr {
-            PointerAddress::Referenced(ReferencedPointerAddress::Remote(bytes)) => {
-                Ok(RawFullPointerAddress { id: bytes })
-            }
+            PointerAddress::Referenced(ReferencedPointerAddress::Remote(
+                bytes,
+            )) => Ok(RawFullPointerAddress { id: bytes }),
             _ => Err(PointerAddressConversionError),
         }
     }

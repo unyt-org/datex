@@ -10,7 +10,7 @@ use crate::{
 pub enum TypeError {
     SubvariantNotFound(String, String),
     // only for debugging purposes
-    InvalidDerefType(Type),
+    InvaliUnboxType(Type),
     Unimplemented(String),
     MismatchedOperands(ArithmeticOperator, Type, Type),
     AssignmentToImmutableReference(String),
@@ -47,8 +47,8 @@ impl Display for TypeError {
                     ty, variant
                 )
             }
-            TypeError::InvalidDerefType(ty) => {
-                write!(f, "Cannot dereference value of type {}", ty)
+            TypeError::InvaliUnboxType(ty) => {
+                write!(f, "Cannot unbox value of type {}", ty)
             }
             TypeError::Unimplemented(msg) => {
                 write!(f, "Unimplemented type inference case: {}", msg)

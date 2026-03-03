@@ -161,15 +161,15 @@ pub enum InstructionCode {
     GET_LOCAL_REF = 122u8, // $x, containing only the id, origin id is inferred from sender
     GET_OR_INIT_REF,       // $aa := ...
     POINTER_ACTION,        // $aa += ...
-    CREATE_SHARED_REF,        // ' / 'mut
+    CREATE_SHARED_REF,     // ' / 'mut
     SET_REF,               // &aa = ...
-    
-    CREATE_SHARED, // shared x
+
+    CREATE_SHARED,     // shared x
     CREATE_SHARED_MUT, // shared mut x
 
     SET_REFERENCE_VALUE, // *x = 10;
 
-    DEREF, // *x
+    UNBOX, // *x
 
     CHILD_GET,           // .y
     CHILD_SET,           // .y = a

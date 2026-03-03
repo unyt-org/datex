@@ -318,7 +318,7 @@ pub fn ast_from_bytecode(
                                 | RegularInstruction::AllocateSlot(_)
                                 | RegularInstruction::SetSlot(_)
                                 | RegularInstruction::SetReferenceValue(_)
-                                | RegularInstruction::Deref
+                                | RegularInstruction::Unbox
                                 | RegularInstruction::TypedValue
                                 | RegularInstruction::RemoteExecution(_)
                                 | RegularInstruction::TypeExpression => {
@@ -464,7 +464,7 @@ pub fn ast_from_bytecode(
                             | RegularInstruction::CreateSharedReference
                             | RegularInstruction::CreateShared
                             | RegularInstruction::CreateSharedMut
-                            | RegularInstruction::Deref => {
+                            | RegularInstruction::Unbox => {
                                 let expr = collected_results.pop_value_result();
                                 DatexExpressionData::UnaryOperation(
                                     UnaryOperation {

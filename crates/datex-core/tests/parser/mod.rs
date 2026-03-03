@@ -9,16 +9,16 @@ use datex_core::{
     },
     collections::HashMap,
     global::operators::{
-        binary::{ArithmeticOperator, BitwiseOperator}, ArithmeticUnaryOperator, AssignmentOperator,
-        BinaryOperator, ComparisonOperator, LogicalUnaryOperator,
-        UnaryOperator,
+        ArithmeticUnaryOperator, AssignmentOperator, BinaryOperator,
+        ComparisonOperator, LogicalUnaryOperator, UnaryOperator,
+        binary::{ArithmeticOperator, BitwiseOperator},
     },
     prelude::*,
     values::{
         core_values::{
             decimal::Decimal,
             endpoint::{Endpoint, InvalidEndpointError},
-            integer::{typed_integer::TypedInteger, Integer},
+            integer::{Integer, typed_integer::TypedInteger},
         },
         value_container::ValueContainer,
     },
@@ -28,9 +28,10 @@ use datex_core::{
     ast::{
         expressions::{
             Apply, BinaryOperation, CallableDeclaration, CallableKind,
-            ComparisonOperation, Conditional, CreateRef, DatexExpression,
-            DatexExpressionData, Unbox, GenericInstantiation, List, Map,
-            PropertyAccess, PropertyAssignment, Slot, UnaryOperation,
+            ComparisonOperation, Conditional, CreateMut, CreateRef,
+            CreateShared, DatexExpression, DatexExpressionData,
+            GenericInstantiation, List, Map, PropertyAccess,
+            PropertyAssignment, Slot, UnaryOperation, Unbox,
             VariableAssignment, VariableDeclaration, VariableKind,
         },
         spanned::Spanned,
@@ -40,18 +41,19 @@ use datex_core::{
         },
     },
     parser::{
+        Parser,
         errors::{ParserError, SpannedParserError},
         lexer::Token,
         parser_result::{
             InvalidDatexParseResult, ParserResult, ValidDatexParseResult,
         },
-        Parser,
     },
-    shared_values::shared_container::SharedContainerMutability,
+    shared_values::{
+        pointer_address::PointerAddress,
+        shared_container::SharedContainerMutability,
+    },
     values::core_values::error::NumberParseError,
 };
-use datex_core::ast::expressions::{CreateMut, CreateShared};
-use datex_core::shared_values::pointer_address::PointerAddress;
 
 /// Parse the given source code into a DatexExpression AST.
 fn parse_unwrap(src: &str) -> DatexExpression {
@@ -3378,7 +3380,7 @@ fn named_slot() {
 }
 
 #[test]
-fn deref() {
+fn unbox() {
     let src = "*x";
     let expr = parse_unwrap_data(src);
     assert_eq!(
@@ -3393,7 +3395,7 @@ fn deref() {
 }
 
 #[test]
-fn deref_multiple() {
+fn unbox_multiple() {
     let src = "**x";
     let expr = parse_unwrap_data(src);
     assert_eq!(
@@ -3509,7 +3511,7 @@ fn variable_declaration_shared_mut() {
             init_expression: Box::new(
                 DatexExpressionData::CreateShared(CreateShared {
                     mutability: SharedContainerMutability::Mutable,
-                    expression:Box::new(
+                    expression: Box::new(
                         DatexExpressionData::List(List::new(vec![
                             DatexExpressionData::Integer(Integer::from(1))
                                 .with_default_span(),
@@ -3517,7 +3519,9 @@ fn variable_declaration_shared_mut() {
                                 .with_default_span(),
                             DatexExpressionData::Integer(Integer::from(3))
                                 .with_default_span(),
-                        ])).with_default_span())
+                        ]))
+                        .with_default_span()
+                    )
                 })
                 .with_default_span()
             ),

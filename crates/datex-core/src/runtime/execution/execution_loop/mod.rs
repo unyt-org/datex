@@ -7,7 +7,7 @@ pub mod state;
 use crate::{
     core_compiler::value_compiler::compile_value_container,
     dxb_parser::{
-        body::{iterate_instructions, DXBParserError},
+        body::{DXBParserError, iterate_instructions},
         instruction_collector::{
             CollectedResults, CollectionResultsPopper, FullOrPartialResult,
             InstructionCollector, LastUnboundedResultCollector,
@@ -29,6 +29,7 @@ use crate::{
     },
     prelude::*,
     runtime::execution::{
+        ExecutionError, InvalidProgramError,
         execution_loop::{
             interrupts::{
                 ExecutionInterrupt, ExternalExecutionInterrupt,
@@ -42,14 +43,16 @@ use crate::{
             runtime_value::RuntimeValue,
             slots::{get_internal_slot_value, get_slot_value},
             state::RuntimeExecutionState,
-        }, macros::{
+        },
+        macros::{
             interrupt, interrupt_with_maybe_value, interrupt_with_value,
             yield_unwrap,
         },
-        ExecutionError,
-        InvalidProgramError,
     },
-    shared_values::shared_container::{SharedContainerMutability, SharedContainer},
+    shared_values::{
+        pointer_address::PointerAddress,
+        shared_container::{SharedContainer, SharedContainerMutability},
+    },
     types::{
         definition::TypeDefinition,
         structural_type_definition::StructuralTypeDefinition,
@@ -58,11 +61,11 @@ use crate::{
     values::{
         core_value::CoreValue,
         core_values::{
-            decimal::{typed_decimal::TypedDecimal, Decimal},
+            decimal::{Decimal, typed_decimal::TypedDecimal},
             integer::typed_integer::TypedInteger,
             list::List,
             map::{Map, MapKey},
-            r#type::Type,
+            r#type::{Type, TypeMetadata},
         },
         value::Value,
         value_container::{OwnedValueKey, ValueContainer},
@@ -70,8 +73,6 @@ use crate::{
 };
 use alloc::rc::Rc;
 use core::cell::RefCell;
-use crate::shared_values::pointer_address::PointerAddress;
-use crate::values::core_values::r#type::TypeMetadata;
 
 #[derive(Debug)]
 enum CollectedExecutionResult {
@@ -453,7 +454,7 @@ pub fn inner_execution_loop(
                             RegularInstruction::AllocateSlot(_) |
                             RegularInstruction::SetSlot(_) |
                             RegularInstruction::SetReferenceValue(_) |
-                            RegularInstruction::Deref |
+                            RegularInstruction::Unbox |
                             RegularInstruction::TypedValue |
                             RegularInstruction::RemoteExecution(_) |
                             RegularInstruction::TypeExpression => unreachable!()
@@ -474,14 +475,21 @@ pub fn inner_execution_loop(
                     {
                         Some(match type_instruction {
                             TypeInstruction::LiteralInteger(integer) => {
-                                Type::structural(integer.0, TypeMetadata::default())
+                                Type::structural(
+                                    integer.0,
+                                    TypeMetadata::default(),
+                                )
                             }
                             TypeInstruction::LiteralText(text_data) => {
-                                Type::structural(text_data.0, TypeMetadata::default())
+                                Type::structural(
+                                    text_data.0,
+                                    TypeMetadata::default(),
+                                )
                             }
 
                             TypeInstruction::SharedTypeReference(type_ref) => {
-                                let metadata = TypeMetadata::from(&type_ref.metadata);
+                                let metadata =
+                                    TypeMetadata::from(&type_ref.metadata);
                                 let val = interrupt_with_maybe_value!(
                                     interrupt_provider,
                                     match type_ref.address {
@@ -515,9 +523,11 @@ pub fn inner_execution_loop(
                                     })) => ty,
                                     // Type Reference
                                     Some(ValueContainer::Shared(
-                                         SharedContainer::Type(type_ref),
+                                        SharedContainer::Type(type_ref),
                                     )) => Type::new(
-                                        TypeDefinition::SharedReference(type_ref),
+                                        TypeDefinition::SharedReference(
+                                            type_ref,
+                                        ),
                                         metadata,
                                     ),
                                     _ => {
@@ -675,7 +685,7 @@ pub fn inner_execution_loop(
                                 | RegularInstruction::CreateSharedReference
                                 | RegularInstruction::CreateShared
                                 | RegularInstruction::CreateSharedMut
-                                | RegularInstruction::Deref => {
+                                | RegularInstruction::Unbox => {
                                     let mut target = yield_unwrap!(
                                         collected_results
                                             .pop_runtime_value_result_assert_existing()
@@ -688,7 +698,7 @@ pub fn inner_execution_loop(
                                                     regular_instruction,
                                                 ),
                                                 target.clone(), // TODO #646: is unary operation supposed to take ownership?
-                                                &state.runtime_internal.memory
+                                                &state.runtime_internal.memory,
                                             )
                                         },
                                     );
@@ -807,7 +817,7 @@ pub fn inner_execution_loop(
                                         .into()
                                     } else {
                                         return yield Err(
-                                            ExecutionError::DerefOfNonReference,
+                                            ExecutionError::InvalidUnbox,
                                         );
                                     }
                                 }
@@ -1094,7 +1104,9 @@ pub fn inner_execution_loop(
                                     TypeInstruction::ImplType(
                                         impl_type_data,
                                     ) => {
-                                        let metadata = TypeMetadata::from(&impl_type_data.metadata);
+                                        let metadata = TypeMetadata::from(
+                                            &impl_type_data.metadata,
+                                        );
                                         let base_type =
                                             collected_results.pop_type_result();
                                         Type::new(
@@ -1106,7 +1118,7 @@ pub fn inner_execution_loop(
                                                     .map(PointerAddress::from)
                                                     .collect(),
                                             ),
-                                            metadata
+                                            metadata,
                                         )
                                         .into()
                                     }

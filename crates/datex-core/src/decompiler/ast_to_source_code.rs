@@ -748,8 +748,8 @@ impl AstToSourceCodeConverter {
                     body_code
                 )
             }
-            DatexExpressionData::Unbox(deref) => {
-                format!("*{}", self.format(&deref.expression))
+            DatexExpressionData::Unbox(unbox) => {
+                format!("*{}", self.format(&unbox.expression))
             }
             DatexExpressionData::Slot(slot) => slot.to_string(),
             DatexExpressionData::SlotAssignment(SlotAssignment {
@@ -775,15 +775,15 @@ impl AstToSourceCodeConverter {
             }
             DatexExpressionData::UnboxAssignment(UnboxAssignment {
                 operator,
-                deref_expression,
+                unbox_expression,
                 assigned_expression,
             }) => {
-                let deref_prefix = "*";
+                let unbox_prefix = "*";
                 ast_fmt!(
                     &self,
                     "{}{}%s{operator}%s{}",
-                    deref_prefix,
-                    self.format(deref_expression),
+                    unbox_prefix,
+                    self.format(unbox_expression),
                     self.format(assigned_expression)
                 )
             }
@@ -1078,7 +1078,7 @@ mod tests {
         let unbox_assign_ast =
             DatexExpressionData::UnboxAssignment(UnboxAssignment {
                 operator: AssignmentOperator::Assign,
-                deref_expression: Box::new(
+                unbox_expression: Box::new(
                     DatexExpressionData::VariableAccess(VariableAccess {
                         id: 0,
                         name: "ptr".to_string(),

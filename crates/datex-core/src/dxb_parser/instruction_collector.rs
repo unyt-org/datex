@@ -491,7 +491,7 @@ impl<T> InstructionCollector<T> {
             | RegularInstruction::CreateSharedReference
             | RegularInstruction::CreateShared
             | RegularInstruction::CreateSharedMut
-            | RegularInstruction::Deref
+            | RegularInstruction::Unbox
             | RegularInstruction::GetOrCreateRef(_)
             | RegularInstruction::GetOrCreateRefMut(_) => {
                 self.collect_full(

@@ -1,10 +1,10 @@
 use crate::{
     dxb_parser::body::DXBParserError,
     network::com_hub::network_response::ResponseError,
+    runtime::execution::execution_loop::state::ExecutionLoopState,
     shared_values::shared_container::{
         AccessError, AssignmentError, SharedValueCreationError,
     },
-    runtime::execution::execution_loop::state::ExecutionLoopState,
     types::error::IllegalTypeError,
     values::value_container::{ValueContainer, ValueError},
 };
@@ -65,7 +65,7 @@ pub enum ExecutionError {
     ResponseError(ResponseError),
     IllegalTypeError(IllegalTypeError),
     ReferenceNotFound,
-    DerefOfNonReference,
+    InvalidUnbox,
     InvalidTypeCast,
     ExpectedTypeValue,
     ReferenceToNonSharedValue,
@@ -171,8 +171,8 @@ impl Display for ExecutionError {
             ExecutionError::IllegalTypeError(err) => {
                 core::write!(f, "Illegal type: {err}")
             }
-            ExecutionError::DerefOfNonReference => {
-                core::write!(f, "Tried to dereference a non-reference value")
+            ExecutionError::InvalidUnbox => {
+                core::write!(f, "Tried to unbox a non-reference value")
             }
             ExecutionError::AssignmentError(err) => {
                 core::write!(f, "Assignment error: {err}")
