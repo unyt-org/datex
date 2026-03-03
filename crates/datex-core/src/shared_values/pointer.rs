@@ -1,6 +1,7 @@
+use serde::{Deserialize, Serialize};
 use crate::shared_values::pointer_address::{OwnedPointerAddress, PointerAddress, ReferencedPointerAddress};
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum PointerReferenceMutability {
     Mutable,
     Immutable,

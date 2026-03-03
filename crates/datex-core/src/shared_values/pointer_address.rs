@@ -51,6 +51,14 @@ impl PointerAddress {
     pub fn owned(address: [u8; 5]) -> Self {
         PointerAddress::Owned(OwnedPointerAddress::new(address))
     }
+    
+    pub fn internal(address: [u8; 3]) -> Self {
+        PointerAddress::Referenced(ReferencedPointerAddress::Internal(address))
+    }
+    
+    pub fn remote(address: [u8; 26]) -> Self {
+        PointerAddress::Referenced(ReferencedPointerAddress::Remote(address))
+    }
 }
 
 impl TryFrom<String> for PointerAddress {

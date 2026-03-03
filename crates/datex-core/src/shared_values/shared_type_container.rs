@@ -23,6 +23,7 @@ use crate::{
 use core::option::Option;
 use crate::shared_values::pointer::Pointer;
 use crate::shared_values::pointer_address::PointerAddress;
+use crate::values::core_values::r#type::TypeMetadata;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct NominalTypeDeclaration {
@@ -97,9 +98,7 @@ impl SharedTypeContainer {
 
     /// Convert this TypeReference into a Type representing a reference to the underlying type
     pub fn as_type(self) -> Type {
-        let mutability =
-            self.mutability().unwrap_or(SharedContainerMutability::Immutable);
-        Type::shared_reference(self.as_ref_cell(), mutability)
+        Type::shared_reference(self.as_ref_cell(), TypeMetadata::default())
     }
 
     pub fn collapse_reference_chain(&self) -> SharedTypeContainer {
@@ -113,9 +112,6 @@ impl SharedTypeContainer {
                 self.clone()
             }
         }
-    }
-    pub fn mutability(&self) -> Option<SharedContainerMutability> {
-        self.type_value.shared_reference_mutability()
     }
 }
 

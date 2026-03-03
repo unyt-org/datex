@@ -30,16 +30,17 @@ use core::{
     result::Result,
     unimplemented,
 };
+use serde::{Deserialize, Serialize};
 use crate::shared_values::pointer::PointerReferenceMutability;
 use crate::shared_values::pointer_address::PointerAddress;
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum LocalReferenceMutability {
     Mutable,
     Immutable,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum LocalMutability {
     Mutable,
     Immutable,
@@ -222,12 +223,12 @@ impl Type {
     /// Creates a reference type pointing to the given TypeReference
     pub fn shared_reference(
         type_definition: Rc<RefCell<SharedTypeContainer>>,
-        prefix: TypeMetadata,
+        metadata: TypeMetadata,
     ) -> Self {
         Type {
             type_definition: TypeDefinition::SharedReference(type_definition),
             base_type: None,
-            metadata: prefix,
+            metadata,
         }
     }
 

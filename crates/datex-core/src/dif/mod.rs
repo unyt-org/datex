@@ -51,6 +51,7 @@ mod tests {
         },
     };
     use alloc::string::ToString;
+    use crate::dif::r#type::DIFTypeMetadata;
     use crate::shared_values::pointer_address::PointerAddress;
 
     fn dif_value_circle(value_container: ValueContainer) -> DIFValueContainer {
@@ -162,7 +163,7 @@ mod tests {
                 ty: Some(DIFTypeDefinition::ImplType(
                     Box::new(DIFType {
                         name: None,
-                        prefix: None,
+                        metadata: DIFTypeMetadata::default(),
                         type_definition: DIFTypeDefinition::Reference(
                             PointerAddress::from(CoreLibPointerId::Integer(
                                 None

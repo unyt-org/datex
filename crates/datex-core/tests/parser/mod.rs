@@ -896,7 +896,7 @@ fn if_else_if_else() {
     let src = r#"
         if (x == 4) (
             "4"
-        ) else if (x == 'hello') (
+        ) else if (x == "hello") (
             "42"
         ) else (null)
     "#;
@@ -1521,15 +1521,8 @@ fn decimal_with_positive_exponent() {
 }
 
 #[test]
-fn text_double_quotes() {
+fn text() {
     let src = r#""Hello, world!""#;
-    let text = parse_unwrap_data(src);
-    assert_eq!(text, DatexExpressionData::Text("Hello, world!".to_string()));
-}
-
-#[test]
-fn text_single_quotes() {
-    let src = r#"'Hello, world!'"#;
     let text = parse_unwrap_data(src);
     assert_eq!(text, DatexExpressionData::Text("Hello, world!".to_string()));
 }
@@ -2292,7 +2285,7 @@ fn apply_multiple() {
 
 #[test]
 fn apply_atom() {
-    let src = "print 'test'";
+    let src = r#"print "test""#;
     let expr = parse_unwrap_data(src);
     assert_eq!(
         expr,
@@ -3433,7 +3426,7 @@ fn pointer_address() {
     let expr = parse_unwrap_data(src);
     assert_eq!(
         expr,
-        DatexExpressionData::PointerAddress(PointerAddress::Internal([
+        DatexExpressionData::PointerAddress(PointerAddress::internal([
             0x12, 0x34, 0x56
         ]))
     );
@@ -3453,7 +3446,7 @@ fn pointer_address() {
     let expr = parse_unwrap_data(src);
     assert_eq!(
         expr,
-        DatexExpressionData::PointerAddress(PointerAddress::Remote([
+        DatexExpressionData::PointerAddress(PointerAddress::remote([
             0x12, 0x34, 0x56, 0x78, 0x90, 0xAB, 0xCD, 0xEF, 0x12, 0x34, 0x56,
             0x78, 0x90, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
             0x00, 0x00, 0x00, 0x42
@@ -3515,19 +3508,16 @@ fn variable_declaration_shared_mut() {
             type_annotation: None,
             init_expression: Box::new(
                 DatexExpressionData::CreateShared(CreateShared {
-                    expression: Box::new(DatexExpressionData::CreateMut(CreateMut {
-                        expression: Box::new(
-                            DatexExpressionData::List(List::new(vec![
-                                DatexExpressionData::Integer(Integer::from(1))
-                                    .with_default_span(),
-                                DatexExpressionData::Integer(Integer::from(2))
-                                    .with_default_span(),
-                                DatexExpressionData::Integer(Integer::from(3))
-                                    .with_default_span(),
-                            ]))
-                                .with_default_span()
-                        )
-                    }).with_default_span())
+                    mutability: SharedContainerMutability::Mutable,
+                    expression:Box::new(
+                        DatexExpressionData::List(List::new(vec![
+                            DatexExpressionData::Integer(Integer::from(1))
+                                .with_default_span(),
+                            DatexExpressionData::Integer(Integer::from(2))
+                                .with_default_span(),
+                            DatexExpressionData::Integer(Integer::from(3))
+                                .with_default_span(),
+                        ])).with_default_span())
                 })
                 .with_default_span()
             ),
@@ -3548,6 +3538,7 @@ fn variable_declaration_shared() {
             type_annotation: None,
             init_expression: Box::new(
                 DatexExpressionData::CreateShared(CreateShared {
+                    mutability: SharedContainerMutability::Immutable,
                     expression: Box::new(
                         DatexExpressionData::List(List::new(vec![
                             DatexExpressionData::Integer(Integer::from(1))
@@ -3637,7 +3628,7 @@ fn negation() {
 
 #[test]
 fn token_spans() {
-    let src = "'test'+'x'";
+    let src = r#""test"+"x""#;
     let expr = parse_unwrap(src);
     assert_eq!(expr.span.start, 0);
     assert_eq!(expr.span.end, 10);

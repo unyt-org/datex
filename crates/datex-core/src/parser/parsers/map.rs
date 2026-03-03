@@ -51,7 +51,7 @@ mod tests {
 
     #[test]
     fn parse_simple_map() {
-        let expr = parse("{'key1': true, 'key2': false}");
+        let expr = parse(r#"{"key1": true, "key2": false}"#);
         assert_eq!(
             expr.data,
             DatexExpressionData::Map(Map {
