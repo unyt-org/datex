@@ -2,13 +2,14 @@ use crate::{
     shared_values::shared_container::SharedContainerMutability,
     types::definition::TypeDefinition,
 };
-use binrw::{BinRead, BinWrite};
-use core::prelude::rust_2024::*;
+
+use crate::{
+    shared_values::pointer::PointerReferenceMutability,
+    values::core_values::r#type::{LocalMutability, LocalReferenceMutability},
+};
 use modular_bitfield::Specifier;
 use num_enum::TryFromPrimitive;
 use strum::Display;
-use crate::shared_values::pointer::PointerReferenceMutability;
-use crate::values::core_values::r#type::{LocalMutability, LocalReferenceMutability};
 
 #[allow(non_camel_case_types)]
 #[derive(
@@ -79,7 +80,9 @@ impl From<&TypeDefinition> for TypeInstructionCode {
             TypeDefinition::ImplType(_, _) => {
                 TypeInstructionCode::TYPE_WITH_IMPLS
             }
-            TypeDefinition::SharedReference(_) => TypeInstructionCode::SHARED_TYPE_REFERENCE,
+            TypeDefinition::SharedReference(_) => {
+                TypeInstructionCode::SHARED_TYPE_REFERENCE
+            }
             TypeDefinition::Unit => TypeInstructionCode::TYPE_UNIT,
             TypeDefinition::Unknown => TypeInstructionCode::TYPE_UNKNOWN,
             TypeDefinition::Never => TypeInstructionCode::TYPE_NEVER,
@@ -104,16 +107,20 @@ impl From<&TypeDefinition> for TypeInstructionCode {
 #[derive(Clone, Debug, PartialEq, Display, Specifier)]
 #[bits = 2]
 pub enum TypeReferenceMutabilityCode {
-    MutableReference, // &mut / 'mut
+    MutableReference,   // &mut / 'mut
     ImmutableReference, // & / '
-    Value, // default
+    Value,              // default
 }
 
 impl From<&TypeReferenceMutabilityCode> for Option<PointerReferenceMutability> {
     fn from(value: &TypeReferenceMutabilityCode) -> Self {
         match value {
-            TypeReferenceMutabilityCode::MutableReference => Some(PointerReferenceMutability::Mutable),
-            TypeReferenceMutabilityCode::ImmutableReference => Some(PointerReferenceMutability::Immutable),
+            TypeReferenceMutabilityCode::MutableReference => {
+                Some(PointerReferenceMutability::Mutable)
+            }
+            TypeReferenceMutabilityCode::ImmutableReference => {
+                Some(PointerReferenceMutability::Immutable)
+            }
             TypeReferenceMutabilityCode::Value => None,
         }
     }
@@ -122,8 +129,12 @@ impl From<&TypeReferenceMutabilityCode> for Option<PointerReferenceMutability> {
 impl From<&Option<PointerReferenceMutability>> for TypeReferenceMutabilityCode {
     fn from(value: &Option<PointerReferenceMutability>) -> Self {
         match value {
-            Some(PointerReferenceMutability::Mutable) => TypeReferenceMutabilityCode::MutableReference,
-            Some(PointerReferenceMutability::Immutable) => TypeReferenceMutabilityCode::ImmutableReference,
+            Some(PointerReferenceMutability::Mutable) => {
+                TypeReferenceMutabilityCode::MutableReference
+            }
+            Some(PointerReferenceMutability::Immutable) => {
+                TypeReferenceMutabilityCode::ImmutableReference
+            }
             None => TypeReferenceMutabilityCode::Value,
         }
     }
@@ -132,8 +143,12 @@ impl From<&Option<PointerReferenceMutability>> for TypeReferenceMutabilityCode {
 impl From<&Option<LocalReferenceMutability>> for TypeReferenceMutabilityCode {
     fn from(value: &Option<LocalReferenceMutability>) -> Self {
         match value {
-            Some(LocalReferenceMutability::Mutable) => TypeReferenceMutabilityCode::MutableReference,
-            Some(LocalReferenceMutability::Immutable) => TypeReferenceMutabilityCode::ImmutableReference,
+            Some(LocalReferenceMutability::Mutable) => {
+                TypeReferenceMutabilityCode::MutableReference
+            }
+            Some(LocalReferenceMutability::Immutable) => {
+                TypeReferenceMutabilityCode::ImmutableReference
+            }
             None => TypeReferenceMutabilityCode::Value,
         }
     }
@@ -142,8 +157,12 @@ impl From<&Option<LocalReferenceMutability>> for TypeReferenceMutabilityCode {
 impl From<&TypeReferenceMutabilityCode> for Option<LocalReferenceMutability> {
     fn from(value: &TypeReferenceMutabilityCode) -> Self {
         match value {
-            TypeReferenceMutabilityCode::MutableReference => Some(LocalReferenceMutability::Mutable),
-            TypeReferenceMutabilityCode::ImmutableReference => Some(LocalReferenceMutability::Immutable),
+            TypeReferenceMutabilityCode::MutableReference => {
+                Some(LocalReferenceMutability::Mutable)
+            }
+            TypeReferenceMutabilityCode::ImmutableReference => {
+                Some(LocalReferenceMutability::Immutable)
+            }
             TypeReferenceMutabilityCode::Value => None,
         }
     }
@@ -152,7 +171,7 @@ impl From<&TypeReferenceMutabilityCode> for Option<LocalReferenceMutability> {
 #[derive(Clone, Debug, PartialEq, Display, Specifier)]
 #[bits = 1]
 pub enum TypeMutabilityCode {
-    Mutable, // mut / shared mut
+    Mutable,   // mut / shared mut
     Immutable, // default or shared
 }
 
@@ -160,7 +179,9 @@ impl From<&TypeMutabilityCode> for SharedContainerMutability {
     fn from(value: &TypeMutabilityCode) -> Self {
         match value {
             TypeMutabilityCode::Mutable => SharedContainerMutability::Mutable,
-            TypeMutabilityCode::Immutable => SharedContainerMutability::Immutable,
+            TypeMutabilityCode::Immutable => {
+                SharedContainerMutability::Immutable
+            }
         }
     }
 }
@@ -169,7 +190,9 @@ impl From<&SharedContainerMutability> for TypeMutabilityCode {
     fn from(value: &SharedContainerMutability) -> Self {
         match value {
             SharedContainerMutability::Mutable => TypeMutabilityCode::Mutable,
-            SharedContainerMutability::Immutable => TypeMutabilityCode::Immutable,
+            SharedContainerMutability::Immutable => {
+                TypeMutabilityCode::Immutable
+            }
         }
     }
 }
@@ -192,10 +215,9 @@ impl From<&LocalMutability> for TypeMutabilityCode {
     }
 }
 
-
 #[derive(Clone, Debug, PartialEq, Display, Specifier)]
 #[bits = 1]
 pub enum TypeLocalOrShared {
-    Local, // default
+    Local,  // default
     Shared, // shared
 }

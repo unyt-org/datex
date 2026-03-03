@@ -1,5 +1,5 @@
 use crate::prelude::*;
-use core::prelude::rust_2024::*;
+
 
 pub struct AnsiCodes {}
 impl AnsiCodes {

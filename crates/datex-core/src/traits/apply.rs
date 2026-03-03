@@ -1,7 +1,7 @@
 use crate::{
     runtime::execution::ExecutionError, values::value_container::ValueContainer,
 };
-use core::prelude::rust_2024::*;
+
 
 // TODO #351: return ApplyErrors including call stack information (or store call stack directly in ExecutionError)
 pub trait Apply {
