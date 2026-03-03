@@ -1,10 +1,11 @@
 use crate::{
     ast::{
         expressions::{
-            Apply, BinaryOperation, ComparisonOperation, CreateRef,
-            DatexExpression, DatexExpressionData, Unbox, UnboxAssignment,
-            GenericInstantiation, PropertyAccess, PropertyAssignment,
-            RangeDeclaration, RemoteExecution, SlotAssignment, UnaryOperation,
+            Apply, BinaryOperation, ComparisonOperation, CreateMut, CreateRef,
+            CreateShared, CreateSharedRef, DatexExpression,
+            DatexExpressionData, GenericInstantiation, PropertyAccess,
+            PropertyAssignment, RangeDeclaration, RemoteExecution,
+            SlotAssignment, UnaryOperation, Unbox, UnboxAssignment,
             VariableAssignment,
         },
         spanned::Spanned,
@@ -20,12 +21,14 @@ use crate::{
         lexer::{SpannedToken, Token},
     },
     prelude::*,
-    shared_values::shared_container::SharedContainerMutability,
-    values::core_values::error::NumberParseError,
+    shared_values::{
+        pointer::PointerReferenceMutability,
+        shared_container::SharedContainerMutability,
+    },
+    values::core_values::{
+        error::NumberParseError, r#type::LocalReferenceMutability,
+    },
 };
-use crate::ast::expressions::{CreateMut, CreateShared, CreateSharedRef};
-use crate::shared_values::pointer::PointerReferenceMutability;
-use crate::values::core_values::r#type::LocalReferenceMutability;
 
 static UNARY_BP: u8 = 29; // weaker than property access / apply, stronger than all other binary operators
 
@@ -236,11 +239,11 @@ impl Parser {
                     assigned_expression: Box::new(rhs),
                 })
             }
-            // deref assignment
-            DatexExpressionData::Unbox(deref) => {
+            // unbox assignment
+            DatexExpressionData::Unbox(unbox) => {
                 DatexExpressionData::UnboxAssignment(UnboxAssignment {
                     operator: assignment_operator,
-                    deref_expression: deref.expression,
+                    unbox_expression: unbox.expression,
                     assigned_expression: Box::new(rhs),
                 })
             }
@@ -438,7 +441,9 @@ impl Parser {
                 let op = self.advance()?;
 
                 // check if next token is 'mut' to determine mutability of shared container
-                let mutability = if let Ok(next) = self.peek() && next.token == Token::Mutable {
+                let mutability = if let Ok(next) = self.peek()
+                    && next.token == Token::Mutable
+                {
                     let token = self.advance()?; // consume 'mut'
                     SharedContainerMutability::Mutable
                 } else {
@@ -453,7 +458,7 @@ impl Parser {
                     mutability,
                     expression: Box::new(rhs),
                 })
-                    .with_span(span))
+                .with_span(span))
             }
             // mut
             Token::Mutable => {
@@ -463,7 +468,7 @@ impl Parser {
                 Ok(DatexExpressionData::CreateMut(CreateMut {
                     expression: Box::new(rhs),
                 })
-                    .with_span(span))
+                .with_span(span))
             }
             // ref (&)
             Token::Ampersand => {
@@ -485,7 +490,7 @@ impl Parser {
                     mutability: LocalReferenceMutability::Mutable,
                     expression: Box::new(rhs),
                 })
-                    .with_span(span))
+                .with_span(span))
             }
             // shared ref (')
             Token::SharedRef => {
@@ -496,7 +501,7 @@ impl Parser {
                     mutability: PointerReferenceMutability::Immutable,
                     expression: Box::new(rhs),
                 })
-                    .with_span(span))
+                .with_span(span))
             }
             // shared mutable ref ('mut)
             Token::SharedRefMut => {
@@ -507,7 +512,7 @@ impl Parser {
                     mutability: PointerReferenceMutability::Mutable,
                     expression: Box::new(rhs),
                 })
-                    .with_span(span))
+                .with_span(span))
             }
             // unbox (*)
             Token::Star => {
@@ -594,11 +599,11 @@ mod tests {
     use crate::{
         ast::{
             expressions::{
-                Apply, BinaryOperation, ComparisonOperation, CreateRef,
-                DatexExpressionData, Unbox, UnboxAssignment,
+                Apply, BinaryOperation, ComparisonOperation, CreateMut,
+                CreateRef, CreateShared, CreateSharedRef, DatexExpressionData,
                 GenericInstantiation, PropertyAccess, PropertyAssignment,
                 RemoteExecution, Slot, SlotAssignment, Statements,
-                UnaryOperation, VariableAssignment,
+                UnaryOperation, Unbox, UnboxAssignment, VariableAssignment,
             },
             spanned::Spanned,
             type_expressions::TypeExpressionData,
@@ -613,11 +618,12 @@ mod tests {
             tests::{parse, try_parse_and_return_on_first_error},
         },
         prelude::*,
-        shared_values::shared_container::SharedContainerMutability,
+        shared_values::{
+            pointer::PointerReferenceMutability,
+            shared_container::SharedContainerMutability,
+        },
+        values::core_values::r#type::LocalReferenceMutability,
     };
-    use crate::ast::expressions::{CreateMut, CreateShared, CreateSharedRef};
-    use crate::shared_values::pointer::PointerReferenceMutability;
-    use crate::values::core_values::r#type::LocalReferenceMutability;
 
     #[test]
     fn parse_simple_binary_expression() {
@@ -1256,19 +1262,18 @@ mod tests {
                             DatexExpressionData::Identifier(
                                 "myObject".to_string()
                             )
-                                .with_default_span()
+                            .with_default_span()
                         ),
                         property: Box::new(
                             DatexExpressionData::Text("myProperty".to_string())
                                 .with_default_span()
                         ),
                     })
-                        .with_default_span()
+                    .with_default_span()
                 ),
             })
         );
     }
-
 
     #[test]
     fn parse_multiple_refs() {
@@ -1307,10 +1312,10 @@ mod tests {
                             DatexExpressionData::Identifier(
                                 "myVar".to_string()
                             )
-                                .with_default_span()
+                            .with_default_span()
                         ),
                     })
-                        .with_default_span()
+                    .with_default_span()
                 ),
             })
         );
@@ -1365,18 +1370,17 @@ mod tests {
                             DatexExpressionData::Identifier(
                                 "myVar".to_string()
                             )
-                                .with_default_span()
+                            .with_default_span()
                         ),
                     })
-                        .with_default_span()
+                    .with_default_span()
                 ),
             })
         );
     }
 
-
     #[test]
-    fn parse_multiple_dereferences() {
+    fn parse_multiple_unboxes() {
         let expr = parse("**myRef");
         assert_eq!(
             expr.data,
@@ -1397,7 +1401,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_dereference_addition() {
+    fn parse_unbox_addition() {
         let expr = parse("*myRef + *myRef2");
         assert_eq!(
             expr.data,
@@ -1520,13 +1524,13 @@ mod tests {
     }
 
     #[test]
-    fn parse_deref_assignment() {
+    fn parse_unbox_assignment() {
         let expr = parse("*myRef = 200");
         assert_eq!(
             expr.data,
             DatexExpressionData::UnboxAssignment(UnboxAssignment {
                 operator: AssignmentOperator::Assign,
-                deref_expression: Box::new(
+                unbox_expression: Box::new(
                     DatexExpressionData::Identifier("myRef".to_string())
                         .with_default_span()
                 ),
@@ -1539,13 +1543,13 @@ mod tests {
     }
 
     #[test]
-    fn parse_nested_deref_assignment() {
+    fn parse_nested_unbox_assignment() {
         let expr = parse("**myRef = 300");
         assert_eq!(
             expr.data,
             DatexExpressionData::UnboxAssignment(UnboxAssignment {
                 operator: AssignmentOperator::Assign,
-                deref_expression: Box::new(
+                unbox_expression: Box::new(
                     DatexExpressionData::Unbox(Unbox {
                         expression: Box::new(
                             DatexExpressionData::Identifier(

@@ -417,9 +417,9 @@ pub fn iterate_instructions(
                             RegularInstruction::SetPropertyDynamic
                         }
 
-                        InstructionCode::DEREF => {
+                        InstructionCode::UNBOX => {
                             next_instructions_stack.push_next_regular(1);
-                            RegularInstruction::Deref
+                            RegularInstruction::Unbox
                         }
                         InstructionCode::SET_REFERENCE_VALUE => {
                             next_instructions_stack.push_next_regular(2);

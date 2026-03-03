@@ -1,25 +1,29 @@
 use crate::{
     global::protocol_structures::instructions::*,
-    libs::core::{get_core_lib_value, CoreLibPointerId},
+    libs::core::{CoreLibPointerId, get_core_lib_value},
     runtime::{
+        RuntimeInternal,
         execution::{
             context::{ExecutionMode, RemoteExecutionContext},
             execution_loop::interrupts::{
                 ExternalExecutionInterrupt, InterruptResult,
             },
         },
-        RuntimeInternal,
     },
     traits::apply::Apply,
     values::value_container::ValueContainer,
 };
 
-use crate::prelude::*;
+use crate::{
+    prelude::*,
+    shared_values::pointer_address::{
+        PointerAddress, ReferencedPointerAddress,
+    },
+};
 use core::{result::Result, unreachable};
 pub use errors::*;
 pub use execution_input::{ExecutionInput, ExecutionOptions};
 pub use memory_dump::*;
-use crate::shared_values::pointer_address::{PointerAddress, ReferencedPointerAddress};
 
 pub mod context;
 mod errors;
@@ -112,22 +116,18 @@ pub async fn execute_dxb(
             ExternalExecutionInterrupt::RemoteExecution(receivers, body) => {
                 // assert that receivers is a single endpoint
                 // TODO #230: support advanced receivers
-                let receiver_endpoint = receivers
-                    .to_value()
-                    .borrow()
-                    .cast_to_endpoint()
-                    .unwrap();
-                let mut remote_execution_context =
-                    RemoteExecutionContext::new(
-                        receiver_endpoint,
-                        ExecutionMode::Static,
-                    );
+                let receiver_endpoint =
+                    receivers.to_value().borrow().cast_to_endpoint().unwrap();
+                let mut remote_execution_context = RemoteExecutionContext::new(
+                    receiver_endpoint,
+                    ExecutionMode::Static,
+                );
                 let res = RuntimeInternal::execute_remote(
                     runtime_internal.clone(),
                     &mut remote_execution_context,
                     body,
                 )
-                    .await?;
+                .await?;
                 interrupt_provider
                     .provide_result(InterruptResult::ResolvedValue(res));
             }
@@ -174,13 +174,14 @@ fn get_internal_pointer_value(
 ) -> Result<ValueContainer, ExecutionError> {
     // first try to get from memory
     if let Ok(core_lib_id) =
-            get_internal_pointer_value_from_memory(runtime_internal, &address)
+        get_internal_pointer_value_from_memory(runtime_internal, &address)
     {
         return Ok(core_lib_id);
     }
 
-    let core_lib_id =
-        CoreLibPointerId::try_from(&PointerAddress::Referenced(ReferencedPointerAddress::Internal(address.id)));
+    let core_lib_id = CoreLibPointerId::try_from(&PointerAddress::Referenced(
+        ReferencedPointerAddress::Internal(address.id),
+    ));
     core_lib_id
         .map_err(|_| ExecutionError::ReferenceNotFound)
         .map(|id| {
@@ -192,7 +193,9 @@ fn get_internal_pointer_value_from_memory(
     runtime_internal: &Rc<RuntimeInternal>,
     address: &RawInternalPointerAddress,
 ) -> Result<ValueContainer, ExecutionError> {
-    let pointer_address = PointerAddress::Referenced(ReferencedPointerAddress::Internal(address.id));
+    let pointer_address = PointerAddress::Referenced(
+        ReferencedPointerAddress::Internal(address.id),
+    );
     let memory = runtime_internal.memory.borrow();
     if let Some(reference) = memory.get_reference(&pointer_address) {
         Ok(ValueContainer::Shared(reference.clone()))
@@ -216,21 +219,19 @@ fn get_local_pointer_value(
 #[cfg(test)]
 #[cfg(feature = "compiler")]
 mod tests {
-    use core::assert_matches;
-    use binrw::meta::EndianKind::Runtime;
     use super::*;
     use crate::{
         assert_structural_eq, assert_value_eq,
-        compiler::{compile_script, scope::CompilationScope, CompileOptions},
+        compiler::{CompileOptions, compile_script, scope::CompilationScope},
         datex_list,
         global::instruction_codes::InstructionCode,
         libs::core::get_core_lib_type_reference,
         runtime::{
+            RuntimeConfig, RuntimeRunner,
             execution::{
                 context::{ExecutionContext, LocalExecutionContext},
                 execution_input::ExecutionOptions,
-            }, RuntimeConfig,
-            RuntimeRunner,
+            },
         },
         shared_values::shared_container::SharedContainer,
         traits::{structural_eq::StructuralEq, value_eq::ValueEq},
@@ -238,12 +239,14 @@ mod tests {
             core_value::CoreValue,
             core_values::{
                 decimal::Decimal,
-                integer::{typed_integer::TypedInteger, Integer},
+                integer::{Integer, typed_integer::TypedInteger},
                 list::List,
                 map::Map,
             },
         },
     };
+    use binrw::meta::EndianKind::Runtime;
+    use core::assert_matches;
     use log::{debug, info};
 
     fn execute_datex_script_debug(
@@ -251,8 +254,11 @@ mod tests {
     ) -> Option<ValueContainer> {
         let (dxb, _) =
             compile_script(datex_script, CompileOptions::default()).unwrap();
-        let context =
-            ExecutionInput::new(&dxb, ExecutionOptions { verbose: true }, Rc::new(RuntimeInternal::stub()));
+        let context = ExecutionInput::new(
+            &dxb,
+            ExecutionOptions { verbose: true },
+            Rc::new(RuntimeInternal::stub()),
+        );
         execute_dxb_sync(context).unwrap_or_else(|err| {
             core::panic!("Execution failed: {err}");
         })
@@ -264,9 +270,11 @@ mod tests {
     {
         gen move {
             let datex_script_parts = datex_script_parts.collect::<Vec<_>>();
-            let mut execution_context = ExecutionContext::Local(
-                LocalExecutionContext::new(ExecutionMode::unbounded(), Rc::new(RuntimeInternal::stub())),
-            );
+            let mut execution_context =
+                ExecutionContext::Local(LocalExecutionContext::new(
+                    ExecutionMode::unbounded(),
+                    Rc::new(RuntimeInternal::stub()),
+                ));
             let mut compilation_scope =
                 CompilationScope::new(ExecutionMode::unbounded());
 
@@ -310,8 +318,11 @@ mod tests {
     ) -> Result<Option<ValueContainer>, ExecutionError> {
         let (dxb, _) =
             compile_script(datex_script, CompileOptions::default()).unwrap();
-        let context =
-            ExecutionInput::new(&dxb, ExecutionOptions { verbose: true }, Rc::new(RuntimeInternal::stub()));
+        let context = ExecutionInput::new(
+            &dxb,
+            ExecutionOptions { verbose: true },
+            Rc::new(RuntimeInternal::stub()),
+        );
         execute_dxb_sync(context)
     }
 
@@ -633,7 +644,7 @@ mod tests {
     }
 
     #[test]
-    fn deref_shared() {
+    fn unbox_shared() {
         let result =
             execute_datex_script_debug_with_result("const x = shared 42; *x");
         assert_eq!(result, ValueContainer::from(Integer::from(42)));
@@ -641,8 +652,9 @@ mod tests {
 
     #[test]
     fn shared_assignment() {
-        let result =
-            execute_datex_script_debug_with_result("const x = 'mut shared 42; x");
+        let result = execute_datex_script_debug_with_result(
+            "const x = 'mut shared 42; x",
+        );
         assert_matches!(result, ValueContainer::Shared(..));
         assert_value_eq!(result, ValueContainer::from(Integer::from(42)));
     }

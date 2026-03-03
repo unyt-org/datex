@@ -16,8 +16,8 @@ use core::cell::RefCell;
 use crate::{
     ast::expressions::{
         BinaryOperation, ComparisonOperation, DatexExpression,
-        DatexExpressionData, UnboxAssignment, RemoteExecution, Slot,
-        Statements, UnaryOperation, UnboundedStatement, VariableAccess,
+        DatexExpressionData, RemoteExecution, Slot, Statements, UnaryOperation,
+        UnboundedStatement, UnboxAssignment, VariableAccess,
         VariableAssignment, VariableDeclaration, VariableKind,
     },
     compiler::{
@@ -46,11 +46,14 @@ use crate::{
     },
     parser::{Parser, ParserOptions},
     runtime::execution::context::ExecutionMode,
-    shared_values::shared_container::SharedContainerMutability,
+    shared_values::{
+        pointer::PointerReferenceMutability, pointer_address::PointerAddress,
+        shared_container::SharedContainerMutability,
+    },
     time::Instant,
-    utils::buffers::{append_u16, append_u32, append_u8},
+    utils::buffers::{append_u8, append_u16, append_u32},
     values::{
-        core_values::decimal::Decimal,
+        core_values::{decimal::Decimal, r#type::LocalReferenceMutability},
         value_container::ValueContainer,
     },
 };
@@ -60,9 +63,6 @@ use precompiler::{
     precompile_ast,
     precompiled_ast::{AstMetadata, RichAst, VariableMetadata},
 };
-use crate::shared_values::pointer::PointerReferenceMutability;
-use crate::shared_values::pointer_address::PointerAddress;
-use crate::values::core_values::r#type::LocalReferenceMutability;
 
 pub mod context;
 pub mod error;
@@ -1032,8 +1032,9 @@ fn compile_expression(
                         VirtualSlot::local(virtual_slot_addr_for_var),
                     );
                     // indirect reference to the variable
-                    compilation_context
-                        .append_instruction_code(InstructionCode::CREATE_SHARED_REF);
+                    compilation_context.append_instruction_code(
+                        InstructionCode::CREATE_SHARED_REF,
+                    );
                     // append binary code to load variable
                     compilation_context
                         .append_instruction_code(InstructionCode::GET_SLOT);
@@ -1138,7 +1139,7 @@ fn compile_expression(
 
         DatexExpressionData::UnboxAssignment(UnboxAssignment {
             operator,
-            deref_expression,
+            unbox_expression,
             assigned_expression,
         }) => {
             compilation_context.mark_has_non_static_value();
@@ -1149,10 +1150,10 @@ fn compile_expression(
             compilation_context
                 .append_instruction_code(InstructionCode::from(&operator));
 
-            // compile deref expression
+            // compile unbox expression
             scope = compile_expression(
                 compilation_context,
-                RichAst::new(*deref_expression, &metadata),
+                RichAst::new(*unbox_expression, &metadata),
                 CompileMetadata::default(),
                 scope,
             )?;
@@ -1295,9 +1296,8 @@ fn compile_expression(
         // shared refs
         DatexExpressionData::CreateSharedRef(create_shared_ref) => {
             compilation_context.mark_has_non_static_value();
-            compilation_context.append_instruction_code(
-                InstructionCode::CREATE_SHARED_REF
-            );
+            compilation_context
+                .append_instruction_code(InstructionCode::CREATE_SHARED_REF);
             scope = compile_expression(
                 compilation_context,
                 RichAst::new(*create_shared_ref.expression, &metadata),
@@ -1312,16 +1312,14 @@ fn compile_expression(
             // TODO: check if followed by Mut()
             let mutability = SharedContainerMutability::Immutable;
 
-            compilation_context.append_instruction_code(
-                match mutability {
-                    SharedContainerMutability::Immutable => {
-                        InstructionCode::CREATE_SHARED
-                    }
-                    SharedContainerMutability::Mutable => {
-                        InstructionCode::CREATE_SHARED_MUT
-                    }
-                },
-            );
+            compilation_context.append_instruction_code(match mutability {
+                SharedContainerMutability::Immutable => {
+                    InstructionCode::CREATE_SHARED
+                }
+                SharedContainerMutability::Mutable => {
+                    InstructionCode::CREATE_SHARED_MUT
+                }
+            });
             scope = compile_expression(
                 compilation_context,
                 RichAst::new(*create_shared.expression, &metadata),
@@ -1357,12 +1355,12 @@ fn compile_expression(
             )?;
         }
 
-        DatexExpressionData::Unbox(deref) => {
+        DatexExpressionData::Unbox(unbox) => {
             compilation_context.mark_has_non_static_value();
-            compilation_context.append_instruction_code(InstructionCode::DEREF);
+            compilation_context.append_instruction_code(InstructionCode::UNBOX);
             scope = compile_expression(
                 compilation_context,
-                RichAst::new(*deref.expression, &metadata),
+                RichAst::new(*unbox.expression, &metadata),
                 CompileMetadata::default(),
                 scope,
             )?;
@@ -1494,9 +1492,9 @@ fn compile_dynamic_property_assignment(
 #[cfg(test)]
 pub mod tests {
     use super::{
-        compile_ast, compile_script, compile_script_or_return_static_value, compile_template,
-        parse_datex_script_to_rich_ast_simple_error, CompilationContext,
-        CompileOptions, StaticValueOrDXB,
+        CompilationContext, CompileOptions, StaticValueOrDXB, compile_ast,
+        compile_script, compile_script_or_return_static_value,
+        compile_template, parse_datex_script_to_rich_ast_simple_error,
     };
 
     use crate::{
@@ -1511,12 +1509,12 @@ pub mod tests {
 
     use crate::{
         compiler::error::CompilerError, prelude::*,
+        shared_values::pointer_address::PointerAddress,
         values::core_values::integer::typed_integer::TypedInteger,
     };
     use alloc::format;
     use core::assert_matches;
     use log::*;
-    use crate::shared_values::pointer_address::PointerAddress;
 
     fn compile_and_log(datex_script: &str) -> Vec<u8> {
         let (result, _) =
@@ -3104,14 +3102,14 @@ pub mod tests {
 
     // this is not a valid Datex script, just testing the compiler
     #[test]
-    fn deref() {
+    fn unbox() {
         let script = "*10u8";
         let (res, _) =
             compile_script(script, CompileOptions::default()).unwrap();
         assert_eq!(
             res,
             vec![
-                InstructionCode::DEREF.into(),
+                InstructionCode::UNBOX.into(),
                 InstructionCode::UINT_8.into(),
                 // integer as u8
                 10,

@@ -1,4 +1,3 @@
-use core::cell::RefCell;
 use crate::{
     global::operators::{
         ArithmeticUnaryOperator, AssignmentOperator, BinaryOperator,
@@ -8,8 +7,8 @@ use crate::{
             ArithmeticOperator, BitwiseOperator, LogicalOperator, RangeOperator,
         },
     },
-    shared_values::shared_container::SharedContainer,
     runtime::{RuntimeInternal, execution::ExecutionError},
+    shared_values::shared_container::SharedContainer,
     traits::{
         identity::Identity, structural_eq::StructuralEq, value_eq::ValueEq,
     },
@@ -18,21 +17,21 @@ use crate::{
         value_container::{OwnedValueKey, ValueContainer},
     },
 };
+use core::cell::RefCell;
 
-use crate::prelude::*;
-use crate::runtime::memory::Memory;
+use crate::{prelude::*, runtime::memory::Memory};
 
 pub fn set_property(
     target: &mut ValueContainer,
     key: OwnedValueKey,
     value: ValueContainer,
 ) -> Result<(), ExecutionError> {
-    target.try_set_property(
-        0, // TODO #644: set correct source id
-        None,
-        key,
-        value,
-    ).map_err(ExecutionError::from)
+    target
+        .try_set_property(
+            0, // TODO #644: set correct source id
+            None, key, value,
+        )
+        .map_err(ExecutionError::from)
 }
 
 pub fn handle_unary_shared_value_operation(
@@ -61,11 +60,11 @@ pub fn handle_unary_shared_value_operation(
                 return Err(ExecutionError::ReferenceToNonSharedValue);
             }
         }
-        SharedValueUnaryOperator::Deref => {
+        SharedValueUnaryOperator::Unbox => {
             if let ValueContainer::Shared(reference) = value_container {
                 reference.value_container()
             } else {
-                return Err(ExecutionError::DerefOfNonReference);
+                return Err(ExecutionError::InvalidUnbox);
             }
         }
     })
@@ -98,7 +97,11 @@ pub fn handle_unary_operation(
 ) -> Result<ValueContainer, ExecutionError> {
     match operator {
         UnaryOperator::Reference(reference) => {
-            handle_unary_shared_value_operation(reference, value_container, memory)
+            handle_unary_shared_value_operation(
+                reference,
+                value_container,
+                memory,
+            )
         }
         UnaryOperator::Logical(logical) => {
             handle_unary_logical_operation(logical, value_container)
