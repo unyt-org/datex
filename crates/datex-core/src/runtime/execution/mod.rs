@@ -233,7 +233,9 @@ mod tests {
                 execution_input::ExecutionOptions,
             },
         },
-        shared_values::shared_container::SharedContainer,
+        shared_values::shared_container::{
+            SharedContainer, SharedContainerMutability,
+        },
         traits::{structural_eq::StructuralEq, value_eq::ValueEq},
         values::{
             core_value::CoreValue,
@@ -662,16 +664,16 @@ mod tests {
     #[test]
     fn shared_value_add_assignment() {
         let result = execute_datex_script_debug_with_result(
-            "var x = shared mut 42; *x += 1",
+            "var x = shared mut 42; *x += 1; x",
         );
+
         assert_value_eq!(result, ValueContainer::from(Integer::from(43)));
-
-        let result = execute_datex_script_debug_with_result(
-            "const x = 'mut 42; *x += 1; x",
-        );
-
         assert_matches!(result, ValueContainer::Shared(..));
-        assert_value_eq!(result, ValueContainer::from(Integer::from(43)));
+        if let ValueContainer::Shared(shared) = &result {
+            assert_eq!(shared.mutability(), SharedContainerMutability::Mutable);
+        } else {
+            panic!("Expected shared value");
+        }
     }
 
     #[test]
