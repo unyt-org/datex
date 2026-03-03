@@ -1643,7 +1643,7 @@ pub mod tests {
         );
 
         let datex_script =
-            "const a = &mut 42u8; const b = &mut 69u8; a is b".to_string(); // a is b
+            "const a = 'mut 42u8; const b = 'mut 69u8; a is b".to_string(); // a is b
         let result = compile_and_log(&datex_script);
         assert_eq!(
             result,
@@ -1656,7 +1656,7 @@ pub mod tests {
                 0,
                 0,
                 0,
-                InstructionCode::CREATE_REF_MUT.into(),
+                InstructionCode::CREATE_SHARED_REF.into(),
                 InstructionCode::UINT_8.into(),
                 42,
                 // val b = 69;
@@ -1665,7 +1665,7 @@ pub mod tests {
                 0,
                 0,
                 0,
-                InstructionCode::CREATE_REF_MUT.into(),
+                InstructionCode::CREATE_SHARED_REF.into(),
                 InstructionCode::UINT_8.into(),
                 69,
                 // a is b
@@ -2360,7 +2360,7 @@ pub mod tests {
 
     #[test]
     fn allocate_ref() {
-        let script = "const a = &mut 42u8";
+        let script = "const a = 'mut 42u8";
         let result = compile_and_log(script);
         assert_eq!(
             result,
@@ -2371,7 +2371,7 @@ pub mod tests {
                 0,
                 0,
                 0,
-                InstructionCode::CREATE_REF_MUT.into(),
+                InstructionCode::CREATE_SHARED_REF.into(),
                 InstructionCode::UINT_8.into(),
                 42,
             ]
@@ -2380,7 +2380,7 @@ pub mod tests {
 
     #[test]
     fn read_ref() {
-        let script = "const a = &mut 42u8; a";
+        let script = "const a = 'mut 42u8; a";
         let result = compile_and_log(script);
         assert_eq!(
             result,
@@ -2394,7 +2394,7 @@ pub mod tests {
                 0,
                 0,
                 0,
-                InstructionCode::CREATE_REF_MUT.into(),
+                InstructionCode::CREATE_SHARED_REF.into(),
                 InstructionCode::UINT_8.into(),
                 42,
                 InstructionCode::GET_SLOT.into(),
@@ -3229,7 +3229,7 @@ pub mod tests {
 
     #[test]
     fn test_get_property_text() {
-        let datex_script = "'test'.example";
+        let datex_script = r#""test".example"#;
         let result = compile_and_log(datex_script);
         let expected = vec![
             InstructionCode::GET_PROPERTY_TEXT.into(),
@@ -3254,7 +3254,7 @@ pub mod tests {
 
     #[test]
     fn test_get_property_text_quoted() {
-        let datex_script = "'test'.'example'";
+        let datex_script = r#""test"."example""#;
         let result = compile_and_log(datex_script);
         let expected = vec![
             InstructionCode::GET_PROPERTY_TEXT.into(),
@@ -3279,7 +3279,7 @@ pub mod tests {
 
     #[test]
     fn test_get_property_index() {
-        let datex_script = "'test'.42";
+        let datex_script = r#""test".42"#;
         let result = compile_and_log(datex_script);
         let expected = vec![
             InstructionCode::GET_PROPERTY_INDEX.into(),
@@ -3301,7 +3301,7 @@ pub mod tests {
 
     #[test]
     fn test_get_property_dynamic() {
-        let datex_script = "'test'.(1u8 + 2u8)";
+        let datex_script = r#""test".(1u8 + 2u8)"#;
         let result = compile_and_log(datex_script);
         let expected = vec![
             InstructionCode::GET_PROPERTY_DYNAMIC.into(),
@@ -3324,7 +3324,7 @@ pub mod tests {
 
     #[test]
     fn test_set_property_text() {
-        let datex_script = "'test'.example = 42u8";
+        let datex_script = r#""test".example = 42u8"#;
         let result = compile_and_log(datex_script);
         let expected = vec![
             InstructionCode::SET_PROPERTY_TEXT.into(),
@@ -3352,7 +3352,7 @@ pub mod tests {
 
     #[test]
     fn test_set_property_index() {
-        let datex_script = "'test'.42 = 43u8";
+        let datex_script = r#""test".42 = 43u8"#;
         let result = compile_and_log(datex_script);
         let expected = vec![
             InstructionCode::SET_PROPERTY_INDEX.into(),
@@ -3377,7 +3377,7 @@ pub mod tests {
 
     #[test]
     fn test_set_property_dynamic() {
-        let datex_script = "'test'.(1u8 + 2u8) = 43u8";
+        let datex_script = r#""test".(1u8 + 2u8) = 43u8"#;
         let result = compile_and_log(datex_script);
         let expected = vec![
             InstructionCode::SET_PROPERTY_DYNAMIC.into(),
@@ -3403,7 +3403,7 @@ pub mod tests {
 
     #[test]
     fn test_apply_no_arguments() {
-        let datex_script = "'test'()";
+        let datex_script = r#""test"()"#;
         let result = compile_and_log(datex_script);
         let expected = vec![
             InstructionCode::APPLY_ZERO.into(),
@@ -3420,7 +3420,7 @@ pub mod tests {
 
     #[test]
     fn test_apply_one_argument() {
-        let datex_script = "'test' 42u8";
+        let datex_script = r#""test" 42u8"#;
         let result = compile_and_log(datex_script);
         let expected = vec![
             InstructionCode::APPLY_SINGLE.into(),
@@ -3440,7 +3440,7 @@ pub mod tests {
 
     #[test]
     fn test_apply_multiple_arguments() {
-        let datex_script = "'test'(1u8, 2u8, 3u8)";
+        let datex_script = r#""test"(1u8, 2u8, 3u8)"#;
         let result = compile_and_log(datex_script);
         let expected = vec![
             InstructionCode::APPLY.into(),

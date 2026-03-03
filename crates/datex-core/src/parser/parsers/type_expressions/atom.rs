@@ -307,12 +307,6 @@ mod tests {
             expr.data,
             TypeExpressionData::Text("Hello, World!".to_string())
         );
-
-        let expr2 = parse_type_expression("'Single quotes'");
-        assert_eq!(
-            expr2.data,
-            TypeExpressionData::Text("Single quotes".to_string())
-        );
     }
 
     #[test]
