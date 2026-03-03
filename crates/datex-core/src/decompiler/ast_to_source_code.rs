@@ -1,9 +1,9 @@
 use crate::ast::{
     expressions::{
         Apply, BinaryOperation, CallableDeclaration, ComparisonOperation,
-        Conditional, DatexExpression, DatexExpressionData, UnboxAssignment,
-        List, Map, PropertyAccess, PropertyAssignment, RangeDeclaration,
-        RemoteExecution, SlotAssignment, TypeDeclaration, VariableAccess,
+        Conditional, DatexExpression, DatexExpressionData, List, Map,
+        PropertyAccess, PropertyAssignment, RangeDeclaration, RemoteExecution,
+        SlotAssignment, TypeDeclaration, UnboxAssignment, VariableAccess,
         VariableAssignment, VariableDeclaration, VariantAccess,
     },
     type_expressions::{
@@ -18,10 +18,12 @@ use core::fmt::{self};
 
 use crate::{
     decompiler::{FormattingMode, FormattingOptions, IndentType},
-    shared_values::shared_container::SharedContainerMutability,
+    shared_values::{
+        pointer::PointerReferenceMutability,
+        shared_container::SharedContainerMutability,
+    },
+    values::core_values::r#type::LocalReferenceMutability,
 };
-use crate::shared_values::pointer::PointerReferenceMutability;
-use crate::values::core_values::r#type::LocalReferenceMutability;
 
 #[derive(Clone, Default)]
 pub enum BraceStyle {
@@ -220,7 +222,10 @@ impl AstToSourceCodeConverter {
                 format!("&mut {}", self.type_expression_to_source_code(inner,))
             }
             TypeExpressionData::Shared(inner) => {
-                format!("shared {}", self.type_expression_to_source_code(inner,))
+                format!(
+                    "shared {}",
+                    self.type_expression_to_source_code(inner,)
+                )
             }
             TypeExpressionData::Mut(inner) => {
                 format!("mut {}", self.type_expression_to_source_code(inner,))
@@ -540,10 +545,16 @@ impl AstToSourceCodeConverter {
             DatexExpressionData::CreateSharedRef(create_shared_ref) => {
                 match &create_shared_ref.mutability {
                     PointerReferenceMutability::Mutable => {
-                        format!("'mut {}", self.format(&create_shared_ref.expression))
+                        format!(
+                            "'mut {}",
+                            self.format(&create_shared_ref.expression)
+                        )
                     }
                     PointerReferenceMutability::Immutable => {
-                        format!("'{}", self.format(&create_shared_ref.expression))
+                        format!(
+                            "'{}",
+                            self.format(&create_shared_ref.expression)
+                        )
                     }
                 }
             }
@@ -813,21 +824,25 @@ impl AstToSourceCodeConverter {
 #[cfg(test)]
 #[cfg(feature = "compiler")]
 mod tests {
+    use crate::prelude::*;
     use indoc::indoc;
 
+    use super::AstToSourceCodeConverter;
     use crate::{
         ast::{
-            expressions::{Unbox, RangeDeclaration, VariableKind},
+            expressions::{
+                Apply, DatexExpression, DatexExpressionData, List, Map,
+                PropertyAccess, RangeDeclaration, Unbox, UnboxAssignment,
+                VariableAccess, VariableDeclaration, VariableKind,
+            },
             spanned::Spanned,
+            type_expressions::TypeExpressionData,
         },
+        decompiler::options::FormattingOptions,
         global::operators::assignment::AssignmentOperator,
         parser::Parser,
         values::core_values::decimal::Decimal,
     };
-    use crate::ast::expressions::{Apply, DatexExpression, DatexExpressionData, List, Map, PropertyAccess, UnboxAssignment, VariableAccess, VariableDeclaration};
-    use crate::ast::type_expressions::TypeExpressionData;
-    use crate::decompiler::options::FormattingOptions;
-    use super::{AstToSourceCodeConverter};
 
     fn compact() -> AstToSourceCodeConverter {
         AstToSourceCodeConverter::new(FormattingOptions::compact())
