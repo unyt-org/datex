@@ -1309,8 +1309,7 @@ fn compile_expression(
         // shared values
         DatexExpressionData::CreateShared(create_shared) => {
             compilation_context.mark_has_non_static_value();
-            // TODO: check if followed by Mut()
-            let mutability = SharedContainerMutability::Immutable;
+            let mutability = create_shared.mutability;
 
             compilation_context.append_instruction_code(match mutability {
                 SharedContainerMutability::Immutable => {
