@@ -424,7 +424,7 @@ impl SharedContainer {
         }
     }
 
-    /// Gets the mutability of the reference.
+    /// Gets the mutability of the shared value.
     /// TypeReferences are always immutable.
     pub(crate) fn mutability(&self) -> SharedContainerMutability {
         match self {
