@@ -642,7 +642,7 @@ mod tests {
     #[test]
     fn shared_assignment() {
         let result =
-            execute_datex_script_debug_with_result("const x = &mut shared 42; x");
+            execute_datex_script_debug_with_result("const x = 'mut shared 42; x");
         assert_matches!(result, ValueContainer::Shared(..));
         assert_value_eq!(result, ValueContainer::from(Integer::from(42)));
     }
