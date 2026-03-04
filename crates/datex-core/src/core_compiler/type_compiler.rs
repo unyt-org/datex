@@ -1,12 +1,16 @@
 use crate::{
     core_compiler::value_compiler::append_get_ref,
-    global::type_instruction_codes::{TypeInstructionCode, TypeReferenceMutabilityCode},
+    global::{
+        protocol_structures::instructions::TypeMetadataBin,
+        type_instruction_codes::{
+            TypeInstructionCode, TypeReferenceMutabilityCode,
+        },
+    },
+    prelude::*,
     types::definition::TypeDefinition,
     utils::buffers::append_u8,
     values::core_values::r#type::Type,
 };
-use crate::global::protocol_structures::instructions::TypeMetadataBin;
-use crate::prelude::*;
 /// Compiles a given type container to a DXB body
 pub fn compile_type(ty: &Type) -> Vec<u8> {
     let mut buffer = Vec::with_capacity(256);
@@ -49,9 +53,7 @@ fn append_type_definition(
         TypeDefinition::SharedReference(type_ref) => {
             // TODO #636: ensure pointer_address exists here
             let type_ref = type_ref.borrow();
-            let pointer_address = type_ref
-                .pointer
-                .address();
+            let pointer_address = type_ref.pointer.address();
             append_get_ref(buffer, &pointer_address);
         }
         _ => todo!("#637 Type definition compilation not implemented yet"),
@@ -65,9 +67,6 @@ pub fn append_type_space_instruction_code(
     append_u8(buffer, code as u8);
 }
 
-pub fn append_type_metadata(
-    buffer: &mut Vec<u8>,
-    code: TypeMetadataBin,
-) {
+pub fn append_type_metadata(buffer: &mut Vec<u8>, code: TypeMetadataBin) {
     append_u8(buffer, code.into_bytes()[0]);
 }

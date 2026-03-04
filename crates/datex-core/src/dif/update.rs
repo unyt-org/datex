@@ -1,7 +1,7 @@
 use crate::{
     dif::{DIFConvertible, value::DIFValueContainer},
-    shared_values::observers::TransceiverId,
     runtime::memory::Memory,
+    shared_values::observers::TransceiverId,
     values::value_container::ValueKey,
 };
 use core::{cell::RefCell, prelude::rust_2024::*};
@@ -26,9 +26,9 @@ impl DIFKey {
         match key {
             ValueKey::Text(s) => DIFKey::Text(s.to_string()),
             ValueKey::Index(i) => DIFKey::Index(*i),
-            ValueKey::Value(v) => DIFKey::Value(
-                DIFValueContainer::from_value_container(v),
-            ),
+            ValueKey::Value(v) => {
+                DIFKey::Value(DIFValueContainer::from_value_container(v))
+            }
         }
     }
 }

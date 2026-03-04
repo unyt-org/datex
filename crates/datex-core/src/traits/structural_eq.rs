@@ -1,5 +1,3 @@
-
-
 pub trait StructuralEq {
     /// Check if two values are equal, ignoring the type.
     fn structural_eq(&self, other: &Self) -> bool;

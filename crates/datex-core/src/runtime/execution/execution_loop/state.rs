@@ -1,6 +1,5 @@
 use crate::{
     collections::HashMap,
-    shared_values::observers::TransceiverId,
     runtime::{
         RuntimeInternal,
         execution::{
@@ -11,6 +10,7 @@ use crate::{
             },
         },
     },
+    shared_values::observers::TransceiverId,
     values::value_container::ValueContainer,
 };
 use core::{cell::RefCell, fmt::Debug};

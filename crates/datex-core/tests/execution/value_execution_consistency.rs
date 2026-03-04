@@ -4,7 +4,10 @@ use alloc::rc::Rc;
 /// Any value passed as input should be returned exactly as it was passed in after compilation and execution.
 use datex_core::compile;
 use datex_core::{
-    runtime::execution::{ExecutionInput, ExecutionOptions, execute_dxb_sync},
+    runtime::{
+        RuntimeInternal,
+        execution::{ExecutionInput, ExecutionOptions, execute_dxb_sync},
+    },
     values::{
         core_values::{
             decimal::{Decimal, typed_decimal::TypedDecimal},
@@ -15,7 +18,6 @@ use datex_core::{
         value_container::ValueContainer,
     },
 };
-use datex_core::runtime::RuntimeInternal;
 
 fn compile_and_execute(input: ValueContainer) -> ValueContainer {
     let (dxb, _) = compile!("?", input.clone()).unwrap();

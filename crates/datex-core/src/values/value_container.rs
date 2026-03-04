@@ -4,31 +4,33 @@ use core::{cell::RefCell, result::Result};
 use super::value::Value;
 use crate::{
     prelude::*,
-    shared_values::{
-        mutations::DIFUpdateDataOrMemory,
-        observers::TransceiverId,
-        shared_container::{AccessError, SharedContainer},
-    },
     runtime::execution::ExecutionError,
     serde::{
         deserializer::{DatexDeserializer, from_value_container},
         error::DeserializationError,
+    },
+    shared_values::{
+        mutations::DIFUpdateDataOrMemory,
+        observers::TransceiverId,
+        shared_container::{AccessError, SharedContainer},
     },
     traits::{apply::Apply, value_eq::ValueEq},
     types::definition::TypeDefinition,
     values::{core_value::CoreValue, core_values::r#type::Type},
 };
 
-use crate::serde::{error::SerializationError, serializer::to_value_container};
+use crate::{
+    dif::update::DIFUpdateData,
+    serde::{error::SerializationError, serializer::to_value_container},
+    shared_values::pointer::Pointer,
+    values::core_values::r#type::TypeMetadata,
+};
 use core::{
     fmt::Display,
     hash::{Hash, Hasher},
     ops::{Add, FnOnce, Neg, Sub},
 };
 use serde::{Deserialize, de::DeserializeOwned};
-use crate::dif::update::DIFUpdateData;
-use crate::shared_values::pointer::Pointer;
-use crate::values::core_values::r#type::TypeMetadata;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum ValueError {
@@ -70,11 +72,13 @@ impl<'a> ValueKey<'a> {
         match self {
             ValueKey::Value(value_container) => callback(value_container),
             ValueKey::Text(text) => {
-                let value_container = ValueContainer::Local(text.as_ref().into());
+                let value_container =
+                    ValueContainer::Local(text.as_ref().into());
                 callback(&value_container)
             }
             ValueKey::Index(index) => {
-                let value_container = ValueContainer::Local(Value::from(*index));
+                let value_container =
+                    ValueContainer::Local(Value::from(*index));
                 callback(&value_container)
             }
         }
@@ -235,9 +239,7 @@ impl PartialEq for ValueContainer {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
             (ValueContainer::Local(a), ValueContainer::Local(b)) => a == b,
-            (ValueContainer::Shared(a), ValueContainer::Shared(b)) => {
-                a == b
-            }
+            (ValueContainer::Shared(a), ValueContainer::Shared(b)) => a == b,
             _ => false,
         }
     }
@@ -328,9 +330,7 @@ impl ValueContainer {
     pub fn actual_value_type(&self) -> TypeDefinition {
         match self {
             ValueContainer::Local(local) => local.actual_type().clone(),
-            ValueContainer::Shared(shared) => {
-                shared.actual_type().clone()
-            }
+            ValueContainer::Shared(shared) => shared.actual_type().clone(),
         }
     }
 
@@ -354,8 +354,11 @@ impl ValueContainer {
                     },
                     TypeMetadata::Shared {
                         mutability: shared.mutability(),
-                        reference_mutability: shared.pointer().reference_mutability().cloned(),
-                    }
+                        reference_mutability: shared
+                            .pointer()
+                            .reference_mutability()
+                            .cloned(),
+                    },
                 )
             }
         }
@@ -410,10 +413,12 @@ impl ValueContainer {
     pub fn shared_unchecked(&self) -> &SharedContainer {
         match self {
             ValueContainer::Shared(shared) => shared,
-            _ => core::panic!("Cannot convert ValueContainer to SharedContainer"),
+            _ => {
+                core::panic!("Cannot convert ValueContainer to SharedContainer")
+            }
         }
     }
-    
+
     pub fn try_get_property<'a>(
         &self,
         key: impl Into<ValueKey<'a>>,
@@ -435,12 +440,9 @@ impl ValueContainer {
     ) -> Result<(), AccessError> {
         match self {
             ValueContainer::Local(v) => v.try_set_property(key, val),
-            ValueContainer::Shared(r) => r.try_set_property(
-                source_id,
-                maybe_update_data,
-                key,
-                val,
-            ),
+            ValueContainer::Shared(r) => {
+                r.try_set_property(source_id, maybe_update_data, key, val)
+            }
         }
     }
 }
@@ -481,10 +483,7 @@ impl Add<ValueContainer> for ValueContainer {
             (ValueContainer::Local(lhs), ValueContainer::Local(rhs)) => {
                 (lhs + rhs).map(ValueContainer::Local)
             }
-            (
-                ValueContainer::Shared(lhs),
-                ValueContainer::Shared(rhs),
-            ) => {
+            (ValueContainer::Shared(lhs), ValueContainer::Shared(rhs)) => {
                 let lhs_value = lhs.collapse_to_value().borrow().clone();
                 let rhs_value = rhs.collapse_to_value().borrow().clone();
                 (lhs_value + rhs_value).map(ValueContainer::Local)
@@ -509,10 +508,7 @@ impl Add<&ValueContainer> for &ValueContainer {
             (ValueContainer::Local(lhs), ValueContainer::Local(rhs)) => {
                 (lhs + rhs).map(ValueContainer::Local)
             }
-            (
-                ValueContainer::Shared(lhs),
-                ValueContainer::Shared(rhs),
-            ) => {
+            (ValueContainer::Shared(lhs), ValueContainer::Shared(rhs)) => {
                 let lhs_value = lhs.collapse_to_value().borrow().clone();
                 let rhs_value = rhs.collapse_to_value().borrow().clone();
                 (lhs_value + rhs_value).map(ValueContainer::Local)
@@ -537,10 +533,7 @@ impl Sub<ValueContainer> for ValueContainer {
             (ValueContainer::Local(lhs), ValueContainer::Local(rhs)) => {
                 (lhs - rhs).map(ValueContainer::Local)
             }
-            (
-                ValueContainer::Shared(lhs),
-                ValueContainer::Shared(rhs),
-            ) => {
+            (ValueContainer::Shared(lhs), ValueContainer::Shared(rhs)) => {
                 let lhs_value = lhs.collapse_to_value().borrow().clone();
                 let rhs_value = rhs.collapse_to_value().borrow().clone();
                 (lhs_value - rhs_value).map(ValueContainer::Local)
@@ -565,10 +558,7 @@ impl Sub<&ValueContainer> for &ValueContainer {
             (ValueContainer::Local(lhs), ValueContainer::Local(rhs)) => {
                 (lhs - rhs).map(ValueContainer::Local)
             }
-            (
-                ValueContainer::Shared(lhs),
-                ValueContainer::Shared(rhs),
-            ) => {
+            (ValueContainer::Shared(lhs), ValueContainer::Shared(rhs)) => {
                 let lhs_value = lhs.collapse_to_value().borrow().clone();
                 let rhs_value = rhs.collapse_to_value().borrow().clone();
                 (lhs_value - rhs_value).map(ValueContainer::Local)

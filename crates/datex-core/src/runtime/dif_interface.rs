@@ -4,21 +4,21 @@ use crate::{
             DIFApplyError, DIFCreatePointerError, DIFInterface,
             DIFObserveError, DIFResolveReferenceError, DIFUpdateError,
         },
-        r#type::DIFTypeDefinition,
         reference::DIFReference,
+        r#type::DIFTypeDefinition,
         update::{DIFKey, DIFUpdateData},
         value::{DIFReferenceNotFoundError, DIFValueContainer},
     },
+    prelude::*,
     runtime::RuntimeInternal,
     shared_values::{
         observers::{ObserveOptions, Observer, TransceiverId},
-        shared_container::{SharedContainerMutability, SharedContainer},
+        pointer_address::PointerAddress,
+        shared_container::{SharedContainer, SharedContainerMutability},
     },
     values::value_container::ValueContainer,
 };
 use core::result::Result;
-use crate::prelude::*;
-use crate::shared_values::pointer_address::PointerAddress;
 
 impl RuntimeInternal {
     fn resolve_in_memory_reference(
@@ -85,15 +85,23 @@ impl DIFInterface for RuntimeInternal {
             )?,
             DIFUpdateData::Clear => reference.try_clear(source_id)?,
             DIFUpdateData::Delete { key } => match key {
-                DIFKey::Text(key) => {
-                    reference.try_delete_property(source_id, Some(update), key)?
-                }
-                DIFKey::Index(key) => {
-                    reference.try_delete_property(source_id, Some(update), *key)?
-                }
+                DIFKey::Text(key) => reference.try_delete_property(
+                    source_id,
+                    Some(update),
+                    key,
+                )?,
+                DIFKey::Index(key) => reference.try_delete_property(
+                    source_id,
+                    Some(update),
+                    *key,
+                )?,
                 DIFKey::Value(key) => {
                     let key = key.to_value_container(&self.memory)?;
-                    reference.try_delete_property(source_id, Some(update), &key)?
+                    reference.try_delete_property(
+                        source_id,
+                        Some(update),
+                        &key,
+                    )?
                 }
             },
             DIFUpdateData::ListSplice {
@@ -151,7 +159,9 @@ impl DIFInterface for RuntimeInternal {
             pointer,
             mutability,
         )?;
-        self.memory.borrow_mut().register_shared_container(&reference);
+        self.memory
+            .borrow_mut()
+            .register_shared_container(&reference);
         Ok(address)
     }
 
@@ -237,12 +247,10 @@ mod tests {
         prelude::*,
         runtime::{RuntimeConfig, RuntimeRunner},
         shared_values::{
-            observers::ObserveOptions, shared_container::SharedContainerMutability,
+            observers::ObserveOptions,
+            shared_container::SharedContainerMutability,
         },
-        values::{
-            core_values::map::Map,
-            value_container::ValueContainer,
-        },
+        values::{core_values::map::Map, value_container::ValueContainer},
     };
     use core::cell::RefCell;
 

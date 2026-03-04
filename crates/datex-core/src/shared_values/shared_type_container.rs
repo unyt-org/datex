@@ -9,21 +9,21 @@ use crate::{
     libs::core::CoreLibPointerId,
     prelude::*,
     runtime::execution::ExecutionError,
-    shared_values::shared_container::SharedContainerMutability,
+    shared_values::{
+        pointer::Pointer, pointer_address::PointerAddress,
+        shared_container::SharedContainerMutability,
+    },
     traits::apply::Apply,
     types::{
         definition::TypeDefinition,
         structural_type_definition::StructuralTypeDefinition,
     },
     values::{
-        core_values::r#type::Type,
+        core_values::r#type::{Type, TypeMetadata},
         value_container::ValueContainer,
     },
 };
 use core::option::Option;
-use crate::shared_values::pointer::Pointer;
-use crate::shared_values::pointer_address::PointerAddress;
-use crate::values::core_values::r#type::TypeMetadata;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct NominalTypeDeclaration {
@@ -82,10 +82,7 @@ impl SharedTypeContainer {
             pointer,
         }
     }
-    pub fn anonymous(
-        type_value: Type,
-        pointer: Pointer,
-    ) -> Self {
+    pub fn anonymous(type_value: Type, pointer: Pointer) -> Self {
         SharedTypeContainer {
             type_value,
             nominal_type_declaration: None,
@@ -116,7 +113,6 @@ impl SharedTypeContainer {
 }
 
 impl SharedTypeContainer {
-
     pub fn structural_type_definition(
         &self,
     ) -> Option<&StructuralTypeDefinition> {
@@ -156,8 +152,7 @@ impl Apply for SharedTypeContainer {
         arg: &ValueContainer,
     ) -> Result<Option<ValueContainer>, ExecutionError> {
         // TODO #303: ensure that we can guarantee that pointer_address is always Some here
-        let core_lib_id =
-            CoreLibPointerId::try_from(&self.pointer.address());
+        let core_lib_id = CoreLibPointerId::try_from(&self.pointer.address());
         if let Ok(core_lib_id) = core_lib_id {
             match core_lib_id {
                 CoreLibPointerId::Integer(None) => arg

@@ -23,10 +23,10 @@ mod runner;
 #[cfg(test)]
 pub mod test_utils;
 
+use self::memory::Memory;
 pub use config::*;
 pub use internal::*;
 pub use runner::*;
-use self::memory::Memory;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -47,9 +47,7 @@ impl Debug for Runtime {
 /// publicly exposed wrapper impl for the Runtime
 /// around RuntimeInternal
 impl Runtime {
-    pub(crate) fn new(
-        runtime_internal: RuntimeInternal
-    ) -> Runtime {
+    pub(crate) fn new(runtime_internal: RuntimeInternal) -> Runtime {
         Runtime {
             version: VERSION.to_string(),
             internal: Rc::new(runtime_internal),

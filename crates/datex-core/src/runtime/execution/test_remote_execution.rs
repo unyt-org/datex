@@ -98,11 +98,10 @@ pub async fn test_remote_inline() {
         endpoint_b.clone(),
         async |runtime_a, _runtime_b| {
             // create an execution context for @test_b
-            let mut execution_context =
-                ExecutionContext::local(
-                    ExecutionMode::unbounded(),
-                    runtime_a.internal.clone(),
-                );
+            let mut execution_context = ExecutionContext::local(
+                ExecutionMode::unbounded(),
+                runtime_a.internal.clone(),
+            );
 
             // execute script remotely on @test_b
             let result = runtime_a

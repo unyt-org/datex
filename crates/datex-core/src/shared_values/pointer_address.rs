@@ -25,14 +25,12 @@ pub enum ReferencedPointerAddress {
 }
 
 impl OwnedPointerAddress {
-    
     pub fn new(address: [u8; 5]) -> Self {
         OwnedPointerAddress { address }
     }
-    
-    pub const NULL: OwnedPointerAddress = OwnedPointerAddress {
-        address: [0u8; 5],
-    };
+
+    pub const NULL: OwnedPointerAddress =
+        OwnedPointerAddress { address: [0u8; 5] };
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -44,18 +42,18 @@ pub enum PointerAddress {
     Referenced(ReferencedPointerAddress),
 }
 
-
 impl PointerAddress {
-    pub const NULL: PointerAddress = PointerAddress::Owned(OwnedPointerAddress::NULL);
-    
+    pub const NULL: PointerAddress =
+        PointerAddress::Owned(OwnedPointerAddress::NULL);
+
     pub fn owned(address: [u8; 5]) -> Self {
         PointerAddress::Owned(OwnedPointerAddress::new(address))
     }
-    
+
     pub fn internal(address: [u8; 3]) -> Self {
         PointerAddress::Referenced(ReferencedPointerAddress::Internal(address))
     }
-    
+
     pub fn remote(address: [u8; 26]) -> Self {
         PointerAddress::Referenced(ReferencedPointerAddress::Remote(address))
     }
@@ -85,12 +83,16 @@ impl TryFrom<&str> for PointerAddress {
             26 => {
                 let mut arr = [0u8; 26];
                 arr.copy_from_slice(&bytes);
-                Ok(PointerAddress::Referenced(ReferencedPointerAddress::Remote(arr)))
+                Ok(PointerAddress::Referenced(
+                    ReferencedPointerAddress::Remote(arr),
+                ))
             }
             3 => {
                 let mut arr = [0u8; 3];
                 arr.copy_from_slice(&bytes);
-                Ok(PointerAddress::Referenced(ReferencedPointerAddress::Internal(arr)))
+                Ok(PointerAddress::Referenced(
+                    ReferencedPointerAddress::Internal(arr),
+                ))
             }
             _ => Err("PointerAddress must be 5, 26 or 3 bytes long"),
         }
@@ -124,11 +126,15 @@ impl From<&RawFullPointerAddress> for PointerAddress {
 impl From<&RawPointerAddress> for PointerAddress {
     fn from(raw: &RawPointerAddress) -> Self {
         match raw {
-            RawPointerAddress::Local(bytes) => PointerAddress::Owned(OwnedPointerAddress::new(bytes.id)),
-            RawPointerAddress::Internal(bytes) => {
-                PointerAddress::Referenced(ReferencedPointerAddress::Internal(bytes.id))
+            RawPointerAddress::Local(bytes) => {
+                PointerAddress::Owned(OwnedPointerAddress::new(bytes.id))
             }
-            RawPointerAddress::Full(bytes) => PointerAddress::Referenced(ReferencedPointerAddress::Remote(bytes.id)),
+            RawPointerAddress::Internal(bytes) => PointerAddress::Referenced(
+                ReferencedPointerAddress::Internal(bytes.id),
+            ),
+            RawPointerAddress::Full(bytes) => PointerAddress::Referenced(
+                ReferencedPointerAddress::Remote(bytes.id),
+            ),
         }
     }
 }
@@ -136,9 +142,15 @@ impl From<&RawPointerAddress> for PointerAddress {
 impl PointerAddress {
     pub fn to_address_string(&self) -> String {
         match self {
-            PointerAddress::Owned(local_address) => hex::encode(local_address.address),
-            PointerAddress::Referenced(ReferencedPointerAddress::Remote(bytes)) => hex::encode(bytes),
-            PointerAddress::Referenced(ReferencedPointerAddress::Internal(bytes)) => hex::encode(bytes),
+            PointerAddress::Owned(local_address) => {
+                hex::encode(local_address.address)
+            }
+            PointerAddress::Referenced(ReferencedPointerAddress::Remote(
+                bytes,
+            )) => hex::encode(bytes),
+            PointerAddress::Referenced(ReferencedPointerAddress::Internal(
+                bytes,
+            )) => hex::encode(bytes),
         }
     }
 }
@@ -177,8 +189,12 @@ impl PointerAddress {
     pub fn bytes(&self) -> &[u8] {
         match self {
             PointerAddress::Owned(local_address) => &local_address.address,
-            PointerAddress::Referenced(ReferencedPointerAddress::Remote(bytes)) => bytes,
-            PointerAddress::Referenced(ReferencedPointerAddress::Internal(bytes)) => bytes,
+            PointerAddress::Referenced(ReferencedPointerAddress::Remote(
+                bytes,
+            )) => bytes,
+            PointerAddress::Referenced(ReferencedPointerAddress::Internal(
+                bytes,
+            )) => bytes,
         }
     }
 }

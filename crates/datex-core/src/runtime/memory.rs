@@ -1,9 +1,10 @@
 use crate::{
     collections::HashMap,
     global::protocol_structures::instructions::RawFullPointerAddress,
-    libs::core::{load_core_lib, CoreLibPointerId},
+    libs::core::{CoreLibPointerId, load_core_lib},
     shared_values::{
-        shared_container::SharedContainer, shared_type_container::SharedTypeContainer,
+        shared_container::SharedContainer,
+        shared_type_container::SharedTypeContainer,
         shared_value_container::SharedValueContainer,
     },
     types::error::IllegalTypeError,
@@ -12,9 +13,15 @@ use crate::{
 use binrw::io::Cursor;
 use core::{cell::RefCell, result::Result};
 
-use crate::prelude::*;
-use crate::shared_values::pointer::Pointer;
-use crate::shared_values::pointer_address::{OwnedPointerAddress, PointerAddress, ReferencedPointerAddress};
+use crate::{
+    prelude::*,
+    shared_values::{
+        pointer::Pointer,
+        pointer_address::{
+            OwnedPointerAddress, PointerAddress, ReferencedPointerAddress,
+        },
+    },
+};
 
 #[derive(Debug, Default)]
 pub struct Memory {
@@ -41,13 +48,12 @@ impl Memory {
     /// Registers a new shared container in memory. If the reference has no PointerAddress, a new local one is generated.
     /// If the reference is already registered (has a PointerAddress), the existing address is returned and no new registration is done.
     /// Returns the PointerAddress of the registered reference.
-    pub fn register_shared_container(
-        &mut self,
-        reference: &SharedContainer,
-    ) {
+    pub fn register_shared_container(&mut self, reference: &SharedContainer) {
         let pointer_address = reference.pointer_address();
         // check if reference is already registered (if it has an address, we assume it is registered)
-        self.pointers.entry(pointer_address).or_insert_with(|| reference.clone());
+        self.pointers
+            .entry(pointer_address)
+            .or_insert_with(|| reference.clone());
     }
 
     /// Returns a reference stored at the given PointerAddress, if it exists.
@@ -129,7 +135,9 @@ impl Memory {
             let writer = Cursor::new(Vec::new());
             let mut bytes = writer.into_inner();
             bytes.extend_from_slice(&raw_address.id);
-            PointerAddress::Referenced(ReferencedPointerAddress::Remote(<[u8; 26]>::try_from(bytes).unwrap()))
+            PointerAddress::Referenced(ReferencedPointerAddress::Remote(
+                <[u8; 26]>::try_from(bytes).unwrap(),
+            ))
         }
     }
 

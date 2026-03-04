@@ -1,11 +1,10 @@
 use crate::{runtime::RuntimeConfigInterface, time::Instant};
 
-use crate::prelude::*;
+use crate::{prelude::*, time::now_ms};
 use core::time::Duration;
 use serde::{Deserialize, Serialize};
 use serde_with::{DurationMilliSeconds, serde_as};
 use strum::EnumString;
-use crate::time::now_ms;
 
 #[derive(PartialEq, Eq, Debug, Clone, EnumString, Serialize, Deserialize)]
 #[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
@@ -118,8 +117,7 @@ impl ReconnectionConfig {
             None => return false,
         };
         let now = now_ms();
-        let elapsed =
-            Duration::from_millis(now - close_timestamp);
+        let elapsed = Duration::from_millis(now - close_timestamp);
         if elapsed < *timeout {
             return false;
         }

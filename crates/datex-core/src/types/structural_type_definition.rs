@@ -252,11 +252,14 @@ mod tests {
         types::structural_type_definition::StructuralTypeDefinition,
         values::{
             core_value::CoreValue,
-            core_values::{integer::Integer, text::Text, r#type::Type},
+            core_values::{
+                integer::Integer,
+                text::Text,
+                r#type::{Type, TypeMetadata},
+            },
             value_container::ValueContainer,
         },
     };
-    use crate::values::core_values::r#type::TypeMetadata;
 
     #[test]
     fn test_structural_type_display() {
@@ -267,25 +270,31 @@ mod tests {
         assert_eq!(text_type.to_string(), r#""Hello""#);
 
         let list_type = StructuralTypeDefinition::List(vec![
-            Type::structural(StructuralTypeDefinition::Integer(Integer::from(
-                1,
-            )), TypeMetadata::default())
+            Type::structural(
+                StructuralTypeDefinition::Integer(Integer::from(1)),
+                TypeMetadata::default(),
+            )
             .into(),
-            Type::structural(StructuralTypeDefinition::Text(Text::from(
-                "World",
-            )), TypeMetadata::default())
+            Type::structural(
+                StructuralTypeDefinition::Text(Text::from("World")),
+                TypeMetadata::default(),
+            )
             .into(),
         ]);
         assert_eq!(list_type.to_string(), r#"[1, "World"]"#);
 
         let struct_type = StructuralTypeDefinition::Map(vec![
             (
-                Type::structural("id".to_string(), TypeMetadata::default()).into(),
-                Type::structural(int_type.clone(), TypeMetadata::default()).into(),
+                Type::structural("id".to_string(), TypeMetadata::default())
+                    .into(),
+                Type::structural(int_type.clone(), TypeMetadata::default())
+                    .into(),
             ),
             (
-                Type::structural("name".to_string(), TypeMetadata::default()).into(),
-                Type::structural(text_type.clone(), TypeMetadata::default()).into(),
+                Type::structural("name".to_string(), TypeMetadata::default())
+                    .into(),
+                Type::structural(text_type.clone(), TypeMetadata::default())
+                    .into(),
             ),
         ]);
         assert_eq!(struct_type.to_string(), r#"{"id": 42, "name": "Hello"}"#);

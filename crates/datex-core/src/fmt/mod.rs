@@ -152,7 +152,9 @@ impl<'a> Formatter<'a> {
                 a.text("&mut") + self.format_type_expression(inner)
             }
             TypeExpressionData::Shared(inner) => {
-                a.text("shared") + a.space() + self.format_type_expression(inner)
+                a.text("shared")
+                    + a.space()
+                    + self.format_type_expression(inner)
             }
             TypeExpressionData::Mut(inner) => {
                 a.text("mut") + a.space() + self.format_type_expression(inner)

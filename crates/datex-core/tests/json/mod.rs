@@ -5,7 +5,10 @@ use datex_core::{
     decompiler::{
         DecompileOptions, FormattingMode, FormattingOptions, decompile_body,
     },
-    runtime::execution::{ExecutionInput, ExecutionOptions, execute_dxb_sync},
+    runtime::{
+        RuntimeInternal,
+        execution::{ExecutionInput, ExecutionOptions, execute_dxb_sync},
+    },
     traits::structural_eq::StructuralEq,
     values::{
         core_value::CoreValue,
@@ -18,7 +21,6 @@ use indexmap::IndexMap;
 use itertools::Itertools;
 use json_syntax::Parse;
 use std::path::PathBuf;
-use datex_core::runtime::RuntimeInternal;
 
 fn json_value_to_datex_value(json: &json_syntax::Value) -> Value {
     match json {

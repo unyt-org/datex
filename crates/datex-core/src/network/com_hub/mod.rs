@@ -55,9 +55,9 @@ use crate::{
     values::core_values::endpoint::Endpoint,
 };
 pub mod com_hub_interface;
+mod com_hub_socket;
 #[cfg(test)]
 pub mod test_utils;
-mod com_hub_socket;
 
 use crate::{
     collections::HashSet,
@@ -78,6 +78,8 @@ use crate::{
             },
         },
     },
+    runtime::{Runtime, RuntimeInternal},
+    time::now_ms,
     utils::{
         async_iterators::async_next_pin_box,
         maybe_async::{MaybeAsync, SyncOrAsync, SyncOrAsyncResult},
@@ -88,8 +90,6 @@ use async_select::select;
 use datex_crypto_facade::crypto::Crypto;
 use futures::channel::{oneshot, oneshot::Sender};
 use futures_util::FutureExt;
-use crate::runtime::{Runtime, RuntimeInternal};
-use crate::time::now_ms;
 
 pub type IncomingBlockInterceptor =
     Box<dyn Fn(&DXBBlock, &ComInterfaceSocketUUID) + 'static>;
