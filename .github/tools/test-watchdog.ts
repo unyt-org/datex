@@ -46,7 +46,7 @@ async function getTests(
 const allTests = await getTests([]);
 console.log(`Found ${allTests.length} tests`);
 
-const stdTests = await getTests(["decompiler", "compiler", "target_native"]);
+const stdTests = await getTests(["full", "target_native"]);
 console.log(`Found ${stdTests.length} std tests`);
 
 const nostdTests = await getTests([
