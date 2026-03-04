@@ -4,13 +4,16 @@
         {
             "label": "Format",
             "type": "shell",
-            "command": "deno task fmt && cargo clippy --fix && git add . && git commit -m 'fmt'",
+            "command": "./scripts/fmt.sh",
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
             "problemMatcher": []
         },
         {
-            "label": "Cargo Test",
+            "label": "Test datex-core (std)",
             "type": "shell",
-            "command": "cargo test",
+            "command": "cargo test-std",
             "group": {
                 "kind": "test",
                 "isDefault": true
@@ -24,12 +27,31 @@
             }
         },
         {
-            "label": "Deno Test",
+            "label": "Test datex-core (nostd)",
+            "type": "shell",
+            "command": "cargo test-nostd",
+            "group": {
+                "kind": "test",
+                "isDefault": true
+            },
+            "problemMatcher": [],
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            }
+        },
+        {
+            "label": "Test datex-core (deno)",
             "type": "shell",
             "command": "deno task test",
             "group": {
                 "kind": "test",
                 "isDefault": true
+            },
+            "options": {
+                "cwd": "${workspaceFolder}/crates/datex-core"
             },
             "problemMatcher": [],
             "presentation": {
@@ -42,7 +64,7 @@
         {
             "label": "Test All",
             "type": "shell",
-            "dependsOn": ["Deno Test", "Cargo Test"],
+            "dependsOn": ["Test datex-core (std)", "Test datex-core (nostd)", "Test datex-core (deno)"],
             "group": {
                 "kind": "test",
                 "isDefault": true
@@ -55,21 +77,5 @@
                 "panel": "shared"
             }
         },
-        {
-            "label": "Cargo Build",
-            "type": "shell",
-            "command": "cargo build",
-            "group": {
-                "kind": "build",
-                "isDefault": true
-            },
-            "problemMatcher": [],
-            "presentation": {
-                "echo": true,
-                "reveal": "always",
-                "focus": false,
-                "panel": "shared"
-            }
-        }
     ]
 }
