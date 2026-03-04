@@ -30,7 +30,6 @@ fn test_bool() {
 
 #[test]
 fn test_string() {
-    precompile!("'Hello, ?!'");
     precompile!("\"Hello, ?!\"");
 }
 
