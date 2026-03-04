@@ -43,7 +43,6 @@ jobs:
       - name: Run clippy
         run: cargo clippy --workspace --exclude datex-crypto-esp32
 
-
   test:
     runs-on: ubuntu-latest
     name: Test (${{ matrix.profile }})
@@ -55,7 +54,7 @@ jobs:
           - profile: no_std
             features: decompiler,compiler,allow_unsigned_blocks
           - profile: std
-            features: decompiler,compiler,target_native
+            features: full,target_native
 
     steps:
       - uses: actions/checkout@v5
@@ -98,7 +97,6 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           files: target/nextest/ci/report.xml
 
-
   struct-tests:
     runs-on: ubuntu-latest
     name: Struct Tests (Deno)
@@ -115,7 +113,6 @@ jobs:
       - name: Run Struct Tests
         working-directory: crates/datex-core
         run: deno task test
-
 
   publish-dry-run:
     runs-on: ubuntu-latest
