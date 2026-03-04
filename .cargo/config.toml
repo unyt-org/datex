@@ -5,7 +5,7 @@ test-std = [
 	"-p",
 	"datex-core",
 	"--features",
-	"decompiler,compiler,target_native",
+	"full,target_native",
 	"--",
 	"--nocapture",
 ]
@@ -16,7 +16,7 @@ test-nostd = [
 	"-p",
 	"datex-core",
 	"--features",
-	"decompiler,compiler,allow_unsigned_blocks",
+	"full,allow_unsigned_blocks",
 	"--",
 	"--nocapture",
 ]
@@ -27,7 +27,7 @@ testcase = [
 	"-p",
 	"datex-core",
 	"--features",
-	"decompiler,compiler,target_native",
+	"full,target_native",
 	"--lib",
 	"--",
 	"--nocapture",
