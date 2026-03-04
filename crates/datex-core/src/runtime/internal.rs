@@ -1,5 +1,5 @@
 use crate::{
-    channel::mpsc::UnboundedReceiver,
+    channel::mpsc::{UnboundedReceiver, create_unbounded_channel},
     collections::HashMap,
     global::{
         dxb_block::{
@@ -38,7 +38,6 @@ use crate::{
 use alloc::rc::Rc;
 use core::{cell::RefCell, pin::Pin, slice};
 use log::{debug, error, info};
-use crate::channel::mpsc::create_unbounded_channel;
 
 #[derive(Debug)]
 pub struct RuntimeInternal {
@@ -282,10 +281,7 @@ impl RuntimeInternal {
         if let Some(context) = execution_context {
             context
         } else {
-            ExecutionContext::local(
-                ExecutionMode::unbounded(),
-                self_rc.clone(),
-            )
+            ExecutionContext::local(ExecutionMode::unbounded(), self_rc.clone())
         }
     }
 

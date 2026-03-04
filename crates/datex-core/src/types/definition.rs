@@ -1,6 +1,7 @@
 use crate::{
     shared_values::{
-        shared_container::SharedContainerMutability, shared_type_container::SharedTypeContainer,
+        shared_container::SharedContainerMutability,
+        shared_type_container::SharedTypeContainer,
     },
     traits::structural_eq::StructuralEq,
     types::{
@@ -11,10 +12,13 @@ use crate::{
 };
 use core::{cell::RefCell, fmt::Display, hash::Hash, prelude::rust_2024::*};
 
-use crate::prelude::*;
-use crate::shared_values::pointer::PointerReferenceMutability;
-use crate::shared_values::pointer_address::PointerAddress;
-use crate::values::core_values::r#type::TypeMetadata;
+use crate::{
+    prelude::*,
+    shared_values::{
+        pointer::PointerReferenceMutability, pointer_address::PointerAddress,
+    },
+    values::core_values::r#type::TypeMetadata,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TypeDefinition {
@@ -250,7 +254,9 @@ impl TypeDefinition {
     }
 
     /// Creates a new reference type.
-    pub fn shared_reference(reference: Rc<RefCell<SharedTypeContainer>>) -> Self {
+    pub fn shared_reference(
+        reference: Rc<RefCell<SharedTypeContainer>>,
+    ) -> Self {
         TypeDefinition::SharedReference(reference)
     }
 
@@ -264,10 +270,7 @@ impl TypeDefinition {
         TypeDefinition::ImplType(Box::new(ty.into()), impls)
     }
 
-    pub fn into_type(
-        self,
-        prefix: TypeMetadata
-    ) -> Type {
+    pub fn into_type(self, prefix: TypeMetadata) -> Type {
         Type {
             type_definition: self,
             base_type: None,

@@ -1,6 +1,9 @@
 use crate::{
     dif::update::{DIFUpdate, DIFUpdateData},
-    shared_values::{shared_container::SharedContainer, shared_value_container::SharedValueContainer},
+    shared_values::{
+        shared_container::SharedContainer,
+        shared_value_container::SharedValueContainer,
+    },
 };
 
 use crate::prelude::*;
@@ -181,17 +184,17 @@ mod tests {
             value::{DIFValue, DIFValueContainer},
         },
         prelude::*,
+        runtime::memory::Memory,
         shared_values::{
             observers::{
                 ObserveOptions, Observer, ObserverError, TransceiverId,
             },
+            pointer::Pointer,
             shared_container::{SharedContainer, SharedContainerMutability},
         },
-        runtime::memory::Memory,
         values::{core_values::map::Map, value_container::ValueContainer},
     };
     use core::{assert_matches, cell::RefCell};
-    use crate::shared_values::pointer::Pointer;
 
     /// Helper function to record DIF updates observed on a reference
     /// Returns a Rc<RefCell<Vec<DIFUpdate>>> that contains all observed updates
@@ -273,7 +276,8 @@ mod tests {
 
     #[test]
     fn observe_replace() {
-        let int_ref = SharedContainer::boxed_mut(42.into(), Pointer::NULL).unwrap();
+        let int_ref =
+            SharedContainer::boxed_mut(42.into(), Pointer::NULL).unwrap();
         let observed_updates =
             record_dif_updates(&int_ref, 0, ObserveOptions::default());
 
@@ -286,9 +290,9 @@ mod tests {
         let expected_update = DIFUpdate {
             source_id: 1,
             data: Cow::Owned(DIFUpdateData::replace(
-                DIFValueContainer::from_value_container(
-                    &ValueContainer::from(43),
-                ),
+                DIFValueContainer::from_value_container(&ValueContainer::from(
+                    43,
+                )),
             )),
         };
 
@@ -297,7 +301,8 @@ mod tests {
 
     #[test]
     fn observe_replace_same_transceiver() {
-        let int_ref = SharedContainer::boxed_mut(42.into(), Pointer::NULL).unwrap();
+        let int_ref =
+            SharedContainer::boxed_mut(42.into(), Pointer::NULL).unwrap();
         let observed_update =
             record_dif_updates(&int_ref, 0, ObserveOptions::default());
 
@@ -312,7 +317,8 @@ mod tests {
 
     #[test]
     fn observe_replace_same_transceiver_relay_own_updates() {
-        let int_ref = SharedContainer::boxed_mut(42.into(), Pointer::NULL).unwrap();
+        let int_ref =
+            SharedContainer::boxed_mut(42.into(), Pointer::NULL).unwrap();
         let observed_update = record_dif_updates(
             &int_ref,
             0,
@@ -330,9 +336,9 @@ mod tests {
         let expected_update = DIFUpdate {
             source_id: 0,
             data: Cow::Owned(DIFUpdateData::replace(
-                DIFValueContainer::from_value_container(
-                    &ValueContainer::from(43),
-                ),
+                DIFValueContainer::from_value_container(&ValueContainer::from(
+                    43,
+                )),
             )),
         };
 
@@ -347,7 +353,7 @@ mod tests {
                 ("b".to_string(), ValueContainer::from(2)),
             ])
             .into(),
-            Pointer::NULL
+            Pointer::NULL,
         )
         .unwrap();
         let observed_updates =

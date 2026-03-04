@@ -2,11 +2,13 @@
 use crate::ast::expressions::DatexExpressionData;
 use crate::{
     libs::core::{
-        get_core_lib_type, get_core_lib_type_reference, CoreLibPointerId,
+        CoreLibPointerId, get_core_lib_type, get_core_lib_type_reference,
     },
     prelude::*,
     shared_values::{
-        shared_container::SharedContainerMutability, shared_type_container::SharedTypeContainer,
+        pointer::PointerReferenceMutability, pointer_address::PointerAddress,
+        shared_container::SharedContainerMutability,
+        shared_type_container::SharedTypeContainer,
     },
     traits::structural_eq::StructuralEq,
     types::{
@@ -31,8 +33,6 @@ use core::{
     unimplemented,
 };
 use serde::{Deserialize, Serialize};
-use crate::shared_values::pointer::PointerReferenceMutability;
-use crate::shared_values::pointer_address::PointerAddress;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum LocalReferenceMutability {
@@ -52,7 +52,7 @@ pub enum TypeMetadata {
     /// Local types can be mut or not, and can optionally be a reference type with an additional reference mutability (e.g. &mut User)
     Local {
         mutability: LocalMutability,
-        reference_mutability: Option<LocalReferenceMutability>
+        reference_mutability: Option<LocalReferenceMutability>,
     },
     /// Shared types are always (shared or shared mut) and can optionally be a non-owned, reference type
     /// with an additional reference mutability (e.g. 'mut shared mut User)
@@ -155,7 +155,9 @@ impl Type {
         core::matches!(self.type_definition, TypeDefinition::SharedReference(_))
     }
     pub fn inner_reference(&self) -> Option<Rc<RefCell<SharedTypeContainer>>> {
-        if let TypeDefinition::SharedReference(reference) = &self.type_definition {
+        if let TypeDefinition::SharedReference(reference) =
+            &self.type_definition
+        {
             Some(reference.clone())
         } else {
             None
@@ -173,10 +175,15 @@ impl Type {
     }
 
     /// Mutability for a reference to a shared type (e.g. &mut shared X), if applicable
-    pub fn shared_reference_mutability(&self) -> Option<PointerReferenceMutability> {
+    pub fn shared_reference_mutability(
+        &self,
+    ) -> Option<PointerReferenceMutability> {
         match &self.metadata {
             TypeMetadata::Local { .. } => None,
-            TypeMetadata::Shared { reference_mutability, .. } => reference_mutability.clone(),
+            TypeMetadata::Shared {
+                reference_mutability,
+                ..
+            } => reference_mutability.clone(),
         }
     }
 
@@ -189,9 +196,14 @@ impl Type {
     }
 
     /// Mutability for a reference to a local type (e.g. &mut X), if applicable
-    pub fn local_reference_mutability(&self) -> Option<LocalReferenceMutability> {
+    pub fn local_reference_mutability(
+        &self,
+    ) -> Option<LocalReferenceMutability> {
         match &self.metadata {
-            TypeMetadata::Local { reference_mutability: local_reference_mutability, .. } => local_reference_mutability.clone(),
+            TypeMetadata::Local {
+                reference_mutability: local_reference_mutability,
+                ..
+            } => local_reference_mutability.clone(),
             TypeMetadata::Shared { .. } => None,
         }
     }
@@ -209,10 +221,7 @@ impl Type {
     /// Creates a new Type with the given TypeDefinition and optional ReferenceMutability
     /// FIXME #607: If the TypeDefinition is a Reference, the ReferenceMutability must be Some,
     /// otherwise it must be None.
-    pub fn new(
-        type_definition: TypeDefinition,
-        prefix: TypeMetadata,
-    ) -> Self {
+    pub fn new(type_definition: TypeDefinition, prefix: TypeMetadata) -> Self {
         Type {
             type_definition,
             base_type: None,
@@ -240,12 +249,12 @@ impl Type {
         Type {
             type_definition: TypeDefinition::structural(structural_type),
             base_type: None,
-            metadata: prefix
+            metadata: prefix,
         }
     }
 
     /// Creates a union type from the given member types
-    pub fn union<T>(types: Vec<T>, prefix: TypeMetadata,) -> Self
+    pub fn union<T>(types: Vec<T>, prefix: TypeMetadata) -> Self
     where
         T: Into<Type>,
     {
@@ -257,7 +266,10 @@ impl Type {
     }
 
     /// Creates an intersection type from the given member types
-    pub fn intersection<T: Into<Type>>(members: Vec<T>, prefix: TypeMetadata) -> Self {
+    pub fn intersection<T: Into<Type>>(
+        members: Vec<T>,
+        prefix: TypeMetadata,
+    ) -> Self {
         Type {
             type_definition: TypeDefinition::intersection(members),
             base_type: None,
@@ -266,7 +278,10 @@ impl Type {
     }
 
     /// Creates a function type from the given parameter types and return type
-    pub fn callable(signature: CallableSignature, prefix: TypeMetadata) -> Self {
+    pub fn callable(
+        signature: CallableSignature,
+        prefix: TypeMetadata,
+    ) -> Self {
         Type {
             type_definition: TypeDefinition::callable(signature),
             base_type: None,
@@ -294,7 +309,9 @@ impl Type {
     /// 42u8 -> integer
     /// 42 -> integer
     /// User/variant -> User
-    pub fn base_type_reference(&self) -> Option<Rc<RefCell<SharedTypeContainer>>> {
+    pub fn base_type_reference(
+        &self,
+    ) -> Option<Rc<RefCell<SharedTypeContainer>>> {
         // has direct base type (e.g. integer/u8 -> integer)
         if let Some(base_type) = &self.base_type {
             return Some(base_type.clone());
@@ -483,7 +500,10 @@ impl StructuralEq for Type {
 impl Display for Type {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         let prefix = match &self.metadata {
-            TypeMetadata::Local { mutability, reference_mutability } => {
+            TypeMetadata::Local {
+                mutability,
+                reference_mutability,
+            } => {
                 let ref_prefix = match reference_mutability {
                     Some(LocalReferenceMutability::Immutable) => "&",
                     Some(LocalReferenceMutability::Mutable) => "&mut ",
@@ -495,7 +515,10 @@ impl Display for Type {
                 };
                 format!("{}{}", ref_prefix, mut_prefix)
             }
-            TypeMetadata::Shared { mutability, reference_mutability } => {
+            TypeMetadata::Shared {
+                mutability,
+                reference_mutability,
+            } => {
                 let ref_prefix = match reference_mutability {
                     Some(PointerReferenceMutability::Immutable) => "'",
                     Some(PointerReferenceMutability::Mutable) => "'mut ",
@@ -519,34 +542,46 @@ impl Display for Type {
 impl From<&CoreValue> for Type {
     fn from(value: &CoreValue) -> Self {
         match value {
-            CoreValue::Null => Type::structural(StructuralTypeDefinition::Null, TypeMetadata::default()),
-            CoreValue::Boolean(b) => {
-                Type::structural(StructuralTypeDefinition::Boolean(b.clone()), TypeMetadata::default())
+            CoreValue::Null => Type::structural(
+                StructuralTypeDefinition::Null,
+                TypeMetadata::default(),
+            ),
+            CoreValue::Boolean(b) => Type::structural(
+                StructuralTypeDefinition::Boolean(b.clone()),
+                TypeMetadata::default(),
+            ),
+            CoreValue::Text(s) => {
+                Type::structural(s.clone(), TypeMetadata::default())
             }
-            CoreValue::Text(s) => Type::structural(s.clone(), TypeMetadata::default()),
-            CoreValue::Decimal(d) => {
-                Type::structural(StructuralTypeDefinition::Decimal(d.clone()), TypeMetadata::default())
-            }
+            CoreValue::Decimal(d) => Type::structural(
+                StructuralTypeDefinition::Decimal(d.clone()),
+                TypeMetadata::default(),
+            ),
             CoreValue::TypedDecimal(td) => Type::structural(
                 StructuralTypeDefinition::TypedDecimal(td.clone()),
-                TypeMetadata::default()
+                TypeMetadata::default(),
             ),
-            CoreValue::Integer(i) => {
-                Type::structural(StructuralTypeDefinition::Integer(i.clone()), TypeMetadata::default())
-            }
+            CoreValue::Integer(i) => Type::structural(
+                StructuralTypeDefinition::Integer(i.clone()),
+                TypeMetadata::default(),
+            ),
             CoreValue::TypedInteger(ti) => Type::structural(
                 StructuralTypeDefinition::TypedInteger(ti.clone()),
-                TypeMetadata::default()
+                TypeMetadata::default(),
             ),
-            CoreValue::Endpoint(e) => {
-                Type::structural(StructuralTypeDefinition::Endpoint(e.clone()), TypeMetadata::default())
-            }
+            CoreValue::Endpoint(e) => Type::structural(
+                StructuralTypeDefinition::Endpoint(e.clone()),
+                TypeMetadata::default(),
+            ),
             CoreValue::List(list) => {
                 let types = list
                     .iter()
                     .map(|v| Type::from(v.to_value().borrow().inner.clone()))
                     .collect::<Vec<_>>();
-                Type::structural(StructuralTypeDefinition::List(types), TypeMetadata::default())
+                Type::structural(
+                    StructuralTypeDefinition::List(types),
+                    TypeMetadata::default(),
+                )
             }
             CoreValue::Map(map) => {
                 let struct_types = map
@@ -564,7 +599,10 @@ impl From<&CoreValue> for Type {
                         )
                     })
                     .collect::<Vec<_>>();
-                Type::structural(StructuralTypeDefinition::Map(struct_types), TypeMetadata::default())
+                Type::structural(
+                    StructuralTypeDefinition::Map(struct_types),
+                    TypeMetadata::default(),
+                )
             }
             e => unimplemented!("Type conversion not implemented for {}", e),
         }
@@ -608,7 +646,10 @@ impl TryFrom<&DatexExpressionData> for Type {
     type Error = ();
 
     fn try_from(expr: &DatexExpressionData) -> Result<Self, Self::Error> {
-        Ok(Type::structural(StructuralTypeDefinition::try_from(expr)?, TypeMetadata::default()))
+        Ok(Type::structural(
+            StructuralTypeDefinition::try_from(expr)?,
+            TypeMetadata::default(),
+        ))
     }
 }
 
@@ -617,17 +658,16 @@ mod tests {
     use crate::prelude::*;
 
     use crate::{
-        libs::core::{get_core_lib_type, CoreLibPointerId},
+        libs::core::{CoreLibPointerId, get_core_lib_type},
         values::{
             core_values::{
-                integer::{typed_integer::TypedInteger, Integer},
-                r#type::Type,
+                integer::{Integer, typed_integer::TypedInteger},
                 text::Text,
+                r#type::{Type, TypeMetadata},
             },
             value_container::ValueContainer,
         },
     };
-    use crate::values::core_values::r#type::TypeMetadata;
 
     #[test]
     fn test_match_equal_values() {
@@ -661,11 +701,14 @@ mod tests {
         // 1 matches (1 | 2 | 3)
         assert!(Type::value_matches_type(
             &ValueContainer::from(Integer::from(1)),
-            &Type::union(vec![
-                Type::structural(Integer::from(1), TypeMetadata::default()),
-                Type::structural(Integer::from(2), TypeMetadata::default()),
-                Type::structural(Integer::from(3), TypeMetadata::default()),
-            ], TypeMetadata::default()),
+            &Type::union(
+                vec![
+                    Type::structural(Integer::from(1), TypeMetadata::default()),
+                    Type::structural(Integer::from(2), TypeMetadata::default()),
+                    Type::structural(Integer::from(3), TypeMetadata::default()),
+                ],
+                TypeMetadata::default()
+            ),
         ))
     }
 
@@ -673,23 +716,36 @@ mod tests {
     fn type_matches_union_type() {
         // 1 matches (1 | 2 | 3)
         assert!(
-            Type::structural(Integer::from(1), TypeMetadata::default()).matches_type(&Type::union(
-                vec![
-                    Type::structural(Integer::from(1), TypeMetadata::default()),
-                    Type::structural(Integer::from(2), TypeMetadata::default()),
-                    Type::structural(Integer::from(3), TypeMetadata::default()),
-                ], TypeMetadata::default()
-            ))
+            Type::structural(Integer::from(1), TypeMetadata::default())
+                .matches_type(&Type::union(
+                    vec![
+                        Type::structural(
+                            Integer::from(1),
+                            TypeMetadata::default()
+                        ),
+                        Type::structural(
+                            Integer::from(2),
+                            TypeMetadata::default()
+                        ),
+                        Type::structural(
+                            Integer::from(3),
+                            TypeMetadata::default()
+                        ),
+                    ],
+                    TypeMetadata::default()
+                ))
         );
 
         // 1 matches integer | text
         assert!(
-            Type::structural(Integer::from(1), TypeMetadata::default()).matches_type(&Type::union(
-                vec![
-                    get_core_lib_type(CoreLibPointerId::Integer(None)),
-                    get_core_lib_type(CoreLibPointerId::Text),
-                ], TypeMetadata::default()
-            ))
+            Type::structural(Integer::from(1), TypeMetadata::default())
+                .matches_type(&Type::union(
+                    vec![
+                        get_core_lib_type(CoreLibPointerId::Integer(None)),
+                        get_core_lib_type(CoreLibPointerId::Text),
+                    ],
+                    TypeMetadata::default()
+                ))
         );
     }
 

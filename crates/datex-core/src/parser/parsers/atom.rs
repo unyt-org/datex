@@ -4,23 +4,22 @@ use crate::{
         spanned::Spanned,
     },
     parser::{
-        errors::ParserError, lexer::{DecimalWithVariant, IntegerWithVariant, Token},
+        Parser, SpannedParserError,
+        errors::ParserError,
+        lexer::{DecimalWithVariant, IntegerWithVariant, Token},
         utils::{
-            parse_integer_literal, parse_integer_with_variant, unescape_text,
-            IntegerOrDecimal, IntegerOrTypedInteger,
+            IntegerOrDecimal, IntegerOrTypedInteger, parse_integer_literal,
+            parse_integer_with_variant, unescape_text,
         },
-        Parser,
-        SpannedParserError,
     },
     values::core_values::{
-        decimal::{typed_decimal::TypedDecimal, Decimal},
+        decimal::{Decimal, typed_decimal::TypedDecimal},
         endpoint::Endpoint,
     },
 };
 use core::str::FromStr;
 
-use crate::prelude::*;
-use crate::shared_values::pointer_address::PointerAddress;
+use crate::{prelude::*, shared_values::pointer_address::PointerAddress};
 
 impl Parser {
     pub(crate) fn parse_atom(
@@ -342,14 +341,14 @@ mod tests {
             },
         },
         prelude::*,
+        shared_values::pointer_address::PointerAddress,
         values::core_values::{
-            decimal::{typed_decimal::TypedDecimal, Decimal},
+            decimal::{Decimal, typed_decimal::TypedDecimal},
             endpoint::{Endpoint, InvalidEndpointError},
             integer::typed_integer::TypedInteger,
         },
     };
     use core::assert_matches;
-    use crate::shared_values::pointer_address::PointerAddress;
 
     #[test]
     fn parse_boolean_true() {

@@ -30,29 +30,26 @@ pub trait DIFConvertible: Serialize + for<'de> Deserialize<'de> {
 mod tests {
     use crate::{
         dif::{
-            r#type::{DIFType, DIFTypeDefinition},
+            DIFConvertible,
             representation::DIFValueRepresentation,
+            r#type::{DIFType, DIFTypeDefinition, DIFTypeMetadata},
             update::DIFUpdateData,
             value::{DIFValue, DIFValueContainer},
-            DIFConvertible,
         },
         libs::core::CoreLibPointerId,
-        prelude::*
-        ,
+        prelude::*,
+        shared_values::pointer_address::PointerAddress,
         types::definition::TypeDefinition,
         values::{
             core_value::CoreValue,
             core_values::{
-                integer::typed_integer::IntegerTypeVariant,
-                r#type::Type,
+                integer::typed_integer::IntegerTypeVariant, r#type::Type,
             },
             value::Value,
             value_container::ValueContainer,
         },
     };
     use alloc::string::ToString;
-    use crate::dif::r#type::DIFTypeMetadata;
-    use crate::shared_values::pointer_address::PointerAddress;
 
     fn dif_value_circle(value_container: ValueContainer) -> DIFValueContainer {
         let dif_value_container: DIFValueContainer =

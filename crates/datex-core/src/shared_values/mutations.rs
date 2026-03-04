@@ -3,11 +3,11 @@ use crate::{
         update::{DIFKey, DIFUpdateData},
         value::DIFValueContainer,
     },
+    runtime::memory::Memory,
     shared_values::{
         observers::TransceiverId,
         shared_container::{AccessError, SharedContainer},
     },
-    runtime::memory::Memory,
     values::{
         core_value::CoreValue,
         value_container::{ValueContainer, ValueKey},
@@ -102,9 +102,7 @@ impl SharedContainer {
         let dif_update = match maybe_dif_update_data {
             Some(update) => update,
             None => &DIFUpdateData::replace(
-                DIFValueContainer::from_value_container(
-                    value_container,
-                ),
+                DIFValueContainer::from_value_container(value_container),
             ),
         };
 
@@ -130,11 +128,9 @@ impl SharedContainer {
 
         let dif_update = match maybe_dif_update_data {
             Some(update) => update,
-            None => {
-                &DIFUpdateData::append(DIFValueContainer::from_value_container(
-                    &value_container,
-                ))
-            }
+            None => &DIFUpdateData::append(
+                DIFValueContainer::from_value_container(&value_container),
+            ),
         };
 
         self.with_value_unchecked(move |core_value| {
@@ -170,9 +166,7 @@ impl SharedContainer {
 
         let dif_update = match maybe_dif_update_data {
             Some(update) => update,
-            None => {
-                &DIFUpdateData::delete(DIFKey::from_value_key(&key))
-            }
+            None => &DIFUpdateData::delete(DIFKey::from_value_key(&key)),
         };
 
         self.with_value_unchecked(|value| {
@@ -244,19 +238,13 @@ impl SharedContainer {
 
         let dif_update = match maybe_dif_update_data {
             Some(update) => update,
-            None => {
-                &DIFUpdateData::list_splice(
-                    range.clone(),
-                    items
-                        .iter()
-                        .map(|item| {
-                            DIFValueContainer::from_value_container(
-                                item,
-                            )
-                        })
-                        .collect(),
-                )
-            }
+            None => &DIFUpdateData::list_splice(
+                range.clone(),
+                items
+                    .iter()
+                    .map(|item| DIFValueContainer::from_value_container(item))
+                    .collect(),
+            ),
         };
 
         self.with_value_unchecked(|value| {
@@ -284,17 +272,20 @@ impl SharedContainer {
 mod tests {
     use crate::{
         prelude::*,
-        shared_values::shared_container::{
-            AccessError, IndexOutOfBoundsError, SharedContainer, SharedContainerMutability,
-        },
         runtime::memory::Memory,
+        shared_values::{
+            pointer::Pointer,
+            shared_container::{
+                AccessError, IndexOutOfBoundsError, SharedContainer,
+                SharedContainerMutability,
+            },
+        },
         values::{
             core_values::{list::List, map::Map},
             value_container::ValueContainer,
         },
     };
     use core::{assert_matches, cell::RefCell};
-    use crate::shared_values::pointer::Pointer;
 
     #[test]
     fn push() {
@@ -304,7 +295,8 @@ mod tests {
             ValueContainer::from(3),
         ];
         let list_ref =
-            SharedContainer::boxed_mut(List::from(list).into(), Pointer::NULL).unwrap();
+            SharedContainer::boxed_mut(List::from(list).into(), Pointer::NULL)
+                .unwrap();
         list_ref
             .try_append_value(0, None, ValueContainer::from(4))
             .expect("Failed to push value to list");
@@ -312,14 +304,17 @@ mod tests {
         assert_eq!(updated_value, ValueContainer::from(4));
 
         // Try to push to immutable value
-        let int_ref =
-            SharedContainer::boxed(List::from(vec![ValueContainer::from(42)]), Pointer::NULL);
+        let int_ref = SharedContainer::boxed(
+            List::from(vec![ValueContainer::from(42)]),
+            Pointer::NULL,
+        );
         let result =
             int_ref.try_append_value(0, None, ValueContainer::from(99));
         assert_matches!(result, Err(AccessError::ImmutableReference));
 
         // Try to push to non-list value
-        let int_ref = SharedContainer::boxed_mut(42.into(), Pointer::NULL).unwrap();
+        let int_ref =
+            SharedContainer::boxed_mut(42.into(), Pointer::NULL).unwrap();
         let result =
             int_ref.try_append_value(0, None, ValueContainer::from(99));
         assert_matches!(result, Err(AccessError::InvalidOperation(_)));
@@ -331,8 +326,11 @@ mod tests {
             ("key1".to_string(), ValueContainer::from(1)),
             ("key2".to_string(), ValueContainer::from(2)),
         ]);
-        let map_ref =
-            SharedContainer::boxed_mut(ValueContainer::from(map), Pointer::NULL).unwrap();
+        let map_ref = SharedContainer::boxed_mut(
+            ValueContainer::from(map),
+            Pointer::NULL,
+        )
+        .unwrap();
         // Set existing property
         map_ref
             .try_set_property(0, None, "key1", ValueContainer::from(42))
@@ -341,12 +339,8 @@ mod tests {
         assert_eq!(updated_value, 42.into());
 
         // Set new property
-        let result = map_ref.try_set_property(
-            0,
-            None,
-            "new",
-            ValueContainer::from(99),
-        );
+        let result =
+            map_ref.try_set_property(0, None, "new", ValueContainer::from(99));
         assert!(result.is_ok());
         let new_value = map_ref.try_get_property("new").unwrap();
         assert_eq!(new_value, 99.into());
@@ -359,8 +353,11 @@ mod tests {
             ValueContainer::from(2),
             ValueContainer::from(3),
         ];
-        let list_ref =
-            SharedContainer::boxed_mut(ValueContainer::from(list), Pointer::NULL).unwrap();
+        let list_ref = SharedContainer::boxed_mut(
+            ValueContainer::from(list),
+            Pointer::NULL,
+        )
+        .unwrap();
 
         // Set existing index
         list_ref
@@ -380,7 +377,8 @@ mod tests {
         );
 
         // Try to set index on non-map value
-        let int_ref = SharedContainer::boxed_mut(42.into(), Pointer::NULL).unwrap();
+        let int_ref =
+            SharedContainer::boxed_mut(42.into(), Pointer::NULL).unwrap();
         let result =
             int_ref.try_set_property(0, None, 0, ValueContainer::from(99));
         assert_matches!(result, Err(AccessError::InvalidOperation(_)));
@@ -392,8 +390,11 @@ mod tests {
             (ValueContainer::from("name"), ValueContainer::from("Alice")),
             (ValueContainer::from("age"), ValueContainer::from(30)),
         ]);
-        let struct_ref =
-            SharedContainer::boxed_mut(ValueContainer::from(struct_val), Pointer::NULL).unwrap();
+        let struct_ref = SharedContainer::boxed_mut(
+            ValueContainer::from(struct_val),
+            Pointer::NULL,
+        )
+        .unwrap();
 
         // Set existing property
         struct_ref
@@ -412,7 +413,8 @@ mod tests {
         assert_matches!(result, Ok(()));
 
         // // Try to set property on non-struct value
-        let int_ref = SharedContainer::boxed_mut(42.into(), Pointer::NULL).unwrap();
+        let int_ref =
+            SharedContainer::boxed_mut(42.into(), Pointer::NULL).unwrap();
         let result = int_ref.try_set_property(
             0,
             None,

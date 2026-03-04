@@ -1,6 +1,5 @@
 use crate::prelude::*;
 
-
 pub struct AnsiCodes {}
 impl AnsiCodes {
     pub const COLOR_DEFAULT: &'static str = "\x1b[39m";

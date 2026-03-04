@@ -30,11 +30,10 @@ use crate::{
     },
 };
 
-use crate::prelude::*;
+use crate::{prelude::*, runtime::RuntimeInternal};
 use log::{error, info};
 use serde::{Deserialize, Serialize};
 use serde_with::{DurationMilliSeconds, serde_as};
-use crate::runtime::RuntimeInternal;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
@@ -308,8 +307,7 @@ impl ComHub {
             )
             .await;
         let end_time = crate::time::now_ms();
-        let round_trip_time =
-            Duration::from_millis(end_time - start_time);
+        let round_trip_time = Duration::from_millis(end_time - start_time);
 
         let mut results = vec![];
 
@@ -535,8 +533,11 @@ impl ComHub {
         // convert DATEX to hops
         let dxb = block.body.clone();
         let runtime_stub = Rc::new(RuntimeInternal::stub());
-        let exec_input =
-            ExecutionInput::new(&dxb, ExecutionOptions::default(), runtime_stub);
+        let exec_input = ExecutionInput::new(
+            &dxb,
+            ExecutionOptions::default(),
+            runtime_stub,
+        );
         let hops_datex =
             execute_dxb_sync(exec_input).expect("Failed to execute DATEX");
         if let Some(ValueContainer::Local(Value {

@@ -1,7 +1,7 @@
 use crate::{
     dif::{
-        r#type::DIFTypeDefinition,
         reference::DIFReference,
+        r#type::DIFTypeDefinition,
         update::DIFUpdateData,
         value::{DIFReferenceNotFoundError, DIFValueContainer},
     },
@@ -9,15 +9,14 @@ use crate::{
     shared_values::{
         observers::{ObserveOptions, ObserverError, TransceiverId},
         shared_container::{
-            AccessError, AssignmentError, SharedValueCreationError,
-            SharedContainerMutability, TypeError,
+            AccessError, AssignmentError, SharedContainerMutability,
+            SharedValueCreationError, TypeError,
         },
     },
 };
 use core::{fmt::Display, result::Result};
 
-use crate::prelude::*;
-use crate::shared_values::pointer_address::PointerAddress;
+use crate::{prelude::*, shared_values::pointer_address::PointerAddress};
 
 #[derive(Debug)]
 pub enum DIFObserveError {

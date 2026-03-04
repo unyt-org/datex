@@ -1,17 +1,18 @@
 use crate::{
-    shared_values::{observers::Observer, shared_container::SharedContainerMutability},
+    shared_values::{
+        observers::Observer, shared_container::SharedContainerMutability,
+    },
     traits::value_eq::ValueEq,
     types::definition::TypeDefinition,
     utils::freemap::FreeHashMap,
-    values::{
-        value::Value, value_container::ValueContainer,
-    },
+    values::{value::Value, value_container::ValueContainer},
 };
 
-use crate::prelude::*;
+use crate::{
+    prelude::*,
+    shared_values::{pointer::Pointer, pointer_address::PointerAddress},
+};
 use core::{cell::RefCell, fmt::Debug, prelude::rust_2024::*};
-use crate::shared_values::pointer::Pointer;
-use crate::shared_values::pointer_address::PointerAddress;
 
 pub struct SharedValueContainer {
     pub pointer: Pointer,

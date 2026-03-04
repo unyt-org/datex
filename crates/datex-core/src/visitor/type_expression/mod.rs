@@ -10,19 +10,19 @@ use crate::{
             TypeExpressionData, TypeVariantAccess, Union,
         },
     },
+    shared_values::pointer_address::PointerAddress,
     values::core_values::{
-        decimal::{typed_decimal::TypedDecimal, Decimal},
+        decimal::{Decimal, typed_decimal::TypedDecimal},
         endpoint::Endpoint,
-        integer::{typed_integer::TypedInteger, Integer},
+        integer::{Integer, typed_integer::TypedInteger},
     },
     visitor::{
+        VisitAction,
         type_expression::visitable::{
             TypeExpressionVisitResult, VisitableTypeExpression,
         },
-        VisitAction,
     },
 };
-use crate::shared_values::pointer_address::PointerAddress;
 
 pub mod visitable;
 
@@ -295,7 +295,7 @@ pub trait TypeExpressionVisitor<E>: Sized {
         let _ = type_ref_mut;
         Ok(VisitAction::VisitChildren)
     }
-    
+
     fn visit_shared_type(
         &mut self,
         type_shared: &mut TypeExpression,
@@ -305,7 +305,7 @@ pub trait TypeExpressionVisitor<E>: Sized {
         let _ = type_shared;
         Ok(VisitAction::VisitChildren)
     }
-    
+
     fn visit_mut_type(
         &mut self,
         type_mut: &mut TypeExpression,
