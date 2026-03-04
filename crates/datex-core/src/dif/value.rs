@@ -1,7 +1,7 @@
 use crate::{
     dif::{
-        r#type::DIFTypeDefinition, representation::DIFValueRepresentation,
-        DIFConvertible,
+        DIFConvertible, representation::DIFValueRepresentation,
+        r#type::DIFTypeDefinition,
     },
     libs::core::CoreLibPointerId,
     runtime::memory::Memory,
@@ -20,8 +20,7 @@ use crate::{
 use core::{cell::RefCell, result::Result};
 use serde::{Deserialize, Serialize};
 
-use crate::prelude::*;
-use crate::shared_values::pointer_address::PointerAddress;
+use crate::{prelude::*, shared_values::pointer_address::PointerAddress};
 
 #[derive(Debug)]
 pub struct DIFReferenceNotFoundError;
@@ -119,9 +118,7 @@ impl From<PointerAddress> for DIFValueContainer {
 }
 
 impl DIFValueContainer {
-    pub fn from_value_container(
-        value_container: &ValueContainer,
-    ) -> Self {
+    pub fn from_value_container(value_container: &ValueContainer) -> Self {
         match value_container {
             ValueContainer::Shared(reference) => {
                 DIFValueContainer::Reference(reference.pointer_address())
@@ -225,9 +222,7 @@ impl DIFValue {
                             .map(|(k, v)| {
                                 (
                                     k.clone(),
-                                    DIFValueContainer::from_value_container(
-                                        v,
-                                    ),
+                                    DIFValueContainer::from_value_container(v),
                                 )
                             })
                             .collect(),
@@ -270,10 +265,7 @@ impl DIFValue {
 
         DIFValue {
             value: dif_core_value,
-            ty: get_type_if_non_default(
-                &value.actual_type,
-                is_empty_map,
-            ),
+            ty: get_type_if_non_default(&value.actual_type, is_empty_map),
         }
     }
 }
@@ -292,9 +284,8 @@ fn get_type_if_non_default(
 ) -> Option<DIFTypeDefinition> {
     match type_definition {
         TypeDefinition::SharedReference(inner) => {
-            if let Ok(address) = CoreLibPointerId::try_from(&inner
-                .borrow()
-                .pointer.address())
+            if let Ok(address) =
+                CoreLibPointerId::try_from(&inner.borrow().pointer.address())
                 && (core::matches!(
                         address,
                         CoreLibPointerId::Decimal(Some(DecimalTypeVariant::F64))
@@ -308,21 +299,17 @@ fn get_type_if_non_default(
             {
                 None
             } else {
-                Some(DIFTypeDefinition::from_type_definition(
-                    type_definition,
-                ))
+                Some(DIFTypeDefinition::from_type_definition(type_definition))
             }
         }
-        _ => Some(DIFTypeDefinition::from_type_definition(
-            type_definition,
-        )),
+        _ => Some(DIFTypeDefinition::from_type_definition(type_definition)),
     }
 }
 
 #[cfg(test)]
 mod tests {
     use crate::{
-        dif::{r#type::DIFTypeDefinition, value::DIFValue, DIFConvertible},
+        dif::{DIFConvertible, r#type::DIFTypeDefinition, value::DIFValue},
         libs::core::CoreLibPointerId,
         runtime::memory::Memory,
         values::{
@@ -355,17 +342,17 @@ mod tests {
         let dif = DIFValue::from_value(&Value::from(3.5f64));
         assert!(dif.ty.is_none());
 
-        let dif = DIFValue::from_value(
-            &Value::from(vec![Value::from(1), Value::from(2), Value::from(3)]),
-        );
+        let dif = DIFValue::from_value(&Value::from(vec![
+            Value::from(1),
+            Value::from(2),
+            Value::from(3),
+        ]));
         assert!(dif.ty.is_none());
 
-        let dif = DIFValue::from_value(
-            &Value::from(Map::from(vec![
-                ("a".to_string(), ValueContainer::from(1)),
-                ("b".to_string(), ValueContainer::from(2)),
-            ])),
-        );
+        let dif = DIFValue::from_value(&Value::from(Map::from(vec![
+            ("a".to_string(), ValueContainer::from(1)),
+            ("b".to_string(), ValueContainer::from(2)),
+        ])));
         assert!(dif.ty.is_none());
     }
 

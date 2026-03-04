@@ -10,7 +10,7 @@ use crate::{
         type_expressions::{TypeExpression, TypeExpressionData},
     },
     dxb_parser::{
-        body::{iterate_instructions, DXBParserError},
+        body::{DXBParserError, iterate_instructions},
         instruction_collector::{
             CollectedResults, CollectionResultsPopper, FullOrPartialResult,
             InstructionCollector, StatementResultCollectionStrategy,
@@ -24,16 +24,15 @@ use crate::{
         slots::InternalSlot,
     },
     values::core_values::{
-        decimal::{typed_decimal::TypedDecimal, Decimal},
-        integer::{typed_integer::TypedInteger, Integer},
+        decimal::{Decimal, typed_decimal::TypedDecimal},
+        integer::{Integer, typed_integer::TypedInteger},
     },
 };
 
-use crate::prelude::*;
+use crate::{prelude::*, shared_values::pointer_address::PointerAddress};
 use alloc::format;
 use core::cell::RefCell;
 use num_enum::TryFromPrimitive;
-use crate::shared_values::pointer_address::PointerAddress;
 
 #[derive(Debug)]
 enum CollectedAstResult {
@@ -716,18 +715,20 @@ pub fn ast_from_bytecode(
 mod tests {
     use super::*;
     use crate::{
-        ast::{expressions::PropertyAccess, spanned::Spanned},
+        ast::{
+            expressions::{
+                DatexExpressionData, PropertyAccess, PropertyAssignment,
+            },
+            spanned::Spanned,
+        },
         global::{
             instruction_codes::InstructionCode,
-            operators::binary::ArithmeticOperator,
+            operators::{AssignmentOperator, binary::ArithmeticOperator},
             type_instruction_codes::TypeInstructionCode,
         },
+        prelude::*,
+        values::core_values::integer::{Integer, typed_integer::TypedInteger},
     };
-    use crate::ast::expressions::{DatexExpressionData, PropertyAssignment};
-    use crate::global::operators::AssignmentOperator;
-    use crate::prelude::*;
-    use crate::values::core_values::integer::Integer;
-    use crate::values::core_values::integer::typed_integer::TypedInteger;
 
     #[test]
     fn ast_from_bytecode_simple_integer() {

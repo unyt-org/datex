@@ -1,30 +1,34 @@
 use crate::{
     core_compiler::type_compiler::append_type,
     global::instruction_codes::InstructionCode,
-    libs::core::{get_core_lib_type_definition, CoreLibPointerId},
+    libs::core::{CoreLibPointerId, get_core_lib_type_definition},
     shared_values::shared_container::SharedContainerMutability,
     types::definition::TypeDefinition,
     utils::buffers::{
-        append_f32, append_f64, append_i128, append_i16, append_i32, append_i64,
-        append_i8, append_u128, append_u16, append_u32, append_u64,
-        append_u8,
+        append_f32, append_f64, append_i8, append_i16, append_i32, append_i64,
+        append_i128, append_u8, append_u16, append_u32, append_u64,
+        append_u128,
     },
     values::{
         core_value::CoreValue,
         core_values::{
-            decimal::{typed_decimal::TypedDecimal, Decimal},
+            decimal::{Decimal, typed_decimal::TypedDecimal},
             endpoint::Endpoint,
-            integer::{typed_integer::TypedInteger, Integer},
+            integer::{Integer, typed_integer::TypedInteger},
         },
         value::Value,
         value_container::ValueContainer,
     },
 };
-use binrw::{io::Cursor, BinWrite};
+use binrw::{BinWrite, io::Cursor};
 
-use crate::prelude::*;
-use crate::shared_values::pointer_address::{PointerAddress, ReferencedPointerAddress};
-use crate::values::core_values::r#type::TypeMetadata;
+use crate::{
+    prelude::*,
+    shared_values::pointer_address::{
+        PointerAddress, ReferencedPointerAddress,
+    },
+    values::core_values::r#type::TypeMetadata,
+};
 
 /// Compiles a given value container to a DXB body
 pub fn compile_value_container(value_container: &ValueContainer) -> Vec<u8> {

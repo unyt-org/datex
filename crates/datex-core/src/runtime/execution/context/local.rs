@@ -41,7 +41,10 @@ pub struct LocalExecutionContext {
 }
 
 impl LocalExecutionContext {
-    pub fn new(execution_mode: ExecutionMode, runtime: Rc<RuntimeInternal>) -> Self {
+    pub fn new(
+        execution_mode: ExecutionMode,
+        runtime: Rc<RuntimeInternal>,
+    ) -> Self {
         LocalExecutionContext {
             #[cfg(feature = "compiler")]
             compile_scope: CompilationScope::new(execution_mode),
@@ -54,7 +57,10 @@ impl LocalExecutionContext {
     }
 
     /// Creates a new local execution context with the given compile scope.
-    pub fn debug(execution_mode: ExecutionMode, runtime: Rc<RuntimeInternal>) -> Self {
+    pub fn debug(
+        execution_mode: ExecutionMode,
+        runtime: Rc<RuntimeInternal>,
+    ) -> Self {
         LocalExecutionContext {
             #[cfg(feature = "compiler")]
             compile_scope: CompilationScope::new(execution_mode),
@@ -75,13 +81,15 @@ impl LocalExecutionContext {
 }
 
 impl ExecutionContext {
-    pub fn local(execution_mode: ExecutionMode, runtime: Rc<RuntimeInternal>) -> Self {
+    pub fn local(
+        execution_mode: ExecutionMode,
+        runtime: Rc<RuntimeInternal>,
+    ) -> Self {
         ExecutionContext::Local(LocalExecutionContext::new(
             execution_mode,
             runtime,
         ))
     }
-
 
     /// Creates a new local static execution context (can only be used once).
     pub fn local_static(runtime: Rc<RuntimeInternal>) -> Self {
@@ -101,7 +109,13 @@ impl ExecutionContext {
 
     /// Creates a new local execution context with verbose mode enabled,
     /// providing more log outputs for debugging purposes.
-    pub fn local_debug(execution_mode: ExecutionMode, runtime: Rc<RuntimeInternal>) -> Self {
-        ExecutionContext::Local(LocalExecutionContext::debug(execution_mode, runtime))
+    pub fn local_debug(
+        execution_mode: ExecutionMode,
+        runtime: Rc<RuntimeInternal>,
+    ) -> Self {
+        ExecutionContext::Local(LocalExecutionContext::debug(
+            execution_mode,
+            runtime,
+        ))
     }
 }

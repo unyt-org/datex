@@ -15,8 +15,7 @@ use serde::ser::{
     SerializeTupleVariant, Serializer,
 };
 
-use crate::prelude::*;
-use crate::runtime::RuntimeInternal;
+use crate::{prelude::*, runtime::RuntimeInternal};
 
 pub struct DatexSerializer {}
 

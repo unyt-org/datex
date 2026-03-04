@@ -39,8 +39,8 @@ pub mod lsp;
 pub mod network;
 #[cfg(feature = "parser")]
 pub mod parser;
-pub mod shared_values;
 pub mod runtime;
+pub mod shared_values;
 #[cfg(feature = "compiler")]
 pub mod type_inference;
 #[cfg(feature = "compiler")]

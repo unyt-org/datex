@@ -21,8 +21,10 @@ use serde::{
     forward_to_deserialize_any,
 };
 
-use crate::prelude::*;
-use crate::runtime::{Runtime, RuntimeInternal};
+use crate::{
+    prelude::*,
+    runtime::{Runtime, RuntimeInternal},
+};
 
 /// Deserialize a value of type T from a byte slice containing DXB data
 pub fn from_bytes<T>(input: &[u8]) -> Result<T, DeserializationError>
@@ -30,8 +32,11 @@ where
     T: DeserializeOwned,
 {
     let runtime = RuntimeInternal::stub();
-    let context =
-        ExecutionInput::new(input, ExecutionOptions { verbose: true }, Rc::new(runtime));
+    let context = ExecutionInput::new(
+        input,
+        ExecutionOptions { verbose: true },
+        Rc::new(runtime),
+    );
     let value = execute_dxb_sync(context)
         .map_err(DeserializationError::ExecutionError)?
         .expect("DXB execution returned no value");

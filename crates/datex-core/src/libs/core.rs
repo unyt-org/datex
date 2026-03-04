@@ -20,15 +20,21 @@ use crate::{
     },
 };
 
-use crate::prelude::*;
+use crate::{
+    prelude::*,
+    shared_values::{
+        pointer::{Pointer, PointerReferenceMutability},
+        pointer_address::{
+            OwnedPointerAddress, PointerAddress, ReferencedPointerAddress,
+        },
+        shared_container::SharedContainerMutability,
+    },
+    values::core_values::r#type::{LocalReferenceMutability, TypeMetadata},
+};
 use core::{cell::RefCell, iter::once, result::Result};
 use datex_macros_internal::LibTypeString;
 use log::info;
 use strum::IntoEnumIterator;
-use crate::shared_values::pointer::{PointerReferenceMutability, Pointer};
-use crate::shared_values::pointer_address::{OwnedPointerAddress, PointerAddress, ReferencedPointerAddress};
-use crate::shared_values::shared_container::SharedContainerMutability;
-use crate::values::core_values::r#type::{LocalReferenceMutability, TypeMetadata};
 
 type CoreLibTypes = HashMap<CoreLibPointerId, Type>;
 type CoreLibVals = HashMap<CoreLibPointerId, ValueContainer>;
@@ -172,7 +178,9 @@ impl TryFrom<&PointerAddress> for CoreLibPointerId {
     type Error = String;
     fn try_from(address: &PointerAddress) -> Result<Self, Self::Error> {
         match address {
-            PointerAddress::Referenced(ReferencedPointerAddress::Internal(id_bytes)) => {
+            PointerAddress::Referenced(ReferencedPointerAddress::Internal(
+                id_bytes,
+            )) => {
                 let mut id_array = [0u8; 4];
                 id_array[0..3].copy_from_slice(id_bytes);
                 let id = u32::from_le_bytes(id_array);
@@ -214,11 +222,9 @@ pub fn get_core_lib_value(
         // try types first
         if let Some(ty) = core_lib_types.get(&id) {
             match &ty.type_definition {
-                TypeDefinition::SharedReference(tr) => {
-                    Some(ValueContainer::Shared(SharedContainer::Type(
-                        tr.clone(),
-                    )))
-                }
+                TypeDefinition::SharedReference(tr) => Some(
+                    ValueContainer::Shared(SharedContainer::Type(tr.clone())),
+                ),
                 _ => core::panic!("Core lib type is not a TypeReference"),
             }
         } else {
@@ -274,7 +280,10 @@ pub fn load_core_lib(memory: &mut Memory) {
         // Import variants directly by variant access operator from base type (e.g., integer -> integer/u8)
         let core_struct = SharedContainer::boxed(
             Map::from_iter(types_structure),
-            Pointer::new_reference(ReferencedPointerAddress::from(&CoreLibPointerId::Core), PointerReferenceMutability::Immutable)
+            Pointer::new_reference(
+                ReferencedPointerAddress::from(&CoreLibPointerId::Core),
+                PointerReferenceMutability::Immutable,
+            ),
         );
         memory.register_shared_container(&core_struct);
     });
@@ -482,18 +491,23 @@ fn create_core_type(
         pointer_id.clone(),
         Type::new(
             // &shared type<()>
-            TypeDefinition::shared_reference(Rc::new(RefCell::new(SharedTypeContainer {
-                nominal_type_declaration: Some(NominalTypeDeclaration {
-                    name: name.to_string(),
-                    variant,
-                }),
-                type_value: Type {
-                    base_type: base_type_ref,
-                    type_definition: TypeDefinition::Unit,
-                    metadata: TypeMetadata::default(),
+            TypeDefinition::shared_reference(Rc::new(RefCell::new(
+                SharedTypeContainer {
+                    nominal_type_declaration: Some(NominalTypeDeclaration {
+                        name: name.to_string(),
+                        variant,
+                    }),
+                    type_value: Type {
+                        base_type: base_type_ref,
+                        type_definition: TypeDefinition::Unit,
+                        metadata: TypeMetadata::default(),
+                    },
+                    pointer: Pointer::new_reference(
+                        ReferencedPointerAddress::from(&pointer_id),
+                        PointerReferenceMutability::Immutable,
+                    ),
                 },
-                pointer: Pointer::new_reference(ReferencedPointerAddress::from(&pointer_id), PointerReferenceMutability::Immutable),
-            }))),
+            ))),
             TypeMetadata::default(),
         ),
     )

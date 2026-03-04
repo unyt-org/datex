@@ -26,9 +26,7 @@ pub fn get_internal_slot_value(
         InternalSlot::ENDPOINT => {
             ValueContainer::from(runtime.endpoint.clone())
         }
-        InternalSlot::ENV => {
-            ValueContainer::from(Map::from(runtime.get_env()))
-        }
+        InternalSlot::ENV => ValueContainer::from(Map::from(runtime.get_env())),
     };
     Ok(res)
 }

@@ -643,6 +643,10 @@ impl TryFrom<CoreValue> for Map {
 mod tests {
     use crate::{
         prelude::*,
+        shared_values::{
+            pointer::Pointer, shared_container::SharedContainer,
+            shared_value_container::SharedValueContainer,
+        },
         values::{
             core_values::{
                 decimal::{Decimal, typed_decimal::TypedDecimal},
@@ -651,9 +655,6 @@ mod tests {
             value_container::ValueContainer,
         },
     };
-    use crate::shared_values::pointer::Pointer;
-    use crate::shared_values::shared_container::SharedContainer;
-    use crate::shared_values::shared_value_container::SharedValueContainer;
 
     #[test]
     fn test_map() {
@@ -678,7 +679,10 @@ mod tests {
     #[test]
     fn test_ref_keys() {
         let mut map = Map::default();
-        let key = ValueContainer::Shared(SharedContainer::boxed(ValueContainer::from(42), Pointer::NULL));
+        let key = ValueContainer::Shared(SharedContainer::boxed(
+            ValueContainer::from(42),
+            Pointer::NULL,
+        ));
         map.set(&key, "value");
         // same reference should be found
         assert_eq!(map.size(), 1);
@@ -686,7 +690,10 @@ mod tests {
         assert_eq!(map.get(&key).unwrap().to_string(), "\"value\"");
 
         // new reference with same value should not be found
-        let new_key = ValueContainer::Shared(SharedContainer::boxed(ValueContainer::from(42), Pointer::NULL));
+        let new_key = ValueContainer::Shared(SharedContainer::boxed(
+            ValueContainer::from(42),
+            Pointer::NULL,
+        ));
         assert!(!map.has(&new_key));
         assert!(map.get(&new_key).is_err());
     }

@@ -274,10 +274,7 @@ impl DIFTypeRepresentation {
                     fields
                         .iter()
                         .map(|(k, v)| {
-                            (
-                                DIFType::from_type(k),
-                                DIFType::from_type(v),
-                            )
+                            (DIFType::from_type(k), DIFType::from_type(v))
                         })
                         .collect(),
                 )

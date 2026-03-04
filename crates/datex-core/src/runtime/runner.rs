@@ -7,6 +7,7 @@ use crate::{
     runtime::{
         Runtime, RuntimeConfig, RuntimeInternal, VERSION, memory::Memory,
     },
+    time::now_ms,
     utils::task_manager::TaskManager,
     values::core_values::endpoint::Endpoint,
 };
@@ -19,7 +20,6 @@ use futures_util::{
     join,
 };
 use log::info;
-use crate::time::now_ms;
 
 pub struct RuntimeRunner {
     pub runtime: Runtime,
@@ -137,10 +137,7 @@ impl RuntimeRunner {
             // wait for runtime initialization to complete before starting app logic
             init_ready_receiver.await.unwrap();
 
-            info!(
-                "Runtime initialized - Version {VERSION} Time: {}",
-                now_ms()
-            );
+            info!("Runtime initialized - Version {VERSION} Time: {}", now_ms());
 
             app_logic(self.runtime).await
         };

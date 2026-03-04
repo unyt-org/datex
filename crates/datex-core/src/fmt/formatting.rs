@@ -12,14 +12,15 @@ use crate::{
         options::{StatementFormatting, VariantFormatting},
     },
     prelude::*,
-    shared_values::shared_container::SharedContainerMutability,
+    shared_values::{
+        pointer::PointerReferenceMutability,
+        shared_container::SharedContainerMutability,
+    },
     values::core_values::{
         decimal::typed_decimal::TypedDecimal,
-        integer::typed_integer::TypedInteger,
+        integer::typed_integer::TypedInteger, r#type::LocalReferenceMutability,
     },
 };
-use crate::shared_values::pointer::PointerReferenceMutability;
-use crate::values::core_values::r#type::LocalReferenceMutability;
 
 impl<'a> Formatter<'a> {
     pub fn datex_expression_to_source_code(

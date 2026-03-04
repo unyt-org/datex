@@ -1,8 +1,11 @@
 use crate::{
     libs::core::CoreLibPointerId,
     prelude::*,
-    shared_values::{shared_container::AccessError, shared_type_container::SharedTypeContainer},
     runtime::execution::ExecutionError,
+    shared_values::{
+        shared_container::AccessError,
+        shared_type_container::SharedTypeContainer,
+    },
     traits::{apply::Apply, structural_eq::StructuralEq, value_eq::ValueEq},
     types::definition::TypeDefinition,
     values::{
@@ -145,8 +148,9 @@ impl Value {
     pub fn has_default_type(&self) -> bool {
         if let TypeDefinition::SharedReference(type_reference) =
             self.actual_type.as_ref()
-            && let Ok(actual_type_core_ptr_id) =
-                CoreLibPointerId::try_from(&type_reference.borrow().pointer.address())
+            && let Ok(actual_type_core_ptr_id) = CoreLibPointerId::try_from(
+                &type_reference.borrow().pointer.address(),
+            )
         {
             // actual_type has core type pointer id which is equal to the default core type pointer id of self.inner
             let self_default_type_ptr_id = CoreLibPointerId::from(&self.inner);
