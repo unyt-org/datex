@@ -1,0 +1,15 @@
+[alias]
+test-std = [
+	"test",
+	"-p",
+	"datex-core",
+	"--features",
+	"decompiler,compiler,target_native",
+]
+test-nostd = [
+	"test",
+	"-p",
+	"datex-core",
+	"--features",
+	"decompiler,compiler,allow_unsigned_blocks",
+]
