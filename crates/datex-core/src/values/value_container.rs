@@ -10,7 +10,6 @@ use crate::{
         error::DeserializationError,
     },
     shared_values::{
-        mutations::DIFUpdateDataOrMemory,
         observers::TransceiverId,
         shared_container::{AccessError, SharedContainer},
     },
@@ -22,7 +21,6 @@ use crate::{
 use crate::{
     dif::update::DIFUpdateData,
     serde::{error::SerializationError, serializer::to_value_container},
-    shared_values::pointer::Pointer,
     values::core_values::r#type::TypeMetadata,
 };
 use core::{

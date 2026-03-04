@@ -266,7 +266,7 @@ impl DIFTypeRepresentation {
             }
             StructuralTypeDefinition::List(arr) => {
                 DIFTypeRepresentation::Array(
-                    arr.iter().map(|v| DIFType::from_type(v)).collect(),
+                    arr.iter().map(DIFType::from_type).collect(),
                 )
             }
             StructuralTypeDefinition::Map(fields) => {

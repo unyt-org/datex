@@ -4,8 +4,6 @@ mod ast_to_source_code;
 mod options;
 pub use options::*;
 
-use binrw::io::Cursor;
-use core::fmt::Write;
 
 use crate::{
     ast::{

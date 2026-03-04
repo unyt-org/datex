@@ -444,7 +444,7 @@ impl Parser {
                 let mutability = if let Ok(next) = self.peek()
                     && next.token == Token::Mutable
                 {
-                    let token = self.advance()?; // consume 'mut'
+                    let _token = self.advance()?; // consume 'mut'
                     SharedContainerMutability::Mutable
                 } else {
                     SharedContainerMutability::Immutable

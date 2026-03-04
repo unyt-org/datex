@@ -4,10 +4,7 @@ use crate::{
         AssignmentOperator, BinaryOperator, LogicalUnaryOperator, UnaryOperator,
     },
     libs::core::get_core_lib_type_reference,
-    shared_values::{
-        shared_container::SharedContainerMutability,
-        shared_type_container::SharedTypeContainer,
-    },
+    shared_values::shared_type_container::SharedTypeContainer,
     type_inference::{error::TypeError, options::ErrorHandling},
     types::definition::TypeDefinition,
 };

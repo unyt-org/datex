@@ -12,10 +12,7 @@ use crate::{
         options::{StatementFormatting, VariantFormatting},
     },
     prelude::*,
-    shared_values::{
-        pointer::PointerReferenceMutability,
-        shared_container::SharedContainerMutability,
-    },
+    shared_values::pointer::PointerReferenceMutability,
     values::core_values::{
         decimal::typed_decimal::TypedDecimal,
         integer::typed_integer::TypedInteger, r#type::LocalReferenceMutability,

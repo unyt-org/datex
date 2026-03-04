@@ -11,10 +11,7 @@ use crate::{
 };
 
 use crate::{
-    network::com_interfaces::com_interface::{
-        properties::{ComInterfaceProperties, InterfaceDirection},
-        socket::ComInterfaceSocketUUID,
-    },
+    network::com_interfaces::com_interface::properties::{ComInterfaceProperties, InterfaceDirection},
     values::core_values::endpoint::Endpoint,
 };
 

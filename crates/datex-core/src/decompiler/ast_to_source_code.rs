@@ -18,10 +18,7 @@ use core::fmt::{self};
 
 use crate::{
     decompiler::{FormattingMode, FormattingOptions, IndentType},
-    shared_values::{
-        pointer::PointerReferenceMutability,
-        shared_container::SharedContainerMutability,
-    },
+    shared_values::pointer::PointerReferenceMutability,
     values::core_values::r#type::LocalReferenceMutability,
 };
 
