@@ -25,11 +25,10 @@ use crate::{
     shared_values::{
         pointer::{Pointer, PointerReferenceMutability},
         pointer_address::{
-            OwnedPointerAddress, PointerAddress, ReferencedPointerAddress,
+            PointerAddress, ReferencedPointerAddress,
         },
-        shared_container::SharedContainerMutability,
     },
-    values::core_values::r#type::{LocalReferenceMutability, TypeMetadata},
+    values::core_values::r#type::TypeMetadata,
 };
 use core::{cell::RefCell, iter::once, result::Result};
 use datex_macros_internal::LibTypeString;

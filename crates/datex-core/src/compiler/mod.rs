@@ -47,13 +47,13 @@ use crate::{
     parser::{Parser, ParserOptions},
     runtime::execution::context::ExecutionMode,
     shared_values::{
-        pointer::PointerReferenceMutability, pointer_address::PointerAddress,
+        pointer_address::PointerAddress,
         shared_container::SharedContainerMutability,
     },
     time::Instant,
     utils::buffers::{append_u8, append_u16, append_u32},
     values::{
-        core_values::{decimal::Decimal, r#type::LocalReferenceMutability},
+        core_values::decimal::Decimal,
         value_container::ValueContainer,
     },
 };

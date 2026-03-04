@@ -1,7 +1,7 @@
 use crate::{
     ast::{
         expressions::{
-            CreateRef, DatexExpressionData, List, Map, RangeDeclaration,
+            DatexExpressionData, List, Map, RangeDeclaration,
         },
         spanned::Spanned,
         type_expressions::{
@@ -176,8 +176,8 @@ fn type_to_type_expression(type_value: &Type) -> TypeExpression {
                 TypeExpressionData::Null.with_default_span()
             }
             StructuralTypeDefinition::Range((start_type, end_type)) => {
-                let x = type_to_type_expression(&start_type);
-                let y = type_to_type_expression(&end_type);
+                let x = type_to_type_expression(start_type);
+                let y = type_to_type_expression(end_type);
                 TypeExpressionData::Range(RangeTypeExpr {
                     start: Box::new(x),
                     end: Box::new(y),

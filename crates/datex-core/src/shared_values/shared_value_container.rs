@@ -10,7 +10,7 @@ use crate::{
 
 use crate::{
     prelude::*,
-    shared_values::{pointer::Pointer, pointer_address::PointerAddress},
+    shared_values::pointer::Pointer,
 };
 use core::{cell::RefCell, fmt::Debug, prelude::rust_2024::*};
 

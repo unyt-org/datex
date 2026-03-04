@@ -22,7 +22,7 @@ use crate::{
     values::{
         core_values::{
             map::MapAccessError,
-            r#type::{Type, TypeMetadata},
+            r#type::Type,
         },
         value::Value,
         value_container::{ValueContainer, ValueKey},
@@ -421,7 +421,7 @@ impl SharedContainer {
         }
     }
 
-    pub fn pointer(&self) -> Ref<Pointer> {
+    pub fn pointer(&self) -> Ref<'_, Pointer> {
         match self {
             SharedContainer::Value(vr) => {
                 Ref::map(vr.borrow(), |vr| &vr.pointer)
