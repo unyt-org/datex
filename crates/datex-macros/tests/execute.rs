@@ -14,7 +14,7 @@ fn execute_sync() {
     assert_eq!(result, 84_i32.into());
 
     let result =
-        execute_sync_unchecked!("? + ' ' + ? + '!'", "Hello,", "DATEX")
+        execute_sync_unchecked!("? + \" \" + ? + \"!\"", "Hello,", "DATEX")
             .unwrap();
     assert_eq!(result, "Hello, DATEX!".into());
 }
