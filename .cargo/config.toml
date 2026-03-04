@@ -1,15 +1,34 @@
 [alias]
+# Run tests with `std` features with `cargo test-std`
 test-std = [
 	"test",
 	"-p",
 	"datex-core",
 	"--features",
 	"decompiler,compiler,target_native",
+	"--",
+	"--nocapture",
 ]
+
+# Run tests without `std` features with `cargo test-nostd`
 test-nostd = [
 	"test",
 	"-p",
 	"datex-core",
 	"--features",
 	"decompiler,compiler,allow_unsigned_blocks",
+	"--",
+	"--nocapture",
+]
+
+# Run a specific test case with `cargo testcase <test_name>`
+testcase = [
+	"test",
+	"-p",
+	"datex-core",
+	"--features",
+	"decompiler,compiler,target_native",
+	"--lib",
+	"--",
+	"--nocapture",
 ]
