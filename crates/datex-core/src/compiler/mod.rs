@@ -60,7 +60,6 @@ use precompiler::{
     precompile_ast,
     precompiled_ast::{AstMetadata, RichAst, VariableMetadata},
 };
-use crate::ast::expressions::GetSharedRef;
 use crate::core_compiler::value_compiler::append_get_internal_ref;
 
 pub mod context;
@@ -1265,7 +1264,7 @@ fn compile_expression(
                 }
                 "core" => append_get_internal_ref(
                     &mut compilation_context.buffer,
-                    &PointerAddress::from(CoreLibPointerId::Core).internal_bytes().clone().unwrap(),
+                    PointerAddress::from(CoreLibPointerId::Core).internal_bytes().unwrap(),
                 ),
                 _ => {
                     // invalid slot name

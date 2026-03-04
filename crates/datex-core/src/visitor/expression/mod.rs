@@ -10,7 +10,6 @@ use crate::{
         VariableAssignment, VariableDeclaration, VariantAccess,
     },
     prelude::*,
-    shared_values::pointer_address::PointerAddress,
     values::core_values::{
         decimal::{Decimal, typed_decimal::TypedDecimal},
         endpoint::Endpoint,

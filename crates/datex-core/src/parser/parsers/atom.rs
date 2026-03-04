@@ -19,7 +19,7 @@ use crate::{
 };
 use core::str::FromStr;
 
-use crate::{prelude::*, shared_values::pointer_address::PointerAddress};
+use crate::prelude::*;
 
 impl Parser {
     pub(crate) fn parse_atom(

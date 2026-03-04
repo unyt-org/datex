@@ -8,7 +8,6 @@ use crate::{
         },
     },
     runtime::execution::ExecutionError,
-    shared_values::shared_container::SharedContainer,
     traits::{
         identity::Identity, structural_eq::StructuralEq, value_eq::ValueEq,
     },
@@ -37,7 +36,7 @@ pub fn set_property(
 pub fn handle_unary_shared_value_operation(
     operator: SharedValueUnaryOperator,
     value_container: ValueContainer,
-    memory: &RefCell<Memory>,
+    _memory: &RefCell<Memory>,
 ) -> Result<ValueContainer, ExecutionError> {
     Ok(match operator {
         SharedValueUnaryOperator::Unbox => {
