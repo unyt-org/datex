@@ -569,7 +569,7 @@ impl Serialize for DIFType {
         S: serde::Serializer,
     {
         if self.name.is_none()
-            && !self.metadata.is_default()
+            && self.metadata.is_default()
             && let DIFTypeDefinition::Reference(_) = self.type_definition
         {
             return self.type_definition.serialize(serializer);
