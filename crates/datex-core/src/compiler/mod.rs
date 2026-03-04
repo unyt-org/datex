@@ -60,6 +60,8 @@ use precompiler::{
     precompile_ast,
     precompiled_ast::{AstMetadata, RichAst, VariableMetadata},
 };
+use crate::ast::expressions::GetSharedRef;
+use crate::core_compiler::value_compiler::append_get_internal_ref;
 
 pub mod context;
 pub mod error;
@@ -1018,6 +1020,7 @@ fn compile_expression(
 
             // create new variable depending on the model
             let variable = match variable_model {
+                // FIXME: deprecate automatic injection of shared refs for variables (VariableModel). Shared values should be used explicitly
                 VariableModel::VariableReference => {
                     // allocate an additional slot with a reference to the variable
                     let virtual_slot_addr_for_var =
@@ -1028,7 +1031,6 @@ fn compile_expression(
                     compilation_context.insert_virtual_slot_address(
                         VirtualSlot::local(virtual_slot_addr_for_var),
                     );
-                    // indirect reference to the variable
                     compilation_context.append_instruction_code(
                         InstructionCode::CREATE_SHARED_REF,
                     );
@@ -1060,9 +1062,9 @@ fn compile_expression(
             scope.register_variable_slot(variable);
         }
 
-        DatexExpressionData::GetReference(address) => {
+        DatexExpressionData::GetSharedRef(shared_reference) => {
             compilation_context.mark_has_non_static_value();
-            append_get_ref(&mut compilation_context.buffer, &address)
+            append_get_ref(&mut compilation_context.buffer, shared_reference)
         }
 
         // assignment
@@ -1261,9 +1263,9 @@ fn compile_expression(
                         InternalSlot::ENV as u32,
                     );
                 }
-                "core" => append_get_ref(
+                "core" => append_get_internal_ref(
                     &mut compilation_context.buffer,
-                    &PointerAddress::from(CoreLibPointerId::Core),
+                    &PointerAddress::from(CoreLibPointerId::Core).internal_bytes().clone().unwrap(),
                 ),
                 _ => {
                     // invalid slot name
@@ -1271,12 +1273,7 @@ fn compile_expression(
                 }
             }
         }
-
-        // pointer address
-        DatexExpressionData::PointerAddress(address) => {
-            append_get_ref(&mut compilation_context.buffer, &address);
-        }
-
+        
         // refs
         DatexExpressionData::CreateRef(create_ref) => {
             compilation_context.mark_has_non_static_value();
@@ -3140,7 +3137,7 @@ pub mod tests {
         let (res, _) =
             compile_script(script, CompileOptions::default()).unwrap();
         let mut instructions: Vec<u8> =
-            vec![InstructionCode::GET_INTERNAL_REF.into()];
+            vec![InstructionCode::GET_INTERNAL_SHARED_REF.into()];
         // pointer id
         instructions.append(
             &mut PointerAddress::from(CoreLibPointerId::Integer(None))
@@ -3208,7 +3205,7 @@ pub mod tests {
                 1,
             ],
             vec![
-                InstructionCode::GET_INTERNAL_REF.into(),
+                InstructionCode::GET_INTERNAL_SHARED_REF.into(),
                 // pointer id for integer
                 100,
                 0,

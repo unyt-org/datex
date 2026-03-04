@@ -155,9 +155,12 @@ pub enum InstructionCode {
     LABEL_ACTION, // $x += ...
 
     // Note: fix to sync with RawPointerAddress
-    GET_REF = 120u8,          // $x
-    GET_INTERNAL_REF = 121u8, // $y, containing globally unique internal id
-    GET_LOCAL_REF = 122u8, // $x, containing only the id, origin id is inferred from sender
+    GET_REMOTE_SHARED_REF = 120u8,  // '$x
+    GET_INTERNAL_SHARED_REF = 121u8, // '$y, containing globally unique internal id
+    GET_LOCAL_SHARED_REF = 122u8, // '$x, containing only the id, origin id is inferred from sender
+
+    GET_REMOTE_SHARED_REF_MUT, // 'mut $x
+
     GET_OR_INIT_REF,       // $aa := ...
     POINTER_ACTION,        // $aa += ...
     CREATE_SHARED_REF,     // ' / 'mut

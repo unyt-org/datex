@@ -27,6 +27,7 @@ use crate::{
 };
 pub use crate::{prelude::*, values::core_values::callable::CallableKind};
 use core::{fmt::Display, ops, ops::Neg};
+use crate::shared_values::pointer_address::ReferencedPointerAddress;
 
 #[derive(Clone, Debug)]
 /// An expression in the AST
@@ -111,8 +112,8 @@ pub enum DatexExpressionData {
     Map(Map),
     /// One or more statements, e.g (1; 2; 3)
     Statements(Statements),
-    /// reference access, e.g. &<ABCDEF>
-    GetReference(PointerAddress),
+    /// reference access to shared value, e.g. '$ABC / 'mut $ABC
+    GetSharedRef(GetSharedRef),
 
     /// compile ( ... )
     Compile(CompileExpression),
@@ -159,9 +160,6 @@ pub enum DatexExpressionData {
 
     /// Slot assignment
     SlotAssignment(SlotAssignment),
-
-    /// Pointer address $<identifier>
-    PointerAddress(PointerAddress),
 
     /// Binary operation, e.g. x + y
     BinaryOperation(BinaryOperation),
@@ -450,6 +448,12 @@ pub struct CompileExpression {
 pub struct VariableAccess {
     pub id: VariableId,
     pub name: String,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct GetSharedRef {
+    pub mutability: PointerReferenceMutability,
+    pub address: PointerAddress,
 }
 
 #[derive(Clone, Debug, PartialEq)]

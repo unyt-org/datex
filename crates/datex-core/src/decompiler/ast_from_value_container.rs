@@ -23,6 +23,7 @@ use crate::{
     prelude::*,
 };
 use alloc::format;
+use crate::ast::expressions::CreateSharedRef;
 
 impl From<&ValueContainer> for DatexExpressionData {
     /// Converts a ValueContainer into a DatexExpression AST.
@@ -31,13 +32,30 @@ impl From<&ValueContainer> for DatexExpressionData {
         match value {
             ValueContainer::Local(value) => value_to_datex_expression(value),
             ValueContainer::Shared(shared) => {
-                DatexExpressionData::CreateShared(CreateShared {
-                    mutability: shared.mutability(),
-                    expression: Box::new(
-                        DatexExpressionData::from(&shared.value_container())
-                            .with_default_span(),
-                    ),
-                })
+                let reference_mutability = shared.pointer().reference_mutability().cloned();
+                match reference_mutability {
+                    Some(reference_mutability) => {
+                        DatexExpressionData::CreateSharedRef(CreateSharedRef {
+                            mutability: reference_mutability,
+                            expression: Box::new(
+                                DatexExpressionData::CreateShared(CreateShared {
+                                    mutability: shared.mutability(),
+                                    expression: Box::new(
+                                        DatexExpressionData::from(&shared.value_container())
+                                            .with_default_span(),
+                                    ),
+                                }).with_default_span()
+                            ),
+                        })
+                    }
+                    _ => DatexExpressionData::CreateShared(CreateShared {
+                        mutability: shared.mutability(),
+                        expression: Box::new(
+                            DatexExpressionData::from(&shared.value_container())
+                                .with_default_span(),
+                        ),
+                    })
+                }
             }
         }
     }

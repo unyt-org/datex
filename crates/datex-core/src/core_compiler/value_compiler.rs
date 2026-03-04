@@ -29,6 +29,8 @@ use crate::{
     },
     values::core_values::r#type::TypeMetadata,
 };
+use crate::ast::expressions::GetSharedRef;
+use crate::shared_values::pointer::PointerReferenceMutability;
 
 /// Compiles a given value container to a DXB body
 pub fn compile_value_container(value_container: &ValueContainer) -> Vec<u8> {
@@ -337,21 +339,28 @@ pub fn append_float_as_i32(buffer: &mut Vec<u8>, int: i32) {
     append_i32(buffer, int);
 }
 
-pub fn append_get_ref(buffer: &mut Vec<u8>, address: &PointerAddress) {
-    match address {
+pub fn append_get_ref(buffer: &mut Vec<u8>, get_shared_ref: GetSharedRef) {
+    match &get_shared_ref.address {
         PointerAddress::Referenced(ReferencedPointerAddress::Internal(id)) => {
-            append_instruction_code(buffer, InstructionCode::GET_INTERNAL_REF);
-            buffer.extend_from_slice(id);
+            append_get_internal_ref(buffer, id);
         }
         PointerAddress::Owned(local_address) => {
-            append_instruction_code(buffer, InstructionCode::GET_LOCAL_REF);
+            append_instruction_code(buffer, InstructionCode::GET_LOCAL_SHARED_REF);
             buffer.extend_from_slice(&local_address.address);
         }
         PointerAddress::Referenced(ReferencedPointerAddress::Remote(id)) => {
-            append_instruction_code(buffer, InstructionCode::GET_REF);
+            append_instruction_code(buffer, match get_shared_ref.mutability {
+                PointerReferenceMutability::Immutable => InstructionCode::GET_REMOTE_SHARED_REF,
+                PointerReferenceMutability::Mutable => InstructionCode::GET_REMOTE_SHARED_REF_MUT,
+            });
             buffer.extend_from_slice(id);
         }
     }
+}
+
+pub fn append_get_internal_ref(buffer: &mut Vec<u8>, id: &[u8; 3]) {
+    append_instruction_code(buffer, InstructionCode::GET_INTERNAL_SHARED_REF);
+    buffer.extend_from_slice(id);
 }
 
 pub fn append_key_value_pair(

@@ -48,6 +48,8 @@ use options::PrecompilerOptions;
 use precompiled_ast::{AstMetadata, RichAst, VariableShape};
 use scope::NewScopeType;
 use scope_stack::PrecompilerScopeStack;
+use crate::ast::expressions::GetSharedRef;
+use crate::shared_values::pointer::PointerReferenceMutability;
 
 pub struct Precompiler<'a> {
     ast_metadata: Rc<RefCell<AstMetadata>>,
@@ -590,7 +592,10 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
                     .with_span(span.clone())
                 }
                 ResolvedVariable::PointerAddress(pointer_address) => {
-                    DatexExpressionData::GetReference(pointer_address)
+                    DatexExpressionData::GetSharedRef(GetSharedRef {
+                        address: pointer_address,
+                        mutability: PointerReferenceMutability::Immutable,
+                    })
                         .with_span(span.clone())
                 }
             }));
@@ -619,6 +624,7 @@ mod tests {
         },
     };
     use core::assert_matches;
+    use crate::ast::expressions::GetSharedRef;
 
     fn precompile(
         ast: DatexExpression,
@@ -781,20 +787,20 @@ mod tests {
             result,
             Ok(
                 RichAst {
-                    ast: DatexExpression { data: DatexExpressionData::GetReference(pointer_id), ..},
+                    ast: DatexExpression { data: DatexExpressionData::GetSharedRef(GetSharedRef{address, mutability}), ..},
                     ..
                 }
-            ) if pointer_id == CoreLibPointerId::Boolean.into()
+            ) if address == CoreLibPointerId::Boolean.into() && mutability == PointerReferenceMutability::Immutable
         );
         let result = parse_and_precompile("integer");
         assert_matches!(
             result,
             Ok(
                 RichAst {
-                    ast: DatexExpression { data: DatexExpressionData::GetReference(pointer_id), ..},
+                    ast: DatexExpression { data: DatexExpressionData::GetSharedRef(GetSharedRef{address, mutability}), ..},
                     ..
                 }
-            ) if pointer_id == CoreLibPointerId::Integer(None).into()
+            ) if address == CoreLibPointerId::Integer(None).into()  && mutability == PointerReferenceMutability::Immutable
         );
 
         let result = parse_and_precompile("integer/u8");

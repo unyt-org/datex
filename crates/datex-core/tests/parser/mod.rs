@@ -54,6 +54,8 @@ use datex_core::{
     },
     values::core_values::error::NumberParseError,
 };
+use datex_core::ast::expressions::GetSharedRef;
+use datex_core::shared_values::pointer::PointerReferenceMutability;
 
 /// Parse the given source code into a DatexExpression AST.
 fn parse_unwrap(src: &str) -> DatexExpression {
@@ -3424,35 +3426,40 @@ fn addressed_slot() {
 #[test]
 fn pointer_address() {
     // 3 bytes (internal)
-    let src = "$123456";
+    let src = "'$123456";
     let expr = parse_unwrap_data(src);
     assert_eq!(
         expr,
-        DatexExpressionData::PointerAddress(PointerAddress::internal([
-            0x12, 0x34, 0x56
-        ]))
+        DatexExpressionData::GetSharedRef(GetSharedRef {
+            address: PointerAddress::internal([0x12, 0x34, 0x56]),
+            mutability: PointerReferenceMutability::Immutable,
+        })
     );
 
     // 5 bytes (local)
-    let src = "$123456789A";
+    let src = "'$123456789A";
     let expr = parse_unwrap_data(src);
     assert_eq!(
         expr,
-        DatexExpressionData::PointerAddress(PointerAddress::owned([
-            0x12, 0x34, 0x56, 0x78, 0x9A
-        ]))
+        DatexExpressionData::GetSharedRef(GetSharedRef {
+            address: PointerAddress::owned([0x12, 0x34, 0x56, 0x78, 0x9A]),
+            mutability: PointerReferenceMutability::Immutable,
+        })
     );
 
     // 26 bytes (remote)
-    let src = "$1234567890ABCDEF123456789000000000000000000000000042";
+    let src = "'$1234567890ABCDEF123456789000000000000000000000000042";
     let expr = parse_unwrap_data(src);
     assert_eq!(
         expr,
-        DatexExpressionData::PointerAddress(PointerAddress::remote([
-            0x12, 0x34, 0x56, 0x78, 0x90, 0xAB, 0xCD, 0xEF, 0x12, 0x34, 0x56,
-            0x78, 0x90, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x42
-        ]))
+        DatexExpressionData::GetSharedRef(GetSharedRef {
+            address: PointerAddress::remote([
+                0x12, 0x34, 0x56, 0x78, 0x90, 0xAB, 0xCD, 0xEF, 0x12, 0x34, 0x56,
+                0x78, 0x90, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                0x00, 0x00, 0x00, 0x42
+            ]),
+            mutability: PointerReferenceMutability::Immutable,
+        })
     );
 
     // other lengths are invalid
