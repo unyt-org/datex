@@ -50,8 +50,7 @@ use crate::{
         },
     },
     shared_values::{
-        pointer_address::PointerAddress,
-        shared_container::SharedContainer,
+        pointer_address::PointerAddress, shared_container::SharedContainer,
     },
     types::{
         definition::TypeDefinition,

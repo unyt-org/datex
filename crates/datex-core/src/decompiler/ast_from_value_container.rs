@@ -1,8 +1,6 @@
 use crate::{
     ast::{
-        expressions::{
-            DatexExpressionData, List, Map, RangeDeclaration,
-        },
+        expressions::{DatexExpressionData, List, Map, RangeDeclaration},
         spanned::Spanned,
         type_expressions::{
             Intersection, RangeTypeExpr, TypeExpression, TypeExpressionData,
