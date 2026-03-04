@@ -6,12 +6,15 @@ use datex_core::{
     },
     core_compiler::value_compiler::compile_value_container,
     decompiler::{DecompileOptions, decompile_body},
-    runtime::execution::{ExecutionInput, ExecutionOptions, execute_dxb_sync},
+    runtime::{
+        RuntimeInternal,
+        execution::{ExecutionInput, ExecutionOptions, execute_dxb_sync},
+    },
     values::value_container::ValueContainer,
 };
 use json_syntax::Parse;
 use serde_json::Value;
-use std::io::Read;
+use std::{io::Read, rc::Rc};
 
 pub fn get_json_test_string(file_path: &str) -> String {
     // read json from test file
@@ -40,8 +43,11 @@ pub fn json_to_json_syntax_value(json: &str) -> json_syntax::Value {
 pub fn json_to_datex_value(json: &str) -> ValueContainer {
     let (dxb, _) = compile_script(json, CompileOptions::default())
         .expect("Failed to parse JSON string");
-    let exec_input =
-        ExecutionInput::new(&dxb, ExecutionOptions::default(), None);
+    let exec_input = ExecutionInput::new(
+        &dxb,
+        ExecutionOptions::default(),
+        Rc::new(RuntimeInternal::stub()),
+    );
     execute_dxb_sync(exec_input).unwrap().unwrap()
 }
 
@@ -66,8 +72,11 @@ pub fn json_to_runtime_value_datex<'a>(json: &'a str) {
         },
     )
     .expect("Failed to parse JSON string");
-    let exec_input =
-        ExecutionInput::new(&dxb, ExecutionOptions::default(), None);
+    let exec_input = ExecutionInput::new(
+        &dxb,
+        ExecutionOptions::default(),
+        Rc::new(RuntimeInternal::stub()),
+    );
     let val = execute_dxb_sync(exec_input).unwrap().unwrap();
     assert!(val.to_value().borrow().is_map());
 }
@@ -109,8 +118,11 @@ pub fn json_to_dxb<'a>(json: &'a str) {
 
 // DXB -> value
 pub fn dxb_to_runtime_value(dxb: &[u8]) {
-    let exec_input =
-        ExecutionInput::new(dxb, ExecutionOptions::default(), None);
+    let exec_input = ExecutionInput::new(
+        dxb,
+        ExecutionOptions::default(),
+        Rc::new(RuntimeInternal::stub()),
+    );
     let json_value = execute_dxb_sync(exec_input).unwrap().unwrap();
     assert!(json_value.to_value().borrow().is_map());
 }
