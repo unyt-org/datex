@@ -211,7 +211,7 @@ impl DIFValue {
             }
             CoreValue::List(list) => DIFValueRepresentation::Array(
                 list.iter()
-                    .map(|v| DIFValueContainer::from_value_container(v))
+                    .map(DIFValueContainer::from_value_container)
                     .collect(),
             ),
             CoreValue::Map(map) => match map {

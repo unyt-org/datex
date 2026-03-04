@@ -23,7 +23,7 @@ use serde::{
 
 use crate::{
     prelude::*,
-    runtime::{Runtime, RuntimeInternal},
+    runtime::RuntimeInternal,
 };
 
 /// Deserialize a value of type T from a byte slice containing DXB data

@@ -2,10 +2,7 @@ use crate::{
     libs::core::CoreLibPointerId,
     prelude::*,
     runtime::execution::ExecutionError,
-    shared_values::{
-        shared_container::AccessError,
-        shared_type_container::SharedTypeContainer,
-    },
+    shared_values::shared_container::AccessError,
     traits::{apply::Apply, structural_eq::StructuralEq, value_eq::ValueEq},
     types::definition::TypeDefinition,
     values::{

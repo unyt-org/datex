@@ -1,8 +1,5 @@
 use crate::{
-    shared_values::{
-        shared_container::SharedContainerMutability,
-        shared_type_container::SharedTypeContainer,
-    },
+    shared_values::shared_type_container::SharedTypeContainer,
     traits::structural_eq::StructuralEq,
     types::{
         collection_type_definition::CollectionTypeDefinition,
@@ -14,9 +11,7 @@ use core::{cell::RefCell, fmt::Display, hash::Hash, prelude::rust_2024::*};
 
 use crate::{
     prelude::*,
-    shared_values::{
-        pointer::PointerReferenceMutability, pointer_address::PointerAddress,
-    },
+    shared_values::pointer_address::PointerAddress,
     values::core_values::r#type::TypeMetadata,
 };
 

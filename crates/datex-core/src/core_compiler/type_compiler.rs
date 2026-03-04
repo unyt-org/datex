@@ -2,9 +2,7 @@ use crate::{
     core_compiler::value_compiler::append_get_ref,
     global::{
         protocol_structures::instructions::TypeMetadataBin,
-        type_instruction_codes::{
-            TypeInstructionCode, TypeReferenceMutabilityCode,
-        },
+        type_instruction_codes::TypeInstructionCode,
     },
     prelude::*,
     types::definition::TypeDefinition,

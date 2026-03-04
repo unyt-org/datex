@@ -395,11 +395,11 @@ impl DIFTypeDefinition {
             ),
             TypeDefinition::Intersection(types) => {
                 DIFTypeDefinition::Intersection(
-                    types.iter().map(|t| DIFType::from_type(t)).collect(),
+                    types.iter().map(DIFType::from_type).collect(),
                 )
             }
             TypeDefinition::Union(types) => DIFTypeDefinition::Union(
-                types.iter().map(|t| DIFType::from_type(t)).collect(),
+                types.iter().map(DIFType::from_type).collect(),
             ),
             TypeDefinition::ImplType(ty, impls) => DIFTypeDefinition::ImplType(
                 Box::new(DIFType::from_type(ty)),

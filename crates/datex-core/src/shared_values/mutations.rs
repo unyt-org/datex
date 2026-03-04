@@ -242,7 +242,7 @@ impl SharedContainer {
                 range.clone(),
                 items
                     .iter()
-                    .map(|item| DIFValueContainer::from_value_container(item))
+                    .map(DIFValueContainer::from_value_container)
                     .collect(),
             ),
         };

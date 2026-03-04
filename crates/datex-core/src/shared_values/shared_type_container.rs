@@ -11,7 +11,6 @@ use crate::{
     runtime::execution::ExecutionError,
     shared_values::{
         pointer::Pointer, pointer_address::PointerAddress,
-        shared_container::SharedContainerMutability,
     },
     traits::apply::Apply,
     types::{
