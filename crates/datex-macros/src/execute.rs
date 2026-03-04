@@ -116,17 +116,19 @@ fn prepare_setup(input: ExecuteMacroInput) -> TokenStream {
         use datex_core::values::value_container::ValueContainer;
         use datex_core::collections::HashMap;
         use datex_core::runtime::execution::{ExecutionInput, ExecutionOptions};
+        use datex_core::runtime::RuntimeInternal;
+        use datex_core::prelude::*;
 
         let mut slots: HashMap<u32, Option<ValueContainer>> = HashMap::new();
         #(#slot_inserts)*
 
         let runtime_execution_slots = RuntimeExecutionSlots { slots };
         let dxb_body: &'static [u8] = &[#(#dxb),*];
-
+        let runtime = Rc::new(RuntimeInternal::stub());
         ExecutionInput::new_with_slots(
             &dxb_body,
             ExecutionOptions::default(),
-            None,
+            runtime,
             runtime_execution_slots
         )
     }}
