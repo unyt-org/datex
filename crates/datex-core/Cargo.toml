@@ -189,7 +189,7 @@ default = ["no_std", "dep:async-timer"]
 no_std = ["dep:hashbrown", "dep:async-unsync", "dep:spin"]
 
 # Full feature, includes all optional features except those for specific targets (native, wasm)
-full = ["syntax_highlighting_legacy", "compiler", "decompiler", "webrtc", "lsp"]
+full = ["syntax_highlighting_legacy", "compiler", "decompiler", "lsp"]
 
 ### features for specific targets #############################################
 
