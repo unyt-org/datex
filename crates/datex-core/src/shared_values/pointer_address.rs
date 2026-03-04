@@ -6,7 +6,7 @@ use crate::{
 };
 
 use crate::global::protocol_structures::instructions::{
-    RawFullPointerAddress, RawLocalPointerAddress,
+    RawRemotePointerAddress, RawLocalPointerAddress,
 };
 use core::{fmt::Display, result::Result};
 use serde::{Deserialize, Serialize};
@@ -117,8 +117,8 @@ impl From<&RawInternalPointerAddress> for PointerAddress {
     }
 }
 
-impl From<&RawFullPointerAddress> for PointerAddress {
-    fn from(raw: &RawFullPointerAddress) -> Self {
+impl From<&RawRemotePointerAddress> for PointerAddress {
+    fn from(raw: &RawRemotePointerAddress) -> Self {
         PointerAddress::Referenced(ReferencedPointerAddress::Remote(raw.id))
     }
 }
@@ -132,7 +132,7 @@ impl From<&RawPointerAddress> for PointerAddress {
             RawPointerAddress::Internal(bytes) => PointerAddress::Referenced(
                 ReferencedPointerAddress::Internal(bytes.id),
             ),
-            RawPointerAddress::Full(bytes) => PointerAddress::Referenced(
+            RawPointerAddress::Remote(bytes) => PointerAddress::Referenced(
                 ReferencedPointerAddress::Remote(bytes.id),
             ),
         }
@@ -195,6 +195,14 @@ impl PointerAddress {
             PointerAddress::Referenced(ReferencedPointerAddress::Internal(
                 bytes,
             )) => bytes,
+        }
+    }
+    
+    pub fn internal_bytes(&self) -> Option<&[u8; 3]> {
+        if let PointerAddress::Referenced(ReferencedPointerAddress::Internal(bytes)) = self {
+            Some(bytes)
+        } else {
+            None
         }
     }
 }

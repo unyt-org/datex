@@ -9,7 +9,7 @@ use datex_core::{
         protocol_structures::{
             block_header::{BlockHeader, BlockType},
             encrypted_header::{self, EncryptedHeader},
-            instructions::RawFullPointerAddress,
+            instructions::RawRemotePointerAddress,
             routing_header::{EncryptionType, RoutingHeader},
             serializable::Serializable,
         },
@@ -240,7 +240,7 @@ pub fn dxb_blocks() {
         let endpoint =
             hex::encode(Endpoint::from_str("@jonas").unwrap().to_slice());
         block.set_receivers(
-            RawFullPointerAddress::try_from(
+            RawRemotePointerAddress::try_from(
                 PointerAddress::try_from(format!("${}FFFFFFFFFF", endpoint))
                     .unwrap(),
             )

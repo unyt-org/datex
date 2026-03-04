@@ -72,6 +72,8 @@ use crate::{
 };
 use alloc::rc::Rc;
 use core::cell::RefCell;
+use crate::global::operators::SharedValueUnaryOperator;
+use crate::shared_values::pointer::PointerReferenceMutability;
 
 #[derive(Debug)]
 enum CollectedExecutionResult {
@@ -362,27 +364,38 @@ pub fn inner_execution_loop(
                             }
                             RegularInstruction::Text(TextData(text)) => Some(ValueContainer::from(text).into()),
 
-                            RegularInstruction::GetRef(address) => Some(interrupt_with_value!(
+                            RegularInstruction::GetSharedRef(address) => Some(interrupt_with_value!(
                                     interrupt_provider,
                                     ExecutionInterrupt::External(
-                                        ExternalExecutionInterrupt::ResolvePointer(address)
+                                        ExternalExecutionInterrupt::GetReferenceToRemotePointer(address, PointerReferenceMutability::Immutable)
                                     )
                                 ).into()),
+
+
+                            RegularInstruction::GetSharedRefMut(address) => Some(interrupt_with_value!(
+                                    interrupt_provider,
+                                    ExecutionInterrupt::External(
+                                        ExternalExecutionInterrupt::GetReferenceToRemotePointer(address, PointerReferenceMutability::Mutable)
+                                    )
+                                ).into()),
+
                             RegularInstruction::GetLocalRef(address) => {
                                 Some(interrupt_with_value!(
                                     interrupt_provider,
                                     ExecutionInterrupt::External(
-                                        ExternalExecutionInterrupt::ResolveLocalPointer(
+                                        ExternalExecutionInterrupt::GetReferenceToLocalPointer(
                                             address
                                         )
                                     )
                                 ).into())
                             }
+
+
                             RegularInstruction::GetInternalRef(address) => {
                                 Some(interrupt_with_value!(
                                     interrupt_provider,
                                     ExecutionInterrupt::External(
-                                        ExternalExecutionInterrupt::ResolveInternalPointer(
+                                        ExternalExecutionInterrupt::GetReferenceInternalPointer(
                                             address
                                         )
                                     )
@@ -494,7 +507,7 @@ pub fn inner_execution_loop(
                                     match type_ref.address {
                                         RawPointerAddress::Local(address) => {
                                             ExecutionInterrupt::External(
-                                                ExternalExecutionInterrupt::ResolveLocalPointer(
+                                                ExternalExecutionInterrupt::GetReferenceToLocalPointer(
                                                     address,
                                                 ),
                                             )
@@ -502,12 +515,13 @@ pub fn inner_execution_loop(
                                         RawPointerAddress::Internal(
                                             address,
                                         ) => {
-                                            ExecutionInterrupt::External(ExternalExecutionInterrupt::ResolveInternalPointer(address))
+                                            ExecutionInterrupt::External(ExternalExecutionInterrupt::GetReferenceInternalPointer(address))
                                         }
-                                        RawPointerAddress::Full(address) => {
+                                        RawPointerAddress::Remote(address) => {
                                             ExecutionInterrupt::External(
-                                                ExternalExecutionInterrupt::ResolvePointer(
+                                                ExternalExecutionInterrupt::GetReferenceToRemotePointer(
                                                     address,
+                                                    PointerReferenceMutability::Immutable,
                                                 ),
                                             )
                                         }
@@ -678,12 +692,52 @@ pub fn inner_execution_loop(
                                     todo!("#645 Undescribed by author.")
                                 }
 
+                                instruction @ (
+                                    RegularInstruction::CreateShared |
+                                    RegularInstruction::CreateSharedMut
+                                ) => {
+                                    let target = yield_unwrap!(
+                                        collected_results
+                                            .pop_cloned_value_container_result_assert_existing(&state)
+                                    );
+                                    let pointer = state.runtime_internal.memory.borrow_mut().get_new_owned_local_pointer();
+
+                                    let shared_container = match instruction {
+                                        RegularInstruction::CreateShared => SharedContainer::boxed(
+                                            target,
+                                            pointer,
+                                        ),
+                                        RegularInstruction::CreateSharedMut => {
+                                            yield_unwrap!(SharedContainer::boxed_mut(
+                                                target,
+                                                pointer,
+                                            ))
+                                        },
+                                        _ => unreachable!(),
+                                    };
+
+                                    RuntimeValue::ValueContainer(ValueContainer::Shared(shared_container))
+                                        .into()
+                                }
+
+                                RegularInstruction::CreateSharedReference => {
+                                    let target = yield_unwrap!(
+                                        collected_results
+                                            .pop_cloned_value_container_result_assert_existing(&state)
+                                    );
+
+                                    // value_container must be a shared value, otherwise we cannot create a reference to it
+                                    if let ValueContainer::Shared(_) = target {
+                                        RuntimeValue::ValueContainer(target)
+                                            .into()
+                                    } else {
+                                        return yield Err(ExecutionError::ReferenceToNonSharedValue);
+                                    }
+                                }
+
                                 RegularInstruction::UnaryMinus
                                 | RegularInstruction::UnaryPlus
                                 | RegularInstruction::BitwiseNot
-                                | RegularInstruction::CreateSharedReference
-                                | RegularInstruction::CreateShared
-                                | RegularInstruction::CreateSharedMut
                                 | RegularInstruction::Unbox => {
                                     let mut target = yield_unwrap!(
                                         collected_results

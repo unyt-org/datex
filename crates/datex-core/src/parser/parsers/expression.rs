@@ -29,6 +29,8 @@ use crate::{
         error::NumberParseError, r#type::LocalReferenceMutability,
     },
 };
+use crate::ast::expressions::GetSharedRef;
+use crate::shared_values::pointer_address::PointerAddress;
 
 static UNARY_BP: u8 = 29; // weaker than property access / apply, stronger than all other binary operators
 
@@ -495,24 +497,65 @@ impl Parser {
             // shared ref (')
             Token::SharedRef => {
                 let op = self.advance()?;
-                let rhs = self.parse_expression(UNARY_BP)?;
-                let span = op.span.start..rhs.span.end;
-                Ok(DatexExpressionData::CreateSharedRef(CreateSharedRef {
-                    mutability: PointerReferenceMutability::Immutable,
-                    expression: Box::new(rhs),
-                })
-                .with_span(span))
+
+                // check if followed by pointer address literal
+                if let Ok(next) = self.peek()
+                    && let Token::PointerAddress(address) = &next.token {
+                    let address = PointerAddress::try_from(&address[1..]).unwrap();
+                    drop(next);
+                    
+                    let end_token = self.advance()?.span; // consume pointer address
+                    let span = op.span.start..end_token.end;
+
+                    Ok(DatexExpressionData::GetSharedRef(GetSharedRef {
+                        mutability: PointerReferenceMutability::Immutable,
+                        address,
+                    })
+                        .with_span(span))
+                }
+                // normal shared ref to dynamic expression
+                else {
+                    let rhs = self.parse_expression(UNARY_BP)?;
+                    let span = op.span.start..rhs.span.end;
+
+                    Ok(DatexExpressionData::CreateSharedRef(CreateSharedRef {
+                        mutability: PointerReferenceMutability::Immutable,
+                        expression: Box::new(rhs),
+                    })
+                        .with_span(span))
+                }
+
             }
             // shared mutable ref ('mut)
             Token::SharedRefMut => {
                 let op = self.advance()?;
-                let rhs = self.parse_expression(UNARY_BP)?;
-                let span = op.span.start..rhs.span.end;
-                Ok(DatexExpressionData::CreateSharedRef(CreateSharedRef {
-                    mutability: PointerReferenceMutability::Mutable,
-                    expression: Box::new(rhs),
-                })
-                .with_span(span))
+
+                // check if followed by pointer address literal
+                if let Ok(next) = self.peek()
+                    && let Token::PointerAddress(address) = &next.token {
+                    let address = PointerAddress::try_from(&address[1..]).unwrap();
+                    drop(next);
+                    
+                    let end_token = self.advance()?.span; // consume pointer address
+                    let span = op.span.start..end_token.end;
+
+                    Ok(DatexExpressionData::GetSharedRef(GetSharedRef {
+                        mutability: PointerReferenceMutability::Mutable,
+                        address,
+                    })
+                        .with_span(span))
+                }
+                // normal shared ref to dynamic expression
+                else {
+                    let rhs = self.parse_expression(UNARY_BP)?;
+                    let span = op.span.start..rhs.span.end;
+
+                    Ok(DatexExpressionData::CreateSharedRef(CreateSharedRef {
+                        mutability: PointerReferenceMutability::Mutable,
+                        expression: Box::new(rhs),
+                    })
+                        .with_span(span))
+                }
             }
             // unbox (*)
             Token::Star => {
@@ -624,6 +667,8 @@ mod tests {
         },
         values::core_values::r#type::LocalReferenceMutability,
     };
+    use crate::ast::expressions::GetSharedRef;
+    use crate::shared_values::pointer_address::PointerAddress;
 
     #[test]
     fn parse_simple_binary_expression() {
@@ -1979,6 +2024,30 @@ mod tests {
                     DatexExpressionData::Integer(4.into()).with_default_span()
                 ),
                 ty: None,
+            })
+        );
+    }
+
+    #[test]
+    fn parse_pointer_address_ref() {
+        let expr = parse("'$ABCDEF");
+        assert_eq!(
+            expr.data,
+            DatexExpressionData::GetSharedRef(GetSharedRef {
+                address: PointerAddress::try_from("ABCDEF").unwrap(),
+                mutability: PointerReferenceMutability::Immutable,
+            })
+        );
+    }
+
+    #[test]
+    fn parse_mutable_pointer_address_ref() {
+        let expr = parse("'mut $ABCDEF");
+        assert_eq!(
+            expr.data,
+            DatexExpressionData::GetSharedRef(GetSharedRef {
+                address: PointerAddress::try_from("ABCDEF").unwrap(),
+                mutability: PointerReferenceMutability::Mutable,
             })
         );
     }

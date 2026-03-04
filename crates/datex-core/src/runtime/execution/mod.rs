@@ -24,6 +24,7 @@ use core::{result::Result, unreachable};
 pub use errors::*;
 pub use execution_input::{ExecutionInput, ExecutionOptions};
 pub use memory_dump::*;
+use crate::shared_values::pointer::PointerReferenceMutability;
 
 pub mod context;
 mod errors;
@@ -44,15 +45,16 @@ pub fn execute_dxb_sync(
     for output in execution_loop {
         match output? {
             ExternalExecutionInterrupt::Result(result) => return Ok(result),
-            ExternalExecutionInterrupt::ResolvePointer(address) => {
+            ExternalExecutionInterrupt::GetReferenceToRemotePointer(address, mutability) => {
                 interrupt_provider.provide_result(
-                    InterruptResult::ResolvedValue(get_pointer_value(
+                    InterruptResult::ResolvedValue(get_remote_pointer_value(
                         &runtime_internal,
                         address,
+                        mutability
                     )?),
                 )
             }
-            ExternalExecutionInterrupt::ResolveLocalPointer(address) => {
+            ExternalExecutionInterrupt::GetReferenceToLocalPointer(address) => {
                 // TODO #401: in the future, local pointer addresses should be relative to the block sender, not the local runtime
                 interrupt_provider.provide_result(
                     InterruptResult::ResolvedValue(get_local_pointer_value(
@@ -61,7 +63,7 @@ pub fn execute_dxb_sync(
                     )?),
                 );
             }
-            ExternalExecutionInterrupt::ResolveInternalPointer(address) => {
+            ExternalExecutionInterrupt::GetReferenceInternalPointer(address) => {
                 interrupt_provider.provide_result(
                     InterruptResult::ResolvedValue(Some(
                         get_internal_pointer_value(&runtime_internal, address)?,
@@ -89,15 +91,16 @@ pub async fn execute_dxb(
     for output in execution_loop {
         match output? {
             ExternalExecutionInterrupt::Result(result) => return Ok(result),
-            ExternalExecutionInterrupt::ResolvePointer(address) => {
+            ExternalExecutionInterrupt::GetReferenceToRemotePointer(address, mutability) => {
                 interrupt_provider.provide_result(
-                    InterruptResult::ResolvedValue(get_pointer_value(
+                    InterruptResult::ResolvedValue(get_remote_pointer_value(
                         &runtime_internal,
                         address,
+                        mutability,
                     )?),
                 );
             }
-            ExternalExecutionInterrupt::ResolveLocalPointer(address) => {
+            ExternalExecutionInterrupt::GetReferenceToLocalPointer(address) => {
                 // TODO #402: in the future, local pointer addresses should be relative to the block sender, not the local runtime
                 interrupt_provider.provide_result(
                     InterruptResult::ResolvedValue(get_local_pointer_value(
@@ -106,7 +109,7 @@ pub async fn execute_dxb(
                     )?),
                 );
             }
-            ExternalExecutionInterrupt::ResolveInternalPointer(address) => {
+            ExternalExecutionInterrupt::GetReferenceInternalPointer(address) => {
                 interrupt_provider.provide_result(
                     InterruptResult::ResolvedValue(Some(
                         get_internal_pointer_value(&runtime_internal, address)?,
@@ -155,14 +158,16 @@ fn handle_apply(
     })
 }
 
-fn get_pointer_value(
+fn get_remote_pointer_value(
     runtime_internal: &Rc<RuntimeInternal>,
-    address: RawFullPointerAddress,
+    address: RawRemotePointerAddress,
+    mutability: PointerReferenceMutability,
 ) -> Result<Option<ValueContainer>, ExecutionError> {
     let memory = runtime_internal.memory.borrow();
     let resolved_address =
         memory.get_pointer_address_from_raw_full_address(address);
     // convert slot to InternalSlot enum
+    // TODO: resolve from remote, handle mutability
     Ok(memory
         .get_reference(&resolved_address)
         .map(|r| ValueContainer::Shared(r.clone())))
@@ -679,12 +684,12 @@ mod tests {
     #[test]
     fn shared_value_sub_assignment() {
         let result = execute_datex_script_debug_with_result(
-            "const x = 'mut 42; *x -= 1",
+            "const x = 'mut shared mut 42; *x -= 1",
         );
         assert_value_eq!(result, ValueContainer::from(Integer::from(41)));
 
         let result = execute_datex_script_debug_with_result(
-            "const x = 'mut 42; *x -= 1; x",
+            "const x = 'mut shared mut 42; *x -= 1; x",
         );
 
         // FIXME #414 due to addition the resulting value container of the slot

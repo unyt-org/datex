@@ -58,6 +58,7 @@ use crate::{
     },
 };
 use core::{cell::RefCell, ops::Range, panic, str::FromStr};
+use crate::ast::expressions::GetSharedRef;
 
 pub mod error;
 pub mod options;
@@ -1102,7 +1103,10 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
             span: Some(span.clone()),
         })?;
         Ok(VisitAction::ReplaceRecurse(DatexExpression::new(
-            DatexExpressionData::GetReference(variant_type),
+            DatexExpressionData::GetSharedRef(GetSharedRef {
+                address: variant_type,
+                mutability: PointerReferenceMutability::Immutable,
+            }),
             span.clone(),
         )))
     }
@@ -1173,16 +1177,16 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
         }
         mark_type(assigned_type)
     }
-    fn visit_get_reference(
+    fn visit_get_shared_reference(
         &mut self,
-        pointer_address: &mut PointerAddress,
+        shared_ref: &mut GetSharedRef,
         span: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
-        match pointer_address {
+        match &shared_ref.address {
             PointerAddress::Referenced(ReferencedPointerAddress::Internal(
                 _,
             )) => mark_type(get_core_lib_type(
-                CoreLibPointerId::try_from(&pointer_address.to_owned())
+                CoreLibPointerId::try_from(&shared_ref.address.to_owned())
                     .unwrap(),
             )),
             _ => Err(SpannedTypeError {
@@ -1201,18 +1205,6 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
         Err(SpannedTypeError {
             error: TypeError::Unimplemented(
                 "SlotAssignment type inference not implemented".into(),
-            ),
-            span: Some(span.clone()),
-        })
-    }
-    fn visit_pointer_address(
-        &mut self,
-        _pointer_address: &PointerAddress,
-        span: &Range<usize>,
-    ) -> ExpressionVisitResult<SpannedTypeError> {
-        Err(SpannedTypeError {
-            error: TypeError::Unimplemented(
-                "PointerAddress type inference not implemented".into(),
             ),
             span: Some(span.clone()),
         })

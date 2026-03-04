@@ -23,6 +23,7 @@ use crate::{
     },
 };
 use core::ops::Range;
+use crate::ast::expressions::GetSharedRef;
 
 pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
     /// Handle expression error
@@ -105,8 +106,8 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
                 self.visit_list(list, &expr.span)
             }
             DatexExpressionData::Map(map) => self.visit_map(map, &expr.span),
-            DatexExpressionData::GetReference(pointer_address) => {
-                self.visit_get_reference(pointer_address, &expr.span)
+            DatexExpressionData::GetSharedRef(get_shared_ref) => {
+                self.visit_get_shared_reference(get_shared_ref, &expr.span)
             }
             DatexExpressionData::Conditional(conditional) => {
                 self.visit_conditional(conditional, &expr.span)
@@ -143,9 +144,6 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
             }
             DatexExpressionData::SlotAssignment(slot_assignment) => {
                 self.visit_slot_assignment(slot_assignment, &expr.span)
-            }
-            DatexExpressionData::PointerAddress(pointer_address) => {
-                self.visit_pointer_address(pointer_address, &expr.span)
             }
             DatexExpressionData::BinaryOperation(binary_operation) => {
                 self.visit_binary_operation(binary_operation, &expr.span)
@@ -594,13 +592,13 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
     }
 
     /// Visit get reference expression
-    fn visit_get_reference(
+    fn visit_get_shared_reference(
         &mut self,
-        pointer_address: &mut PointerAddress,
+        get_shared_ref: &mut GetSharedRef,
         span: &Range<usize>,
     ) -> ExpressionVisitResult<E> {
         let _ = span;
-        let _ = pointer_address;
+        let _ = get_shared_ref;
         Ok(VisitAction::SkipChildren)
     }
 
@@ -629,17 +627,6 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
     /// Visit null literal
     fn visit_null(&mut self, span: &Range<usize>) -> ExpressionVisitResult<E> {
         let _ = span;
-        Ok(VisitAction::SkipChildren)
-    }
-
-    /// Visit pointer address expression
-    fn visit_pointer_address(
-        &mut self,
-        pointer_address: &PointerAddress,
-        span: &Range<usize>,
-    ) -> ExpressionVisitResult<E> {
-        let _ = span;
-        let _ = pointer_address;
         Ok(VisitAction::SkipChildren)
     }
 
