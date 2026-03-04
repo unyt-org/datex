@@ -161,7 +161,7 @@ fn handle_apply(
 fn get_remote_pointer_value(
     runtime_internal: &Rc<RuntimeInternal>,
     address: RawRemotePointerAddress,
-    mutability: PointerReferenceMutability,
+    _mutability: PointerReferenceMutability,
 ) -> Result<Option<ValueContainer>, ExecutionError> {
     let memory = runtime_internal.memory.borrow();
     let resolved_address =
