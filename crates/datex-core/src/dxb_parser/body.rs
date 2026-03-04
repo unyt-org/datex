@@ -10,7 +10,7 @@ use crate::{
             ApplyData, DecimalData, Float32Data, Float64Data, FloatAsInt16Data,
             FloatAsInt32Data, ImplTypeData, Instruction, InstructionBlockData,
             Int8Data, Int16Data, Int32Data, Int64Data, Int128Data, IntegerData,
-            ListData, MapData, RawFullPointerAddress,
+            ListData, MapData, RawRemotePointerAddress,
             RawInternalPointerAddress, RawLocalPointerAddress,
             RegularInstruction, ShortListData, ShortMapData,
             ShortStatementsData, ShortTextData, ShortTextDataRaw, SlotAddress,
@@ -552,13 +552,13 @@ pub fn iterate_instructions(
                             RegularInstruction::SetSlot(yield_unwrap!(address))
                         }
 
-                        InstructionCode::GET_REF => {
+                        InstructionCode::GET_REMOTE_SHARED_REF => {
                             let address =
-                                RawFullPointerAddress::read(&mut reader);
-                            RegularInstruction::GetRef(yield_unwrap!(address))
+                                RawRemotePointerAddress::read(&mut reader);
+                            RegularInstruction::GetSharedRef(yield_unwrap!(address))
                         }
 
-                        InstructionCode::GET_LOCAL_REF => {
+                        InstructionCode::GET_LOCAL_SHARED_REF => {
                             let address =
                                 RawLocalPointerAddress::read(&mut reader);
                             RegularInstruction::GetLocalRef(yield_unwrap!(
@@ -566,7 +566,7 @@ pub fn iterate_instructions(
                             ))
                         }
 
-                        InstructionCode::GET_INTERNAL_REF => {
+                        InstructionCode::GET_INTERNAL_SHARED_REF => {
                             let address =
                                 RawInternalPointerAddress::read(&mut reader);
                             RegularInstruction::GetInternalRef(yield_unwrap!(

@@ -48,9 +48,6 @@ impl Parser {
             Token::Slot(slot_address) => {
                 self.parse_addressed_slot(slot_address)?
             }
-            Token::PointerAddress(address) => {
-                self.parse_pointer_address(address)?
-            }
             Token::StringLiteral(value) => self.parse_string_literal(value)?,
             Token::Infinity => self.parse_infinity()?,
             Token::Nan => self.parse_nan()?,
@@ -113,16 +110,6 @@ impl Parser {
             }
             Err(e) => self.collect_error_and_continue(e),
         }
-    }
-
-    pub(crate) fn parse_pointer_address(
-        &mut self,
-        address: String,
-    ) -> Result<DatexExpression, SpannedParserError> {
-        Ok(DatexExpressionData::PointerAddress(
-            PointerAddress::try_from(&address[1..]).unwrap(),
-        )
-        .with_span(self.advance()?.span))
     }
 
     pub(crate) fn parse_integer_literal(
@@ -462,18 +449,7 @@ mod tests {
         let expr = parse("#42");
         assert_eq!(expr.data, DatexExpressionData::Slot(Slot::Addressed(42)));
     }
-
-    #[test]
-    fn parse_pointer_address() {
-        let expr = parse("$ABCDEF");
-        assert_eq!(
-            expr.data,
-            DatexExpressionData::PointerAddress(
-                PointerAddress::try_from("ABCDEF").unwrap()
-            )
-        );
-    }
-
+    
     #[test]
     fn parse_placeholder() {
         let expr = parse("?");

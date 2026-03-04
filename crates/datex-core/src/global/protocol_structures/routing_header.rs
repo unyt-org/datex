@@ -1,6 +1,6 @@
 use super::serializable::Serializable;
 use crate::{
-    global::protocol_structures::instructions::RawFullPointerAddress,
+    global::protocol_structures::instructions::RawRemotePointerAddress,
     values::core_values::endpoint::Endpoint,
 };
 
@@ -254,7 +254,7 @@ pub struct RoutingHeader {
 
     // TODO #115: add custom match receiver queries
     #[brw(if(flags.receiver_type() == ReceiverType::Pointer))]
-    receivers_pointer_id: Option<RawFullPointerAddress>,
+    receivers_pointer_id: Option<RawRemotePointerAddress>,
     #[brw(if(flags.receiver_type() == ReceiverType::Receivers))]
     #[serde(flatten)]
     receivers_endpoints: Option<ReceiverEndpoints>,
@@ -295,7 +295,7 @@ impl Default for RoutingHeader {
 pub enum Receivers {
     None,
     // TODO #431 rename to PointerAddress
-    PointerId(RawFullPointerAddress),
+    PointerId(RawRemotePointerAddress),
     Endpoints(Vec<Endpoint>),
     EndpointsWithKeys(Vec<(Endpoint, Key512)>),
 }
@@ -322,7 +322,7 @@ impl Display for Receivers {
 
 impl<T> From<T> for Receivers
 where
-    T: Into<RawFullPointerAddress>,
+    T: Into<RawRemotePointerAddress>,
 {
     fn from(pid: T) -> Self {
         Receivers::PointerId(pid.into())

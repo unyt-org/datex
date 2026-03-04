@@ -556,7 +556,11 @@ impl AstToSourceCodeConverter {
                 }
             }
             DatexExpressionData::CreateShared(create_shared) => {
-                format!("shared {}", self.format(&create_shared.expression))
+                let mut mut_string = create_shared.mutability.to_string();
+                if !mut_string.is_empty() {
+                    mut_string.push(' ');
+                }
+                format!("shared {}{}", mut_string, self.format(&create_shared.expression))
             }
             DatexExpressionData::CreateMut(create_shared) => {
                 format!("mut {}", self.format(&create_shared.expression))
@@ -619,8 +623,15 @@ impl AstToSourceCodeConverter {
                     .collect();
                 statements_code.join("")
             }
-            DatexExpressionData::GetReference(pointer_address) => {
-                format!("{}", pointer_address) // FIXME #475
+            DatexExpressionData::GetSharedRef(get_shared_ref) => {
+                format!(
+                    "{}{}",
+                    match get_shared_ref.mutability {
+                        PointerReferenceMutability::Mutable => "'mut ",
+                        PointerReferenceMutability::Immutable => "'",
+                    },
+                    get_shared_ref.address,
+                )
             }
             DatexExpressionData::Conditional(Conditional {
                 condition: _,
@@ -754,9 +765,6 @@ impl AstToSourceCodeConverter {
                 expression,
             }) => {
                 format!("{}%s=%s{}", slot, self.format(expression))
-            }
-            DatexExpressionData::PointerAddress(pointer_address) => {
-                pointer_address.to_string()
             }
             DatexExpressionData::ComparisonOperation(ComparisonOperation {
                 operator,

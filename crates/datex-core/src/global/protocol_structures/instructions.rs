@@ -150,15 +150,17 @@ pub enum RegularInstruction {
     CreateShared,
     CreateSharedMut,
 
-    // &ABCDE
-    GetRef(RawFullPointerAddress),
+    // ' $ABCDE
+    GetSharedRef(RawRemotePointerAddress),
+    // 'mut $ABCDE
+    GetSharedRefMut(RawRemotePointerAddress),
     GetLocalRef(RawLocalPointerAddress),
     GetInternalRef(RawInternalPointerAddress),
 
     // &ABCDE := ...
-    GetOrCreateRef(GetOrCreateRefData),
+    GetOrCreateRef(GetOrCreateRemoteRefData),
     // &mut ABCDE := ...
-    GetOrCreateRefMut(GetOrCreateRefData),
+    GetOrCreateRefMut(GetOrCreateRemoteRefData),
 
     AllocateSlot(SlotAddress),
     GetSlot(SlotAddress),
@@ -326,10 +328,18 @@ impl Display for RegularInstruction {
                 core::write!(f, "SET_REFERENCE_VALUE ({})", operator)
             }
             RegularInstruction::Unbox => core::write!(f, "UNBOX"),
-            RegularInstruction::GetRef(address) => {
+            RegularInstruction::GetSharedRef(address) => {
                 core::write!(
                     f,
-                    "GET_REF [{}:{}]",
+                    "GET_SHARED_REF [{}:{}]",
+                    address.endpoint().expect("Invalid endpoint"),
+                    hex::encode(address.id)
+                )
+            }
+            RegularInstruction::GetSharedRefMut(address) => {
+                core::write!(
+                    f,
+                    "GET_SHARED_REF_MUT [{}:{}]",
                     address.endpoint().expect("Invalid endpoint"),
                     hex::encode(address.id)
                 )
@@ -612,10 +622,10 @@ pub struct SlotAddress(pub u32);
     BinRead, BinWrite, Clone, Debug, PartialEq, Serialize, Deserialize,
 )]
 #[brw(little)]
-pub struct RawFullPointerAddress {
+pub struct RawRemotePointerAddress {
     pub id: [u8; 26],
 }
-impl RawFullPointerAddress {
+impl RawRemotePointerAddress {
     pub fn endpoint(&self) -> Result<Endpoint, EndpointParsingError> {
         let mut endpoint = [0u8; 21];
         endpoint.copy_from_slice(&self.id[0..21]);
@@ -626,13 +636,13 @@ impl RawFullPointerAddress {
 #[derive(Debug, Clone, PartialEq)]
 pub struct PointerAddressConversionError;
 
-impl TryFrom<PointerAddress> for RawFullPointerAddress {
+impl TryFrom<PointerAddress> for RawRemotePointerAddress {
     type Error = PointerAddressConversionError;
     fn try_from(ptr: PointerAddress) -> Result<Self, Self::Error> {
         match ptr {
             PointerAddress::Referenced(ReferencedPointerAddress::Remote(
                 bytes,
-            )) => Ok(RawFullPointerAddress { id: bytes }),
+            )) => Ok(RawRemotePointerAddress { id: bytes }),
             _ => Err(PointerAddressConversionError),
         }
     }
@@ -653,18 +663,18 @@ pub struct RawInternalPointerAddress {
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
 #[brw(little)]
 pub enum RawPointerAddress {
-    #[br(magic = 120u8)] // InstructionCode::GET_REF
-    Full(RawFullPointerAddress),
-    #[br(magic = 121u8)] // InstructionCode::GET_INTERNAL_REF
+    #[br(magic = 120u8)] // InstructionCode::GET_REMOTE_SHARED_REF
+    Remote(RawRemotePointerAddress),
+    #[br(magic = 121u8)] // InstructionCode::GET_INTERNAL_SHARED_REF
     Internal(RawInternalPointerAddress),
-    #[br(magic = 122u8)] // InstructionCode::GET_LOCAL_REF
+    #[br(magic = 122u8)] // InstructionCode::GET_LOCAL_SHARED_REF
     Local(RawLocalPointerAddress),
 }
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
 #[brw(little)]
-pub struct GetOrCreateRefData {
-    pub address: RawFullPointerAddress,
+pub struct GetOrCreateRemoteRefData {
+    pub address: RawRemotePointerAddress,
     pub create_block_size: u64,
 }
 

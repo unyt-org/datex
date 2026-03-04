@@ -35,15 +35,6 @@ impl From<&RegularInstruction> for UnaryOperator {
             RegularInstruction::BitwiseNot => {
                 UnaryOperator::Bitwise(BitwiseUnaryOperator::Not)
             }
-            RegularInstruction::CreateSharedReference => {
-                UnaryOperator::Reference(SharedValueUnaryOperator::GetReference)
-            }
-            RegularInstruction::CreateShared => UnaryOperator::Reference(
-                SharedValueUnaryOperator::CreateSharedOwned,
-            ),
-            RegularInstruction::CreateSharedMut => UnaryOperator::Reference(
-                SharedValueUnaryOperator::CreateSharedOwnedMut,
-            ),
             RegularInstruction::Unbox => {
                 UnaryOperator::Reference(SharedValueUnaryOperator::Unbox)
             }
@@ -76,24 +67,12 @@ impl Display for UnaryOperator {
 
 #[derive(Clone, Debug, PartialEq, Copy, Eq)]
 pub enum SharedValueUnaryOperator {
-    CreateSharedOwned,    // shared
-    CreateSharedOwnedMut, // shared mut
-    GetReference,         // ' / 'mut
     Unbox,                // *
 }
 
 impl From<&SharedValueUnaryOperator> for InstructionCode {
     fn from(op: &SharedValueUnaryOperator) -> Self {
         match op {
-            SharedValueUnaryOperator::CreateSharedOwned => {
-                InstructionCode::CREATE_SHARED
-            }
-            SharedValueUnaryOperator::CreateSharedOwnedMut => {
-                InstructionCode::CREATE_SHARED_MUT
-            }
-            SharedValueUnaryOperator::GetReference => {
-                InstructionCode::CREATE_SHARED_REF
-            }
             SharedValueUnaryOperator::Unbox => InstructionCode::UNBOX,
         }
     }
@@ -102,13 +81,6 @@ impl From<&SharedValueUnaryOperator> for InstructionCode {
 impl Display for SharedValueUnaryOperator {
     fn fmt(&self, f: &mut Formatter) -> core::fmt::Result {
         match self {
-            SharedValueUnaryOperator::CreateSharedOwned => {
-                core::write!(f, "shared")
-            }
-            SharedValueUnaryOperator::CreateSharedOwnedMut => {
-                core::write!(f, "shared mut")
-            }
-            SharedValueUnaryOperator::GetReference => core::write!(f, "'"),
             SharedValueUnaryOperator::Unbox => core::write!(f, "*"),
         }
     }

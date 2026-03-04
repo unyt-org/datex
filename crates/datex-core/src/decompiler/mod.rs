@@ -69,7 +69,7 @@ pub fn apply_syntax_highlighting(
 ) -> Result<String, DXBParserError> {
     use binrw::io::Cursor;
     use core::fmt::Write;
-    
+
     let mut output = String::new();
 
     // load datex syntax + custom theme
