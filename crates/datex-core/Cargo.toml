@@ -157,7 +157,6 @@ proc-macro2 = { version = "1.0", features = [
 
 # webrtc features (optional)
 webrtc = { version = "0.13.0", optional = true }
-backtrace-on-stack-overflow = "0.3.0"
 
 
 ### dev dependencies (for benchmarks and tests)
