@@ -52,10 +52,7 @@ use crate::{
     },
     time::Instant,
     utils::buffers::{append_u8, append_u16, append_u32},
-    values::{
-        core_values::decimal::Decimal,
-        value_container::ValueContainer,
-    },
+    values::{core_values::decimal::Decimal, value_container::ValueContainer},
 };
 use log::{debug, info};
 use precompiler::{

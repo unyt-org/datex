@@ -4,7 +4,6 @@ mod ast_to_source_code;
 mod options;
 pub use options::*;
 
-
 use crate::{
     ast::{
         expressions::{DatexExpression, DatexExpressionData},

@@ -9,9 +9,7 @@ use crate::{
     libs::core::CoreLibPointerId,
     prelude::*,
     runtime::execution::ExecutionError,
-    shared_values::{
-        pointer::Pointer, pointer_address::PointerAddress,
-    },
+    shared_values::{pointer::Pointer, pointer_address::PointerAddress},
     traits::apply::Apply,
     types::{
         definition::TypeDefinition,
