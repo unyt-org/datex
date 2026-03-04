@@ -8,10 +8,7 @@ use crate::{
     values::{value::Value, value_container::ValueContainer},
 };
 
-use crate::{
-    prelude::*,
-    shared_values::pointer::Pointer,
-};
+use crate::{prelude::*, shared_values::pointer::Pointer};
 use core::{cell::RefCell, fmt::Debug, prelude::rust_2024::*};
 
 pub struct SharedValueContainer {

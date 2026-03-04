@@ -65,7 +65,7 @@ cfg_if! {
     }
     else {
         use alloc::boxed::Box;
-        
+
 
         pub async fn sleep(duration: core::time::Duration) {
             let mut interval = async_timer::Interval::platform_new(duration);

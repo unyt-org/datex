@@ -20,10 +20,7 @@ use crate::{
     },
     types::definition::TypeDefinition,
     values::{
-        core_values::{
-            map::MapAccessError,
-            r#type::Type,
-        },
+        core_values::{map::MapAccessError, r#type::Type},
         value::Value,
         value_container::{ValueContainer, ValueKey},
     },

@@ -24,9 +24,7 @@ use crate::{
     prelude::*,
     shared_values::{
         pointer::{Pointer, PointerReferenceMutability},
-        pointer_address::{
-            PointerAddress, ReferencedPointerAddress,
-        },
+        pointer_address::{PointerAddress, ReferencedPointerAddress},
     },
     values::core_values::r#type::TypeMetadata,
 };

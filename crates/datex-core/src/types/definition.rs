@@ -10,8 +10,7 @@ use crate::{
 use core::{cell::RefCell, fmt::Display, hash::Hash, prelude::rust_2024::*};
 
 use crate::{
-    prelude::*,
-    shared_values::pointer_address::PointerAddress,
+    prelude::*, shared_values::pointer_address::PointerAddress,
     values::core_values::r#type::TypeMetadata,
 };
 

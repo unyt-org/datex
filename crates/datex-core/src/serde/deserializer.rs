@@ -21,10 +21,7 @@ use serde::{
     forward_to_deserialize_any,
 };
 
-use crate::{
-    prelude::*,
-    runtime::RuntimeInternal,
-};
+use crate::{prelude::*, runtime::RuntimeInternal};
 
 /// Deserialize a value of type T from a byte slice containing DXB data
 pub fn from_bytes<T>(input: &[u8]) -> Result<T, DeserializationError>
