@@ -29,7 +29,6 @@ use crate::{
     },
     values::core_values::r#type::TypeMetadata,
 };
-use crate::ast::expressions::GetSharedRef;
 use crate::shared_values::pointer::PointerReferenceMutability;
 
 /// Compiles a given value container to a DXB body
