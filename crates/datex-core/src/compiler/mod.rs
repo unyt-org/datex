@@ -1211,8 +1211,8 @@ fn compile_expression(
         // refs
         DatexExpressionData::CreateRef(create_ref) => {
             compilation_context.mark_has_non_static_value();
-            // TODO: handle lifetimes, mutability, correctly (in precompiler)
-            // TODO: handle move/clone
+            // TODO #764: handle lifetimes, mutability, correctly (in precompiler)
+            // TODO #765: handle move/clone
             scope = compile_expression(
                 compilation_context,
                 RichAst::new(*create_ref.expression, &metadata),

@@ -175,7 +175,7 @@ fn get_remote_pointer_value(
     let resolved_address =
         memory.get_pointer_address_from_raw_full_address(address);
     // convert slot to InternalSlot enum
-    // TODO: resolve from remote, handle mutability
+    // TODO #770: resolve from remote, handle mutability
     Ok(memory
         .get_reference(&resolved_address)
         .map(|r| ValueContainer::Shared(r.clone())))

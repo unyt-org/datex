@@ -75,26 +75,26 @@ impl Crypto for CryptoEsp32 {
     fn hash_sha256<'a>(
         _to_digest: &'a [u8],
     ) -> AsyncCryptoResult<'a, [u8; 32], Self::Sha256Error> {
-        todo!()
+        todo!("#753 Undescribed by author.")
     }
 
     fn hkdf_sha256<'a>(
         _ikm: &'a [u8],
         _salt: &'a [u8],
     ) -> AsyncCryptoResult<'a, [u8; 32], Self::HkdfError> {
-        todo!()
+        todo!("#754 Undescribed by author.")
     }
 
     fn gen_ed25519<'a>()
     -> AsyncCryptoResult<'a, (Vec<u8>, Vec<u8>), Self::Ed25519GenError> {
-        todo!()
+        todo!("#755 Undescribed by author.")
     }
 
     fn sig_ed25519<'a>(
         _pri_key: &'a [u8],
         _data: &'a [u8],
     ) -> AsyncCryptoResult<'a, [u8; 64], Self::Ed25519SignError> {
-        todo!()
+        todo!("#756 Undescribed by author.")
     }
 
     fn ver_ed25519<'a>(
@@ -102,7 +102,7 @@ impl Crypto for CryptoEsp32 {
         _sig: &'a [u8],
         _data: &'a [u8],
     ) -> AsyncCryptoResult<'a, bool, Self::Ed25519VerifyError> {
-        todo!()
+        todo!("#757 Undescribed by author.")
     }
 
     fn aes_ctr_encrypt<'a>(
@@ -110,7 +110,7 @@ impl Crypto for CryptoEsp32 {
         _iv: &'a [u8; 16],
         _plaintext: &'a [u8],
     ) -> AsyncCryptoResult<'a, Vec<u8>, Self::AesCtrError> {
-        todo!()
+        todo!("#758 Undescribed by author.")
     }
 
     fn aes_ctr_decrypt<'a>(
@@ -118,33 +118,33 @@ impl Crypto for CryptoEsp32 {
         _iv: &'a [u8; 16],
         _cipher: &'a [u8],
     ) -> AsyncCryptoResult<'a, Vec<u8>, Self::AesCtrError> {
-        todo!()
+        todo!("#759 Undescribed by author.")
     }
 
     fn key_wrap_rfc3394<'a>(
         _kek: &'a [u8; 32],
         _key_to_wrap: &'a [u8; 32],
     ) -> AsyncCryptoResult<'a, [u8; 40], Self::KeyWrapError> {
-        todo!()
+        todo!("#760 Undescribed by author.")
     }
 
     fn key_unwrap_rfc3394<'a>(
         _kek: &'a [u8; 32],
         _wrapped: &'a [u8; 40],
     ) -> AsyncCryptoResult<'a, [u8; 32], Self::KeyUnwrapError> {
-        todo!()
+        todo!("#761 Undescribed by author.")
     }
 
     fn gen_x25519<'a>()
     -> AsyncCryptoResult<'a, ([u8; 44], [u8; 48]), Self::X25519GenError> {
-        todo!()
+        todo!("#762 Undescribed by author.")
     }
 
     fn derive_x25519<'a>(
         _pri_key: &'a [u8; 48],
         _peer_pub: &'a [u8; 44],
     ) -> AsyncCryptoResult<'a, [u8; 32], Self::X25519DeriveError> {
-        todo!()
+        todo!("#763 Undescribed by author.")
     }
 }
 
