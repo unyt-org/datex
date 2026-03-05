@@ -187,9 +187,10 @@ impl DIFValue {
                     }
                 }
             }
-            CoreValue::Range(_range) => {
-                core::todo!("#740 Range value not yet supported in DIF")
-            }
+            CoreValue::Range(range) => DIFValueRepresentation::Array(vec![
+                DIFValueContainer::from_value_container(&range.start),
+                DIFValueContainer::from_value_container(&range.end),
+            ]),
             CoreValue::Decimal(decimal) => {
                 // TODO #384: optimize this and pass as decimal if in range
                 DIFValueRepresentation::String(decimal.to_string())
@@ -323,10 +324,6 @@ mod tests {
 
     use crate::{prelude::*, values::value::Value};
     use core::cell::RefCell;
-
-    fn get_mock_memory() -> RefCell<Memory> {
-        RefCell::new(Memory::new(Endpoint::default()))
-    }
 
     #[test]
     fn default_type() {
