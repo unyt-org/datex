@@ -51,11 +51,14 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - profile: no_std
-            features: decompiler,compiler,allow_unsigned_blocks
-          - profile: std
+          - profile: no_std_full
+            features: full,allow_unsigned_blocks
+          - profile: std_full
             features: full,target_native
-
+          - profile: no_std
+            features: allow_unsigned_blocks
+          - profile: std
+            features: target_native
     steps:
       - uses: actions/checkout@v5
 
