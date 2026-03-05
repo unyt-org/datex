@@ -2,14 +2,13 @@ use core::cell::RefCell;
 
 use crate::{
     global::protocol_structures::instructions::{
-        RawRemotePointerAddress, RawInternalPointerAddress,
-        RawLocalPointerAddress,
+        RawInternalPointerAddress, RawLocalPointerAddress,
+        RawRemotePointerAddress,
     },
     values::value_container::ValueContainer,
 };
 
-use crate::prelude::*;
-use crate::shared_values::pointer::PointerReferenceMutability;
+use crate::{prelude::*, shared_values::pointer::PointerReferenceMutability};
 
 #[derive(Debug)]
 pub enum ExecutionInterrupt {
@@ -22,7 +21,10 @@ pub enum ExecutionInterrupt {
 #[derive(Debug)]
 pub enum ExternalExecutionInterrupt {
     Result(Option<ValueContainer>),
-    GetReferenceToRemotePointer(RawRemotePointerAddress, PointerReferenceMutability),
+    GetReferenceToRemotePointer(
+        RawRemotePointerAddress,
+        PointerReferenceMutability,
+    ),
     GetReferenceToLocalPointer(RawLocalPointerAddress),
     GetReferenceInternalPointer(RawInternalPointerAddress),
     RemoteExecution(ValueContainer, Vec<u8>),

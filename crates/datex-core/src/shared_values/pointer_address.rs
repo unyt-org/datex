@@ -6,7 +6,7 @@ use crate::{
 };
 
 use crate::global::protocol_structures::instructions::{
-    RawRemotePointerAddress, RawLocalPointerAddress,
+    RawLocalPointerAddress, RawRemotePointerAddress,
 };
 use core::{fmt::Display, result::Result};
 use serde::{Deserialize, Serialize};
@@ -197,9 +197,12 @@ impl PointerAddress {
             )) => bytes,
         }
     }
-    
+
     pub fn internal_bytes(&self) -> Option<&[u8; 3]> {
-        if let PointerAddress::Referenced(ReferencedPointerAddress::Internal(bytes)) = self {
+        if let PointerAddress::Referenced(ReferencedPointerAddress::Internal(
+            bytes,
+        )) = self
+        {
             Some(bytes)
         } else {
             None

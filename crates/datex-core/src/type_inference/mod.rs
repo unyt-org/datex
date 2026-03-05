@@ -14,7 +14,7 @@ use crate::{
         expressions::{
             Apply, BinaryOperation, CallableDeclaration, ComparisonOperation,
             Conditional, CreateRef, DatexExpression, DatexExpressionData,
-            GenericInstantiation, List, Map, PropertyAccess,
+            GenericInstantiation, GetSharedRef, List, Map, PropertyAccess,
             PropertyAssignment, RangeDeclaration, RemoteExecution, Slot,
             SlotAssignment, Statements, TypeDeclaration, UnaryOperation, Unbox,
             UnboxAssignment, VariableAccess, VariableAssignment,
@@ -58,7 +58,6 @@ use crate::{
     },
 };
 use core::{cell::RefCell, ops::Range, panic, str::FromStr};
-use crate::ast::expressions::GetSharedRef;
 
 pub mod error;
 pub mod options;

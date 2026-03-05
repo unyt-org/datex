@@ -5,11 +5,11 @@ use crate::{
         type_instruction_codes::TypeInstructionCode,
     },
     prelude::*,
+    shared_values::pointer::PointerReferenceMutability,
     types::definition::TypeDefinition,
     utils::buffers::append_u8,
     values::core_values::r#type::Type,
 };
-use crate::shared_values::pointer::PointerReferenceMutability;
 
 /// Compiles a given type container to a DXB body
 pub fn compile_type(ty: &Type) -> Vec<u8> {
@@ -44,7 +44,11 @@ fn append_type_definition(
 
             // Append each impl address
             for impl_type in impls {
-                append_get_ref(buffer, impl_type, &PointerReferenceMutability::Immutable)
+                append_get_ref(
+                    buffer,
+                    impl_type,
+                    &PointerReferenceMutability::Immutable,
+                )
             }
 
             // Append the base type
@@ -54,7 +58,11 @@ fn append_type_definition(
             // TODO #636: ensure pointer_address exists here
             let type_ref = type_ref.borrow();
             let pointer_address = type_ref.pointer.address();
-            append_get_ref(buffer, &pointer_address, &PointerReferenceMutability::Immutable)
+            append_get_ref(
+                buffer,
+                &pointer_address,
+                &PointerReferenceMutability::Immutable,
+            )
         }
         _ => todo!("#637 Type definition compilation not implemented yet"),
     };

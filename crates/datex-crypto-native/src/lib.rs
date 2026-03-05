@@ -3,7 +3,7 @@ use datex_crypto_facade::{
     error::{
         AesCtrError, BackendError, Ed25519GenError, Ed25519SignError,
         Ed25519VerifyError, HkdfError, KeyUnwrapError, KeyWrapError,
-        RandomBytesError, X25519DeriveError, X25519GenError,
+        X25519DeriveError, X25519GenError,
     },
 };
 use openssl::{

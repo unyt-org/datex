@@ -3,10 +3,10 @@ use crate::{
         expressions::{
             Apply, BinaryOperation, ComparisonOperation, CreateMut, CreateRef,
             CreateShared, CreateSharedRef, DatexExpression,
-            DatexExpressionData, GenericInstantiation, PropertyAccess,
-            PropertyAssignment, RangeDeclaration, RemoteExecution,
-            SlotAssignment, UnaryOperation, Unbox, UnboxAssignment,
-            VariableAssignment,
+            DatexExpressionData, GenericInstantiation, GetSharedRef,
+            PropertyAccess, PropertyAssignment, RangeDeclaration,
+            RemoteExecution, SlotAssignment, UnaryOperation, Unbox,
+            UnboxAssignment, VariableAssignment,
         },
         spanned::Spanned,
     },
@@ -22,15 +22,13 @@ use crate::{
     },
     prelude::*,
     shared_values::{
-        pointer::PointerReferenceMutability,
+        pointer::PointerReferenceMutability, pointer_address::PointerAddress,
         shared_container::SharedContainerMutability,
     },
     values::core_values::{
         error::NumberParseError, r#type::LocalReferenceMutability,
     },
 };
-use crate::ast::expressions::GetSharedRef;
-use crate::shared_values::pointer_address::PointerAddress;
 
 static UNARY_BP: u8 = 29; // weaker than property access / apply, stronger than all other binary operators
 
@@ -500,10 +498,12 @@ impl Parser {
 
                 // check if followed by pointer address literal
                 if let Ok(next) = self.peek()
-                    && let Token::PointerAddress(address) = &next.token {
-                    let address = PointerAddress::try_from(&address[1..]).unwrap();
+                    && let Token::PointerAddress(address) = &next.token
+                {
+                    let address =
+                        PointerAddress::try_from(&address[1..]).unwrap();
                     drop(next);
-                    
+
                     let end_token = self.advance()?.span; // consume pointer address
                     let span = op.span.start..end_token.end;
 
@@ -511,7 +511,7 @@ impl Parser {
                         mutability: PointerReferenceMutability::Immutable,
                         address,
                     })
-                        .with_span(span))
+                    .with_span(span))
                 }
                 // normal shared ref to dynamic expression
                 else {
@@ -522,9 +522,8 @@ impl Parser {
                         mutability: PointerReferenceMutability::Immutable,
                         expression: Box::new(rhs),
                     })
-                        .with_span(span))
+                    .with_span(span))
                 }
-
             }
             // shared mutable ref ('mut)
             Token::SharedRefMut => {
@@ -532,10 +531,12 @@ impl Parser {
 
                 // check if followed by pointer address literal
                 if let Ok(next) = self.peek()
-                    && let Token::PointerAddress(address) = &next.token {
-                    let address = PointerAddress::try_from(&address[1..]).unwrap();
+                    && let Token::PointerAddress(address) = &next.token
+                {
+                    let address =
+                        PointerAddress::try_from(&address[1..]).unwrap();
                     drop(next);
-                    
+
                     let end_token = self.advance()?.span; // consume pointer address
                     let span = op.span.start..end_token.end;
 
@@ -543,7 +544,7 @@ impl Parser {
                         mutability: PointerReferenceMutability::Mutable,
                         address,
                     })
-                        .with_span(span))
+                    .with_span(span))
                 }
                 // normal shared ref to dynamic expression
                 else {
@@ -554,7 +555,7 @@ impl Parser {
                         mutability: PointerReferenceMutability::Mutable,
                         expression: Box::new(rhs),
                     })
-                        .with_span(span))
+                    .with_span(span))
                 }
             }
             // unbox (*)
@@ -644,9 +645,10 @@ mod tests {
             expressions::{
                 Apply, BinaryOperation, ComparisonOperation, CreateMut,
                 CreateRef, CreateShared, CreateSharedRef, DatexExpressionData,
-                GenericInstantiation, PropertyAccess, PropertyAssignment,
-                RemoteExecution, Slot, SlotAssignment, Statements,
-                UnaryOperation, Unbox, UnboxAssignment, VariableAssignment,
+                GenericInstantiation, GetSharedRef, PropertyAccess,
+                PropertyAssignment, RemoteExecution, Slot, SlotAssignment,
+                Statements, UnaryOperation, Unbox, UnboxAssignment,
+                VariableAssignment,
             },
             spanned::Spanned,
             type_expressions::TypeExpressionData,
@@ -663,12 +665,11 @@ mod tests {
         prelude::*,
         shared_values::{
             pointer::PointerReferenceMutability,
+            pointer_address::PointerAddress,
             shared_container::SharedContainerMutability,
         },
         values::core_values::r#type::LocalReferenceMutability,
     };
-    use crate::ast::expressions::GetSharedRef;
-    use crate::shared_values::pointer_address::PointerAddress;
 
     #[test]
     fn parse_simple_binary_expression() {

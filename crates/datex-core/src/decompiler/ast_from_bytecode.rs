@@ -29,13 +29,17 @@ use crate::{
     },
 };
 
-use crate::{prelude::*, shared_values::pointer_address::PointerAddress};
+use crate::{
+    ast::expressions::{CreateShared, CreateSharedRef, GetSharedRef},
+    prelude::*,
+    shared_values::{
+        pointer::PointerReferenceMutability, pointer_address::PointerAddress,
+        shared_container::SharedContainerMutability,
+    },
+};
 use alloc::format;
 use core::cell::RefCell;
 use num_enum::TryFromPrimitive;
-use crate::ast::expressions::{CreateShared, CreateSharedRef, GetSharedRef};
-use crate::shared_values::pointer::PointerReferenceMutability;
-use crate::shared_values::shared_container::SharedContainerMutability;
 
 #[derive(Debug)]
 enum CollectedAstResult {

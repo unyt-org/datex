@@ -13,9 +13,9 @@ use crate::{
     ast::{
         expressions::{
             BinaryOperation, DatexExpression, DatexExpressionData,
-            RemoteExecution, Statements, TypeDeclaration, TypeDeclarationKind,
-            VariableAccess, VariableAssignment, VariableDeclaration,
-            VariableKind, VariantAccess,
+            GetSharedRef, RemoteExecution, Statements, TypeDeclaration,
+            TypeDeclarationKind, VariableAccess, VariableAssignment,
+            VariableDeclaration, VariableKind, VariantAccess,
         },
         resolved_variable::ResolvedVariable,
         spanned::Spanned,
@@ -30,7 +30,7 @@ use crate::{
     global::operators::{BinaryOperator, binary::ArithmeticOperator},
     libs::core::CoreLibPointerId,
     shared_values::{
-        pointer::Pointer,
+        pointer::{Pointer, PointerReferenceMutability},
         shared_type_container::{NominalTypeDeclaration, SharedTypeContainer},
     },
     types::definition::TypeDefinition,
@@ -48,8 +48,6 @@ use options::PrecompilerOptions;
 use precompiled_ast::{AstMetadata, RichAst, VariableShape};
 use scope::NewScopeType;
 use scope_stack::PrecompilerScopeStack;
-use crate::ast::expressions::GetSharedRef;
-use crate::shared_values::pointer::PointerReferenceMutability;
 
 pub struct Precompiler<'a> {
     ast_metadata: Rc<RefCell<AstMetadata>>,
@@ -596,7 +594,7 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
                         address: pointer_address,
                         mutability: PointerReferenceMutability::Immutable,
                     })
-                        .with_span(span.clone())
+                    .with_span(span.clone())
                 }
             }));
         }
@@ -609,7 +607,7 @@ mod tests {
     use super::*;
     use crate::{
         ast::{
-            expressions::{CreateRef, CreateSharedRef, Unbox},
+            expressions::{CreateRef, CreateSharedRef, GetSharedRef, Unbox},
             resolved_variable::ResolvedVariable,
             type_expressions::{StructuralMap, TypeExpressionData},
         },
@@ -624,7 +622,6 @@ mod tests {
         },
     };
     use core::assert_matches;
-    use crate::ast::expressions::GetSharedRef;
 
     fn precompile(
         ast: DatexExpression,

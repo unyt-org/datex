@@ -4,10 +4,10 @@ use crate::{
         Apply, BinaryOperation, CallableDeclaration, ComparisonOperation,
         CompileExpression, Conditional, CreateMut, CreateRef, CreateShared,
         CreateSharedRef, DatexExpression, DatexExpressionData,
-        GenericInstantiation, List, Map, PropertyAccess, PropertyAssignment,
-        RemoteExecution, Slot, SlotAssignment, Statements, TypeDeclaration,
-        UnaryOperation, Unbox, UnboxAssignment, VariableAccess,
-        VariableAssignment, VariableDeclaration, VariantAccess,
+        GenericInstantiation, GetSharedRef, List, Map, PropertyAccess,
+        PropertyAssignment, RemoteExecution, Slot, SlotAssignment, Statements,
+        TypeDeclaration, UnaryOperation, Unbox, UnboxAssignment,
+        VariableAccess, VariableAssignment, VariableDeclaration, VariantAccess,
     },
     prelude::*,
     values::core_values::{
@@ -22,7 +22,6 @@ use crate::{
     },
 };
 use core::ops::Range;
-use crate::ast::expressions::GetSharedRef;
 
 pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
     /// Handle expression error

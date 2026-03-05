@@ -40,8 +40,8 @@ use crate::{
     core_compiler::value_compiler::{
         append_boolean, append_decimal, append_encoded_integer,
         append_endpoint, append_float_as_i16, append_float_as_i32,
-        append_get_ref, append_instruction_code, append_integer,
-        append_key_string, append_text, append_typed_decimal,
+        append_get_internal_ref, append_get_ref, append_instruction_code,
+        append_integer, append_key_string, append_text, append_typed_decimal,
         append_value_container,
     },
     parser::{Parser, ParserOptions},
@@ -60,7 +60,6 @@ use precompiler::{
     precompile_ast,
     precompiled_ast::{AstMetadata, RichAst, VariableMetadata},
 };
-use crate::core_compiler::value_compiler::append_get_internal_ref;
 
 pub mod context;
 pub mod error;
@@ -1063,7 +1062,11 @@ fn compile_expression(
 
         DatexExpressionData::GetSharedRef(shared_reference) => {
             compilation_context.mark_has_non_static_value();
-            append_get_ref(&mut compilation_context.buffer, &shared_reference.address, &shared_reference.mutability)
+            append_get_ref(
+                &mut compilation_context.buffer,
+                &shared_reference.address,
+                &shared_reference.mutability,
+            )
         }
 
         // assignment
@@ -1264,7 +1267,9 @@ fn compile_expression(
                 }
                 "core" => append_get_internal_ref(
                     &mut compilation_context.buffer,
-                    PointerAddress::from(CoreLibPointerId::Core).internal_bytes().unwrap(),
+                    PointerAddress::from(CoreLibPointerId::Core)
+                        .internal_bytes()
+                        .unwrap(),
                 ),
                 _ => {
                     // invalid slot name
@@ -1272,7 +1277,7 @@ fn compile_expression(
                 }
             }
         }
-        
+
         // refs
         DatexExpressionData::CreateRef(create_ref) => {
             compilation_context.mark_has_non_static_value();

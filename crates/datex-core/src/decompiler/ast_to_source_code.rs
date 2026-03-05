@@ -560,7 +560,11 @@ impl AstToSourceCodeConverter {
                 if !mut_string.is_empty() {
                     mut_string.push(' ');
                 }
-                format!("shared {}{}", mut_string, self.format(&create_shared.expression))
+                format!(
+                    "shared {}{}",
+                    mut_string,
+                    self.format(&create_shared.expression)
+                )
             }
             DatexExpressionData::CreateMut(create_shared) => {
                 format!("mut {}", self.format(&create_shared.expression))
