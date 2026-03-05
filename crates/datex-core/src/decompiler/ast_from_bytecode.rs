@@ -503,7 +503,6 @@ pub fn ast_from_bytecode(
                                     .with_default_span()
                                     .into()
                             }
-                            
                             RegularInstruction::UnaryMinus
                             | RegularInstruction::UnaryPlus
                             | RegularInstruction::BitwiseNot
