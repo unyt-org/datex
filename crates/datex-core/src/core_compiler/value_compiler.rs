@@ -1,6 +1,13 @@
 use crate::{
-    core_compiler::type_compiler::append_type,
-    global::instruction_codes::InstructionCode,
+    core_compiler::type_compiler::{
+        append_type, append_type_definition, append_type_metadata,
+        append_type_space_instruction_code,
+    },
+    global::{
+        instruction_codes::InstructionCode,
+        protocol_structures::instructions::TypeMetadataBin,
+        type_instruction_codes::TypeInstructionCode,
+    },
     libs::core::{CoreLibPointerId, get_core_lib_type_definition},
     shared_values::shared_container::SharedContainerMutability,
     types::definition::TypeDefinition,
@@ -149,7 +156,16 @@ pub fn append_value(buffer: &mut Vec<u8>, value: &Value) {
 pub fn append_type_cast(buffer: &mut Vec<u8>, ty: &TypeDefinition) {
     append_instruction_code(buffer, InstructionCode::TYPED_VALUE);
     // TODO #634: optimize: avoid cloning
-    append_type(buffer, &(ty.clone().into_type(TypeMetadata::default())));
+    // append instruction code
+    let instruction_code = TypeInstructionCode::from(ty);
+    append_type_space_instruction_code(buffer, instruction_code);
+
+    // append type information for non-core types
+    let metadata = TypeMetadataBin::from(&TypeMetadata::default());
+    append_type_metadata(buffer, metadata);
+
+    // append type definition
+    append_type_definition(buffer, ty);
 }
 
 pub fn append_text(buffer: &mut Vec<u8>, string: &str) {
