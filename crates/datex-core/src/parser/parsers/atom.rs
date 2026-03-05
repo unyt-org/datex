@@ -449,7 +449,7 @@ mod tests {
         let expr = parse("#42");
         assert_eq!(expr.data, DatexExpressionData::Slot(Slot::Addressed(42)));
     }
-    
+
     #[test]
     fn parse_placeholder() {
         let expr = parse("?");

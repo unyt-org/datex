@@ -30,7 +30,7 @@ use datex_core::{
             Apply, BinaryOperation, CallableDeclaration, CallableKind,
             ComparisonOperation, Conditional, CreateMut, CreateRef,
             CreateShared, DatexExpression, DatexExpressionData,
-            GenericInstantiation, List, Map, PropertyAccess,
+            GenericInstantiation, GetSharedRef, List, Map, PropertyAccess,
             PropertyAssignment, Slot, UnaryOperation, Unbox,
             VariableAssignment, VariableDeclaration, VariableKind,
         },
@@ -49,13 +49,11 @@ use datex_core::{
         },
     },
     shared_values::{
-        pointer_address::PointerAddress,
+        pointer::PointerReferenceMutability, pointer_address::PointerAddress,
         shared_container::SharedContainerMutability,
     },
     values::core_values::error::NumberParseError,
 };
-use datex_core::ast::expressions::GetSharedRef;
-use datex_core::shared_values::pointer::PointerReferenceMutability;
 
 /// Parse the given source code into a DatexExpression AST.
 fn parse_unwrap(src: &str) -> DatexExpression {
@@ -3454,9 +3452,9 @@ fn pointer_address() {
         expr,
         DatexExpressionData::GetSharedRef(GetSharedRef {
             address: PointerAddress::remote([
-                0x12, 0x34, 0x56, 0x78, 0x90, 0xAB, 0xCD, 0xEF, 0x12, 0x34, 0x56,
-                0x78, 0x90, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-                0x00, 0x00, 0x00, 0x42
+                0x12, 0x34, 0x56, 0x78, 0x90, 0xAB, 0xCD, 0xEF, 0x12, 0x34,
+                0x56, 0x78, 0x90, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                0x00, 0x00, 0x00, 0x00, 0x00, 0x42
             ]),
             mutability: PointerReferenceMutability::Immutable,
         })

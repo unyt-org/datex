@@ -10,8 +10,8 @@ use crate::{
             ApplyData, DecimalData, Float32Data, Float64Data, FloatAsInt16Data,
             FloatAsInt32Data, ImplTypeData, Instruction, InstructionBlockData,
             Int8Data, Int16Data, Int32Data, Int64Data, Int128Data, IntegerData,
-            ListData, MapData, RawRemotePointerAddress,
-            RawInternalPointerAddress, RawLocalPointerAddress,
+            ListData, MapData, RawInternalPointerAddress,
+            RawLocalPointerAddress, RawRemotePointerAddress,
             RegularInstruction, ShortListData, ShortMapData,
             ShortStatementsData, ShortTextData, ShortTextDataRaw, SlotAddress,
             StatementsData, TextData, TextDataRaw, TypeInstruction,
@@ -555,7 +555,9 @@ pub fn iterate_instructions(
                         InstructionCode::GET_REMOTE_SHARED_REF => {
                             let address =
                                 RawRemotePointerAddress::read(&mut reader);
-                            RegularInstruction::GetSharedRef(yield_unwrap!(address))
+                            RegularInstruction::GetSharedRef(yield_unwrap!(
+                                address
+                            ))
                         }
 
                         InstructionCode::GET_LOCAL_SHARED_REF => {

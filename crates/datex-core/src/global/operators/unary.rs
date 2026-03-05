@@ -67,7 +67,7 @@ impl Display for UnaryOperator {
 
 #[derive(Clone, Debug, PartialEq, Copy, Eq)]
 pub enum SharedValueUnaryOperator {
-    Unbox,                // *
+    Unbox, // *
 }
 
 impl From<&SharedValueUnaryOperator> for InstructionCode {

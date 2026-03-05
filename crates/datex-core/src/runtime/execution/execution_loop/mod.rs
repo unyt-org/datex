@@ -50,7 +50,8 @@ use crate::{
         },
     },
     shared_values::{
-        pointer_address::PointerAddress, shared_container::SharedContainer,
+        pointer::PointerReferenceMutability, pointer_address::PointerAddress,
+        shared_container::SharedContainer,
     },
     types::{
         definition::TypeDefinition,
@@ -72,7 +73,6 @@ use crate::{
 };
 use alloc::rc::Rc;
 use core::cell::RefCell;
-use crate::shared_values::pointer::PointerReferenceMutability;
 
 #[derive(Debug)]
 enum CollectedExecutionResult {

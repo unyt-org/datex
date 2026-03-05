@@ -16,15 +16,15 @@ use crate::{
 
 use crate::{
     prelude::*,
-    shared_values::pointer_address::{
-        PointerAddress, ReferencedPointerAddress,
+    shared_values::{
+        pointer::PointerReferenceMutability,
+        pointer_address::{PointerAddress, ReferencedPointerAddress},
     },
 };
 use core::{result::Result, unreachable};
 pub use errors::*;
 pub use execution_input::{ExecutionInput, ExecutionOptions};
 pub use memory_dump::*;
-use crate::shared_values::pointer::PointerReferenceMutability;
 
 pub mod context;
 mod errors;
@@ -45,15 +45,16 @@ pub fn execute_dxb_sync(
     for output in execution_loop {
         match output? {
             ExternalExecutionInterrupt::Result(result) => return Ok(result),
-            ExternalExecutionInterrupt::GetReferenceToRemotePointer(address, mutability) => {
-                interrupt_provider.provide_result(
-                    InterruptResult::ResolvedValue(get_remote_pointer_value(
-                        &runtime_internal,
-                        address,
-                        mutability
-                    )?),
-                )
-            }
+            ExternalExecutionInterrupt::GetReferenceToRemotePointer(
+                address,
+                mutability,
+            ) => interrupt_provider.provide_result(
+                InterruptResult::ResolvedValue(get_remote_pointer_value(
+                    &runtime_internal,
+                    address,
+                    mutability,
+                )?),
+            ),
             ExternalExecutionInterrupt::GetReferenceToLocalPointer(address) => {
                 // TODO #401: in the future, local pointer addresses should be relative to the block sender, not the local runtime
                 interrupt_provider.provide_result(
@@ -63,7 +64,9 @@ pub fn execute_dxb_sync(
                     )?),
                 );
             }
-            ExternalExecutionInterrupt::GetReferenceInternalPointer(address) => {
+            ExternalExecutionInterrupt::GetReferenceInternalPointer(
+                address,
+            ) => {
                 interrupt_provider.provide_result(
                     InterruptResult::ResolvedValue(Some(
                         get_internal_pointer_value(&runtime_internal, address)?,
@@ -91,7 +94,10 @@ pub async fn execute_dxb(
     for output in execution_loop {
         match output? {
             ExternalExecutionInterrupt::Result(result) => return Ok(result),
-            ExternalExecutionInterrupt::GetReferenceToRemotePointer(address, mutability) => {
+            ExternalExecutionInterrupt::GetReferenceToRemotePointer(
+                address,
+                mutability,
+            ) => {
                 interrupt_provider.provide_result(
                     InterruptResult::ResolvedValue(get_remote_pointer_value(
                         &runtime_internal,
@@ -109,7 +115,9 @@ pub async fn execute_dxb(
                     )?),
                 );
             }
-            ExternalExecutionInterrupt::GetReferenceInternalPointer(address) => {
+            ExternalExecutionInterrupt::GetReferenceInternalPointer(
+                address,
+            ) => {
                 interrupt_provider.provide_result(
                     InterruptResult::ResolvedValue(Some(
                         get_internal_pointer_value(&runtime_internal, address)?,

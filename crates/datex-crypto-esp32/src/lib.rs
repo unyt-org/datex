@@ -73,14 +73,14 @@ impl Crypto for CryptoEsp32 {
     }
 
     fn hash_sha256<'a>(
-        to_digest: &'a [u8],
+        _to_digest: &'a [u8],
     ) -> AsyncCryptoResult<'a, [u8; 32], Self::Sha256Error> {
         todo!()
     }
 
     fn hkdf_sha256<'a>(
-        ikm: &'a [u8],
-        salt: &'a [u8],
+        _ikm: &'a [u8],
+        _salt: &'a [u8],
     ) -> AsyncCryptoResult<'a, [u8; 32], Self::HkdfError> {
         todo!()
     }
@@ -91,46 +91,46 @@ impl Crypto for CryptoEsp32 {
     }
 
     fn sig_ed25519<'a>(
-        pri_key: &'a [u8],
-        data: &'a [u8],
+        _pri_key: &'a [u8],
+        _data: &'a [u8],
     ) -> AsyncCryptoResult<'a, [u8; 64], Self::Ed25519SignError> {
         todo!()
     }
 
     fn ver_ed25519<'a>(
-        pub_key: &'a [u8],
-        sig: &'a [u8],
-        data: &'a [u8],
+        _pub_key: &'a [u8],
+        _sig: &'a [u8],
+        _data: &'a [u8],
     ) -> AsyncCryptoResult<'a, bool, Self::Ed25519VerifyError> {
         todo!()
     }
 
     fn aes_ctr_encrypt<'a>(
-        key: &'a [u8; 32],
-        iv: &'a [u8; 16],
-        plaintext: &'a [u8],
+        _key: &'a [u8; 32],
+        _iv: &'a [u8; 16],
+        _plaintext: &'a [u8],
     ) -> AsyncCryptoResult<'a, Vec<u8>, Self::AesCtrError> {
         todo!()
     }
 
     fn aes_ctr_decrypt<'a>(
-        key: &'a [u8; 32],
-        iv: &'a [u8; 16],
-        cipher: &'a [u8],
+        _key: &'a [u8; 32],
+        _iv: &'a [u8; 16],
+        _cipher: &'a [u8],
     ) -> AsyncCryptoResult<'a, Vec<u8>, Self::AesCtrError> {
         todo!()
     }
 
     fn key_wrap_rfc3394<'a>(
-        kek: &'a [u8; 32],
-        key_to_wrap: &'a [u8; 32],
+        _kek: &'a [u8; 32],
+        _key_to_wrap: &'a [u8; 32],
     ) -> AsyncCryptoResult<'a, [u8; 40], Self::KeyWrapError> {
         todo!()
     }
 
     fn key_unwrap_rfc3394<'a>(
-        kek: &'a [u8; 32],
-        wrapped: &'a [u8; 40],
+        _kek: &'a [u8; 32],
+        _wrapped: &'a [u8; 40],
     ) -> AsyncCryptoResult<'a, [u8; 32], Self::KeyUnwrapError> {
         todo!()
     }
@@ -141,8 +141,8 @@ impl Crypto for CryptoEsp32 {
     }
 
     fn derive_x25519<'a>(
-        pri_key: &'a [u8; 48],
-        peer_pub: &'a [u8; 44],
+        _pri_key: &'a [u8; 48],
+        _peer_pub: &'a [u8; 44],
     ) -> AsyncCryptoResult<'a, [u8; 32], Self::X25519DeriveError> {
         todo!()
     }
