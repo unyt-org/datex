@@ -1063,7 +1063,7 @@ fn compile_expression(
 
         DatexExpressionData::GetSharedRef(shared_reference) => {
             compilation_context.mark_has_non_static_value();
-            append_get_ref(&mut compilation_context.buffer, shared_reference)
+            append_get_ref(&mut compilation_context.buffer, &shared_reference.address, &shared_reference.mutability)
         }
 
         // assignment

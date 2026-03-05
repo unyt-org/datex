@@ -339,8 +339,8 @@ pub fn append_float_as_i32(buffer: &mut Vec<u8>, int: i32) {
     append_i32(buffer, int);
 }
 
-pub fn append_get_ref(buffer: &mut Vec<u8>, get_shared_ref: GetSharedRef) {
-    match &get_shared_ref.address {
+pub fn append_get_ref(buffer: &mut Vec<u8>, address: &PointerAddress, mutability: &PointerReferenceMutability) {
+    match address {
         PointerAddress::Referenced(ReferencedPointerAddress::Internal(id)) => {
             append_get_internal_ref(buffer, id);
         }
@@ -349,7 +349,7 @@ pub fn append_get_ref(buffer: &mut Vec<u8>, get_shared_ref: GetSharedRef) {
             buffer.extend_from_slice(&local_address.address);
         }
         PointerAddress::Referenced(ReferencedPointerAddress::Remote(id)) => {
-            append_instruction_code(buffer, match get_shared_ref.mutability {
+            append_instruction_code(buffer, match mutability {
                 PointerReferenceMutability::Immutable => InstructionCode::GET_REMOTE_SHARED_REF,
                 PointerReferenceMutability::Mutable => InstructionCode::GET_REMOTE_SHARED_REF_MUT,
             });
