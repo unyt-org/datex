@@ -106,10 +106,6 @@ pub enum VariableModel {
     /// A variable that can be reassigned by updating the slot value
     /// e.g. `var a = 42; a = 69;`
     VariableSlot,
-    /// A variable that can be reassigned by updating a reference value. The slot always point to this reference.
-    /// When variables are transferred across realms, `VariableReference` is used for `var` variables instead of `VariableSlot`.
-    /// e.g. `var a = 42; x :: (a)
-    VariableReference,
 }
 
 impl From<VariableRepresentation> for VariableModel {
@@ -118,9 +114,6 @@ impl From<VariableRepresentation> for VariableModel {
             VariableRepresentation::Constant(_) => VariableModel::Constant,
             VariableRepresentation::VariableSlot(_) => {
                 VariableModel::VariableSlot
-            }
-            VariableRepresentation::VariableReference { .. } => {
-                VariableModel::VariableReference
             }
         }
     }
@@ -136,16 +129,6 @@ impl VariableModel {
         // const variables are always constant
         if variable_kind == VariableKind::Const {
             VariableModel::Constant
-        }
-        // for cross-realm variables, we always use VariableReference
-        // if we don't know the full source text yet (e.g. in a repl), we
-        // must fall back to VariableReference, because we cannot determine if
-        // the variable will be transferred across realms later
-        else if variable_metadata.is_none()
-            || variable_metadata.unwrap().is_cross_realm
-            || execution_mode.is_unbounded()
-        {
-            VariableModel::VariableReference
         }
         // otherwise, we use VariableSlot (default for `var` variables)
         else {
@@ -169,12 +152,6 @@ impl VariableModel {
 pub enum VariableRepresentation {
     Constant(VirtualSlot),
     VariableSlot(VirtualSlot),
-    VariableReference {
-        /// The slot that contains the reference that is used as the variable
-        variable_slot: VirtualSlot,
-        /// The slot that contains the actual value container used in the script (Note: the value container may also be a reference)
-        container_slot: VirtualSlot,
-    },
 }
 
 /// Represents a variable in the DATEX script.
@@ -206,32 +183,10 @@ impl Variable {
         }
     }
 
-    pub fn new_variable_reference(
-        name: String,
-        kind: VariableKind,
-        variable_slot: VirtualSlot,
-        container_slot: VirtualSlot,
-    ) -> Self {
-        Variable {
-            name,
-            kind,
-            representation: VariableRepresentation::VariableReference {
-                variable_slot,
-                container_slot,
-            },
-        }
-    }
-
     pub fn slots(&self) -> Vec<VirtualSlot> {
         match &self.representation {
             VariableRepresentation::Constant(slot) => vec![*slot],
             VariableRepresentation::VariableSlot(slot) => vec![*slot],
-            VariableRepresentation::VariableReference {
-                variable_slot,
-                container_slot,
-            } => {
-                vec![*variable_slot, *container_slot]
-            }
         }
     }
 }
@@ -553,8 +508,11 @@ fn compile_expression(
     mut scope: CompilationScope,
 ) -> Result<CompilationScope, CompilerError> {
     let metadata = rich_ast.metadata;
-    // TODO #483: no clone
-    match rich_ast.ast.data.clone() {
+    let ast = rich_ast.ast;
+
+    let DatexExpression { data, span, ty } = ast;
+
+    match data {
         DatexExpressionData::Integer(int) => {
             append_integer(&mut compilation_context.buffer, &int);
         }
@@ -1018,34 +976,6 @@ fn compile_expression(
 
             // create new variable depending on the model
             let variable = match variable_model {
-                // FIXME: deprecate automatic injection of shared refs for variables (VariableModel). Shared values should be used explicitly
-                VariableModel::VariableReference => {
-                    // allocate an additional slot with a reference to the variable
-                    let virtual_slot_addr_for_var =
-                        scope.get_next_virtual_slot();
-                    compilation_context.append_instruction_code(
-                        InstructionCode::ALLOCATE_SLOT,
-                    );
-                    compilation_context.insert_virtual_slot_address(
-                        VirtualSlot::local(virtual_slot_addr_for_var),
-                    );
-                    compilation_context.append_instruction_code(
-                        InstructionCode::CREATE_SHARED_REF,
-                    );
-                    // append binary code to load variable
-                    compilation_context
-                        .append_instruction_code(InstructionCode::GET_SLOT);
-                    compilation_context.insert_virtual_slot_address(
-                        VirtualSlot::local(virtual_slot_addr),
-                    );
-
-                    Variable::new_variable_reference(
-                        name.clone(),
-                        kind,
-                        VirtualSlot::local(virtual_slot_addr_for_var),
-                        VirtualSlot::local(virtual_slot_addr),
-                    )
-                }
                 VariableModel::Constant => Variable::new_const(
                     name.clone(),
                     VirtualSlot::local(virtual_slot_addr),
@@ -1363,9 +1293,10 @@ fn compile_expression(
             )?;
         }
 
-        e => {
-            log::error!("Unhandled expression in compiler: {:?}", e);
-            return Err(CompilerError::UnexpectedTerm(Box::new(rich_ast.ast)));
+        data => {
+            log::error!("Unhandled expression in compiler: {:?}", data);
+            let ast = DatexExpression { data, span, ty };
+            return Err(CompilerError::UnexpectedTerm(Box::new(ast)));
         }
     }
 
@@ -2668,14 +2599,14 @@ pub mod tests {
     fn remote_execution_injected_var() {
         // var x only refers to a value, not a ref, but since it is transferred to a
         // remote context, its state is synced via a ref (VariableReference model)
-        let script = "var x = 42u8; 1u8 :: x; x = 43u8;";
+        let script = "var x = shared 42u8; 1u8 :: x;";
         let (res, _) =
             compile_script(script, CompileOptions::default()).unwrap();
         assert_eq!(
             res,
             vec![
                 InstructionCode::SHORT_STATEMENTS.into(),
-                3,
+                2,
                 1, // terminated
                 InstructionCode::ALLOCATE_SLOT.into(),
                 // slot index as u32
@@ -2683,23 +2614,10 @@ pub mod tests {
                 0,
                 0,
                 0,
+                // create ref
+                InstructionCode::CREATE_SHARED.into(),
                 InstructionCode::UINT_8.into(),
                 42,
-                InstructionCode::ALLOCATE_SLOT.into(),
-                // slot index as u32
-                1,
-                0,
-                0,
-                0,
-                // create ref
-                InstructionCode::CREATE_SHARED_REF.into(),
-                // slot 0
-                InstructionCode::GET_SLOT.into(),
-                // slot index as u32
-                0,
-                0,
-                0,
-                0,
                 InstructionCode::REMOTE_EXECUTION.into(),
                 // --- start of block
                 // block size (5 bytes)
@@ -2728,16 +2646,6 @@ pub mod tests {
                 // caller (literal value 1 for test)
                 InstructionCode::UINT_8.into(),
                 1,
-                // TODO #238: this is not the correct slot assignment for VariableReference model
-                // set x to 43
-                InstructionCode::SET_SLOT.into(),
-                // slot index as u32
-                0,
-                0,
-                0,
-                0,
-                InstructionCode::UINT_8.into(),
-                43,
             ]
         );
     }

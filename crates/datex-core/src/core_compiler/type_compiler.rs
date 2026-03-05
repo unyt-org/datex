@@ -32,7 +32,7 @@ pub fn append_type(buffer: &mut Vec<u8>, ty: &Type) {
     append_type_definition(buffer, &ty.type_definition);
 }
 
-fn append_type_definition(
+pub fn append_type_definition(
     buffer: &mut Vec<u8>,
     type_definition: &TypeDefinition,
 ) {
