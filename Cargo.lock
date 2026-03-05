@@ -836,7 +836,7 @@ checksum = "d7a1e2f27636f116493b8b860f5546edb47c8d8f8ea73e1d2a20be88e28d1fea"
 
 [[package]]
 name = "datex-core"
-version = "0.0.10"
+version = "0.0.11"
 dependencies = [
  "ariadne",
  "async-select",
@@ -954,7 +954,7 @@ dependencies = [
 
 [[package]]
 name = "datex_macros"
-version = "0.1.6"
+version = "0.1.7"
 dependencies = [
  "datex-core",
  "proc-macro2",

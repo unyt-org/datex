@@ -554,7 +554,12 @@ fn compile_expression(
 ) -> Result<CompilationScope, CompilerError> {
     let metadata = rich_ast.metadata;
     // TODO #483: no clone
-    match rich_ast.ast.data.clone() {
+    let ast = rich_ast.ast;
+
+    // Split it into "everything except data" and "data"
+    let DatexExpression { data, span, ty } = ast;
+
+    match data {
         DatexExpressionData::Integer(int) => {
             append_integer(&mut compilation_context.buffer, &int);
         }
@@ -1363,9 +1368,10 @@ fn compile_expression(
             )?;
         }
 
-        e => {
-            log::error!("Unhandled expression in compiler: {:?}", e);
-            return Err(CompilerError::UnexpectedTerm(Box::new(rich_ast.ast)));
+        data => {
+            log::error!("Unhandled expression in compiler: {:?}", data);
+            let ast = DatexExpression { data, span, ty };
+            return Err(CompilerError::UnexpectedTerm(Box::new(ast)));
         }
     }
 
