@@ -52,11 +52,11 @@ jobs:
       matrix:
         include:
           - profile: no_std_full
-            features: full,allow_unsigned_blocks
+            features: default,full,allow_unsigned_blocks
           - profile: std_full
             features: full,target_native
           - profile: no_std
-            features: allow_unsigned_blocks
+            features: default,allow_unsigned_blocks
           - profile: std
             features: target_native
     steps:
@@ -91,6 +91,7 @@ jobs:
           cargo nextest run \
             --profile ci \
             -p datex-core \
+            --no-default-features \
             --features ${{ matrix.features }}
 
       - name: Upload test results
