@@ -553,10 +553,8 @@ fn compile_expression(
     mut scope: CompilationScope,
 ) -> Result<CompilationScope, CompilerError> {
     let metadata = rich_ast.metadata;
-    // TODO #483: no clone
     let ast = rich_ast.ast;
 
-    // Split it into "everything except data" and "data"
     let DatexExpression { data, span, ty } = ast;
 
     match data {
