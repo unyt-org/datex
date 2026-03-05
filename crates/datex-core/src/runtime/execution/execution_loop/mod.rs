@@ -73,6 +73,7 @@ use crate::{
 };
 use alloc::rc::Rc;
 use core::cell::RefCell;
+use log::info;
 
 #[derive(Debug)]
 enum CollectedExecutionResult {

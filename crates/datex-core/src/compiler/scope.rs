@@ -112,10 +112,6 @@ impl CompilationScope {
         if let Some(variable) = self.variables.get(name) {
             let slot = match variable.representation {
                 VariableRepresentation::Constant(slot) => slot,
-                VariableRepresentation::VariableReference {
-                    container_slot,
-                    ..
-                } => container_slot,
                 VariableRepresentation::VariableSlot(slot) => slot,
             };
             Some((slot, variable.kind))
