@@ -136,3 +136,28 @@ pub async fn test_remote_inline_implicit_context() {
     )
     .await;
 }
+
+#[tokio::test]
+#[cfg(feature = "compiler")]
+#[ignore = "This test currently fails because shared values are not yet supported in remote execution contexts."]
+pub async fn test_remote_shared_value() {
+    flexi_logger::init();
+    let endpoint_a = Endpoint::new("@test_a");
+    let endpoint_b = Endpoint::new("@test_b");
+
+    use_mock_setup_with_two_connected_runtimes(
+        endpoint_a.clone(),
+        endpoint_b.clone(),
+        async |runtime_a, _runtime_b| {
+            // execute script remotely on @test_b
+            let result = runtime_a
+                .execute("var x = shared 42u8; @test_b :: x", &[], None)
+                .await;
+            assert_eq!(
+                result.unwrap().unwrap(),
+                ValueContainer::from(Integer::from(42u8))
+            );
+        },
+    )
+    .await;
+}

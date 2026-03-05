@@ -73,6 +73,7 @@ use crate::{
 };
 use alloc::rc::Rc;
 use core::cell::RefCell;
+use log::info;
 
 #[derive(Debug)]
 enum CollectedExecutionResult {
@@ -1085,6 +1086,8 @@ pub fn inner_execution_loop(
                                         collected_results
                                             .pop_cloned_value_container_result_assert_existing(&state)
                                     );
+
+                                    info!("Dxb for remote execution: {:?}", buffer);
 
                                     interrupt_with_maybe_value!(
                                         interrupt_provider,
