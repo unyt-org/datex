@@ -1,5 +1,6 @@
 import { join } from "https://deno.land/std@0.224.0/path/join.ts";
 import { exists } from "https://deno.land/std@0.224.0/fs/exists.ts";
+import { walk } from "https://deno.land/std@0.224.0/fs/walk.ts";
 
 const [path, type] = Deno.args;
 
@@ -37,6 +38,7 @@ if (!match) {
 }
 
 let [major, minor, patch] = match.slice(1).map(Number);
+const oldVersion = `${match[1]}.${match[2]}.${match[3]}`;
 
 switch (type) {
     case "major":
@@ -54,6 +56,10 @@ switch (type) {
 }
 
 const newVersion = `${major}.${minor}.${patch}`;
+
+// Extract the crate name before modifying the file
+const crateNameMatch = /\[package\][\s\S]*?name\s*=\s*"([^"]+)"/.exec(cargoToml);
+
 const updatedCargoToml = cargoToml.replace(
     versionRegex,
     `version = "${newVersion}"`,
@@ -64,3 +70,29 @@ await Deno.writeTextFile(ghOutput, `NEW_VERSION=${newVersion}`, {
 });
 
 console.info(`Version updated to ${newVersion}`);
+
+// If the crate name was found, update dependency references in sibling crates
+if (crateNameMatch) {
+    const crateName = crateNameMatch[1];
+    // Dependency names use hyphens; package names may use underscores
+    const depName = crateName.replace(/_/g, "-");
+    // Matches: dep-name = { ..., version = "old", ... } (possibly spanning lines)
+    const depVersionRegex = new RegExp(
+        `(${depName.replace(/-/g, "[-_]")}\\s*=\\s*\\{[^}]*version\\s*=\\s*")[^"]+`,
+        "s",
+    );
+    for await (const entry of walk(".", {
+        match: [/Cargo\.toml$/],
+        skip: [/[/\\](target|node_modules|\.git)[/\\]/],
+    })) {
+        if (entry.path === cargoTomlPath) continue;
+        const content = await Deno.readTextFile(entry.path);
+        const updated = content.replace(depVersionRegex, `$1${newVersion}`);
+        if (updated !== content) {
+            await Deno.writeTextFile(entry.path, updated);
+            console.info(
+                `Updated ${depName} dependency in ${entry.path}: ${oldVersion} → ${newVersion}`,
+            );
+        }
+    }
+}
