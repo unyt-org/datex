@@ -155,7 +155,6 @@ pub fn append_value(buffer: &mut Vec<u8>, value: &Value) {
 
 pub fn append_type_cast(buffer: &mut Vec<u8>, ty: &TypeDefinition) {
     append_instruction_code(buffer, InstructionCode::TYPED_VALUE);
-    // TODO #634: optimize: avoid cloning
     // append instruction code
     let instruction_code = TypeInstructionCode::from(ty);
     append_type_space_instruction_code(buffer, instruction_code);
