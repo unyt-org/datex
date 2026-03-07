@@ -34,6 +34,8 @@ rand = "0.10"
 pkcs8 = {version = "0.10", features = ["alloc", "pem"]}
 der = "0.7"
 spki = "0.7"
+
+[dev-dependencies]
 tokio = {version = "1.5", features = ["full"]}
 
 [target.xtensa-esp32s3-none-elf.dependencies]
