@@ -2,7 +2,7 @@ cargo-features = ["profile-rustflags"]
 
 [package]
 name = "datex-core"
-version = "0.0.11"
+version = "0.0.12"
 description = "The DATEX Core Rust implementation"
 authors = [
     "Benedikt Strehle <benedikt@unyt.org>",
