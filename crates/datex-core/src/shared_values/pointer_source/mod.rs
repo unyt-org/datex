@@ -15,6 +15,8 @@ use crate::{
 pub mod codec;
 pub mod error;
 pub mod resolve_request;
+
+#[cfg(feature = "sqlite_pointer_source")]
 pub mod sqlite;
 
 #[derive(Debug, Clone)]
