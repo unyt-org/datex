@@ -157,6 +157,7 @@ proc-macro2 = { version = "1.0", features = [
 
 # webrtc features (optional)
 webrtc = { version = "0.13.0", optional = true }
+sqlx = { version = "0.8.6", features = ["sqlite"], optional = true }
 
 
 ### dev dependencies (for benchmarks and tests)
@@ -183,7 +184,7 @@ flexi_logger = { version = "0.31.8" }
 
 # When using the "std" feature, the "default" feature should not be enabled since
 # it includes no_std-specific dependencies
-default = ["no_std", "dep:async-timer"]
+default = ["no_std", "dep:async-timer", "sqlite_pointer_source"]
 
 no_std = ["dep:hashbrown", "dep:async-unsync", "dep:spin"]
 
@@ -267,7 +268,10 @@ std = [
     "bytes/std",
     "ringmap/std",
     "macro_utils",
+    "sqlx/runtime-tokio",
 ]
+
+sqlite_pointer_source = ["dep:sqlx"]
 
 ### compiler-related features #################################################
 
