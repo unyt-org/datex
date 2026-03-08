@@ -353,9 +353,8 @@ impl ValueContainer {
                     TypeMetadata::Shared {
                         mutability: shared.mutability(),
                         reference_mutability: shared
-                            .pointer()
-                            .reference_mutability()
-                            .cloned(),
+                            .reference_mutability
+                            .clone(),
                     },
                 )
             }

@@ -44,7 +44,7 @@ impl SharedContainer {
         _source_id: TransceiverId,
         handler: impl FnOnce() -> Result<&'a DIFUpdateData, AccessError>,
     ) -> Result<(), AccessError> {
-        if !self.is_mutable() {
+        if !self.can_mutate() {
             return Err(AccessError::ImmutableReference);
         }
         let _update_data = handler()?;
@@ -52,8 +52,8 @@ impl SharedContainer {
         Ok(())
     }
 
-    fn assert_mutable(&self) -> Result<(), AccessError> {
-        if !self.is_mutable() {
+    fn assert_can_mutate(&self) -> Result<(), AccessError> {
+        if !self.can_mutate() {
             return Err(AccessError::ImmutableReference);
         }
         Ok(())
@@ -67,7 +67,7 @@ impl SharedContainer {
         key: impl Into<ValueKey<'a>>,
         val: ValueContainer,
     ) -> Result<(), AccessError> {
-        self.assert_mutable()?;
+        self.assert_can_mutate()?;
 
         let key = key.into();
 
@@ -94,7 +94,7 @@ impl SharedContainer {
         maybe_dif_update_data: Option<&DIFUpdateData>,
         value: impl Into<ValueContainer>,
     ) -> Result<(), AccessError> {
-        self.assert_mutable()?;
+        self.assert_can_mutate()?;
 
         // TODO #306: ensure type compatibility with allowed_type
         let value_container = &value.into();
@@ -123,7 +123,7 @@ impl SharedContainer {
         maybe_dif_update_data: Option<&DIFUpdateData>,
         value: impl Into<ValueContainer>,
     ) -> Result<(), AccessError> {
-        self.assert_mutable()?;
+        self.assert_can_mutate()?;
         let value_container = value.into();
 
         let dif_update = match maybe_dif_update_data {
@@ -161,7 +161,7 @@ impl SharedContainer {
         maybe_dif_update_data: Option<&DIFUpdateData>,
         key: impl Into<ValueKey<'a>>,
     ) -> Result<(), AccessError> {
-        self.assert_mutable()?;
+        self.assert_can_mutate()?;
         let key = key.into();
 
         let dif_update = match maybe_dif_update_data {
@@ -202,7 +202,7 @@ impl SharedContainer {
         &self,
         source_id: TransceiverId,
     ) -> Result<(), AccessError> {
-        self.assert_mutable()?;
+        self.assert_can_mutate()?;
 
         self.with_value_unchecked(|value| {
             match value.inner {
@@ -234,7 +234,7 @@ impl SharedContainer {
         range: core::ops::Range<u32>,
         items: Vec<ValueContainer>,
     ) -> Result<(), AccessError> {
-        self.assert_mutable()?;
+        self.assert_can_mutate()?;
 
         let dif_update = match maybe_dif_update_data {
             Some(update) => update,

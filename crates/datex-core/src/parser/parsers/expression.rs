@@ -29,6 +29,7 @@ use crate::{
         error::NumberParseError, r#type::LocalReferenceMutability,
     },
 };
+use crate::ast::expressions::PlaceholderType;
 
 static UNARY_BP: u8 = 29; // weaker than property access / apply, stronger than all other binary operators
 
@@ -502,16 +503,27 @@ impl Parser {
                 {
                     let address =
                         PointerAddress::try_from(&address[1..]).unwrap();
-                    drop(next);
 
-                    let end_token = self.advance()?.span; // consume pointer address
-                    let span = op.span.start..end_token.end;
+                    let span = op.span.start..next.span.end;
+                    self.advance()?; // consume pointer address
 
                     Ok(DatexExpressionData::GetSharedRef(GetSharedRef {
                         mutability: PointerReferenceMutability::Immutable,
                         address,
                     })
                     .with_span(span))
+                }
+                // check if followed by placeholder
+                else if let Ok(next) = self.peek()
+                    && next.token == Token::Placeholder
+                {
+                    let span = op.span.start..next.span.end;
+                    self.advance()?; // consume placeholder
+
+                    Ok(
+                        DatexExpressionData::Placeholder(PlaceholderType::SharedRef)
+                            .with_span(span)
+                    )
                 }
                 // normal shared ref to dynamic expression
                 else {
@@ -535,16 +547,27 @@ impl Parser {
                 {
                     let address =
                         PointerAddress::try_from(&address[1..]).unwrap();
-                    drop(next);
 
-                    let end_token = self.advance()?.span; // consume pointer address
-                    let span = op.span.start..end_token.end;
+                    let span = op.span.start..next.span.end;
+                    self.advance()?; // consume pointer address
 
                     Ok(DatexExpressionData::GetSharedRef(GetSharedRef {
                         mutability: PointerReferenceMutability::Mutable,
                         address,
                     })
                     .with_span(span))
+                }
+                // check if followed by placeholder
+                else if let Ok(next) = self.peek()
+                    && next.token == Token::Placeholder
+                {
+                    let span = op.span.start..next.span.end;
+                    self.advance()?; // consume placeholder
+
+                    Ok(
+                        DatexExpressionData::Placeholder(PlaceholderType::SharedRefMut)
+                            .with_span(span)
+                    )
                 }
                 // normal shared ref to dynamic expression
                 else {

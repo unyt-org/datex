@@ -22,6 +22,7 @@ use crate::{
         },
     },
 };
+use crate::shared_values::shared_container::SharedContainerInner;
 
 #[derive(Debug, Default)]
 pub struct Memory {
@@ -68,8 +69,8 @@ impl Memory {
         &self,
         pointer_address: &PointerAddress,
     ) -> Option<&Rc<RefCell<SharedValueContainer>>> {
-        self.get_reference(pointer_address).and_then(|r| match r {
-            SharedContainer::Value(v) => Some(v),
+        self.get_reference(pointer_address).and_then(|r| match &r.value {
+            SharedContainerInner::Value(v) => Some(v),
             _ => None,
         })
     }
@@ -78,8 +79,8 @@ impl Memory {
         &self,
         pointer_address: &PointerAddress,
     ) -> Option<&Rc<RefCell<SharedTypeContainer>>> {
-        self.get_reference(pointer_address).and_then(|r| match r {
-            SharedContainer::Type(t) => Some(t),
+        self.get_reference(pointer_address).and_then(|r| match &r.value {
+            SharedContainerInner::Type(t) => Some(t),
             _ => None,
         })
     }
@@ -101,8 +102,8 @@ impl Memory {
         let reference = self
             .get_reference(&pointer_id.into())
             .ok_or(IllegalTypeError::TypeNotFound)?;
-        match reference {
-            SharedContainer::Type(def) => Ok(def.clone()),
+        match &reference.value {
+            SharedContainerInner::Type(def) => Ok(def.clone()),
             _ => Err(IllegalTypeError::TypeNotFound),
         }
     }

@@ -54,6 +54,7 @@ use datex_core::{
     },
     values::core_values::error::NumberParseError,
 };
+use datex_core::ast::expressions::PlaceholderType;
 
 /// Parse the given source code into a DatexExpression AST.
 fn parse_unwrap(src: &str) -> DatexExpression {
@@ -2973,7 +2974,7 @@ fn variable_declaration_and_assignment() {
 fn placeholder() {
     let src = "?";
     let expr = parse_unwrap_data(src);
-    assert_eq!(expr, DatexExpressionData::Placeholder);
+    assert_eq!(expr, DatexExpressionData::Placeholder(PlaceholderType::MoveOrCopy));
 }
 
 #[test]

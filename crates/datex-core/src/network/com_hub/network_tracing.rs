@@ -1,7 +1,6 @@
 use core::{fmt::Display, time::Duration};
 
 use crate::{
-    core_compiler::value_compiler::compile_value_container,
     global::{
         dxb_block::{DXBBlock, IncomingSection, OutgoingContextId},
         protocol_structures::{
@@ -34,6 +33,7 @@ use crate::{prelude::*, runtime::RuntimeInternal};
 use log::{error, info};
 use serde::{Deserialize, Serialize};
 use serde_with::{DurationMilliSeconds, serde_as};
+use crate::core_compiler::value_compiler::compile_value;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
@@ -732,7 +732,7 @@ impl ComHub {
             hops_datex.push(ValueContainer::from(data_map));
         }
 
-        let dxb = compile_value_container(&ValueContainer::from(hops_datex));
+        let dxb = compile_value(&Value::from(hops_datex));
         // info!(
         //     "Trace data: {}",
         //     decompile_body(&dxb, DecompileOptions::default()).unwrap()

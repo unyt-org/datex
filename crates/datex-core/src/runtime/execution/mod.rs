@@ -263,6 +263,7 @@ mod tests {
     use binrw::meta::EndianKind::Runtime;
     use core::assert_matches;
     use log::{debug, info};
+    use crate::shared_values::shared_container::SharedContainerInner;
 
     fn execute_datex_script_debug(
         datex_script: &str,
@@ -774,16 +775,22 @@ mod tests {
             vec!["1", "integer", "integer"],
             vec![
                 Some(Integer::from(1).into()),
-                Some(ValueContainer::Shared(SharedContainer::Type(
-                    get_core_lib_type_reference(CoreLibPointerId::Integer(
-                        None,
-                    )),
-                ))),
-                Some(ValueContainer::Shared(SharedContainer::Type(
-                    get_core_lib_type_reference(CoreLibPointerId::Integer(
-                        None,
-                    )),
-                ))),
+                Some(ValueContainer::Shared(SharedContainer {
+                    value: SharedContainerInner::Type(
+                        get_core_lib_type_reference(CoreLibPointerId::Integer(
+                            None,
+                        )),
+                    ),
+                    reference_mutability: None,
+                })),
+                Some(ValueContainer::Shared(SharedContainer {
+                    value: SharedContainerInner::Type(
+                        get_core_lib_type_reference(CoreLibPointerId::Integer(
+                            None,
+                        )),
+                    ),
+                    reference_mutability: None,
+                })),
             ],
         )
     }

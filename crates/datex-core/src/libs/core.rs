@@ -32,6 +32,7 @@ use core::{cell::RefCell, iter::once, result::Result};
 use datex_macros_internal::LibTypeString;
 use log::info;
 use strum::IntoEnumIterator;
+use crate::shared_values::shared_container::SharedContainerInner;
 
 type CoreLibTypes = HashMap<CoreLibPointerId, Type>;
 type CoreLibVals = HashMap<CoreLibPointerId, ValueContainer>;
@@ -220,7 +221,10 @@ pub fn get_core_lib_value(
         if let Some(ty) = core_lib_types.get(&id) {
             match &ty.type_definition {
                 TypeDefinition::SharedReference(tr) => Some(
-                    ValueContainer::Shared(SharedContainer::Type(tr.clone())),
+                    ValueContainer::Shared(SharedContainer {
+                        value: SharedContainerInner::Type(tr.clone()),
+                        reference_mutability: None,
+                    }),
                 ),
                 _ => core::panic!("Core lib type is not a TypeReference"),
             }
@@ -259,7 +263,10 @@ pub fn load_core_lib(memory: &mut Memory) {
                         .unwrap()
                         .to_string();
                     let reference =
-                        SharedContainer::Type(type_reference.clone());
+                        SharedContainer {
+                            value: SharedContainerInner::Type(type_reference.clone()),
+                            reference_mutability: None,
+                        };
                     memory.register_shared_container(&reference);
                     (name, ValueContainer::Shared(reference))
                 }
@@ -279,7 +286,6 @@ pub fn load_core_lib(memory: &mut Memory) {
             Map::from_iter(types_structure),
             Pointer::new_reference(
                 ReferencedPointerAddress::from(&CoreLibPointerId::Core),
-                PointerReferenceMutability::Immutable,
             ),
         );
         memory.register_shared_container(&core_struct);
@@ -501,7 +507,6 @@ fn create_core_type(
                     },
                     pointer: Pointer::new_reference(
                         ReferencedPointerAddress::from(&pointer_id),
-                        PointerReferenceMutability::Immutable,
                     ),
                 },
             ))),

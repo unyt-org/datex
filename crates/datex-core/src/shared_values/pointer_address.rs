@@ -101,7 +101,17 @@ impl TryFrom<&str> for PointerAddress {
 
 impl From<RawPointerAddress> for PointerAddress {
     fn from(raw: RawPointerAddress) -> Self {
-        PointerAddress::from(&raw)
+        match raw {
+            RawPointerAddress::Remote(remote) => PointerAddress::Referenced(
+                ReferencedPointerAddress::Remote(remote.id),
+            ),
+            RawPointerAddress::Internal(internal) => PointerAddress::Referenced(
+                ReferencedPointerAddress::Internal(internal.id),
+            ),
+            RawPointerAddress::Local(local) => PointerAddress::Owned(
+                OwnedPointerAddress { address: local.id },
+            ),
+        }
     }
 }
 

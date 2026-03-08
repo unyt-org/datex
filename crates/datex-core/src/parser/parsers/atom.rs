@@ -18,7 +18,7 @@ use crate::{
     },
 };
 use core::str::FromStr;
-
+use crate::ast::expressions::PlaceholderType;
 use crate::prelude::*;
 
 impl Parser {
@@ -198,7 +198,7 @@ impl Parser {
     pub(crate) fn parse_placeholder(
         &mut self,
     ) -> Result<DatexExpression, SpannedParserError> {
-        Ok(DatexExpressionData::Placeholder.with_span(self.advance()?.span))
+        Ok(DatexExpressionData::Placeholder(PlaceholderType::MoveOrCopy).with_span(self.advance()?.span))
     }
 
     pub(crate) fn parse_true(
@@ -336,6 +336,7 @@ mod tests {
         },
     };
     use core::assert_matches;
+    use crate::ast::expressions::PlaceholderType;
 
     #[test]
     fn parse_boolean_true() {
@@ -453,7 +454,19 @@ mod tests {
     #[test]
     fn parse_placeholder() {
         let expr = parse("?");
-        assert_eq!(expr.data, DatexExpressionData::Placeholder);
+        assert_eq!(expr.data, DatexExpressionData::Placeholder(PlaceholderType::MoveOrCopy));
+    }
+
+    #[test]
+    fn parse_placeholder_shared_ref() {
+        let expr = parse("'?");
+        assert_eq!(expr.data, DatexExpressionData::Placeholder(PlaceholderType::SharedRef));
+    }
+
+    #[test]
+    fn parse_placeholder_shared_ref_mut() {
+        let expr = parse("'mut ?");
+        assert_eq!(expr.data, DatexExpressionData::Placeholder(PlaceholderType::SharedRefMut));
     }
 
     #[test]

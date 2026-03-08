@@ -185,7 +185,7 @@ pub enum DatexExpressionData {
     GenericInstantiation(GenericInstantiation),
 
     /// The '?' placeholder expression
-    Placeholder,
+    Placeholder(PlaceholderType),
 
     /// Remote execution, e.g. @example :: 41 + 1
     RemoteExecution(RemoteExecution),
@@ -359,6 +359,16 @@ pub struct TypeDeclaration {
 pub struct UnaryOperation {
     pub operator: UnaryOperator,
     pub expression: Box<DatexExpression>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum PlaceholderType {
+    /// 'mut ?
+    SharedRefMut,
+    /// '?
+    SharedRef,
+    /// ?
+    MoveOrCopy,
 }
 
 #[derive(Clone, Debug, PartialEq)]

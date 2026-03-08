@@ -149,11 +149,6 @@ pub enum InstructionCode {
 
     GET_INTERNAL_SLOT, // e.g. #endpoint
 
-    LABEL,        // $x
-    SET_LABEL,    // $x = ...,
-    INIT_LABEL,   // $x := ...
-    LABEL_ACTION, // $x += ...
-
     // Note: fix to sync with RawPointerAddress
     GET_REMOTE_SHARED_REF = 120u8,   // '$x
     GET_INTERNAL_SHARED_REF = 121u8, // '$y, containing globally unique internal id
@@ -161,7 +156,10 @@ pub enum InstructionCode {
 
     GET_REMOTE_SHARED_REF_MUT, // 'mut $x
 
-    GET_OR_INIT_REF,   // $aa := ...
+    SHARED_REF, // '$1234 (optional value)
+    SHARED_REF_MUT, // 'mut $1234(optional value)
+    SHARED_MOVE, // $1234 (optional value)
+
     POINTER_ACTION,    // $aa += ...
     CREATE_SHARED_REF, // ' / 'mut
     SET_REF,           // &aa = ...

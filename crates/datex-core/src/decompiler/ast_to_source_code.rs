@@ -21,6 +21,7 @@ use crate::{
     shared_values::pointer::PointerReferenceMutability,
     values::core_values::r#type::LocalReferenceMutability,
 };
+use crate::ast::expressions::PlaceholderType;
 
 #[derive(Clone, Default)]
 pub enum BraceStyle {
@@ -803,7 +804,13 @@ impl AstToSourceCodeConverter {
                     self.format(&unary_operation.expression)
                 )
             }
-            DatexExpressionData::Placeholder => "?".to_string(),
+            DatexExpressionData::Placeholder(placeholder_type) => {
+                match placeholder_type {
+                    PlaceholderType::SharedRef => "'?".to_string(),
+                    PlaceholderType::SharedRefMut => "'mut ?".to_string(),
+                    PlaceholderType::MoveOrCopy => "?".to_string(),
+                }
+            }
             DatexExpressionData::RemoteExecution(RemoteExecution {
                 left,
                 right,

@@ -58,6 +58,7 @@ use crate::{
     },
 };
 use core::{cell::RefCell, ops::Range, panic, str::FromStr};
+use crate::ast::expressions::PlaceholderType;
 
 pub mod error;
 pub mod options;
@@ -1131,6 +1132,7 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
     }
     fn visit_placeholder(
         &mut self,
+        _placeholder_type: &mut PlaceholderType,
         _span: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
         Ok(VisitAction::SkipChildren)

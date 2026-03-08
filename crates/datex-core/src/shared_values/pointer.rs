@@ -21,7 +21,6 @@ pub struct OwnedPointer {
 pub struct ReferencedPointer {
     /// Address of the borrowed pointer, can be a local or remote pointer address
     address: ReferencedPointerAddress,
-    mutability: PointerReferenceMutability,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -46,13 +45,6 @@ impl Pointer {
         }
     }
 
-    pub fn reference_mutability(&self) -> Option<&PointerReferenceMutability> {
-        match self {
-            Pointer::Owned(_) => None,
-            Pointer::Referenced(reference) => Some(&reference.mutability),
-        }
-    }
-
     /// Creates a new owned pointer with the given local pointer address
     pub(crate) fn new_owned(address: OwnedPointerAddress) -> Self {
         Pointer::Owned(OwnedPointer { address })
@@ -61,11 +53,9 @@ impl Pointer {
     /// Creates a new borrowed pointer with the given pointer address and mutability
     pub(crate) fn new_reference(
         address: ReferencedPointerAddress,
-        mutability: PointerReferenceMutability,
     ) -> Self {
         Pointer::Referenced(ReferencedPointer {
             address,
-            mutability,
         })
     }
 }

@@ -22,6 +22,7 @@ use crate::{
     },
 };
 use core::ops::Range;
+use crate::ast::expressions::PlaceholderType;
 
 pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
     /// Handle expression error
@@ -171,8 +172,8 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
             DatexExpressionData::Identifier(identifier) => {
                 self.visit_identifier(identifier, &expr.span)
             }
-            DatexExpressionData::Placeholder => {
-                self.visit_placeholder(&expr.span)
+            DatexExpressionData::Placeholder(placeholder_type) => {
+                self.visit_placeholder(placeholder_type, &expr.span)
             }
             DatexExpressionData::Recover => {
                 unreachable!(
@@ -572,9 +573,11 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
 
     fn visit_placeholder(
         &mut self,
+        placeholder_type: &mut PlaceholderType,
         span: &Range<usize>,
     ) -> ExpressionVisitResult<E> {
         let _ = span;
+        let _ = placeholder_type;
         Ok(VisitAction::SkipChildren)
     }
 

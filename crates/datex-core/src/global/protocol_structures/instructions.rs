@@ -20,8 +20,10 @@ use crate::{
 };
 use binrw::{BinRead, BinWrite};
 use core::{fmt::Display, prelude::rust_2024::*};
+use binrw::io::Cursor;
 use modular_bitfield::{bitfield, specifiers::B4};
 use serde::{Deserialize, Serialize};
+use crate::shared_values::pointer_address::OwnedPointerAddress;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Instruction {
@@ -670,6 +672,38 @@ pub enum RawPointerAddress {
     #[br(magic = 122u8)] // InstructionCode::GET_LOCAL_SHARED_REF
     Local(RawLocalPointerAddress),
 }
+
+impl RawPointerAddress {
+    fn get_size(&self) -> usize {
+        match self {
+            RawPointerAddress::Remote(_) => 26,
+            RawPointerAddress::Internal(_) => 3,
+            RawPointerAddress::Local(_) => 5,
+        }
+    }
+    pub fn to_bytes(&self) -> Vec<u8> {
+        let mut writer = Cursor::new(Vec::with_capacity(1 + self.get_size()));
+        self.write_le(&mut writer).expect("Failed to write raw pointer address");
+        writer.into_inner()
+    }
+}
+
+impl From<PointerAddress> for RawPointerAddress {
+    fn from(ptr: PointerAddress) -> Self {
+        match ptr {
+            PointerAddress::Referenced(ReferencedPointerAddress::Remote(bytes)) => {
+                RawPointerAddress::Remote(RawRemotePointerAddress { id: bytes })
+            }
+            PointerAddress::Referenced(ReferencedPointerAddress::Internal(bytes)) => {
+                RawPointerAddress::Internal(RawInternalPointerAddress { id: bytes })
+            }
+            PointerAddress::Owned(OwnedPointerAddress {address} ) => {
+                RawPointerAddress::Local(RawLocalPointerAddress { id: address })
+            }
+        }
+    }
+}
+
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
 #[brw(little)]

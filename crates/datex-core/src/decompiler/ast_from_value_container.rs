@@ -32,7 +32,7 @@ impl From<&ValueContainer> for DatexExpressionData {
             ValueContainer::Local(value) => value_to_datex_expression(value),
             ValueContainer::Shared(shared) => {
                 let reference_mutability =
-                    shared.pointer().reference_mutability().cloned();
+                    shared.reference_mutability.clone();
                 match reference_mutability {
                     Some(reference_mutability) => {
                         DatexExpressionData::CreateSharedRef(CreateSharedRef {

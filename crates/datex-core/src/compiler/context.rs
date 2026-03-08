@@ -1,7 +1,7 @@
 use crate::{
     collections::HashMap,
     core_compiler::value_compiler::{
-        append_instruction_code, append_value_container,
+        append_instruction_code,
     },
     global::instruction_codes::InstructionCode,
     runtime::execution::context::ExecutionMode,
@@ -12,29 +12,93 @@ use crate::{
 use crate::prelude::*;
 use core::cmp::PartialEq;
 use itertools::Itertools;
+use crate::utils::buffers::append_u8;
 
-#[derive(Debug, Clone, Default, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum SharedSlotType {
+    // shared x
+    Move,
+    // 'shared x
+    Ref,
+    // 'mut shared mut x
+    RefMut,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum LocalSlotType {
+    /// The value is moved into the external slot and no longer used afterward
+    Move,
+    /// The value is moved into the external slot but still used afterward (clone or immutable ref (&x))
+    Copy,
+    /// The value is temporarily borrowed in the external slot - the changed value must be written back to the local slot afterward
+    RefMut,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum ExternalSlotType {
+    Local(LocalSlotType),
+    Shared(SharedSlotType),
+}
+
+impl From<ExternalSlotType> for u8 {
+    fn from(slot_type: ExternalSlotType) -> Self {
+        match slot_type {
+            ExternalSlotType::Local(local_type) => match local_type {
+                LocalSlotType::Move => 0,
+                LocalSlotType::Copy => 1,
+                LocalSlotType::RefMut => 2,
+            },
+            ExternalSlotType::Shared(shared_type) => match shared_type {
+                SharedSlotType::Move => 3,
+                SharedSlotType::Ref => 4,
+                SharedSlotType::RefMut => 5,
+            },
+        }
+    }
+}
+
+impl TryFrom<u8> for ExternalSlotType {
+    type Error = ();
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        match value {
+            0 => Ok(ExternalSlotType::Local(LocalSlotType::Move)),
+            1 => Ok(ExternalSlotType::Local(LocalSlotType::Copy)),
+            2 => Ok(ExternalSlotType::Local(LocalSlotType::RefMut)),
+            3 => Ok(ExternalSlotType::Shared(SharedSlotType::Move)),
+            4 => Ok(ExternalSlotType::Shared(SharedSlotType::Ref)),
+            5 => Ok(ExternalSlotType::Shared(SharedSlotType::RefMut)),
+            _ => Err(()),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct VirtualSlot {
-    pub level: u8, // parent scope level if exists, otherwise 0
-    // local slot address of scope with level
+    /// parent scope level if exists, otherwise 0
+    pub level: u8,
+    /// local slot address of scope with level
     pub virtual_address: u32,
+    /// for external slots, set to Some
+    pub external_slot_type: Option<ExternalSlotType>
 }
 
 impl VirtualSlot {
-    pub fn local(virtual_address: u32) -> Self {
+    pub fn local(virtual_address: u32, external_slot_type: Option<ExternalSlotType>) -> Self {
         VirtualSlot {
             level: 0,
             virtual_address,
+            external_slot_type,
         }
     }
     pub fn is_external(&self) -> bool {
         self.level > 0
     }
 
-    pub fn external(level: u8, virtual_address: u32) -> Self {
+    pub fn external(level: u8, virtual_address: u32, external_slot_type: Option<ExternalSlotType>) -> Self {
         VirtualSlot {
             level,
             virtual_address,
+            external_slot_type,
         }
     }
 
@@ -42,6 +106,7 @@ impl VirtualSlot {
         VirtualSlot {
             level: self.level + 1,
             virtual_address: self.virtual_address,
+            external_slot_type: self.external_slot_type,
         }
     }
 
@@ -50,6 +115,7 @@ impl VirtualSlot {
             VirtualSlot {
                 level: self.level - 1,
                 virtual_address: self.virtual_address,
+                external_slot_type: self.external_slot_type,
             }
         } else {
             core::panic!("Cannot upgrade a local slot");
@@ -108,10 +174,6 @@ impl CompilationContext {
 
     pub fn buffer_index(&self) -> usize {
         self.buffer.len()
-    }
-
-    fn insert_value_container(&mut self, value_container: &ValueContainer) {
-        append_value_container(&mut self.buffer, value_container);
     }
 
     pub fn external_slots(&self) -> Vec<VirtualSlot> {

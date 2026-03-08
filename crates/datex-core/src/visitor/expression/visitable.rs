@@ -370,7 +370,7 @@ impl<E> VisitableExpression<E> for DatexExpression {
             | DatexExpressionData::VariableAccess(_)
             | DatexExpressionData::GetSharedRef(_)
             | DatexExpressionData::Slot(_)
-            | DatexExpressionData::Placeholder
+            | DatexExpressionData::Placeholder(_)
             | DatexExpressionData::Recover
             | DatexExpressionData::Null
             | DatexExpressionData::Boolean(_)

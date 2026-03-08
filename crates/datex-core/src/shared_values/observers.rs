@@ -9,6 +9,7 @@ use crate::{
 use crate::prelude::*;
 use core::{cell::RefCell, fmt::Display, result::Result};
 use serde::{Deserialize, Serialize};
+use crate::shared_values::shared_container::SharedContainerInner;
 
 #[derive(Debug)]
 pub enum ObserverError {
@@ -112,9 +113,9 @@ impl SharedContainer {
     /// Returns a list of all observer IDs currently registered to this reference.
     /// A type reference or immutable reference will always return an empty list.
     pub fn observers_ids(&self) -> Vec<u32> {
-        match self {
-            SharedContainer::Type(_) => vec![],
-            SharedContainer::Value(vr) => {
+        match &self.value {
+            SharedContainerInner::Type(_) => vec![],
+            SharedContainerInner::Value(vr) => {
                 vr.borrow().observers.keys().cloned().collect()
             }
         }
@@ -135,15 +136,20 @@ impl SharedContainer {
     fn ensure_mutable_value_reference(
         &self,
     ) -> Result<Rc<RefCell<SharedValueContainer>>, ObserverError> {
-        self.mutable_reference()
-            .ok_or(ObserverError::ImmutableReference)
+        if !self.can_mutate() {
+            return Err(ObserverError::ImmutableReference);
+        }
+        match &self.value {
+            SharedContainerInner::Value(v) => Ok(v.clone()),
+            SharedContainerInner::Type(_) => unreachable!(), // is never mutable, already checked above
+        }
     }
 
     /// Notifies all observers of a change represented by the given DIFUpdate.
     pub fn notify_observers(&self, dif: &DIFUpdate) {
-        let observer_callbacks: Vec<ObserverCallback> = match self {
-            SharedContainer::Type(_) => return, // no observers
-            SharedContainer::Value(vr) => {
+        let observer_callbacks: Vec<ObserverCallback> = match &self.value {
+            SharedContainerInner::Type(_) => return, // no observers
+            SharedContainerInner::Value(vr) => {
                 // Clone observers while holding borrow
                 let vr_ref = vr.borrow();
                 vr_ref
@@ -167,9 +173,9 @@ impl SharedContainer {
 
     /// Check if there are any observers registered
     pub fn has_observers(&self) -> bool {
-        match self {
-            SharedContainer::Type(_) => false,
-            SharedContainer::Value(vr) => !vr.borrow().observers.is_empty(),
+        match &self.value {
+            SharedContainerInner::Type(_) => false,
+            SharedContainerInner::Value(vr) => !vr.borrow().observers.is_empty(),
         }
     }
 }

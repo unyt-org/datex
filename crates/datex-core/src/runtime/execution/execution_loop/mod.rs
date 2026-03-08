@@ -74,6 +74,7 @@ use crate::{
 use alloc::rc::Rc;
 use core::cell::RefCell;
 use log::info;
+use crate::shared_values::shared_container::SharedContainerInner;
 
 #[derive(Debug)]
 enum CollectedExecutionResult {
@@ -535,9 +536,9 @@ pub fn inner_execution_loop(
                                         ..
                                     })) => ty,
                                     // Type Reference
-                                    Some(ValueContainer::Shared(
-                                        SharedContainer::Type(type_ref),
-                                    )) => Type::new(
+                                    Some(ValueContainer::Shared(SharedContainer {
+                                        value: SharedContainerInner::Type(type_ref),
+                                        .. })) => Type::new(
                                         TypeDefinition::SharedReference(
                                             type_ref,
                                         ),

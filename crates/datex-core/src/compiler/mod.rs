@@ -40,7 +40,7 @@ use crate::{
     core_compiler::value_compiler::{
         append_boolean, append_decimal, append_encoded_integer,
         append_endpoint, append_float_as_i16, append_float_as_i32,
-        append_get_internal_ref, append_get_ref, append_instruction_code,
+        append_get_internal_ref, append_get_shared_ref, append_instruction_code,
         append_integer, append_key_string, append_text, append_typed_decimal,
         append_value_container,
     },
@@ -60,6 +60,9 @@ use precompiler::{
     precompile_ast,
     precompiled_ast::{AstMetadata, RichAst, VariableMetadata},
 };
+use crate::ast::expressions::PlaceholderType;
+use crate::compiler::context::{ExternalSlotType, LocalSlotType, SharedSlotType};
+use crate::core_compiler::value_compiler::{append_shared_container, append_value};
 
 pub mod context;
 pub mod error;
@@ -422,7 +425,7 @@ fn compile_ast(
 fn extract_static_value_from_ast(
     ast: &DatexExpression,
 ) -> Result<ValueContainer, CompilerError> {
-    if let DatexExpressionData::Placeholder = ast.data {
+    if let DatexExpressionData::Placeholder(_) = ast.data {
         return Err(CompilerError::NonStaticValue);
     }
     ValueContainer::try_from(&ast.data)
@@ -612,23 +615,48 @@ fn compile_expression(
                 )?;
             }
         }
-        DatexExpressionData::Placeholder => {
+        DatexExpressionData::Placeholder(placeholder_type) => {
             // FIXME #720
             let placeholder = compilation_context
                 .inserted_values
                 .get(compilation_context.inserted_value_index)
                 .expect("Placeholder index out of bounds");
             if let Some(value_container) = placeholder {
-                append_value_container(
-                    &mut compilation_context.buffer,
-                    value_container,
-                );
+                // TODO: validate in precompiler that the value container is actually a shared value
+                match value_container {
+                    ValueContainer::Local(value) => {
+                        append_value(
+                            &mut compilation_context.buffer,
+                            value,
+                        );
+                    }
+                    ValueContainer::Shared(shared_container) => {
+                        let shared_container_mutability = match placeholder_type {
+                            PlaceholderType::SharedRefMut => Some(SharedContainerMutability::Mutable),
+                            PlaceholderType::SharedRef => Some(SharedContainerMutability::Immutable),
+                            PlaceholderType::MoveOrCopy => None,
+                        };
+                        append_shared_container(
+                            &mut compilation_context.buffer,
+                            shared_container,
+                            shared_container_mutability,
+                            true,
+                        );
+                    }
+                }
             } else {
+                let external_slot_type = match placeholder_type {
+                    PlaceholderType::SharedRefMut => ExternalSlotType::Shared(SharedSlotType::RefMut),
+                    PlaceholderType::SharedRef => ExternalSlotType::Shared(SharedSlotType::Ref),
+                    PlaceholderType::MoveOrCopy => ExternalSlotType::Shared(SharedSlotType::Move),
+                };
+
                 compilation_context
                     .append_instruction_code(InstructionCode::GET_SLOT);
                 compilation_context.insert_virtual_slot_address(
                     VirtualSlot::local(
                         compilation_context.inserted_value_index as u32,
+                        Some(external_slot_type)
                     ),
                 );
             }
@@ -956,7 +984,7 @@ fn compile_expression(
             compilation_context
                 .append_instruction_code(InstructionCode::ALLOCATE_SLOT);
             compilation_context.insert_virtual_slot_address(
-                VirtualSlot::local(virtual_slot_addr),
+                VirtualSlot::local(virtual_slot_addr, None),
             );
             // compile expression
             scope = compile_expression(
@@ -978,12 +1006,12 @@ fn compile_expression(
             let variable = match variable_model {
                 VariableModel::Constant => Variable::new_const(
                     name.clone(),
-                    VirtualSlot::local(virtual_slot_addr),
+                    VirtualSlot::local(virtual_slot_addr, None),
                 ),
                 VariableModel::VariableSlot => Variable::new_variable_slot(
                     name.clone(),
                     kind,
-                    VirtualSlot::local(virtual_slot_addr),
+                    VirtualSlot::local(virtual_slot_addr, None),
                 ),
             };
 
@@ -992,7 +1020,7 @@ fn compile_expression(
 
         DatexExpressionData::GetSharedRef(shared_reference) => {
             compilation_context.mark_has_non_static_value();
-            append_get_ref(
+            append_get_shared_ref(
                 &mut compilation_context.buffer,
                 &shared_reference.address,
                 &shared_reference.mutability,
@@ -1157,6 +1185,11 @@ fn compile_expression(
             );
             for slot in external_slots {
                 compilation_context.insert_virtual_slot_address(slot.upgrade());
+                // store external slot type
+                append_u8(
+                    &mut compilation_context.buffer,
+                    slot.external_slot_type.unwrap().into(), // TODO: guarantee external_slot_type is Some
+                );
             }
 
             // insert block body (compilation_context.buffer)
@@ -3367,5 +3400,61 @@ pub mod tests {
             b't',
         ];
         assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn remote_execution_return_shared_ref() {
+
+        let script = "const x = shared 42u8; 1u8 :: 'x";
+        let (res, _) =
+            compile_script(script, CompileOptions::default()).unwrap();
+        assert_eq!(
+            res,
+            vec![
+                InstructionCode::SHORT_STATEMENTS.into(),
+                2,
+                0, // not terminated
+                InstructionCode::ALLOCATE_SLOT.into(),
+                // slot index as u32
+                0,
+                0,
+                0,
+                0,
+                // create ref
+                InstructionCode::CREATE_SHARED.into(),
+                InstructionCode::UINT_8.into(),
+                42,
+                InstructionCode::REMOTE_EXECUTION.into(),
+                // --- start of block
+                // block size (5 bytes)
+                5,
+                0,
+                0,
+                0,
+                // injected slots (1)
+                1,
+                0,
+                0,
+                0,
+                // slot 0
+                0,
+                0,
+                0,
+                0,
+                // ref
+                0,
+                // slot 0 (mapped from slot 0)
+                InstructionCode::GET_SLOT.into(),
+                // slot index as u32
+                0,
+                0,
+                0,
+                0,
+                // --- end of block
+                // caller (literal value 1 for test)
+                InstructionCode::UINT_8.into(),
+                1,
+            ]
+        );
     }
 }
