@@ -60,9 +60,10 @@ use precompiler::{
     precompile_ast,
     precompiled_ast::{AstMetadata, RichAst, VariableMetadata},
 };
-use crate::ast::expressions::PlaceholderType;
+use crate::ast::expressions::ValueAccessType;
 use crate::compiler::context::{ExternalSlotType, LocalSlotType, SharedSlotType};
 use crate::core_compiler::value_compiler::{append_shared_container, append_value};
+use crate::shared_values::pointer::PointerReferenceMutability;
 
 pub mod context;
 pub mod error;
@@ -632,9 +633,9 @@ fn compile_expression(
                     }
                     ValueContainer::Shared(shared_container) => {
                         let shared_container_mutability = match placeholder_type {
-                            PlaceholderType::SharedRefMut => Some(SharedContainerMutability::Mutable),
-                            PlaceholderType::SharedRef => Some(SharedContainerMutability::Immutable),
-                            PlaceholderType::MoveOrCopy => None,
+                            ValueAccessType::SharedRefMut => Some(SharedContainerMutability::Mutable),
+                            ValueAccessType::SharedRef => Some(SharedContainerMutability::Immutable),
+                            ValueAccessType::MoveOrCopy => None,
                         };
                         append_shared_container(
                             &mut compilation_context.buffer,
@@ -646,9 +647,9 @@ fn compile_expression(
                 }
             } else {
                 let external_slot_type = match placeholder_type {
-                    PlaceholderType::SharedRefMut => ExternalSlotType::Shared(SharedSlotType::RefMut),
-                    PlaceholderType::SharedRef => ExternalSlotType::Shared(SharedSlotType::Ref),
-                    PlaceholderType::MoveOrCopy => ExternalSlotType::Shared(SharedSlotType::Move),
+                    ValueAccessType::SharedRefMut => ExternalSlotType::Shared(SharedSlotType::RefMut),
+                    ValueAccessType::SharedRef => ExternalSlotType::Shared(SharedSlotType::Ref),
+                    ValueAccessType::MoveOrCopy => ExternalSlotType::Shared(SharedSlotType::Move),
                 };
 
                 compilation_context
@@ -1018,7 +1019,7 @@ fn compile_expression(
             scope.register_variable_slot(variable);
         }
 
-        DatexExpressionData::GetSharedRef(shared_reference) => {
+        DatexExpressionData::RequestSharedRef(shared_reference) => {
             compilation_context.mark_has_non_static_value();
             append_get_shared_ref(
                 &mut compilation_context.buffer,
@@ -1172,14 +1173,6 @@ fn compile_expression(
 
             let external_slots = execution_block_ctx.external_slots();
 
-            // TODO what do we do
-            // x :: call(&mut)
-            // x.call('mut y, z)
-            // function () (
-            //    'mut z;
-            // )
-
-
             // --- start block
             // set block size (len of compilation_context.buffer)
             append_u32(
@@ -1250,7 +1243,7 @@ fn compile_expression(
         }
 
         // refs
-        DatexExpressionData::CreateRef(create_ref) => {
+        DatexExpressionData::GetRef(create_ref) => {
             compilation_context.mark_has_non_static_value();
             // TODO #764: handle lifetimes, mutability, correctly (in precompiler)
             // TODO #765: handle move/clone
@@ -1263,10 +1256,17 @@ fn compile_expression(
         }
 
         // shared refs
-        DatexExpressionData::CreateSharedRef(create_shared_ref) => {
+        DatexExpressionData::GetSharedRef(create_shared_ref) => {
             compilation_context.mark_has_non_static_value();
             compilation_context
-                .append_instruction_code(InstructionCode::CREATE_SHARED_REF);
+                .append_instruction_code(match create_shared_ref.mutability {
+                    PointerReferenceMutability::Immutable => {
+                        InstructionCode::GET_SHARED_REF
+                    }
+                    PointerReferenceMutability::Mutable => {
+                        InstructionCode::GET_SHARED_REF_MUT
+                    }
+                });
             scope = compile_expression(
                 compilation_context,
                 RichAst::new(*create_shared_ref.expression, &metadata),
@@ -1274,7 +1274,6 @@ fn compile_expression(
                 scope,
             )?;
         }
-
         // shared values
         DatexExpressionData::CreateShared(create_shared) => {
             compilation_context.mark_has_non_static_value();
@@ -1610,7 +1609,7 @@ pub mod tests {
         );
 
         let datex_script =
-            "const a = 'mut 42u8; const b = 'mut 69u8; a is b".to_string(); // a is b
+            "const a = shared mut 42u8; const b = 'mut 69u8; a is b".to_string(); // a is b
         let result = compile_and_log(&datex_script);
         assert_eq!(
             result,
@@ -1623,7 +1622,7 @@ pub mod tests {
                 0,
                 0,
                 0,
-                InstructionCode::CREATE_SHARED_REF.into(),
+                InstructionCode::CREATE_SHARED_MUT.into(),
                 InstructionCode::UINT_8.into(),
                 42,
                 // val b = 69;
@@ -1632,7 +1631,7 @@ pub mod tests {
                 0,
                 0,
                 0,
-                InstructionCode::CREATE_SHARED_REF.into(),
+                InstructionCode::GET_SHARED_REF_MUT.into(),
                 InstructionCode::UINT_8.into(),
                 69,
                 // a is b
@@ -2326,8 +2325,8 @@ pub mod tests {
     }
 
     #[test]
-    fn allocate_ref() {
-        let script = "const a = 'mut 42u8";
+    fn allocate_shared() {
+        let script = "const a = shared 42u8";
         let result = compile_and_log(script);
         assert_eq!(
             result,
@@ -2338,7 +2337,7 @@ pub mod tests {
                 0,
                 0,
                 0,
-                InstructionCode::CREATE_SHARED_REF.into(),
+                InstructionCode::CREATE_SHARED.into(),
                 InstructionCode::UINT_8.into(),
                 42,
             ]
@@ -2346,8 +2345,8 @@ pub mod tests {
     }
 
     #[test]
-    fn read_ref() {
-        let script = "const a = 'mut 42u8; a";
+    fn read_shared() {
+        let script = "const a = shared 42u8; a";
         let result = compile_and_log(script);
         assert_eq!(
             result,
@@ -2361,7 +2360,7 @@ pub mod tests {
                 0,
                 0,
                 0,
-                InstructionCode::CREATE_SHARED_REF.into(),
+                InstructionCode::CREATE_SHARED.into(),
                 InstructionCode::UINT_8.into(),
                 42,
                 InstructionCode::GET_SLOT.into(),
@@ -3091,7 +3090,7 @@ pub mod tests {
         let (res, _) =
             compile_script(script, CompileOptions::default()).unwrap();
         let mut instructions: Vec<u8> =
-            vec![InstructionCode::GET_INTERNAL_SHARED_REF.into()];
+            vec![InstructionCode::REQUEST_INTERNAL_SHARED_REF.into()];
         // pointer id
         instructions.append(
             &mut PointerAddress::from(CoreLibPointerId::Integer(None))
@@ -3159,7 +3158,7 @@ pub mod tests {
                 1,
             ],
             vec![
-                InstructionCode::GET_INTERNAL_SHARED_REF.into(),
+                InstructionCode::REQUEST_INTERNAL_SHARED_REF.into(),
                 // pointer id for integer
                 100,
                 0,

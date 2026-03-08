@@ -511,9 +511,13 @@ pub fn iterate_instructions(
                             next_instructions_stack.push_next_regular(1); // value to check
                             RegularInstruction::Matches
                         }
-                        InstructionCode::CREATE_SHARED_REF => {
+                        InstructionCode::GET_SHARED_REF => {
                             next_instructions_stack.push_next_regular(1);
-                            RegularInstruction::CreateSharedReference
+                            RegularInstruction::GetSharedReference
+                        }
+                        InstructionCode::GET_SHARED_REF_MUT => {
+                            next_instructions_stack.push_next_regular(1);
+                            RegularInstruction::GetSharedReferenceMut
                         }
                         InstructionCode::CREATE_SHARED => {
                             next_instructions_stack.push_next_regular(1);
@@ -552,15 +556,15 @@ pub fn iterate_instructions(
                             RegularInstruction::SetSlot(yield_unwrap!(address))
                         }
 
-                        InstructionCode::GET_REMOTE_SHARED_REF => {
+                        InstructionCode::REQUEST_REMOTE_SHARED_REF => {
                             let address =
                                 RawRemotePointerAddress::read(&mut reader);
-                            RegularInstruction::GetSharedRef(yield_unwrap!(
+                            RegularInstruction::RequestSharedRef(yield_unwrap!(
                                 address
                             ))
                         }
 
-                        InstructionCode::GET_LOCAL_SHARED_REF => {
+                        InstructionCode::REQUEST_LOCAL_SHARED_REF => {
                             let address =
                                 RawLocalPointerAddress::read(&mut reader);
                             RegularInstruction::GetLocalRef(yield_unwrap!(
@@ -568,7 +572,7 @@ pub fn iterate_instructions(
                             ))
                         }
 
-                        InstructionCode::GET_INTERNAL_SHARED_REF => {
+                        InstructionCode::REQUEST_INTERNAL_SHARED_REF => {
                             let address =
                                 RawInternalPointerAddress::read(&mut reader);
                             RegularInstruction::GetInternalRef(yield_unwrap!(

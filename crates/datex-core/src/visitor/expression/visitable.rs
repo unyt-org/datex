@@ -1,7 +1,7 @@
 use crate::{
     ast::expressions::{
         Apply, BinaryOperation, CallableDeclaration, ComparisonOperation,
-        Conditional, CreateMut, CreateRef, CreateShared, CreateSharedRef,
+        Conditional, CreateMut, GetRef, CreateShared, GetSharedRef,
         DatexExpression, DatexExpressionData, GenericInstantiation, List, Map,
         PropertyAccess, PropertyAssignment, RangeDeclaration, RemoteExecution,
         SlotAssignment, Statements, TypeDeclaration, UnaryOperation, Unbox,
@@ -232,7 +232,7 @@ impl<E> VisitableExpression<E> for Unbox {
     }
 }
 
-impl<E> VisitableExpression<E> for CreateRef {
+impl<E> VisitableExpression<E> for GetRef {
     fn walk_children(
         &mut self,
         visitor: &mut impl ExpressionVisitor<E>,
@@ -242,7 +242,7 @@ impl<E> VisitableExpression<E> for CreateRef {
     }
 }
 
-impl<E> VisitableExpression<E> for CreateSharedRef {
+impl<E> VisitableExpression<E> for GetSharedRef {
     fn walk_children(
         &mut self,
         visitor: &mut impl ExpressionVisitor<E>,
@@ -319,10 +319,10 @@ impl<E> VisitableExpression<E> for DatexExpression {
             DatexExpressionData::CallableDeclaration(function_declaration) => {
                 function_declaration.walk_children(visitor)
             }
-            DatexExpressionData::CreateRef(create_ref) => {
+            DatexExpressionData::GetRef(create_ref) => {
                 create_ref.walk_children(visitor)
             }
-            DatexExpressionData::CreateSharedRef(create_shared_ref) => {
+            DatexExpressionData::GetSharedRef(create_shared_ref) => {
                 create_shared_ref.walk_children(visitor)
             }
             DatexExpressionData::CreateShared(create_ref) => {
@@ -368,7 +368,7 @@ impl<E> VisitableExpression<E> for DatexExpression {
             | DatexExpressionData::NativeImplementationIndicator
             | DatexExpressionData::VariantAccess(_)
             | DatexExpressionData::VariableAccess(_)
-            | DatexExpressionData::GetSharedRef(_)
+            | DatexExpressionData::RequestSharedRef(_)
             | DatexExpressionData::Slot(_)
             | DatexExpressionData::Placeholder(_)
             | DatexExpressionData::Recover

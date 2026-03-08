@@ -18,7 +18,7 @@ use crate::{
 };
 
 use crate::{
-    ast::expressions::{CallableDeclaration, CreateShared, CreateSharedRef},
+    ast::expressions::{CallableDeclaration, CreateShared, GetSharedRef},
     libs::core::CoreLibPointerId,
     prelude::*,
 };
@@ -35,7 +35,7 @@ impl From<&ValueContainer> for DatexExpressionData {
                     shared.reference_mutability.clone();
                 match reference_mutability {
                     Some(reference_mutability) => {
-                        DatexExpressionData::CreateSharedRef(CreateSharedRef {
+                        DatexExpressionData::GetSharedRef(GetSharedRef {
                             mutability: reference_mutability,
                             expression: Box::new(
                                 DatexExpressionData::CreateShared(

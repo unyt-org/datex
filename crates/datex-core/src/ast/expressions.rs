@@ -112,7 +112,7 @@ pub enum DatexExpressionData {
     /// One or more statements, e.g (1; 2; 3)
     Statements(Statements),
     /// reference access to shared value, e.g. '$ABC / 'mut $ABC
-    GetSharedRef(GetSharedRef),
+    RequestSharedRef(RequestSharedRef),
 
     /// compile ( ... )
     Compile(CompileExpression),
@@ -143,10 +143,10 @@ pub enum DatexExpressionData {
     /// Create a new shared container
     CreateShared(CreateShared),
     /// Create a new reference
-    CreateRef(CreateRef),
+    GetRef(GetRef),
 
-    /// Create a new shared reference
-    CreateSharedRef(CreateSharedRef),
+    /// Get a new shared reference
+    GetSharedRef(GetSharedRef),
 
     /// Creates a new mutable value
     CreateMut(CreateMut),
@@ -185,7 +185,7 @@ pub enum DatexExpressionData {
     GenericInstantiation(GenericInstantiation),
 
     /// The '?' placeholder expression
-    Placeholder(PlaceholderType),
+    Placeholder(ValueAccessType),
 
     /// Remote execution, e.g. @example :: 41 + 1
     RemoteExecution(RemoteExecution),
@@ -361,14 +361,24 @@ pub struct UnaryOperation {
     pub expression: Box<DatexExpression>,
 }
 
-#[derive(Clone, Debug, PartialEq)]
-pub enum PlaceholderType {
-    /// 'mut ?
+#[derive(Clone, Debug, PartialEq, Default)]
+pub enum ValueAccessType {
+    /// 'mut x
     SharedRefMut,
-    /// '?
+    /// 'x
     SharedRef,
-    /// ?
+    /// x
+    #[default]
     MoveOrCopy,
+}
+
+impl From<&PointerReferenceMutability> for ValueAccessType {
+    fn from(mutability: &PointerReferenceMutability) -> Self {
+        match mutability {
+            PointerReferenceMutability::Mutable => ValueAccessType::SharedRefMut,
+            PointerReferenceMutability::Immutable => ValueAccessType::SharedRef,
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -457,10 +467,11 @@ pub struct CompileExpression {
 pub struct VariableAccess {
     pub id: VariableId,
     pub name: String,
+    pub access_type: ValueAccessType
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct GetSharedRef {
+pub struct RequestSharedRef {
     pub mutability: PointerReferenceMutability,
     pub address: PointerAddress,
 }
@@ -547,7 +558,7 @@ pub struct Unbox {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct CreateRef {
+pub struct GetRef {
     pub mutability: LocalReferenceMutability,
     pub expression: Box<DatexExpression>,
 }
@@ -559,7 +570,7 @@ pub struct CreateShared {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct CreateSharedRef {
+pub struct GetSharedRef {
     pub mutability: PointerReferenceMutability,
     pub expression: Box<DatexExpression>,
 }

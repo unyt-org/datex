@@ -295,8 +295,7 @@ mod tests {
             ValueContainer::from(3),
         ];
         let list_ref =
-            SharedContainer::boxed_mut(List::from(list).into(), Pointer::NULL)
-                .unwrap();
+            SharedContainer::boxed_mut(List::from(list).into(), Pointer::NULL);
         list_ref
             .try_append_value(0, None, ValueContainer::from(4))
             .expect("Failed to push value to list");
@@ -314,7 +313,7 @@ mod tests {
 
         // Try to push to non-list value
         let int_ref =
-            SharedContainer::boxed_mut(42.into(), Pointer::NULL).unwrap();
+            SharedContainer::boxed_mut(42.into(), Pointer::NULL);
         let result =
             int_ref.try_append_value(0, None, ValueContainer::from(99));
         assert_matches!(result, Err(AccessError::InvalidOperation(_)));
@@ -329,8 +328,7 @@ mod tests {
         let map_ref = SharedContainer::boxed_mut(
             ValueContainer::from(map),
             Pointer::NULL,
-        )
-        .unwrap();
+        );
         // Set existing property
         map_ref
             .try_set_property(0, None, "key1", ValueContainer::from(42))
@@ -356,8 +354,7 @@ mod tests {
         let list_ref = SharedContainer::boxed_mut(
             ValueContainer::from(list),
             Pointer::NULL,
-        )
-        .unwrap();
+        );
 
         // Set existing index
         list_ref
@@ -378,7 +375,7 @@ mod tests {
 
         // Try to set index on non-map value
         let int_ref =
-            SharedContainer::boxed_mut(42.into(), Pointer::NULL).unwrap();
+            SharedContainer::boxed_mut(42.into(), Pointer::NULL);
         let result =
             int_ref.try_set_property(0, None, 0, ValueContainer::from(99));
         assert_matches!(result, Err(AccessError::InvalidOperation(_)));
@@ -393,8 +390,7 @@ mod tests {
         let struct_ref = SharedContainer::boxed_mut(
             ValueContainer::from(struct_val),
             Pointer::NULL,
-        )
-        .unwrap();
+        );
 
         // Set existing property
         struct_ref
@@ -414,7 +410,7 @@ mod tests {
 
         // // Try to set property on non-struct value
         let int_ref =
-            SharedContainer::boxed_mut(42.into(), Pointer::NULL).unwrap();
+            SharedContainer::boxed_mut(42.into(), Pointer::NULL);
         let result = int_ref.try_set_property(
             0,
             None,

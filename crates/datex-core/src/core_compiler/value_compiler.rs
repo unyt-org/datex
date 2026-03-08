@@ -417,7 +417,7 @@ pub fn append_get_shared_ref(
         PointerAddress::Owned(local_address) => {
             append_instruction_code(
                 buffer,
-                InstructionCode::GET_LOCAL_SHARED_REF,
+                InstructionCode::REQUEST_LOCAL_SHARED_REF,
             );
             buffer.extend_from_slice(&local_address.address);
         }
@@ -426,10 +426,10 @@ pub fn append_get_shared_ref(
                 buffer,
                 match mutability {
                     PointerReferenceMutability::Immutable => {
-                        InstructionCode::GET_REMOTE_SHARED_REF
+                        InstructionCode::REQUEST_REMOTE_SHARED_REF
                     }
                     PointerReferenceMutability::Mutable => {
-                        InstructionCode::GET_REMOTE_SHARED_REF_MUT
+                        InstructionCode::REQUEST_REMOTE_SHARED_REF_MUT
                     }
                 },
             );
@@ -439,7 +439,7 @@ pub fn append_get_shared_ref(
 }
 
 pub fn append_get_internal_ref(buffer: &mut Vec<u8>, id: &[u8; 3]) {
-    append_instruction_code(buffer, InstructionCode::GET_INTERNAL_SHARED_REF);
+    append_instruction_code(buffer, InstructionCode::REQUEST_INTERNAL_SHARED_REF);
     buffer.extend_from_slice(id);
 }
 

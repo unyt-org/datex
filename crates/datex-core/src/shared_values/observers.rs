@@ -253,10 +253,10 @@ mod tests {
 
     #[test]
     fn observe_and_unobserve() {
-        let r = SharedContainer::boxed_mut(42.into(), Pointer::NULL).unwrap();
+        let r = SharedContainer::boxed_mut(42.into(), Pointer::NULL);
         assert!(!r.has_observers());
         let observer_id = r.observe(Observer::new(|_, _| {})).unwrap();
-        assert!(observer_id == 0);
+        assert_eq!(observer_id, 0);
         assert!(r.has_observers());
         assert!(r.unobserve(observer_id).is_ok());
         assert!(!r.has_observers());
@@ -268,22 +268,22 @@ mod tests {
 
     #[test]
     fn observer_ids_incremental() {
-        let r = SharedContainer::boxed_mut(42.into(), Pointer::NULL).unwrap();
+        let r = SharedContainer::boxed_mut(42.into(), Pointer::NULL);
         let id1 = r.observe(Observer::new(|_, _| {})).unwrap();
         let id2 = r.observe(Observer::new(|_, _| {})).unwrap();
-        assert!(id1 == 0);
-        assert!(id2 == 1);
+        assert_eq!(id1, 0);
+        assert_eq!(id2, 1);
         assert!(r.unobserve(id1).is_ok());
         let id3 = r.observe(Observer::new(|_, _| {})).unwrap();
-        assert!(id3 == 0);
+        assert_eq!(id3, 0);
         let id4 = r.observe(Observer::new(|_, _| {})).unwrap();
-        assert!(id4 == 2);
+        assert_eq!(id4, 2);
     }
 
     #[test]
     fn observe_replace() {
         let int_ref =
-            SharedContainer::boxed_mut(42.into(), Pointer::NULL).unwrap();
+            SharedContainer::boxed_mut(42.into(), Pointer::NULL);
         let observed_updates =
             record_dif_updates(&int_ref, 0, ObserveOptions::default());
 
@@ -308,7 +308,7 @@ mod tests {
     #[test]
     fn observe_replace_same_transceiver() {
         let int_ref =
-            SharedContainer::boxed_mut(42.into(), Pointer::NULL).unwrap();
+            SharedContainer::boxed_mut(42.into(), Pointer::NULL);
         let observed_update =
             record_dif_updates(&int_ref, 0, ObserveOptions::default());
 
@@ -324,7 +324,7 @@ mod tests {
     #[test]
     fn observe_replace_same_transceiver_relay_own_updates() {
         let int_ref =
-            SharedContainer::boxed_mut(42.into(), Pointer::NULL).unwrap();
+            SharedContainer::boxed_mut(42.into(), Pointer::NULL);
         let observed_update = record_dif_updates(
             &int_ref,
             0,
@@ -360,8 +360,7 @@ mod tests {
             ])
             .into(),
             Pointer::NULL,
-        )
-        .unwrap();
+        );
         let observed_updates =
             record_dif_updates(&reference, 0, ObserveOptions::default());
         // Update a property

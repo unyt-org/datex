@@ -2,9 +2,9 @@ pub mod visitable;
 use crate::{
     ast::expressions::{
         Apply, BinaryOperation, CallableDeclaration, ComparisonOperation,
-        CompileExpression, Conditional, CreateMut, CreateRef, CreateShared,
-        CreateSharedRef, DatexExpression, DatexExpressionData,
-        GenericInstantiation, GetSharedRef, List, Map, PropertyAccess,
+        CompileExpression, Conditional, CreateMut, GetRef, CreateShared,
+        GetSharedRef, DatexExpression, DatexExpressionData,
+        GenericInstantiation, RequestSharedRef, List, Map, PropertyAccess,
         PropertyAssignment, RemoteExecution, Slot, SlotAssignment, Statements,
         TypeDeclaration, UnaryOperation, Unbox, UnboxAssignment,
         VariableAccess, VariableAssignment, VariableDeclaration, VariantAccess,
@@ -22,7 +22,7 @@ use crate::{
     },
 };
 use core::ops::Range;
-use crate::ast::expressions::PlaceholderType;
+use crate::ast::expressions::ValueAccessType;
 
 pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
     /// Handle expression error
@@ -105,8 +105,8 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
                 self.visit_list(list, &expr.span)
             }
             DatexExpressionData::Map(map) => self.visit_map(map, &expr.span),
-            DatexExpressionData::GetSharedRef(get_shared_ref) => {
-                self.visit_get_shared_reference(get_shared_ref, &expr.span)
+            DatexExpressionData::RequestSharedRef(request_shared_ref) => {
+                self.visit_request_shared_reference(request_shared_ref, &expr.span)
             }
             DatexExpressionData::Conditional(conditional) => {
                 self.visit_conditional(conditional, &expr.span)
@@ -123,11 +123,11 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
                     &expr.span,
                 )
             }
-            DatexExpressionData::CreateRef(create_ref) => {
-                self.visit_create_ref(create_ref, &expr.span)
+            DatexExpressionData::GetRef(get_ref) => {
+                self.visit_get_ref(get_ref, &expr.span)
             }
-            DatexExpressionData::CreateSharedRef(create_shared_ref) => {
-                self.visit_create_shared_ref(create_shared_ref, &expr.span)
+            DatexExpressionData::GetSharedRef(get_shared_ref) => {
+                self.visit_get_shared_ref(get_shared_ref, &expr.span)
             }
             DatexExpressionData::CreateShared(create_shared) => {
                 self.visit_create_shared(create_shared, &expr.span)
@@ -440,9 +440,9 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
     }
 
     /// Visit create reference expression
-    fn visit_create_ref(
+    fn visit_get_ref(
         &mut self,
-        create_ref: &mut CreateRef,
+        create_ref: &mut GetRef,
         span: &Range<usize>,
     ) -> ExpressionVisitResult<E> {
         let _ = span;
@@ -451,13 +451,13 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
     }
 
     /// Visit create shared reference expression
-    fn visit_create_shared_ref(
+    fn visit_get_shared_ref(
         &mut self,
-        create_shared_ref: &mut CreateSharedRef,
+        get_shared_ref: &mut GetSharedRef,
         span: &Range<usize>,
     ) -> ExpressionVisitResult<E> {
         let _ = span;
-        let _ = create_shared_ref;
+        let _ = get_shared_ref;
         Ok(VisitAction::VisitChildren)
     }
 
@@ -573,7 +573,7 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
 
     fn visit_placeholder(
         &mut self,
-        placeholder_type: &mut PlaceholderType,
+        placeholder_type: &mut ValueAccessType,
         span: &Range<usize>,
     ) -> ExpressionVisitResult<E> {
         let _ = span;
@@ -592,15 +592,15 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
         Ok(VisitAction::SkipChildren)
     }
 
-    /// Visit get reference expression
-    fn visit_get_shared_reference(
+    /// Visit request reference expression
+    fn visit_request_shared_reference(
         &mut self,
-        get_shared_ref: &mut GetSharedRef,
+        get_shared_ref: &mut RequestSharedRef,
         span: &Range<usize>,
     ) -> ExpressionVisitResult<E> {
         let _ = span;
         let _ = get_shared_ref;
-        Ok(VisitAction::SkipChildren)
+        Ok(VisitAction::VisitChildren)
     }
 
     /// Visit boolean literal

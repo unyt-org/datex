@@ -30,7 +30,7 @@ use crate::{
 };
 
 use crate::{
-    ast::expressions::{CreateShared, CreateSharedRef, GetSharedRef},
+    ast::expressions::{CreateShared, GetSharedRef, RequestSharedRef},
     prelude::*,
     shared_values::{
         pointer::PointerReferenceMutability, pointer_address::PointerAddress,
@@ -234,29 +234,29 @@ pub fn ast_from_bytecode(
                                 DatexExpressionData::Null
                             }
 
-                            RegularInstruction::GetSharedRef(raw_address) => {
-                                DatexExpressionData::GetSharedRef(GetSharedRef {
+                            RegularInstruction::RequestSharedRef(raw_address) => {
+                                DatexExpressionData::RequestSharedRef(RequestSharedRef {
                                     address: PointerAddress::from(&raw_address),
                                     mutability: PointerReferenceMutability::Immutable
                                 })
                             }
 
-                            RegularInstruction::GetSharedRefMut(raw_address) => {
-                                DatexExpressionData::GetSharedRef(GetSharedRef {
+                            RegularInstruction::RequestSharedRefMut(raw_address) => {
+                                DatexExpressionData::RequestSharedRef(RequestSharedRef {
                                     address: PointerAddress::from(&raw_address),
                                     mutability: PointerReferenceMutability::Mutable
                                 })
                             }
 
                             RegularInstruction::GetLocalRef(raw_address) => {
-                                DatexExpressionData::GetSharedRef(GetSharedRef {
+                                DatexExpressionData::RequestSharedRef(RequestSharedRef {
                                     address: PointerAddress::from(&raw_address),
                                     mutability: PointerReferenceMutability::Immutable
                                 })
                             }
 
                             RegularInstruction::GetInternalRef(raw_address) => {
-                                DatexExpressionData::GetSharedRef(GetSharedRef {
+                                DatexExpressionData::RequestSharedRef(RequestSharedRef {
                                     address: PointerAddress::from(&raw_address),
                                     mutability: PointerReferenceMutability::Immutable
                                 })
@@ -326,11 +326,10 @@ pub fn ast_from_bytecode(
                                 | RegularInstruction::SubtractAssign(_)
                                 | RegularInstruction::MultiplyAssign(_)
                                 | RegularInstruction::DivideAssign(_)
-                                | RegularInstruction::CreateSharedReference
+                                | RegularInstruction::GetSharedReference
+                                | RegularInstruction::GetSharedReferenceMut
                                 | RegularInstruction::CreateShared
                                 | RegularInstruction::CreateSharedMut
-                                | RegularInstruction::GetOrCreateRef(_)
-                                | RegularInstruction::GetOrCreateRefMut(_)
                                 | RegularInstruction::AllocateSlot(_)
                                 | RegularInstruction::SetSlot(_)
                                 | RegularInstruction::SetReferenceValue(_)
@@ -496,10 +495,10 @@ pub fn ast_from_bytecode(
                                     .into()
                             }
 
-                            RegularInstruction::CreateSharedReference => {
+                            RegularInstruction::GetSharedReference => {
                                 let expr = collected_results.pop_value_result();
-                                DatexExpressionData::CreateSharedRef(
-                                    CreateSharedRef {
+                                DatexExpressionData::GetSharedRef(
+                                    GetSharedRef {
                                         mutability: PointerReferenceMutability::Immutable,
                                         expression: Box::new(expr),
                                     },

@@ -147,22 +147,18 @@ pub enum RegularInstruction {
     MultiplyAssign(SlotAddress),
     DivideAssign(SlotAddress),
 
-    CreateSharedReference,
+    GetSharedReference,
+    GetSharedReferenceMut,
 
     CreateShared,
     CreateSharedMut,
 
     // ' $ABCDE
-    GetSharedRef(RawRemotePointerAddress),
+    RequestSharedRef(RawRemotePointerAddress),
     // 'mut $ABCDE
-    GetSharedRefMut(RawRemotePointerAddress),
+    RequestSharedRefMut(RawRemotePointerAddress),
     GetLocalRef(RawLocalPointerAddress),
     GetInternalRef(RawInternalPointerAddress),
-
-    // &ABCDE := ...
-    GetOrCreateRef(GetOrCreateRemoteRefData),
-    // &mut ABCDE := ...
-    GetOrCreateRefMut(GetOrCreateRemoteRefData),
 
     AllocateSlot(SlotAddress),
     GetSlot(SlotAddress),
@@ -330,18 +326,18 @@ impl Display for RegularInstruction {
                 core::write!(f, "SET_REFERENCE_VALUE ({})", operator)
             }
             RegularInstruction::Unbox => core::write!(f, "UNBOX"),
-            RegularInstruction::GetSharedRef(address) => {
+            RegularInstruction::RequestSharedRef(address) => {
                 core::write!(
                     f,
-                    "GET_SHARED_REF [{}:{}]",
+                    "REQUEST_SHARED_REF [{}:{}]",
                     address.endpoint().expect("Invalid endpoint"),
                     hex::encode(address.id)
                 )
             }
-            RegularInstruction::GetSharedRefMut(address) => {
+            RegularInstruction::RequestSharedRefMut(address) => {
                 core::write!(
                     f,
-                    "GET_SHARED_REF_MUT [{}:{}]",
+                    "REQUEST_SHARED_REF_MUT [{}:{}]",
                     address.endpoint().expect("Invalid endpoint"),
                     hex::encode(address.id)
                 )
@@ -360,30 +356,17 @@ impl Display for RegularInstruction {
                     hex::encode(address.id)
                 )
             }
-            RegularInstruction::CreateSharedReference => {
-                core::write!(f, "CREATE_SHARED_REF")
+            RegularInstruction::GetSharedReference => {
+                core::write!(f, "GET_SHARED_REF")
+            }
+            RegularInstruction::GetSharedReferenceMut => {
+                core::write!(f, "GET_SHARED_REF_MUT")
             }
             RegularInstruction::CreateShared => {
                 core::write!(f, "CREATE_SHARED")
             }
             RegularInstruction::CreateSharedMut => {
                 core::write!(f, "CREATE_SHARED_MUT")
-            }
-            RegularInstruction::GetOrCreateRef(data) => {
-                core::write!(
-                    f,
-                    "GET_OR_CREATE_REF [{}, block_size: {}]",
-                    hex::encode(data.address.id),
-                    data.create_block_size
-                )
-            }
-            RegularInstruction::GetOrCreateRefMut(data) => {
-                core::write!(
-                    f,
-                    "GET_OR_CREATE_REF_MUT [{}, block_size: {}]",
-                    hex::encode(data.address.id),
-                    data.create_block_size
-                )
             }
             RegularInstruction::RemoteExecution(block) => {
                 core::write!(
@@ -429,7 +412,7 @@ impl Display for RegularInstruction {
             }
             RegularInstruction::SetPropertyDynamic => {
                 core::write!(f, "SET_PROPERTY_DYNAMIC")
-            }
+            },
         }
     }
 }

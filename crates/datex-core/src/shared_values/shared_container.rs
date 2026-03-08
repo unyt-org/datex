@@ -449,6 +449,24 @@ impl SharedContainer {
             _ => false,
         }
     }
+    
+    pub fn try_derive_mutable_reference(&self) -> Result<Self, ()> {
+        if !self.can_mutate() {
+            return Err(());
+        }
+        
+        Ok(SharedContainer {
+            value: self.value.clone(),
+            reference_mutability: Some(PointerReferenceMutability::Mutable),
+        })
+    }
+    
+    pub fn derive_reference(&self) -> Self {
+        SharedContainer {
+            value: self.value.clone(),
+            reference_mutability: Some(PointerReferenceMutability::Immutable),
+        }
+    }
 
     /// Checks if the reference is mutable.
     /// A reference is mutable if it is a mutable ValueReference and all references in the chain are mutable.
@@ -517,13 +535,13 @@ impl SharedContainer {
     pub fn boxed_mut(
         value_container: ValueContainer,
         pointer: Pointer,
-    ) -> Result<Self, SharedValueCreationError> {
+    ) -> Self {
         SharedContainer::try_boxed(
             value_container,
             None,
             pointer,
             SharedContainerMutability::Mutable,
-        )
+        ).unwrap()
     }
 
     pub fn boxed(
@@ -708,7 +726,7 @@ mod tests {
         // creating a mutable shared container from a value should work
         let value = ValueContainer::from(42);
         let reference =
-            SharedContainer::boxed_mut(value, Pointer::NULL).unwrap();
+            SharedContainer::boxed_mut(value, Pointer::NULL);
         assert_eq!(reference.mutability(), SharedContainerMutability::Mutable);
     }
 

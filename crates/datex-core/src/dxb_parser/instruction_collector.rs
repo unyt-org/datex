@@ -488,12 +488,11 @@ impl<T> InstructionCollector<T> {
             RegularInstruction::UnaryMinus
             | RegularInstruction::UnaryPlus
             | RegularInstruction::BitwiseNot
-            | RegularInstruction::CreateSharedReference
+            | RegularInstruction::GetSharedReference
+            | RegularInstruction::GetSharedReferenceMut
             | RegularInstruction::CreateShared
             | RegularInstruction::CreateSharedMut
-            | RegularInstruction::Unbox
-            | RegularInstruction::GetOrCreateRef(_)
-            | RegularInstruction::GetOrCreateRefMut(_) => {
+            | RegularInstruction::Unbox => {
                 self.collect_full(
                     Instruction::RegularInstruction(regular_instruction),
                     1,

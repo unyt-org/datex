@@ -264,6 +264,7 @@ mod tests {
     use core::assert_matches;
     use log::{debug, info};
     use crate::shared_values::shared_container::SharedContainerInner;
+    use crate::shared_values::shared_value_container::SharedValueContainer;
 
     fn execute_datex_script_debug(
         datex_script: &str,
@@ -667,12 +668,71 @@ mod tests {
     }
 
     #[test]
-    fn shared_assignment() {
+    fn shared_assignment_mut_ref_to_mut() {
         let result = execute_datex_script_debug_with_result(
+            "const x = 'mut shared mut 42; x",
+        );
+        assert_matches!(result, ValueContainer::Shared(SharedContainer {
+            reference_mutability: Some(PointerReferenceMutability::Mutable),
+            value: SharedContainerInner::Value(ref value),
+        }) if value.borrow().mutability.clone() == SharedContainerMutability::Mutable);
+        assert_value_eq!(result, ValueContainer::from(Integer::from(42)));
+    }
+
+    #[test]
+    fn shared_assignment_immut_ref_to_mut() {
+        let result = execute_datex_script_debug_with_result(
+            "const x = 'shared mut 42; x",
+        );
+        assert_matches!(result, ValueContainer::Shared(SharedContainer {
+            reference_mutability: Some(PointerReferenceMutability::Immutable),
+            value: SharedContainerInner::Value(ref value),
+        }) if value.borrow().mutability.clone() == SharedContainerMutability::Mutable);
+        assert_value_eq!(result, ValueContainer::from(Integer::from(42)));
+    }
+
+    #[test]
+    fn shared_assignment_immut_ref() {
+        let result = execute_datex_script_debug_with_result(
+            "const x = 'shared 42; x",
+        );
+        assert_matches!(result, ValueContainer::Shared(SharedContainer {
+            reference_mutability: Some(PointerReferenceMutability::Immutable),
+            value: SharedContainerInner::Value(ref value),
+        }) if value.borrow().mutability.clone() == SharedContainerMutability::Immutable);
+        assert_value_eq!(result, ValueContainer::from(Integer::from(42)));
+    }
+
+    #[test]
+    fn shared_assignment_immut() {
+        let result = execute_datex_script_debug_with_result(
+            "const x = shared 42; x",
+        );
+        assert_matches!(result, ValueContainer::Shared(SharedContainer {
+            reference_mutability: None,
+            value: SharedContainerInner::Value(ref value),
+        }) if value.borrow().mutability.clone() == SharedContainerMutability::Immutable);
+        assert_value_eq!(result, ValueContainer::from(Integer::from(42)));
+    }
+
+    #[test]
+    fn shared_assignment_mut() {
+        let result = execute_datex_script_debug_with_result(
+            "const x = shared mut 42; x",
+        );
+        assert_matches!(result, ValueContainer::Shared(SharedContainer {
+            reference_mutability: None,
+            value: SharedContainerInner::Value(ref value),
+        }) if value.borrow().mutability.clone() == SharedContainerMutability::Mutable);
+        assert_value_eq!(result, ValueContainer::from(Integer::from(42)));
+    }
+
+    #[test]
+    fn shared_assignment_mut_ref_to_immut() {
+        let result = execute_datex_script_debug_with_error(
             "const x = 'mut shared 42; x",
         );
-        assert_matches!(result, ValueContainer::Shared(..));
-        assert_value_eq!(result, ValueContainer::from(Integer::from(42)));
+        assert_matches!(result, Err(ExecutionError::MutableReferenceToNonMutableValue));
     }
 
     #[test]

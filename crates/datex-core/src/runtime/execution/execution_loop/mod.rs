@@ -365,7 +365,7 @@ pub fn inner_execution_loop(
                             }
                             RegularInstruction::Text(TextData(text)) => Some(ValueContainer::from(text).into()),
 
-                            RegularInstruction::GetSharedRef(address) => Some(interrupt_with_value!(
+                            RegularInstruction::RequestSharedRef(address) => Some(interrupt_with_value!(
                                     interrupt_provider,
                                     ExecutionInterrupt::External(
                                         ExternalExecutionInterrupt::GetReferenceToRemotePointer(address, PointerReferenceMutability::Immutable)
@@ -373,7 +373,7 @@ pub fn inner_execution_loop(
                                 ).into()),
 
 
-                            RegularInstruction::GetSharedRefMut(address) => Some(interrupt_with_value!(
+                            RegularInstruction::RequestSharedRefMut(address) => Some(interrupt_with_value!(
                                     interrupt_provider,
                                     ExecutionInterrupt::External(
                                         ExternalExecutionInterrupt::GetReferenceToRemotePointer(address, PointerReferenceMutability::Mutable)
@@ -459,18 +459,17 @@ pub fn inner_execution_loop(
                             RegularInstruction::SubtractAssign(_) |
                             RegularInstruction::MultiplyAssign(_) |
                             RegularInstruction::DivideAssign(_) |
-                            RegularInstruction::CreateSharedReference |
+                            RegularInstruction::GetSharedReference |
+                            RegularInstruction::GetSharedReferenceMut |
                             RegularInstruction::CreateShared |
                             RegularInstruction::CreateSharedMut |
-                            RegularInstruction::GetOrCreateRef(_) |
-                            RegularInstruction::GetOrCreateRefMut(_) |
                             RegularInstruction::AllocateSlot(_) |
                             RegularInstruction::SetSlot(_) |
                             RegularInstruction::SetReferenceValue(_) |
                             RegularInstruction::Unbox |
                             RegularInstruction::TypedValue |
                             RegularInstruction::RemoteExecution(_) |
-                            RegularInstruction::TypeExpression => unreachable!()
+                            RegularInstruction::TypeExpression => unreachable!(),
                         })
                     } else {
                         None
@@ -708,12 +707,10 @@ pub fn inner_execution_loop(
                                             target,
                                             pointer,
                                         ),
-                                        RegularInstruction::CreateSharedMut => {
-                                            yield_unwrap!(SharedContainer::boxed_mut(
-                                                target,
-                                                pointer,
-                                            ))
-                                        },
+                                        RegularInstruction::CreateSharedMut => SharedContainer::boxed_mut(
+                                            target,
+                                            pointer,
+                                        ),
                                         _ => unreachable!(),
                                     };
 
@@ -721,15 +718,33 @@ pub fn inner_execution_loop(
                                         .into()
                                 }
 
-                                RegularInstruction::CreateSharedReference => {
+                                RegularInstruction::GetSharedReference => {
                                     let target = yield_unwrap!(
                                         collected_results
                                             .pop_cloned_value_container_result_assert_existing(&state)
                                     );
 
                                     // value_container must be a shared value, otherwise we cannot create a reference to it
-                                    if let ValueContainer::Shared(_) = target {
-                                        RuntimeValue::ValueContainer(target)
+                                    if let ValueContainer::Shared(shared) = target {
+                                        RuntimeValue::ValueContainer(ValueContainer::Shared(shared.derive_reference()))
+                                            .into()
+                                    } else {
+                                        return yield Err(ExecutionError::ReferenceToNonSharedValue);
+                                    }
+                                }
+
+                                RegularInstruction::GetSharedReferenceMut => {
+                                    let target = yield_unwrap!(
+                                        collected_results
+                                            .pop_cloned_value_container_result_assert_existing(&state)
+                                    );
+
+                                    // value_container must be a shared value, otherwise we cannot create a reference to it
+                                    if let ValueContainer::Shared(shared) = target {
+                                        let mut_ref = yield_unwrap!(
+                                            shared.try_derive_mutable_reference().map_err(|_| ExecutionError::MutableReferenceToNonMutableValue)
+                                        );
+                                        RuntimeValue::ValueContainer(ValueContainer::Shared(mut_ref))
                                             .into()
                                     } else {
                                         return yield Err(ExecutionError::ReferenceToNonSharedValue);

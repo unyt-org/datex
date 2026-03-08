@@ -18,7 +18,7 @@ use crate::{
     },
 };
 use core::str::FromStr;
-use crate::ast::expressions::PlaceholderType;
+use crate::ast::expressions::ValueAccessType;
 use crate::prelude::*;
 
 impl Parser {
@@ -198,7 +198,7 @@ impl Parser {
     pub(crate) fn parse_placeholder(
         &mut self,
     ) -> Result<DatexExpression, SpannedParserError> {
-        Ok(DatexExpressionData::Placeholder(PlaceholderType::MoveOrCopy).with_span(self.advance()?.span))
+        Ok(DatexExpressionData::Placeholder(ValueAccessType::MoveOrCopy).with_span(self.advance()?.span))
     }
 
     pub(crate) fn parse_true(
@@ -336,7 +336,8 @@ mod tests {
         },
     };
     use core::assert_matches;
-    use crate::ast::expressions::PlaceholderType;
+    use crate::ast::expressions::{GetSharedRef, ValueAccessType};
+    use crate::shared_values::pointer::PointerReferenceMutability;
 
     #[test]
     fn parse_boolean_true() {
@@ -454,19 +455,25 @@ mod tests {
     #[test]
     fn parse_placeholder() {
         let expr = parse("?");
-        assert_eq!(expr.data, DatexExpressionData::Placeholder(PlaceholderType::MoveOrCopy));
+        assert_eq!(expr.data, DatexExpressionData::Placeholder(ValueAccessType::MoveOrCopy));
     }
 
     #[test]
     fn parse_placeholder_shared_ref() {
         let expr = parse("'?");
-        assert_eq!(expr.data, DatexExpressionData::Placeholder(PlaceholderType::SharedRef));
+        assert_eq!(expr.data, DatexExpressionData::GetSharedRef(GetSharedRef {
+            expression: Box::new(DatexExpressionData::Placeholder(ValueAccessType::MoveOrCopy).with_default_span()),
+            mutability: PointerReferenceMutability::Immutable,
+        }));
     }
 
     #[test]
     fn parse_placeholder_shared_ref_mut() {
         let expr = parse("'mut ?");
-        assert_eq!(expr.data, DatexExpressionData::Placeholder(PlaceholderType::SharedRefMut));
+        assert_eq!(expr.data, DatexExpressionData::GetSharedRef(GetSharedRef {
+            expression: Box::new(DatexExpressionData::Placeholder(ValueAccessType::MoveOrCopy).with_default_span()),
+            mutability: PointerReferenceMutability::Mutable,
+        }));
     }
 
     #[test]
