@@ -646,18 +646,11 @@ fn compile_expression(
                     }
                 }
             } else {
-                let external_slot_type = match placeholder_type {
-                    ValueAccessType::SharedRefMut => ExternalSlotType::Shared(SharedSlotType::RefMut),
-                    ValueAccessType::SharedRef => ExternalSlotType::Shared(SharedSlotType::Ref),
-                    ValueAccessType::MoveOrCopy => ExternalSlotType::Shared(SharedSlotType::Move),
-                };
-
                 compilation_context
                     .append_instruction_code(InstructionCode::GET_SLOT);
                 compilation_context.insert_virtual_slot_address(
                     VirtualSlot::local(
                         compilation_context.inserted_value_index as u32,
-                        Some(external_slot_type)
                     ),
                 );
             }
@@ -985,7 +978,7 @@ fn compile_expression(
             compilation_context
                 .append_instruction_code(InstructionCode::ALLOCATE_SLOT);
             compilation_context.insert_virtual_slot_address(
-                VirtualSlot::local(virtual_slot_addr, None),
+                VirtualSlot::local(virtual_slot_addr),
             );
             // compile expression
             scope = compile_expression(
@@ -1007,12 +1000,12 @@ fn compile_expression(
             let variable = match variable_model {
                 VariableModel::Constant => Variable::new_const(
                     name.clone(),
-                    VirtualSlot::local(virtual_slot_addr, None),
+                    VirtualSlot::local(virtual_slot_addr),
                 ),
                 VariableModel::VariableSlot => Variable::new_variable_slot(
                     name.clone(),
                     kind,
-                    VirtualSlot::local(virtual_slot_addr, None),
+                    VirtualSlot::local(virtual_slot_addr),
                 ),
             };
 
@@ -1038,7 +1031,8 @@ fn compile_expression(
             compilation_context.mark_has_non_static_value();
             // get variable slot address
             let (virtual_slot, kind) = scope
-                .resolve_variable_name_to_virtual_slot(&name)
+                .resolve_variable_name_to_virtual_slot(&name, None)
+                .map_err(|_| CompilerError::AssignmentToExternalVariable(name.clone()))?
                 .ok_or_else(|| {
                     CompilerError::UndeclaredVariable(name.clone())
                 })?;
@@ -1129,12 +1123,22 @@ fn compile_expression(
 
         // variable access
         DatexExpressionData::VariableAccess(VariableAccess {
-            name, ..
+            name,
+            access_type,
+            ..
         }) => {
             compilation_context.mark_has_non_static_value();
+
+            let slot_type = match access_type {
+                ValueAccessType::SharedRefMut => ExternalSlotType::Shared(SharedSlotType::RefMut),
+                ValueAccessType::SharedRef => ExternalSlotType::Shared(SharedSlotType::Ref),
+                // TODO: map to local slot types depending on type
+                ValueAccessType::MoveOrCopy => ExternalSlotType::Shared(SharedSlotType::Move),
+            };
+
             // get variable slot address
             let (virtual_slot, ..) = scope
-                .resolve_variable_name_to_virtual_slot(&name)
+                .resolve_variable_name_to_virtual_slot_with_slot_type(&name, slot_type)
                 .ok_or_else(|| {
                     CompilerError::UndeclaredVariable(name.clone())
                 })?;
@@ -1189,7 +1193,7 @@ fn compile_expression(
                 // store external slot type
                 append_u8(
                     &mut compilation_context.buffer,
-                    slot.external_slot_type.unwrap().into(), // TODO: guarantee external_slot_type is Some
+                    slot.external_slot_type.unwrap().into(), // must exist for external slots
                 );
             }
 
@@ -1483,6 +1487,7 @@ pub mod tests {
     use alloc::format;
     use core::assert_matches;
     use log::*;
+    use crate::compiler::context::{ExternalSlotType, SharedSlotType};
 
     fn compile_and_log(datex_script: &str) -> Vec<u8> {
         let (result, _) =
@@ -2584,6 +2589,18 @@ pub mod tests {
         );
     }
 
+
+    #[test]
+    fn remote_execution_invalid_reassignment_of_external_variable() {
+        let script = "var x = 42u8; 1u8 :: (x = 43u8)";
+        let result = compile_script(script, CompileOptions::default());
+        assert!(result.is_err());
+        assert_matches!(
+            result.err().unwrap().error,
+            CompilerError::AssignmentToExternalVariable(name) if name == "x"
+        );
+    }
+
     #[test]
     fn remote_execution_injected_const() {
         let script = "const x = 42u8; 1u8 :: x";
@@ -2620,6 +2637,8 @@ pub mod tests {
                 0,
                 0,
                 0,
+                // local move
+                3,
                 // slot 0 (mapped from slot 0)
                 InstructionCode::GET_SLOT.into(),
                 // slot index as u32
@@ -2636,10 +2655,10 @@ pub mod tests {
     }
 
     #[test]
-    fn remote_execution_injected_var() {
+    fn remote_execution_injected_shared_move() {
         // var x only refers to a value, not a ref, but since it is transferred to a
         // remote context, its state is synced via a ref (VariableReference model)
-        let script = "var x = shared 42u8; 1u8 :: x;";
+        let script = "const x = shared 42u8; 1u8 :: x;";
         let (res, _) =
             compile_script(script, CompileOptions::default()).unwrap();
         assert_eq!(
@@ -2675,7 +2694,61 @@ pub mod tests {
                 0,
                 0,
                 0,
+                ExternalSlotType::Shared(SharedSlotType::Move).into(),
+                // slot 0 (mapped from slot 0)
+                InstructionCode::GET_SLOT.into(),
+                // slot index as u32
+                0,
+                0,
+                0,
+                0,
+                // --- end of block
+                // caller (literal value 1 for test)
+                InstructionCode::UINT_8.into(),
                 1,
+            ]
+        );
+    }
+
+    #[test]
+    fn remote_execution_injected_shared_ref() {
+        let script = "const x = shared 42u8; 1u8 :: 'x";
+        let (res, _) =
+            compile_script(script, CompileOptions::default()).unwrap();
+        assert_eq!(
+            res,
+            vec![
+                InstructionCode::SHORT_STATEMENTS.into(),
+                2,
+                0,
+                InstructionCode::ALLOCATE_SLOT.into(),
+                // slot index as u32
+                0,
+                0,
+                0,
+                0,
+                // create ref
+                InstructionCode::CREATE_SHARED.into(),
+                InstructionCode::UINT_8.into(),
+                42,
+                InstructionCode::REMOTE_EXECUTION.into(),
+                // --- start of block
+                // block size (5 bytes)
+                5,
+                0,
+                0,
+                0,
+                // injected slots (1)
+                1,
+                0,
+                0,
+                0,
+                // slot 0
+                0,
+                0,
+                0,
+                0,
+                ExternalSlotType::Shared(SharedSlotType::Ref).into(),
                 // slot 0 (mapped from slot 0)
                 InstructionCode::GET_SLOT.into(),
                 // slot index as u32
@@ -2735,11 +2808,15 @@ pub mod tests {
                 0,
                 0,
                 0,
+                // FIXME
+                ExternalSlotType::Shared(SharedSlotType::Move).into(),
                 // slot 1
                 1,
                 0,
                 0,
                 0,
+                // FIXME
+                ExternalSlotType::Shared(SharedSlotType::Move).into(),
                 // expression: x + y
                 InstructionCode::ADD.into(),
                 InstructionCode::GET_SLOT.into(),
@@ -2807,6 +2884,8 @@ pub mod tests {
                 0,
                 0,
                 0,
+                // FIXME
+                ExternalSlotType::Shared(SharedSlotType::Move).into(),
                 InstructionCode::SHORT_STATEMENTS.into(),
                 2,
                 0, // not terminated
@@ -2864,7 +2943,7 @@ pub mod tests {
                 InstructionCode::REMOTE_EXECUTION.into(),
                 // --- start of block 1
                 // block size (20 bytes)
-                20,
+                21,
                 0,
                 0,
                 0,
@@ -2878,6 +2957,8 @@ pub mod tests {
                 0,
                 0,
                 0,
+                // FIXME
+                ExternalSlotType::Shared(SharedSlotType::Move).into(),
                 // nested remote execution
                 InstructionCode::REMOTE_EXECUTION.into(),
                 // --- start of block 2
@@ -2896,6 +2977,8 @@ pub mod tests {
                 0,
                 0,
                 0,
+                // FIXME
+                ExternalSlotType::Shared(SharedSlotType::Move).into(),
                 InstructionCode::GET_SLOT.into(),
                 // slot index as u32
                 0,
@@ -2937,7 +3020,7 @@ pub mod tests {
                 InstructionCode::REMOTE_EXECUTION.into(),
                 // --- start of block 1
                 // block size (23 bytes)
-                23,
+                24,
                 0,
                 0,
                 0,
@@ -2951,6 +3034,8 @@ pub mod tests {
                 0,
                 0,
                 0,
+                // FIXME
+                ExternalSlotType::Shared(SharedSlotType::Move).into(),
                 // nested remote execution
                 InstructionCode::REMOTE_EXECUTION.into(),
                 // --- start of block 2
@@ -2969,6 +3054,8 @@ pub mod tests {
                 0,
                 0,
                 0,
+                // FIXME
+                ExternalSlotType::Shared(SharedSlotType::Move).into(),
                 InstructionCode::GET_SLOT.into(),
                 // slot index as u32
                 0,
@@ -3408,61 +3495,5 @@ pub mod tests {
             b't',
         ];
         assert_eq!(result, expected);
-    }
-
-    #[test]
-    fn remote_execution_return_shared_ref() {
-
-        let script = "const x = shared 42u8; 1u8 :: 'x";
-        let (res, _) =
-            compile_script(script, CompileOptions::default()).unwrap();
-        assert_eq!(
-            res,
-            vec![
-                InstructionCode::SHORT_STATEMENTS.into(),
-                2,
-                0, // not terminated
-                InstructionCode::ALLOCATE_SLOT.into(),
-                // slot index as u32
-                0,
-                0,
-                0,
-                0,
-                // create ref
-                InstructionCode::CREATE_SHARED.into(),
-                InstructionCode::UINT_8.into(),
-                42,
-                InstructionCode::REMOTE_EXECUTION.into(),
-                // --- start of block
-                // block size (5 bytes)
-                5,
-                0,
-                0,
-                0,
-                // injected slots (1)
-                1,
-                0,
-                0,
-                0,
-                // slot 0
-                0,
-                0,
-                0,
-                0,
-                // ref
-                0,
-                // slot 0 (mapped from slot 0)
-                InstructionCode::GET_SLOT.into(),
-                // slot index as u32
-                0,
-                0,
-                0,
-                0,
-                // --- end of block
-                // caller (literal value 1 for test)
-                InstructionCode::UINT_8.into(),
-                1,
-            ]
-        );
     }
 }

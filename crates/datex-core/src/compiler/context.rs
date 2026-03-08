@@ -11,8 +11,8 @@ use crate::{
 
 use crate::prelude::*;
 use core::cmp::PartialEq;
+use core::hash::{Hash, Hasher};
 use itertools::Itertools;
-use crate::utils::buffers::append_u8;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum SharedSlotType {
@@ -72,41 +72,57 @@ impl TryFrom<u8> for ExternalSlotType {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, Eq)]
 pub struct VirtualSlot {
     /// parent scope level if exists, otherwise 0
     pub level: u8,
     /// local slot address of scope with level
     pub virtual_address: u32,
-    /// for external slots, set to Some
     pub external_slot_type: Option<ExternalSlotType>
 }
 
+impl Hash for VirtualSlot {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.level.hash(state);
+        self.virtual_address.hash(state);
+    }
+}
+
+impl PartialEq for VirtualSlot {
+    fn eq(&self, other: &Self) -> bool {
+        self.level == other.level && self.virtual_address == other.virtual_address
+    }
+}
+
 impl VirtualSlot {
-    pub fn local(virtual_address: u32, external_slot_type: Option<ExternalSlotType>) -> Self {
+    pub fn local(virtual_address: u32) -> Self {
         VirtualSlot {
             level: 0,
             virtual_address,
-            external_slot_type,
+            external_slot_type: None,
         }
     }
     pub fn is_external(&self) -> bool {
-        self.level > 0
+        let is_external = self.level > 0;
+        if is_external && self.external_slot_type.is_none() {
+            unreachable!()
+        }
+        is_external
     }
 
-    pub fn external(level: u8, virtual_address: u32, external_slot_type: Option<ExternalSlotType>) -> Self {
+    pub fn external(level: u8, virtual_address: u32, external_slot_type: ExternalSlotType) -> Self {
         VirtualSlot {
             level,
             virtual_address,
-            external_slot_type,
+            external_slot_type: Some(external_slot_type),
         }
     }
 
-    pub fn downgrade(&self) -> Self {
+    pub fn downgrade(&self, external_slot_type: ExternalSlotType) -> Self {
         VirtualSlot {
             level: self.level + 1,
             virtual_address: self.virtual_address,
-            external_slot_type: self.external_slot_type,
+            external_slot_type: Some(external_slot_type),
         }
     }
 

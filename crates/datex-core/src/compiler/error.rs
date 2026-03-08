@@ -29,6 +29,7 @@ pub enum CompilerError {
     ScopePopError,
     InvalidSlotName(String),
     AssignmentToConst(String),
+    AssignmentToExternalVariable(String),
     AssignmentToImmutableReference(String),
     AssignmentToImmutableValue(String),
     OnceScopeUsedMultipleTimes,
@@ -299,6 +300,12 @@ impl Display for CompilerError {
             }
             CompilerError::AssignmentToConst(name) => {
                 core::write!(f, "Cannot assign new value to const {name}")
+            }
+            CompilerError::AssignmentToExternalVariable(name) => {
+                core::write!(
+                    f,
+                    "Cannot assign new value to external variable {name}"
+                )
             }
             CompilerError::OnceScopeUsedMultipleTimes => {
                 core::write!(
