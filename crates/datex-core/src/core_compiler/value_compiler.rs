@@ -56,6 +56,15 @@ pub fn compile_value(value_container: &Value) -> Vec<u8> {
     buffer
 }
 
+pub fn compile_shared_container(
+    shared_container: SharedContainer,
+    insert_value: bool,
+) -> Vec<u8> {
+    let mut buffer = Vec::with_capacity(256);
+    append_shared_container(&mut buffer, shared_container, insert_value);
+
+    buffer
+}
 
 #[deprecated(note = "use append_value")]
 pub fn append_value_container(
@@ -86,18 +95,17 @@ pub fn append_value_container(
 
 /// Appends a shared container to the buffer, with optional mutability information for the shared container
 /// If shared_container_mutability is None, a move is performed
-/// TODO: set insert_value only if for remote execution and not already on remote endpoint or
+/// TODO: set insert_value only if for remote execution and not already on remote endpoint
 pub fn append_shared_container(
     buffer: &mut Vec<u8>,
-    shared_container: &SharedContainer,
-    shared_container_mutability: Option<SharedContainerMutability>,
+    shared_container: SharedContainer,
     insert_value: bool,
 ) {
-    let instruction_code = match shared_container_mutability {
+    let instruction_code = match &shared_container.reference_mutability {
         Some(mutability) => {
             match mutability {
-                SharedContainerMutability::Mutable => InstructionCode::SHARED_REF,
-                SharedContainerMutability::Immutable => InstructionCode::SHARED_REF_MUT
+                PointerReferenceMutability::Mutable => InstructionCode::SHARED_REF,
+                PointerReferenceMutability::Immutable => InstructionCode::SHARED_REF_MUT
             }
         },
         None => InstructionCode::SHARED_MOVE

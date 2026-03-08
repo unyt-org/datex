@@ -3,6 +3,7 @@ mod operations;
 mod runtime_value;
 mod slots;
 pub mod state;
+mod remote_execution_blocks;
 
 use crate::{
     core_compiler::value_compiler::compile_value_container,
@@ -74,6 +75,9 @@ use crate::{
 use alloc::rc::Rc;
 use core::cell::RefCell;
 use log::info;
+use crate::core_compiler::value_compiler::compile_shared_container;
+use crate::global::protocol_structures::external_slot_type::{ExternalSlotType, SharedSlotType};
+use crate::runtime::execution::execution_loop::remote_execution_blocks::compile_remote_execution_block;
 use crate::shared_values::shared_container::SharedContainerInner;
 
 #[derive(Debug)]
@@ -729,7 +733,7 @@ pub fn inner_execution_loop(
                                         RuntimeValue::ValueContainer(ValueContainer::Shared(shared.derive_reference()))
                                             .into()
                                     } else {
-                                        return yield Err(ExecutionError::ReferenceToNonSharedValue);
+                                        return yield Err(ExecutionError::ExpectedSharedValue);
                                     }
                                 }
 
@@ -747,7 +751,7 @@ pub fn inner_execution_loop(
                                         RuntimeValue::ValueContainer(ValueContainer::Shared(mut_ref))
                                             .into()
                                     } else {
-                                        return yield Err(ExecutionError::ReferenceToNonSharedValue);
+                                        return yield Err(ExecutionError::ExpectedSharedValue);
                                     }
                                 }
 
@@ -1073,31 +1077,19 @@ pub fn inner_execution_loop(
                                     exec_block_data,
                                 ) => {
                                     // build dxb
-                                    let mut buffer = Vec::with_capacity(256);
-                                    for (addr, local_slot) in exec_block_data
+                                    let slots = yield_unwrap!(exec_block_data
                                         .injected_slots
-                                        .into_iter()
-                                        .enumerate()
-                                    {
-                                        buffer.push(
-                                            InstructionCode::ALLOCATE_SLOT
-                                                as u8,
-                                        );
-                                        append_u32(&mut buffer, addr as u32);
-
-                                        let slot_value = yield_unwrap!(
-                                            get_slot_value(&state, local_slot,)
-                                        );
-                                        buffer.extend_from_slice(
-                                            &compile_value_container(
-                                                slot_value,
-                                            ),
-                                        );
-                                    }
-                                    buffer.extend_from_slice(
-                                        &exec_block_data.body,
-                                    );
-
+                                        .iter()
+                                        .map(|(local_slot_address, _)| {
+                                            get_slot_value(&state, *local_slot_address)
+                                        })
+                                        .collect::<Result<Vec<_>, _>>());
+                                    
+                                    let buffer = yield_unwrap!(compile_remote_execution_block(
+                                        exec_block_data,
+                                        &slots,
+                                    ));
+                                    
                                     let receivers = yield_unwrap!(
                                         collected_results
                                             .pop_cloned_value_container_result_assert_existing(&state)

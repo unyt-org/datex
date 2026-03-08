@@ -68,7 +68,8 @@ pub enum ExecutionError {
     InvalidUnbox,
     InvalidTypeCast,
     ExpectedTypeValue,
-    ReferenceToNonSharedValue,
+    ExpectedSharedValue,
+    ExpectedOwnedSharedValue,
     MutableReferenceToNonMutableValue,
     AssignmentError(AssignmentError),
     ReferenceCreationError(SharedValueCreationError),
@@ -200,10 +201,16 @@ impl Display for ExecutionError {
             ExecutionError::InvalidApply => {
                 core::write!(f, "Invalid apply operation")
             }
-            ExecutionError::ReferenceToNonSharedValue => {
+            ExecutionError::ExpectedSharedValue => {
                 core::write!(
                     f,
-                    "Tried to create a reference to a non-shared value"
+                    "Expected a shared value, but got a non-shared value"
+                )
+            }
+            ExecutionError::ExpectedOwnedSharedValue => {
+                core::write!(
+                    f,
+                    "Expected an owned shared value, but got a non-owned shared value"
                 )
             }
             ExecutionError::MutableReferenceToNonMutableValue => {

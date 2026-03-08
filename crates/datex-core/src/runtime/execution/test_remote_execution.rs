@@ -139,7 +139,6 @@ pub async fn test_remote_inline_implicit_context() {
 
 #[tokio::test]
 #[cfg(feature = "compiler")]
-#[ignore = "This test currently fails because shared values are not yet supported in remote execution contexts."]
 pub async fn test_remote_shared_value() {
     flexi_logger::init();
     let endpoint_a = Endpoint::new("@test_a");

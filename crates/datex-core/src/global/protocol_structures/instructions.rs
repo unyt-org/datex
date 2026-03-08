@@ -23,6 +23,7 @@ use core::{fmt::Display, prelude::rust_2024::*};
 use binrw::io::Cursor;
 use modular_bitfield::{bitfield, specifiers::B4};
 use serde::{Deserialize, Serialize};
+use crate::global::protocol_structures::external_slot_type::ExternalSlotType;
 use crate::shared_values::pointer_address::OwnedPointerAddress;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -701,7 +702,7 @@ pub struct InstructionBlockData {
     pub length: u32,
     pub injected_slot_count: u32,
     #[br(count = injected_slot_count)]
-    pub injected_slots: Vec<u32>,
+    pub injected_slots: Vec<(u32, ExternalSlotType)>,
     #[br(count = length)]
     pub body: Vec<u8>,
 }

@@ -61,8 +61,8 @@ use precompiler::{
     precompiled_ast::{AstMetadata, RichAst, VariableMetadata},
 };
 use crate::ast::expressions::ValueAccessType;
-use crate::compiler::context::{ExternalSlotType, LocalSlotType, SharedSlotType};
 use crate::core_compiler::value_compiler::{append_shared_container, append_value};
+use crate::global::protocol_structures::external_slot_type::{ExternalSlotType, SharedSlotType};
 use crate::shared_values::pointer::PointerReferenceMutability;
 
 pub mod context;
@@ -620,27 +620,34 @@ fn compile_expression(
             // FIXME #720
             let placeholder = compilation_context
                 .inserted_values
-                .get(compilation_context.inserted_value_index)
+                .get_mut(compilation_context.inserted_value_index)
                 .expect("Placeholder index out of bounds");
-            if let Some(value_container) = placeholder {
+            if let Some(value_container) = placeholder.take() {
                 // TODO: validate in precompiler that the value container is actually a shared value
                 match value_container {
                     ValueContainer::Local(value) => {
-                        append_value(
-                            &mut compilation_context.buffer,
-                            value,
-                        );
+                        match placeholder_type {
+                            ValueAccessType::SharedRef | ValueAccessType::SharedRefMut => return Err(CompilerError::SharedRefToNonSharedValue),
+                            ValueAccessType::MoveOrCopy => {
+                                append_value(
+                                    &mut compilation_context.buffer,
+                                    &value,
+                                );
+                            }
+                        }
                     }
                     ValueContainer::Shared(shared_container) => {
-                        let shared_container_mutability = match placeholder_type {
-                            ValueAccessType::SharedRefMut => Some(SharedContainerMutability::Mutable),
-                            ValueAccessType::SharedRef => Some(SharedContainerMutability::Immutable),
-                            ValueAccessType::MoveOrCopy => None,
+                        let shared_container = match placeholder_type {
+                            ValueAccessType::SharedRefMut => shared_container
+                                .try_derive_mutable_reference()
+                                .map_err(|_| CompilerError::SharedMutRefToImmutableValue)?,
+                            ValueAccessType::SharedRef => shared_container.derive_reference(),
+                            ValueAccessType::MoveOrCopy => shared_container.assert_owned()
+                                .map_err(|_| CompilerError::InvalidConversionFromRefToOwnedValue)?,
                         };
                         append_shared_container(
                             &mut compilation_context.buffer,
                             shared_container,
-                            shared_container_mutability,
                             true,
                         );
                     }
@@ -1487,7 +1494,7 @@ pub mod tests {
     use alloc::format;
     use core::assert_matches;
     use log::*;
-    use crate::compiler::context::{ExternalSlotType, SharedSlotType};
+    use crate::global::protocol_structures::external_slot_type::{ExternalSlotType, SharedSlotType};
 
     fn compile_and_log(datex_script: &str) -> Vec<u8> {
         let (result, _) =

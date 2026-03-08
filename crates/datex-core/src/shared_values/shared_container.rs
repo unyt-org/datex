@@ -461,6 +461,14 @@ impl SharedContainer {
         })
     }
     
+    /// Returns the shared container if it is owned (not a reference), otherwise returns an error.
+    pub fn assert_owned(self) -> Result<Self, ()> {
+        if self.reference_mutability.is_some() {
+            return Err(());
+        }
+        Ok(self)
+    }
+    
     pub fn derive_reference(&self) -> Self {
         SharedContainer {
             value: self.value.clone(),

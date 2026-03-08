@@ -11,8 +11,7 @@ use crate::{
     runtime::execution::context::ExecutionMode,
 };
 use core::cell::RefCell;
-use crate::ast::expressions::ValueAccessType;
-use crate::compiler::context::ExternalSlotType;
+use crate::global::protocol_structures::external_slot_type::ExternalSlotType;
 
 #[derive(Debug, Default, Clone)]
 pub struct PrecompilerData {
