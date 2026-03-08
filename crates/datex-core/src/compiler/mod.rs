@@ -1172,6 +1172,14 @@ fn compile_expression(
 
             let external_slots = execution_block_ctx.external_slots();
 
+            // TODO what do we do
+            // x :: call(&mut)
+            // x.call('mut y, z)
+            // function () (
+            //    'mut z;
+            // )
+
+
             // --- start block
             // set block size (len of compilation_context.buffer)
             append_u32(
@@ -2668,6 +2676,7 @@ pub mod tests {
                 0,
                 0,
                 0,
+                1,
                 // slot 0 (mapped from slot 0)
                 InstructionCode::GET_SLOT.into(),
                 // slot index as u32
