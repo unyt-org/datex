@@ -1,5 +1,9 @@
 use crate::traits::{identity::Identity, structural_eq::StructuralEq};
-use core::{cell::RefCell, result::Result};
+use core::{
+    cell::{Ref, RefCell},
+    ops::Deref,
+    result::Result,
+};
 
 use super::value::Value;
 use crate::{
@@ -207,6 +211,22 @@ pub enum ValueContainer {
     Shared(SharedContainer),
 }
 
+pub enum ValueContainerRef<'a> {
+    Local(ValueContainer),
+    Shared(Ref<'a, ValueContainer>),
+}
+
+impl<'a> Deref for ValueContainerRef<'a> {
+    type Target = ValueContainer;
+
+    fn deref(&self) -> &ValueContainer {
+        match self {
+            ValueContainerRef::Local(v) => v,
+            ValueContainerRef::Shared(v) => v,
+        }
+    }
+}
+
 impl<'a> Deserialize<'a> for ValueContainer {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
@@ -307,6 +327,22 @@ impl Display for ValueContainer {
     }
 }
 
+pub enum AllowedType<'a> {
+    Local(&'a TypeDefinition),
+    Shared(Ref<'a, TypeDefinition>),
+}
+
+impl<'a> Deref for AllowedType<'a> {
+    type Target = TypeDefinition;
+
+    fn deref(&self) -> &TypeDefinition {
+        match self {
+            AllowedType::Local(t) => t,
+            AllowedType::Shared(t) => &*t,
+        }
+    }
+}
+
 impl ValueContainer {
     pub fn to_value(&self) -> Rc<RefCell<Value>> {
         match self {
@@ -364,10 +400,14 @@ impl ValueContainer {
     /// Returns the allowed type of the value container
     /// For local values, this is the same as the actual type.
     /// For shared values, this is the defined allowed type
-    pub fn allowed_type(&self) -> TypeDefinition {
+    pub fn allowed_type(&self) -> AllowedType<'_> {
         match self {
-            ValueContainer::Local(value) => *value.actual_type.clone(),
-            ValueContainer::Shared(shared) => shared.allowed_type(),
+            ValueContainer::Local(local) => {
+                AllowedType::Local(local.actual_type())
+            }
+            ValueContainer::Shared(shared) => {
+                AllowedType::Shared(shared.allowed_type())
+            }
         }
     }
 

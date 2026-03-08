@@ -2,7 +2,7 @@ use crate::{
     shared_values::shared_type_container::{
         NominalTypeDeclaration, SharedTypeContainer,
     },
-    values::core_value::CoreValue,
+    values::{core_value::CoreValue, value_container::ValueContainerRef},
 };
 use core::result::Result;
 
@@ -246,7 +246,6 @@ impl Display for SharedContainerMutability {
     }
 }
 
-
 #[derive(Debug, Clone)]
 pub struct SharedContainer {
     pub(crate) value: SharedContainerInner,
@@ -258,7 +257,6 @@ pub enum SharedContainerInner {
     Value(Rc<RefCell<SharedValueContainer>>),
     Type(Rc<RefCell<SharedTypeContainer>>),
 }
-
 
 impl Display for SharedContainer {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
@@ -283,14 +281,14 @@ impl Display for SharedContainer {
     }
 }
 
-
 /// Two references are identical if they point to the same data
 impl Identity for SharedContainer {
     fn identical(&self, other: &Self) -> bool {
         match (&self.value, &other.value) {
-            (SharedContainerInner::Value(a), SharedContainerInner::Value(b)) => {
-                Rc::ptr_eq(a, b)
-            }
+            (
+                SharedContainerInner::Value(a),
+                SharedContainerInner::Value(b),
+            ) => Rc::ptr_eq(a, b),
             (SharedContainerInner::Type(a), SharedContainerInner::Type(b)) => {
                 Rc::ptr_eq(a, b)
             }
@@ -314,7 +312,10 @@ impl StructuralEq for SharedContainer {
             (SharedContainerInner::Type(a), SharedContainerInner::Type(b)) => {
                 a.borrow().type_value.structural_eq(&b.borrow().type_value)
             }
-            (SharedContainerInner::Value(a), SharedContainerInner::Value(b)) => a
+            (
+                SharedContainerInner::Value(a),
+                SharedContainerInner::Value(b),
+            ) => a
                 .borrow()
                 .value_container
                 .structural_eq(&b.borrow().value_container),
@@ -330,7 +331,10 @@ impl ValueEq for SharedContainer {
                 // FIXME #281: Implement value_eq for type and use here instead (recursive)
                 a.borrow().type_value.structural_eq(&b.borrow().type_value)
             }
-            (SharedContainerInner::Value(a), SharedContainerInner::Value(b)) => a
+            (
+                SharedContainerInner::Value(a),
+                SharedContainerInner::Value(b),
+            ) => a
                 .borrow()
                 .value_container
                 .value_eq(&b.borrow().value_container),
@@ -435,7 +439,9 @@ impl SharedContainer {
     pub(crate) fn mutability(&self) -> SharedContainerMutability {
         match &self.value {
             SharedContainerInner::Value(vr) => vr.borrow().mutability.clone(),
-            SharedContainerInner::Type(_) => SharedContainerMutability::Immutable,
+            SharedContainerInner::Type(_) => {
+                SharedContainerMutability::Immutable
+            }
         }
     }
 
@@ -481,8 +487,8 @@ impl SharedContainer {
         pointer: Pointer,
         mutability: SharedContainerMutability,
     ) -> Result<Self, SharedValueCreationError> {
-        let allowed_type =
-            allowed_type.unwrap_or_else(|| value_container.allowed_type());
+        let allowed_type = allowed_type
+            .unwrap_or_else(|| value_container.allowed_type().clone());
 
         // TODO #286: make sure allowed type is superset of reference's allowed type
         Ok(SharedContainer {
@@ -509,7 +515,9 @@ impl SharedContainer {
             type_value,
         };
         SharedContainer {
-            value: SharedContainerInner::Type(Rc::new(RefCell::new(type_reference))),
+            value: SharedContainerInner::Type(Rc::new(RefCell::new(
+                type_reference,
+            ))),
             reference_mutability: None,
         }
     }
@@ -544,9 +552,9 @@ impl SharedContainer {
         match &self.value {
             // FIXME #288: Can we optimize this to avoid creating rc ref cells?
             SharedContainerInner::Type(tr) => SharedContainer {
-                value: SharedContainerInner::Type(Rc::new(
-                    RefCell::new(tr.borrow().collapse_reference_chain()),
-                )),
+                value: SharedContainerInner::Type(Rc::new(RefCell::new(
+                    tr.borrow().collapse_reference_chain(),
+                ))),
                 reference_mutability: None,
             },
             SharedContainerInner::Value(vr) => {
@@ -568,34 +576,44 @@ impl SharedContainer {
     pub fn collapse_to_value(&self) -> Rc<RefCell<Value>> {
         let reference = self.collapse_reference_chain();
         match reference.value {
-            SharedContainerInner::Value(vr) => match &vr.borrow().value_container {
-                ValueContainer::Local(_) => {
-                    vr.borrow().value_container.to_value()
+            SharedContainerInner::Value(vr) => {
+                match &vr.borrow().value_container {
+                    ValueContainer::Local(_) => {
+                        vr.borrow().value_container.to_value()
+                    }
+                    ValueContainer::Shared(_) => unreachable!(
+                        "Expected a ValueContainer::Value, but found a Reference"
+                    ),
                 }
-                ValueContainer::Shared(_) => unreachable!(
-                    "Expected a ValueContainer::Value, but found a Reference"
-                ),
-            },
+            }
             // TODO #289: can we optimize this to avoid cloning the type value?
-            SharedContainerInner::Type(tr) => Rc::new(RefCell::new(Value::from(
-                CoreValue::Type(tr.borrow().type_value.clone()),
-            ))),
-        }
-    }
-
-    // TODO #290: no clone?
-    pub fn value_container(&self) -> ValueContainer {
-        match &self.value {
-            SharedContainerInner::Value(vr) => vr.borrow().value_container.clone(),
-            SharedContainerInner::Type(tr) => ValueContainer::Local(Value::from(
-                CoreValue::Type(tr.borrow().type_value.clone()),
+            SharedContainerInner::Type(tr) => Rc::new(RefCell::new(
+                Value::from(CoreValue::Type(tr.borrow().type_value.clone())),
             )),
         }
     }
 
-    pub fn allowed_type(&self) -> TypeDefinition {
+    // TODO #290: no clone?
+    pub fn value_container(&self) -> ValueContainerRef {
         match &self.value {
-            SharedContainerInner::Value(vr) => vr.borrow().allowed_type.clone(),
+            SharedContainerInner::Value(vr) => {
+                ValueContainerRef::Shared(Ref::map(vr.borrow(), |vr| {
+                    &vr.value_container
+                }))
+            }
+            SharedContainerInner::Type(tr) => {
+                ValueContainerRef::Local(ValueContainer::Local(Value::from(
+                    CoreValue::Type(tr.borrow().type_value.clone()),
+                )))
+            }
+        }
+    }
+
+    pub fn allowed_type(&'_ self) -> Ref<'_, TypeDefinition> {
+        match &self.value {
+            SharedContainerInner::Value(vr) => {
+                Ref::map(vr.borrow(), |vr| &vr.allowed_type)
+            }
             SharedContainerInner::Type(_) => core::todo!("#293 type Type"),
         }
     }
@@ -621,7 +639,6 @@ impl SharedContainer {
             }
         }
     }
-
 
     /// Sets the value container of the reference if it is mutable.
     /// If the reference is immutable, an error is returned.

@@ -50,8 +50,9 @@ use crate::{
         },
     },
     shared_values::{
-        pointer::PointerReferenceMutability, pointer_address::PointerAddress,
-        shared_container::SharedContainer,
+        pointer::PointerReferenceMutability,
+        pointer_address::PointerAddress,
+        shared_container::{SharedContainer, SharedContainerInner},
     },
     types::{
         definition::TypeDefinition,
@@ -74,7 +75,6 @@ use crate::{
 use alloc::rc::Rc;
 use core::cell::RefCell;
 use log::info;
-use crate::shared_values::shared_container::SharedContainerInner;
 
 #[derive(Debug)]
 enum CollectedExecutionResult {
@@ -536,9 +536,13 @@ pub fn inner_execution_loop(
                                         ..
                                     })) => ty,
                                     // Type Reference
-                                    Some(ValueContainer::Shared(SharedContainer {
-                                        value: SharedContainerInner::Type(type_ref),
-                                        .. })) => Type::new(
+                                    Some(ValueContainer::Shared(
+                                        SharedContainer {
+                                            value:
+                                                SharedContainerInner::Type(type_ref),
+                                            ..
+                                        },
+                                    )) => Type::new(
                                         TypeDefinition::SharedReference(
                                             type_ref,
                                         ),
@@ -862,11 +866,15 @@ pub fn inner_execution_loop(
                                                 value_container,
                                             )
                                         );
+                                        drop(lhs); 
+                                        let value_container = ref_value_container.clone();
                                         yield_unwrap!(
                                             reference.set_value_container(res)
                                         );
+                                        drop(reference);
+
                                         RuntimeValue::ValueContainer(
-                                            ref_value_container,
+                                            value_container,
                                         )
                                         .into()
                                     } else {

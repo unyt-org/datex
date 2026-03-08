@@ -13,7 +13,7 @@ use crate::{
     },
     values::{
         core_values::range::Range,
-        value_container::{OwnedValueKey, ValueContainer},
+        value_container::{OwnedValueKey, ValueContainer, ValueContainerRef},
     },
 };
 use core::cell::RefCell;
@@ -33,11 +33,11 @@ pub fn set_property(
         .map_err(ExecutionError::from)
 }
 
-pub fn handle_unary_shared_value_operation(
+pub fn handle_unary_shared_value_operation<'a>(
     operator: SharedValueUnaryOperator,
-    value_container: ValueContainer,
+    value_container: &'a ValueContainer,
     _memory: &RefCell<Memory>,
-) -> Result<ValueContainer, ExecutionError> {
+) -> Result<ValueContainerRef<'a>, ExecutionError> {
     Ok(match operator {
         SharedValueUnaryOperator::Unbox => {
             if let ValueContainer::Shared(reference) = value_container {
@@ -69,16 +69,16 @@ pub fn handle_unary_arithmetic_operation(
     }
 }
 
-pub fn handle_unary_operation(
+pub fn handle_unary_operation<'a>(
     operator: UnaryOperator,
-    value_container: ValueContainer,
+    value_container: &'a ValueContainer,
     memory: &RefCell<Memory>,
-) -> Result<ValueContainer, ExecutionError> {
+) -> Result<ValueContainerRef, ExecutionError> {
     match operator {
         UnaryOperator::Reference(reference) => {
             handle_unary_shared_value_operation(
                 reference,
-                value_container,
+                &value_container,
                 memory,
             )
         }
