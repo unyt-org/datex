@@ -19,6 +19,8 @@ use crate::{
     values::value_container::ValueContainer,
 };
 use core::result::Result;
+use crate::shared_values::pointer::{OwnedPointer, Pointer};
+use crate::shared_values::pointer_address::OwnedPointerAddress;
 
 impl RuntimeInternal {
     fn resolve_in_memory_reference(
@@ -140,7 +142,7 @@ impl DIFInterface for RuntimeInternal {
         value: DIFValueContainer,
         allowed_type: Option<DIFTypeDefinition>,
         mutability: SharedContainerMutability,
-    ) -> Result<PointerAddress, DIFCreatePointerError> {
+    ) -> Result<OwnedPointerAddress, DIFCreatePointerError> {
         let container = value.to_value_container(&self.memory)?;
         let type_container = if let Some(_allowed_type) = &allowed_type {
             core::todo!(
@@ -151,9 +153,9 @@ impl DIFInterface for RuntimeInternal {
         };
 
         let pointer = self.memory.borrow_mut().get_new_owned_local_pointer();
-        let address = pointer.address();
+        let address = pointer.address().clone();
 
-        let reference = SharedContainer::try_boxed(
+        let reference = SharedContainer::try_boxed_owned(
             container,
             type_container,
             pointer,
@@ -253,6 +255,8 @@ mod tests {
         values::{core_values::map::Map, value_container::ValueContainer},
     };
     use core::cell::RefCell;
+    use crate::shared_values::pointer::Pointer;
+    use crate::shared_values::pointer_address::PointerAddress;
 
     #[test]
     fn struct_serde() {
@@ -281,6 +285,7 @@ mod tests {
                         SharedContainerMutability::Mutable,
                     )
                     .expect("Failed to create pointer");
+                let pointer_address = PointerAddress::Owned(pointer_address);
 
                 let observed = Rc::new(RefCell::new(None));
                 let observed_clone = observed.clone();

@@ -1076,10 +1076,10 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
                         span: Some(span.clone()),
                     })?;
 
-                // if it's a TypeReference and it has the pointer address set, we can
+                // if it's a TypeReference, and it has the pointer address set, we can
                 // remap the expression to a GetReference
                 if let Some(reference) = base_type.inner_reference() {
-                    Ok(reference.borrow().pointer.address())
+                    Ok(reference.borrow().pointer().address())
                 } else {
                     Err(SpannedTypeError {
                         error: TypeError::Unimplemented(

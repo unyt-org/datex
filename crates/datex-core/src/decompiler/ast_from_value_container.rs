@@ -233,7 +233,7 @@ fn type_to_type_expression(type_value: &Type) -> TypeExpression {
         TypeDefinition::SharedReference(type_reference) => {
             // try to resolve to core lib value
             if let Ok(core_lib_type) = CoreLibPointerId::try_from(
-                &type_reference.borrow().pointer.address(),
+                &type_reference.borrow().pointer().address(),
             ) {
                 TypeExpressionData::Identifier(core_lib_type.to_string())
                     .with_default_span()

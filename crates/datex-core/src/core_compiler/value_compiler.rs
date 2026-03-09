@@ -37,7 +37,7 @@ use crate::{
     },
     values::core_values::r#type::TypeMetadata,
 };
-use crate::global::protocol_structures::instructions::RawPointerAddress;
+use crate::global::protocol_structures::instructions::{RawLocalPointerAddress, RawPointerAddress};
 use crate::shared_values::shared_container::SharedContainer;
 
 /// Compiles a given value container to a DXB body
@@ -100,7 +100,7 @@ pub fn append_shared_container(
     buffer: &mut Vec<u8>,
     shared_container: SharedContainer,
     insert_value: bool,
-) {
+) -> Result<(), ()> {
     let instruction_code = match &shared_container.reference_mutability {
         Some(mutability) => {
             match mutability {
@@ -108,7 +108,7 @@ pub fn append_shared_container(
                 PointerReferenceMutability::Immutable => InstructionCode::SHARED_REF_MUT
             }
         },
-        None => InstructionCode::SHARED_MOVE
+        None => return append_perform_moves(buffer, &[shared_container]),
     };
     append_instruction_code(buffer, instruction_code);
 
@@ -123,10 +123,36 @@ pub fn append_shared_container(
     if insert_value {
         append_value(buffer, &shared_container.collapse_to_value().borrow())
     }
+
+    Ok(())
 }
+
+/// Appends multiple shared containers as moves to the buffer
+pub fn append_perform_moves(
+    buffer: &mut Vec<u8>,
+    shared_containers: &[SharedContainer],
+) -> Result<(), ()> {
+    append_instruction_code(buffer, InstructionCode::PERFORM_MOVE);
+    append_u32(buffer, shared_containers.len() as u32); // number of moved values
+    for shared_container in shared_containers {
+        if let Some(local_address) = shared_container.try_get_owned_local_address() {
+            append_local_pointer_address(buffer, local_address);
+        }
+        else {
+            return Err(());
+        }
+    }
+    Ok(())
+}
+
+
 
 pub fn append_raw_pointer_address(buffer: &mut Vec<u8>, raw_address: &RawPointerAddress) {
     buffer.extend_from_slice(&raw_address.to_bytes());
+}
+
+pub fn append_local_pointer_address(buffer: &mut Vec<u8>, local_address: [u8; 5]) {
+    buffer.extend_from_slice(&local_address);
 }
 
 

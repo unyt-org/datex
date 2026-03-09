@@ -655,6 +655,7 @@ mod tests {
             value_container::ValueContainer,
         },
     };
+    use crate::shared_values::pointer::OwnedPointer;
 
     #[test]
     fn test_map() {
@@ -679,9 +680,9 @@ mod tests {
     #[test]
     fn test_ref_keys() {
         let mut map = Map::default();
-        let key = ValueContainer::Shared(SharedContainer::boxed(
+        let key = ValueContainer::Shared(SharedContainer::boxed_owned(
             ValueContainer::from(42),
-            Pointer::NULL,
+            OwnedPointer::NULL,
         ));
         map.set(&key, "value");
         // same reference should be found
@@ -690,9 +691,9 @@ mod tests {
         assert_eq!(map.get(&key).unwrap().to_string(), "\"value\"");
 
         // new reference with same value should not be found
-        let new_key = ValueContainer::Shared(SharedContainer::boxed(
+        let new_key = ValueContainer::Shared(SharedContainer::boxed_owned(
             ValueContainer::from(42),
-            Pointer::NULL,
+            OwnedPointer::NULL,
         ));
         assert!(!map.has(&new_key));
         assert!(map.get(&new_key).is_err());

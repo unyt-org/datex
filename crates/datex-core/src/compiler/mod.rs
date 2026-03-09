@@ -642,8 +642,11 @@ fn compile_expression(
                                 .try_derive_mutable_reference()
                                 .map_err(|_| CompilerError::SharedMutRefToImmutableValue)?,
                             ValueAccessType::SharedRef => shared_container.derive_reference(),
-                            ValueAccessType::MoveOrCopy => shared_container.assert_owned()
-                                .map_err(|_| CompilerError::InvalidConversionFromRefToOwnedValue)?,
+                            ValueAccessType::MoveOrCopy => {
+                                shared_container.assert_owned()
+                                    .map_err(|_| CompilerError::InvalidConversionFromRefToOwnedValue)?;
+                                shared_container
+                            },
                         };
                         append_shared_container(
                             &mut compilation_context.buffer,

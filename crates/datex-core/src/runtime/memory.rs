@@ -22,6 +22,7 @@ use crate::{
         },
     },
 };
+use crate::shared_values::pointer::OwnedPointer;
 use crate::shared_values::shared_container::SharedContainerInner;
 
 #[derive(Debug, Default)]
@@ -143,7 +144,7 @@ impl Memory {
     }
 
     /// Creates a new unique local owned pointer.
-    pub fn get_new_owned_local_pointer(&mut self) -> Pointer {
+    pub fn get_new_owned_local_pointer(&mut self) -> OwnedPointer {
         let timestamp = crate::time::now_ms();
         // new timestamp, reset counter
         if timestamp != self.last_timestamp {
@@ -165,6 +166,6 @@ impl Memory {
             (self.local_counter & 0xFF) as u8,
         ];
 
-        Pointer::new_owned(OwnedPointerAddress::new(id))
+        OwnedPointer::new(OwnedPointerAddress::new(id))
     }
 }

@@ -286,6 +286,7 @@ mod tests {
         },
     };
     use core::{assert_matches, cell::RefCell};
+    use crate::shared_values::pointer::OwnedPointer;
 
     #[test]
     fn push() {
@@ -295,7 +296,7 @@ mod tests {
             ValueContainer::from(3),
         ];
         let list_ref =
-            SharedContainer::boxed_mut(List::from(list).into(), Pointer::NULL);
+            SharedContainer::boxed_owned_mut(List::from(list).into(), OwnedPointer::NULL);
         list_ref
             .try_append_value(0, None, ValueContainer::from(4))
             .expect("Failed to push value to list");
@@ -303,9 +304,9 @@ mod tests {
         assert_eq!(updated_value, ValueContainer::from(4));
 
         // Try to push to immutable value
-        let int_ref = SharedContainer::boxed(
+        let int_ref = SharedContainer::boxed_owned(
             List::from(vec![ValueContainer::from(42)]),
-            Pointer::NULL,
+            OwnedPointer::NULL,
         );
         let result =
             int_ref.try_append_value(0, None, ValueContainer::from(99));
@@ -313,7 +314,7 @@ mod tests {
 
         // Try to push to non-list value
         let int_ref =
-            SharedContainer::boxed_mut(42.into(), Pointer::NULL);
+            SharedContainer::boxed_owned_mut(42.into(), OwnedPointer::NULL);
         let result =
             int_ref.try_append_value(0, None, ValueContainer::from(99));
         assert_matches!(result, Err(AccessError::InvalidOperation(_)));
@@ -325,9 +326,9 @@ mod tests {
             ("key1".to_string(), ValueContainer::from(1)),
             ("key2".to_string(), ValueContainer::from(2)),
         ]);
-        let map_ref = SharedContainer::boxed_mut(
+        let map_ref = SharedContainer::boxed_owned_mut(
             ValueContainer::from(map),
-            Pointer::NULL,
+            OwnedPointer::NULL,
         );
         // Set existing property
         map_ref
@@ -351,9 +352,9 @@ mod tests {
             ValueContainer::from(2),
             ValueContainer::from(3),
         ];
-        let list_ref = SharedContainer::boxed_mut(
+        let list_ref = SharedContainer::boxed_owned_mut(
             ValueContainer::from(list),
-            Pointer::NULL,
+            OwnedPointer::NULL,
         );
 
         // Set existing index
@@ -375,7 +376,7 @@ mod tests {
 
         // Try to set index on non-map value
         let int_ref =
-            SharedContainer::boxed_mut(42.into(), Pointer::NULL);
+            SharedContainer::boxed_owned_mut(42.into(), OwnedPointer::NULL);
         let result =
             int_ref.try_set_property(0, None, 0, ValueContainer::from(99));
         assert_matches!(result, Err(AccessError::InvalidOperation(_)));
@@ -387,9 +388,9 @@ mod tests {
             (ValueContainer::from("name"), ValueContainer::from("Alice")),
             (ValueContainer::from("age"), ValueContainer::from(30)),
         ]);
-        let struct_ref = SharedContainer::boxed_mut(
+        let struct_ref = SharedContainer::boxed_owned_mut(
             ValueContainer::from(struct_val),
-            Pointer::NULL,
+            OwnedPointer::NULL,
         );
 
         // Set existing property
@@ -410,7 +411,7 @@ mod tests {
 
         // // Try to set property on non-struct value
         let int_ref =
-            SharedContainer::boxed_mut(42.into(), Pointer::NULL);
+            SharedContainer::boxed_owned_mut(42.into(), OwnedPointer::NULL);
         let result = int_ref.try_set_property(
             0,
             None,
@@ -422,16 +423,16 @@ mod tests {
 
     #[test]
     fn immutable_reference_fails() {
-        let r = SharedContainer::boxed(42, Pointer::NULL);
+        let r = SharedContainer::boxed_owned(42, OwnedPointer::NULL);
         assert_matches!(
             r.try_replace(0, None, 43),
             Err(AccessError::ImmutableReference)
         );
 
-        let r = SharedContainer::try_boxed(
+        let r = SharedContainer::try_boxed_owned(
             42.into(),
             None,
-            Pointer::NULL,
+            OwnedPointer::NULL,
             SharedContainerMutability::Immutable,
         )
         .unwrap();

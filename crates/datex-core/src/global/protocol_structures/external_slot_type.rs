@@ -1,5 +1,6 @@
 use binrw::io::{Read, Seek, Write};
 use binrw::{BinRead, BinResult, BinWrite, Endian};
+use crate::prelude::*;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum SharedSlotType {

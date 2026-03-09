@@ -158,11 +158,11 @@ pub enum InstructionCode {
 
     SHARED_REF, // '$1234 (optional value)
     SHARED_REF_MUT, // 'mut $1234(optional value)
-    SHARED_MOVE, // $1234 (optional value)
+    PERFORM_MOVE, // $1234 (optional value)
 
     GET_SHARED_REF, // dynamic 'x
     GET_SHARED_REF_MUT, // dynamic 'mut x
-    
+
     POINTER_ACTION,    // $aa += ...
     SET_REF,           // &aa = ...
 

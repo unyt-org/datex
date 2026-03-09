@@ -57,7 +57,7 @@ pub fn append_type_definition(
         TypeDefinition::SharedReference(type_ref) => {
             // TODO #636: ensure pointer_address exists here
             let type_ref = type_ref.borrow();
-            let pointer_address = type_ref.pointer.address();
+            let pointer_address = type_ref.pointer().address();
             append_get_shared_ref(
                 buffer,
                 &pointer_address,

@@ -146,7 +146,7 @@ impl Value {
         if let TypeDefinition::SharedReference(type_reference) =
             self.actual_type.as_ref()
             && let Ok(actual_type_core_ptr_id) = CoreLibPointerId::try_from(
-                &type_reference.borrow().pointer.address(),
+                &type_reference.borrow().pointer().address(),
             )
         {
             // actual_type has core type pointer id which is equal to the default core type pointer id of self.inner

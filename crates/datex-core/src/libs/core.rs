@@ -32,6 +32,7 @@ use core::{cell::RefCell, iter::once, result::Result};
 use datex_macros_internal::LibTypeString;
 use log::info;
 use strum::IntoEnumIterator;
+use crate::shared_values::pointer::ReferencedPointer;
 use crate::shared_values::shared_container::SharedContainerInner;
 
 type CoreLibTypes = HashMap<CoreLibPointerId, Type>;
@@ -282,9 +283,9 @@ pub fn load_core_lib(memory: &mut Memory) {
 
         // TODO #455: dont store variants as separate entries in core_struct (e.g., integer/u8, integer/i32, only keep integer)
         // Import variants directly by variant access operator from base type (e.g., integer -> integer/u8)
-        let core_struct = SharedContainer::boxed(
+        let core_struct = SharedContainer::boxed_ref(
             Map::from_iter(types_structure),
-            Pointer::new_reference(
+            ReferencedPointer::new(
                 ReferencedPointerAddress::from(&CoreLibPointerId::Core),
             ),
         );
@@ -495,20 +496,20 @@ fn create_core_type(
         Type::new(
             // &shared type<()>
             TypeDefinition::shared_reference(Rc::new(RefCell::new(
-                SharedTypeContainer {
-                    nominal_type_declaration: Some(NominalTypeDeclaration {
-                        name: name.to_string(),
-                        variant,
-                    }),
-                    type_value: Type {
+                SharedTypeContainer::nominal(
+                    Type {
                         base_type: base_type_ref,
                         type_definition: TypeDefinition::Unit,
                         metadata: TypeMetadata::default(),
                     },
-                    pointer: Pointer::new_reference(
+                    NominalTypeDeclaration {
+                        name: name.to_string(),
+                        variant,
+                    },
+                    Pointer::new_reference(
                         ReferencedPointerAddress::from(&pointer_id),
                     ),
-                },
+                )
             ))),
             TypeMetadata::default(),
         ),

@@ -707,11 +707,11 @@ pub fn inner_execution_loop(
                                     let pointer = state.runtime_internal.memory.borrow_mut().get_new_owned_local_pointer();
 
                                     let shared_container = match instruction {
-                                        RegularInstruction::CreateShared => SharedContainer::boxed(
+                                        RegularInstruction::CreateShared => SharedContainer::boxed_owned(
                                             target,
                                             pointer,
                                         ),
-                                        RegularInstruction::CreateSharedMut => SharedContainer::boxed_mut(
+                                        RegularInstruction::CreateSharedMut => SharedContainer::boxed_owned_mut(
                                             target,
                                             pointer,
                                         ),
