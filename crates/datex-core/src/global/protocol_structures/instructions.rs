@@ -372,6 +372,20 @@ impl Display for RegularInstruction {
             RegularInstruction::CreateSharedMut => {
                 core::write!(f, "CREATE_SHARED_MUT")
             }
+            RegularInstruction::PerformMove(perform_move) => {
+                core::write!(
+                    f,
+                    "PERFORM_MOVE (pointers: {})",
+                    perform_move.addresses.iter().map(|addr| hex::encode(addr.id)).collect::<Vec<_>>().join(", ")
+                )
+            }
+            RegularInstruction::Move(mv) => {
+                core::write!(
+                    f,
+                    "MOVE (pointer_count: {}, mappings: {:?})",
+                    mv.pointer_count, mv.address_mappings
+                )
+            }
             RegularInstruction::RemoteExecution(block) => {
                 core::write!(
                     f,

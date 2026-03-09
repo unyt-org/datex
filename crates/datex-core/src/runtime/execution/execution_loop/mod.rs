@@ -78,6 +78,7 @@ use log::info;
 use crate::core_compiler::value_compiler::compile_shared_container;
 use crate::global::protocol_structures::external_slot_type::{ExternalSlotType, SharedSlotType};
 use crate::runtime::execution::execution_loop::remote_execution_blocks::compile_remote_execution_block;
+use crate::runtime::execution::macros::interrupt_with_values;
 use crate::shared_values::shared_container::SharedContainerInner;
 
 #[derive(Debug)]
@@ -424,6 +425,20 @@ pub fn inner_execution_loop(
                             RegularInstruction::DropSlot(SlotAddress(address)) => {
                                 yield_unwrap!(state.slots.drop_slot(address));
                                 None
+                            }
+
+                            RegularInstruction::PerformMove(perform_move) => {
+                                let resolved_moved_values = interrupt_with_values!(
+                                    interrupt_provider,
+                                    ExecutionInterrupt::External(
+                                        ExternalExecutionInterrupt::PerformMove(perform_move.addresses)
+                                    )
+                                );
+                                panic!("resolved moved values: {resolved_moved_values:#?}");
+                            }
+
+                            RegularInstruction::Move(move_data) => {
+                                todo!()
                             }
 
                             // NOTE: make sure that each possible match case is either implemented in the default collection or here
@@ -1084,12 +1099,12 @@ pub fn inner_execution_loop(
                                             get_slot_value(&state, *local_slot_address)
                                         })
                                         .collect::<Result<Vec<_>, _>>());
-                                    
+
                                     let buffer = yield_unwrap!(compile_remote_execution_block(
                                         exec_block_data,
                                         &slots,
                                     ));
-                                    
+
                                     let receivers = yield_unwrap!(
                                         collected_results
                                             .pop_cloned_value_container_result_assert_existing(&state)

@@ -147,6 +147,9 @@ pub async fn execute_dxb(
                 interrupt_provider
                     .provide_result(InterruptResult::ResolvedValue(res));
             }
+            ExternalExecutionInterrupt::PerformMove(addresses) => {
+                todo!()
+            }
         }
     }
 

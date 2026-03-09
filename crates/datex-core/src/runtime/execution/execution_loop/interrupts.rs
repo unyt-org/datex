@@ -9,6 +9,7 @@ use crate::{
 };
 
 use crate::{prelude::*, shared_values::pointer::PointerReferenceMutability};
+use crate::global::protocol_structures::instructions::PerformMove;
 
 #[derive(Debug)]
 pub enum ExecutionInterrupt {
@@ -29,11 +30,13 @@ pub enum ExternalExecutionInterrupt {
     GetReferenceInternalPointer(RawInternalPointerAddress),
     RemoteExecution(ValueContainer, Vec<u8>),
     Apply(ValueContainer, Vec<ValueContainer>),
+    PerformMove(Vec<RawLocalPointerAddress>),
 }
 
 #[derive(Debug)]
 pub enum InterruptResult {
     ResolvedValue(Option<ValueContainer>),
+    ResolvedValues(Vec<ValueContainer>),
 }
 
 #[derive(Debug, Clone)]

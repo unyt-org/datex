@@ -262,6 +262,14 @@ pub fn ast_from_bytecode(
                                 })
                             }
 
+                            RegularInstruction::Move(_move_data) => {
+                                DatexExpressionData::NativeImplementationIndicator // TODO: better ast mapping
+                            }
+
+                            RegularInstruction::PerformMove(_perform_move) => {
+                                DatexExpressionData::NativeImplementationIndicator // TODO: better ast mapping
+                            }
+
                             RegularInstruction::GetSlot(slot_address) => {
                                 DatexExpressionData::Slot(Slot::Addressed(
                                     slot_address.0,
