@@ -31,7 +31,7 @@ pub fn compile_remote_execution_block(
     let moved_pointers = compile_preamble(&mut buffer, moved_pointers_slot_index, exec_block_data.clone(), slot_values)?;
 
     // if there are any moved pointers, we need to compile the preform_move instruction and allocate a slot for the moved pointers
-    if moved_pointers.len() > 0 {
+    if !moved_pointers.is_empty() {
         compile_preform_move_preamble(&mut buffer, moved_pointers_slot_index, &moved_pointers);
     }
 
@@ -81,9 +81,9 @@ fn compile_preamble(
                                 let index = moved_pointers.len() as u32;
                                 shared_container.assert_owned().map_err(|_| ExecutionError::ExpectedOwnedSharedValue)?;
                                 moved_pointers.push(shared_container.clone());
-                                append_instruction_code(buffer, InstructionCode::GET_PROPERTY_INDEX.into());
+                                append_instruction_code(buffer, InstructionCode::GET_PROPERTY_INDEX);
                                 append_u32(buffer, index);
-                                append_instruction_code(buffer, InstructionCode::GET_SLOT.into());
+                                append_instruction_code(buffer, InstructionCode::GET_SLOT);
                                 append_u32(buffer, moved_pointers_slot_index);
                                 continue;
                             },
@@ -111,13 +111,18 @@ fn compile_preform_move_preamble(
     moved_pointers_slot_index: u32,
     moved_pointers: &[SharedContainer]
 ) {
-    append_instruction_code(buffer, InstructionCode::ALLOCATE_SLOT.into());
-    append_u32(buffer, moved_pointers_slot_index);
+    let mut pre_buffer = vec![
+        InstructionCode::ALLOCATE_SLOT as u8,
+    ];
+    append_u32(&mut pre_buffer, moved_pointers_slot_index);
 
     append_perform_moves(
-        buffer,
+        &mut pre_buffer,
         moved_pointers
     ).unwrap(); // we already ensured that all moved pointers are owned local shared containers, so this should never fail
+
+    // prepend pre_buffer to buffer
+    buffer.splice(0..0, pre_buffer);
 }
 
 
@@ -127,7 +132,7 @@ mod tests {
     use crate::global::protocol_structures::external_slot_type::{ExternalSlotType, SharedSlotType};
     use crate::global::protocol_structures::instructions::InstructionBlockData;
     use crate::runtime::execution::execution_loop::remote_execution_blocks::compile_remote_execution_block;
-    use crate::shared_values::pointer::{OwnedPointer, Pointer};
+    use crate::shared_values::pointer::{OwnedPointer};
     use crate::shared_values::shared_container::SharedContainer;
     use crate::values::value_container::ValueContainer;
     use crate::prelude::*;
@@ -145,6 +150,73 @@ mod tests {
     }
 
     #[test]
+    fn remote_execution_with_injected_ref_value() {
+        let shared_value = ValueContainer::Shared(SharedContainer::boxed_owned(42, OwnedPointer::NULL));
+        let exec_block_data = InstructionBlockData {
+            injected_slot_count: 1,
+            length: 1,
+            injected_slots: vec![(0, ExternalSlotType::Shared(SharedSlotType::Ref))],
+            body: vec![InstructionCode::NULL as u8],
+        };
+        let res = compile_remote_execution_block(exec_block_data, &[&shared_value]).unwrap();
+        // should allocate slot and then compile the shared value into the buffer, followed by the body
+        assert_eq!(
+            res,
+            vec![
+                InstructionCode::ALLOCATE_SLOT as u8,
+                0, 0, 0, 0, // slot address
+                // compiled shared reference
+                InstructionCode::SHARED_REF as u8,
+                1, // insert value
+                0, 0, 0, 0, 0, // index of the shared value
+                InstructionCode::INT_32 as u8,
+                42, 0, 0, 0, // value of the shared integer
+                InstructionCode::NULL as u8, // body
+            ]
+        );
+    }
+
+    #[test]
+    fn remote_execution_multiple_ref_values() {
+        let shared_value1 = ValueContainer::Shared(SharedContainer::boxed_owned(42, OwnedPointer::NULL));
+        let shared_value2 = ValueContainer::Shared(SharedContainer::boxed_owned_mut(100, OwnedPointer::NULL));
+        let exec_block_data = InstructionBlockData {
+            injected_slot_count: 2,
+            length: 1,
+            injected_slots: vec![
+                (0, ExternalSlotType::Shared(SharedSlotType::Ref)),
+                (1, ExternalSlotType::Shared(SharedSlotType::RefMut)),
+            ],
+            body: vec![InstructionCode::NULL as u8],
+        };
+        let res = compile_remote_execution_block(exec_block_data, &[&shared_value1, &shared_value2]).unwrap();
+        // should allocate slots and then compile the shared values into the buffer, followed by the body
+        assert_eq!(
+            res,
+            vec![
+                InstructionCode::ALLOCATE_SLOT as u8,
+                0, 0, 0, 0, // slot address of first value
+                // compiled shared reference for first value
+                InstructionCode::SHARED_REF as u8,
+                1, // insert value
+                0, 0, 0, 0, 0, // index of the first shared value
+                InstructionCode::INT_32 as u8,
+                42, 0, 0, 0, // value of the first shared integer
+                InstructionCode::ALLOCATE_SLOT as u8,
+                1, 0, 0, 0, // slot address of second value
+                // compiled shared mutable reference for second value
+                InstructionCode::SHARED_REF_MUT as u8,
+                1, // insert value
+                0, 0, 0, 0, 0, // index of the second shared value
+                InstructionCode::INT_32 as u8,
+                100, 0, 0, 0, // value of the second shared integer
+                InstructionCode::NULL as u8, // body
+            ]
+        );
+    }
+
+
+    #[test]
     fn remote_execution_with_injected_moved_value() {
         let shared_value = ValueContainer::Shared(SharedContainer::boxed_owned(42, OwnedPointer::NULL));
         let exec_block_data = InstructionBlockData {
@@ -159,13 +231,63 @@ mod tests {
             res,
             vec![
                 InstructionCode::ALLOCATE_SLOT as u8,
-                0, 0, 0, 0, // slot address
-                // compiled shared moved container
-                InstructionCode::PERFORM_MOVE as u8, // shared ref instruction
-                1, // value is inserted flag
+                1, 0, 0, 0, // slot address of moved pointers
+                // compiled shared moves
+                InstructionCode::PERFORM_MOVE as u8,
+                1, 0, 0, 0, // number of moves (1)
                 0, 0, 0, 0, 0, // pointer address (assuming the shared container is stored at address 1)
-                InstructionCode::INT_32 as u8, // value type
-                42, 0, 0, 0, // value data
+                InstructionCode::ALLOCATE_SLOT as u8,
+                0, 0, 0, 0, // slot address
+                InstructionCode::GET_PROPERTY_INDEX as u8,
+                0, 0, 0, 0, // index of the moved pointer
+                InstructionCode::GET_SLOT as u8,
+                1, 0, 0, 0, // slot address of the moved pointers
+                InstructionCode::NULL as u8, // body
+            ]
+        );
+    }
+
+    #[test]
+    fn remote_execution_moved_value_and_ref() {
+        let shared_value1 = ValueContainer::Shared(SharedContainer::boxed_owned(42, OwnedPointer::NULL));
+        let shared_value2 = ValueContainer::Shared(SharedContainer::boxed_owned_mut(100, OwnedPointer::NULL));
+        let exec_block_data = InstructionBlockData {
+            injected_slot_count: 2,
+            length: 1,
+            injected_slots: vec![
+                (0, ExternalSlotType::Shared(SharedSlotType::Move)),
+                (1, ExternalSlotType::Shared(SharedSlotType::Ref)),
+            ],
+            body: vec![InstructionCode::NULL as u8],
+        };
+        let res = compile_remote_execution_block(exec_block_data, &[&shared_value1, &shared_value2]).unwrap();
+        // should allocate slots and then compile the shared values into the buffer, followed by the body
+        assert_eq!(
+            res,
+            vec![
+                InstructionCode::ALLOCATE_SLOT as u8,
+                2, 0, 0, 0, // slot address of moved pointers
+                // compiled shared moves
+                InstructionCode::PERFORM_MOVE as u8,
+                1, 0, 0, 0, // number of moves (1)
+                0, 0, 0, 0, 0, // pointer address (assuming the first shared container is stored at address 0)
+
+                InstructionCode::ALLOCATE_SLOT as u8,
+                0, 0, 0, 0, // slot address of first value (moved)
+                InstructionCode::GET_PROPERTY_INDEX as u8,
+                0, 0, 0, 0, // index of the moved pointer
+                InstructionCode::GET_SLOT as u8,
+                2, 0, 0, 0, // slot address of the moved pointers
+                
+                InstructionCode::ALLOCATE_SLOT as u8,
+                1, 0, 0, 0, // slot address of second value
+                // compiled shared reference for second value
+                InstructionCode::SHARED_REF as u8,
+                1, // insert value
+                0, 0, 0, 0, 0, // index of the second shared value
+                InstructionCode::INT_32 as u8,
+                100, 0, 0, 0, // value of the second shared integer
+                
                 InstructionCode::NULL as u8, // body
             ]
         );

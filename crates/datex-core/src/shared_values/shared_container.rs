@@ -588,11 +588,11 @@ impl SharedContainer {
 
     /// The pointer must be an owned pointer, since we create a new shared value
     pub fn boxed_owned_mut(
-        value_container: ValueContainer,
+        value_container: impl Into<ValueContainer>,
         pointer: OwnedPointer,
     ) -> Self {
         SharedContainer::try_boxed_owned(
-            value_container,
+            value_container.into(),
             None,
             pointer,
             SharedContainerMutability::Mutable,

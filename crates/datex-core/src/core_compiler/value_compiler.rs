@@ -104,8 +104,8 @@ pub fn append_shared_container(
     let instruction_code = match &shared_container.reference_mutability {
         Some(mutability) => {
             match mutability {
-                PointerReferenceMutability::Mutable => InstructionCode::SHARED_REF,
-                PointerReferenceMutability::Immutable => InstructionCode::SHARED_REF_MUT
+                PointerReferenceMutability::Mutable => InstructionCode::SHARED_REF_MUT,
+                PointerReferenceMutability::Immutable => InstructionCode::SHARED_REF
             }
         },
         None => return append_perform_moves(buffer, &[shared_container]),

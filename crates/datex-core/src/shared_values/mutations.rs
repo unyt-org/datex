@@ -296,7 +296,7 @@ mod tests {
             ValueContainer::from(3),
         ];
         let list_ref =
-            SharedContainer::boxed_owned_mut(List::from(list).into(), OwnedPointer::NULL);
+            SharedContainer::boxed_owned_mut(List::from(list), OwnedPointer::NULL);
         list_ref
             .try_append_value(0, None, ValueContainer::from(4))
             .expect("Failed to push value to list");
@@ -314,7 +314,7 @@ mod tests {
 
         // Try to push to non-list value
         let int_ref =
-            SharedContainer::boxed_owned_mut(42.into(), OwnedPointer::NULL);
+            SharedContainer::boxed_owned_mut(42, OwnedPointer::NULL);
         let result =
             int_ref.try_append_value(0, None, ValueContainer::from(99));
         assert_matches!(result, Err(AccessError::InvalidOperation(_)));
@@ -376,7 +376,7 @@ mod tests {
 
         // Try to set index on non-map value
         let int_ref =
-            SharedContainer::boxed_owned_mut(42.into(), OwnedPointer::NULL);
+            SharedContainer::boxed_owned_mut(42, OwnedPointer::NULL);
         let result =
             int_ref.try_set_property(0, None, 0, ValueContainer::from(99));
         assert_matches!(result, Err(AccessError::InvalidOperation(_)));
@@ -411,7 +411,7 @@ mod tests {
 
         // // Try to set property on non-struct value
         let int_ref =
-            SharedContainer::boxed_owned_mut(42.into(), OwnedPointer::NULL);
+            SharedContainer::boxed_owned_mut(42, OwnedPointer::NULL);
         let result = int_ref.try_set_property(
             0,
             None,

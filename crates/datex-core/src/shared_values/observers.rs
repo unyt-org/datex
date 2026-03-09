@@ -254,7 +254,7 @@ mod tests {
 
     #[test]
     fn observe_and_unobserve() {
-        let r = SharedContainer::boxed_owned_mut(42.into(), OwnedPointer::NULL);
+        let r = SharedContainer::boxed_owned_mut(42, OwnedPointer::NULL);
         assert!(!r.has_observers());
         let observer_id = r.observe(Observer::new(|_, _| {})).unwrap();
         assert_eq!(observer_id, 0);
@@ -269,7 +269,7 @@ mod tests {
 
     #[test]
     fn observer_ids_incremental() {
-        let r = SharedContainer::boxed_owned_mut(42.into(), OwnedPointer::NULL);
+        let r = SharedContainer::boxed_owned_mut(42, OwnedPointer::NULL);
         let id1 = r.observe(Observer::new(|_, _| {})).unwrap();
         let id2 = r.observe(Observer::new(|_, _| {})).unwrap();
         assert_eq!(id1, 0);
@@ -284,7 +284,7 @@ mod tests {
     #[test]
     fn observe_replace() {
         let int_ref =
-            SharedContainer::boxed_owned_mut(42.into(), OwnedPointer::NULL);
+            SharedContainer::boxed_owned_mut(42, OwnedPointer::NULL);
         let observed_updates =
             record_dif_updates(&int_ref, 0, ObserveOptions::default());
 
@@ -309,7 +309,7 @@ mod tests {
     #[test]
     fn observe_replace_same_transceiver() {
         let int_ref =
-            SharedContainer::boxed_owned_mut(42.into(), OwnedPointer::NULL);
+            SharedContainer::boxed_owned_mut(42, OwnedPointer::NULL);
         let observed_update =
             record_dif_updates(&int_ref, 0, ObserveOptions::default());
 
@@ -325,7 +325,7 @@ mod tests {
     #[test]
     fn observe_replace_same_transceiver_relay_own_updates() {
         let int_ref =
-            SharedContainer::boxed_owned_mut(42.into(), OwnedPointer::NULL);
+            SharedContainer::boxed_owned_mut(42, OwnedPointer::NULL);
         let observed_update = record_dif_updates(
             &int_ref,
             0,
@@ -358,8 +358,7 @@ mod tests {
             Map::from(vec![
                 ("a".to_string(), ValueContainer::from(1)),
                 ("b".to_string(), ValueContainer::from(2)),
-            ])
-            .into(),
+            ]),
             OwnedPointer::NULL,
         );
         let observed_updates =

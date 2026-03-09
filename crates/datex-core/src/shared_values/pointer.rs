@@ -18,6 +18,7 @@ pub struct OwnedPointer {
 }
 
 impl OwnedPointer {
+    #[cfg(test)]
     pub const NULL: OwnedPointer = OwnedPointer {
         address: OwnedPointerAddress::NULL,
     };
@@ -59,6 +60,7 @@ pub enum Pointer {
 // ...
 
 impl Pointer {
+    #[cfg(test)]
     pub const NULL: Pointer = Pointer::Owned(OwnedPointer {
         address: OwnedPointerAddress::NULL,
     });
