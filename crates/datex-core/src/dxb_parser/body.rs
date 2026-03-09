@@ -30,6 +30,8 @@ use binrw::{BinRead, io::Cursor};
 use core::{
     cell::RefCell, convert::TryFrom, fmt, fmt::Display, result::Result,
 };
+use crate::global::protocol_structures::instructions::{Move, PerformMove};
+
 #[derive(Debug)]
 pub enum DXBParserError {
     InvalidEndpoint(String),
@@ -578,6 +580,16 @@ pub fn iterate_instructions(
                             RegularInstruction::GetInternalRef(yield_unwrap!(
                                 address
                             ))
+                        }
+
+                        InstructionCode::PERFORM_MOVE => {
+                            let perform_move = PerformMove::read(&mut reader);
+                            RegularInstruction::PerformMove(yield_unwrap!(perform_move))
+                        }
+                        
+                        InstructionCode::MOVE => {
+                            let move_data = Move::read(&mut reader);
+                            RegularInstruction::Move(yield_unwrap!(move_data))
                         }
 
                         InstructionCode::ADD_ASSIGN => {

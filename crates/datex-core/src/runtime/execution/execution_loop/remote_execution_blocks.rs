@@ -278,7 +278,7 @@ mod tests {
                 0, 0, 0, 0, // index of the moved pointer
                 InstructionCode::GET_SLOT as u8,
                 2, 0, 0, 0, // slot address of the moved pointers
-                
+
                 InstructionCode::ALLOCATE_SLOT as u8,
                 1, 0, 0, 0, // slot address of second value
                 // compiled shared reference for second value
@@ -287,7 +287,7 @@ mod tests {
                 0, 0, 0, 0, 0, // index of the second shared value
                 InstructionCode::INT_32 as u8,
                 100, 0, 0, 0, // value of the second shared integer
-                
+
                 InstructionCode::NULL as u8, // body
             ]
         );

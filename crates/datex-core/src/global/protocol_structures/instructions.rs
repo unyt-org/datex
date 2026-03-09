@@ -161,6 +161,9 @@ pub enum RegularInstruction {
     GetLocalRef(RawLocalPointerAddress),
     GetInternalRef(RawInternalPointerAddress),
 
+    PerformMove(PerformMove),
+    Move(Move),
+
     AllocateSlot(SlotAddress),
     GetSlot(SlotAddress),
     DropSlot(SlotAddress),
@@ -694,6 +697,22 @@ impl From<PointerAddress> for RawPointerAddress {
 pub struct GetOrCreateRemoteRefData {
     pub address: RawRemotePointerAddress,
     pub create_block_size: u64,
+}
+
+#[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
+#[brw(little)]
+pub struct PerformMove {
+    pub pointer_count: u8,
+    #[br(count = pointer_count)]
+    pub addresses: Vec<RawLocalPointerAddress>,
+}
+
+#[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
+#[brw(little)]
+pub struct Move {
+    pub pointer_count: u8,
+    #[br(count = pointer_count)]
+    pub address_mappings: Vec<(RawLocalPointerAddress, RawLocalPointerAddress)>,
 }
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
