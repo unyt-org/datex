@@ -29,7 +29,6 @@ impl OwnedPointerAddress {
         OwnedPointerAddress { address }
     }
 
-    #[cfg(test)]
     pub const NULL: OwnedPointerAddress =
         OwnedPointerAddress { address: [0u8; 5] };
 }
@@ -44,7 +43,6 @@ pub enum PointerAddress {
 }
 
 impl PointerAddress {
-    #[cfg(test)]
     pub const NULL: PointerAddress =
         PointerAddress::Owned(OwnedPointerAddress::NULL);
 
