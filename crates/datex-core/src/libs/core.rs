@@ -158,6 +158,10 @@ impl CoreLibPointerId {
             _ => None,
         }
     }
+
+    pub fn to_bytes(&self) -> [u8; 3] {
+        (self.to_u16() as u32).to_le_bytes()[0..3].try_into().unwrap()
+    }
 }
 
 impl From<CoreLibPointerId> for PointerAddress {
@@ -168,9 +172,7 @@ impl From<CoreLibPointerId> for PointerAddress {
 
 impl From<&CoreLibPointerId> for ReferencedPointerAddress {
     fn from(id: &CoreLibPointerId) -> Self {
-        let id_bytes: [u8; 3] =
-            (id.to_u16() as u32).to_le_bytes()[0..3].try_into().unwrap();
-        ReferencedPointerAddress::Internal(id_bytes)
+        ReferencedPointerAddress::Internal(id.to_bytes())
     }
 }
 
@@ -284,11 +286,9 @@ pub fn load_core_lib(memory: &mut Memory) {
 
         // TODO #455: dont store variants as separate entries in core_struct (e.g., integer/u8, integer/i32, only keep integer)
         // Import variants directly by variant access operator from base type (e.g., integer -> integer/u8)
-        let core_struct = SharedContainer::boxed_ref(
+        let core_struct = SharedContainer::boxed_owned_with_internal_pointer(
             Map::from_iter(types_structure),
-            ReferencedPointer::new(
-                ReferencedPointerAddress::from(&CoreLibPointerId::Core),
-            ),
+            CoreLibPointerId::Core.to_bytes(),
         );
         memory.register_shared_container(&core_struct);
     });
@@ -415,7 +415,7 @@ pub fn integer_variant(
 pub fn print() -> (CoreLibPointerId, SharedContainer) {
     (
         CoreLibPointerId::Print,
-        SharedContainer::boxed_ref(
+        SharedContainer::boxed_owned_with_internal_pointer(
             Value::callable(
                 Some("print".to_string()),
                 CallableSignature {
@@ -430,9 +430,9 @@ pub fn print() -> (CoreLibPointerId, SharedContainer) {
                 },
                 CallableBody::Native(|mut args: &[ValueContainer]| {
                     // TODO #680: add I/O abstraction layer / interface
-    
+
                     let mut output = String::new();
-    
+
                     // if first argument is a string value, print it directly
                     if let Some(ValueContainer::Local(Value {
                         inner: CoreValue::Text(text),
@@ -447,7 +447,7 @@ pub fn print() -> (CoreLibPointerId, SharedContainer) {
                             output.push(' ');
                         }
                     }
-    
+
                     #[cfg(feature = "decompiler")]
                     let args_string = args
                         .iter()
@@ -466,14 +466,14 @@ pub fn print() -> (CoreLibPointerId, SharedContainer) {
                         .collect::<Vec<_>>()
                         .join(" ");
                     output.push_str(&args_string);
-    
+
                     #[cfg(feature = "std")]
                     println!("[PRINT] {}", output);
                     info!("[PRINT] {}", output);
                     Ok(None)
                 }),
             ),
-            ReferencedPointer::new(ReferencedPointerAddress::from(&CoreLibPointerId::Print))
+            CoreLibPointerId::Print.to_bytes(),
         ),
     )
 }

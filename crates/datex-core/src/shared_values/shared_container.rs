@@ -36,7 +36,7 @@ use core::{
 use num_enum::TryFromPrimitive;
 use serde::{Deserialize, Serialize};
 use crate::shared_values::pointer::{OwnedPointer, ReferencedPointer};
-use crate::shared_values::pointer_address::OwnedPointerAddress;
+use crate::shared_values::pointer_address::{OwnedPointerAddress, ReferencedPointerAddress};
 
 #[derive(Debug)]
 pub struct IndexOutOfBoundsError {
@@ -611,6 +611,27 @@ impl SharedContainer {
             SharedContainerMutability::Immutable,
         )
         .unwrap()  // always Ok, since we dont provide an allowed type that could mismatch
+    }
+    
+    /// Creates an owned pointer (no ref), but for an internal pointer address, not an OwnedPointer
+    pub(crate) fn boxed_owned_with_internal_pointer(
+        value_container: impl Into<ValueContainer>,
+        internal_pointer_address: [u8; 3],
+    ) -> Self {
+        let value_container = value_container.into();
+        let allowed_type = value_container.allowed_type();
+        
+        SharedContainer {
+            value: SharedContainerInner::Value(Rc::new(RefCell::new(
+                SharedValueContainer::new(
+                    value_container,
+                    Pointer::Referenced(ReferencedPointer::new(ReferencedPointerAddress::Internal(internal_pointer_address))),
+                    allowed_type,
+                    SharedContainerMutability::Immutable,
+                ),
+            ))),
+            reference_mutability: None,
+        }
     }
 
     pub fn boxed_ref(
