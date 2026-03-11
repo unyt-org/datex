@@ -151,8 +151,7 @@ pub async fn execute_dxb(
             ExternalExecutionInterrupt::RequestMove(addresses) => {
                 let moved_values = runtime_internal.clone()
                     .request_pointer_move(&caller_metadata.endpoint, addresses)
-                    .await
-                    .map_err(|_| ExecutionError::FailedToMovePointers)?;
+                    .await?;
                 interrupt_provider.provide_result(InterruptResult::ResolvedValues(moved_values));
             }
             ExternalExecutionInterrupt::Move(address_mapping) => {

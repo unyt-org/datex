@@ -67,6 +67,10 @@ impl List {
     pub fn as_vec(&self) -> &Vec<ValueContainer> {
         &self.0
     }
+    
+    pub fn into_vec(self) -> Vec<ValueContainer> {
+        self.0
+    }
 
     pub fn as_mut_vec(&mut self) -> &mut Vec<ValueContainer> {
         &mut self.0

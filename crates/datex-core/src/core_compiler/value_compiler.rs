@@ -128,6 +128,7 @@ pub fn append_shared_container(
 }
 
 /// Appends multiple shared containers as moves to the buffer
+/// TODO: Also handle moves of nested shared values!
 pub fn append_perform_moves(
     buffer: &mut Vec<u8>,
     shared_containers: &[SharedContainer],

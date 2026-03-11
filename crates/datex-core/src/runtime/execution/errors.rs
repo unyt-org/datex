@@ -18,6 +18,7 @@ pub enum InvalidProgramError {
     MissingRemoteExecutionReceiver,
     ExpectedTypeValue,
     ExpectedValue,
+    ExpectedList,
     ExpectedInstruction,
     ExpectedRegularInstruction,
     ExpectedTypeInstruction,
@@ -47,6 +48,9 @@ impl Display for InvalidProgramError {
             InvalidProgramError::ExpectedInstruction => {
                 core::write!(f, "Expected an instruction")
             }
+            InvalidProgramError::ExpectedList => {
+                core::write!(f, "Expected a list")
+            }
         }
     }
 }
@@ -68,7 +72,6 @@ pub enum ExecutionError {
     InvalidUnbox,
     InvalidTypeCast,
     ExpectedTypeValue,
-    FailedToMovePointers,
     ExpectedSharedValue,
     ExpectedOwnedSharedValue,
     MutableReferenceToNonMutableValue,
@@ -184,9 +187,6 @@ impl Display for ExecutionError {
             }
             ExecutionError::ExpectedTypeValue => {
                 core::write!(f, "Expected a type value")
-            }
-            ExecutionError::FailedToMovePointers => {
-                core::write!(f, "Failed to move pointers")
             }
             ExecutionError::AccessError(err) => {
                 core::write!(f, "Access error: {err}")
