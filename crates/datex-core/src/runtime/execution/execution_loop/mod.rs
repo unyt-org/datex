@@ -74,6 +74,7 @@ use crate::{
 };
 use alloc::rc::Rc;
 use core::cell::RefCell;
+use crate::global::protocol_structures::external_slot_type::{ExternalSlotType, SharedSlotType};
 use crate::runtime::execution::execution_loop::remote_execution_blocks::compile_remote_execution_block;
 use crate::runtime::execution::macros::interrupt_with_values;
 use crate::shared_values::shared_container::SharedContainerInner;
@@ -1095,18 +1096,35 @@ pub fn inner_execution_loop(
                                 RegularInstruction::RemoteExecution(
                                     exec_block_data,
                                 ) => {
-                                    // build dxb
-                                    let slots = yield_unwrap!(exec_block_data
-                                        .injected_slots
-                                        .iter()
-                                        .map(|(local_slot_address, _)| {
-                                            get_slot_value(&state, *local_slot_address)
-                                        })
-                                        .collect::<Result<Vec<_>, _>>());
 
+                                    // get slots (moved or referenced)
+                                    let injected = &exec_block_data.injected_slots;
+                                    let mut moved: Vec<Option<_>> = vec![None; injected.len()];
+
+                                    // perform all mutable operations (removing moved shared values)
+                                    for (i, (addr, slot_type)) in injected.iter().enumerate() {
+                                        if matches!(slot_type, ExternalSlotType::Shared(SharedSlotType::Move)) {
+                                            moved[i] = Some(yield_unwrap!(state.slots.drop_slot(*addr)));
+                                        }
+                                    }
+
+                                    // collect all slots
+                                    let mut slots = Vec::with_capacity(injected.len());
+                                    for (i, (addr, slot_type)) in injected.iter().enumerate() {
+                                        slots.push(match slot_type {
+                                            ExternalSlotType::Shared(SharedSlotType::Move) => {
+                                                Cow::Owned(moved[i].take().unwrap())
+                                            }
+                                            _ => {
+                                                Cow::Borrowed(yield_unwrap!(get_slot_value(&state, *addr)))
+                                            }
+                                        });
+                                    }
+
+                                    // build dxb
                                     let buffer = yield_unwrap!(compile_remote_execution_block(
                                         exec_block_data,
-                                        &slots,
+                                        slots,
                                     ));
 
                                     let receivers = yield_unwrap!(

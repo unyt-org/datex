@@ -86,16 +86,16 @@ impl RuntimeExecutionSlots {
         self.slots.insert(address, value);
     }
 
-    /// Drops a slot by its address, returning the value if it existed.
+    /// Drops a slot by its address and returns its value.
     /// If the slot is not allocated, it returns an error.
     pub(crate) fn drop_slot(
         &mut self,
         address: u32,
-    ) -> Result<Option<ValueContainer>, ExecutionError> {
+    ) -> Result<ValueContainer, ExecutionError> {
         self.slots
             .remove(&address)
-            .ok_or(())
-            .map_err(|_| ExecutionError::SlotNotAllocated(address))
+            .flatten()
+            .ok_or_else(|| ExecutionError::SlotNotAllocated(address))
     }
 
     /// Sets the value of a slot, returning the previous value if it existed.

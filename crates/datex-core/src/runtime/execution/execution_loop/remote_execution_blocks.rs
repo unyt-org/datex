@@ -20,7 +20,7 @@ use crate::prelude::*;
 /// #4 = #2.1
 pub fn compile_remote_execution_block(
     exec_block_data: InstructionBlockData,
-    slot_values: &[&ValueContainer],
+    slot_values: Vec<Cow<ValueContainer>>,
 ) -> Result<Vec<u8>, ExecutionError> {
     let mut buffer = Vec::with_capacity(256);
 
@@ -46,15 +46,16 @@ fn compile_preamble(
     buffer: &mut Vec<u8>,
     moved_pointers_slot_index: u32,
     exec_block_data: InstructionBlockData,
-    slot_values: &[&ValueContainer],
+    slot_values: Vec<Cow<ValueContainer>>,
 ) -> Result<Vec<SharedContainer>, ExecutionError> {
 
-    let mut moved_pointers = vec![];
+    let mut moved_pointers: Vec<SharedContainer> = vec![];
 
     // build dxb
-    for (slot_addr, (_, external_slot_type)) in exec_block_data
+    for (slot_addr, ((_, external_slot_type), slot_value)) in exec_block_data
         .injected_slots
         .into_iter()
+        .zip(slot_values.into_iter())
         .enumerate()
     {
         buffer.push(
@@ -62,43 +63,53 @@ fn compile_preamble(
                 as u8,
         );
         append_u32(buffer, slot_addr as u32);
-
-        let slot_value = &slot_values[slot_addr];
-
         match external_slot_type {
             ExternalSlotType::Local(_) => {
                 todo!()
             },
             ExternalSlotType::Shared(shared_slot_type) => {
-                match slot_value {
-                    ValueContainer::Local(_) => {
-                        return Err(ExecutionError::ExpectedSharedValue);
-                    },
-                    ValueContainer::Shared(shared_container) => {
-                        let shared_container = match shared_slot_type {
-                            SharedSlotType::Move => {
-                                // get moved value from moved_pointers_slot
-                                let index = moved_pointers.len() as u32;
+
+                let shared_container = match shared_slot_type {
+                    SharedSlotType::Move => {
+                        // get moved value from moved_pointers_slot
+                        let index = moved_pointers.len() as u32;
+
+                        // this clones the slot value if it was not owned, leading to an ExpectedOwnedSharedValue error
+                        // since the clone creates a ref instead of an owned value
+                        let slot_value = slot_value.into_owned();
+                        match slot_value {
+                            ValueContainer::Local(_) => return Err(ExecutionError::ExpectedSharedValue),
+                            ValueContainer::Shared(shared_container) => {
                                 shared_container.assert_owned().map_err(|_| ExecutionError::ExpectedOwnedSharedValue)?;
-                                moved_pointers.push(shared_container.clone());
+                                moved_pointers.push(shared_container);
                                 append_instruction_code(buffer, InstructionCode::GET_PROPERTY_INDEX);
                                 append_u32(buffer, index);
                                 append_instruction_code(buffer, InstructionCode::GET_SLOT);
                                 append_u32(buffer, moved_pointers_slot_index);
                                 continue;
-                            },
-                            SharedSlotType::Ref => shared_container.derive_reference(),
-                            SharedSlotType::RefMut => shared_container.try_derive_mutable_reference()
-                                .map_err(|_| ExecutionError::MutableReferenceToNonMutableValue)?,
-                        };
-                        append_shared_container(
-                            buffer,
-                            shared_container,
-                            true
-                        ).map_err(|_| ExecutionError::ExpectedOwnedSharedValue)?;
+                            }
+                        }
+                    },
+                    SharedSlotType::Ref => match slot_value.as_ref() {
+                        ValueContainer::Local(_) => return Err(ExecutionError::ExpectedSharedValue),
+                        ValueContainer::Shared(shared_container) => {
+                            shared_container.derive_reference()
+                        }
                     }
-                }
+                    SharedSlotType::RefMut => match slot_value.as_ref() {
+                        ValueContainer::Local(_) => return Err(ExecutionError::ExpectedSharedValue),
+                        ValueContainer::Shared(shared_container) => {
+                            shared_container.try_derive_mutable_reference()
+                                .map_err(|_| ExecutionError::MutableReferenceToNonMutableValue)?
+                        }
+                    }
+                };
 
+                append_shared_container(
+                    buffer,
+                    shared_container,
+                    true
+                ).map_err(|_| ExecutionError::ExpectedOwnedSharedValue)?;
             }
         }
     }
@@ -144,7 +155,7 @@ mod tests {
             injected_slots: vec![],
             body: vec![InstructionCode::NULL as u8],
         };
-        let res = compile_remote_execution_block(exec_block_data, &[]).unwrap();
+        let res = compile_remote_execution_block(exec_block_data, vec![]).unwrap();
         assert_eq!(res, vec![InstructionCode::NULL as u8]);
     }
 
@@ -157,7 +168,7 @@ mod tests {
             injected_slots: vec![(0, ExternalSlotType::Shared(SharedSlotType::Ref))],
             body: vec![InstructionCode::NULL as u8],
         };
-        let res = compile_remote_execution_block(exec_block_data, &[&shared_value]).unwrap();
+        let res = compile_remote_execution_block(exec_block_data, vec![Cow::Owned(shared_value)]).unwrap();
         // should allocate slot and then compile the shared value into the buffer, followed by the body
         assert_eq!(
             res,
@@ -188,7 +199,7 @@ mod tests {
             ],
             body: vec![InstructionCode::NULL as u8],
         };
-        let res = compile_remote_execution_block(exec_block_data, &[&shared_value1, &shared_value2]).unwrap();
+        let res = compile_remote_execution_block(exec_block_data, vec![Cow::Owned(shared_value1), Cow::Owned(shared_value2)]).unwrap();
         // should allocate slots and then compile the shared values into the buffer, followed by the body
         assert_eq!(
             res,
@@ -224,7 +235,7 @@ mod tests {
             injected_slots: vec![(0, ExternalSlotType::Shared(SharedSlotType::Move))],
             body: vec![InstructionCode::NULL as u8],
         };
-        let res = compile_remote_execution_block(exec_block_data, &[&shared_value]).unwrap();
+        let res = compile_remote_execution_block(exec_block_data, vec![Cow::Owned(shared_value)]).unwrap();
         // should allocate slot and then compile the shared value into the buffer, followed by the body
         assert_eq!(
             res,
@@ -259,7 +270,7 @@ mod tests {
             ],
             body: vec![InstructionCode::NULL as u8],
         };
-        let res = compile_remote_execution_block(exec_block_data, &[&shared_value1, &shared_value2]).unwrap();
+        let res = compile_remote_execution_block(exec_block_data, vec![Cow::Owned(shared_value1), Cow::Owned(shared_value2)]).unwrap();
         // should allocate slots and then compile the shared values into the buffer, followed by the body
         assert_eq!(
             res,

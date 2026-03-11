@@ -249,7 +249,7 @@ impl Display for SharedContainerMutability {
 }
 
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct SharedContainer {
     pub(crate) value: SharedContainerInner,
     pub(crate) reference_mutability: Option<PointerReferenceMutability>,
@@ -259,6 +259,16 @@ pub struct SharedContainer {
 pub enum SharedContainerInner {
     Value(Rc<RefCell<SharedValueContainer>>),
     Type(Rc<RefCell<SharedTypeContainer>>),
+}
+
+impl Clone for SharedContainer {
+    /// Cloning a shared container will never return an owned value, but always a reference
+    fn clone(&self) -> Self {
+        SharedContainer {
+            value: self.value.clone(),
+            reference_mutability: Some(PointerReferenceMutability::Immutable),
+        }
+    }
 }
 
 
@@ -458,13 +468,13 @@ impl SharedContainer {
             return Err(());
         }
         let pointer = Pointer::Referenced(ReferencedPointer::new(remote_address));
-        match &self.value { 
+        match &self.value {
             SharedContainerInner::Value(vr) => { vr.borrow_mut().pointer = pointer }
             SharedContainerInner::Type(tr) => {tr.borrow_mut().pointer = pointer }
         }
         Ok(())
     }
-    
+
     pub fn try_derive_mutable_reference(&self) -> Result<Self, ()> {
         if !self.can_mutate() {
             return Err(());

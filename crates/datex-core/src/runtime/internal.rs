@@ -450,7 +450,7 @@ impl RuntimeInternal {
             _ => Err(ExecutionError::InvalidProgram(InvalidProgramError::ExpectedValue))
         }
     }
-    
+
     pub(crate) fn handle_pointer_move_to_remote(
         self: Rc<RuntimeInternal>,
         from_endpoint: &Endpoint,
@@ -460,12 +460,12 @@ impl RuntimeInternal {
             let original_address = OwnedPointerAddress::new(original.id);
             let new_address = ReferencedPointerAddress::remote_for_endpoint(from_endpoint, new.id);
             // TODO: add moving_pointers map and check if from_endpoint is actually allowed to perform the moves
-            let shared_container = self.moving_pointers.get(&original_address.into()).ok_or(())?;
-            shared_container.move_to_remote(new_address)?;
-            Ok(shared_container.clone())
-            
+            // let shared_container = self.moving_pointers.get(&original_address.into()).ok_or(())?;
+            // shared_container.move_to_remote(new_address)?;
+            // Ok(shared_container.clone())
+            todo!()
         })
-            .collect::<Result<Vec<_>, _>>()
+            .collect::<Result<Vec<_>, ()>>()
             .map_err(|_| ExecutionError::ExpectedSharedValue)?; // TODO: better error
         Ok(values)
     }
