@@ -16,6 +16,7 @@ use serde::ser::{
 };
 
 use crate::{prelude::*, runtime::RuntimeInternal};
+use crate::runtime::execution::execution_input::ExecutionCallerMetadata;
 
 pub struct DatexSerializer {}
 
@@ -499,6 +500,7 @@ impl Serializer for &mut DatexSerializer {
             let bytes = unsafe { &*(value as *const T as *const Vec<u8>) };
             Ok(execute_dxb_sync(ExecutionInput::new(
                 bytes,
+                ExecutionCallerMetadata::local_default(),
                 ExecutionOptions::default(),
                 Rc::new(runtime),
             ))

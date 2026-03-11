@@ -22,6 +22,7 @@ use serde::{
 };
 
 use crate::{prelude::*, runtime::RuntimeInternal};
+use crate::runtime::execution::execution_input::ExecutionCallerMetadata;
 
 /// Deserialize a value of type T from a byte slice containing DXB data
 pub fn from_bytes<T>(input: &[u8]) -> Result<T, DeserializationError>
@@ -31,6 +32,7 @@ where
     let runtime = RuntimeInternal::stub();
     let context = ExecutionInput::new(
         input,
+        ExecutionCallerMetadata::local_default(),
         ExecutionOptions { verbose: true },
         Rc::new(runtime),
     );

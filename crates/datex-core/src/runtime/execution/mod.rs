@@ -28,7 +28,7 @@ pub use memory_dump::*;
 
 pub mod context;
 mod errors;
-mod execution_input;
+pub mod execution_input;
 pub mod execution_loop;
 pub mod macros;
 mod memory_dump;
@@ -149,6 +149,7 @@ pub async fn execute_dxb(
             }
             ExternalExecutionInterrupt::PerformMove(addresses) => {
                 todo!()
+                // let moved_values = runtime_internal.perform_move(addresses, caller_id!()).await?;
             }
         }
     }
@@ -266,6 +267,7 @@ mod tests {
     use binrw::meta::EndianKind::Runtime;
     use core::assert_matches;
     use log::{debug, info};
+    use crate::runtime::execution::execution_input::ExecutionCallerMetadata;
     use crate::shared_values::shared_container::SharedContainerInner;
     use crate::shared_values::shared_value_container::SharedValueContainer;
 
@@ -276,6 +278,7 @@ mod tests {
             compile_script(datex_script, CompileOptions::default()).unwrap();
         let context = ExecutionInput::new(
             &dxb,
+            ExecutionCallerMetadata::local_default(),
             ExecutionOptions { verbose: true },
             Rc::new(RuntimeInternal::stub()),
         );
@@ -340,6 +343,7 @@ mod tests {
             compile_script(datex_script, CompileOptions::default()).unwrap();
         let context = ExecutionInput::new(
             &dxb,
+            ExecutionCallerMetadata::local_default(),
             ExecutionOptions { verbose: true },
             Rc::new(RuntimeInternal::stub()),
         );
@@ -357,6 +361,7 @@ mod tests {
     ) -> Result<Option<ValueContainer>, ExecutionError> {
         let context = ExecutionInput::new(
             dxb_body,
+            ExecutionCallerMetadata::local_default(),
             ExecutionOptions { verbose: true },
             Rc::new(RuntimeInternal::stub()),
         );
@@ -374,6 +379,7 @@ mod tests {
                         .unwrap();
                 let context = ExecutionInput::new(
                     &dxb,
+                    ExecutionCallerMetadata::local_default(),
                     ExecutionOptions { verbose: true },
                     runtime.internal,
                 );

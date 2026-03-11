@@ -16,6 +16,7 @@ pub use local::*;
 use log::info;
 pub use remote::*;
 pub use script::*;
+use crate::runtime::execution::execution_input::ExecutionCallerMetadata;
 
 mod local;
 mod remote;
@@ -130,6 +131,7 @@ impl ExecutionContext {
             }) => {
                 let input = ExecutionInput {
                     runtime: runtime.clone(),
+                    caller_metadata: ExecutionCallerMetadata::local_default(),
                     loop_state: loop_state.take(),
                     options: (*execution_options).clone(),
                     dxb_body: dxb,

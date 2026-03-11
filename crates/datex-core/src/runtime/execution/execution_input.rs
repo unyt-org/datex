@@ -10,9 +10,27 @@ use crate::runtime::{
 };
 
 use crate::prelude::*;
+use crate::values::core_values::endpoint::Endpoint;
+
 #[derive(Debug, Clone, Default)]
 pub struct ExecutionOptions {
     pub verbose: bool,
+}
+
+#[derive(Debug)]
+pub struct ExecutionCallerMetadata {
+    pub endpoint: Endpoint,
+}
+
+impl ExecutionCallerMetadata {
+    pub fn local_default() -> Self {
+        Self {
+            endpoint: Endpoint::LOCAL,
+        }
+    }
+    pub fn new(endpoint: Endpoint) -> Self {
+        Self { endpoint }
+    }
 }
 
 /// Input required to execute a DXB program.
@@ -20,6 +38,8 @@ pub struct ExecutionOptions {
 pub struct ExecutionInput<'a> {
     /// Options for execution.
     pub options: ExecutionOptions,
+    /// Metadata about the caller of the execution
+    pub caller_metadata: ExecutionCallerMetadata,
     /// The DXB program body containing raw bytecode.
     pub dxb_body: &'a [u8],
     /// For persisting execution state across multiple executions (e.g., for REPL scenarios).
@@ -30,11 +50,13 @@ pub struct ExecutionInput<'a> {
 impl<'a> ExecutionInput<'a> {
     pub fn new(
         dxb_body: &'a [u8],
+        caller_metadata: ExecutionCallerMetadata,
         options: ExecutionOptions,
         runtime: Rc<RuntimeInternal>,
     ) -> Self {
         Self {
             options,
+            caller_metadata,
             dxb_body,
             loop_state: None,
             runtime,
@@ -42,6 +64,7 @@ impl<'a> ExecutionInput<'a> {
     }
     pub fn new_with_slots(
         dxb_body: &'a [u8],
+        caller_metadata: ExecutionCallerMetadata,
         options: ExecutionOptions,
         runtime: Rc<RuntimeInternal>,
         slots: RuntimeExecutionSlots,
@@ -50,6 +73,7 @@ impl<'a> ExecutionInput<'a> {
             ExecutionLoopState::new(dxb_body.to_vec(), runtime.clone(), slots);
         Self {
             options,
+            caller_metadata,
             dxb_body,
             loop_state: Some(state),
             runtime,
