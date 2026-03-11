@@ -6,7 +6,7 @@ use core::cell::RefCell;
 
 use crate::{
     ast::expressions::{
-        DatexExpressionData, VariableAccess, VariableAssignment,
+        DatexExpressionData, VariableAccess, ValueAccessType, VariableAssignment,
         VariableDeclaration,
     },
     collections::HashMap,
@@ -188,15 +188,31 @@ impl LanguageServer for LanguageServerBackend {
                     VariableAssignment {
                         name, id: Some(id), ..
                     },
-                )
-                | DatexExpressionData::VariableAccess(VariableAccess {
-                    id,
-                    name,
-                }) => {
+                ) => {
                     let variable_metadata =
                         self.get_variable_by_id(id).unwrap();
                     Some(self.get_language_string_hover(&format!(
                         "{} {}: {}",
+                        variable_metadata.shape,
+                        name,
+                        variable_metadata.var_type.unwrap_or(Type::unknown())
+                    )))
+                }
+
+                DatexExpressionData::VariableAccess(VariableAccess {
+                    id,
+                    name,
+                    access_type,
+                }) => {
+                    let variable_metadata =
+                        self.get_variable_by_id(id).unwrap();
+                    Some(self.get_language_string_hover(&format!(
+                        "{}{} {}: {}",
+                        match access_type {
+                            ValueAccessType::SharedRef => "'",
+                            ValueAccessType::SharedRefMut => "'mut ",
+                            _ => "",
+                        },
                         variable_metadata.shape,
                         name,
                         variable_metadata.var_type.unwrap_or(Type::unknown())
@@ -281,6 +297,7 @@ impl LanguageServer for LanguageServerBackend {
                 DatexExpressionData::VariableAccess(VariableAccess {
                     id,
                     name: _,
+                    ..
                 }) => {
                     let uri =
                         params.text_document_position_params.text_document.uri;
