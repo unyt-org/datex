@@ -1234,6 +1234,15 @@ fn compile_expression(
                         InternalSlot::ENDPOINT as u32,
                     );
                 }
+                "caller" => {
+                    compilation_context.append_instruction_code(
+                        InstructionCode::GET_INTERNAL_SLOT,
+                    );
+                    append_u32(
+                        &mut compilation_context.buffer,
+                        InternalSlot::CALLER as u32,
+                    );
+                }
                 "env" => {
                     compilation_context.append_instruction_code(
                         InstructionCode::GET_INTERNAL_SLOT,
@@ -3136,6 +3145,24 @@ pub mod tests {
                 InstructionCode::GET_INTERNAL_SLOT.into(),
                 // slot index as u32
                 0,
+                0xff,
+                0xff,
+                0xff
+            ]
+        );
+    }
+
+    #[test]
+    fn internal_slot_caller() {
+        let script = "#caller";
+        let (res, _) =
+            compile_script(script, CompileOptions::default()).unwrap();
+        assert_eq!(
+            res,
+            vec![
+                InstructionCode::GET_INTERNAL_SLOT.into(),
+                // slot index as u32
+                2,
                 0xff,
                 0xff,
                 0xff

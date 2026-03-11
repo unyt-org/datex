@@ -17,7 +17,7 @@ pub struct ExecutionOptions {
     pub verbose: bool,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ExecutionCallerMetadata {
     pub endpoint: Endpoint,
 }
@@ -70,7 +70,7 @@ impl<'a> ExecutionInput<'a> {
         slots: RuntimeExecutionSlots,
     ) -> Self {
         let state =
-            ExecutionLoopState::new(dxb_body.to_vec(), runtime.clone(), slots);
+            ExecutionLoopState::new(dxb_body.to_vec(), runtime.clone(), slots, caller_metadata.clone());
         Self {
             options,
             caller_metadata,
@@ -100,6 +100,7 @@ impl<'a> ExecutionInput<'a> {
                 self.dxb_body.to_vec(),
                 self.runtime.clone(),
                 Default::default(),
+                self.caller_metadata.clone(),
             )
         };
         let interrupt_provider = loop_state.interrupt_provider.clone();

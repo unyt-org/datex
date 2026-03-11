@@ -16,6 +16,8 @@ use crate::{
 use core::{cell::RefCell, fmt::Debug};
 
 use crate::prelude::*;
+use crate::runtime::execution::execution_input::ExecutionCallerMetadata;
+
 pub struct ExecutionLoopState {
     pub iterator: Box<
         dyn Iterator<Item = Result<ExternalExecutionInterrupt, ExecutionError>>,
@@ -28,11 +30,13 @@ impl ExecutionLoopState {
         dxb_body: Vec<u8>,
         runtime: Rc<RuntimeInternal>,
         slots: RuntimeExecutionSlots,
+        caller_metadata: ExecutionCallerMetadata,
     ) -> Self {
         let state = RuntimeExecutionState {
             runtime_internal: runtime.clone(),
             source_id: 0, // TODO #640: set proper source ID
             slots,
+            caller_metadata,
         };
         // TODO #641: optimize, don't clone the whole DXB body every time here
         let dxb_rc = Rc::new(RefCell::new(dxb_body.to_vec()));
@@ -64,6 +68,7 @@ pub struct RuntimeExecutionState {
     pub slots: RuntimeExecutionSlots,
     pub runtime_internal: Rc<RuntimeInternal>,
     pub source_id: TransceiverId,
+    pub caller_metadata: ExecutionCallerMetadata
 }
 
 #[derive(Debug, Default)]

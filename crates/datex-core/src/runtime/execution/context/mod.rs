@@ -127,11 +127,12 @@ impl ExecutionContext {
                 loop_state,
                 execution_options,
                 verbose,
+                caller_metadata,
                 ..
             }) => {
                 let input = ExecutionInput {
                     runtime: runtime.clone(),
-                    caller_metadata: ExecutionCallerMetadata::local_default(),
+                    caller_metadata: caller_metadata.clone(),
                     loop_state: loop_state.take(),
                     options: (*execution_options).clone(),
                     dxb_body: dxb,

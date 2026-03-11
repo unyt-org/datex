@@ -38,6 +38,7 @@ use crate::{
 use alloc::rc::Rc;
 use core::{cell::RefCell, pin::Pin, slice};
 use log::{debug, error, info};
+use crate::runtime::execution::execution_input::ExecutionCallerMetadata;
 
 #[derive(Debug)]
 pub struct RuntimeInternal {
@@ -69,7 +70,7 @@ macro_rules! get_execution_context {
                 context
             },
             None => {
-               &mut ExecutionContext::local(ExecutionMode::Static, $self_rc.clone())
+               &mut ExecutionContext::local(ExecutionMode::Static, $self_rc.clone(), ExecutionCallerMetadata::local_default())
             }
         }
     };
@@ -274,6 +275,7 @@ impl RuntimeInternal {
     fn take_execution_context(
         self_rc: Rc<RuntimeInternal>,
         context_id: &IncomingEndpointContextSectionId,
+        incoming_section: &IncomingSection,
     ) -> ExecutionContext {
         let mut execution_contexts = self_rc.execution_contexts.borrow_mut();
         // get execution context by context_id or create a new one if it doesn't exist
@@ -281,7 +283,10 @@ impl RuntimeInternal {
         if let Some(context) = execution_context {
             context
         } else {
-            ExecutionContext::local(ExecutionMode::unbounded(), self_rc.clone())
+            let caller_metadata = ExecutionCallerMetadata {
+                endpoint: incoming_section.get_sender(),
+            };
+            ExecutionContext::local(ExecutionMode::unbounded(), self_rc.clone(), caller_metadata)
         }
     }
 
@@ -337,7 +342,7 @@ impl RuntimeInternal {
         let section_context_id =
             incoming_section.get_section_context_id().clone();
         let mut context =
-            Self::take_execution_context(self_rc.clone(), &section_context_id);
+            Self::take_execution_context(self_rc.clone(), &section_context_id, &incoming_section);
         info!(
             "Executing incoming section with index: {}",
             incoming_section.get_section_index()

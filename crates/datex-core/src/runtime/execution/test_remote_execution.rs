@@ -8,6 +8,7 @@ use crate::{
         value_container::ValueContainer,
     },
 };
+use crate::runtime::execution::execution_input::ExecutionCallerMetadata;
 
 #[tokio::test]
 #[cfg(feature = "compiler")]
@@ -101,6 +102,7 @@ pub async fn test_remote_inline() {
             let mut execution_context = ExecutionContext::local(
                 ExecutionMode::unbounded(),
                 runtime_a.internal.clone(),
+                ExecutionCallerMetadata::local_default(),
             );
 
             // execute script remotely on @test_b

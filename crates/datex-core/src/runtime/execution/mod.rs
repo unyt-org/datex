@@ -297,6 +297,7 @@ mod tests {
                 ExecutionContext::Local(LocalExecutionContext::new(
                     ExecutionMode::unbounded(),
                     Rc::new(RuntimeInternal::stub()),
+                    ExecutionCallerMetadata::local_default(),
                 ));
             let mut compilation_scope =
                 CompilationScope::new(ExecutionMode::unbounded());
