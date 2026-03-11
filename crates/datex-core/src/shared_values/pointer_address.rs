@@ -10,6 +10,7 @@ use crate::global::protocol_structures::instructions::{
 };
 use core::{fmt::Display, result::Result};
 use serde::{Deserialize, Serialize};
+use crate::values::core_values::endpoint::Endpoint;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct OwnedPointerAddress {
@@ -22,6 +23,16 @@ pub enum ReferencedPointerAddress {
     Remote([u8; 26]),
     // globally unique internal pointer, e.g. for #core, #std
     Internal([u8; 3]), // TODO #312 shrink down to 2 bytes?
+}
+
+impl ReferencedPointerAddress {
+    pub fn remote_for_endpoint(endpoint: &Endpoint, id: [u8; 5]) -> Self {
+        let endpoint_slice = endpoint.to_slice();
+        let mut address = [0u8; 26];
+        address[..endpoint_slice.len()].copy_from_slice(&endpoint_slice);
+        address[endpoint_slice.len()..endpoint_slice.len() + id.len()].copy_from_slice(&id);
+        ReferencedPointerAddress::Remote(address)
+    }
 }
 
 impl OwnedPointerAddress {
@@ -56,6 +67,10 @@ impl PointerAddress {
 
     pub fn remote(address: [u8; 26]) -> Self {
         PointerAddress::Referenced(ReferencedPointerAddress::Remote(address))
+    }
+    
+    pub fn remote_for_endpoint(endpoint: &Endpoint, id: [u8; 5]) -> Self {
+        PointerAddress::Referenced(ReferencedPointerAddress::remote_for_endpoint(endpoint, id))
     }
 }
 
@@ -112,6 +127,18 @@ impl From<RawPointerAddress> for PointerAddress {
                 OwnedPointerAddress { address: local.id },
             ),
         }
+    }
+}
+
+impl From<OwnedPointerAddress> for PointerAddress {
+    fn from(owned: OwnedPointerAddress) -> Self {
+        PointerAddress::Owned(owned)
+    }
+}
+
+impl From<ReferencedPointerAddress> for PointerAddress {
+    fn from(referenced: ReferencedPointerAddress) -> Self {
+        PointerAddress::Referenced(referenced)
     }
 }
 

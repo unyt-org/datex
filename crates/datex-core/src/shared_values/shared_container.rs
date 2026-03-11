@@ -452,6 +452,19 @@ impl SharedContainer {
         }
     }
 
+    pub(crate) fn move_to_remote(&self, remote_address: ReferencedPointerAddress) -> Result<(), ()> {
+        // make sure the pointer is an owned pointer
+        if !self.pointer().is_owned() {
+            return Err(());
+        }
+        let pointer = Pointer::Referenced(ReferencedPointer::new(remote_address));
+        match &self.value { 
+            SharedContainerInner::Value(vr) => { vr.borrow_mut().pointer = pointer }
+            SharedContainerInner::Type(tr) => {tr.borrow_mut().pointer = pointer }
+        }
+        Ok(())
+    }
+    
     pub fn try_derive_mutable_reference(&self) -> Result<Self, ()> {
         if !self.can_mutate() {
             return Err(());
@@ -612,7 +625,7 @@ impl SharedContainer {
         )
         .unwrap()  // always Ok, since we dont provide an allowed type that could mismatch
     }
-    
+
     /// Creates an owned pointer (no ref), but for an internal pointer address, not an OwnedPointer
     pub(crate) fn boxed_owned_with_internal_pointer(
         value_container: impl Into<ValueContainer>,
@@ -620,7 +633,7 @@ impl SharedContainer {
     ) -> Self {
         let value_container = value_container.into();
         let allowed_type = value_container.allowed_type();
-        
+
         SharedContainer {
             value: SharedContainerInner::Value(Rc::new(RefCell::new(
                 SharedValueContainer::new(

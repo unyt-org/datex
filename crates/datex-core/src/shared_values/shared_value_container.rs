@@ -12,7 +12,7 @@ use crate::{prelude::*, shared_values::pointer::Pointer};
 use core::{cell::RefCell, fmt::Debug, prelude::rust_2024::*};
 
 pub struct SharedValueContainer {
-    pointer: Pointer,
+    pub(crate) pointer: Pointer,
     /// the value that this reference points to
     pub value_container: ValueContainer,
     /// pointer id, can be initialized as None for local pointers

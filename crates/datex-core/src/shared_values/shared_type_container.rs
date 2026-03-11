@@ -61,7 +61,7 @@ pub struct SharedTypeContainer {
     pub type_value: Type,
     /// optional nominal type declaration
     pub nominal_type_declaration: Option<NominalTypeDeclaration>,
-    pointer: Pointer,
+    pub(crate) pointer: Pointer,
 }
 
 impl SharedTypeContainer {

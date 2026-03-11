@@ -42,6 +42,8 @@ use crate::global::protocol_structures::instructions::RawLocalPointerAddress;
 use crate::runtime::execution::execution_input::ExecutionCallerMetadata;
 use crate::runtime::execution::InvalidProgramError;
 use crate::runtime::request_move::compile_request_move;
+use crate::shared_values::pointer_address::{OwnedPointerAddress, PointerAddress, ReferencedPointerAddress};
+use crate::shared_values::shared_container::SharedContainer;
 use crate::values::core_value::CoreValue;
 use crate::values::value::Value;
 
@@ -447,6 +449,25 @@ impl RuntimeInternal {
             }
             _ => Err(ExecutionError::InvalidProgram(InvalidProgramError::ExpectedValue))
         }
+    }
+    
+    pub(crate) fn handle_pointer_move_to_remote(
+        self: Rc<RuntimeInternal>,
+        from_endpoint: &Endpoint,
+        pointer_mapping: Vec<(RawLocalPointerAddress, RawLocalPointerAddress)>,
+    ) -> Result<Vec<SharedContainer>, ExecutionError> {
+        let values = pointer_mapping.into_iter().map(|(original, new)| {
+            let original_address = OwnedPointerAddress::new(original.id);
+            let new_address = ReferencedPointerAddress::remote_for_endpoint(from_endpoint, new.id);
+            // TODO: add moving_pointers map and check if from_endpoint is actually allowed to perform the moves
+            let shared_container = self.moving_pointers.get(&original_address.into()).ok_or(())?;
+            shared_container.move_to_remote(new_address)?;
+            Ok(shared_container.clone())
+            
+        })
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|_| ExecutionError::ExpectedSharedValue)?; // TODO: better error
+        Ok(values)
     }
 
     pub fn get_env(&self) -> HashMap<String, String> {

@@ -28,9 +28,12 @@ use crate::shared_values::shared_container::SharedContainerInner;
 #[derive(Debug, Default)]
 pub struct Memory {
     local_endpoint: Endpoint,
-    local_counter: u64,  // counter for local pointer ids
-    last_timestamp: u64, // last timestamp used for a new local pointer id
-    pointers: HashMap<PointerAddress, SharedContainer>, // all pointers
+    /// Counter for local pointer ids
+    local_counter: u64,
+    /// Last timestamp used for a new local pointer id
+    last_timestamp: u64,
+    /// All non-local pointers
+    pointers: HashMap<PointerAddress, SharedContainer>,
 }
 
 impl Memory {
