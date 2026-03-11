@@ -68,6 +68,7 @@ pub enum ExecutionError {
     InvalidUnbox,
     InvalidTypeCast,
     ExpectedTypeValue,
+    FailedToMovePointers,
     ExpectedSharedValue,
     ExpectedOwnedSharedValue,
     MutableReferenceToNonMutableValue,
@@ -183,6 +184,9 @@ impl Display for ExecutionError {
             }
             ExecutionError::ExpectedTypeValue => {
                 core::write!(f, "Expected a type value")
+            }
+            ExecutionError::FailedToMovePointers => {
+                core::write!(f, "Failed to move pointers")
             }
             ExecutionError::AccessError(err) => {
                 core::write!(f, "Access error: {err}")

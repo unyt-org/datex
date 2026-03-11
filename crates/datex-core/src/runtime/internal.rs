@@ -38,7 +38,9 @@ use crate::{
 use alloc::rc::Rc;
 use core::{cell::RefCell, pin::Pin, slice};
 use log::{debug, error, info};
+use crate::global::protocol_structures::instructions::RawLocalPointerAddress;
 use crate::runtime::execution::execution_input::ExecutionCallerMetadata;
+use crate::runtime::request_move::compile_request_move;
 
 #[derive(Debug)]
 pub struct RuntimeInternal {
@@ -415,6 +417,22 @@ impl RuntimeInternal {
             end_execution,
         )
         .await
+    }
+
+    /// Request to move a list of external pointers from an endpoint to the local endpoint
+    /// This only works if the local endpoint has the permission to move the pointers, either because
+    /// it was allowed via a PERFORM_MOVE from the remote endpoint, or because the local endpoint has 
+    /// extended permissions
+    pub(crate) async fn request_pointer_move(
+        self: Rc<RuntimeInternal>,
+        from_endpoint: &Endpoint,
+        addresses: Vec<RawLocalPointerAddress>,
+    ) -> Result<Vec<ValueContainer>, ()> {
+        let pointer_mapping = addresses.into_iter().map(|original| {
+            (original, RawLocalPointerAddress {id: self.memory.borrow_mut().get_new_owned_local_pointer().address().address})
+        }).collect::<Vec<_>>();
+        let body = compile_request_move(pointer_mapping);
+        todo!()
     }
 
     pub fn get_env(&self) -> HashMap<String, String> {

@@ -716,7 +716,7 @@ pub struct GetOrCreateRemoteRefData {
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
 #[brw(little)]
 pub struct PerformMove {
-    pub pointer_count: u8,
+    pub pointer_count: u32,
     #[br(count = pointer_count)]
     pub addresses: Vec<RawLocalPointerAddress>,
 }
@@ -724,7 +724,7 @@ pub struct PerformMove {
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
 #[brw(little)]
 pub struct Move {
-    pub pointer_count: u8,
+    pub pointer_count: u32,
     #[br(count = pointer_count)]
     pub address_mappings: Vec<(RawLocalPointerAddress, RawLocalPointerAddress)>,
 }

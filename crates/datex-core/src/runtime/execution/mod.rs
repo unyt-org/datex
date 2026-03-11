@@ -89,6 +89,7 @@ pub async fn execute_dxb(
     input: ExecutionInput<'_>,
 ) -> Result<Option<ValueContainer>, ExecutionError> {
     let runtime_internal = input.runtime.clone();
+    let caller_metadata = input.caller_metadata.clone();
     let (interrupt_provider, execution_loop) = input.execution_loop();
 
     for output in execution_loop {
@@ -147,9 +148,15 @@ pub async fn execute_dxb(
                 interrupt_provider
                     .provide_result(InterruptResult::ResolvedValue(res));
             }
-            ExternalExecutionInterrupt::PerformMove(addresses) => {
+            ExternalExecutionInterrupt::RequestMove(addresses) => {
+                let moved_values = runtime_internal.clone()
+                    .request_pointer_move(&caller_metadata.endpoint, addresses)
+                    .await
+                    .map_err(|_| ExecutionError::FailedToMovePointers)?;
+                interrupt_provider.provide_result(InterruptResult::ResolvedValues(moved_values));
+            }
+            ExternalExecutionInterrupt::Move(address_mapping) => {
                 todo!()
-                // let moved_values = runtime_internal.perform_move(addresses, caller_id!()).await?;
             }
         }
     }

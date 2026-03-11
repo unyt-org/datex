@@ -125,7 +125,6 @@ fn compile_preform_move_preamble(
     buffer.splice(0..0, pre_buffer);
 }
 
-
 #[cfg(test)]
 mod tests {
     use crate::global::instruction_codes::InstructionCode;

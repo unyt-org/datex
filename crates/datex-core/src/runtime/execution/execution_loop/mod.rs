@@ -74,9 +74,6 @@ use crate::{
 };
 use alloc::rc::Rc;
 use core::cell::RefCell;
-use log::info;
-use crate::core_compiler::value_compiler::compile_shared_container;
-use crate::global::protocol_structures::external_slot_type::{ExternalSlotType, SharedSlotType};
 use crate::runtime::execution::execution_loop::remote_execution_blocks::compile_remote_execution_block;
 use crate::runtime::execution::macros::interrupt_with_values;
 use crate::shared_values::shared_container::SharedContainerInner;
@@ -431,7 +428,7 @@ pub fn inner_execution_loop(
                                 let resolved_moved_values = interrupt_with_values!(
                                     interrupt_provider,
                                     ExecutionInterrupt::External(
-                                        ExternalExecutionInterrupt::PerformMove(perform_move.addresses)
+                                        ExternalExecutionInterrupt::RequestMove(perform_move.addresses)
                                     )
                                 );
                                 panic!("resolved moved values: {resolved_moved_values:#?}");

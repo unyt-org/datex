@@ -30,7 +30,10 @@ pub enum ExternalExecutionInterrupt {
     GetReferenceInternalPointer(RawInternalPointerAddress),
     RemoteExecution(ValueContainer, Vec<u8>),
     Apply(ValueContainer, Vec<ValueContainer>),
-    PerformMove(Vec<RawLocalPointerAddress>),
+    /// Request to move a list of pointers from the current caller endpoint to the local endpoint 
+    RequestMove(Vec<RawLocalPointerAddress>),
+    /// Move a list of pointers from the local endpoint to the caller
+    Move(Vec<(RawLocalPointerAddress, RawLocalPointerAddress)>),
 }
 
 #[derive(Debug)]
