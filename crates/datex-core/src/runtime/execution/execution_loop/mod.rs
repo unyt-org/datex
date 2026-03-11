@@ -425,17 +425,24 @@ pub fn inner_execution_loop(
                             }
 
                             RegularInstruction::PerformMove(perform_move) => {
+                                // TODO: RequestMove not required if pointers are already local addresses (= current caller is local)
                                 let resolved_moved_values = interrupt_with_values!(
                                     interrupt_provider,
                                     ExecutionInterrupt::External(
                                         ExternalExecutionInterrupt::RequestMove(perform_move.addresses)
                                     )
                                 );
-                                panic!("resolved moved values: {resolved_moved_values:#?}");
+                                Some(RuntimeValue::ValueContainer(ValueContainer::from(resolved_moved_values)))
                             }
 
                             RegularInstruction::Move(move_data) => {
-                                todo!()
+                                let moved_values = interrupt_with_values!(
+                                    interrupt_provider,
+                                    ExecutionInterrupt::External(
+                                        ExternalExecutionInterrupt::Move(move_data.address_mappings)
+                                    )
+                                );
+                                Some(RuntimeValue::ValueContainer(ValueContainer::from(moved_values)))
                             }
 
                             // NOTE: make sure that each possible match case is either implemented in the default collection or here

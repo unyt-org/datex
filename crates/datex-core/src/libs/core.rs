@@ -32,11 +32,12 @@ use core::{cell::RefCell, iter::once, result::Result};
 use datex_macros_internal::LibTypeString;
 use log::info;
 use strum::IntoEnumIterator;
-use crate::shared_values::pointer::ReferencedPointer;
+use crate::shared_values::pointer::{OwnedPointer, ReferencedPointer};
+use crate::shared_values::pointer_address::OwnedPointerAddress;
 use crate::shared_values::shared_container::SharedContainerInner;
 
 type CoreLibTypes = HashMap<CoreLibPointerId, Type>;
-type CoreLibVals = HashMap<CoreLibPointerId, ValueContainer>;
+type CoreLibVals = HashMap<CoreLibPointerId, SharedContainer>;
 
 #[cfg_attr(not(feature = "embassy_runtime"), thread_local)]
 pub static mut CORE_LIB_TYPES: Option<CoreLibTypes> = None;
@@ -215,17 +216,17 @@ pub fn get_core_lib_type_reference(
 /// Retrieves either a core library type or value by its CoreLibPointerId.
 pub fn get_core_lib_value(
     id: impl Into<CoreLibPointerId>,
-) -> Option<ValueContainer> {
+) -> Option<SharedContainer> {
     let id = id.into();
     with_full_core_lib(|core_lib_types, core_lib_values| {
         // try types first
         if let Some(ty) = core_lib_types.get(&id) {
             match &ty.type_definition {
                 TypeDefinition::SharedReference(tr) => Some(
-                    ValueContainer::Shared(SharedContainer {
+                    SharedContainer {
                         value: SharedContainerInner::Type(tr.clone()),
                         reference_mutability: None,
-                    }),
+                    },
                 ),
                 _ => core::panic!("Core lib type is not a TypeReference"),
             }
@@ -278,7 +279,7 @@ pub fn load_core_lib(memory: &mut Memory) {
         // add core lib values
         for (name, val) in core_lib_values.iter() {
             let name = name.to_string();
-            types_structure.push((name, val.clone()));
+            types_structure.push((name, ValueContainer::Shared(val.clone())));
         }
 
         // TODO #455: dont store variants as separate entries in core_struct (e.g., integer/u8, integer/i32, only keep integer)
@@ -326,10 +327,10 @@ pub fn create_core_lib_types() -> HashMap<CoreLibPointerId, Type> {
     .collect::<HashMap<CoreLibPointerId, Type>>()
 }
 
-pub fn create_core_lib_vals() -> HashMap<CoreLibPointerId, ValueContainer> {
+pub fn create_core_lib_vals() -> HashMap<CoreLibPointerId, SharedContainer> {
     vec![print()]
         .into_iter()
-        .collect::<HashMap<CoreLibPointerId, ValueContainer>>()
+        .collect::<HashMap<CoreLibPointerId, SharedContainer>>()
 }
 
 type CoreLibTypeDefinition = (CoreLibPointerId, Type);
@@ -411,66 +412,69 @@ pub fn integer_variant(
     )
 }
 
-pub fn print() -> (CoreLibPointerId, ValueContainer) {
+pub fn print() -> (CoreLibPointerId, SharedContainer) {
     (
         CoreLibPointerId::Print,
-        ValueContainer::Local(Value::callable(
-            Some("print".to_string()),
-            CallableSignature {
-                kind: CallableKind::Function,
-                parameter_types: vec![],
-                rest_parameter_type: Some((
-                    Some("values".to_string()),
-                    Box::new(Type::unknown()),
-                )),
-                return_type: None,
-                yeet_type: None,
-            },
-            CallableBody::Native(|mut args: &[ValueContainer]| {
-                // TODO #680: add I/O abstraction layer / interface
-
-                let mut output = String::new();
-
-                // if first argument is a string value, print it directly
-                if let Some(ValueContainer::Local(Value {
-                    inner: CoreValue::Text(text),
-                    ..
-                })) = args.first()
-                {
-                    output.push_str(&text.0);
-                    // remove first argument from args
-                    args = &args[1..];
-                    // if there are still arguments, add a space
-                    if !args.is_empty() {
-                        output.push(' ');
+        SharedContainer::boxed_ref(
+            Value::callable(
+                Some("print".to_string()),
+                CallableSignature {
+                    kind: CallableKind::Function,
+                    parameter_types: vec![],
+                    rest_parameter_type: Some((
+                        Some("values".to_string()),
+                        Box::new(Type::unknown()),
+                    )),
+                    return_type: None,
+                    yeet_type: None,
+                },
+                CallableBody::Native(|mut args: &[ValueContainer]| {
+                    // TODO #680: add I/O abstraction layer / interface
+    
+                    let mut output = String::new();
+    
+                    // if first argument is a string value, print it directly
+                    if let Some(ValueContainer::Local(Value {
+                        inner: CoreValue::Text(text),
+                        ..
+                    })) = args.first()
+                    {
+                        output.push_str(&text.0);
+                        // remove first argument from args
+                        args = &args[1..];
+                        // if there are still arguments, add a space
+                        if !args.is_empty() {
+                            output.push(' ');
+                        }
                     }
-                }
-
-                #[cfg(feature = "decompiler")]
-                let args_string = args
-                    .iter()
-                    .map(|v| {
-                        crate::decompiler::decompile_value(
-                            v,
-                            crate::decompiler::DecompileOptions::colorized(),
-                        )
-                    })
-                    .collect::<Vec<_>>()
-                    .join(" ");
-                #[cfg(not(feature = "decompiler"))]
-                let args_string = args
-                    .iter()
-                    .map(|v| v.to_string())
-                    .collect::<Vec<_>>()
-                    .join(" ");
-                output.push_str(&args_string);
-
-                #[cfg(feature = "std")]
-                println!("[PRINT] {}", output);
-                info!("[PRINT] {}", output);
-                Ok(None)
-            }),
-        )),
+    
+                    #[cfg(feature = "decompiler")]
+                    let args_string = args
+                        .iter()
+                        .map(|v| {
+                            crate::decompiler::decompile_value(
+                                v,
+                                crate::decompiler::DecompileOptions::colorized(),
+                            )
+                        })
+                        .collect::<Vec<_>>()
+                        .join(" ");
+                    #[cfg(not(feature = "decompiler"))]
+                    let args_string = args
+                        .iter()
+                        .map(|v| v.to_string())
+                        .collect::<Vec<_>>()
+                        .join(" ");
+                    output.push_str(&args_string);
+    
+                    #[cfg(feature = "std")]
+                    println!("[PRINT] {}", output);
+                    info!("[PRINT] {}", output);
+                    Ok(None)
+                }),
+            ),
+            ReferencedPointer::new(ReferencedPointerAddress::from(&CoreLibPointerId::Print))
+        ),
     )
 }
 
