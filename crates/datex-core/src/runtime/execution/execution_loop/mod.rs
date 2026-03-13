@@ -416,7 +416,7 @@ pub fn inner_execution_loop(
                             }
 
                             // TODO: still needed?
-                            RegularInstruction::GetSlotLocalRef(SlotAddress(address)) => {
+                            RegularInstruction::BorrowSlot(SlotAddress(address)) => {
                                 Some(RuntimeValue::SlotAddress(address))
                             }
 

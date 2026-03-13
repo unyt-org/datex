@@ -1371,6 +1371,25 @@ mod tests {
     }
 
     #[test]
+    fn placeholder_clone_access() {
+        let result = parse_and_precompile("clone ?");
+        assert!(result.is_ok());
+        let rich_ast = result.unwrap();
+        assert_eq!(
+            rich_ast.ast,
+            DatexExpressionData::Placeholder(ValueAccessType::Clone).with_default_span()
+        );
+
+        let result = parse_and_precompile("clone ((?))");
+        assert!(result.is_ok());
+        let rich_ast = result.unwrap();
+        assert_eq!(
+            rich_ast.ast,
+            DatexExpressionData::Placeholder(ValueAccessType::Clone).with_default_span()
+        );
+    }
+
+    #[test]
     fn variable_shared_ref_access() {
         let result = parse_and_precompile("var x = 42; 'x");
         assert!(result.is_ok());
@@ -1423,6 +1442,36 @@ mod tests {
                     id: 0,
                     name: "x".to_string(),
                     access_type: ValueAccessType::SharedRefMut,
+                })
+                    .with_default_span(),
+            ]))
+                .with_default_span()
+        );
+    }
+
+    #[test]
+    fn variable_clone_access() {
+        let result = parse_and_precompile("var x = 42; clone x");
+        assert!(result.is_ok());
+        let rich_ast = result.unwrap();
+        assert_eq!(
+            rich_ast.ast,
+            DatexExpressionData::Statements(Statements::new_unterminated(vec![
+                DatexExpressionData::VariableDeclaration(VariableDeclaration {
+                    id: Some(0),
+                    kind: VariableKind::Var,
+                    name: "x".to_string(),
+                    init_expression: Box::new(
+                        DatexExpressionData::Integer(Integer::from(42))
+                            .with_default_span()
+                    ),
+                    type_annotation: None,
+                })
+                    .with_default_span(),
+                DatexExpressionData::VariableAccess(VariableAccess {
+                    id: 0,
+                    name: "x".to_string(),
+                    access_type: ValueAccessType::Clone,
                 })
                     .with_default_span(),
             ]))

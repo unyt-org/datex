@@ -3239,6 +3239,36 @@ pub mod tests {
     }
 
     #[test]
+    fn unbox_slot() {
+        let script = "const x = 10u8; *x";
+        let (res, _) =
+            compile_script(script, CompileOptions::default()).unwrap();
+        assert_eq!(
+            res,
+            vec![
+                InstructionCode::SHORT_STATEMENTS.into(),
+                2,
+                0, // not terminated
+                InstructionCode::ALLOCATE_SLOT.into(),
+                // slot index as u32
+                0,
+                0,
+                0,
+                0,
+                InstructionCode::UINT_8.into(),
+                10,
+                InstructionCode::UNBOX.into(),
+                InstructionCode::BORROW_SLOT.into(),
+                // slot index as u32
+                0,
+                0,
+                0,
+                0,
+            ]
+        );
+    }
+
+    #[test]
     fn type_literal_integer() {
         let script = "type<1>";
         let (res, _) =
@@ -3587,9 +3617,12 @@ pub mod tests {
 
     #[test]
     fn clone_local_value() {
-        let datex_script = "var x = 10; var y = clone x; x";
+        let datex_script = "var x = 10u8; var y = clone x; x";
         let result = compile_and_log(datex_script);
         let expected = vec![
+            InstructionCode::SHORT_STATEMENTS.into(),
+            3,
+            0, // not terminated
             InstructionCode::ALLOCATE_SLOT.into(),
             // slot index as u32
             0,

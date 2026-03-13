@@ -166,7 +166,7 @@ pub enum RegularInstruction {
 
     AllocateSlot(SlotAddress),
     CloneSlot(SlotAddress),
-    GetSlotLocalRef(SlotAddress),
+    BorrowSlot(SlotAddress),
     GetSlotSharedRef(SlotAddress),
     GetSlotSharedRefMut(SlotAddress),
     PopSlot(SlotAddress),
@@ -323,7 +323,7 @@ impl Display for RegularInstruction {
             RegularInstruction::GetInternalSlot(address) => {
                 core::write!(f, "GET_INTERNAL_SLOT {}", address.0)
             }
-            RegularInstruction::GetSlotLocalRef(address) => {
+            RegularInstruction::BorrowSlot(address) => {
                 core::write!(f, "GET_SLOT_LOCAL_REF {}", address.0)
             }
             RegularInstruction::GetSlotSharedRef(address) => {

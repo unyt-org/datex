@@ -371,8 +371,9 @@ pub enum ValueAccessType {
     /// 'x
     SharedRef,
     /// clone x
-    Clone,
-    /// x
+    Clone, // TODO: allow clone only for non-shared values, for shared values, do clone *x
+    /// *x
+    Unbox,
     #[default]
     MoveOrCopy,
 }

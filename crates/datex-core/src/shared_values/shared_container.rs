@@ -261,6 +261,7 @@ pub enum SharedContainerInner {
     Type(Rc<RefCell<SharedTypeContainer>>),
 }
 
+// FIXME: try to deprecate clone
 impl Clone for SharedContainer {
     /// Cloning a shared container will never return an owned value, but always a reference
     fn clone(&self) -> Self {

@@ -280,7 +280,7 @@ pub fn ast_from_bytecode(
                             }
 
 
-                            RegularInstruction::GetSlotLocalRef(slot_address) => {
+                            RegularInstruction::BorrowSlot(slot_address) => {
                                 DatexExpressionData::Slot(Slot::Addressed(
                                     slot_address.0,
                                 ))

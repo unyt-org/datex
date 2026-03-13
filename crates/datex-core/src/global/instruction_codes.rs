@@ -142,7 +142,7 @@ pub enum InstructionCode {
     // slots
     // TODO #669: refactor with stack variable system?
     CLONE_SLOT, // clone #xyz   0x0000-0x00ff = variables passed on between scopes, 0x0100-0xfdff = normal variables, 0xfe00-0xffff = it variables (#it.0, #it.1, ...) for function arguments
-    GET_SLOT_LOCAL_REF, // &#aa
+    BORROW_SLOT, // &#aa
     GET_SLOT_SHARED_REF, // '#aa
     GET_SLOT_SHARED_REF_MUT, // 'mut #aa
     SET_SLOT, // #aa = ...

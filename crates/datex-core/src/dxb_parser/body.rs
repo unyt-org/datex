@@ -549,9 +549,9 @@ pub fn iterate_instructions(
                             let address = SlotAddress::read(&mut reader);
                             RegularInstruction::CloneSlot(yield_unwrap!(address))
                         }
-                        InstructionCode::GET_SLOT_LOCAL_REF => {
+                        InstructionCode::BORROW_SLOT => {
                             let address = SlotAddress::read(&mut reader);
-                            RegularInstruction::GetSlotLocalRef(yield_unwrap!(address))
+                            RegularInstruction::BorrowSlot(yield_unwrap!(address))
                         }
                         InstructionCode::GET_SLOT_SHARED_REF => {
                             let address = SlotAddress::read(&mut reader);

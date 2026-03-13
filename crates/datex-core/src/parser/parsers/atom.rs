@@ -336,7 +336,7 @@ mod tests {
         },
     };
     use core::assert_matches;
-    use crate::ast::expressions::{GetSharedRef, ValueAccessType};
+    use crate::ast::expressions::{CloneExpression, GetSharedRef, ValueAccessType};
     use crate::shared_values::pointer::PointerReferenceMutability;
 
     #[test]
@@ -473,6 +473,14 @@ mod tests {
         assert_eq!(expr.data, DatexExpressionData::GetSharedRef(GetSharedRef {
             expression: Box::new(DatexExpressionData::Placeholder(ValueAccessType::MoveOrCopy).with_default_span()),
             mutability: PointerReferenceMutability::Mutable,
+        }));
+    }
+
+    #[test]
+    fn parse_clone() {
+        let expr = parse("clone ?");
+        assert_eq!(expr.data, DatexExpressionData::Clone(CloneExpression {
+            expression: Box::new(DatexExpressionData::Placeholder(ValueAccessType::MoveOrCopy).with_default_span())
         }));
     }
 
