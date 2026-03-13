@@ -548,9 +548,9 @@ pub fn iterate_instructions(
                                 address
                             ))
                         }
-                        InstructionCode::DROP_SLOT => {
+                        InstructionCode::POP_SLOT => {
                             let address = SlotAddress::read(&mut reader);
-                            RegularInstruction::DropSlot(yield_unwrap!(address))
+                            RegularInstruction::PopSlot(yield_unwrap!(address))
                         }
                         InstructionCode::SET_SLOT => {
                             next_instructions_stack.push_next_regular(1);

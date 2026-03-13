@@ -419,10 +419,10 @@ pub fn inner_execution_loop(
                                 )))
                             }
 
-
-                            RegularInstruction::DropSlot(SlotAddress(address)) => {
-                                yield_unwrap!(state.slots.drop_slot(address));
-                                None
+                            RegularInstruction::PopSlot(SlotAddress(address)) => {
+                                Some(RuntimeValue::ValueContainer(
+                                    yield_unwrap!(state.slots.drop_slot(address))
+                                ))
                             }
 
                             RegularInstruction::PerformMove(perform_move) => {

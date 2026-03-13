@@ -65,7 +65,7 @@ pub async fn test_remote_execution_persistent_context() {
             // execute script remotely on @test_b
             let result = runtime_a
                 .execute(
-                    "const x = 10; x",
+                    "const x = 10; clone x", // FIXME: auto copy for integer?
                     &[],
                     Some(&mut remote_execution_context),
                 )

@@ -747,15 +747,16 @@ fn compile_expression(
                         .pop()
                         .ok_or(CompilerError::ScopePopError)?;
                     scope = scope_data.0; // set parent scope
+                    // TODO: slot refactoring
                     // drop all slot addresses that were allocated in this scope
-                    for slot_address in scope_data.1 {
-                        compilation_context.append_instruction_code(
-                            InstructionCode::DROP_SLOT,
-                        );
-                        // insert virtual slot address for dropping
-                        compilation_context
-                            .insert_virtual_slot_address(slot_address);
-                    }
+                    // for slot_address in scope_data.1 {
+                    //     compilation_context.append_instruction_code(
+                    //         InstructionCode::POP_SLOT,
+                    //     );
+                    //     // insert virtual slot address for dropping
+                    //     compilation_context
+                    //         .insert_virtual_slot_address(slot_address);
+                    // }
                 } else {
                     scope = child_scope;
                 }
@@ -1146,6 +1147,12 @@ fn compile_expression(
                 ValueAccessType::MoveOrCopy => ExternalSlotType::Shared(SharedSlotType::Move),
             };
 
+            let slot_access = match access_type {
+                ValueAccessType::SharedRefMut => InstructionCode::GET_SLOT,
+                ValueAccessType::SharedRef => InstructionCode::GET_SLOT,
+                ValueAccessType::MoveOrCopy => InstructionCode::POP_SLOT,
+            };
+
             // get variable slot address
             let (virtual_slot, ..) = scope
                 .resolve_variable_name_to_virtual_slot_with_slot_type(&name, slot_type)
@@ -1154,7 +1161,7 @@ fn compile_expression(
                 })?;
             // append binary code to load variable
             compilation_context
-                .append_instruction_code(InstructionCode::GET_SLOT);
+                .append_instruction_code(slot_access);
             compilation_context.insert_virtual_slot_address(virtual_slot);
         }
 
@@ -1660,12 +1667,12 @@ pub mod tests {
                 69,
                 // a is b
                 InstructionCode::IS.into(),
-                InstructionCode::GET_SLOT.into(),
+                InstructionCode::POP_SLOT.into(),
                 0,
                 0,
                 0,
                 0, // slot address for a
-                InstructionCode::GET_SLOT.into(),
+                InstructionCode::POP_SLOT.into(),
                 1,
                 0,
                 0,
@@ -2229,7 +2236,7 @@ pub mod tests {
                 InstructionCode::UINT_8.into(),
                 42,
                 InstructionCode::ADD.into(),
-                InstructionCode::GET_SLOT.into(),
+                InstructionCode::POP_SLOT.into(),
                 // slot index as u32
                 0,
                 0,
@@ -2268,17 +2275,12 @@ pub mod tests {
                 0,
                 InstructionCode::UINT_8.into(),
                 43,
-                InstructionCode::GET_SLOT.into(),
+                InstructionCode::POP_SLOT.into(),
                 1,
                 0,
                 0,
                 0,
-                InstructionCode::DROP_SLOT.into(),
-                1,
-                0,
-                0,
-                0,
-                InstructionCode::GET_SLOT.into(),
+                InstructionCode::POP_SLOT.into(),
                 // slot index as u32
                 0,
                 0,
@@ -2323,22 +2325,17 @@ pub mod tests {
                 0,
                 InstructionCode::UINT_8.into(),
                 43,
-                InstructionCode::GET_SLOT.into(),
+                InstructionCode::POP_SLOT.into(),
                 2,
                 0,
                 0,
                 0,
-                InstructionCode::GET_SLOT.into(),
+                InstructionCode::POP_SLOT.into(),
                 1,
                 0,
                 0,
                 0,
-                InstructionCode::DROP_SLOT.into(),
-                2,
-                0,
-                0,
-                0,
-                InstructionCode::GET_SLOT.into(),
+                InstructionCode::POP_SLOT.into(),
                 // slot index as u32
                 0,
                 0,
@@ -2387,7 +2384,7 @@ pub mod tests {
                 InstructionCode::CREATE_SHARED.into(),
                 InstructionCode::UINT_8.into(),
                 42,
-                InstructionCode::GET_SLOT.into(),
+                InstructionCode::POP_SLOT.into(),
                 // slot index as u32
                 0,
                 0,
@@ -2659,7 +2656,7 @@ pub mod tests {
                 // local move
                 3,
                 // slot 0 (mapped from slot 0)
-                InstructionCode::GET_SLOT.into(),
+                InstructionCode::POP_SLOT.into(),
                 // slot index as u32
                 0,
                 0,
@@ -2715,7 +2712,7 @@ pub mod tests {
                 0,
                 ExternalSlotType::Shared(SharedSlotType::Move).into(),
                 // slot 0 (mapped from slot 0)
-                InstructionCode::GET_SLOT.into(),
+                InstructionCode::POP_SLOT.into(),
                 // slot index as u32
                 0,
                 0,
@@ -2838,13 +2835,13 @@ pub mod tests {
                 ExternalSlotType::Shared(SharedSlotType::Move).into(),
                 // expression: x + y
                 InstructionCode::ADD.into(),
-                InstructionCode::GET_SLOT.into(),
+                InstructionCode::POP_SLOT.into(),
                 // slot index as u32
                 0,
                 0,
                 0,
                 0,
-                InstructionCode::GET_SLOT.into(),
+                InstructionCode::POP_SLOT.into(),
                 // slot index as u32
                 1,
                 0,
@@ -2919,13 +2916,13 @@ pub mod tests {
                 5,
                 // expression: x + y
                 InstructionCode::ADD.into(),
-                InstructionCode::GET_SLOT.into(),
+                InstructionCode::POP_SLOT.into(),
                 // slot index as u32
                 1,
                 0,
                 0,
                 0,
-                InstructionCode::GET_SLOT.into(),
+                InstructionCode::POP_SLOT.into(),
                 // slot index as u32
                 0,
                 0,
@@ -2998,7 +2995,7 @@ pub mod tests {
                 0,
                 // FIXME
                 ExternalSlotType::Shared(SharedSlotType::Move).into(),
-                InstructionCode::GET_SLOT.into(),
+                InstructionCode::POP_SLOT.into(),
                 // slot index as u32
                 0,
                 0,
@@ -3018,7 +3015,7 @@ pub mod tests {
 
     #[test]
     fn remote_execution_nested2() {
-        let script = "const x = 42u8; (1u8 :: (x :: x))";
+        let script = "const x = 42u8; const y = 43u8; (1u8 :: (y :: x))";
         let (res, _) =
             compile_script(script, CompileOptions::default()).unwrap();
 
@@ -3036,14 +3033,27 @@ pub mod tests {
                 0,
                 InstructionCode::UINT_8.into(),
                 42,
+                InstructionCode::ALLOCATE_SLOT.into(),
+                // slot index as u32
+                1,
+                0,
+                0,
+                0,
+                InstructionCode::UINT_8.into(),
+                43,
                 InstructionCode::REMOTE_EXECUTION.into(),
                 // --- start of block 1
-                // block size (23 bytes)
+                // block size (24 bytes)
                 24,
                 0,
                 0,
                 0,
-                // injected slots (1)
+                // injected slots (2)
+                2,
+                0,
+                0,
+                0,
+                // slot 1
                 1,
                 0,
                 0,
@@ -3075,15 +3085,15 @@ pub mod tests {
                 0,
                 // FIXME
                 ExternalSlotType::Shared(SharedSlotType::Move).into(),
-                InstructionCode::GET_SLOT.into(),
+                InstructionCode::POP_SLOT.into(),
                 // slot index as u32
-                0,
+                1,
                 0,
                 0,
                 0,
                 // --- end of block 2
                 // caller (literal value 2 for test)
-                InstructionCode::GET_SLOT.into(),
+                InstructionCode::POP_SLOT.into(),
                 0,
                 0,
                 0,

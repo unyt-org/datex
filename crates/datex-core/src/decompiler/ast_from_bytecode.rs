@@ -292,7 +292,7 @@ pub fn ast_from_bytecode(
                                 ))
                             }
 
-                                RegularInstruction::DropSlot(_slot_address) => {
+                                RegularInstruction::PopSlot(_slot_address) => {
                                     todo!("#655 Undescribed by author.")
                                 }
 
