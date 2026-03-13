@@ -29,7 +29,7 @@ mod tests {
     use crate::{
         ast::{
             expressions::{
-                BinaryOperation, CreateRef, DatexExpression,
+                BinaryOperation, GetRef, DatexExpression,
                 DatexExpressionData, Statements, VariableAccess,
             },
             type_expressions::{TypeExpression, TypeExpressionData},
@@ -46,6 +46,7 @@ mod tests {
         },
     };
     use core::ops::Range;
+    use crate::ast::expressions::ValueAccessType;
 
     pub struct MyAstTypeExpressionError {
         message: String,
@@ -74,6 +75,7 @@ mod tests {
                 TypeExpressionData::VariableAccess(VariableAccess {
                     id: 0,
                     name: "MYTYPE".to_string(),
+                    access_type: ValueAccessType::MoveOrCopy
                 }),
                 span.clone(),
             )))
@@ -93,9 +95,9 @@ mod tests {
             );
             Err(error)
         }
-        fn visit_create_ref(
+        fn visit_get_ref(
             &mut self,
-            create_ref: &mut CreateRef,
+            create_ref: &mut GetRef,
             span: &Range<usize>,
         ) -> ExpressionVisitResult<MyAstExpressionError> {
             Ok(VisitAction::VisitChildren)
@@ -110,6 +112,7 @@ mod tests {
                 data: DatexExpressionData::VariableAccess(VariableAccess {
                     id: 0,
                     name: identifier.clone(),
+                    access_type: ValueAccessType::MoveOrCopy
                 }),
                 span: span.clone(),
                 ty: None,

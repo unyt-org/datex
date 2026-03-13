@@ -43,13 +43,13 @@ impl<'a> Formatter<'a> {
             ),
             DatexExpressionData::Map(map) => self.map_to_source_code(map),
             DatexExpressionData::List(list) => self.list_to_source_code(list),
-            DatexExpressionData::CreateRef(create_ref) => {
+            DatexExpressionData::GetRef(create_ref) => {
                 (match create_ref.mutability {
                     LocalReferenceMutability::Immutable => a.text("&"),
                     LocalReferenceMutability::Mutable => a.text("&mut "),
                 }) + self.format_datex_expression(&create_ref.expression)
             }
-            DatexExpressionData::CreateSharedRef(create_shared_ref) => {
+            DatexExpressionData::GetSharedRef(create_shared_ref) => {
                 (match create_shared_ref.mutability {
                     PointerReferenceMutability::Immutable => a.text("'"),
                     PointerReferenceMutability::Mutable => a.text("'mut "),

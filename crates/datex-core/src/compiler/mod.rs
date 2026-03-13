@@ -40,7 +40,7 @@ use crate::{
     core_compiler::value_compiler::{
         append_boolean, append_decimal, append_encoded_integer,
         append_endpoint, append_float_as_i16, append_float_as_i32,
-        append_get_internal_ref, append_get_ref, append_instruction_code,
+        append_get_internal_ref, append_get_shared_ref, append_instruction_code,
         append_integer, append_key_string, append_text, append_typed_decimal,
         append_value_container,
     },
@@ -60,6 +60,10 @@ use precompiler::{
     precompile_ast,
     precompiled_ast::{AstMetadata, RichAst, VariableMetadata},
 };
+use crate::ast::expressions::ValueAccessType;
+use crate::core_compiler::value_compiler::{append_shared_container, append_value};
+use crate::global::protocol_structures::external_slot_type::{ExternalSlotType, LocalSlotType, SharedSlotType};
+use crate::shared_values::pointer::PointerReferenceMutability;
 
 pub mod context;
 pub mod error;
@@ -422,7 +426,7 @@ fn compile_ast(
 fn extract_static_value_from_ast(
     ast: &DatexExpression,
 ) -> Result<ValueContainer, CompilerError> {
-    if let DatexExpressionData::Placeholder = ast.data {
+    if let DatexExpressionData::Placeholder(_) = ast.data {
         return Err(CompilerError::NonStaticValue);
     }
     ValueContainer::try_from(&ast.data)
@@ -612,20 +616,100 @@ fn compile_expression(
                 )?;
             }
         }
-        DatexExpressionData::Placeholder => {
+        DatexExpressionData::Placeholder(placeholder_type) => {
             // FIXME #720
             let placeholder = compilation_context
                 .inserted_values
-                .get(compilation_context.inserted_value_index)
+                .get_mut(compilation_context.inserted_value_index)
                 .expect("Placeholder index out of bounds");
-            if let Some(value_container) = placeholder {
-                append_value_container(
-                    &mut compilation_context.buffer,
-                    value_container,
-                );
+            if let Some(value_container) = placeholder.take() {
+                // TODO: validate in precompiler that the value container is actually a shared value
+
+                match value_container {
+                    ValueContainer::Local(value) => {
+                        match placeholder_type {
+                            ValueAccessType::SharedRef | ValueAccessType::SharedRefMut => return Err(CompilerError::SharedRefToNonSharedValue),
+                            ValueAccessType::MoveOrCopy => {
+                                append_value(
+                                    &mut compilation_context.buffer,
+                                    &value,
+                                );
+                            }
+                            ValueAccessType::Clone => {
+                                append_value(
+                                    &mut compilation_context.buffer,
+                                    &value,
+                                );
+                            }
+                            ValueAccessType::Borrow => {
+                                append_value(
+                                    &mut compilation_context.buffer,
+                                    &value,
+                                );
+                            }
+                        }
+                    }
+                    ValueContainer::Shared(shared_container) => {
+                        let res = match placeholder_type {
+                            ValueAccessType::SharedRefMut => {
+                                let shared_container = shared_container
+                                    .try_derive_mutable_reference()
+                                    .map_err(|_| CompilerError::SharedMutRefToImmutableValue)?;
+                                append_shared_container(
+                                    &mut compilation_context.buffer,
+                                    shared_container,
+                                    true,
+                                )
+                            }
+                            ValueAccessType::SharedRef => {
+                                append_shared_container(
+                                    &mut compilation_context.buffer,
+                                    shared_container.derive_reference(),
+                                    true,
+                                )
+                            },
+                            ValueAccessType::MoveOrCopy => {
+                                shared_container.assert_owned()
+                                    .map_err(|_| CompilerError::InvalidConversionFromRefToOwnedValue)?;
+                                append_shared_container(
+                                    &mut compilation_context.buffer,
+                                    shared_container,
+                                    true,
+                                )
+                            },
+                            ValueAccessType::Clone => {
+                                let cloned = shared_container.value_container();
+                                match cloned {
+                                    ValueContainer::Local(value) => {
+                                        append_value(
+                                            &mut compilation_context.buffer,
+                                            &value,
+                                        );
+                                        Ok(())
+                                    }
+                                    ValueContainer::Shared(shared_container) => {
+                                        append_shared_container(
+                                            &mut compilation_context.buffer,
+                                            shared_container,
+                                            true,
+                                        )
+                                    }
+                                }
+                            },
+                            ValueAccessType::Borrow => {
+                                append_shared_container(
+                                    &mut compilation_context.buffer,
+                                    shared_container.derive_reference(),
+                                    true,
+                                )
+                            }
+                        };
+                        res.map_err(|_| CompilerError::InvalidConversionFromRefToOwnedValue)?;
+                    }
+                }
             } else {
                 compilation_context
-                    .append_instruction_code(InstructionCode::GET_SLOT);
+                    .append_instruction_code(InstructionCode::CLONE_SLOT);
                 compilation_context.insert_virtual_slot_address(
                     VirtualSlot::local(
                         compilation_context.inserted_value_index as u32,
@@ -715,15 +799,16 @@ fn compile_expression(
                         .pop()
                         .ok_or(CompilerError::ScopePopError)?;
                     scope = scope_data.0; // set parent scope
+                    // TODO: slot refactoring
                     // drop all slot addresses that were allocated in this scope
-                    for slot_address in scope_data.1 {
-                        compilation_context.append_instruction_code(
-                            InstructionCode::DROP_SLOT,
-                        );
-                        // insert virtual slot address for dropping
-                        compilation_context
-                            .insert_virtual_slot_address(slot_address);
-                    }
+                    // for slot_address in scope_data.1 {
+                    //     compilation_context.append_instruction_code(
+                    //         InstructionCode::POP_SLOT,
+                    //     );
+                    //     // insert virtual slot address for dropping
+                    //     compilation_context
+                    //         .insert_virtual_slot_address(slot_address);
+                    // }
                 } else {
                     scope = child_scope;
                 }
@@ -990,9 +1075,9 @@ fn compile_expression(
             scope.register_variable_slot(variable);
         }
 
-        DatexExpressionData::GetSharedRef(shared_reference) => {
+        DatexExpressionData::RequestSharedRef(shared_reference) => {
             compilation_context.mark_has_non_static_value();
-            append_get_ref(
+            append_get_shared_ref(
                 &mut compilation_context.buffer,
                 &shared_reference.address,
                 &shared_reference.mutability,
@@ -1009,7 +1094,8 @@ fn compile_expression(
             compilation_context.mark_has_non_static_value();
             // get variable slot address
             let (virtual_slot, kind) = scope
-                .resolve_variable_name_to_virtual_slot(&name)
+                .resolve_variable_name_to_virtual_slot(&name, None)
+                .map_err(|_| CompilerError::AssignmentToExternalVariable(name.clone()))?
                 .ok_or_else(|| {
                     CompilerError::UndeclaredVariable(name.clone())
                 })?;
@@ -1076,7 +1162,7 @@ fn compile_expression(
             compilation_context.mark_has_non_static_value();
 
             compilation_context
-                .append_instruction_code(InstructionCode::SET_REFERENCE_VALUE);
+                .append_instruction_code(InstructionCode::SET_SHARED_CONTAINER_VALUE);
 
             compilation_context
                 .append_instruction_code(InstructionCode::from(&operator));
@@ -1100,18 +1186,39 @@ fn compile_expression(
 
         // variable access
         DatexExpressionData::VariableAccess(VariableAccess {
-            name, ..
+            name,
+            access_type,
+            ..
         }) => {
             compilation_context.mark_has_non_static_value();
+
+            let slot_type = match access_type {
+                ValueAccessType::SharedRefMut => ExternalSlotType::Shared(SharedSlotType::RefMut),
+                ValueAccessType::SharedRef => ExternalSlotType::Shared(SharedSlotType::Ref),
+                // TODO: map to local slot types depending on type
+                ValueAccessType::MoveOrCopy => ExternalSlotType::Shared(SharedSlotType::Move),
+                // TODO:
+                ValueAccessType::Clone => ExternalSlotType::Local(LocalSlotType::Move),
+                ValueAccessType::Borrow => ExternalSlotType::Shared(SharedSlotType::Move),
+            };
+
+            let slot_access = match access_type {
+                ValueAccessType::SharedRefMut => InstructionCode::GET_SLOT_SHARED_REF_MUT,
+                ValueAccessType::SharedRef => InstructionCode::GET_SLOT_SHARED_REF,
+                ValueAccessType::MoveOrCopy => InstructionCode::POP_SLOT,
+                ValueAccessType::Clone => InstructionCode::CLONE_SLOT,
+                ValueAccessType::Borrow => InstructionCode::BORROW_SLOT,
+            };
+
             // get variable slot address
             let (virtual_slot, ..) = scope
-                .resolve_variable_name_to_virtual_slot(&name)
+                .resolve_variable_name_to_virtual_slot_with_slot_type(&name, slot_type)
                 .ok_or_else(|| {
                     CompilerError::UndeclaredVariable(name.clone())
                 })?;
             // append binary code to load variable
             compilation_context
-                .append_instruction_code(InstructionCode::GET_SLOT);
+                .append_instruction_code(slot_access);
             compilation_context.insert_virtual_slot_address(virtual_slot);
         }
 
@@ -1157,6 +1264,11 @@ fn compile_expression(
             );
             for slot in external_slots {
                 compilation_context.insert_virtual_slot_address(slot.upgrade());
+                // store external slot type
+                append_u8(
+                    &mut compilation_context.buffer,
+                    slot.external_slot_type.unwrap().into(), // must exist for external slots
+                );
             }
 
             // insert block body (compilation_context.buffer)
@@ -1186,6 +1298,15 @@ fn compile_expression(
                         InternalSlot::ENDPOINT as u32,
                     );
                 }
+                "caller" => {
+                    compilation_context.append_instruction_code(
+                        InstructionCode::GET_INTERNAL_SLOT,
+                    );
+                    append_u32(
+                        &mut compilation_context.buffer,
+                        InternalSlot::CALLER as u32,
+                    );
+                }
                 "env" => {
                     compilation_context.append_instruction_code(
                         InstructionCode::GET_INTERNAL_SLOT,
@@ -1209,7 +1330,7 @@ fn compile_expression(
         }
 
         // refs
-        DatexExpressionData::CreateRef(create_ref) => {
+        DatexExpressionData::GetRef(create_ref) => {
             compilation_context.mark_has_non_static_value();
             // TODO #764: handle lifetimes, mutability, correctly (in precompiler)
             // TODO #765: handle move/clone
@@ -1222,10 +1343,17 @@ fn compile_expression(
         }
 
         // shared refs
-        DatexExpressionData::CreateSharedRef(create_shared_ref) => {
+        DatexExpressionData::GetSharedRef(create_shared_ref) => {
             compilation_context.mark_has_non_static_value();
             compilation_context
-                .append_instruction_code(InstructionCode::CREATE_SHARED_REF);
+                .append_instruction_code(match create_shared_ref.mutability {
+                    PointerReferenceMutability::Immutable => {
+                        InstructionCode::GET_SHARED_REF
+                    }
+                    PointerReferenceMutability::Mutable => {
+                        InstructionCode::GET_SHARED_REF_MUT
+                    }
+                });
             scope = compile_expression(
                 compilation_context,
                 RichAst::new(*create_shared_ref.expression, &metadata),
@@ -1233,7 +1361,6 @@ fn compile_expression(
                 scope,
             )?;
         }
-
         // shared values
         DatexExpressionData::CreateShared(create_shared) => {
             compilation_context.mark_has_non_static_value();
@@ -1443,6 +1570,7 @@ pub mod tests {
     use alloc::format;
     use core::assert_matches;
     use log::*;
+    use crate::global::protocol_structures::external_slot_type::{ExternalSlotType, SharedSlotType};
 
     fn compile_and_log(datex_script: &str) -> Vec<u8> {
         let (result, _) =
@@ -1569,7 +1697,7 @@ pub mod tests {
         );
 
         let datex_script =
-            "const a = 'mut 42u8; const b = 'mut 69u8; a is b".to_string(); // a is b
+            "const a = shared mut 42u8; const b = 'mut 69u8; a is b".to_string(); // a is b
         let result = compile_and_log(&datex_script);
         assert_eq!(
             result,
@@ -1582,7 +1710,7 @@ pub mod tests {
                 0,
                 0,
                 0,
-                InstructionCode::CREATE_SHARED_REF.into(),
+                InstructionCode::CREATE_SHARED_MUT.into(),
                 InstructionCode::UINT_8.into(),
                 42,
                 // val b = 69;
@@ -1591,17 +1719,17 @@ pub mod tests {
                 0,
                 0,
                 0,
-                InstructionCode::CREATE_SHARED_REF.into(),
+                InstructionCode::GET_SHARED_REF_MUT.into(),
                 InstructionCode::UINT_8.into(),
                 69,
                 // a is b
                 InstructionCode::IS.into(),
-                InstructionCode::GET_SLOT.into(),
+                InstructionCode::POP_SLOT.into(),
                 0,
                 0,
                 0,
                 0, // slot address for a
-                InstructionCode::GET_SLOT.into(),
+                InstructionCode::POP_SLOT.into(),
                 1,
                 0,
                 0,
@@ -2165,7 +2293,7 @@ pub mod tests {
                 InstructionCode::UINT_8.into(),
                 42,
                 InstructionCode::ADD.into(),
-                InstructionCode::GET_SLOT.into(),
+                InstructionCode::POP_SLOT.into(),
                 // slot index as u32
                 0,
                 0,
@@ -2204,17 +2332,12 @@ pub mod tests {
                 0,
                 InstructionCode::UINT_8.into(),
                 43,
-                InstructionCode::GET_SLOT.into(),
+                InstructionCode::POP_SLOT.into(),
                 1,
                 0,
                 0,
                 0,
-                InstructionCode::DROP_SLOT.into(),
-                1,
-                0,
-                0,
-                0,
-                InstructionCode::GET_SLOT.into(),
+                InstructionCode::POP_SLOT.into(),
                 // slot index as u32
                 0,
                 0,
@@ -2259,22 +2382,17 @@ pub mod tests {
                 0,
                 InstructionCode::UINT_8.into(),
                 43,
-                InstructionCode::GET_SLOT.into(),
+                InstructionCode::POP_SLOT.into(),
                 2,
                 0,
                 0,
                 0,
-                InstructionCode::GET_SLOT.into(),
+                InstructionCode::POP_SLOT.into(),
                 1,
                 0,
                 0,
                 0,
-                InstructionCode::DROP_SLOT.into(),
-                2,
-                0,
-                0,
-                0,
-                InstructionCode::GET_SLOT.into(),
+                InstructionCode::POP_SLOT.into(),
                 // slot index as u32
                 0,
                 0,
@@ -2285,8 +2403,8 @@ pub mod tests {
     }
 
     #[test]
-    fn allocate_ref() {
-        let script = "const a = 'mut 42u8";
+    fn allocate_shared() {
+        let script = "const a = shared 42u8";
         let result = compile_and_log(script);
         assert_eq!(
             result,
@@ -2297,7 +2415,7 @@ pub mod tests {
                 0,
                 0,
                 0,
-                InstructionCode::CREATE_SHARED_REF.into(),
+                InstructionCode::CREATE_SHARED.into(),
                 InstructionCode::UINT_8.into(),
                 42,
             ]
@@ -2305,8 +2423,8 @@ pub mod tests {
     }
 
     #[test]
-    fn read_ref() {
-        let script = "const a = 'mut 42u8; a";
+    fn read_shared() {
+        let script = "const a = shared 42u8; a";
         let result = compile_and_log(script);
         assert_eq!(
             result,
@@ -2320,10 +2438,10 @@ pub mod tests {
                 0,
                 0,
                 0,
-                InstructionCode::CREATE_SHARED_REF.into(),
+                InstructionCode::CREATE_SHARED.into(),
                 InstructionCode::UINT_8.into(),
                 42,
-                InstructionCode::GET_SLOT.into(),
+                InstructionCode::POP_SLOT.into(),
                 // slot index as u32
                 0,
                 0,
@@ -2544,6 +2662,18 @@ pub mod tests {
         );
     }
 
+
+    #[test]
+    fn remote_execution_invalid_reassignment_of_external_variable() {
+        let script = "var x = 42u8; 1u8 :: (x = 43u8)";
+        let result = compile_script(script, CompileOptions::default());
+        assert!(result.is_err());
+        assert_matches!(
+            result.err().unwrap().error,
+            CompilerError::AssignmentToExternalVariable(name) if name == "x"
+        );
+    }
+
     #[test]
     fn remote_execution_injected_const() {
         let script = "const x = 42u8; 1u8 :: x";
@@ -2580,8 +2710,10 @@ pub mod tests {
                 0,
                 0,
                 0,
+                // local move
+                3,
                 // slot 0 (mapped from slot 0)
-                InstructionCode::GET_SLOT.into(),
+                InstructionCode::POP_SLOT.into(),
                 // slot index as u32
                 0,
                 0,
@@ -2596,10 +2728,10 @@ pub mod tests {
     }
 
     #[test]
-    fn remote_execution_injected_var() {
+    fn remote_execution_injected_shared_move() {
         // var x only refers to a value, not a ref, but since it is transferred to a
         // remote context, its state is synced via a ref (VariableReference model)
-        let script = "var x = shared 42u8; 1u8 :: x;";
+        let script = "const x = shared 42u8; 1u8 :: x;";
         let (res, _) =
             compile_script(script, CompileOptions::default()).unwrap();
         assert_eq!(
@@ -2635,8 +2767,63 @@ pub mod tests {
                 0,
                 0,
                 0,
+                ExternalSlotType::Shared(SharedSlotType::Move).into(),
                 // slot 0 (mapped from slot 0)
-                InstructionCode::GET_SLOT.into(),
+                InstructionCode::POP_SLOT.into(),
+                // slot index as u32
+                0,
+                0,
+                0,
+                0,
+                // --- end of block
+                // caller (literal value 1 for test)
+                InstructionCode::UINT_8.into(),
+                1,
+            ]
+        );
+    }
+
+    #[test]
+    fn remote_execution_injected_shared_ref() {
+        let script = "const x = shared 42u8; 1u8 :: 'x";
+        let (res, _) =
+            compile_script(script, CompileOptions::default()).unwrap();
+        assert_eq!(
+            res,
+            vec![
+                InstructionCode::SHORT_STATEMENTS.into(),
+                2,
+                0,
+                InstructionCode::ALLOCATE_SLOT.into(),
+                // slot index as u32
+                0,
+                0,
+                0,
+                0,
+                // create ref
+                InstructionCode::CREATE_SHARED.into(),
+                InstructionCode::UINT_8.into(),
+                42,
+                InstructionCode::REMOTE_EXECUTION.into(),
+                // --- start of block
+                // block size (5 bytes)
+                5,
+                0,
+                0,
+                0,
+                // injected slots (1)
+                1,
+                0,
+                0,
+                0,
+                // slot 0
+                0,
+                0,
+                0,
+                0,
+                ExternalSlotType::Shared(SharedSlotType::Ref).into(),
+                // slot 0 (mapped from slot 0)
+                InstructionCode::GET_SLOT_SHARED_REF.into(),
                 // slot index as u32
                 0,
                 0,
@@ -2694,20 +2881,24 @@ pub mod tests {
                 0,
                 0,
                 0,
+                // FIXME
+                ExternalSlotType::Shared(SharedSlotType::Move).into(),
                 // slot 1
                 1,
                 0,
                 0,
                 0,
+                // FIXME
+                ExternalSlotType::Shared(SharedSlotType::Move).into(),
                 // expression: x + y
                 InstructionCode::ADD.into(),
-                InstructionCode::GET_SLOT.into(),
+                InstructionCode::POP_SLOT.into(),
                 // slot index as u32
                 0,
                 0,
                 0,
                 0,
-                InstructionCode::GET_SLOT.into(),
+                InstructionCode::POP_SLOT.into(),
                 // slot index as u32
                 1,
                 0,
@@ -2766,6 +2957,8 @@ pub mod tests {
                 0,
                 0,
                 0,
+                // FIXME
+                ExternalSlotType::Shared(SharedSlotType::Move).into(),
                 InstructionCode::SHORT_STATEMENTS.into(),
                 2,
                 0, // not terminated
@@ -2780,13 +2973,13 @@ pub mod tests {
                 5,
                 // expression: x + y
                 InstructionCode::ADD.into(),
-                InstructionCode::GET_SLOT.into(),
+                InstructionCode::POP_SLOT.into(),
                 // slot index as u32
                 1,
                 0,
                 0,
                 0,
-                InstructionCode::GET_SLOT.into(),
+                InstructionCode::POP_SLOT.into(),
                 // slot index as u32
                 0,
                 0,
@@ -2823,7 +3016,7 @@ pub mod tests {
                 InstructionCode::REMOTE_EXECUTION.into(),
                 // --- start of block 1
                 // block size (20 bytes)
-                20,
+                21,
                 0,
                 0,
                 0,
@@ -2837,6 +3030,8 @@ pub mod tests {
                 0,
                 0,
                 0,
+                // FIXME
+                ExternalSlotType::Shared(SharedSlotType::Move).into(),
                 // nested remote execution
                 InstructionCode::REMOTE_EXECUTION.into(),
                 // --- start of block 2
@@ -2855,7 +3050,9 @@ pub mod tests {
                 0,
                 0,
                 0,
-                InstructionCode::GET_SLOT.into(),
+                // FIXME
+                ExternalSlotType::Shared(SharedSlotType::Move).into(),
+                InstructionCode::POP_SLOT.into(),
                 // slot index as u32
                 0,
                 0,
@@ -2875,7 +3072,7 @@ pub mod tests {
 
     #[test]
     fn remote_execution_nested2() {
-        let script = "const x = 42u8; (1u8 :: (x :: x))";
+        let script = "const x = 42u8; const y = 43u8; (1u8 :: (y :: x))";
         let (res, _) =
             compile_script(script, CompileOptions::default()).unwrap();
 
@@ -2883,7 +3080,7 @@ pub mod tests {
             res,
             vec![
                 InstructionCode::SHORT_STATEMENTS.into(),
-                2,
+                3,
                 0, // not terminated
                 InstructionCode::ALLOCATE_SLOT.into(),
                 // slot index as u32
@@ -2893,23 +3090,40 @@ pub mod tests {
                 0,
                 InstructionCode::UINT_8.into(),
                 42,
-                InstructionCode::REMOTE_EXECUTION.into(),
-                // --- start of block 1
-                // block size (23 bytes)
-                23,
-                0,
-                0,
-                0,
-                // injected slots (1)
+                InstructionCode::ALLOCATE_SLOT.into(),
+                // slot index as u32
                 1,
                 0,
                 0,
                 0,
+                InstructionCode::UINT_8.into(),
+                43,
+                InstructionCode::REMOTE_EXECUTION.into(),
+                // --- start of block 1
+                // block size (24 bytes)
+                24,
+                0,
+                0,
+                0,
+                // injected slots (2)
+                2,
+                0,
+                0,
+                0,
+                // slot 1
+                0,
+                0,
+                0,
+                0,
+                // FIXME
+                ExternalSlotType::Shared(SharedSlotType::Move).into(),
                 // slot 0
+                1,
                 0,
                 0,
                 0,
-                0,
+                // FIXME
+                ExternalSlotType::Shared(SharedSlotType::Move).into(),
                 // nested remote execution
                 InstructionCode::REMOTE_EXECUTION.into(),
                 // --- start of block 2
@@ -2928,7 +3142,9 @@ pub mod tests {
                 0,
                 0,
                 0,
-                InstructionCode::GET_SLOT.into(),
+                // FIXME
+                ExternalSlotType::Shared(SharedSlotType::Move).into(),
+                InstructionCode::POP_SLOT.into(),
                 // slot index as u32
                 0,
                 0,
@@ -2936,8 +3152,8 @@ pub mod tests {
                 0,
                 // --- end of block 2
                 // caller (literal value 2 for test)
-                InstructionCode::GET_SLOT.into(),
-                0,
+                InstructionCode::POP_SLOT.into(),
+                1,
                 0,
                 0,
                 0,
@@ -3005,6 +3221,24 @@ pub mod tests {
         );
     }
 
+    #[test]
+    fn internal_slot_caller() {
+        let script = "#caller";
+        let (res, _) =
+            compile_script(script, CompileOptions::default()).unwrap();
+        assert_eq!(
+            res,
+            vec![
+                InstructionCode::GET_INTERNAL_SLOT.into(),
+                // slot index as u32
+                2,
+                0xff,
+                0xff,
+                0xff
+            ]
+        );
+    }
+
     // this is not a valid Datex script, just testing the compiler
     #[test]
     fn unbox() {
@@ -3018,6 +3252,36 @@ pub mod tests {
                 InstructionCode::UINT_8.into(),
                 // integer as u8
                 10,
+            ]
+        );
+    }
+
+    #[test]
+    fn unbox_slot() {
+        let script = "const x = 10u8; *x";
+        let (res, _) =
+            compile_script(script, CompileOptions::default()).unwrap();
+        assert_eq!(
+            res,
+            vec![
+                InstructionCode::SHORT_STATEMENTS.into(),
+                2,
+                0, // not terminated
+                InstructionCode::ALLOCATE_SLOT.into(),
+                // slot index as u32
+                0,
+                0,
+                0,
+                0,
+                InstructionCode::UINT_8.into(),
+                10,
+                InstructionCode::UNBOX.into(), // FIXME: should not be added for local values (precompiler)
+                InstructionCode::BORROW_SLOT.into(),
+                // slot index as u32
+                0,
+                0,
+                0,
+                0,
             ]
         );
     }
@@ -3049,7 +3313,7 @@ pub mod tests {
         let (res, _) =
             compile_script(script, CompileOptions::default()).unwrap();
         let mut instructions: Vec<u8> =
-            vec![InstructionCode::GET_INTERNAL_SHARED_REF.into()];
+            vec![InstructionCode::REQUEST_INTERNAL_SHARED_REF.into()];
         // pointer id
         instructions.append(
             &mut PointerAddress::from(CoreLibPointerId::Integer(None))
@@ -3117,7 +3381,7 @@ pub mod tests {
                 1,
             ],
             vec![
-                InstructionCode::GET_INTERNAL_SHARED_REF.into(),
+                InstructionCode::REQUEST_INTERNAL_SHARED_REF.into(),
                 // pointer id for integer
                 100,
                 0,
@@ -3365,6 +3629,44 @@ pub mod tests {
             b'e',
             b's',
             b't',
+        ];
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn clone_local_value() {
+        let datex_script = "var x = 10u8; var y = clone x; x";
+        let result = compile_and_log(datex_script);
+        let expected = vec![
+            InstructionCode::SHORT_STATEMENTS.into(),
+            3,
+            0, // not terminated
+            InstructionCode::ALLOCATE_SLOT.into(),
+            // slot index as u32
+            0,
+            0,
+            0,
+            0,
+            InstructionCode::UINT_8.into(),
+            10,
+            InstructionCode::ALLOCATE_SLOT.into(),
+            // slot index as u32
+            1,
+            0,
+            0,
+            0,
+            InstructionCode::CLONE_SLOT.into(),
+            // slot index as u32
+            0,
+            0,
+            0,
+            0,
+            InstructionCode::POP_SLOT.into(),
+            // slot index as u32
+            0,
+            0,
+            0,
+            0,
         ];
         assert_eq!(result, expected);
     }

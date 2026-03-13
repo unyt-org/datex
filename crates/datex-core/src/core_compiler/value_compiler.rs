@@ -37,8 +37,11 @@ use crate::{
     },
     values::core_values::r#type::TypeMetadata,
 };
+use crate::global::protocol_structures::instructions::{RawLocalPointerAddress, RawPointerAddress};
+use crate::shared_values::shared_container::SharedContainer;
 
 /// Compiles a given value container to a DXB body
+#[deprecated(note = "use compile_value")]
 pub fn compile_value_container(value_container: &ValueContainer) -> Vec<u8> {
     let mut buffer = Vec::with_capacity(256);
     append_value_container(&mut buffer, value_container);
@@ -46,6 +49,24 @@ pub fn compile_value_container(value_container: &ValueContainer) -> Vec<u8> {
     buffer
 }
 
+pub fn compile_value(value_container: &Value) -> Vec<u8> {
+    let mut buffer = Vec::with_capacity(256);
+    append_value(&mut buffer, value_container);
+
+    buffer
+}
+
+pub fn compile_shared_container(
+    shared_container: SharedContainer,
+    insert_value: bool,
+) -> Vec<u8> {
+    let mut buffer = Vec::with_capacity(256);
+    append_shared_container(&mut buffer, shared_container, insert_value);
+
+    buffer
+}
+
+#[deprecated(note = "use append_value")]
 pub fn append_value_container(
     buffer: &mut Vec<u8>,
     value_container: &ValueContainer,
@@ -53,22 +74,88 @@ pub fn append_value_container(
     match value_container {
         ValueContainer::Local(value) => append_value(buffer, value),
         ValueContainer::Shared(reference) => {
-            // TODO #160: in this case, the ref might also be inserted by pointer id, depending on the compiler settings
-            // add CREATE_SHARED/CREATE_SHARED_MUT instruction
-            if reference.mutability() == SharedContainerMutability::Mutable {
-                append_instruction_code(
-                    buffer,
-                    InstructionCode::CREATE_SHARED_MUT,
-                );
-            } else {
-                append_instruction_code(buffer, InstructionCode::CREATE_SHARED);
-            }
-            // insert pointer id + value or only id
-            // add pointer to memory if not there yet
-            append_value(buffer, &reference.collapse_to_value().borrow())
+            panic!("invalid")
+
+            // // TODO #160: in this case, the ref might also be inserted by pointer id, depending on the compiler settings
+            // // add CREATE_SHARED/CREATE_SHARED_MUT instruction
+            // if reference.mutability() == SharedContainerMutability::Mutable {
+            //     append_instruction_code(
+            //         buffer,
+            //         InstructionCode::CREATE_SHARED_MUT,
+            //     );
+            // } else {
+            //     append_instruction_code(buffer, InstructionCode::CREATE_SHARED);
+            // }
+            // // insert pointer id + value or only id
+            // // add pointer to memory if not there yet
+            // append_value(buffer, &reference.collapse_to_value().borrow())
         }
     }
 }
+
+/// Appends a shared container to the buffer, with optional mutability information for the shared container
+/// If shared_container_mutability is None, a move is performed
+/// TODO: set insert_value only if for remote execution and not already on remote endpoint
+pub fn append_shared_container(
+    buffer: &mut Vec<u8>,
+    shared_container: SharedContainer,
+    insert_value: bool,
+) -> Result<(), ()> {
+    let instruction_code = match &shared_container.reference_mutability {
+        Some(mutability) => {
+            match mutability {
+                PointerReferenceMutability::Mutable => InstructionCode::SHARED_REF_MUT,
+                PointerReferenceMutability::Immutable => InstructionCode::SHARED_REF
+            }
+        },
+        None => return append_perform_moves(buffer, &[shared_container]),
+    };
+    append_instruction_code(buffer, instruction_code);
+
+    // flag indicating if value is inserted after address or not
+    append_u8(buffer, if insert_value { 1 } else { 0 });
+
+    // insert address
+    let raw_address = RawPointerAddress::from(shared_container.pointer().address());
+    append_raw_pointer_address(buffer, &raw_address);
+
+    // insert value
+    if insert_value {
+        append_value(buffer, &shared_container.collapse_to_value().borrow())
+    }
+
+    Ok(())
+}
+
+/// Appends multiple shared containers as moves to the buffer
+/// TODO: Also handle moves of nested shared values!
+pub fn append_perform_moves(
+    buffer: &mut Vec<u8>,
+    shared_containers: &[SharedContainer],
+) -> Result<(), ()> {
+    append_instruction_code(buffer, InstructionCode::PERFORM_MOVE);
+    append_u32(buffer, shared_containers.len() as u32); // number of moved values
+    for shared_container in shared_containers {
+        if let Some(local_address) = shared_container.try_get_owned_local_address() {
+            append_local_pointer_address(buffer, local_address);
+        }
+        else {
+            return Err(());
+        }
+    }
+    Ok(())
+}
+
+
+
+pub fn append_raw_pointer_address(buffer: &mut Vec<u8>, raw_address: &RawPointerAddress) {
+    buffer.extend_from_slice(&raw_address.to_bytes());
+}
+
+pub fn append_local_pointer_address(buffer: &mut Vec<u8>, local_address: [u8; 5]) {
+    buffer.extend_from_slice(&local_address);
+}
+
 
 pub fn append_value(buffer: &mut Vec<u8>, value: &Value) {
     // append non-default type information
@@ -122,7 +209,7 @@ pub fn append_value(buffer: &mut Vec<u8>, value: &Value) {
             }
 
             for item in val {
-                append_value_container(buffer, item);
+                append_value_container(buffer, item); // 'shared [1,2,3,4,5,10]
             }
         }
         CoreValue::Map(val) => {
@@ -353,7 +440,7 @@ pub fn append_float_as_i32(buffer: &mut Vec<u8>, int: i32) {
     append_i32(buffer, int);
 }
 
-pub fn append_get_ref(
+pub fn append_get_shared_ref(
     buffer: &mut Vec<u8>,
     address: &PointerAddress,
     mutability: &PointerReferenceMutability,
@@ -365,7 +452,7 @@ pub fn append_get_ref(
         PointerAddress::Owned(local_address) => {
             append_instruction_code(
                 buffer,
-                InstructionCode::GET_LOCAL_SHARED_REF,
+                InstructionCode::REQUEST_LOCAL_SHARED_REF,
             );
             buffer.extend_from_slice(&local_address.address);
         }
@@ -374,10 +461,10 @@ pub fn append_get_ref(
                 buffer,
                 match mutability {
                     PointerReferenceMutability::Immutable => {
-                        InstructionCode::GET_REMOTE_SHARED_REF
+                        InstructionCode::REQUEST_REMOTE_SHARED_REF
                     }
                     PointerReferenceMutability::Mutable => {
-                        InstructionCode::GET_REMOTE_SHARED_REF_MUT
+                        InstructionCode::REQUEST_REMOTE_SHARED_REF_MUT
                     }
                 },
             );
@@ -387,7 +474,7 @@ pub fn append_get_ref(
 }
 
 pub fn append_get_internal_ref(buffer: &mut Vec<u8>, id: &[u8; 3]) {
-    append_instruction_code(buffer, InstructionCode::GET_INTERNAL_SHARED_REF);
+    append_instruction_code(buffer, InstructionCode::REQUEST_INTERNAL_SHARED_REF);
     buffer.extend_from_slice(id);
 }
 

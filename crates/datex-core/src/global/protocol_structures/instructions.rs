@@ -20,8 +20,11 @@ use crate::{
 };
 use binrw::{BinRead, BinWrite};
 use core::{fmt::Display, prelude::rust_2024::*};
+use binrw::io::Cursor;
 use modular_bitfield::{bitfield, specifiers::B4};
 use serde::{Deserialize, Serialize};
+use crate::global::protocol_structures::external_slot_type::ExternalSlotType;
+use crate::shared_values::pointer_address::OwnedPointerAddress;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Instruction {
@@ -145,31 +148,33 @@ pub enum RegularInstruction {
     MultiplyAssign(SlotAddress),
     DivideAssign(SlotAddress),
 
-    CreateSharedReference,
+    GetSharedReference,
+    GetSharedReferenceMut,
 
     CreateShared,
     CreateSharedMut,
 
     // ' $ABCDE
-    GetSharedRef(RawRemotePointerAddress),
+    RequestSharedRef(RawRemotePointerAddress),
     // 'mut $ABCDE
-    GetSharedRefMut(RawRemotePointerAddress),
+    RequestSharedRefMut(RawRemotePointerAddress),
     GetLocalRef(RawLocalPointerAddress),
     GetInternalRef(RawInternalPointerAddress),
 
-    // &ABCDE := ...
-    GetOrCreateRef(GetOrCreateRemoteRefData),
-    // &mut ABCDE := ...
-    GetOrCreateRefMut(GetOrCreateRemoteRefData),
+    PerformMove(PerformMove),
+    Move(Move),
 
     AllocateSlot(SlotAddress),
-    GetSlot(SlotAddress),
-    DropSlot(SlotAddress),
+    CloneSlot(SlotAddress),
+    BorrowSlot(SlotAddress),
+    GetSlotSharedRef(SlotAddress),
+    GetSlotSharedRefMut(SlotAddress),
+    PopSlot(SlotAddress),
     SetSlot(SlotAddress),
 
     GetInternalSlot(SlotAddress),
 
-    SetReferenceValue(AssignmentOperator),
+    SetSharedContainerValue(AssignmentOperator),
     Unbox,
 
     TypedValue,
@@ -312,34 +317,43 @@ impl Display for RegularInstruction {
             RegularInstruction::AllocateSlot(address) => {
                 core::write!(f, "ALLOCATE_SLOT {}", address.0)
             }
-            RegularInstruction::GetSlot(address) => {
+            RegularInstruction::CloneSlot(address) => {
                 core::write!(f, "GET_SLOT {}", address.0)
             }
             RegularInstruction::GetInternalSlot(address) => {
                 core::write!(f, "GET_INTERNAL_SLOT {}", address.0)
             }
-            RegularInstruction::DropSlot(address) => {
+            RegularInstruction::BorrowSlot(address) => {
+                core::write!(f, "GET_SLOT_LOCAL_REF {}", address.0)
+            }
+            RegularInstruction::GetSlotSharedRef(address) => {
+                core::write!(f, "GET_SLOT_SHARED_REF {}", address.0)
+            }
+            RegularInstruction::GetSlotSharedRefMut(address) => {
+                core::write!(f, "GET_SLOT_SHARED_REF_MUT {}", address.0)
+            }
+            RegularInstruction::PopSlot(address) => {
                 core::write!(f, "DROP_SLOT {}", address.0)
             }
             RegularInstruction::SetSlot(address) => {
                 core::write!(f, "SET_SLOT {}", address.0)
             }
-            RegularInstruction::SetReferenceValue(operator) => {
+            RegularInstruction::SetSharedContainerValue(operator) => {
                 core::write!(f, "SET_REFERENCE_VALUE ({})", operator)
             }
             RegularInstruction::Unbox => core::write!(f, "UNBOX"),
-            RegularInstruction::GetSharedRef(address) => {
+            RegularInstruction::RequestSharedRef(address) => {
                 core::write!(
                     f,
-                    "GET_SHARED_REF [{}:{}]",
+                    "REQUEST_SHARED_REF [{}:{}]",
                     address.endpoint().expect("Invalid endpoint"),
                     hex::encode(address.id)
                 )
             }
-            RegularInstruction::GetSharedRefMut(address) => {
+            RegularInstruction::RequestSharedRefMut(address) => {
                 core::write!(
                     f,
-                    "GET_SHARED_REF_MUT [{}:{}]",
+                    "REQUEST_SHARED_REF_MUT [{}:{}]",
                     address.endpoint().expect("Invalid endpoint"),
                     hex::encode(address.id)
                 )
@@ -358,8 +372,11 @@ impl Display for RegularInstruction {
                     hex::encode(address.id)
                 )
             }
-            RegularInstruction::CreateSharedReference => {
-                core::write!(f, "CREATE_SHARED_REF")
+            RegularInstruction::GetSharedReference => {
+                core::write!(f, "GET_SHARED_REF")
+            }
+            RegularInstruction::GetSharedReferenceMut => {
+                core::write!(f, "GET_SHARED_REF_MUT")
             }
             RegularInstruction::CreateShared => {
                 core::write!(f, "CREATE_SHARED")
@@ -367,20 +384,18 @@ impl Display for RegularInstruction {
             RegularInstruction::CreateSharedMut => {
                 core::write!(f, "CREATE_SHARED_MUT")
             }
-            RegularInstruction::GetOrCreateRef(data) => {
+            RegularInstruction::PerformMove(perform_move) => {
                 core::write!(
                     f,
-                    "GET_OR_CREATE_REF [{}, block_size: {}]",
-                    hex::encode(data.address.id),
-                    data.create_block_size
+                    "PERFORM_MOVE (pointers: {})",
+                    perform_move.addresses.iter().map(|addr| hex::encode(addr.id)).collect::<Vec<_>>().join(", ")
                 )
             }
-            RegularInstruction::GetOrCreateRefMut(data) => {
+            RegularInstruction::Move(mv) => {
                 core::write!(
                     f,
-                    "GET_OR_CREATE_REF_MUT [{}, block_size: {}]",
-                    hex::encode(data.address.id),
-                    data.create_block_size
+                    "MOVE (pointer_count: {}, mappings: {:?})",
+                    mv.pointer_count, mv.address_mappings
                 )
             }
             RegularInstruction::RemoteExecution(block) => {
@@ -427,7 +442,7 @@ impl Display for RegularInstruction {
             }
             RegularInstruction::SetPropertyDynamic => {
                 core::write!(f, "SET_PROPERTY_DYNAMIC")
-            }
+            },
         }
     }
 }
@@ -671,6 +686,38 @@ pub enum RawPointerAddress {
     Local(RawLocalPointerAddress),
 }
 
+impl RawPointerAddress {
+    fn get_size(&self) -> usize {
+        match self {
+            RawPointerAddress::Remote(_) => 26,
+            RawPointerAddress::Internal(_) => 3,
+            RawPointerAddress::Local(_) => 5,
+        }
+    }
+    pub fn to_bytes(&self) -> Vec<u8> {
+        let mut writer = Cursor::new(Vec::with_capacity(1 + self.get_size()));
+        self.write_le(&mut writer).expect("Failed to write raw pointer address");
+        writer.into_inner()
+    }
+}
+
+impl From<PointerAddress> for RawPointerAddress {
+    fn from(ptr: PointerAddress) -> Self {
+        match ptr {
+            PointerAddress::Referenced(ReferencedPointerAddress::Remote(bytes)) => {
+                RawPointerAddress::Remote(RawRemotePointerAddress { id: bytes })
+            }
+            PointerAddress::Referenced(ReferencedPointerAddress::Internal(bytes)) => {
+                RawPointerAddress::Internal(RawInternalPointerAddress { id: bytes })
+            }
+            PointerAddress::Owned(OwnedPointerAddress {address} ) => {
+                RawPointerAddress::Local(RawLocalPointerAddress { id: address })
+            }
+        }
+    }
+}
+
+
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
 #[brw(little)]
 pub struct GetOrCreateRemoteRefData {
@@ -680,11 +727,27 @@ pub struct GetOrCreateRemoteRefData {
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
 #[brw(little)]
+pub struct PerformMove {
+    pub pointer_count: u32,
+    #[br(count = pointer_count)]
+    pub addresses: Vec<RawLocalPointerAddress>,
+}
+
+#[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
+#[brw(little)]
+pub struct Move {
+    pub pointer_count: u32,
+    #[br(count = pointer_count)]
+    pub address_mappings: Vec<(RawLocalPointerAddress, RawLocalPointerAddress)>,
+}
+
+#[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
+#[brw(little)]
 pub struct InstructionBlockData {
     pub length: u32,
     pub injected_slot_count: u32,
     #[br(count = injected_slot_count)]
-    pub injected_slots: Vec<u32>,
+    pub injected_slots: Vec<(u32, ExternalSlotType)>,
     #[br(count = length)]
     pub body: Vec<u8>,
 }

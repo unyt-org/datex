@@ -141,35 +141,40 @@ pub enum InstructionCode {
 
     // slots
     // TODO #669: refactor with stack variable system?
-    GET_SLOT, // #xyz   0x0000-0x00ff = variables passed on between scopes, 0x0100-0xfdff = normal variables, 0xfe00-0xffff = it variables (#it.0, #it.1, ...) for function arguments
+    CLONE_SLOT, // clone #xyz   0x0000-0x00ff = variables passed on between scopes, 0x0100-0xfdff = normal variables, 0xfe00-0xffff = it variables (#it.0, #it.1, ...) for function arguments
+    BORROW_SLOT, // &#aa
+    GET_SLOT_SHARED_REF, // '#aa
+    GET_SLOT_SHARED_REF_MUT, // 'mut #aa
     SET_SLOT, // #aa = ...
     ALLOCATE_SLOT, // #aa = ...
     SLOT_ACTION, // #x += ...
-    DROP_SLOT, // drop #aa
+    POP_SLOT, // #aa
 
     GET_INTERNAL_SLOT, // e.g. #endpoint
 
-    LABEL,        // $x
-    SET_LABEL,    // $x = ...,
-    INIT_LABEL,   // $x := ...
-    LABEL_ACTION, // $x += ...
-
     // Note: fix to sync with RawPointerAddress
-    GET_REMOTE_SHARED_REF = 120u8,   // '$x
-    GET_INTERNAL_SHARED_REF = 121u8, // '$y, containing globally unique internal id
-    GET_LOCAL_SHARED_REF = 122u8, // '$x, containing only the id, origin id is inferred from sender
+    REQUEST_REMOTE_SHARED_REF = 120u8,   // '$x
+    REQUEST_INTERNAL_SHARED_REF = 121u8, // '$y, containing globally unique internal id
+    REQUEST_LOCAL_SHARED_REF = 122u8, // '$x, containing only the id, origin id is inferred from sender
 
-    GET_REMOTE_SHARED_REF_MUT, // 'mut $x
+    REQUEST_REMOTE_SHARED_REF_MUT, // 'mut $x
 
-    GET_OR_INIT_REF,   // $aa := ...
+    SHARED_REF, // '$1234 (optional value)
+    SHARED_REF_MUT, // 'mut $1234(optional value)
+
+    PERFORM_MOVE, // PERFORM_MOVE(3) $a, $b, $c (indicates two executing endpoint that pointers should be moved from sender to local, triggers MOVE)
+    MOVE, // MOVE(3) $a->$a2, $b->$b2, $c->$c2 (indicates that pointers should be moved from local to receiver, triggered by PERFORM_MOVE, includes mapping to new ids)
+
+    GET_SHARED_REF, // dynamic 'x
+    GET_SHARED_REF_MUT, // dynamic 'mut x
+
     POINTER_ACTION,    // $aa += ...
-    CREATE_SHARED_REF, // ' / 'mut
     SET_REF,           // &aa = ...
 
     CREATE_SHARED,     // shared x
     CREATE_SHARED_MUT, // shared mut x
 
-    SET_REFERENCE_VALUE, // *x = 10;
+    SET_SHARED_CONTAINER_VALUE, // *x = 10;
 
     UNBOX, // *x
 

@@ -283,7 +283,7 @@ decompiler = ["ast"]
 
 ### LSP-related features ######################################################
 
-lsp = ["dep:realhydroper-lsp"]
+lsp = ["dep:realhydroper-lsp", "compiler"]
 # lsp support
 lsp_tokio = ["lsp", "realhydroper-lsp/runtime-tokio"]
 # enable runtime-agnostic feature for realhydroper-lsp in wasm

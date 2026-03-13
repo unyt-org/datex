@@ -18,7 +18,7 @@ use crate::{
 };
 
 use crate::{
-    ast::expressions::{CallableDeclaration, CreateShared, CreateSharedRef},
+    ast::expressions::{CallableDeclaration, CreateShared, GetSharedRef},
     libs::core::CoreLibPointerId,
     prelude::*,
 };
@@ -32,10 +32,10 @@ impl From<&ValueContainer> for DatexExpressionData {
             ValueContainer::Local(value) => value_to_datex_expression(value),
             ValueContainer::Shared(shared) => {
                 let reference_mutability =
-                    shared.pointer().reference_mutability().cloned();
+                    shared.reference_mutability.clone();
                 match reference_mutability {
                     Some(reference_mutability) => {
-                        DatexExpressionData::CreateSharedRef(CreateSharedRef {
+                        DatexExpressionData::GetSharedRef(GetSharedRef {
                             mutability: reference_mutability,
                             expression: Box::new(
                                 DatexExpressionData::CreateShared(
@@ -233,7 +233,7 @@ fn type_to_type_expression(type_value: &Type) -> TypeExpression {
         TypeDefinition::SharedReference(type_reference) => {
             // try to resolve to core lib value
             if let Ok(core_lib_type) = CoreLibPointerId::try_from(
-                &type_reference.borrow().pointer.address(),
+                &type_reference.borrow().pointer().address(),
             ) {
                 TypeExpressionData::Identifier(core_lib_type.to_string())
                     .with_default_span()

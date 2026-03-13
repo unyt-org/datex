@@ -28,9 +28,9 @@ use datex_core::{
     ast::{
         expressions::{
             Apply, BinaryOperation, CallableDeclaration, CallableKind,
-            ComparisonOperation, Conditional, CreateMut, CreateRef,
+            ComparisonOperation, Conditional, CreateMut, GetRef,
             CreateShared, DatexExpression, DatexExpressionData,
-            GenericInstantiation, GetSharedRef, List, Map, PropertyAccess,
+            GenericInstantiation, RequestSharedRef, List, Map, PropertyAccess,
             PropertyAssignment, Slot, UnaryOperation, Unbox,
             VariableAssignment, VariableDeclaration, VariableKind,
         },
@@ -54,6 +54,7 @@ use datex_core::{
     },
     values::core_values::error::NumberParseError,
 };
+use datex_core::ast::expressions::ValueAccessType;
 
 /// Parse the given source code into a DatexExpression AST.
 fn parse_unwrap(src: &str) -> DatexExpression {
@@ -2973,7 +2974,7 @@ fn variable_declaration_and_assignment() {
 fn placeholder() {
     let src = "?";
     let expr = parse_unwrap_data(src);
-    assert_eq!(expr, DatexExpressionData::Placeholder);
+    assert_eq!(expr, DatexExpressionData::Placeholder(ValueAccessType::MoveOrCopy));
 }
 
 #[test]
@@ -3428,7 +3429,7 @@ fn pointer_address() {
     let expr = parse_unwrap_data(src);
     assert_eq!(
         expr,
-        DatexExpressionData::GetSharedRef(GetSharedRef {
+        DatexExpressionData::RequestSharedRef(RequestSharedRef {
             address: PointerAddress::internal([0x12, 0x34, 0x56]),
             mutability: PointerReferenceMutability::Immutable,
         })
@@ -3439,7 +3440,7 @@ fn pointer_address() {
     let expr = parse_unwrap_data(src);
     assert_eq!(
         expr,
-        DatexExpressionData::GetSharedRef(GetSharedRef {
+        DatexExpressionData::RequestSharedRef(RequestSharedRef {
             address: PointerAddress::owned([0x12, 0x34, 0x56, 0x78, 0x9A]),
             mutability: PointerReferenceMutability::Immutable,
         })
@@ -3450,7 +3451,7 @@ fn pointer_address() {
     let expr = parse_unwrap_data(src);
     assert_eq!(
         expr,
-        DatexExpressionData::GetSharedRef(GetSharedRef {
+        DatexExpressionData::RequestSharedRef(RequestSharedRef {
             address: PointerAddress::remote([
                 0x12, 0x34, 0x56, 0x78, 0x90, 0xAB, 0xCD, 0xEF, 0x12, 0x34,
                 0x56, 0x78, 0x90, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,

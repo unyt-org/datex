@@ -22,13 +22,18 @@ use crate::{
         },
     },
 };
+use crate::shared_values::pointer::OwnedPointer;
+use crate::shared_values::shared_container::SharedContainerInner;
 
 #[derive(Debug, Default)]
 pub struct Memory {
     local_endpoint: Endpoint,
-    local_counter: u64,  // counter for local pointer ids
-    last_timestamp: u64, // last timestamp used for a new local pointer id
-    pointers: HashMap<PointerAddress, SharedContainer>, // all pointers
+    /// Counter for local pointer ids
+    local_counter: u64,
+    /// Last timestamp used for a new local pointer id
+    last_timestamp: u64,
+    /// All non-local pointers
+    pointers: HashMap<PointerAddress, SharedContainer>,
 }
 
 impl Memory {
@@ -53,7 +58,7 @@ impl Memory {
         // check if reference is already registered (if it has an address, we assume it is registered)
         self.pointers
             .entry(pointer_address)
-            .or_insert_with(|| reference.clone());
+            .or_insert_with(|| reference.derive_with_max_mutability());
     }
 
     /// Returns a reference stored at the given PointerAddress, if it exists.
@@ -68,8 +73,8 @@ impl Memory {
         &self,
         pointer_address: &PointerAddress,
     ) -> Option<&Rc<RefCell<SharedValueContainer>>> {
-        self.get_reference(pointer_address).and_then(|r| match r {
-            SharedContainer::Value(v) => Some(v),
+        self.get_reference(pointer_address).and_then(|r| match &r.value {
+            SharedContainerInner::Value(v) => Some(v),
             _ => None,
         })
     }
@@ -78,8 +83,8 @@ impl Memory {
         &self,
         pointer_address: &PointerAddress,
     ) -> Option<&Rc<RefCell<SharedTypeContainer>>> {
-        self.get_reference(pointer_address).and_then(|r| match r {
-            SharedContainer::Type(t) => Some(t),
+        self.get_reference(pointer_address).and_then(|r| match &r.value {
+            SharedContainerInner::Type(t) => Some(t),
             _ => None,
         })
     }
@@ -101,8 +106,8 @@ impl Memory {
         let reference = self
             .get_reference(&pointer_id.into())
             .ok_or(IllegalTypeError::TypeNotFound)?;
-        match reference {
-            SharedContainer::Type(def) => Ok(def.clone()),
+        match &reference.value {
+            SharedContainerInner::Type(def) => Ok(def.clone()),
             _ => Err(IllegalTypeError::TypeNotFound),
         }
     }
@@ -142,7 +147,7 @@ impl Memory {
     }
 
     /// Creates a new unique local owned pointer.
-    pub fn get_new_owned_local_pointer(&mut self) -> Pointer {
+    pub fn get_new_owned_local_pointer(&mut self) -> OwnedPointer {
         let timestamp = crate::time::now_ms();
         // new timestamp, reset counter
         if timestamp != self.last_timestamp {
@@ -164,6 +169,6 @@ impl Memory {
             (self.local_counter & 0xFF) as u8,
         ];
 
-        Pointer::new_owned(OwnedPointerAddress::new(id))
+        OwnedPointer::new(OwnedPointerAddress::new(id))
     }
 }

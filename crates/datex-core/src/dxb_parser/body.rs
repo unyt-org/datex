@@ -30,6 +30,8 @@ use binrw::{BinRead, io::Cursor};
 use core::{
     cell::RefCell, convert::TryFrom, fmt, fmt::Display, result::Result,
 };
+use crate::global::protocol_structures::instructions::{Move, PerformMove};
+
 #[derive(Debug)]
 pub enum DXBParserError {
     InvalidEndpoint(String),
@@ -421,7 +423,7 @@ pub fn iterate_instructions(
                             next_instructions_stack.push_next_regular(1);
                             RegularInstruction::Unbox
                         }
-                        InstructionCode::SET_REFERENCE_VALUE => {
+                        InstructionCode::SET_SHARED_CONTAINER_VALUE => {
                             next_instructions_stack.push_next_regular(2);
                             let operator = yield_unwrap!(
                                 get_next_regular_instruction_code(&mut reader)
@@ -435,7 +437,7 @@ pub fn iterate_instructions(
                                     }
                                 )
                             );
-                            RegularInstruction::SetReferenceValue(operator)
+                            RegularInstruction::SetSharedContainerValue(operator)
                         }
 
                         InstructionCode::KEY_VALUE_SHORT_TEXT => {
@@ -511,9 +513,13 @@ pub fn iterate_instructions(
                             next_instructions_stack.push_next_regular(1); // value to check
                             RegularInstruction::Matches
                         }
-                        InstructionCode::CREATE_SHARED_REF => {
+                        InstructionCode::GET_SHARED_REF => {
                             next_instructions_stack.push_next_regular(1);
-                            RegularInstruction::CreateSharedReference
+                            RegularInstruction::GetSharedReference
+                        }
+                        InstructionCode::GET_SHARED_REF_MUT => {
+                            next_instructions_stack.push_next_regular(1);
+                            RegularInstruction::GetSharedReferenceMut
                         }
                         InstructionCode::CREATE_SHARED => {
                             next_instructions_stack.push_next_regular(1);
@@ -524,6 +530,13 @@ pub fn iterate_instructions(
                             RegularInstruction::CreateSharedMut
                         }
 
+                        InstructionCode::GET_INTERNAL_SLOT => {
+                            let address = SlotAddress::read(&mut reader);
+                            RegularInstruction::GetInternalSlot(yield_unwrap!(
+                                address
+                            ))
+                        }
+
                         // slots
                         InstructionCode::ALLOCATE_SLOT => {
                             next_instructions_stack.push_next_regular(1);
@@ -532,19 +545,25 @@ pub fn iterate_instructions(
                                 address
                             ))
                         }
-                        InstructionCode::GET_SLOT => {
+                        InstructionCode::CLONE_SLOT => {
                             let address = SlotAddress::read(&mut reader);
-                            RegularInstruction::GetSlot(yield_unwrap!(address))
+                            RegularInstruction::CloneSlot(yield_unwrap!(address))
                         }
-                        InstructionCode::GET_INTERNAL_SLOT => {
+                        InstructionCode::BORROW_SLOT => {
                             let address = SlotAddress::read(&mut reader);
-                            RegularInstruction::GetInternalSlot(yield_unwrap!(
-                                address
-                            ))
+                            RegularInstruction::BorrowSlot(yield_unwrap!(address))
                         }
-                        InstructionCode::DROP_SLOT => {
+                        InstructionCode::GET_SLOT_SHARED_REF => {
                             let address = SlotAddress::read(&mut reader);
-                            RegularInstruction::DropSlot(yield_unwrap!(address))
+                            RegularInstruction::GetSlotSharedRef(yield_unwrap!(address))
+                        }
+                        InstructionCode::GET_SLOT_SHARED_REF_MUT => {
+                            let address = SlotAddress::read(&mut reader);
+                            RegularInstruction::GetSlotSharedRefMut(yield_unwrap!(address))
+                        }
+                        InstructionCode::POP_SLOT => {
+                            let address = SlotAddress::read(&mut reader);
+                            RegularInstruction::PopSlot(yield_unwrap!(address))
                         }
                         InstructionCode::SET_SLOT => {
                             next_instructions_stack.push_next_regular(1);
@@ -552,15 +571,15 @@ pub fn iterate_instructions(
                             RegularInstruction::SetSlot(yield_unwrap!(address))
                         }
 
-                        InstructionCode::GET_REMOTE_SHARED_REF => {
+                        InstructionCode::REQUEST_REMOTE_SHARED_REF => {
                             let address =
                                 RawRemotePointerAddress::read(&mut reader);
-                            RegularInstruction::GetSharedRef(yield_unwrap!(
+                            RegularInstruction::RequestSharedRef(yield_unwrap!(
                                 address
                             ))
                         }
 
-                        InstructionCode::GET_LOCAL_SHARED_REF => {
+                        InstructionCode::REQUEST_LOCAL_SHARED_REF => {
                             let address =
                                 RawLocalPointerAddress::read(&mut reader);
                             RegularInstruction::GetLocalRef(yield_unwrap!(
@@ -568,12 +587,22 @@ pub fn iterate_instructions(
                             ))
                         }
 
-                        InstructionCode::GET_INTERNAL_SHARED_REF => {
+                        InstructionCode::REQUEST_INTERNAL_SHARED_REF => {
                             let address =
                                 RawInternalPointerAddress::read(&mut reader);
                             RegularInstruction::GetInternalRef(yield_unwrap!(
                                 address
                             ))
+                        }
+
+                        InstructionCode::PERFORM_MOVE => {
+                            let perform_move = PerformMove::read(&mut reader);
+                            RegularInstruction::PerformMove(yield_unwrap!(perform_move))
+                        }
+                        
+                        InstructionCode::MOVE => {
+                            let move_data = Move::read(&mut reader);
+                            RegularInstruction::Move(yield_unwrap!(move_data))
                         }
 
                         InstructionCode::ADD_ASSIGN => {

@@ -25,10 +25,11 @@ use core::{result::Result, unreachable};
 pub use errors::*;
 pub use execution_input::{ExecutionInput, ExecutionOptions};
 pub use memory_dump::*;
+use crate::shared_values::shared_container::SharedContainer;
 
 pub mod context;
 mod errors;
-mod execution_input;
+pub mod execution_input;
 pub mod execution_loop;
 pub mod macros;
 mod memory_dump;
@@ -53,7 +54,7 @@ pub fn execute_dxb_sync(
                     &runtime_internal,
                     address,
                     mutability,
-                )?),
+                )?.map(ValueContainer::Shared)),
             ),
             ExternalExecutionInterrupt::GetReferenceToLocalPointer(address) => {
                 // TODO #401: in the future, local pointer addresses should be relative to the block sender, not the local runtime
@@ -69,7 +70,7 @@ pub fn execute_dxb_sync(
             ) => {
                 interrupt_provider.provide_result(
                     InterruptResult::ResolvedValue(Some(
-                        get_internal_pointer_value(&runtime_internal, address)?,
+                        ValueContainer::Shared(get_internal_pointer_value(&runtime_internal, address)?),
                     )),
                 );
             }
@@ -89,6 +90,7 @@ pub async fn execute_dxb(
     input: ExecutionInput<'_>,
 ) -> Result<Option<ValueContainer>, ExecutionError> {
     let runtime_internal = input.runtime.clone();
+    let caller_metadata = input.caller_metadata.clone();
     let (interrupt_provider, execution_loop) = input.execution_loop();
 
     for output in execution_loop {
@@ -103,7 +105,7 @@ pub async fn execute_dxb(
                         &runtime_internal,
                         address,
                         mutability,
-                    )?),
+                    )?.map(ValueContainer::Shared)),
                 );
             }
             ExternalExecutionInterrupt::GetReferenceToLocalPointer(address) => {
@@ -120,7 +122,7 @@ pub async fn execute_dxb(
             ) => {
                 interrupt_provider.provide_result(
                     InterruptResult::ResolvedValue(Some(
-                        get_internal_pointer_value(&runtime_internal, address)?,
+                        ValueContainer::Shared(get_internal_pointer_value(&runtime_internal, address)?)
                     )),
                 );
             }
@@ -147,6 +149,20 @@ pub async fn execute_dxb(
                 interrupt_provider
                     .provide_result(InterruptResult::ResolvedValue(res));
             }
+            ExternalExecutionInterrupt::RequestMove(addresses) => {
+                let moved_values = runtime_internal.clone()
+                    .request_pointer_move(&caller_metadata.endpoint, addresses)
+                    .await?;
+                interrupt_provider.provide_result(InterruptResult::ResolvedValues(moved_values));
+            }
+            ExternalExecutionInterrupt::Move(address_mapping) => {
+                let moved_values = runtime_internal.clone()
+                    .handle_pointer_move_to_remote(&caller_metadata.endpoint, address_mapping)?
+                    .into_iter()
+                    .map(ValueContainer::Shared)
+                    .collect();
+                interrupt_provider.provide_result(InterruptResult::ResolvedValues(moved_values));
+            }
         }
     }
 
@@ -170,7 +186,7 @@ fn get_remote_pointer_value(
     runtime_internal: &Rc<RuntimeInternal>,
     address: RawRemotePointerAddress,
     _mutability: PointerReferenceMutability,
-) -> Result<Option<ValueContainer>, ExecutionError> {
+) -> Result<Option<SharedContainer>, ExecutionError> {
     let memory = runtime_internal.memory.borrow();
     let resolved_address =
         memory.get_pointer_address_from_raw_full_address(address);
@@ -178,18 +194,18 @@ fn get_remote_pointer_value(
     // TODO #770: resolve from remote, handle mutability
     Ok(memory
         .get_reference(&resolved_address)
-        .map(|r| ValueContainer::Shared(r.clone())))
+        .cloned())
 }
 
 fn get_internal_pointer_value(
     runtime_internal: &Rc<RuntimeInternal>,
     address: RawInternalPointerAddress,
-) -> Result<ValueContainer, ExecutionError> {
+) -> Result<SharedContainer, ExecutionError> {
     // first try to get from memory
-    if let Ok(core_lib_id) =
+    if let Ok(shared_container) =
         get_internal_pointer_value_from_memory(runtime_internal, &address)
     {
-        return Ok(core_lib_id);
+        return Ok(shared_container);
     }
 
     let core_lib_id = CoreLibPointerId::try_from(&PointerAddress::Referenced(
@@ -205,13 +221,13 @@ fn get_internal_pointer_value(
 fn get_internal_pointer_value_from_memory(
     runtime_internal: &Rc<RuntimeInternal>,
     address: &RawInternalPointerAddress,
-) -> Result<ValueContainer, ExecutionError> {
+) -> Result<SharedContainer, ExecutionError> {
     let pointer_address = PointerAddress::Referenced(
         ReferencedPointerAddress::Internal(address.id),
     );
     let memory = runtime_internal.memory.borrow();
     if let Some(reference) = memory.get_reference(&pointer_address) {
-        Ok(ValueContainer::Shared(reference.clone()))
+        Ok(reference.clone())
     } else {
         Err(ExecutionError::ReferenceNotFound)
     }
@@ -263,6 +279,9 @@ mod tests {
     use binrw::meta::EndianKind::Runtime;
     use core::assert_matches;
     use log::{debug, info};
+    use crate::runtime::execution::execution_input::ExecutionCallerMetadata;
+    use crate::shared_values::shared_container::SharedContainerInner;
+    use crate::shared_values::shared_value_container::SharedValueContainer;
 
     fn execute_datex_script_debug(
         datex_script: &str,
@@ -271,6 +290,7 @@ mod tests {
             compile_script(datex_script, CompileOptions::default()).unwrap();
         let context = ExecutionInput::new(
             &dxb,
+            ExecutionCallerMetadata::local_default(),
             ExecutionOptions { verbose: true },
             Rc::new(RuntimeInternal::stub()),
         );
@@ -289,6 +309,7 @@ mod tests {
                 ExecutionContext::Local(LocalExecutionContext::new(
                     ExecutionMode::unbounded(),
                     Rc::new(RuntimeInternal::stub()),
+                    ExecutionCallerMetadata::local_default(),
                 ));
             let mut compilation_scope =
                 CompilationScope::new(ExecutionMode::unbounded());
@@ -335,6 +356,7 @@ mod tests {
             compile_script(datex_script, CompileOptions::default()).unwrap();
         let context = ExecutionInput::new(
             &dxb,
+            ExecutionCallerMetadata::local_default(),
             ExecutionOptions { verbose: true },
             Rc::new(RuntimeInternal::stub()),
         );
@@ -352,6 +374,7 @@ mod tests {
     ) -> Result<Option<ValueContainer>, ExecutionError> {
         let context = ExecutionInput::new(
             dxb_body,
+            ExecutionCallerMetadata::local_default(),
             ExecutionOptions { verbose: true },
             Rc::new(RuntimeInternal::stub()),
         );
@@ -369,6 +392,7 @@ mod tests {
                         .unwrap();
                 let context = ExecutionInput::new(
                     &dxb,
+                    ExecutionCallerMetadata::local_default(),
                     ExecutionOptions { verbose: true },
                     runtime.internal,
                 );
@@ -666,12 +690,71 @@ mod tests {
     }
 
     #[test]
-    fn shared_assignment() {
+    fn shared_assignment_mut_ref_to_mut() {
         let result = execute_datex_script_debug_with_result(
+            "const x = 'mut shared mut 42; x",
+        );
+        assert_matches!(result, ValueContainer::Shared(SharedContainer {
+            reference_mutability: Some(PointerReferenceMutability::Mutable),
+            value: SharedContainerInner::Value(ref value),
+        }) if value.borrow().mutability.clone() == SharedContainerMutability::Mutable);
+        assert_value_eq!(result, ValueContainer::from(Integer::from(42)));
+    }
+
+    #[test]
+    fn shared_assignment_immut_ref_to_mut() {
+        let result = execute_datex_script_debug_with_result(
+            "const x = 'shared mut 42; x",
+        );
+        assert_matches!(result, ValueContainer::Shared(SharedContainer {
+            reference_mutability: Some(PointerReferenceMutability::Immutable),
+            value: SharedContainerInner::Value(ref value),
+        }) if value.borrow().mutability.clone() == SharedContainerMutability::Mutable);
+        assert_value_eq!(result, ValueContainer::from(Integer::from(42)));
+    }
+
+    #[test]
+    fn shared_assignment_immut_ref() {
+        let result = execute_datex_script_debug_with_result(
+            "const x = 'shared 42; x",
+        );
+        assert_matches!(result, ValueContainer::Shared(SharedContainer {
+            reference_mutability: Some(PointerReferenceMutability::Immutable),
+            value: SharedContainerInner::Value(ref value),
+        }) if value.borrow().mutability.clone() == SharedContainerMutability::Immutable);
+        assert_value_eq!(result, ValueContainer::from(Integer::from(42)));
+    }
+
+    #[test]
+    fn shared_assignment_immut() {
+        let result = execute_datex_script_debug_with_result(
+            "const x = shared 42; x",
+        );
+        assert_matches!(result, ValueContainer::Shared(SharedContainer {
+            reference_mutability: None,
+            value: SharedContainerInner::Value(ref value),
+        }) if value.borrow().mutability.clone() == SharedContainerMutability::Immutable);
+        assert_value_eq!(result, ValueContainer::from(Integer::from(42)));
+    }
+
+    #[test]
+    fn shared_assignment_mut() {
+        let result = execute_datex_script_debug_with_result(
+            "const x = shared mut 42; x",
+        );
+        assert_matches!(result, ValueContainer::Shared(SharedContainer {
+            reference_mutability: None,
+            value: SharedContainerInner::Value(ref value),
+        }) if value.borrow().mutability.clone() == SharedContainerMutability::Mutable);
+        assert_value_eq!(result, ValueContainer::from(Integer::from(42)));
+    }
+
+    #[test]
+    fn shared_assignment_mut_ref_to_immut() {
+        let result = execute_datex_script_debug_with_error(
             "const x = 'mut shared 42; x",
         );
-        assert_matches!(result, ValueContainer::Shared(..));
-        assert_value_eq!(result, ValueContainer::from(Integer::from(42)));
+        assert_matches!(result, Err(ExecutionError::MutableReferenceToNonMutableValue));
     }
 
     #[test]
@@ -774,16 +857,22 @@ mod tests {
             vec!["1", "integer", "integer"],
             vec![
                 Some(Integer::from(1).into()),
-                Some(ValueContainer::Shared(SharedContainer::Type(
-                    get_core_lib_type_reference(CoreLibPointerId::Integer(
-                        None,
-                    )),
-                ))),
-                Some(ValueContainer::Shared(SharedContainer::Type(
-                    get_core_lib_type_reference(CoreLibPointerId::Integer(
-                        None,
-                    )),
-                ))),
+                Some(ValueContainer::Shared(SharedContainer {
+                    value: SharedContainerInner::Type(
+                        get_core_lib_type_reference(CoreLibPointerId::Integer(
+                            None,
+                        )),
+                    ),
+                    reference_mutability: None,
+                })),
+                Some(ValueContainer::Shared(SharedContainer {
+                    value: SharedContainerInner::Type(
+                        get_core_lib_type_reference(CoreLibPointerId::Integer(
+                            None,
+                        )),
+                    ),
+                    reference_mutability: None,
+                })),
             ],
         )
     }

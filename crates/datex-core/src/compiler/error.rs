@@ -23,17 +23,21 @@ pub enum CompilerError {
     InvalidPlaceholderCount,
     TooManyApplyArguments, // more than 255 arguments
     NonStaticValue,
+    SharedRefToNonSharedValue,
     UndeclaredVariable(String),
     InvalidRedeclaration(String),
     SubvariantNotFound(String, String),
     ScopePopError,
     InvalidSlotName(String),
     AssignmentToConst(String),
+    AssignmentToExternalVariable(String),
     AssignmentToImmutableReference(String),
     AssignmentToImmutableValue(String),
     OnceScopeUsedMultipleTimes,
     TypeError(TypeError),
     ParserError(ParserError),
+    SharedMutRefToImmutableValue,
+    InvalidConversionFromRefToOwnedValue,
 }
 
 /// A compiler error that can be linked to a specific span in the source code
@@ -300,6 +304,12 @@ impl Display for CompilerError {
             CompilerError::AssignmentToConst(name) => {
                 core::write!(f, "Cannot assign new value to const {name}")
             }
+            CompilerError::AssignmentToExternalVariable(name) => {
+                core::write!(
+                    f,
+                    "Cannot assign new value to external variable {name}"
+                )
+            }
             CompilerError::OnceScopeUsedMultipleTimes => {
                 core::write!(
                     f,
@@ -322,6 +332,24 @@ impl Display for CompilerError {
                 core::write!(
                     f,
                     "Apply has too many arguments (max 255 allowed)"
+                )
+            }
+            CompilerError::SharedRefToNonSharedValue => {
+                core::write!(
+                    f,
+                    "Cannot create shared reference to non-shared value"
+                )
+            }
+            CompilerError::SharedMutRefToImmutableValue => {
+                core::write!(
+                    f,
+                    "Cannot create shared mutable reference to immutable value"
+                )
+            }
+            CompilerError::InvalidConversionFromRefToOwnedValue => {
+                core::write!(
+                    f,
+                    "Cannot convert reference to owned value without cloning or moving"
                 )
             }
         }

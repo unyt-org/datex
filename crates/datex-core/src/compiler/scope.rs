@@ -11,6 +11,7 @@ use crate::{
     runtime::execution::context::ExecutionMode,
 };
 use core::cell::RefCell;
+use crate::global::protocol_structures::external_slot_type::ExternalSlotType;
 
 #[derive(Debug, Default, Clone)]
 pub struct PrecompilerData {
@@ -102,28 +103,48 @@ impl CompilationScope {
         slot_address
     }
 
-    // Returns the virtual slot address for a variable in this scope or potentially in the parent scope.
-    // The returned tuple contains the slot address, variable type, and a boolean indicating if it
-    // is a local variable (false) or from a parent scope (true).
+    /// Returns the virtual slot address for a variable in this scope or potentially in the parent scope.
+    /// The returned tuple contains the slot address, variable type, and a boolean indicating if it
+    /// is a local variable (false) or from a parent scope (true).
+    /// Returns an error if the variables comes from an external parent scope, but no slot type is provided to downgrade the virtual slot.
     pub fn resolve_variable_name_to_virtual_slot(
         &self,
         name: &str,
-    ) -> Option<(VirtualSlot, VariableKind)> {
+        slot_type: Option<ExternalSlotType>,
+    ) -> Result<Option<(VirtualSlot, VariableKind)>, ()> {
         if let Some(variable) = self.variables.get(name) {
             let slot = match variable.representation {
                 VariableRepresentation::Constant(slot) => slot,
                 VariableRepresentation::VariableSlot(slot) => slot,
             };
-            Some((slot, variable.kind))
+            Ok(Some((slot, variable.kind)))
         } else if let Some(external_parent) = &self.external_parent_scope {
-            external_parent
-                .resolve_variable_name_to_virtual_slot(name)
-                .map(|(virt_slot, var_type)| (virt_slot.downgrade(), var_type))
+            if let Some(slot_type) = slot_type {
+                Ok(
+                    external_parent
+                        .resolve_variable_name_to_virtual_slot(name, Some(slot_type))?
+                        .map(|(virt_slot, var_type)| (virt_slot.downgrade(slot_type), var_type))
+                )
+            }
+            else {
+                Err(())
+            }
         } else if let Some(parent) = &self.parent_scope {
-            parent.resolve_variable_name_to_virtual_slot(name)
+            parent.resolve_variable_name_to_virtual_slot(name, slot_type)
         } else {
-            None
+            Ok(None)
         }
+    }
+
+    /// Returns the virtual slot address for a variable in this scope or potentially in the parent scope.
+    /// The returned tuple contains the slot address, variable type, and a boolean indicating if it
+    /// is a local variable (false) or from a parent scope (true).
+    pub fn resolve_variable_name_to_virtual_slot_with_slot_type(
+        &self,
+        name: &str,
+        slot_type: ExternalSlotType,
+    ) -> Option<(VirtualSlot, VariableKind)> {
+        self.resolve_variable_name_to_virtual_slot(name, Some(slot_type)).unwrap()
     }
 
     /// Creates a new `CompileScope` that is a child of the current scope.

@@ -17,6 +17,7 @@ use crate::{
 use core::{fmt::Display, result::Result};
 
 use crate::{prelude::*, shared_values::pointer_address::PointerAddress};
+use crate::shared_values::pointer_address::OwnedPointerAddress;
 
 #[derive(Debug)]
 pub enum DIFObserveError {
@@ -172,14 +173,14 @@ pub trait DIFInterface {
         value: DIFValueContainer,
     ) -> Result<DIFValueContainer, DIFApplyError>;
 
-    /// Creates a new pointer and stores it in memory.
+    /// Creates a new owned local pointer and stores it in memory.
     /// Returns the address of the newly created pointer.
     fn create_pointer(
         &self,
         value: DIFValueContainer,
         allowed_type: Option<DIFTypeDefinition>,
         mutability: SharedContainerMutability,
-    ) -> Result<PointerAddress, DIFCreatePointerError>;
+    ) -> Result<OwnedPointerAddress, DIFCreatePointerError>;
 
     /// Resolves a pointer address of a pointer that may not be in memory.
     /// If the pointer is not in memory, it will be loaded from external storage.

@@ -38,6 +38,14 @@ use crate::{
 use alloc::rc::Rc;
 use core::{cell::RefCell, pin::Pin, slice};
 use log::{debug, error, info};
+use crate::global::protocol_structures::instructions::RawLocalPointerAddress;
+use crate::runtime::execution::execution_input::ExecutionCallerMetadata;
+use crate::runtime::execution::InvalidProgramError;
+use crate::runtime::request_move::compile_request_move;
+use crate::shared_values::pointer_address::{OwnedPointerAddress, PointerAddress, ReferencedPointerAddress};
+use crate::shared_values::shared_container::SharedContainer;
+use crate::values::core_value::CoreValue;
+use crate::values::value::Value;
 
 #[derive(Debug)]
 pub struct RuntimeInternal {
@@ -69,7 +77,7 @@ macro_rules! get_execution_context {
                 context
             },
             None => {
-               &mut ExecutionContext::local(ExecutionMode::Static, $self_rc.clone())
+               &mut ExecutionContext::local(ExecutionMode::Static, $self_rc.clone(), ExecutionCallerMetadata::local_default())
             }
         }
     };
@@ -166,13 +174,13 @@ impl RuntimeInternal {
 
     #[cfg(feature = "compiler")]
     pub async fn execute(
-        self_rc: Rc<RuntimeInternal>,
+        self: Rc<RuntimeInternal>,
         script: &str,
         inserted_values: &[ValueContainer],
         execution_context: Option<&mut ExecutionContext>,
     ) -> Result<Option<ValueContainer>, ScriptExecutionError> {
         let execution_context =
-            get_execution_context!(self_rc, execution_context);
+            get_execution_context!(self, execution_context);
         let compile_start = Instant::now();
         let dxb = execution_context.compile(script, inserted_values)?;
         debug!(
@@ -181,7 +189,7 @@ impl RuntimeInternal {
         );
         let execute_start = Instant::now();
         let result = RuntimeInternal::execute_dxb(
-            self_rc,
+            self,
             dxb,
             Some(execution_context),
             true,
@@ -197,13 +205,13 @@ impl RuntimeInternal {
 
     #[cfg(feature = "compiler")]
     pub fn execute_sync(
-        self_rc: Rc<RuntimeInternal>,
+        self: Rc<RuntimeInternal>,
         script: &str,
         inserted_values: &[ValueContainer],
         execution_context: Option<&mut ExecutionContext>,
     ) -> Result<Option<ValueContainer>, ScriptExecutionError> {
         let execution_context =
-            get_execution_context!(self_rc, execution_context);
+            get_execution_context!(self, execution_context);
         let compile_start = Instant::now();
         let dxb = execution_context.compile(script, inserted_values)?;
         debug!(
@@ -212,7 +220,7 @@ impl RuntimeInternal {
         );
         let execute_start = Instant::now();
         let result = RuntimeInternal::execute_dxb_sync(
-            self_rc,
+            self,
             &dxb,
             Some(execution_context),
             true,
@@ -226,8 +234,8 @@ impl RuntimeInternal {
     }
 
     pub fn execute_dxb<'a>(
-        self_rc: Rc<RuntimeInternal>,
-        dxb: Vec<u8>,
+        self: Rc<RuntimeInternal>,
+        dxb_body: Vec<u8>,
         execution_context: Option<&'a mut ExecutionContext>,
         _end_execution: bool,
     ) -> Pin<
@@ -238,26 +246,26 @@ impl RuntimeInternal {
     > {
         Box::pin(async move {
             let execution_context =
-                get_execution_context!(self_rc, execution_context);
+                get_execution_context!(self, execution_context);
             match execution_context {
                 ExecutionContext::Remote(context) => {
-                    RuntimeInternal::execute_remote(self_rc, context, dxb).await
+                    RuntimeInternal::execute_remote(self, context, dxb_body).await
                 }
                 ExecutionContext::Local(_) => {
-                    execution_context.execute_dxb(&dxb).await
+                    execution_context.execute_dxb(&dxb_body).await
                 }
             }
         })
     }
 
     pub fn execute_dxb_sync(
-        self_rc: Rc<RuntimeInternal>,
+        self: Rc<RuntimeInternal>,
         dxb: &[u8],
         execution_context: Option<&mut ExecutionContext>,
         _end_execution: bool,
     ) -> Result<Option<ValueContainer>, ExecutionError> {
         let execution_context =
-            get_execution_context!(self_rc, execution_context);
+            get_execution_context!(self, execution_context);
         match execution_context {
             ExecutionContext::Remote(_) => {
                 Err(ExecutionError::RequiresAsyncExecution)
@@ -272,26 +280,30 @@ impl RuntimeInternal {
     /// or creates a new one if it doesn't exist.
     /// To reuse the context later, the caller must store it back in the map after use.
     fn take_execution_context(
-        self_rc: Rc<RuntimeInternal>,
+        self: Rc<RuntimeInternal>,
         context_id: &IncomingEndpointContextSectionId,
+        incoming_section: &IncomingSection,
     ) -> ExecutionContext {
-        let mut execution_contexts = self_rc.execution_contexts.borrow_mut();
+        let mut execution_contexts = self.execution_contexts.borrow_mut();
         // get execution context by context_id or create a new one if it doesn't exist
         let execution_context = execution_contexts.remove(context_id);
         if let Some(context) = execution_context {
             context
         } else {
-            ExecutionContext::local(ExecutionMode::unbounded(), self_rc.clone())
+            let caller_metadata = ExecutionCallerMetadata {
+                endpoint: incoming_section.get_sender(),
+            };
+            ExecutionContext::local(ExecutionMode::unbounded(), self.clone(), caller_metadata)
         }
     }
 
     pub async fn execute_remote(
-        self_rc: Rc<RuntimeInternal>,
+        self: Rc<RuntimeInternal>,
         remote_execution_context: &mut RemoteExecutionContext,
-        dxb: Vec<u8>,
+        dxb_body: Vec<u8>,
     ) -> Result<Option<ValueContainer>, ExecutionError> {
         let routing_header: RoutingHeader = RoutingHeader::default()
-            .with_sender(self_rc.endpoint.clone())
+            .with_sender(self.endpoint.clone())
             .to_owned();
 
         // get existing context_id for context, or create a new one
@@ -299,7 +311,7 @@ impl RuntimeInternal {
             remote_execution_context.context_id.unwrap_or_else(|| {
                 // if the context_id is not set, we create a new one
                 remote_execution_context.context_id =
-                    Some(self_rc.com_hub.block_handler.get_new_context_id());
+                    Some(self.com_hub.block_handler.get_new_context_id());
                 remote_execution_context.context_id.unwrap()
             });
 
@@ -310,24 +322,24 @@ impl RuntimeInternal {
         let encrypted_header = EncryptedHeader::default();
 
         let mut block =
-            DXBBlock::new(routing_header, block_header, encrypted_header, dxb);
+            DXBBlock::new(routing_header, block_header, encrypted_header, dxb_body);
 
         block
             .set_receivers(slice::from_ref(&remote_execution_context.endpoint));
 
-        let response = self_rc
+        let response = self
             .com_hub
             .send_own_block_await_response(block, ResponseOptions::default())
             .await
             .remove(0)?;
         let incoming_section = response.take_incoming_section();
-        RuntimeInternal::execute_incoming_section(self_rc, incoming_section)
+        RuntimeInternal::execute_incoming_section(self, incoming_section)
             .await
             .0
     }
 
     pub(crate) async fn execute_incoming_section(
-        self_rc: Rc<RuntimeInternal>,
+        self: Rc<RuntimeInternal>,
         mut incoming_section: IncomingSection,
     ) -> (
         Result<Option<ValueContainer>, ExecutionError>,
@@ -337,7 +349,7 @@ impl RuntimeInternal {
         let section_context_id =
             incoming_section.get_section_context_id().clone();
         let mut context =
-            Self::take_execution_context(self_rc.clone(), &section_context_id);
+            Self::take_execution_context(self.clone(), &section_context_id, &incoming_section);
         info!(
             "Executing incoming section with index: {}",
             incoming_section.get_section_index()
@@ -351,7 +363,7 @@ impl RuntimeInternal {
             let block = incoming_section.next().await;
             if let Some(block) = block {
                 let res = RuntimeInternal::execute_dxb_block_local(
-                    self_rc.clone(),
+                    self.clone(),
                     block.clone(),
                     Some(&mut context),
                 )
@@ -379,7 +391,7 @@ impl RuntimeInternal {
 
         // insert the context back into the map for future use
         // TODO #638: is this needed or can we drop the context after execution here?
-        self_rc
+        self
             .execution_contexts
             .borrow_mut()
             .insert(section_context_id, context);
@@ -388,12 +400,12 @@ impl RuntimeInternal {
     }
 
     async fn execute_dxb_block_local(
-        self_rc: Rc<RuntimeInternal>,
+        self: Rc<RuntimeInternal>,
         block: DXBBlock,
         execution_context: Option<&mut ExecutionContext>,
     ) -> Result<Option<ValueContainer>, ExecutionError> {
         let execution_context =
-            get_execution_context!(self_rc, execution_context);
+            get_execution_context!(self, execution_context);
         // assert that the execution context is local
         if !core::matches!(execution_context, ExecutionContext::Local(_)) {
             unreachable!(
@@ -404,12 +416,58 @@ impl RuntimeInternal {
         let end_execution =
             block.block_header.flags_and_timestamp.is_end_of_section();
         RuntimeInternal::execute_dxb(
-            self_rc,
+            self,
             dxb,
             Some(execution_context),
             end_execution,
         )
         .await
+    }
+
+    /// Request to move a list of external pointers from an endpoint to the local endpoint
+    /// This only works if the local endpoint has the permission to move the pointers, either because
+    /// it was allowed via a PERFORM_MOVE from the remote endpoint, or because the local endpoint has
+    /// extended permissions
+    pub(crate) async fn request_pointer_move(
+        self: Rc<RuntimeInternal>,
+        from_endpoint: &Endpoint,
+        addresses: Vec<RawLocalPointerAddress>,
+    ) -> Result<Vec<ValueContainer>, ExecutionError> {
+        let pointer_mapping = addresses.into_iter().map(|original| {
+            (original, RawLocalPointerAddress {id: self.memory.borrow_mut().get_new_owned_local_pointer().address().address})
+        }).collect::<Vec<_>>();
+        let body = compile_request_move(pointer_mapping);
+        let moved_values = self.execute_dxb(
+            body,
+            Some(&mut ExecutionContext::Remote(RemoteExecutionContext::new(from_endpoint.clone(), ExecutionMode::Static))),
+            true
+        ).await?;
+        // moved values should be list
+        match moved_values {
+            Some(ValueContainer::Local(Value {inner: CoreValue::List(list), ..})) => {
+                Ok(list.into_vec())
+            }
+            _ => Err(ExecutionError::InvalidProgram(InvalidProgramError::ExpectedValue))
+        }
+    }
+
+    pub(crate) fn handle_pointer_move_to_remote(
+        self: Rc<RuntimeInternal>,
+        from_endpoint: &Endpoint,
+        pointer_mapping: Vec<(RawLocalPointerAddress, RawLocalPointerAddress)>,
+    ) -> Result<Vec<SharedContainer>, ExecutionError> {
+        let values = pointer_mapping.into_iter().map(|(original, new)| {
+            let original_address = OwnedPointerAddress::new(original.id);
+            let new_address = ReferencedPointerAddress::remote_for_endpoint(from_endpoint, new.id);
+            // TODO: add moving_pointers map and check if from_endpoint is actually allowed to perform the moves
+            // let shared_container = self.moving_pointers.get(&original_address.into()).ok_or(())?;
+            // shared_container.move_to_remote(new_address)?;
+            // Ok(shared_container.clone())
+            todo!()
+        })
+            .collect::<Result<Vec<_>, ()>>()
+            .map_err(|_| ExecutionError::ExpectedSharedValue)?; // TODO: better error
+        Ok(values)
     }
 
     pub fn get_env(&self) -> HashMap<String, String> {

@@ -21,6 +21,7 @@ use indexmap::IndexMap;
 use itertools::Itertools;
 use json_syntax::Parse;
 use std::path::PathBuf;
+use datex_core::runtime::execution::execution_input::ExecutionCallerMetadata;
 
 fn json_value_to_datex_value(json: &json_syntax::Value) -> Value {
     match json {
@@ -75,6 +76,7 @@ fn compare_datex_result_with_json(json_string: &str) {
         compile_script(json_string, CompileOptions::default()).unwrap();
     let exec_input = ExecutionInput::new(
         &dxb,
+        ExecutionCallerMetadata::local_default(),
         ExecutionOptions {
             verbose: false,
             ..ExecutionOptions::default()

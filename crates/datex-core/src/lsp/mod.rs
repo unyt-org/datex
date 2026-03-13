@@ -6,7 +6,7 @@ use core::cell::RefCell;
 
 use crate::{
     ast::expressions::{
-        DatexExpressionData, VariableAccess, VariableAssignment,
+        DatexExpressionData, VariableAccess, ValueAccessType, VariableAssignment,
         VariableDeclaration,
     },
     collections::HashMap,
@@ -188,15 +188,31 @@ impl LanguageServer for LanguageServerBackend {
                     VariableAssignment {
                         name, id: Some(id), ..
                     },
-                )
-                | DatexExpressionData::VariableAccess(VariableAccess {
-                    id,
-                    name,
-                }) => {
+                ) => {
                     let variable_metadata =
                         self.get_variable_by_id(id).unwrap();
                     Some(self.get_language_string_hover(&format!(
                         "{} {}: {}",
+                        variable_metadata.shape,
+                        name,
+                        variable_metadata.var_type.unwrap_or(Type::unknown())
+                    )))
+                }
+
+                DatexExpressionData::VariableAccess(VariableAccess {
+                    id,
+                    name,
+                    access_type,
+                }) => {
+                    let variable_metadata =
+                        self.get_variable_by_id(id).unwrap();
+                    Some(self.get_language_string_hover(&format!(
+                        "{}{} {}: {}",
+                        match access_type {
+                            ValueAccessType::SharedRef => "'",
+                            ValueAccessType::SharedRefMut => "'mut ",
+                            _ => "",
+                        },
                         variable_metadata.shape,
                         name,
                         variable_metadata.var_type.unwrap_or(Type::unknown())
@@ -281,6 +297,7 @@ impl LanguageServer for LanguageServerBackend {
                 DatexExpressionData::VariableAccess(VariableAccess {
                     id,
                     name: _,
+                    ..
                 }) => {
                     let uri =
                         params.text_document_position_params.text_document.uri;
@@ -415,54 +432,57 @@ mod tests {
         io::{AsyncReadExt, AsyncWriteExt, duplex},
         time::{Duration, timeout},
     };
+    use tokio::task::LocalSet;
 
     #[tokio::test(flavor = "current_thread")]
     async fn test_lsp_initialization() {
-        RuntimeRunner::new(RuntimeConfig::new_with_endpoint(
-            Endpoint::from_str("@lspler").unwrap(),
-        ))
-        .run(async |runtime| {
-            let (mut client_read, server_write) = duplex(1024);
-            let (server_read, mut client_write) = duplex(1024);
+        LocalSet::new().run_until(async move {
+            RuntimeRunner::new(RuntimeConfig::new_with_endpoint(
+                Endpoint::from_str("@lspler").unwrap(),
+            ))
+                .run(async |runtime| {
+                    let (mut client_read, server_write) = duplex(1024);
+                    let (server_read, mut client_write) = duplex(1024);
 
-            let lsp_future = create_lsp(runtime, server_read, server_write);
-            let lsp_handle = tokio::task::spawn_local(lsp_future);
+                    let lsp_future = create_lsp(runtime, server_read, server_write);
+                    let lsp_handle = tokio::task::spawn_local(lsp_future);
 
-            // Send initialize request
-            let init_body = r#"{
-                    "jsonrpc": "2.0",
-                    "id": 1,
-                    "method": "initialize",
-                    "params": {
-                        "capabilities": {},
-                        "rootUri": null,
-                        "workspaceFolders": null
-                    }
-                }"#;
+                    // Send initialize request
+                    let init_body = r#"{
+                        "jsonrpc": "2.0",
+                        "id": 1,
+                        "method": "initialize",
+                        "params": {
+                            "capabilities": {},
+                            "rootUri": null,
+                            "workspaceFolders": null
+                        }
+                    }"#;
 
-            let init_request = format!(
-                "Content-Length: {}\r\n\r\n{}",
-                init_body.len(),
-                init_body
-            );
+                    let init_request = format!(
+                        "Content-Length: {}\r\n\r\n{}",
+                        init_body.len(),
+                        init_body
+                    );
 
-            client_write
-                .write_all(init_request.as_bytes())
-                .await
-                .unwrap();
+                    client_write
+                        .write_all(init_request.as_bytes())
+                        .await
+                        .unwrap();
 
-            // Read response
-            let mut buffer = vec![0; 1024];
-            let n =
-                timeout(Duration::from_secs(2), client_read.read(&mut buffer))
-                    .await
-                    .unwrap()
-                    .unwrap();
+                    // Read response
+                    let mut buffer = vec![0; 1024];
+                    let n =
+                        timeout(Duration::from_secs(2), client_read.read(&mut buffer))
+                            .await
+                            .unwrap()
+                            .unwrap();
 
-            let response = String::from_utf8_lossy(&buffer[..n]);
-            assert!(response.contains(r#""id":1"#));
-            lsp_handle.abort();
-        })
-        .await;
+                    let response = String::from_utf8_lossy(&buffer[..n]);
+                    assert!(response.contains(r#""id":1"#));
+                    lsp_handle.abort();
+                })
+                .await;
+        }).await;
     }
 }

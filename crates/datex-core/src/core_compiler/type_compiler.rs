@@ -1,5 +1,5 @@
 use crate::{
-    core_compiler::value_compiler::append_get_ref,
+    core_compiler::value_compiler::append_get_shared_ref,
     global::{
         protocol_structures::instructions::TypeMetadataBin,
         type_instruction_codes::TypeInstructionCode,
@@ -44,7 +44,7 @@ pub fn append_type_definition(
 
             // Append each impl address
             for impl_type in impls {
-                append_get_ref(
+                append_get_shared_ref(
                     buffer,
                     impl_type,
                     &PointerReferenceMutability::Immutable,
@@ -57,8 +57,8 @@ pub fn append_type_definition(
         TypeDefinition::SharedReference(type_ref) => {
             // TODO #636: ensure pointer_address exists here
             let type_ref = type_ref.borrow();
-            let pointer_address = type_ref.pointer.address();
-            append_get_ref(
+            let pointer_address = type_ref.pointer().address();
+            append_get_shared_ref(
                 buffer,
                 &pointer_address,
                 &PointerReferenceMutability::Immutable,

@@ -1,7 +1,7 @@
 use crate::{
     ast::expressions::{
         Apply, BinaryOperation, CallableDeclaration, ComparisonOperation,
-        Conditional, CreateMut, CreateRef, CreateShared, CreateSharedRef,
+        Conditional, CreateMut, GetRef, CreateShared, GetSharedRef,
         DatexExpression, DatexExpressionData, GenericInstantiation, List, Map,
         PropertyAccess, PropertyAssignment, RangeDeclaration, RemoteExecution,
         SlotAssignment, Statements, TypeDeclaration, UnaryOperation, Unbox,
@@ -12,6 +12,7 @@ use crate::{
         type_expression::visitable::VisitableTypeExpression,
     },
 };
+use crate::ast::expressions::{CloneExpression, UnboxSlotAssignment};
 
 pub type ExpressionVisitResult<E> = Result<VisitAction<DatexExpression>, E>;
 
@@ -150,6 +151,17 @@ impl<E> VisitableExpression<E> for UnboxAssignment {
         Ok(())
     }
 }
+
+impl<E> VisitableExpression<E> for UnboxSlotAssignment {
+    fn walk_children(
+        &mut self,
+        visitor: &mut impl ExpressionVisitor<E>,
+    ) -> Result<(), E> {
+        visitor.visit_datex_expression(&mut self.assigned_expression)?;
+        Ok(())
+    }
+}
+
 impl<E> VisitableExpression<E> for Apply {
     fn walk_children(
         &mut self,
@@ -232,7 +244,7 @@ impl<E> VisitableExpression<E> for Unbox {
     }
 }
 
-impl<E> VisitableExpression<E> for CreateRef {
+impl<E> VisitableExpression<E> for CloneExpression {
     fn walk_children(
         &mut self,
         visitor: &mut impl ExpressionVisitor<E>,
@@ -242,7 +254,17 @@ impl<E> VisitableExpression<E> for CreateRef {
     }
 }
 
-impl<E> VisitableExpression<E> for CreateSharedRef {
+impl<E> VisitableExpression<E> for GetRef {
+    fn walk_children(
+        &mut self,
+        visitor: &mut impl ExpressionVisitor<E>,
+    ) -> Result<(), E> {
+        visitor.visit_datex_expression(&mut self.expression)?;
+        Ok(())
+    }
+}
+
+impl<E> VisitableExpression<E> for GetSharedRef {
     fn walk_children(
         &mut self,
         visitor: &mut impl ExpressionVisitor<E>,
@@ -319,10 +341,10 @@ impl<E> VisitableExpression<E> for DatexExpression {
             DatexExpressionData::CallableDeclaration(function_declaration) => {
                 function_declaration.walk_children(visitor)
             }
-            DatexExpressionData::CreateRef(create_ref) => {
+            DatexExpressionData::GetRef(create_ref) => {
                 create_ref.walk_children(visitor)
             }
-            DatexExpressionData::CreateSharedRef(create_shared_ref) => {
+            DatexExpressionData::GetSharedRef(create_shared_ref) => {
                 create_shared_ref.walk_children(visitor)
             }
             DatexExpressionData::CreateShared(create_ref) => {
@@ -334,6 +356,9 @@ impl<E> VisitableExpression<E> for DatexExpression {
             DatexExpressionData::Unbox(datex_expression) => {
                 datex_expression.walk_children(visitor)
             }
+            DatexExpressionData::Clone(datex_expression) => {
+                datex_expression.walk_children(visitor)
+            }
             DatexExpressionData::SlotAssignment(slot_assignment) => {
                 slot_assignment.walk_children(visitor)
             }
@@ -342,6 +367,9 @@ impl<E> VisitableExpression<E> for DatexExpression {
             }
             DatexExpressionData::UnboxAssignment(unbox_assignment) => {
                 unbox_assignment.walk_children(visitor)
+            }
+            DatexExpressionData::UnboxSlotAssignment(unbox_slot_assignment) => {
+                unbox_slot_assignment.walk_children(visitor)
             }
             DatexExpressionData::UnaryOperation(unary_operation) => {
                 unary_operation.walk_children(visitor)
@@ -368,9 +396,9 @@ impl<E> VisitableExpression<E> for DatexExpression {
             | DatexExpressionData::NativeImplementationIndicator
             | DatexExpressionData::VariantAccess(_)
             | DatexExpressionData::VariableAccess(_)
-            | DatexExpressionData::GetSharedRef(_)
+            | DatexExpressionData::RequestSharedRef(_)
             | DatexExpressionData::Slot(_)
-            | DatexExpressionData::Placeholder
+            | DatexExpressionData::Placeholder(_)
             | DatexExpressionData::Recover
             | DatexExpressionData::Null
             | DatexExpressionData::Boolean(_)

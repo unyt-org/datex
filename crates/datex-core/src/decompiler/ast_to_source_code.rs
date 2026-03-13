@@ -21,6 +21,7 @@ use crate::{
     shared_values::pointer::PointerReferenceMutability,
     values::core_values::r#type::LocalReferenceMutability,
 };
+use crate::ast::expressions::{UnboxSlotAssignment, ValueAccessType};
 
 #[derive(Clone, Default)]
 pub enum BraceStyle {
@@ -529,7 +530,7 @@ impl AstToSourceCodeConverter {
             DatexExpressionData::Identifier(l) => l.to_string(),
             DatexExpressionData::Map(map) => self.map_to_source_code(map),
             DatexExpressionData::List(list) => self.list_to_source_code(list),
-            DatexExpressionData::CreateRef(create_ref) => {
+            DatexExpressionData::GetRef(create_ref) => {
                 match &create_ref.mutability {
                     LocalReferenceMutability::Mutable => {
                         format!("&mut {}", self.format(&create_ref.expression))
@@ -539,7 +540,7 @@ impl AstToSourceCodeConverter {
                     }
                 }
             }
-            DatexExpressionData::CreateSharedRef(create_shared_ref) => {
+            DatexExpressionData::GetSharedRef(create_shared_ref) => {
                 match &create_shared_ref.mutability {
                     PointerReferenceMutability::Mutable => {
                         format!(
@@ -627,7 +628,7 @@ impl AstToSourceCodeConverter {
                     .collect();
                 statements_code.join("")
             }
-            DatexExpressionData::GetSharedRef(get_shared_ref) => {
+            DatexExpressionData::RequestSharedRef(get_shared_ref) => {
                 format!(
                     "{}{}",
                     match get_shared_ref.mutability {
@@ -763,6 +764,9 @@ impl AstToSourceCodeConverter {
             DatexExpressionData::Unbox(unbox) => {
                 format!("*{}", self.format(&unbox.expression))
             }
+            DatexExpressionData::Clone(clone) => {
+                format!("clone {}", self.format(&clone.expression))
+            }
             DatexExpressionData::Slot(slot) => slot.to_string(),
             DatexExpressionData::SlotAssignment(SlotAssignment {
                 slot,
@@ -796,6 +800,20 @@ impl AstToSourceCodeConverter {
                     self.format(assigned_expression)
                 )
             }
+            DatexExpressionData::UnboxSlotAssignment(UnboxSlotAssignment {
+                 operator,
+                 slot,
+                 assigned_expression,
+             }) => {
+                let unbox_prefix = "*";
+                ast_fmt!(
+                    &self,
+                    "{}{}%s{operator}%s{}",
+                    unbox_prefix,
+                    slot.to_string(),
+                    self.format(assigned_expression)
+                )
+            }
             DatexExpressionData::UnaryOperation(unary_operation) => {
                 format!(
                     "{}{}",
@@ -803,7 +821,15 @@ impl AstToSourceCodeConverter {
                     self.format(&unary_operation.expression)
                 )
             }
-            DatexExpressionData::Placeholder => "?".to_string(),
+            DatexExpressionData::Placeholder(placeholder_type) => {
+                match placeholder_type {
+                    ValueAccessType::SharedRef => "'?".to_string(),
+                    ValueAccessType::SharedRefMut => "'mut ?".to_string(),
+                    ValueAccessType::MoveOrCopy => "?".to_string(),
+                    ValueAccessType::Clone => "clone ?".to_string(),
+                    ValueAccessType::Borrow => "?".to_string(),
+                }
+            }
             DatexExpressionData::RemoteExecution(RemoteExecution {
                 left,
                 right,
@@ -852,6 +878,7 @@ mod tests {
         parser::Parser,
         values::core_values::decimal::Decimal,
     };
+    use crate::ast::expressions::ValueAccessType;
 
     fn compact() -> AstToSourceCodeConverter {
         AstToSourceCodeConverter::new(FormattingOptions::compact())
@@ -1075,6 +1102,7 @@ mod tests {
                 DatexExpressionData::VariableAccess(VariableAccess {
                     id: 0,
                     name: "ptr".to_string(),
+                    access_type: ValueAccessType::MoveOrCopy,
                 })
                 .with_default_span(),
             ),
@@ -1091,6 +1119,7 @@ mod tests {
                     DatexExpressionData::VariableAccess(VariableAccess {
                         id: 0,
                         name: "ptr".to_string(),
+                        access_type: ValueAccessType::MoveOrCopy,
                     })
                     .with_default_span(),
                 ),
@@ -1156,6 +1185,7 @@ mod tests {
                     DatexExpressionData::VariableAccess(VariableAccess {
                         id: 0,
                         name: "obj".to_string(),
+                        access_type: ValueAccessType::MoveOrCopy,
                     })
                     .with_default_span(),
                 ),
@@ -1177,6 +1207,7 @@ mod tests {
                     DatexExpressionData::VariableAccess(VariableAccess {
                         id: 0,
                         name: "obj".to_string(),
+                        access_type: ValueAccessType::MoveOrCopy,
                     })
                     .with_default_span(),
                 ),
@@ -1197,6 +1228,7 @@ mod tests {
                     DatexExpressionData::VariableAccess(VariableAccess {
                         id: 0,
                         name: "obj".to_string(),
+                        access_type: ValueAccessType::MoveOrCopy,
                     })
                     .with_default_span(),
                 ),
@@ -1216,6 +1248,7 @@ mod tests {
                 DatexExpressionData::VariableAccess(VariableAccess {
                     id: 0,
                     name: "func".to_string(),
+                    access_type: ValueAccessType::MoveOrCopy,
                 })
                 .with_default_span(),
             ),
@@ -1235,6 +1268,7 @@ mod tests {
                 DatexExpressionData::VariableAccess(VariableAccess {
                     id: 0,
                     name: "func".to_string(),
+                    access_type: ValueAccessType::MoveOrCopy
                 })
                 .with_default_span(),
             ),

@@ -286,7 +286,7 @@ fn get_type_if_non_default(
     match type_definition {
         TypeDefinition::SharedReference(inner) => {
             if let Ok(address) =
-                CoreLibPointerId::try_from(&inner.borrow().pointer.address())
+                CoreLibPointerId::try_from(&inner.borrow().pointer().address())
                 && (core::matches!(
                         address,
                         CoreLibPointerId::Decimal(Some(DecimalTypeVariant::F64))

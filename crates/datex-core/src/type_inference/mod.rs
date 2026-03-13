@@ -13,8 +13,8 @@ use crate::{
     ast::{
         expressions::{
             Apply, BinaryOperation, CallableDeclaration, ComparisonOperation,
-            Conditional, CreateRef, DatexExpression, DatexExpressionData,
-            GenericInstantiation, GetSharedRef, List, Map, PropertyAccess,
+            Conditional, GetRef, DatexExpression, DatexExpressionData,
+            GenericInstantiation, RequestSharedRef, List, Map, PropertyAccess,
             PropertyAssignment, RangeDeclaration, RemoteExecution, Slot,
             SlotAssignment, Statements, TypeDeclaration, UnaryOperation, Unbox,
             UnboxAssignment, VariableAccess, VariableAssignment,
@@ -58,6 +58,7 @@ use crate::{
     },
 };
 use core::{cell::RefCell, ops::Range, panic, str::FromStr};
+use crate::ast::expressions::ValueAccessType;
 
 pub mod error;
 pub mod options;
@@ -549,9 +550,9 @@ fn resolve_type_variant_access(
 }
 
 impl ExpressionVisitor<SpannedTypeError> for TypeInference {
-    fn visit_create_ref(
+    fn visit_get_ref(
         &mut self,
-        create_ref: &mut CreateRef,
+        create_ref: &mut GetRef,
         _: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
         let inner_type = self.infer_expression(&mut create_ref.expression)?;
@@ -1075,10 +1076,10 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
                         span: Some(span.clone()),
                     })?;
 
-                // if it's a TypeReference and it has the pointer address set, we can
+                // if it's a TypeReference, and it has the pointer address set, we can
                 // remap the expression to a GetReference
                 if let Some(reference) = base_type.inner_reference() {
-                    Ok(reference.borrow().pointer.address())
+                    Ok(reference.borrow().pointer().address())
                 } else {
                     Err(SpannedTypeError {
                         error: TypeError::Unimplemented(
@@ -1102,7 +1103,7 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
             span: Some(span.clone()),
         })?;
         Ok(VisitAction::ReplaceRecurse(DatexExpression::new(
-            DatexExpressionData::GetSharedRef(GetSharedRef {
+            DatexExpressionData::RequestSharedRef(RequestSharedRef {
                 address: variant_type,
                 mutability: PointerReferenceMutability::Immutable,
             }),
@@ -1131,6 +1132,7 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
     }
     fn visit_placeholder(
         &mut self,
+        _placeholder_type: &mut ValueAccessType,
         _span: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
         Ok(VisitAction::SkipChildren)
@@ -1176,9 +1178,9 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
         }
         mark_type(assigned_type)
     }
-    fn visit_get_shared_reference(
+    fn visit_request_shared_reference(
         &mut self,
-        shared_ref: &mut GetSharedRef,
+        shared_ref: &mut RequestSharedRef,
         span: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
         match &shared_ref.address {

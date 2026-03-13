@@ -8,6 +8,7 @@ use crate::{
         value_container::ValueContainer,
     },
 };
+use crate::runtime::execution::execution_input::ExecutionCallerMetadata;
 
 #[tokio::test]
 #[cfg(feature = "compiler")]
@@ -64,7 +65,7 @@ pub async fn test_remote_execution_persistent_context() {
             // execute script remotely on @test_b
             let result = runtime_a
                 .execute(
-                    "const x = 10; x",
+                    "const x = 10; clone x", // FIXME: auto copy for integer?
                     &[],
                     Some(&mut remote_execution_context),
                 )
@@ -101,6 +102,7 @@ pub async fn test_remote_inline() {
             let mut execution_context = ExecutionContext::local(
                 ExecutionMode::unbounded(),
                 runtime_a.internal.clone(),
+                ExecutionCallerMetadata::local_default(),
             );
 
             // execute script remotely on @test_b
@@ -139,7 +141,6 @@ pub async fn test_remote_inline_implicit_context() {
 
 #[tokio::test]
 #[cfg(feature = "compiler")]
-#[ignore = "This test currently fails because shared values are not yet supported in remote execution contexts."]
 pub async fn test_remote_shared_value() {
     flexi_logger::init();
     let endpoint_a = Endpoint::new("@test_a");

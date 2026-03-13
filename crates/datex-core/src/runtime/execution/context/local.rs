@@ -9,6 +9,8 @@ use crate::runtime::{
 };
 
 use crate::prelude::*;
+use crate::runtime::execution::execution_input::ExecutionCallerMetadata;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum ExecutionMode {
     /// A single execution of a program that is completely known at compile time.
@@ -38,12 +40,14 @@ pub struct LocalExecutionContext {
     pub execution_options: ExecutionOptions,
     pub verbose: bool,
     pub execution_mode: ExecutionMode,
+    pub caller_metadata: ExecutionCallerMetadata
 }
 
 impl LocalExecutionContext {
     pub fn new(
         execution_mode: ExecutionMode,
         runtime: Rc<RuntimeInternal>,
+        caller_metadata: ExecutionCallerMetadata
     ) -> Self {
         LocalExecutionContext {
             #[cfg(feature = "compiler")]
@@ -53,6 +57,7 @@ impl LocalExecutionContext {
             execution_options: ExecutionOptions::default(),
             verbose: false,
             execution_mode,
+            caller_metadata
         }
     }
 
@@ -60,6 +65,7 @@ impl LocalExecutionContext {
     pub fn debug(
         execution_mode: ExecutionMode,
         runtime: Rc<RuntimeInternal>,
+        caller_metadata: ExecutionCallerMetadata
     ) -> Self {
         LocalExecutionContext {
             #[cfg(feature = "compiler")]
@@ -69,6 +75,7 @@ impl LocalExecutionContext {
             runtime,
             verbose: true,
             execution_mode,
+            caller_metadata
         }
     }
 
@@ -84,26 +91,36 @@ impl ExecutionContext {
     pub fn local(
         execution_mode: ExecutionMode,
         runtime: Rc<RuntimeInternal>,
+        caller_metadata: ExecutionCallerMetadata
     ) -> Self {
         ExecutionContext::Local(LocalExecutionContext::new(
             execution_mode,
             runtime,
+            caller_metadata
         ))
     }
 
     /// Creates a new local static execution context (can only be used once).
-    pub fn local_static(runtime: Rc<RuntimeInternal>) -> Self {
+    pub fn local_static(
+        runtime: Rc<RuntimeInternal>,
+        caller_metadata: ExecutionCallerMetadata
+    ) -> Self {
         ExecutionContext::Local(LocalExecutionContext::new(
             ExecutionMode::Static,
             runtime,
+            caller_metadata
         ))
     }
 
     /// Creates a new local execution context (can be used multiple times).
-    pub fn local_unbounded(runtime: Rc<RuntimeInternal>) -> Self {
+    pub fn local_unbounded(
+        runtime: Rc<RuntimeInternal>,
+        caller_metadata: ExecutionCallerMetadata
+    ) -> Self {
         ExecutionContext::Local(LocalExecutionContext::new(
             ExecutionMode::Unbounded { has_next: true },
             runtime,
+            caller_metadata
         ))
     }
 
@@ -112,10 +129,12 @@ impl ExecutionContext {
     pub fn local_debug(
         execution_mode: ExecutionMode,
         runtime: Rc<RuntimeInternal>,
+        caller_metadata: ExecutionCallerMetadata
     ) -> Self {
         ExecutionContext::Local(LocalExecutionContext::debug(
             execution_mode,
             runtime,
+            caller_metadata
         ))
     }
 }

@@ -61,10 +61,23 @@ pub struct SharedTypeContainer {
     pub type_value: Type,
     /// optional nominal type declaration
     pub nominal_type_declaration: Option<NominalTypeDeclaration>,
-    pub pointer: Pointer,
+    pub(crate) pointer: Pointer,
 }
 
 impl SharedTypeContainer {
+    
+    pub fn new(
+        type_value: Type,
+        nominal_type_declaration: Option<NominalTypeDeclaration>,
+        pointer: Pointer,
+    ) -> Self {
+        SharedTypeContainer {
+            type_value,
+            nominal_type_declaration,
+            pointer,
+        }
+    }
+    
     pub fn nominal<T>(
         type_value: Type,
         nominal_type_declaration: T,
@@ -106,6 +119,10 @@ impl SharedTypeContainer {
                 self.clone()
             }
         }
+    }
+    
+    pub fn pointer(&self) -> &Pointer {
+        &self.pointer
     }
 }
 

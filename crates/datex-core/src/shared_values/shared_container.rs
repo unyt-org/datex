@@ -35,6 +35,8 @@ use core::{
 };
 use num_enum::TryFromPrimitive;
 use serde::{Deserialize, Serialize};
+use crate::shared_values::pointer::{OwnedPointer, ReferencedPointer};
+use crate::shared_values::pointer_address::{OwnedPointerAddress, ReferencedPointerAddress};
 
 #[derive(Debug)]
 pub struct IndexOutOfBoundsError {
@@ -246,20 +248,47 @@ impl Display for SharedContainerMutability {
     }
 }
 
+
+#[derive(Debug)]
+pub struct SharedContainer {
+    pub(crate) value: SharedContainerInner,
+    pub(crate) reference_mutability: Option<PointerReferenceMutability>,
+}
+
 #[derive(Debug, Clone)]
-pub enum SharedContainer {
+pub enum SharedContainerInner {
     Value(Rc<RefCell<SharedValueContainer>>),
     Type(Rc<RefCell<SharedTypeContainer>>),
 }
 
+// FIXME: try to deprecate clone
+impl Clone for SharedContainer {
+    /// Cloning a shared container will never return an owned value, but always a reference
+    fn clone(&self) -> Self {
+        SharedContainer {
+            value: self.value.clone(),
+            reference_mutability: Some(PointerReferenceMutability::Immutable),
+        }
+    }
+}
+
+
 impl Display for SharedContainer {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        match self {
-            SharedContainer::Value(vr) => {
+        // mutability
+        match self.reference_mutability {
+            Some(PointerReferenceMutability::Mutable) => write!(f, "'mut ")?,
+            Some(PointerReferenceMutability::Immutable) => write!(f, "'")?,
+            None => {}
+        }
+
+        // value
+        match &self.value {
+            SharedContainerInner::Value(vr) => {
                 let vr = vr.borrow();
                 write!(f, "{} {}", vr.mutability, vr.value_container)
             }
-            SharedContainer::Type(tr) => {
+            SharedContainerInner::Type(tr) => {
                 let tr = tr.borrow();
                 write!(f, "{}", tr)
             }
@@ -267,25 +296,15 @@ impl Display for SharedContainer {
     }
 }
 
-impl From<SharedValueContainer> for SharedContainer {
-    fn from(reference: SharedValueContainer) -> Self {
-        SharedContainer::Value(Rc::new(RefCell::new(reference)))
-    }
-}
-impl From<SharedTypeContainer> for SharedContainer {
-    fn from(reference: SharedTypeContainer) -> Self {
-        SharedContainer::Type(Rc::new(RefCell::new(reference)))
-    }
-}
 
 /// Two references are identical if they point to the same data
 impl Identity for SharedContainer {
     fn identical(&self, other: &Self) -> bool {
-        match (self, other) {
-            (SharedContainer::Value(a), SharedContainer::Value(b)) => {
+        match (&self.value, &other.value) {
+            (SharedContainerInner::Value(a), SharedContainerInner::Value(b)) => {
                 Rc::ptr_eq(a, b)
             }
-            (SharedContainer::Type(a), SharedContainer::Type(b)) => {
+            (SharedContainerInner::Type(a), SharedContainerInner::Type(b)) => {
                 Rc::ptr_eq(a, b)
             }
             _ => false,
@@ -304,11 +323,11 @@ impl PartialEq for SharedContainer {
 
 impl StructuralEq for SharedContainer {
     fn structural_eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (SharedContainer::Type(a), SharedContainer::Type(b)) => {
+        match (&self.value, &other.value) {
+            (SharedContainerInner::Type(a), SharedContainerInner::Type(b)) => {
                 a.borrow().type_value.structural_eq(&b.borrow().type_value)
             }
-            (SharedContainer::Value(a), SharedContainer::Value(b)) => a
+            (SharedContainerInner::Value(a), SharedContainerInner::Value(b)) => a
                 .borrow()
                 .value_container
                 .structural_eq(&b.borrow().value_container),
@@ -319,12 +338,12 @@ impl StructuralEq for SharedContainer {
 
 impl ValueEq for SharedContainer {
     fn value_eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (SharedContainer::Type(a), SharedContainer::Type(b)) => {
+        match (&self.value, &other.value) {
+            (SharedContainerInner::Type(a), SharedContainerInner::Type(b)) => {
                 // FIXME #281: Implement value_eq for type and use here instead (recursive)
                 a.borrow().type_value.structural_eq(&b.borrow().type_value)
             }
-            (SharedContainer::Value(a), SharedContainer::Value(b)) => a
+            (SharedContainerInner::Value(a), SharedContainerInner::Value(b)) => a
                 .borrow()
                 .value_container
                 .value_eq(&b.borrow().value_container),
@@ -333,19 +352,14 @@ impl ValueEq for SharedContainer {
     }
 }
 
-// x = mut shared {x: 1};
-// y = mut {a: 2};
-// mut shared {x: 1};
-// &mut shared {a: 3};
-
 impl Hash for SharedContainer {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        match self {
-            SharedContainer::Type(tr) => {
+        match &self.value {
+            SharedContainerInner::Type(tr) => {
                 let ptr = Rc::as_ptr(tr);
                 ptr.hash(state); // hash the address
             }
-            SharedContainer::Value(vr) => {
+            SharedContainerInner::Value(vr) => {
                 let ptr = Rc::as_ptr(vr);
                 ptr.hash(state); // hash the address
             }
@@ -384,9 +398,9 @@ impl SharedContainer {
         &self,
         f: F,
     ) -> Option<R> {
-        let reference = self.collapse_reference_chain();
-        match reference {
-            SharedContainer::Value(vr) => {
+        let shared_container_inner = self.collapse_reference_chain();
+        match shared_container_inner {
+            SharedContainerInner::Value(vr) => {
                 match &mut vr.borrow_mut().value_container {
                     ValueContainer::Local(value) => Some(f(value)),
                     ValueContainer::Shared(_) => {
@@ -396,7 +410,7 @@ impl SharedContainer {
                     }
                 }
             }
-            SharedContainer::Type(_) => None,
+            SharedContainerInner::Type(_) => None,
         }
     }
 
@@ -412,19 +426,19 @@ impl SharedContainer {
 
 impl SharedContainer {
     pub fn pointer_address(&self) -> PointerAddress {
-        match self {
-            SharedContainer::Value(vr) => vr.borrow().pointer.address(),
-            SharedContainer::Type(tr) => tr.borrow().pointer.address(),
+        match &self.value {
+            SharedContainerInner::Value(vr) => vr.borrow().pointer().address(),
+            SharedContainerInner::Type(tr) => tr.borrow().pointer().address(),
         }
     }
 
     pub fn pointer(&self) -> Ref<'_, Pointer> {
-        match self {
-            SharedContainer::Value(vr) => {
-                Ref::map(vr.borrow(), |vr| &vr.pointer)
+        match &self.value {
+            SharedContainerInner::Value(vr) => {
+                Ref::map(vr.borrow(), |vr| vr.pointer())
             }
-            SharedContainer::Type(tr) => {
-                Ref::map(tr.borrow(), |tr| &tr.pointer)
+            SharedContainerInner::Type(tr) => {
+                Ref::map(tr.borrow(), |tr| tr.pointer())
             }
         }
     }
@@ -432,20 +446,77 @@ impl SharedContainer {
     /// Gets the mutability of the shared value.
     /// TypeReferences are always immutable.
     pub(crate) fn mutability(&self) -> SharedContainerMutability {
-        match self {
-            SharedContainer::Value(vr) => vr.borrow().mutability.clone(),
-            SharedContainer::Type(_) => SharedContainerMutability::Immutable,
+        match &self.value {
+            SharedContainerInner::Value(vr) => vr.borrow().mutability.clone(),
+            SharedContainerInner::Type(_) => SharedContainerMutability::Immutable,
         }
     }
 
     /// Checks if the reference can be mutated by the current endpoint.
     pub(crate) fn can_mutate(&self) -> bool {
-        match self.pointer().reference_mutability() {
+        match self.reference_mutability {
             // is &mut reference to a pointer
             Some(PointerReferenceMutability::Mutable) => true,
             // is owned pointer, check if the shared container is mutable
             None => self.mutability() == SharedContainerMutability::Mutable,
             _ => false,
+        }
+    }
+
+    pub(crate) fn move_to_remote(&self, remote_address: ReferencedPointerAddress) -> Result<(), ()> {
+        // make sure the pointer is an owned pointer
+        if !self.pointer().is_owned() {
+            return Err(());
+        }
+        let pointer = Pointer::Referenced(ReferencedPointer::new(remote_address));
+        match &self.value {
+            SharedContainerInner::Value(vr) => { vr.borrow_mut().pointer = pointer }
+            SharedContainerInner::Type(tr) => {tr.borrow_mut().pointer = pointer }
+        }
+        Ok(())
+    }
+
+    pub fn try_derive_mutable_reference(&self) -> Result<Self, ()> {
+        if !self.can_mutate() {
+            return Err(());
+        }
+
+        Ok(SharedContainer {
+            value: self.value.clone(),
+            reference_mutability: Some(PointerReferenceMutability::Mutable),
+        })
+    }
+
+    /// Clones the shared container as a mutable reference if possible, otherwise as an immutable reference
+    pub fn derive_with_max_mutability(&self) -> Self {
+        self.try_derive_mutable_reference().unwrap_or_else(|_| self.derive_reference())
+    }
+
+    /// Returns the shared container if it is owned (not a reference), otherwise returns an error.
+    pub fn assert_owned(&self) -> Result<(), ()> {
+        if self.reference_mutability.is_some() {
+            return Err(());
+        }
+        if !self.pointer().is_owned() {
+            unreachable!()
+        }
+        Ok(())
+    }
+
+    /// Returns the local pointer address if this is an owned pointer, otherwise returns None.
+    pub fn try_get_owned_local_address(&self) -> Option<[u8; 5]> {
+        self.assert_owned().ok()?;
+
+        match self.pointer_address() {
+            PointerAddress::Owned(OwnedPointerAddress {address}) => Some(address),
+            _ => None,
+        }
+    }
+
+    pub fn derive_reference(&self) -> Self {
+        SharedContainer {
+            value: self.value.clone(),
+            reference_mutability: Some(PointerReferenceMutability::Immutable),
         }
     }
 
@@ -455,9 +526,9 @@ impl SharedContainer {
     /// FIXME #284: Do we really need this? Probably we already collapse the ref and then change it's value and perform
     /// the mutability check on the most inner ref.
     pub fn is_mutable(&self) -> bool {
-        match self {
-            SharedContainer::Type(_) => false, // type references are always immutable
-            SharedContainer::Value(vr) => {
+        match &self.value {
+            SharedContainerInner::Type(_) => false, // type references are always immutable
+            SharedContainerInner::Value(vr) => {
                 let vr_borrow = vr.borrow();
                 // if the current reference is immutable, whole chain is immutable
                 if vr_borrow.mutability != SharedContainerMutability::Mutable {
@@ -473,80 +544,161 @@ impl SharedContainer {
         }
     }
 
-    /// Creates a new shared value containing the given value container
-    pub fn try_boxed(
+    /// Creates a new shared owned value containing the given value container
+    pub fn try_boxed_owned(
         value_container: ValueContainer,
         allowed_type: Option<TypeDefinition>,
-        pointer: Pointer,
+        pointer: OwnedPointer,
         mutability: SharedContainerMutability,
     ) -> Result<Self, SharedValueCreationError> {
-        // immutable shared value cannot be contained in a mutable shared container, since we want interior mutability
-        if let ValueContainer::Shared(ref shared) = value_container
-            && mutability == SharedContainerMutability::Mutable
-            && shared.mutability() != SharedContainerMutability::Mutable
-        {
-            return Err(SharedValueCreationError::MutabilityMismatch);
-        }
         let allowed_type =
             allowed_type.unwrap_or_else(|| value_container.allowed_type());
 
         // TODO #286: make sure allowed type is superset of reference's allowed type
-        Ok(SharedContainer::Value(Rc::new(RefCell::new(
-            SharedValueContainer::new(
-                value_container,
-                pointer,
-                allowed_type,
-                mutability,
-            ),
-        ))))
+        Ok(SharedContainer {
+            value: SharedContainerInner::Value(Rc::new(RefCell::new(
+                SharedValueContainer::new(
+                    value_container,
+                    Pointer::Owned(pointer),
+                    allowed_type,
+                    mutability,
+                ),
+            ))),
+            reference_mutability: None,
+        })
     }
 
+    /// Creates a new shared ref value containing the given value container
+    pub fn try_boxed_ref(
+        value_container: ValueContainer,
+        allowed_type: Option<TypeDefinition>,
+        pointer: ReferencedPointer,
+        mutability: SharedContainerMutability,
+        reference_mutability: PointerReferenceMutability
+    ) -> Result<Self, SharedValueCreationError> {
+        let allowed_type =
+            allowed_type.unwrap_or_else(|| value_container.allowed_type());
+
+        // TODO #286: make sure allowed type is superset of reference's allowed type
+        Ok(SharedContainer {
+            value: SharedContainerInner::Value(Rc::new(RefCell::new(
+                SharedValueContainer::new(
+                    value_container,
+                    Pointer::Referenced(pointer),
+                    allowed_type,
+                    mutability,
+                ),
+            ))),
+            reference_mutability: Some(reference_mutability),
+        })
+    }
+
+
+    /// The pointer must be an owned pointer, since we create a new shared value
     pub fn new_from_type(
         type_value: Type,
         pointer: Pointer,
         maybe_nominal_type_declaration: Option<NominalTypeDeclaration>,
     ) -> Self {
-        let type_reference = SharedTypeContainer {
-            pointer,
-            nominal_type_declaration: maybe_nominal_type_declaration,
+        if !pointer.is_owned() {
+            panic!("Cannot create a new shared value with a borrowed pointer");
+        }
+
+        let type_reference = SharedTypeContainer::new(
             type_value,
-        };
-        SharedContainer::Type(Rc::new(RefCell::new(type_reference)))
+            maybe_nominal_type_declaration,
+            pointer,
+        );
+        SharedContainer {
+            value: SharedContainerInner::Type(Rc::new(RefCell::new(type_reference))),
+            reference_mutability: None,
+        }
     }
 
-    pub fn boxed_mut(
-        value_container: ValueContainer,
-        pointer: Pointer,
-    ) -> Result<Self, SharedValueCreationError> {
-        SharedContainer::try_boxed(
-            value_container,
+    /// The pointer must be an owned pointer, since we create a new shared value
+    pub fn boxed_owned_mut(
+        value_container: impl Into<ValueContainer>,
+        pointer: OwnedPointer,
+    ) -> Self {
+        SharedContainer::try_boxed_owned(
+            value_container.into(),
             None,
             pointer,
             SharedContainerMutability::Mutable,
-        )
+        ).unwrap() // always Ok, since we dont provide an allowed type that could mismatch
     }
 
-    pub fn boxed(
+    /// The pointer must be an owned pointer, since we create a new shared value
+    pub fn boxed_owned(
         value_container: impl Into<ValueContainer>,
-        pointer: Pointer,
+        pointer: OwnedPointer,
     ) -> Self {
-        SharedContainer::try_boxed(
+        SharedContainer::try_boxed_owned(
             value_container.into(),
             None,
             pointer,
             SharedContainerMutability::Immutable,
         )
-        .unwrap()
+        .unwrap()  // always Ok, since we dont provide an allowed type that could mismatch
+    }
+
+    /// Creates an owned pointer (no ref), but for an internal pointer address, not an OwnedPointer
+    pub(crate) fn boxed_owned_with_internal_pointer(
+        value_container: impl Into<ValueContainer>,
+        internal_pointer_address: [u8; 3],
+    ) -> Self {
+        let value_container = value_container.into();
+        let allowed_type = value_container.allowed_type();
+
+        SharedContainer {
+            value: SharedContainerInner::Value(Rc::new(RefCell::new(
+                SharedValueContainer::new(
+                    value_container,
+                    Pointer::Referenced(ReferencedPointer::new(ReferencedPointerAddress::Internal(internal_pointer_address))),
+                    allowed_type,
+                    SharedContainerMutability::Immutable,
+                ),
+            ))),
+            reference_mutability: None,
+        }
+    }
+
+    pub fn boxed_ref(
+        value_container: impl Into<ValueContainer>,
+        pointer: ReferencedPointer,
+    ) -> Self {
+        SharedContainer::try_boxed_ref(
+            value_container.into(),
+            None,
+            pointer,
+            SharedContainerMutability::Immutable,
+            PointerReferenceMutability::Immutable,
+        )
+        .unwrap() // always Ok, since we dont provide an allowed type that could mismatch
+    }
+    
+    pub fn boxed_mut_ref(
+        value_container: impl Into<ValueContainer>,
+        pointer: ReferencedPointer,
+    ) -> Self {
+        SharedContainer::try_boxed_ref(
+            value_container.into(),
+            None,
+            pointer,
+            SharedContainerMutability::Mutable,
+            PointerReferenceMutability::Mutable,
+        )
+        .unwrap() // always Ok, since we dont provide an allowed type that could mismatch
     }
 
     /// Collapses the reference chain to most inner reference to which this reference points.
-    pub fn collapse_reference_chain(&self) -> SharedContainer {
-        match self {
+    fn collapse_reference_chain(&self) -> SharedContainerInner {
+        match &self.value {
             // FIXME #288: Can we optimize this to avoid creating rc ref cells?
-            SharedContainer::Type(tr) => SharedContainer::Type(Rc::new(
+            SharedContainerInner::Type(tr) => SharedContainerInner::Type(Rc::new(
                 RefCell::new(tr.borrow().collapse_reference_chain()),
             )),
-            SharedContainer::Value(vr) => {
+            SharedContainerInner::Value(vr) => {
                 match &vr.borrow().value_container {
                     ValueContainer::Shared(reference) => {
                         // If this is a reference, resolve it to its current value
@@ -554,7 +706,7 @@ impl SharedContainer {
                     }
                     ValueContainer::Local(_) => {
                         // If this is a value, return it directly
-                        self.clone()
+                        self.value.clone()
                     }
                 }
             }
@@ -563,9 +715,9 @@ impl SharedContainer {
 
     /// Converts a reference to its current value, collapsing any reference chains and converting type references to type values.
     pub fn collapse_to_value(&self) -> Rc<RefCell<Value>> {
-        let reference = self.collapse_reference_chain();
-        match reference {
-            SharedContainer::Value(vr) => match &vr.borrow().value_container {
+        let shared_container_inner = self.collapse_reference_chain();
+        match shared_container_inner {
+            SharedContainerInner::Value(vr) => match &vr.borrow().value_container {
                 ValueContainer::Local(_) => {
                     vr.borrow().value_container.to_value()
                 }
@@ -574,7 +726,7 @@ impl SharedContainer {
                 ),
             },
             // TODO #289: can we optimize this to avoid cloning the type value?
-            SharedContainer::Type(tr) => Rc::new(RefCell::new(Value::from(
+            SharedContainerInner::Type(tr) => Rc::new(RefCell::new(Value::from(
                 CoreValue::Type(tr.borrow().type_value.clone()),
             ))),
         }
@@ -582,58 +734,43 @@ impl SharedContainer {
 
     // TODO #290: no clone?
     pub fn value_container(&self) -> ValueContainer {
-        match self {
-            SharedContainer::Value(vr) => vr.borrow().value_container.clone(),
-            SharedContainer::Type(tr) => ValueContainer::Local(Value::from(
+        match &self.value {
+            SharedContainerInner::Value(vr) => vr.borrow().value_container.clone(),
+            SharedContainerInner::Type(tr) => ValueContainer::Local(Value::from(
                 CoreValue::Type(tr.borrow().type_value.clone()),
             )),
         }
     }
 
     pub fn allowed_type(&self) -> TypeDefinition {
-        match self {
-            SharedContainer::Value(vr) => vr.borrow().allowed_type.clone(),
-            SharedContainer::Type(_) => core::todo!("#293 type Type"),
+        match &self.value {
+            SharedContainerInner::Value(vr) => vr.borrow().allowed_type.clone(),
+            SharedContainerInner::Type(_) => core::todo!("#293 type Type"),
         }
     }
 
     pub fn actual_type(&self) -> TypeDefinition {
-        match self {
-            SharedContainer::Value(vr) => vr
+        match &self.value {
+            SharedContainerInner::Value(vr) => vr
                 .borrow()
                 .value_container
                 .to_value()
                 .borrow()
                 .actual_type()
                 .clone(),
-            SharedContainer::Type(_tr) => core::todo!("#294 type Type"),
+            SharedContainerInner::Type(_tr) => core::todo!("#294 type Type"),
         }
     }
 
     pub fn is_type(&self) -> bool {
-        match self {
-            SharedContainer::Type(_) => true,
-            SharedContainer::Value(vr) => {
+        match &self.value {
+            SharedContainerInner::Type(_) => true,
+            SharedContainerInner::Value(vr) => {
                 vr.borrow().resolve_current_value().borrow().is_type()
             }
         }
     }
 
-    /// Returns a mutable reference to the ValueReference if this is a mutable ValueReference.
-    pub fn mutable_reference(
-        &self,
-    ) -> Option<Rc<RefCell<SharedValueContainer>>> {
-        match self {
-            SharedContainer::Type(_) => None,
-            SharedContainer::Value(vr) => {
-                if vr.borrow().is_mutable() {
-                    Some(vr.clone())
-                } else {
-                    None
-                }
-            }
-        }
-    }
 
     /// Sets the value container of the reference if it is mutable.
     /// If the reference is immutable, an error is returned.
@@ -641,12 +778,12 @@ impl SharedContainer {
         &self,
         new_value_container: ValueContainer,
     ) -> Result<(), AssignmentError> {
-        match &self {
-            SharedContainer::Type(_) => {
+        match &self.value {
+            SharedContainerInner::Type(_) => {
                 Err(AssignmentError::ImmutableReference)
             }
-            SharedContainer::Value(vr) => {
-                if self.is_mutable() {
+            SharedContainerInner::Value(vr) => {
+                if self.can_mutate() {
                     // TODO #295: check type compatibility, handle observers
                     vr.borrow_mut().value_container = new_value_container;
                     Ok(())
@@ -682,9 +819,9 @@ impl Apply for SharedContainer {
         &self,
         args: &[ValueContainer],
     ) -> Result<Option<ValueContainer>, ExecutionError> {
-        match self {
-            SharedContainer::Type(tr) => tr.borrow().apply(args),
-            SharedContainer::Value(vr) => {
+        match &self.value {
+            SharedContainerInner::Type(tr) => tr.borrow().apply(args),
+            SharedContainerInner::Value(vr) => {
                 vr.borrow().resolve_current_value().borrow().apply(args)
             }
         }
@@ -694,9 +831,9 @@ impl Apply for SharedContainer {
         &self,
         arg: &ValueContainer,
     ) -> Result<Option<ValueContainer>, ExecutionError> {
-        match self {
-            SharedContainer::Type(tr) => tr.borrow().apply_single(arg),
-            SharedContainer::Value(vr) => vr
+        match &self.value {
+            SharedContainerInner::Type(tr) => tr.borrow().apply_single(arg),
+            SharedContainerInner::Value(vr) => vr
                 .borrow()
                 .resolve_current_value()
                 .borrow()
@@ -720,18 +857,8 @@ mod tests {
         // creating a mutable shared container from a value should work
         let value = ValueContainer::from(42);
         let reference =
-            SharedContainer::boxed_mut(value, Pointer::NULL).unwrap();
+            SharedContainer::boxed_owned_mut(value, OwnedPointer::NULL);
         assert_eq!(reference.mutability(), SharedContainerMutability::Mutable);
-
-        // creating a mutable reference from a type should fail
-        let type_value = ValueContainer::Shared(SharedContainer::Type(
-            SharedTypeContainer::anonymous(Type::UNIT, Pointer::NULL)
-                .as_ref_cell(),
-        ));
-        assert_matches!(
-            SharedContainer::boxed_mut(type_value, Pointer::NULL),
-            Err(SharedValueCreationError::MutabilityMismatch)
-        );
     }
 
     #[test]
@@ -740,7 +867,7 @@ mod tests {
         map.set("name", ValueContainer::from("Jonas"));
         map.set("age", ValueContainer::from(30));
         let reference =
-            SharedContainer::boxed(ValueContainer::from(map), Pointer::NULL);
+            SharedContainer::boxed_owned(ValueContainer::from(map), OwnedPointer::NULL);
         assert_eq!(
             reference.try_get_property("name").unwrap(),
             ValueContainer::from("Jonas")
@@ -762,9 +889,9 @@ mod tests {
             ("name".to_string(), ValueContainer::from("Jonas")),
             ("age".to_string(), ValueContainer::from(30)),
         ]);
-        let reference = SharedContainer::boxed(
+        let reference = SharedContainer::boxed_owned(
             ValueContainer::from(struct_val),
-            Pointer::NULL,
+            OwnedPointer::NULL,
         );
         assert_eq!(
             reference.try_get_property("name").unwrap(),
@@ -789,7 +916,7 @@ mod tests {
             ValueContainer::from(3),
         ];
         let reference =
-            SharedContainer::boxed(ValueContainer::from(list), Pointer::NULL);
+            SharedContainer::boxed_owned(ValueContainer::from(list), OwnedPointer::NULL);
 
         assert_eq!(
             reference.try_get_property(0).unwrap(),
@@ -812,9 +939,9 @@ mod tests {
             }))
         );
 
-        let text_ref = SharedContainer::boxed(
+        let text_ref = SharedContainer::boxed_owned(
             ValueContainer::from("hello"),
-            Pointer::NULL,
+            OwnedPointer::NULL,
         );
         assert_eq!(
             text_ref.try_get_property(1).unwrap(),
@@ -832,7 +959,7 @@ mod tests {
     #[test]
     fn reference_identity() {
         let value = 42;
-        let reference1 = SharedContainer::boxed(value, Pointer::NULL);
+        let reference1 = SharedContainer::boxed_owned(value, OwnedPointer::NULL);
         let reference2 = reference1.clone();
 
         // cloned reference should be equal (identical)
@@ -845,19 +972,19 @@ mod tests {
         // assert_identical! should also confirm identity
         assert_identical!(reference1.clone(), reference2);
         // separate reference containing the same value should not be equal
-        assert_ne!(reference1, SharedContainer::boxed(value, Pointer::NULL));
+        assert_ne!(reference1, SharedContainer::boxed_owned(value, OwnedPointer::NULL));
     }
 
     #[test]
     fn reference_value_equality() {
         let value = 42;
-        let reference1 = ValueContainer::Shared(SharedContainer::boxed(
+        let reference1 = ValueContainer::Shared(SharedContainer::boxed_owned(
             value,
-            Pointer::NULL,
+            OwnedPointer::NULL,
         ));
-        let reference2 = ValueContainer::Shared(SharedContainer::boxed(
+        let reference2 = ValueContainer::Shared(SharedContainer::boxed_owned(
             value,
-            Pointer::NULL,
+            OwnedPointer::NULL,
         ));
 
         // different references should not be equal a.k.a. identical
@@ -868,8 +995,8 @@ mod tests {
 
     #[test]
     fn reference_structural_equality() {
-        let reference1 = SharedContainer::boxed(42.0, Pointer::NULL);
-        let reference2 = SharedContainer::boxed(42, Pointer::NULL);
+        let reference1 = SharedContainer::boxed_owned(42.0, OwnedPointer::NULL);
+        let reference2 = SharedContainer::boxed_owned(42, OwnedPointer::NULL);
 
         // different references should not be equal a.k.a. identical
         assert_ne!(reference1, reference2);
@@ -885,22 +1012,22 @@ mod tests {
         map_a.set("number", ValueContainer::from(42));
         map_a.set(
             "obj",
-            ValueContainer::Shared(SharedContainer::boxed(
+            ValueContainer::Shared(SharedContainer::boxed_owned(
                 Map::default(),
-                Pointer::NULL,
+                OwnedPointer::NULL,
             )),
         );
 
         // construct map_a as a value first
         let map_a_original_ref = ValueContainer::Shared(
-            SharedContainer::boxed(map_a, Pointer::NULL),
+            SharedContainer::boxed_owned(map_a, OwnedPointer::NULL),
         );
 
         // create map_b as a reference
-        let map_b_ref = SharedContainer::try_boxed(
+        let map_b_ref = SharedContainer::try_boxed_owned(
             Map::default().into(),
             None,
-            Pointer::NULL,
+            OwnedPointer::NULL,
             SharedContainerMutability::Mutable,
         )
         .unwrap();

@@ -30,7 +30,7 @@ use crate::{
 };
 
 use crate::{
-    ast::expressions::{CreateShared, CreateSharedRef, GetSharedRef},
+    ast::expressions::{CreateShared, GetSharedRef, RequestSharedRef},
     prelude::*,
     shared_values::{
         pointer::PointerReferenceMutability, pointer_address::PointerAddress,
@@ -40,6 +40,7 @@ use crate::{
 use alloc::format;
 use core::cell::RefCell;
 use num_enum::TryFromPrimitive;
+use crate::ast::expressions::CloneExpression;
 
 #[derive(Debug)]
 enum CollectedAstResult {
@@ -234,38 +235,73 @@ pub fn ast_from_bytecode(
                                 DatexExpressionData::Null
                             }
 
-                            RegularInstruction::GetSharedRef(raw_address) => {
-                                DatexExpressionData::GetSharedRef(GetSharedRef {
+                            RegularInstruction::RequestSharedRef(raw_address) => {
+                                DatexExpressionData::RequestSharedRef(RequestSharedRef {
                                     address: PointerAddress::from(&raw_address),
                                     mutability: PointerReferenceMutability::Immutable
                                 })
                             }
 
-                            RegularInstruction::GetSharedRefMut(raw_address) => {
-                                DatexExpressionData::GetSharedRef(GetSharedRef {
+                            RegularInstruction::RequestSharedRefMut(raw_address) => {
+                                DatexExpressionData::RequestSharedRef(RequestSharedRef {
                                     address: PointerAddress::from(&raw_address),
                                     mutability: PointerReferenceMutability::Mutable
                                 })
                             }
 
                             RegularInstruction::GetLocalRef(raw_address) => {
-                                DatexExpressionData::GetSharedRef(GetSharedRef {
+                                DatexExpressionData::RequestSharedRef(RequestSharedRef {
                                     address: PointerAddress::from(&raw_address),
                                     mutability: PointerReferenceMutability::Immutable
                                 })
                             }
 
                             RegularInstruction::GetInternalRef(raw_address) => {
-                                DatexExpressionData::GetSharedRef(GetSharedRef {
+                                DatexExpressionData::RequestSharedRef(RequestSharedRef {
                                     address: PointerAddress::from(&raw_address),
                                     mutability: PointerReferenceMutability::Immutable
                                 })
                             }
 
-                            RegularInstruction::GetSlot(slot_address) => {
+                            RegularInstruction::Move(_move_data) => {
+                                DatexExpressionData::NativeImplementationIndicator // TODO: better ast mapping
+                            }
+
+                            RegularInstruction::PerformMove(_perform_move) => {
+                                DatexExpressionData::NativeImplementationIndicator // TODO: better ast mapping
+                            }
+
+                            RegularInstruction::CloneSlot(slot_address) => {
+                                DatexExpressionData::Clone(CloneExpression {
+                                    expression: Box::new(DatexExpressionData::Slot(Slot::Addressed(
+                                        slot_address.0,
+                                    )).with_default_span())
+                                })
+                            }
+
+
+                            RegularInstruction::BorrowSlot(slot_address) => {
                                 DatexExpressionData::Slot(Slot::Addressed(
                                     slot_address.0,
                                 ))
+                            }
+
+                            RegularInstruction::GetSlotSharedRef(slot_address) => {
+                                DatexExpressionData::GetSharedRef(GetSharedRef {
+                                    mutability: PointerReferenceMutability::Immutable,
+                                    expression: Box::new(DatexExpressionData::Slot(Slot::Addressed(
+                                        slot_address.0,
+                                    )).with_default_span())
+                                })
+                            }
+
+                            RegularInstruction::GetSlotSharedRefMut(slot_address) => {
+                                DatexExpressionData::GetSharedRef(GetSharedRef {
+                                    mutability: PointerReferenceMutability::Mutable,
+                                    expression: Box::new(DatexExpressionData::Slot(Slot::Addressed(
+                                        slot_address.0,
+                                    )).with_default_span())
+                                })
                             }
 
                             RegularInstruction::GetInternalSlot(
@@ -284,7 +320,7 @@ pub fn ast_from_bytecode(
                                 ))
                             }
 
-                                RegularInstruction::DropSlot(_slot_address) => {
+                                RegularInstruction::PopSlot(_slot_address) => {
                                     todo!("#655 Undescribed by author.")
                                 }
 
@@ -326,14 +362,13 @@ pub fn ast_from_bytecode(
                                 | RegularInstruction::SubtractAssign(_)
                                 | RegularInstruction::MultiplyAssign(_)
                                 | RegularInstruction::DivideAssign(_)
-                                | RegularInstruction::CreateSharedReference
+                                | RegularInstruction::GetSharedReference
+                                | RegularInstruction::GetSharedReferenceMut
                                 | RegularInstruction::CreateShared
                                 | RegularInstruction::CreateSharedMut
-                                | RegularInstruction::GetOrCreateRef(_)
-                                | RegularInstruction::GetOrCreateRefMut(_)
                                 | RegularInstruction::AllocateSlot(_)
                                 | RegularInstruction::SetSlot(_)
-                                | RegularInstruction::SetReferenceValue(_)
+                                | RegularInstruction::SetSharedContainerValue(_)
                                 | RegularInstruction::Unbox
                                 | RegularInstruction::TypedValue
                                 | RegularInstruction::RemoteExecution(_)
@@ -496,10 +531,10 @@ pub fn ast_from_bytecode(
                                     .into()
                             }
 
-                            RegularInstruction::CreateSharedReference => {
+                            RegularInstruction::GetSharedReference => {
                                 let expr = collected_results.pop_value_result();
-                                DatexExpressionData::CreateSharedRef(
-                                    CreateSharedRef {
+                                DatexExpressionData::GetSharedRef(
+                                    GetSharedRef {
                                         mutability: PointerReferenceMutability::Immutable,
                                         expression: Box::new(expr),
                                     },
