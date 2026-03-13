@@ -22,7 +22,7 @@ use crate::{
     },
 };
 use core::ops::Range;
-use crate::ast::expressions::ValueAccessType;
+use crate::ast::expressions::{CloneExpression, ValueAccessType};
 
 pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
     /// Handle expression error
@@ -137,6 +137,9 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
             }
             DatexExpressionData::Unbox(unbox) => {
                 self.visit_unbox(unbox, &expr.span)
+            }
+            DatexExpressionData::Clone(clone) => {
+                self.visit_clone(clone, &expr.span)
             }
             DatexExpressionData::Slot(slot) => {
                 self.visit_slot(slot, &expr.span)
@@ -493,6 +496,17 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
         let _ = unbox;
         Ok(VisitAction::VisitChildren)
     }
+    
+    /// Visit clone expression
+    fn visit_clone(
+        &mut self,
+        clone: &mut CloneExpression,
+        span: &Range<usize>,
+    ) -> ExpressionVisitResult<E> {
+        let _ = span;
+        let _ = clone;
+        Ok(VisitAction::VisitChildren)
+    } 
 
     /// Visit list expression
     fn visit_list(

@@ -29,6 +29,7 @@ use crate::{
         error::NumberParseError, r#type::LocalReferenceMutability,
     },
 };
+use crate::ast::expressions::CloneExpression;
 
 static UNARY_BP: u8 = 29; // weaker than property access / apply, stronger than all other binary operators
 
@@ -469,6 +470,16 @@ impl Parser {
                     expression: Box::new(rhs),
                 })
                 .with_span(span))
+            }
+            // clone
+            Token::Clone => {
+                let op = self.advance()?;
+                let rhs = self.parse_expression(UNARY_BP)?;
+                let span = op.span.start..rhs.span.end;
+                Ok(DatexExpressionData::Clone(CloneExpression {
+                    expression: Box::new(rhs),
+                })
+                    .with_span(span))
             }
             // ref (&)
             Token::Ampersand => {

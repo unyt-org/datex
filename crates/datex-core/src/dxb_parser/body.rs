@@ -530,6 +530,13 @@ pub fn iterate_instructions(
                             RegularInstruction::CreateSharedMut
                         }
 
+                        InstructionCode::GET_INTERNAL_SLOT => {
+                            let address = SlotAddress::read(&mut reader);
+                            RegularInstruction::GetInternalSlot(yield_unwrap!(
+                                address
+                            ))
+                        }
+
                         // slots
                         InstructionCode::ALLOCATE_SLOT => {
                             next_instructions_stack.push_next_regular(1);
@@ -538,15 +545,21 @@ pub fn iterate_instructions(
                                 address
                             ))
                         }
-                        InstructionCode::GET_SLOT => {
+                        InstructionCode::CLONE_SLOT => {
                             let address = SlotAddress::read(&mut reader);
-                            RegularInstruction::GetSlot(yield_unwrap!(address))
+                            RegularInstruction::CloneSlot(yield_unwrap!(address))
                         }
-                        InstructionCode::GET_INTERNAL_SLOT => {
+                        InstructionCode::GET_SLOT_LOCAL_REF => {
                             let address = SlotAddress::read(&mut reader);
-                            RegularInstruction::GetInternalSlot(yield_unwrap!(
-                                address
-                            ))
+                            RegularInstruction::GetSlotLocalRef(yield_unwrap!(address))
+                        }
+                        InstructionCode::GET_SLOT_SHARED_REF => {
+                            let address = SlotAddress::read(&mut reader);
+                            RegularInstruction::GetSlotSharedRef(yield_unwrap!(address))
+                        }
+                        InstructionCode::GET_SLOT_SHARED_REF_MUT => {
+                            let address = SlotAddress::read(&mut reader);
+                            RegularInstruction::GetSlotSharedRefMut(yield_unwrap!(address))
                         }
                         InstructionCode::POP_SLOT => {
                             let address = SlotAddress::read(&mut reader);

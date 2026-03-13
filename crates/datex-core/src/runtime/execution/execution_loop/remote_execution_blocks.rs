@@ -84,7 +84,7 @@ fn compile_preamble(
                                 moved_pointers.push(shared_container);
                                 append_instruction_code(buffer, InstructionCode::GET_PROPERTY_INDEX);
                                 append_u32(buffer, index);
-                                append_instruction_code(buffer, InstructionCode::GET_SLOT);
+                                append_instruction_code(buffer, InstructionCode::CLONE_SLOT);
                                 append_u32(buffer, moved_pointers_slot_index);
                                 continue;
                             }
@@ -250,7 +250,7 @@ mod tests {
                 0, 0, 0, 0, // slot address
                 InstructionCode::GET_PROPERTY_INDEX as u8,
                 0, 0, 0, 0, // index of the moved pointer
-                InstructionCode::GET_SLOT as u8,
+                InstructionCode::CLONE_SLOT as u8,
                 1, 0, 0, 0, // slot address of the moved pointers
                 InstructionCode::NULL as u8, // body
             ]
@@ -286,7 +286,7 @@ mod tests {
                 0, 0, 0, 0, // slot address of first value (moved)
                 InstructionCode::GET_PROPERTY_INDEX as u8,
                 0, 0, 0, 0, // index of the moved pointer
-                InstructionCode::GET_SLOT as u8,
+                InstructionCode::CLONE_SLOT as u8,
                 2, 0, 0, 0, // slot address of the moved pointers
 
                 InstructionCode::ALLOCATE_SLOT as u8,

@@ -165,7 +165,10 @@ pub enum RegularInstruction {
     Move(Move),
 
     AllocateSlot(SlotAddress),
-    GetSlot(SlotAddress),
+    CloneSlot(SlotAddress),
+    GetSlotLocalRef(SlotAddress),
+    GetSlotSharedRef(SlotAddress),
+    GetSlotSharedRefMut(SlotAddress),
     PopSlot(SlotAddress),
     SetSlot(SlotAddress),
 
@@ -314,11 +317,20 @@ impl Display for RegularInstruction {
             RegularInstruction::AllocateSlot(address) => {
                 core::write!(f, "ALLOCATE_SLOT {}", address.0)
             }
-            RegularInstruction::GetSlot(address) => {
+            RegularInstruction::CloneSlot(address) => {
                 core::write!(f, "GET_SLOT {}", address.0)
             }
             RegularInstruction::GetInternalSlot(address) => {
                 core::write!(f, "GET_INTERNAL_SLOT {}", address.0)
+            }
+            RegularInstruction::GetSlotLocalRef(address) => {
+                core::write!(f, "GET_SLOT_LOCAL_REF {}", address.0)
+            }
+            RegularInstruction::GetSlotSharedRef(address) => {
+                core::write!(f, "GET_SLOT_SHARED_REF {}", address.0)
+            }
+            RegularInstruction::GetSlotSharedRefMut(address) => {
+                core::write!(f, "GET_SLOT_SHARED_REF_MUT {}", address.0)
             }
             RegularInstruction::PopSlot(address) => {
                 core::write!(f, "DROP_SLOT {}", address.0)

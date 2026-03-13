@@ -48,7 +48,7 @@ use options::PrecompilerOptions;
 use precompiled_ast::{AstMetadata, RichAst, VariableShape};
 use scope::NewScopeType;
 use scope_stack::PrecompilerScopeStack;
-use crate::ast::expressions::{GetSharedRef, ValueAccessType};
+use crate::ast::expressions::{CloneExpression, GetSharedRef, ValueAccessType};
 
 pub struct Precompiler<'a> {
     ast_metadata: Rc<RefCell<AstMetadata>>,
@@ -619,6 +619,20 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
         else if let DatexExpressionData::Placeholder(access_type) = &get_shared_ref.expression.data {
             let access_type = ValueAccessType::from(&get_shared_ref.mutability);
             Ok(VisitAction::Replace(DatexExpressionData::Placeholder(access_type).with_span(span.clone())))
+        }
+        else {
+            Ok(VisitAction::VisitChildren)
+        }
+    }
+
+    fn visit_clone(&mut self, clone: &mut CloneExpression, span: &Range<usize>) -> ExpressionVisitResult<SpannedCompilerError> {
+        // if expression is an identifier, set access type to clone
+        if let DatexExpressionData::Identifier(name) = &clone.expression.data {
+            self.visit_identifier_with_access_type(name, span, ValueAccessType::Clone)
+        }
+        // if expression is placeholder, set access type to clone
+        else if let DatexExpressionData::Placeholder(access_type) = &clone.expression.data {
+            Ok(VisitAction::Replace(DatexExpressionData::Placeholder(ValueAccessType::Clone).with_span(span.clone())))
         }
         else {
             Ok(VisitAction::VisitChildren)

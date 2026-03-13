@@ -227,6 +227,8 @@ pub enum Token {
     #[token("'")] SharedRef,
     #[token("'mut")] SharedRefMut,
 
+    #[token("clone")] Clone,
+
     #[token("function")] Function,
     #[token("procedure")] Procedure,
     #[token("if")] If,
@@ -361,6 +363,7 @@ impl Token {
             Token::RefMut => Some("&mut"),
             Token::SharedRef => Some("'"),
             Token::SharedRefMut => Some("'mut"),
+            Token::Clone => Some("clone"),
             Token::And => Some("and"),
             Token::Or => Some("or"),
             Token::Star => Some("*"),

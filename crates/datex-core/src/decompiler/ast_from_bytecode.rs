@@ -40,6 +40,7 @@ use crate::{
 use alloc::format;
 use core::cell::RefCell;
 use num_enum::TryFromPrimitive;
+use crate::ast::expressions::CloneExpression;
 
 #[derive(Debug)]
 enum CollectedAstResult {
@@ -270,10 +271,37 @@ pub fn ast_from_bytecode(
                                 DatexExpressionData::NativeImplementationIndicator // TODO: better ast mapping
                             }
 
-                            RegularInstruction::GetSlot(slot_address) => {
+                            RegularInstruction::CloneSlot(slot_address) => {
+                                DatexExpressionData::Clone(CloneExpression {
+                                    expression: Box::new(DatexExpressionData::Slot(Slot::Addressed(
+                                        slot_address.0,
+                                    )).with_default_span())
+                                })
+                            }
+
+
+                            RegularInstruction::GetSlotLocalRef(slot_address) => {
                                 DatexExpressionData::Slot(Slot::Addressed(
                                     slot_address.0,
                                 ))
+                            }
+
+                            RegularInstruction::GetSlotSharedRef(slot_address) => {
+                                DatexExpressionData::GetSharedRef(GetSharedRef {
+                                    mutability: PointerReferenceMutability::Immutable,
+                                    expression: Box::new(DatexExpressionData::Slot(Slot::Addressed(
+                                        slot_address.0,
+                                    )).with_default_span())
+                                })
+                            }
+
+                            RegularInstruction::GetSlotSharedRefMut(slot_address) => {
+                                DatexExpressionData::GetSharedRef(GetSharedRef {
+                                    mutability: PointerReferenceMutability::Mutable,
+                                    expression: Box::new(DatexExpressionData::Slot(Slot::Addressed(
+                                        slot_address.0,
+                                    )).with_default_span())
+                                })
                             }
 
                             RegularInstruction::GetInternalSlot(

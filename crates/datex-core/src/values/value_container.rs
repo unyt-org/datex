@@ -323,6 +323,16 @@ impl ValueContainer {
             ValueContainer::Shared(reference) => reference.is_type(),
         }
     }
+    
+    /// Performs a clone used by the "clone" command
+    /// Local values are just cloned normally
+    /// For shared value, the inner value container is cloned (shared x -> x)
+    pub fn get_cloned(&self) -> ValueContainer {
+        match self {
+            ValueContainer::Local(value) => ValueContainer::Local(value.clone()),
+            ValueContainer::Shared(shared) => shared.value_container()
+        }
+    }
 
     /// Returns the actual type of the contained value, resolving shared values if necessary.
     pub fn actual_value_type(&self) -> TypeDefinition {

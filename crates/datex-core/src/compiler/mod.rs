@@ -634,30 +634,68 @@ fn compile_expression(
                                     &value,
                                 );
                             }
+                            ValueAccessType::Clone => {
+                                append_value(
+                                    &mut compilation_context.buffer,
+                                    &value,
+                                );
+                            }
                         }
                     }
                     ValueContainer::Shared(shared_container) => {
-                        let shared_container = match placeholder_type {
-                            ValueAccessType::SharedRefMut => shared_container
-                                .try_derive_mutable_reference()
-                                .map_err(|_| CompilerError::SharedMutRefToImmutableValue)?,
-                            ValueAccessType::SharedRef => shared_container.derive_reference(),
+                        let res = match placeholder_type {
+                            ValueAccessType::SharedRefMut => {
+                                let shared_container = shared_container
+                                    .try_derive_mutable_reference()
+                                    .map_err(|_| CompilerError::SharedMutRefToImmutableValue)?;
+                                append_shared_container(
+                                    &mut compilation_context.buffer,
+                                    shared_container,
+                                    true,
+                                )
+                            }
+                            ValueAccessType::SharedRef => {
+                                append_shared_container(
+                                    &mut compilation_context.buffer,
+                                    shared_container.derive_reference(),
+                                    true,
+                                )
+                            },
                             ValueAccessType::MoveOrCopy => {
                                 shared_container.assert_owned()
                                     .map_err(|_| CompilerError::InvalidConversionFromRefToOwnedValue)?;
-                                shared_container
+                                append_shared_container(
+                                    &mut compilation_context.buffer,
+                                    shared_container,
+                                    true,
+                                )
+                            },
+                            ValueAccessType::Clone => {
+                                let cloned = value_container.get_cloned();
+                                match cloned {
+                                    ValueContainer::Local(value) => {
+                                        append_value(
+                                            &mut compilation_context.buffer,
+                                            &value,
+                                        );
+                                        Ok(())
+                                    }
+                                    ValueContainer::Shared(shared_container) => {
+                                        append_shared_container(
+                                            &mut compilation_context.buffer,
+                                            shared_container,
+                                            true,
+                                        )
+                                    }
+                                }
                             },
                         };
-                        append_shared_container(
-                            &mut compilation_context.buffer,
-                            shared_container,
-                            true,
-                        );
+                        res.map_err(|_| CompilerError::InvalidConversionFromRefToOwnedValue)?;
                     }
                 }
             } else {
                 compilation_context
-                    .append_instruction_code(InstructionCode::GET_SLOT);
+                    .append_instruction_code(InstructionCode::CLONE_SLOT);
                 compilation_context.insert_virtual_slot_address(
                     VirtualSlot::local(
                         compilation_context.inserted_value_index as u32,
@@ -1148,8 +1186,8 @@ fn compile_expression(
             };
 
             let slot_access = match access_type {
-                ValueAccessType::SharedRefMut => InstructionCode::GET_SLOT,
-                ValueAccessType::SharedRef => InstructionCode::GET_SLOT,
+                ValueAccessType::SharedRefMut => InstructionCode::CLONE_SLOT,
+                ValueAccessType::SharedRef => InstructionCode::CLONE_SLOT,
                 ValueAccessType::MoveOrCopy => InstructionCode::POP_SLOT,
             };
 
@@ -2766,7 +2804,7 @@ pub mod tests {
                 0,
                 ExternalSlotType::Shared(SharedSlotType::Ref).into(),
                 // slot 0 (mapped from slot 0)
-                InstructionCode::GET_SLOT.into(),
+                InstructionCode::CLONE_SLOT.into(),
                 // slot index as u32
                 0,
                 0,
@@ -3540,6 +3578,41 @@ pub mod tests {
             b'e',
             b's',
             b't',
+        ];
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn clone_local_value() {
+        let datex_script = "var x = 10; var y = clone x; x";
+        let result = compile_and_log(datex_script);
+        let expected = vec![
+            InstructionCode::ALLOCATE_SLOT.into(),
+            // slot index as u32
+            0,
+            0,
+            0,
+            0,
+            InstructionCode::UINT_8.into(),
+            10,
+            InstructionCode::ALLOCATE_SLOT.into(),
+            // slot index as u32
+            1,
+            0,
+            0,
+            0,
+            InstructionCode::CLONE_SLOT.into(),
+            // slot index as u32
+            0,
+            0,
+            0,
+            0,
+            InstructionCode::POP_SLOT.into(),
+            // slot index as u32
+            0,
+            0,
+            0,
+            0,
         ];
         assert_eq!(result, expected);
     }

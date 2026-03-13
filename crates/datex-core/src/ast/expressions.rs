@@ -154,6 +154,9 @@ pub enum DatexExpressionData {
     /// Unbox
     Unbox(Unbox),
 
+    /// Clone
+    Clone(CloneExpression),
+
     /// Slot, e.g. #1, #endpoint
     Slot(Slot),
 
@@ -367,6 +370,8 @@ pub enum ValueAccessType {
     SharedRefMut,
     /// 'x
     SharedRef,
+    /// clone x
+    Clone,
     /// x
     #[default]
     MoveOrCopy,
@@ -554,6 +559,11 @@ pub struct VariantAccess {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Unbox {
+    pub expression: Box<DatexExpression>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct CloneExpression {
     pub expression: Box<DatexExpression>,
 }
 

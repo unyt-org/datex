@@ -406,10 +406,6 @@ pub fn inner_execution_loop(
                                 ).into())
                             }
 
-                            RegularInstruction::GetSlot(SlotAddress(address)) => {
-                                Some(RuntimeValue::SlotAddress(address))
-                            }
-
                             RegularInstruction::GetInternalSlot(SlotAddress(address)) => {
                                 Some(RuntimeValue::ValueContainer(yield_unwrap!(
                                     get_internal_slot_value(
@@ -417,6 +413,43 @@ pub fn inner_execution_loop(
                                         address,
                                     )
                                 )))
+                            }
+
+                            // TODO: still needed?
+                            RegularInstruction::GetSlotLocalRef(SlotAddress(address)) => {
+                                Some(RuntimeValue::SlotAddress(address))
+                            }
+
+                            RegularInstruction::GetSlotSharedRef(SlotAddress(address)) => {
+                                let value = yield_unwrap!(state.slots.get_slot_value(address));
+                                match value {
+                                    ValueContainer::Shared(container) => Some(RuntimeValue::ValueContainer(
+                                        ValueContainer::Shared(container.derive_reference())
+                                    )),
+                                    _ => return yield Err(ExecutionError::ExpectedSharedValue)
+                                }
+                            }
+                            RegularInstruction::GetSlotSharedRefMut(SlotAddress(address)) => {
+                                let value = yield_unwrap!(state.slots.get_slot_value(address));
+                                match value {
+                                    ValueContainer::Shared(container) => Some(RuntimeValue::ValueContainer(
+                                        ValueContainer::Shared(
+                                            yield_unwrap!(
+                                                container
+                                                    .try_derive_mutable_reference()
+                                                    .map_err(|_| ExecutionError::MutableReferenceToNonMutableValue)
+                                            )
+                                        )
+                                    )),
+                                    _ => return yield Err(ExecutionError::ExpectedSharedValue)
+                                }
+                            }
+
+                            RegularInstruction::CloneSlot(SlotAddress(address)) => {
+                                let value = yield_unwrap!(state.slots.get_slot_value(address));
+                                Some(RuntimeValue::ValueContainer(
+                                    value.get_cloned()
+                                ))
                             }
 
                             RegularInstruction::PopSlot(SlotAddress(address)) => {

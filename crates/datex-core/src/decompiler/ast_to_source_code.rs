@@ -764,6 +764,9 @@ impl AstToSourceCodeConverter {
             DatexExpressionData::Unbox(unbox) => {
                 format!("*{}", self.format(&unbox.expression))
             }
+            DatexExpressionData::Clone(clone) => {
+                format!("clone {}", self.format(&clone.expression))
+            }
             DatexExpressionData::Slot(slot) => slot.to_string(),
             DatexExpressionData::SlotAssignment(SlotAssignment {
                 slot,
