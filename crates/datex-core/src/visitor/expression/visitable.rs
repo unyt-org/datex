@@ -12,7 +12,7 @@ use crate::{
         type_expression::visitable::VisitableTypeExpression,
     },
 };
-use crate::ast::expressions::CloneExpression;
+use crate::ast::expressions::{CloneExpression, UnboxSlotAssignment};
 
 pub type ExpressionVisitResult<E> = Result<VisitAction<DatexExpression>, E>;
 
@@ -151,6 +151,17 @@ impl<E> VisitableExpression<E> for UnboxAssignment {
         Ok(())
     }
 }
+
+impl<E> VisitableExpression<E> for UnboxSlotAssignment {
+    fn walk_children(
+        &mut self,
+        visitor: &mut impl ExpressionVisitor<E>,
+    ) -> Result<(), E> {
+        visitor.visit_datex_expression(&mut self.assigned_expression)?;
+        Ok(())
+    }
+}
+
 impl<E> VisitableExpression<E> for Apply {
     fn walk_children(
         &mut self,
@@ -356,6 +367,9 @@ impl<E> VisitableExpression<E> for DatexExpression {
             }
             DatexExpressionData::UnboxAssignment(unbox_assignment) => {
                 unbox_assignment.walk_children(visitor)
+            }
+            DatexExpressionData::UnboxSlotAssignment(unbox_slot_assignment) => {
+                unbox_slot_assignment.walk_children(visitor)
             }
             DatexExpressionData::UnaryOperation(unary_operation) => {
                 unary_operation.walk_children(visitor)

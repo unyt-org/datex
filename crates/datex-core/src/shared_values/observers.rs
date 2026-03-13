@@ -70,7 +70,7 @@ impl SharedContainer {
     pub fn observe(&self, observer: Observer) -> Result<u32, ObserverError> {
         // Add the observer to the list of observers
         Ok(self
-            .ensure_mutable_value_reference()?
+            .ensure_mutable_container()?
             .borrow_mut()
             .observers
             .add(observer))
@@ -82,7 +82,7 @@ impl SharedContainer {
     /// Returns an error if the observer ID is not found or the reference is immutable.
     pub fn unobserve(&self, observer_id: u32) -> Result<(), ObserverError> {
         let removed = self
-            .ensure_mutable_value_reference()?
+            .ensure_mutable_container()?
             .borrow_mut()
             .observers
             .remove(observer_id);
@@ -100,7 +100,7 @@ impl SharedContainer {
         observer_id: u32,
         options: ObserveOptions,
     ) -> Result<(), ObserverError> {
-        let vr = self.ensure_mutable_value_reference()?;
+        let vr = self.ensure_mutable_container()?;
         let mut vr_borrow = vr.borrow_mut();
         if let Some(observer) = vr_borrow.observers.get_mut(&observer_id) {
             observer.options = options;
@@ -124,19 +124,19 @@ impl SharedContainer {
     /// Removes all observers from this reference.
     /// Returns an error if the reference is immutable.
     pub fn unobserve_all(&self) -> Result<(), ObserverError> {
-        self.ensure_mutable_value_reference()?;
+        self.ensure_mutable_container()?;
         for id in self.observers_ids() {
             let _ = self.unobserve(id);
         }
         Ok(())
     }
 
-    /// Ensures that this reference is a mutable value reference and returns it.
-    /// Returns an ObserverError if the reference is immutable or a type reference.
-    fn ensure_mutable_value_reference(
+    /// Ensures that the shared container is mutable and returns it.
+    /// Returns an ObserverError if the reference is immutable (or a type container).
+    fn ensure_mutable_container(
         &self,
     ) -> Result<Rc<RefCell<SharedValueContainer>>, ObserverError> {
-        if !self.can_mutate() {
+        if !self.is_mutable() {
             return Err(ObserverError::ImmutableReference);
         }
         match &self.value {

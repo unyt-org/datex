@@ -423,7 +423,7 @@ pub fn iterate_instructions(
                             next_instructions_stack.push_next_regular(1);
                             RegularInstruction::Unbox
                         }
-                        InstructionCode::SET_REFERENCE_VALUE => {
+                        InstructionCode::SET_SHARED_CONTAINER_VALUE => {
                             next_instructions_stack.push_next_regular(2);
                             let operator = yield_unwrap!(
                                 get_next_regular_instruction_code(&mut reader)
@@ -437,7 +437,7 @@ pub fn iterate_instructions(
                                     }
                                 )
                             );
-                            RegularInstruction::SetReferenceValue(operator)
+                            RegularInstruction::SetSharedContainerValue(operator)
                         }
 
                         InstructionCode::KEY_VALUE_SHORT_TEXT => {

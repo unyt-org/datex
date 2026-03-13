@@ -174,7 +174,7 @@ pub enum RegularInstruction {
 
     GetInternalSlot(SlotAddress),
 
-    SetReferenceValue(AssignmentOperator),
+    SetSharedContainerValue(AssignmentOperator),
     Unbox,
 
     TypedValue,
@@ -338,7 +338,7 @@ impl Display for RegularInstruction {
             RegularInstruction::SetSlot(address) => {
                 core::write!(f, "SET_SLOT {}", address.0)
             }
-            RegularInstruction::SetReferenceValue(operator) => {
+            RegularInstruction::SetSharedContainerValue(operator) => {
                 core::write!(f, "SET_REFERENCE_VALUE ({})", operator)
             }
             RegularInstruction::Unbox => core::write!(f, "UNBOX"),

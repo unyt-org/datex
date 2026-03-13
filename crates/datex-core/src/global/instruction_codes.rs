@@ -174,7 +174,7 @@ pub enum InstructionCode {
     CREATE_SHARED,     // shared x
     CREATE_SHARED_MUT, // shared mut x
 
-    SET_REFERENCE_VALUE, // *x = 10;
+    SET_SHARED_CONTAINER_VALUE, // *x = 10;
 
     UNBOX, // *x
 

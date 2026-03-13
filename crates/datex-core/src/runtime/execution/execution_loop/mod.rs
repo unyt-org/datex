@@ -522,7 +522,7 @@ pub fn inner_execution_loop(
                             RegularInstruction::CreateSharedMut |
                             RegularInstruction::AllocateSlot(_) |
                             RegularInstruction::SetSlot(_) |
-                            RegularInstruction::SetReferenceValue(_) |
+                            RegularInstruction::SetSharedContainerValue(_) |
                             RegularInstruction::Unbox |
                             RegularInstruction::TypedValue |
                             RegularInstruction::RemoteExecution(_) |
@@ -910,42 +910,45 @@ pub fn inner_execution_loop(
                                     None.into()
                                 }
 
-                                RegularInstruction::SetReferenceValue(
+                                RegularInstruction::SetSharedContainerValue(
                                     operator,
                                 ) => {
+
                                     let value_container = yield_unwrap!(
                                         collected_results
                                             .pop_cloned_value_container_result_assert_existing(&state)
                                     );
-                                    let ref_value_container = yield_unwrap!(
+                                    let mut ref_runtime_value = yield_unwrap!(
                                         collected_results
-                                            .pop_cloned_value_container_result_assert_existing(&state)
+                                            .pop_runtime_value_result_assert_existing()
                                     );
 
-                                    // assignment value must be a reference
-                                    if let Some(reference) =
-                                        ref_value_container.maybe_shared()
-                                    {
-                                        let lhs = reference.value_container();
-                                        let res = yield_unwrap!(
-                                            handle_assignment_operation(
-                                                operator,
-                                                &lhs,
-                                                value_container,
-                                            )
-                                        );
-                                        yield_unwrap!(
-                                            reference.set_value_container(res)
-                                        );
-                                        RuntimeValue::ValueContainer(
-                                            ref_value_container,
-                                        )
-                                        .into()
-                                    } else {
-                                        return yield Err(
-                                            ExecutionError::InvalidUnbox,
-                                        );
-                                    }
+                                    let res = ref_runtime_value.with_mut_value_container(
+                                        &mut state.slots,
+                                        |ref_value_container| {
+                                            // assignment value must be a reference
+                                            if let Some(reference) =
+                                                ref_value_container.maybe_shared()
+                                            {
+                                                let lhs = reference.value_container();
+                                                let res = handle_assignment_operation(
+                                                    operator,
+                                                    &lhs,
+                                                    value_container,
+                                                )?;
+                                                reference.set_value_container(res)?;
+                                                Ok(RuntimeValue::ValueContainer(
+                                                    ref_value_container.clone(),
+                                                ))
+                                            } else {
+                                                Err(
+                                                    ExecutionError::ExpectedSharedValue,
+                                                )
+                                            }
+                                        },
+                                    ).flatten();
+                                    
+                                    yield_unwrap!(res).into()
                                 }
 
                                 RegularInstruction::SetSlot(SlotAddress(

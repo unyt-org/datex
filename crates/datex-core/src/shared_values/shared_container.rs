@@ -487,6 +487,11 @@ impl SharedContainer {
         })
     }
 
+    /// Clones the shared container as a mutable reference if possible, otherwise as an immutable reference
+    pub fn derive_with_max_mutability(&self) -> Self {
+        self.try_derive_mutable_reference().unwrap_or_else(|_| self.derive_reference())
+    }
+
     /// Returns the shared container if it is owned (not a reference), otherwise returns an error.
     pub fn assert_owned(&self) -> Result<(), ()> {
         if self.reference_mutability.is_some() {

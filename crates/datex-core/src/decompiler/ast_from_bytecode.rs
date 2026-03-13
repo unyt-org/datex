@@ -368,7 +368,7 @@ pub fn ast_from_bytecode(
                                 | RegularInstruction::CreateSharedMut
                                 | RegularInstruction::AllocateSlot(_)
                                 | RegularInstruction::SetSlot(_)
-                                | RegularInstruction::SetReferenceValue(_)
+                                | RegularInstruction::SetSharedContainerValue(_)
                                 | RegularInstruction::Unbox
                                 | RegularInstruction::TypedValue
                                 | RegularInstruction::RemoteExecution(_)

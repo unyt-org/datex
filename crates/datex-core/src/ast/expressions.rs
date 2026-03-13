@@ -169,8 +169,9 @@ pub enum DatexExpressionData {
     /// Comparison operation, e.g. x < y
     ComparisonOperation(ComparisonOperation),
 
-    /// Unbox assignment, e.g. *x = y, **x += y
+    /// Unbox assignment, e.g. *(...) = y, **(...) += y
     UnboxAssignment(UnboxAssignment),
+    UnboxSlotAssignment(UnboxSlotAssignment),
 
     /// Property assignment, e.g. obj.property = value
     PropertyAssignment(PropertyAssignment),
@@ -313,6 +314,13 @@ pub struct UnboxAssignment {
 }
 
 #[derive(Clone, Debug, PartialEq)]
+pub struct UnboxSlotAssignment {
+    pub operator: AssignmentOperator,
+    pub slot: Slot,
+    pub assigned_expression: Box<DatexExpression>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
 pub struct PropertyAssignment {
     pub operator: AssignmentOperator,
     pub base: Box<DatexExpression>,
@@ -372,8 +380,8 @@ pub enum ValueAccessType {
     SharedRef,
     /// clone x
     Clone, // TODO: allow clone only for non-shared values, for shared values, do clone *x
-    /// *x
-    Unbox,
+    /// temp borrow for x (used before Unbox)
+    Borrow,
     #[default]
     MoveOrCopy,
 }

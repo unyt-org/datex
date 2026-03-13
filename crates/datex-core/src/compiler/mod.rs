@@ -62,7 +62,7 @@ use precompiler::{
 };
 use crate::ast::expressions::ValueAccessType;
 use crate::core_compiler::value_compiler::{append_shared_container, append_value};
-use crate::global::protocol_structures::external_slot_type::{ExternalSlotType, SharedSlotType};
+use crate::global::protocol_structures::external_slot_type::{ExternalSlotType, LocalSlotType, SharedSlotType};
 use crate::shared_values::pointer::PointerReferenceMutability;
 
 pub mod context;
@@ -624,6 +624,7 @@ fn compile_expression(
                 .expect("Placeholder index out of bounds");
             if let Some(value_container) = placeholder.take() {
                 // TODO: validate in precompiler that the value container is actually a shared value
+
                 match value_container {
                     ValueContainer::Local(value) => {
                         match placeholder_type {
@@ -635,6 +636,12 @@ fn compile_expression(
                                 );
                             }
                             ValueAccessType::Clone => {
+                                append_value(
+                                    &mut compilation_context.buffer,
+                                    &value,
+                                );
+                            }
+                            ValueAccessType::Borrow => {
                                 append_value(
                                     &mut compilation_context.buffer,
                                     &value,
@@ -689,6 +696,13 @@ fn compile_expression(
                                     }
                                 }
                             },
+                            ValueAccessType::Borrow => {
+                                append_shared_container(
+                                    &mut compilation_context.buffer,
+                                    shared_container.derive_reference(),
+                                    true,
+                                )
+                            }
                         };
                         res.map_err(|_| CompilerError::InvalidConversionFromRefToOwnedValue)?;
                     }
@@ -1148,7 +1162,7 @@ fn compile_expression(
             compilation_context.mark_has_non_static_value();
 
             compilation_context
-                .append_instruction_code(InstructionCode::SET_REFERENCE_VALUE);
+                .append_instruction_code(InstructionCode::SET_SHARED_CONTAINER_VALUE);
 
             compilation_context
                 .append_instruction_code(InstructionCode::from(&operator));
@@ -1184,14 +1198,16 @@ fn compile_expression(
                 // TODO: map to local slot types depending on type
                 ValueAccessType::MoveOrCopy => ExternalSlotType::Shared(SharedSlotType::Move),
                 // TODO:
-                ValueAccessType::Clone => ExternalSlotType::Shared(SharedSlotType::Move),
+                ValueAccessType::Clone => ExternalSlotType::Local(LocalSlotType::Move),
+                ValueAccessType::Borrow => ExternalSlotType::Shared(SharedSlotType::Move),
             };
 
             let slot_access = match access_type {
-                ValueAccessType::SharedRefMut => InstructionCode::CLONE_SLOT,
-                ValueAccessType::SharedRef => InstructionCode::CLONE_SLOT,
+                ValueAccessType::SharedRefMut => InstructionCode::GET_SLOT_SHARED_REF_MUT,
+                ValueAccessType::SharedRef => InstructionCode::GET_SLOT_SHARED_REF,
                 ValueAccessType::MoveOrCopy => InstructionCode::POP_SLOT,
                 ValueAccessType::Clone => InstructionCode::CLONE_SLOT,
+                ValueAccessType::Borrow => InstructionCode::BORROW_SLOT,
             };
 
             // get variable slot address
@@ -2807,7 +2823,7 @@ pub mod tests {
                 0,
                 ExternalSlotType::Shared(SharedSlotType::Ref).into(),
                 // slot 0 (mapped from slot 0)
-                InstructionCode::CLONE_SLOT.into(),
+                InstructionCode::GET_SLOT_SHARED_REF.into(),
                 // slot index as u32
                 0,
                 0,
@@ -3064,7 +3080,7 @@ pub mod tests {
             res,
             vec![
                 InstructionCode::SHORT_STATEMENTS.into(),
-                2,
+                3,
                 0, // not terminated
                 InstructionCode::ALLOCATE_SLOT.into(),
                 // slot index as u32
@@ -3095,12 +3111,14 @@ pub mod tests {
                 0,
                 0,
                 // slot 1
-                1,
                 0,
                 0,
                 0,
+                0,
+                // FIXME
+                ExternalSlotType::Shared(SharedSlotType::Move).into(),
                 // slot 0
-                0,
+                1,
                 0,
                 0,
                 0,
@@ -3128,14 +3146,14 @@ pub mod tests {
                 ExternalSlotType::Shared(SharedSlotType::Move).into(),
                 InstructionCode::POP_SLOT.into(),
                 // slot index as u32
-                1,
+                0,
                 0,
                 0,
                 0,
                 // --- end of block 2
                 // caller (literal value 2 for test)
                 InstructionCode::POP_SLOT.into(),
-                0,
+                1,
                 0,
                 0,
                 0,
@@ -3257,7 +3275,7 @@ pub mod tests {
                 0,
                 InstructionCode::UINT_8.into(),
                 10,
-                InstructionCode::UNBOX.into(),
+                InstructionCode::UNBOX.into(), // FIXME: should not be added for local values (precompiler)
                 InstructionCode::BORROW_SLOT.into(),
                 // slot index as u32
                 0,

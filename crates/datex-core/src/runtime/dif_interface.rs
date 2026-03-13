@@ -19,16 +19,19 @@ use crate::{
     values::value_container::ValueContainer,
 };
 use core::result::Result;
-use crate::shared_values::pointer::{OwnedPointer, Pointer};
+use core::cell::Ref;
 use crate::shared_values::pointer_address::OwnedPointerAddress;
 
 impl RuntimeInternal {
     fn resolve_in_memory_reference(
-        &self,
+        &'_ self,
         address: &PointerAddress,
-    ) -> Option<SharedContainer> {
-        self.memory.borrow().get_reference(address).cloned()
+    ) -> Option<Ref<'_, SharedContainer>> {
+        Ref::filter_map(self.memory.borrow(), |memory| {
+            memory.get_reference(address)
+        }).ok()
     }
+    
     // FIXME #398 implement async resolution
     async fn resolve_reference(
         &self,

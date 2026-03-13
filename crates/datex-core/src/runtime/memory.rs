@@ -58,7 +58,7 @@ impl Memory {
         // check if reference is already registered (if it has an address, we assume it is registered)
         self.pointers
             .entry(pointer_address)
-            .or_insert_with(|| reference.clone());
+            .or_insert_with(|| reference.derive_with_max_mutability());
     }
 
     /// Returns a reference stored at the given PointerAddress, if it exists.

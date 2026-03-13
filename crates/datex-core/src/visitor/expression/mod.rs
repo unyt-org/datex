@@ -22,7 +22,7 @@ use crate::{
     },
 };
 use core::ops::Range;
-use crate::ast::expressions::{CloneExpression, ValueAccessType};
+use crate::ast::expressions::{CloneExpression, UnboxSlotAssignment, ValueAccessType};
 
 pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
     /// Handle expression error
@@ -158,6 +158,9 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
             }
             DatexExpressionData::UnboxAssignment(unbox_assignment) => {
                 self.visit_unbox_assignment(unbox_assignment, &expr.span)
+            }
+            DatexExpressionData::UnboxSlotAssignment(unbox_slot_assignment) => {
+                self.visit_unbox_slot_assignment(unbox_slot_assignment, &expr.span)
             }
             DatexExpressionData::Apply(apply_chain) => {
                 self.visit_apply(apply_chain, &expr.span)
@@ -333,6 +336,17 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
         Ok(VisitAction::VisitChildren)
     }
 
+    /// Visit unbox slot assignment
+    fn visit_unbox_slot_assignment(
+        &mut self,
+        unbox_slot_assignment: &mut UnboxSlotAssignment,
+        span: &Range<usize>,
+    ) -> ExpressionVisitResult<E> {
+        let _ = span;
+        let _ = unbox_slot_assignment;
+        Ok(VisitAction::VisitChildren)
+    }
+
     /// Visit apply chain
     fn visit_apply(
         &mut self,
@@ -496,7 +510,7 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
         let _ = unbox;
         Ok(VisitAction::VisitChildren)
     }
-    
+
     /// Visit clone expression
     fn visit_clone(
         &mut self,
@@ -506,7 +520,7 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
         let _ = span;
         let _ = clone;
         Ok(VisitAction::VisitChildren)
-    } 
+    }
 
     /// Visit list expression
     fn visit_list(

@@ -520,7 +520,7 @@ impl<T> InstructionCollector<T> {
                 None
             }
 
-            RegularInstruction::SetReferenceValue(_) => {
+            RegularInstruction::SetSharedContainerValue(_) => {
                 self.collect_full(
                     Instruction::RegularInstruction(regular_instruction),
                     2,

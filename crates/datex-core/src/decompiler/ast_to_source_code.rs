@@ -21,7 +21,7 @@ use crate::{
     shared_values::pointer::PointerReferenceMutability,
     values::core_values::r#type::LocalReferenceMutability,
 };
-use crate::ast::expressions::ValueAccessType;
+use crate::ast::expressions::{UnboxSlotAssignment, ValueAccessType};
 
 #[derive(Clone, Default)]
 pub enum BraceStyle {
@@ -800,6 +800,20 @@ impl AstToSourceCodeConverter {
                     self.format(assigned_expression)
                 )
             }
+            DatexExpressionData::UnboxSlotAssignment(UnboxSlotAssignment {
+                 operator,
+                 slot,
+                 assigned_expression,
+             }) => {
+                let unbox_prefix = "*";
+                ast_fmt!(
+                    &self,
+                    "{}{}%s{operator}%s{}",
+                    unbox_prefix,
+                    slot.to_string(),
+                    self.format(assigned_expression)
+                )
+            }
             DatexExpressionData::UnaryOperation(unary_operation) => {
                 format!(
                     "{}{}",
@@ -812,7 +826,8 @@ impl AstToSourceCodeConverter {
                     ValueAccessType::SharedRef => "'?".to_string(),
                     ValueAccessType::SharedRefMut => "'mut ?".to_string(),
                     ValueAccessType::MoveOrCopy => "?".to_string(),
-                    ValueAccessType::Clone => "clone".to_string(),
+                    ValueAccessType::Clone => "clone ?".to_string(),
+                    ValueAccessType::Borrow => "?".to_string(),
                 }
             }
             DatexExpressionData::RemoteExecution(RemoteExecution {
