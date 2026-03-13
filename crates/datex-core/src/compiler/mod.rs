@@ -671,7 +671,7 @@ fn compile_expression(
                                 )
                             },
                             ValueAccessType::Clone => {
-                                let cloned = value_container.get_cloned();
+                                let cloned = shared_container.value_container();
                                 match cloned {
                                     ValueContainer::Local(value) => {
                                         append_value(
@@ -1183,6 +1183,8 @@ fn compile_expression(
                 ValueAccessType::SharedRef => ExternalSlotType::Shared(SharedSlotType::Ref),
                 // TODO: map to local slot types depending on type
                 ValueAccessType::MoveOrCopy => ExternalSlotType::Shared(SharedSlotType::Move),
+                // TODO:
+                ValueAccessType::Clone => ExternalSlotType::Shared(SharedSlotType::Move),
             };
 
             let slot_access = match access_type {
