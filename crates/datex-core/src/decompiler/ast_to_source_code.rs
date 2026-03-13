@@ -812,6 +812,7 @@ impl AstToSourceCodeConverter {
                     ValueAccessType::SharedRef => "'?".to_string(),
                     ValueAccessType::SharedRefMut => "'mut ?".to_string(),
                     ValueAccessType::MoveOrCopy => "?".to_string(),
+                    ValueAccessType::Clone => "clone".to_string(),
                 }
             }
             DatexExpressionData::RemoteExecution(RemoteExecution {

@@ -1189,6 +1189,7 @@ fn compile_expression(
                 ValueAccessType::SharedRefMut => InstructionCode::CLONE_SLOT,
                 ValueAccessType::SharedRef => InstructionCode::CLONE_SLOT,
                 ValueAccessType::MoveOrCopy => InstructionCode::POP_SLOT,
+                ValueAccessType::Clone => InstructionCode::CLONE_SLOT,
             };
 
             // get variable slot address
