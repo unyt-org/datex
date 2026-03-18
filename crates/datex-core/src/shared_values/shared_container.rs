@@ -463,7 +463,9 @@ impl SharedContainer {
         }
     }
 
-    pub(crate) fn move_to_remote(&self, remote_address: ReferencedPointerAddress) -> Result<(), ()> {
+    /// Moves an owned shared container by changing the pointer to a ReferencedPointerAddress
+    /// The original owned SharedContainer is dropped 
+    pub(crate) fn move_to_remote(self, remote_address: ReferencedPointerAddress) -> Result<(), ()> {
         // make sure the pointer is an owned pointer
         if !self.pointer().is_owned() {
             return Err(());
@@ -473,6 +475,7 @@ impl SharedContainer {
             SharedContainerInner::Value(vr) => { vr.borrow_mut().pointer = pointer }
             SharedContainerInner::Type(tr) => {tr.borrow_mut().pointer = pointer }
         }
+        
         Ok(())
     }
 

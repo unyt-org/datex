@@ -63,6 +63,9 @@ pub struct RuntimeInternal {
     /// active execution contexts, stored by context_id
     pub execution_contexts:
         RefCell<HashMap<IncomingEndpointContextSectionId, ExecutionContext>>,
+
+    /// list of currently owned shared values that are in the approved for moving to another endpoint
+    pub moving_pointers: RefCell<HashMap<Endpoint, HashMap<OwnedPointerAddress, SharedContainer>>>,
 }
 
 macro_rules! get_execution_context {
@@ -102,6 +105,7 @@ impl RuntimeInternal {
                 incoming_sections_receiver,
             ),
             execution_contexts: RefCell::new(HashMap::new()),
+            moving_pointers: RefCell::new(HashMap::new()),
         }
     }
 
@@ -451,22 +455,46 @@ impl RuntimeInternal {
         }
     }
 
+    /// Adds a pointer that is approved for move to a specific endpoint
+    pub(crate) fn add_moving_pointers(
+        &self,
+        new_owner: Endpoint,
+        moving_pointers: Vec<SharedContainer>,
+    ) -> Result<(), ()> {
+        let pointers = moving_pointers
+            .into_iter()
+            .map(|pointer| {
+                let address = OwnedPointerAddress::new(pointer.try_get_owned_local_address().ok_or(())?);
+                Ok((address, pointer))
+            })
+            .collect::<Result<Vec<(OwnedPointerAddress, SharedContainer)>, ()>>()?;
+
+        self.moving_pointers.borrow_mut()
+            .entry(new_owner)
+            .or_insert_with(HashMap::new)
+            .extend(pointers);
+
+        Ok(())
+    }
+
     pub(crate) fn handle_pointer_move_to_remote(
         self: Rc<RuntimeInternal>,
         from_endpoint: &Endpoint,
         pointer_mapping: Vec<(RawLocalPointerAddress, RawLocalPointerAddress)>,
-    ) -> Result<Vec<SharedContainer>, ExecutionError> {
+    ) -> Result<Vec<ValueContainer>, ExecutionError> {
+        let mut pointer_borrow = self.moving_pointers.borrow_mut();
+        let moving_pointers = pointer_borrow.get_mut(from_endpoint).ok_or(ExecutionError::UnauthorizedMove)?;
+
         let values = pointer_mapping.into_iter().map(|(original, new)| {
             let original_address = OwnedPointerAddress::new(original.id);
             let new_address = ReferencedPointerAddress::remote_for_endpoint(from_endpoint, new.id);
-            // TODO: add moving_pointers map and check if from_endpoint is actually allowed to perform the moves
-            // let shared_container = self.moving_pointers.get(&original_address.into()).ok_or(())?;
-            // shared_container.move_to_remote(new_address)?;
-            // Ok(shared_container.clone())
-            todo!()
+            let shared_container = moving_pointers.remove(&original_address).ok_or(ExecutionError::UnauthorizedMove)?;
+
+            let value = shared_container.value_container();
+            shared_container.move_to_remote(new_address).map_err(|_| ExecutionError::UnauthorizedMove)?;
+            Ok(value)
         })
-            .collect::<Result<Vec<_>, ()>>()
-            .map_err(|_| ExecutionError::ExpectedSharedValue)?; // TODO: better error
+            .collect::<Result<Vec<_>, ExecutionError>>()?;
         Ok(values)
     }
 

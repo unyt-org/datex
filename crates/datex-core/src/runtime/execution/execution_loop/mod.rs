@@ -74,6 +74,7 @@ use crate::{
 };
 use alloc::rc::Rc;
 use core::cell::RefCell;
+use log::info;
 use crate::global::protocol_structures::external_slot_type::{ExternalSlotType, SharedSlotType};
 use crate::runtime::execution::execution_loop::remote_execution_blocks::compile_remote_execution_block;
 use crate::runtime::execution::macros::interrupt_with_values;
@@ -269,6 +270,10 @@ pub fn inner_execution_loop(
                     return yield Err(err.into());
                 }
             };
+
+            // info!("{} INSTRUCTION: {}", state.runtime_internal.endpoint, instruction);
+
+            let instruction_copy = instruction.clone();
 
             let result = match instruction {
                 // handle regular instructions
@@ -1157,16 +1162,28 @@ pub fn inner_execution_loop(
                                         });
                                     }
 
-                                    // build dxb
-                                    let buffer = yield_unwrap!(compile_remote_execution_block(
-                                        exec_block_data,
-                                        slots,
-                                    ));
-
                                     let receivers = yield_unwrap!(
                                         collected_results
                                             .pop_cloned_value_container_result_assert_existing(&state)
                                     );
+
+                                    // build dxb
+                                    let (buffer, moving_containers) = yield_unwrap!(compile_remote_execution_block(
+                                        exec_block_data,
+                                        slots,
+                                    ));
+
+                                    // store moving pointers
+                                    if !moving_containers.is_empty() {
+                                        // ensure receiver is single endpoint
+                                        if let CoreValue::Endpoint(ref single_receiver) = receivers.to_value().borrow().inner {
+                                            state.runtime_internal.add_moving_pointers(single_receiver.clone(), moving_containers);
+                                        }
+                                        else {
+                                            return yield Err(ExecutionError::MoveToMultipleEndpoints)
+                                        }
+                                    }
+
 
                                     interrupt_with_maybe_value!(
                                         interrupt_provider,
@@ -1310,6 +1327,8 @@ pub fn inner_execution_loop(
                         Instruction::TypeInstruction(_data) => unreachable!(),
                     },
                 };
+
+                // info!("{} | {} >>> {:#?}", state.runtime_internal.endpoint,instruction_copy, expr);
 
                 collector.push_result(expr);
             }

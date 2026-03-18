@@ -40,6 +40,7 @@ pub enum DXBParserError {
     InvalidInstructionCode(u8),
     /// Returned when the end of the DXB body is reached, but further instructions are expected.
     ExpectingMoreInstructions,
+    UnexpectedBytesAfterEndOfInstructions,
     FmtError(fmt::Error),
     BinRwError(binrw::Error),
     FromUtf8Error(FromUtf8Error),
@@ -102,6 +103,9 @@ impl Display for DXBParserError {
             DXBParserError::ExpectingMoreInstructions => {
                 core::write!(f, "Expecting more instructions")
             }
+            DXBParserError::UnexpectedBytesAfterEndOfInstructions => {
+                core::write!(f, "Unexpected bytes after end of instructions")
+            }
             DXBParserError::NotInUnboundedRegularScopeError => {
                 core::write!(f, "Not in unbounded regular scope error")
             }
@@ -145,7 +149,13 @@ pub fn iterate_instructions(
 
             // parse instruction based on its type
             let instruction = match next_instruction_type {
-                NextInstructionType::End => return, // end of instructions
+                NextInstructionType::End => {
+                    // if cursor
+                    if len > reader.position() as usize {
+                        yield Err(DXBParserError::UnexpectedBytesAfterEndOfInstructions);
+                    }
+                    return
+                }, // end of instructions
 
                 NextInstructionType::Regular => {
                     let instruction_code = yield_unwrap!(

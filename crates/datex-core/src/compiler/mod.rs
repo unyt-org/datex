@@ -61,7 +61,7 @@ use precompiler::{
     precompiled_ast::{AstMetadata, RichAst, VariableMetadata},
 };
 use crate::ast::expressions::ValueAccessType;
-use crate::core_compiler::value_compiler::{append_shared_container, append_value};
+use crate::core_compiler::value_compiler::{append_shared_container, append_statements_preamble, append_value};
 use crate::global::protocol_structures::external_slot_type::{ExternalSlotType, LocalSlotType, SharedSlotType};
 use crate::shared_values::pointer::PointerReferenceMutability;
 
@@ -756,33 +756,10 @@ fn compile_expression(
                 }
                 // otherwise, statements with fixed length
                 else {
-                    let len = statements.len();
-
-                    match len {
-                        0..=255 => {
-                            compilation_context.append_instruction_code(
-                                InstructionCode::SHORT_STATEMENTS,
-                            );
-                            append_u8(
-                                &mut compilation_context.buffer,
-                                len as u8,
-                            );
-                        }
-                        _ => {
-                            compilation_context.append_instruction_code(
-                                InstructionCode::STATEMENTS,
-                            );
-                            append_u32(
-                                &mut compilation_context.buffer,
-                                len as u32, // FIXME #673: conversion from usize to u32
-                            );
-                        }
-                    }
-
-                    // append termination flag
-                    append_u8(
+                    append_statements_preamble(
                         &mut compilation_context.buffer,
-                        if is_terminated { 1 } else { 0 },
+                        statements.len(),
+                        is_terminated,
                     );
                 }
 

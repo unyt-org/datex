@@ -304,6 +304,12 @@ pub fn ast_from_bytecode(
                                 })
                             }
 
+                            RegularInstruction::PopSlot(slot_address) => {
+                                DatexExpressionData::Slot(Slot::Addressed(
+                                    slot_address.0
+                                ))
+                            }
+
                             RegularInstruction::GetInternalSlot(
                                 slot_address,
                             ) => {
@@ -320,63 +326,59 @@ pub fn ast_from_bytecode(
                                 ))
                             }
 
-                                RegularInstruction::PopSlot(_slot_address) => {
-                                    todo!("#655 Undescribed by author.")
-                                }
-
-                                // NOTE: make sure that each possible match case is either implemented in the default collection or here
-                                // If an instruction is implemented in the default collection, it should be marked as unreachable!() here
-                                RegularInstruction::Statements(_)
-                                | RegularInstruction::ShortStatements(_)
-                                | RegularInstruction::UnboundedStatements
-                                | RegularInstruction::UnboundedStatementsEnd(
-                                    _,
-                                )
-                                | RegularInstruction::List(_)
-                                | RegularInstruction::ShortList(_)
-                                | RegularInstruction::Map(_)
-                                | RegularInstruction::ShortMap(_)
-                                | RegularInstruction::KeyValueDynamic
-                                | RegularInstruction::KeyValueShortText(_)
-                                | RegularInstruction::Add
-                                | RegularInstruction::Subtract
-                                | RegularInstruction::Multiply
-                                | RegularInstruction::Divide
-                                | RegularInstruction::UnaryMinus
-                                | RegularInstruction::UnaryPlus
-                                | RegularInstruction::BitwiseNot
-                                | RegularInstruction::Apply(_)
-                                | RegularInstruction::GetPropertyText(_)
-                                | RegularInstruction::GetPropertyIndex(_)
-                                | RegularInstruction::GetPropertyDynamic
-                                | RegularInstruction::SetPropertyText(_)
-                                | RegularInstruction::SetPropertyIndex(_)
-                                | RegularInstruction::SetPropertyDynamic
-                                | RegularInstruction::Is
-                                | RegularInstruction::Matches
-                                | RegularInstruction::StructuralEqual
-                                | RegularInstruction::Equal
-                                | RegularInstruction::NotStructuralEqual
-                                | RegularInstruction::NotEqual
-                                | RegularInstruction::AddAssign(_)
-                                | RegularInstruction::SubtractAssign(_)
-                                | RegularInstruction::MultiplyAssign(_)
-                                | RegularInstruction::DivideAssign(_)
-                                | RegularInstruction::GetSharedReference
-                                | RegularInstruction::GetSharedReferenceMut
-                                | RegularInstruction::CreateShared
-                                | RegularInstruction::CreateSharedMut
-                                | RegularInstruction::AllocateSlot(_)
-                                | RegularInstruction::SetSlot(_)
-                                | RegularInstruction::SetSharedContainerValue(_)
-                                | RegularInstruction::Unbox
-                                | RegularInstruction::TypedValue
-                                | RegularInstruction::RemoteExecution(_)
-                                | RegularInstruction::TypeExpression => {
-                                    unreachable!()
-                                }
+                            // NOTE: make sure that each possible match case is either implemented in the default collection or here
+                            // If an instruction is implemented in the default collection, it should be marked as unreachable!() here
+                            RegularInstruction::Statements(_)
+                            | RegularInstruction::ShortStatements(_)
+                            | RegularInstruction::UnboundedStatements
+                            | RegularInstruction::UnboundedStatementsEnd(
+                                _,
+                            )
+                            | RegularInstruction::List(_)
+                            | RegularInstruction::ShortList(_)
+                            | RegularInstruction::Map(_)
+                            | RegularInstruction::ShortMap(_)
+                            | RegularInstruction::KeyValueDynamic
+                            | RegularInstruction::KeyValueShortText(_)
+                            | RegularInstruction::Add
+                            | RegularInstruction::Subtract
+                            | RegularInstruction::Multiply
+                            | RegularInstruction::Divide
+                            | RegularInstruction::UnaryMinus
+                            | RegularInstruction::UnaryPlus
+                            | RegularInstruction::BitwiseNot
+                            | RegularInstruction::Apply(_)
+                            | RegularInstruction::GetPropertyText(_)
+                            | RegularInstruction::GetPropertyIndex(_)
+                            | RegularInstruction::GetPropertyDynamic
+                            | RegularInstruction::SetPropertyText(_)
+                            | RegularInstruction::SetPropertyIndex(_)
+                            | RegularInstruction::SetPropertyDynamic
+                            | RegularInstruction::Is
+                            | RegularInstruction::Matches
+                            | RegularInstruction::StructuralEqual
+                            | RegularInstruction::Equal
+                            | RegularInstruction::NotStructuralEqual
+                            | RegularInstruction::NotEqual
+                            | RegularInstruction::AddAssign(_)
+                            | RegularInstruction::SubtractAssign(_)
+                            | RegularInstruction::MultiplyAssign(_)
+                            | RegularInstruction::DivideAssign(_)
+                            | RegularInstruction::GetSharedReference
+                            | RegularInstruction::GetSharedReferenceMut
+                            | RegularInstruction::CreateShared
+                            | RegularInstruction::CreateSharedMut
+                            | RegularInstruction::AllocateSlot(_)
+                            | RegularInstruction::SetSlot(_)
+                            | RegularInstruction::SetSharedContainerValue(_)
+                            | RegularInstruction::Unbox
+                            | RegularInstruction::TypedValue
+                            | RegularInstruction::RemoteExecution(_)
+                            | RegularInstruction::TypeExpression => {
+                                unreachable!()
                             }
-                            .with_default_span(),
+                        }
+                        .with_default_span(),
                         )
                 } else {
                     None

@@ -518,3 +518,35 @@ pub fn append_key_string(buffer: &mut Vec<u8>, key_string: &str) {
 pub fn append_instruction_code(buffer: &mut Vec<u8>, code: InstructionCode) {
     append_u8(buffer, code as u8);
 }
+
+
+pub fn append_statements_preamble(buffer: &mut Vec<u8>, len: usize, is_terminated: bool) {
+    match len {
+        0..=255 => {
+            append_instruction_code(
+                buffer,
+                InstructionCode::SHORT_STATEMENTS,
+            );
+            append_u8(
+                buffer,
+                len as u8,
+            );
+        }
+        _ => {
+            append_instruction_code(
+                buffer,
+                InstructionCode::STATEMENTS,
+            );
+            append_u32(
+                buffer,
+                len as u32, // FIXME #673: conversion from usize to u32
+            );
+        }
+    }
+
+    // append termination flag
+    append_u8(
+        buffer,
+        if is_terminated { 1 } else { 0 },
+    );
+}

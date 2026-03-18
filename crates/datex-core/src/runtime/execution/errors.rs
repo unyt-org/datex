@@ -82,6 +82,8 @@ pub enum ExecutionError {
         Option<ExecutionLoopState>,
     ),
     InvalidApply,
+    UnauthorizedMove,
+    MoveToMultipleEndpoints
 }
 impl From<SharedValueCreationError> for ExecutionError {
     fn from(error: SharedValueCreationError) -> Self {
@@ -204,6 +206,12 @@ impl Display for ExecutionError {
             }
             ExecutionError::InvalidApply => {
                 core::write!(f, "Invalid apply operation")
+            }
+            ExecutionError::UnauthorizedMove => {
+                core::write!(f, "Unauthorized move of shared pointer")
+            }
+            ExecutionError::MoveToMultipleEndpoints => {
+                core::write!(f, "Illegal move to multiple endpoints")
             }
             ExecutionError::ExpectedSharedValue => {
                 core::write!(

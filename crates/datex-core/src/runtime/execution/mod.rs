@@ -22,6 +22,7 @@ use crate::{
     },
 };
 use core::{result::Result, unreachable};
+use log::info;
 pub use errors::*;
 pub use execution_input::{ExecutionInput, ExecutionOptions};
 pub use memory_dump::*;
@@ -157,10 +158,7 @@ pub async fn execute_dxb(
             }
             ExternalExecutionInterrupt::Move(address_mapping) => {
                 let moved_values = runtime_internal.clone()
-                    .handle_pointer_move_to_remote(&caller_metadata.endpoint, address_mapping)?
-                    .into_iter()
-                    .map(ValueContainer::Shared)
-                    .collect();
+                    .handle_pointer_move_to_remote(&caller_metadata.endpoint, address_mapping)?;
                 interrupt_provider.provide_result(InterruptResult::ResolvedValues(moved_values));
             }
         }
