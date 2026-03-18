@@ -42,8 +42,9 @@ use crate::global::protocol_structures::instructions::RawLocalPointerAddress;
 use crate::runtime::execution::execution_input::ExecutionCallerMetadata;
 use crate::runtime::execution::InvalidProgramError;
 use crate::runtime::request_move::compile_request_move;
+use crate::shared_values::pointer::OwnedPointer;
 use crate::shared_values::pointer_address::{OwnedPointerAddress, PointerAddress, ReferencedPointerAddress};
-use crate::shared_values::shared_container::SharedContainer;
+use crate::shared_values::shared_container::{SharedContainer, SharedContainerMutability};
 use crate::values::core_value::CoreValue;
 use crate::values::value::Value;
 
@@ -435,13 +436,18 @@ impl RuntimeInternal {
     pub(crate) async fn request_pointer_move(
         self: Rc<RuntimeInternal>,
         from_endpoint: &Endpoint,
-        addresses: Vec<RawLocalPointerAddress>,
-    ) -> Result<Vec<ValueContainer>, ExecutionError> {
-        let pointer_mapping = addresses.into_iter().map(|original| {
+        pointers: Vec<(SharedContainerMutability, RawLocalPointerAddress)>,
+    ) -> Result<Vec<SharedContainer>, ExecutionError> {
+        let pointer_mapping = pointers.into_iter().map(|original| {
             (original, RawLocalPointerAddress {id: self.memory.borrow_mut().get_new_owned_local_pointer().address().address})
         }).collect::<Vec<_>>();
-        let body = compile_request_move(pointer_mapping);
-        let moved_values = self.execute_dxb(
+        let body = compile_request_move(
+            &(pointer_mapping
+                .iter()
+                .map(|((_, original), new)| (original.clone(), new.clone()))
+                .collect::<Vec<_>>())
+        );
+        let moved_values = self.clone().execute_dxb(
             body,
             Some(&mut ExecutionContext::Remote(RemoteExecutionContext::new(from_endpoint.clone(), ExecutionMode::Static))),
             true
@@ -449,7 +455,17 @@ impl RuntimeInternal {
         // moved values should be list
         match moved_values {
             Some(ValueContainer::Local(Value {inner: CoreValue::List(list), ..})) => {
-                Ok(list.into_vec())
+                let pointer_values = list.into_vec();
+                let owned_values = pointer_values.into_iter()
+                    .zip(pointer_mapping.into_iter())
+                    .map(|(value, ((mutability, _), new_address))| {
+                    SharedContainer::boxed_owned(
+                        value,
+                        OwnedPointer::new(OwnedPointerAddress::new(new_address.id)),
+                        mutability
+                    )
+                }).collect::<Vec<_>>();
+                Ok(owned_values)
             }
             _ => Err(ExecutionError::InvalidProgram(InvalidProgramError::ExpectedValue))
         }

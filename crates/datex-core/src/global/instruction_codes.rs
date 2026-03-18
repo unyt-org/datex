@@ -73,6 +73,11 @@ pub enum InstructionCode {
     GET_PROPERTY_INDEX,   // get property with integer index
     GET_PROPERTY_TEXT,    // get property with text key
 
+    TAKE_PROPERTY_DYNAMIC, // take property with arbitrary key value
+    TAKE_PROPERTY_INDEX,   // take property with integer index
+    TAKE_PROPERTY_TEXT,    // take property with text key
+
+
     SET_PROPERTY_DYNAMIC, // set property with arbitrary key value
     SET_PROPERTY_INDEX,   // set property with integer index
     SET_PROPERTY_TEXT,    // set property with text key

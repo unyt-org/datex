@@ -122,7 +122,12 @@ pub fn append_shared_container(
                 PointerReferenceMutability::Immutable => InstructionCode::SHARED_REF
             }
         },
-        None => return append_perform_moves(buffer, &[shared_container]).unwrap(),
+        None => {
+            append_instruction_code(buffer, InstructionCode::TAKE_PROPERTY_INDEX);
+            append_u32(buffer, 0); // list index 0 (only moving a single pointer)
+            append_perform_moves(buffer, &[shared_container]).unwrap();
+            return;
+        },
     };
     append_instruction_code(buffer, instruction_code);
 
@@ -149,6 +154,7 @@ pub fn append_perform_moves(
     append_u32(buffer, shared_containers.len() as u32); // number of moved values
     for shared_container in shared_containers {
         if let Some(local_address) = shared_container.try_get_owned_local_address() {
+            append_u8(buffer, if shared_container.is_mutable() {1} else {0});
             append_local_pointer_address(buffer, local_address);
         }
         else {

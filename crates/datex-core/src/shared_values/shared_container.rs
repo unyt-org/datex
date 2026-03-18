@@ -548,26 +548,14 @@ impl SharedContainer {
         }
     }
 
-    /// Checks if the reference is mutable.
-    /// A reference is mutable if it is a mutable ValueReference and all references in the chain are mutable.
+    /// Checks if the shared container is mutable.
     /// TypeReferences are always immutable.
-    /// FIXME #284: Do we really need this? Probably we already collapse the ref and then change it's value and perform
-    /// the mutability check on the most inner ref.
     pub fn is_mutable(&self) -> bool {
         match &self.value {
             SharedContainerInner::Type(_) => false, // type references are always immutable
             SharedContainerInner::Value(vr) => {
                 let vr_borrow = vr.borrow();
-                // if the current reference is immutable, whole chain is immutable
-                if vr_borrow.mutability != SharedContainerMutability::Mutable {
-                    return false;
-                }
-
-                // otherwise, check if ref is pointing to another reference
-                match &vr_borrow.value_container {
-                    ValueContainer::Shared(inner) => inner.is_mutable(),
-                    ValueContainer::Local(_) => true,
-                }
+                vr_borrow.mutability == SharedContainerMutability::Mutable
             }
         }
     }
@@ -649,27 +637,38 @@ impl SharedContainer {
         value_container: impl Into<ValueContainer>,
         pointer: OwnedPointer,
     ) -> Self {
-        SharedContainer::try_boxed_owned(
-            value_container.into(),
-            None,
+        SharedContainer::boxed_owned(
+            value_container,
             pointer,
             SharedContainerMutability::Mutable,
         )
-        .unwrap() // always Ok, since we dont provide an allowed type that could mismatch
+    }
+
+    /// The pointer must be an owned pointer, since we create a new shared value
+    pub fn boxed_owned_immut(
+        value_container: impl Into<ValueContainer>,
+        pointer: OwnedPointer,
+    ) -> Self {
+        SharedContainer::boxed_owned(
+            value_container,
+            pointer,
+            SharedContainerMutability::Immutable,
+        )
     }
 
     /// The pointer must be an owned pointer, since we create a new shared value
     pub fn boxed_owned(
         value_container: impl Into<ValueContainer>,
         pointer: OwnedPointer,
+        mutability: SharedContainerMutability
     ) -> Self {
         SharedContainer::try_boxed_owned(
             value_container.into(),
             None,
             pointer,
-            SharedContainerMutability::Immutable,
+            mutability
         )
-        .unwrap() // always Ok, since we dont provide an allowed type that could mismatch
+            .unwrap() // always Ok, since we dont provide an allowed type that could mismatch
     }
 
     /// Creates an owned pointer (no ref), but for an internal pointer address, not an OwnedPointer
@@ -849,6 +848,17 @@ impl SharedContainer {
                 "Cannot get property on invalid reference".to_string(),
             )))
     }
+
+    // Takes (removes) a property from the value if applicable
+    pub fn try_take_property<'a>(
+        &self,
+        key: impl Into<ValueKey<'a>>,
+    ) -> Result<ValueContainer, AccessError> {
+        self.with_value(|value| value.try_take_property(key))
+            .unwrap_or(Err(AccessError::InvalidOperation(
+                "Cannot get property on invalid reference".to_string(),
+            )))
+    }
 }
 
 impl Apply for SharedContainer {
@@ -903,7 +913,7 @@ mod tests {
         let mut map = Map::default();
         map.set("name", ValueContainer::from("Jonas"));
         map.set("age", ValueContainer::from(30));
-        let reference = SharedContainer::boxed_owned(
+        let reference = SharedContainer::boxed_owned_immut(
             ValueContainer::from(map),
             OwnedPointer::NULL,
         );
@@ -928,7 +938,7 @@ mod tests {
             ("name".to_string(), ValueContainer::from("Jonas")),
             ("age".to_string(), ValueContainer::from(30)),
         ]);
-        let reference = SharedContainer::boxed_owned(
+        let reference = SharedContainer::boxed_owned_immut(
             ValueContainer::from(struct_val),
             OwnedPointer::NULL,
         );
@@ -954,7 +964,7 @@ mod tests {
             ValueContainer::from(2),
             ValueContainer::from(3),
         ];
-        let reference = SharedContainer::boxed_owned(
+        let reference = SharedContainer::boxed_owned_immut(
             ValueContainer::from(list),
             OwnedPointer::NULL,
         );
@@ -980,7 +990,7 @@ mod tests {
             }))
         );
 
-        let text_ref = SharedContainer::boxed_owned(
+        let text_ref = SharedContainer::boxed_owned_immut(
             ValueContainer::from("hello"),
             OwnedPointer::NULL,
         );
@@ -1001,7 +1011,7 @@ mod tests {
     fn reference_identity() {
         let value = 42;
         let reference1 =
-            SharedContainer::boxed_owned(value, OwnedPointer::NULL);
+            SharedContainer::boxed_owned_immut(value, OwnedPointer::NULL);
         let reference2 = reference1.clone();
 
         // cloned reference should be equal (identical)
@@ -1016,18 +1026,18 @@ mod tests {
         // separate reference containing the same value should not be equal
         assert_ne!(
             reference1,
-            SharedContainer::boxed_owned(value, OwnedPointer::NULL)
+            SharedContainer::boxed_owned_immut(value, OwnedPointer::NULL)
         );
     }
 
     #[test]
     fn reference_value_equality() {
         let value = 42;
-        let reference1 = ValueContainer::Shared(SharedContainer::boxed_owned(
+        let reference1 = ValueContainer::Shared(SharedContainer::boxed_owned_immut(
             value,
             OwnedPointer::NULL,
         ));
-        let reference2 = ValueContainer::Shared(SharedContainer::boxed_owned(
+        let reference2 = ValueContainer::Shared(SharedContainer::boxed_owned_immut(
             value,
             OwnedPointer::NULL,
         ));
@@ -1040,8 +1050,8 @@ mod tests {
 
     #[test]
     fn reference_structural_equality() {
-        let reference1 = SharedContainer::boxed_owned(42.0, OwnedPointer::NULL);
-        let reference2 = SharedContainer::boxed_owned(42, OwnedPointer::NULL);
+        let reference1 = SharedContainer::boxed_owned_immut(42.0, OwnedPointer::NULL);
+        let reference2 = SharedContainer::boxed_owned_immut(42, OwnedPointer::NULL);
 
         // different references should not be equal a.k.a. identical
         assert_ne!(reference1, reference2);
@@ -1057,7 +1067,7 @@ mod tests {
         map_a.set("number", ValueContainer::from(42));
         map_a.set(
             "obj",
-            ValueContainer::Shared(SharedContainer::boxed_owned(
+            ValueContainer::Shared(SharedContainer::boxed_owned_immut(
                 Map::default(),
                 OwnedPointer::NULL,
             )),
@@ -1065,7 +1075,7 @@ mod tests {
 
         // construct map_a as a value first
         let map_a_original_ref = ValueContainer::Shared(
-            SharedContainer::boxed_owned(map_a, OwnedPointer::NULL),
+            SharedContainer::boxed_owned_immut(map_a, OwnedPointer::NULL),
         );
 
         // create map_b as a reference

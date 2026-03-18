@@ -102,7 +102,7 @@ fn compile_preamble(
                             BorrowedValueContainer::Shared(shared_container) => {
                                 shared_container.assert_owned().map_err(|_| ExecutionError::ExpectedOwnedSharedValue)?;
                                 moved_pointers.push(shared_container);
-                                append_instruction_code(buffer, InstructionCode::GET_PROPERTY_INDEX);
+                                append_instruction_code(buffer, InstructionCode::TAKE_PROPERTY_INDEX);
                                 append_u32(buffer, index);
                                 append_instruction_code(buffer, InstructionCode::CLONE_SLOT);
                                 append_u32(buffer, moved_pointers_slot_index);
@@ -181,7 +181,7 @@ mod tests {
 
     #[test]
     fn remote_execution_with_injected_ref_value() {
-        let shared_value = BorrowedValueContainer::Shared(SharedContainer::boxed_owned(42, OwnedPointer::NULL));
+        let shared_value = BorrowedValueContainer::Shared(SharedContainer::boxed_owned_immut(42, OwnedPointer::NULL));
         let exec_block_data = InstructionBlockData {
             injected_slot_count: 1,
             length: 1,
@@ -211,7 +211,7 @@ mod tests {
 
     #[test]
     fn remote_execution_multiple_ref_values() {
-        let shared_value1 = BorrowedValueContainer::Shared(SharedContainer::boxed_owned(42, OwnedPointer::NULL));
+        let shared_value1 = BorrowedValueContainer::Shared(SharedContainer::boxed_owned_immut(42, OwnedPointer::NULL));
         let shared_value2 = BorrowedValueContainer::Shared(SharedContainer::boxed_owned_mut(100, OwnedPointer::NULL));
         let exec_block_data = InstructionBlockData {
             injected_slot_count: 2,
@@ -254,7 +254,7 @@ mod tests {
 
     #[test]
     fn remote_execution_with_injected_moved_value() {
-        let shared_value = BorrowedValueContainer::Shared(SharedContainer::boxed_owned(42, OwnedPointer::NULL));
+        let shared_value = BorrowedValueContainer::Shared(SharedContainer::boxed_owned_immut(42, OwnedPointer::NULL));
         let exec_block_data = InstructionBlockData {
             injected_slot_count: 1,
             length: 1,
@@ -274,10 +274,11 @@ mod tests {
                 // compiled shared moves
                 InstructionCode::PERFORM_MOVE as u8,
                 1, 0, 0, 0, // number of moves (1)
+                0, // immutable
                 0, 0, 0, 0, 0, // pointer address (assuming the shared container is stored at address 1)
                 InstructionCode::ALLOCATE_SLOT as u8,
                 0, 0, 0, 0, // slot address
-                InstructionCode::GET_PROPERTY_INDEX as u8,
+                InstructionCode::TAKE_PROPERTY_INDEX as u8,
                 0, 0, 0, 0, // index of the moved pointer
                 InstructionCode::CLONE_SLOT as u8,
                 1, 0, 0, 0, // slot address of the moved pointers
@@ -288,7 +289,7 @@ mod tests {
 
     #[test]
     fn remote_execution_moved_value_and_ref() {
-        let shared_value1 = BorrowedValueContainer::Shared(SharedContainer::boxed_owned(42, OwnedPointer::NULL));
+        let shared_value1 = BorrowedValueContainer::Shared(SharedContainer::boxed_owned_immut(42, OwnedPointer::NULL));
         let shared_value2 = BorrowedValueContainer::Shared(SharedContainer::boxed_owned_mut(100, OwnedPointer::NULL));
         let exec_block_data = InstructionBlockData {
             injected_slot_count: 2,
@@ -312,11 +313,12 @@ mod tests {
                 // compiled shared moves
                 InstructionCode::PERFORM_MOVE as u8,
                 1, 0, 0, 0, // number of moves (1)
+                0, // immmut
                 0, 0, 0, 0, 0, // pointer address (assuming the first shared container is stored at address 0)
 
                 InstructionCode::ALLOCATE_SLOT as u8,
                 0, 0, 0, 0, // slot address of first value (moved)
-                InstructionCode::GET_PROPERTY_INDEX as u8,
+                InstructionCode::TAKE_PROPERTY_INDEX as u8,
                 0, 0, 0, 0, // index of the moved pointer
                 InstructionCode::CLONE_SLOT as u8,
                 2, 0, 0, 0, // slot address of the moved pointers

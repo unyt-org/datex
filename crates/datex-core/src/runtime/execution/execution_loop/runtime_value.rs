@@ -52,6 +52,7 @@ impl RuntimeValue {
     /// Creates an owned `ValueContainer` from the `RuntimeValue`.
     /// This possibly involves cloning the value if it is stored in a slot.
     /// Do not use this method if you want to work on the actual value without cloning it.
+    #[deprecated(note = "value container clone should not be used")]
     pub fn into_cloned_value_container(
         self,
         state: &RuntimeExecutionState,
@@ -60,6 +61,20 @@ impl RuntimeValue {
             RuntimeValue::ValueContainer(vc) => Ok(vc),
             RuntimeValue::SlotAddress(addr) => {
                 Ok(get_slot_value(state, addr)?.clone())
+            }
+        }
+    }
+
+    /// Creates an owned `ValueContainer` from the `RuntimeValue`.
+    /// If the runtime value is inside a slot, it is popped
+    pub fn into_value_container(
+        self,
+        state: &mut RuntimeExecutionState,
+    ) -> Result<ValueContainer, ExecutionError> {
+        match self {
+            RuntimeValue::ValueContainer(vc) => Ok(vc),
+            RuntimeValue::SlotAddress(addr) => {
+                Ok(state.slots.drop_slot(addr)?)
             }
         }
     }

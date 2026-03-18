@@ -351,6 +351,9 @@ pub fn ast_from_bytecode(
                             | RegularInstruction::GetPropertyText(_)
                             | RegularInstruction::GetPropertyIndex(_)
                             | RegularInstruction::GetPropertyDynamic
+                            | RegularInstruction::TakePropertyText(_)
+                            | RegularInstruction::TakePropertyIndex(_)
+                            | RegularInstruction::TakePropertyDynamic
                             | RegularInstruction::SetPropertyText(_)
                             | RegularInstruction::SetPropertyIndex(_)
                             | RegularInstruction::SetPropertyDynamic
@@ -654,7 +657,9 @@ pub fn ast_from_bytecode(
                                 .into()
                             }
 
-                            RegularInstruction::GetPropertyIndex(
+                            RegularInstruction::TakePropertyIndex(
+                                index_data,
+                            ) | RegularInstruction::GetPropertyIndex(
                                 index_data,
                             ) => {
                                 let base = collected_results.pop_value_result();
@@ -673,7 +678,7 @@ pub fn ast_from_bytecode(
                                 .into()
                             }
 
-                            RegularInstruction::GetPropertyText(text_data) => {
+                            RegularInstruction::TakePropertyText(text_data) | RegularInstruction::GetPropertyText(text_data) => {
                                 let base = collected_results.pop_value_result();
                                 DatexExpressionData::PropertyAccess(
                                     crate::ast::expressions::PropertyAccess {
@@ -690,7 +695,7 @@ pub fn ast_from_bytecode(
                                 .into()
                             }
 
-                            RegularInstruction::GetPropertyDynamic => {
+                            RegularInstruction::TakePropertyDynamic | RegularInstruction::GetPropertyDynamic => {
                                 let base = collected_results.pop_value_result();
                                 let property =
                                     collected_results.pop_value_result();

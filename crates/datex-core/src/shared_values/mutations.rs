@@ -304,7 +304,7 @@ mod tests {
         assert_eq!(updated_value, ValueContainer::from(4));
 
         // Try to push to immutable value
-        let int_ref = SharedContainer::boxed_owned(
+        let int_ref = SharedContainer::boxed_owned_immut(
             List::from(vec![ValueContainer::from(42)]),
             OwnedPointer::NULL,
         );
@@ -423,7 +423,7 @@ mod tests {
 
     #[test]
     fn immutable_reference_fails() {
-        let r = SharedContainer::boxed_owned(42, OwnedPointer::NULL);
+        let r = SharedContainer::boxed_owned_immut(42, OwnedPointer::NULL);
         assert_matches!(
             r.try_replace(0, None, 43),
             Err(AccessError::ImmutableReference)

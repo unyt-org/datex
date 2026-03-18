@@ -556,7 +556,9 @@ impl<T> InstructionCollector<T> {
             }
 
             RegularInstruction::GetPropertyText(_)
-            | RegularInstruction::GetPropertyIndex(_) => {
+            | RegularInstruction::GetPropertyIndex(_)
+            | RegularInstruction::TakePropertyText(_)
+            | RegularInstruction::TakePropertyIndex(_) => {
                 self.collect_full(
                     Instruction::RegularInstruction(regular_instruction),
                     1,
@@ -564,7 +566,7 @@ impl<T> InstructionCollector<T> {
                 None
             }
 
-            RegularInstruction::GetPropertyDynamic => {
+            RegularInstruction::GetPropertyDynamic | RegularInstruction::TakePropertyDynamic => {
                 self.collect_full(
                     Instruction::RegularInstruction(regular_instruction),
                     2,

@@ -438,6 +438,18 @@ impl ValueContainer {
         }
     }
 
+    pub fn try_take_property<'a>(
+        &mut self,
+        key: impl Into<ValueKey<'a>>,
+    ) -> Result<ValueContainer, AccessError> {
+        match self {
+            ValueContainer::Local(value) => value.try_take_property(key),
+            ValueContainer::Shared(reference) => {
+                reference.try_take_property(key)
+            }
+        }
+    }
+
     pub fn try_set_property<'a>(
         &mut self,
         source_id: TransceiverId,

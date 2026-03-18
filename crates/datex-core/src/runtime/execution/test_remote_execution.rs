@@ -1,4 +1,5 @@
 use core::assert_matches;
+use log::info;
 use crate::{
     runtime::{
         execution::context::{ExecutionContext, ExecutionMode},
@@ -166,7 +167,6 @@ pub async fn test_remote_shared_value_inject() {
     )
     .await;
 }
-
 
 #[tokio::test]
 #[cfg(feature = "compiler")]

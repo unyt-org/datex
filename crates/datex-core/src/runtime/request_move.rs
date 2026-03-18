@@ -6,7 +6,7 @@ use crate::prelude::*;
 
 /// Compiles a MOVE instruction with a list of pointer mappings
 pub fn compile_request_move(
-    mappings: Vec<(RawLocalPointerAddress, RawLocalPointerAddress)>,
+    mappings: &[(RawLocalPointerAddress, RawLocalPointerAddress)],
 ) -> Vec<u8> {
     let mut buffer = Vec::with_capacity(1 + 5 + (mappings.len() * 2 * 5));
 
@@ -29,7 +29,7 @@ mod tests {
 
     #[test]
     fn test_compile_request_empty_move() {
-        assert_eq!(compile_request_move(vec![]), vec![
+        assert_eq!(compile_request_move(&[]), vec![
             InstructionCode::MOVE as u8,
             0,0,0,0
         ]);
@@ -37,7 +37,7 @@ mod tests {
 
     #[test]
     fn test_compile_request_move() {
-        let mappings = vec![
+        let mappings = &[
             (RawLocalPointerAddress {id: [1,1,1,1,1]}, RawLocalPointerAddress {id: [1,2,3,4,5]}),
             (RawLocalPointerAddress {id: [2,2,2,2,2]}, RawLocalPointerAddress {id: [1,2,3,4,6]}),
         ];

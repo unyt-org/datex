@@ -128,11 +128,15 @@ pub enum RegularInstruction {
 
     GetPropertyText(ShortTextData),
     SetPropertyText(ShortTextData),
-    SetPropertyDynamic,
+    TakePropertyText(ShortTextData),
 
     GetPropertyIndex(UInt32Data),
     SetPropertyIndex(UInt32Data),
+    TakePropertyIndex(UInt32Data),
+
     GetPropertyDynamic,
+    SetPropertyDynamic,
+    TakePropertyDynamic,
 
     // comparison operator
     Is,
@@ -388,7 +392,7 @@ impl Display for RegularInstruction {
                 core::write!(
                     f,
                     "PERFORM_MOVE (pointers: {})",
-                    perform_move.addresses.iter().map(|addr| hex::encode(addr.id)).collect::<Vec<_>>().join(", ")
+                    perform_move.pointers.iter().map(|(_mut, addr)| hex::encode(addr.id)).collect::<Vec<_>>().join(", ")
                 )
             }
             RegularInstruction::Move(mv) => {
@@ -431,14 +435,23 @@ impl Display for RegularInstruction {
             RegularInstruction::SetPropertyIndex(uint_32_data) => {
                 core::write!(f, "SET_PROPERTY_INDEX {}", uint_32_data.0)
             }
+            RegularInstruction::TakePropertyIndex(uint_32_data) => {
+                core::write!(f, "TAKE_PROPERTY_INDEX {}", uint_32_data.0)
+            }
             RegularInstruction::GetPropertyText(short_text_data) => {
                 core::write!(f, "GET_PROPERTY_TEXT {}", short_text_data.0)
+            }
+            RegularInstruction::TakePropertyText(short_text_data) => {
+                core::write!(f, "TAKE_PROPERTY_TEXT {}", short_text_data.0)
             }
             RegularInstruction::SetPropertyText(short_text_data) => {
                 core::write!(f, "SET_PROPERTY_TEXT {}", short_text_data.0)
             }
             RegularInstruction::GetPropertyDynamic => {
                 core::write!(f, "GET_PROPERTY_DYNAMIC")
+            }
+            RegularInstruction::TakePropertyDynamic => {
+                core::write!(f, "TAKE_PROPERTY_DYNAMIC")
             }
             RegularInstruction::SetPropertyDynamic => {
                 core::write!(f, "SET_PROPERTY_DYNAMIC")
@@ -730,7 +743,7 @@ pub struct GetOrCreateRemoteRefData {
 pub struct PerformMove {
     pub pointer_count: u32,
     #[br(count = pointer_count)]
-    pub addresses: Vec<RawLocalPointerAddress>,
+    pub pointers: Vec<(u8, RawLocalPointerAddress)>, // FIXME: bool instead of u8
 }
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]

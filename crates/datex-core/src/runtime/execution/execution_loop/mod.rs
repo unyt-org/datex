@@ -77,7 +77,7 @@ use log::info;
 use crate::global::protocol_structures::external_slot_type::{ExternalSlotType, SharedSlotType};
 use crate::runtime::execution::execution_loop::remote_execution_blocks::compile_remote_execution_block;
 use crate::runtime::execution::macros::interrupt_with_values;
-use crate::shared_values::shared_container::SharedContainerInner;
+use crate::shared_values::shared_container::{SharedContainerInner, SharedContainerMutability};
 use crate::values::borrowed_value_container::BorrowedValueContainer;
 
 #[derive(Debug)]
@@ -468,7 +468,14 @@ pub fn inner_execution_loop(
                                 let resolved_moved_values = interrupt_with_values!(
                                     interrupt_provider,
                                     ExecutionInterrupt::External(
-                                        ExternalExecutionInterrupt::RequestMove(perform_move.addresses)
+                                        ExternalExecutionInterrupt::RequestMove(
+                                            perform_move.pointers
+                                                .into_iter()
+                                                .map(|(mutable_flag, address)|
+                                                (if mutable_flag != 0 {SharedContainerMutability::Mutable} else {SharedContainerMutability::Immutable}, address)
+                                            )
+                                            .collect()
+                                        )
                                     )
                                 );
                                 Some(RuntimeValue::ValueContainer(ValueContainer::from(resolved_moved_values)))
@@ -508,6 +515,9 @@ pub fn inner_execution_loop(
                             RegularInstruction::GetPropertyText(_) |
                             RegularInstruction::GetPropertyIndex(_) |
                             RegularInstruction::GetPropertyDynamic |
+                            RegularInstruction::TakePropertyText(_) |
+                            RegularInstruction::TakePropertyIndex(_) |
+                            RegularInstruction::TakePropertyDynamic |
                             RegularInstruction::SetPropertyText(_) |
                             RegularInstruction::SetPropertyIndex(_) |
                             RegularInstruction::SetPropertyDynamic |
@@ -765,7 +775,7 @@ pub fn inner_execution_loop(
                                     let pointer = state.runtime_internal.memory.borrow_mut().get_new_owned_local_pointer();
 
                                     let shared_container = match instruction {
-                                        RegularInstruction::CreateShared => SharedContainer::boxed_owned(
+                                        RegularInstruction::CreateShared => SharedContainer::boxed_owned_immut(
                                             target,
                                             pointer,
                                         ),
@@ -1050,6 +1060,31 @@ pub fn inner_execution_loop(
                                     ))
                                     .into()
                                 }
+
+
+                                RegularInstruction::TakePropertyIndex(
+                                    property_data,
+                                ) => {
+                                    let mut target = yield_unwrap!(
+                                        collected_results
+                                            .pop_runtime_value_result_assert_existing()
+                                    );
+                                    let property_index = property_data.0;
+
+                                    let res = target.with_mut_value_container(
+                                        &mut state.slots,
+                                        |target| {
+                                            target.try_take_property(
+                                                property_index,
+                                            )
+                                        },
+                                    );
+                                    RuntimeValue::ValueContainer(yield_unwrap!(
+                                        yield_unwrap!(res)
+                                    ))
+                                        .into()
+                                }
+
 
                                 RegularInstruction::SetPropertyText(
                                     property_data,
@@ -1368,7 +1403,7 @@ pub fn inner_execution_loop(
                     CollectedExecutionResult::Value(value) => {
                         yield_unwrap!(
                             value
-                                .map(|v| v.into_cloned_value_container(&state))
+                                .map(|v| v.into_value_container(&mut state))
                                 .transpose()
                         )
                     }

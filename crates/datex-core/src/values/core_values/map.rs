@@ -680,7 +680,7 @@ mod tests {
     #[test]
     fn test_ref_keys() {
         let mut map = Map::default();
-        let key = ValueContainer::Shared(SharedContainer::boxed_owned(
+        let key = ValueContainer::Shared(SharedContainer::boxed_owned_immut(
             ValueContainer::from(42),
             OwnedPointer::NULL,
         ));
@@ -691,7 +691,7 @@ mod tests {
         assert_eq!(map.get(&key).unwrap().to_string(), "\"value\"");
 
         // new reference with same value should not be found
-        let new_key = ValueContainer::Shared(SharedContainer::boxed_owned(
+        let new_key = ValueContainer::Shared(SharedContainer::boxed_owned_immut(
             ValueContainer::from(42),
             OwnedPointer::NULL,
         ));

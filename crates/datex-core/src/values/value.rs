@@ -191,6 +191,40 @@ impl Value {
         }
     }
 
+    /// Takes (removes) a property from the value if applicable (e.g. for map and structs)
+    pub fn try_take_property<'a>(
+        &mut self,
+        key: impl Into<ValueKey<'a>>,
+    ) -> Result<ValueContainer, AccessError> {
+        match self.inner {
+            CoreValue::Map(ref mut map) => {
+                // If the value is a map, get the property
+                Ok(map.delete(key)?)
+            }
+            CoreValue::List(ref mut list) => {
+                if let Some(index) = key.into().try_as_index() {
+                    Ok(list.delete(index)?)
+                } else {
+                    Err(AccessError::InvalidIndexKey)
+                }
+            }
+            CoreValue::Text(ref text) => {
+                if let Some(index) = key.into().try_as_index() {
+                    let char = text.char_at(index)?;
+                    Ok(ValueContainer::from(char.to_string()))
+                } else {
+                    Err(AccessError::InvalidIndexKey)
+                }
+            }
+            _ => {
+                // If the value is not an map, we cannot get a property
+                Err(AccessError::InvalidOperation(
+                    "Cannot get property".to_string(),
+                ))
+            }
+        }
+    }
+
     /// Sets a property on the value if applicable (e.g. for maps)
     pub fn try_set_property<'a>(
         &mut self,

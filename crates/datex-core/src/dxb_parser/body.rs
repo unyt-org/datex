@@ -405,6 +405,30 @@ pub fn iterate_instructions(
                             RegularInstruction::GetPropertyDynamic
                         }
 
+                        InstructionCode::TAKE_PROPERTY_TEXT => {
+                            next_instructions_stack.push_next_regular(1);
+                            let text_data = ShortTextDataRaw::read(&mut reader);
+                            let text = yield_unwrap!(String::from_utf8(
+                                yield_unwrap!(text_data).text
+                            ));
+                            RegularInstruction::TakePropertyText(ShortTextData(
+                                text,
+                            ))
+                        }
+
+                        InstructionCode::TAKE_PROPERTY_INDEX => {
+                            next_instructions_stack.push_next_regular(1);
+                            let index_data = UInt32Data::read(&mut reader);
+                            RegularInstruction::TakePropertyIndex(yield_unwrap!(
+                                index_data
+                            ))
+                        }
+
+                        InstructionCode::TAKE_PROPERTY_DYNAMIC => {
+                            next_instructions_stack.push_next_regular(2);
+                            RegularInstruction::TakePropertyDynamic
+                        }
+
                         InstructionCode::SET_PROPERTY_TEXT => {
                             next_instructions_stack.push_next_regular(2);
                             let text_data = ShortTextDataRaw::read(&mut reader);
