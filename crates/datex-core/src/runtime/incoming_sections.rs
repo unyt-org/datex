@@ -17,6 +17,7 @@ use crate::{
 use crate::prelude::*;
 use core::result::Result;
 use log::info;
+use crate::core_compiler::value_compiler::{compile_shared_container, compile_value};
 use crate::values::borrowed_value_container::BorrowedValueContainer;
 
 impl RuntimeInternal {
@@ -91,8 +92,14 @@ impl RuntimeInternal {
         if let Ok(value) = result {
             let dxb = if let Some(value) = value {
                 match value {
-                    ValueContainer::Shared(shared_container) => compile_value_container(BorrowedValueContainer::Shared(shared_container)),
-                    ValueContainer::Local(value) => compile_value_container(BorrowedValueContainer::Local(&value)),
+                    ValueContainer::Shared(shared_container) => {
+                        let compiled = compile_shared_container(&shared_container, true);
+                        if shared_container.is_owned() {
+                            self.add_moving_pointers(receiver_endpoint.clone(), vec![shared_container]).unwrap();
+                        }
+                        compiled
+                    },
+                    ValueContainer::Local(value) => compile_value(&value),
                 }
             } else {
                 vec![]

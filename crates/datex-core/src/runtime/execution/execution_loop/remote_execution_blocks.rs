@@ -8,6 +8,7 @@ use crate::shared_values::shared_container::SharedContainer;
 use crate::utils::buffers::{append_u32, append_u8};
 use crate::values::value_container::ValueContainer;
 use crate::prelude::*;
+use crate::values::borrowed_value_container::BorrowedValueContainer;
 
 /// Compiles a remote execution block into a bytecode buffer, with the given instruction block metadata and injected values
 /// which can then be sent to another endpoint
@@ -21,7 +22,7 @@ use crate::prelude::*;
 /// #4 = #2.1
 pub fn compile_remote_execution_block(
     exec_block_data: InstructionBlockData,
-    slot_values: Vec<Cow<ValueContainer>>,
+    slot_values: Vec<BorrowedValueContainer>,
 ) -> Result<(Vec<u8>, Vec<SharedContainer>), ExecutionError> {
 
     if exec_block_data
@@ -45,7 +46,7 @@ pub fn compile_remote_execution_block(
     if !moved_owned_containers.is_empty() {
         // + 1 statement for perform move
         preamble_statements_count += 1;
-        compile_preform_move_preamble(&mut slot_preamble, moved_pointers_slot_index, &moved_owned_containers);
+        compile_preform_move_preamble(&mut slot_preamble, moved_pointers_slot_index, &moved_owned_containers.iter().collect::<Vec<&SharedContainer>>());
     }
 
     let final_buffer = if preamble_statements_count > 0 {
@@ -60,7 +61,7 @@ pub fn compile_remote_execution_block(
     else {
         exec_block_data.body
     };
-    
+
     Ok((final_buffer, moved_owned_containers))
 }
 
@@ -68,7 +69,7 @@ fn compile_preamble(
     buffer: &mut Vec<u8>,
     moved_pointers_slot_index: u32,
     exec_block_data: InstructionBlockData,
-    slot_values: Vec<Cow<ValueContainer>>,
+    slot_values: Vec<BorrowedValueContainer>,
 ) -> Result<Vec<SharedContainer>, ExecutionError> {
 
     let mut moved_pointers: Vec<SharedContainer> = vec![];
@@ -96,12 +97,9 @@ fn compile_preamble(
                         // get moved value from moved_pointers_slot
                         let index = moved_pointers.len() as u32;
 
-                        // this clones the slot value if it was not owned, leading to an ExpectedOwnedSharedValue error
-                        // since the clone creates a ref instead of an owned value
-                        let slot_value = slot_value.into_owned();
                         match slot_value {
-                            ValueContainer::Local(_) => return Err(ExecutionError::ExpectedSharedValue),
-                            ValueContainer::Shared(shared_container) => {
+                            BorrowedValueContainer::Local(_) => return Err(ExecutionError::ExpectedSharedValue),
+                            BorrowedValueContainer::Shared(shared_container) => {
                                 shared_container.assert_owned().map_err(|_| ExecutionError::ExpectedOwnedSharedValue)?;
                                 moved_pointers.push(shared_container);
                                 append_instruction_code(buffer, InstructionCode::GET_PROPERTY_INDEX);
@@ -112,15 +110,15 @@ fn compile_preamble(
                             }
                         }
                     },
-                    SharedSlotType::Ref => match slot_value.as_ref() {
-                        ValueContainer::Local(_) => return Err(ExecutionError::ExpectedSharedValue),
-                        ValueContainer::Shared(shared_container) => {
+                    SharedSlotType::Ref => match slot_value {
+                        BorrowedValueContainer::Local(_) => return Err(ExecutionError::ExpectedSharedValue),
+                        BorrowedValueContainer::Shared(shared_container) => {
                             shared_container.derive_reference()
                         }
                     }
-                    SharedSlotType::RefMut => match slot_value.as_ref() {
-                        ValueContainer::Local(_) => return Err(ExecutionError::ExpectedSharedValue),
-                        ValueContainer::Shared(shared_container) => {
+                    SharedSlotType::RefMut => match slot_value {
+                        BorrowedValueContainer::Local(_) => return Err(ExecutionError::ExpectedSharedValue),
+                        BorrowedValueContainer::Shared(shared_container) => {
                             shared_container.try_derive_mutable_reference()
                                 .map_err(|_| ExecutionError::MutableReferenceToNonMutableValue)?
                         }
@@ -129,9 +127,9 @@ fn compile_preamble(
 
                 append_shared_container(
                     buffer,
-                    shared_container,
+                    &shared_container,
                     true
-                ).map_err(|_| ExecutionError::ExpectedOwnedSharedValue)?;
+                );
             }
         }
     }
@@ -142,7 +140,7 @@ fn compile_preamble(
 fn compile_preform_move_preamble(
     buffer: &mut Vec<u8>,
     moved_pointers_slot_index: u32,
-    moved_pointers: &[SharedContainer]
+    moved_pointers: &[&SharedContainer]
 ) {
     let mut pre_buffer = vec![
         InstructionCode::ALLOCATE_SLOT as u8,
@@ -166,8 +164,8 @@ mod tests {
     use crate::runtime::execution::execution_loop::remote_execution_blocks::compile_remote_execution_block;
     use crate::shared_values::pointer::{OwnedPointer};
     use crate::shared_values::shared_container::SharedContainer;
-    use crate::values::value_container::ValueContainer;
     use crate::prelude::*;
+    use crate::values::borrowed_value_container::BorrowedValueContainer;
 
     #[test]
     fn remote_execution_no_injected_values() {
@@ -183,14 +181,14 @@ mod tests {
 
     #[test]
     fn remote_execution_with_injected_ref_value() {
-        let shared_value = ValueContainer::Shared(SharedContainer::boxed_owned(42, OwnedPointer::NULL));
+        let shared_value = BorrowedValueContainer::Shared(SharedContainer::boxed_owned(42, OwnedPointer::NULL));
         let exec_block_data = InstructionBlockData {
             injected_slot_count: 1,
             length: 1,
             injected_slots: vec![(0, ExternalSlotType::Shared(SharedSlotType::Ref))],
             body: vec![InstructionCode::NULL as u8],
         };
-        let res = compile_remote_execution_block(exec_block_data, vec![Cow::Owned(shared_value)]).unwrap().0;
+        let res = compile_remote_execution_block(exec_block_data, vec![shared_value]).unwrap().0;
         // should allocate slot and then compile the shared value into the buffer, followed by the body
         assert_eq!(
             res,
@@ -213,8 +211,8 @@ mod tests {
 
     #[test]
     fn remote_execution_multiple_ref_values() {
-        let shared_value1 = ValueContainer::Shared(SharedContainer::boxed_owned(42, OwnedPointer::NULL));
-        let shared_value2 = ValueContainer::Shared(SharedContainer::boxed_owned_mut(100, OwnedPointer::NULL));
+        let shared_value1 = BorrowedValueContainer::Shared(SharedContainer::boxed_owned(42, OwnedPointer::NULL));
+        let shared_value2 = BorrowedValueContainer::Shared(SharedContainer::boxed_owned_mut(100, OwnedPointer::NULL));
         let exec_block_data = InstructionBlockData {
             injected_slot_count: 2,
             length: 1,
@@ -224,7 +222,7 @@ mod tests {
             ],
             body: vec![InstructionCode::NULL as u8],
         };
-        let res = compile_remote_execution_block(exec_block_data, vec![Cow::Owned(shared_value1), Cow::Owned(shared_value2)]).unwrap().0;
+        let res = compile_remote_execution_block(exec_block_data, vec![shared_value1, shared_value2]).unwrap().0;
         // should allocate slots and then compile the shared values into the buffer, followed by the body
         assert_eq!(
             res,
@@ -256,14 +254,14 @@ mod tests {
 
     #[test]
     fn remote_execution_with_injected_moved_value() {
-        let shared_value = ValueContainer::Shared(SharedContainer::boxed_owned(42, OwnedPointer::NULL));
+        let shared_value = BorrowedValueContainer::Shared(SharedContainer::boxed_owned(42, OwnedPointer::NULL));
         let exec_block_data = InstructionBlockData {
             injected_slot_count: 1,
             length: 1,
             injected_slots: vec![(0, ExternalSlotType::Shared(SharedSlotType::Move))],
             body: vec![InstructionCode::NULL as u8],
         };
-        let res = compile_remote_execution_block(exec_block_data, vec![Cow::Owned(shared_value)]).unwrap().0;
+        let res = compile_remote_execution_block(exec_block_data, vec![shared_value]).unwrap().0;
         // should allocate slot and then compile the shared value into the buffer, followed by the body
         assert_eq!(
             res,
@@ -290,8 +288,8 @@ mod tests {
 
     #[test]
     fn remote_execution_moved_value_and_ref() {
-        let shared_value1 = ValueContainer::Shared(SharedContainer::boxed_owned(42, OwnedPointer::NULL));
-        let shared_value2 = ValueContainer::Shared(SharedContainer::boxed_owned_mut(100, OwnedPointer::NULL));
+        let shared_value1 = BorrowedValueContainer::Shared(SharedContainer::boxed_owned(42, OwnedPointer::NULL));
+        let shared_value2 = BorrowedValueContainer::Shared(SharedContainer::boxed_owned_mut(100, OwnedPointer::NULL));
         let exec_block_data = InstructionBlockData {
             injected_slot_count: 2,
             length: 1,
@@ -301,7 +299,7 @@ mod tests {
             ],
             body: vec![InstructionCode::NULL as u8],
         };
-        let res = compile_remote_execution_block(exec_block_data, vec![Cow::Owned(shared_value1), Cow::Owned(shared_value2)]).unwrap().0;
+        let res = compile_remote_execution_block(exec_block_data, vec![shared_value1, shared_value2]).unwrap().0;
         // should allocate slots and then compile the shared values into the buffer, followed by the body
         assert_eq!(
             res,

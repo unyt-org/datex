@@ -497,13 +497,25 @@ impl SharedContainer {
 
     /// Returns the shared container if it is owned (not a reference), otherwise returns an error.
     pub fn assert_owned(&self) -> Result<(), ()> {
-        if self.reference_mutability.is_some() {
-            return Err(());
+        if self.is_owned() {
+            Ok(())
+        } else {
+            Err(())
         }
-        if !self.pointer().is_owned() {
-            unreachable!()
+    }
+
+    /// Returns whether the shared container is owned
+    pub fn is_owned(&self) -> bool {
+        let is_owned = self.reference_mutability.is_some();
+        if is_owned {
+            if !self.pointer().is_owned() {
+                unreachable!()
+            }
+            true
         }
-        Ok(())
+        else {
+            false
+        }
     }
 
     /// Returns the local pointer address if this is an owned pointer, otherwise returns None.

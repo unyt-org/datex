@@ -649,21 +649,21 @@ fn compile_expression(
                         }
                     }
                     ValueContainer::Shared(shared_container) => {
-                        let res = match placeholder_type {
+                        match placeholder_type {
                             ValueAccessType::SharedRefMut => {
                                 let shared_container = shared_container
                                     .try_derive_mutable_reference()
                                     .map_err(|_| CompilerError::SharedMutRefToImmutableValue)?;
                                 append_shared_container(
                                     &mut compilation_context.buffer,
-                                    shared_container,
+                                    &shared_container,
                                     true,
                                 )
                             }
                             ValueAccessType::SharedRef => {
                                 append_shared_container(
                                     &mut compilation_context.buffer,
-                                    shared_container.derive_reference(),
+                                    &shared_container.derive_reference(),
                                     true,
                                 )
                             },
@@ -672,7 +672,7 @@ fn compile_expression(
                                     .map_err(|_| CompilerError::InvalidConversionFromRefToOwnedValue)?;
                                 append_shared_container(
                                     &mut compilation_context.buffer,
-                                    shared_container,
+                                    &shared_container,
                                     true,
                                 )
                             },
@@ -683,13 +683,12 @@ fn compile_expression(
                                         append_value(
                                             &mut compilation_context.buffer,
                                             &value,
-                                        );
-                                        Ok(())
+                                        )
                                     }
                                     ValueContainer::Shared(shared_container) => {
                                         append_shared_container(
                                             &mut compilation_context.buffer,
-                                            shared_container,
+                                            &shared_container,
                                             true,
                                         )
                                     }
@@ -698,12 +697,11 @@ fn compile_expression(
                             ValueAccessType::Borrow => {
                                 append_shared_container(
                                     &mut compilation_context.buffer,
-                                    shared_container.derive_reference(),
+                                    &shared_container.derive_reference(),
                                     true,
                                 )
                             }
                         };
-                        res.map_err(|_| CompilerError::InvalidConversionFromRefToOwnedValue)?;
                     }
                 }
             } else {

@@ -78,6 +78,7 @@ use crate::global::protocol_structures::external_slot_type::{ExternalSlotType, S
 use crate::runtime::execution::execution_loop::remote_execution_blocks::compile_remote_execution_block;
 use crate::runtime::execution::macros::interrupt_with_values;
 use crate::shared_values::shared_container::SharedContainerInner;
+use crate::values::borrowed_value_container::BorrowedValueContainer;
 
 #[derive(Debug)]
 enum CollectedExecutionResult {
@@ -1153,10 +1154,16 @@ pub fn inner_execution_loop(
                                     for (i, (addr, slot_type)) in injected.iter().enumerate() {
                                         slots.push(match slot_type {
                                             ExternalSlotType::Shared(SharedSlotType::Move) => {
-                                                Cow::Owned(moved[i].take().unwrap())
+                                                match moved[i].take().unwrap() {
+                                                    ValueContainer::Shared(shared) => BorrowedValueContainer::Shared(shared),
+                                                    ValueContainer::Local(_) => return yield Err(ExecutionError::ExpectedSharedValue)
+                                                }
                                             }
                                             _ => {
-                                                Cow::Borrowed(yield_unwrap!(get_slot_value(&state, *addr)))
+                                                match yield_unwrap!(get_slot_value(&state, *addr)) {
+                                                    ValueContainer::Shared(shared) => BorrowedValueContainer::Shared(shared.clone()),
+                                                    ValueContainer::Local(value) => BorrowedValueContainer::Local(value),
+                                                }
                                             }
                                         });
                                     }

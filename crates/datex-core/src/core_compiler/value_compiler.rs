@@ -39,12 +39,11 @@ use crate::{
 };
 use crate::global::protocol_structures::instructions::{RawPointerAddress};
 use crate::shared_values::shared_container::SharedContainer;
-use crate::values::borrowed_value_container::BorrowedValueContainer;
 
 /// Compiles a given value container to a DXB body
 /// For local values, the value is just serialized
 /// For shared values, a reference with maximum mutability is serialized (no move)
-pub fn compile_value_container(value_container: BorrowedValueContainer) -> Vec<u8> {
+pub fn compile_value_container(value_container: &ValueContainer) -> Vec<u8> {
     let mut buffer = Vec::with_capacity(256);
     append_value_container(&mut buffer, value_container);
 
@@ -58,17 +57,25 @@ pub fn compile_value(value_container: &Value) -> Vec<u8> {
     buffer
 }
 
+pub fn compile_shared_container(shared_container: &SharedContainer, insert_value: bool) -> Vec<u8> {
+    let mut buffer = Vec::with_capacity(256);
+    append_shared_container(&mut buffer, shared_container, insert_value);
+
+    buffer
+}
+
+
 /// Appends a value container.
 /// For local values, the value is just serialized
 /// For shared values, a reference with maximum mutability is serialized (no move)
 fn append_value_container_inner(
     buffer: &mut Vec<u8>,
-    value_container: BorrowedValueContainer,
+    value_container: &ValueContainer,
 ) {
     match value_container {
-        BorrowedValueContainer::Local(value) => append_value(buffer, value),
-        BorrowedValueContainer::Shared(reference) => {
-            append_shared_container_as_ref(buffer, reference, true).expect("Failed to append shared container as ref");
+        ValueContainer::Local(value) => append_value(buffer, value),
+        ValueContainer::Shared(reference) => {
+            append_shared_container_as_ref(buffer, &reference, true);
         }
     }
 }
@@ -79,12 +86,12 @@ fn append_value_container_inner(
 /// For shared values, a reference with maximum mutability is serialized (no move)
 pub fn append_value_container(
     buffer: &mut Vec<u8>,
-    value_container: BorrowedValueContainer,
+    value_container: &ValueContainer,
 ) {
     match value_container {
-        BorrowedValueContainer::Local(value) => append_value(buffer, &value),
-        BorrowedValueContainer::Shared(reference) => {
-            append_shared_container(buffer, reference, true).expect("Failed to append shared container as ref");
+        ValueContainer::Local(value) => append_value(buffer, &value),
+        ValueContainer::Shared(reference) => {
+            append_shared_container(buffer, &reference, true);
         }
     }
 }
@@ -92,10 +99,10 @@ pub fn append_value_container(
 /// Appends a shared container to the buffer a reference
 pub fn append_shared_container_as_ref(
     buffer: &mut Vec<u8>,
-    shared_container: SharedContainer,
+    shared_container: &SharedContainer,
     insert_value: bool,
-) -> Result<(), ()> {
-    append_shared_container(buffer, shared_container.derive_with_max_mutability(), insert_value)
+) {
+    append_shared_container(buffer, &shared_container.derive_with_max_mutability(), insert_value)
 }
 
 /// Appends a shared container to the buffer, with optional mutability information for the shared container
@@ -105,9 +112,9 @@ pub fn append_shared_container_as_ref(
 /// TODO: set insert_value only if for remote execution and not already on remote endpoint
 pub fn append_shared_container(
     buffer: &mut Vec<u8>,
-    shared_container: SharedContainer,
+    shared_container: &SharedContainer,
     insert_value: bool,
-) -> Result<(), ()> {
+) {
     let instruction_code = match &shared_container.reference_mutability {
         Some(mutability) => {
             match mutability {
@@ -115,7 +122,7 @@ pub fn append_shared_container(
                 PointerReferenceMutability::Immutable => InstructionCode::SHARED_REF
             }
         },
-        None => return append_perform_moves(buffer, &[shared_container]),
+        None => return append_perform_moves(buffer, &[shared_container]).unwrap(),
     };
     append_instruction_code(buffer, instruction_code);
 
@@ -130,15 +137,13 @@ pub fn append_shared_container(
     if insert_value {
         append_value(buffer, &shared_container.collapse_to_value().borrow())
     }
-
-    Ok(())
 }
 
 /// Appends multiple shared containers as moves to the buffer
 /// TODO: Also handle moves of nested shared values!
 pub fn append_perform_moves(
     buffer: &mut Vec<u8>,
-    shared_containers: &[SharedContainer],
+    shared_containers: &[&SharedContainer],
 ) -> Result<(), ()> {
     append_instruction_code(buffer, InstructionCode::PERFORM_MOVE);
     append_u32(buffer, shared_containers.len() as u32); // number of moved values
@@ -234,8 +239,8 @@ pub fn append_value(buffer: &mut Vec<u8>, value: &Value) {
             for (key, value) in val.iter() {
                 append_key_value_pair(
                     buffer,
-                    (&ValueContainer::from(key)).into(),
-                    value.into(),
+                    &ValueContainer::from(key),
+                    value,
                 );
             }
         }
@@ -487,13 +492,13 @@ pub fn append_get_internal_ref(buffer: &mut Vec<u8>, id: &[u8; 3]) {
 
 pub fn append_key_value_pair(
     buffer: &mut Vec<u8>,
-    key: BorrowedValueContainer,
-    value: BorrowedValueContainer,
+    key: &ValueContainer,
+    value: &ValueContainer,
 ) {
     // insert key
     match key {
         // if text, append_key_string, else dynamic
-        BorrowedValueContainer::Local(Value {
+        ValueContainer::Local(Value {
             inner: CoreValue::Text(text),
             ..
         }) => {
