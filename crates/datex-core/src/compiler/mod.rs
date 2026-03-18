@@ -42,7 +42,6 @@ use crate::{
         append_endpoint, append_float_as_i16, append_float_as_i32,
         append_get_internal_ref, append_get_shared_ref, append_instruction_code,
         append_integer, append_key_string, append_text, append_typed_decimal,
-        append_value_container,
     },
     parser::{Parser, ParserOptions},
     runtime::execution::context::ExecutionMode,

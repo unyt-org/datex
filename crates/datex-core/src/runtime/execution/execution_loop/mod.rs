@@ -6,7 +6,6 @@ pub mod state;
 mod remote_execution_blocks;
 
 use crate::{
-    core_compiler::value_compiler::compile_value_container,
     dxb_parser::{
         body::{DXBParserError, iterate_instructions},
         instruction_collector::{

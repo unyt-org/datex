@@ -17,6 +17,7 @@ use crate::{
 use crate::prelude::*;
 use core::result::Result;
 use log::info;
+use crate::values::borrowed_value_container::BorrowedValueContainer;
 
 impl RuntimeInternal {
     pub(crate) async fn handle_incoming_sections_task(
@@ -88,8 +89,11 @@ impl RuntimeInternal {
         );
 
         if let Ok(value) = result {
-            let dxb = if let Some(value) = &value {
-                compile_value_container(value)
+            let dxb = if let Some(value) = value {
+                match value {
+                    ValueContainer::Shared(shared_container) => compile_value_container(BorrowedValueContainer::Shared(shared_container)),
+                    ValueContainer::Local(value) => compile_value_container(BorrowedValueContainer::Local(&value)),
+                }
             } else {
                 vec![]
             };

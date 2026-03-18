@@ -37,12 +37,14 @@ use crate::{
     },
     values::core_values::r#type::TypeMetadata,
 };
-use crate::global::protocol_structures::instructions::{RawLocalPointerAddress, RawPointerAddress};
+use crate::global::protocol_structures::instructions::{RawPointerAddress};
 use crate::shared_values::shared_container::SharedContainer;
+use crate::values::borrowed_value_container::BorrowedValueContainer;
 
 /// Compiles a given value container to a DXB body
-#[deprecated(note = "use compile_value")]
-pub fn compile_value_container(value_container: &ValueContainer) -> Vec<u8> {
+/// For local values, the value is just serialized
+/// For shared values, a reference with maximum mutability is serialized (no move)
+pub fn compile_value_container(value_container: BorrowedValueContainer) -> Vec<u8> {
     let mut buffer = Vec::with_capacity(256);
     append_value_container(&mut buffer, value_container);
 
@@ -56,45 +58,50 @@ pub fn compile_value(value_container: &Value) -> Vec<u8> {
     buffer
 }
 
-pub fn compile_shared_container(
-    shared_container: SharedContainer,
-    insert_value: bool,
-) -> Vec<u8> {
-    let mut buffer = Vec::with_capacity(256);
-    append_shared_container(&mut buffer, shared_container, insert_value);
-
-    buffer
-}
-
-#[deprecated(note = "use append_value")]
-pub fn append_value_container(
+/// Appends a value container.
+/// For local values, the value is just serialized
+/// For shared values, a reference with maximum mutability is serialized (no move)
+fn append_value_container_inner(
     buffer: &mut Vec<u8>,
-    value_container: &ValueContainer,
+    value_container: BorrowedValueContainer,
 ) {
     match value_container {
-        ValueContainer::Local(value) => append_value(buffer, value),
-        ValueContainer::Shared(reference) => {
-            panic!("invalid")
-
-            // // TODO #160: in this case, the ref might also be inserted by pointer id, depending on the compiler settings
-            // // add CREATE_SHARED/CREATE_SHARED_MUT instruction
-            // if reference.mutability() == SharedContainerMutability::Mutable {
-            //     append_instruction_code(
-            //         buffer,
-            //         InstructionCode::CREATE_SHARED_MUT,
-            //     );
-            // } else {
-            //     append_instruction_code(buffer, InstructionCode::CREATE_SHARED);
-            // }
-            // // insert pointer id + value or only id
-            // // add pointer to memory if not there yet
-            // append_value(buffer, &reference.collapse_to_value().borrow())
+        BorrowedValueContainer::Local(value) => append_value(buffer, value),
+        BorrowedValueContainer::Shared(reference) => {
+            append_shared_container_as_ref(buffer, reference, true).expect("Failed to append shared container as ref");
         }
     }
 }
 
+
+/// Appends a value container.
+/// For local values, the value is just serialized
+/// For shared values, a reference with maximum mutability is serialized (no move)
+pub fn append_value_container(
+    buffer: &mut Vec<u8>,
+    value_container: BorrowedValueContainer,
+) {
+    match value_container {
+        BorrowedValueContainer::Local(value) => append_value(buffer, &value),
+        BorrowedValueContainer::Shared(reference) => {
+            append_shared_container(buffer, reference, true).expect("Failed to append shared container as ref");
+        }
+    }
+}
+
+/// Appends a shared container to the buffer a reference
+pub fn append_shared_container_as_ref(
+    buffer: &mut Vec<u8>,
+    shared_container: SharedContainer,
+    insert_value: bool,
+) -> Result<(), ()> {
+    append_shared_container(buffer, shared_container.derive_with_max_mutability(), insert_value)
+}
+
 /// Appends a shared container to the buffer, with optional mutability information for the shared container
 /// If shared_container_mutability is None, a move is performed
+/// If force_reference is set to true, no move is performed, even if the shared_container is owned - instead
+/// the container is transferred as a reference with maximum mutability
 /// TODO: set insert_value only if for remote execution and not already on remote endpoint
 pub fn append_shared_container(
     buffer: &mut Vec<u8>,
@@ -209,7 +216,7 @@ pub fn append_value(buffer: &mut Vec<u8>, value: &Value) {
             }
 
             for item in val {
-                append_value_container(buffer, item); // 'shared [1,2,3,4,5,10]
+                append_value_container(buffer, item.into());
             }
         }
         CoreValue::Map(val) => {
@@ -227,15 +234,15 @@ pub fn append_value(buffer: &mut Vec<u8>, value: &Value) {
             for (key, value) in val.iter() {
                 append_key_value_pair(
                     buffer,
-                    &ValueContainer::from(key),
-                    value,
+                    (&ValueContainer::from(key)).into(),
+                    value.into(),
                 );
             }
         }
         CoreValue::Range(range) => {
             append_instruction_code(buffer, InstructionCode::RANGE);
-            append_value_container(buffer, &range.start);
-            append_value_container(buffer, &range.end);
+            append_value_container(buffer, (&*range.start).into());
+            append_value_container(buffer, (&*range.end).into());
         }
     }
 }
@@ -480,13 +487,13 @@ pub fn append_get_internal_ref(buffer: &mut Vec<u8>, id: &[u8; 3]) {
 
 pub fn append_key_value_pair(
     buffer: &mut Vec<u8>,
-    key: &ValueContainer,
-    value: &ValueContainer,
+    key: BorrowedValueContainer,
+    value: BorrowedValueContainer,
 ) {
     // insert key
     match key {
         // if text, append_key_string, else dynamic
-        ValueContainer::Local(Value {
+        BorrowedValueContainer::Local(Value {
             inner: CoreValue::Text(text),
             ..
         }) => {

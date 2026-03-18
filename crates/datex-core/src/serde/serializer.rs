@@ -37,7 +37,7 @@ where
     T: Serialize,
 {
     let value_container = to_value_container(value)?;
-    Ok(compile_value_container(&value_container))
+    Ok(compile_value_container((&value_container).into()))
 }
 pub fn to_value_container<T>(
     value: &T,
