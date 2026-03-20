@@ -1,5 +1,6 @@
 use core::assert_matches;
 use log::info;
+use rstest::rstest;
 use crate::{
     runtime::{
         execution::context::{ExecutionContext, ExecutionMode},
@@ -147,7 +148,6 @@ pub async fn test_remote_inline_implicit_context() {
 #[tokio::test]
 #[cfg(feature = "compiler")]
 pub async fn test_remote_shared_value_inject() {
-    flexi_logger::init();
     let endpoint_a = Endpoint::new("@test_a");
     let endpoint_b = Endpoint::new("@test_b");
 
@@ -157,7 +157,7 @@ pub async fn test_remote_shared_value_inject() {
         async |runtime_a, _runtime_b| {
             // execute script remotely on @test_b
             let result = runtime_a
-                .execute("var x = shared 42; @test_b :: x + 1", &[], None)
+                .execute("var x = shared 42; @test_b ::  x + 1", &[], None)
                 .await;
             assert_eq!(
                 result.unwrap().unwrap(),
@@ -168,10 +168,15 @@ pub async fn test_remote_shared_value_inject() {
     .await;
 }
 
-#[tokio::test]
 #[cfg(feature = "compiler")]
-pub async fn test_remote_shared_value_return() {
-    flexi_logger::init();
+#[rstest]
+#[case("shared", SharedContainerMutability::Immutable)]
+#[case("shared mut", SharedContainerMutability::Mutable)]
+#[tokio::test]
+pub async fn test_remote_shared_value_return(
+    #[case] shared_string: String,
+    #[case] mutable_value: SharedContainerMutability,
+) {
     let endpoint_a = Endpoint::new("@test_a");
     let endpoint_b = Endpoint::new("@test_b");
 
@@ -181,7 +186,7 @@ pub async fn test_remote_shared_value_return() {
         async |runtime_a, _runtime_b| {
             // execute script remotely on @test_b
             let result = runtime_a
-                .execute("@test_b :: (shared 42)", &[], None)
+                .execute(&format!("@test_b :: ({shared_string} 42)"), &[], None)
                 .await
                 .unwrap().unwrap();
             if let ValueContainer::Shared(shared_container) = result {
@@ -192,7 +197,52 @@ pub async fn test_remote_shared_value_return() {
                 );
                 assert_eq!(
                     shared_container.mutability(),
-                    SharedContainerMutability::Immutable
+                    mutable_value
+                );
+                assert_eq!(
+                    shared_container.value_container(),
+                    ValueContainer::from(Integer::from(42))
+                )
+            }
+            else {
+                panic!("Expected SharedContainer");
+            }
+        },
+    )
+        .await;
+}
+
+#[cfg(feature = "compiler")]
+#[rstest]
+#[case("shared", SharedContainerMutability::Immutable)]
+#[case("shared mut", SharedContainerMutability::Mutable)]
+#[tokio::test]
+pub async fn test_remote_shared_roundtrip_move(
+    #[case] shared_string: String,
+    #[case] mutable_value: SharedContainerMutability,
+) {
+    flexi_logger::init();
+    let endpoint_a = Endpoint::new("@test_a");
+    let endpoint_b = Endpoint::new("@test_b");
+
+    use_mock_setup_with_two_connected_runtimes(
+        endpoint_a.clone(),
+        endpoint_b.clone(),
+        async |runtime_a, _runtime_b| {
+            // execute script remotely on @test_b
+            let result = runtime_a
+                .execute(&format!("const x = {shared_string} 42; @test_b :: (print 'x; x);"), &[], None)
+                .await
+                .unwrap().unwrap();
+            if let ValueContainer::Shared(shared_container) = result {
+                shared_container.assert_owned().expect("shared container should be owned");
+                assert_matches!(
+                    shared_container.pointer().clone(),
+                    Pointer::Owned(..)
+                );
+                assert_eq!(
+                    shared_container.mutability(),
+                    mutable_value
                 );
                 assert_eq!(
                     shared_container.value_container(),

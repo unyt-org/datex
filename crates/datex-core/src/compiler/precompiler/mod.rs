@@ -484,19 +484,40 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
         _: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedCompilerError> {
         let mut registered_names = HashSet::new();
-        for statements in statements.statements.iter_mut() {
-            if let DatexExpressionData::TypeDeclaration(type_declaration) =
-                &mut statements.data
-            {
-                let name = &type_declaration.name;
-                if registered_names.contains(name) {
-                    self.collect_error(
-                        CompilerError::InvalidRedeclaration(name.clone())
+        let is_terminated = statements.is_terminated;
+        let statements_length = statements.statements.len();
+        for (i, statement_expressions) in statements.statements.iter_mut().enumerate() {
+            match &mut statement_expressions.data {
+                DatexExpressionData::TypeDeclaration(type_declaration) => {
+                    let name = &type_declaration.name;
+                    if registered_names.contains(name) {
+                        self.collect_error(
+                            CompilerError::InvalidRedeclaration(name.clone())
                             .into(),
-                    )?
+                        )?
+                    }
+                    registered_names.insert(name.clone());
+                    self.hoist_variable(type_declaration);
                 }
-                registered_names.insert(name.clone());
-                self.hoist_variable(type_declaration);
+                // also terminate execution block for remote execution if the result is not used
+                DatexExpressionData::RemoteExecution(remote_execution) => {
+                    // if not last statement, or last statement and terminated
+                    if i != statements_length - 1 || is_terminated {
+                        match &mut remote_execution.right.data {
+                            DatexExpressionData::Statements(statements) => {
+                                statements.is_terminated = true;
+                            }
+                            _ => {
+                                *remote_execution.right = DatexExpressionData::Statements(Statements {
+                                    is_terminated: true,
+                                    unbounded: None,
+                                    statements: vec![*remote_execution.right.clone()]
+                                }).with_span(remote_execution.right.span.clone());
+                            }
+                        }
+                    }
+                }
+                _ => {}
             }
         }
         Ok(VisitAction::VisitChildren)
@@ -737,6 +758,7 @@ mod tests {
     };
     use core::assert_matches;
     use crate::ast::expressions::CreateShared;
+    use crate::values::core_values::endpoint::Endpoint;
 
     fn precompile(
         ast: DatexExpression,
@@ -1569,5 +1591,63 @@ mod tests {
             ]))
                 .with_default_span()
         );
+    }
+
+    #[test]
+    fn remote_execution_terminate_single_statement() {
+        let result = parse_and_precompile("@example :: 1;");
+        assert!(result.is_ok());
+        let rich_ast = result.unwrap();
+        assert_eq!(
+            rich_ast.ast.data,
+            DatexExpressionData::Statements(Statements::new_terminated(vec![
+                DatexExpressionData::RemoteExecution(RemoteExecution {
+                    left: Box::new(DatexExpressionData::Endpoint(Endpoint::from_str("@example").unwrap()).with_default_span()),
+                    right: Box::new(DatexExpressionData::Statements(Statements::new_terminated(
+                        vec![DatexExpressionData::Integer(Integer::from(1)).with_default_span()]
+                    )).with_default_span())
+                }).with_default_span()
+            ]))
+        )
+    }
+
+    #[test]
+    fn remote_execution_terminate_multiple_statements() {
+        let result = parse_and_precompile("@example :: 1; 2");
+        assert!(result.is_ok());
+        let rich_ast = result.unwrap();
+        assert_eq!(
+            rich_ast.ast.data,
+            DatexExpressionData::Statements(Statements::new_unterminated(vec![
+                DatexExpressionData::RemoteExecution(RemoteExecution {
+                    left: Box::new(DatexExpressionData::Endpoint(Endpoint::from_str("@example").unwrap()).with_default_span()),
+                    right: Box::new(DatexExpressionData::Statements(Statements::new_terminated(
+                        vec![DatexExpressionData::Integer(Integer::from(1)).with_default_span()]
+                    )).with_default_span())
+                }).with_default_span(),
+                DatexExpressionData::Integer(Integer::from(2)).with_default_span(),
+            ]))
+        )
+    }
+
+    #[test]
+    fn remote_execution_terminate_inner_unterminated() {
+        let result = parse_and_precompile("@example :: (1;2);");
+        assert!(result.is_ok());
+        let rich_ast = result.unwrap();
+        assert_eq!(
+            rich_ast.ast.data,
+            DatexExpressionData::Statements(Statements::new_terminated(vec![
+                DatexExpressionData::RemoteExecution(RemoteExecution {
+                    left: Box::new(DatexExpressionData::Endpoint(Endpoint::from_str("@example").unwrap()).with_default_span()),
+                    right: Box::new(DatexExpressionData::Statements(Statements::new_terminated(
+                        vec![
+                            DatexExpressionData::Integer(Integer::from(1)).with_default_span(),
+                            DatexExpressionData::Integer(Integer::from(2)).with_default_span(),
+                        ],
+                    )).with_default_span())
+                }).with_default_span()
+            ]))
+        )
     }
 }

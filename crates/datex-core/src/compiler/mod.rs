@@ -2727,7 +2727,7 @@ pub mod tests {
                 InstructionCode::REMOTE_EXECUTION.into(),
                 // --- start of block
                 // block size (5 bytes)
-                5,
+                8,
                 0,
                 0,
                 0,
@@ -2742,6 +2742,9 @@ pub mod tests {
                 0,
                 0,
                 ExternalSlotType::Shared(SharedSlotType::Move).into(),
+                InstructionCode::SHORT_STATEMENTS.into(),
+                1,
+                1, // terminated
                 // slot 0 (mapped from slot 0)
                 InstructionCode::POP_SLOT.into(),
                 // slot index as u32
