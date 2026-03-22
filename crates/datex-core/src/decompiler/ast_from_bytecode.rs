@@ -41,6 +41,7 @@ use alloc::format;
 use core::cell::RefCell;
 use num_enum::TryFromPrimitive;
 use crate::ast::expressions::CloneExpression;
+use crate::global::protocol_structures::instructions::UnboundedStatementsData;
 
 #[derive(Debug)]
 enum CollectedAstResult {
@@ -235,28 +236,28 @@ pub fn ast_from_bytecode(
                                 DatexExpressionData::Null
                             }
 
-                            RegularInstruction::RequestSharedRef(raw_address) => {
+                            RegularInstruction::RequestRemoteSharedRef(raw_address) => {
                                 DatexExpressionData::RequestSharedRef(RequestSharedRef {
                                     address: PointerAddress::from(&raw_address),
                                     mutability: PointerReferenceMutability::Immutable
                                 })
                             }
 
-                            RegularInstruction::RequestSharedRefMut(raw_address) => {
+                            RegularInstruction::RequestRemoteSharedRefMut(raw_address) => {
                                 DatexExpressionData::RequestSharedRef(RequestSharedRef {
                                     address: PointerAddress::from(&raw_address),
                                     mutability: PointerReferenceMutability::Mutable
                                 })
                             }
 
-                            RegularInstruction::GetLocalRef(raw_address) => {
+                            RegularInstruction::GetLocalSharedRef(raw_address) => {
                                 DatexExpressionData::RequestSharedRef(RequestSharedRef {
                                     address: PointerAddress::from(&raw_address),
                                     mutability: PointerReferenceMutability::Immutable
                                 })
                             }
 
-                            RegularInstruction::GetInternalRef(raw_address) => {
+                            RegularInstruction::GetInternalSharedRef(raw_address) => {
                                 DatexExpressionData::RequestSharedRef(RequestSharedRef {
                                     address: PointerAddress::from(&raw_address),
                                     mutability: PointerReferenceMutability::Immutable
@@ -590,7 +591,7 @@ pub fn ast_from_bytecode(
                             }
 
                             RegularInstruction::UnboundedStatementsEnd(
-                                terminated,
+                                UnboundedStatementsData {terminated},
                             ) => {
                                 let result = collector.try_pop_unbounded().ok_or(DXBParserError::NotInUnboundedRegularScopeError)?;
                                 if let FullOrPartialResult::Full(_, results) =

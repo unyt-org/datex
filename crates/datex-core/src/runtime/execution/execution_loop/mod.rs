@@ -75,6 +75,7 @@ use alloc::rc::Rc;
 use core::cell::RefCell;
 use log::info;
 use crate::global::protocol_structures::external_slot_type::{ExternalSlotType, SharedSlotType};
+use crate::global::protocol_structures::instructions::UnboundedStatementsData;
 use crate::runtime::execution::execution_loop::remote_execution_blocks::compile_remote_execution_block;
 use crate::runtime::execution::macros::interrupt_with_values;
 use crate::shared_values::pointer::{Pointer, ReferencedPointer};
@@ -375,7 +376,7 @@ pub fn inner_execution_loop(
                             }
                             RegularInstruction::Text(TextData(text)) => Some(ValueContainer::from(text).into()),
 
-                            RegularInstruction::RequestSharedRef(address) => Some(interrupt_with_value!(
+                            RegularInstruction::RequestRemoteSharedRef(address) => Some(interrupt_with_value!(
                                     interrupt_provider,
                                     ExecutionInterrupt::External(
                                         ExternalExecutionInterrupt::GetReferenceToRemotePointer(address, PointerReferenceMutability::Immutable)
@@ -383,14 +384,14 @@ pub fn inner_execution_loop(
                                 ).into()),
 
 
-                            RegularInstruction::RequestSharedRefMut(address) => Some(interrupt_with_value!(
+                            RegularInstruction::RequestRemoteSharedRefMut(address) => Some(interrupt_with_value!(
                                     interrupt_provider,
                                     ExecutionInterrupt::External(
                                         ExternalExecutionInterrupt::GetReferenceToRemotePointer(address, PointerReferenceMutability::Mutable)
                                     )
                                 ).into()),
 
-                            RegularInstruction::GetLocalRef(address) => {
+                            RegularInstruction::GetLocalSharedRef(address) => {
                                 Some(interrupt_with_value!(
                                     interrupt_provider,
                                     ExecutionInterrupt::External(
@@ -402,7 +403,7 @@ pub fn inner_execution_loop(
                             }
 
 
-                            RegularInstruction::GetInternalRef(address) => {
+                            RegularInstruction::GetInternalSharedRef(address) => {
                                 Some(interrupt_with_value!(
                                     interrupt_provider,
                                     ExecutionInterrupt::External(
@@ -1267,7 +1268,7 @@ pub fn inner_execution_loop(
                                 }
 
                                 RegularInstruction::UnboundedStatementsEnd(
-                                    terminated,
+                                    UnboundedStatementsData {terminated},
                                 ) => {
                                     let result = yield_unwrap!(collector.try_pop_unbounded().ok_or(DXBParserError::NotInUnboundedRegularScopeError));
                                     if let FullOrPartialResult::Partial(

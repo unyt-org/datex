@@ -4,3 +4,4 @@ pub mod instructions;
 pub mod routing_header;
 pub mod serializable;
 pub mod external_slot_type;
+pub mod disassembler;

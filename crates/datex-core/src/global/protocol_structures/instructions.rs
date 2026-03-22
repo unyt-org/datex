@@ -1,3 +1,4 @@
+use alloc::string::FromUtf8Error;
 use crate::{
     global::{
         operators::AssignmentOperator,
@@ -18,11 +19,13 @@ use crate::{
     },
     values::core_values::r#type::TypeMetadata,
 };
-use binrw::{BinRead, BinWrite};
+use binrw::{BinRead, BinResult, BinWrite, Endian};
 use core::{fmt::Display, prelude::rust_2024::*};
+use crate::std::io::{Seek, Read, Write};
 use binrw::io::Cursor;
 use modular_bitfield::{bitfield, specifiers::B4};
 use serde::{Deserialize, Serialize};
+use crate::global::instruction_codes::InstructionCode;
 use crate::global::protocol_structures::external_slot_type::ExternalSlotType;
 use crate::shared_values::pointer::PointerReferenceMutability;
 use crate::shared_values::pointer_address::OwnedPointerAddress;
@@ -61,7 +64,8 @@ impl From<TypeInstruction> for Instruction {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, BinWrite)]
+#[brw(little)]
 pub enum RegularInstruction {
     // signed integers
     Int8(Int8Data),
@@ -104,7 +108,7 @@ pub enum RegularInstruction {
     Statements(StatementsData),
     ShortStatements(StatementsData),
     UnboundedStatements,
-    UnboundedStatementsEnd(bool),
+    UnboundedStatementsEnd(UnboundedStatementsData),
     List(ListData),
     ShortList(ListData),
     Map(MapData),
@@ -161,11 +165,11 @@ pub enum RegularInstruction {
     CreateSharedMut,
 
     // ' $ABCDE
-    RequestSharedRef(RawRemotePointerAddress),
+    RequestRemoteSharedRef(RawRemotePointerAddress),
     // 'mut $ABCDE
-    RequestSharedRefMut(RawRemotePointerAddress),
-    GetLocalRef(RawLocalPointerAddress),
-    GetInternalRef(RawInternalPointerAddress),
+    RequestRemoteSharedRefMut(RawRemotePointerAddress),
+    GetLocalSharedRef(RawLocalPointerAddress),
+    GetInternalSharedRef(RawInternalPointerAddress),
 
     SharedRef(SharedRef),
     SharedRefWithValue(SharedRefWithValue), // shared ref with current value (only if caller owns the pointer)
@@ -190,220 +194,272 @@ pub enum RegularInstruction {
     TypeExpression,
 }
 
+/// Maps each regular instruction to its corresponding instruction code
+impl From<&RegularInstruction> for InstructionCode {
+    fn from(instruction: &RegularInstruction) -> Self {
+        match instruction {
+            RegularInstruction::Int8(_) => InstructionCode::INT_8,
+            RegularInstruction::Int16(_) => InstructionCode::INT_16,
+            RegularInstruction::Int32(_) => InstructionCode::INT_32,
+            RegularInstruction::Int64(_) => InstructionCode::INT_64,
+            RegularInstruction::Int128(_) => InstructionCode::INT_128,
+            RegularInstruction::UInt8(_) => InstructionCode::UINT_8,
+            RegularInstruction::UInt16(_) => InstructionCode::UINT_16,
+            RegularInstruction::UInt32(_) => InstructionCode::UINT_32,
+            RegularInstruction::UInt64(_) => InstructionCode::UINT_64,
+            RegularInstruction::UInt128(_) => InstructionCode::UINT_128,
+            RegularInstruction::BigInteger(_) => InstructionCode::INT_BIG,
+            RegularInstruction::Integer(_) => InstructionCode::INT_32,
+            RegularInstruction::Endpoint(_) => InstructionCode::ENDPOINT,
+            RegularInstruction::DecimalF32(_) => InstructionCode::DECIMAL_F32,
+            RegularInstruction::DecimalF64(_) => InstructionCode::DECIMAL_F64,
+            RegularInstruction::DecimalAsInt16(_) => InstructionCode::DECIMAL_AS_INT_16,
+            RegularInstruction::DecimalAsInt32(_) => InstructionCode::DECIMAL_AS_INT_32,
+            RegularInstruction::BigDecimal(_) => InstructionCode::DECIMAL_BIG,
+            RegularInstruction::Decimal(_) => InstructionCode::DECIMAL,
+            RegularInstruction::Range => InstructionCode::RANGE,
+            RegularInstruction::RemoteExecution(_) => InstructionCode::REMOTE_EXECUTION,
+            RegularInstruction::ShortText(_) => InstructionCode::SHORT_TEXT,
+            RegularInstruction::Text(_) => InstructionCode::TEXT,
+            RegularInstruction::True => InstructionCode::TRUE,
+            RegularInstruction::False => InstructionCode::FALSE,
+            RegularInstruction::Null => InstructionCode::NULL,
+            RegularInstruction::Statements(_) => InstructionCode::STATEMENTS,
+            RegularInstruction::ShortStatements(_) => InstructionCode::SHORT_STATEMENTS,
+            RegularInstruction::UnboundedStatements => InstructionCode::UNBOUNDED_STATEMENTS,
+            RegularInstruction::UnboundedStatementsEnd(_) => InstructionCode::UNBOUNDED_STATEMENTS_END,
+            RegularInstruction::List(_) => InstructionCode::LIST,
+            RegularInstruction::ShortList(_) => InstructionCode::SHORT_LIST,
+            RegularInstruction::Map(_) => InstructionCode::MAP,
+            RegularInstruction::ShortMap(_) => InstructionCode::SHORT_MAP,
+            RegularInstruction::KeyValueDynamic => InstructionCode::KEY_VALUE_DYNAMIC,
+            RegularInstruction::KeyValueShortText(_) => InstructionCode::KEY_VALUE_SHORT_TEXT,
+            RegularInstruction::Add => InstructionCode::ADD,
+            RegularInstruction::Subtract => InstructionCode::SUBTRACT,
+            RegularInstruction::Multiply => InstructionCode::MULTIPLY,
+            RegularInstruction::Divide => InstructionCode::DIVIDE,
+            RegularInstruction::UnaryMinus => InstructionCode::UNARY_MINUS,
+            RegularInstruction::UnaryPlus => InstructionCode::UNARY_PLUS,
+            RegularInstruction::BitwiseNot => InstructionCode::BITWISE_NOT,
+            RegularInstruction::Apply(_) => InstructionCode::APPLY,
+            RegularInstruction::GetPropertyText(_) => InstructionCode::GET_PROPERTY_TEXT,
+            RegularInstruction::SetPropertyText(_) => InstructionCode::SET_PROPERTY_TEXT,
+            RegularInstruction::TakePropertyText(_) => InstructionCode::TAKE_PROPERTY_TEXT,
+            RegularInstruction::GetPropertyIndex(_) => InstructionCode::GET_PROPERTY_INDEX,
+            RegularInstruction::SetPropertyIndex(_) => InstructionCode::SET_PROPERTY_INDEX,
+            RegularInstruction::TakePropertyIndex(_) => InstructionCode::TAKE_PROPERTY_INDEX,
+            RegularInstruction::GetPropertyDynamic => InstructionCode::GET_PROPERTY_DYNAMIC,
+            RegularInstruction::SetPropertyDynamic => InstructionCode::SET_PROPERTY_DYNAMIC,
+            RegularInstruction::TakePropertyDynamic => InstructionCode::TAKE_PROPERTY_DYNAMIC,
+            RegularInstruction::Is => InstructionCode::IS,
+            RegularInstruction::Matches => InstructionCode::MATCHES,
+            RegularInstruction::StructuralEqual => InstructionCode::STRUCTURAL_EQUAL,
+            RegularInstruction::Equal => InstructionCode::EQUAL,
+            RegularInstruction::NotStructuralEqual => InstructionCode::NOT_STRUCTURAL_EQUAL,
+            RegularInstruction::NotEqual => InstructionCode::NOT_EQUAL,
+            RegularInstruction::AddAssign(_) => InstructionCode::ADD_ASSIGN,
+            RegularInstruction::SubtractAssign(_) => InstructionCode::SUBTRACT_ASSIGN,
+            RegularInstruction::MultiplyAssign(_) => InstructionCode::MULTIPLY_ASSIGN,
+            RegularInstruction::DivideAssign(_) => InstructionCode::DIVIDE_ASSIGN,
+            RegularInstruction::GetSharedReference => InstructionCode::GET_SHARED_REF,
+            RegularInstruction::GetSharedReferenceMut => InstructionCode::GET_SHARED_REF_MUT,
+            RegularInstruction::CreateShared => InstructionCode::CREATE_SHARED,
+            RegularInstruction::CreateSharedMut => InstructionCode::CREATE_SHARED_MUT,
+            RegularInstruction::RequestRemoteSharedRef(_) => InstructionCode::REQUEST_REMOTE_SHARED_REF,
+            RegularInstruction::RequestRemoteSharedRefMut(_) => InstructionCode::REQUEST_REMOTE_SHARED_REF_MUT,
+            RegularInstruction::GetLocalSharedRef(_) => InstructionCode::GET_LOCAL_SHARED_REF,
+            RegularInstruction::GetInternalSharedRef(_) => InstructionCode::GET_INTERNAL_SHARED_REF,
+            RegularInstruction::SharedRef(_) => InstructionCode::SHARED_REF,
+            RegularInstruction::SharedRefWithValue(_) => InstructionCode::SHARED_REF_WITH_VALUE,
+            RegularInstruction::PerformMove(_) => InstructionCode::PERFORM_MOVE,
+            RegularInstruction::Move(_) => InstructionCode::MOVE,
+            RegularInstruction::AllocateSlot(_) => InstructionCode::ALLOCATE_SLOT,
+            RegularInstruction::CloneSlot(_) => InstructionCode::CLONE_SLOT,
+            RegularInstruction::BorrowSlot(_) => InstructionCode::BORROW_SLOT,
+            RegularInstruction::GetSlotSharedRef(_) => InstructionCode::GET_SLOT_SHARED_REF,
+            RegularInstruction::GetSlotSharedRefMut(_) => InstructionCode::GET_SLOT_SHARED_REF_MUT,
+            RegularInstruction::PopSlot(_) => InstructionCode::POP_SLOT,
+            RegularInstruction::SetSlot(_) => InstructionCode::SET_SLOT,
+            RegularInstruction::GetInternalSlot(_) => InstructionCode::GET_INTERNAL_SLOT,
+            RegularInstruction::SetSharedContainerValue(_) => InstructionCode::SET_SHARED_CONTAINER_VALUE,
+            RegularInstruction::Unbox => InstructionCode::UNBOX,
+            RegularInstruction::TypedValue => InstructionCode::TYPED_VALUE,
+            RegularInstruction::TypeExpression => InstructionCode::TYPE_EXPRESSION,
+        }
+    }
+}
+
 impl Display for RegularInstruction {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        let code = InstructionCode::from(self);
+        write!(f, "{} ", code)?;
+
         match self {
             RegularInstruction::Int8(data) => {
-                write!(f, "INT_8 {}", data.0)
+                write!(f, "{}", data.0)
             }
             RegularInstruction::Int16(data) => {
-                write!(f, "INT_16 {}", data.0)
+                write!(f, "{}", data.0)
             }
             RegularInstruction::Int32(data) => {
-                write!(f, "INT_32 {}", data.0)
+                write!(f, "{}", data.0)
             }
             RegularInstruction::Int64(data) => {
-                write!(f, "INT_64 {}", data.0)
+                write!(f, "{}", data.0)
             }
             RegularInstruction::Int128(data) => {
-                write!(f, "INT_128 {}", data.0)
+                write!(f, "{}", data.0)
             }
-
             RegularInstruction::UInt8(data) => {
-                write!(f, "UINT_8 {}", data.0)
+                write!(f, "{}", data.0)
             }
             RegularInstruction::UInt16(data) => {
-                write!(f, "UINT_16 {}", data.0)
+                write!(f, "{}", data.0)
             }
             RegularInstruction::UInt32(data) => {
-                write!(f, "UINT_32 {}", data.0)
+                write!(f, "{}", data.0)
             }
             RegularInstruction::UInt64(data) => {
-                write!(f, "UINT_64 {}", data.0)
+                write!(f, "{}", data.0)
             }
             RegularInstruction::UInt128(data) => {
-                write!(f, "UINT_128 {}", data.0)
-            }
-            RegularInstruction::Range => {
-                write!(f, "RANGE regular instruction")
+                write!(f, "{}", data.0)
             }
             RegularInstruction::Apply(count) => {
-                write!(f, "APPLY {}", count.arg_count)
+                write!(f, "(arg_count: {})", count.arg_count)
             }
             RegularInstruction::BigInteger(data) => {
-                write!(f, "BIG_INTEGER {}", data.0)
+                write!(f, "{}", data.0)
             }
             RegularInstruction::Integer(data) => {
-                write!(f, "INTEGER {}", data.0)
+                write!(f, "{}", data.0)
             }
             RegularInstruction::Endpoint(data) => {
-                write!(f, "ENDPOINT {data}")
+                write!(f, "{data}")
             }
 
             RegularInstruction::DecimalAsInt16(data) => {
-                write!(f, "DECIMAL_AS_INT_16 {}", data.0)
+                write!(f, "{}", data.0)
             }
             RegularInstruction::DecimalAsInt32(data) => {
-                write!(f, "DECIMAL_AS_INT_32 {}", data.0)
+                write!(f, "{}", data.0)
             }
             RegularInstruction::DecimalF32(data) => {
                 write!(
                     f,
-                    "DECIMAL_F32 {}",
+                    "{}",
                     decimal_to_string(data.0, false)
                 )
             }
             RegularInstruction::DecimalF64(data) => {
                 write!(
                     f,
-                    "DECIMAL_F64 {}",
+                    "{}",
                     decimal_to_string(data.0, false)
                 )
             }
             RegularInstruction::BigDecimal(data) => {
-                write!(f, "DECIMAL_BIG {}", data.0)
+                write!(f, "{}", data.0)
             }
             RegularInstruction::Decimal(data) => {
-                write!(f, "DECIMAL {}", data.0)
+                write!(f, "{}", data.0)
             }
             RegularInstruction::ShortText(data) => {
-                write!(f, "SHORT_TEXT {}", data.0)
+                write!(f, "{}", data.0)
             }
             RegularInstruction::Text(data) => {
-                write!(f, "TEXT {}", data.0)
+                write!(f, "{}", data.0)
             }
-            RegularInstruction::True => write!(f, "TRUE"),
-            RegularInstruction::False => write!(f, "FALSE"),
-            RegularInstruction::Null => write!(f, "NULL"),
             RegularInstruction::Statements(data) => {
-                write!(f, "STATEMENTS {}", data.statements_count)
+                write!(f, "{}", data.statements_count)
             }
             RegularInstruction::ShortStatements(data) => {
-                write!(f, "SHORT_STATEMENTS {}", data.statements_count)
-            }
-            RegularInstruction::UnboundedStatements => {
-                write!(f, "UNBOUNDED_STATEMENTS")
-            }
-            RegularInstruction::UnboundedStatementsEnd(_) => {
-                write!(f, "STATEMENTS_END")
+                write!(f, "{}", data.statements_count)
             }
             RegularInstruction::List(data) => {
-                write!(f, "LIST {}", data.element_count)
+                write!(f, "{}", data.element_count)
             }
             RegularInstruction::ShortList(data) => {
-                write!(f, "SHORT_LIST {}", data.element_count)
+                write!(f, "{}", data.element_count)
             }
             RegularInstruction::Map(data) => {
-                write!(f, "MAP {}", data.element_count)
+                write!(f, "{}", data.element_count)
             }
             RegularInstruction::ShortMap(data) => {
-                write!(f, "SHORT_MAP {}", data.element_count)
-            }
-            RegularInstruction::KeyValueDynamic => {
-                write!(f, "KEY_VALUE_DYNAMIC")
+                write!(f, "{}", data.element_count)
             }
             RegularInstruction::KeyValueShortText(data) => {
-                write!(f, "KEY_VALUE_SHORT_TEXT {}", data.0)
+                write!(f, "{}", data.0)
             }
-            // operations
-            RegularInstruction::Add => write!(f, "ADD"),
-            RegularInstruction::Subtract => write!(f, "SUBTRACT"),
-            RegularInstruction::Multiply => write!(f, "MULTIPLY"),
-            RegularInstruction::Divide => write!(f, "DIVIDE"),
-
-            // equality checks
-            RegularInstruction::StructuralEqual => {
-                write!(f, "STRUCTURAL_EQUAL")
-            }
-            RegularInstruction::Equal => write!(f, "EQUAL"),
-            RegularInstruction::NotStructuralEqual => {
-                write!(f, "NOT_STRUCTURAL_EQUAL")
-            }
-            RegularInstruction::NotEqual => write!(f, "NOT_EQUAL"),
-            RegularInstruction::Is => write!(f, "IS"),
-            RegularInstruction::Matches => write!(f, "MATCHES"),
 
             RegularInstruction::AllocateSlot(address) => {
-                write!(f, "ALLOCATE_SLOT {}", address.0)
+                write!(f, "{}", address.0)
             }
             RegularInstruction::CloneSlot(address) => {
-                write!(f, "GET_SLOT {}", address.0)
+                write!(f, "{}", address.0)
             }
             RegularInstruction::GetInternalSlot(address) => {
-                write!(f, "GET_INTERNAL_SLOT {}", address.0)
+                write!(f, "{}", address.0)
             }
             RegularInstruction::BorrowSlot(address) => {
-                write!(f, "GET_SLOT_LOCAL_REF {}", address.0)
+                write!(f, "{}", address.0)
             }
             RegularInstruction::GetSlotSharedRef(address) => {
-                write!(f, "GET_SLOT_SHARED_REF {}", address.0)
+                write!(f, "{}", address.0)
             }
             RegularInstruction::GetSlotSharedRefMut(address) => {
-                write!(f, "GET_SLOT_SHARED_REF_MUT {}", address.0)
+                write!(f, "{}", address.0)
             }
             RegularInstruction::PopSlot(address) => {
-                write!(f, "DROP_SLOT {}", address.0)
+                write!(f, "{}", address.0)
             }
             RegularInstruction::SetSlot(address) => {
-                write!(f, "SET_SLOT {}", address.0)
+                write!(f, "{}", address.0)
             }
             RegularInstruction::SetSharedContainerValue(operator) => {
-                write!(f, "SET_REFERENCE_VALUE ({})", operator)
+                write!(f, "{}", operator)
             }
-            RegularInstruction::Unbox => write!(f, "UNBOX"),
-            RegularInstruction::RequestSharedRef(address) => {
+            RegularInstruction::RequestRemoteSharedRef(address) => {
                 write!(
                     f,
-                    "REQUEST_SHARED_REF [{}:{}]",
+                    "({}:{})",
                     address.endpoint().expect("Invalid endpoint"),
                     hex::encode(address.id)
                 )
             }
-            RegularInstruction::RequestSharedRefMut(address) => {
+            RegularInstruction::RequestRemoteSharedRefMut(address) => {
                 write!(
                     f,
-                    "REQUEST_SHARED_REF_MUT [{}:{}]",
+                    "({}:{})",
                     address.endpoint().expect("Invalid endpoint"),
                     hex::encode(address.id)
                 )
             }
-            RegularInstruction::GetLocalRef(address) => {
+            RegularInstruction::GetLocalSharedRef(address) => {
                 write!(
                     f,
-                    "GET_LOCAL_REF [origin_id: {}]",
+                    "(origin_id: {})",
                     hex::encode(address.id)
                 )
             }
-            RegularInstruction::GetInternalRef(address) => {
+            RegularInstruction::GetInternalSharedRef(address) => {
                 write!(
                     f,
-                    "GET_INTERNAL_REF [internal_id: {}]",
+                    "(internal_id: {})",
                     hex::encode(address.id)
                 )
-            }
-            RegularInstruction::GetSharedReference => {
-                write!(f, "GET_SHARED_REF")
-            }
-            RegularInstruction::GetSharedReferenceMut => {
-                write!(f, "GET_SHARED_REF_MUT")
-            }
-            RegularInstruction::CreateShared => {
-                write!(f, "CREATE_SHARED")
-            }
-            RegularInstruction::CreateSharedMut => {
-                write!(f, "CREATE_SHARED_MUT")
             }
             RegularInstruction::SharedRef(shared_ref) => {
                 write!(
                     f,
-                    "SHARED_REF (ref_mutability: {:?}, address: {})",
+                    "(ref_mutability: {:?}, address: {})",
                     shared_ref.ref_mutability, PointerAddress::from(&shared_ref.address)
                 )
             }
             RegularInstruction::SharedRefWithValue(shared_ref) => {
                 write!(
                     f,
-                    "SHARED_REF_WITH_VALUE (ref_mutability: {:?}, address: {}, container_mutability: {:?})",
+                    "(ref_mutability: {:?}, address: {}, container_mutability: {:?})",
                     shared_ref.ref_mutability,
                     PointerAddress::from(&shared_ref.address),
                     shared_ref.container_mutability
@@ -412,71 +468,59 @@ impl Display for RegularInstruction {
             RegularInstruction::PerformMove(perform_move) => {
                 write!(
                     f,
-                    "PERFORM_MOVE (pointers: {})",
+                    "(pointers: {})",
                     perform_move.pointers.iter().map(|(_mut, addr)| hex::encode(addr.id)).collect::<Vec<_>>().join(", ")
                 )
             }
             RegularInstruction::Move(mv) => {
                 write!(
                     f,
-                    "MOVE (pointer_count: {}, mappings: {:?})",
+                    "(pointer_count: {}, mappings: {:?})",
                     mv.pointer_count, mv.address_mappings
                 )
             }
             RegularInstruction::RemoteExecution(block) => {
                 write!(
                     f,
-                    "REMOTE_EXECUTION (length: {}, injected_slot_count: {})",
+                    "(length: {}, injected_slot_count: {})",
                     block.length,
                     block.injected_slot_count
                 )
             }
             RegularInstruction::AddAssign(address) => {
-                write!(f, "ADD_ASSIGN {}", address.0)
+                write!(f, "{}", address.0)
             }
             RegularInstruction::SubtractAssign(address) => {
-                write!(f, "SUBTRACT_ASSIGN {}", address.0)
+                write!(f, "{}", address.0)
             }
             RegularInstruction::MultiplyAssign(address) => {
-                write!(f, "MULTIPLY_ASSIGN {}", address.0)
+                write!(f, "{}", address.0)
             }
             RegularInstruction::DivideAssign(address) => {
-                write!(f, "DIVIDE_ASSIGN {}", address.0)
-            }
-            RegularInstruction::UnaryMinus => write!(f, "-"),
-            RegularInstruction::UnaryPlus => write!(f, "+"),
-            RegularInstruction::BitwiseNot => write!(f, "BITWISE_NOT"),
-            RegularInstruction::TypedValue => write!(f, "TYPED_VALUE"),
-            RegularInstruction::TypeExpression => {
-                write!(f, "TYPE_EXPRESSION")
+                write!(f, "{}", address.0)
             }
             RegularInstruction::GetPropertyIndex(uint_32_data) => {
-                write!(f, "GET_PROPERTY_INDEX {}", uint_32_data.0)
+                write!(f, "{}", uint_32_data.0)
             }
             RegularInstruction::SetPropertyIndex(uint_32_data) => {
-                write!(f, "SET_PROPERTY_INDEX {}", uint_32_data.0)
+                write!(f, "{}", uint_32_data.0)
             }
             RegularInstruction::TakePropertyIndex(uint_32_data) => {
-                write!(f, "TAKE_PROPERTY_INDEX {}", uint_32_data.0)
+                write!(f, "{}", uint_32_data.0)
             }
             RegularInstruction::GetPropertyText(short_text_data) => {
-                write!(f, "GET_PROPERTY_TEXT {}", short_text_data.0)
+                write!(f, "{}", short_text_data.0)
             }
             RegularInstruction::TakePropertyText(short_text_data) => {
-                write!(f, "TAKE_PROPERTY_TEXT {}", short_text_data.0)
+                write!(f, "{}", short_text_data.0)
             }
             RegularInstruction::SetPropertyText(short_text_data) => {
-                write!(f, "SET_PROPERTY_TEXT {}", short_text_data.0)
+                write!(f, "{}", short_text_data.0)
             }
-            RegularInstruction::GetPropertyDynamic => {
-                write!(f, "GET_PROPERTY_DYNAMIC")
+            _ => {
+                // no custom disassembly
+                Ok(())
             }
-            RegularInstruction::TakePropertyDynamic => {
-                write!(f, "TAKE_PROPERTY_DYNAMIC")
-            }
-            RegularInstruction::SetPropertyDynamic => {
-                write!(f, "SET_PROPERTY_DYNAMIC")
-            },
         }
     }
 }
@@ -592,6 +636,58 @@ pub struct ShortTextDataRaw {
     #[br(count = length)]
     pub text: Vec<u8>,
 }
+#[derive(Clone, Debug, PartialEq)]
+pub struct ShortTextData(pub String);
+
+impl From<&ShortTextData> for ShortTextDataRaw {
+    fn from(value: &ShortTextData) -> Self {
+        let bytes = value.0.as_bytes();
+
+        Self {
+            length: bytes.len() as u8,
+            text: bytes.to_vec(),
+        }
+    }
+}
+
+impl TryFrom<ShortTextDataRaw> for ShortTextData {
+    type Error = FromUtf8Error;
+    fn try_from(raw: ShortTextDataRaw) -> Result<Self, Self::Error> {
+        let string = String::from_utf8(raw.text)?;
+        Ok(ShortTextData(string))
+    }
+}
+
+impl BinWrite for ShortTextData {
+    type Args<'a> = ();
+
+    fn write_options<W: Write + Seek>(
+        &self,
+        writer: &mut W,
+        endian: Endian,
+        _: Self::Args<'_>,
+    ) -> BinResult<()> {
+        let raw = ShortTextDataRaw::from(self);
+        raw.write_options(writer, endian, ())
+    }
+}
+
+impl BinRead for ShortTextData {
+    type Args<'a> = ();
+
+    fn read_options<R: Read + Seek>(
+        reader: &mut R,
+        endian: Endian,
+        _: Self::Args<'_>,
+    ) -> BinResult<Self> {
+        let raw = ShortTextDataRaw::read_options(reader, endian, ())?;
+        Ok(raw.try_into().map_err(|_| binrw::Error::AssertFail {
+            pos: 0, // TODO
+            message: "Invalid UTF-8 string".to_string()
+        })?)
+    }
+}
+
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
 #[brw(little)]
@@ -602,10 +698,56 @@ pub struct TextDataRaw {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct ShortTextData(pub String);
-
-#[derive(Clone, Debug, PartialEq)]
 pub struct TextData(pub String);
+
+impl From<&TextData> for TextDataRaw {
+    fn from(value: &TextData) -> Self {
+        let bytes = value.0.as_bytes();
+
+        Self {
+            length: bytes.len() as u32,
+            text: bytes.to_vec(),
+        }
+    }
+}
+
+impl TryFrom<TextDataRaw> for TextData {
+    type Error = FromUtf8Error;
+    fn try_from(raw: TextDataRaw) -> Result<Self, Self::Error> {
+        let string = String::from_utf8(raw.text)?;
+        Ok(TextData(string))
+    }
+}
+
+impl BinWrite for TextData {
+    type Args<'a> = ();
+
+    fn write_options<W: Write + Seek>(
+        &self,
+        writer: &mut W,
+        endian: Endian,
+        _: Self::Args<'_>,
+    ) -> BinResult<()> {
+        let raw = TextDataRaw::from(self);
+        raw.write_options(writer, endian, ())
+    }
+}
+
+impl BinRead for TextData {
+    type Args<'a> = ();
+
+    fn read_options<R: Read + Seek>(
+        reader: &mut R,
+        endian: Endian,
+        _: Self::Args<'_>,
+    ) -> BinResult<Self> {
+        let raw = TextDataRaw::read_options(reader, endian, ())?;
+        Ok(raw.try_into().map_err(|_| binrw::Error::AssertFail {
+            pos: 0, // TODO
+            message: "Invalid UTF-8 string".to_string()
+        })?)
+    }
+}
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
 #[brw(little)]

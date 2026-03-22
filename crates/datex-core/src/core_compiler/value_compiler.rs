@@ -27,7 +27,9 @@ use crate::{
         value_container::ValueContainer,
     },
 };
-use binrw::{BinWrite, io::Cursor};
+use binrw::{BinWrite, io::Cursor, BinWriterExt, BinResult};
+use crate::std::io::Write;
+use crate::std::io;
 
 use crate::{
     prelude::*,
@@ -37,7 +39,7 @@ use crate::{
     },
     values::core_values::r#type::TypeMetadata,
 };
-use crate::global::protocol_structures::instructions::{RawPointerAddress};
+use crate::global::protocol_structures::instructions::{Instruction, RawPointerAddress, RegularInstruction};
 use crate::shared_values::shared_container::SharedContainer;
 
 /// Compiles a given value container to a DXB body
@@ -542,6 +544,15 @@ pub fn append_key_string(buffer: &mut Vec<u8>, key_string: &str) {
     }
 }
 
+pub fn append_regular_instruction(cursor: &mut Cursor<&mut Vec<u8>>, instruction: RegularInstruction) -> BinResult<()> {
+    // add instruction code
+    cursor.write(&[InstructionCode::from(&instruction) as u8])?;
+    // add instruction
+    instruction.write(cursor)?;
+    Ok(())
+}
+
+#[deprecated(note = "use append_regular_instruction instead")]
 pub fn append_instruction_code(buffer: &mut Vec<u8>, code: InstructionCode) {
     append_u8(buffer, code as u8);
 }

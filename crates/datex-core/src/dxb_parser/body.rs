@@ -354,7 +354,7 @@ pub fn iterate_instructions(
                                 next_instructions_stack.pop_unbounded_regular()
                             );
                             RegularInstruction::UnboundedStatementsEnd(
-                                statements_data.terminated,
+                                statements_data,
                             )
                         }
 
@@ -623,7 +623,7 @@ pub fn iterate_instructions(
                         InstructionCode::REQUEST_REMOTE_SHARED_REF => {
                             let address =
                                 RawRemotePointerAddress::read(&mut reader);
-                            RegularInstruction::RequestSharedRef(yield_unwrap!(
+                            RegularInstruction::RequestRemoteSharedRef(yield_unwrap!(
                                 address
                             ))
                         }
@@ -631,7 +631,7 @@ pub fn iterate_instructions(
                         InstructionCode::GET_LOCAL_SHARED_REF => {
                             let address =
                                 RawLocalPointerAddress::read(&mut reader);
-                            RegularInstruction::GetLocalRef(yield_unwrap!(
+                            RegularInstruction::GetLocalSharedRef(yield_unwrap!(
                                 address
                             ))
                         }
@@ -639,7 +639,7 @@ pub fn iterate_instructions(
                         InstructionCode::GET_INTERNAL_SHARED_REF => {
                             let address =
                                 RawInternalPointerAddress::read(&mut reader);
-                            RegularInstruction::GetInternalRef(yield_unwrap!(
+                            RegularInstruction::GetInternalSharedRef(yield_unwrap!(
                                 address
                             ))
                         }
