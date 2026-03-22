@@ -12,7 +12,8 @@ use crate::{
     },
 };
 use crate::runtime::execution::execution_input::ExecutionCallerMetadata;
-use crate::shared_values::pointer::Pointer;
+use crate::shared_values::pointer::{Pointer, ReferencedPointer};
+use crate::shared_values::pointer_address::ReferencedPointerAddress;
 use crate::shared_values::shared_container::{SharedContainer, SharedContainerInner, SharedContainerMutability};
 use crate::shared_values::shared_value_container::SharedValueContainer;
 
@@ -181,12 +182,39 @@ pub async fn test_remote_shared_value_inject_ref() {
         async |runtime_a, _runtime_b| {
             // execute script remotely on @test_b
             let result = runtime_a
-                .execute("var x = shared 42; @test_b ::  'x + 1", &[], None)
-                .await;
+                .execute("var x = shared 42; @test_b :: ['x + 1, 'x]", &[], None)
+                .await
+                .unwrap().unwrap().to_value();
+            let result_list = result.borrow().cast_to_list().unwrap();
+            let result_vec = result_list.as_vec();
+
+            // 'x + 1
             assert_eq!(
-                result.unwrap().unwrap(),
+                result_vec[0],
                 ValueContainer::from(Integer::from(43))
             );
+
+            // 'x
+            if let ValueContainer::Shared(shared_container) = &result_vec[1] {
+                if shared_container.reference_mutability.is_some() {
+                    panic!("shared container ref should not be owned")
+                }
+                assert_matches!(
+                    shared_container.pointer().clone(),
+                    Pointer::Owned(..)
+                );
+                assert_eq!(
+                    shared_container.mutability(),
+                    SharedContainerMutability::Immutable
+                );
+                assert_eq!(
+                    shared_container.value_container(),
+                    ValueContainer::from(Integer::from(42))
+                )
+            }
+            else {
+                panic!("Expected SharedContainer");
+            }
         },
     )
         .await;

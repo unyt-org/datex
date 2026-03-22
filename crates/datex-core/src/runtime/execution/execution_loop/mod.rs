@@ -77,6 +77,8 @@ use log::info;
 use crate::global::protocol_structures::external_slot_type::{ExternalSlotType, SharedSlotType};
 use crate::runtime::execution::execution_loop::remote_execution_blocks::compile_remote_execution_block;
 use crate::runtime::execution::macros::interrupt_with_values;
+use crate::shared_values::pointer::{Pointer, ReferencedPointer};
+use crate::shared_values::pointer_address::ReferencedPointerAddress;
 use crate::shared_values::shared_container::{SharedContainerInner, SharedContainerMutability};
 use crate::values::borrowed_value_container::BorrowedValueContainer;
 
@@ -1290,7 +1292,23 @@ pub fn inner_execution_loop(
                                 }
 
                                 RegularInstruction::SharedRefWithValue(shared_ref) => {
-                                    todo!("shared")
+                                    let value = yield_unwrap!(
+                                        collected_results
+                                            .pop_cloned_value_container_result_assert_existing(&state)
+                                    );
+                                    // get referenced pointer from address
+                                    let pointer = ReferencedPointer::new(ReferencedPointerAddress::remote_for_endpoint(&state.caller_metadata.endpoint, shared_ref.address.id));
+
+                                    // unwrap ok since allowed_type in None.
+                                    // TODO: allowed type
+                                    let container = SharedContainer::try_boxed_ref(
+                                        value,
+                                        None,
+                                        pointer,
+                                        shared_ref.container_mutability,
+                                        shared_ref.ref_mutability,
+                                    ).unwrap();
+                                    CollectedExecutionResult::Value(Some(ValueContainer::Shared(container).into()))
                                 },
 
                                 e => {

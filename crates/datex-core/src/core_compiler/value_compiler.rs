@@ -124,8 +124,16 @@ pub fn append_shared_container(
             });
 
             // insert address
-            let raw_address = RawPointerAddress::from(shared_container.pointer().address());
-            append_raw_pointer_address(buffer, &raw_address);
+            match shared_container.pointer().address() {
+                // only for SHARED_REF_WITH_VALUE
+                PointerAddress::Owned(owned_address) if insert_value => {
+                    append_local_pointer_address(buffer, owned_address.address);
+                }
+                address => {
+                    let raw_address = RawPointerAddress::from(address);
+                    append_raw_pointer_address(buffer, &raw_address);
+                }
+            }
 
             // flag indicating reference mutability
             append_u8(buffer, *mutability as u8);

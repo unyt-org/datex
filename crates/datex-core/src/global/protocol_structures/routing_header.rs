@@ -7,6 +7,7 @@ use crate::{
 use crate::prelude::*;
 use binrw::{BinRead, BinWrite};
 use core::{fmt::Display, prelude::rust_2024::*};
+use itertools::Itertools;
 use modular_bitfield::prelude::*;
 
 // 2 bit
@@ -307,13 +308,16 @@ impl Display for Receivers {
                 core::write!(f, "Pointer ID: {:?}", pid)
             }
             Receivers::Endpoints(endpoints) => {
-                core::write!(f, "Endpoints: {:?}", endpoints)
+                core::write!(f, "{}", endpoints.iter().map(|ep| ep.to_string()).join(", "))
             }
             Receivers::EndpointsWithKeys(endpoints_with_keys) => {
                 core::write!(
                     f,
-                    "Endpoints with keys: {:?}",
+                    "{} (with keys)",
                     endpoints_with_keys
+                        .iter()
+                        .map(|(ep, _key)| ep.to_string())
+                        .join(", ")
                 )
             }
         }

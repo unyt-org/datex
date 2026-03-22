@@ -564,6 +564,7 @@ pub fn iterate_instructions(
                         }
                         InstructionCode::SHARED_REF_WITH_VALUE => {
                             let shared_ref = SharedRefWithValue::read(&mut reader);
+                            next_instructions_stack.push_next_regular(1);
                             RegularInstruction::SharedRefWithValue(yield_unwrap!(
                                 shared_ref
                             ))

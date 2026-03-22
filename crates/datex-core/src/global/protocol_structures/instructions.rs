@@ -168,7 +168,7 @@ pub enum RegularInstruction {
     GetInternalRef(RawInternalPointerAddress),
 
     SharedRef(SharedRef),
-    SharedRefWithValue(SharedRefWithValue),
+    SharedRefWithValue(SharedRefWithValue), // shared ref with current value (only if caller owns the pointer)
 
     PerformMove(PerformMove),
     Move(Move),
@@ -777,7 +777,7 @@ pub struct SharedRef {
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
 #[brw(little)]
 pub struct SharedRefWithValue {
-    pub address: RawPointerAddress,
+    pub address: RawLocalPointerAddress, // address of the caller
     pub ref_mutability: PointerReferenceMutability,
     pub container_mutability: SharedContainerMutability,
 }

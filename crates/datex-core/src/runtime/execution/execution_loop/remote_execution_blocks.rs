@@ -200,7 +200,7 @@ mod tests {
                 0, 0, 0, 0, // slot address
                 // compiled shared reference
                 InstructionCode::SHARED_REF_WITH_VALUE as u8,
-                0, 0, 0, 0, 0, 0, // address of the shared value
+                0, 0, 0, 0, 0, // address of the shared value
                 0, // immutable ref
                 0, // immutable container
                 InstructionCode::INT_32 as u8,
@@ -235,7 +235,7 @@ mod tests {
                 0, 0, 0, 0, // slot address of first value
                 // compiled shared reference for first value
                 InstructionCode::SHARED_REF_WITH_VALUE as u8,
-                0, 0, 0, 0, 0, 0, // address of the first shared value
+                0, 0, 0, 0, 0, // address of the first shared value
                 0, // immutable ref
                 0, // immutable container
                 InstructionCode::INT_32 as u8,
@@ -244,7 +244,7 @@ mod tests {
                 1, 0, 0, 0, // slot address of second value
                 // compiled shared mutable reference for second value
                 InstructionCode::SHARED_REF_WITH_VALUE as u8,
-                0, 0, 0, 0, 0, 0, // address of the second shared value
+                0, 0, 0, 0, 0, // address of the second shared value
                 1, // mutable ref
                 1, // mutable container
                 InstructionCode::INT_32 as u8,
@@ -330,7 +330,7 @@ mod tests {
                 1, 0, 0, 0, // slot address of second value
                 // compiled shared reference for second value
                 InstructionCode::SHARED_REF_WITH_VALUE as u8,
-                0, 0, 0, 0, 0, 0, // address of the second shared value
+                0, 0, 0, 0, 0, // address of the second shared value
                 0, // immutable ref
                 1, // mutable value
                 InstructionCode::INT_32 as u8,
