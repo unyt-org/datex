@@ -17,53 +17,10 @@ use strum_macros::EnumIter;
 #[repr(u8)]
 pub enum InstructionCode {
     // flow instructions 0x00 - 0x0f
-    EXIT = 0x00,
     STATEMENTS,       // statements block
     SHORT_STATEMENTS, // optimized statements block with up to 255 instructions
     UNBOUNDED_STATEMENTS,
     UNBOUNDED_STATEMENTS_END, // end of statements block (only needed for unbounded blocks)
-    CACHE_POINT,              // cache dxb from this point on
-    CACHE_RESET,              // reset dxb scope cache
-
-    // internal variables and other shorthands 0x30 - 0x4f
-    VAR_RESULT,
-    SET_VAR_RESULT,
-    SET_VAR_RESULT_REFERENCE,
-    VAR_RESULT_ACTION,
-
-    VAR_SUB_RESULT,
-    SET_VAR_SUB_RESULT,
-    SET_VAR_SUB_RESULT_REFERENCE,
-    VAR_SUB_RESULT_ACTION,
-
-    VAR_VOID,
-    SET_VAR_VOID,
-    SET_VAR_VOID_REFERENCE,
-    VAR_VOID_ACTION,
-
-    _VAR_ORIGIN,
-    _SET_VAR_ORIGIN,
-    _SET_VAR_ORIGIN_REFERENCE,
-    _VAR_ORIGIN_ACTION,
-
-    VAR_IT,
-    SET_VAR_IT,
-    SET_VAR_IT_REFERENCE,
-    VAR_IT_ACTION,
-
-    VAR_REMOTE,
-
-    VAR_REMOTE_ACTION,
-    VAR_ORIGIN,
-    VAR_ENDPOINT,
-    VAR_ENTRYPOINT,
-    VAR_STD,
-    // VAR_TIMESTAMP      ,
-    VAR_META,
-    VAR_PUBLIC,
-    VAR_THIS,
-    VAR_LOCATION,
-    VAR_ENV,
 
     APPLY_ZERO,
     APPLY_SINGLE,
@@ -77,70 +34,42 @@ pub enum InstructionCode {
     TAKE_PROPERTY_INDEX,   // take property with integer index
     TAKE_PROPERTY_TEXT,    // take property with text key
 
-
     SET_PROPERTY_DYNAMIC, // set property with arbitrary key value
     SET_PROPERTY_INDEX,   // set property with integer index
     SET_PROPERTY_TEXT,    // set property with text key
 
-    // runtime commands 0x50 - 0x7f
-    RETURN,         // return
-    TEMPLATE,       // template
-    EXTENDS,        // extends
-    IMPLEMENTS,     // implements
     MATCHES,        // matches
-    DEBUGGER,       // debugger
-    JMP,            // jmp labelname
-    JTR,            // jtr labelname
-    JFA,            // jfa labelname (TODO replace with 0xa)
-    COUNT,          // count x
-    ABOUT,          // about x
-    NEW,            // new <x> ()
-    DELETE_POINTER, // delete $aa
-    COPY,           // copy $aa
-    CLONE,          // clone $aa
-    ORIGIN,         // origin $aa
-    SUBSCRIBERS,    // subscribers $aa
-    PLAIN_SCOPE,    // scope xy;
-    // don't use 0x64 (magic number)
 
-    // comparators 0x80 - 0x8f
     STRUCTURAL_EQUAL,     // ==
     NOT_STRUCTURAL_EQUAL, // !=
     EQUAL,                // ===
     NOT_EQUAL,            // !==
-    GREATER,              // >
-    LESS,                 // <
-    GREATER_EQUAL,        // >=
-    LESS_EQUAL,           // <=
     IS,                   // is
 
-    // logical + algebraic operators 0x90  - 0x9f
-    AND,       // &
-    OR,        // |
     ADD,       // +
     SUBTRACT,  // -
     MULTIPLY,  // *
     DIVIDE,    // /
-    NOT,       // !
     MODULO,    // %
     POWER,     // ^
-    INCREMENT, // ++
-    DECREMENT, // --
+
+    AND,
+    OR,
+    NOT,
 
     UNARY_PLUS,
     UNARY_MINUS,
     BITWISE_NOT, // ~
 
-    UNION, // | // TODO #428: maybe create a union collection of multiple values, instead of using this as a binary operator?
+    INCREMENT,
+    DECREMENT,
 
     // assignment operators
-    ASSIGN,          // =
+    ASSIGN, // =
     ADD_ASSIGN,      // +=
     SUBTRACT_ASSIGN, // -=
     MULTIPLY_ASSIGN, // *=
     DIVIDE_ASSIGN,   // /=
-    MODULO_ASSIGN,   // %=
-    POWER_ASSIGN,    // ^=
 
     // pointers & variables 0xa0 - 0xbf
 
@@ -152,7 +81,6 @@ pub enum InstructionCode {
     GET_SLOT_SHARED_REF_MUT, // 'mut #aa
     SET_SLOT, // #aa = ...
     ALLOCATE_SLOT, // #aa = ...
-    SLOT_ACTION, // #x += ...
     POP_SLOT, // #aa
 
     GET_INTERNAL_SLOT, // e.g. #endpoint
@@ -173,23 +101,12 @@ pub enum InstructionCode {
     GET_SHARED_REF, // dynamic 'x
     GET_SHARED_REF_MUT, // dynamic 'mut x
 
-    POINTER_ACTION,    // $aa += ...
-    SET_REF,           // &aa = ...
-
     CREATE_SHARED,     // shared x
     CREATE_SHARED_MUT, // shared mut x
 
     SET_SHARED_CONTAINER_VALUE, // *x = 10;
 
     UNBOX, // *x
-
-    CHILD_GET,           // .y
-    CHILD_SET,           // .y = a
-    CHILD_SET_REFERENCE, // .y $= a
-    CHILD_ACTION,        // .y += a, ...
-    CHILD_GET_REF,       // ->y
-
-    WILDCARD, // *
 
     /// type byte codes --> switch to Type Space
     TYPED_VALUE,
@@ -206,6 +123,8 @@ pub enum InstructionCode {
     INT_128,
     INT_BIG,
     INT, // default integer (unsized)
+
+    RANGE,
 
     UINT_8, // u8
     UINT_16,
@@ -224,25 +143,10 @@ pub enum InstructionCode {
     TRUE,
     FALSE,
     NULL,
-    VOID,
-    BUFFER,
-    QUANTITY,
 
     SHORT_TEXT, // string with max. 255 characters
 
-    PERSON_ALIAS,
-    PERSON_ALIAS_WILDCARD,
-    INSTITUTION_ALIAS,
-    INSTITUTION_ALIAS_WILDCARD,
-    BOT,
-    BOT_WILDCARD,
-
     ENDPOINT,
-    ENDPOINT_WILDCARD,
-
-    URL, //file://... , https://...
-
-    TIME, // ~2022-10-10~
 
     // lists and maps 0xe0 - 0xef
     LIST,       // (1,2,3)
@@ -252,40 +156,8 @@ pub enum InstructionCode {
 
     KEY_VALUE_SHORT_TEXT,
     KEY_VALUE_DYNAMIC, // for object elements with dynamic key
-    KEY_PERMISSION,    // for object elements with permission prefix
-    INTERNAL_OBJECT_SLOT, // for object internal slots
-
-    // special instructions 0xf0 - 0xff
-    SYNC,      // <==
-    STOP_SYNC, // </=
-
-    STREAM,      // << stream
-    STOP_STREAM, // </ stream
 
     REMOTE_EXECUTION, // ::
-
-    TRANSFORM,             // transform x <Int>
-    OBSERVE,               // observe x ()=>()
-    RUN,                   // run xy;
-    AWAIT,                 // await xy;
-    DEFER,                 // maybe xy;
-    FUNCTION,              // function ()
-    ASSERT,                // assert
-    ITERATOR,              // iterator ()
-    NEXT,                  // next it
-    FREEZE,                // freeze
-    SEAL,                  // seal
-    HAS,                   // x has y
-    KEYS,                  // keys x
-    GET_TYPE,              // type $aa
-    GET,                   // get file://..., get @user::34
-    RANGE,                 // ..
-    RESOLVE_RELATIVE_PATH, // ./abc
-    DO,                    // do xy;
-    DEFAULT,               // x default y
-    COLLAPSE,              // collapse x
-    RESPONSE,              // response x
-    CLONE_COLLAPSE,        // collapse
 }
 
 #[cfg(test)]

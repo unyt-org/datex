@@ -1,6 +1,7 @@
 use alloc::string::FromUtf8Error;
 use std::io::{Cursor, Read, Seek, Write};
 use binrw::{BinRead, BinResult, BinWrite, Endian};
+use binrw::meta::{EndianKind, ReadEndian};
 use modular_bitfield::bitfield;
 use modular_bitfield::prelude::B4;
 use serde::Serialize;
@@ -132,10 +133,14 @@ impl BinRead for ShortTextData {
     ) -> BinResult<Self> {
         let raw = ShortTextDataRaw::read_options(reader, endian, ())?;
         Ok(raw.try_into().map_err(|_| binrw::Error::AssertFail {
-            pos: 0, // TODO
+            pos: reader.stream_position().unwrap_or(0),
             message: "Invalid UTF-8 string".to_string()
         })?)
     }
+}
+
+impl ReadEndian for ShortTextData {
+    const ENDIAN: EndianKind = EndianKind::Endian(Endian::Little);
 }
 
 
@@ -193,10 +198,14 @@ impl BinRead for TextData {
     ) -> BinResult<Self> {
         let raw = TextDataRaw::read_options(reader, endian, ())?;
         Ok(raw.try_into().map_err(|_| binrw::Error::AssertFail {
-            pos: 0, // TODO
+            pos: reader.stream_position().unwrap_or(0),
             message: "Invalid UTF-8 string".to_string()
         })?)
     }
+}
+
+impl ReadEndian for TextData {
+    const ENDIAN: EndianKind = EndianKind::Endian(Endian::Little);
 }
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]

@@ -223,9 +223,6 @@ impl From<&InstructionCode> for BinaryOperator {
                 BinaryOperator::Logical(LogicalOperator::And)
             }
             InstructionCode::OR => BinaryOperator::Logical(LogicalOperator::Or),
-            InstructionCode::UNION => {
-                BinaryOperator::Bitwise(BitwiseOperator::And)
-            }
             InstructionCode::RANGE => {
                 BinaryOperator::Range(RangeOperator::Inclusive)
             }
