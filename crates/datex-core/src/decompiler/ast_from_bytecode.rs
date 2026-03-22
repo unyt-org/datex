@@ -263,6 +263,14 @@ pub fn ast_from_bytecode(
                                 })
                             }
 
+                            RegularInstruction::SharedRef(shared_ref) => {
+                                DatexExpressionData::NativeImplementationIndicator // TODO: better ast mapping
+                            }
+
+                            RegularInstruction::SharedRefWithValue(shared_ref) => {
+                                DatexExpressionData::NativeImplementationIndicator // TODO: better ast mapping
+                            }
+
                             RegularInstruction::Move(_move_data) => {
                                 DatexExpressionData::NativeImplementationIndicator // TODO: better ast mapping
                             }

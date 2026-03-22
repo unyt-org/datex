@@ -115,33 +115,34 @@ pub fn append_shared_container(
     shared_container: &SharedContainer,
     insert_value: bool,
 ) {
-    let instruction_code = match &shared_container.reference_mutability {
+    match &shared_container.reference_mutability {
         Some(mutability) => {
-            match mutability {
-                PointerReferenceMutability::Mutable => InstructionCode::SHARED_REF_MUT,
-                PointerReferenceMutability::Immutable => InstructionCode::SHARED_REF
+            append_instruction_code(buffer, if insert_value {
+                InstructionCode::SHARED_REF_WITH_VALUE
+            } else {
+                InstructionCode::SHARED_REF
+            });
+
+            // insert address
+            let raw_address = RawPointerAddress::from(shared_container.pointer().address());
+            append_raw_pointer_address(buffer, &raw_address);
+
+            // flag indicating reference mutability
+            append_u8(buffer, *mutability as u8);
+
+            // insert value with container mutability
+            if insert_value {
+                // flag indicating container mutability
+                append_u8(buffer, shared_container.mutability() as u8);
+                append_value(buffer, &shared_container.collapse_to_value().borrow())
             }
         },
         None => {
             append_instruction_code(buffer, InstructionCode::TAKE_PROPERTY_INDEX);
             append_u32(buffer, 0); // list index 0 (only moving a single pointer)
             append_perform_moves(buffer, &[shared_container]).unwrap();
-            return;
         },
     };
-    append_instruction_code(buffer, instruction_code);
-
-    // flag indicating if value is inserted after address or not
-    append_u8(buffer, if insert_value { 1 } else { 0 });
-
-    // insert address
-    let raw_address = RawPointerAddress::from(shared_container.pointer().address());
-    append_raw_pointer_address(buffer, &raw_address);
-
-    // insert value
-    if insert_value {
-        append_value(buffer, &shared_container.collapse_to_value().borrow())
-    }
 }
 
 /// Appends multiple shared containers as moves to the buffer
@@ -470,7 +471,7 @@ pub fn append_get_shared_ref(
         PointerAddress::Owned(local_address) => {
             append_instruction_code(
                 buffer,
-                InstructionCode::REQUEST_LOCAL_SHARED_REF,
+                InstructionCode::GET_LOCAL_SHARED_REF,
             );
             buffer.extend_from_slice(&local_address.address);
         }
@@ -492,7 +493,7 @@ pub fn append_get_shared_ref(
 }
 
 pub fn append_get_internal_ref(buffer: &mut Vec<u8>, id: &[u8; 3]) {
-    append_instruction_code(buffer, InstructionCode::REQUEST_INTERNAL_SHARED_REF);
+    append_instruction_code(buffer, InstructionCode::GET_INTERNAL_SHARED_REF);
     buffer.extend_from_slice(id);
 }
 

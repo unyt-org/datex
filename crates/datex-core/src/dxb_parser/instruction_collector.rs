@@ -591,6 +591,14 @@ impl<T> InstructionCollector<T> {
                 None
             }
 
+            RegularInstruction::SharedRefWithValue(_) => {
+                self.collect_full(
+                    Instruction::RegularInstruction(regular_instruction),
+                    1,
+                );
+                None
+            }
+
             _ => Some(regular_instruction),
         }
     }

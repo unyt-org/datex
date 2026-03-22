@@ -158,14 +158,14 @@ pub enum InstructionCode {
     GET_INTERNAL_SLOT, // e.g. #endpoint
 
     // Note: fix to sync with RawPointerAddress
-    REQUEST_REMOTE_SHARED_REF = 120u8,   // '$x
-    REQUEST_INTERNAL_SHARED_REF = 121u8, // '$y, containing globally unique internal id
-    REQUEST_LOCAL_SHARED_REF = 122u8, // '$x, containing only the id, origin id is inferred from sender
-
+    REQUEST_REMOTE_SHARED_REF,   // '$x
     REQUEST_REMOTE_SHARED_REF_MUT, // 'mut $x
 
-    SHARED_REF, // '$1234 (optional value)
-    SHARED_REF_MUT, // 'mut $1234(optional value)
+    GET_INTERNAL_SHARED_REF, // '$y, containing globally unique internal id
+    GET_LOCAL_SHARED_REF, // '$x, containing only the id, origin id is inferred from sender
+
+    SHARED_REF, // '/'mut $1234
+    SHARED_REF_WITH_VALUE, // '/'mut $1234 mut [value]
 
     PERFORM_MOVE, // PERFORM_MOVE(3) $a, $b, $c (indicates two executing endpoint that pointers should be moved from sender to local, triggers MOVE)
     MOVE, // MOVE(3) $a->$a2, $b->$b2, $c->$c2 (indicates that pointers should be moved from local to receiver, triggered by PERFORM_MOVE, includes mapping to new ids)

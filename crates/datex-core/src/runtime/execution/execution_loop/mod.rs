@@ -491,6 +491,11 @@ pub fn inner_execution_loop(
                                 Some(RuntimeValue::ValueContainer(ValueContainer::from(moved_values)))
                             }
 
+                            RegularInstruction::SharedRef(shared_ref) => {
+                                // shared ref without value, assumes value already known, otherwise request
+                                todo!()
+                            }
+
                             // NOTE: make sure that each possible match case is either implemented in the default collection or here
                             // If an instruction is implemented in the default collection, it should be marked as unreachable!() here
                             RegularInstruction::Statements(_) |
@@ -541,6 +546,7 @@ pub fn inner_execution_loop(
                             RegularInstruction::Unbox |
                             RegularInstruction::TypedValue |
                             RegularInstruction::RemoteExecution(_) |
+                            RegularInstruction::SharedRefWithValue(_) |
                             RegularInstruction::TypeExpression => unreachable!(),
                         })
                     } else {
@@ -1282,6 +1288,10 @@ pub fn inner_execution_loop(
                                         unreachable!()
                                     }
                                 }
+
+                                RegularInstruction::SharedRefWithValue(shared_ref) => {
+                                    todo!("shared")
+                                },
 
                                 e => {
                                     todo!(

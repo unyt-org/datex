@@ -38,6 +38,7 @@ use core::{
     option::Option,
     unreachable, write,
 };
+use binrw::{BinRead, BinWrite};
 use num_enum::TryFromPrimitive;
 use serde::{Deserialize, Serialize};
 
@@ -152,12 +153,12 @@ impl Display for AssignmentError {
 }
 
 #[derive(
-    Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, TryFromPrimitive,
-)]
+    Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, TryFromPrimitive, BinRead, BinWrite)]
+#[brw(repr(u8))]
 #[repr(u8)]
 pub enum SharedContainerMutability {
-    Mutable = 0,
-    Immutable = 1,
+    Immutable = 0,
+    Mutable = 1,
 }
 
 pub mod mutability_as_int {

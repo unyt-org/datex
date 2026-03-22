@@ -199,9 +199,10 @@ mod tests {
                 InstructionCode::ALLOCATE_SLOT as u8,
                 0, 0, 0, 0, // slot address
                 // compiled shared reference
-                InstructionCode::SHARED_REF as u8,
-                1, // insert value
-                0, 0, 0, 0, 0, // index of the shared value
+                InstructionCode::SHARED_REF_WITH_VALUE as u8,
+                0, 0, 0, 0, 0, 0, // address of the shared value
+                0, // immutable ref
+                0, // immutable container
                 InstructionCode::INT_32 as u8,
                 42, 0, 0, 0, // value of the shared integer
                 InstructionCode::NULL as u8, // body
@@ -233,17 +234,19 @@ mod tests {
                 InstructionCode::ALLOCATE_SLOT as u8,
                 0, 0, 0, 0, // slot address of first value
                 // compiled shared reference for first value
-                InstructionCode::SHARED_REF as u8,
-                1, // insert value
-                0, 0, 0, 0, 0, // index of the first shared value
+                InstructionCode::SHARED_REF_WITH_VALUE as u8,
+                0, 0, 0, 0, 0, 0, // address of the first shared value
+                0, // immutable ref
+                0, // immutable container
                 InstructionCode::INT_32 as u8,
                 42, 0, 0, 0, // value of the first shared integer
                 InstructionCode::ALLOCATE_SLOT as u8,
                 1, 0, 0, 0, // slot address of second value
                 // compiled shared mutable reference for second value
-                InstructionCode::SHARED_REF_MUT as u8,
-                1, // insert value
-                0, 0, 0, 0, 0, // index of the second shared value
+                InstructionCode::SHARED_REF_WITH_VALUE as u8,
+                0, 0, 0, 0, 0, 0, // address of the second shared value
+                1, // mutable ref
+                1, // mutable container
                 InstructionCode::INT_32 as u8,
                 100, 0, 0, 0, // value of the second shared integer
                 InstructionCode::NULL as u8, // body
@@ -326,9 +329,10 @@ mod tests {
                 InstructionCode::ALLOCATE_SLOT as u8,
                 1, 0, 0, 0, // slot address of second value
                 // compiled shared reference for second value
-                InstructionCode::SHARED_REF as u8,
-                1, // insert value
-                0, 0, 0, 0, 0, // index of the second shared value
+                InstructionCode::SHARED_REF_WITH_VALUE as u8,
+                0, 0, 0, 0, 0, 0, // address of the second shared value
+                0, // immutable ref
+                1, // mutable value
                 InstructionCode::INT_32 as u8,
                 100, 0, 0, 0, // value of the second shared integer
 

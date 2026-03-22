@@ -1,12 +1,16 @@
+use binrw::{BinRead, BinWrite};
+use num_enum::TryFromPrimitive;
 use crate::shared_values::pointer_address::{
     OwnedPointerAddress, PointerAddress, ReferencedPointerAddress,
 };
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, TryFromPrimitive, Serialize, Deserialize,BinRead, BinWrite)]
+#[brw(repr(u8))]
+#[repr(u8)]
 pub enum PointerReferenceMutability {
-    Mutable,
-    Immutable,
+    Immutable = 0,
+    Mutable = 1,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

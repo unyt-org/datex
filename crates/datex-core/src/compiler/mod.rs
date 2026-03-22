@@ -3290,7 +3290,7 @@ pub mod tests {
         let (res, _) =
             compile_script(script, CompileOptions::default()).unwrap();
         let mut instructions: Vec<u8> =
-            vec![InstructionCode::REQUEST_INTERNAL_SHARED_REF.into()];
+            vec![InstructionCode::GET_INTERNAL_SHARED_REF.into()];
         // pointer id
         instructions.append(
             &mut PointerAddress::from(CoreLibPointerId::Integer(None))
@@ -3358,7 +3358,7 @@ pub mod tests {
                 1,
             ],
             vec![
-                InstructionCode::REQUEST_INTERNAL_SHARED_REF.into(),
+                InstructionCode::GET_INTERNAL_SHARED_REF.into(),
                 // pointer id for integer
                 100,
                 0,

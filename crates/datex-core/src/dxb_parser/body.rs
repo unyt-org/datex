@@ -30,7 +30,7 @@ use binrw::{BinRead, io::Cursor};
 use core::{
     cell::RefCell, convert::TryFrom, fmt, fmt::Display, result::Result,
 };
-use crate::global::protocol_structures::instructions::{Move, PerformMove};
+use crate::global::protocol_structures::instructions::{Move, PerformMove, SharedRef, SharedRefWithValue};
 
 #[derive(Debug)]
 pub enum DXBParserError {
@@ -555,6 +555,20 @@ pub fn iterate_instructions(
                             next_instructions_stack.push_next_regular(1);
                             RegularInstruction::GetSharedReferenceMut
                         }
+
+                        InstructionCode::SHARED_REF => {
+                            let shared_ref = SharedRef::read(&mut reader);
+                            RegularInstruction::SharedRef(yield_unwrap!(
+                                shared_ref
+                            ))
+                        }
+                        InstructionCode::SHARED_REF_WITH_VALUE => {
+                            let shared_ref = SharedRefWithValue::read(&mut reader);
+                            RegularInstruction::SharedRefWithValue(yield_unwrap!(
+                                shared_ref
+                            ))
+                        }
+
                         InstructionCode::CREATE_SHARED => {
                             next_instructions_stack.push_next_regular(1);
                             RegularInstruction::CreateShared
@@ -613,7 +627,7 @@ pub fn iterate_instructions(
                             ))
                         }
 
-                        InstructionCode::REQUEST_LOCAL_SHARED_REF => {
+                        InstructionCode::GET_LOCAL_SHARED_REF => {
                             let address =
                                 RawLocalPointerAddress::read(&mut reader);
                             RegularInstruction::GetLocalRef(yield_unwrap!(
@@ -621,7 +635,7 @@ pub fn iterate_instructions(
                             ))
                         }
 
-                        InstructionCode::REQUEST_INTERNAL_SHARED_REF => {
+                        InstructionCode::GET_INTERNAL_SHARED_REF => {
                             let address =
                                 RawInternalPointerAddress::read(&mut reader);
                             RegularInstruction::GetInternalRef(yield_unwrap!(

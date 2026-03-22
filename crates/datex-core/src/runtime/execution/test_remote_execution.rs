@@ -147,7 +147,7 @@ pub async fn test_remote_inline_implicit_context() {
 
 #[tokio::test]
 #[cfg(feature = "compiler")]
-pub async fn test_remote_shared_value_inject() {
+pub async fn test_remote_shared_value_inject_move() {
     let endpoint_a = Endpoint::new("@test_a");
     let endpoint_b = Endpoint::new("@test_b");
 
@@ -166,6 +166,30 @@ pub async fn test_remote_shared_value_inject() {
         },
     )
     .await;
+}
+
+#[tokio::test]
+#[cfg(feature = "compiler")]
+pub async fn test_remote_shared_value_inject_ref() {
+    flexi_logger::init();
+    let endpoint_a = Endpoint::new("@test_a");
+    let endpoint_b = Endpoint::new("@test_b");
+
+    use_mock_setup_with_two_connected_runtimes(
+        endpoint_a.clone(),
+        endpoint_b.clone(),
+        async |runtime_a, _runtime_b| {
+            // execute script remotely on @test_b
+            let result = runtime_a
+                .execute("var x = shared 42; @test_b ::  'x + 1", &[], None)
+                .await;
+            assert_eq!(
+                result.unwrap().unwrap(),
+                ValueContainer::from(Integer::from(43))
+            );
+        },
+    )
+        .await;
 }
 
 #[cfg(feature = "compiler")]
