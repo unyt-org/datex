@@ -1,6 +1,5 @@
 use crate::{
     collections::HashMap,
-    global::protocol_structures::instructions::RawRemotePointerAddress,
     libs::core::{CoreLibPointerId, load_core_lib},
     shared_values::{
         shared_container::SharedContainer,
@@ -22,6 +21,7 @@ use crate::{
         },
     },
 };
+use crate::global::protocol_structures::instruction_data::RawRemotePointerAddress;
 use crate::shared_values::pointer::OwnedPointer;
 use crate::shared_values::shared_container::SharedContainerInner;
 

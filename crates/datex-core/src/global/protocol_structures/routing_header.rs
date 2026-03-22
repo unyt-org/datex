@@ -1,6 +1,5 @@
 use super::serializable::Serializable;
 use crate::{
-    global::protocol_structures::instructions::RawRemotePointerAddress,
     values::core_values::endpoint::Endpoint,
 };
 
@@ -9,6 +8,7 @@ use binrw::{BinRead, BinWrite};
 use core::{fmt::Display, prelude::rust_2024::*};
 use itertools::Itertools;
 use modular_bitfield::prelude::*;
+use crate::global::protocol_structures::instruction_data::RawRemotePointerAddress;
 
 // 2 bit
 #[derive(

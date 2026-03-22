@@ -19,7 +19,7 @@ use crate::{
     global::{
         operators::{AssignmentOperator, BinaryOperator, UnaryOperator},
         protocol_structures::instructions::{
-            Instruction, RegularInstruction, TypeInstruction,
+            Instruction,
         },
         slots::InternalSlot,
     },
@@ -41,7 +41,9 @@ use alloc::format;
 use core::cell::RefCell;
 use num_enum::TryFromPrimitive;
 use crate::ast::expressions::CloneExpression;
-use crate::global::protocol_structures::instructions::UnboundedStatementsData;
+use crate::global::protocol_structures::instruction_data::UnboundedStatementsData;
+use crate::global::protocol_structures::regular_instructions::RegularInstruction;
+use crate::global::protocol_structures::type_instructions::TypeInstruction;
 
 #[derive(Debug)]
 enum CollectedAstResult {

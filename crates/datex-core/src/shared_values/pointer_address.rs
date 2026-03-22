@@ -1,15 +1,10 @@
 use crate::{
-    global::protocol_structures::instructions::{
-        RawInternalPointerAddress, RawPointerAddress,
-    },
     prelude::*,
 };
 
-use crate::global::protocol_structures::instructions::{
-    RawLocalPointerAddress, RawRemotePointerAddress,
-};
 use core::{fmt::Display, result::Result};
 use serde::{Deserialize, Serialize};
+use crate::global::protocol_structures::instruction_data::{RawInternalPointerAddress, RawLocalPointerAddress, RawPointerAddress, RawRemotePointerAddress};
 use crate::values::core_values::endpoint::Endpoint;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

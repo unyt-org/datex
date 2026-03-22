@@ -1,7 +1,6 @@
 use crate::{
     core_compiler::value_compiler::append_get_shared_ref,
     global::{
-        protocol_structures::instructions::TypeMetadataBin,
         type_instruction_codes::TypeInstructionCode,
     },
     prelude::*,
@@ -10,6 +9,7 @@ use crate::{
     utils::buffers::append_u8,
     values::core_values::r#type::Type,
 };
+use crate::global::protocol_structures::instruction_data::TypeMetadataBin;
 
 /// Compiles a given type container to a DXB body
 pub fn compile_type(ty: &Type) -> Vec<u8> {

@@ -20,11 +20,10 @@ use crate::{
             AssignmentOperator, BinaryOperator, ComparisonOperator,
             UnaryOperator,
         },
-        protocol_structures::instructions::{
+        protocol_structures::instruction_data::{
             ApplyData, DecimalData, Float32Data, Float64Data, FloatAsInt16Data,
-            FloatAsInt32Data, Instruction, IntegerData, RawPointerAddress,
-            RegularInstruction, ShortTextData, SlotAddress, TextData,
-            TypeInstruction,
+            FloatAsInt32Data, IntegerData, RawPointerAddress,
+            ShortTextData, SlotAddress, TextData,
         },
     },
     prelude::*,
@@ -73,9 +72,11 @@ use crate::{
 };
 use alloc::rc::Rc;
 use core::cell::RefCell;
-use log::info;
 use crate::global::protocol_structures::external_slot_type::{ExternalSlotType, SharedSlotType};
-use crate::global::protocol_structures::instructions::UnboundedStatementsData;
+use crate::global::protocol_structures::instruction_data::UnboundedStatementsData;
+use crate::global::protocol_structures::instructions::{Instruction};
+use crate::global::protocol_structures::regular_instructions::RegularInstruction;
+use crate::global::protocol_structures::type_instructions::TypeInstruction;
 use crate::runtime::execution::execution_loop::remote_execution_blocks::compile_remote_execution_block;
 use crate::runtime::execution::macros::interrupt_with_values;
 use crate::shared_values::pointer::{Pointer, ReferencedPointer};

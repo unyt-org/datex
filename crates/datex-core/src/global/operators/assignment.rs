@@ -1,8 +1,8 @@
 use super::super::instruction_codes::InstructionCode;
-use crate::global::protocol_structures::instructions::RegularInstruction;
 use core::{fmt::Display, prelude::rust_2024::*};
 use binrw::{BinRead, BinWrite};
 use num_enum::TryFromPrimitive;
+use crate::global::protocol_structures::regular_instructions::RegularInstruction;
 
 #[derive(Clone, Debug, PartialEq, Copy, BinWrite, BinRead, TryFromPrimitive)]
 #[brw(little, repr(u8))]

@@ -1,5 +1,4 @@
 use crate::{
-    global::protocol_structures::instructions::*,
     libs::core::{CoreLibPointerId, get_core_lib_value},
     runtime::{
         RuntimeInternal,
@@ -26,6 +25,7 @@ use log::info;
 pub use errors::*;
 pub use execution_input::{ExecutionInput, ExecutionOptions};
 pub use memory_dump::*;
+use crate::global::protocol_structures::instruction_data::{RawInternalPointerAddress, RawLocalPointerAddress, RawRemotePointerAddress};
 use crate::shared_values::shared_container::SharedContainer;
 
 pub mod context;

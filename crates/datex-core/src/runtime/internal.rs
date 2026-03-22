@@ -39,7 +39,7 @@ use alloc::rc::Rc;
 use core::{cell::RefCell, pin::Pin, slice};
 use log::{debug, error, info};
 use crate::global::protocol_structures::disassembler::disassemble_body_to_string;
-use crate::global::protocol_structures::instructions::RawLocalPointerAddress;
+use crate::global::protocol_structures::instruction_data::RawLocalPointerAddress;
 use crate::runtime::execution::execution_input::ExecutionCallerMetadata;
 use crate::runtime::execution::InvalidProgramError;
 use crate::runtime::request_move::compile_request_move;

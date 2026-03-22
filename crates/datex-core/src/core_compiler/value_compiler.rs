@@ -5,7 +5,6 @@ use crate::{
     },
     global::{
         instruction_codes::InstructionCode,
-        protocol_structures::instructions::TypeMetadataBin,
         type_instruction_codes::TypeInstructionCode,
     },
     libs::core::{CoreLibPointerId, get_core_lib_type_definition},
@@ -39,7 +38,8 @@ use crate::{
     },
     values::core_values::r#type::TypeMetadata,
 };
-use crate::global::protocol_structures::instructions::{Instruction, RawPointerAddress, RegularInstruction};
+use crate::global::protocol_structures::instruction_data::{RawPointerAddress, TypeMetadataBin};
+use crate::global::protocol_structures::regular_instructions::RegularInstruction;
 use crate::shared_values::shared_container::SharedContainer;
 
 /// Compiles a given value container to a DXB body

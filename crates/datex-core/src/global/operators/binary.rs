@@ -2,9 +2,8 @@ use core::fmt::Display;
 
 use crate::global::{
     instruction_codes::InstructionCode,
-    protocol_structures::instructions::RegularInstruction,
 };
-
+use crate::global::protocol_structures::regular_instructions::RegularInstruction;
 use crate::prelude::*;
 #[derive(Clone, Debug, PartialEq, Copy)]
 pub enum BinaryOperator {

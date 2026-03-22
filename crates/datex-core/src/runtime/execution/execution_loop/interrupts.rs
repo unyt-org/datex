@@ -1,14 +1,11 @@
 use core::cell::RefCell;
 
 use crate::{
-    global::protocol_structures::instructions::{
-        RawInternalPointerAddress, RawLocalPointerAddress,
-        RawRemotePointerAddress,
-    },
     values::value_container::ValueContainer,
 };
 
 use crate::{prelude::*, shared_values::pointer::PointerReferenceMutability};
+use crate::global::protocol_structures::instruction_data::{RawInternalPointerAddress, RawLocalPointerAddress, RawRemotePointerAddress};
 use crate::shared_values::shared_container::SharedContainerMutability;
 
 #[derive(Debug)]

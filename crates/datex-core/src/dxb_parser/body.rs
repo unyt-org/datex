@@ -6,15 +6,15 @@ use crate::{
     global::{
         instruction_codes::InstructionCode,
         operators::assignment::AssignmentOperator,
-        protocol_structures::instructions::{
+        protocol_structures::instruction_data::{
             ApplyData, DecimalData, Float32Data, Float64Data, FloatAsInt16Data,
-            FloatAsInt32Data, ImplTypeData, Instruction, InstructionBlockData,
+            FloatAsInt32Data, ImplTypeData, InstructionBlockData,
             Int8Data, Int16Data, Int32Data, Int64Data, Int128Data, IntegerData,
             ListData, MapData, RawInternalPointerAddress,
             RawLocalPointerAddress, RawRemotePointerAddress,
-            RegularInstruction, ShortListData, ShortMapData,
+            ShortListData, ShortMapData,
             ShortStatementsData, ShortTextData, ShortTextDataRaw, SlotAddress,
-            StatementsData, TextData, TextDataRaw, TypeInstruction,
+            StatementsData, TextData, TextDataRaw,
             TypeReferenceData, UInt8Data, UInt16Data, UInt32Data, UInt64Data,
             UInt128Data, UnboundedStatementsData,
         },
@@ -30,7 +30,10 @@ use binrw::{BinRead, io::Cursor};
 use core::{
     cell::RefCell, convert::TryFrom, fmt, fmt::Display, result::Result,
 };
-use crate::global::protocol_structures::instructions::{Move, PerformMove, SharedRef, SharedRefWithValue};
+use crate::global::protocol_structures::instruction_data::{Move, PerformMove, SharedRef, SharedRefWithValue};
+use crate::global::protocol_structures::instructions::Instruction;
+use crate::global::protocol_structures::regular_instructions::RegularInstruction;
+use crate::global::protocol_structures::type_instructions::TypeInstruction;
 
 #[derive(Debug)]
 pub enum DXBParserError {

@@ -2,7 +2,7 @@ use log::info;
 use crate::core_compiler::value_compiler::{append_instruction_code, append_perform_moves, append_shared_container, append_statements_preamble};
 use crate::global::instruction_codes::InstructionCode;
 use crate::global::protocol_structures::external_slot_type::{ExternalSlotType, SharedSlotType};
-use crate::global::protocol_structures::instructions::InstructionBlockData;
+use crate::global::protocol_structures::instruction_data::InstructionBlockData;
 use crate::runtime::execution::ExecutionError;
 use crate::shared_values::shared_container::SharedContainer;
 use crate::utils::buffers::{append_u32, append_u8};
@@ -160,7 +160,7 @@ fn compile_preform_move_preamble(
 mod tests {
     use crate::global::instruction_codes::InstructionCode;
     use crate::global::protocol_structures::external_slot_type::{ExternalSlotType, SharedSlotType};
-    use crate::global::protocol_structures::instructions::InstructionBlockData;
+    use crate::global::protocol_structures::instruction_data::InstructionBlockData;
     use crate::runtime::execution::execution_loop::remote_execution_blocks::compile_remote_execution_block;
     use crate::shared_values::pointer::{OwnedPointer};
     use crate::shared_values::shared_container::SharedContainer;

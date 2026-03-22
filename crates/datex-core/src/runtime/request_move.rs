@@ -1,6 +1,6 @@
 use crate::core_compiler::value_compiler::{append_instruction_code, append_local_pointer_address};
 use crate::global::instruction_codes::InstructionCode;
-use crate::global::protocol_structures::instructions::{RawLocalPointerAddress};
+use crate::global::protocol_structures::instruction_data::RawLocalPointerAddress;
 use crate::utils::buffers::{append_u32};
 use crate::prelude::*;
 

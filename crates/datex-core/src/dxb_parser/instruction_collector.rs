@@ -1,9 +1,9 @@
 use crate::{
-    global::protocol_structures::instructions::{
-        Instruction, RegularInstruction, TypeInstruction,
-    },
+    global::protocol_structures::instructions::Instruction,
     prelude::*,
 };
+use crate::global::protocol_structures::regular_instructions::RegularInstruction;
+use crate::global::protocol_structures::type_instructions::TypeInstruction;
 
 pub trait CollectionResultsPopper<Result, Val, Key, KeyVal, Type>:
     GetResults<Result> + Sized

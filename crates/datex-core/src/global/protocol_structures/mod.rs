@@ -5,3 +5,6 @@ pub mod routing_header;
 pub mod serializable;
 pub mod external_slot_type;
 pub mod disassembler;
+pub mod instruction_data;
+pub mod type_instructions;
+pub mod regular_instructions;
