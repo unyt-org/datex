@@ -1,5 +1,5 @@
 use alloc::string::FromUtf8Error;
-use crate::std::io::{Cursor, Read, Seek, Write};
+use binrw::io::{Cursor, Read, Seek, Write};
 use binrw::{BinRead, BinResult, BinWrite, Endian};
 use binrw::meta::{EndianKind, ReadEndian};
 use modular_bitfield::bitfield;

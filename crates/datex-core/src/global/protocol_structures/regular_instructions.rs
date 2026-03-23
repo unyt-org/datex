@@ -1,5 +1,5 @@
 use core::fmt::Display;
-use crate::std::io::{Read, Seek};
+use binrw::io::{Read, Seek};
 use binrw::{BinRead, BinResult, BinWrite, Endian};
 use binrw::meta::{EndianKind, ReadEndian};
 use crate::dxb_parser::body::DXBParserError;

@@ -12,7 +12,7 @@ use crate::{
     },
 };
 use core::cell::RefCell;
-use crate::std::io::Write;
+use binrw::io::Write;
 use crate::{
     ast::expressions::{
         BinaryOperation, ComparisonOperation, DatexExpression,

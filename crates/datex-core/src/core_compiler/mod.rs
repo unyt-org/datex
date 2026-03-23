@@ -1,4 +1,4 @@
-use crate::std::io::Cursor;
+use binrw::io::Cursor;
 use crate::prelude::*;
 
 pub mod type_compiler;

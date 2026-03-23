@@ -1,4 +1,4 @@
-use crate::std::io::Cursor;
+use binrw::io::Cursor;
 use crate::core_compiler::value_compiler::{append_instruction_code, append_instruction_code_new, append_local_pointer_address};
 use crate::global::instruction_codes::InstructionCode;
 use crate::global::protocol_structures::instruction_data::RawLocalPointerAddress;

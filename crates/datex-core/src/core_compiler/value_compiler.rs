@@ -27,7 +27,7 @@ use crate::{
 };
 use binrw::{BinWrite, io::Cursor, BinResult};
 use bytes::Buf;
-use crate::std::io::Write;
+use binrw::io::Write;
 
 use crate::{
     prelude::*,
@@ -268,7 +268,7 @@ pub fn append_value(cursor: &mut ByteCursor, value: &Value) -> BinResult<()> {
             for item in val {
                 append_value_container(cursor, item.into())?;
             }
-            
+
             Ok(())
         }
         CoreValue::Map(val) => {
@@ -294,7 +294,7 @@ pub fn append_value(cursor: &mut ByteCursor, value: &Value) -> BinResult<()> {
                     value,
                 )?;
             }
-            
+
             Ok(())
         }
         CoreValue::Range(range) => {

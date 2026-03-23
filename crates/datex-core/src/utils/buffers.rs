@@ -1,10 +1,10 @@
 use crate::prelude::*;
 use core::{convert::TryInto, fmt::Write as FmtWrite, iter::FromIterator};
-use crate::std::io::Write;
+use binrw::io::Write;
 use itertools::Itertools;
 use crate::core_compiler::ByteCursor;
 /*
-read functions for primitive data types on a u8 array, also increments the index
+read functions for primitive data types on a U8 array, also increments the index
  */
 
 pub fn read_u8(buffer: &[u8], index: &mut usize) -> u8 {

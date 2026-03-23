@@ -12,7 +12,7 @@ use crate::{
 
 use crate::prelude::*;
 use core::cell::RefCell;
-use crate::std::io::Write;
+use binrw::io::Write;
 
 /// Compilation functions for type expressions.
 impl CompilationContext {

@@ -1,4 +1,4 @@
-use crate::std::io::{Cursor, Write};
+use binrw::io::{Cursor, Write};
 use binrw::{BinResult, BinWrite};
 use crate::{
     core_compiler::value_compiler::append_get_shared_ref,

@@ -1,5 +1,5 @@
-use crate::std::io::Write;
-use crate::std::io::Cursor;
+use binrw::io::Write;
+use binrw::io::Cursor;
 use crate::core_compiler::value_compiler::{append_instruction_code, append_instruction_code_new, append_perform_moves, append_shared_container, append_statements_preamble};
 use crate::global::instruction_codes::InstructionCode;
 use crate::global::protocol_structures::external_slot_type::{ExternalSlotType, SharedSlotType};
@@ -30,7 +30,7 @@ pub fn compile_remote_execution_block(
         .len() != slot_values.len() {
         unreachable!(); // length must always match
     }
-    
+
     let moved_pointers_slot_index = exec_block_data
         .injected_slots
         .len() as u32;
@@ -72,7 +72,7 @@ fn compile_preamble(
 ) -> Result<(Vec<u8>, Vec<SharedContainer>), ExecutionError> {
 
     let mut cursor = Cursor::new(vec![]);
-    
+
     let mut moved_pointers: Vec<SharedContainer> = vec![];
 
     // build dxb
@@ -144,7 +144,7 @@ fn compile_preform_move_preamble(
 ) -> Vec<u8> {
     let mut cursor = Cursor::new(vec![]);
     cursor.write_all(&[InstructionCode::ALLOCATE_SLOT as u8]).unwrap();
-    
+
     append_u32(&mut cursor, moved_pointers_slot_index);
 
     append_perform_moves(
