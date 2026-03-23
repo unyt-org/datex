@@ -1,6 +1,5 @@
-use std::io::Write;
+use crate::std::io::Write;
 use crate::std::io::Cursor;
-use crate::core_compiler::ByteCursor;
 use crate::core_compiler::value_compiler::{append_instruction_code, append_instruction_code_new, append_perform_moves, append_shared_container, append_statements_preamble};
 use crate::global::instruction_codes::InstructionCode;
 use crate::global::protocol_structures::external_slot_type::{ExternalSlotType, SharedSlotType};

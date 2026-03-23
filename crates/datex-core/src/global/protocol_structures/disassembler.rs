@@ -3,6 +3,7 @@ use core::cell::RefCell;
 use crate::dxb_parser::body::{iterate_instructions, DXBParserError};
 use core::fmt::Write;
 use crate::global::protocol_structures::instructions::Instruction;
+use crate::prelude::*;
 
 pub fn disassemble_body_to_string(body: &[u8]) -> Result<String, DXBParserError> {
     let mut output = "\n=== Disassembled DXB Body ===\n".to_string();

@@ -1,5 +1,5 @@
 use alloc::string::FromUtf8Error;
-use std::io::{Cursor, Read, Seek, Write};
+use crate::std::io::{Cursor, Read, Seek, Write};
 use binrw::{BinRead, BinResult, BinWrite, Endian};
 use binrw::meta::{EndianKind, ReadEndian};
 use modular_bitfield::bitfield;
@@ -15,6 +15,7 @@ use crate::values::core_values::decimal::Decimal;
 use crate::values::core_values::endpoint::{Endpoint, EndpointParsingError};
 use crate::values::core_values::integer::Integer;
 use crate::values::core_values::r#type::TypeMetadata;
+use crate::prelude::*;
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
 #[brw(little)]

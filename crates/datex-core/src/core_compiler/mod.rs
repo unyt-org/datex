@@ -1,4 +1,5 @@
-use std::io::Cursor;
+use crate::std::io::Cursor;
+use crate::prelude::*;
 
 pub mod type_compiler;
 pub mod value_compiler;

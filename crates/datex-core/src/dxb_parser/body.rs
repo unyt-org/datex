@@ -201,10 +201,10 @@ mod tests {
         let data = vec![0xFF]; // Invalid instruction code
         let mut iterator = iterate_dxb(data);
         let result = iterator.next().unwrap();
-        assert!(matches!(
+        assert_matches!(
             result,
             Err(DXBParserError::InvalidInstructionCode(0xFF))
-        ));
+        );
     }
 
     #[test]
@@ -212,10 +212,10 @@ mod tests {
         let data = vec![]; // Empty data
         let mut iterator = iterate_dxb(data);
         let result = iterator.next().unwrap();
-        assert!(matches!(
+        assert_matches!(
             result,
             Err(DXBParserError::ExpectingMoreInstructions)
-        ));
+        );
     }
 
     #[test]
