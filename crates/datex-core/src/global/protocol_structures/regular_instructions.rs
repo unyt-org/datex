@@ -6,6 +6,7 @@ use crate::dxb_parser::body::DXBParserError;
 use crate::global::instruction_codes::InstructionCode;
 use crate::global::operators::AssignmentOperator;
 use crate::global::protocol_structures::instruction_data::{ApplyData, DecimalData, Float32Data, Float64Data, FloatAsInt16Data, FloatAsInt32Data, InstructionBlockData, Int128Data, Int16Data, Int32Data, Int64Data, Int8Data, IntegerData, ListData, MapData, Move, PerformMove, RawInternalPointerAddress, RawLocalPointerAddress, RawRemotePointerAddress, SharedRef, SharedRefWithValue, ShortListData, ShortMapData, ShortStatementsData, ShortTextData, ShortTextDataRaw, SlotAddress, StatementsData, TextData, TextDataRaw, UInt128Data, UInt16Data, UInt32Data, UInt64Data, UInt8Data, UnboundedStatementsData};
+use crate::global::protocol_structures::instructions::NextExpectedInstructions;
 use crate::runtime::execution::macros::yield_unwrap;
 use crate::shared_values::pointer_address::PointerAddress;
 use crate::values::core_values::decimal::utils::decimal_to_string;
@@ -234,15 +235,6 @@ impl From<&RegularInstruction> for InstructionCode {
             RegularInstruction::TypeExpression => InstructionCode::TYPE_EXPRESSION,
         }
     }
-}
-
-pub enum NextExpectedInstructions {
-    None,
-    Regular(u32),
-    Type(u32),
-    UnboundedStart,
-    UnboundedEnd,
-    RegularAndType(u32, u32),
 }
 
 impl RegularInstruction {

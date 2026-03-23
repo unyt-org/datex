@@ -4,24 +4,10 @@ use crate::{
         NotInUnboundedRegularScopeError,
     },
     global::{
-        instruction_codes::InstructionCode,
-        operators::assignment::AssignmentOperator,
-        protocol_structures::instruction_data::{
-            ApplyData, DecimalData, Float32Data, Float64Data, FloatAsInt16Data,
-            FloatAsInt32Data, ImplTypeData, InstructionBlockData,
-            Int8Data, Int16Data, Int32Data, Int64Data, Int128Data, IntegerData,
-            ListData, MapData, RawInternalPointerAddress,
-            RawLocalPointerAddress, RawRemotePointerAddress,
-            ShortListData, ShortMapData,
-            ShortStatementsData, ShortTextData, ShortTextDataRaw, SlotAddress,
-            StatementsData, TextData, TextDataRaw,
-            TypeReferenceData, UInt8Data, UInt16Data, UInt32Data, UInt64Data,
-            UInt128Data, UnboundedStatementsData,
-        },
+        protocol_structures::instruction_data::{ UInt8Data },
         type_instruction_codes::TypeInstructionCode,
     },
     runtime::execution::macros::yield_unwrap,
-    values::core_values::endpoint::Endpoint,
 };
 
 use crate::prelude::*;
@@ -30,9 +16,8 @@ use binrw::{BinRead, io::Cursor};
 use core::{
     cell::RefCell, convert::TryFrom, fmt, fmt::Display, result::Result,
 };
-use crate::global::protocol_structures::instruction_data::{Move, PerformMove, SharedRef, SharedRefWithValue};
-use crate::global::protocol_structures::instructions::Instruction;
-use crate::global::protocol_structures::regular_instructions::{NextExpectedInstructions, RegularInstruction};
+use crate::global::protocol_structures::instructions::{Instruction};
+use crate::global::protocol_structures::regular_instructions::{RegularInstruction};
 use crate::global::protocol_structures::type_instructions::TypeInstruction;
 
 #[derive(Debug)]
@@ -163,86 +148,22 @@ pub fn iterate_instructions(
                 NextInstructionType::Regular => {
                     let instruction = yield_unwrap!(RegularInstruction::read(&mut reader));
 
-                    let next_instructions = instruction.get_next_expected_instructions();
-                    match next_instructions {
-                        NextExpectedInstructions::Regular(regular_count) => {
-                            next_instructions_stack.push_next_regular(regular_count);
-                        }
-                        NextExpectedInstructions::UnboundedStart => {
-                            next_instructions_stack.push_next_regular_unbounded();
-                        }
-                        NextExpectedInstructions::UnboundedEnd => {
-                            yield_unwrap!(next_instructions_stack.pop_unbounded_regular());
-                        }
-                        NextExpectedInstructions::Type(type_count) => {
-                            next_instructions_stack.push_next_type(type_count);
-                        }
-                        NextExpectedInstructions::RegularAndType(regular_count, type_count) => {
-                            next_instructions_stack.push_next_regular(regular_count);
-                            next_instructions_stack.push_next_type(type_count);
-                        }
-                        NextExpectedInstructions::None => {}
-                    }
+                    yield_unwrap!(next_instructions_stack.handle_next_expected_instructions(
+                        instruction.get_next_expected_instructions()
+                    ));
 
                     instruction
                 }
                 .into(),
 
                 NextInstructionType::Type => {
-                    let instruction_code = yield_unwrap!(
-                        get_next_type_instruction_code(&mut reader)
-                    );
-                    match instruction_code {
-                        TypeInstructionCode::TYPE_LIST => {
-                            let list_data =
-                                yield_unwrap!(ListData::read(&mut reader));
-                            next_instructions_stack
-                                .push_next_regular(list_data.element_count);
-                            TypeInstruction::List(list_data)
-                        }
-                        TypeInstructionCode::TYPE_LITERAL_INTEGER => {
-                            let integer_data = IntegerData::read(&mut reader);
-                            TypeInstruction::LiteralInteger(yield_unwrap!(
-                                integer_data
-                            ))
-                        }
-                        TypeInstructionCode::TYPE_LITERAL_TEXT => {
-                            let raw_data = TextDataRaw::read(&mut reader);
-                            let text = yield_unwrap!(String::from_utf8(
-                                yield_unwrap!(raw_data).text
-                            ));
-                            TypeInstruction::LiteralText(TextData(text))
-                        }
-                        TypeInstructionCode::TYPE_LITERAL_SHORT_TEXT => {
-                            let raw_data = ShortTextDataRaw::read(&mut reader);
-                            let text = yield_unwrap!(String::from_utf8(
-                                yield_unwrap!(raw_data).text
-                            ));
-                            TypeInstruction::LiteralText(TextData(text))
-                        }
-                        TypeInstructionCode::TYPE_WITH_IMPLS => {
-                            let impl_data = ImplTypeData::read(&mut reader);
-                            next_instructions_stack.push_next_type(1);
-                            TypeInstruction::ImplType(yield_unwrap!(impl_data))
-                        }
-                        TypeInstructionCode::SHARED_TYPE_REFERENCE => {
-                            let ref_data = TypeReferenceData::read(&mut reader);
-                            TypeInstruction::SharedTypeReference(yield_unwrap!(
-                                ref_data
-                            ))
-                        }
-                        TypeInstructionCode::TYPE_RANGE => {
-                            next_instructions_stack.push_next_type(2);
-                            TypeInstruction::Range
-                        }
-                        _ => {
-                            return yield Err(
-                                DXBParserError::InvalidBinaryCode(
-                                    instruction_code as u8,
-                                ),
-                            );
-                        }
-                    }
+                    let instruction = yield_unwrap!(TypeInstruction::read(&mut reader));
+
+                    yield_unwrap!(next_instructions_stack.handle_next_expected_instructions(
+                        instruction.get_next_expected_instructions()
+                    ));
+
+                    instruction
                 }
                 .into(),
             };
@@ -266,6 +187,7 @@ fn get_next_type_instruction_code(
 
 #[cfg(test)]
 mod tests {
+    use crate::global::instruction_codes::InstructionCode;
     use super::*;
 
     fn iterate_dxb(

@@ -1,5 +1,10 @@
 use core::fmt::Display;
-use crate::global::protocol_structures::instruction_data::{ImplTypeData, IntegerData, ListData, TextData, TypeReferenceData};
+use std::io::{Read, Seek};
+use binrw::{BinRead, BinResult, Endian};
+use binrw::meta::{EndianKind, ReadEndian};
+use crate::dxb_parser::body::DXBParserError;
+use crate::global::protocol_structures::instruction_data::{ImplTypeData, IntegerData, ListData, ShortTextData, ShortTextDataRaw, TextData, TextDataRaw, TypeReferenceData};
+use crate::global::protocol_structures::instructions::NextExpectedInstructions;
 use crate::global::type_instruction_codes::TypeInstructionCode;
 use crate::shared_values::pointer_address::PointerAddress;
 use crate::values::core_values::r#type::TypeMetadata;
@@ -25,6 +30,88 @@ impl From<&TypeInstruction> for TypeInstructionCode {
             TypeInstruction::Range => TypeInstructionCode::TYPE_RANGE,
         }
     }
+}
+
+
+impl TypeInstruction {
+    /// Returns how many (if any) regular or type instructions are expected as child instructions for a given instructions
+    pub fn get_next_expected_instructions(&self) -> NextExpectedInstructions {
+        match self {
+            TypeInstruction::List(list) =>
+                NextExpectedInstructions::Type(list.element_count), // list elements
+
+            TypeInstruction::ImplType(_) =>
+                NextExpectedInstructions::Type(1), // impl type
+
+            TypeInstruction::Range =>
+                NextExpectedInstructions::Type(2), // range has 2 type instructions
+
+            _ => NextExpectedInstructions::None,
+        }
+    }
+
+    /// Based on the instruction code, read the corresponding instruction data and construct the TypeInstruction variant
+    fn read_instruction<R: Read + Seek>(
+        reader: &mut R,
+        instruction_code: TypeInstructionCode,
+    ) -> BinResult<Self> {
+        match instruction_code {
+            TypeInstructionCode::TYPE_LIST => {
+                ListData::read(reader).map(TypeInstruction::List)
+            }
+            TypeInstructionCode::TYPE_LITERAL_INTEGER => {
+                IntegerData::read(reader).map(TypeInstruction::LiteralInteger)
+            }
+            TypeInstructionCode::TYPE_LITERAL_TEXT => {
+                TextData::read(reader).map(TypeInstruction::LiteralText)
+            }
+            TypeInstructionCode::TYPE_LITERAL_SHORT_TEXT => {
+                ShortTextData::read(reader)
+                    .map(|data| TextData(data.0))
+                    .map(TypeInstruction::LiteralText)
+            }
+            TypeInstructionCode::TYPE_WITH_IMPLS => {
+                ImplTypeData::read(reader).map(TypeInstruction::ImplType)
+            }
+            TypeInstructionCode::SHARED_TYPE_REFERENCE => {
+                TypeReferenceData::read(reader).map(TypeInstruction::SharedTypeReference)
+            }
+            TypeInstructionCode::TYPE_RANGE => {
+                Ok(TypeInstruction::Range)
+            }
+        }
+    }
+
+    fn read_type_instruction_code<R: Read + Seek>(
+        mut reader: &mut R,
+    ) -> Result<TypeInstructionCode, DXBParserError> {
+        let instruction_code = u8::read(&mut reader)
+            .map_err(|_| DXBParserError::FailedToReadInstructionCode)?;
+
+        TypeInstructionCode::try_from(instruction_code)
+            .map_err(|_| DXBParserError::InvalidInstructionCode(instruction_code))
+    }
+}
+
+impl BinRead for TypeInstruction {
+    type Args<'a> = ();
+
+    fn read_options<R: Read + Seek>(
+        reader: &mut R,
+        _endian: Endian,
+        _: Self::Args<'_>,
+    ) -> BinResult<Self> {
+        let instruction_code = TypeInstruction::read_type_instruction_code(reader)
+            .map_err(|e| binrw::Error::AssertFail {
+                pos: reader.stream_position().unwrap_or(0),
+                message: format!("Failed to read type instruction code: {:?}", e),
+            })?;
+        TypeInstruction::read_instruction(reader, instruction_code)
+    }
+}
+
+impl ReadEndian for TypeInstruction {
+    const ENDIAN: EndianKind = EndianKind::Endian(Endian::Little);
 }
 
 impl Display for TypeInstruction {

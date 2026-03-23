@@ -34,3 +34,12 @@ impl From<TypeInstruction> for Instruction {
         Instruction::TypeInstruction(instruction)
     }
 }
+
+pub enum NextExpectedInstructions {
+    None,
+    Regular(u32),
+    Type(u32),
+    UnboundedStart,
+    UnboundedEnd,
+    RegularAndType(u32, u32),
+}
