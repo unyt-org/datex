@@ -493,7 +493,7 @@ impl AstToSourceCodeConverter {
                     self.space(),
                     match operator {
                         Some(operator) => operator.to_string(),
-                        None => "".to_string(),
+                        None => "=".to_string(),
                     },
                     self.format(assigned_expression)
                 )
@@ -805,7 +805,7 @@ impl AstToSourceCodeConverter {
                     self.format(unbox_expression),
                     match operator {
                         Some(operator) => operator.to_string(),
-                        None => "".to_string(),
+                        None => "=".to_string(),
                     },
                     self.format(assigned_expression)
                 )
@@ -823,7 +823,7 @@ impl AstToSourceCodeConverter {
                     slot.to_string(),
                      match operator {
                         Some(operator) => operator.to_string(),
-                        None => "".to_string(),
+                        None => "=".to_string(),
                     },
                     self.format(assigned_expression)
                 )

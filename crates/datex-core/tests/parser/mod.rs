@@ -3475,7 +3475,7 @@ fn variable_add_assignment() {
         expr,
         DatexExpressionData::VariableAssignment(VariableAssignment {
             id: None,
-            operator: None,
+            operator: Some(AssignmentOperator::AddAssign),
             name: "x".to_string(),
             expression: Box::new(
                 DatexExpressionData::Integer(Integer::from(42))
@@ -3493,7 +3493,7 @@ fn variable_sub_assignment() {
         expr,
         DatexExpressionData::VariableAssignment(VariableAssignment {
             id: None,
-            operator: None,
+            operator: Some(AssignmentOperator::SubtractAssign),
             name: "x".to_string(),
             expression: Box::new(
                 DatexExpressionData::Integer(Integer::from(42))

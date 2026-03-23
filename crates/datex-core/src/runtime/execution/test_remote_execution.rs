@@ -18,6 +18,7 @@ use crate::shared_values::shared_container::{SharedContainerMutability};
 #[tokio::test]
 #[cfg(feature = "compiler")]
 pub async fn test_basic_remote_execution() {
+    flexi_logger::init();
     let endpoint_a = Endpoint::new("@test_a");
     let endpoint_b = Endpoint::new("@test_b");
 

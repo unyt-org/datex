@@ -1526,15 +1526,10 @@ pub mod tests {
         compile_template, parse_datex_script_to_rich_ast_simple_error,
     };
 
-    use crate::{
-        compiler::scope::CompilationScope,
-        global::{
-            instruction_codes::InstructionCode,
-            type_instruction_codes::TypeInstructionCode,
-        },
-        libs::core::CoreLibPointerId,
-        runtime::execution::context::ExecutionMode,
-    };
+    use crate::{assert_instructions_equal, compiler::scope::CompilationScope, global::{
+        instruction_codes::InstructionCode,
+        type_instruction_codes::TypeInstructionCode,
+    }, libs::core::CoreLibPointerId, runtime::execution::context::ExecutionMode};
 
     use crate::{
         compiler::error::CompilerError, prelude::*,
@@ -1920,16 +1915,15 @@ pub mod tests {
         let end = 256i64;
         let datex_script = format!("{start}..{end}");
         let result = compile_and_log(&datex_script);
-        let x = start as u8;
-        let _y = end as u8;
-        assert_eq!(
-            disassemble_body(&result).unwrap(),
-            vec![
+        
+        assert_instructions_equal!(
+            &result,
+            [
                 Instruction::RegularInstruction(RegularInstruction::Range),
                 Instruction::RegularInstruction(RegularInstruction::Integer(IntegerData(Integer::new(start)))),
-                Instruction::RegularInstruction(RegularInstruction::Integer(IntegerData(Integer::new(end)))),
+                Instruction::RegularInstruction(RegularInstruction::Integer(IntegerData(Integer::new(end))))
             ]
-        );
+        )
     }
 
     // Test for decimal

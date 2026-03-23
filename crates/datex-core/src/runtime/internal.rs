@@ -419,7 +419,7 @@ impl RuntimeInternal {
             );
         }
         let dxb = block.body;
-        info!("\n{}", disassemble_body_to_string(&dxb)?);
+        info!("\n{}", disassemble_body_to_string(&dxb));
         let end_execution =
             block.block_header.flags_and_timestamp.is_end_of_section();
         RuntimeInternal::execute_dxb(

@@ -17,6 +17,7 @@ use crate::prelude::*;
 use core::{cell::RefCell, fmt::Debug, prelude::rust_2024::*};
 use log::info;
 use ringmap::RingMap;
+use crate::global::protocol_structures::disassembler::disassemble_body_to_string;
 
 // TODO #170: store scope memory
 #[derive(Debug)]
@@ -157,6 +158,7 @@ impl BlockHandler {
         info!(
             "Received block (context={context_id}, section={section_index}, block_nr={block_number})"
         );
+        info!("{}", disassemble_body_to_string(&block.body));
 
         // handle observers if response block
         if is_response {

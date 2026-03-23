@@ -919,7 +919,7 @@ pub fn inner_execution_loop(
                                 }
 
                                 RegularInstruction::SetSharedContainerValue(
-                                    operator,
+                                    set_shared_container_value,
                                 ) => {
 
                                     let value_container = yield_unwrap!(
@@ -938,9 +938,16 @@ pub fn inner_execution_loop(
                                             if let Some(reference) =
                                                 ref_value_container.maybe_shared()
                                             {
-                                                todo!("update shared container");
-                                                // let lhs = reference.value_container();
-                                                // reference.set_value_container(res)?;
+                                                let lhs = reference.value_container();
+                                                let res = match set_shared_container_value.operator {
+                                                    Some(operator) => handle_assignment_operation(
+                                                        operator,
+                                                        &lhs,
+                                                        value_container,
+                                                    )?,
+                                                    None => todo!()
+                                                };
+                                                reference.set_value_container(res)?;
                                                 Ok(RuntimeValue::ValueContainer(
                                                     ref_value_container.clone(),
                                                 ))
