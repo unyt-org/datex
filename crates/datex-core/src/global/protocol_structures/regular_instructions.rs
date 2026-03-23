@@ -157,7 +157,7 @@ impl From<&RegularInstruction> for InstructionCode {
             RegularInstruction::UInt64(_) => InstructionCode::UINT_64,
             RegularInstruction::UInt128(_) => InstructionCode::UINT_128,
             RegularInstruction::BigInteger(_) => InstructionCode::INT_BIG,
-            RegularInstruction::Integer(_) => InstructionCode::INT_32,
+            RegularInstruction::Integer(_) => InstructionCode::INT,
             RegularInstruction::Endpoint(_) => InstructionCode::ENDPOINT,
             RegularInstruction::DecimalF32(_) => InstructionCode::DECIMAL_F32,
             RegularInstruction::DecimalF64(_) => InstructionCode::DECIMAL_F64,

@@ -295,9 +295,7 @@ mod tests {
             ExecutionOptions { verbose: true },
             Rc::new(RuntimeInternal::stub()),
         );
-        execute_dxb_sync(context).unwrap_or_else(|err| {
-            core::panic!("Execution failed: {err}");
-        })
+        execute_dxb_sync(context).unwrap()
     }
 
     fn execute_datex_script_debug_unbounded(
