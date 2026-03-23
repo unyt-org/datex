@@ -97,9 +97,9 @@ impl RuntimeInternal {
                         if shared_container.is_owned() {
                             self.add_moving_pointers(receiver_endpoint.clone(), vec![shared_container]).unwrap();
                         }
-                        compiled
+                        compiled.unwrap()
                     },
-                    ValueContainer::Local(value) => compile_value(&value),
+                    ValueContainer::Local(value) => compile_value(&value).unwrap(),
                 }
             } else {
                 vec![]

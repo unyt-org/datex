@@ -840,7 +840,7 @@ impl Display for RegularInstruction {
                 write!(
                     f,
                     "(origin_id: {})",
-                    hex::encode(address.id)
+                    hex::encode(address.bytes)
                 )
             }
             RegularInstruction::GetInternalSharedRef(address) => {
@@ -870,7 +870,7 @@ impl Display for RegularInstruction {
                 write!(
                     f,
                     "(pointers: {})",
-                    perform_move.pointers.iter().map(|(_mut, addr)| hex::encode(addr.id)).collect::<Vec<_>>().join(", ")
+                    perform_move.pointers.iter().map(|(_mut, addr)| hex::encode(addr.bytes)).collect::<Vec<_>>().join(", ")
                 )
             }
             RegularInstruction::Move(mv) => {

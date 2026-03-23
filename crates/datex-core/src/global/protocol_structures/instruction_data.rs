@@ -301,7 +301,7 @@ impl TryFrom<PointerAddress> for RawRemotePointerAddress {
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
 #[brw(little)]
 pub struct RawLocalPointerAddress {
-    pub id: [u8; 5],
+    pub bytes: [u8; 5],
 }
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
@@ -346,7 +346,7 @@ impl From<PointerAddress> for RawPointerAddress {
                 RawPointerAddress::Internal(RawInternalPointerAddress { id: bytes })
             }
             PointerAddress::Owned(OwnedPointerAddress {address} ) => {
-                RawPointerAddress::Local(RawLocalPointerAddress { id: address })
+                RawPointerAddress::Local(RawLocalPointerAddress { bytes: address })
             }
         }
     }

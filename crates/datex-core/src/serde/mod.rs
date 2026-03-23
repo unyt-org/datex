@@ -17,7 +17,7 @@ impl Serialize for ValueContainer {
     {
         serializer.serialize_newtype_struct(
             "datex::value",
-            &compile_value_container(self.into()),
+            &compile_value_container(self.into()).unwrap(),
         )
     }
 }

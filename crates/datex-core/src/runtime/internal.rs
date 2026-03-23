@@ -441,7 +441,7 @@ impl RuntimeInternal {
         pointers: Vec<(SharedContainerMutability, RawLocalPointerAddress)>,
     ) -> Result<Vec<SharedContainer>, ExecutionError> {
         let pointer_mapping = pointers.into_iter().map(|original| {
-            (original, RawLocalPointerAddress {id: self.memory.borrow_mut().get_new_owned_local_pointer().address().address})
+            (original, RawLocalPointerAddress { bytes: self.memory.borrow_mut().get_new_owned_local_pointer().address().address})
         }).collect::<Vec<_>>();
         let body = compile_request_move(
             &(pointer_mapping
@@ -463,7 +463,7 @@ impl RuntimeInternal {
                     .map(|(value, ((mutability, _), new_address))| {
                     SharedContainer::boxed_owned(
                         value,
-                        OwnedPointer::new(OwnedPointerAddress::new(new_address.id)),
+                        OwnedPointer::new(OwnedPointerAddress::new(new_address.bytes)),
                         mutability
                     )
                 }).collect::<Vec<_>>();
@@ -504,8 +504,8 @@ impl RuntimeInternal {
         let moving_pointers = pointer_borrow.get_mut(from_endpoint).ok_or(ExecutionError::UnauthorizedMove)?;
 
         let values = pointer_mapping.into_iter().map(|(original, new)| {
-            let original_address = OwnedPointerAddress::new(original.id);
-            let new_address = ReferencedPointerAddress::remote_for_endpoint(from_endpoint, new.id);
+            let original_address = OwnedPointerAddress::new(original.bytes);
+            let new_address = ReferencedPointerAddress::remote_for_endpoint(from_endpoint, new.bytes);
             let shared_container = moving_pointers.remove(&original_address).ok_or(ExecutionError::UnauthorizedMove)?;
 
             let value = shared_container.value_container();

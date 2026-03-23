@@ -1299,7 +1299,7 @@ pub fn inner_execution_loop(
                                             .pop_cloned_value_container_result_assert_existing(&state)
                                     );
                                     // get referenced pointer from address
-                                    let pointer = ReferencedPointer::new(ReferencedPointerAddress::remote_for_endpoint(&state.caller_metadata.endpoint, shared_ref.address.id));
+                                    let pointer = ReferencedPointer::new(ReferencedPointerAddress::remote_for_endpoint(&state.caller_metadata.endpoint, shared_ref.address.bytes));
 
                                     // unwrap ok since allowed_type in None.
                                     // TODO: allowed type

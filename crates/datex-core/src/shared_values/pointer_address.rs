@@ -119,7 +119,7 @@ impl From<RawPointerAddress> for PointerAddress {
                 ReferencedPointerAddress::Internal(internal.id),
             ),
             RawPointerAddress::Local(local) => PointerAddress::Owned(
-                OwnedPointerAddress { address: local.id },
+                OwnedPointerAddress { address: local.bytes },
             ),
         }
     }
@@ -139,7 +139,7 @@ impl From<ReferencedPointerAddress> for PointerAddress {
 
 impl From<&RawLocalPointerAddress> for PointerAddress {
     fn from(raw: &RawLocalPointerAddress) -> Self {
-        PointerAddress::Owned(OwnedPointerAddress::new(raw.id))
+        PointerAddress::Owned(OwnedPointerAddress::new(raw.bytes))
     }
 }
 
@@ -159,7 +159,7 @@ impl From<&RawPointerAddress> for PointerAddress {
     fn from(raw: &RawPointerAddress) -> Self {
         match raw {
             RawPointerAddress::Local(bytes) => {
-                PointerAddress::Owned(OwnedPointerAddress::new(bytes.id))
+                PointerAddress::Owned(OwnedPointerAddress::new(bytes.bytes))
             }
             RawPointerAddress::Internal(bytes) => PointerAddress::Referenced(
                 ReferencedPointerAddress::Internal(bytes.id),

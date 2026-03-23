@@ -1,12 +1,13 @@
-use log::info;
-use crate::core_compiler::value_compiler::{append_instruction_code, append_perform_moves, append_shared_container, append_statements_preamble};
+use std::io::Write;
+use crate::std::io::Cursor;
+use crate::core_compiler::ByteCursor;
+use crate::core_compiler::value_compiler::{append_instruction_code, append_instruction_code_new, append_perform_moves, append_shared_container, append_statements_preamble};
 use crate::global::instruction_codes::InstructionCode;
 use crate::global::protocol_structures::external_slot_type::{ExternalSlotType, SharedSlotType};
 use crate::global::protocol_structures::instruction_data::InstructionBlockData;
 use crate::runtime::execution::ExecutionError;
 use crate::shared_values::shared_container::SharedContainer;
 use crate::utils::buffers::{append_u32, append_u8};
-use crate::values::value_container::ValueContainer;
 use crate::prelude::*;
 use crate::values::borrowed_value_container::BorrowedValueContainer;
 
@@ -30,9 +31,7 @@ pub fn compile_remote_execution_block(
         .len() != slot_values.len() {
         unreachable!(); // length must always match
     }
-
-    let mut slot_preamble = Vec::with_capacity(256);
-
+    
     let moved_pointers_slot_index = exec_block_data
         .injected_slots
         .len() as u32;
@@ -40,23 +39,25 @@ pub fn compile_remote_execution_block(
     // one slot assignment statement for each slot + original instructions block
     let mut preamble_statements_count = slot_values.len() as u32;
 
-    let moved_owned_containers = compile_preamble(&mut slot_preamble, moved_pointers_slot_index, exec_block_data.clone(), slot_values)?;
+    let (mut slot_preamble, moved_owned_containers) = compile_preamble(moved_pointers_slot_index, exec_block_data.clone(), slot_values)?;
 
     // if there are any moved pointers, we need to compile the preform_move instruction and allocate a slot for the moved pointers
     if !moved_owned_containers.is_empty() {
         // + 1 statement for perform move
         preamble_statements_count += 1;
-        compile_preform_move_preamble(&mut slot_preamble, moved_pointers_slot_index, &moved_owned_containers.iter().collect::<Vec<&SharedContainer>>());
+        let move_preamble = compile_preform_move_preamble(moved_pointers_slot_index, &moved_owned_containers.iter().collect::<Vec<&SharedContainer>>());
+        // prepend before slot_preamble
+        slot_preamble = [move_preamble, slot_preamble].concat();
     }
 
     let final_buffer = if preamble_statements_count > 0 {
-        let mut final_buffer = Vec::with_capacity(6 + exec_block_data.body.len() + slot_preamble.len());
+        let mut final_buffer = Cursor::new(Vec::with_capacity(6 + exec_block_data.body.len() + slot_preamble.len()));
         append_statements_preamble(&mut final_buffer, preamble_statements_count as usize + 1, false);
-        final_buffer.extend_from_slice(&slot_preamble);
-        final_buffer.extend_from_slice(
+        final_buffer.write_all(&slot_preamble).unwrap();
+        final_buffer.write_all(
             &exec_block_data.body,
-        );
-        final_buffer
+        ).unwrap();
+        final_buffer.into_inner()
     }
     else {
         exec_block_data.body
@@ -66,12 +67,13 @@ pub fn compile_remote_execution_block(
 }
 
 fn compile_preamble(
-    buffer: &mut Vec<u8>,
     moved_pointers_slot_index: u32,
     exec_block_data: InstructionBlockData,
     slot_values: Vec<BorrowedValueContainer>,
-) -> Result<Vec<SharedContainer>, ExecutionError> {
+) -> Result<(Vec<u8>, Vec<SharedContainer>), ExecutionError> {
 
+    let mut cursor = Cursor::new(vec![]);
+    
     let mut moved_pointers: Vec<SharedContainer> = vec![];
 
     // build dxb
@@ -81,11 +83,8 @@ fn compile_preamble(
         .zip(slot_values.into_iter())
         .enumerate()
     {
-        buffer.push(
-            InstructionCode::ALLOCATE_SLOT
-                as u8,
-        );
-        append_u32(buffer, slot_addr as u32);
+        cursor.write_all(&[InstructionCode::ALLOCATE_SLOT as u8]).unwrap();
+        append_u32(&mut cursor, slot_addr as u32);
         match external_slot_type {
             ExternalSlotType::Local(_) => {
                 todo!()
@@ -102,10 +101,10 @@ fn compile_preamble(
                             BorrowedValueContainer::Shared(shared_container) => {
                                 shared_container.assert_owned().map_err(|_| ExecutionError::ExpectedOwnedSharedValue)?;
                                 moved_pointers.push(shared_container);
-                                append_instruction_code(buffer, InstructionCode::TAKE_PROPERTY_INDEX);
-                                append_u32(buffer, index);
-                                append_instruction_code(buffer, InstructionCode::CLONE_SLOT);
-                                append_u32(buffer, moved_pointers_slot_index);
+                                append_instruction_code_new(&mut cursor, InstructionCode::TAKE_PROPERTY_INDEX);
+                                append_u32(&mut cursor, index);
+                                append_instruction_code_new(&mut cursor, InstructionCode::CLONE_SLOT);
+                                append_u32(&mut cursor, moved_pointers_slot_index);
                                 continue;
                             }
                         }
@@ -126,34 +125,35 @@ fn compile_preamble(
                 };
 
                 append_shared_container(
-                    buffer,
+                    &mut cursor,
                     &shared_container,
                     true
-                );
+                ).unwrap();
             }
         }
     }
 
-    Ok(moved_pointers)
+    Ok((
+        cursor.into_inner(),
+        moved_pointers
+    ))
 }
 
 fn compile_preform_move_preamble(
-    buffer: &mut Vec<u8>,
     moved_pointers_slot_index: u32,
     moved_pointers: &[&SharedContainer]
-) {
-    let mut pre_buffer = vec![
-        InstructionCode::ALLOCATE_SLOT as u8,
-    ];
-    append_u32(&mut pre_buffer, moved_pointers_slot_index);
+) -> Vec<u8> {
+    let mut cursor = Cursor::new(vec![]);
+    cursor.write_all(&[InstructionCode::ALLOCATE_SLOT as u8]).unwrap();
+    
+    append_u32(&mut cursor, moved_pointers_slot_index);
 
     append_perform_moves(
-        &mut pre_buffer,
+        &mut cursor,
         moved_pointers
     ).unwrap(); // we already ensured that all moved pointers are owned local shared containers, so this should never fail
 
-    // prepend pre_buffer to buffer
-    buffer.splice(0..0, pre_buffer);
+    cursor.into_inner()
 }
 
 #[cfg(test)]

@@ -13,11 +13,10 @@ use core::{
     ops::Range,
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum CompilerError {
     UnexpectedTerm(Box<DatexExpression>),
-    SerializationError,
-    // TODO #478: SerializationError(binrw::Error),? has no clone
+    SerializationError(binrw::Error),
     BigDecimalOutOfBoundsError,
     IntegerOutOfBoundsError,
     InvalidPlaceholderCount,
@@ -105,6 +104,7 @@ impl From<SpannedCompilerError> for DeserializationError {
         DeserializationError::CompilerError(e)
     }
 }
+
 
 #[derive(Debug, Default)]
 pub struct DetailedCompilerErrors {
@@ -262,6 +262,13 @@ impl From<TypeError> for CompilerError {
     }
 }
 
+
+impl From<binrw::Error> for CompilerError {
+    fn from(value: binrw::Error) -> Self {
+        CompilerError::SerializationError(value)
+    }
+}
+
 impl Display for CompilerError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
@@ -277,8 +284,8 @@ impl Display for CompilerError {
                     "Subvariant {variant} does not exist for {name}"
                 )
             }
-            CompilerError::SerializationError => {
-                core::write!(f, "Serialization error")
+            CompilerError::SerializationError(error) => {
+                core::write!(f, "Serialization error: {error}")
             }
             CompilerError::BigDecimalOutOfBoundsError => {
                 core::write!(f, "BigDecimal out of bounds error")

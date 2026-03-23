@@ -12,7 +12,10 @@ use crate::{
 use crate::prelude::*;
 use core::cmp::PartialEq;
 use core::hash::{Hash, Hasher};
+use std::io::Cursor;
 use itertools::Itertools;
+use crate::core_compiler::ByteCursor;
+use crate::core_compiler::value_compiler::append_instruction_code_new;
 use crate::global::protocol_structures::external_slot_type::ExternalSlotType;
 
 #[derive(Debug, Clone, Copy, Eq)]
@@ -85,7 +88,7 @@ impl VirtualSlot {
 /// compilation context, created for each compiler call, even if compiling a script for the same scope
 pub struct CompilationContext {
     pub inserted_value_index: usize,
-    pub buffer: Vec<u8>,
+    pub cursor: ByteCursor,
     pub inserted_values: Vec<Option<ValueContainer>>,
     /// this flag is set to true if any non-static value is encountered
     pub has_non_static_value: bool,
@@ -123,7 +126,7 @@ impl CompilationContext {
     ) -> Self {
         CompilationContext {
             inserted_value_index: 0,
-            buffer,
+            cursor: Cursor::new(buffer),
             inserted_values,
             has_non_static_value: false,
             slot_indices: HashMap::new(),
@@ -131,8 +134,8 @@ impl CompilationContext {
         }
     }
 
-    pub fn buffer_index(&self) -> usize {
-        self.buffer.len()
+    pub fn buffer_index(&self) -> u64 {
+        self.cursor.position()
     }
 
     pub fn external_slots(&self) -> Vec<VirtualSlot> {
@@ -186,11 +189,12 @@ impl CompilationContext {
         } else {
             self.slot_indices.insert(virtual_slot, vec![buffer_index]);
         }
-        append_u32(&mut self.buffer, 0); // placeholder for the slot address
+        append_u32(&mut self.cursor, 0); // placeholder for the slot address
     }
 
     pub fn set_u32_at_index(&mut self, u32: u32, index: usize) {
-        self.buffer[index..index + CompilationContext::INT_32_BYTES as usize]
+        let buf = self.cursor.get_mut();
+        buf[index..index + CompilationContext::INT_32_BYTES as usize]
             .copy_from_slice(&u32.to_le_bytes());
     }
 
@@ -199,6 +203,6 @@ impl CompilationContext {
     }
 
     pub fn append_instruction_code(&mut self, code: InstructionCode) {
-        append_instruction_code(&mut self.buffer, code);
+        append_instruction_code_new(&mut self.cursor, code);
     }
 }

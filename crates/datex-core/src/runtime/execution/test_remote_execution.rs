@@ -12,8 +12,8 @@ use crate::{
     },
 };
 use crate::runtime::execution::execution_input::ExecutionCallerMetadata;
-use crate::shared_values::pointer::{Pointer, ReferencedPointer};
-use crate::shared_values::shared_container::{SharedContainer, SharedContainerInner, SharedContainerMutability};
+use crate::shared_values::pointer::{Pointer};
+use crate::shared_values::shared_container::{SharedContainerMutability};
 
 #[tokio::test]
 #[cfg(feature = "compiler")]

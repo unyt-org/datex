@@ -242,7 +242,7 @@ fn get_local_pointer_value(
     Ok(runtime_internal
         .memory
         .borrow()
-        .get_reference(&PointerAddress::owned(address.id))
+        .get_reference(&PointerAddress::owned(address.bytes))
         .map(|r| ValueContainer::Shared(r.clone())))
 }
 

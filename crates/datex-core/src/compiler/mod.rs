@@ -12,7 +12,7 @@ use crate::{
     },
 };
 use core::cell::RefCell;
-
+use crate::std::io::Write;
 use crate::{
     ast::expressions::{
         BinaryOperation, ComparisonOperation, DatexExpression,
@@ -60,8 +60,9 @@ use precompiler::{
     precompiled_ast::{AstMetadata, RichAst, VariableMetadata},
 };
 use crate::ast::expressions::ValueAccessType;
-use crate::core_compiler::value_compiler::{append_shared_container, append_statements_preamble, append_value};
+use crate::core_compiler::value_compiler::{append_instruction_code_new, append_regular_instruction, append_shared_container, append_statements_preamble, append_value};
 use crate::global::protocol_structures::external_slot_type::{ExternalSlotType, LocalSlotType, SharedSlotType};
+use crate::global::protocol_structures::regular_instructions::RegularInstruction;
 use crate::shared_values::pointer::PointerReferenceMutability;
 
 pub mod context;
@@ -252,7 +253,7 @@ pub fn compile_script_or_return_static_value(
     // FIXME #480: no clone here
     let scope = compile_ast(ast.clone(), &mut compilation_context, options)?;
     if compilation_context.has_non_static_value {
-        Ok((StaticValueOrDXB::DXB(compilation_context.buffer), scope))
+        Ok((StaticValueOrDXB::DXB(compilation_context.cursor.into_inner()), scope))
     } else {
         // try to extract static value from AST
         extract_static_value_from_ast(&ast.ast)
@@ -399,7 +400,7 @@ pub fn compile_template(
     );
     let compile_start = Instant::now();
     let res = compile_ast(ast, &mut compilation_context, options)
-        .map(|scope| (compilation_context.buffer, scope))
+        .map(|scope| (compilation_context.cursor.into_inner(), scope))
         .map_err(SpannedCompilerError::from);
     debug!(
         " [compile_ast took {} ms]",
@@ -517,45 +518,45 @@ fn compile_expression(
 
     match data {
         DatexExpressionData::Integer(int) => {
-            append_integer(&mut compilation_context.buffer, &int);
+            append_integer(&mut compilation_context.cursor, &int)?;
         }
         DatexExpressionData::TypedInteger(typed_int) => {
-            append_encoded_integer(&mut compilation_context.buffer, &typed_int);
+            append_encoded_integer(&mut compilation_context.cursor, &typed_int)?;
         }
         DatexExpressionData::Decimal(decimal) => match &decimal {
             Decimal::Finite(big_decimal) if big_decimal.is_integer() => {
                 if let Some(int) = big_decimal.to_i16() {
-                    append_float_as_i16(&mut compilation_context.buffer, int);
+                    append_float_as_i16(&mut compilation_context.cursor, int);
                 } else if let Some(int) = big_decimal.to_i32() {
-                    append_float_as_i32(&mut compilation_context.buffer, int);
+                    append_float_as_i32(&mut compilation_context.cursor, int);
                 } else {
-                    append_decimal(&mut compilation_context.buffer, &decimal);
+                    append_decimal(&mut compilation_context.cursor, &decimal)?;
                 }
             }
             _ => {
-                append_decimal(&mut compilation_context.buffer, &decimal);
+                append_decimal(&mut compilation_context.cursor, &decimal)?;
             }
         },
         DatexExpressionData::TypedDecimal(typed_decimal) => {
             append_typed_decimal(
-                &mut compilation_context.buffer,
+                &mut compilation_context.cursor,
                 &typed_decimal,
-            );
+            )?;
         }
         DatexExpressionData::Text(text) => {
-            append_text(&mut compilation_context.buffer, &text);
+            append_text(&mut compilation_context.cursor, &text)?;
         }
         DatexExpressionData::Boolean(boolean) => {
-            append_boolean(&mut compilation_context.buffer, boolean);
+            append_boolean(&mut compilation_context.cursor, boolean)?;
         }
         DatexExpressionData::Endpoint(endpoint) => {
-            append_endpoint(&mut compilation_context.buffer, &endpoint);
+            append_endpoint(&mut compilation_context.cursor, &endpoint)?;
         }
         DatexExpressionData::Null => {
-            append_instruction_code(
-                &mut compilation_context.buffer,
-                InstructionCode::NULL,
-            );
+            append_regular_instruction(
+                &mut compilation_context.cursor,
+                RegularInstruction::Null,
+            )?;
         }
         DatexExpressionData::List(list) => {
             match list.items.len() {
@@ -563,7 +564,7 @@ fn compile_expression(
                     compilation_context
                         .append_instruction_code(InstructionCode::SHORT_LIST);
                     append_u8(
-                        &mut compilation_context.buffer,
+                        &mut compilation_context.cursor,
                         list.items.len() as u8,
                     );
                 }
@@ -571,7 +572,7 @@ fn compile_expression(
                     compilation_context
                         .append_instruction_code(InstructionCode::LIST);
                     append_u32(
-                        &mut compilation_context.buffer,
+                        &mut compilation_context.cursor,
                         list.items.len() as u32, // FIXME #671: conversion from usize to u32
                     );
                 }
@@ -592,7 +593,7 @@ fn compile_expression(
                     compilation_context
                         .append_instruction_code(InstructionCode::SHORT_MAP);
                     append_u8(
-                        &mut compilation_context.buffer,
+                        &mut compilation_context.cursor,
                         map.entries.len() as u8,
                     );
                 }
@@ -600,7 +601,7 @@ fn compile_expression(
                     compilation_context
                         .append_instruction_code(InstructionCode::MAP);
                     append_u32(
-                        &mut compilation_context.buffer,
+                        &mut compilation_context.cursor,
                         map.entries.len() as u32, // FIXME #672: conversion from usize to u32
                     );
                 }
@@ -630,21 +631,21 @@ fn compile_expression(
                             ValueAccessType::SharedRef | ValueAccessType::SharedRefMut => return Err(CompilerError::SharedRefToNonSharedValue),
                             ValueAccessType::MoveOrCopy => {
                                 append_value(
-                                    &mut compilation_context.buffer,
+                                    &mut compilation_context.cursor,
                                     &value,
-                                );
+                                )?;
                             }
                             ValueAccessType::Clone => {
                                 append_value(
-                                    &mut compilation_context.buffer,
+                                    &mut compilation_context.cursor,
                                     &value,
-                                );
+                                )?;
                             }
                             ValueAccessType::Borrow => {
                                 append_value(
-                                    &mut compilation_context.buffer,
+                                    &mut compilation_context.cursor,
                                     &value,
-                                );
+                                )?;
                             }
                         }
                     }
@@ -655,51 +656,51 @@ fn compile_expression(
                                     .try_derive_mutable_reference()
                                     .map_err(|_| CompilerError::SharedMutRefToImmutableValue)?;
                                 append_shared_container(
-                                    &mut compilation_context.buffer,
+                                    &mut compilation_context.cursor,
                                     &shared_container,
                                     true,
-                                )
+                                )?;
                             }
                             ValueAccessType::SharedRef => {
                                 append_shared_container(
-                                    &mut compilation_context.buffer,
+                                    &mut compilation_context.cursor,
                                     &shared_container.derive_reference(),
                                     true,
-                                )
+                                )?;
                             },
                             ValueAccessType::MoveOrCopy => {
                                 shared_container.assert_owned()
                                     .map_err(|_| CompilerError::InvalidConversionFromRefToOwnedValue)?;
                                 append_shared_container(
-                                    &mut compilation_context.buffer,
+                                    &mut compilation_context.cursor,
                                     &shared_container,
                                     true,
-                                )
+                                )?;
                             },
                             ValueAccessType::Clone => {
                                 let cloned = shared_container.value_container();
                                 match cloned {
                                     ValueContainer::Local(value) => {
                                         append_value(
-                                            &mut compilation_context.buffer,
+                                            &mut compilation_context.cursor,
                                             &value,
-                                        )
+                                        )?;
                                     }
                                     ValueContainer::Shared(shared_container) => {
                                         append_shared_container(
-                                            &mut compilation_context.buffer,
+                                            &mut compilation_context.cursor,
                                             &shared_container,
                                             true,
-                                        )
+                                        )?;
                                     }
                                 }
                             },
                             ValueAccessType::Borrow => {
                                 append_shared_container(
-                                    &mut compilation_context.buffer,
+                                    &mut compilation_context.cursor,
                                     &shared_container.derive_reference(),
                                     true,
-                                )
+                                )?;
                             }
                         };
                     }
@@ -754,7 +755,7 @@ fn compile_expression(
                 // otherwise, statements with fixed length
                 else {
                     append_statements_preamble(
-                        &mut compilation_context.buffer,
+                        &mut compilation_context.cursor,
                         statements.len(),
                         is_terminated,
                     );
@@ -796,7 +797,7 @@ fn compile_expression(
                     );
                     // append termination flag
                     append_u8(
-                        &mut compilation_context.buffer,
+                        &mut compilation_context.cursor,
                         if is_terminated { 1 } else { 0 },
                     );
                 }
@@ -888,7 +889,7 @@ fn compile_expression(
                         .append_instruction_code(InstructionCode::APPLY);
                     // add argument count
                     append_u16(
-                        &mut compilation_context.buffer,
+                        &mut compilation_context.cursor,
                         apply.arguments.len() as u16,
                     );
                 }
@@ -1052,7 +1053,7 @@ fn compile_expression(
         DatexExpressionData::RequestSharedRef(shared_reference) => {
             compilation_context.mark_has_non_static_value();
             append_get_shared_ref(
-                &mut compilation_context.buffer,
+                &mut compilation_context.cursor,
                 &shared_reference.address,
                 &shared_reference.mutability,
             )
@@ -1228,27 +1229,27 @@ fn compile_expression(
             // --- start block
             // set block size (len of compilation_context.buffer)
             append_u32(
-                &mut compilation_context.buffer,
-                execution_block_ctx.buffer.len() as u32,
+                &mut compilation_context.cursor,
+                execution_block_ctx.cursor.get_ref().len() as u32,
             );
             // set injected slot count
             append_u32(
-                &mut compilation_context.buffer,
+                &mut compilation_context.cursor,
                 external_slots.len() as u32,
             );
             for slot in external_slots {
                 compilation_context.insert_virtual_slot_address(slot.upgrade());
                 // store external slot type
                 append_u8(
-                    &mut compilation_context.buffer,
+                    &mut compilation_context.cursor,
                     slot.external_slot_type.unwrap().into(), // must exist for external slots
                 );
             }
 
             // insert block body (compilation_context.buffer)
             compilation_context
-                .buffer
-                .extend_from_slice(&execution_block_ctx.buffer);
+                .cursor
+                .write_all(&execution_block_ctx.cursor.into_inner()).unwrap();
             // --- end block
 
             // insert compiled caller expression
@@ -1268,7 +1269,7 @@ fn compile_expression(
                         InstructionCode::GET_INTERNAL_SLOT,
                     );
                     append_u32(
-                        &mut compilation_context.buffer,
+                        &mut compilation_context.cursor,
                         InternalSlot::ENDPOINT as u32,
                     );
                 }
@@ -1277,7 +1278,7 @@ fn compile_expression(
                         InstructionCode::GET_INTERNAL_SLOT,
                     );
                     append_u32(
-                        &mut compilation_context.buffer,
+                        &mut compilation_context.cursor,
                         InternalSlot::CALLER as u32,
                     );
                 }
@@ -1286,12 +1287,12 @@ fn compile_expression(
                         InstructionCode::GET_INTERNAL_SLOT,
                     );
                     append_u32(
-                        &mut compilation_context.buffer,
+                        &mut compilation_context.cursor,
                         InternalSlot::ENV as u32,
                     );
                 }
                 "core" => append_get_internal_ref(
-                    &mut compilation_context.buffer,
+                    &mut compilation_context.cursor,
                     PointerAddress::from(CoreLibPointerId::Core)
                         .internal_bytes()
                         .unwrap(),
@@ -1414,7 +1415,7 @@ fn compile_key_value_entry(
     match key.data {
         // text -> insert key string
         DatexExpressionData::Text(text) => {
-            append_key_string(&mut compilation_context.buffer, &text);
+            append_key_string(&mut compilation_context.cursor, &text);
         }
         // other -> insert key as dynamic
         _ => {
@@ -1445,9 +1446,9 @@ fn compile_text_property_access(
     compilation_context
         .append_instruction_code(InstructionCode::GET_PROPERTY_TEXT);
     // append key length as u8
-    append_u8(&mut compilation_context.buffer, key.len() as u8);
+    append_u8(&mut compilation_context.cursor, key.len() as u8);
     // append key bytes
-    compilation_context.buffer.extend_from_slice(key.as_bytes());
+    compilation_context.cursor.write_all(key.as_bytes());
 }
 
 fn compile_text_property_assignment(
@@ -1457,9 +1458,9 @@ fn compile_text_property_assignment(
     compilation_context
         .append_instruction_code(InstructionCode::SET_PROPERTY_TEXT);
     // append key length as u8
-    append_u8(&mut compilation_context.buffer, key.len() as u8);
+    append_u8(&mut compilation_context.cursor, key.len() as u8);
     // append key bytes
-    compilation_context.buffer.extend_from_slice(key.as_bytes());
+    compilation_context.cursor.write_all(key.as_bytes());
 }
 
 fn compile_index_property_access(
@@ -1468,7 +1469,7 @@ fn compile_index_property_access(
 ) {
     compilation_context
         .append_instruction_code(InstructionCode::GET_PROPERTY_INDEX);
-    append_u32(&mut compilation_context.buffer, index);
+    append_u32(&mut compilation_context.cursor, index);
 }
 
 fn compile_index_property_assignment(
@@ -1477,7 +1478,7 @@ fn compile_index_property_assignment(
 ) {
     compilation_context
         .append_instruction_code(InstructionCode::SET_PROPERTY_INDEX);
-    append_u32(&mut compilation_context.buffer, index);
+    append_u32(&mut compilation_context.cursor, index);
 }
 
 fn compile_dynamic_property_access(

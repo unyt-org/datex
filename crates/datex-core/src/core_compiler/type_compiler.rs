@@ -1,3 +1,5 @@
+use crate::std::io::{Cursor, Write};
+use binrw::{BinResult, BinWrite};
 use crate::{
     core_compiler::value_compiler::append_get_shared_ref,
     global::{
@@ -9,57 +11,60 @@ use crate::{
     utils::buffers::append_u8,
     values::core_values::r#type::Type,
 };
+use crate::core_compiler::ByteCursor;
+use crate::global::instruction_codes::InstructionCode;
 use crate::global::protocol_structures::instruction_data::TypeMetadataBin;
+use crate::global::protocol_structures::regular_instructions::RegularInstruction;
 
 /// Compiles a given type container to a DXB body
 pub fn compile_type(ty: &Type) -> Vec<u8> {
-    let mut buffer = Vec::with_capacity(256);
-    append_type(&mut buffer, ty);
+    let mut cursor = Cursor::new(Vec::with_capacity(256));
+    append_type(&mut cursor, ty);
 
-    buffer
+    cursor.into_inner()
 }
 
-pub fn append_type(buffer: &mut Vec<u8>, ty: &Type) {
+pub fn append_type(cursor: &mut ByteCursor, ty: &Type) {
     // append instruction code
     let instruction_code = TypeInstructionCode::from(&ty.type_definition);
-    append_type_space_instruction_code(buffer, instruction_code);
+    append_type_space_instruction_code_new(cursor, instruction_code);
 
     // append metadata
     let metadata = TypeMetadataBin::from(&ty.metadata);
-    append_type_metadata(buffer, metadata);
+    append_type_metadata(cursor, metadata);
 
     // append type definition
-    append_type_definition(buffer, &ty.type_definition);
+    append_type_definition(cursor, &ty.type_definition);
 }
 
 pub fn append_type_definition(
-    buffer: &mut Vec<u8>,
+    cursor: &mut ByteCursor,
     type_definition: &TypeDefinition,
 ) {
     match type_definition {
         TypeDefinition::ImplType(ty, impls) => {
             // Append the number of impls
             let impl_count = impls.len() as u8;
-            append_u8(buffer, impl_count);
+            append_u8(cursor, impl_count);
 
             // Append each impl address
             for impl_type in impls {
                 append_get_shared_ref(
-                    buffer,
+                    cursor,
                     impl_type,
                     &PointerReferenceMutability::Immutable,
                 )
             }
 
             // Append the base type
-            append_type(buffer, ty);
+            append_type(cursor, ty);
         }
         TypeDefinition::SharedReference(type_ref) => {
             // TODO #636: ensure pointer_address exists here
             let type_ref = type_ref.borrow();
             let pointer_address = type_ref.pointer().address();
             append_get_shared_ref(
-                buffer,
+                cursor,
                 &pointer_address,
                 &PointerReferenceMutability::Immutable,
             )
@@ -68,13 +73,33 @@ pub fn append_type_definition(
     };
 }
 
+#[deprecated(note = "use `append_type_instruction` instead")]
 pub fn append_type_space_instruction_code(
     buffer: &mut Vec<u8>,
     code: TypeInstructionCode,
 ) {
-    append_u8(buffer, code as u8);
+    unimplemented!("use append_type_instruction instead");
 }
 
-pub fn append_type_metadata(buffer: &mut Vec<u8>, code: TypeMetadataBin) {
-    append_u8(buffer, code.into_bytes()[0]);
+pub fn append_type_space_instruction_code_new(
+    cursor: &mut ByteCursor,
+    code: TypeInstructionCode,
+) {
+    cursor.write_all(&[code as u8]).unwrap();
+}
+
+
+pub fn append_type_instruction(cursor: &mut ByteCursor, instruction: RegularInstruction) -> BinResult<()> {
+    // add instruction code
+    cursor.write_all(&[InstructionCode::from(&instruction) as u8])?;
+    // add instruction
+    instruction.write(cursor)?;
+    Ok(())
+}
+
+
+
+
+pub fn append_type_metadata(cursor: &mut ByteCursor, code: TypeMetadataBin) {
+    append_u8(cursor, code.into_bytes()[0]);
 }
