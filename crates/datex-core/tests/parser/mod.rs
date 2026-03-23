@@ -2383,7 +2383,7 @@ fn property_access_assignment() {
     assert_eq!(
         expr,
         DatexExpressionData::PropertyAssignment(PropertyAssignment {
-            operator: AssignmentOperator::Assign,
+            operator: None,
             base: Box::new(
                 DatexExpressionData::PropertyAccess(PropertyAccess {
                     base: Box::new(
@@ -2738,7 +2738,7 @@ fn variable_assignment() {
         expr,
         DatexExpressionData::VariableAssignment(VariableAssignment {
             id: None,
-            operator: AssignmentOperator::Assign,
+            operator: None,
             name: "x".to_string(),
             expression: Box::new(
                 DatexExpressionData::Integer(Integer::from(42))
@@ -2756,12 +2756,12 @@ fn variable_assignment_expression() {
         expr,
         DatexExpressionData::VariableAssignment(VariableAssignment {
             id: None,
-            operator: AssignmentOperator::Assign,
+            operator: None,
             name: "x".to_string(),
             expression: Box::new(
                 DatexExpressionData::VariableAssignment(VariableAssignment {
                     id: None,
-                    operator: AssignmentOperator::Assign,
+                    operator: None,
                     name: "y".to_string(),
                     expression: Box::new(
                         DatexExpressionData::Integer(Integer::from(1))
@@ -2783,7 +2783,7 @@ fn variable_assignment_expression_in_list() {
         DatexExpressionData::List(List::new(vec![
             DatexExpressionData::VariableAssignment(VariableAssignment {
                 id: None,
-                operator: AssignmentOperator::Assign,
+                operator: None,
                 name: "x".to_string(),
                 expression: Box::new(
                     DatexExpressionData::Integer(Integer::from(1))
@@ -2906,12 +2906,12 @@ fn variable_assignment_multiple() {
         expr,
         DatexExpressionData::VariableAssignment(VariableAssignment {
             id: None,
-            operator: AssignmentOperator::Assign,
+            operator: None,
             name: "x".to_string(),
             expression: Box::new(
                 DatexExpressionData::VariableAssignment(VariableAssignment {
                     id: None,
-                    operator: AssignmentOperator::Assign,
+                    operator: None,
                     name: "y".to_string(),
                     expression: Box::new(
                         DatexExpressionData::Integer(Integer::from(42))
@@ -2945,7 +2945,7 @@ fn variable_declaration_and_assignment() {
             .with_default_span(),
             DatexExpressionData::VariableAssignment(VariableAssignment {
                 id: None,
-                operator: AssignmentOperator::Assign,
+                operator: None,
                 name: "x".to_string(),
                 expression: Box::new(
                     DatexExpressionData::BinaryOperation(BinaryOperation {
@@ -3475,7 +3475,7 @@ fn variable_add_assignment() {
         expr,
         DatexExpressionData::VariableAssignment(VariableAssignment {
             id: None,
-            operator: AssignmentOperator::AddAssign,
+            operator: None,
             name: "x".to_string(),
             expression: Box::new(
                 DatexExpressionData::Integer(Integer::from(42))
@@ -3493,7 +3493,7 @@ fn variable_sub_assignment() {
         expr,
         DatexExpressionData::VariableAssignment(VariableAssignment {
             id: None,
-            operator: AssignmentOperator::SubtractAssign,
+            operator: None,
             name: "x".to_string(),
             expression: Box::new(
                 DatexExpressionData::Integer(Integer::from(42))

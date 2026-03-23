@@ -308,21 +308,21 @@ pub struct ComparisonOperation {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct UnboxAssignment {
-    pub operator: AssignmentOperator,
+    pub operator: Option<AssignmentOperator>,
     pub unbox_expression: Box<DatexExpression>,
     pub assigned_expression: Box<DatexExpression>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct UnboxSlotAssignment {
-    pub operator: AssignmentOperator,
+    pub operator: Option<AssignmentOperator>,
     pub slot: Slot,
     pub assigned_expression: Box<DatexExpression>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct PropertyAssignment {
-    pub operator: AssignmentOperator,
+    pub operator: Option<AssignmentOperator>,
     pub base: Box<DatexExpression>,
     pub property: Box<DatexExpression>,
     pub assigned_expression: Box<DatexExpression>,
@@ -468,7 +468,7 @@ pub struct VariableDeclaration {
 pub struct VariableAssignment {
     pub id: Option<VariableId>,
     pub name: String,
-    pub operator: AssignmentOperator,
+    pub operator: Option<AssignmentOperator>,
     pub expression: Box<DatexExpression>,
 }
 

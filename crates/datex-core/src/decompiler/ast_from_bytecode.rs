@@ -374,16 +374,13 @@ pub fn ast_from_bytecode(
                             | RegularInstruction::Equal
                             | RegularInstruction::NotStructuralEqual
                             | RegularInstruction::NotEqual
-                            | RegularInstruction::AddAssign(_)
-                            | RegularInstruction::SubtractAssign(_)
-                            | RegularInstruction::MultiplyAssign(_)
-                            | RegularInstruction::DivideAssign(_)
                             | RegularInstruction::GetSharedReference
                             | RegularInstruction::GetSharedReferenceMut
                             | RegularInstruction::CreateShared
                             | RegularInstruction::CreateSharedMut
                             | RegularInstruction::AllocateSlot(_)
                             | RegularInstruction::SetSlot(_)
+                            | RegularInstruction::ModifySlot(_)
                             | RegularInstruction::SetSharedContainerValue(_)
                             | RegularInstruction::Unbox
                             | RegularInstruction::TypedValue
@@ -646,7 +643,7 @@ pub fn ast_from_bytecode(
                                             "_slot_{}",
                                             slot_address.0
                                         ),
-                                        operator: AssignmentOperator::Assign,
+                                        operator: None,
                                         expression: Box::new(expr),
                                     },
                                 )
@@ -735,7 +732,7 @@ pub fn ast_from_bytecode(
                                             )
                                             .with_default_span(),
                                         ),
-                                        operator: AssignmentOperator::Assign,
+                                        operator: None,
                                         assigned_expression: Box::new(value),
                                     },
                                 )
@@ -756,7 +753,7 @@ pub fn ast_from_bytecode(
                                             )
                                             .with_default_span(),
                                         ),
-                                        operator: AssignmentOperator::Assign,
+                                        operator: None,
                                         assigned_expression: Box::new(value),
                                     },
                                 )
@@ -774,7 +771,7 @@ pub fn ast_from_bytecode(
                                     PropertyAssignment {
                                         base: Box::new(base),
                                         property: Box::new(property),
-                                        operator: AssignmentOperator::Assign,
+                                        operator: None,
                                         assigned_expression: Box::new(value),
                                     },
                                 )
@@ -1211,7 +1208,7 @@ mod tests {
                     DatexExpressionData::Text("xyz".to_string())
                         .with_default_span()
                 ),
-                operator: AssignmentOperator::Assign,
+                operator: None,
                 assigned_expression: Box::new(
                     DatexExpressionData::TypedInteger(TypedInteger::from(
                         100u8
@@ -1279,7 +1276,7 @@ mod tests {
                     DatexExpressionData::Integer(Integer::from(10u8))
                         .with_default_span()
                 ),
-                operator: AssignmentOperator::Assign,
+                operator: None,
                 assigned_expression: Box::new(
                     DatexExpressionData::TypedInteger(TypedInteger::from(
                         150u8
@@ -1352,7 +1349,7 @@ mod tests {
                     DatexExpressionData::Text("age".to_string())
                         .with_default_span()
                 ),
-                operator: AssignmentOperator::Assign,
+                operator: None,
                 assigned_expression: Box::new(
                     DatexExpressionData::TypedInteger(TypedInteger::from(30u8))
                         .with_default_span(),

@@ -212,11 +212,11 @@ impl Parser {
         let rhs = self.parse_expression(r_bp)?;
         let span = lhs.span.start..rhs.span.end;
         let assignment_operator = match op.token {
-            Token::Assign => AssignmentOperator::Assign,
-            Token::AddAssign => AssignmentOperator::AddAssign,
-            Token::SubAssign => AssignmentOperator::SubtractAssign,
-            Token::MulAssign => AssignmentOperator::MultiplyAssign,
-            Token::DivAssign => AssignmentOperator::DivideAssign,
+            Token::Assign => None,
+            Token::AddAssign => Some(AssignmentOperator::AddAssign),
+            Token::SubAssign => Some(AssignmentOperator::SubtractAssign),
+            Token::MulAssign => Some(AssignmentOperator::MultiplyAssign),
+            Token::DivAssign => Some(AssignmentOperator::DivideAssign),
             _ => unreachable!(),
         };
 
@@ -1497,7 +1497,7 @@ mod tests {
             DatexExpressionData::VariableAssignment(VariableAssignment {
                 id: None,
                 name: "x".to_string(),
-                operator: AssignmentOperator::Assign,
+                operator: None,
                 expression: Box::new(
                     DatexExpressionData::Boolean(true).with_default_span()
                 ),
@@ -1531,7 +1531,7 @@ mod tests {
         assert_eq!(
             expr.data,
             DatexExpressionData::PropertyAssignment(PropertyAssignment {
-                operator: AssignmentOperator::Assign,
+                operator: None,
                 base: Box::new(
                     DatexExpressionData::Identifier("obj".to_string())
                         .with_default_span()
@@ -1555,7 +1555,7 @@ mod tests {
             DatexExpressionData::VariableAssignment(VariableAssignment {
                 id: None,
                 name: "x".to_string(),
-                operator: AssignmentOperator::AddAssign,
+                operator: Some(AssignmentOperator::AddAssign),
                 expression: Box::new(
                     DatexExpressionData::Integer(42.into()).with_default_span()
                 ),
@@ -1584,7 +1584,7 @@ mod tests {
         assert_eq!(
             expr.data,
             DatexExpressionData::UnboxAssignment(UnboxAssignment {
-                operator: AssignmentOperator::Assign,
+                operator: None,
                 unbox_expression: Box::new(
                     DatexExpressionData::Identifier("myRef".to_string())
                         .with_default_span()
@@ -1603,7 +1603,7 @@ mod tests {
         assert_eq!(
             expr.data,
             DatexExpressionData::UnboxAssignment(UnboxAssignment {
-                operator: AssignmentOperator::Assign,
+                operator: None,
                 unbox_expression: Box::new(
                     DatexExpressionData::Unbox(Unbox {
                         expression: Box::new(

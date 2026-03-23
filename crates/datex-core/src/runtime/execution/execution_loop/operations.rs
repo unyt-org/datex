@@ -142,7 +142,6 @@ pub fn handle_assignment_operation(
     lhs: &ValueContainer,
     rhs: ValueContainer,
 ) -> Result<ValueContainer, ExecutionError> {
-    // apply operation to active value
     match operator {
         AssignmentOperator::AddAssign => Ok((lhs + &rhs)?),
         AssignmentOperator::SubtractAssign => Ok((lhs - &rhs)?),

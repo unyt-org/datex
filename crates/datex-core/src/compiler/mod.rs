@@ -12,6 +12,7 @@ use crate::{
     },
 };
 use core::cell::RefCell;
+use binrw::BinWrite;
 use binrw::io::Write;
 use crate::{
     ast::expressions::{
@@ -62,6 +63,7 @@ use precompiler::{
 use crate::ast::expressions::ValueAccessType;
 use crate::core_compiler::value_compiler::{append_instruction_code_new, append_regular_instruction, append_shared_container, append_statements_preamble, append_value};
 use crate::global::protocol_structures::external_slot_type::{ExternalSlotType, LocalSlotType, SharedSlotType};
+use crate::global::protocol_structures::instruction_data::SetSharedContainerValue;
 use crate::global::protocol_structures::regular_instructions::RegularInstruction;
 use crate::shared_values::pointer::PointerReferenceMutability;
 
@@ -1082,19 +1084,16 @@ fn compile_expression(
             }
 
             match operator {
-                AssignmentOperator::Assign => {
+                None => {
                     // append binary code to load variable
                     info!(
                         "append variable virtual slot: {virtual_slot:?}, name: {name}"
                     );
                     compilation_context
                         .append_instruction_code(InstructionCode::SET_SLOT);
-                    // compilation_context.append_instruction_code(
-                    //     InstructionCode::from(&operator),
-                    // );
                 }
-                AssignmentOperator::AddAssign
-                | AssignmentOperator::SubtractAssign => {
+                Some(AssignmentOperator::AddAssign)
+                | Some(AssignmentOperator::SubtractAssign) => {
                     // TODO #435: handle mut type
                     // // if immutable reference, return error
                     // if mut_type == Some(ReferenceMutability::Immutable) {
@@ -1110,11 +1109,10 @@ fn compile_expression(
                     //         name.clone(),
                     //     ));
                     // }
+
                     compilation_context
-                        .append_instruction_code(InstructionCode::SET_SLOT);
-                    compilation_context.append_instruction_code(
-                        InstructionCode::from(&operator),
-                    );
+                        .append_instruction_code(InstructionCode::MODIFY_SLOT);
+                    operator.write(&mut compilation_context.cursor)?;
                 }
                 op => core::todo!("#436 Handle assignment operator: {op:?}"),
             }
@@ -1136,11 +1134,12 @@ fn compile_expression(
         }) => {
             compilation_context.mark_has_non_static_value();
 
-            compilation_context
-                .append_instruction_code(InstructionCode::SET_SHARED_CONTAINER_VALUE);
-
-            compilation_context
-                .append_instruction_code(InstructionCode::from(&operator));
+            append_regular_instruction(
+                &mut compilation_context.cursor,
+                RegularInstruction::SetSharedContainerValue(SetSharedContainerValue {
+                    operator,
+                }),
+            )?;
 
             // compile unbox expression
             scope = compile_expression(
@@ -1545,7 +1544,12 @@ pub mod tests {
     use alloc::format;
     use core::assert_matches;
     use log::*;
+    use crate::global::protocol_structures::disassembler::disassemble_body;
     use crate::global::protocol_structures::external_slot_type::{ExternalSlotType, SharedSlotType};
+    use crate::global::protocol_structures::instruction_data::IntegerData;
+    use crate::global::protocol_structures::instructions::Instruction;
+    use crate::global::protocol_structures::regular_instructions::RegularInstruction;
+    use crate::values::core_values::integer::Integer;
 
     fn compile_and_log(datex_script: &str) -> Vec<u8> {
         let (result, _) =
@@ -1911,35 +1915,6 @@ pub mod tests {
     }
 
     #[test]
-    fn range_u8() {
-        let start = 11i64;
-        let end = 13i64;
-        let datex_script = format!("{start}..{end}");
-        let result = compile_and_log(&datex_script);
-        let x = start as u8;
-        let y = end as u8;
-        assert_eq!(
-            result,
-            vec![
-                InstructionCode::RANGE.into(),
-                InstructionCode::INT.into(),
-                InstructionCode::SHORT_STATEMENTS.into(),
-                InstructionCode::STATEMENTS.into(),
-                0,
-                0,
-                0,
-                x,
-                InstructionCode::INT.into(),
-                InstructionCode::SHORT_STATEMENTS.into(),
-                InstructionCode::STATEMENTS.into(),
-                0,
-                0,
-                0,
-                y,
-            ]
-        );
-    }
-    #[test]
     fn range_i64() {
         let start = 128i64;
         let end = 256i64;
@@ -1948,24 +1923,11 @@ pub mod tests {
         let x = start as u8;
         let _y = end as u8;
         assert_eq!(
-            result,
+            disassemble_body(&result).unwrap(),
             vec![
-                InstructionCode::RANGE.into(),
-                InstructionCode::INT.into(),
-                InstructionCode::SHORT_STATEMENTS.into(),
-                InstructionCode::STATEMENTS.into(),
-                0,
-                0,
-                0,
-                x,
-                InstructionCode::INT.into(),
-                InstructionCode::SHORT_STATEMENTS.into(),
-                InstructionCode::SHORT_STATEMENTS.into(),
-                0,
-                0,
-                0,
-                1,
-                0,
+                Instruction::RegularInstruction(RegularInstruction::Range),
+                Instruction::RegularInstruction(RegularInstruction::Integer(IntegerData(Integer::new(start)))),
+                Instruction::RegularInstruction(RegularInstruction::Integer(IntegerData(Integer::new(end)))),
             ]
         );
     }

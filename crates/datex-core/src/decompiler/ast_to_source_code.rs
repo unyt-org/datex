@@ -487,10 +487,14 @@ impl AstToSourceCodeConverter {
             }) => {
                 ast_fmt!(
                     &self,
-                    "{}.{}{}%s{operator}%s{}",
+                    "{}.{}{}%s{}%s{}",
                     self.format(base),
                     self.key_expression_to_source_code(property),
                     self.space(),
+                    match operator {
+                        Some(operator) => operator.to_string(),
+                        None => "".to_string(),
+                    },
                     self.format(assigned_expression)
                 )
             }
@@ -672,7 +676,9 @@ impl AstToSourceCodeConverter {
             }) => {
                 let mut code = String::new();
                 code.push_str(name);
-                code.push_str(&self.pad(&operator.to_string()));
+                if let Some(operator) = operator {
+                    code.push_str(&self.pad(&operator.to_string()));
+                }
                 code.push_str(&self.format(expression));
                 code
             }
@@ -794,9 +800,13 @@ impl AstToSourceCodeConverter {
                 let unbox_prefix = "*";
                 ast_fmt!(
                     &self,
-                    "{}{}%s{operator}%s{}",
+                    "{}{}%s{}%s{}",
                     unbox_prefix,
                     self.format(unbox_expression),
+                    match operator {
+                        Some(operator) => operator.to_string(),
+                        None => "".to_string(),
+                    },
                     self.format(assigned_expression)
                 )
             }
@@ -808,9 +818,13 @@ impl AstToSourceCodeConverter {
                 let unbox_prefix = "*";
                 ast_fmt!(
                     &self,
-                    "{}{}%s{operator}%s{}",
+                    "{}{}%s{}%s{}",
                     unbox_prefix,
                     slot.to_string(),
+                     match operator {
+                        Some(operator) => operator.to_string(),
+                        None => "".to_string(),
+                    },
                     self.format(assigned_expression)
                 )
             }
@@ -1114,7 +1128,7 @@ mod tests {
     fn test_unbox_assignment() {
         let unbox_assign_ast =
             DatexExpressionData::UnboxAssignment(UnboxAssignment {
-                operator: AssignmentOperator::Assign,
+                operator: None,
                 unbox_expression: Box::new(
                     DatexExpressionData::VariableAccess(VariableAccess {
                         id: 0,

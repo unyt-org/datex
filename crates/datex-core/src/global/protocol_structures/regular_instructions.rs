@@ -5,7 +5,7 @@ use binrw::meta::{EndianKind, ReadEndian};
 use crate::dxb_parser::body::DXBParserError;
 use crate::global::instruction_codes::InstructionCode;
 use crate::global::operators::AssignmentOperator;
-use crate::global::protocol_structures::instruction_data::{ApplyData, DecimalData, Float32Data, Float64Data, FloatAsInt16Data, FloatAsInt32Data, InstructionBlockData, Int128Data, Int16Data, Int32Data, Int64Data, Int8Data, IntegerData, ListData, MapData, Move, PerformMove, RawInternalPointerAddress, RawLocalPointerAddress, RawRemotePointerAddress, SharedRef, SharedRefWithValue, ShortListData, ShortMapData, ShortStatementsData, ShortTextData, ShortTextDataRaw, SlotAddress, StatementsData, TextData, TextDataRaw, UInt128Data, UInt16Data, UInt32Data, UInt64Data, UInt8Data, UnboundedStatementsData};
+use crate::global::protocol_structures::instruction_data::{ApplyData, DecimalData, Float32Data, Float64Data, FloatAsInt16Data, FloatAsInt32Data, InstructionBlockData, Int128Data, Int16Data, Int32Data, Int64Data, Int8Data, IntegerData, ListData, MapData, ModifySlot, Move, PerformMove, RawInternalPointerAddress, RawLocalPointerAddress, RawRemotePointerAddress, SetSharedContainerValue, SharedRef, SharedRefWithValue, ShortListData, ShortMapData, ShortStatementsData, ShortTextData, ShortTextDataRaw, SlotAddress, StatementsData, TextData, TextDataRaw, UInt128Data, UInt16Data, UInt32Data, UInt64Data, UInt8Data, UnboundedStatementsData};
 use crate::global::protocol_structures::instructions::NextExpectedInstructions;
 use crate::shared_values::pointer_address::PointerAddress;
 use crate::values::core_values::decimal::utils::decimal_to_string;
@@ -101,10 +101,7 @@ pub enum RegularInstruction {
     NotEqual,
 
     // assignment operator
-    AddAssign(SlotAddress),
-    SubtractAssign(SlotAddress),
-    MultiplyAssign(SlotAddress),
-    DivideAssign(SlotAddress),
+    ModifySlot(ModifySlot),
 
     GetSharedReference,
     GetSharedReferenceMut,
@@ -135,7 +132,7 @@ pub enum RegularInstruction {
 
     GetInternalSlot(SlotAddress),
 
-    SetSharedContainerValue(AssignmentOperator),
+    SetSharedContainerValue(SetSharedContainerValue),
     Unbox,
 
     TypedValue,
@@ -205,10 +202,6 @@ impl From<&RegularInstruction> for InstructionCode {
             RegularInstruction::Equal => InstructionCode::EQUAL,
             RegularInstruction::NotStructuralEqual => InstructionCode::NOT_STRUCTURAL_EQUAL,
             RegularInstruction::NotEqual => InstructionCode::NOT_EQUAL,
-            RegularInstruction::AddAssign(_) => InstructionCode::ADD_ASSIGN,
-            RegularInstruction::SubtractAssign(_) => InstructionCode::SUBTRACT_ASSIGN,
-            RegularInstruction::MultiplyAssign(_) => InstructionCode::MULTIPLY_ASSIGN,
-            RegularInstruction::DivideAssign(_) => InstructionCode::DIVIDE_ASSIGN,
             RegularInstruction::GetSharedReference => InstructionCode::GET_SHARED_REF,
             RegularInstruction::GetSharedReferenceMut => InstructionCode::GET_SHARED_REF_MUT,
             RegularInstruction::CreateShared => InstructionCode::CREATE_SHARED,
@@ -228,6 +221,7 @@ impl From<&RegularInstruction> for InstructionCode {
             RegularInstruction::GetSlotSharedRefMut(_) => InstructionCode::GET_SLOT_SHARED_REF_MUT,
             RegularInstruction::PopSlot(_) => InstructionCode::POP_SLOT,
             RegularInstruction::SetSlot(_) => InstructionCode::SET_SLOT,
+            RegularInstruction::ModifySlot(_) => InstructionCode::MODIFY_SLOT,
             RegularInstruction::GetInternalSlot(_) => InstructionCode::GET_INTERNAL_SLOT,
             RegularInstruction::SetSharedContainerValue(_) => InstructionCode::SET_SHARED_CONTAINER_VALUE,
             RegularInstruction::Unbox => InstructionCode::UNBOX,
@@ -309,6 +303,7 @@ impl RegularInstruction {
 
             RegularInstruction::AllocateSlot(_) |
             RegularInstruction::SetSlot(_) => NextExpectedInstructions::Regular(1),
+            RegularInstruction::ModifySlot(_) => NextExpectedInstructions::Regular(1),
 
             RegularInstruction::TypedValue => NextExpectedInstructions::RegularAndType(1,1),
 
@@ -495,7 +490,7 @@ impl RegularInstruction {
                 Ok(RegularInstruction::Unbox)
             }
             InstructionCode::SET_SHARED_CONTAINER_VALUE => {
-                AssignmentOperator::read(reader).map(RegularInstruction::SetSharedContainerValue)
+                SetSharedContainerValue::read(reader).map(RegularInstruction::SetSharedContainerValue)
             }
 
             InstructionCode::KEY_VALUE_SHORT_TEXT => {
@@ -618,20 +613,8 @@ impl RegularInstruction {
                 Move::read(reader).map(RegularInstruction::Move)
             }
 
-            InstructionCode::ADD_ASSIGN => {
-                SlotAddress::read(reader).map(RegularInstruction::AddAssign)
-            }
-
-            InstructionCode::SUBTRACT_ASSIGN => {
-                SlotAddress::read(reader).map(RegularInstruction::SubtractAssign)
-            }
-
-            InstructionCode::MULTIPLY_ASSIGN => {
-                SlotAddress::read(reader).map(RegularInstruction::MultiplyAssign)
-            }
-
-            InstructionCode::DIVIDE_ASSIGN => {
-                SlotAddress::read(reader).map(RegularInstruction::DivideAssign)
+            InstructionCode::MODIFY_SLOT => {
+                ModifySlot::read(reader).map(RegularInstruction::ModifySlot)
             }
 
             InstructionCode::TYPED_VALUE => {
@@ -652,7 +635,6 @@ impl RegularInstruction {
             InstructionCode::NOT => todo!(),
             InstructionCode::INCREMENT => todo!(),
             InstructionCode::DECREMENT => todo!(),
-            InstructionCode::ASSIGN => todo!(),
         }
     }
 
@@ -679,7 +661,7 @@ impl BinRead for RegularInstruction {
         let instruction_code = RegularInstruction::read_regular_instruction_code(reader)
             .map_err(|e| binrw::Error::AssertFail {
                 pos: reader.stream_position().unwrap_or(0),
-                message: format!("Failed to read instruction code: {:?}", e),
+                message: e.to_string()
             })?;
         RegularInstruction::read_instruction(reader, instruction_code)
     }
@@ -817,8 +799,8 @@ impl Display for RegularInstruction {
             RegularInstruction::SetSlot(address) => {
                 write!(f, "{}", address.0)
             }
-            RegularInstruction::SetSharedContainerValue(operator) => {
-                write!(f, "{}", operator)
+            RegularInstruction::SetSharedContainerValue(set_shared_container_value) => {
+                write!(f, "{}", &set_shared_container_value.operator.map(|o|o.to_string()).unwrap_or("".to_string()))
             }
             RegularInstruction::RequestRemoteSharedRef(address) => {
                 write!(
@@ -888,17 +870,8 @@ impl Display for RegularInstruction {
                     block.injected_slot_count
                 )
             }
-            RegularInstruction::AddAssign(address) => {
-                write!(f, "{}", address.0)
-            }
-            RegularInstruction::SubtractAssign(address) => {
-                write!(f, "{}", address.0)
-            }
-            RegularInstruction::MultiplyAssign(address) => {
-                write!(f, "{}", address.0)
-            }
-            RegularInstruction::DivideAssign(address) => {
-                write!(f, "{}", address.0)
+            RegularInstruction::ModifySlot(modify_slot) => {
+                write!(f, "{:?} {}", modify_slot.address, modify_slot.operator)
             }
             RegularInstruction::GetPropertyIndex(uint_32_data) => {
                 write!(f, "{}", uint_32_data.0)

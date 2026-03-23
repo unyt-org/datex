@@ -187,6 +187,7 @@ fn get_next_type_instruction_code(
 
 #[cfg(test)]
 mod tests {
+    use core::assert_matches;
     use crate::global::instruction_codes::InstructionCode;
     use super::*;
 
@@ -203,7 +204,7 @@ mod tests {
         let result = iterator.next().unwrap();
         assert_matches!(
             result,
-            Err(DXBParserError::InvalidInstructionCode(0xFF))
+            Err(err @ DXBParserError::BinRwError(_)) if err.to_string().contains("invalid instruction code")
         );
     }
 

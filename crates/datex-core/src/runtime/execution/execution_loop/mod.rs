@@ -73,7 +73,7 @@ use crate::{
 use alloc::rc::Rc;
 use core::cell::RefCell;
 use crate::global::protocol_structures::external_slot_type::{ExternalSlotType, SharedSlotType};
-use crate::global::protocol_structures::instruction_data::UnboundedStatementsData;
+use crate::global::protocol_structures::instruction_data::{ModifySlot, UnboundedStatementsData};
 use crate::global::protocol_structures::instructions::{Instruction};
 use crate::global::protocol_structures::regular_instructions::RegularInstruction;
 use crate::global::protocol_structures::type_instructions::TypeInstruction;
@@ -532,16 +532,13 @@ pub fn inner_execution_loop(
                             RegularInstruction::Equal |
                             RegularInstruction::NotStructuralEqual |
                             RegularInstruction::NotEqual |
-                            RegularInstruction::AddAssign(_) |
-                            RegularInstruction::SubtractAssign(_) |
-                            RegularInstruction::MultiplyAssign(_) |
-                            RegularInstruction::DivideAssign(_) |
                             RegularInstruction::GetSharedReference |
                             RegularInstruction::GetSharedReferenceMut |
                             RegularInstruction::CreateShared |
                             RegularInstruction::CreateSharedMut |
                             RegularInstruction::AllocateSlot(_) |
                             RegularInstruction::SetSlot(_) |
+                            RegularInstruction::ModifySlot(_) |
                             RegularInstruction::SetSharedContainerValue(_) |
                             RegularInstruction::Unbox |
                             RegularInstruction::TypedValue |
@@ -894,20 +891,12 @@ pub fn inner_execution_loop(
                                     .into()
                                 }
 
-                                RegularInstruction::AddAssign(SlotAddress(
-                                    address,
-                                ))
-                                | RegularInstruction::MultiplyAssign(
-                                    SlotAddress(address),
-                                )
-                                | RegularInstruction::DivideAssign(
-                                    SlotAddress(address),
-                                )
-                                | RegularInstruction::SubtractAssign(
-                                    SlotAddress(address),
-                                ) => {
+                                RegularInstruction::ModifySlot(ModifySlot {
+                                   address,
+                                   operator
+                               }) => {
                                     let slot_value = yield_unwrap!(
-                                        get_slot_value(&state, address)
+                                        get_slot_value(&state, address.0)
                                     );
                                     let value = yield_unwrap!(
                                             collected_results
@@ -916,9 +905,7 @@ pub fn inner_execution_loop(
 
                                     let new_val = yield_unwrap!(
                                         handle_assignment_operation(
-                                            AssignmentOperator::from(
-                                                regular_instruction
-                                            ),
+                                            operator,
                                             slot_value,
                                             value,
                                         )
@@ -926,7 +913,7 @@ pub fn inner_execution_loop(
                                     yield_unwrap!(
                                         state
                                             .slots
-                                            .set_slot_value(address, new_val)
+                                            .set_slot_value(address.0, new_val)
                                     );
                                     None.into()
                                 }
@@ -951,13 +938,9 @@ pub fn inner_execution_loop(
                                             if let Some(reference) =
                                                 ref_value_container.maybe_shared()
                                             {
-                                                let lhs = reference.value_container();
-                                                let res = handle_assignment_operation(
-                                                    operator,
-                                                    &lhs,
-                                                    value_container,
-                                                )?;
-                                                reference.set_value_container(res)?;
+                                                todo!("update shared container");
+                                                // let lhs = reference.value_container();
+                                                // reference.set_value_container(res)?;
                                                 Ok(RuntimeValue::ValueContainer(
                                                     ref_value_container.clone(),
                                                 ))
@@ -1369,7 +1352,7 @@ pub fn inner_execution_loop(
                         Instruction::RegularInstruction(
                             regular_instruction,
                         ) => match regular_instruction {
-                            RegularInstruction::ShortStatements(statements_data) | 
+                            RegularInstruction::ShortStatements(statements_data) |
                             RegularInstruction::Statements(statements_data) => {
                                 if statements_data.terminated {
                                     CollectedExecutionResult::Value(None)

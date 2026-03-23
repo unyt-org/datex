@@ -619,7 +619,7 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
             .infer_expression(&mut property_assignment.assigned_expression)?;
 
         match property_assignment.operator {
-            AssignmentOperator::Assign => {}
+            None => {}
             _ => {
                 panic!("Unsupported assignment operator");
             }
@@ -649,7 +649,7 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
         let annotated_type = self.variable_type(id).unwrap_or(Type::never());
 
         match variable_assignment.operator {
-            AssignmentOperator::Assign => {
+            None => {
                 if !assigned_type.matches_type(&annotated_type) {
                     return Err(SpannedTypeError {
                         error: TypeError::AssignmentTypeMismatch {

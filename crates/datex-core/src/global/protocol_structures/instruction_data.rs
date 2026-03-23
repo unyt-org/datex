@@ -5,6 +5,7 @@ use binrw::meta::{EndianKind, ReadEndian};
 use modular_bitfield::bitfield;
 use modular_bitfield::prelude::B4;
 use serde::Serialize;
+use crate::global::operators::AssignmentOperator;
 use crate::global::protocol_structures::external_slot_type::ExternalSlotType;
 use crate::global::type_instruction_codes::{TypeLocalOrShared, TypeMutabilityCode, TypeReferenceMutabilityCode};
 use crate::serde::Deserialize;
@@ -382,6 +383,19 @@ pub struct SharedRefWithValue {
     pub address: RawLocalPointerAddress, // address of the caller
     pub ref_mutability: PointerReferenceMutability,
     pub container_mutability: SharedContainerMutability,
+}
+
+#[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
+#[brw(little)]
+pub struct SetSharedContainerValue {
+    pub operator: Option<AssignmentOperator>
+}
+
+#[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
+#[brw(little)]
+pub struct ModifySlot {
+    pub address: SlotAddress,
+    pub operator: AssignmentOperator,
 }
 
 

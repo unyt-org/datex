@@ -64,13 +64,6 @@ pub enum InstructionCode {
     INCREMENT,
     DECREMENT,
 
-    // assignment operators
-    ASSIGN, // =
-    ADD_ASSIGN,      // +=
-    SUBTRACT_ASSIGN, // -=
-    MULTIPLY_ASSIGN, // *=
-    DIVIDE_ASSIGN,   // /=
-
     // pointers & variables 0xa0 - 0xbf
 
     // slots
@@ -80,6 +73,7 @@ pub enum InstructionCode {
     GET_SLOT_SHARED_REF, // '#aa
     GET_SLOT_SHARED_REF_MUT, // 'mut #aa
     SET_SLOT, // #aa = ...
+    MODIFY_SLOT, // #aa += ..., ...
     ALLOCATE_SLOT, // #aa = ...
     POP_SLOT, // #aa
 
