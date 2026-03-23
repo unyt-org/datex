@@ -275,10 +275,6 @@ pub fn inner_execution_loop(
                 }
             };
 
-            // info!("{} INSTRUCTION: {}", state.runtime_internal.endpoint, instruction);
-
-            let instruction_copy = instruction.clone();
-
             let result = match instruction {
                 // handle regular instructions
                 Instruction::RegularInstruction(regular_instruction) => {
@@ -1373,6 +1369,7 @@ pub fn inner_execution_loop(
                         Instruction::RegularInstruction(
                             regular_instruction,
                         ) => match regular_instruction {
+                            RegularInstruction::ShortStatements(statements_data) | 
                             RegularInstruction::Statements(statements_data) => {
                                 if statements_data.terminated {
                                     CollectedExecutionResult::Value(None)
@@ -1388,7 +1385,7 @@ pub fn inner_execution_loop(
                                                 None,
                                             )
                                         }
-                                        _ => unreachable!(),
+                                        _ => unreachable!(), // statements always resolve to values
                                     }
                                 }
                             }

@@ -2,6 +2,7 @@ use crate::{
     global::protocol_structures::instructions::Instruction,
     prelude::*,
 };
+use crate::global::protocol_structures::instructions::NextExpectedInstructions;
 use crate::global::protocol_structures::regular_instructions::RegularInstruction;
 use crate::global::protocol_structures::type_instructions::TypeInstruction;
 
@@ -371,235 +372,67 @@ impl<T> InstructionCollector<T> {
         regular_instruction: RegularInstruction,
         statement_result_collection_strategy: StatementResultCollectionStrategy,
     ) -> Option<RegularInstruction> {
-        match regular_instruction {
-            RegularInstruction::Statements(statements_data)
-            | RegularInstruction::ShortStatements(statements_data) => {
-                let count = statements_data.statements_count;
-                match statement_result_collection_strategy {
-                    StatementResultCollectionStrategy::Full => {
-                        self.collect_full(
-                            Instruction::RegularInstruction(
-                                RegularInstruction::Statements(statements_data),
-                            ),
-                            count,
-                        );
-                    }
-                    StatementResultCollectionStrategy::Last => {
-                        self.collect_last(
-                            Instruction::RegularInstruction(
-                                RegularInstruction::Statements(statements_data),
-                            ),
-                            count,
-                        );
-                    }
-                }
+        let next_expected_instructions = regular_instruction.get_next_expected_instructions();
 
+        match next_expected_instructions {
+            NextExpectedInstructions::Regular(regular_count) => {
+                // special case: statements if strategy is collect last
+                if matches!(statement_result_collection_strategy, StatementResultCollectionStrategy::Last)
+                    && matches!(regular_instruction, RegularInstruction::Statements(_) | RegularInstruction::ShortStatements(_)) {
+                    self.collect_last(
+                        Instruction::RegularInstruction(regular_instruction),
+                        regular_count,
+                    );
+                }
+                // normal collect
+                else {
+                    self.collect_full(
+                        Instruction::RegularInstruction(regular_instruction),
+                        regular_count,
+                    );
+                }
                 None
             }
-            RegularInstruction::UnboundedStatements => {
+            NextExpectedInstructions::Type(type_count) => {
+                self.collect_full(
+                    Instruction::RegularInstruction(regular_instruction),
+                    type_count,
+                );
+                None
+            }
+            NextExpectedInstructions::RegularAndType(regular_count, type_count) => {
+                self.collect_full(
+                    Instruction::RegularInstruction(regular_instruction),
+                    regular_count + type_count,
+                );
+                None
+            }
+            NextExpectedInstructions::UnboundedStart => {
                 match statement_result_collection_strategy {
                     StatementResultCollectionStrategy::Full => {
                         self.collect_full_unbounded(
-                            Instruction::RegularInstruction(
-                                RegularInstruction::UnboundedStatements,
-                            ),
+                            Instruction::RegularInstruction(regular_instruction),
                         );
                     }
                     StatementResultCollectionStrategy::Last => {
                         self.collect_last_unbounded(
-                            Instruction::RegularInstruction(
-                                RegularInstruction::UnboundedStatements,
-                            ),
+                            Instruction::RegularInstruction(regular_instruction),
                         );
                     }
                 }
                 None
             }
-            RegularInstruction::UnboundedStatementsEnd(statements_end) => {
+            NextExpectedInstructions::UnboundedEnd => {
                 self.collect_full(
-                    Instruction::RegularInstruction(
-                        RegularInstruction::UnboundedStatementsEnd(
-                            statements_end,
-                        ),
-                    ),
+                    Instruction::RegularInstruction(regular_instruction),
                     0,
                 );
                 None
             }
-            RegularInstruction::List(list_data)
-            | RegularInstruction::ShortList(list_data) => {
-                let count = list_data.element_count;
-                self.collect_full(
-                    Instruction::RegularInstruction(RegularInstruction::List(
-                        list_data,
-                    )),
-                    count,
-                );
-                None
-            }
-            RegularInstruction::Range => {
-                self.collect_full(
-                    Instruction::RegularInstruction(RegularInstruction::Range),
-                    2,
-                );
-                None
-            }
-            RegularInstruction::Map(map_data)
-            | RegularInstruction::ShortMap(map_data) => {
-                let count = map_data.element_count;
-                self.collect_full(
-                    Instruction::RegularInstruction(RegularInstruction::Map(
-                        map_data,
-                    )),
-                    count,
-                );
-                None
-            }
-            RegularInstruction::KeyValueDynamic => {
-                self.collect_full(
-                    Instruction::RegularInstruction(regular_instruction),
-                    2,
-                );
-                None
-            }
-            RegularInstruction::KeyValueShortText(_) => {
-                self.collect_full(
-                    Instruction::RegularInstruction(regular_instruction),
-                    1,
-                );
-                None
-            }
-            RegularInstruction::Add
-            | RegularInstruction::Subtract
-            | RegularInstruction::Multiply
-            | RegularInstruction::Divide
-            | RegularInstruction::Matches
-            | RegularInstruction::StructuralEqual
-            | RegularInstruction::Equal
-            | RegularInstruction::NotStructuralEqual
-            | RegularInstruction::NotEqual
-            | RegularInstruction::Is => {
-                self.collect_full(
-                    Instruction::RegularInstruction(regular_instruction),
-                    2,
-                );
-                None
-            }
-            RegularInstruction::UnaryMinus
-            | RegularInstruction::UnaryPlus
-            | RegularInstruction::BitwiseNot
-            | RegularInstruction::GetSharedReference
-            | RegularInstruction::GetSharedReferenceMut
-            | RegularInstruction::CreateShared
-            | RegularInstruction::CreateSharedMut
-            | RegularInstruction::Unbox => {
-                self.collect_full(
-                    Instruction::RegularInstruction(regular_instruction),
-                    1,
-                );
-                None
-            }
-            RegularInstruction::TypedValue => {
-                self.collect_full(
-                    Instruction::RegularInstruction(regular_instruction),
-                    2,
-                );
-                None
-            }
 
-            RegularInstruction::SetSlot(_)
-            | RegularInstruction::AllocateSlot(_)
-            | RegularInstruction::AddAssign(_)
-            | RegularInstruction::SubtractAssign(_)
-            | RegularInstruction::MultiplyAssign(_)
-            | RegularInstruction::DivideAssign(_) => {
-                self.collect_full(
-                    Instruction::RegularInstruction(regular_instruction),
-                    1,
-                );
-                None
+            NextExpectedInstructions::None => {
+                Some(regular_instruction)
             }
-
-            RegularInstruction::SetSharedContainerValue(_) => {
-                self.collect_full(
-                    Instruction::RegularInstruction(regular_instruction),
-                    2,
-                );
-                None
-            }
-
-            RegularInstruction::TypeExpression => {
-                self.collect_full(
-                    Instruction::RegularInstruction(regular_instruction),
-                    1,
-                );
-                None
-            }
-
-            RegularInstruction::RemoteExecution(_) => {
-                self.collect_full(
-                    Instruction::RegularInstruction(regular_instruction),
-                    1,
-                );
-                None
-            }
-
-            RegularInstruction::Apply(apply_data) => {
-                let count = apply_data.arg_count as u32;
-                self.collect_full(
-                    Instruction::RegularInstruction(RegularInstruction::Apply(
-                        apply_data,
-                    )),
-                    count + 1,
-                );
-                None
-            }
-
-            RegularInstruction::GetPropertyText(_)
-            | RegularInstruction::GetPropertyIndex(_)
-            | RegularInstruction::TakePropertyText(_)
-            | RegularInstruction::TakePropertyIndex(_) => {
-                self.collect_full(
-                    Instruction::RegularInstruction(regular_instruction),
-                    1,
-                );
-                None
-            }
-
-            RegularInstruction::GetPropertyDynamic | RegularInstruction::TakePropertyDynamic => {
-                self.collect_full(
-                    Instruction::RegularInstruction(regular_instruction),
-                    2,
-                );
-                None
-            }
-
-            RegularInstruction::SetPropertyText(_)
-            | RegularInstruction::SetPropertyIndex(_) => {
-                self.collect_full(
-                    Instruction::RegularInstruction(regular_instruction),
-                    2,
-                );
-                None
-            }
-
-            RegularInstruction::SetPropertyDynamic => {
-                self.collect_full(
-                    Instruction::RegularInstruction(regular_instruction),
-                    3,
-                );
-                None
-            }
-
-            RegularInstruction::SharedRefWithValue(_) => {
-                self.collect_full(
-                    Instruction::RegularInstruction(regular_instruction),
-                    1,
-                );
-                None
-            }
-
-            _ => Some(regular_instruction),
         }
     }
 
@@ -610,33 +443,26 @@ impl<T> InstructionCollector<T> {
         &mut self,
         type_instruction: TypeInstruction,
     ) -> Option<TypeInstruction> {
-        match type_instruction {
-            TypeInstruction::List(list) => {
-                let count = list.element_count;
-                self.collect_full(
-                    Instruction::TypeInstruction(TypeInstruction::List(list)),
-                    count,
-                );
-                None
-            }
-            TypeInstruction::Range => {
-                self.collect_full(
-                    Instruction::TypeInstruction(TypeInstruction::Range),
-                    2,
-                );
-                None
-            }
-            TypeInstruction::ImplType(impl_type_data) => {
-                self.collect_full(
-                    Instruction::TypeInstruction(TypeInstruction::ImplType(
-                        impl_type_data,
-                    )),
-                    1,
-                );
-                None
-            }
+        let next_expected_instructions = type_instruction.get_next_expected_instructions();
 
-            _ => Some(type_instruction),
+        match next_expected_instructions {
+            NextExpectedInstructions::Type(type_count) => {
+                self.collect_full(
+                    Instruction::TypeInstruction(type_instruction),
+                    type_count,
+                );
+                None
+            }
+            
+            // currently not used for type instructions
+            NextExpectedInstructions::Regular(_) | 
+            NextExpectedInstructions::RegularAndType(..) |
+            NextExpectedInstructions::UnboundedStart | 
+            NextExpectedInstructions::UnboundedEnd => unreachable!(),
+   
+            NextExpectedInstructions::None => {
+                Some(type_instruction)
+            }
         }
     }
 }
