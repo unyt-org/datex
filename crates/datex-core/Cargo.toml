@@ -195,9 +195,9 @@ target_esp32 = [
     "embassy_runtime",
     "dep:datex-crypto-esp32",
     # FIXME: remove once crypto is fully implemented for esp32
-    "allow_unsigned_blocks",
+    # "allow_unsigned_blocks",
     # FIXME: enable once crypto is fully implemented for esp32
-    # "crypto_enabled"
+    "crypto_enabled"
 ]
 
 # native - std, tokio runtime
