@@ -18,8 +18,7 @@ use ed25519_dalek::{
     },
 };
 use hkdf::Hkdf;
-use rand::{rand_core::TryRng, rngs::SysRng};
-use sha2::Sha256;
+use sha2::{Sha256, Digest};
 use x25519_dalek::{PublicKey, StaticSecret};
 
 use der::{Decode, Encode, asn1::BitStringRef};
@@ -90,11 +89,12 @@ impl Crypto for CryptoEsp32 {
     }
 
     fn hash_sha256<'a>(
-        _to_digest: &'a [u8],
+        to_digest: &'a [u8],
     ) -> AsyncCryptoResult<'a, [u8; 32], Self::Sha256Error> {
         Box::pin(async move {
-            // placeholder comment
-            todo!("#706 Undescribed by author.")
+            let x = Sha256::digest(to_digest);
+            let y: [u8; 32] = x.try_into().unwrap();
+            Ok(y)
         })
     }
 
@@ -156,7 +156,7 @@ impl Crypto for CryptoEsp32 {
     -> AsyncCryptoResult<'a, (Vec<u8>, Vec<u8>), Self::Ed25519GenError> {
         Box::pin(async move {
             let mut key = [0u8; 32];
-            SysRng.try_fill_bytes(&mut key).unwrap();
+            // WIP fill key with random bytes
             let x = SigningKey::from_bytes(&key);
 
             let oid = ObjectIdentifier::new("1.3.101.112").unwrap();
@@ -217,7 +217,8 @@ impl Crypto for CryptoEsp32 {
             let pub_key = PublicKey::from(&pri_key).to_bytes();
             Ok((pub_key, pri_key.to_bytes()));
             */
-            let pri_key = StaticSecret::random();
+            let pri_key = StaticSecret::from([0u8; 32]);
+            // WIP fill key with random bytes
             let pub_key = PublicKey::from(&pri_key).to_bytes();
             let oid = ObjectIdentifier::new("1.3.101.110").unwrap();
 
