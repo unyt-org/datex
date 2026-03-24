@@ -203,7 +203,7 @@ impl<'a> From<OwnedValueKey> for ValueKey<'a> {
 
 #[derive(Clone, Debug, Eq)]
 pub enum ValueContainer {
-    Local(Value), // TODO: add references to local values (for recursive structures)
+    Local(Value), // TODO #767: add references to local values (for recursive structures)
     Shared(SharedContainer),
 }
 

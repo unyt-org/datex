@@ -403,7 +403,7 @@ impl Type {
     /// Checks if an atomic type matches another type
     /// An atomic type can be any type variant besides union or intersection
     pub fn atomic_matches_type(atomic_type: &Type, other: &Type) -> bool {
-        // FIXME: match rules for prefixes are more nuanced than just equality, e.g. &mut T should match &T, ...
+        // FIXME #768: match rules for prefixes are more nuanced than just equality, e.g. &mut T should match &T, ...
         if atomic_type.metadata != other.metadata {
             return false;
         }

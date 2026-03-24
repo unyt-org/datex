@@ -13,7 +13,7 @@ pub enum PointerReferenceMutability {
 pub struct OwnedPointer {
     /// Address of the owned pointer, must be a local pointer address
     address: OwnedPointerAddress,
-    // TODO: additional fields will probably be added later, e.g. previous owners
+    // TODO #766: additional fields will probably be added later, e.g. previous owners
     // subscribers: Vec<(Endpoint, Permissions)>,
 }
 

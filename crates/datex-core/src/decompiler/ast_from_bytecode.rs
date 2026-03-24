@@ -363,7 +363,7 @@ pub fn ast_from_bytecode(
                                 TypeExpressionData::Text(text_data.0)
                             }
                             TypeInstruction::SharedTypeReference(reference) => {
-                                // TODO: handle metadata
+                                // TODO #769: handle metadata
                                 TypeExpressionData::GetReference(
                                     PointerAddress::from(reference.address),
                                 )

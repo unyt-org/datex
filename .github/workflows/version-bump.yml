@@ -32,6 +32,13 @@ jobs:
         id: bump_version
         run: deno run -A .github/tools/version-bump.ts crates/datex-core ${{ inputs.bump_type }}
 
+      - name: Bump version of datex-macros
+        env:
+          NEW_VERSION: ${{ steps.bump_version.outputs.NEW_VERSION }}
+        run: |
+          deno run -A .github/tools/version-bump.ts crates/datex-macros ${{ inputs.bump_type }}
+          deno run -A .github/tools/dependency-bump.ts crates/datex-macros datex-core ${{ env.NEW_VERSION }}
+
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v5
         env:
