@@ -5,6 +5,7 @@ use crate::compiler::{
 };
 use crate::{
     runtime::execution::{
+        RuntimeInternal,
         ExecutionError, ExecutionInput, MemoryDump, execute_dxb,
         execute_dxb_sync,
     },
@@ -236,5 +237,31 @@ impl ExecutionContext {
             // TODO #397: also support remote memory dump if possible
             ExecutionContext::Remote(_) => None,
         }
+    }
+
+    /// Creates a new local execution context with a runtime.
+    pub fn local_with_runtime_internal(
+        runtime_internal: Rc<RuntimeInternal>,
+        execution_mode: ExecutionMode,
+    ) -> Self {
+        ExecutionContext::Local(
+            LocalExecutionContext::new(
+                execution_mode,
+                runtime_internal,
+            ),
+        )
+    }
+
+    /// Creates a new local execution context with verbose mode enabled and a runtime.
+    pub fn local_debug_with_runtime_internal(
+        runtime_internal: Rc<RuntimeInternal>,
+        execution_mode: ExecutionMode,
+    ) -> Self {
+        ExecutionContext::Local(
+            LocalExecutionContext::new(
+                execution_mode,
+                runtime_internal,
+            ),
+        )
     }
 }
