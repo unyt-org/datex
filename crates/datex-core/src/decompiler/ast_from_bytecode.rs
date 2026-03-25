@@ -116,7 +116,7 @@ pub fn ast_from_bytecode(
 
         let result = match instruction {
             // handle regular instructions
-            Instruction::RegularInstruction(regular_instruction) => {
+            Instruction::Regular(regular_instruction) => {
                 let regular_instruction = collector
                     .default_regular_instruction_collection(
                         regular_instruction,
@@ -397,7 +397,7 @@ pub fn ast_from_bytecode(
 
                 expr.map(CollectedAstResult::from)
             }
-            Instruction::TypeInstruction(type_instruction) => {
+            Instruction::Type(type_instruction) => {
                 let type_instruction = collector
                     .default_type_instruction_collection(type_instruction);
 
@@ -443,7 +443,7 @@ pub fn ast_from_bytecode(
                     mut collected_results,
                 ) => {
                     let expr: CollectedAstResult = match instruction {
-                        Instruction::RegularInstruction(
+                        Instruction::Regular(
                             regular_instruction,
                         ) => match regular_instruction {
                             RegularInstruction::List(_)
@@ -787,7 +787,7 @@ pub fn ast_from_bytecode(
                             }
                         },
 
-                        Instruction::TypeInstruction(_data) => {
+                        Instruction::Type(_data) => {
                             todo!("#656 Undescribed by author.")
                         }
                     };

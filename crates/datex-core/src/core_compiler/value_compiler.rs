@@ -40,6 +40,7 @@ use crate::{
 use crate::core_compiler::ByteCursor;
 use crate::core_compiler::type_compiler::{append_type_instruction, append_type_space_instruction_code_new};
 use crate::global::protocol_structures::instruction_data::{Float32Data, Float64Data, Int128Data, Int16Data, Int32Data, Int64Data, Int8Data, IntegerData, ListData, MapData, RawLocalPointerAddress, RawPointerAddress, SharedRef, SharedRefWithValue, TypeMetadataBin, UInt128Data, UInt16Data, UInt32Data, UInt64Data, UInt8Data};
+use crate::global::protocol_structures::instructions::Instruction;
 use crate::global::protocol_structures::regular_instructions::RegularInstruction;
 use crate::shared_values::shared_container::SharedContainer;
 
@@ -551,6 +552,13 @@ pub fn append_regular_instruction(cursor: &mut ByteCursor, instruction: RegularI
     // add instruction
     instruction.write(cursor)?;
     Ok(())
+}
+
+pub fn append_instruction(cursor: &mut ByteCursor, instruction: Instruction) -> BinResult<()> {
+    match instruction {
+        Instruction::Regular(instruction) => append_regular_instruction(cursor, instruction),
+        Instruction::Type(instruction) => append_type_instruction(cursor, instruction),
+    }
 }
 
 #[deprecated(note = "use append_regular_instruction instead")]

@@ -12,9 +12,8 @@ use crate::{
     values::core_values::r#type::Type,
 };
 use crate::core_compiler::ByteCursor;
-use crate::global::instruction_codes::InstructionCode;
 use crate::global::protocol_structures::instruction_data::TypeMetadataBin;
-use crate::global::protocol_structures::regular_instructions::RegularInstruction;
+use crate::global::protocol_structures::type_instructions::TypeInstruction;
 
 /// Compiles a given type container to a DXB body
 pub fn compile_type(ty: &Type) -> Vec<u8> {
@@ -89,9 +88,9 @@ pub fn append_type_space_instruction_code_new(
 }
 
 
-pub fn append_type_instruction(cursor: &mut ByteCursor, instruction: RegularInstruction) -> BinResult<()> {
+pub fn append_type_instruction(cursor: &mut ByteCursor, instruction: TypeInstruction) -> BinResult<()> {
     // add instruction code
-    cursor.write_all(&[InstructionCode::from(&instruction) as u8])?;
+    cursor.write_all(&[TypeInstructionCode::from(&instruction) as u8])?;
     // add instruction
     instruction.write(cursor)?;
     Ok(())

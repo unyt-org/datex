@@ -1,9 +1,9 @@
 use core::fmt::Display;
 use binrw::io::{Read, Seek};
-use binrw::{BinRead, BinResult, Endian};
+use binrw::{BinRead, BinResult, BinWrite, Endian};
 use binrw::meta::{EndianKind, ReadEndian};
 use crate::dxb_parser::body::DXBParserError;
-use crate::global::protocol_structures::instruction_data::{ImplTypeData, IntegerData, ListData, ShortTextData, ShortTextDataRaw, TextData, TextDataRaw, TypeReferenceData};
+use crate::global::protocol_structures::instruction_data::{ImplTypeData, IntegerData, ListData, ShortTextData, TextData, TypeReferenceData};
 use crate::global::protocol_structures::instructions::NextExpectedInstructions;
 use crate::global::type_instruction_codes::TypeInstructionCode;
 use crate::shared_values::pointer_address::PointerAddress;
@@ -11,7 +11,8 @@ use crate::values::core_values::r#type::TypeMetadata;
 use crate::prelude::*;
 
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, BinWrite)]
+#[brw(little)]
 pub enum TypeInstruction {
     ImplType(ImplTypeData),
     SharedTypeReference(TypeReferenceData),

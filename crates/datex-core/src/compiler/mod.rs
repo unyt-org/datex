@@ -1915,13 +1915,13 @@ pub mod tests {
         let end = 256i64;
         let datex_script = format!("{start}..{end}");
         let result = compile_and_log(&datex_script);
-        
+
         assert_instructions_equal!(
             &result,
             [
-                Instruction::RegularInstruction(RegularInstruction::Range),
-                Instruction::RegularInstruction(RegularInstruction::Integer(IntegerData(Integer::new(start)))),
-                Instruction::RegularInstruction(RegularInstruction::Integer(IntegerData(Integer::new(end))))
+                Instruction::Regular(RegularInstruction::Range),
+                Instruction::Regular(RegularInstruction::Integer(IntegerData(Integer::new(start)))),
+                Instruction::Regular(RegularInstruction::Integer(IntegerData(Integer::new(end))))
             ]
         )
     }

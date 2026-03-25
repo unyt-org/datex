@@ -277,7 +277,7 @@ pub fn inner_execution_loop(
 
             let result = match instruction {
                 // handle regular instructions
-                Instruction::RegularInstruction(regular_instruction) => {
+                Instruction::Regular(regular_instruction) => {
                     let regular_instruction = collector
                         .default_regular_instruction_collection(
                             regular_instruction,
@@ -552,7 +552,7 @@ pub fn inner_execution_loop(
 
                     expr.map(CollectedExecutionResult::from)
                 }
-                Instruction::TypeInstruction(type_instruction) => {
+                Instruction::Type(type_instruction) => {
                     let type_instruction = collector
                         .default_type_instruction_collection(type_instruction);
 
@@ -652,7 +652,7 @@ pub fn inner_execution_loop(
                         mut collected_results,
                     ) => {
                         match instruction {
-                            Instruction::RegularInstruction(
+                            Instruction::Regular(
                                 regular_instruction,
                             ) => match regular_instruction {
                                 RegularInstruction::List(_)
@@ -1307,7 +1307,7 @@ pub fn inner_execution_loop(
                                 }
                             },
 
-                            Instruction::TypeInstruction(type_instruction) => {
+                            Instruction::Type(type_instruction) => {
                                 match type_instruction {
                                     TypeInstruction::ImplType(
                                         impl_type_data,
@@ -1356,7 +1356,7 @@ pub fn inner_execution_loop(
                         instruction,
                         collected_result,
                     ) => match instruction {
-                        Instruction::RegularInstruction(
+                        Instruction::Regular(
                             regular_instruction,
                         ) => match regular_instruction {
                             RegularInstruction::ShortStatements(statements_data) |
@@ -1382,7 +1382,7 @@ pub fn inner_execution_loop(
                             _ => unreachable!(),
                         },
 
-                        Instruction::TypeInstruction(_data) => unreachable!(),
+                        Instruction::Type(_data) => unreachable!(),
                     },
                 };
 

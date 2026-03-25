@@ -380,14 +380,14 @@ impl<T> InstructionCollector<T> {
                 if matches!(statement_result_collection_strategy, StatementResultCollectionStrategy::Last)
                     && matches!(regular_instruction, RegularInstruction::Statements(_) | RegularInstruction::ShortStatements(_)) {
                     self.collect_last(
-                        Instruction::RegularInstruction(regular_instruction),
+                        Instruction::Regular(regular_instruction),
                         regular_count,
                     );
                 }
                 // normal collect
                 else {
                     self.collect_full(
-                        Instruction::RegularInstruction(regular_instruction),
+                        Instruction::Regular(regular_instruction),
                         regular_count,
                     );
                 }
@@ -395,14 +395,14 @@ impl<T> InstructionCollector<T> {
             }
             NextExpectedInstructions::Type(type_count) => {
                 self.collect_full(
-                    Instruction::RegularInstruction(regular_instruction),
+                    Instruction::Regular(regular_instruction),
                     type_count,
                 );
                 None
             }
             NextExpectedInstructions::RegularAndType(regular_count, type_count) => {
                 self.collect_full(
-                    Instruction::RegularInstruction(regular_instruction),
+                    Instruction::Regular(regular_instruction),
                     regular_count + type_count,
                 );
                 None
@@ -411,12 +411,12 @@ impl<T> InstructionCollector<T> {
                 match statement_result_collection_strategy {
                     StatementResultCollectionStrategy::Full => {
                         self.collect_full_unbounded(
-                            Instruction::RegularInstruction(regular_instruction),
+                            Instruction::Regular(regular_instruction),
                         );
                     }
                     StatementResultCollectionStrategy::Last => {
                         self.collect_last_unbounded(
-                            Instruction::RegularInstruction(regular_instruction),
+                            Instruction::Regular(regular_instruction),
                         );
                     }
                 }
@@ -424,7 +424,7 @@ impl<T> InstructionCollector<T> {
             }
             NextExpectedInstructions::UnboundedEnd => {
                 self.collect_full(
-                    Instruction::RegularInstruction(regular_instruction),
+                    Instruction::Regular(regular_instruction),
                     0,
                 );
                 None
@@ -448,7 +448,7 @@ impl<T> InstructionCollector<T> {
         match next_expected_instructions {
             NextExpectedInstructions::Type(type_count) => {
                 self.collect_full(
-                    Instruction::TypeInstruction(type_instruction),
+                    Instruction::Type(type_instruction),
                     type_count,
                 );
                 None

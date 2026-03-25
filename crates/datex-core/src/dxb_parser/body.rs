@@ -36,6 +36,26 @@ pub enum DXBParserError {
     InvalidInternalSlotAddress(u32),
 }
 
+// custom impl required because binrw::Error does not implement PartialEq
+impl PartialEq for DXBParserError {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (DXBParserError::InvalidEndpoint(a), DXBParserError::InvalidEndpoint(b)) => a == b,
+            (DXBParserError::InvalidBinaryCode(a), DXBParserError::InvalidBinaryCode(b)) => a == b,
+            (DXBParserError::FailedToReadInstructionCode, DXBParserError::FailedToReadInstructionCode) => true,
+            (DXBParserError::InvalidInstructionCode(a), DXBParserError::InvalidInstructionCode(b)) => a == b,
+            (DXBParserError::ExpectingMoreInstructions, DXBParserError::ExpectingMoreInstructions) => true,
+            (DXBParserError::UnexpectedBytesAfterEndOfInstructions, DXBParserError::UnexpectedBytesAfterEndOfInstructions) => true,
+            (DXBParserError::FmtError(a), DXBParserError::FmtError(b)) => a.to_string() == b.to_string(),
+            (DXBParserError::BinRwError(a), DXBParserError::BinRwError(b)) => a.to_string() == b.to_string(),
+            (DXBParserError::FromUtf8Error(a), DXBParserError::FromUtf8Error(b)) => a.to_string() == b.to_string(),
+            (DXBParserError::NotInUnboundedRegularScopeError, DXBParserError::NotInUnboundedRegularScopeError) => true,
+            (DXBParserError::InvalidInternalSlotAddress(a), DXBParserError::InvalidInternalSlotAddress(b)) => a == b,
+            _ => false,
+        }
+    }
+}
+
 impl From<fmt::Error> for DXBParserError {
     fn from(error: fmt::Error) -> Self {
         DXBParserError::FmtError(error)
@@ -225,7 +245,7 @@ mod tests {
         let mut iterator = iterate_dxb(data);
         let result = iterator.next().unwrap();
         match result {
-            Ok(Instruction::RegularInstruction(RegularInstruction::UInt8(
+            Ok(Instruction::Regular(RegularInstruction::UInt8(
                 value,
             ))) => {
                 assert_eq!(value.0, 42);
@@ -246,7 +266,7 @@ mod tests {
         let mut iterator = iterate_dxb(data);
         let result = iterator.next().unwrap();
         match result {
-            Ok(Instruction::RegularInstruction(
+            Ok(Instruction::Regular(
                 RegularInstruction::ShortText(value),
             )) => {
                 assert_eq!(value.0, "Hello");
@@ -272,19 +292,19 @@ mod tests {
         // first instruction should be ADD
         assert!(matches!(
             iterator.next().unwrap(),
-            Ok(Instruction::RegularInstruction(RegularInstruction::Add))
+            Ok(Instruction::Regular(RegularInstruction::Add))
         ));
         // next instruction should be first UINT_8
         assert!(matches!(
             iterator.next().unwrap(),
-            Ok(Instruction::RegularInstruction(RegularInstruction::UInt8(
+            Ok(Instruction::Regular(RegularInstruction::UInt8(
                 UInt8Data(10)
             )))
         ));
         // next instruction should be second UINT_8
         assert!(matches!(
             iterator.next().unwrap(),
-            Ok(Instruction::RegularInstruction(RegularInstruction::UInt8(
+            Ok(Instruction::Regular(RegularInstruction::UInt8(
                 UInt8Data(20)
             )))
         ));
@@ -309,7 +329,7 @@ mod tests {
         let result = iterator.next().unwrap();
         assert!(matches!(
             result,
-            Ok(Instruction::RegularInstruction(RegularInstruction::List(_)))
+            Ok(Instruction::Regular(RegularInstruction::List(_)))
         ));
         // next instruction should error expecting more instructions
         let result = iterator.next().unwrap();
@@ -332,7 +352,7 @@ mod tests {
         let result = iterator.next().unwrap();
         assert!(matches!(
             result,
-            Ok(Instruction::RegularInstruction(RegularInstruction::UInt8(
+            Ok(Instruction::Regular(RegularInstruction::UInt8(
                 _
             )))
         ));
@@ -340,7 +360,7 @@ mod tests {
         let result = iterator.next().unwrap();
         assert!(matches!(
             result,
-            Ok(Instruction::RegularInstruction(RegularInstruction::UInt8(
+            Ok(Instruction::Regular(RegularInstruction::UInt8(
                 _
             )))
         ));
@@ -357,7 +377,7 @@ mod tests {
         let result = iterator.next().unwrap();
         assert!(matches!(
             result,
-            Ok(Instruction::RegularInstruction(
+            Ok(Instruction::Regular(
                 RegularInstruction::UnboundedStatements
             ))
         ));
@@ -382,7 +402,7 @@ mod tests {
         let result = iterator.next().unwrap();
         assert!(matches!(
             result,
-            Ok(Instruction::RegularInstruction(RegularInstruction::UInt8(
+            Ok(Instruction::Regular(RegularInstruction::UInt8(
                 _
             )))
         ));
@@ -390,7 +410,7 @@ mod tests {
         let result = iterator.next().unwrap();
         assert!(matches!(
             result,
-            Ok(Instruction::RegularInstruction(
+            Ok(Instruction::Regular(
                 RegularInstruction::UnboundedStatementsEnd(_)
             ))
         ));

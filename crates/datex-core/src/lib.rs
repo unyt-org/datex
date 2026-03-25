@@ -61,7 +61,6 @@ pub mod values;
 // reexport macros
 pub use datex_macros_internal as macros;
 extern crate core;
-extern crate core;
 
 // HashMap and HashSet that work in both std and no_std environments.
 pub mod collections {
