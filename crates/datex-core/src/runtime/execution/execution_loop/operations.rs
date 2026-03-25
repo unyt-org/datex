@@ -161,12 +161,12 @@ pub fn handle_arithmetic_operation(
     match operator {
         ArithmeticOperator::Add => Ok((lhs + rhs)?),
         ArithmeticOperator::Subtract => Ok((lhs - rhs)?),
-        // ArithmeticOperator::Multiply => {
-        //     Ok((active_value_container * &value_container)?)
-        // }
-        // ArithmeticOperator::Divide => {
-        //     Ok((active_value_container / &value_container)?)
-        // }
+        ArithmeticOperator::Multiply => {
+            Ok((lhs * rhs)?)
+        }
+        ArithmeticOperator::Divide => {
+            Ok((lhs / rhs)?)
+        }
         _ => {
             core::todo!(
                 "#408 Implement arithmetic operation for {:?}",

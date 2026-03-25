@@ -2,7 +2,7 @@ use crate::prelude::*;
 
 use core::{
     fmt::Display,
-    ops::{Add, Neg},
+    ops::{Add, Neg, Div, Mul, Sub},
     result::Result,
 };
 use num::BigRational;
@@ -10,8 +10,9 @@ use num_bigint::BigInt;
 use num_integer::Integer;
 use num_traits::{Signed, ToPrimitive, Zero};
 use serde::{Deserialize, Serialize};
+use serde_with::chrono::SubsecRound;
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd)]
 pub struct Rational {
     big_rational: BigRational,
 }
@@ -225,6 +226,31 @@ impl Add for Rational {
 
     fn add(self, rhs: Self) -> Self::Output {
         Rational::from_big_rational(self.big_rational + rhs.big_rational)
+    }
+}
+
+impl Sub for Rational {
+    type Output = Self;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        Rational::from_big_rational(self.big_rational - rhs.big_rational)
+    }
+}
+
+
+impl Mul for Rational {
+    type Output = Self;
+
+    fn mul(self, rhs: Self) -> Self::Output {
+        Rational::from_big_rational(self.big_rational * rhs.big_rational)
+    }
+}
+
+impl Div for Rational {
+    type Output = Self;
+
+    fn div(self, rhs: Self) -> Self::Output {
+        Rational::from_big_rational(self.big_rational / rhs.big_rational)
     }
 }
 

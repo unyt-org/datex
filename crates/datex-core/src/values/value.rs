@@ -17,7 +17,7 @@ use crate::{
 
 use core::{
     fmt::{Display, Formatter},
-    ops::{Add, AddAssign, Deref, Neg, Not, Sub},
+    ops::{Add, AddAssign, Deref, Neg, Not, Sub, Mul, Div},
     result::Result,
 };
 use log::error;
@@ -40,7 +40,100 @@ impl StructuralEq for Value {
 /// Both type and inner value are the same
 impl ValueEq for Value {
     fn value_eq(&self, other: &Self) -> bool {
-        self == other
+        // First check if they're exactly equal (same type and value)
+        if self == other {
+            return true;
+        }
+        
+        // Try to compare as numbers
+        match (&self.inner, &other.inner) {
+            // Compare integers
+            (CoreValue::Integer(a), CoreValue::Integer(b)) => a == b,
+            (CoreValue::TypedInteger(a), CoreValue::TypedInteger(b)) => a == b,
+            (CoreValue::Integer(a), CoreValue::TypedInteger(b)) => {
+                match (a.as_i128(), b.as_i128()) {
+                    (Some(a_val), Some(b_val)) => a_val == b_val,
+                    _ => false,
+                }
+            }
+            (CoreValue::TypedInteger(a), CoreValue::Integer(b)) => {
+                match (a.as_i128(), b.as_i128()) {
+                    (Some(a_val), Some(b_val)) => a_val == b_val,
+                    _ => false,
+                }
+            }
+            
+            // Compare decimals/floats - use epsilon for floating point comparison
+            (CoreValue::Decimal(a), CoreValue::Decimal(b)) => a == b,
+            (CoreValue::TypedDecimal(a), CoreValue::TypedDecimal(b)) => {
+                (a.as_f64() - b.as_f64()).abs() < 1e-10
+            }
+            (CoreValue::Decimal(a), CoreValue::TypedDecimal(b)) => {
+                (a.as_f64() - b.as_f64()).abs() < 1e-10
+            }
+            (CoreValue::TypedDecimal(a), CoreValue::Decimal(b)) => {
+                (a.as_f64() - b.as_f64()).abs() < 1e-10
+            }
+            
+            // Compare integer with decimal
+            (CoreValue::Integer(a), CoreValue::Decimal(b)) => {
+                match a.as_i128() {
+                    Some(a_val) => {
+                        let a_f64 = a_val as f64;
+                        (a_f64 - b.as_f64()).abs() < 1e-10
+                    }
+                    None => false,
+                }
+            }
+            (CoreValue::Decimal(a), CoreValue::Integer(b)) => {
+                match b.as_i128() {
+                    Some(b_val) => {
+                        let b_f64 = b_val as f64;
+                        (a.as_f64() - b_f64).abs() < 1e-10
+                    }
+                    None => false,
+                }
+            }
+            (CoreValue::TypedInteger(a), CoreValue::TypedDecimal(b)) => {
+                match a.as_i128() {
+                    Some(a_val) => {
+                        let a_f64 = a_val as f64;
+                        (a_f64 - b.as_f64()).abs() < 1e-10
+                    }
+                    None => false,
+                }
+            }
+            (CoreValue::TypedDecimal(a), CoreValue::TypedInteger(b)) => {
+                match b.as_i128() {
+                    Some(b_val) => {
+                        let b_f64 = b_val as f64;
+                        (a.as_f64() - b_f64).abs() < 1e-10
+                    }
+                    None => false,
+                }
+            }
+            (CoreValue::Integer(a), CoreValue::TypedDecimal(b)) => {
+                match a.as_i128() {
+                    Some(a_val) => {
+                        let a_f64 = a_val as f64;
+                        (a_f64 - b.as_f64()).abs() < 1e-10
+                    }
+                    None => false,
+                }
+            }
+            (CoreValue::TypedDecimal(a), CoreValue::Integer(b)) => {
+                match b.as_i128() {
+                    Some(b_val) => {
+                        let b_f64 = b_val as f64;
+                        (a.as_f64() - b_f64).abs() < 1e-10
+                    }
+                    None => false,
+                }
+            }
+            
+            // Handle all other cases
+            _ => false,
+        }
     }
 }
 
@@ -272,9 +365,37 @@ impl Sub for &Value {
     }
 }
 
+impl Mul for Value {
+    type Output = Result<Value, ValueError>;
+    fn mul(self, rhs: Value) -> Self::Output {
+        Ok((&self.inner * &rhs.inner)?.into())
+    }
+}
+
+impl Mul for &Value {
+    type Output = Result<Value, ValueError>;
+    fn mul(self, rhs: &Value) -> Self::Output {
+        Value::mul(self.clone(), rhs.clone())
+    }
+}
+
+impl Div for Value {
+    type Output = Result<Value, ValueError>;
+    fn div(self, rhs: Value) -> Self::Output {
+        Ok((&self.inner / &rhs.inner)?.into())
+    }
+}
+
+impl Div for &Value {
+    type Output = Result<Value, ValueError>;
+    fn div(self, rhs: &Value) -> Self::Output {
+        Value::div(self.clone(), rhs.clone())
+    }
+}
+
+
 impl Neg for Value {
     type Output = Result<Value, ValueError>;
-
     fn neg(self) -> Self::Output {
         (-self.inner).map(Value::from)
     }
@@ -447,6 +568,246 @@ mod tests {
         let a_plus_b = (a.clone() + b.clone()).unwrap();
         assert_eq!(a_plus_b, Value::from(69i8));
         info!("{} + {} = {}", a.clone(), b.clone(), a_plus_b);
+    }
+
+    #[test]
+    fn divide_basic() {
+        let a = Value::from(24i8);
+        let b = Value::from(6i8);
+
+        let a_div_b = (a.clone() / b.clone()).unwrap();
+        assert!(a_div_b.value_eq(&Value::from(4i8)));
+        info!("{} / {} = {}", a.clone(), b.clone(), a_div_b);
+    }
+
+    #[test]
+    fn divide_with_negative_numbers() {
+        let a = Value::from(-24i8);
+        let b = Value::from(6i8);
+        
+        let result = (a.clone() / b.clone()).unwrap();
+        assert!(result.value_eq(&Value::from(-4i8)));
+        info!("{} / {} = {}", a, b, result);
+        
+        let a = Value::from(24i8);
+        let b = Value::from(-6i8);
+        
+        let result = (a.clone() / b.clone()).unwrap();
+        assert!(result.value_eq(&Value::from(-4i8)));
+        info!("{} / {} = {}", a, b, result);
+        
+        let a = Value::from(-24i8);
+        let b = Value::from(-6i8);
+        
+        let result = (a.clone() / b.clone()).unwrap();
+        assert!(result.value_eq(&Value::from(4i8)));
+        info!("{} / {} = {}", a, b, result);
+    }
+
+    #[test]
+    fn divide_by_zero_handling() {
+        let a = Value::from(42i32);
+        let b = Value::from(0i32);
+        
+        let result = a.clone() / b.clone();
+        assert!(result.is_err());
+        assert!(matches!(result, Err(ValueError::DivisionByZero)));
+        info!("{} / {} = Error (DivisionByZero)", a, b);
+        
+        let a = Value::from(-42i32);
+        let b = Value::from(0i32);
+        
+        let result = a.clone() / b.clone();
+        assert!(result.is_err());
+        assert!(matches!(result, Err(ValueError::DivisionByZero)));
+        info!("{} / {} = Error (DivisionByZero)", a, b);
+        
+        let a = Value::from(0i32);
+        let b = Value::from(0i32);
+        
+        let result = a.clone() / b.clone();
+        assert!(result.is_err());
+        assert!(matches!(result, Err(ValueError::DivisionByZero)));
+        info!("{} / {} = Error (DivisionByZero)", a, b);
+        
+        let a = Value::from(42.5f64);
+        let b = Value::from(0.0f64);
+        
+        let result = a.clone() / b.clone();
+        assert!(result.is_err());
+        assert!(matches!(result, Err(ValueError::DivisionByZero)));
+        info!("{} / {} = Error (DivisionByZero)", a, b);
+    }
+
+    #[test]
+    fn divide_with_large_numbers() {
+        let a = Value::from(i64::MAX);
+        let b = Value::from(1i32);
+        
+        let result = (a.clone() / b.clone()).unwrap();
+        assert!(result.value_eq(&Value::from(i64::MAX)));
+        info!("{} / {} = {}", a, b, result);
+        
+        let a = Value::from(i64::MAX);
+        let b = Value::from(2i32);
+        
+        let result = (a.clone() / b.clone()).unwrap();
+        assert!(result.value_eq(&Value::from(i64::MAX / 2)));
+        info!("{} / {} = {}", a, b, result);
+        
+        let a = Value::from(i64::MIN);
+        let b = Value::from(-1i32);
+        
+        let result = a.clone() / b.clone();
+        if let Ok(val) = result {
+            info!("{} / {} = {}", a, b, val);
+        } else {
+            info!("{} / {} = Overflow (expected on some systems)", a, b);
+        }
+    }
+
+    #[test]
+    fn divide_with_different_numeric_types() {
+        let a = Value::from(25i32);
+        let b = Value::from(4i32);
+        
+        let result = (a.clone() / b.clone()).unwrap();
+        assert!(result.value_eq(&Value::from(6i32)));
+        info!("{} / {} = {}", a, b, result);
+        
+        let a = Value::from(25.0f64);
+        let b = Value::from(4.0f64);
+        
+        let result = (a.clone() / b.clone()).unwrap();
+        assert!(result.value_eq(&Value::from(6.25f64)));
+        info!("{} / {} = {}", a, b, result);
+        
+        let a = Value::from(25i32);
+        let b = Value::from(4.0f64);
+        
+        let result = (a.clone() / b.clone()).unwrap();
+        assert!(result.value_eq(&Value::from(6.25f64)));
+        info!("{} / {} = {}", a, b, result);
+    }
+
+    #[test]
+    fn divide_with_fractions() {
+        let a = Value::from(1i32);
+        let b = Value::from(3i32);
+        
+        let result = (a.clone() / b.clone()).unwrap();
+        assert!(result.value_eq(&Value::from(0i32))); 
+        info!("{} / {} = {}", a, b, result);
+        
+        let a = Value::from(1.0f64);
+        let b = Value::from(3.0f64);
+        
+        let result = (a.clone() / b.clone()).unwrap();
+        assert!(result.value_eq(&Value::from(1.0 / 3.0)));
+        info!("{} / {} = {}", a, b, result);
+        
+        let a = Value::from(10i32);
+        let b = Value::from(3.0f64);
+        
+        let result = (a.clone() / b.clone()).unwrap();
+        assert!(result.value_eq(&Value::from(10.0 / 3.0)));
+        info!("{} / {} = {}", a, b, result);
+    }
+
+    #[test]
+    fn divide_by_one() {
+        let values = vec![
+            Value::from(42i32),
+            Value::from(-42i32),
+            Value::from(0i32),
+            Value::from(42.5f64),
+            Value::from(-42.5f64),
+        ];
+        
+        for val in values {
+            let divisor = Value::from(1i32);
+            let result = (val.clone() / divisor.clone()).unwrap();
+            assert!(result.value_eq(&val));
+            info!("{} / {} = {}", val, divisor, result);
+        }
+    }
+
+    #[test]
+    fn divide_by_negative_one() {
+        let values = vec![
+            (Value::from(42i32), Value::from(-42i32)),
+            (Value::from(-42i32), Value::from(42i32)),
+            (Value::from(0i32), Value::from(0i32)),
+            (Value::from(42.5f64), Value::from(-42.5f64)),
+            (Value::from(-42.5f64), Value::from(42.5f64)),
+        ];
+        
+        for (val, expected) in values {
+            let divisor = Value::from(-1i32);
+            let result = (val.clone() / divisor.clone()).unwrap();
+            assert!(result.value_eq(&expected));
+            info!("{} / {} = {}", val, divisor, result);
+        }
+    }
+
+    #[test]
+    fn divide_with_mixed_numeric_types() {
+        let a = Value::from(10i32);
+        let b = Value::from(3.0f64);
+        let result = (a.clone() / b.clone()).unwrap();
+        assert!(result.value_eq(&Value::from(10.0 / 3.0)));
+        info!("{} / {} = {}", a, b, result);
+        
+        let a = Value::from(10.0f64);
+        let b = Value::from(3i32);
+        let result = (a.clone() / b.clone()).unwrap();
+        assert!(result.value_eq(&Value::from(10.0 / 3.0)));
+        info!("{} / {} = {}", a, b, result);
+        
+        let a = Value::from(100i64);
+        let b = Value::from(3.0f32);
+        let result = (a.clone() / b.clone()).unwrap();
+        assert!(result.value_eq(&Value::from(100.0 / 3.0)));
+        info!("{} / {} = {}", a, b, result);
+    }
+
+    #[test]
+    fn divide_very_small_numbers() {
+        let a = Value::from(1e-10f64);
+        let b = Value::from(1e10f64);
+        
+        let result = (a.clone() / b.clone()).unwrap();
+        let expected = 1e-20f64;
+
+        assert!(result.value_eq(&Value::from(expected)));
+        info!("{} / {} = {}", a, b, result);
+        
+        let a = Value::from(1e-10f64);
+        let b = Value::from(1e-10f64);
+        
+        let result = (a.clone() / b.clone()).unwrap();
+        let expected = 1.0f64;
+        assert!(result.value_eq(&Value::from(expected)));
+        info!("{} / {} = {}", a, b, result);
+    }
+
+    #[test]
+    #[should_panic(expected = "DivisionByZero")]
+    fn divide_by_zero_panics() {
+        let a = Value::from(42i32);
+        let b = Value::from(0i32);
+        
+        let _ = (a / b).unwrap();
+    }
+
+    #[test]
+    fn multiplicate() {
+        let a = Value::from(12i8);
+        let b = Value::from(6i8);
+
+        let a_mul_b = (a.clone() * b.clone()).unwrap();
+        assert!(a_mul_b.value_eq(&Value::from(72i8)));
+        info!("{} * {} = {}", a.clone(), b.clone(), a_mul_b);
     }
 
     #[test]

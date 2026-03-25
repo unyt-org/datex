@@ -9,7 +9,7 @@ use core::{
     fmt::Display,
     hash::Hash,
     num::ParseFloatError,
-    ops::{Add, AddAssign, Neg, Sub},
+    ops::{Add, AddAssign, Neg, Sub, Mul, Div},
     result::Result,
 };
 use num_enum::{IntoPrimitive, TryFromPrimitive};
@@ -510,6 +510,195 @@ impl Sub for TypedDecimal {
 
         // perform addition with negated rhs
         TypedDecimal::add(self, negated_rhs)
+    }
+}
+
+impl Mul for TypedDecimal {
+    type Output = TypedDecimal;
+
+    fn mul(self, rhs: Self) -> Self::Output {
+        match self {
+            TypedDecimal::F32(a) => match rhs {
+                TypedDecimal::F32(b) => TypedDecimal::F32(a * b),
+                TypedDecimal::F64(b) => TypedDecimal::F32(OrderedFloat(
+                    a.into_inner() * b.into_inner() as f32,
+                )),
+                TypedDecimal::Decimal(b) => {
+                    let result = Decimal::from(a.into_inner()) * b;
+                    TypedDecimal::F32(result.into_f32().into())
+                }
+            },
+            TypedDecimal::F64(a) => match rhs {
+                TypedDecimal::F32(b) => TypedDecimal::F64(OrderedFloat(
+                    a.into_inner() * b.into_inner() as f64,
+                )),
+                TypedDecimal::F64(b) => TypedDecimal::F64(a * b),
+                TypedDecimal::Decimal(b) => {
+                    let result = Decimal::from(a.into_inner()) * b;
+                    TypedDecimal::F64(result.into_f64().into())
+                }
+            },
+            TypedDecimal::Decimal(a) => {
+                TypedDecimal::Decimal(a * Decimal::from(rhs))
+            }
+        }
+    }
+}
+
+impl Mul for &TypedDecimal {
+    type Output = TypedDecimal;
+
+    fn mul(self, rhs: Self) -> Self::Output {
+        // FIXME #339: Avoid cloning, as add should be applicable for refs only
+        TypedDecimal::add(self.clone(), rhs.clone())
+    }
+}
+impl Div for TypedDecimal {
+    type Output = TypedDecimal;
+
+    fn div(self, rhs: Self) -> Self::Output {
+        // Check for division by zero
+        match rhs {
+            TypedDecimal::F32(b) if b.into_inner() == 0.0 => {
+                return match self {
+                    TypedDecimal::F32(a) => {
+                        if a.into_inner() == 0.0 {
+                            TypedDecimal::F32(OrderedFloat(f32::NAN))
+                        } else if a.into_inner() > 0.0 {
+                            TypedDecimal::F32(OrderedFloat(f32::INFINITY))
+                        } else {
+                            TypedDecimal::F32(OrderedFloat(f32::NEG_INFINITY))
+                        }
+                    }
+                    TypedDecimal::F64(a) => {
+                        if a.into_inner() == 0.0 {
+                            TypedDecimal::F64(OrderedFloat(f64::NAN))
+                        } else if a.into_inner() > 0.0 {
+                            TypedDecimal::F64(OrderedFloat(f64::INFINITY))
+                        } else {
+                            TypedDecimal::F64(OrderedFloat(f64::NEG_INFINITY))
+                        }
+                    }
+                    TypedDecimal::Decimal(a) => {
+                        if a == Decimal::Zero {
+                            TypedDecimal::Decimal(Decimal::Nan)
+                        } else if a > Decimal::Zero {
+                            TypedDecimal::Decimal(Decimal::Infinity)
+                        } else {
+                            TypedDecimal::Decimal(Decimal::NegInfinity)
+                        }
+                    }
+                }
+            }
+            TypedDecimal::F64(b) if b.into_inner() == 0.0 => {
+                return match self {
+                    TypedDecimal::F32(a) => {
+                        if a.into_inner() == 0.0 {
+                            TypedDecimal::F32(OrderedFloat(f32::NAN))
+                        } else if a.into_inner() > 0.0 {
+                            TypedDecimal::F32(OrderedFloat(f32::INFINITY))
+                        } else {
+                            TypedDecimal::F32(OrderedFloat(f32::NEG_INFINITY))
+                        }
+                    }
+                    TypedDecimal::F64(a) => {
+                        if a.into_inner() == 0.0 {
+                            TypedDecimal::F64(OrderedFloat(f64::NAN))
+                        } else if a.into_inner() > 0.0 {
+                            TypedDecimal::F64(OrderedFloat(f64::INFINITY))
+                        } else {
+                            TypedDecimal::F64(OrderedFloat(f64::NEG_INFINITY))
+                        }
+                    }
+                    TypedDecimal::Decimal(a) => {
+                        if a == Decimal::Zero {
+                            TypedDecimal::Decimal(Decimal::Nan)
+                        } else if a > Decimal::Zero {
+                            TypedDecimal::Decimal(Decimal::Infinity)
+                        } else {
+                            TypedDecimal::Decimal(Decimal::NegInfinity)
+                        }
+                    }
+                }
+            }
+            TypedDecimal::Decimal(ref b) if b.is_zero() => {
+                return match self {
+                    TypedDecimal::F32(a) => {
+                        if a.into_inner() == 0.0 {
+                            TypedDecimal::F32(OrderedFloat(f32::NAN))
+                        } else if a.into_inner() > 0.0 {
+                            TypedDecimal::F32(OrderedFloat(f32::INFINITY))
+                        } else {
+                            TypedDecimal::F32(OrderedFloat(f32::NEG_INFINITY))
+                        }
+                    }
+                    TypedDecimal::F64(a) => {
+                        if a.into_inner() == 0.0 {
+                            TypedDecimal::F64(OrderedFloat(f64::NAN))
+                        } else if a.into_inner() > 0.0 {
+                            TypedDecimal::F64(OrderedFloat(f64::INFINITY))
+                        } else {
+                            TypedDecimal::F64(OrderedFloat(f64::NEG_INFINITY))
+                        }
+                    }
+                    TypedDecimal::Decimal(a) => {
+                        if a == Decimal::Zero {
+                            TypedDecimal::Decimal(Decimal::Nan)
+                        } else if a > Decimal::Zero {
+                            TypedDecimal::Decimal(Decimal::Infinity)
+                        } else {
+                            TypedDecimal::Decimal(Decimal::NegInfinity)
+                        }
+                    }
+                }
+            }
+            _ => {} 
+        }
+
+        // Normal division
+        match self {
+            TypedDecimal::F32(a) => match rhs {
+                TypedDecimal::F32(b) => TypedDecimal::F32(OrderedFloat(
+                    a.into_inner() / b.into_inner(),
+                )),
+                TypedDecimal::F64(b) => TypedDecimal::F32(OrderedFloat(
+                    a.into_inner() / b.into_inner() as f32,
+                )),
+                TypedDecimal::Decimal(b) => {
+                    let result = Decimal::from(a.into_inner()) / b;
+                    TypedDecimal::F32(result.into_f32().into())
+                }
+            },
+            TypedDecimal::F64(a) => match rhs {
+                TypedDecimal::F32(b) => TypedDecimal::F64(OrderedFloat(
+                    a.into_inner() / b.into_inner() as f64,
+                )),
+                TypedDecimal::F64(b) => TypedDecimal::F64(OrderedFloat(
+                    a.into_inner() / b.into_inner(),
+                )),
+                TypedDecimal::Decimal(b) => {
+                    let result = Decimal::from(a.into_inner()) / b;
+                    TypedDecimal::F64(result.into_f64().into())
+                }
+            },
+            TypedDecimal::Decimal(a) => match rhs {
+                TypedDecimal::F32(b) => {
+                    TypedDecimal::Decimal(a / Decimal::from(b.into_inner()))
+                }
+                TypedDecimal::F64(b) => {
+                    TypedDecimal::Decimal(a / Decimal::from(b.into_inner()))
+                }
+                TypedDecimal::Decimal(b) => TypedDecimal::Decimal(a / b),
+            },
+        }
+    }
+}
+
+impl Div for &TypedDecimal {
+    type Output = TypedDecimal;
+
+    fn div(self, rhs: Self) -> Self::Output {
+        TypedDecimal::div(self.clone(), rhs.clone())
     }
 }
 
