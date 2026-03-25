@@ -2,7 +2,7 @@ use crate::{
     channel::mpsc::UnboundedSender,
     collections::HashMap,
     global::protocol_structures::{
-        block_header::BlockType, routing_header::SignatureType,
+        block_header::BlockType, routing_header::{EncryptionType, SignatureType},
     },
     network::com_hub::{
         errors::{ComHubError, SocketEndpointRegistrationError},
@@ -976,7 +976,7 @@ impl ComHub {
 
     /// Prepares an own block for sending by setting sender, timestamp, distance and signing if needed.
     /// Will return either synchronously or asynchronously depending on the signature type.
-    pub fn prepare_own_block(
+    pub async fn prepare_own_block(
         &self,
         mut block: DXBBlock,
     ) -> PrepareOwnBlockResult<'_> {
@@ -995,7 +995,32 @@ impl ComHub {
             Ok(block)
         }
 
+        // Prepare future encryption
+        let fut_block = match block.routing_header.flags.encryption_type() {
+            EncryptionType::None => {
+                info!("Prepping not encrypted dxb");
+                SyncOrAsync::Sync(block)
+            }
+            EncryptionType::Encrypted => {
+                info!("Prepareing encrypted dxb");
+                SyncOrAsync::Async(Box::pin(async move {
+                    let key = [0u8; 32];
+                    let iv = [0u8; 16];
+                    let new_body = CryptoImpl::aes_ctr_encrypt(&key, &iv, block.body.as_slice()).await.unwrap();
+                    block.body = new_body.to_vec();
+                    block
+                }))
+            }
+        };
+
+        // Execute future encryption
+        let mut block = match fut_block {
+            SyncOrAsync::Sync(block) => block,
+            SyncOrAsync::Async(block) => block.await,
+        };
+
         match block.routing_header.flags.signature_type() {
+
             // SignatureType::None can be handled synchronously
             SignatureType::None => SyncOrAsync::Sync(
                 update_sender_and_timestamp(block, self.endpoint.clone()),
@@ -1058,6 +1083,7 @@ impl ComHub {
     ) -> Result<(), Vec<Endpoint>> {
         block = self
             .prepare_own_block(block)
+            .await
             .into_result()
             .await
             .unwrap_or_else(|e| {
@@ -1073,12 +1099,12 @@ impl ComHub {
     /// Sends a block from this endpoint synchronously.
     /// If any endpoint can not be reached synchronously, an Err with the list of all endpoints is returned.
     /// Otherwise, Ok with optional list of responses is returned.
-    pub fn send_own_block(
+    pub async fn send_own_block(
         &self,
         mut block: DXBBlock,
     ) -> Result<Option<Vec<Vec<u8>>>, Vec<Endpoint>> {
         let receivers = block.receiver_endpoints();
-        block = match self.prepare_own_block(block) {
+        block = match self.prepare_own_block(block).await {
             SyncOrAsync::Sync(res) => res.unwrap_or_else(|e| {
                 panic!("Error preparing own block for sending: {:?}", e)
             }),
@@ -1568,6 +1594,7 @@ impl ComHub {
 
         let block = self
             .prepare_own_block(block)
+            .await
             .into_result()
             .await
             .unwrap_or_else(|e| {
@@ -1766,6 +1793,7 @@ pub mod tests {
 
             *block = com_hub
                 .prepare_own_block(block.clone())
+                .await
                 .into_result()
                 .await
                 .unwrap();
@@ -2081,6 +2109,7 @@ pub mod tests {
 
                 let block = com_hub
                     .prepare_own_block(block)
+                    .await
                     .into_result()
                     .await
                     .unwrap();
