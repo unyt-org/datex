@@ -294,8 +294,8 @@ impl DXBBlock {
         let decrypted_bytes = match routing_header.flags.encryption_type() {
             EncryptionType::Encrypted => {
                 // TODO #113: decrypt the body
-                let mut decrypted_bytes = Vec::from([0u8; 255]);
-                reader.read_exact(&mut decrypted_bytes).map_err(|e| {
+                let mut decrypted_bytes = Vec::new();
+                reader.read_to_end(&mut decrypted_bytes).map_err(|e| {
                     DXBBlockParseError::IOError(format!(
                         "Failed to read encrypted body: {}",
                         e
@@ -343,7 +343,7 @@ impl DXBBlock {
     /// Validates the signature of the block based on the signature type specified in the routing header.
     /// Returns Ok(self) if the signature is valid, or a SignatureValidationError if the signature is missing, cannot be parsed, or is invalid.
     pub fn validate_signature(
-        self,
+        mut self,
     ) -> MaybeAsync<
         Result<DXBBlock, SignatureValidationError>,
         impl Future<Output = Result<DXBBlock, SignatureValidationError>>,
@@ -435,7 +435,20 @@ impl DXBBlock {
                 };
 
                 match is_valid {
-                    true => Ok(self),
+                    true => {
+                        match self.routing_header.flags.encryption_type() {
+                            EncryptionType::None => {
+                                log::info!("Dur sig val: EncryptionType::None");
+                                Ok(self)
+                            }
+                            EncryptionType::Encrypted => {
+                                log::info!("Dur sig val: EncryptionType::Encrypted");
+                                let decrypted_body = CryptoImpl::aes_ctr_decrypt(&[0u8; 32], &[0u8; 16], self.body.as_slice()).await.unwrap();
+                                self.body = decrypted_body;
+                                Ok(self)
+                            }
+                        }
+                    }
                     false => Err(SignatureValidationError::InvalidSignature),
                 }
             }),
