@@ -38,7 +38,7 @@ use crate::{
 use alloc::rc::Rc;
 use core::{cell::RefCell, pin::Pin, slice};
 use log::{debug, error, info};
-use crate::global::protocol_structures::disassembler::disassemble_body_to_string;
+use crate::global::protocol_structures::disassembler::{disassemble_body_to_string, DisassemblerOptions};
 use crate::global::protocol_structures::instruction_data::RawLocalPointerAddress;
 use crate::runtime::execution::execution_input::ExecutionCallerMetadata;
 use crate::runtime::execution::InvalidProgramError;
@@ -419,7 +419,7 @@ impl RuntimeInternal {
             );
         }
         let dxb = block.body;
-        info!("\n{}", disassemble_body_to_string(&dxb));
+        info!("\n{}", disassemble_body_to_string(&dxb, DisassemblerOptions::default()));
         let end_execution =
             block.block_header.flags_and_timestamp.is_end_of_section();
         RuntimeInternal::execute_dxb(

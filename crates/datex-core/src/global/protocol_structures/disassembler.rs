@@ -36,14 +36,51 @@ impl<T> Tree<T> where T: Debug + Clone {
     }
 }
 
+pub struct DisassemblerOptions {
+    pub tree: bool,
+    pub colorized: bool,
+}
+
+impl DisassemblerOptions {
+    pub fn simple() -> DisassemblerOptions{
+        DisassemblerOptions {
+            tree: false,
+            colorized: false,
+        }
+    }
+}
+
+impl Default for DisassemblerOptions {
+    fn default() -> DisassemblerOptions {
+        DisassemblerOptions {
+            tree: true,
+            colorized: true,
+        }
+    }
+}
+
 /// Converts a raw DXB body in to human-readable disassembled instructions string
-pub fn disassemble_body_to_string(body: &[u8]) -> String {
-    let (instructions, err) = disassemble_body_to_strings(body);
+pub fn disassemble_body_to_string(body: &[u8], options: DisassemblerOptions) -> String {
+    let (instructions, err) = disassemble_body_to_strings(body, options.colorized);
 
     let mut output = "\n\n=== Disassembled DXB Body ===\n".to_string();
-    disassemble_body_to_string_inner(&mut output, instructions, 0, true, true);
+
+    if options.tree {
+        disassemble_body_to_string_inner(&mut output, instructions, 0, true, true);
+    }
+    else {
+        for instruction in instructions.flatten() {
+            write!(&mut output, "{}\n", instruction).unwrap();
+        }
+    }
+
     if let Some(err) = err {
-        write!(&mut output, "\x1b[38;2;245;39;60m\n[!] Parser Error: {}\x1b[0m", err).unwrap();
+        if options.colorized {
+            write!(&mut output, "\x1b[38;2;245;39;60m\n[!] Parser Error: {}\x1b[0m", err).unwrap();
+        }
+        else {
+            write!(&mut output, "[!] Parser Error: {}", err).unwrap();
+        }
     }
     writeln!(&mut output, "==== END ===\n").unwrap();
 
@@ -75,9 +112,9 @@ fn disassemble_body_to_string_inner(
 
 
 /// Converts a raw DXB body into a list of disassembled human-readable instructions
-pub fn disassemble_body_to_strings(body: &[u8]) -> (Tree<String>, Option<DXBParserError>) {
+pub fn disassemble_body_to_strings(body: &[u8], colorized: bool) -> (Tree<String>, Option<DXBParserError>) {
     let (instructions, err) = disassemble_body(body);
-    let instructions = instructions.map(|i| i.to_formatted_string());
+    let instructions = instructions.map(|i| if colorized { i.to_formatted_string() } else { i.to_string() });
     (instructions, err)
 }
 
