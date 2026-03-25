@@ -43,7 +43,7 @@ pub fn disassemble_body_to_string(body: &[u8]) -> String {
     let mut output = "\n\n=== Disassembled DXB Body ===\n".to_string();
     disassemble_body_to_string_inner(&mut output, instructions, 0, true, true);
     if let Some(err) = err {
-        write!(&mut output, "\n[!] Parser Error: {}", err).unwrap();
+        write!(&mut output, "\x1b[38;2;245;39;60m\n[!] Parser Error: {}\x1b[0m", err).unwrap();
     }
     writeln!(&mut output, "==== END ===\n").unwrap();
 

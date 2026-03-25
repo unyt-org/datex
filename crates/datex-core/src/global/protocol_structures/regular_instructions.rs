@@ -1,10 +1,10 @@
+use core::fmt::Write;
 use core::fmt::Display;
 use binrw::io::{Read, Seek};
 use binrw::{BinRead, BinResult, BinWrite, Endian};
 use binrw::meta::{EndianKind, ReadEndian};
 use crate::dxb_parser::body::DXBParserError;
 use crate::global::instruction_codes::InstructionCode;
-use crate::global::operators::AssignmentOperator;
 use crate::global::protocol_structures::instruction_data::{ApplyData, DecimalData, Float32Data, Float64Data, FloatAsInt16Data, FloatAsInt32Data, InstructionBlockData, Int128Data, Int16Data, Int32Data, Int64Data, Int8Data, IntegerData, ListData, MapData, ModifySlot, Move, PerformMove, RawInternalPointerAddress, RawLocalPointerAddress, RawRemotePointerAddress, SetSharedContainerValue, SharedRef, SharedRefWithValue, ShortListData, ShortMapData, ShortStatementsData, ShortTextData, ShortTextDataRaw, SlotAddress, StatementsData, TextData, TextDataRaw, UInt128Data, UInt16Data, UInt32Data, UInt64Data, UInt8Data, UnboundedStatementsData};
 use crate::global::protocol_structures::instructions::NextExpectedInstructions;
 use crate::shared_values::pointer_address::PointerAddress;
@@ -648,140 +648,149 @@ impl RegularInstruction {
             .map_err(|_| DXBParserError::InvalidInstructionCode(instruction_code))
     }
 
-    pub fn metadata_string(&self) -> String {
+    pub fn to_formatted_string(&self) -> String {
+        let mut string = String::new();
+        let code = InstructionCode::from(self);
+        write!(&mut string, "\x1b[38;2;39;149;245m{}\x1b[0m", code).unwrap();
 
+        if let Some(metadata_string) = self.metadata_string() {
+            write!(&mut string, " {}", metadata_string).unwrap();
+        }
+
+        string
     }
 
-    pub fn to_formatted_string(&self) -> String {
+    pub fn metadata_string(&self) -> Option<String> {
+        let mut string = String::new();
 
         match self {
             RegularInstruction::Int8(data) => {
-                write!(f, "{}", data.0)
+                write!(string, "{}", data.0)
             }
             RegularInstruction::Int16(data) => {
-                write!(f, "{}", data.0)
+                write!(string, "{}", data.0)
             }
             RegularInstruction::Int32(data) => {
-                write!(f, "{}", data.0)
+                write!(string, "{}", data.0)
             }
             RegularInstruction::Int64(data) => {
-                write!(f, "{}", data.0)
+                write!(string, "{}", data.0)
             }
             RegularInstruction::Int128(data) => {
-                write!(f, "{}", data.0)
+                write!(string, "{}", data.0)
             }
             RegularInstruction::UInt8(data) => {
-                write!(f, "{}", data.0)
+                write!(string, "{}", data.0)
             }
             RegularInstruction::UInt16(data) => {
-                write!(f, "{}", data.0)
+                write!(string, "{}", data.0)
             }
             RegularInstruction::UInt32(data) => {
-                write!(f, "{}", data.0)
+                write!(string, "{}", data.0)
             }
             RegularInstruction::UInt64(data) => {
-                write!(f, "{}", data.0)
+                write!(string, "{}", data.0)
             }
             RegularInstruction::UInt128(data) => {
-                write!(f, "{}", data.0)
+                write!(string, "{}", data.0)
             }
             RegularInstruction::Apply(count) => {
-                write!(f, "(arg_count: {})", count.arg_count)
+                write!(string, "(arg_count: {})", count.arg_count)
             }
             RegularInstruction::BigInteger(data) => {
-                write!(f, "{}", data.0)
+                write!(string, "{}", data.0)
             }
             RegularInstruction::Integer(data) => {
-                write!(f, "{}", data.0)
+                write!(string, "{}", data.0)
             }
             RegularInstruction::Endpoint(data) => {
-                write!(f, "{data}")
+                write!(string, "{data}")
             }
 
             RegularInstruction::DecimalAsInt16(data) => {
-                write!(f, "{}", data.0)
+                write!(string, "{}", data.0)
             }
             RegularInstruction::DecimalAsInt32(data) => {
-                write!(f, "{}", data.0)
+                write!(string, "{}", data.0)
             }
             RegularInstruction::DecimalF32(data) => {
                 write!(
-                    f,
+                    string,
                     "{}",
                     decimal_to_string(data.0, false)
                 )
             }
             RegularInstruction::DecimalF64(data) => {
                 write!(
-                    f,
+                    string,
                     "{}",
                     decimal_to_string(data.0, false)
                 )
             }
             RegularInstruction::BigDecimal(data) => {
-                write!(f, "{}", data.0)
+                write!(string, "{}", data.0)
             }
             RegularInstruction::Decimal(data) => {
-                write!(f, "{}", data.0)
+                write!(string, "{}", data.0)
             }
             RegularInstruction::ShortText(data) => {
-                write!(f, "{}", data.0)
+                write!(string, "{}", data.0)
             }
             RegularInstruction::Text(data) => {
-                write!(f, "{}", data.0)
+                write!(string, "{}", data.0)
             }
             RegularInstruction::Statements(data) => {
-                write!(f, "{}", data.statements_count)
+                write!(string, "{}", data.statements_count)
             }
             RegularInstruction::ShortStatements(data) => {
-                write!(f, "{}", data.statements_count)
+                write!(string, "{}", data.statements_count)
             }
             RegularInstruction::List(data) => {
-                write!(f, "{}", data.element_count)
+                write!(string, "{}", data.element_count)
             }
             RegularInstruction::ShortList(data) => {
-                write!(f, "{}", data.element_count)
+                write!(string, "{}", data.element_count)
             }
             RegularInstruction::Map(data) => {
-                write!(f, "{}", data.element_count)
+                write!(string, "{}", data.element_count)
             }
             RegularInstruction::ShortMap(data) => {
-                write!(f, "{}", data.element_count)
+                write!(string, "{}", data.element_count)
             }
             RegularInstruction::KeyValueShortText(data) => {
-                write!(f, "{}", data.0)
+                write!(string, "{}", data.0)
             }
 
             RegularInstruction::AllocateSlot(address) => {
-                write!(f, "{}", address.0)
+                write!(string, "{}", address.0)
             }
             RegularInstruction::CloneSlot(address) => {
-                write!(f, "{}", address.0)
+                write!(string, "{}", address.0)
             }
             RegularInstruction::GetInternalSlot(address) => {
-                write!(f, "{}", address.0)
+                write!(string, "{}", address.0)
             }
             RegularInstruction::BorrowSlot(address) => {
-                write!(f, "{}", address.0)
+                write!(string, "{}", address.0)
             }
             RegularInstruction::GetSlotSharedRef(address) => {
-                write!(f, "{}", address.0)
+                write!(string, "{}", address.0)
             }
             RegularInstruction::GetSlotSharedRefMut(address) => {
-                write!(f, "{}", address.0)
+                write!(string, "{}", address.0)
             }
             RegularInstruction::PopSlot(address) => {
-                write!(f, "{}", address.0)
+                write!(string, "{}", address.0)
             }
             RegularInstruction::SetSlot(address) => {
-                write!(f, "{}", address.0)
+                write!(string, "{}", address.0)
             }
             RegularInstruction::SetSharedContainerValue(set_shared_container_value) => {
-                write!(f, "{}", &set_shared_container_value.operator.map(|o|o.to_string()).unwrap_or("".to_string()))
+                write!(string, "{}", &set_shared_container_value.operator.map(|o|o.to_string()).unwrap_or("".to_string()))
             }
             RegularInstruction::RequestRemoteSharedRef(address) => {
                 write!(
-                    f,
+                    string,
                     "({}:{})",
                     address.endpoint().expect("Invalid endpoint"),
                     hex::encode(address.id)
@@ -789,7 +798,7 @@ impl RegularInstruction {
             }
             RegularInstruction::RequestRemoteSharedRefMut(address) => {
                 write!(
-                    f,
+                    string,
                     "({}:{})",
                     address.endpoint().expect("Invalid endpoint"),
                     hex::encode(address.id)
@@ -797,28 +806,28 @@ impl RegularInstruction {
             }
             RegularInstruction::GetLocalSharedRef(address) => {
                 write!(
-                    f,
+                    string,
                     "(origin_id: {})",
                     hex::encode(address.bytes)
                 )
             }
             RegularInstruction::GetInternalSharedRef(address) => {
                 write!(
-                    f,
+                    string,
                     "(internal_id: {})",
                     hex::encode(address.id)
                 )
             }
             RegularInstruction::SharedRef(shared_ref) => {
                 write!(
-                    f,
+                    string,
                     "(ref_mutability: {:?}, address: {})",
                     shared_ref.ref_mutability, PointerAddress::from(&shared_ref.address)
                 )
             }
             RegularInstruction::SharedRefWithValue(shared_ref) => {
                 write!(
-                    f,
+                    string,
                     "(ref_mutability: {:?}, address: {}, container_mutability: {:?})",
                     shared_ref.ref_mutability,
                     PointerAddress::from(&shared_ref.address),
@@ -827,52 +836,54 @@ impl RegularInstruction {
             }
             RegularInstruction::PerformMove(perform_move) => {
                 write!(
-                    f,
+                    string,
                     "(pointers: {})",
                     perform_move.pointers.iter().map(|(_mut, addr)| hex::encode(addr.bytes)).collect::<Vec<_>>().join(", ")
                 )
             }
             RegularInstruction::Move(mv) => {
                 write!(
-                    f,
+                    string,
                     "(pointer_count: {}, mappings: {:?})",
                     mv.pointer_count, mv.address_mappings
                 )
             }
             RegularInstruction::RemoteExecution(block) => {
                 write!(
-                    f,
+                    string,
                     "(length: {}, injected_slot_count: {})",
                     block.length,
                     block.injected_slot_count
                 )
             }
             RegularInstruction::ModifySlot(modify_slot) => {
-                write!(f, "{:?} {}", modify_slot.address, modify_slot.operator)
+                write!(string, "{:?} {}", modify_slot.address, modify_slot.operator)
             }
             RegularInstruction::GetPropertyIndex(uint_32_data) => {
-                write!(f, "{}", uint_32_data.0)
+                write!(string, "{}", uint_32_data.0)
             }
             RegularInstruction::SetPropertyIndex(uint_32_data) => {
-                write!(f, "{}", uint_32_data.0)
+                write!(string, "{}", uint_32_data.0)
             }
             RegularInstruction::TakePropertyIndex(uint_32_data) => {
-                write!(f, "{}", uint_32_data.0)
+                write!(string, "{}", uint_32_data.0)
             }
             RegularInstruction::GetPropertyText(short_text_data) => {
-                write!(f, "{}", short_text_data.0)
+                write!(string, "{}", short_text_data.0)
             }
             RegularInstruction::TakePropertyText(short_text_data) => {
-                write!(f, "{}", short_text_data.0)
+                write!(string, "{}", short_text_data.0)
             }
             RegularInstruction::SetPropertyText(short_text_data) => {
-                write!(f, "{}", short_text_data.0)
+                write!(string, "{}", short_text_data.0)
             }
             _ => {
                 // no custom disassembly
-                Ok(())
+                return None;
             }
-        }
+        }.unwrap();
+
+        Some(string)
     }
 }
 
@@ -902,226 +913,12 @@ impl ReadEndian for RegularInstruction {
 impl Display for RegularInstruction {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         let code = InstructionCode::from(self);
-        write!(f, "{} ", code)?;
+        write!(f, "{}", code)?;
 
-        match self {
-            RegularInstruction::Int8(data) => {
-                write!(f, "{}", data.0)
-            }
-            RegularInstruction::Int16(data) => {
-                write!(f, "{}", data.0)
-            }
-            RegularInstruction::Int32(data) => {
-                write!(f, "{}", data.0)
-            }
-            RegularInstruction::Int64(data) => {
-                write!(f, "{}", data.0)
-            }
-            RegularInstruction::Int128(data) => {
-                write!(f, "{}", data.0)
-            }
-            RegularInstruction::UInt8(data) => {
-                write!(f, "{}", data.0)
-            }
-            RegularInstruction::UInt16(data) => {
-                write!(f, "{}", data.0)
-            }
-            RegularInstruction::UInt32(data) => {
-                write!(f, "{}", data.0)
-            }
-            RegularInstruction::UInt64(data) => {
-                write!(f, "{}", data.0)
-            }
-            RegularInstruction::UInt128(data) => {
-                write!(f, "{}", data.0)
-            }
-            RegularInstruction::Apply(count) => {
-                write!(f, "(arg_count: {})", count.arg_count)
-            }
-            RegularInstruction::BigInteger(data) => {
-                write!(f, "{}", data.0)
-            }
-            RegularInstruction::Integer(data) => {
-                write!(f, "{}", data.0)
-            }
-            RegularInstruction::Endpoint(data) => {
-                write!(f, "{data}")
-            }
-
-            RegularInstruction::DecimalAsInt16(data) => {
-                write!(f, "{}", data.0)
-            }
-            RegularInstruction::DecimalAsInt32(data) => {
-                write!(f, "{}", data.0)
-            }
-            RegularInstruction::DecimalF32(data) => {
-                write!(
-                    f,
-                    "{}",
-                    decimal_to_string(data.0, false)
-                )
-            }
-            RegularInstruction::DecimalF64(data) => {
-                write!(
-                    f,
-                    "{}",
-                    decimal_to_string(data.0, false)
-                )
-            }
-            RegularInstruction::BigDecimal(data) => {
-                write!(f, "{}", data.0)
-            }
-            RegularInstruction::Decimal(data) => {
-                write!(f, "{}", data.0)
-            }
-            RegularInstruction::ShortText(data) => {
-                write!(f, "{}", data.0)
-            }
-            RegularInstruction::Text(data) => {
-                write!(f, "{}", data.0)
-            }
-            RegularInstruction::Statements(data) => {
-                write!(f, "{}", data.statements_count)
-            }
-            RegularInstruction::ShortStatements(data) => {
-                write!(f, "{}", data.statements_count)
-            }
-            RegularInstruction::List(data) => {
-                write!(f, "{}", data.element_count)
-            }
-            RegularInstruction::ShortList(data) => {
-                write!(f, "{}", data.element_count)
-            }
-            RegularInstruction::Map(data) => {
-                write!(f, "{}", data.element_count)
-            }
-            RegularInstruction::ShortMap(data) => {
-                write!(f, "{}", data.element_count)
-            }
-            RegularInstruction::KeyValueShortText(data) => {
-                write!(f, "{}", data.0)
-            }
-
-            RegularInstruction::AllocateSlot(address) => {
-                write!(f, "{}", address.0)
-            }
-            RegularInstruction::CloneSlot(address) => {
-                write!(f, "{}", address.0)
-            }
-            RegularInstruction::GetInternalSlot(address) => {
-                write!(f, "{}", address.0)
-            }
-            RegularInstruction::BorrowSlot(address) => {
-                write!(f, "{}", address.0)
-            }
-            RegularInstruction::GetSlotSharedRef(address) => {
-                write!(f, "{}", address.0)
-            }
-            RegularInstruction::GetSlotSharedRefMut(address) => {
-                write!(f, "{}", address.0)
-            }
-            RegularInstruction::PopSlot(address) => {
-                write!(f, "{}", address.0)
-            }
-            RegularInstruction::SetSlot(address) => {
-                write!(f, "{}", address.0)
-            }
-            RegularInstruction::SetSharedContainerValue(set_shared_container_value) => {
-                write!(f, "{}", &set_shared_container_value.operator.map(|o|o.to_string()).unwrap_or("".to_string()))
-            }
-            RegularInstruction::RequestRemoteSharedRef(address) => {
-                write!(
-                    f,
-                    "({}:{})",
-                    address.endpoint().expect("Invalid endpoint"),
-                    hex::encode(address.id)
-                )
-            }
-            RegularInstruction::RequestRemoteSharedRefMut(address) => {
-                write!(
-                    f,
-                    "({}:{})",
-                    address.endpoint().expect("Invalid endpoint"),
-                    hex::encode(address.id)
-                )
-            }
-            RegularInstruction::GetLocalSharedRef(address) => {
-                write!(
-                    f,
-                    "(origin_id: {})",
-                    hex::encode(address.bytes)
-                )
-            }
-            RegularInstruction::GetInternalSharedRef(address) => {
-                write!(
-                    f,
-                    "(internal_id: {})",
-                    hex::encode(address.id)
-                )
-            }
-            RegularInstruction::SharedRef(shared_ref) => {
-                write!(
-                    f,
-                    "(ref_mutability: {:?}, address: {})",
-                    shared_ref.ref_mutability, PointerAddress::from(&shared_ref.address)
-                )
-            }
-            RegularInstruction::SharedRefWithValue(shared_ref) => {
-                write!(
-                    f,
-                    "(ref_mutability: {:?}, address: {}, container_mutability: {:?})",
-                    shared_ref.ref_mutability,
-                    PointerAddress::from(&shared_ref.address),
-                    shared_ref.container_mutability
-                )
-            }
-            RegularInstruction::PerformMove(perform_move) => {
-                write!(
-                    f,
-                    "(pointers: {})",
-                    perform_move.pointers.iter().map(|(_mut, addr)| hex::encode(addr.bytes)).collect::<Vec<_>>().join(", ")
-                )
-            }
-            RegularInstruction::Move(mv) => {
-                write!(
-                    f,
-                    "(pointer_count: {}, mappings: {:?})",
-                    mv.pointer_count, mv.address_mappings
-                )
-            }
-            RegularInstruction::RemoteExecution(block) => {
-                write!(
-                    f,
-                    "(length: {}, injected_slot_count: {})",
-                    block.length,
-                    block.injected_slot_count
-                )
-            }
-            RegularInstruction::ModifySlot(modify_slot) => {
-                write!(f, "{:?} {}", modify_slot.address, modify_slot.operator)
-            }
-            RegularInstruction::GetPropertyIndex(uint_32_data) => {
-                write!(f, "{}", uint_32_data.0)
-            }
-            RegularInstruction::SetPropertyIndex(uint_32_data) => {
-                write!(f, "{}", uint_32_data.0)
-            }
-            RegularInstruction::TakePropertyIndex(uint_32_data) => {
-                write!(f, "{}", uint_32_data.0)
-            }
-            RegularInstruction::GetPropertyText(short_text_data) => {
-                write!(f, "{}", short_text_data.0)
-            }
-            RegularInstruction::TakePropertyText(short_text_data) => {
-                write!(f, "{}", short_text_data.0)
-            }
-            RegularInstruction::SetPropertyText(short_text_data) => {
-                write!(f, "{}", short_text_data.0)
-            }
-            _ => {
-                // no custom disassembly
-                Ok(())
-            }
+        if let Some(metadata_string) = self.metadata_string() {
+            write!(f, " {}", metadata_string)?;
         }
+
+        Ok(())
     }
 }

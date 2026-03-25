@@ -1,8 +1,10 @@
+use core::fmt::Write;
 use core::fmt::Display;
 use binrw::io::{Read, Seek};
 use binrw::{BinRead, BinResult, BinWrite, Endian};
 use binrw::meta::{EndianKind, ReadEndian};
 use crate::dxb_parser::body::DXBParserError;
+use crate::global::instruction_codes::InstructionCode;
 use crate::global::protocol_structures::instruction_data::{ImplTypeData, IntegerData, ListData, ShortTextData, TextData, TypeReferenceData};
 use crate::global::protocol_structures::instructions::NextExpectedInstructions;
 use crate::global::type_instruction_codes::TypeInstructionCode;
@@ -94,6 +96,51 @@ impl TypeInstruction {
         TypeInstructionCode::try_from(instruction_code)
             .map_err(|_| DXBParserError::InvalidInstructionCode(instruction_code))
     }
+
+    pub fn to_formatted_string(&self) -> String {
+        let mut string = String::new();
+        let code = TypeInstructionCode::from(self);
+        write!(&mut string, "\x1b[38;2;245;39;176m{}\x1b[0m", code).unwrap();
+
+        if let Some(metadata_string) = self.metadata_string() {
+            write!(&mut string, " {}", metadata_string).unwrap();
+        }
+
+        string
+    }
+
+    pub fn metadata_string(&self) -> Option<String> {
+        let mut string = String::new();
+
+        match self {
+            TypeInstruction::LiteralText(data) => {
+                write!(string, "{}", data.0)
+            }
+            TypeInstruction::LiteralInteger(data) => {
+                write!(string, "{}", data.0)
+            }
+            TypeInstruction::List(data) => {
+                write!(string, "{}", data.element_count)
+            }
+            TypeInstruction::SharedTypeReference(reference_data) => {
+                write!(
+                    string,
+                    "(mutability: {:?}, address: {})",
+                    TypeMetadata::from(&reference_data.metadata),
+                    PointerAddress::from(&reference_data.address)
+                )
+            }
+            TypeInstruction::ImplType(data) => {
+                write!(string, "({} impls)", data.impl_count)
+            }
+            _ => {
+                // no custom disassembly
+                return None;
+            }
+        }.unwrap();
+
+        Some(string)
+    }
 }
 
 impl BinRead for TypeInstruction {
@@ -122,31 +169,10 @@ impl Display for TypeInstruction {
         let code = TypeInstructionCode::from(self);
         write!(f, "{} ", code)?;
 
-        match self {
-            TypeInstruction::LiteralText(data) => {
-                write!(f, "{}", data.0)
-            }
-            TypeInstruction::LiteralInteger(data) => {
-                write!(f, "{}", data.0)
-            }
-            TypeInstruction::List(data) => {
-                write!(f, "{}", data.element_count)
-            }
-            TypeInstruction::SharedTypeReference(reference_data) => {
-                write!(
-                    f,
-                    "(mutability: {:?}, address: {})",
-                    TypeMetadata::from(&reference_data.metadata),
-                    PointerAddress::from(&reference_data.address)
-                )
-            }
-            TypeInstruction::ImplType(data) => {
-                write!(f, "({} impls)", data.impl_count)
-            }
-            _ => {
-                // no custom disassembly
-                Ok(())
-            }
+        if let Some(metadata_string) = self.metadata_string() {
+            write!(f, " {}", metadata_string)?;
         }
+
+        Ok(())
     }
 }
