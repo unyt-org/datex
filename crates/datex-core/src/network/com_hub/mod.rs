@@ -2003,6 +2003,9 @@ pub mod tests {
 
     #[tokio::test]
     pub async fn test_send() {
+        use datex_crypto_facade::crypto::Crypto;
+        let enc_body = crate::crypto::CryptoImpl::aes_ctr_encrypt(&[0u8; 32], &[0u8; 16], b"Hello world!".to_vec().as_ref()).await.unwrap();
+
         run_with_com_hub_and_proxy_interface(
             async move |com_hub, _, mut outgoing_block_receiver, _| {
                 // send block via com hub to proxy interface
@@ -2016,7 +2019,7 @@ pub mod tests {
                 // get next outgoing block that was sent via the proxy interface
                 let outgoing_block =
                     outgoing_block_receiver.next().await.unwrap();
-                assert_eq!(outgoing_block.body, b"Hello world!");
+                assert_eq!(outgoing_block.body, enc_body);
             },
         )
         .await;
@@ -2055,6 +2058,9 @@ pub mod tests {
 
     #[tokio::test]
     pub async fn send_block_via_multiple_interfaces() {
+        use datex_crypto_facade::crypto::Crypto;
+        let enc_body = crate::crypto::CryptoImpl::aes_ctr_encrypt(&[0u8; 32], &[0u8; 16], b"Hello world!".to_vec().as_ref()).await.unwrap();
+
         run_with_com_hub(|com_hub, _| async move {
             let (_sender_b, mut outgoing_block_receiver_b) =
                 add_proxy_interface_to_com_hub(
@@ -2089,8 +2095,8 @@ pub mod tests {
 
             info!("block sender b: {}", outgoing_block_b.sender());
             info!("block sender c: {}", outgoing_block_c.sender());
-            assert_eq!(outgoing_block_b.body, b"Hello world!");
-            assert_eq!(outgoing_block_c.body, b"Hello world!");
+            assert_eq!(outgoing_block_b.body, enc_body);
+            assert_eq!(outgoing_block_c.body, enc_body);
         })
         .await
     }
