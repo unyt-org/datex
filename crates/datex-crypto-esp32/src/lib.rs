@@ -86,15 +86,31 @@ impl Crypto for CryptoEsp32 {
     }
 
     fn gen_ed25519<'a>()
-    -> AsyncCryptoResult<'a, (Vec<u8>, Vec<u8>), Self::Ed25519GenError> {
-        todo!("#755 Undescribed by author.")
+    -> AsyncCryptoResult<'a, ([u8; 32], [u8; 32]), Self::Ed25519GenError> {
+        Box::pin(async move {
+            let mut key = [0u8; 32];
+            // WIP fill key with random bytes
+            let x = SigningKey::from_bytes(&key);
+
+            // note: raw pub key
+            // let temp = x.verifying_key().to_bytes();
+            let pub_key = x
+                .verifying_key()
+                .to_bytes();
+            Ok((pub_key, x.to_bytes()))
+        })
     }
 
     fn sig_ed25519<'a>(
         _pri_key: &'a [u8],
         _data: &'a [u8],
     ) -> AsyncCryptoResult<'a, [u8; 64], Self::Ed25519SignError> {
-        todo!("#756 Undescribed by author.")
+        Box::pin(async move {
+            let prepped_key: [u8; 32] = pri_key.to_vec().try_into().unwrap();
+            Ok(SigningKey::from_bytes(&prepped_key)
+                .sign(data)
+                .to_bytes())
+        })
     }
 
     fn ver_ed25519<'a>(
@@ -102,49 +118,45 @@ impl Crypto for CryptoEsp32 {
         _sig: &'a [u8],
         _data: &'a [u8],
     ) -> AsyncCryptoResult<'a, bool, Self::Ed25519VerifyError> {
-        todo!("#757 Undescribed by author.")
-    }
-
-    fn aes_ctr_encrypt<'a>(
-        _key: &'a [u8; 32],
-        _iv: &'a [u8; 16],
-        _plaintext: &'a [u8],
-    ) -> AsyncCryptoResult<'a, Vec<u8>, Self::AesCtrError> {
-        todo!("#758 Undescribed by author.")
-    }
-
-    fn aes_ctr_decrypt<'a>(
-        _key: &'a [u8; 32],
-        _iv: &'a [u8; 16],
-        _cipher: &'a [u8],
-    ) -> AsyncCryptoResult<'a, Vec<u8>, Self::AesCtrError> {
-        todo!("#759 Undescribed by author.")
-    }
-
-    fn key_wrap_rfc3394<'a>(
-        _kek: &'a [u8; 32],
-        _key_to_wrap: &'a [u8; 32],
-    ) -> AsyncCryptoResult<'a, [u8; 40], Self::KeyWrapError> {
-        todo!("#760 Undescribed by author.")
-    }
-
-    fn key_unwrap_rfc3394<'a>(
-        _kek: &'a [u8; 32],
-        _wrapped: &'a [u8; 40],
-    ) -> AsyncCryptoResult<'a, [u8; 32], Self::KeyUnwrapError> {
-        todo!("#761 Undescribed by author.")
+        Box::pin(async move {
+            let sign: [u8; 64] = sig.try_into().unwrap();
+            let prepped_key: [u8; 32] = pub_key.to_vec().try_into().unwrap();
+            let ver = VerifyingKey::from_bytes(&prepped_key).unwrap();
+            Ok(ver.verify(data, &Signature::from_bytes(&sign)).is_ok())
+        })
     }
 
     fn gen_x25519<'a>()
-    -> AsyncCryptoResult<'a, ([u8; 44], [u8; 48]), Self::X25519GenError> {
-        todo!("#762 Undescribed by author.")
+    -> AsyncCryptoResult<'a, ([u8; 32], [u8; 32]), Self::X25519GenError> {
+        Box::pin(async move {
+            /*
+            let pri_key = StaticSecret::random().to_bytes();
+            let pub_key = PublicKey::from(&pri_key).to_bytes();
+            Ok((pub_key, pri_key.to_bytes()));
+            */
+            let pri_key = StaticSecret::from([0u8; 32]);
+            // WIP fill key with random bytes
+            let pub_key = PublicKey::from(&pri_key).to_bytes();
+            Ok((pub_key, pri_key.to_bytes()))
+        })
     }
 
     fn derive_x25519<'a>(
-        _pri_key: &'a [u8; 48],
-        _peer_pub: &'a [u8; 44],
+        pri_key: &'a [u8; 32],
+        peer_pub: &'a [u8; 32],
     ) -> AsyncCryptoResult<'a, [u8; 32], Self::X25519DeriveError> {
-        todo!("#763 Undescribed by author.")
+        Box::pin(async move {
+            /*
+            let x = StaticSecret::from(pri_key);
+            let shared_sec = x.diffie_hellman(&peer_pub.into()).to_bytes();
+            Ok(shared_sec.to_vec());
+            */
+            let x: [u8; 32] = pri_key.to_vec().try_into().unwrap();
+            let y: [u8; 32] = peer_pub.to_vec().try_into().unwrap();
+            let private_key= StaticSecret::from(x);
+            let public_key = PublicKey::from(y);
+            Ok(private_key.diffie_hellman(&public_key).to_bytes())
+        })
     }
 }
 
@@ -156,4 +168,71 @@ pub fn now_ms() -> u64 {
             .clone_unchecked()
     });
     rtc.current_time_us() / 1000
+}
+
+#[cfg(test)]
+mod tests {
+    use datex_crypto_facade::crypto::Crypto;
+
+    use super::CryptoEsp32;
+
+    #[tokio::test]
+    async fn test_x25519() {
+        let (a_pub_key, a_pri_key) = CryptoEsp32::gen_x25519().await.unwrap();
+        let (b_pub_key, b_pri_key) = CryptoEsp32::gen_x25519().await.unwrap();
+
+        let a_sec = CryptoEsp32::derive_x25519(&a_pri_key, &b_pub_key)
+            .await
+            .unwrap();
+        let b_sec = CryptoEsp32::derive_x25519(&b_pri_key, &a_pub_key)
+            .await
+            .unwrap();
+        assert_eq!(a_sec, b_sec);
+    }
+
+    #[tokio::test]
+    async fn test_ed25519() {
+        let msg = b"SomeMsg".to_vec();
+        let (pub_key, pri_key) = CryptoEsp32::gen_ed25519().await.unwrap();
+        let sign = CryptoEsp32::sig_ed25519(pri_key.as_slice(), msg.as_slice())
+            .await
+            .unwrap();
+        let ver = CryptoEsp32::ver_ed25519(pub_key.as_slice(), &sign, &msg)
+            .await
+            .unwrap();
+
+        // std::println!("{:?} - {}", pri_key, pri_key.len());
+        assert_eq!(pub_key.len(), 44);
+        assert_eq!(pri_key.len(), 48);
+        assert!(ver);
+    }
+
+    #[tokio::test]
+    async fn test_aes_ctr() {
+        let key = [0u8; 32];
+        let nonce = [0u8; 16];
+        let msg = b"SomeMsg".to_vec();
+        let encrypted =
+            CryptoEsp32::aes_ctr_encrypt(&key, &nonce, &msg.clone())
+                .await
+                .unwrap();
+        let decrypted =
+            CryptoEsp32::aes_ctr_decrypt(&key, &nonce, &encrypted.clone())
+                .await
+                .unwrap();
+        assert_ne!(msg, encrypted);
+        assert_eq!(msg, decrypted);
+    }
+
+    #[tokio::test]
+    async fn test_hkdf() {
+        let key = [0u8; 32];
+        let x = CryptoEsp32::hkdf_sha256(&key, &[0u8; 16]).await.unwrap();
+        let y: [u8; 32] = [
+            223, 114, 4, 84, 111, 27, 238, 120, 184, 83, 36, 167, 137, 140,
+            161, 25, 179, 135, 224, 19, 134, 209, 174, 240, 55, 120, 29, 74,
+            138, 3, 106, 238,
+        ];
+        assert_eq!(x, y);
+    }
 }
