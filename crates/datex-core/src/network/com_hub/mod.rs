@@ -1036,7 +1036,7 @@ impl ComHub {
                         .map_err(|_| ComHubError::SignatureCreationError)?;
 
                     let raw_signed =
-                        [pub_key.clone(), block.body.clone()].concat();
+                        [pub_key.to_vec(), block.body.clone()].concat();
 
                     let hashed_signed = CryptoImpl::hash_sha256(&raw_signed)
                         .await
@@ -1069,7 +1069,7 @@ impl ComHub {
                         SignatureType::None => unreachable!("handled above"),
                     };
 
-                    block.signature = Some([sig_bytes, pub_key].concat());
+                    block.signature = Some([sig_bytes, pub_key.to_vec()].concat());
                     update_sender_and_timestamp(block, endpoint)
                 }))
             }
