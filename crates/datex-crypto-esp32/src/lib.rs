@@ -153,34 +153,18 @@ impl Crypto for CryptoEsp32 {
     }
 
     fn gen_ed25519<'a>()
-    -> AsyncCryptoResult<'a, (Vec<u8>, Vec<u8>), Self::Ed25519GenError> {
+    -> AsyncCryptoResult<'a, ([u8; 32], [u8; 32]), Self::Ed25519GenError> {
         Box::pin(async move {
             let mut key = [0u8; 32];
             // WIP fill key with random bytes
             let x = SigningKey::from_bytes(&key);
 
-            let oid = ObjectIdentifier::new("1.3.101.112").unwrap();
-            let prepped_key =
-                [[4u8, 32u8].to_vec(), x.to_bytes().to_vec()].concat();
-            let pri_x = PrivateKeyInfo {
-                algorithm: AlgorithmIdentifierRef {
-                    oid,
-                    parameters: None,
-                },
-                private_key: &prepped_key,
-                public_key: None,
-            }
-            .to_der()
-            .unwrap();
             // note: raw pub key
             // let temp = x.verifying_key().to_bytes();
             let pub_key = x
                 .verifying_key()
-                .to_public_key_der()
-                .unwrap()
-                .as_bytes()
-                .to_vec();
-            Ok((pub_key, pri_x))
+                .to_bytes();
+            Ok((pub_key, x.to_bytes()))
         })
     }
 
@@ -189,9 +173,8 @@ impl Crypto for CryptoEsp32 {
         data: &'a [u8],
     ) -> AsyncCryptoResult<'a, [u8; 64], Self::Ed25519SignError> {
         Box::pin(async move {
-            let prepped_key: [u8; 48] = pri_key.to_vec().try_into().unwrap();
-            Ok(SigningKey::from_pkcs8_der(&prepped_key)
-                .unwrap()
+            let prepped_key: [u8; 32] = pri_key.to_vec().try_into().unwrap();
+            Ok(SigningKey::from_bytes(&prepped_key)
                 .sign(data)
                 .to_bytes())
         })
@@ -204,13 +187,14 @@ impl Crypto for CryptoEsp32 {
     ) -> AsyncCryptoResult<'a, bool, Self::Ed25519VerifyError> {
         Box::pin(async move {
             let sign: [u8; 64] = sig.try_into().unwrap();
-            let ver = VerifyingKey::from_public_key_der(pub_key).unwrap();
+            let prepped_key: [u8; 32] = pub_key.to_vec().try_into().unwrap();
+            let ver = VerifyingKey::from_bytes(&prepped_key).unwrap();
             Ok(ver.verify(data, &Signature::from_bytes(&sign)).is_ok())
         })
     }
 
     fn gen_x25519<'a>()
-    -> AsyncCryptoResult<'a, ([u8; 44], [u8; 48]), Self::X25519GenError> {
+    -> AsyncCryptoResult<'a, ([u8; 32], [u8; 32]), Self::X25519GenError> {
         Box::pin(async move {
             /*
             let pri_key = StaticSecret::random().to_bytes();
@@ -220,55 +204,13 @@ impl Crypto for CryptoEsp32 {
             let pri_key = StaticSecret::from([0u8; 32]);
             // WIP fill key with random bytes
             let pub_key = PublicKey::from(&pri_key).to_bytes();
-            let oid = ObjectIdentifier::new("1.3.101.110").unwrap();
-
-            // For a historical reason the private key in pkcs8 is prefixed twice
-            // with the octet string instruction code followed by the length of the octet string
-            let prepped_key =
-                [[4u8, 34u8].to_vec(), pri_key.to_bytes().to_vec()].concat();
-            let pri_x = PrivateKeyInfo {
-                algorithm: AlgorithmIdentifierRef {
-                    oid,
-                    parameters: None,
-                },
-                private_key: &prepped_key,
-                public_key: None,
-            }
-            .to_der()
-            .unwrap();
-
-            // PEM encoding
-            /*
-            let pri_pem = pkcs8::SecretDocument::from_pkcs8_der(&pri_x)
-                .unwrap()
-                .to_pem("PRIVATE KEY", LineEnding::default())
-                .unwrap()
-                .to_ascii_uppercase();
-            */
-
-            let pub_spki = SubjectPublicKeyInfoRef {
-                algorithm: AlgorithmIdentifierRef {
-                    oid,
-                    parameters: None,
-                },
-                subject_public_key: BitStringRef::new(0, &pub_key).unwrap(),
-            }
-            .to_der()
-            .unwrap();
-
-            // sanity check
-            let z = PrivateKeyInfo::from_der(pri_x.as_slice()).unwrap();
-            assert_eq!(prepped_key.to_vec(), z.private_key.to_vec());
-
-            let public_key: [u8; 44] = pub_spki.try_into().unwrap();
-            let private_key: [u8; 48] = pri_x.try_into().unwrap();
-            Ok((public_key, private_key))
+            Ok((pub_key, pri_key.to_bytes()))
         })
     }
 
     fn derive_x25519<'a>(
-        pri_key: &'a [u8; 48],
-        peer_pub: &'a [u8; 44],
+        pri_key: &'a [u8; 32],
+        peer_pub: &'a [u8; 32],
     ) -> AsyncCryptoResult<'a, [u8; 32], Self::X25519DeriveError> {
         Box::pin(async move {
             /*
@@ -276,11 +218,11 @@ impl Crypto for CryptoEsp32 {
             let shared_sec = x.diffie_hellman(&peer_pub.into()).to_bytes();
             Ok(shared_sec.to_vec());
             */
-            let x: [u8; 32] = pri_key[16..].try_into().unwrap();
-            let xx = StaticSecret::from(x);
-            let y: [u8; 32] = peer_pub[12..].try_into().unwrap();
-            let yy = PublicKey::from(y);
-            Ok(xx.diffie_hellman(&yy).to_bytes())
+            let x: [u8; 32] = pri_key.to_vec().try_into().unwrap();
+            let y: [u8; 32] = peer_pub.to_vec().try_into().unwrap();
+            let private_key= StaticSecret::from(x);
+            let public_key = PublicKey::from(y);
+            Ok(private_key.diffie_hellman(&public_key).to_bytes())
         })
     }
 }
@@ -330,74 +272,6 @@ mod tests {
         assert_eq!(pub_key.len(), 44);
         assert_eq!(pri_key.len(), 48);
         assert!(ver);
-    }
-
-    #[tokio::test]
-    async fn check_ed_and_x() {
-        let ser_pub: [u8; 44] = [
-            48, 42, 48, 5, 6, 3, 43, 101, 110, 3, 33, 0, 106, 251, 212, 218,
-            131, 11, 184, 255, 109, 73, 74, 73, 124, 75, 108, 2, 190, 233, 34,
-            228, 244, 30, 86, 193, 70, 36, 155, 81, 223, 181, 76, 83,
-        ];
-        let ser_pri: [u8; 48] = [
-            48, 46, 2, 1, 0, 48, 5, 6, 3, 43, 101, 110, 4, 34, 4, 32, 181, 170,
-            218, 225, 185, 123, 28, 10, 5, 76, 13, 28, 89, 124, 205, 151, 225,
-            132, 183, 90, 104, 74, 139, 47, 152, 207, 100, 33, 2, 184, 166,
-            217,
-        ];
-        let cli_pub: [u8; 44] = [
-            48, 42, 48, 5, 6, 3, 43, 101, 110, 3, 33, 0, 244, 222, 220, 93,
-            110, 52, 47, 78, 15, 33, 207, 47, 84, 139, 123, 228, 254, 72, 241,
-            22, 17, 211, 37, 40, 191, 128, 232, 197, 104, 140, 167, 12,
-        ];
-        let cli_pri: [u8; 48] = [
-            48, 46, 2, 1, 0, 48, 5, 6, 3, 43, 101, 110, 4, 34, 4, 32, 187, 195,
-            133, 120, 172, 61, 170, 25, 75, 103, 226, 163, 137, 242, 206, 180,
-            177, 128, 122, 13, 236, 34, 83, 207, 9, 137, 104, 108, 139, 23,
-            107, 79,
-        ];
-        let ser_sec = CryptoEsp32::derive_x25519(&ser_pri, &cli_pub)
-            .await
-            .unwrap();
-        let cli_sec = CryptoEsp32::derive_x25519(&cli_pri, &ser_pub)
-            .await
-            .unwrap();
-        let shared_secret_check: [u8; 32] = [
-            186, 148, 122, 28, 89, 38, 223, 152, 165, 218, 70, 66, 159, 86,
-            169, 235, 167, 32, 203, 45, 153, 141, 39, 112, 39, 186, 77, 65,
-            230, 38, 154, 34,
-        ];
-        assert_eq!(ser_sec, shared_secret_check);
-        assert_eq!(cli_sec, shared_secret_check);
-
-        // signatures
-        let data = b"Some message to  sign".to_vec();
-        let pub_key: [u8; 44] = [
-            48, 42, 48, 5, 6, 3, 43, 101, 112, 3, 33, 0, 23, 90, 144, 62, 109,
-            49, 38, 236, 202, 74, 60, 0, 251, 56, 16, 83, 167, 236, 51, 191,
-            90, 202, 225, 244, 59, 24, 242, 79, 112, 133, 51, 184,
-        ];
-        let pri_key: [u8; 48] = [
-            48, 46, 2, 1, 0, 48, 5, 6, 3, 43, 101, 112, 4, 34, 4, 32, 254, 225,
-            119, 84, 255, 1, 51, 183, 133, 59, 19, 6, 176, 150, 37, 219, 178,
-            48, 168, 22, 139, 189, 12, 209, 26, 237, 58, 130, 111, 169, 62,
-            252,
-        ];
-        let sig = CryptoEsp32::sig_ed25519(&pri_key, &data).await.unwrap();
-        let sig_check: [u8; 64] = [
-            10, 93, 243, 184, 21, 238, 165, 132, 57, 149, 73, 176, 98, 96, 160,
-            186, 31, 197, 47, 167, 154, 168, 185, 102, 243, 241, 76, 128, 220,
-            34, 128, 218, 17, 90, 106, 167, 233, 16, 213, 179, 48, 2, 85, 64,
-            249, 76, 214, 168, 132, 191, 198, 205, 72, 42, 35, 136, 228, 73,
-            174, 116, 222, 76, 130, 3,
-        ];
-
-        assert_eq!(sig, sig_check);
-        assert!(
-            CryptoEsp32::ver_ed25519(&pub_key, &sig, &data)
-                .await
-                .unwrap()
-        );
     }
 
     #[tokio::test]

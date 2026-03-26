@@ -233,14 +233,14 @@ mod tests {
         }
 
         fn gen_x25519<'a>()
-        -> AsyncCryptoResult<'a, ([u8; 44], [u8; 48]), Self::X25519GenError>
+        -> AsyncCryptoResult<'a, ([u8; 32], [u8; 32]), Self::X25519GenError>
         {
             unimplemented!()
         }
 
         fn derive_x25519<'a>(
-            _pri_key: &'a [u8; 48],
-            _peer_pub: &'a [u8; 44],
+            _pri_key: &'a [u8; 32],
+            _peer_pub: &'a [u8; 32],
         ) -> AsyncCryptoResult<'a, [u8; 32], Self::X25519DeriveError> {
             unimplemented!()
         }
