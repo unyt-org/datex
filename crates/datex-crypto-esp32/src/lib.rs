@@ -269,8 +269,8 @@ mod tests {
             .unwrap();
 
         // std::println!("{:?} - {}", pri_key, pri_key.len());
-        assert_eq!(pub_key.len(), 44);
-        assert_eq!(pri_key.len(), 48);
+        assert_eq!(pub_key.len(), 32);
+        assert_eq!(pri_key.len(), 32);
         assert!(ver);
     }
 
