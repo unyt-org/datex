@@ -995,6 +995,8 @@ impl ComHub {
             Ok(block)
         }
 
+        #[cfg(feature = "crypto_enabled")]
+        {
         // Prepare future encryption
         let fut_block = match block.routing_header.flags.encryption_type() {
             EncryptionType::None => {
@@ -1015,10 +1017,11 @@ impl ComHub {
         };
 
         // Execute future encryption
-        let mut block = match fut_block {
+        block = match fut_block {
             SyncOrAsync::Sync(block) => block,
             SyncOrAsync::Async(block) => block.await,
         };
+        }
 
         match block.routing_header.flags.signature_type() {
 
