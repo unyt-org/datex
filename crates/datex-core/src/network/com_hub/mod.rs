@@ -2005,8 +2005,6 @@ pub mod tests {
     #[tokio::test]
     pub async fn test_send() {
         use datex_crypto_facade::crypto::Crypto;
-        let enc_body = crate::crypto::CryptoImpl::aes_ctr_encrypt(&[0u8; 32], &[0u8; 16], b"Hello world!".to_vec().as_ref()).await.unwrap();
-
         run_with_com_hub_and_proxy_interface(
             async move |com_hub, _, mut outgoing_block_receiver, _| {
                 // send block via com hub to proxy interface
@@ -2020,7 +2018,13 @@ pub mod tests {
                 // get next outgoing block that was sent via the proxy interface
                 let outgoing_block =
                     outgoing_block_receiver.next().await.unwrap();
-                assert_eq!(outgoing_block.body, enc_body);
+
+                let key: [u8; 32] = outgoing_block.body[..32].try_into().unwrap();
+                let actual_body = outgoing_block.body[32..].to_vec();
+                let enc_body = crate::crypto::CryptoImpl::aes_ctr_encrypt(&key, &[0u8; 16], b"Hello world!".to_vec().as_ref()).await.unwrap();
+                assert_eq!(enc_body.clone(), actual_body);
+
+                assert_eq!(outgoing_block.body, [key.to_vec(), enc_body].concat());
             },
         )
         .await;
@@ -2060,7 +2064,7 @@ pub mod tests {
     #[tokio::test]
     pub async fn send_block_via_multiple_interfaces() {
         use datex_crypto_facade::crypto::Crypto;
-        let enc_body = crate::crypto::CryptoImpl::aes_ctr_encrypt(&[0u8; 32], &[0u8; 16], b"Hello world!".to_vec().as_ref()).await.unwrap();
+        use crate::crypto::CryptoImpl;
 
         run_with_com_hub(|com_hub, _| async move {
             let (_sender_b, mut outgoing_block_receiver_b) =
@@ -2094,10 +2098,15 @@ pub mod tests {
             let outgoing_block_c =
                 outgoing_block_receiver_c.next().await.unwrap();
 
+            let key_b: [u8; 32] = outgoing_block_b.body[..32].try_into().unwrap();
+            let key_c: [u8; 32] = outgoing_block_c.body[..32].try_into().unwrap();
+            let enc_body_b = [key_b.to_vec(), CryptoImpl::aes_ctr_encrypt(&key_b, &[0u8; 16], b"Hello world!".to_vec().as_ref()).await.unwrap()].concat();
+            let enc_body_c = [key_c.to_vec(), CryptoImpl::aes_ctr_encrypt(&key_c, &[0u8; 16], b"Hello world!".to_vec().as_ref()).await.unwrap()].concat();
+
             info!("block sender b: {}", outgoing_block_b.sender());
             info!("block sender c: {}", outgoing_block_c.sender());
-            assert_eq!(outgoing_block_b.body, enc_body);
-            assert_eq!(outgoing_block_c.body, enc_body);
+            assert_eq!(outgoing_block_b.body, enc_body_b);
+            assert_eq!(outgoing_block_c.body, enc_body_c);
         })
         .await
     }
