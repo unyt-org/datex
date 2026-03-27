@@ -155,12 +155,8 @@ impl Crypto for CryptoEsp32 {
     fn gen_ed25519<'a>()
     -> AsyncCryptoResult<'a, ([u8; 32], [u8; 32]), Self::Ed25519GenError> {
         Box::pin(async move {
-            let mut key = [0u8; 32];
-            // WIP fill key with random bytes
+            let key: [u8; 32] = Self::random_bytes(32).try_into().unwrap();
             let x = SigningKey::from_bytes(&key);
-
-            // note: raw pub key
-            // let temp = x.verifying_key().to_bytes();
             let pub_key = x
                 .verifying_key()
                 .to_bytes();
@@ -196,13 +192,8 @@ impl Crypto for CryptoEsp32 {
     fn gen_x25519<'a>()
     -> AsyncCryptoResult<'a, ([u8; 32], [u8; 32]), Self::X25519GenError> {
         Box::pin(async move {
-            /*
-            let pri_key = StaticSecret::random().to_bytes();
-            let pub_key = PublicKey::from(&pri_key).to_bytes();
-            Ok((pub_key, pri_key.to_bytes()));
-            */
-            let pri_key = StaticSecret::from([0u8; 32]);
-            // WIP fill key with random bytes
+            let key: [u8; 32] = Self::random_bytes(32).try_into().unwrap();
+            let pri_key = StaticSecret::from(key);
             let pub_key = PublicKey::from(&pri_key).to_bytes();
             Ok((pub_key, pri_key.to_bytes()))
         })
@@ -213,11 +204,6 @@ impl Crypto for CryptoEsp32 {
         peer_pub: &'a [u8; 32],
     ) -> AsyncCryptoResult<'a, [u8; 32], Self::X25519DeriveError> {
         Box::pin(async move {
-            /*
-            let x = StaticSecret::from(pri_key);
-            let shared_sec = x.diffie_hellman(&peer_pub.into()).to_bytes();
-            Ok(shared_sec.to_vec());
-            */
             let x: [u8; 32] = pri_key.to_vec().try_into().unwrap();
             let y: [u8; 32] = peer_pub.to_vec().try_into().unwrap();
             let private_key= StaticSecret::from(x);
