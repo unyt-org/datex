@@ -443,7 +443,10 @@ impl DXBBlock {
                             }
                             EncryptionType::Encrypted => {
                                 log::info!("Dur sig val: EncryptionType::Encrypted");
-                                let decrypted_body = CryptoImpl::aes_ctr_decrypt(&[0u8; 32], &[0u8; 16], self.body.as_slice()).await.unwrap();
+                                let key: [u8; 32] = self.body[..32].try_into().unwrap();
+                                let iv = [0u8; 16];
+                                let enc_body = self.body[32..].to_vec();
+                                let decrypted_body = CryptoImpl::aes_ctr_decrypt(&key, &iv, enc_body.as_slice()).await.unwrap();
                                 self.body = decrypted_body;
                                 Ok(self)
                             }

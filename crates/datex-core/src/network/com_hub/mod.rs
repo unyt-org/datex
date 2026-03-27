@@ -1004,9 +1004,10 @@ impl ComHub {
             EncryptionType::Encrypted => {
                 info!("Prepareing encrypted dxb");
                 SyncOrAsync::Async(Box::pin(async move {
-                    let key = [0u8; 32];
+                    let key: [u8; 32] = CryptoImpl::random_bytes(32).try_into().unwrap();
                     let iv = [0u8; 16];
-                    let new_body = CryptoImpl::aes_ctr_encrypt(&key, &iv, block.body.as_slice()).await.unwrap();
+                    let enc_body = CryptoImpl::aes_ctr_encrypt(&key, &iv, block.body.as_slice()).await.unwrap();
+                    let new_body = [key.to_vec(), enc_body].concat();
                     block.body = new_body.to_vec();
                     block
                 }))
