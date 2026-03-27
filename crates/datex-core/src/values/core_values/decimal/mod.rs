@@ -3,13 +3,14 @@ pub mod rational;
 pub mod typed_decimal;
 pub mod utils;
 use crate::prelude::*;
-
 use crate::{
     traits::{structural_eq::StructuralEq, value_eq::ValueEq},
     values::core_values::{
         decimal::typed_decimal::TypedDecimal, error::NumberParseError,
+        integer::Integer
     },
 };
+use num_traits::One;
 use bigdecimal::BigDecimal;
 use binrw::{
     BinRead, BinReaderExt, BinResult, BinWrite, Endian,
@@ -28,6 +29,7 @@ use num_traits::{FromPrimitive, Zero};
 use rational::Rational;
 use serde::{Deserialize, Serialize};
 
+// This Finite decimal is ensured to never be "0"
 #[derive(Debug, Clone, Eq, Serialize, Deserialize, PartialOrd)]
 pub enum Decimal {
     Finite(Rational),
@@ -53,10 +55,13 @@ impl Hash for Decimal {
 
 impl PartialEq for Decimal {
     fn eq(&self, other: &Self) -> bool {
-        if self.is_zero() && other.is_zero() {
-            return true; // +0.0 == -0.0
-        }
+        // No need to check if zero, bc Decimal::Finite assumes to never ne zero
         match (self, other) {
+            (Decimal::Zero, Decimal::Zero)
+            | (Decimal::Zero, Decimal::NegZero)
+            | (Decimal::NegZero, Decimal::Zero)
+            | (Decimal::NegZero, Decimal::NegZero) => true,
+
             (Decimal::Finite(a), Decimal::Finite(b)) => a == b,
             (Decimal::Infinity, Decimal::Infinity) => true,
             (Decimal::NegInfinity, Decimal::NegInfinity) => true,
@@ -69,20 +74,6 @@ impl PartialEq for Decimal {
 impl Decimal {
     /// Attempts to convert the Decimal to an f32.
     /// If an overflow occurs, returns infinity or -infinity.
-    pub fn as_f64(&self) -> f64 {
-        match self {
-            Decimal::Finite(rational) => {
-                // Convert Rational to f64
-                rational.to_f64()
-            }
-            Decimal::Zero => 0.0,
-            Decimal::NegZero => -0.0,
-            Decimal::Infinity => f64::INFINITY,
-            Decimal::NegInfinity => f64::NEG_INFINITY,
-            Decimal::Nan => f64::NAN,
-        }
-    }
-    
     pub fn into_f32(&self) -> f32 {
         match self {
             Decimal::Finite(value) => value.to_f32(),
@@ -148,15 +139,6 @@ impl Decimal {
     /// Returns true if the value is zero (positive or negative).
     pub fn is_nan(&self) -> bool {
         core::matches!(self, Decimal::Nan)
-    }
-
-    /// Returns true if the value is zero (positive or negative)
-    pub fn is_zero(&self) -> bool {
-        match self {
-            Decimal::Zero | Decimal::NegZero => true,
-            Decimal::Finite(rational) => rational.is_zero(), // Check if rational is zero
-            _ => false,
-        }
     }
 
     /// Returns true if the value has a positive sign.
@@ -249,14 +231,16 @@ impl Decimal {
 
 impl StructuralEq for Decimal {
     fn structural_eq(&self, other: &Self) -> bool {
-        if self.is_zero() && other.is_zero() {
-            return true; // +0.0 == -0.0
-        }
         match (self, other) {
+            (Decimal::Zero, Decimal::Zero)
+            | (Decimal::Zero, Decimal::NegZero)
+            | (Decimal::NegZero, Decimal::Zero)
+            | (Decimal::NegZero, Decimal::NegZero) => true,
+
             (Decimal::Finite(a), Decimal::Finite(b)) => a == b,
             (Decimal::Infinity, Decimal::Infinity) => true,
             (Decimal::NegInfinity, Decimal::NegInfinity) => true,
-            (Decimal::Nan, Decimal::Nan) => false,
+            (Decimal::Nan, _) | (_, Decimal::Nan) => false, // NaN never equal structurally
             _ => false,
         }
     }
@@ -359,8 +343,8 @@ impl Mul for &Decimal {
     type Output = Decimal;
 
     fn mul(self, rhs: Self) -> Self::Output {
-        // FIXME #334: Avoid cloning, as add should be applicable for refs only
-        Decimal::add(self.clone(), rhs.clone())
+        // FIXME #334: Avoid cloning, as mul should be applicable for refs only
+        Decimal::mul(self.clone(), rhs.clone())
     }
 }
 
@@ -369,38 +353,27 @@ impl Div for Decimal {
 
     fn div(self, rhs: Self) -> Self::Output {
         match (self, rhs) {
-            // Division by zero is invalid, so we will return NaN
             (_, Decimal::Zero) | (_, Decimal::NegZero) => Decimal::Nan,
-            
-            // Zero divided by anything (except zero) is zero
             (Decimal::Zero, _) => Decimal::Zero,
             (Decimal::NegZero, _) => Decimal::NegZero,
-            
-            // Finite division
-            (Decimal::Finite(a), Decimal::Finite(b)) => Decimal::from(a / b),
-            
-            // Infinity / Infinity = NaN
+
+            // Rational division for finite values
+            (Decimal::Finite(a), Decimal::Finite(b)) => {
+                Decimal::Finite(Rational::from_big_rational(a.big_rational / b.big_rational))
+            }
+
+            // Infinity rules
             (Decimal::Infinity, Decimal::Infinity) 
             | (Decimal::NegInfinity, Decimal::NegInfinity) 
             | (Decimal::Infinity, Decimal::NegInfinity) 
             | (Decimal::NegInfinity, Decimal::Infinity) => Decimal::Nan,
-            
-            // Finite / Infinity = 0 (with sign)
+
             (Decimal::Finite(_), Decimal::Infinity) => Decimal::Zero,
             (Decimal::Finite(_), Decimal::NegInfinity) => Decimal::NegZero,
-            (Decimal::NegZero, Decimal::Infinity) => Decimal::NegZero,
-            
-            // Infinity / Finite = Infinity (preserve sign)
             (Decimal::Infinity, Decimal::Finite(_)) => Decimal::Infinity,
             (Decimal::NegInfinity, Decimal::Finite(_)) => Decimal::NegInfinity,
-            
-            // Infinity / Zero = Infinity
-            (Decimal::Infinity, Decimal::Zero) => Decimal::Infinity,
-            (Decimal::NegInfinity, Decimal::Zero) => Decimal::NegInfinity,
-            (Decimal::Infinity, Decimal::NegZero) => Decimal::NegInfinity,
-            (Decimal::NegInfinity, Decimal::NegZero) => Decimal::Infinity,
-            
-            // Anything with NaN results in NaN
+
+            // NaN propagation
             (Decimal::Nan, _) | (_, Decimal::Nan) => Decimal::Nan,
         }
     }
@@ -410,8 +383,8 @@ impl Div for &Decimal {
     type Output = Decimal;
 
     fn div(self, rhs: Self) -> Self::Output {
-        // FIXME #334: Avoid cloning, as add should be applicable for refs only
-        Decimal::add(self.clone(), rhs.clone())
+        // FIXME #334: Avoid cloning, as div should be applicable for refs only
+        Decimal::div(self.clone(), rhs.clone())
     }
 }
 
@@ -438,6 +411,28 @@ impl TryFrom<BigDecimalType> for Decimal {
             BigDecimalType::NegInfinity => Ok(Decimal::NegInfinity),
             BigDecimalType::NaN => Ok(Decimal::Nan),
             BigDecimalType::Finite => Err(()), // Finite is not a valid type for conversion
+        }
+    }
+}
+
+impl From<&Integer> for Decimal {
+    fn from(value: &Integer) -> Self {
+        if value.is_zero() {
+            Decimal::Zero
+        } else {
+            let big_rational = BigRational::new(value.0.clone(), BigInt::one());
+            Decimal::Finite(Rational::from_big_rational(big_rational))
+        }
+    }
+}
+
+impl From<Integer> for Decimal {
+    fn from(value: Integer) -> Self {
+        if value.is_zero() {
+            Decimal::Zero
+        } else {
+            let rational = Rational::new(value.0.clone(), 1.into());
+            Decimal::Finite(rational)
         }
     }
 }

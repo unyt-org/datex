@@ -16,7 +16,7 @@ use binrw::{
 use core::{
     fmt::Display,
     hash::Hash,
-    ops::{Add, Neg, Sub, Mul, Div},
+    ops::{Add, Neg, Sub, Mul, Div, Rem},
     str::FromStr,
 };
 use num::{BigInt, Num};
@@ -334,7 +334,7 @@ impl Mul for &Integer {
 
     fn mul(self, rhs: Self) -> Self::Output {
         // FIXME #348: Optimize to avoid cloning if possible
-        Integer::add(self.clone(), rhs.clone())
+        Integer::mul(self.clone(), rhs.clone())
     }
 }
 
@@ -350,7 +350,23 @@ impl Div for &Integer {
 
     fn div(self, rhs: Self) -> Self::Output {
         // FIXME #348: Optimize to avoid cloning if possible
-        Integer::add(self.clone(), rhs.clone())
+        Integer::div(self.clone(), rhs.clone())
+    }
+}
+
+impl Rem for Integer {
+    type Output = Self;
+
+    fn rem(self, rhs: Self) -> Self::Output {
+        Integer(self.0 % rhs.0)
+    }
+}
+
+impl Rem for &Integer {
+    type Output = Integer;
+
+    fn rem(self, rhs: Self) -> Self::Output {
+        Integer::rem(self.clone(), rhs.clone())
     }
 }
 

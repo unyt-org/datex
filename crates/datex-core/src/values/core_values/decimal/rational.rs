@@ -14,7 +14,7 @@ use serde_with::chrono::SubsecRound;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd)]
 pub struct Rational {
-    big_rational: BigRational,
+    pub big_rational: BigRational,
 }
 
 impl Serialize for Rational {

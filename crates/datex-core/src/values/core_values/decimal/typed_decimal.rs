@@ -114,29 +114,51 @@ impl StructuralEq for TypedDecimal {
     fn structural_eq(&self, other: &Self) -> bool {
         match (self, other) {
             (TypedDecimal::F32(a), TypedDecimal::F32(b)) => {
-                a.into_inner() == b.into_inner()
+                let a = a.into_inner();
+                let b = b.into_inner();
+                if a.is_nan() || b.is_nan() {
+                    false
+                } else if a == 0.0 && b == 0.0 {
+                    true
+                } else {
+                    a == b
+                }
             }
             (TypedDecimal::F64(a), TypedDecimal::F64(b)) => {
-                a.into_inner() == b.into_inner()
+                let a = a.into_inner();
+                let b = b.into_inner();
+                if a.is_nan() || b.is_nan() {
+                    false
+                } else if a == 0.0 && b == 0.0 {
+                    true
+                } else {
+                    a == b
+                }
             }
             (TypedDecimal::F32(a), TypedDecimal::F64(b))
             | (TypedDecimal::F64(b), TypedDecimal::F32(a)) => {
-                a.into_inner() as f64 == b.into_inner()
-            }
-            (TypedDecimal::Decimal(a), TypedDecimal::Decimal(b)) => {
-                a.structural_eq(b)
-            }
-            (a, TypedDecimal::Decimal(b)) | (TypedDecimal::Decimal(b), a) => {
-                match a {
-                    TypedDecimal::F32(value) => {
-                        b.structural_eq(&Decimal::from(value.into_inner()))
-                    }
-                    TypedDecimal::F64(value) => {
-                        b.structural_eq(&Decimal::from(value.into_inner()))
-                    }
-                    _ => false,
+                let a = a.into_inner() as f64;
+                let b = b.into_inner();
+                if a.is_nan() || b.is_nan() {
+                    false
+                } else if a == 0.0 && b == 0.0 {
+                    true
+                } else {
+                    a == b
                 }
             }
+            (TypedDecimal::Decimal(a), TypedDecimal::Decimal(b)) => a.structural_eq(b),
+            (a, TypedDecimal::Decimal(b)) | (TypedDecimal::Decimal(b), a) => match a {
+                TypedDecimal::F32(value) => {
+                    let d = Decimal::from(value.into_inner());
+                    d.structural_eq(b)
+                }
+                TypedDecimal::F64(value) => {
+                    let d = Decimal::from(value.into_inner());
+                    d.structural_eq(b)
+                }
+                _ => false,
+            },
         }
     }
 }
@@ -160,32 +182,22 @@ impl ValueEq for TypedDecimal {
         }
     }
 }
-
 impl PartialEq for TypedDecimal {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            // F32 and F32
+            // F32
             (TypedDecimal::F32(a), TypedDecimal::F32(b)) => {
-                let a = a.into_inner();
-                let b = b.into_inner();
-                if a.is_nan() && b.is_nan() {
-                    true
-                } else {
-                    a == b
-                }
+                a.into_inner() == b.into_inner() || (a.into_inner().is_nan() && b.into_inner().is_nan())
             }
-            // F64 and F64
+            // F64
             (TypedDecimal::F64(a), TypedDecimal::F64(b)) => {
-                let a = a.into_inner();
-                let b = b.into_inner();
-                if a.is_nan() && b.is_nan() {
-                    true
-                } else {
-                    a == b
-                }
+                a.into_inner() == b.into_inner() || (a.into_inner().is_nan() && b.into_inner().is_nan())
             }
-            // Big and Big
-            (TypedDecimal::Decimal(a), TypedDecimal::Decimal(b)) => a == b,
+            // Decimal / BigDecimal
+            (TypedDecimal::Decimal(a), TypedDecimal::Decimal(b)) => match (a, b) {
+                (Decimal::Nan, Decimal::Nan) => true, 
+                _ => a.structural_eq(b) || a == b,   
+            },
             _ => false,
         }
     }
@@ -550,7 +562,7 @@ impl Mul for &TypedDecimal {
 
     fn mul(self, rhs: Self) -> Self::Output {
         // FIXME #339: Avoid cloning, as add should be applicable for refs only
-        TypedDecimal::add(self.clone(), rhs.clone())
+        TypedDecimal::mul(self.clone(), rhs.clone())
     }
 }
 impl Div for TypedDecimal {
@@ -620,38 +632,7 @@ impl Div for TypedDecimal {
                         }
                     }
                 }
-            }
-            TypedDecimal::Decimal(ref b) if b.is_zero() => {
-                return match self {
-                    TypedDecimal::F32(a) => {
-                        if a.into_inner() == 0.0 {
-                            TypedDecimal::F32(OrderedFloat(f32::NAN))
-                        } else if a.into_inner() > 0.0 {
-                            TypedDecimal::F32(OrderedFloat(f32::INFINITY))
-                        } else {
-                            TypedDecimal::F32(OrderedFloat(f32::NEG_INFINITY))
-                        }
-                    }
-                    TypedDecimal::F64(a) => {
-                        if a.into_inner() == 0.0 {
-                            TypedDecimal::F64(OrderedFloat(f64::NAN))
-                        } else if a.into_inner() > 0.0 {
-                            TypedDecimal::F64(OrderedFloat(f64::INFINITY))
-                        } else {
-                            TypedDecimal::F64(OrderedFloat(f64::NEG_INFINITY))
-                        }
-                    }
-                    TypedDecimal::Decimal(a) => {
-                        if a == Decimal::Zero {
-                            TypedDecimal::Decimal(Decimal::Nan)
-                        } else if a > Decimal::Zero {
-                            TypedDecimal::Decimal(Decimal::Infinity)
-                        } else {
-                            TypedDecimal::Decimal(Decimal::NegInfinity)
-                        }
-                    }
-                }
-            }
+            },
             _ => {} 
         }
 

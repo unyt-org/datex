@@ -1,7 +1,6 @@
 use crate::prelude::*;
 use core::result::Result;
 use datex_macros_internal::FromCoreValue;
-use num_traits::MulAdd;
 
 use crate::{
     libs::core::{CoreLibPointerId, get_core_lib_type_reference},
@@ -50,6 +49,7 @@ pub enum CoreValue {
     Callable(Callable),
     Range(Range),
 }
+
 impl StructuralEq for CoreValue {
     fn structural_eq(&self, other: &Self) -> bool {
         match (self, other) {
@@ -254,6 +254,17 @@ impl CoreValue {
     /// that contains inner ValueContainers.
     pub fn is_collection_value(&self) -> bool {
         core::matches!(self, CoreValue::List(_) | CoreValue::Map(_))
+    }
+
+    /// Convert Value/CoreValue to f64
+    pub fn as_f64(&self) -> Option<f64> {
+        match self {
+            CoreValue::Integer(i) => Some(i.as_f64()),
+            CoreValue::TypedInteger(i) => Some(i.as_f64()),
+            CoreValue::Decimal(d) => Some(d.into_f64()),
+            CoreValue::TypedDecimal(d) => Some(d.as_f64()),
+            _ => None,
+        }
     }
 
     /// Get the default type of the CoreValue type definition.
@@ -721,27 +732,6 @@ impl Mul for CoreValue {
     type Output = Result<CoreValue, ValueError>;
     fn mul(self, rhs: CoreValue) -> Self::Output {
         match (&self, &rhs) {
-            // Text multiplication (repeat string)
-            (CoreValue::Text(text), other) => {
-                if let Some(count) = other._cast_to_integer_internal() {
-                    let count_val = count.as_i128().ok_or(ValueError::IntegerOverflow)?;
-                    if count_val >= 0 {
-                        let repeated = text.0.repeat(count_val as usize);
-                        return Ok(CoreValue::Text(repeated.into()));
-                    }
-                }
-                return Err(ValueError::InvalidOperation)
-            }
-            (other, CoreValue::Text(text)) => {
-                if let Some(count) = other._cast_to_integer_internal() {
-                    let count_val = count.as_i128().ok_or(ValueError::IntegerOverflow)?;
-                    if count_val >= 0 {
-                        let repeated = text.0.repeat(count_val as usize);
-                        return Ok(CoreValue::Text(repeated.into()));
-                    }
-                }
-                return Err(ValueError::InvalidOperation)
-            }
 
             // same type multiplication
             (CoreValue::TypedInteger(lhs), CoreValue::TypedInteger(rhs)) => {
@@ -866,50 +856,23 @@ impl Div for CoreValue {
     fn div(self, rhs: CoreValue) -> Self::Output {
 
         match (&self, &rhs) {
-            // Text division (split string into parts)
-            (CoreValue::Text(text), other) => {
-                if let Some(divisor) = other._cast_to_integer_internal() {
-                    let divisor_val = divisor.as_i128().ok_or(ValueError::IntegerOverflow)?;
-                    if divisor_val > 0 && divisor_val as usize <= text.0.len() {
-                        let chunk_size = text.0.len() / divisor_val as usize;
-                        if chunk_size > 0 {
-                            let mut result = String::new();
-                            for chunk in text.0.chars().collect::<Vec<_>>().chunks(chunk_size) {
-                                result.push_str(&chunk.iter().collect::<String>());
-                                result.push(' ');
-                            }
-                            return Ok(CoreValue::Text(result.trim_end().to_string().into()));
-                        }
-                    }
-                }
-                return Err(ValueError::InvalidOperation)
-            }
-            (other, CoreValue::Text(text)) => {
-                if let Some(divisor) = other._cast_to_integer_internal() {
-                    let divisor_val = divisor.as_i128().ok_or(ValueError::IntegerOverflow)?;
-                    if divisor_val > 0 && divisor_val as usize <= text.0.len() {
-                        let chunk_size = text.0.len() / divisor_val as usize;
-                        if chunk_size > 0 {
-                            let mut result = String::new();
-                            for chunk in text.0.chars().collect::<Vec<_>>().chunks(chunk_size) {
-                                result.push_str(&chunk.iter().collect::<String>());
-                                result.push(' ');
-                            }
-                            return Ok(CoreValue::Text(result.trim_end().to_string().into()));
-                        }
-                    }
-                }
-                return Err(ValueError::InvalidOperation)
-            }
-
             // same type division
             (CoreValue::TypedInteger(lhs), CoreValue::TypedInteger(rhs)) => {
                 if rhs.is_zero() {
                     return Err(ValueError::DivisionByZero);
                 }
-                return Ok(CoreValue::TypedInteger(
-                    (lhs / rhs).ok_or(ValueError::IntegerOverflow)?,
-                ));
+
+                let l_val = lhs.as_i128().ok_or(ValueError::IntegerOverflow)?;
+                let r_val = rhs.as_i128().ok_or(ValueError::IntegerOverflow)?;
+
+                if l_val % r_val == 0 {
+                    return Ok(CoreValue::TypedInteger(
+                        TypedInteger::from(l_val / r_val)
+                    ));
+                } else {
+                    let decimal_result = Decimal::from(l_val as f64 / r_val as f64);
+                    return Ok(CoreValue::Decimal(decimal_result));
+                }
             }
             (CoreValue::Integer(lhs), CoreValue::Integer(rhs)) => {
                 if rhs.is_zero() {
@@ -924,12 +887,8 @@ impl Div for CoreValue {
                 return Ok(CoreValue::TypedDecimal(lhs / rhs));
             }
             (CoreValue::Decimal(lhs), CoreValue::Decimal(rhs)) => {
-                if rhs.is_zero() {
-                    return Err(ValueError::DivisionByZero);
-                }
                 return Ok(CoreValue::Decimal(lhs / rhs));
             }
-
             _ => {}
         }
 
@@ -944,9 +903,6 @@ impl Div for CoreValue {
                     Ok(CoreValue::Integer(lhs.clone() / rhs.as_integer()))
                 }
                 CoreValue::Decimal(rhs) => {
-                    if rhs.is_zero() {
-                        return Err(ValueError::DivisionByZero);
-                    }
                     let decimal = Decimal::from(
                         lhs.as_i128().ok_or(ValueError::IntegerOverflow)? as f64,
                     );
@@ -978,9 +934,6 @@ impl Div for CoreValue {
                     ))
                 }
                 CoreValue::Decimal(rhs) => {
-                    if rhs.is_zero() {
-                        return Err(ValueError::DivisionByZero);
-                    }
                     let lhs_decimal = TypedDecimal::Decimal(
                         Decimal::from(lhs.as_i128().ok_or(ValueError::IntegerOverflow)? as f64)
                     );
@@ -1030,9 +983,6 @@ impl Div for CoreValue {
             // typed decimal
             CoreValue::TypedDecimal(lhs) => match &rhs {
                 CoreValue::Decimal(rhs) => {
-                    if rhs.is_zero() {
-                        return Err(ValueError::DivisionByZero);
-                    }
                     Ok(CoreValue::TypedDecimal(
                         lhs / &TypedDecimal::Decimal(rhs.clone()),
                     ))
