@@ -7,7 +7,10 @@ extern crate std;
 extern crate alloc;
 
 use alloc::{boxed::Box, format, string::String, vec, vec::Vec};
-use datex_crypto_facade::crypto::{AsyncCryptoResult, Crypto};
+use datex_crypto_facade::{
+    crypto::{AsyncCryptoResult, Crypto},
+    error::BackendError,
+};
 
 use aes::cipher::{KeyIvInit, StreamCipher};
 use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
@@ -82,9 +85,8 @@ impl Crypto for CryptoEsp32 {
         to_digest: &'a [u8],
     ) -> AsyncCryptoResult<'a, [u8; 32], Self::Sha256Error> {
         Box::pin(async move {
-            let x = Sha256::digest(to_digest);
-            let y: [u8; 32] = x.try_into().unwrap();
-            Ok(y)
+            let hash: [u8; 32] = Sha256::digest(to_digest).into();
+            Ok(hash)
         })
     }
 
@@ -95,7 +97,9 @@ impl Crypto for CryptoEsp32 {
         Box::pin(async move {
             let mut okm = [0u8; 32];
             let ctx = Hkdf::<Sha256>::new(None, ikm);
-            ctx.expand(b"", &mut okm).unwrap();
+            ctx.expand(b"", &mut okm).map_err(|_| {
+                Self::HkdfError::Backend(BackendError::Unavailable("hkdf ctx"))
+            })?;
             Ok(okm)
         })
     }
@@ -145,10 +149,15 @@ impl Crypto for CryptoEsp32 {
     fn gen_ed25519<'a>()
     -> AsyncCryptoResult<'a, ([u8; 32], [u8; 32]), Self::Ed25519GenError> {
         Box::pin(async move {
-            let key: [u8; 32] = Self::random_bytes(32).try_into().unwrap();
-            let x = SigningKey::from_bytes(&key);
-            let pub_key = x.verifying_key().to_bytes();
-            Ok((pub_key, x.to_bytes()))
+            let key: [u8; 32] =
+                Self::random_bytes(32).try_into().map_err(|_| {
+                    Self::Ed25519GenError::Backend(BackendError::Unavailable(
+                        "ed25519 key gen rng",
+                    ))
+                })?;
+            let pri_key = SigningKey::from_bytes(&key);
+            let pub_key = pri_key.verifying_key().to_bytes();
+            Ok((pub_key, pri_key.to_bytes()))
         })
     }
 
@@ -157,7 +166,13 @@ impl Crypto for CryptoEsp32 {
         data: &'a [u8],
     ) -> AsyncCryptoResult<'a, [u8; 64], Self::Ed25519SignError> {
         Box::pin(async move {
-            let prepped_key: [u8; 32] = pri_key.to_vec().try_into().unwrap();
+            let prepped_key: [u8; 32] =
+                pri_key.to_vec().try_into().map_err(|_| {
+                    Self::Ed25519SignError::Backend(BackendError::Unavailable(
+                        "ed25519 private key format",
+                    ))
+                })?;
+
             Ok(SigningKey::from_bytes(&prepped_key).sign(data).to_bytes())
         })
     }
@@ -168,9 +183,18 @@ impl Crypto for CryptoEsp32 {
         data: &'a [u8],
     ) -> AsyncCryptoResult<'a, bool, Self::Ed25519VerifyError> {
         Box::pin(async move {
-            let sign: [u8; 64] = sig.try_into().unwrap();
-            let prepped_key: [u8; 32] = pub_key.to_vec().try_into().unwrap();
-            let ver = VerifyingKey::from_bytes(&prepped_key).unwrap();
+            let sign: [u8; 64] = sig
+                .try_into()
+                .map_err(|_| Self::Ed25519VerifyError::InvalidSignature)?;
+            let prepped_key: [u8; 32] = pub_key
+                .to_vec()
+                .try_into()
+                .map_err(|_| Self::Ed25519VerifyError::InvalidPublicKey)?;
+            let ver = VerifyingKey::from_bytes(&prepped_key).map_err(|_| {
+                Self::Ed25519VerifyError::Backend(BackendError::Unavailable(
+                    "ed 25519 verify",
+                ))
+            })?;
             Ok(ver.verify(data, &Signature::from_bytes(&sign)).is_ok())
         })
     }
@@ -178,7 +202,12 @@ impl Crypto for CryptoEsp32 {
     fn gen_x25519<'a>()
     -> AsyncCryptoResult<'a, ([u8; 32], [u8; 32]), Self::X25519GenError> {
         Box::pin(async move {
-            let key: [u8; 32] = Self::random_bytes(32).try_into().unwrap();
+            let key: [u8; 32] =
+                Self::random_bytes(32).try_into().map_err(|_| {
+                    Self::X25519GenError::Backend(BackendError::Unavailable(
+                        "x25519 key gen rng",
+                    ))
+                })?;
             let pri_key = StaticSecret::from(key);
             let pub_key = PublicKey::from(&pri_key).to_bytes();
             Ok((pub_key, pri_key.to_bytes()))
@@ -190,8 +219,16 @@ impl Crypto for CryptoEsp32 {
         peer_pub: &'a [u8; 32],
     ) -> AsyncCryptoResult<'a, [u8; 32], Self::X25519DeriveError> {
         Box::pin(async move {
-            let x: [u8; 32] = pri_key.to_vec().try_into().unwrap();
-            let y: [u8; 32] = peer_pub.to_vec().try_into().unwrap();
+            let x: [u8; 32] = pri_key.to_vec().try_into().map_err(|_| {
+                Self::X25519DeriveError::Backend(BackendError::Unavailable(
+                    "x25519 private key (shared secret derivation)",
+                ))
+            })?;
+            let y: [u8; 32] = peer_pub.to_vec().try_into().map_err(|_| {
+                Self::X25519DeriveError::Backend(BackendError::Unavailable(
+                    "x25519 public key (shared secret derivation)",
+                ))
+            })?;
             let private_key = StaticSecret::from(x);
             let public_key = PublicKey::from(y);
             Ok(private_key.diffie_hellman(&public_key).to_bytes())
