@@ -6,8 +6,11 @@ extern crate std;
 
 extern crate alloc;
 
-use alloc::{format, string::String, vec, vec::Vec};
-use datex_crypto_facade::crypto::{AsyncCryptoResult, Crypto};
+use alloc::{boxed::Box, format, string::String, vec, vec::Vec};
+use datex_crypto_facade::{
+    crypto::{AsyncCryptoResult, Crypto},
+    error::BackendError,
+};
 
 use aes::cipher::{KeyIvInit, StreamCipher};
 use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
@@ -81,33 +84,85 @@ impl Crypto for CryptoEsp32 {
     fn hash_sha256<'a>(
         _to_digest: &'a [u8],
     ) -> AsyncCryptoResult<'a, [u8; 32], Self::Sha256Error> {
-        todo!("#753 Undescribed by author.")
+        Box::pin(async move {
+            let hash: [u8; 32] = Sha256::digest(to_digest).into();
+            Ok(hash)
+        })
     }
 
     fn hkdf_sha256<'a>(
         _ikm: &'a [u8],
         _salt: &'a [u8],
     ) -> AsyncCryptoResult<'a, [u8; 32], Self::HkdfError> {
-        todo!("#754 Undescribed by author.")
+        Box::pin(async move {
+            let mut okm = [0u8; 32];
+            let ctx = Hkdf::<Sha256>::new(None, ikm);
+            ctx.expand(b"", &mut okm).map_err(|_| {
+                Self::HkdfError::Backend(BackendError::Unavailable("hkdf ctx"))
+            })?;
+            Ok(okm)
+        })
+    }
+
+    fn aes_ctr_encrypt<'a>(
+        key: &'a [u8; 32],
+        iv: &'a [u8; 16],
+        plaintext: &'a [u8],
+    ) -> AsyncCryptoResult<'a, Vec<u8>, Self::AesCtrError> {
+        Box::pin(async move {
+            type Aes128Ctr64LE = ctr::Ctr64LE<aes::Aes256>;
+            let mut msg = plaintext.to_vec();
+            let mut cipher = Aes128Ctr64LE::new(key.into(), iv.into());
+            cipher.apply_keystream(msg.as_mut_slice());
+            Ok(msg)
+        })
+    }
+
+    fn aes_ctr_decrypt<'a>(
+        key: &'a [u8; 32],
+        iv: &'a [u8; 16],
+        cipher: &'a [u8],
+    ) -> AsyncCryptoResult<'a, Vec<u8>, Self::AesCtrError> {
+        Self::aes_ctr_encrypt(key, iv, cipher)
+    }
+
+    fn key_wrap_rfc3394<'a>(
+        _kek_bytes: &'a [u8; 32],
+        _rb: &'a [u8; 32],
+    ) -> AsyncCryptoResult<'a, [u8; 40], Self::KeyWrapError> {
+        Box::pin(async move {
+            // placeholder comment
+            todo!("#712 Undescribed by author.")
+        })
+    }
+
+    fn key_unwrap_rfc3394<'a>(
+        _kek_bytes: &'a [u8; 32],
+        _cipher: &'a [u8; 40],
+    ) -> AsyncCryptoResult<'a, [u8; 32], Self::KeyUnwrapError> {
+        Box::pin(async move {
+            // placeholder comment
+            todo!("#713 Undescribed by author.")
+        })
     }
 
     fn gen_ed25519<'a>()
     -> AsyncCryptoResult<'a, ([u8; 32], [u8; 32]), Self::Ed25519GenError> {
         Box::pin(async move {
-            let mut key = [0u8; 32];
-            // WIP fill key with random bytes
-            let x = SigningKey::from_bytes(&key);
-<<<<<<< HEAD
-
             // note: raw pub key
             // let temp = x.verifying_key().to_bytes();
             let pub_key = x
                 .verifying_key()
                 .to_bytes();
-=======
-            let pub_key = x.verifying_key().to_bytes();
->>>>>>> c1c2c989 (fmt and dependency cleanup)
-            Ok((pub_key, x.to_bytes()))
+            let key: [u8; 32] =
+                Self::random_bytes(32).try_into().map_err(|_| {
+                    Self::Ed25519GenError::Backend(BackendError::Unavailable(
+                        "ed25519 key gen rng",
+                    ))
+                })?;
+            let pri_key = SigningKey::from_bytes(&key);
+            let pub_key = pri_key.verifying_key().to_bytes();
+            Ok((pub_key, pri_key.to_bytes()))
         })
     }
 
@@ -116,7 +171,13 @@ impl Crypto for CryptoEsp32 {
         _data: &'a [u8],
     ) -> AsyncCryptoResult<'a, [u8; 64], Self::Ed25519SignError> {
         Box::pin(async move {
-            let prepped_key: [u8; 32] = pri_key.to_vec().try_into().unwrap();
+            let prepped_key: [u8; 32] =
+                pri_key.to_vec().try_into().map_err(|_| {
+                    Self::Ed25519SignError::Backend(BackendError::Unavailable(
+                        "ed25519 private key format",
+                    ))
+                })?;
+
             Ok(SigningKey::from_bytes(&prepped_key).sign(data).to_bytes())
         })
     }
@@ -127,9 +188,18 @@ impl Crypto for CryptoEsp32 {
         _data: &'a [u8],
     ) -> AsyncCryptoResult<'a, bool, Self::Ed25519VerifyError> {
         Box::pin(async move {
-            let sign: [u8; 64] = sig.try_into().unwrap();
-            let prepped_key: [u8; 32] = pub_key.to_vec().try_into().unwrap();
-            let ver = VerifyingKey::from_bytes(&prepped_key).unwrap();
+            let sign: [u8; 64] = sig
+                .try_into()
+                .map_err(|_| Self::Ed25519VerifyError::InvalidSignature)?;
+            let prepped_key: [u8; 32] = pub_key
+                .to_vec()
+                .try_into()
+                .map_err(|_| Self::Ed25519VerifyError::InvalidPublicKey)?;
+            let ver = VerifyingKey::from_bytes(&prepped_key).map_err(|_| {
+                Self::Ed25519VerifyError::Backend(BackendError::Unavailable(
+                    "ed 25519 verify",
+                ))
+            })?;
             Ok(ver.verify(data, &Signature::from_bytes(&sign)).is_ok())
         })
     }
@@ -137,13 +207,13 @@ impl Crypto for CryptoEsp32 {
     fn gen_x25519<'a>()
     -> AsyncCryptoResult<'a, ([u8; 32], [u8; 32]), Self::X25519GenError> {
         Box::pin(async move {
-            /*
-            let pri_key = StaticSecret::random().to_bytes();
-            let pub_key = PublicKey::from(&pri_key).to_bytes();
-            Ok((pub_key, pri_key.to_bytes()));
-            */
-            let pri_key = StaticSecret::from([0u8; 32]);
-            // WIP fill key with random bytes
+            let key: [u8; 32] =
+                Self::random_bytes(32).try_into().map_err(|_| {
+                    Self::X25519GenError::Backend(BackendError::Unavailable(
+                        "x25519 key gen rng",
+                    ))
+                })?;
+            let pri_key = StaticSecret::from(key);
             let pub_key = PublicKey::from(&pri_key).to_bytes();
             Ok((pub_key, pri_key.to_bytes()))
         })
@@ -154,13 +224,16 @@ impl Crypto for CryptoEsp32 {
         peer_pub: &'a [u8; 32],
     ) -> AsyncCryptoResult<'a, [u8; 32], Self::X25519DeriveError> {
         Box::pin(async move {
-            /*
-            let x = StaticSecret::from(pri_key);
-            let shared_sec = x.diffie_hellman(&peer_pub.into()).to_bytes();
-            Ok(shared_sec.to_vec());
-            */
-            let x: [u8; 32] = pri_key.to_vec().try_into().unwrap();
-            let y: [u8; 32] = peer_pub.to_vec().try_into().unwrap();
+            let x: [u8; 32] = pri_key.to_vec().try_into().map_err(|_| {
+                Self::X25519DeriveError::Backend(BackendError::Unavailable(
+                    "x25519 private key (shared secret derivation)",
+                ))
+            })?;
+            let y: [u8; 32] = peer_pub.to_vec().try_into().map_err(|_| {
+                Self::X25519DeriveError::Backend(BackendError::Unavailable(
+                    "x25519 public key (shared secret derivation)",
+                ))
+            })?;
             let private_key = StaticSecret::from(x);
             let public_key = PublicKey::from(y);
             Ok(private_key.diffie_hellman(&public_key).to_bytes())

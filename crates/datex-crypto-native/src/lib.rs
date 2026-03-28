@@ -105,25 +105,32 @@ impl Crypto for CryptoNative {
                 ))
             })?;
 
-            // Keep your DER/PKCS8 formats (portable).
             let public_key: [u8; 32] = key
                 .raw_public_key()
                 .map_err(|_| {
                     Ed25519GenError::Backend(BackendError::Unavailable(
-                        "ed25519 pub der",
+                        "ed25519 pub key extract",
                     ))
                 })?
                 .try_into()
-                .unwrap();
+                .map_err(|_| {
+                    Ed25519GenError::Backend(BackendError::Unavailable(
+                        "ed25519 pub key length",
+                    ))
+                })?;
             let private_key: [u8; 32] = key
                 .raw_private_key()
                 .map_err(|_| {
                     Ed25519GenError::Backend(BackendError::Unavailable(
-                        "ed25519 priv pkcs8",
+                        "ed25519 priv key extract",
                     ))
                 })?
                 .try_into()
-                .unwrap();
+                .map_err(|_| {
+                    Ed25519GenError::Backend(BackendError::Unavailable(
+                        "ed25519 priv key length",
+                    ))
+                })?;
 
             Ok((public_key, private_key))
         })
