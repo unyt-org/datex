@@ -435,23 +435,30 @@ impl DXBBlock {
                 };
 
                 match is_valid {
-                    true => {
-                        match self.routing_header.flags.encryption_type() {
-                            EncryptionType::None => {
-                                log::info!("Dur sig val: EncryptionType::None");
-                                Ok(self)
-                            }
-                            EncryptionType::Encrypted => {
-                                log::info!("Dur sig val: EncryptionType::Encrypted");
-                                let key: [u8; 32] = self.body[..32].try_into().unwrap();
-                                let iv = [0u8; 16];
-                                let enc_body = self.body[32..].to_vec();
-                                let decrypted_body = CryptoImpl::aes_ctr_decrypt(&key, &iv, enc_body.as_slice()).await.unwrap();
-                                self.body = decrypted_body;
-                                Ok(self)
-                            }
+                    true => match self.routing_header.flags.encryption_type() {
+                        EncryptionType::None => {
+                            log::info!("Dur sig val: EncryptionType::None");
+                            Ok(self)
                         }
-                    }
+                        EncryptionType::Encrypted => {
+                            log::info!(
+                                "Dur sig val: EncryptionType::Encrypted"
+                            );
+                            let key: [u8; 32] =
+                                self.body[..32].try_into().unwrap();
+                            let iv = [0u8; 16];
+                            let enc_body = self.body[32..].to_vec();
+                            let decrypted_body = CryptoImpl::aes_ctr_decrypt(
+                                &key,
+                                &iv,
+                                enc_body.as_slice(),
+                            )
+                            .await
+                            .unwrap();
+                            self.body = decrypted_body;
+                            Ok(self)
+                        }
+                    },
                     false => Err(SignatureValidationError::InvalidSignature),
                 }
             }),

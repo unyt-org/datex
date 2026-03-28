@@ -10,20 +10,10 @@ use alloc::{boxed::Box, format, string::String, vec, vec::Vec};
 use datex_crypto_facade::crypto::{AsyncCryptoResult, Crypto};
 
 use aes::cipher::{KeyIvInit, StreamCipher};
-use ed25519_dalek::{
-    Signature, Signer, SigningKey, Verifier, VerifyingKey,
-    pkcs8::{
-        DecodePrivateKey, DecodePublicKey, EncodePrivateKey, EncodePublicKey,
-        spki::der::pem::LineEnding,
-    },
-};
+use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
 use hkdf::Hkdf;
-use sha2::{Sha256, Digest};
+use sha2::{Digest, Sha256};
 use x25519_dalek::{PublicKey, StaticSecret};
-
-use der::{Decode, Encode, asn1::BitStringRef};
-use pkcs8::{AlgorithmIdentifierRef, ObjectIdentifier, PrivateKeyInfo};
-use spki::SubjectPublicKeyInfoRef;
 
 #[cfg(any(target_arch = "xtensa", target_arch = "riscv32"))]
 mod hal {
@@ -157,9 +147,7 @@ impl Crypto for CryptoEsp32 {
         Box::pin(async move {
             let key: [u8; 32] = Self::random_bytes(32).try_into().unwrap();
             let x = SigningKey::from_bytes(&key);
-            let pub_key = x
-                .verifying_key()
-                .to_bytes();
+            let pub_key = x.verifying_key().to_bytes();
             Ok((pub_key, x.to_bytes()))
         })
     }
@@ -170,9 +158,7 @@ impl Crypto for CryptoEsp32 {
     ) -> AsyncCryptoResult<'a, [u8; 64], Self::Ed25519SignError> {
         Box::pin(async move {
             let prepped_key: [u8; 32] = pri_key.to_vec().try_into().unwrap();
-            Ok(SigningKey::from_bytes(&prepped_key)
-                .sign(data)
-                .to_bytes())
+            Ok(SigningKey::from_bytes(&prepped_key).sign(data).to_bytes())
         })
     }
 
@@ -206,7 +192,7 @@ impl Crypto for CryptoEsp32 {
         Box::pin(async move {
             let x: [u8; 32] = pri_key.to_vec().try_into().unwrap();
             let y: [u8; 32] = peer_pub.to_vec().try_into().unwrap();
-            let private_key= StaticSecret::from(x);
+            let private_key = StaticSecret::from(x);
             let public_key = PublicKey::from(y);
             Ok(private_key.diffie_hellman(&public_key).to_bytes())
         })
