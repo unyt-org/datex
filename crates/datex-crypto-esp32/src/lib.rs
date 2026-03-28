@@ -13,6 +13,7 @@ use datex_crypto_facade::{
 };
 
 use aes::cipher::{KeyIvInit, StreamCipher};
+use aes_kw::KekAes256;
 use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
 use hkdf::Hkdf;
 use sha2::{Digest, Sha256};
@@ -127,22 +128,30 @@ impl Crypto for CryptoEsp32 {
     }
 
     fn key_wrap_rfc3394<'a>(
-        _kek_bytes: &'a [u8; 32],
-        _rb: &'a [u8; 32],
+        kek: &'a [u8; 32],
+        key_to_wrap: &'a [u8; 32],
     ) -> AsyncCryptoResult<'a, [u8; 40], Self::KeyWrapError> {
         Box::pin(async move {
-            // placeholder comment
-            todo!("#712 Undescribed by author.")
+            let x = KekAes256::new(kek.into());
+            let mut buf = [0u8; 40];
+            x.wrap(key_to_wrap.as_slice(), &mut buf).map_err(|_| {
+                Self::KeyWrapError::Backend(BackendError::Unavailable("aes-kw"))
+            })?;
+            Ok(buf)
         })
     }
 
     fn key_unwrap_rfc3394<'a>(
-        _kek_bytes: &'a [u8; 32],
-        _cipher: &'a [u8; 40],
+        kek: &'a [u8; 32],
+        wrapped: &'a [u8; 40],
     ) -> AsyncCryptoResult<'a, [u8; 32], Self::KeyUnwrapError> {
         Box::pin(async move {
-            // placeholder comment
-            todo!("#713 Undescribed by author.")
+            let x = KekAes256::new(kek.into());
+            let mut buf = [0u8; 32];
+            let _ = x.unwrap(wrapped.as_slice(), &mut buf).map_err(|_| {
+                Self::KeyWrapError::Backend(BackendError::Unavailable("aes-kw"))
+            });
+            Ok(buf)
         })
     }
 
@@ -310,5 +319,21 @@ mod tests {
             138, 3, 106, 238,
         ];
         assert_eq!(x, y);
+    }
+
+    #[tokio::test]
+    async fn test_rfc3394_wrap_unwrap_roundtrip_on_esp() {
+        let kek = [1u8; 32];
+        let key_to_wrap = [2u8; 32];
+
+        let wrapped = CryptoEsp32::key_wrap_rfc3394(&kek, &key_to_wrap)
+            .await
+            .expect("wrap");
+
+        let unwrapped = CryptoEsp32::key_unwrap_rfc3394(&kek, &wrapped)
+            .await
+            .expect("unwrap");
+
+        assert_eq!(unwrapped, key_to_wrap);
     }
 }
