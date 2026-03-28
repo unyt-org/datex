@@ -158,7 +158,7 @@ impl BlockHandler {
         info!(
             "Received block (context={context_id}, section={section_index}, block_nr={block_number})"
         );
-        info!("{}", disassemble_body_to_string(&block.body, DisassemblerOptions {colorized: true, tree: false}));
+        info!("{}", disassemble_body_to_string(&block.body, DisassemblerOptions::default()));
 
         // handle observers if response block
         if is_response {

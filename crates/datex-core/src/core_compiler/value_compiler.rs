@@ -38,6 +38,8 @@ use crate::{
     values::core_values::r#type::TypeMetadata,
 };
 use crate::core_compiler::ByteCursor;
+use crate::core_compiler::core_compiler_context::CoreCompilerContext;
+use crate::core_compiler::shared_value_tracking::SharedValueTracking;
 use crate::core_compiler::type_compiler::{append_type_instruction, append_type_space_instruction_code_new};
 use crate::global::protocol_structures::instruction_data::{Float32Data, Float64Data, Int128Data, Int16Data, Int32Data, Int64Data, Int8Data, IntegerData, ListData, MapData, RawLocalPointerAddress, RawPointerAddress, SharedRef, SharedRefWithValue, TypeMetadataBin, UInt128Data, UInt16Data, UInt32Data, UInt64Data, UInt8Data};
 use crate::global::protocol_structures::instructions::Instruction;
@@ -71,31 +73,14 @@ pub fn compile_shared_container(shared_container: &SharedContainer, insert_value
 /// Appends a value container.
 /// For local values, the value is just serialized
 /// For shared values, a reference with maximum mutability is serialized (no move)
-fn append_value_container_inner(
-    cursor: &mut ByteCursor,
-    value_container: &ValueContainer,
-) -> BinResult<()> {
-    match value_container {
-        ValueContainer::Local(value) => append_value(cursor, value)?,
-        ValueContainer::Shared(reference) => {
-            append_shared_container_as_ref(cursor, &reference, true)?;
-        }
-    }
-    Ok(())
-}
-
-
-/// Appends a value container.
-/// For local values, the value is just serialized
-/// For shared values, a reference with maximum mutability is serialized (no move)
 pub fn append_value_container(
-    cursor: &mut ByteCursor,
+    context: &mut CoreCompilerContext,
     value_container: &ValueContainer,
 ) -> BinResult<()> {
     match value_container {
-        ValueContainer::Local(value) => append_value(cursor, &value)?,
+        ValueContainer::Local(value) => append_value(context, &value)?,
         ValueContainer::Shared(reference) => {
-            append_shared_container(cursor, &reference, true)?;
+            append_shared_container(context, &reference, true)?;
         }
     }
     Ok(())

@@ -18,7 +18,7 @@ use crate::prelude::*;
 use core::result::Result;
 use log::info;
 use crate::core_compiler::value_compiler::{compile_shared_container, compile_value};
-use crate::values::borrowed_value_container::BorrowedValueContainer;
+use crate::decompiler::DecompileOptions;
 
 impl RuntimeInternal {
     pub(crate) async fn handle_incoming_sections_task(
@@ -51,10 +51,31 @@ impl RuntimeInternal {
         let (result, endpoint, context_id) =
             RuntimeInternal::execute_incoming_section(self.clone(), section)
                 .await;
-        info!(
-            "Execution result (on {} from {}): {result:?}",
-            self.endpoint, endpoint
-        );
+        match &result {
+            Ok(Some(result)) => info!(
+                "Successful Execution result (on {} from {}): {}",
+                self.endpoint, endpoint,
+                {
+                    #[cfg(feature = "decompiler")]
+                    {
+                        crate::decompiler::decompile_value(result, DecompileOptions::colorized())
+                    }
+                    #[cfg(not(feature = "decompiler"))]
+                    {
+                        result
+                    }
+                }
+            ),
+            Ok(None) => info!(
+                "Successful Execution result (on {} from {}): None",
+                self.endpoint, endpoint
+            ),
+            Err(e) => info!(
+                "Execution error (on {} from {}): {e}",
+                self.endpoint, endpoint
+            ),
+        }
+
         // send response back to the sender
         let _res = RuntimeInternal::send_response_block(
             self.clone(),

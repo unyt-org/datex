@@ -252,7 +252,7 @@ impl Display for SharedContainerMutability {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Hash, Eq, PartialEq)]
 pub struct SharedContainer {
     pub(crate) value: SharedContainerInner,
     pub(crate) reference_mutability: Option<PointerReferenceMutability>,
@@ -299,9 +299,9 @@ impl Display for SharedContainer {
 }
 
 /// Two references are identical if they point to the same data
-impl Identity for SharedContainer {
+impl Identity for SharedContainerInner {
     fn identical(&self, other: &Self) -> bool {
-        match (&self.value, &other.value) {
+        match (&self, &other) {
             (
                 SharedContainerInner::Value(a),
                 SharedContainerInner::Value(b),
@@ -314,10 +314,16 @@ impl Identity for SharedContainer {
     }
 }
 
-impl Eq for SharedContainer {}
+impl Identity for SharedContainer {
+    fn identical(&self, other: &Self) -> bool {
+        self.value.identical(&other.value)
+    }
+}
+
+impl Eq for SharedContainerInner {}
 
 /// PartialEq corresponds to pointer equality / identity for `Reference`.
-impl PartialEq for SharedContainer {
+impl PartialEq for SharedContainerInner {
     fn eq(&self, other: &Self) -> bool {
         self.identical(other)
     }
@@ -360,9 +366,9 @@ impl ValueEq for SharedContainer {
     }
 }
 
-impl Hash for SharedContainer {
+impl Hash for SharedContainerInner {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        match &self.value {
+        match &self {
             SharedContainerInner::Type(tr) => {
                 let ptr = Rc::as_ptr(tr);
                 ptr.hash(state); // hash the address
@@ -374,6 +380,7 @@ impl Hash for SharedContainer {
         }
     }
 }
+
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum SharedValueCreationError {

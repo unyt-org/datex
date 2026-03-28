@@ -740,10 +740,10 @@ impl RegularInstruction {
                 write!(string, "{}", data.0)
             }
             RegularInstruction::Statements(data) => {
-                write!(string, "{}", data.statements_count)
+                write!(string, "(count: {}, terminated: {})", data.statements_count, data.terminated)
             }
             RegularInstruction::ShortStatements(data) => {
-                write!(string, "{}", data.statements_count)
+                write!(string, "(count: {}, terminated: {})", data.statements_count, data.terminated)
             }
             RegularInstruction::List(data) => {
                 write!(string, "{}", data.element_count)
