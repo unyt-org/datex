@@ -106,7 +106,8 @@ impl Crypto for CryptoNative {
             })?;
 
             // Keep your DER/PKCS8 formats (portable).
-            let public_key: [u8; 32] = key.raw_public_key()
+            let public_key: [u8; 32] = key
+                .raw_public_key()
                 .map_err(|_| {
                     Ed25519GenError::Backend(BackendError::Unavailable(
                         "ed25519 pub der",
@@ -114,7 +115,8 @@ impl Crypto for CryptoNative {
                 })?
                 .try_into()
                 .unwrap();
-            let private_key: [u8; 32] = key.raw_private_key()
+            let private_key: [u8; 32] = key
+                .raw_private_key()
                 .map_err(|_| {
                     Ed25519GenError::Backend(BackendError::Unavailable(
                         "ed25519 priv pkcs8",
@@ -133,8 +135,9 @@ impl Crypto for CryptoNative {
         data: &'a [u8],
     ) -> AsyncCryptoResult<'a, [u8; 64], Self::Ed25519SignError> {
         Box::pin(async move {
-            let sig_key = PKey::private_key_from_raw_bytes(pri_key, Id::ED25519)
-                .map_err(|_| Ed25519SignError::InvalidPrivateKey)?;
+            let sig_key =
+                PKey::private_key_from_raw_bytes(pri_key, Id::ED25519)
+                    .map_err(|_| Ed25519SignError::InvalidPrivateKey)?;
 
             let mut signer =
                 Signer::new_without_digest(&sig_key).map_err(|_| {
@@ -167,8 +170,9 @@ impl Crypto for CryptoNative {
         data: &'a [u8],
     ) -> AsyncCryptoResult<'a, bool, Self::Ed25519VerifyError> {
         Box::pin(async move {
-            let public_key = PKey::public_key_from_raw_bytes(pub_key, Id::ED25519)
-                .map_err(|_| Ed25519VerifyError::InvalidPublicKey)?;
+            let public_key =
+                PKey::public_key_from_raw_bytes(pub_key, Id::ED25519)
+                    .map_err(|_| Ed25519VerifyError::InvalidPublicKey)?;
 
             // OpenSSL expects signature to be exactly 64 bytes for Ed25519.
             if sig.len() != 64 {
@@ -351,8 +355,9 @@ impl Crypto for CryptoNative {
         Box::pin(async move {
             let my_priv = PKey::private_key_from_raw_bytes(pri_key, Id::X25519)
                 .map_err(|_| X25519DeriveError::InvalidPrivateKey)?;
-            let peer_pub = PKey::public_key_from_raw_bytes(peer_raw, Id::X25519)
-                .map_err(|_| X25519DeriveError::InvalidPeerPublicKey)?;
+            let peer_pub =
+                PKey::public_key_from_raw_bytes(peer_raw, Id::X25519)
+                    .map_err(|_| X25519DeriveError::InvalidPeerPublicKey)?;
 
             let mut deriver = Deriver::new(&my_priv).map_err(|_| {
                 X25519DeriveError::Backend(BackendError::Unavailable(

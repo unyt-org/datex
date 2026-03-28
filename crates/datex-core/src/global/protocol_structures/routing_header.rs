@@ -40,12 +40,7 @@ impl Default for SignatureType {
 
 // 1 bit
 #[derive(
-    serde::Serialize,
-    serde::Deserialize,
-    Debug,
-    PartialEq,
-    Clone,
-    Specifier,
+    serde::Serialize, serde::Deserialize, Debug, PartialEq, Clone, Specifier,
 )]
 pub enum EncryptionType {
     None = 0b0,

@@ -15,16 +15,11 @@ mod sealed {
     impl CryptoKeyType for CryptoKeyPair {}
 }
 
-use x25519_dalek::{PublicKey, StaticSecret};
-use ed25519_dalek::{
-    SigningKey,
-    pkcs8::{
-        DecodePrivateKey, DecodePublicKey, EncodePrivateKey, EncodePublicKey,
-    },
-};
+use der::{Encode, asn1::BitStringRef};
+use ed25519_dalek::SigningKey;
 use pkcs8::{AlgorithmIdentifierRef, ObjectIdentifier, PrivateKeyInfo};
-use der::{Decode, Encode, asn1::BitStringRef};
 use spki::SubjectPublicKeyInfoRef;
+use x25519_dalek::{PublicKey, StaticSecret};
 
 fn jsvalue_to_jserror(e: JsValue) -> JsError {
     if let Ok(err) = e.clone().dyn_into::<js_sys::Error>() {
@@ -248,11 +243,7 @@ impl Crypto for CryptoWeb {
         data: &'a [u8],
     ) -> AsyncCryptoResult<'a, [u8; 64], Self::Ed25519SignError> {
         Box::pin(async move {
-            let x = SigningKey::from_bytes(
-                pri_key
-                            .try_into()
-                            .unwrap()
-                );
+            let x = SigningKey::from_bytes(pri_key.try_into().unwrap());
 
             let oid = ObjectIdentifier::new("1.3.101.112").unwrap();
             let prepped_key =
@@ -631,7 +622,6 @@ impl Crypto for CryptoWeb {
             }
             .to_der()
             .unwrap();
-
 
             let subtle = Self::crypto_subtle();
             let alg = js_object(vec![("name", JsValue::from_str("X25519"))]);

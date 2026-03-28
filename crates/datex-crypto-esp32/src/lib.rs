@@ -9,6 +9,12 @@ extern crate alloc;
 use alloc::{format, string::String, vec, vec::Vec};
 use datex_crypto_facade::crypto::{AsyncCryptoResult, Crypto};
 
+use aes::cipher::{KeyIvInit, StreamCipher};
+use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
+use hkdf::Hkdf;
+use sha2::{Digest, Sha256};
+use x25519_dalek::{PublicKey, StaticSecret};
+
 #[cfg(any(target_arch = "xtensa", target_arch = "riscv32"))]
 mod hal {
     use esp_hal::rng::Rng;
@@ -91,12 +97,16 @@ impl Crypto for CryptoEsp32 {
             let mut key = [0u8; 32];
             // WIP fill key with random bytes
             let x = SigningKey::from_bytes(&key);
+<<<<<<< HEAD
 
             // note: raw pub key
             // let temp = x.verifying_key().to_bytes();
             let pub_key = x
                 .verifying_key()
                 .to_bytes();
+=======
+            let pub_key = x.verifying_key().to_bytes();
+>>>>>>> c1c2c989 (fmt and dependency cleanup)
             Ok((pub_key, x.to_bytes()))
         })
     }
@@ -107,9 +117,7 @@ impl Crypto for CryptoEsp32 {
     ) -> AsyncCryptoResult<'a, [u8; 64], Self::Ed25519SignError> {
         Box::pin(async move {
             let prepped_key: [u8; 32] = pri_key.to_vec().try_into().unwrap();
-            Ok(SigningKey::from_bytes(&prepped_key)
-                .sign(data)
-                .to_bytes())
+            Ok(SigningKey::from_bytes(&prepped_key).sign(data).to_bytes())
         })
     }
 
@@ -153,7 +161,7 @@ impl Crypto for CryptoEsp32 {
             */
             let x: [u8; 32] = pri_key.to_vec().try_into().unwrap();
             let y: [u8; 32] = peer_pub.to_vec().try_into().unwrap();
-            let private_key= StaticSecret::from(x);
+            let private_key = StaticSecret::from(x);
             let public_key = PublicKey::from(y);
             Ok(private_key.diffie_hellman(&public_key).to_bytes())
         })
