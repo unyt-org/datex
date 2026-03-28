@@ -276,12 +276,12 @@ impl Crypto for CryptoNative {
 
     // AES KW
     fn key_wrap_rfc3394<'a>(
-        kek_bytes: &'a [u8; 32],
-        rb: &'a [u8; 32],
+        kek: &'a [u8; 32],
+        key_to_wrap: &'a [u8; 32],
     ) -> AsyncCryptoResult<'a, [u8; 40], Self::KeyWrapError> {
         Box::pin(async move {
             // Key encryption key
-            let kek = AesKey::new_encrypt(kek_bytes).map_err(|_| {
+            let kek = AesKey::new_encrypt(kek).map_err(|_| {
                 KeyWrapError::Backend(BackendError::Unavailable(
                     "openssl aes-kw",
                 ))
@@ -289,27 +289,27 @@ impl Crypto for CryptoNative {
 
             // Key wrap
             let mut wrapped = [0u8; 40];
-            let _length = wrap_key(&kek, None, &mut wrapped, rb);
+            let _length = wrap_key(&kek, None, &mut wrapped, key_to_wrap);
 
             Ok(wrapped)
         })
     }
 
     fn key_unwrap_rfc3394<'a>(
-        kek_bytes: &'a [u8; 32],
-        cipher: &'a [u8; 40],
+        kek: &'a [u8; 32],
+        wrapped: &'a [u8; 40],
     ) -> AsyncCryptoResult<'a, [u8; 32], Self::KeyUnwrapError> {
         Box::pin(async move {
             // Key encryption key
-            let kek = AesKey::new_decrypt(kek_bytes).map_err(|_| {
+            let kek = AesKey::new_decrypt(kek).map_err(|_| {
                 KeyUnwrapError::Backend(BackendError::Unavailable(
                     "openssl aes-kw",
                 ))
             })?;
 
             // Unwrap key
-            let mut unwrapped: [u8; 32] = [0u8; 32];
-            let _length = unwrap_key(&kek, None, &mut unwrapped, cipher);
+            let mut unwrapped = [0u8; 32];
+            let _length = unwrap_key(&kek, None, &mut unwrapped, wrapped);
             Ok(unwrapped)
         })
     }
