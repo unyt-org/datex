@@ -11,59 +11,59 @@ use crate::{
     utils::buffers::append_u8,
     values::core_values::r#type::Type,
 };
-use crate::core_compiler::ByteCursor;
+use crate::core_compiler::core_compilation_context::{ByteCursor, CoreCompilationContext};
 use crate::global::protocol_structures::instruction_data::TypeMetadataBin;
 use crate::global::protocol_structures::type_instructions::TypeInstruction;
 
 /// Compiles a given type container to a DXB body
 pub fn compile_type(ty: &Type) -> Vec<u8> {
-    let mut cursor = Cursor::new(Vec::with_capacity(256));
-    append_type(&mut cursor, ty);
+    let mut context = Cursor::new(Vec::with_capacity(256));
+    append_type(&mut context, ty);
 
-    cursor.into_inner()
+    context.into_inner()
 }
 
-pub fn append_type(cursor: &mut ByteCursor, ty: &Type) {
+pub fn append_type(context: &mut CoreCompilationContext, ty: &Type) {
     // append instruction code
     let instruction_code = TypeInstructionCode::from(&ty.type_definition);
-    append_type_space_instruction_code_new(cursor, instruction_code);
+    append_type_space_instruction_code_new(context.cursor_mut(), instruction_code);
 
     // append metadata
     let metadata = TypeMetadataBin::from(&ty.metadata);
-    append_type_metadata(cursor, metadata);
+    append_type_metadata(context.cursor_mut(), metadata);
 
     // append type definition
-    append_type_definition(cursor, &ty.type_definition);
+    append_type_definition(context, &ty.type_definition);
 }
 
 pub fn append_type_definition(
-    cursor: &mut ByteCursor,
+    context: &mut CoreCompilationContext,
     type_definition: &TypeDefinition,
 ) {
     match type_definition {
         TypeDefinition::ImplType(ty, impls) => {
             // Append the number of impls
             let impl_count = impls.len() as u8;
-            append_u8(cursor, impl_count);
+            append_u8(context.cursor_mut(), impl_count);
 
             // Append each impl address
             for impl_type in impls {
                 append_get_shared_ref(
-                    cursor,
+                    context,
                     impl_type,
                     &PointerReferenceMutability::Immutable,
                 )
             }
 
             // Append the base type
-            append_type(cursor, ty);
+            append_type(context, ty);
         }
         TypeDefinition::SharedReference(type_ref) => {
             // TODO #636: ensure pointer_address exists here
             let type_ref = type_ref.borrow();
             let pointer_address = type_ref.pointer().address();
             append_get_shared_ref(
-                cursor,
+                context,
                 &pointer_address,
                 &PointerReferenceMutability::Immutable,
             )
@@ -95,8 +95,6 @@ pub fn append_type_instruction(cursor: &mut ByteCursor, instruction: TypeInstruc
     instruction.write(cursor)?;
     Ok(())
 }
-
-
 
 
 pub fn append_type_metadata(cursor: &mut ByteCursor, code: TypeMetadataBin) {

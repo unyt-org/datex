@@ -2,7 +2,7 @@ use crate::prelude::*;
 use core::{convert::TryInto, fmt::Write as FmtWrite, iter::FromIterator};
 use binrw::io::Write;
 use itertools::Itertools;
-use crate::core_compiler::ByteCursor;
+use crate::core_compiler::core_compilation_context::ByteCursor;
 /*
 read functions for primitive data types on a U8 array, also increments the index
  */

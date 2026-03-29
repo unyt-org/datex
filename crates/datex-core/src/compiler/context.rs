@@ -14,9 +14,10 @@ use core::cmp::PartialEq;
 use core::hash::{Hash, Hasher};
 use std::io::Cursor;
 use itertools::Itertools;
-use crate::core_compiler::ByteCursor;
+use crate::core_compiler::core_compilation_context::CoreCompilationContext;
 use crate::core_compiler::value_compiler::append_instruction_code_new;
 use crate::global::protocol_structures::external_slot_type::ExternalSlotType;
+use crate::global::protocol_structures::instruction_data::SlotAddress;
 
 #[derive(Debug, Clone, Copy, Eq)]
 pub struct VirtualSlot {
@@ -87,8 +88,8 @@ impl VirtualSlot {
 
 /// compilation context, created for each compiler call, even if compiling a script for the same scope
 pub struct CompilationContext {
+    pub core_context: CoreCompilationContext,
     pub inserted_value_index: usize,
-    pub cursor: ByteCursor,
     pub inserted_values: Vec<Option<ValueContainer>>,
     /// this flag is set to true if any non-static value is encountered
     pub has_non_static_value: bool,
@@ -126,7 +127,7 @@ impl CompilationContext {
     ) -> Self {
         CompilationContext {
             inserted_value_index: 0,
-            cursor: Cursor::new(buffer),
+            core_context: CoreCompilationContext::new(buffer, SlotAddress(0)),
             inserted_values,
             has_non_static_value: false,
             slot_indices: HashMap::new(),
@@ -135,7 +136,19 @@ impl CompilationContext {
     }
 
     pub fn buffer_index(&self) -> u64 {
-        self.cursor.position()
+        self.core_context.cursor().position()
+    }
+    
+    pub fn cursor(&mut self) -> &mut Cursor<Vec<u8>> {
+        self.core_context.cursor_mut()
+    }
+    
+    pub fn into_buffer(self) -> Vec<u8> {
+        self.core_context.into_buffer()
+    }
+
+    pub fn core_context(&mut self) -> &mut CoreCompilationContext {
+        &mut self.core_context
     }
 
     pub fn external_slots(&self) -> Vec<VirtualSlot> {
@@ -189,11 +202,11 @@ impl CompilationContext {
         } else {
             self.slot_indices.insert(virtual_slot, vec![buffer_index]);
         }
-        append_u32(&mut self.cursor, 0); // placeholder for the slot address
+        append_u32(self.cursor(), 0); // placeholder for the slot address
     }
 
     pub fn set_u32_at_index(&mut self, u32: u32, index: usize) {
-        let buf = self.cursor.get_mut();
+        let buf = self.cursor().get_mut();
         buf[index..index + CompilationContext::INT_32_BYTES as usize]
             .copy_from_slice(&u32.to_le_bytes());
     }
@@ -203,6 +216,6 @@ impl CompilationContext {
     }
 
     pub fn append_instruction_code(&mut self, code: InstructionCode) {
-        append_instruction_code_new(&mut self.cursor, code);
+        append_instruction_code_new(self.cursor(), code);
     }
 }
