@@ -252,7 +252,7 @@ impl Display for SharedContainerMutability {
     }
 }
 
-#[derive(Debug, Hash, Eq, PartialEq)]
+#[derive(Debug)]
 pub struct SharedContainer {
     pub(crate) value: SharedContainerInner,
     pub(crate) reference_mutability: Option<PointerReferenceMutability>,
@@ -329,6 +329,14 @@ impl PartialEq for SharedContainerInner {
     }
 }
 
+impl Eq for SharedContainer {}
+
+impl PartialEq for SharedContainer {
+    fn eq(&self, other: &Self) -> bool {
+        self.value == other.value
+    }
+}
+
 impl StructuralEq for SharedContainer {
     fn structural_eq(&self, other: &Self) -> bool {
         match (&self.value, &other.value) {
@@ -363,6 +371,12 @@ impl ValueEq for SharedContainer {
                 .value_eq(&b.borrow().value_container),
             _ => false,
         }
+    }
+}
+
+impl Hash for SharedContainer {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.value.hash(state);
     }
 }
 

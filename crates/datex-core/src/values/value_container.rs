@@ -131,6 +131,13 @@ impl<'a> From<&'a ValueContainer> for ValueKey<'a> {
     }
 }
 
+impl From<ValueContainer> for ValueKey<'_> {
+    fn from(value_container: ValueContainer) -> Self {
+        ValueKey::Value(Cow::Owned(value_container))
+    }
+}
+
+
 impl<'a> ValueKey<'a> {
     pub fn try_as_text(&self) -> Option<&str> {
         if let ValueKey::Text(text) = self {

@@ -684,7 +684,7 @@ mod tests {
             ValueContainer::from(42),
             OwnedPointer::NULL,
         ));
-        map.set(&key, "value");
+        map.set(key.clone(), "value");
         // same reference should be found
         assert_eq!(map.size(), 1);
         assert!(map.has(&key));

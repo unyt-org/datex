@@ -18,7 +18,6 @@ use crate::prelude::*;
 use core::result::Result;
 use log::info;
 use crate::core_compiler::value_compiler::{compile_shared_container, compile_value};
-use crate::decompiler::DecompileOptions;
 
 impl RuntimeInternal {
     pub(crate) async fn handle_incoming_sections_task(
@@ -58,7 +57,7 @@ impl RuntimeInternal {
                 {
                     #[cfg(feature = "decompiler")]
                     {
-                        crate::decompiler::decompile_value(result, DecompileOptions::colorized())
+                        crate::decompiler::decompile_value(result, crate::decompiler::DecompileOptions::colorized())
                     }
                     #[cfg(not(feature = "decompiler"))]
                     {
