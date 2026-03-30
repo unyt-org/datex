@@ -5,7 +5,7 @@ use binrw::{BinRead, BinResult, BinWrite, Endian};
 use binrw::meta::{EndianKind, ReadEndian};
 use crate::dxb_parser::body::DXBParserError;
 use crate::global::instruction_codes::InstructionCode;
-use crate::global::protocol_structures::instruction_data::{ApplyData, DecimalData, Float32Data, Float64Data, FloatAsInt16Data, FloatAsInt32Data, InstructionBlockData, Int128Data, Int16Data, Int32Data, Int64Data, Int8Data, IntegerData, ListData, MapData, ModifySlot, Move, PerformMove, PushToStackMultiple, RawInternalPointerAddress, RawLocalPointerAddress, RawRemotePointerAddress, SetSharedContainerValue, SharedRef, SharedRefWithValue, ShortListData, ShortMapData, ShortStatementsData, ShortTextData, ShortTextDataRaw, StackIndex, StatementsData, TextData, TextDataRaw, UInt128Data, UInt16Data, UInt32Data, UInt64Data, UInt8Data, UnboundedStatementsData};
+use crate::global::protocol_structures::instruction_data::{ApplyData, DecimalData, Float32Data, Float64Data, FloatAsInt16Data, FloatAsInt32Data, InstructionBlockData, Int128Data, Int16Data, Int32Data, Int64Data, Int8Data, IntegerData, ListData, MapData, ModifyStackValue, Move, PerformMove, PushToStackMultiple, RawInternalPointerAddress, RawLocalPointerAddress, RawRemotePointerAddress, SetSharedContainerValue, SharedRef, SharedRefWithValue, ShortListData, ShortMapData, ShortStatementsData, ShortTextData, ShortTextDataRaw, StackIndex, StatementsData, TextData, TextDataRaw, UInt128Data, UInt16Data, UInt32Data, UInt64Data, UInt8Data, UnboundedStatementsData};
 use crate::global::protocol_structures::instructions::NextExpectedInstructions;
 use crate::shared_values::pointer_address::PointerAddress;
 use crate::values::core_values::decimal::utils::decimal_to_string;
@@ -101,7 +101,7 @@ pub enum RegularInstruction {
     NotEqual,
 
     // assignment operator
-    ModifyStackValue(ModifySlot),
+    ModifyStackValue(ModifyStackValue),
 
     GetSharedReference,
     GetSharedReferenceMut,
@@ -620,7 +620,7 @@ impl RegularInstruction {
             }
 
             InstructionCode::MODIFY_STACK_VALUE => {
-                ModifySlot::read(reader).map(RegularInstruction::ModifyStackValue)
+                ModifyStackValue::read(reader).map(RegularInstruction::ModifyStackValue)
             }
 
             InstructionCode::TYPED_VALUE => {
@@ -863,7 +863,7 @@ impl RegularInstruction {
                 )
             }
             RegularInstruction::ModifyStackValue(modify_slot) => {
-                write!(string, "{:?} {}", modify_slot.address, modify_slot.operator)
+                write!(string, "{:?} {}", modify_slot.index, modify_slot.operator)
             }
             RegularInstruction::GetPropertyIndex(uint_32_data) => {
                 write!(string, "{}", uint_32_data.0)

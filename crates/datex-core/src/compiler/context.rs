@@ -1,8 +1,5 @@
 use crate::{
     collections::HashMap,
-    core_compiler::value_compiler::{
-        append_instruction_code,
-    },
     global::instruction_codes::InstructionCode,
     runtime::execution::context::ExecutionMode,
     utils::buffers::append_u32,
@@ -195,6 +192,7 @@ impl CompilationContext {
 
     // This method writes a placeholder value for the slot
     // since the slot address is not known yet and just temporary.
+    #[deprecated]
     pub fn insert_virtual_slot_address(&mut self, virtual_slot: VirtualSlot) {
         let buffer_index = self.buffer_index() as u32;
         if let Some(indices) = self.slot_indices.get_mut(&virtual_slot) {
@@ -203,6 +201,10 @@ impl CompilationContext {
             self.slot_indices.insert(virtual_slot, vec![buffer_index]);
         }
         append_u32(self.cursor(), 0); // placeholder for the slot address
+    }
+    
+    pub fn insert_stack_index(&mut self, stack_index: StackIndex) {
+        append_u32(self.cursor(), stack_index.0);
     }
 
     pub fn set_u32_at_index(&mut self, u32: u32, index: usize) {

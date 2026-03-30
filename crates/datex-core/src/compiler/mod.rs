@@ -61,9 +61,9 @@ use precompiler::{
     precompiled_ast::{AstMetadata, RichAst, VariableMetadata},
 };
 use crate::ast::expressions::ValueAccessType;
-use crate::core_compiler::value_compiler::{append_instruction_code_new, append_regular_instruction, append_shared_container, append_statements_preamble, append_value};
+use crate::core_compiler::value_compiler::{append_instruction, append_instruction_code_new, append_regular_instruction, append_shared_container, append_statements_preamble, append_value};
 use crate::global::protocol_structures::external_slot_type::{ExternalSlotType, LocalSlotType, SharedSlotType};
-use crate::global::protocol_structures::instruction_data::SetSharedContainerValue;
+use crate::global::protocol_structures::instruction_data::{ModifyStackValue, SetSharedContainerValue, StackIndex};
 use crate::global::protocol_structures::regular_instructions::RegularInstruction;
 use crate::shared_values::pointer::PointerReferenceMutability;
 
@@ -156,8 +156,8 @@ impl VariableModel {
 
 #[derive(Debug, Clone, PartialEq, Eq, Copy)]
 pub enum VariableRepresentation {
-    Constant(VirtualSlot),
-    VariableSlot(VirtualSlot),
+    Constant(StackIndex),
+    VariableSlot(StackIndex),
 }
 
 /// Represents a variable in the DATEX script.
@@ -169,30 +169,30 @@ pub struct Variable {
 }
 
 impl Variable {
-    pub fn new_const(name: String, slot: VirtualSlot) -> Self {
+    pub fn new_const(name: String, index: StackIndex) -> Self {
         Variable {
             name,
             kind: VariableKind::Const,
-            representation: VariableRepresentation::Constant(slot),
+            representation: VariableRepresentation::Constant(index),
         }
     }
 
     pub fn new_variable_slot(
         name: String,
         kind: VariableKind,
-        slot: VirtualSlot,
+        index: StackIndex,
     ) -> Self {
         Variable {
             name,
             kind,
-            representation: VariableRepresentation::VariableSlot(slot),
+            representation: VariableRepresentation::VariableSlot(index),
         }
     }
 
-    pub fn slots(&self) -> Vec<VirtualSlot> {
+    pub fn index(&self) -> StackIndex {
         match &self.representation {
-            VariableRepresentation::Constant(slot) => vec![*slot],
-            VariableRepresentation::VariableSlot(slot) => vec![*slot],
+            VariableRepresentation::Constant(index) => *index,
+            VariableRepresentation::VariableSlot(index) => *index,
         }
     }
 }
@@ -773,20 +773,10 @@ fn compile_expression(
                     )?;
                 }
                 if !meta.is_outer_context() {
-                    let scope_data = child_scope
+                    // set parent scope
+                    scope = child_scope
                         .pop()
                         .ok_or(CompilerError::ScopePopError)?;
-                    scope = scope_data.0; // set parent scope
-                    // TODO: slot refactoring
-                    // drop all slot addresses that were allocated in this scope
-                    // for slot_address in scope_data.1 {
-                    //     compilation_context.append_instruction_code(
-                    //         InstructionCode::POP_SLOT,
-                    //     );
-                    //     // insert virtual slot address for dropping
-                    //     compilation_context
-                    //         .insert_virtual_slot_address(slot_address);
-                    // }
                 } else {
                     scope = child_scope;
                 }
@@ -1014,8 +1004,8 @@ fn compile_expression(
         }) => {
             compilation_context.mark_has_non_static_value();
 
-            // allocate new slot for variable
-            let virtual_slot_addr = scope.get_next_virtual_slot();
+            // push to stack
+            let stack_index = scope.get_next_stack_index();
             compilation_context
                 .append_instruction_code(InstructionCode::PUSH_TO_STACK);
             // compile expression
@@ -1038,12 +1028,12 @@ fn compile_expression(
             let variable = match variable_model {
                 VariableModel::Constant => Variable::new_const(
                     name.clone(),
-                    VirtualSlot::local(virtual_slot_addr),
+                    stack_index,
                 ),
                 VariableModel::VariableSlot => Variable::new_variable_slot(
                     name.clone(),
                     kind,
-                    VirtualSlot::local(virtual_slot_addr),
+                    stack_index,
                 ),
             };
 
@@ -1068,8 +1058,8 @@ fn compile_expression(
         }) => {
             compilation_context.mark_has_non_static_value();
             // get variable slot address
-            let (virtual_slot, kind) = scope
-                .resolve_variable_name_to_virtual_slot(&name, None)
+            let (stack_index, kind) = scope
+                .resolve_variable_name_to_stack_index(&name, None)
                 .map_err(|_| CompilerError::AssignmentToExternalVariable(name.clone()))?
                 .ok_or_else(|| {
                     CompilerError::UndeclaredVariable(name.clone())
@@ -1085,13 +1075,15 @@ fn compile_expression(
                 None => {
                     // append binary code to load variable
                     info!(
-                        "append variable virtual slot: {virtual_slot:?}, name: {name}"
+                        "append variable - stack index: {stack_index:?}, name: {name}"
                     );
-                    compilation_context
-                        .append_instruction_code(InstructionCode::SET_STACK_VALUE);
+                    append_regular_instruction(
+                        compilation_context.cursor(),
+                        RegularInstruction::SetStackValue(stack_index),
+                    )?;
                 }
-                Some(AssignmentOperator::AddAssign)
-                | Some(AssignmentOperator::SubtractAssign) => {
+                Some(operator @ AssignmentOperator::AddAssign)
+                | Some(operator @ AssignmentOperator::SubtractAssign) => {
                     // TODO #435: handle mut type
                     // // if immutable reference, return error
                     // if mut_type == Some(ReferenceMutability::Immutable) {
@@ -1108,14 +1100,17 @@ fn compile_expression(
                     //     ));
                     // }
 
-                    compilation_context
-                        .append_instruction_code(InstructionCode::MODIFY_STACK_VALUE);
-                    operator.write(compilation_context.cursor())?;
+                    append_regular_instruction(
+                        compilation_context.cursor(),
+                        RegularInstruction::ModifyStackValue(ModifyStackValue {
+                            index: stack_index,
+                            operator,
+                        }),
+                    )?;
                 }
                 op => core::todo!("#436 Handle assignment operator: {op:?}"),
             }
 
-            compilation_context.insert_virtual_slot_address(virtual_slot);
             // compile expression
             scope = compile_expression(
                 compilation_context,
@@ -1183,15 +1178,15 @@ fn compile_expression(
             };
 
             // get variable slot address
-            let (virtual_slot, ..) = scope
-                .resolve_variable_name_to_virtual_slot_with_slot_type(&name, slot_type)
+            let (stack_index, ..) = scope
+                .resolve_variable_name_to_stack_index_with_slot_type(&name, slot_type)
                 .ok_or_else(|| {
                     CompilerError::UndeclaredVariable(name.clone())
                 })?;
             // append binary code to load variable
             compilation_context
                 .append_instruction_code(slot_access);
-            compilation_context.insert_virtual_slot_address(virtual_slot);
+            compilation_context.insert_stack_index(stack_index);
         }
 
         // remote execution
@@ -1212,16 +1207,20 @@ fn compile_expression(
                 vec![],
                 ExecutionMode::Static,
             );
+            
+            let stack_index_offset = StackIndex(injected_variable_count.unwrap()); // must be set by precompiler
+            
             let external_scope = compile_rich_ast(
                 &mut execution_block_ctx,
                 RichAst::new(*script, &metadata),
-                CompilationScope::new_with_external_parent_scope(scope),
+                CompilationScope::new_with_external_parent_scope(scope, stack_index_offset),
             )?;
             // reset to current scope
             scope = external_scope
                 .pop_external()
                 .ok_or(CompilerError::ScopePopError)?;
 
+            // FIXME
             let external_slots = execution_block_ctx.external_slots();
 
             // --- start block

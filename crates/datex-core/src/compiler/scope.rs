@@ -12,6 +12,7 @@ use crate::{
 };
 use core::cell::RefCell;
 use crate::global::protocol_structures::external_slot_type::ExternalSlotType;
+use crate::global::protocol_structures::instruction_data::StackIndex;
 
 #[derive(Debug, Default, Clone)]
 pub struct PrecompilerData {
@@ -31,7 +32,8 @@ pub struct CompilationScope {
     parent_scope: Option<Box<CompilationScope>>,
     /// scope of a parent context, e.g. when inside a block scope for remote execution calls or function bodies
     external_parent_scope: Option<Box<CompilationScope>>,
-    next_slot_address: u32,
+    /// next available index that can be allocated in the stack
+    next_stack_index: StackIndex,
 
     // ------- Data only relevant for the root scope (FIXME: refactor?) -------
     /// optional precompiler data, only on the root scope
@@ -49,7 +51,7 @@ impl Default for CompilationScope {
             variables: HashMap::new(),
             parent_scope: None,
             external_parent_scope: None,
-            next_slot_address: 0,
+            next_stack_index: StackIndex(0),
             precompiler_data: Some(PrecompilerData::default()),
             execution_mode: ExecutionMode::Static,
             was_used: false,
@@ -67,9 +69,11 @@ impl CompilationScope {
 
     pub fn new_with_external_parent_scope(
         parent_context: CompilationScope,
+        initial_stack_index: StackIndex,
     ) -> CompilationScope {
         CompilationScope {
             external_parent_scope: Some(Box::new(parent_context)),
+            next_stack_index: initial_stack_index,
             ..CompilationScope::default()
         }
     }
@@ -97,21 +101,21 @@ impl CompilationScope {
         self.variables.insert(variable.name.clone(), variable);
     }
 
-    pub fn get_next_virtual_slot(&mut self) -> u32 {
-        let slot_address = self.next_slot_address;
-        self.next_slot_address += 1;
-        slot_address
+    pub fn get_next_stack_index(&mut self) -> StackIndex {
+        let index = self.next_stack_index;
+        self.next_stack_index += 1;
+        index
     }
 
-    /// Returns the virtual slot address for a variable in this scope or potentially in the parent scope.
+    /// Returns the stack index for a variable in this scope or potentially in the parent scope.
     /// The returned tuple contains the slot address, variable type, and a boolean indicating if it
     /// is a local variable (false) or from a parent scope (true).
     /// Returns an error if the variables comes from an external parent scope, but no slot type is provided to downgrade the virtual slot.
-    pub fn resolve_variable_name_to_virtual_slot(
+    pub fn resolve_variable_name_to_stack_index(
         &self,
         name: &str,
         slot_type: Option<ExternalSlotType>,
-    ) -> Result<Option<(VirtualSlot, VariableKind)>, ()> {
+    ) -> Result<Option<(StackIndex, VariableKind)>, ()> {
         if let Some(variable) = self.variables.get(name) {
             let slot = match variable.representation {
                 VariableRepresentation::Constant(slot) => slot,
@@ -122,15 +126,15 @@ impl CompilationScope {
             if let Some(slot_type) = slot_type {
                 Ok(
                     external_parent
-                        .resolve_variable_name_to_virtual_slot(name, Some(slot_type))?
-                        .map(|(virt_slot, var_type)| (virt_slot.downgrade(slot_type), var_type))
+                        .resolve_variable_name_to_stack_index(name, Some(slot_type))?
+                        .map(|(virt_slot, var_kind)| (virt_slot.downgrade(slot_type), var_kind))
                 )
             }
             else {
                 Err(())
             }
         } else if let Some(parent) = &self.parent_scope {
-            parent.resolve_variable_name_to_virtual_slot(name, slot_type)
+            parent.resolve_variable_name_to_stack_index(name, slot_type)
         } else {
             Ok(None)
         }
@@ -139,18 +143,18 @@ impl CompilationScope {
     /// Returns the virtual slot address for a variable in this scope or potentially in the parent scope.
     /// The returned tuple contains the slot address, variable type, and a boolean indicating if it
     /// is a local variable (false) or from a parent scope (true).
-    pub fn resolve_variable_name_to_virtual_slot_with_slot_type(
+    pub fn resolve_variable_name_to_stack_index_with_slot_type(
         &self,
         name: &str,
         slot_type: ExternalSlotType,
-    ) -> Option<(VirtualSlot, VariableKind)> {
-        self.resolve_variable_name_to_virtual_slot(name, Some(slot_type)).unwrap()
+    ) -> Option<(StackIndex, VariableKind)> {
+        self.resolve_variable_name_to_stack_index(name, Some(slot_type)).unwrap()
     }
 
     /// Creates a new `CompileScope` that is a child of the current scope.
     pub fn push(self) -> CompilationScope {
         CompilationScope {
-            next_slot_address: self.next_slot_address,
+            next_stack_index: self.next_stack_index,
             parent_scope: Some(Box::new(self)),
             external_parent_scope: None,
             variables: HashMap::new(),
@@ -160,22 +164,9 @@ impl CompilationScope {
         }
     }
 
-    /// Drops the current scope and returns to the parent scope and a list
-    /// of all slot addresses that should be dropped.
-    pub fn pop(self) -> Option<(CompilationScope, Vec<VirtualSlot>)> {
-        if let Some(mut parent) = self.parent_scope {
-            // update next_slot_address for parent scope
-            parent.next_slot_address = self.next_slot_address;
-            Some((
-                *parent,
-                self.variables
-                    .keys()
-                    .flat_map(|k| self.variables[k].slots())
-                    .collect::<Vec<_>>(),
-            ))
-        } else {
-            None
-        }
+    /// Drops the current scope and returns to the parent scope
+    pub fn pop(mut self) -> Option<CompilationScope> {
+        Some(*(self.parent_scope.take()?))
     }
 
     pub fn pop_external(self) -> Option<CompilationScope> {

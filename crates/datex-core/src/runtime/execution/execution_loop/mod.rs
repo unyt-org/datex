@@ -73,7 +73,7 @@ use crate::{
 use alloc::rc::Rc;
 use core::cell::RefCell;
 use crate::global::protocol_structures::external_slot_type::{ExternalSlotType, SharedSlotType};
-use crate::global::protocol_structures::instruction_data::{ModifySlot, UnboundedStatementsData};
+use crate::global::protocol_structures::instruction_data::{ModifyStackValue, UnboundedStatementsData};
 use crate::global::protocol_structures::instructions::{Instruction};
 use crate::global::protocol_structures::regular_instructions::RegularInstruction;
 use crate::global::protocol_structures::type_instructions::TypeInstruction;
@@ -892,8 +892,8 @@ pub fn inner_execution_loop(
                                     .into()
                                 }
 
-                                RegularInstruction::ModifyStackValue(ModifySlot {
-                                   address,
+                                RegularInstruction::ModifyStackValue(ModifyStackValue {
+                                                                         index: address,
                                    operator
                                }) => {
                                     let slot_value = yield_unwrap!(

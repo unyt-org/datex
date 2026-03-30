@@ -267,9 +267,15 @@ pub struct InstructionCloseAndStore {
     pub instruction: Int8Data,
 }
 
-#[derive(BinRead, BinWrite, Clone, Copy, Debug, PartialEq)]
+#[derive(BinRead, BinWrite, Clone, Copy, Debug, PartialEq, Eq)]
 #[brw(little)]
 pub struct StackIndex(pub u32);
+
+impl AddAssign<u32> for StackIndex {
+    fn add_assign(&mut self, rhs: u32) {
+        self.0 += rhs;
+    }
+}
 
 #[derive(BinRead, BinWrite, Clone, Copy, Debug, PartialEq)]
 #[brw(little)]
@@ -400,8 +406,8 @@ pub struct SetSharedContainerValue {
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
 #[brw(little)]
-pub struct ModifySlot {
-    pub address: StackIndex,
+pub struct ModifyStackValue {
+    pub index: StackIndex,
     pub operator: AssignmentOperator,
 }
 
