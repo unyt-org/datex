@@ -12,7 +12,7 @@ pub struct SharedValueTracking {
 }
 
 impl SharedValueTracking {
-    
+
     pub fn new(start_address: SlotAddress) -> SharedValueTracking {
         SharedValueTracking {
             shared_values: HashMap::new(),

@@ -1,9 +1,10 @@
 use binrw::io::Write;
 use binrw::io::Cursor;
+use crate::core_compiler::core_compilation_context::CoreCompilationContext;
 use crate::core_compiler::value_compiler::{append_instruction_code, append_instruction_code_new, append_perform_moves, append_shared_container, append_statements_preamble};
 use crate::global::instruction_codes::InstructionCode;
 use crate::global::protocol_structures::external_slot_type::{ExternalSlotType, SharedSlotType};
-use crate::global::protocol_structures::instruction_data::InstructionBlockData;
+use crate::global::protocol_structures::instruction_data::{InstructionBlockData, SlotAddress};
 use crate::runtime::execution::ExecutionError;
 use crate::shared_values::shared_container::SharedContainer;
 use crate::utils::buffers::{append_u32, append_u8};
@@ -70,8 +71,7 @@ fn compile_preamble(
     exec_block_data: InstructionBlockData,
     slot_values: Vec<BorrowedValueContainer>,
 ) -> Result<(Vec<u8>, Vec<SharedContainer>), ExecutionError> {
-
-    let mut cursor = Cursor::new(vec![]);
+    let mut context = CoreCompilationContext::new(Vec::new(), SlotAddress(0));
 
     let mut moved_pointers: Vec<SharedContainer> = vec![];
 
@@ -82,8 +82,8 @@ fn compile_preamble(
         .zip(slot_values.into_iter())
         .enumerate()
     {
-        cursor.write_all(&[InstructionCode::ALLOCATE_SLOT as u8]).unwrap();
-        append_u32(&mut cursor, slot_addr as u32);
+        context.cursor_mut().write_all(&[InstructionCode::ALLOCATE_SLOT as u8]).unwrap();
+        append_u32(context.cursor_mut(), slot_addr as u32);
         match external_slot_type {
             ExternalSlotType::Local(_) => {
                 todo!()
@@ -100,10 +100,10 @@ fn compile_preamble(
                             BorrowedValueContainer::Shared(shared_container) => {
                                 shared_container.assert_owned().map_err(|_| ExecutionError::ExpectedOwnedSharedValue)?;
                                 moved_pointers.push(shared_container);
-                                append_instruction_code_new(&mut cursor, InstructionCode::TAKE_PROPERTY_INDEX);
-                                append_u32(&mut cursor, index);
-                                append_instruction_code_new(&mut cursor, InstructionCode::CLONE_SLOT);
-                                append_u32(&mut cursor, moved_pointers_slot_index);
+                                append_instruction_code_new(context.cursor_mut(), InstructionCode::TAKE_PROPERTY_INDEX);
+                                append_u32(context.cursor_mut(), index);
+                                append_instruction_code_new(context.cursor_mut(), InstructionCode::CLONE_SLOT);
+                                append_u32(context.cursor_mut(), moved_pointers_slot_index);
                                 continue;
                             }
                         }
@@ -124,7 +124,7 @@ fn compile_preamble(
                 };
 
                 append_shared_container(
-                    &mut cursor,
+                    &mut context,
                     &shared_container,
                     true
                 ).unwrap();
@@ -133,7 +133,7 @@ fn compile_preamble(
     }
 
     Ok((
-        cursor.into_inner(),
+        context.into_buffer(),
         moved_pointers
     ))
 }
@@ -142,17 +142,17 @@ fn compile_preform_move_preamble(
     moved_pointers_slot_index: u32,
     moved_pointers: &[&SharedContainer]
 ) -> Vec<u8> {
-    let mut cursor = Cursor::new(vec![]);
-    cursor.write_all(&[InstructionCode::ALLOCATE_SLOT as u8]).unwrap();
+    let mut context = CoreCompilationContext::new(Vec::new(), SlotAddress(0));
+    context.cursor_mut().write_all(&[InstructionCode::ALLOCATE_SLOT as u8]).unwrap();
 
-    append_u32(&mut cursor, moved_pointers_slot_index);
+    append_u32(context.cursor_mut(), moved_pointers_slot_index);
 
     append_perform_moves(
-        &mut cursor,
+        &mut context,
         moved_pointers
     ).unwrap(); // we already ensured that all moved pointers are owned local shared containers, so this should never fail
 
-    cursor.into_inner()
+    context.into_buffer()
 }
 
 #[cfg(test)]
