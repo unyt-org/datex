@@ -4,7 +4,7 @@ use crate::runtime::{
         ExecutionError,
         execution_loop::{
             interrupts::{ExternalExecutionInterrupt, InterruptProvider},
-            state::{ExecutionLoopState, RuntimeExecutionSlots},
+            state::{ExecutionLoopState, RuntimeExecutionStack},
         },
     },
 };
@@ -67,7 +67,7 @@ impl<'a> ExecutionInput<'a> {
         caller_metadata: ExecutionCallerMetadata,
         options: ExecutionOptions,
         runtime: Rc<RuntimeInternal>,
-        slots: RuntimeExecutionSlots,
+        slots: RuntimeExecutionStack,
     ) -> Self {
         let state =
             ExecutionLoopState::new(dxb_body.to_vec(), runtime.clone(), slots, caller_metadata.clone());

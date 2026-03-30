@@ -1,5 +1,5 @@
 use alloc::string::FromUtf8Error;
-use std::ops::AddAssign;
+use core::ops::AddAssign;
 use binrw::io::{Cursor, Read, Seek, Write};
 use binrw::{BinRead, BinResult, BinWrite, Endian};
 use binrw::meta::{EndianKind, ReadEndian};
@@ -269,8 +269,13 @@ pub struct InstructionCloseAndStore {
 
 #[derive(BinRead, BinWrite, Clone, Copy, Debug, PartialEq)]
 #[brw(little)]
-pub struct SlotAddress(pub u32);
+pub struct StackIndex(pub u32);
 
+#[derive(BinRead, BinWrite, Clone, Copy, Debug, PartialEq)]
+#[brw(little)]
+pub struct PushToStackMultiple {
+    pub count: u32
+}
 
 #[derive(
     BinRead, BinWrite, Clone, Debug, PartialEq, Serialize, Deserialize,
@@ -396,7 +401,7 @@ pub struct SetSharedContainerValue {
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
 #[brw(little)]
 pub struct ModifySlot {
-    pub address: SlotAddress,
+    pub address: StackIndex,
     pub operator: AssignmentOperator,
 }
 

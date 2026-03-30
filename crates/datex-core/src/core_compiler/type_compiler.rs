@@ -12,12 +12,12 @@ use crate::{
     values::core_values::r#type::Type,
 };
 use crate::core_compiler::core_compilation_context::{ByteCursor, CoreCompilationContext};
-use crate::global::protocol_structures::instruction_data::{SlotAddress, TypeMetadataBin};
+use crate::global::protocol_structures::instruction_data::{StackIndex, TypeMetadataBin};
 use crate::global::protocol_structures::type_instructions::TypeInstruction;
 
 /// Compiles a given type container to a DXB body
 pub fn compile_type(ty: &Type) -> Vec<u8> {
-    let mut context = CoreCompilationContext::new(Vec::new(), SlotAddress(0));
+    let mut context = CoreCompilationContext::new(Vec::new(), StackIndex(0));
     append_type(&mut context, ty);
 
     context.into_buffer()

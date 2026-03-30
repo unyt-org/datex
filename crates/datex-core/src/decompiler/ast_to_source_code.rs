@@ -710,6 +710,7 @@ impl AstToSourceCodeConverter {
                     return_type,
                     yeet_type,
                     body,
+                    ..
                 } = &**callable;
                 let mut params_code: Vec<String> = parameters
                     .iter()
@@ -847,6 +848,7 @@ impl AstToSourceCodeConverter {
             DatexExpressionData::RemoteExecution(RemoteExecution {
                 left,
                 right,
+                ..
             }) => {
                 format!("{}%s::%s{}", self.format(left), self.format(right))
             }

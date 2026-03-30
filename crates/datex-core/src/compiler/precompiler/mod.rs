@@ -474,7 +474,8 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
         self.scope_stack.increment_realm_index();
 
         self.visit_datex_expression(&mut remote_execution.right)?;
-        self.scope_stack.pop_scope();
+        let scope = self.scope_stack.pop_scope();
+        remote_execution.injected_variable_count = Some(scope.external_variable_count);
         Ok(VisitAction::SkipChildren)
     }
 
@@ -1605,7 +1606,8 @@ mod tests {
                     left: Box::new(DatexExpressionData::Endpoint(Endpoint::from_str("@example").unwrap()).with_default_span()),
                     right: Box::new(DatexExpressionData::Statements(Statements::new_terminated(
                         vec![DatexExpressionData::Integer(Integer::from(1)).with_default_span()]
-                    )).with_default_span())
+                    )).with_default_span()),
+                    injected_variable_count: Some(0),
                 }).with_default_span()
             ]))
         )
@@ -1623,7 +1625,8 @@ mod tests {
                     left: Box::new(DatexExpressionData::Endpoint(Endpoint::from_str("@example").unwrap()).with_default_span()),
                     right: Box::new(DatexExpressionData::Statements(Statements::new_terminated(
                         vec![DatexExpressionData::Integer(Integer::from(1)).with_default_span()]
-                    )).with_default_span())
+                    )).with_default_span()),
+                    injected_variable_count: Some(0),
                 }).with_default_span(),
                 DatexExpressionData::Integer(Integer::from(2)).with_default_span(),
             ]))
@@ -1645,9 +1648,43 @@ mod tests {
                             DatexExpressionData::Integer(Integer::from(1)).with_default_span(),
                             DatexExpressionData::Integer(Integer::from(2)).with_default_span(),
                         ],
-                    )).with_default_span())
+                    )).with_default_span()),
+                    injected_variable_count: Some(0),
                 }).with_default_span()
             ]))
         )
+    }
+
+    #[test]
+    fn remote_execution_injected_variables() {
+        let result = parse_and_precompile("var x = 10; @example :: x");
+        assert!(result.is_ok());
+        let rich_ast = result.unwrap();
+        assert_eq!(
+            rich_ast.ast.data,
+            DatexExpressionData::Statements(Statements::new_unterminated(vec![
+                DatexExpressionData::VariableDeclaration(VariableDeclaration {
+                    id: Some(0),
+                    kind: VariableKind::Var,
+                    name: "x".to_string(),
+                    init_expression: Box::new(
+                        DatexExpressionData::Integer(Integer::from(10))
+                            .with_default_span()
+                    ),
+                    type_annotation: None,
+                })
+                    .with_default_span(),
+                DatexExpressionData::RemoteExecution(RemoteExecution {
+                    left: Box::new(DatexExpressionData::Endpoint(Endpoint::from_str("@example").unwrap()).with_default_span()),
+                    right: Box::new(DatexExpressionData::VariableAccess(VariableAccess {
+                        id: 0,
+                        name: "x".to_string(),
+                        access_type: ValueAccessType::MoveOrCopy,
+                    }).with_default_span()),
+                    injected_variable_count: Some(1),
+                }).with_default_span()
+            ]))
+        )
+
     }
 }

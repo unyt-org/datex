@@ -417,6 +417,7 @@ fn compile_ast(
     compilation_context: &mut CompilationContext,
     options: CompileOptions,
 ) -> Result<CompilationScope, CompilerError> {
+    info!("ast {:#?}", ast.metadata.borrow());
     let compilation_scope =
         compile_rich_ast(compilation_context, ast, options.compile_scope)?;
     Ok(compilation_scope)
@@ -709,7 +710,7 @@ fn compile_expression(
                 }
             } else {
                 compilation_context
-                    .append_instruction_code(InstructionCode::CLONE_SLOT);
+                    .append_instruction_code(InstructionCode::CLONE_STACK_VALUE);
                 compilation_context.insert_virtual_slot_address(
                     VirtualSlot::local(
                         compilation_context.inserted_value_index as u32,
@@ -1016,10 +1017,7 @@ fn compile_expression(
             // allocate new slot for variable
             let virtual_slot_addr = scope.get_next_virtual_slot();
             compilation_context
-                .append_instruction_code(InstructionCode::ALLOCATE_SLOT);
-            compilation_context.insert_virtual_slot_address(
-                VirtualSlot::local(virtual_slot_addr),
-            );
+                .append_instruction_code(InstructionCode::PUSH_TO_STACK);
             // compile expression
             scope = compile_expression(
                 compilation_context,
@@ -1090,7 +1088,7 @@ fn compile_expression(
                         "append variable virtual slot: {virtual_slot:?}, name: {name}"
                     );
                     compilation_context
-                        .append_instruction_code(InstructionCode::SET_SLOT);
+                        .append_instruction_code(InstructionCode::SET_STACK_VALUE);
                 }
                 Some(AssignmentOperator::AddAssign)
                 | Some(AssignmentOperator::SubtractAssign) => {
@@ -1111,7 +1109,7 @@ fn compile_expression(
                     // }
 
                     compilation_context
-                        .append_instruction_code(InstructionCode::MODIFY_SLOT);
+                        .append_instruction_code(InstructionCode::MODIFY_STACK_VALUE);
                     operator.write(compilation_context.cursor())?;
                 }
                 op => core::todo!("#436 Handle assignment operator: {op:?}"),
@@ -1177,11 +1175,11 @@ fn compile_expression(
             };
 
             let slot_access = match access_type {
-                ValueAccessType::SharedRefMut => InstructionCode::GET_SLOT_SHARED_REF_MUT,
-                ValueAccessType::SharedRef => InstructionCode::GET_SLOT_SHARED_REF,
-                ValueAccessType::MoveOrCopy => InstructionCode::POP_SLOT,
-                ValueAccessType::Clone => InstructionCode::CLONE_SLOT,
-                ValueAccessType::Borrow => InstructionCode::BORROW_SLOT,
+                ValueAccessType::SharedRefMut => InstructionCode::GET_STACK_VALUE_SHARED_REF_MUT,
+                ValueAccessType::SharedRef => InstructionCode::GET_STACK_VALUE_SHARED_REF,
+                ValueAccessType::MoveOrCopy => InstructionCode::TAKE_STACK_VALUE,
+                ValueAccessType::Clone => InstructionCode::CLONE_STACK_VALUE,
+                ValueAccessType::Borrow => InstructionCode::BORROW_STACK_VALUE,
             };
 
             // get variable slot address
@@ -1200,6 +1198,7 @@ fn compile_expression(
         DatexExpressionData::RemoteExecution(RemoteExecution {
             left: caller,
             right: script,
+            injected_variable_count
         }) => {
             compilation_context.mark_has_non_static_value();
 
@@ -1526,7 +1525,7 @@ pub mod tests {
         compile_template, parse_datex_script_to_rich_ast_simple_error,
     };
 
-    use crate::{assert_instructions_equal, compiler::scope::CompilationScope, global::{
+    use crate::{assert_instructions_equal, assert_regular_instructions_equal, compiler::scope::CompilationScope, global::{
         instruction_codes::InstructionCode,
         type_instruction_codes::TypeInstructionCode,
     }, libs::core::CoreLibPointerId, runtime::execution::context::ExecutionMode};
@@ -1539,9 +1538,9 @@ pub mod tests {
     use alloc::format;
     use core::assert_matches;
     use log::*;
-    use crate::global::protocol_structures::disassembler::disassemble_body;
+    use crate::global::protocol_structures::disassembler::{disassemble_body, disassemble_body_to_string, DisassemblerOptions};
     use crate::global::protocol_structures::external_slot_type::{ExternalSlotType, SharedSlotType};
-    use crate::global::protocol_structures::instruction_data::IntegerData;
+    use crate::global::protocol_structures::instruction_data::{IntegerData, StackIndex, StatementsData, UInt8Data};
     use crate::global::protocol_structures::instructions::Instruction;
     use crate::global::protocol_structures::regular_instructions::RegularInstruction;
     use crate::values::core_values::integer::Integer;
@@ -1679,7 +1678,7 @@ pub mod tests {
                 InstructionCode::SHORT_STATEMENTS.into(),
                 3,
                 0, // not terminated
-                InstructionCode::ALLOCATE_SLOT.into(),
+                InstructionCode::PUSH_TO_STACK.into(),
                 0,
                 0,
                 0,
@@ -1688,7 +1687,7 @@ pub mod tests {
                 InstructionCode::UINT_8.into(),
                 42,
                 // val b = 69;
-                InstructionCode::ALLOCATE_SLOT.into(),
+                InstructionCode::PUSH_TO_STACK.into(),
                 1,
                 0,
                 0,
@@ -1698,12 +1697,12 @@ pub mod tests {
                 69,
                 // a is b
                 InstructionCode::IS.into(),
-                InstructionCode::POP_SLOT.into(),
+                InstructionCode::TAKE_STACK_VALUE.into(),
                 0,
                 0,
                 0,
                 0, // slot address for a
-                InstructionCode::POP_SLOT.into(),
+                InstructionCode::TAKE_STACK_VALUE.into(),
                 1,
                 0,
                 0,
@@ -2193,7 +2192,7 @@ pub mod tests {
         assert_eq!(
             result,
             vec![
-                InstructionCode::ALLOCATE_SLOT.into(),
+                InstructionCode::PUSH_TO_STACK.into(),
                 // slot index as u32
                 0,
                 0,
@@ -2215,7 +2214,7 @@ pub mod tests {
                 InstructionCode::SHORT_STATEMENTS.into(),
                 2,
                 0, // not terminated
-                InstructionCode::ALLOCATE_SLOT.into(),
+                InstructionCode::PUSH_TO_STACK.into(),
                 // slot index as u32
                 0,
                 0,
@@ -2224,7 +2223,7 @@ pub mod tests {
                 InstructionCode::UINT_8.into(),
                 42,
                 InstructionCode::ADD.into(),
-                InstructionCode::POP_SLOT.into(),
+                InstructionCode::TAKE_STACK_VALUE.into(),
                 // slot index as u32
                 0,
                 0,
@@ -2246,7 +2245,7 @@ pub mod tests {
                 InstructionCode::SHORT_STATEMENTS.into(),
                 3,
                 0, // not terminated
-                InstructionCode::ALLOCATE_SLOT.into(),
+                InstructionCode::PUSH_TO_STACK.into(),
                 0,
                 0,
                 0,
@@ -2256,19 +2255,19 @@ pub mod tests {
                 InstructionCode::SHORT_STATEMENTS.into(),
                 2,
                 0, // not terminated
-                InstructionCode::ALLOCATE_SLOT.into(),
+                InstructionCode::PUSH_TO_STACK.into(),
                 1,
                 0,
                 0,
                 0,
                 InstructionCode::UINT_8.into(),
                 43,
-                InstructionCode::POP_SLOT.into(),
+                InstructionCode::TAKE_STACK_VALUE.into(),
                 1,
                 0,
                 0,
                 0,
-                InstructionCode::POP_SLOT.into(),
+                InstructionCode::TAKE_STACK_VALUE.into(),
                 // slot index as u32
                 0,
                 0,
@@ -2289,14 +2288,14 @@ pub mod tests {
                 InstructionCode::SHORT_STATEMENTS.into(),
                 4,
                 0, // not terminated
-                InstructionCode::ALLOCATE_SLOT.into(),
+                InstructionCode::PUSH_TO_STACK.into(),
                 0,
                 0,
                 0,
                 0,
                 InstructionCode::UINT_8.into(),
                 42,
-                InstructionCode::ALLOCATE_SLOT.into(),
+                InstructionCode::PUSH_TO_STACK.into(),
                 1,
                 0,
                 0,
@@ -2306,24 +2305,24 @@ pub mod tests {
                 InstructionCode::SHORT_STATEMENTS.into(),
                 3,
                 0, // not terminated
-                InstructionCode::ALLOCATE_SLOT.into(),
+                InstructionCode::PUSH_TO_STACK.into(),
                 2,
                 0,
                 0,
                 0,
                 InstructionCode::UINT_8.into(),
                 43,
-                InstructionCode::POP_SLOT.into(),
+                InstructionCode::TAKE_STACK_VALUE.into(),
                 2,
                 0,
                 0,
                 0,
-                InstructionCode::POP_SLOT.into(),
+                InstructionCode::TAKE_STACK_VALUE.into(),
                 1,
                 0,
                 0,
                 0,
-                InstructionCode::POP_SLOT.into(),
+                InstructionCode::TAKE_STACK_VALUE.into(),
                 // slot index as u32
                 0,
                 0,
@@ -2340,7 +2339,7 @@ pub mod tests {
         assert_eq!(
             result,
             vec![
-                InstructionCode::ALLOCATE_SLOT.into(),
+                InstructionCode::PUSH_TO_STACK.into(),
                 // slot index as u32
                 0,
                 0,
@@ -2363,7 +2362,7 @@ pub mod tests {
                 InstructionCode::SHORT_STATEMENTS.into(),
                 2,
                 0, // not terminated
-                InstructionCode::ALLOCATE_SLOT.into(),
+                InstructionCode::PUSH_TO_STACK.into(),
                 // slot index as u32
                 0,
                 0,
@@ -2372,7 +2371,7 @@ pub mod tests {
                 InstructionCode::CREATE_SHARED.into(),
                 InstructionCode::UINT_8.into(),
                 42,
-                InstructionCode::POP_SLOT.into(),
+                InstructionCode::TAKE_STACK_VALUE.into(),
                 // slot index as u32
                 0,
                 0,
@@ -2529,6 +2528,43 @@ pub mod tests {
     }
 
     #[test]
+    fn nested_statements() {
+        flexi_logger::init();
+        let script = r#"
+            var x = 1u8;
+            (
+                var y = 2u8;
+                clone x;
+                y;
+            );
+            var z = 3u8;
+            x;
+            z;
+        "#;
+        let (res, _) =
+            compile_script(script, CompileOptions::default()).unwrap();
+        info!("> {}", disassemble_body_to_string(&res, DisassemblerOptions::default()));
+        assert_regular_instructions_equal!(
+            &res,
+            [
+                RegularInstruction::ShortStatements(StatementsData {statements_count: 5, terminated: true}),
+                RegularInstruction::PushToStack,
+                RegularInstruction::UInt8(UInt8Data(1)),
+                RegularInstruction::ShortStatements(StatementsData {statements_count: 3, terminated: true}),
+                RegularInstruction::PushToStack,
+                RegularInstruction::UInt8(UInt8Data(2)),
+                RegularInstruction::CloneStackValue(StackIndex(0)),
+                RegularInstruction::TakeStackValue(StackIndex(1)),
+                RegularInstruction::PushToStack,
+                RegularInstruction::UInt8(UInt8Data(3)),
+                RegularInstruction::TakeStackValue(StackIndex(0)),
+                RegularInstruction::TakeStackValue(StackIndex(1)),
+            ]
+        );
+    }
+
+
+    #[test]
     fn remote_execution() {
         let script = "42u8 :: 43u8";
         let (res, _) =
@@ -2596,6 +2632,7 @@ pub mod tests {
 
     #[test]
     fn remote_execution_invalid_reassignment_of_external_variable() {
+        flexi_logger::init();
         let script = "var x = 42u8; 1u8 :: (x = 43u8)";
         let result = compile_script(script, CompileOptions::default());
         assert!(result.is_err());
@@ -2616,7 +2653,7 @@ pub mod tests {
                 InstructionCode::SHORT_STATEMENTS.into(),
                 2,
                 0, // not terminated
-                InstructionCode::ALLOCATE_SLOT.into(),
+                InstructionCode::PUSH_TO_STACK.into(),
                 // slot index as u32
                 0,
                 0,
@@ -2644,7 +2681,7 @@ pub mod tests {
                 // local move
                 3,
                 // slot 0 (mapped from slot 0)
-                InstructionCode::POP_SLOT.into(),
+                InstructionCode::TAKE_STACK_VALUE.into(),
                 // slot index as u32
                 0,
                 0,
@@ -2671,7 +2708,7 @@ pub mod tests {
                 InstructionCode::SHORT_STATEMENTS.into(),
                 2,
                 1, // terminated
-                InstructionCode::ALLOCATE_SLOT.into(),
+                InstructionCode::PUSH_TO_STACK.into(),
                 // slot index as u32
                 0,
                 0,
@@ -2703,7 +2740,7 @@ pub mod tests {
                 1,
                 1, // terminated
                 // slot 0 (mapped from slot 0)
-                InstructionCode::POP_SLOT.into(),
+                InstructionCode::TAKE_STACK_VALUE.into(),
                 // slot index as u32
                 0,
                 0,
@@ -2728,7 +2765,7 @@ pub mod tests {
                 InstructionCode::SHORT_STATEMENTS.into(),
                 2,
                 0,
-                InstructionCode::ALLOCATE_SLOT.into(),
+                InstructionCode::PUSH_TO_STACK.into(),
                 // slot index as u32
                 0,
                 0,
@@ -2757,7 +2794,7 @@ pub mod tests {
                 0,
                 ExternalSlotType::Shared(SharedSlotType::Ref).into(),
                 // slot 0 (mapped from slot 0)
-                InstructionCode::GET_SLOT_SHARED_REF.into(),
+                InstructionCode::GET_STACK_VALUE_SHARED_REF.into(),
                 // slot index as u32
                 0,
                 0,
@@ -2782,7 +2819,7 @@ pub mod tests {
                 InstructionCode::SHORT_STATEMENTS.into(),
                 3,
                 0, // not terminated
-                InstructionCode::ALLOCATE_SLOT.into(),
+                InstructionCode::PUSH_TO_STACK.into(),
                 // slot index as u32
                 0,
                 0,
@@ -2790,7 +2827,7 @@ pub mod tests {
                 0,
                 InstructionCode::UINT_8.into(),
                 42,
-                InstructionCode::ALLOCATE_SLOT.into(),
+                InstructionCode::PUSH_TO_STACK.into(),
                 // slot index as u32
                 1,
                 0,
@@ -2826,13 +2863,13 @@ pub mod tests {
                 ExternalSlotType::Shared(SharedSlotType::Move).into(),
                 // expression: x + y
                 InstructionCode::ADD.into(),
-                InstructionCode::POP_SLOT.into(),
+                InstructionCode::TAKE_STACK_VALUE.into(),
                 // slot index as u32
                 0,
                 0,
                 0,
                 0,
-                InstructionCode::POP_SLOT.into(),
+                InstructionCode::TAKE_STACK_VALUE.into(),
                 // slot index as u32
                 1,
                 0,
@@ -2858,7 +2895,7 @@ pub mod tests {
                 InstructionCode::SHORT_STATEMENTS.into(),
                 3,
                 0, // not terminated
-                InstructionCode::ALLOCATE_SLOT.into(),
+                InstructionCode::PUSH_TO_STACK.into(),
                 // slot index as u32
                 0,
                 0,
@@ -2866,7 +2903,7 @@ pub mod tests {
                 0,
                 InstructionCode::UINT_8.into(),
                 42,
-                InstructionCode::ALLOCATE_SLOT.into(),
+                InstructionCode::PUSH_TO_STACK.into(),
                 // slot index as u32
                 1,
                 0,
@@ -2897,7 +2934,7 @@ pub mod tests {
                 2,
                 0, // not terminated
                 // allocate slot for x
-                InstructionCode::ALLOCATE_SLOT.into(),
+                InstructionCode::PUSH_TO_STACK.into(),
                 // slot index as u32
                 1,
                 0,
@@ -2907,13 +2944,13 @@ pub mod tests {
                 5,
                 // expression: x + y
                 InstructionCode::ADD.into(),
-                InstructionCode::POP_SLOT.into(),
+                InstructionCode::TAKE_STACK_VALUE.into(),
                 // slot index as u32
                 1,
                 0,
                 0,
                 0,
-                InstructionCode::POP_SLOT.into(),
+                InstructionCode::TAKE_STACK_VALUE.into(),
                 // slot index as u32
                 0,
                 0,
@@ -2939,7 +2976,7 @@ pub mod tests {
                 InstructionCode::SHORT_STATEMENTS.into(),
                 2,
                 0, // not terminated
-                InstructionCode::ALLOCATE_SLOT.into(),
+                InstructionCode::PUSH_TO_STACK.into(),
                 // slot index as u32
                 0,
                 0,
@@ -2986,7 +3023,7 @@ pub mod tests {
                 0,
                 // FIXME
                 ExternalSlotType::Shared(SharedSlotType::Move).into(),
-                InstructionCode::POP_SLOT.into(),
+                InstructionCode::TAKE_STACK_VALUE.into(),
                 // slot index as u32
                 0,
                 0,
@@ -3016,7 +3053,7 @@ pub mod tests {
                 InstructionCode::SHORT_STATEMENTS.into(),
                 3,
                 0, // not terminated
-                InstructionCode::ALLOCATE_SLOT.into(),
+                InstructionCode::PUSH_TO_STACK.into(),
                 // slot index as u32
                 0,
                 0,
@@ -3024,7 +3061,7 @@ pub mod tests {
                 0,
                 InstructionCode::UINT_8.into(),
                 42,
-                InstructionCode::ALLOCATE_SLOT.into(),
+                InstructionCode::PUSH_TO_STACK.into(),
                 // slot index as u32
                 1,
                 0,
@@ -3078,7 +3115,7 @@ pub mod tests {
                 0,
                 // FIXME
                 ExternalSlotType::Shared(SharedSlotType::Move).into(),
-                InstructionCode::POP_SLOT.into(),
+                InstructionCode::TAKE_STACK_VALUE.into(),
                 // slot index as u32
                 0,
                 0,
@@ -3086,7 +3123,7 @@ pub mod tests {
                 0,
                 // --- end of block 2
                 // caller (literal value 2 for test)
-                InstructionCode::POP_SLOT.into(),
+                InstructionCode::TAKE_STACK_VALUE.into(),
                 1,
                 0,
                 0,
@@ -3201,7 +3238,7 @@ pub mod tests {
                 InstructionCode::SHORT_STATEMENTS.into(),
                 2,
                 0, // not terminated
-                InstructionCode::ALLOCATE_SLOT.into(),
+                InstructionCode::PUSH_TO_STACK.into(),
                 // slot index as u32
                 0,
                 0,
@@ -3210,7 +3247,7 @@ pub mod tests {
                 InstructionCode::UINT_8.into(),
                 10,
                 InstructionCode::UNBOX.into(), // FIXME: should not be added for local values (precompiler)
-                InstructionCode::BORROW_SLOT.into(),
+                InstructionCode::BORROW_STACK_VALUE.into(),
                 // slot index as u32
                 0,
                 0,
@@ -3575,7 +3612,7 @@ pub mod tests {
             InstructionCode::SHORT_STATEMENTS.into(),
             3,
             0, // not terminated
-            InstructionCode::ALLOCATE_SLOT.into(),
+            InstructionCode::PUSH_TO_STACK.into(),
             // slot index as u32
             0,
             0,
@@ -3583,19 +3620,19 @@ pub mod tests {
             0,
             InstructionCode::UINT_8.into(),
             10,
-            InstructionCode::ALLOCATE_SLOT.into(),
+            InstructionCode::PUSH_TO_STACK.into(),
             // slot index as u32
             1,
             0,
             0,
             0,
-            InstructionCode::CLONE_SLOT.into(),
+            InstructionCode::CLONE_STACK_VALUE.into(),
             // slot index as u32
             0,
             0,
             0,
             0,
-            InstructionCode::POP_SLOT.into(),
+            InstructionCode::TAKE_STACK_VALUE.into(),
             // slot index as u32
             0,
             0,

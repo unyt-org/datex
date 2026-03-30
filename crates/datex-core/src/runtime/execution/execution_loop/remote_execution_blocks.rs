@@ -4,7 +4,7 @@ use crate::core_compiler::core_compilation_context::CoreCompilationContext;
 use crate::core_compiler::value_compiler::{append_instruction_code, append_instruction_code_new, append_perform_moves, append_shared_container, append_statements_preamble};
 use crate::global::instruction_codes::InstructionCode;
 use crate::global::protocol_structures::external_slot_type::{ExternalSlotType, SharedSlotType};
-use crate::global::protocol_structures::instruction_data::{InstructionBlockData, SlotAddress};
+use crate::global::protocol_structures::instruction_data::{InstructionBlockData, StackIndex};
 use crate::runtime::execution::ExecutionError;
 use crate::shared_values::shared_container::SharedContainer;
 use crate::utils::buffers::{append_u32, append_u8};
@@ -71,7 +71,7 @@ fn compile_preamble(
     exec_block_data: InstructionBlockData,
     slot_values: Vec<BorrowedValueContainer>,
 ) -> Result<(Vec<u8>, Vec<SharedContainer>), ExecutionError> {
-    let mut context = CoreCompilationContext::new(Vec::new(), SlotAddress(0));
+    let mut context = CoreCompilationContext::new(Vec::new(), StackIndex(0));
 
     let mut moved_pointers: Vec<SharedContainer> = vec![];
 
@@ -82,7 +82,7 @@ fn compile_preamble(
         .zip(slot_values.into_iter())
         .enumerate()
     {
-        context.cursor_mut().write_all(&[InstructionCode::ALLOCATE_SLOT as u8]).unwrap();
+        context.cursor_mut().write_all(&[InstructionCode::PUSH_TO_STACK as u8]).unwrap();
         append_u32(context.cursor_mut(), slot_addr as u32);
         match external_slot_type {
             ExternalSlotType::Local(_) => {
@@ -102,7 +102,7 @@ fn compile_preamble(
                                 moved_pointers.push(shared_container);
                                 append_instruction_code_new(context.cursor_mut(), InstructionCode::TAKE_PROPERTY_INDEX);
                                 append_u32(context.cursor_mut(), index);
-                                append_instruction_code_new(context.cursor_mut(), InstructionCode::CLONE_SLOT);
+                                append_instruction_code_new(context.cursor_mut(), InstructionCode::CLONE_STACK_VALUE);
                                 append_u32(context.cursor_mut(), moved_pointers_slot_index);
                                 continue;
                             }
@@ -142,8 +142,8 @@ fn compile_preform_move_preamble(
     moved_pointers_slot_index: u32,
     moved_pointers: &[&SharedContainer]
 ) -> Vec<u8> {
-    let mut context = CoreCompilationContext::new(Vec::new(), SlotAddress(0));
-    context.cursor_mut().write_all(&[InstructionCode::ALLOCATE_SLOT as u8]).unwrap();
+    let mut context = CoreCompilationContext::new(Vec::new(), StackIndex(0));
+    context.cursor_mut().write_all(&[InstructionCode::PUSH_TO_STACK as u8]).unwrap();
 
     append_u32(context.cursor_mut(), moved_pointers_slot_index);
 
@@ -195,7 +195,7 @@ mod tests {
                 InstructionCode::SHORT_STATEMENTS as u8,
                 2,
                 0,
-                InstructionCode::ALLOCATE_SLOT as u8,
+                InstructionCode::PUSH_TO_STACK as u8,
                 0, 0, 0, 0, // slot address
                 // compiled shared reference
                 InstructionCode::SHARED_REF_WITH_VALUE as u8,
@@ -230,7 +230,7 @@ mod tests {
                 InstructionCode::SHORT_STATEMENTS as u8,
                 3,
                 0,
-                InstructionCode::ALLOCATE_SLOT as u8,
+                InstructionCode::PUSH_TO_STACK as u8,
                 0, 0, 0, 0, // slot address of first value
                 // compiled shared reference for first value
                 InstructionCode::SHARED_REF_WITH_VALUE as u8,
@@ -239,7 +239,7 @@ mod tests {
                 0, // immutable container
                 InstructionCode::INT_32 as u8,
                 42, 0, 0, 0, // value of the first shared integer
-                InstructionCode::ALLOCATE_SLOT as u8,
+                InstructionCode::PUSH_TO_STACK as u8,
                 1, 0, 0, 0, // slot address of second value
                 // compiled shared mutable reference for second value
                 InstructionCode::SHARED_REF_WITH_VALUE as u8,
@@ -271,18 +271,18 @@ mod tests {
                 InstructionCode::SHORT_STATEMENTS as u8,
                 3,
                 0,
-                InstructionCode::ALLOCATE_SLOT as u8,
+                InstructionCode::PUSH_TO_STACK as u8,
                 1, 0, 0, 0, // slot address of moved pointers
                 // compiled shared moves
                 InstructionCode::PERFORM_MOVE as u8,
                 1, 0, 0, 0, // number of moves (1)
                 0, // immutable
                 0, 0, 0, 0, 0, // pointer address (assuming the shared container is stored at address 1)
-                InstructionCode::ALLOCATE_SLOT as u8,
+                InstructionCode::PUSH_TO_STACK as u8,
                 0, 0, 0, 0, // slot address
                 InstructionCode::TAKE_PROPERTY_INDEX as u8,
                 0, 0, 0, 0, // index of the moved pointer
-                InstructionCode::CLONE_SLOT as u8,
+                InstructionCode::CLONE_STACK_VALUE as u8,
                 1, 0, 0, 0, // slot address of the moved pointers
                 InstructionCode::NULL as u8, // body
             ]
@@ -310,7 +310,7 @@ mod tests {
                 InstructionCode::SHORT_STATEMENTS as u8,
                 4,
                 0,
-                InstructionCode::ALLOCATE_SLOT as u8,
+                InstructionCode::PUSH_TO_STACK as u8,
                 2, 0, 0, 0, // slot address of moved pointers
                 // compiled shared moves
                 InstructionCode::PERFORM_MOVE as u8,
@@ -318,14 +318,14 @@ mod tests {
                 0, // immmut
                 0, 0, 0, 0, 0, // pointer address (assuming the first shared container is stored at address 0)
 
-                InstructionCode::ALLOCATE_SLOT as u8,
+                InstructionCode::PUSH_TO_STACK as u8,
                 0, 0, 0, 0, // slot address of first value (moved)
                 InstructionCode::TAKE_PROPERTY_INDEX as u8,
                 0, 0, 0, 0, // index of the moved pointer
-                InstructionCode::CLONE_SLOT as u8,
+                InstructionCode::CLONE_STACK_VALUE as u8,
                 2, 0, 0, 0, // slot address of the moved pointers
 
-                InstructionCode::ALLOCATE_SLOT as u8,
+                InstructionCode::PUSH_TO_STACK as u8,
                 1, 0, 0, 0, // slot address of second value
                 // compiled shared reference for second value
                 InstructionCode::SHARED_REF_WITH_VALUE as u8,

@@ -3,7 +3,7 @@ use crate::{
         ExecutionError,
         execution_loop::{
             slots::get_slot_value,
-            state::{RuntimeExecutionSlots, RuntimeExecutionState},
+            state::{RuntimeExecutionStack, RuntimeExecutionState},
         },
     },
     values::value_container::ValueContainer,
@@ -34,7 +34,7 @@ impl RuntimeValue {
     /// If the `RuntimeValue` is a slot address, it retrieves the value from the runtime state.
     pub fn with_mut_value_container<F, R>(
         &mut self,
-        slots: &mut RuntimeExecutionSlots,
+        slots: &mut RuntimeExecutionStack,
         f: F,
     ) -> Result<R, ExecutionError>
     where
@@ -74,7 +74,7 @@ impl RuntimeValue {
         match self {
             RuntimeValue::ValueContainer(vc) => Ok(vc),
             RuntimeValue::SlotAddress(addr) => {
-                Ok(state.slots.drop_slot(addr)?)
+                Ok(state.stack.take_slot(addr)?)
             }
         }
     }

@@ -11,7 +11,7 @@ pub fn get_slot_value(
     runtime_state: &RuntimeExecutionState,
     address: u32,
 ) -> Result<&ValueContainer, ExecutionError> {
-    runtime_state.slots.get_slot_value(address)
+    runtime_state.stack.get_slot_value(address)
 }
 
 pub fn get_internal_slot_value(
@@ -21,7 +21,7 @@ pub fn get_internal_slot_value(
     let runtime = &runtime_state.runtime_internal;
     // convert slot to InternalSlot enum
     let slot = InternalSlot::try_from_primitive(slot)
-        .map_err(|_| ExecutionError::SlotNotAllocated(slot))?;
+        .map_err(|_| ExecutionError::StackValueNotAllocated(slot))?;
     let res = match slot {
         InternalSlot::ENDPOINT => {
             ValueContainer::from(runtime.endpoint.clone())

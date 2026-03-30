@@ -166,6 +166,7 @@ impl Parser {
                 DatexExpressionData::RemoteExecution(RemoteExecution {
                     left: Box::new(lhs),
                     right: Box::new(rhs),
+                    injected_variable_count: None,
                 })
                 .with_span(span)
             }
@@ -1008,6 +1009,7 @@ mod tests {
                     DatexExpressionData::Identifier("xy".to_string())
                         .with_default_span()
                 ),
+                injected_variable_count: None,
             })
         );
     }
@@ -1037,6 +1039,7 @@ mod tests {
                     })
                     .with_default_span()
                 ),
+                injected_variable_count: None,
             })
         );
     }
@@ -1068,6 +1071,7 @@ mod tests {
                     })
                     .with_default_span()
                 ),
+                injected_variable_count: None,
             })
         );
     }

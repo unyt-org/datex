@@ -1,6 +1,7 @@
 use core::{fmt::Display, prelude::rust_2024::*};
 use crate::global::protocol_structures::regular_instructions::RegularInstruction;
 use crate::global::protocol_structures::type_instructions::TypeInstruction;
+use crate::prelude::*;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Instruction {

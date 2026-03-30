@@ -23,7 +23,7 @@ use crate::{
         protocol_structures::instruction_data::{
             ApplyData, DecimalData, Float32Data, Float64Data, FloatAsInt16Data,
             FloatAsInt32Data, IntegerData, RawPointerAddress,
-            ShortTextData, SlotAddress, TextData,
+            ShortTextData, StackIndex, TextData,
         },
     },
     prelude::*,
@@ -411,7 +411,7 @@ pub fn inner_execution_loop(
                                 ).into())
                             }
 
-                            RegularInstruction::GetInternalSlot(SlotAddress(address)) => {
+                            RegularInstruction::GetInternalSlot(StackIndex(address)) => {
                                 Some(RuntimeValue::ValueContainer(yield_unwrap!(
                                     get_internal_slot_value(
                                         &state,
@@ -421,12 +421,12 @@ pub fn inner_execution_loop(
                             }
 
                             // TODO: still needed?
-                            RegularInstruction::BorrowSlot(SlotAddress(address)) => {
+                            RegularInstruction::BorrowStackValue(StackIndex(address)) => {
                                 Some(RuntimeValue::SlotAddress(address))
                             }
 
-                            RegularInstruction::GetSlotSharedRef(SlotAddress(address)) => {
-                                let value = yield_unwrap!(state.slots.get_slot_value(address));
+                            RegularInstruction::GetStackValueSharedRef(StackIndex(address)) => {
+                                let value = yield_unwrap!(state.stack.get_slot_value(address));
                                 match value {
                                     ValueContainer::Shared(container) => Some(RuntimeValue::ValueContainer(
                                         ValueContainer::Shared(container.derive_reference())
@@ -434,8 +434,8 @@ pub fn inner_execution_loop(
                                     _ => return yield Err(ExecutionError::ExpectedSharedValue)
                                 }
                             }
-                            RegularInstruction::GetSlotSharedRefMut(SlotAddress(address)) => {
-                                let value = yield_unwrap!(state.slots.get_slot_value(address));
+                            RegularInstruction::GetStackValueSharedRefMut(StackIndex(address)) => {
+                                let value = yield_unwrap!(state.stack.get_slot_value(address));
                                 match value {
                                     ValueContainer::Shared(container) => Some(RuntimeValue::ValueContainer(
                                         ValueContainer::Shared(
@@ -450,16 +450,16 @@ pub fn inner_execution_loop(
                                 }
                             }
 
-                            RegularInstruction::CloneSlot(SlotAddress(address)) => {
-                                let value = yield_unwrap!(state.slots.get_slot_value(address));
+                            RegularInstruction::CloneStackValue(StackIndex(address)) => {
+                                let value = yield_unwrap!(state.stack.get_slot_value(address));
                                 Some(RuntimeValue::ValueContainer(
                                     value.get_cloned()
                                 ))
                             }
 
-                            RegularInstruction::PopSlot(SlotAddress(address)) => {
+                            RegularInstruction::TakeStackValue(StackIndex(address)) => {
                                 Some(RuntimeValue::ValueContainer(
-                                    yield_unwrap!(state.slots.drop_slot(address))
+                                    yield_unwrap!(state.stack.take_slot(address))
                                 ))
                             }
 
@@ -536,9 +536,10 @@ pub fn inner_execution_loop(
                             RegularInstruction::GetSharedReferenceMut |
                             RegularInstruction::CreateShared |
                             RegularInstruction::CreateSharedMut |
-                            RegularInstruction::AllocateSlot(_) |
-                            RegularInstruction::SetSlot(_) |
-                            RegularInstruction::ModifySlot(_) |
+                            RegularInstruction::PushToStack |
+                            RegularInstruction::PushToStackMultiple(_) |
+                            RegularInstruction::SetStackValue(_) |
+                            RegularInstruction::ModifyStackValue(_) |
                             RegularInstruction::SetSharedContainerValue(_) |
                             RegularInstruction::Unbox |
                             RegularInstruction::TypedValue |
@@ -835,7 +836,7 @@ pub fn inner_execution_loop(
                                             .pop_runtime_value_result_assert_existing()
                                     );
                                     let res = target.with_mut_value_container(
-                                        &mut state.slots,
+                                        &mut state.stack,
                                         |target| {
                                             handle_unary_operation(
                                                 UnaryOperator::from(
@@ -891,7 +892,7 @@ pub fn inner_execution_loop(
                                     .into()
                                 }
 
-                                RegularInstruction::ModifySlot(ModifySlot {
+                                RegularInstruction::ModifyStackValue(ModifySlot {
                                    address,
                                    operator
                                }) => {
@@ -912,7 +913,7 @@ pub fn inner_execution_loop(
                                     );
                                     yield_unwrap!(
                                         state
-                                            .slots
+                                            .stack
                                             .set_slot_value(address.0, new_val)
                                     );
                                     None.into()
@@ -932,7 +933,7 @@ pub fn inner_execution_loop(
                                     );
 
                                     let res = ref_runtime_value.with_mut_value_container(
-                                        &mut state.slots,
+                                        &mut state.stack,
                                         |ref_value_container| {
                                             // assignment value must be a reference
                                             if let Some(reference) =
@@ -962,7 +963,7 @@ pub fn inner_execution_loop(
                                     yield_unwrap!(res).into()
                                 }
 
-                                RegularInstruction::SetSlot(SlotAddress(
+                                RegularInstruction::SetStackValue(StackIndex(
                                     address,
                                 )) => {
                                     let value = yield_unwrap!(
@@ -971,22 +972,20 @@ pub fn inner_execution_loop(
                                     );
                                     yield_unwrap!(
                                         state
-                                            .slots
+                                            .stack
                                             .set_slot_value(address, value)
                                     );
                                     None.into()
                                 }
 
-                                RegularInstruction::AllocateSlot(
-                                    SlotAddress(address),
-                                ) => {
+                                RegularInstruction::PushToStack => {
                                     let value = yield_unwrap!(
                                         collected_results
                                             .pop_cloned_value_container_result_assert_existing(&state)
                                     );
                                     state
-                                        .slots
-                                        .allocate_slot(address, Some(value));
+                                        .stack
+                                        .push(value);
 
                                     None.into()
                                 }
@@ -1001,7 +1000,7 @@ pub fn inner_execution_loop(
                                     let property_name = property_data.0;
 
                                     let res = target.with_mut_value_container(
-                                        &mut state.slots,
+                                        &mut state.stack,
                                         |target| {
                                             target.try_get_property(
                                                 &property_name,
@@ -1024,7 +1023,7 @@ pub fn inner_execution_loop(
                                     let property_index = property_data.0;
 
                                     let res = target.with_mut_value_container(
-                                        &mut state.slots,
+                                        &mut state.stack,
                                         |target| {
                                             target.try_get_property(
                                                 property_index,
@@ -1048,7 +1047,7 @@ pub fn inner_execution_loop(
                                     );
 
                                     let res = target.with_mut_value_container(
-                                        &mut state.slots,
+                                        &mut state.stack,
                                         |target| target.try_get_property(&key),
                                     );
                                     RuntimeValue::ValueContainer(yield_unwrap!(
@@ -1068,7 +1067,7 @@ pub fn inner_execution_loop(
                                     let property_index = property_data.0;
 
                                     let res = target.with_mut_value_container(
-                                        &mut state.slots,
+                                        &mut state.stack,
                                         |target| {
                                             target.try_take_property(
                                                 property_index,
@@ -1094,7 +1093,7 @@ pub fn inner_execution_loop(
                                             .pop_cloned_value_container_result_assert_existing(&state)
                                     );
                                     let res = target.with_mut_value_container(
-                                        &mut state.slots,
+                                        &mut state.stack,
                                         |target| {
                                             set_property(
                                                 target,
@@ -1122,7 +1121,7 @@ pub fn inner_execution_loop(
                                     );
 
                                     let res = target.with_mut_value_container(
-                                        &mut state.slots,
+                                        &mut state.stack,
                                         |target| {
                                             set_property(
                                                 target,
@@ -1152,7 +1151,7 @@ pub fn inner_execution_loop(
                                     );
 
                                     let res = target.with_mut_value_container(
-                                        &mut state.slots,
+                                        &mut state.stack,
                                         |target| {
                                             set_property(
                                                 target,
@@ -1176,7 +1175,7 @@ pub fn inner_execution_loop(
                                     // perform all mutable operations (removing moved shared values)
                                     for (i, (addr, slot_type)) in injected.iter().enumerate() {
                                         if matches!(slot_type, ExternalSlotType::Shared(SharedSlotType::Move)) {
-                                            moved[i] = Some(yield_unwrap!(state.slots.drop_slot(*addr)));
+                                            moved[i] = Some(yield_unwrap!(state.stack.take_slot(*addr)));
                                         }
                                     }
 

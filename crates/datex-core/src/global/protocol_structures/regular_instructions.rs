@@ -5,7 +5,7 @@ use binrw::{BinRead, BinResult, BinWrite, Endian};
 use binrw::meta::{EndianKind, ReadEndian};
 use crate::dxb_parser::body::DXBParserError;
 use crate::global::instruction_codes::InstructionCode;
-use crate::global::protocol_structures::instruction_data::{ApplyData, DecimalData, Float32Data, Float64Data, FloatAsInt16Data, FloatAsInt32Data, InstructionBlockData, Int128Data, Int16Data, Int32Data, Int64Data, Int8Data, IntegerData, ListData, MapData, ModifySlot, Move, PerformMove, RawInternalPointerAddress, RawLocalPointerAddress, RawRemotePointerAddress, SetSharedContainerValue, SharedRef, SharedRefWithValue, ShortListData, ShortMapData, ShortStatementsData, ShortTextData, ShortTextDataRaw, SlotAddress, StatementsData, TextData, TextDataRaw, UInt128Data, UInt16Data, UInt32Data, UInt64Data, UInt8Data, UnboundedStatementsData};
+use crate::global::protocol_structures::instruction_data::{ApplyData, DecimalData, Float32Data, Float64Data, FloatAsInt16Data, FloatAsInt32Data, InstructionBlockData, Int128Data, Int16Data, Int32Data, Int64Data, Int8Data, IntegerData, ListData, MapData, ModifySlot, Move, PerformMove, PushToStackMultiple, RawInternalPointerAddress, RawLocalPointerAddress, RawRemotePointerAddress, SetSharedContainerValue, SharedRef, SharedRefWithValue, ShortListData, ShortMapData, ShortStatementsData, ShortTextData, ShortTextDataRaw, StackIndex, StatementsData, TextData, TextDataRaw, UInt128Data, UInt16Data, UInt32Data, UInt64Data, UInt8Data, UnboundedStatementsData};
 use crate::global::protocol_structures::instructions::NextExpectedInstructions;
 use crate::shared_values::pointer_address::PointerAddress;
 use crate::values::core_values::decimal::utils::decimal_to_string;
@@ -101,7 +101,7 @@ pub enum RegularInstruction {
     NotEqual,
 
     // assignment operator
-    ModifySlot(ModifySlot),
+    ModifyStackValue(ModifySlot),
 
     GetSharedReference,
     GetSharedReferenceMut,
@@ -122,15 +122,16 @@ pub enum RegularInstruction {
     PerformMove(PerformMove),
     Move(Move),
 
-    AllocateSlot(SlotAddress),
-    CloneSlot(SlotAddress),
-    BorrowSlot(SlotAddress),
-    GetSlotSharedRef(SlotAddress),
-    GetSlotSharedRefMut(SlotAddress),
-    PopSlot(SlotAddress),
-    SetSlot(SlotAddress),
+    PushToStack,
+    PushToStackMultiple(PushToStackMultiple),
+    CloneStackValue(StackIndex),
+    BorrowStackValue(StackIndex),
+    GetStackValueSharedRef(StackIndex),
+    GetStackValueSharedRefMut(StackIndex),
+    TakeStackValue(StackIndex),
+    SetStackValue(StackIndex),
 
-    GetInternalSlot(SlotAddress),
+    GetInternalSlot(StackIndex), // FIXME slot address
 
     SetSharedContainerValue(SetSharedContainerValue),
     Unbox,
@@ -214,14 +215,15 @@ impl From<&RegularInstruction> for InstructionCode {
             RegularInstruction::SharedRefWithValue(_) => InstructionCode::SHARED_REF_WITH_VALUE,
             RegularInstruction::PerformMove(_) => InstructionCode::PERFORM_MOVE,
             RegularInstruction::Move(_) => InstructionCode::MOVE,
-            RegularInstruction::AllocateSlot(_) => InstructionCode::ALLOCATE_SLOT,
-            RegularInstruction::CloneSlot(_) => InstructionCode::CLONE_SLOT,
-            RegularInstruction::BorrowSlot(_) => InstructionCode::BORROW_SLOT,
-            RegularInstruction::GetSlotSharedRef(_) => InstructionCode::GET_SLOT_SHARED_REF,
-            RegularInstruction::GetSlotSharedRefMut(_) => InstructionCode::GET_SLOT_SHARED_REF_MUT,
-            RegularInstruction::PopSlot(_) => InstructionCode::POP_SLOT,
-            RegularInstruction::SetSlot(_) => InstructionCode::SET_SLOT,
-            RegularInstruction::ModifySlot(_) => InstructionCode::MODIFY_SLOT,
+            RegularInstruction::PushToStack => InstructionCode::PUSH_TO_STACK,
+            RegularInstruction::PushToStackMultiple(_) => InstructionCode::PUSH_TO_STACK_MULTIPLE,
+            RegularInstruction::CloneStackValue(_) => InstructionCode::CLONE_STACK_VALUE,
+            RegularInstruction::BorrowStackValue(_) => InstructionCode::BORROW_STACK_VALUE,
+            RegularInstruction::GetStackValueSharedRef(_) => InstructionCode::GET_STACK_VALUE_SHARED_REF,
+            RegularInstruction::GetStackValueSharedRefMut(_) => InstructionCode::GET_STACK_VALUE_SHARED_REF_MUT,
+            RegularInstruction::TakeStackValue(_) => InstructionCode::TAKE_STACK_VALUE,
+            RegularInstruction::SetStackValue(_) => InstructionCode::SET_STACK_VALUE,
+            RegularInstruction::ModifyStackValue(_) => InstructionCode::MODIFY_STACK_VALUE,
             RegularInstruction::GetInternalSlot(_) => InstructionCode::GET_INTERNAL_SLOT,
             RegularInstruction::SetSharedContainerValue(_) => InstructionCode::SET_SHARED_CONTAINER_VALUE,
             RegularInstruction::Unbox => InstructionCode::UNBOX,
@@ -301,9 +303,10 @@ impl RegularInstruction {
             RegularInstruction::CreateShared |
             RegularInstruction::CreateSharedMut => NextExpectedInstructions::Regular(1),
 
-            RegularInstruction::AllocateSlot(_) |
-            RegularInstruction::SetSlot(_) => NextExpectedInstructions::Regular(1),
-            RegularInstruction::ModifySlot(_) => NextExpectedInstructions::Regular(1),
+            RegularInstruction::PushToStack |
+            RegularInstruction::PushToStackMultiple(_) |
+            RegularInstruction::SetStackValue(_) => NextExpectedInstructions::Regular(1),
+            RegularInstruction::ModifyStackValue(_) => NextExpectedInstructions::Regular(1),
 
             RegularInstruction::TypedValue => NextExpectedInstructions::RegularAndType(1,1),
 
@@ -564,29 +567,32 @@ impl RegularInstruction {
             }
 
             InstructionCode::GET_INTERNAL_SLOT => {
-                SlotAddress::read(reader).map(RegularInstruction::GetInternalSlot)
+                StackIndex::read(reader).map(RegularInstruction::GetInternalSlot)
             }
 
-            InstructionCode::ALLOCATE_SLOT => {
-                SlotAddress::read(reader).map(RegularInstruction::AllocateSlot)
+            InstructionCode::PUSH_TO_STACK => {
+                Ok(RegularInstruction::PushToStack)
             }
-            InstructionCode::CLONE_SLOT => {
-                SlotAddress::read(reader).map(RegularInstruction::CloneSlot)
+            InstructionCode::PUSH_TO_STACK_MULTIPLE => {
+                PushToStackMultiple::read(reader).map(RegularInstruction::PushToStackMultiple)
             }
-            InstructionCode::BORROW_SLOT => {
-                SlotAddress::read(reader).map(RegularInstruction::BorrowSlot)
+            InstructionCode::CLONE_STACK_VALUE => {
+                StackIndex::read(reader).map(RegularInstruction::CloneStackValue)
             }
-            InstructionCode::GET_SLOT_SHARED_REF => {
-                SlotAddress::read(reader).map(RegularInstruction::GetSlotSharedRef)
+            InstructionCode::BORROW_STACK_VALUE => {
+                StackIndex::read(reader).map(RegularInstruction::BorrowStackValue)
             }
-            InstructionCode::GET_SLOT_SHARED_REF_MUT => {
-                SlotAddress::read(reader).map(RegularInstruction::GetSlotSharedRefMut)
+            InstructionCode::GET_STACK_VALUE_SHARED_REF => {
+                StackIndex::read(reader).map(RegularInstruction::GetStackValueSharedRef)
             }
-            InstructionCode::POP_SLOT => {
-                SlotAddress::read(reader).map(RegularInstruction::PopSlot)
+            InstructionCode::GET_STACK_VALUE_SHARED_REF_MUT => {
+                StackIndex::read(reader).map(RegularInstruction::GetStackValueSharedRefMut)
             }
-            InstructionCode::SET_SLOT => {
-                SlotAddress::read(reader).map(RegularInstruction::SetSlot)
+            InstructionCode::TAKE_STACK_VALUE => {
+                StackIndex::read(reader).map(RegularInstruction::TakeStackValue)
+            }
+            InstructionCode::SET_STACK_VALUE => {
+                StackIndex::read(reader).map(RegularInstruction::SetStackValue)
             }
 
             InstructionCode::REQUEST_REMOTE_SHARED_REF => {
@@ -613,8 +619,8 @@ impl RegularInstruction {
                 Move::read(reader).map(RegularInstruction::Move)
             }
 
-            InstructionCode::MODIFY_SLOT => {
-                ModifySlot::read(reader).map(RegularInstruction::ModifySlot)
+            InstructionCode::MODIFY_STACK_VALUE => {
+                ModifySlot::read(reader).map(RegularInstruction::ModifyStackValue)
             }
 
             InstructionCode::TYPED_VALUE => {
@@ -761,28 +767,28 @@ impl RegularInstruction {
                 write!(string, "{}", data.0)
             }
 
-            RegularInstruction::AllocateSlot(address) => {
-                write!(string, "{}", address.0)
+            RegularInstruction::PushToStackMultiple(push_to_stack_multiple) => {
+                write!(string, "{}", push_to_stack_multiple.count)
             }
-            RegularInstruction::CloneSlot(address) => {
+            RegularInstruction::CloneStackValue(address) => {
                 write!(string, "{}", address.0)
             }
             RegularInstruction::GetInternalSlot(address) => {
                 write!(string, "{}", address.0)
             }
-            RegularInstruction::BorrowSlot(address) => {
+            RegularInstruction::BorrowStackValue(address) => {
                 write!(string, "{}", address.0)
             }
-            RegularInstruction::GetSlotSharedRef(address) => {
+            RegularInstruction::GetStackValueSharedRef(address) => {
                 write!(string, "{}", address.0)
             }
-            RegularInstruction::GetSlotSharedRefMut(address) => {
+            RegularInstruction::GetStackValueSharedRefMut(address) => {
                 write!(string, "{}", address.0)
             }
-            RegularInstruction::PopSlot(address) => {
+            RegularInstruction::TakeStackValue(address) => {
                 write!(string, "{}", address.0)
             }
-            RegularInstruction::SetSlot(address) => {
+            RegularInstruction::SetStackValue(address) => {
                 write!(string, "{}", address.0)
             }
             RegularInstruction::SetSharedContainerValue(set_shared_container_value) => {
@@ -856,7 +862,7 @@ impl RegularInstruction {
                     block.injected_slot_count
                 )
             }
-            RegularInstruction::ModifySlot(modify_slot) => {
+            RegularInstruction::ModifyStackValue(modify_slot) => {
                 write!(string, "{:?} {}", modify_slot.address, modify_slot.operator)
             }
             RegularInstruction::GetPropertyIndex(uint_32_data) => {

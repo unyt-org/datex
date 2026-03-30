@@ -40,7 +40,8 @@ use crate::{
 use alloc::format;
 use core::cell::RefCell;
 use num_enum::TryFromPrimitive;
-use crate::ast::expressions::CloneExpression;
+use crate::ast::expressions::{CloneExpression, SlotAssignment};
+use crate::global::operators::binary::ArithmeticOperator;
 use crate::global::protocol_structures::instruction_data::UnboundedStatementsData;
 use crate::global::protocol_structures::regular_instructions::RegularInstruction;
 use crate::global::protocol_structures::type_instructions::TypeInstruction;
@@ -282,7 +283,7 @@ pub fn ast_from_bytecode(
                                 DatexExpressionData::NativeImplementationIndicator // TODO: better ast mapping
                             }
 
-                            RegularInstruction::CloneSlot(slot_address) => {
+                            RegularInstruction::CloneStackValue(slot_address) => {
                                 DatexExpressionData::Clone(CloneExpression {
                                     expression: Box::new(DatexExpressionData::Slot(Slot::Addressed(
                                         slot_address.0,
@@ -291,13 +292,13 @@ pub fn ast_from_bytecode(
                             }
 
 
-                            RegularInstruction::BorrowSlot(slot_address) => {
+                            RegularInstruction::BorrowStackValue(slot_address) => {
                                 DatexExpressionData::Slot(Slot::Addressed(
                                     slot_address.0,
                                 ))
                             }
 
-                            RegularInstruction::GetSlotSharedRef(slot_address) => {
+                            RegularInstruction::GetStackValueSharedRef(slot_address) => {
                                 DatexExpressionData::GetSharedRef(GetSharedRef {
                                     mutability: PointerReferenceMutability::Immutable,
                                     expression: Box::new(DatexExpressionData::Slot(Slot::Addressed(
@@ -306,7 +307,7 @@ pub fn ast_from_bytecode(
                                 })
                             }
 
-                            RegularInstruction::GetSlotSharedRefMut(slot_address) => {
+                            RegularInstruction::GetStackValueSharedRefMut(slot_address) => {
                                 DatexExpressionData::GetSharedRef(GetSharedRef {
                                     mutability: PointerReferenceMutability::Mutable,
                                     expression: Box::new(DatexExpressionData::Slot(Slot::Addressed(
@@ -315,7 +316,7 @@ pub fn ast_from_bytecode(
                                 })
                             }
 
-                            RegularInstruction::PopSlot(slot_address) => {
+                            RegularInstruction::TakeStackValue(slot_address) => {
                                 DatexExpressionData::Slot(Slot::Addressed(
                                     slot_address.0
                                 ))
@@ -378,9 +379,10 @@ pub fn ast_from_bytecode(
                             | RegularInstruction::GetSharedReferenceMut
                             | RegularInstruction::CreateShared
                             | RegularInstruction::CreateSharedMut
-                            | RegularInstruction::AllocateSlot(_)
-                            | RegularInstruction::SetSlot(_)
-                            | RegularInstruction::ModifySlot(_)
+                            | RegularInstruction::PushToStack
+                            | RegularInstruction::PushToStackMultiple(_)
+                            | RegularInstruction::SetStackValue(_)
+                            | RegularInstruction::ModifyStackValue(_)
                             | RegularInstruction::SetSharedContainerValue(_)
                             | RegularInstruction::Unbox
                             | RegularInstruction::TypedValue
@@ -616,25 +618,31 @@ pub fn ast_from_bytecode(
                                 }
                             }
 
-                            RegularInstruction::AllocateSlot(slot_address) => {
+                            RegularInstruction::PushToStack => {
                                 let expr = collected_results.pop_value_result();
-                                DatexExpressionData::VariableDeclaration(
-                                    VariableDeclaration {
-                                        id: None,
-                                        kind: VariableKind::Var,
-                                        name: format!(
-                                            "_slot_{}",
-                                            slot_address.0
-                                        ),
-                                        type_annotation: None,
-                                        init_expression: Box::new(expr),
-                                    },
+                                DatexExpressionData::SlotAssignment(
+                                    SlotAssignment {
+                                        slot: Slot::Addressed(0), // FIXME: count address
+                                        expression: Box::new(expr),
+                                    }
                                 )
                                 .with_default_span()
                                 .into()
                             }
 
-                            RegularInstruction::SetSlot(slot_address) => {
+                            RegularInstruction::PushToStackMultiple(push_multiple) => {
+                                let expr = collected_results.pop_value_result();
+                                DatexExpressionData::SlotAssignment(
+                                    SlotAssignment {
+                                        slot: Slot::Addressed(0), // FIXME: push_multiple //#0..#10 = x
+                                        expression: Box::new(expr),
+                                    }
+                                )
+                                    .with_default_span()
+                                    .into()
+                            }
+
+                            RegularInstruction::SetStackValue(slot_address) => {
                                 let expr = collected_results.pop_value_result();
                                 DatexExpressionData::VariableAssignment(
                                     VariableAssignment {

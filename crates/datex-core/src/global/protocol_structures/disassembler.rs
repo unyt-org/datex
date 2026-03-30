@@ -205,6 +205,21 @@ macro_rules! assert_instructions_equal {
     }}
 }
 
+#[macro_export]
+macro_rules! assert_regular_instructions_equal {
+    ($dxb:expr, $expected:expr) => {{
+        let (instructions, err) = disassemble_body($dxb);
+        if let Some(err) = err {
+            panic!("Parser error: {}", err);
+        }
+        assert_eq!(
+            &instructions.flatten(),
+            &($expected.into_iter().map(Instruction::Regular).collect::<Vec<_>>())
+        );
+    }}
+}
+
+
 
 #[cfg(test)]
 mod tests {

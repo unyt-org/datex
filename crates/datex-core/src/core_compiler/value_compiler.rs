@@ -35,7 +35,7 @@ use crate::{
 };
 use crate::core_compiler::core_compilation_context::{ByteCursor, CoreCompilationContext};
 use crate::core_compiler::type_compiler::{append_type_instruction, append_type_space_instruction_code_new};
-use crate::global::protocol_structures::instruction_data::{Float32Data, Float64Data, Int128Data, Int16Data, Int32Data, Int64Data, Int8Data, IntegerData, ListData, MapData, RawLocalPointerAddress, RawPointerAddress, SharedRef, SharedRefWithValue, SlotAddress, TypeMetadataBin, UInt128Data, UInt16Data, UInt32Data, UInt64Data, UInt8Data};
+use crate::global::protocol_structures::instruction_data::{Float32Data, Float64Data, Int128Data, Int16Data, Int32Data, Int64Data, Int8Data, IntegerData, ListData, MapData, RawLocalPointerAddress, RawPointerAddress, SharedRef, SharedRefWithValue, StackIndex, TypeMetadataBin, UInt128Data, UInt16Data, UInt32Data, UInt64Data, UInt8Data};
 use crate::global::protocol_structures::instructions::Instruction;
 use crate::global::protocol_structures::regular_instructions::RegularInstruction;
 use crate::shared_values::shared_container::SharedContainer;
@@ -47,21 +47,21 @@ use crate::shared_values::shared_container::SharedContainer;
 /// For local values, the value is just serialized
 /// For shared values, a reference with maximum mutability is serialized (no move)
 pub fn compile_value_container(value_container: &ValueContainer) -> BinResult<Vec<u8>> {
-    let mut context = CoreCompilationContext::new(Vec::with_capacity(256), SlotAddress(0));
+    let mut context = CoreCompilationContext::new(Vec::with_capacity(256), StackIndex(0));
     append_value_container(&mut context, value_container)?;
 
     Ok(context.into_buffer())
 }
 
 pub fn compile_value(value_container: &Value) -> BinResult<Vec<u8>> {
-    let mut context = CoreCompilationContext::new(Vec::with_capacity(256), SlotAddress(0));
+    let mut context = CoreCompilationContext::new(Vec::with_capacity(256), StackIndex(0));
     append_value(&mut context, value_container)?;
 
     Ok(context.into_buffer())
 }
 
 pub fn compile_shared_container(shared_container: &SharedContainer, insert_value: bool) -> BinResult<Vec<u8>>  {
-    let mut context = CoreCompilationContext::new(Vec::with_capacity(256), SlotAddress(0));
+    let mut context = CoreCompilationContext::new(Vec::with_capacity(256), StackIndex(0));
     append_shared_container(&mut context, shared_container, insert_value)?;
     Ok(context.into_buffer())
 }

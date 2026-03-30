@@ -24,7 +24,7 @@ use core::{result::Result, unreachable};
 use log::info;
 pub use errors::*;
 pub use execution_input::{ExecutionInput, ExecutionOptions};
-pub use memory_dump::*;
+pub use stack_dump::*;
 use crate::global::protocol_structures::instruction_data::{RawInternalPointerAddress, RawLocalPointerAddress, RawRemotePointerAddress};
 use crate::shared_values::shared_container::SharedContainer;
 
@@ -33,7 +33,7 @@ mod errors;
 pub mod execution_input;
 pub mod execution_loop;
 pub mod macros;
-mod memory_dump;
+mod stack_dump;
 
 #[cfg(all(test, feature = "std"))]
 mod test_remote_execution;

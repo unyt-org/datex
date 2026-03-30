@@ -14,7 +14,6 @@ use crate::{
     values::value_container::ValueContainer,
 };
 use core::{cell::RefCell, fmt::Debug};
-
 use crate::prelude::*;
 use crate::runtime::execution::execution_input::ExecutionCallerMetadata;
 
@@ -29,13 +28,13 @@ impl ExecutionLoopState {
     pub fn new(
         dxb_body: Vec<u8>,
         runtime: Rc<RuntimeInternal>,
-        slots: RuntimeExecutionSlots,
+        slots: RuntimeExecutionStack,
         caller_metadata: ExecutionCallerMetadata,
     ) -> Self {
         let state = RuntimeExecutionState {
             runtime_internal: runtime.clone(),
             source_id: 0, // TODO #640: set proper source ID
-            slots,
+            stack: slots,
             caller_metadata,
         };
         // TODO #641: optimize, don't clone the whole DXB body every time here
@@ -63,75 +62,90 @@ impl Debug for ExecutionLoopState {
 
 #[derive(Debug)]
 pub struct RuntimeExecutionState {
-    /// Local memory slots for current execution context.
-    /// TODO #643: replace this with a local stack and deprecate local slots?
-    pub slots: RuntimeExecutionSlots,
+    /// Local memory stack for current execution context.
+    pub stack: RuntimeExecutionStack,
     pub runtime_internal: Rc<RuntimeInternal>,
     pub source_id: TransceiverId,
     pub caller_metadata: ExecutionCallerMetadata
 }
 
 #[derive(Debug, Default)]
-pub struct RuntimeExecutionSlots {
-    pub slots: HashMap<u32, Option<ValueContainer>>,
+pub struct RuntimeExecutionStack {
+    pub values: Vec<Option<ValueContainer>>,
 }
 
-impl RuntimeExecutionSlots {
-    /// Allocates a new slot with the given slot address.
-    pub(crate) fn allocate_slot(
+impl RuntimeExecutionStack {
+    /// Pushes a value to the stack
+    pub(crate) fn push(
         &mut self,
-        address: u32,
-        value: Option<ValueContainer>,
+        value: ValueContainer,
     ) {
-        self.slots.insert(address, value);
+        self.values.push(Some(value));
     }
 
-    /// Drops a slot by its address and returns its value.
-    /// If the slot is not allocated, it returns an error.
-    pub(crate) fn drop_slot(
+
+    /// Pushes multiple values to the stack
+    pub(crate) fn push_multiple(
         &mut self,
-        address: u32,
+        values: Vec<ValueContainer>,
+    ) {
+        self.values.extend(values.into_iter().map(Some));
+    }
+
+    /// Takes a slot by its index and returns its value.
+    /// If the slot is not allocated or the index is out of bounds, it returns an error.
+    pub(crate) fn take_slot(
+        &mut self,
+        index: u32,
     ) -> Result<ValueContainer, ExecutionError> {
-        self.slots
-            .remove(&address)
-            .flatten()
-            .ok_or_else(|| ExecutionError::SlotNotAllocated(address))
+        if let Some(slot) = self.values.get_mut(index as usize) {
+            slot.take().ok_or_else(|| ExecutionError::StackValueNotAllocated(index))
+        }
+        else {
+            Err(ExecutionError::StackOutOfBoundsAccess(index))
+        }
     }
 
     /// Sets the value of a slot, returning the previous value if it existed.
     /// If the slot is not allocated, it returns an error.
     pub(crate) fn set_slot_value(
         &mut self,
-        address: u32,
+        index: u32,
         value: ValueContainer,
     ) -> Result<Option<ValueContainer>, ExecutionError> {
-        self.slots
-            .insert(address, Some(value))
-            .ok_or(())
-            .map_err(|_| ExecutionError::SlotNotAllocated(address))
+        if let Some(slot) = self.values.get_mut(index as usize) {
+            Ok(slot.replace(value))
+        }
+        else {
+            Err(ExecutionError::StackOutOfBoundsAccess(index))
+        }
     }
 
     /// Retrieves a reference to the value of a slot by its address.
     /// If the slot is not allocated, it returns an error.
     pub(crate) fn get_slot_value(
         &self,
-        address: u32,
+        index: u32,
     ) -> Result<&ValueContainer, ExecutionError> {
-        self.slots
-            .get(&address)
-            .and_then(|inner| inner.as_ref())
-            .ok_or_else(|| ExecutionError::SlotNotAllocated(address))
+        if let Some(slot) = self.values.get(index as usize) {
+            slot.as_ref().ok_or_else(|| ExecutionError::StackValueNotAllocated(index))
+        }
+        else {
+            Err(ExecutionError::StackOutOfBoundsAccess(index))
+        }
     }
 
     /// Retrieves a mutable reference to the value of a slot by its address.
     /// If the slot is not allocated, it returns an error.
     pub(crate) fn get_slot_value_mut(
         &mut self,
-        address: u32,
+        index: u32,
     ) -> Result<&mut ValueContainer, ExecutionError> {
-        self.slots
-            .get_mut(&address)
-            .and_then(|inner| inner.as_mut())
-            .ok_or_else(|| ExecutionError::SlotNotAllocated(address))
+        if let Some(slot) = self.values.get_mut(index as usize) {
+            slot.as_mut().ok_or_else(|| ExecutionError::StackValueNotAllocated(index))
+        }
+        else {
+            Err(ExecutionError::StackOutOfBoundsAccess(index))
+        }
     }
 }

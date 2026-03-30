@@ -66,16 +66,17 @@ pub enum InstructionCode {
 
     // pointers & variables 0xa0 - 0xbf
 
-    // slots
+    // stack value
     // TODO #669: refactor with stack variable system?
-    CLONE_SLOT, // clone #xyz   0x0000-0x00ff = variables passed on between scopes, 0x0100-0xfdff = normal variables, 0xfe00-0xffff = it variables (#it.0, #it.1, ...) for function arguments
-    BORROW_SLOT, // &#aa
-    GET_SLOT_SHARED_REF, // '#aa
-    GET_SLOT_SHARED_REF_MUT, // 'mut #aa
-    SET_SLOT, // #aa = ...
-    MODIFY_SLOT, // #aa += ..., ...
-    ALLOCATE_SLOT, // #aa = ...
-    POP_SLOT, // #aa
+    CLONE_STACK_VALUE, // clone #stack[i]   0x0000-0x00ff = variables passed on between scopes, 0x0100-0xfdff = normal variables, 0xfe00-0xffff = it variables (#it.0, #it.1, ...) for function arguments
+    BORROW_STACK_VALUE, // &#stack[i]
+    GET_STACK_VALUE_SHARED_REF, // '#stack[i]
+    GET_STACK_VALUE_SHARED_REF_MUT, // 'mut #stack[i]
+    SET_STACK_VALUE, // #stack[i] = ...
+    MODIFY_STACK_VALUE, // #stack[i] += ..., ...
+    PUSH_TO_STACK, // #stack += ...
+    PUSH_TO_STACK_MULTIPLE, // #stack ...+= [x]
+    TAKE_STACK_VALUE, // #stack[i]
 
     GET_INTERNAL_SLOT, // e.g. #endpoint
 

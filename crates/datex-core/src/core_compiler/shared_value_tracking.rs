@@ -1,5 +1,5 @@
 use crate::collections::HashMap;
-use crate::global::protocol_structures::instruction_data::SlotAddress;
+use crate::global::protocol_structures::instruction_data::StackIndex;
 use crate::shared_values::pointer::PointerReferenceMutability;
 use crate::shared_values::shared_container::{SharedContainerInner};
 
@@ -7,13 +7,13 @@ use crate::shared_values::shared_container::{SharedContainerInner};
 #[derive(Debug)]
 pub struct SharedValueTracking {
     /// shared values that were injected in the compiler, with a reference mutability if referenced, or None if moved
-    pub shared_values: HashMap<SharedContainerInner, (Option<PointerReferenceMutability>, SlotAddress)>,
-    pub current_slot_address: SlotAddress
+    pub shared_values: HashMap<SharedContainerInner, (Option<PointerReferenceMutability>, StackIndex)>,
+    pub current_slot_address: StackIndex
 }
 
 impl SharedValueTracking {
 
-    pub fn new(start_address: SlotAddress) -> SharedValueTracking {
+    pub fn new(start_address: StackIndex) -> SharedValueTracking {
         SharedValueTracking {
             shared_values: HashMap::new(),
             current_slot_address: start_address,
@@ -21,14 +21,14 @@ impl SharedValueTracking {
     }
 
     /// Registers a new shared value with minimum required ownership. Returns a slot address that can be used to access this value
-    pub fn register_shared_value(&mut self, shared_value: SharedContainerInner, ownership: Option<PointerReferenceMutability>) -> SlotAddress {
+    pub fn register_shared_value(&mut self, shared_value: SharedContainerInner, ownership: Option<PointerReferenceMutability>) -> StackIndex {
         if let Some((existing, address)) = self.shared_values.get(&shared_value) {
             let address = *address;
             self.shared_values.insert(shared_value, (Self::max_ownership(existing, &ownership), address));
             address
         } else {
             let address = self.current_slot_address;
-            self.current_slot_address = SlotAddress(self.current_slot_address.0 + 1);
+            self.current_slot_address = StackIndex(self.current_slot_address.0 + 1);
             self.shared_values.insert(shared_value, (ownership, address));
             address
         }

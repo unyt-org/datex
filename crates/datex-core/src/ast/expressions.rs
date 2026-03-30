@@ -417,6 +417,8 @@ pub struct GenericInstantiation {
 pub struct RemoteExecution {
     pub left: Box<DatexExpression>,
     pub right: Box<DatexExpression>,
+    /// internal metadata set by precompiler, indicates how many variables from parent scope are accessed inside the remote execution
+    pub injected_variable_count: Option<u32>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -499,6 +501,7 @@ pub struct CallableDeclaration {
     pub return_type: Option<TypeExpression>,
     pub yeet_type: Option<TypeExpression>,
     pub body: Box<DatexExpression>,
+    pub injected_variable_count: Option<u32>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -557,6 +560,8 @@ impl Display for Slot {
 pub struct SlotAssignment {
     pub slot: Slot,
     pub expression: Box<DatexExpression>,
+    // TODO: operator for slot assignment, e.g. #1 += 2
+    // pub operator: Option<AssignmentOperator>,
 }
 
 #[derive(Clone, Debug, PartialEq)]

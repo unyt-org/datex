@@ -17,7 +17,7 @@ use itertools::Itertools;
 use crate::core_compiler::core_compilation_context::CoreCompilationContext;
 use crate::core_compiler::value_compiler::append_instruction_code_new;
 use crate::global::protocol_structures::external_slot_type::ExternalSlotType;
-use crate::global::protocol_structures::instruction_data::SlotAddress;
+use crate::global::protocol_structures::instruction_data::StackIndex;
 
 #[derive(Debug, Clone, Copy, Eq)]
 pub struct VirtualSlot {
@@ -127,7 +127,7 @@ impl CompilationContext {
     ) -> Self {
         CompilationContext {
             inserted_value_index: 0,
-            core_context: CoreCompilationContext::new(buffer, SlotAddress(0)),
+            core_context: CoreCompilationContext::new(buffer, StackIndex(0)),
             inserted_values,
             has_non_static_value: false,
             slot_indices: HashMap::new(),

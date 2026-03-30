@@ -6,6 +6,7 @@ use crate::prelude::*;
 pub struct PrecompilerScope {
     pub realm_index: usize,
     pub variable_ids_by_name: HashMap<String, usize>,
+    pub external_variable_count: u32,
 }
 
 impl PrecompilerScope {
@@ -13,7 +14,12 @@ impl PrecompilerScope {
         PrecompilerScope {
             realm_index,
             variable_ids_by_name: HashMap::new(),
+            external_variable_count: 0,
         }
+    }
+    
+    pub fn increment_external_variable_count(&mut self) {
+        self.external_variable_count += 1;
     }
 }
 

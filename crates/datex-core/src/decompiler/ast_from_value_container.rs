@@ -162,6 +162,7 @@ fn value_to_datex_expression(value: &Value) -> DatexExpressionData {
                         DatexExpressionData::NativeImplementationIndicator
                             .with_default_span(),
                     ),
+                    injected_variable_count: None,
                 },
             ))
         }

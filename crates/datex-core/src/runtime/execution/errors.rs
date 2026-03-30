@@ -63,8 +63,8 @@ pub enum ExecutionError {
     AccessError(AccessError),
     Unknown,
     NotImplemented(String),
-    SlotNotAllocated(u32),
-    SlotNotInitialized(u32),
+    StackValueNotAllocated(u32),
+    StackOutOfBoundsAccess(u32),
     RequiresAsyncExecution,
     ResponseError(ResponseError),
     IllegalTypeError(IllegalTypeError),
@@ -157,18 +157,6 @@ impl Display for ExecutionError {
             ExecutionError::NotImplemented(msg) => {
                 core::write!(f, "Not implemented: {msg}")
             }
-            ExecutionError::SlotNotAllocated(address) => {
-                core::write!(
-                    f,
-                    "Tried to access unallocated slot at address {address}"
-                )
-            }
-            ExecutionError::SlotNotInitialized(address) => {
-                core::write!(
-                    f,
-                    "Tried to access uninitialized slot at address {address}"
-                )
-            }
             ExecutionError::RequiresAsyncExecution => {
                 core::write!(f, "Program must be executed asynchronously")
             }
@@ -229,6 +217,18 @@ impl Display for ExecutionError {
                 core::write!(
                     f,
                     "Tried to create a mutable reference to a non-mutable value"
+                )
+            }
+            ExecutionError::StackValueNotAllocated(index) => {
+                core::write!(
+                    f,
+                    "Tried to access unallocated stack value at index {index}"
+                )
+            }
+            ExecutionError::StackOutOfBoundsAccess(index) => {
+                core::write!(
+                    f,
+                    "Tried to access out of bounds stack value at index {index}"
                 )
             }
         }
