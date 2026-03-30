@@ -1207,9 +1207,9 @@ fn compile_expression(
                 vec![],
                 ExecutionMode::Static,
             );
-            
+
             let stack_index_offset = StackIndex(injected_variable_count.unwrap()); // must be set by precompiler
-            
+
             let external_scope = compile_rich_ast(
                 &mut execution_block_ctx,
                 RichAst::new(*script, &metadata),
@@ -1678,19 +1678,11 @@ pub mod tests {
                 3,
                 0, // not terminated
                 InstructionCode::PUSH_TO_STACK.into(),
-                0,
-                0,
-                0,
-                0,
                 InstructionCode::CREATE_SHARED_MUT.into(),
                 InstructionCode::UINT_8.into(),
                 42,
                 // val b = 69;
                 InstructionCode::PUSH_TO_STACK.into(),
-                1,
-                0,
-                0,
-                0,
                 InstructionCode::GET_SHARED_REF_MUT.into(),
                 InstructionCode::UINT_8.into(),
                 69,
@@ -2192,11 +2184,6 @@ pub mod tests {
             result,
             vec![
                 InstructionCode::PUSH_TO_STACK.into(),
-                // slot index as u32
-                0,
-                0,
-                0,
-                0,
                 InstructionCode::UINT_8.into(),
                 42,
             ]
@@ -2214,11 +2201,6 @@ pub mod tests {
                 2,
                 0, // not terminated
                 InstructionCode::PUSH_TO_STACK.into(),
-                // slot index as u32
-                0,
-                0,
-                0,
-                0,
                 InstructionCode::UINT_8.into(),
                 42,
                 InstructionCode::ADD.into(),
@@ -2245,20 +2227,12 @@ pub mod tests {
                 3,
                 0, // not terminated
                 InstructionCode::PUSH_TO_STACK.into(),
-                0,
-                0,
-                0,
-                0,
                 InstructionCode::UINT_8.into(),
                 42,
                 InstructionCode::SHORT_STATEMENTS.into(),
                 2,
                 0, // not terminated
                 InstructionCode::PUSH_TO_STACK.into(),
-                1,
-                0,
-                0,
-                0,
                 InstructionCode::UINT_8.into(),
                 43,
                 InstructionCode::TAKE_STACK_VALUE.into(),
@@ -2288,27 +2262,15 @@ pub mod tests {
                 4,
                 0, // not terminated
                 InstructionCode::PUSH_TO_STACK.into(),
-                0,
-                0,
-                0,
-                0,
                 InstructionCode::UINT_8.into(),
                 42,
                 InstructionCode::PUSH_TO_STACK.into(),
-                1,
-                0,
-                0,
-                0,
                 InstructionCode::UINT_8.into(),
                 41,
                 InstructionCode::SHORT_STATEMENTS.into(),
                 3,
                 0, // not terminated
                 InstructionCode::PUSH_TO_STACK.into(),
-                2,
-                0,
-                0,
-                0,
                 InstructionCode::UINT_8.into(),
                 43,
                 InstructionCode::TAKE_STACK_VALUE.into(),
@@ -2339,11 +2301,6 @@ pub mod tests {
             result,
             vec![
                 InstructionCode::PUSH_TO_STACK.into(),
-                // slot index as u32
-                0,
-                0,
-                0,
-                0,
                 InstructionCode::CREATE_SHARED.into(),
                 InstructionCode::UINT_8.into(),
                 42,
@@ -2362,11 +2319,6 @@ pub mod tests {
                 2,
                 0, // not terminated
                 InstructionCode::PUSH_TO_STACK.into(),
-                // slot index as u32
-                0,
-                0,
-                0,
-                0,
                 InstructionCode::CREATE_SHARED.into(),
                 InstructionCode::UINT_8.into(),
                 42,
@@ -2653,11 +2605,6 @@ pub mod tests {
                 2,
                 0, // not terminated
                 InstructionCode::PUSH_TO_STACK.into(),
-                // slot index as u32
-                0,
-                0,
-                0,
-                0,
                 InstructionCode::UINT_8.into(),
                 42,
                 InstructionCode::REMOTE_EXECUTION.into(),
@@ -2708,11 +2655,6 @@ pub mod tests {
                 2,
                 1, // terminated
                 InstructionCode::PUSH_TO_STACK.into(),
-                // slot index as u32
-                0,
-                0,
-                0,
-                0,
                 // create ref
                 InstructionCode::CREATE_SHARED.into(),
                 InstructionCode::UINT_8.into(),
@@ -2765,11 +2707,6 @@ pub mod tests {
                 2,
                 0,
                 InstructionCode::PUSH_TO_STACK.into(),
-                // slot index as u32
-                0,
-                0,
-                0,
-                0,
                 // create ref
                 InstructionCode::CREATE_SHARED.into(),
                 InstructionCode::UINT_8.into(),
@@ -2819,19 +2756,9 @@ pub mod tests {
                 3,
                 0, // not terminated
                 InstructionCode::PUSH_TO_STACK.into(),
-                // slot index as u32
-                0,
-                0,
-                0,
-                0,
                 InstructionCode::UINT_8.into(),
                 42,
                 InstructionCode::PUSH_TO_STACK.into(),
-                // slot index as u32
-                1,
-                0,
-                0,
-                0,
                 InstructionCode::UINT_8.into(),
                 69,
                 InstructionCode::REMOTE_EXECUTION.into(),
@@ -2895,19 +2822,9 @@ pub mod tests {
                 3,
                 0, // not terminated
                 InstructionCode::PUSH_TO_STACK.into(),
-                // slot index as u32
-                0,
-                0,
-                0,
-                0,
                 InstructionCode::UINT_8.into(),
                 42,
                 InstructionCode::PUSH_TO_STACK.into(),
-                // slot index as u32
-                1,
-                0,
-                0,
-                0,
                 InstructionCode::UINT_8.into(),
                 69,
                 InstructionCode::REMOTE_EXECUTION.into(),
@@ -2934,11 +2851,6 @@ pub mod tests {
                 0, // not terminated
                 // allocate slot for x
                 InstructionCode::PUSH_TO_STACK.into(),
-                // slot index as u32
-                1,
-                0,
-                0,
-                0,
                 InstructionCode::UINT_8.into(),
                 5,
                 // expression: x + y
@@ -2976,11 +2888,6 @@ pub mod tests {
                 2,
                 0, // not terminated
                 InstructionCode::PUSH_TO_STACK.into(),
-                // slot index as u32
-                0,
-                0,
-                0,
-                0,
                 InstructionCode::UINT_8.into(),
                 42,
                 InstructionCode::REMOTE_EXECUTION.into(),
@@ -3053,19 +2960,9 @@ pub mod tests {
                 3,
                 0, // not terminated
                 InstructionCode::PUSH_TO_STACK.into(),
-                // slot index as u32
-                0,
-                0,
-                0,
-                0,
                 InstructionCode::UINT_8.into(),
                 42,
                 InstructionCode::PUSH_TO_STACK.into(),
-                // slot index as u32
-                1,
-                0,
-                0,
-                0,
                 InstructionCode::UINT_8.into(),
                 43,
                 InstructionCode::REMOTE_EXECUTION.into(),
@@ -3238,11 +3135,6 @@ pub mod tests {
                 2,
                 0, // not terminated
                 InstructionCode::PUSH_TO_STACK.into(),
-                // slot index as u32
-                0,
-                0,
-                0,
-                0,
                 InstructionCode::UINT_8.into(),
                 10,
                 InstructionCode::UNBOX.into(), // FIXME: should not be added for local values (precompiler)
@@ -3612,19 +3504,9 @@ pub mod tests {
             3,
             0, // not terminated
             InstructionCode::PUSH_TO_STACK.into(),
-            // slot index as u32
-            0,
-            0,
-            0,
-            0,
             InstructionCode::UINT_8.into(),
             10,
             InstructionCode::PUSH_TO_STACK.into(),
-            // slot index as u32
-            1,
-            0,
-            0,
-            0,
             InstructionCode::CLONE_STACK_VALUE.into(),
             // slot index as u32
             0,
