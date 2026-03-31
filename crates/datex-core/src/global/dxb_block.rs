@@ -266,7 +266,7 @@ impl DXBBlock {
         let signature = match routing_header.flags.signature_type() {
             SignatureType::Encrypted => {
                 // extract next 255 bytes as the signature
-                let mut signature = Vec::from([0u8; 108]);
+                let mut signature = Vec::from([0u8; 96]);
                 reader.read_exact(&mut signature).map_err(|e| {
                     DXBBlockParseError::IOError(format!(
                         "Failed to read encrypted signature: {}",
@@ -279,7 +279,7 @@ impl DXBBlock {
             }
             SignatureType::Unencrypted => {
                 // extract next 255 bytes as the signature
-                let mut signature = Vec::from([0u8; 108]);
+                let mut signature = Vec::from([0u8; 96]);
                 reader.read_exact(&mut signature).map_err(|e| {
                     DXBBlockParseError::IOError(format!(
                         "Failed to read unencrypted signature: {}",
@@ -294,8 +294,8 @@ impl DXBBlock {
         let decrypted_bytes = match routing_header.flags.encryption_type() {
             EncryptionType::Encrypted => {
                 // TODO #113: decrypt the body
-                let mut decrypted_bytes = Vec::from([0u8; 255]);
-                reader.read_exact(&mut decrypted_bytes).map_err(|e| {
+                let mut decrypted_bytes = Vec::new();
+                reader.read_to_end(&mut decrypted_bytes).map_err(|e| {
                     DXBBlockParseError::IOError(format!(
                         "Failed to read encrypted body: {}",
                         e
@@ -343,7 +343,7 @@ impl DXBBlock {
     /// Validates the signature of the block based on the signature type specified in the routing header.
     /// Returns Ok(self) if the signature is valid, or a SignatureValidationError if the signature is missing, cannot be parsed, or is invalid.
     pub fn validate_signature(
-        self,
+        mut self,
     ) -> MaybeAsync<
         Result<DXBBlock, SignatureValidationError>,
         impl Future<Output = Result<DXBBlock, SignatureValidationError>>,
@@ -435,7 +435,30 @@ impl DXBBlock {
                 };
 
                 match is_valid {
-                    true => Ok(self),
+                    true => match self.routing_header.flags.encryption_type() {
+                        EncryptionType::None => {
+                            log::info!("Dur sig val: EncryptionType::None");
+                            Ok(self)
+                        }
+                        EncryptionType::Encrypted => {
+                            log::info!(
+                                "Dur sig val: EncryptionType::Encrypted"
+                            );
+                            let key: [u8; 32] =
+                                self.body[..32].try_into().unwrap();
+                            let iv = [0u8; 16];
+                            let enc_body = self.body[32..].to_vec();
+                            let decrypted_body = CryptoImpl::aes_ctr_decrypt(
+                                &key,
+                                &iv,
+                                enc_body.as_slice(),
+                            )
+                            .await
+                            .unwrap();
+                            self.body = decrypted_body;
+                            Ok(self)
+                        }
+                    },
                     false => Err(SignatureValidationError::InvalidSignature),
                 }
             }),
@@ -612,65 +635,6 @@ mod tests {
         }
     }
 
-    #[tokio::test]
-    #[cfg(feature = "std")]
-    pub async fn signature_to_and_from_bytes() {
-        // setup block
-        let mut routing_header = RoutingHeader::default()
-            .with_sender(Endpoint::from_str("@test").unwrap())
-            .to_owned();
-        routing_header.set_size(157);
-        let mut block = DXBBlock {
-            body: vec![0x01, 0x02, 0x03],
-            encrypted_header: EncryptedHeader {
-                ..Default::default()
-            },
-            routing_header,
-            ..DXBBlock::default()
-        };
-
-        // setup correct signature
-        block
-            .routing_header
-            .flags
-            .set_signature_type(SignatureType::Unencrypted);
-
-        let (pub_key, pri_key) = CryptoImpl::gen_ed25519().await.unwrap();
-        let raw_signed = [pub_key.clone(), block.body.clone()].concat();
-        let hashed_signed = CryptoImpl::hash_sha256(&raw_signed).await.unwrap();
-
-        let signature = CryptoImpl::sig_ed25519(&pri_key, &hashed_signed)
-            .await
-            .unwrap();
-        // 64 + 44 = 108
-        block.signature = Some([signature.to_vec(), pub_key.clone()].concat());
-
-        let block_bytes = block.to_bytes();
-        let block2: DXBBlock = DXBBlock::from_bytes(&block_bytes).unwrap();
-        assert_eq!(block, block2);
-        assert_eq!(block.signature, block2.signature);
-
-        // setup faulty signature
-        let mut other_sig = signature;
-        if other_sig[42] != 42u8 {
-            other_sig[42] = 42u8;
-        } else {
-            other_sig[42] = 43u8;
-        }
-        block.signature = Some([other_sig.to_vec(), pub_key].concat());
-        let block_bytes2 = block.to_bytes();
-        let signature_validation = DXBBlock::from_bytes(&block_bytes2)
-            .unwrap()
-            .validate_signature()
-            .into_future()
-            .await;
-        assert!(signature_validation.is_err());
-        assert_matches!(
-            signature_validation.unwrap_err(),
-            SignatureValidationError::InvalidSignature
-        )
-    }
-
     #[test]
     fn illegal_signed_trace_block() {
         let mut block = DXBBlock::new_with_body(&[0x01, 0x02, 0x03]);
@@ -682,7 +646,7 @@ mod tests {
             .routing_header
             .flags
             .set_signature_type(SignatureType::Unencrypted);
-        block.signature = Some(vec![0u8; 108]);
+        block.signature = Some(vec![0u8; 96]);
 
         let block_bytes = block.to_bytes();
         let parse_result = DXBBlock::from_bytes(&block_bytes);

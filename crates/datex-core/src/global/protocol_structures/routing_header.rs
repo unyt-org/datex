@@ -39,18 +39,26 @@ impl Default for SignatureType {
 
 // 1 bit
 #[derive(
-    serde::Serialize,
-    serde::Deserialize,
-    Debug,
-    PartialEq,
-    Clone,
-    Default,
-    Specifier,
+    serde::Serialize, serde::Deserialize, Debug, PartialEq, Clone, Specifier,
 )]
 pub enum EncryptionType {
-    #[default]
     None = 0b0,
     Encrypted = 0b1,
+}
+
+#[allow(clippy::derivable_impls)]
+impl Default for EncryptionType {
+    /// Sets the default encryption type based on whether the "crypto_enabled" feature is enabled.
+    fn default() -> Self {
+        #[cfg(not(feature = "crypto_enabled"))]
+        {
+            EncryptionType::None
+        }
+        #[cfg(feature = "crypto_enabled")]
+        {
+            EncryptionType::Encrypted
+        }
+    }
 }
 
 // 2 bit + 1 bit + 2 bit + 1 bit + 1 bit + 1 bit = 1 byte

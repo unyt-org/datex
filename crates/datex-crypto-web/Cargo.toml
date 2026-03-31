@@ -17,6 +17,12 @@ crate-type = ["rlib"]
 datex-crypto-facade = { path = "../datex-crypto-facade", version = "0.0.2" }
 wasm-bindgen = { version = "=0.2.112", features = [] }
 wasm-bindgen-futures = "0.4.61"
+pkcs8 = {version = "0.10", features = ["alloc", "pem"], default-features = false }
+der = { version = "0.7", default-features = false }
+ed25519-dalek = {version = "2.2", default-features = false }
+x25519-dalek = {version = "2.0", features = ["static_secrets"], default-features = false }
+spki = { version = "0.7", default-features = false }
+
 [dependencies.web-sys]
 version = "0.3.82"
 features = [

@@ -58,7 +58,7 @@ pub trait Crypto: Send + Sync {
 
     /// Generate a new Ed25519 key pair. Returns the public and private keys.
     fn gen_ed25519<'a>()
-    -> AsyncCryptoResult<'a, (Vec<u8>, Vec<u8>), Self::Ed25519GenError>;
+    -> AsyncCryptoResult<'a, ([u8; 32], [u8; 32]), Self::Ed25519GenError>;
 
     type Ed25519SignError: core::fmt::Debug + Send + Sync + 'static =
         crate::error::Ed25519SignError;
@@ -125,7 +125,7 @@ pub trait Crypto: Send + Sync {
 
     /// Generate a new X25519 key pair. Returns the public key as a base58 string and the private key as bytes.
     fn gen_x25519<'a>()
-    -> AsyncCryptoResult<'a, ([u8; 44], [u8; 48]), Self::X25519GenError>;
+    -> AsyncCryptoResult<'a, ([u8; 32], [u8; 32]), Self::X25519GenError>;
 
     type X25519DeriveError: core::fmt::Debug + Send + Sync + 'static =
         crate::error::X25519DeriveError;
@@ -133,8 +133,8 @@ pub trait Crypto: Send + Sync {
     /// Derive a shared secret using the X25519 key agreement protocol with the given private key and peer's public key.
     /// Returns the derived 32-byte shared secret.
     fn derive_x25519<'a>(
-        pri_key: &'a [u8; 48],
-        peer_pub: &'a [u8; 44],
+        pri_key: &'a [u8; 32],
+        peer_pub: &'a [u8; 32],
     ) -> AsyncCryptoResult<'a, [u8; 32], Self::X25519DeriveError>;
 
     // Base58
@@ -182,7 +182,7 @@ mod tests {
         }
 
         fn gen_ed25519<'a>()
-        -> AsyncCryptoResult<'a, (Vec<u8>, Vec<u8>), Self::Ed25519GenError>
+        -> AsyncCryptoResult<'a, ([u8; 32], [u8; 32]), Self::Ed25519GenError>
         {
             unimplemented!()
         }
@@ -233,14 +233,14 @@ mod tests {
         }
 
         fn gen_x25519<'a>()
-        -> AsyncCryptoResult<'a, ([u8; 44], [u8; 48]), Self::X25519GenError>
+        -> AsyncCryptoResult<'a, ([u8; 32], [u8; 32]), Self::X25519GenError>
         {
             unimplemented!()
         }
 
         fn derive_x25519<'a>(
-            _pri_key: &'a [u8; 48],
-            _peer_pub: &'a [u8; 44],
+            _pri_key: &'a [u8; 32],
+            _peer_pub: &'a [u8; 32],
         ) -> AsyncCryptoResult<'a, [u8; 32], Self::X25519DeriveError> {
             unimplemented!()
         }

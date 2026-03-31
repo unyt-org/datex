@@ -15,6 +15,12 @@ mod sealed {
     impl CryptoKeyType for CryptoKeyPair {}
 }
 
+use der::{Encode, asn1::BitStringRef};
+use ed25519_dalek::SigningKey;
+use pkcs8::{AlgorithmIdentifierRef, ObjectIdentifier, PrivateKeyInfo};
+use spki::SubjectPublicKeyInfoRef;
+use x25519_dalek::{PublicKey, StaticSecret};
+
 fn jsvalue_to_jserror(e: JsValue) -> JsError {
     if let Ok(err) = e.clone().dyn_into::<js_sys::Error>() {
         let msg = err
@@ -206,7 +212,7 @@ impl Crypto for CryptoWeb {
 
     // Signature and Verification
     fn gen_ed25519<'a>()
-    -> AsyncCryptoResult<'a, (Vec<u8>, Vec<u8>), Self::Ed25519GenError> {
+    -> AsyncCryptoResult<'a, ([u8; 32], [u8; 32]), Self::Ed25519GenError> {
         Box::pin(async move {
             let algorithm =
                 js_object(vec![("name", JsValue::from_str("Ed25519"))]);
@@ -221,12 +227,18 @@ impl Crypto for CryptoWeb {
             let pub_key =
                 Self::export_crypto_key(&key_pair.get_public_key(), "spki")
                     .await?;
+            let raw_pub_key: [u8; 32] = pub_key[12..]
+                .try_into()
+                .map_err(|_| JsError::new("Ed25519 export raw public key"))?;
 
             let pri_key =
                 Self::export_crypto_key(&key_pair.get_private_key(), "pkcs8")
                     .await?;
+            let raw_pri_key: [u8; 32] = pri_key[16..]
+                .try_into()
+                .map_err(|_| JsError::new("Ed25519 export raw private key"))?;
 
-            Ok((pub_key, pri_key))
+            Ok((raw_pub_key, raw_pri_key))
         })
     }
 
@@ -235,14 +247,38 @@ impl Crypto for CryptoWeb {
         data: &'a [u8],
     ) -> AsyncCryptoResult<'a, [u8; 64], Self::Ed25519SignError> {
         Box::pin(async move {
+            // prep key for formatting
+            let pri_sig_key =
+                SigningKey::from_bytes(pri_key.try_into().map_err(|_| {
+                    JsError::new("Ed25519 import private key (sign)")
+                })?);
+            let prepped_key =
+                [[4u8, 32u8].to_vec(), pri_sig_key.to_bytes().to_vec()]
+                    .concat();
+            let oid = ObjectIdentifier::new("1.3.101.112").map_err(|_| {
+                JsError::new("Ed25519 format private key (sign)")
+            })?;
+
+            // format key for web crypto api
+            let pri_sig_key_with_metadata = PrivateKeyInfo {
+                algorithm: AlgorithmIdentifierRef {
+                    oid,
+                    parameters: None,
+                },
+                private_key: &prepped_key,
+                public_key: None,
+            }
+            .to_der()
+            .map_err(|_| JsError::new("Ed25519 format private key (sign)"))?;
+
             let key = Self::import_crypto_key(
-                pri_key,
+                &pri_sig_key_with_metadata,
                 "pkcs8",
                 &js_object(vec![("name", JsValue::from_str("Ed25519"))]),
                 &["sign"],
             )
             .await
-            .map_err(|_| JsError::new("Ed25519 import pkcs8 (sign)"))?;
+            .map_err(|_| JsError::new("Ed25519 format private key (sign)"))?;
 
             let prom = Self::crypto_subtle()
                 .sign_with_object_and_u8_array(
@@ -280,7 +316,7 @@ impl Crypto for CryptoWeb {
 
             let key = Self::import_crypto_key(
                 pub_key,
-                "spki",
+                "raw",
                 &js_object(vec![("name", JsValue::from_str("Ed25519"))]),
                 &["verify"],
             )
@@ -531,7 +567,7 @@ impl Crypto for CryptoWeb {
 
     // x25519 key gen
     fn gen_x25519<'a>()
-    -> AsyncCryptoResult<'a, ([u8; 44], [u8; 48]), Self::X25519GenError> {
+    -> AsyncCryptoResult<'a, ([u8; 32], [u8; 32]), Self::X25519GenError> {
         Box::pin(async move {
             let algorithm =
                 js_object(vec![("name", JsValue::from_str("X25519"))]);
@@ -544,36 +580,77 @@ impl Crypto for CryptoWeb {
             .await
             .map_err(|_| JsError::new("X25519 generateKey"))?;
 
-            let pub_vec =
+            let pub_key =
                 Self::export_crypto_key(&key_pair.get_public_key(), "spki")
                     .await?;
-            let pri_vec =
+            let pri_key =
                 Self::export_crypto_key(&key_pair.get_private_key(), "pkcs8")
                     .await?;
 
-            let pub_key: [u8; 44] = pub_vec
-                .try_into()
-                .map_err(|_| JsError::new("X25519 spki length != 44"))?;
-            let pri_key: [u8; 48] = pri_vec
-                .try_into()
-                .map_err(|_| JsError::new("X25519 pkcs8 length != 48"))?;
+            // Extract raw keys
+            let raw_pub_key: [u8; 32] =
+                pub_key[12..].try_into().map_err(|_| {
+                    JsError::new("X25519 format private key (sign)")
+                })?;
+            let raw_pri_key: [u8; 32] =
+                pri_key[16..].try_into().map_err(|_| {
+                    JsError::new("X25519 format private key (sign)")
+                })?;
 
-            Ok((pub_key, pri_key))
+            Ok((raw_pub_key, raw_pri_key))
         })
     }
 
     fn derive_x25519<'a>(
-        my_raw: &'a [u8; 48],
-        peer_pub: &'a [u8; 44],
+        my_raw: &'a [u8; 32],
+        peer_pub: &'a [u8; 32],
     ) -> AsyncCryptoResult<'a, [u8; 32], Self::X25519DeriveError> {
         Box::pin(async move {
+            // Format private key
+            let pri_key = StaticSecret::from(*my_raw);
+            let peer_pub_key = PublicKey::from(*peer_pub).to_bytes();
+            let oid = ObjectIdentifier::new("1.3.101.110").map_err(|_| {
+                JsError::new(
+                    "X25519 format private key (shared secret derivation)",
+                )
+            })?;
+
+            let prepped_pri_key =
+                [[4u8, 34u8].to_vec(), pri_key.to_bytes().to_vec()].concat();
+            let pri_key_with_metadata = PrivateKeyInfo {
+                algorithm: AlgorithmIdentifierRef {
+                    oid,
+                    parameters: None,
+                },
+                private_key: &prepped_pri_key,
+                public_key: None,
+            }
+            .to_der()
+            .map_err(|_| {
+                JsError::new(
+                    "X25519 format private key (shared secret derivation)",
+                )
+            })?;
+
+            let pub_spki = SubjectPublicKeyInfoRef {
+                algorithm: AlgorithmIdentifierRef {
+                    oid,
+                    parameters: None,
+                },
+                subject_public_key: BitStringRef::new(0, &peer_pub_key)
+                    .map_err(|_| JsError::new("X25519 format public key (shared secret derivation)"))?,
+            }
+            .to_der()
+            .map_err(|_| JsError::new("X25519 format public key (shared secret derivation)"))?;
+
             let subtle = Self::crypto_subtle();
             let alg = js_object(vec![("name", JsValue::from_str("X25519"))]);
 
             let pri_prom = subtle
                 .import_key_with_object(
                     "pkcs8",
-                    &Uint8Array::from(my_raw.as_slice()).buffer(),
+                    &Uint8Array::from(pri_key_with_metadata.as_slice())
+                        .buffer(),
                     &alg,
                     false,
                     &Array::of2(&"deriveKey".into(), &"deriveBits".into()),
@@ -589,7 +666,7 @@ impl Crypto for CryptoWeb {
             let pub_prom = subtle
                 .import_key_with_object(
                     "spki",
-                    &Uint8Array::from(peer_pub.as_slice()).buffer(),
+                    &Uint8Array::from(pub_spki.as_slice()).buffer(),
                     &alg,
                     false,
                     &Array::new(),
