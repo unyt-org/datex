@@ -989,7 +989,7 @@ impl ComHub {
 
     /// Prepares an own block for sending by setting sender, timestamp, distance and signing if needed.
     /// Will return either synchronously or asynchronously depending on the signature type.
-    pub async fn prepare_own_block(
+    pub fn prepare_own_block(
         &self,
         mut block: DXBBlock,
     ) -> PrepareOwnBlockResult<'_> {
@@ -1008,58 +1008,70 @@ impl ComHub {
             Ok(block)
         }
 
-        if let Some(keys) = &self.options.keys {
-            warn!("Keys for preparing block: {:?}", keys);
-        } else {
-            warn!("No keys to prepare block");
+        let encrypted = !matches!(
+            block.routing_header.flags.encryption_type(),
+            EncryptionType::None
+        );
+        let signed = !matches!(
+            block.routing_header.flags.signature_type(),
+            SignatureType::None
+        );
+        if !encrypted && !signed {
+            return SyncOrAsync::Sync(update_sender_and_timestamp(
+                block,
+                self.endpoint.clone(),
+            ));
         }
+        SyncOrAsync::Async(Box::pin(async move {
+            #[cfg(feature = "crypto_enabled")]
+            {
+                // Prepare future encryption
+                let fut_block =
+                    match block.routing_header.flags.encryption_type() {
+                        EncryptionType::None => {
+                            info!("Prepping not encrypted dxb");
+                            SyncOrAsync::Sync(block)
+                        }
+                        EncryptionType::Encrypted => {
+                            info!("Prepareing encrypted dxb");
+                            SyncOrAsync::Async(Box::pin(async move {
+                                let key: [u8; 32] =
+                                    CryptoImpl::random_bytes(32)
+                                        .try_into()
+                                        .unwrap();
+                                let iv = [0u8; 16];
+                                let enc_body = CryptoImpl::aes_ctr_encrypt(
+                                    &key,
+                                    &iv,
+                                    block.body.as_slice(),
+                                )
+                                .await
+                                .unwrap();
+                                let new_body =
+                                    [key.to_vec(), enc_body].concat();
+                                block.body = new_body.to_vec();
+                                block
+                            }))
+                        }
+                    };
 
-        #[cfg(feature = "crypto_enabled")]
-        {
-            // Prepare future encryption
-            let fut_block = match block.routing_header.flags.encryption_type() {
-                EncryptionType::None => {
-                    info!("Prepping not encrypted dxb");
-                    SyncOrAsync::Sync(block)
+                // Execute future encryption
+                block = match fut_block {
+                    SyncOrAsync::Sync(block) => block,
+                    SyncOrAsync::Async(block) => block.await,
+                };
+            }
+
+            match block.routing_header.flags.signature_type() {
+                // SignatureType::None can be handled synchronously
+                SignatureType::None => {
+                    update_sender_and_timestamp(block, self.endpoint.clone())
                 }
-                EncryptionType::Encrypted => {
-                    info!("Prepareing encrypted dxb");
-                    SyncOrAsync::Async(Box::pin(async move {
-                        let key: [u8; 32] =
-                            CryptoImpl::random_bytes(32).try_into().unwrap();
-                        let iv = [0u8; 16];
-                        let enc_body = CryptoImpl::aes_ctr_encrypt(
-                            &key,
-                            &iv,
-                            block.body.as_slice(),
-                        )
-                        .await
-                        .unwrap();
-                        let new_body = [key.to_vec(), enc_body].concat();
-                        block.body = new_body.to_vec();
-                        block
-                    }))
-                }
-            };
 
-            // Execute future encryption
-            block = match fut_block {
-                SyncOrAsync::Sync(block) => block,
-                SyncOrAsync::Async(block) => block.await,
-            };
-        }
+                // SignatureType::Unencrypted and SignatureType::Encrypted require async signing
+                sig_ty => {
+                    let endpoint = self.endpoint.clone();
 
-        match block.routing_header.flags.signature_type() {
-            // SignatureType::None can be handled synchronously
-            SignatureType::None => SyncOrAsync::Sync(
-                update_sender_and_timestamp(block, self.endpoint.clone()),
-            ),
-
-            // SignatureType::Unencrypted and SignatureType::Encrypted require async signing
-            sig_ty => {
-                let endpoint = self.endpoint.clone();
-
-                SyncOrAsync::Async(Box::pin(async move {
                     let (pub_key, pri_key) = CryptoImpl::gen_ed25519()
                         .await
                         .map_err(|_| ComHubError::SignatureCreationError)?;
@@ -1101,9 +1113,9 @@ impl ComHub {
                     block.signature =
                         Some([sig_bytes, pub_key.to_vec()].concat());
                     update_sender_and_timestamp(block, endpoint)
-                }))
+                }
             }
-        }
+        }))
     }
 
     /// Public method to send an outgoing block from this endpoint. Called by the runtime.
@@ -1113,7 +1125,6 @@ impl ComHub {
     ) -> Result<(), Vec<Endpoint>> {
         block = self
             .prepare_own_block(block)
-            .await
             .into_result()
             .await
             .unwrap_or_else(|e| {
@@ -1129,12 +1140,12 @@ impl ComHub {
     /// Sends a block from this endpoint synchronously.
     /// If any endpoint can not be reached synchronously, an Err with the list of all endpoints is returned.
     /// Otherwise, Ok with optional list of responses is returned.
-    pub async fn send_own_block(
+    pub fn send_own_block(
         &self,
         mut block: DXBBlock,
     ) -> Result<Option<Vec<Vec<u8>>>, Vec<Endpoint>> {
         let receivers = block.receiver_endpoints();
-        block = match self.prepare_own_block(block).await {
+        block = match self.prepare_own_block(block) {
             SyncOrAsync::Sync(res) => res.unwrap_or_else(|e| {
                 panic!("Error preparing own block for sending: {:?}", e)
             }),
@@ -1624,7 +1635,6 @@ impl ComHub {
 
         let block = self
             .prepare_own_block(block)
-            .await
             .into_result()
             .await
             .unwrap_or_else(|e| {
@@ -1819,12 +1829,11 @@ pub mod tests {
         endpoint: Endpoint,
         blocks: &mut Vec<DXBBlock>,
     ) {
-        for mut block in blocks {
+        for block in blocks {
             block.set_receivers(vec![endpoint.clone()]);
 
             *block = com_hub
                 .prepare_own_block(block.clone())
-                .await
                 .into_result()
                 .await
                 .unwrap();
@@ -2187,7 +2196,6 @@ pub mod tests {
 
                 let block = com_hub
                     .prepare_own_block(block)
-                    .await
                     .into_result()
                     .await
                     .unwrap();
