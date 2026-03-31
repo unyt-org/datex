@@ -267,24 +267,18 @@ impl Neg for Decimal {
     }
 }
 
-impl Add for Decimal {
-    type Output = Self;
-
-    fn add(self, rhs: Self) -> Self::Output {
-        match (self, rhs) {
-            (Decimal::Finite(a), Decimal::Finite(b)) => Decimal::from(a + b),
-            (Decimal::NegZero, Decimal::Zero)
-            | (Decimal::Zero, Decimal::NegZero) => Decimal::Zero,
-            (Decimal::Zero, b) | (b, Decimal::Zero) => b,
-            (Decimal::NegZero, b) | (b, Decimal::NegZero) => b,
+impl Decimal {
+    pub fn add(lhs: &Decimal, rhs: &Decimal) -> Decimal {
+        match (lhs, rhs) {
+            (Decimal::Finite(a), Decimal::Finite(b)) => {
+                Decimal::from(a.clone() + b.clone()) // #762 Implement Copy for Rational to avoid clone
+            }
+            (Decimal::Zero, b) | (b, Decimal::Zero) => b.clone(),
+            (Decimal::NegZero, b) | (b, Decimal::NegZero) => b.clone(),
             (Decimal::Infinity, Decimal::NegInfinity)
             | (Decimal::NegInfinity, Decimal::Infinity) => Decimal::Nan,
-            (Decimal::Infinity, _) | (_, Decimal::Infinity) => {
-                Decimal::Infinity
-            }
-            (Decimal::NegInfinity, _) | (_, Decimal::NegInfinity) => {
-                Decimal::NegInfinity
-            }
+            (Decimal::Infinity, _) | (_, Decimal::Infinity) => Decimal::Infinity,
+            (Decimal::NegInfinity, _) | (_, Decimal::NegInfinity) => Decimal::NegInfinity,
             (Decimal::Nan, _) | (_, Decimal::Nan) => Decimal::Nan,
         }
     }
@@ -294,8 +288,15 @@ impl Add for &Decimal {
     type Output = Decimal;
 
     fn add(self, rhs: Self) -> Self::Output {
-        // FIXME #334: Avoid cloning, as add should be applicable for refs only
-        Decimal::add(self.clone(), rhs.clone())
+        Decimal::add(self, rhs)
+    }
+}
+
+impl Add for Decimal {
+    type Output = Decimal;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        Decimal::add(&self, &rhs)
     }
 }
 
@@ -576,6 +577,16 @@ impl From<f32> for Decimal {
                 // as we know that the f32 is finite
                 BigRational::from_f32(value).unwrap(),
             ))
+        }
+    }
+}
+
+impl From<&TypedDecimal> for Decimal {
+    fn from(typed: &TypedDecimal) -> Self {
+        match typed {
+            TypedDecimal::F32(f) => Decimal::from(f.into_inner()),
+            TypedDecimal::F64(f) => Decimal::from(f.into_inner()), 
+            TypedDecimal::Decimal(d) => d.clone(), // #762 Implement Copy to avoid cloning. Then just use `*b`
         }
     }
 }

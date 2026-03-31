@@ -468,18 +468,16 @@ impl Display for TypedDecimal {
     }
 }
 
-impl Add for TypedDecimal {
-    type Output = TypedDecimal;
-
-    fn add(self, rhs: Self) -> Self::Output {
-        match self {
+impl TypedDecimal {
+    pub fn add(lhs: &TypedDecimal, rhs: &TypedDecimal) -> TypedDecimal {
+        match lhs {
             TypedDecimal::F32(a) => match rhs {
-                TypedDecimal::F32(b) => TypedDecimal::F32(a + b),
+                TypedDecimal::F32(b) => TypedDecimal::F32(*a + *b),
                 TypedDecimal::F64(b) => TypedDecimal::F32(OrderedFloat(
                     a.into_inner() + b.into_inner() as f32,
                 )),
                 TypedDecimal::Decimal(b) => {
-                    let result = Decimal::from(a.into_inner()) + b;
+                    let result: Decimal = Decimal::from(a.into_inner()) + b.clone(); // #762
                     TypedDecimal::F32(result.into_f32().into())
                 }
             },
@@ -487,14 +485,14 @@ impl Add for TypedDecimal {
                 TypedDecimal::F32(b) => TypedDecimal::F64(OrderedFloat(
                     a.into_inner() + b.into_inner() as f64,
                 )),
-                TypedDecimal::F64(b) => TypedDecimal::F64(a + b),
+                TypedDecimal::F64(b) => TypedDecimal::F64(*a + *b),
                 TypedDecimal::Decimal(b) => {
-                    let result = Decimal::from(a.into_inner()) + b;
+                    let result: Decimal = Decimal::from(a.into_inner()) + b.clone();
                     TypedDecimal::F64(result.into_f64().into())
                 }
             },
             TypedDecimal::Decimal(a) => {
-                TypedDecimal::Decimal(a + Decimal::from(rhs))
+                TypedDecimal::Decimal(a.clone() + Decimal::from(rhs))
             }
         }
     }
@@ -504,8 +502,15 @@ impl Add for &TypedDecimal {
     type Output = TypedDecimal;
 
     fn add(self, rhs: Self) -> Self::Output {
-        // FIXME #339: Avoid cloning, as add should be applicable for refs only
-        TypedDecimal::add(self.clone(), rhs.clone())
+        TypedDecimal::add(self, rhs)
+    }
+}
+
+impl Add for TypedDecimal {
+    type Output = TypedDecimal;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        TypedDecimal::add(&self, &rhs)
     }
 }
 
@@ -521,7 +526,7 @@ impl Sub for TypedDecimal {
         };
 
         // perform addition with negated rhs
-        TypedDecimal::add(self, negated_rhs)
+        TypedDecimal::add(&self, &negated_rhs)
     }
 }
 
@@ -706,7 +711,7 @@ impl Sub for &TypedDecimal {
 
 impl AddAssign for TypedDecimal {
     fn add_assign(&mut self, rhs: Self) {
-        *self = TypedDecimal::add(self.clone(), rhs);
+        *self = TypedDecimal::add(&self, &rhs);
     }
 }
 
