@@ -45,6 +45,8 @@ pub mod shared_values;
 pub mod type_inference;
 #[cfg(feature = "compiler")]
 pub mod visitor;
+#[cfg(feature = "storage")]
+pub mod storage;
 
 pub mod core_compiler;
 pub mod dxb_parser;
