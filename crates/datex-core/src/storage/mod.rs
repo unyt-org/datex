@@ -1,1 +1,2 @@
-pub mod storage_interface;
+mod storage_interface;
+pub use storage_interface::*;

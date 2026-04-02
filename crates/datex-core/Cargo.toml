@@ -186,7 +186,7 @@ flexi_logger = { version = "0.31.8" }
 
 # When using the "std" feature, the "default" feature should not be enabled since
 # it includes no_std-specific dependencies
-default = ["no_std", "dep:async-timer"]
+default = ["no_std", "dep:async-timer" , "storage"]
 
 no_std = ["dep:hashbrown", "dep:async-unsync", "dep:spin"]
 
