@@ -38,25 +38,25 @@ impl StorageEntryId {
 /// indirect addressing.
 pub trait StorageInterface {
     /// Persists a new value and returns its assigned [`StorageEntryId`].
-    fn create(&self, value: &ValueContainer) -> StorageEntryId;
+    async fn create(&mut self, value: &ValueContainer) -> StorageEntryId;
 
     /// Removes the entry identified by `id` from storage.
     ///
     /// Returns `true` if the entry existed and was deleted, `false` otherwise.
-    fn delete(&self, id: StorageEntryId) -> bool;
+    async fn delete(&mut self, id: StorageEntryId) -> bool;
 
     /// Checks whether an entry with the given `id` exists in storage.
-    fn has(&self, id: StorageEntryId) -> bool;
+    async fn has(&mut self, id: StorageEntryId) -> bool;
 
     /// Retrieves the value associated with `id`, or `None` if it does not exist.
-    fn get(&self, id: StorageEntryId) -> Option<ValueContainer>;
+    async fn get(&mut self, id: StorageEntryId) -> Option<ValueContainer>;
 
     /// Resolves a [`PointerAddress`] to the concrete [`StorageEntryId`] it references.
-    fn resolve_pointer_address(
-        &self,
+    async fn resolve_pointer_address(
+        &mut self,
         address: PointerAddress,
     ) -> StorageEntryId;
 
     /// Overwrites the value of an existing entry identified by `id`.
-    fn update(&self, id: StorageEntryId, value: &ValueContainer);
+    async fn update(&mut self, id: StorageEntryId, value: &ValueContainer);
 }

@@ -8,6 +8,7 @@ authors = [
     "Benedikt Strehle <benedikt@unyt.org>",
     "Jonas Strehle <jonas@unyt.org>",
     "Norbert Brzezinski <norbert@unyt.org>",
+    "Nico Brenner <nico@unyt.org>",
 ]
 edition = "2024"
 license-file = "LICENSE"
@@ -101,6 +102,10 @@ spin = { version = "0.10.0", default-features = false, features = [
 
 # std-only dependencies (optional)
 internment = { version = "0.8.6", optional = true }
+sqlx = { version = "0.8", features = [
+    "runtime-tokio",
+    "tls-native-tls",
+], optional = true }
 
 
 # lsp dependencies (optional)
@@ -186,7 +191,7 @@ flexi_logger = { version = "0.31.8" }
 
 # When using the "std" feature, the "default" feature should not be enabled since
 # it includes no_std-specific dependencies
-default = ["no_std", "dep:async-timer" , "storage"]
+default = ["no_std", "dep:async-timer", "storage_sqlite"]
 
 no_std = ["dep:hashbrown", "dep:async-unsync", "dep:spin"]
 
@@ -301,3 +306,4 @@ macro_utils = ["dep:quote", "dep:syn", "dep:proc-macro2"]
 
 webrtc = ["dep:webrtc"]
 storage = []
+storage_sqlite = ["storage", "dep:sqlx", "sqlx/sqlite"]
