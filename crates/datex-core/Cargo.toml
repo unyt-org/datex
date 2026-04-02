@@ -8,6 +8,7 @@ authors = [
     "Benedikt Strehle <benedikt@unyt.org>",
     "Jonas Strehle <jonas@unyt.org>",
     "Norbert Brzezinski <norbert@unyt.org>",
+    "Nico Brenner <nico@unyt.org>",
 ]
 edition = "2024"
 license-file = "../../LICENSE"
@@ -106,6 +107,10 @@ spin = { version = "0.10.0", default-features = false, features = [
 
 # std-only dependencies (optional)
 internment = { version = "0.8.6", optional = true }
+sqlx = { version = "0.8", features = [
+    "runtime-tokio",
+    "tls-native-tls",
+], optional = true }
 
 
 # lsp dependencies (optional)
@@ -296,3 +301,4 @@ lsp_wasm = ["lsp"]
 
 webrtc = ["dep:webrtc"]
 storage = []
+storage_sqlite = ["storage", "dep:sqlx", "sqlx/sqlite"]
