@@ -475,7 +475,7 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
 
         self.visit_datex_expression(&mut remote_execution.right)?;
         let scope = self.scope_stack.pop_scope();
-        remote_execution.injected_variable_count = Some(scope.external_variable_count);
+        remote_execution.injected_variable_count = Some(scope.external_variables.len() as u32);
         Ok(VisitAction::SkipChildren)
     }
 
@@ -1682,7 +1682,55 @@ mod tests {
                         access_type: ValueAccessType::MoveOrCopy,
                     }).with_default_span()),
                     injected_variable_count: Some(1),
-                }).with_default_span()
+                }).with_default_span(),
+            ]))
+        )
+    }
+
+    #[test]
+    fn remote_execution_injected_variables_statements() {
+        let result = parse_and_precompile("var x = 10; @example :: (x;x+1);");
+        assert!(result.is_ok());
+        let rich_ast = result.unwrap();
+        assert_eq!(
+            rich_ast.ast.data,
+            DatexExpressionData::Statements(Statements::new_terminated(vec![
+                DatexExpressionData::VariableDeclaration(VariableDeclaration {
+                    id: Some(0),
+                    kind: VariableKind::Var,
+                    name: "x".to_string(),
+                    init_expression: Box::new(
+                        DatexExpressionData::Integer(Integer::from(10))
+                            .with_default_span()
+                    ),
+                    type_annotation: None,
+                })
+                    .with_default_span(),
+                DatexExpressionData::RemoteExecution(RemoteExecution {
+                    left: Box::new(DatexExpressionData::Endpoint(Endpoint::from_str("@example").unwrap()).with_default_span()),
+                    right: Box::new(DatexExpressionData::Statements(Statements::new_terminated(
+                        vec![
+                            DatexExpressionData::VariableAccess(VariableAccess {
+                                id: 0,
+                                name: "x".to_string(),
+                                access_type: ValueAccessType::MoveOrCopy,
+                            }).with_default_span(),
+                            DatexExpressionData::BinaryOperation(BinaryOperation {
+                                operator: BinaryOperator::Arithmetic(
+                                    ArithmeticOperator::Add
+                                ),
+                                left: Box::new(DatexExpressionData::VariableAccess(VariableAccess {
+                                    id: 0,
+                                    name: "x".to_string(),
+                                    access_type: ValueAccessType::MoveOrCopy,
+                                }).with_default_span()),
+                                right: Box::new(DatexExpressionData::Integer(Integer::from(1)).with_default_span()),
+                                ty: None
+                            }).with_default_span(),
+                        ],
+                    )).with_default_span()),
+                    injected_variable_count: Some(1),
+                }).with_default_span(),
             ]))
         )
     }
@@ -1694,7 +1742,7 @@ mod tests {
         let rich_ast = result.unwrap();
         assert_eq!(
             rich_ast.ast.data,
-            DatexExpressionData::Statements(Statements::new_unterminated(vec![
+            DatexExpressionData::Statements(Statements::new_terminated(vec![
                 DatexExpressionData::VariableDeclaration(VariableDeclaration {
                     id: Some(0),
                     kind: VariableKind::Var,
@@ -1727,11 +1775,13 @@ mod tests {
                         }).with_default_span(),
                         DatexExpressionData::RemoteExecution(RemoteExecution {
                             left: Box::new(DatexExpressionData::Endpoint(Endpoint::from_str("@example2").unwrap()).with_default_span()),
-                            right: Box::new(DatexExpressionData::VariableAccess(VariableAccess {
-                                id: 1,
-                                name: "y".to_string(),
-                                access_type: ValueAccessType::MoveOrCopy,
-                            }).with_default_span()),
+                            right: Box::new(DatexExpressionData::Statements(Statements::new_terminated(vec![
+                                DatexExpressionData::VariableAccess(VariableAccess {
+                                    id: 1,
+                                    name: "y".to_string(),
+                                    access_type: ValueAccessType::MoveOrCopy,
+                                }).with_default_span(),
+                            ])).with_default_span()),
                             injected_variable_count: Some(1),
                         }).with_default_span(),
                     ])).with_default_span()),

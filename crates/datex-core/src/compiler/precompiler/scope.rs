@@ -6,7 +6,7 @@ use crate::prelude::*;
 pub struct PrecompilerScope {
     pub realm_index: usize,
     pub variable_ids_by_name: HashMap<String, usize>,
-    pub external_variable_count: u32,
+    pub external_variables: HashSet<usize>,
 }
 
 impl PrecompilerScope {
@@ -14,12 +14,13 @@ impl PrecompilerScope {
         PrecompilerScope {
             realm_index,
             variable_ids_by_name: HashMap::new(),
-            external_variable_count: 0,
+            external_variables: HashSet::new(),
         }
     }
     
-    pub fn increment_external_variable_count(&mut self) {
-        self.external_variable_count += 1;
+    /// Registers the use of an external variable in the current scope
+    pub fn register_external_variable(&mut self, variable_id: usize) {
+        self.external_variables.insert(variable_id);
     }
 }
 

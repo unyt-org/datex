@@ -1510,8 +1510,8 @@ pub mod tests {
     use core::assert_matches;
     use log::*;
     use crate::global::protocol_structures::disassembler::{disassemble_body, disassemble_body_to_string, DisassemblerOptions};
-    use crate::global::protocol_structures::injected_variable_type::{InjectedVariableType, SharedInjectedVariableType};
-    use crate::global::protocol_structures::instruction_data::{IntegerData, StackIndex, StatementsData, UInt8Data};
+    use crate::global::protocol_structures::injected_variable_type::{InjectedVariableType, LocalInjectedVariableType, SharedInjectedVariableType};
+    use crate::global::protocol_structures::instruction_data::{InstructionBlockData, IntegerData, StackIndex, StatementsData, UInt8Data};
     use crate::global::protocol_structures::instructions::Instruction;
     use crate::global::protocol_structures::regular_instructions::RegularInstruction;
     use crate::values::core_values::integer::Integer;
@@ -2570,45 +2570,26 @@ pub mod tests {
         let script = "const x = 42u8; 1u8 :: x";
         let (res, _) =
             compile_script(script, CompileOptions::default()).unwrap();
-        assert_eq!(
-            res,
-            vec![
-                InstructionCode::SHORT_STATEMENTS.into(),
-                2,
-                0, // not terminated
-                InstructionCode::PUSH_TO_STACK.into(),
-                InstructionCode::UINT_8.into(),
-                42,
-                InstructionCode::REMOTE_EXECUTION.into(),
-                // --- start of block
-                // block size (5 bytes)
-                5,
-                0,
-                0,
-                0,
-                // injected slots (1)
-                1,
-                0,
-                0,
-                0,
-                // slot 0
-                0,
-                0,
-                0,
-                0,
-                // local move
-                3,
-                // slot 0 (mapped from slot 0)
-                InstructionCode::TAKE_STACK_VALUE.into(),
-                // slot index as u32
-                0,
-                0,
-                0,
-                0,
-                // --- end of block
-                // caller (literal value 1 for test)
-                InstructionCode::UINT_8.into(),
-                1,
+        assert_regular_instructions_equal!(
+            &res,
+            [
+                RegularInstruction::ShortStatements(StatementsData {statements_count: 2, terminated: false}),
+                RegularInstruction::PushToStack,
+                RegularInstruction::UInt8(UInt8Data(42)),
+                RegularInstruction::RemoteExecution(InstructionBlockData {
+                    length: 5,
+                    injected_variable_count: 1,
+                    injected_variables: vec![(0, InjectedVariableType::Local(LocalInjectedVariableType::Move))],
+                    body: vec![
+                        InstructionCode::TAKE_STACK_VALUE.into(),
+                        // slot index as u32
+                        0,
+                        0,
+                        0,
+                        0,
+                    ]
+                }),
+                RegularInstruction::UInt8(UInt8Data(1)),
             ]
         );
     }
