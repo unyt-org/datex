@@ -2,8 +2,7 @@ use crate::{
     ast::expressions::VariableKind,
     collections::HashMap,
     compiler::{
-        Variable, VariableRepresentation,
-        context::InjectedParentVariable,
+        Variable,
         precompiler::{
             precompiled_ast::RichAst, scope_stack::PrecompilerScopeStack,
         },

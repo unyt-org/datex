@@ -1,5 +1,4 @@
 use crate::{
-    collections::HashMap,
     global::instruction_codes::InstructionCode,
     runtime::execution::context::ExecutionMode,
     utils::buffers::append_u32,
@@ -7,66 +6,10 @@ use crate::{
 };
 
 use crate::prelude::*;
-use core::cmp::PartialEq;
-use core::hash::{Hash, Hasher};
 use std::io::Cursor;
 use crate::core_compiler::core_compilation_context::CoreCompilationContext;
 use crate::core_compiler::value_compiler::append_instruction_code_new;
-use crate::global::protocol_structures::injected_variable_type::InjectedVariableType;
 use crate::global::protocol_structures::instruction_data::StackIndex;
-
-#[derive(Debug, Clone, Copy, Eq)]
-pub struct InjectedParentVariable {
-    /// parent scope level
-    pub level: u8,
-    /// local slot address of scope with level
-    pub virtual_address: u32,
-    pub injected_variable_type: InjectedVariableType
-}
-
-impl Hash for InjectedParentVariable {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.level.hash(state);
-        self.virtual_address.hash(state);
-    }
-}
-
-impl PartialEq for InjectedParentVariable {
-    fn eq(&self, other: &Self) -> bool {
-        self.level == other.level && self.virtual_address == other.virtual_address
-    }
-}
-
-impl InjectedParentVariable {
-
-    pub fn external(level: u8, virtual_address: u32, external_slot_type: InjectedVariableType) -> Self {
-        InjectedParentVariable {
-            level,
-            virtual_address,
-            injected_variable_type: external_slot_type,
-        }
-    }
-
-    pub fn downgrade(&self, external_slot_type: InjectedVariableType) -> Self {
-        InjectedParentVariable {
-            level: self.level + 1,
-            virtual_address: self.virtual_address,
-            injected_variable_type: external_slot_type,
-        }
-    }
-
-    pub fn upgrade(&self) -> Self {
-        if self.level > 0 {
-            InjectedParentVariable {
-                level: self.level - 1,
-                virtual_address: self.virtual_address,
-                injected_variable_type: self.injected_variable_type,
-            }
-        } else {
-            core::panic!("Cannot upgrade a local slot");
-        }
-    }
-}
 
 /// compilation context, created for each compiler call, even if compiling a script for the same scope
 pub struct CompilationContext {

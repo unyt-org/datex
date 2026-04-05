@@ -22,7 +22,7 @@ use crate::{
         VariableAssignment, VariableDeclaration, VariableKind,
     },
     compiler::{
-        context::{CompilationContext, InjectedParentVariable},
+        context::{CompilationContext},
         error::{
             DetailedCompilerErrorsWithMaybeRichAst,
             SimpleCompilerErrorOrDetailedCompilerErrorWithRichAst,
