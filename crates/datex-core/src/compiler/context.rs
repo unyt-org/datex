@@ -10,7 +10,6 @@ use crate::prelude::*;
 use core::cmp::PartialEq;
 use core::hash::{Hash, Hasher};
 use std::io::Cursor;
-use itertools::Itertools;
 use crate::core_compiler::core_compilation_context::CoreCompilationContext;
 use crate::core_compiler::value_compiler::append_instruction_code_new;
 use crate::global::protocol_structures::injected_variable_type::InjectedVariableType;
@@ -77,10 +76,6 @@ pub struct CompilationContext {
     /// this flag is set to true if any non-static value is encountered
     pub has_non_static_value: bool,
     pub execution_mode: ExecutionMode,
-
-    // mapping for injected variables from parent scopes
-    injected_variables_map: HashMap<InjectedParentVariable, u32>,
-    pub injected_variables: Vec<(u32, InjectedVariableType)>,
 }
 
 impl CompilationContext {
@@ -114,8 +109,6 @@ impl CompilationContext {
             core_context: CoreCompilationContext::new(buffer, StackIndex(0)),
             inserted_values,
             has_non_static_value: false,
-            injected_variables_map: HashMap::new(),
-            injected_variables: Vec::new(),
             execution_mode,
         }
     }

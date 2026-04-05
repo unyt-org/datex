@@ -1,5 +1,4 @@
 use crate::{
-    collections::HashMap,
     runtime::{
         RuntimeInternal,
         execution::{
@@ -14,6 +13,7 @@ use crate::{
     values::value_container::ValueContainer,
 };
 use core::{cell::RefCell, fmt::Debug};
+use crate::global::protocol_structures::instruction_data::StackIndex;
 use crate::prelude::*;
 use crate::runtime::execution::execution_input::ExecutionCallerMetadata;
 
@@ -28,13 +28,13 @@ impl ExecutionLoopState {
     pub fn new(
         dxb_body: Vec<u8>,
         runtime: Rc<RuntimeInternal>,
-        slots: RuntimeExecutionStack,
+        stack: RuntimeExecutionStack,
         caller_metadata: ExecutionCallerMetadata,
     ) -> Self {
         let state = RuntimeExecutionState {
             runtime_internal: runtime.clone(),
             source_id: 0, // TODO #640: set proper source ID
-            stack: slots,
+            stack,
             caller_metadata,
         };
         // TODO #641: optimize, don't clone the whole DXB body every time here
@@ -92,57 +92,57 @@ impl RuntimeExecutionStack {
         self.values.extend(values.into_iter().map(Some));
     }
 
-    /// Takes a slot by its index and returns its value.
-    /// If the slot is not allocated or the index is out of bounds, it returns an error.
-    pub(crate) fn take_slot(
+    /// Takes a stack value by its index and returns its value.
+    /// If the stack value is not allocated or the index is out of bounds, it returns an error.
+    pub(crate) fn take_stack_value(
         &mut self,
-        index: u32,
+        index: StackIndex,
     ) -> Result<ValueContainer, ExecutionError> {
-        if let Some(slot) = self.values.get_mut(index as usize) {
-            slot.take().ok_or_else(|| ExecutionError::StackValueNotAllocated(index))
+        if let Some(stack_value) = self.values.get_mut(index.0 as usize) {
+            stack_value.take().ok_or_else(|| ExecutionError::StackValueNotAllocated(index))
         }
         else {
             Err(ExecutionError::StackOutOfBoundsAccess(index))
         }
     }
 
-    /// Sets the value of a slot, returning the previous value if it existed.
-    /// If the slot is not allocated, it returns an error.
-    pub(crate) fn set_slot_value(
+    /// Sets the value of a stack index, returning the previous value if it existed.
+    /// If the stack value is not allocated, it returns an error.
+    pub(crate) fn set_stack_value(
         &mut self,
-        index: u32,
+        index: StackIndex,
         value: ValueContainer,
     ) -> Result<Option<ValueContainer>, ExecutionError> {
-        if let Some(slot) = self.values.get_mut(index as usize) {
-            Ok(slot.replace(value))
+        if let Some(stack_value) = self.values.get_mut(index.0 as usize) {
+            Ok(stack_value.replace(value))
         }
         else {
             Err(ExecutionError::StackOutOfBoundsAccess(index))
         }
     }
 
-    /// Retrieves a reference to the value of a slot by its address.
-    /// If the slot is not allocated, it returns an error.
-    pub(crate) fn get_slot_value(
+    /// Retrieves a reference to the value of a stack value by its address.
+    /// If the stack value is not allocated, it returns an error.
+    pub(crate) fn get_stack_value(
         &self,
-        index: u32,
+        index: StackIndex,
     ) -> Result<&ValueContainer, ExecutionError> {
-        if let Some(slot) = self.values.get(index as usize) {
-            slot.as_ref().ok_or_else(|| ExecutionError::StackValueNotAllocated(index))
+        if let Some(stack_value) = self.values.get(index.0 as usize) {
+            stack_value.as_ref().ok_or_else(|| ExecutionError::StackValueNotAllocated(index))
         }
         else {
             Err(ExecutionError::StackOutOfBoundsAccess(index))
         }
     }
 
-    /// Retrieves a mutable reference to the value of a slot by its address.
-    /// If the slot is not allocated, it returns an error.
-    pub(crate) fn get_slot_value_mut(
+    /// Retrieves a mutable reference to the stack value by its index.
+    /// If the stack value is not allocated, it returns an error.
+    pub(crate) fn get_stack_value_mut(
         &mut self,
-        index: u32,
+        index: StackIndex,
     ) -> Result<&mut ValueContainer, ExecutionError> {
-        if let Some(slot) = self.values.get_mut(index as usize) {
-            slot.as_mut().ok_or_else(|| ExecutionError::StackValueNotAllocated(index))
+        if let Some(stack_value) = self.values.get_mut(index.0 as usize) {
+            stack_value.as_mut().ok_or_else(|| ExecutionError::StackValueNotAllocated(index))
         }
         else {
             Err(ExecutionError::StackOutOfBoundsAccess(index))

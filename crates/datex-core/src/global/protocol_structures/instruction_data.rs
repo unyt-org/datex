@@ -1,4 +1,5 @@
 use alloc::string::FromUtf8Error;
+use core::fmt::Display;
 use core::ops::AddAssign;
 use binrw::io::{Cursor, Read, Seek, Write};
 use binrw::{BinRead, BinResult, BinWrite, Endian};
@@ -267,9 +268,15 @@ pub struct InstructionCloseAndStore {
     pub instruction: Int8Data,
 }
 
-#[derive(BinRead, BinWrite, Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(BinRead, BinWrite, Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 #[brw(little)]
 pub struct StackIndex(pub u32);
+
+impl Display for StackIndex {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
 
 impl AddAssign<u32> for StackIndex {
     fn add_assign(&mut self, rhs: u32) {
@@ -426,7 +433,7 @@ pub struct InstructionBlockData {
     pub length: u32,
     pub injected_variable_count: u32,
     #[br(count = injected_variable_count)]
-    pub injected_variables: Vec<(u32, InjectedVariableType)>,
+    pub injected_variables: Vec<(StackIndex, InjectedVariableType)>,
     #[br(count = length)]
     pub body: Vec<u8>,
 }

@@ -40,7 +40,7 @@ use crate::{
                 set_property,
             },
             runtime_value::RuntimeValue,
-            slots::{get_internal_slot_value, get_slot_value},
+            slots::{get_internal_stack_value, get_stack_value},
             state::RuntimeExecutionState,
         },
         macros::{
@@ -413,7 +413,7 @@ pub fn inner_execution_loop(
 
                             RegularInstruction::GetInternalSlot(StackIndex(address)) => {
                                 Some(RuntimeValue::ValueContainer(yield_unwrap!(
-                                    get_internal_slot_value(
+                                    get_internal_stack_value(
                                         &state,
                                         address,
                                     )
@@ -421,12 +421,12 @@ pub fn inner_execution_loop(
                             }
 
                             // TODO: still needed?
-                            RegularInstruction::BorrowStackValue(StackIndex(address)) => {
-                                Some(RuntimeValue::SlotAddress(address))
+                            RegularInstruction::BorrowStackValue(index) => {
+                                Some(RuntimeValue::StackValue(index))
                             }
 
-                            RegularInstruction::GetStackValueSharedRef(StackIndex(address)) => {
-                                let value = yield_unwrap!(state.stack.get_slot_value(address));
+                            RegularInstruction::GetStackValueSharedRef(index) => {
+                                let value = yield_unwrap!(state.stack.get_stack_value(index));
                                 match value {
                                     ValueContainer::Shared(container) => Some(RuntimeValue::ValueContainer(
                                         ValueContainer::Shared(container.derive_reference())
@@ -434,8 +434,8 @@ pub fn inner_execution_loop(
                                     _ => return yield Err(ExecutionError::ExpectedSharedValue)
                                 }
                             }
-                            RegularInstruction::GetStackValueSharedRefMut(StackIndex(address)) => {
-                                let value = yield_unwrap!(state.stack.get_slot_value(address));
+                            RegularInstruction::GetStackValueSharedRefMut(index) => {
+                                let value = yield_unwrap!(state.stack.get_stack_value(index));
                                 match value {
                                     ValueContainer::Shared(container) => Some(RuntimeValue::ValueContainer(
                                         ValueContainer::Shared(
@@ -450,16 +450,16 @@ pub fn inner_execution_loop(
                                 }
                             }
 
-                            RegularInstruction::CloneStackValue(StackIndex(address)) => {
-                                let value = yield_unwrap!(state.stack.get_slot_value(address));
+                            RegularInstruction::CloneStackValue(index) => {
+                                let value = yield_unwrap!(state.stack.get_stack_value(index));
                                 Some(RuntimeValue::ValueContainer(
                                     value.get_cloned()
                                 ))
                             }
 
-                            RegularInstruction::TakeStackValue(StackIndex(address)) => {
+                            RegularInstruction::TakeStackValue(index) => {
                                 Some(RuntimeValue::ValueContainer(
-                                    yield_unwrap!(state.stack.take_slot(address))
+                                    yield_unwrap!(state.stack.take_stack_value(index))
                                 ))
                             }
 
@@ -893,11 +893,11 @@ pub fn inner_execution_loop(
                                 }
 
                                 RegularInstruction::ModifyStackValue(ModifyStackValue {
-                                                                         index: address,
-                                   operator
-                               }) => {
+                                    index,
+                                    operator
+                                }) => {
                                     let slot_value = yield_unwrap!(
-                                        get_slot_value(&state, address.0)
+                                        get_stack_value(&state, index)
                                     );
                                     let value = yield_unwrap!(
                                             collected_results
@@ -914,7 +914,7 @@ pub fn inner_execution_loop(
                                     yield_unwrap!(
                                         state
                                             .stack
-                                            .set_slot_value(address.0, new_val)
+                                            .set_stack_value(index, new_val)
                                     );
                                     None.into()
                                 }
@@ -963,9 +963,7 @@ pub fn inner_execution_loop(
                                     yield_unwrap!(res).into()
                                 }
 
-                                RegularInstruction::SetStackValue(StackIndex(
-                                    address,
-                                )) => {
+                                RegularInstruction::SetStackValue(index) => {
                                     let value = yield_unwrap!(
                                         collected_results
                                             .pop_cloned_value_container_result_assert_existing(&state)
@@ -973,7 +971,7 @@ pub fn inner_execution_loop(
                                     yield_unwrap!(
                                         state
                                             .stack
-                                            .set_slot_value(address, value)
+                                            .set_stack_value(index, value)
                                     );
                                     None.into()
                                 }
@@ -1175,7 +1173,7 @@ pub fn inner_execution_loop(
                                     // perform all mutable operations (removing moved shared values)
                                     for (i, (addr, slot_type)) in injected.iter().enumerate() {
                                         if matches!(slot_type, InjectedVariableType::Shared(SharedInjectedVariableType::Move)) {
-                                            moved[i] = Some(yield_unwrap!(state.stack.take_slot(*addr)));
+                                            moved[i] = Some(yield_unwrap!(state.stack.take_stack_value(*addr)));
                                         }
                                     }
 
@@ -1190,7 +1188,7 @@ pub fn inner_execution_loop(
                                                 }
                                             }
                                             _ => {
-                                                match yield_unwrap!(get_slot_value(&state, *addr)) {
+                                                match yield_unwrap!(get_stack_value(&state, *addr)) {
                                                     ValueContainer::Shared(shared) => BorrowedValueContainer::Shared(shared.clone()),
                                                     ValueContainer::Local(value) => BorrowedValueContainer::Local(value),
                                                 }

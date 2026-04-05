@@ -9,7 +9,8 @@ use crate::{
     values::value_container::{ValueContainer, ValueError},
 };
 use core::fmt::Display;
-
+use crate::global::protocol_structures::instruction_data::StackIndex;
+use crate::global::slots::InternalSlot;
 use crate::prelude::*;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum InvalidProgramError {
@@ -63,8 +64,9 @@ pub enum ExecutionError {
     AccessError(AccessError),
     Unknown,
     NotImplemented(String),
-    StackValueNotAllocated(u32),
-    StackOutOfBoundsAccess(u32),
+    StackValueNotAllocated(StackIndex),
+    StackOutOfBoundsAccess(StackIndex),
+    InternalSlotDoesNotExist(u32),
     RequiresAsyncExecution,
     ResponseError(ResponseError),
     IllegalTypeError(IllegalTypeError),
@@ -229,6 +231,12 @@ impl Display for ExecutionError {
                 core::write!(
                     f,
                     "Tried to access out of bounds stack value at index {index}"
+                )
+            }
+            ExecutionError::InternalSlotDoesNotExist(index) => {
+                core::write!(
+                    f,
+                    "Internal slot does not exist at index {index}"
                 )
             }
         }

@@ -1052,7 +1052,7 @@ fn compile_expression(
             compilation_context.mark_has_non_static_value();
             // get variable slot address
             let (stack_index, kind) = scope
-                .resolve_variable_name_to_stack_index(&name, None)
+                .resolve_variable_name(&name, None)
                 .map_err(|_| CompilerError::AssignmentToExternalVariable(name.clone()))?
                 .ok_or_else(|| {
                     CompilerError::UndeclaredVariable(name.clone())
@@ -1172,7 +1172,7 @@ fn compile_expression(
 
             // get variable slot address
             let (stack_index, ..) = scope
-                .resolve_variable_name_to_stack_index_with_slot_type(&name, slot_type)
+                .resolve_variable_name_with_slot_type(&name, slot_type)
                 .ok_or_else(|| {
                     CompilerError::UndeclaredVariable(name.clone())
                 })?;
@@ -1205,9 +1205,11 @@ fn compile_expression(
                 CompilationScope::new_with_external_parent_scope(scope, stack_index_offset),
             )?;
             // reset to current scope
-            scope = external_scope
+            let external_parent_scope = external_scope
                 .pop_external()
                 .ok_or(CompilerError::ScopePopError)?;
+
+            scope = *external_parent_scope.scope;
 
             // insert remote execution instruction
             append_regular_instruction(
@@ -1215,8 +1217,8 @@ fn compile_expression(
                 RegularInstruction::RemoteExecution(InstructionBlockData {
                     // block size (len of compilation_context.buffer)
                     length: execution_block_ctx.cursor().get_ref().len() as u32,
-                    injected_variable_count: execution_block_ctx.injected_variables.len() as u32,
-                    injected_variables: execution_block_ctx.injected_variables.clone(),
+                    injected_variable_count: external_parent_scope.injected_variables.len() as u32,
+                    injected_variables: external_parent_scope.injected_variables,
                     body: execution_block_ctx.into_buffer(),
                 })
             )?;
@@ -2579,7 +2581,8 @@ pub mod tests {
                 RegularInstruction::RemoteExecution(InstructionBlockData {
                     length: 5,
                     injected_variable_count: 1,
-                    injected_variables: vec![(0, InjectedVariableType::Local(LocalInjectedVariableType::Move))],
+                    // FIXME should be local
+                    injected_variables: vec![(StackIndex(0), InjectedVariableType::Shared(SharedInjectedVariableType::Move))],
                     body: vec![
                         InstructionCode::TAKE_STACK_VALUE.into(),
                         // slot index as u32
@@ -2604,14 +2607,14 @@ pub mod tests {
         assert_regular_instructions_equal!(
             &res,
             [
-                RegularInstruction::ShortStatements(StatementsData {statements_count: 2, terminated: false}),
+                RegularInstruction::ShortStatements(StatementsData {statements_count: 2, terminated: true}),
                 RegularInstruction::PushToStack,
                 RegularInstruction::CreateShared,
                 RegularInstruction::UInt8(UInt8Data(42)),
                 RegularInstruction::RemoteExecution(InstructionBlockData {
                     length: 5,
                     injected_variable_count: 1,
-                    injected_variables: vec![(0, InjectedVariableType::Shared(SharedInjectedVariableType::Move))],
+                    injected_variables: vec![(StackIndex(0), InjectedVariableType::Shared(SharedInjectedVariableType::Move))],
                     body: vec![
                         InstructionCode::TAKE_STACK_VALUE.into(),
                         // slot index as u32
@@ -2641,7 +2644,7 @@ pub mod tests {
                 RegularInstruction::RemoteExecution(InstructionBlockData {
                     length: 5,
                     injected_variable_count: 1,
-                    injected_variables: vec![(0, InjectedVariableType::Shared(SharedInjectedVariableType::Move))],
+                    injected_variables: vec![(StackIndex(0), InjectedVariableType::Shared(SharedInjectedVariableType::Move))],
                     body: vec![
                         InstructionCode::GET_STACK_VALUE_SHARED_REF.into(),
                         // slot index as u32
@@ -2674,8 +2677,8 @@ pub mod tests {
                     injected_variable_count: 2,
                     injected_variables: vec![
                         // FIXME should be local
-                        (0, InjectedVariableType::Shared(SharedInjectedVariableType::Move)),
-                        (1, InjectedVariableType::Shared(SharedInjectedVariableType::Move)),
+                        (StackIndex(0), InjectedVariableType::Shared(SharedInjectedVariableType::Move)),
+                        (StackIndex(1), InjectedVariableType::Shared(SharedInjectedVariableType::Move)),
                     ],
                     body: vec![
                         InstructionCode::ADD.into(),

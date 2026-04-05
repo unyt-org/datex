@@ -159,7 +159,7 @@ fn compile_preform_move_preamble(
 mod tests {
     use crate::global::instruction_codes::InstructionCode;
     use crate::global::protocol_structures::injected_variable_type::{InjectedVariableType, SharedInjectedVariableType};
-    use crate::global::protocol_structures::instruction_data::InstructionBlockData;
+    use crate::global::protocol_structures::instruction_data::{InstructionBlockData, StackIndex};
     use crate::runtime::execution::execution_loop::remote_execution_blocks::compile_remote_execution_block;
     use crate::shared_values::pointer::{OwnedPointer};
     use crate::shared_values::shared_container::SharedContainer;
@@ -184,7 +184,7 @@ mod tests {
         let exec_block_data = InstructionBlockData {
             injected_variable_count: 1,
             length: 1,
-            injected_variables: vec![(0, InjectedVariableType::Shared(SharedInjectedVariableType::Ref))],
+            injected_variables: vec![(StackIndex(0), InjectedVariableType::Shared(SharedInjectedVariableType::Ref))],
             body: vec![InstructionCode::NULL as u8],
         };
         let res = compile_remote_execution_block(exec_block_data, vec![shared_value]).unwrap().0;
@@ -217,8 +217,8 @@ mod tests {
             injected_variable_count: 2,
             length: 1,
             injected_variables: vec![
-                (0, InjectedVariableType::Shared(SharedInjectedVariableType::Ref)),
-                (1, InjectedVariableType::Shared(SharedInjectedVariableType::RefMut)),
+                (StackIndex(0), InjectedVariableType::Shared(SharedInjectedVariableType::Ref)),
+                (StackIndex(1), InjectedVariableType::Shared(SharedInjectedVariableType::RefMut)),
             ],
             body: vec![InstructionCode::NULL as u8],
         };
@@ -260,7 +260,7 @@ mod tests {
         let exec_block_data = InstructionBlockData {
             injected_variable_count: 1,
             length: 1,
-            injected_variables: vec![(0, InjectedVariableType::Shared(SharedInjectedVariableType::Move))],
+            injected_variables: vec![(StackIndex(0), InjectedVariableType::Shared(SharedInjectedVariableType::Move))],
             body: vec![InstructionCode::NULL as u8],
         };
         let res = compile_remote_execution_block(exec_block_data, vec![shared_value]).unwrap().0;
@@ -297,8 +297,8 @@ mod tests {
             injected_variable_count: 2,
             length: 1,
             injected_variables: vec![
-                (0, InjectedVariableType::Shared(SharedInjectedVariableType::Move)),
-                (1, InjectedVariableType::Shared(SharedInjectedVariableType::Ref)),
+                (StackIndex(0), InjectedVariableType::Shared(SharedInjectedVariableType::Move)),
+                (StackIndex(1), InjectedVariableType::Shared(SharedInjectedVariableType::Ref)),
             ],
             body: vec![InstructionCode::NULL as u8],
         };

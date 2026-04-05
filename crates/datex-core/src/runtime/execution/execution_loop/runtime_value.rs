@@ -2,19 +2,20 @@ use crate::{
     runtime::execution::{
         ExecutionError,
         execution_loop::{
-            slots::get_slot_value,
+            slots::get_stack_value,
             state::{RuntimeExecutionStack, RuntimeExecutionState},
         },
     },
     values::value_container::ValueContainer,
 };
+use crate::global::protocol_structures::instruction_data::StackIndex;
 
 /// Represents a value in the runtime execution context, which can either be a direct
 /// `ValueContainer` or a reference to a slot address where the value is stored.
 #[derive(Debug, Clone, PartialEq)]
 pub enum RuntimeValue {
     ValueContainer(ValueContainer),
-    SlotAddress(u32),
+    StackValue(StackIndex),
 }
 
 impl From<ValueContainer> for RuntimeValue {
@@ -23,9 +24,9 @@ impl From<ValueContainer> for RuntimeValue {
     }
 }
 
-impl From<u32> for RuntimeValue {
-    fn from(address: u32) -> Self {
-        RuntimeValue::SlotAddress(address)
+impl From<StackIndex> for RuntimeValue {
+    fn from(index: StackIndex) -> Self {
+        RuntimeValue::StackValue(index)
     }
 }
 
@@ -42,8 +43,8 @@ impl RuntimeValue {
     {
         match self {
             RuntimeValue::ValueContainer(vc) => Ok(f(vc)),
-            RuntimeValue::SlotAddress(addr) => {
-                let slot_value = slots.get_slot_value_mut(*addr)?;
+            RuntimeValue::StackValue(addr) => {
+                let slot_value = slots.get_stack_value_mut(*addr)?;
                 Ok(f(slot_value))
             }
         }
@@ -59,8 +60,8 @@ impl RuntimeValue {
     ) -> Result<ValueContainer, ExecutionError> {
         match self {
             RuntimeValue::ValueContainer(vc) => Ok(vc),
-            RuntimeValue::SlotAddress(addr) => {
-                Ok(get_slot_value(state, addr)?.clone())
+            RuntimeValue::StackValue(addr) => {
+                Ok(get_stack_value(state, addr)?.clone())
             }
         }
     }
@@ -73,8 +74,8 @@ impl RuntimeValue {
     ) -> Result<ValueContainer, ExecutionError> {
         match self {
             RuntimeValue::ValueContainer(vc) => Ok(vc),
-            RuntimeValue::SlotAddress(addr) => {
-                Ok(state.stack.take_slot(addr)?)
+            RuntimeValue::StackValue(addr) => {
+                Ok(state.stack.take_stack_value(addr)?)
             }
         }
     }
