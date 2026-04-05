@@ -121,10 +121,10 @@ impl CompilationScope {
         } else if let Some(external_parent) = &self.external_parent_scope {
             if let Some(slot_type) = slot_type {
                 Ok(
+                    // TODO: record external usage:
                     external_parent
                         .resolve_variable_name_to_stack_index(name, Some(slot_type))?
                         .map(|(virt_slot, var_kind)| (virt_slot, var_kind))
-                    // FIXME  .map(|(virt_slot, var_kind)| (virt_slot.downgrade(slot_type), var_kind))
                 )
             }
             else {

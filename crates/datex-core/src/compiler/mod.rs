@@ -2601,51 +2601,29 @@ pub mod tests {
         let script = "const x = shared 42u8; 1u8 :: x;";
         let (res, _) =
             compile_script(script, CompileOptions::default()).unwrap();
-        assert_eq!(
-            res,
-            vec![
-                InstructionCode::SHORT_STATEMENTS.into(),
-                2,
-                1, // terminated
-                InstructionCode::PUSH_TO_STACK.into(),
-                // create ref
-                InstructionCode::CREATE_SHARED.into(),
-                InstructionCode::UINT_8.into(),
-                42,
-                InstructionCode::REMOTE_EXECUTION.into(),
-                // --- start of block
-                // block size (5 bytes)
-                8,
-                0,
-                0,
-                0,
-                // injected slots (1)
-                1,
-                0,
-                0,
-                0,
-                // slot 0
-                0,
-                0,
-                0,
-                0,
-                InjectedVariableType::Shared(SharedInjectedVariableType::Move).into(),
-                InstructionCode::SHORT_STATEMENTS.into(),
-                1,
-                1, // terminated
-                // slot 0 (mapped from slot 0)
-                InstructionCode::TAKE_STACK_VALUE.into(),
-                // slot index as u32
-                0,
-                0,
-                0,
-                0,
-                // --- end of block
-                // caller (literal value 1 for test)
-                InstructionCode::UINT_8.into(),
-                1,
+        assert_regular_instructions_equal!(
+            &res,
+            [
+                RegularInstruction::ShortStatements(StatementsData {statements_count: 2, terminated: false}),
+                RegularInstruction::PushToStack,
+                RegularInstruction::CreateShared,
+                RegularInstruction::UInt8(UInt8Data(42)),
+                RegularInstruction::RemoteExecution(InstructionBlockData {
+                    length: 5,
+                    injected_variable_count: 1,
+                    injected_variables: vec![(0, InjectedVariableType::Shared(SharedInjectedVariableType::Move))],
+                    body: vec![
+                        InstructionCode::TAKE_STACK_VALUE.into(),
+                        // slot index as u32
+                        0,
+                        0,
+                        0,
+                        0,
+                    ]
+                }),
+                RegularInstruction::UInt8(UInt8Data(1)),
             ]
-        );
+        )
     }
 
     #[test]
@@ -2653,48 +2631,29 @@ pub mod tests {
         let script = "const x = shared 42u8; 1u8 :: 'x";
         let (res, _) =
             compile_script(script, CompileOptions::default()).unwrap();
-        assert_eq!(
-            res,
-            vec![
-                InstructionCode::SHORT_STATEMENTS.into(),
-                2,
-                0,
-                InstructionCode::PUSH_TO_STACK.into(),
-                // create ref
-                InstructionCode::CREATE_SHARED.into(),
-                InstructionCode::UINT_8.into(),
-                42,
-                InstructionCode::REMOTE_EXECUTION.into(),
-                // --- start of block
-                // block size (5 bytes)
-                5,
-                0,
-                0,
-                0,
-                // injected slots (1)
-                1,
-                0,
-                0,
-                0,
-                // slot 0
-                0,
-                0,
-                0,
-                0,
-                InjectedVariableType::Shared(SharedInjectedVariableType::Ref).into(),
-                // slot 0 (mapped from slot 0)
-                InstructionCode::GET_STACK_VALUE_SHARED_REF.into(),
-                // slot index as u32
-                0,
-                0,
-                0,
-                0,
-                // --- end of block
-                // caller (literal value 1 for test)
-                InstructionCode::UINT_8.into(),
-                1,
+        assert_regular_instructions_equal!(
+            &res,
+            [
+                RegularInstruction::ShortStatements(StatementsData {statements_count: 2, terminated: false}),
+                RegularInstruction::PushToStack,
+                RegularInstruction::CreateShared,
+                RegularInstruction::UInt8(UInt8Data(42)),
+                RegularInstruction::RemoteExecution(InstructionBlockData {
+                    length: 5,
+                    injected_variable_count: 1,
+                    injected_variables: vec![(0, InjectedVariableType::Shared(SharedInjectedVariableType::Move))],
+                    body: vec![
+                        InstructionCode::GET_STACK_VALUE_SHARED_REF.into(),
+                        // slot index as u32
+                        0,
+                        0,
+                        0,
+                        0,
+                    ]
+                }),
+                RegularInstruction::UInt8(UInt8Data(1)),
             ]
-        );
+        )
     }
 
     #[test]
@@ -2702,62 +2661,39 @@ pub mod tests {
         let script = "const x = 42u8; const y = 69u8; 1u8 :: x + y";
         let (res, _) =
             compile_script(script, CompileOptions::default()).unwrap();
-        assert_eq!(
-            res,
-            vec![
-                InstructionCode::SHORT_STATEMENTS.into(),
-                3,
-                0, // not terminated
-                InstructionCode::PUSH_TO_STACK.into(),
-                InstructionCode::UINT_8.into(),
-                42,
-                InstructionCode::PUSH_TO_STACK.into(),
-                InstructionCode::UINT_8.into(),
-                69,
-                InstructionCode::REMOTE_EXECUTION.into(),
-                // --- start of block
-                // block size (11 bytes)
-                11,
-                0,
-                0,
-                0,
-                // injected slots (2)
-                2,
-                0,
-                0,
-                0,
-                // slot 0
-                0,
-                0,
-                0,
-                0,
-                // FIXME
-                InjectedVariableType::Shared(SharedInjectedVariableType::Move).into(),
-                // slot 1
-                1,
-                0,
-                0,
-                0,
-                // FIXME
-                InjectedVariableType::Shared(SharedInjectedVariableType::Move).into(),
-                // expression: x + y
-                InstructionCode::ADD.into(),
-                InstructionCode::TAKE_STACK_VALUE.into(),
-                // slot index as u32
-                0,
-                0,
-                0,
-                0,
-                InstructionCode::TAKE_STACK_VALUE.into(),
-                // slot index as u32
-                1,
-                0,
-                0,
-                0,
-                // --- end of block
-                // caller (literal value 1 for test)
-                InstructionCode::UINT_8.into(),
-                1,
+        assert_regular_instructions_equal!(
+            &res,
+            [
+                RegularInstruction::ShortStatements(StatementsData {statements_count: 2, terminated: true}),
+                RegularInstruction::PushToStack,
+                RegularInstruction::UInt8(UInt8Data(42)),
+                RegularInstruction::PushToStack,
+                RegularInstruction::UInt8(UInt8Data(69)),
+                RegularInstruction::RemoteExecution(InstructionBlockData {
+                    length: 11,
+                    injected_variable_count: 2,
+                    injected_variables: vec![
+                        // FIXME should be local
+                        (0, InjectedVariableType::Shared(SharedInjectedVariableType::Move)),
+                        (1, InjectedVariableType::Shared(SharedInjectedVariableType::Move)),
+                    ],
+                    body: vec![
+                        InstructionCode::ADD.into(),
+                        InstructionCode::TAKE_STACK_VALUE.into(),
+                        // slot index as u32
+                        0,
+                        0,
+                        0,
+                        0,
+                        InstructionCode::TAKE_STACK_VALUE.into(),
+                        // slot index as u32
+                        1,
+                        0,
+                        0,
+                        0,
+                    ],
+                }),
+                RegularInstruction::UInt8(UInt8Data(1)),
             ]
         );
     }
