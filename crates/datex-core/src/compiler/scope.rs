@@ -3,7 +3,7 @@ use crate::{
     collections::HashMap,
     compiler::{
         Variable, VariableRepresentation,
-        context::VirtualSlot,
+        context::InjectedParentVariable,
         precompiler::{
             precompiled_ast::RichAst, scope_stack::PrecompilerScopeStack,
         },
@@ -11,7 +11,7 @@ use crate::{
     runtime::execution::context::ExecutionMode,
 };
 use core::cell::RefCell;
-use crate::global::protocol_structures::external_slot_type::ExternalSlotType;
+use crate::global::protocol_structures::injected_variable_type::InjectedVariableType;
 use crate::global::protocol_structures::instruction_data::StackIndex;
 
 #[derive(Debug, Default, Clone)]
@@ -114,20 +114,17 @@ impl CompilationScope {
     pub fn resolve_variable_name_to_stack_index(
         &self,
         name: &str,
-        slot_type: Option<ExternalSlotType>,
+        slot_type: Option<InjectedVariableType>,
     ) -> Result<Option<(StackIndex, VariableKind)>, ()> {
         if let Some(variable) = self.variables.get(name) {
-            let slot = match variable.representation {
-                VariableRepresentation::Constant(slot) => slot,
-                VariableRepresentation::VariableSlot(slot) => slot,
-            };
-            Ok(Some((slot, variable.kind)))
+            Ok(Some((variable.index, variable.kind)))
         } else if let Some(external_parent) = &self.external_parent_scope {
             if let Some(slot_type) = slot_type {
                 Ok(
                     external_parent
                         .resolve_variable_name_to_stack_index(name, Some(slot_type))?
-                        .map(|(virt_slot, var_kind)| (virt_slot.downgrade(slot_type), var_kind))
+                        .map(|(virt_slot, var_kind)| (virt_slot, var_kind))
+                    // FIXME  .map(|(virt_slot, var_kind)| (virt_slot.downgrade(slot_type), var_kind))
                 )
             }
             else {
@@ -146,7 +143,7 @@ impl CompilationScope {
     pub fn resolve_variable_name_to_stack_index_with_slot_type(
         &self,
         name: &str,
-        slot_type: ExternalSlotType,
+        slot_type: InjectedVariableType,
     ) -> Option<(StackIndex, VariableKind)> {
         self.resolve_variable_name_to_stack_index(name, Some(slot_type)).unwrap()
     }

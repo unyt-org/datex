@@ -13,69 +13,55 @@ use std::io::Cursor;
 use itertools::Itertools;
 use crate::core_compiler::core_compilation_context::CoreCompilationContext;
 use crate::core_compiler::value_compiler::append_instruction_code_new;
-use crate::global::protocol_structures::external_slot_type::ExternalSlotType;
+use crate::global::protocol_structures::injected_variable_type::InjectedVariableType;
 use crate::global::protocol_structures::instruction_data::StackIndex;
 
 #[derive(Debug, Clone, Copy, Eq)]
-pub struct VirtualSlot {
-    /// parent scope level if exists, otherwise 0
+pub struct InjectedParentVariable {
+    /// parent scope level
     pub level: u8,
     /// local slot address of scope with level
     pub virtual_address: u32,
-    pub external_slot_type: Option<ExternalSlotType>
+    pub injected_variable_type: InjectedVariableType
 }
 
-impl Hash for VirtualSlot {
+impl Hash for InjectedParentVariable {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.level.hash(state);
         self.virtual_address.hash(state);
     }
 }
 
-impl PartialEq for VirtualSlot {
+impl PartialEq for InjectedParentVariable {
     fn eq(&self, other: &Self) -> bool {
         self.level == other.level && self.virtual_address == other.virtual_address
     }
 }
 
-impl VirtualSlot {
-    pub fn local(virtual_address: u32) -> Self {
-        VirtualSlot {
-            level: 0,
-            virtual_address,
-            external_slot_type: None,
-        }
-    }
-    pub fn is_external(&self) -> bool {
-        let is_external = self.level > 0;
-        if is_external && self.external_slot_type.is_none() {
-            unreachable!()
-        }
-        is_external
-    }
+impl InjectedParentVariable {
 
-    pub fn external(level: u8, virtual_address: u32, external_slot_type: ExternalSlotType) -> Self {
-        VirtualSlot {
+    pub fn external(level: u8, virtual_address: u32, external_slot_type: InjectedVariableType) -> Self {
+        InjectedParentVariable {
             level,
             virtual_address,
-            external_slot_type: Some(external_slot_type),
+            injected_variable_type: external_slot_type,
         }
     }
 
-    pub fn downgrade(&self, external_slot_type: ExternalSlotType) -> Self {
-        VirtualSlot {
+    pub fn downgrade(&self, external_slot_type: InjectedVariableType) -> Self {
+        InjectedParentVariable {
             level: self.level + 1,
             virtual_address: self.virtual_address,
-            external_slot_type: Some(external_slot_type),
+            injected_variable_type: external_slot_type,
         }
     }
 
     pub fn upgrade(&self) -> Self {
         if self.level > 0 {
-            VirtualSlot {
+            InjectedParentVariable {
                 level: self.level - 1,
                 virtual_address: self.virtual_address,
-                external_slot_type: self.external_slot_type,
+                injected_variable_type: self.injected_variable_type,
             }
         } else {
             core::panic!("Cannot upgrade a local slot");
@@ -92,8 +78,9 @@ pub struct CompilationContext {
     pub has_non_static_value: bool,
     pub execution_mode: ExecutionMode,
 
-    // mapping for temporary scope slot resolution
-    slot_indices: HashMap<VirtualSlot, Vec<u32>>,
+    // mapping for injected variables from parent scopes
+    injected_variables_map: HashMap<InjectedParentVariable, u32>,
+    pub injected_variables: Vec<(u32, InjectedVariableType)>,
 }
 
 impl CompilationContext {
@@ -127,7 +114,8 @@ impl CompilationContext {
             core_context: CoreCompilationContext::new(buffer, StackIndex(0)),
             inserted_values,
             has_non_static_value: false,
-            slot_indices: HashMap::new(),
+            injected_variables_map: HashMap::new(),
+            injected_variables: Vec::new(),
             execution_mode,
         }
     }
@@ -135,11 +123,11 @@ impl CompilationContext {
     pub fn buffer_index(&self) -> u64 {
         self.core_context.cursor().position()
     }
-    
+
     pub fn cursor(&mut self) -> &mut Cursor<Vec<u8>> {
         self.core_context.cursor_mut()
     }
-    
+
     pub fn into_buffer(self) -> Vec<u8> {
         self.core_context.into_buffer()
     }
@@ -148,61 +136,6 @@ impl CompilationContext {
         &mut self.core_context
     }
 
-    pub fn external_slots(&self) -> Vec<VirtualSlot> {
-        self.slot_indices
-            .iter()
-            .filter(|(slot, _)| slot.is_external())
-            .sorted_by(|a, b| a.0.virtual_address.cmp(&b.0.virtual_address))
-            .map(|(slot, _)| *slot)
-            .collect()
-    }
-
-    /// Gets all slots for either local or external slots depending on the value of external
-    pub fn get_slot_byte_indices(
-        &self,
-        match_externals: bool,
-    ) -> Vec<Vec<u32>> {
-        self.slot_indices
-            .iter()
-            .filter(|(slot, _)| slot.is_external() == match_externals)
-            .sorted_by(|a, b| a.0.virtual_address.cmp(&b.0.virtual_address))
-            .map(|(_, indices)| indices.clone())
-            .collect()
-    }
-
-    pub fn remap_virtual_slots(&mut self) {
-        let mut slot_address = 0;
-
-        // parent slots
-        for byte_indices in self.get_slot_byte_indices(true) {
-            for byte_index in byte_indices {
-                self.set_u32_at_index(slot_address, byte_index as usize);
-            }
-            slot_address += 1;
-        }
-
-        // local slots
-        for byte_indices in self.get_slot_byte_indices(false) {
-            for byte_index in byte_indices {
-                self.set_u32_at_index(slot_address, byte_index as usize);
-            }
-            slot_address += 1;
-        }
-    }
-
-    // This method writes a placeholder value for the slot
-    // since the slot address is not known yet and just temporary.
-    #[deprecated]
-    pub fn insert_virtual_slot_address(&mut self, virtual_slot: VirtualSlot) {
-        let buffer_index = self.buffer_index() as u32;
-        if let Some(indices) = self.slot_indices.get_mut(&virtual_slot) {
-            indices.push(buffer_index);
-        } else {
-            self.slot_indices.insert(virtual_slot, vec![buffer_index]);
-        }
-        append_u32(self.cursor(), 0); // placeholder for the slot address
-    }
-    
     pub fn insert_stack_index(&mut self, stack_index: StackIndex) {
         append_u32(self.cursor(), stack_index.0);
     }

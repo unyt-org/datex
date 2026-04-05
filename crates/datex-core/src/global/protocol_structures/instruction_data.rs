@@ -7,7 +7,7 @@ use modular_bitfield::bitfield;
 use modular_bitfield::prelude::B4;
 use serde::Serialize;
 use crate::global::operators::AssignmentOperator;
-use crate::global::protocol_structures::external_slot_type::ExternalSlotType;
+use crate::global::protocol_structures::injected_variable_type::InjectedVariableType;
 use crate::global::type_instruction_codes::{TypeLocalOrShared, TypeMutabilityCode, TypeReferenceMutabilityCode};
 use crate::serde::Deserialize;
 use crate::shared_values::pointer::PointerReferenceMutability;
@@ -424,9 +424,9 @@ pub struct Move {
 #[brw(little)]
 pub struct InstructionBlockData {
     pub length: u32,
-    pub injected_slot_count: u32,
-    #[br(count = injected_slot_count)]
-    pub injected_slots: Vec<(u32, ExternalSlotType)>,
+    pub injected_variable_count: u32,
+    #[br(count = injected_variable_count)]
+    pub injected_variables: Vec<(u32, InjectedVariableType)>,
     #[br(count = length)]
     pub body: Vec<u8>,
 }

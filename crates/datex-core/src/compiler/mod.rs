@@ -22,7 +22,7 @@ use crate::{
         VariableAssignment, VariableDeclaration, VariableKind,
     },
     compiler::{
-        context::{CompilationContext, VirtualSlot},
+        context::{CompilationContext, InjectedParentVariable},
         error::{
             DetailedCompilerErrorsWithMaybeRichAst,
             SimpleCompilerErrorOrDetailedCompilerErrorWithRichAst,
@@ -62,8 +62,8 @@ use precompiler::{
 };
 use crate::ast::expressions::ValueAccessType;
 use crate::core_compiler::value_compiler::{append_instruction, append_instruction_code_new, append_regular_instruction, append_shared_container, append_statements_preamble, append_value};
-use crate::global::protocol_structures::external_slot_type::{ExternalSlotType, LocalSlotType, SharedSlotType};
-use crate::global::protocol_structures::instruction_data::{ModifyStackValue, SetSharedContainerValue, StackIndex};
+use crate::global::protocol_structures::injected_variable_type::{InjectedVariableType, LocalInjectedVariableType, SharedInjectedVariableType};
+use crate::global::protocol_structures::instruction_data::{InstructionBlockData, ModifyStackValue, SetSharedContainerValue, StackIndex};
 use crate::global::protocol_structures::regular_instructions::RegularInstruction;
 use crate::shared_values::pointer::PointerReferenceMutability;
 
@@ -117,8 +117,8 @@ pub enum VariableModel {
 impl From<VariableRepresentation> for VariableModel {
     fn from(value: VariableRepresentation) -> Self {
         match value {
-            VariableRepresentation::Constant(_) => VariableModel::Constant,
-            VariableRepresentation::VariableSlot(_) => {
+            VariableRepresentation::Constant => VariableModel::Constant,
+            VariableRepresentation::VariableSlot => {
                 VariableModel::VariableSlot
             }
         }
@@ -156,8 +156,8 @@ impl VariableModel {
 
 #[derive(Debug, Clone, PartialEq, Eq, Copy)]
 pub enum VariableRepresentation {
-    Constant(StackIndex),
-    VariableSlot(StackIndex),
+    Constant,
+    VariableSlot,
 }
 
 /// Represents a variable in the DATEX script.
@@ -165,6 +165,7 @@ pub enum VariableRepresentation {
 pub struct Variable {
     pub name: String,
     pub kind: VariableKind,
+    pub index: StackIndex,
     pub representation: VariableRepresentation,
 }
 
@@ -173,7 +174,8 @@ impl Variable {
         Variable {
             name,
             kind: VariableKind::Const,
-            representation: VariableRepresentation::Constant(index),
+            index,
+            representation: VariableRepresentation::Constant,
         }
     }
 
@@ -185,14 +187,8 @@ impl Variable {
         Variable {
             name,
             kind,
-            representation: VariableRepresentation::VariableSlot(index),
-        }
-    }
-
-    pub fn index(&self) -> StackIndex {
-        match &self.representation {
-            VariableRepresentation::Constant(index) => *index,
-            VariableRepresentation::VariableSlot(index) => *index,
+            index,
+            representation: VariableRepresentation::VariableSlot,
         }
     }
 }
@@ -496,16 +492,12 @@ pub fn compile_rich_ast(
     rich_ast: RichAst,
     scope: CompilationScope,
 ) -> Result<CompilationScope, CompilerError> {
-    let scope = compile_expression(
+    compile_expression(
         compilation_context,
         rich_ast,
         CompileMetadata::outer(),
         scope,
-    )?;
-
-    // handle scope virtual addr mapping
-    compilation_context.remap_virtual_slots();
-    Ok(scope)
+    )
 }
 
 fn compile_expression(
@@ -709,13 +701,14 @@ fn compile_expression(
                     }
                 }
             } else {
-                compilation_context
-                    .append_instruction_code(InstructionCode::CLONE_STACK_VALUE);
-                compilation_context.insert_virtual_slot_address(
-                    VirtualSlot::local(
-                        compilation_context.inserted_value_index as u32,
-                    ),
-                );
+                // TODO
+                // compilation_context
+                //     .append_instruction_code(InstructionCode::CLONE_STACK_VALUE);
+                // compilation_context.insert_virtual_slot_address(
+                //     InjectedParentVariable::local(
+                //         compilation_context.inserted_value_index as u32,
+                //     ),
+                // );
             }
             compilation_context.inserted_value_index += 1;
         }
@@ -1160,13 +1153,13 @@ fn compile_expression(
             compilation_context.mark_has_non_static_value();
 
             let slot_type = match access_type {
-                ValueAccessType::SharedRefMut => ExternalSlotType::Shared(SharedSlotType::RefMut),
-                ValueAccessType::SharedRef => ExternalSlotType::Shared(SharedSlotType::Ref),
+                ValueAccessType::SharedRefMut => InjectedVariableType::Shared(SharedInjectedVariableType::RefMut),
+                ValueAccessType::SharedRef => InjectedVariableType::Shared(SharedInjectedVariableType::Ref),
                 // TODO: map to local slot types depending on type
-                ValueAccessType::MoveOrCopy => ExternalSlotType::Shared(SharedSlotType::Move),
+                ValueAccessType::MoveOrCopy => InjectedVariableType::Shared(SharedInjectedVariableType::Move),
                 // TODO:
-                ValueAccessType::Clone => ExternalSlotType::Local(LocalSlotType::Move),
-                ValueAccessType::Borrow => ExternalSlotType::Shared(SharedSlotType::Move),
+                ValueAccessType::Clone => InjectedVariableType::Local(LocalInjectedVariableType::Move),
+                ValueAccessType::Borrow => InjectedVariableType::Shared(SharedInjectedVariableType::Move),
             };
 
             let slot_access = match access_type {
@@ -1197,10 +1190,6 @@ fn compile_expression(
         }) => {
             compilation_context.mark_has_non_static_value();
 
-            // insert remote execution code
-            compilation_context
-                .append_instruction_code(InstructionCode::REMOTE_EXECUTION);
-
             // compile remote execution block
             let mut execution_block_ctx = CompilationContext::new(
                 Vec::with_capacity(256),
@@ -1220,34 +1209,17 @@ fn compile_expression(
                 .pop_external()
                 .ok_or(CompilerError::ScopePopError)?;
 
-            // FIXME
-            let external_slots = execution_block_ctx.external_slots();
-
-            // --- start block
-            // set block size (len of compilation_context.buffer)
-            append_u32(
+            // insert remote execution instruction
+            append_regular_instruction(
                 compilation_context.cursor(),
-                execution_block_ctx.cursor().get_ref().len() as u32,
-            );
-            // set injected slot count
-            append_u32(
-                compilation_context.cursor(),
-                external_slots.len() as u32,
-            );
-            for slot in external_slots {
-                compilation_context.insert_virtual_slot_address(slot.upgrade());
-                // store external slot type
-                append_u8(
-                    compilation_context.cursor(),
-                    slot.external_slot_type.unwrap().into(), // must exist for external slots
-                );
-            }
-
-            // insert block body (compilation_context.buffer)
-            compilation_context
-                .cursor()
-                .write_all(&execution_block_ctx.into_buffer()).unwrap();
-            // --- end block
+                RegularInstruction::RemoteExecution(InstructionBlockData {
+                    // block size (len of compilation_context.buffer)
+                    length: execution_block_ctx.cursor().get_ref().len() as u32,
+                    injected_variable_count: execution_block_ctx.injected_variables.len() as u32,
+                    injected_variables: execution_block_ctx.injected_variables.clone(),
+                    body: execution_block_ctx.into_buffer(),
+                })
+            )?;
 
             // insert compiled caller expression
             scope = compile_expression(
@@ -1538,7 +1510,7 @@ pub mod tests {
     use core::assert_matches;
     use log::*;
     use crate::global::protocol_structures::disassembler::{disassemble_body, disassemble_body_to_string, DisassemblerOptions};
-    use crate::global::protocol_structures::external_slot_type::{ExternalSlotType, SharedSlotType};
+    use crate::global::protocol_structures::injected_variable_type::{InjectedVariableType, SharedInjectedVariableType};
     use crate::global::protocol_structures::instruction_data::{IntegerData, StackIndex, StatementsData, UInt8Data};
     use crate::global::protocol_structures::instructions::Instruction;
     use crate::global::protocol_structures::regular_instructions::RegularInstruction;
@@ -2676,7 +2648,7 @@ pub mod tests {
                 0,
                 0,
                 0,
-                ExternalSlotType::Shared(SharedSlotType::Move).into(),
+                InjectedVariableType::Shared(SharedInjectedVariableType::Move).into(),
                 InstructionCode::SHORT_STATEMENTS.into(),
                 1,
                 1, // terminated
@@ -2728,7 +2700,7 @@ pub mod tests {
                 0,
                 0,
                 0,
-                ExternalSlotType::Shared(SharedSlotType::Ref).into(),
+                InjectedVariableType::Shared(SharedInjectedVariableType::Ref).into(),
                 // slot 0 (mapped from slot 0)
                 InstructionCode::GET_STACK_VALUE_SHARED_REF.into(),
                 // slot index as u32
@@ -2779,14 +2751,14 @@ pub mod tests {
                 0,
                 0,
                 // FIXME
-                ExternalSlotType::Shared(SharedSlotType::Move).into(),
+                InjectedVariableType::Shared(SharedInjectedVariableType::Move).into(),
                 // slot 1
                 1,
                 0,
                 0,
                 0,
                 // FIXME
-                ExternalSlotType::Shared(SharedSlotType::Move).into(),
+                InjectedVariableType::Shared(SharedInjectedVariableType::Move).into(),
                 // expression: x + y
                 InstructionCode::ADD.into(),
                 InstructionCode::TAKE_STACK_VALUE.into(),
@@ -2845,7 +2817,7 @@ pub mod tests {
                 0,
                 0,
                 // FIXME
-                ExternalSlotType::Shared(SharedSlotType::Move).into(),
+                InjectedVariableType::Shared(SharedInjectedVariableType::Move).into(),
                 InstructionCode::SHORT_STATEMENTS.into(),
                 2,
                 0, // not terminated
@@ -2908,7 +2880,7 @@ pub mod tests {
                 0,
                 0,
                 // FIXME
-                ExternalSlotType::Shared(SharedSlotType::Move).into(),
+                InjectedVariableType::Shared(SharedInjectedVariableType::Move).into(),
                 // nested remote execution
                 InstructionCode::REMOTE_EXECUTION.into(),
                 // --- start of block 2
@@ -2928,7 +2900,7 @@ pub mod tests {
                 0,
                 0,
                 // FIXME
-                ExternalSlotType::Shared(SharedSlotType::Move).into(),
+                InjectedVariableType::Shared(SharedInjectedVariableType::Move).into(),
                 InstructionCode::TAKE_STACK_VALUE.into(),
                 // slot index as u32
                 0,
@@ -2983,14 +2955,14 @@ pub mod tests {
                 0,
                 0,
                 // FIXME
-                ExternalSlotType::Shared(SharedSlotType::Move).into(),
+                InjectedVariableType::Shared(SharedInjectedVariableType::Move).into(),
                 // slot 0
                 1,
                 0,
                 0,
                 0,
                 // FIXME
-                ExternalSlotType::Shared(SharedSlotType::Move).into(),
+                InjectedVariableType::Shared(SharedInjectedVariableType::Move).into(),
                 // nested remote execution
                 InstructionCode::REMOTE_EXECUTION.into(),
                 // --- start of block 2
@@ -3010,7 +2982,7 @@ pub mod tests {
                 0,
                 0,
                 // FIXME
-                ExternalSlotType::Shared(SharedSlotType::Move).into(),
+                InjectedVariableType::Shared(SharedInjectedVariableType::Move).into(),
                 InstructionCode::TAKE_STACK_VALUE.into(),
                 // slot index as u32
                 0,

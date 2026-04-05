@@ -3,7 +3,7 @@ use binrw::io::Cursor;
 use crate::core_compiler::core_compilation_context::CoreCompilationContext;
 use crate::core_compiler::value_compiler::{append_instruction_code, append_instruction_code_new, append_perform_moves, append_shared_container, append_statements_preamble};
 use crate::global::instruction_codes::InstructionCode;
-use crate::global::protocol_structures::external_slot_type::{ExternalSlotType, SharedSlotType};
+use crate::global::protocol_structures::injected_variable_type::{InjectedVariableType, SharedInjectedVariableType};
 use crate::global::protocol_structures::instruction_data::{InstructionBlockData, StackIndex};
 use crate::runtime::execution::ExecutionError;
 use crate::shared_values::shared_container::SharedContainer;
@@ -27,13 +27,13 @@ pub fn compile_remote_execution_block(
 ) -> Result<(Vec<u8>, Vec<SharedContainer>), ExecutionError> {
 
     if exec_block_data
-        .injected_slots
+        .injected_variables
         .len() != slot_values.len() {
         unreachable!(); // length must always match
     }
 
     let moved_pointers_slot_index = exec_block_data
-        .injected_slots
+        .injected_variables
         .len() as u32;
 
     // one slot assignment statement for each slot + original instructions block
@@ -77,7 +77,7 @@ fn compile_preamble(
 
     // build dxb
     for (slot_addr, ((_, external_slot_type), slot_value)) in exec_block_data
-        .injected_slots
+        .injected_variables
         .into_iter()
         .zip(slot_values.into_iter())
         .enumerate()
@@ -85,13 +85,13 @@ fn compile_preamble(
         context.cursor_mut().write_all(&[InstructionCode::PUSH_TO_STACK as u8]).unwrap();
         append_u32(context.cursor_mut(), slot_addr as u32);
         match external_slot_type {
-            ExternalSlotType::Local(_) => {
+            InjectedVariableType::Local(_) => {
                 todo!()
             },
-            ExternalSlotType::Shared(shared_slot_type) => {
+            InjectedVariableType::Shared(shared_slot_type) => {
 
                 let shared_container = match shared_slot_type {
-                    SharedSlotType::Move => {
+                    SharedInjectedVariableType::Move => {
                         // get moved value from moved_pointers_slot
                         let index = moved_pointers.len() as u32;
 
@@ -108,13 +108,13 @@ fn compile_preamble(
                             }
                         }
                     },
-                    SharedSlotType::Ref => match slot_value {
+                    SharedInjectedVariableType::Ref => match slot_value {
                         BorrowedValueContainer::Local(_) => return Err(ExecutionError::ExpectedSharedValue),
                         BorrowedValueContainer::Shared(shared_container) => {
                             shared_container.derive_reference()
                         }
                     }
-                    SharedSlotType::RefMut => match slot_value {
+                    SharedInjectedVariableType::RefMut => match slot_value {
                         BorrowedValueContainer::Local(_) => return Err(ExecutionError::ExpectedSharedValue),
                         BorrowedValueContainer::Shared(shared_container) => {
                             shared_container.try_derive_mutable_reference()
@@ -158,7 +158,7 @@ fn compile_preform_move_preamble(
 #[cfg(test)]
 mod tests {
     use crate::global::instruction_codes::InstructionCode;
-    use crate::global::protocol_structures::external_slot_type::{ExternalSlotType, SharedSlotType};
+    use crate::global::protocol_structures::injected_variable_type::{InjectedVariableType, SharedInjectedVariableType};
     use crate::global::protocol_structures::instruction_data::InstructionBlockData;
     use crate::runtime::execution::execution_loop::remote_execution_blocks::compile_remote_execution_block;
     use crate::shared_values::pointer::{OwnedPointer};
@@ -169,9 +169,9 @@ mod tests {
     #[test]
     fn remote_execution_no_injected_values() {
         let exec_block_data = InstructionBlockData {
-            injected_slot_count: 0,
+            injected_variable_count: 0,
             length: 1,
-            injected_slots: vec![],
+            injected_variables: vec![],
             body: vec![InstructionCode::NULL as u8],
         };
         let res = compile_remote_execution_block(exec_block_data, vec![]).unwrap().0;
@@ -182,9 +182,9 @@ mod tests {
     fn remote_execution_with_injected_ref_value() {
         let shared_value = BorrowedValueContainer::Shared(SharedContainer::boxed_owned_immut(42, OwnedPointer::NULL));
         let exec_block_data = InstructionBlockData {
-            injected_slot_count: 1,
+            injected_variable_count: 1,
             length: 1,
-            injected_slots: vec![(0, ExternalSlotType::Shared(SharedSlotType::Ref))],
+            injected_variables: vec![(0, InjectedVariableType::Shared(SharedInjectedVariableType::Ref))],
             body: vec![InstructionCode::NULL as u8],
         };
         let res = compile_remote_execution_block(exec_block_data, vec![shared_value]).unwrap().0;
@@ -214,11 +214,11 @@ mod tests {
         let shared_value1 = BorrowedValueContainer::Shared(SharedContainer::boxed_owned_immut(42, OwnedPointer::NULL));
         let shared_value2 = BorrowedValueContainer::Shared(SharedContainer::boxed_owned_mut(100, OwnedPointer::NULL));
         let exec_block_data = InstructionBlockData {
-            injected_slot_count: 2,
+            injected_variable_count: 2,
             length: 1,
-            injected_slots: vec![
-                (0, ExternalSlotType::Shared(SharedSlotType::Ref)),
-                (1, ExternalSlotType::Shared(SharedSlotType::RefMut)),
+            injected_variables: vec![
+                (0, InjectedVariableType::Shared(SharedInjectedVariableType::Ref)),
+                (1, InjectedVariableType::Shared(SharedInjectedVariableType::RefMut)),
             ],
             body: vec![InstructionCode::NULL as u8],
         };
@@ -258,9 +258,9 @@ mod tests {
     fn remote_execution_with_injected_moved_value() {
         let shared_value = BorrowedValueContainer::Shared(SharedContainer::boxed_owned_immut(42, OwnedPointer::NULL));
         let exec_block_data = InstructionBlockData {
-            injected_slot_count: 1,
+            injected_variable_count: 1,
             length: 1,
-            injected_slots: vec![(0, ExternalSlotType::Shared(SharedSlotType::Move))],
+            injected_variables: vec![(0, InjectedVariableType::Shared(SharedInjectedVariableType::Move))],
             body: vec![InstructionCode::NULL as u8],
         };
         let res = compile_remote_execution_block(exec_block_data, vec![shared_value]).unwrap().0;
@@ -294,11 +294,11 @@ mod tests {
         let shared_value1 = BorrowedValueContainer::Shared(SharedContainer::boxed_owned_immut(42, OwnedPointer::NULL));
         let shared_value2 = BorrowedValueContainer::Shared(SharedContainer::boxed_owned_mut(100, OwnedPointer::NULL));
         let exec_block_data = InstructionBlockData {
-            injected_slot_count: 2,
+            injected_variable_count: 2,
             length: 1,
-            injected_slots: vec![
-                (0, ExternalSlotType::Shared(SharedSlotType::Move)),
-                (1, ExternalSlotType::Shared(SharedSlotType::Ref)),
+            injected_variables: vec![
+                (0, InjectedVariableType::Shared(SharedInjectedVariableType::Move)),
+                (1, InjectedVariableType::Shared(SharedInjectedVariableType::Ref)),
             ],
             body: vec![InstructionCode::NULL as u8],
         };

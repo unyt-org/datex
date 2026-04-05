@@ -72,7 +72,7 @@ use crate::{
 };
 use alloc::rc::Rc;
 use core::cell::RefCell;
-use crate::global::protocol_structures::external_slot_type::{ExternalSlotType, SharedSlotType};
+use crate::global::protocol_structures::injected_variable_type::{InjectedVariableType, SharedInjectedVariableType};
 use crate::global::protocol_structures::instruction_data::{ModifyStackValue, UnboundedStatementsData};
 use crate::global::protocol_structures::instructions::{Instruction};
 use crate::global::protocol_structures::regular_instructions::RegularInstruction;
@@ -1169,12 +1169,12 @@ pub fn inner_execution_loop(
                                 ) => {
 
                                     // get slots (moved or referenced)
-                                    let injected = &exec_block_data.injected_slots;
+                                    let injected = &exec_block_data.injected_variables;
                                     let mut moved: Vec<Option<_>> = vec![None; injected.len()];
 
                                     // perform all mutable operations (removing moved shared values)
                                     for (i, (addr, slot_type)) in injected.iter().enumerate() {
-                                        if matches!(slot_type, ExternalSlotType::Shared(SharedSlotType::Move)) {
+                                        if matches!(slot_type, InjectedVariableType::Shared(SharedInjectedVariableType::Move)) {
                                             moved[i] = Some(yield_unwrap!(state.stack.take_slot(*addr)));
                                         }
                                     }
@@ -1183,7 +1183,7 @@ pub fn inner_execution_loop(
                                     let mut slots = Vec::with_capacity(injected.len());
                                     for (i, (addr, slot_type)) in injected.iter().enumerate() {
                                         slots.push(match slot_type {
-                                            ExternalSlotType::Shared(SharedSlotType::Move) => {
+                                            InjectedVariableType::Shared(SharedInjectedVariableType::Move) => {
                                                 match moved[i].take().unwrap() {
                                                     ValueContainer::Shared(shared) => BorrowedValueContainer::Shared(shared),
                                                     ValueContainer::Local(_) => return yield Err(ExecutionError::ExpectedSharedValue)

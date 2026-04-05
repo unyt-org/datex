@@ -859,7 +859,7 @@ impl RegularInstruction {
                     string,
                     "(length: {}, injected_slot_count: {})",
                     block.length,
-                    block.injected_slot_count
+                    block.injected_variable_count
                 )
             }
             RegularInstruction::ModifyStackValue(modify_slot) => {

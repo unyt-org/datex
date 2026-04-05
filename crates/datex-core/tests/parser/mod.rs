@@ -453,6 +453,7 @@ fn function_simple() {
                     DatexExpressionData::Integer(Integer::from(42))
                         .with_default_span()
                 ),
+                injected_variable_count: None,
             }
         ))
     );
@@ -484,6 +485,7 @@ fn function_with_params() {
                     DatexExpressionData::Integer(Integer::from(42))
                         .with_default_span()
                 ),
+                injected_variable_count: None,
             }
         ))
     );
@@ -543,6 +545,7 @@ fn function_with_params() {
                     )
                     .with_default_span()
                 ),
+                injected_variable_count: None,
             }
         ))
     );
@@ -582,6 +585,7 @@ fn test_function_with_return_type() {
                     DatexExpressionData::Integer(Integer::from(42))
                         .with_default_span()
                 ),
+                injected_variable_count: None,
             }
         ))
     );
@@ -3238,7 +3242,8 @@ fn remote_execution() {
             right: Box::new(
                 DatexExpressionData::Identifier("b".to_string())
                     .with_default_span()
-            )
+            ),
+            injected_variable_count: None,
         })
     );
 }
@@ -3256,7 +3261,8 @@ fn remote_execution_no_space() {
             right: Box::new(
                 DatexExpressionData::Identifier("b".to_string())
                     .with_default_span()
-            )
+            ),
+            injected_variable_count: None,
         })
     );
 }
@@ -3303,7 +3309,8 @@ fn remote_execution_complex() {
                     ty: None
                 })
                 .with_default_span()
-            )
+            ),
+            injected_variable_count: None,
         },)
     );
 }
@@ -3323,7 +3330,8 @@ fn remote_execution_statements() {
                 right: Box::new(
                     DatexExpressionData::Identifier("b".to_string())
                         .with_default_span()
-                )
+                ),
+                injected_variable_count: None,
             })
             .with_default_span(),
             DatexExpressionData::Integer(Integer::from(1)).with_default_span(),
@@ -3365,7 +3373,8 @@ fn remote_execution_inline_statements() {
                     ]
                 ))
                 .with_default_span()
-            )
+            ),
+            injected_variable_count: None,
         },)
     );
 }

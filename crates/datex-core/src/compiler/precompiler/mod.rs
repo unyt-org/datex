@@ -1685,6 +1685,59 @@ mod tests {
                 }).with_default_span()
             ]))
         )
+    }
 
+    #[test]
+    fn nested_remote_execution_injected_variables() {
+        let result = parse_and_precompile("var x = 10; var y = 11; @example :: (x; @example2 :: y);");
+        assert!(result.is_ok());
+        let rich_ast = result.unwrap();
+        assert_eq!(
+            rich_ast.ast.data,
+            DatexExpressionData::Statements(Statements::new_unterminated(vec![
+                DatexExpressionData::VariableDeclaration(VariableDeclaration {
+                    id: Some(0),
+                    kind: VariableKind::Var,
+                    name: "x".to_string(),
+                    init_expression: Box::new(
+                        DatexExpressionData::Integer(Integer::from(10))
+                            .with_default_span()
+                    ),
+                    type_annotation: None,
+                })
+                    .with_default_span(),
+                DatexExpressionData::VariableDeclaration(VariableDeclaration {
+                    id: Some(1),
+                    kind: VariableKind::Var,
+                    name: "y".to_string(),
+                    init_expression: Box::new(
+                        DatexExpressionData::Integer(Integer::from(11))
+                            .with_default_span()
+                    ),
+                    type_annotation: None,
+                })
+                    .with_default_span(),
+                DatexExpressionData::RemoteExecution(RemoteExecution {
+                    left: Box::new(DatexExpressionData::Endpoint(Endpoint::from_str("@example").unwrap()).with_default_span()),
+                    right: Box::new(DatexExpressionData::Statements(Statements::new_terminated(vec![
+                        DatexExpressionData::VariableAccess(VariableAccess {
+                            id: 0,
+                            name: "x".to_string(),
+                            access_type: ValueAccessType::MoveOrCopy,
+                        }).with_default_span(),
+                        DatexExpressionData::RemoteExecution(RemoteExecution {
+                            left: Box::new(DatexExpressionData::Endpoint(Endpoint::from_str("@example2").unwrap()).with_default_span()),
+                            right: Box::new(DatexExpressionData::VariableAccess(VariableAccess {
+                                id: 1,
+                                name: "y".to_string(),
+                                access_type: ValueAccessType::MoveOrCopy,
+                            }).with_default_span()),
+                            injected_variable_count: Some(1),
+                        }).with_default_span(),
+                    ])).with_default_span()),
+                    injected_variable_count: Some(2),
+                }).with_default_span(),
+            ]))
+        )
     }
 }
