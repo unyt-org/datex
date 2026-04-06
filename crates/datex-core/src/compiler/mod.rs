@@ -1511,7 +1511,7 @@ pub mod tests {
     use alloc::format;
     use core::assert_matches;
     use log::*;
-    use crate::global::protocol_structures::disassembler::{disassemble_body, disassemble_body_to_string, DisassemblerOptions};
+    use crate::disassembler::print_disassembled;
     use crate::global::protocol_structures::injected_variable_type::{InjectedVariableType, LocalInjectedVariableType, SharedInjectedVariableType};
     use crate::global::protocol_structures::instruction_data::{InstructionBlockData, InstructionBlockDataDebugFlat, InstructionBlockDataDebugTree, IntegerData, StackIndex, StatementsData, UInt8Data};
     use crate::global::protocol_structures::instructions::Instruction;
@@ -2468,7 +2468,7 @@ pub mod tests {
         "#;
         let (res, _) =
             compile_script(script, CompileOptions::default()).unwrap();
-        info!("> {}", disassemble_body_to_string(&res, DisassemblerOptions::default()));
+        print_disassembled(&res);
         assert_regular_instructions_equal!(
             &res,
             [

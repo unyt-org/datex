@@ -157,7 +157,6 @@ proc-macro2 = { version = "1.0", features = [
 
 # webrtc features (optional)
 webrtc = { version = "0.13.0", optional = true }
-termcolor = "1.4.1"
 
 
 ### dev dependencies (for benchmarks and tests)
@@ -185,7 +184,7 @@ rstest = "0.26.1"
 
 # When using the "std" feature, the "default" feature should not be enabled since
 # it includes no_std-specific dependencies
-default = ["no_std", "dep:async-timer"]
+default = ["no_std", "dep:async-timer", "disassembler"]
 
 no_std = ["dep:hashbrown", "dep:async-unsync", "dep:spin"]
 
@@ -282,6 +281,7 @@ compiler = ["ast", "parser", "dep:ariadne", "dep:pretty"]
 
 decompiler = ["ast"]
 
+disassembler = []
 
 ### LSP-related features ######################################################
 

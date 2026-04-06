@@ -4,12 +4,12 @@ use core::ops::AddAssign;
 use binrw::io::{Cursor, Read, Seek, Write};
 use binrw::{BinRead, BinResult, BinWrite, Endian};
 use binrw::meta::{EndianKind, ReadEndian};
+use cfg_if::cfg_if;
 use modular_bitfield::bitfield;
 use modular_bitfield::prelude::B4;
 use serde::Serialize;
 use crate::core_compiler::value_compiler::append_instruction;
 use crate::global::operators::AssignmentOperator;
-use crate::global::protocol_structures::disassembler::Tree;
 use crate::global::protocol_structures::injected_variable_type::InjectedVariableType;
 use crate::global::protocol_structures::instructions::Instruction;
 use crate::global::type_instruction_codes::{TypeLocalOrShared, TypeMutabilityCode, TypeReferenceMutabilityCode};
@@ -441,71 +441,80 @@ pub struct InstructionBlockData {
     pub body: Vec<u8>,
 }
 
-#[derive(Clone, Debug, PartialEq)]
-pub struct InstructionBlockDataDebugTree {
-    pub length: u32,
-    pub injected_variable_count: u32,
-    pub injected_variables: Vec<(StackIndex, InjectedVariableType)>,
-    pub body: Tree<Instruction>,
-}
-#[derive(Clone, Debug, PartialEq)]
-pub struct InstructionBlockDataDebugFlat {
-    pub length: u32,
-    pub injected_variable_count: u32,
-    pub injected_variables: Vec<(StackIndex, InjectedVariableType)>,
-    pub body: Vec<Instruction>,
-}
 
-impl From<&InstructionBlockDataDebugTree> for InstructionBlockDataDebugFlat {
-    fn from(instruction_block_data: &InstructionBlockDataDebugTree) -> Self {
-        InstructionBlockDataDebugFlat {
-            length: instruction_block_data.length,
-            injected_variable_count: instruction_block_data.injected_variable_count,
-            injected_variables: instruction_block_data.injected_variables.clone(),
-            body: instruction_block_data.body.flatten(),
+cfg_if! {
+    if #[cfg(feature = "disassembler")]{
+        use crate::disassembler::InstructionTree;
+
+        #[derive(Clone, Debug, PartialEq)]
+        pub struct InstructionBlockDataDebugTree {
+            pub length: u32,
+            pub injected_variable_count: u32,
+            pub injected_variables: Vec<(StackIndex, InjectedVariableType)>,
+            pub body: InstructionTree<Instruction>,
         }
-    }
-}
 
-impl From<&InstructionBlockDataDebugFlat> for InstructionBlockData {
-    fn from(value: &InstructionBlockDataDebugFlat) -> Self {
-        let mut cursor = Cursor::new(Vec::new());
-        for instruction in &value.body {
-            append_instruction(&mut cursor, instruction.clone()).unwrap();
+        #[derive(Clone, Debug, PartialEq)]
+        pub struct InstructionBlockDataDebugFlat {
+            pub length: u32,
+            pub injected_variable_count: u32,
+            pub injected_variables: Vec<(StackIndex, InjectedVariableType)>,
+            pub body: Vec<Instruction>,
         }
-        Self {
-            length: value.length,
-            injected_variable_count: value.injected_variable_count,
-            injected_variables: value.injected_variables.clone(),
-            body: cursor.into_inner(),
+
+        impl From<&InstructionBlockDataDebugTree> for InstructionBlockDataDebugFlat {
+            fn from(instruction_block_data: &InstructionBlockDataDebugTree) -> Self {
+                InstructionBlockDataDebugFlat {
+                    length: instruction_block_data.length,
+                    injected_variable_count: instruction_block_data.injected_variable_count,
+                    injected_variables: instruction_block_data.injected_variables.clone(),
+                    body: instruction_block_data.body.flatten(),
+                }
+            }
         }
-    }
-}
 
-impl BinWrite for InstructionBlockDataDebugFlat {
-    type Args<'a> = ();
+        impl From<&InstructionBlockDataDebugFlat> for InstructionBlockData {
+            fn from(value: &InstructionBlockDataDebugFlat) -> Self {
+                let mut cursor = Cursor::new(Vec::new());
+                for instruction in &value.body {
+                    append_instruction(&mut cursor, instruction.clone()).unwrap();
+                }
+                Self {
+                    length: value.length,
+                    injected_variable_count: value.injected_variable_count,
+                    injected_variables: value.injected_variables.clone(),
+                    body: cursor.into_inner(),
+                }
+            }
+        }
 
-    fn write_options<W: Write + Seek>(
-        &self,
-        writer: &mut W,
-        endian: Endian,
-        _: Self::Args<'_>,
-    ) -> BinResult<()> {
-        let raw = InstructionBlockData::from(self);
-        raw.write_options(writer, endian, ())
-    }
-}
+        impl BinWrite for InstructionBlockDataDebugFlat {
+            type Args<'a> = ();
 
-impl BinWrite for InstructionBlockDataDebugTree {
-    type Args<'a> = ();
-    fn write_options<W: Write + Seek>(
-        &self,
-        writer: &mut W,
-        endian: Endian,
-        _: Self::Args<'_>,
-    ) -> BinResult<()> {
-        let raw = InstructionBlockData::from(&InstructionBlockDataDebugFlat::from(self));
-        raw.write_options(writer, endian, ())
+            fn write_options<W: Write + Seek>(
+                &self,
+                writer: &mut W,
+                endian: Endian,
+                _: Self::Args<'_>,
+            ) -> BinResult<()> {
+                let raw = InstructionBlockData::from(self);
+                raw.write_options(writer, endian, ())
+            }
+        }
+
+        impl BinWrite for InstructionBlockDataDebugTree {
+            type Args<'a> = ();
+            fn write_options<W: Write + Seek>(
+                &self,
+                writer: &mut W,
+                endian: Endian,
+                _: Self::Args<'_>,
+            ) -> BinResult<()> {
+                let raw = InstructionBlockData::from(&InstructionBlockDataDebugFlat::from(self));
+                raw.write_options(writer, endian, ())
+            }
+        }
+
     }
 }
 

@@ -2,32 +2,36 @@ use alloc::rc::Rc;
 use core::cell::RefCell;
 use crate::dxb_parser::body::{iterate_instructions, DXBParserError};
 use core::fmt::{Debug, Write};
-use std::io::Write as StdWrite;
 use binrw::{BinRead, BinWrite};
 use serde::Serialize;
-use termcolor::{Buffer, Color, ColorSpec, WriteColor};
 use crate::global::instruction_codes::InstructionCode;
+use crate::disassembler::options::DisassemblerOptions;
 use crate::global::protocol_structures::instruction_data::{StatementsData};
 use crate::global::protocol_structures::instructions::{CountOrUnbounded, Instruction, NestedInstructionResolutionStrategy};
 use crate::global::protocol_structures::regular_instructions::RegularInstruction;
 use crate::global::type_instruction_codes::TypeInstructionCode;
 use crate::prelude::*;
+use crate::utils::ansi_colors::{AnsiColor, AnsiWrite};
 
 
+/// A generic tree structure for instructions with child instructions.
 #[derive(Debug, Clone, PartialEq, Serialize)]
-pub struct Tree<T> where T: Debug + Clone {
+pub struct InstructionTree<T> where T: Debug + Clone {
     instruction: Box<T>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
-    children: Vec<Tree<T>>,
+    children: Vec<InstructionTree<T>>,
 }
 
-impl<T> Tree<T> where T: Debug + Clone {
+impl<T> InstructionTree<T> where T: Debug + Clone {
+    /// Create a new tree with a root instruction
     pub fn new(instruction: T) -> Self {
         Self {
             instruction: Box::new(instruction),
             children: Vec::new(),
         }
     }
+
+    /// Flattens the tree into a list of instructions
     pub fn flatten(&self) -> Vec<T> {
         let mut result = vec![*self.instruction.clone()];
         for child in &self.children {
@@ -36,53 +40,27 @@ impl<T> Tree<T> where T: Debug + Clone {
         result
     }
 
-    pub fn map<N: Debug + Clone>(self, f: impl Fn(T) -> N + Clone) -> Tree<N> {
-        Tree {
+    /// Maps a tree to an instruction tree with a different generic type with a mapping function, preserving the structure
+    pub fn map<N: Debug + Clone>(self, f: impl Fn(T) -> N + Clone) -> InstructionTree<N> {
+        InstructionTree {
             instruction: Box::new(f(*self.instruction)),
             children: self.children.into_iter().map(|child| child.map(f.clone())).collect(),
         }
     }
 }
 
+/// An instruction tree containing an optional detailed instruction tree inside each node
 #[derive(Debug, Clone)]
 struct DetailedInstructionTree(
-    pub Tree<(Instruction, Option<Box<DetailedInstructionTree>>)>
+    pub InstructionTree<(Instruction, Option<Box<DetailedInstructionTree>>)>
 );
 
-
-pub struct DisassemblerOptions {
-    pub tree: bool,
-    pub colorized: bool,
-    pub recursive: bool,
-}
-
-impl DisassemblerOptions {
-    pub fn simple() -> DisassemblerOptions{
-        DisassemblerOptions {
-            tree: false,
-            colorized: false,
-            recursive: false,
-        }
-    }
-
-    fn nested_instructions_resolution_strategy(&self) -> NestedInstructionResolutionStrategy {
-        if self.recursive {
-            NestedInstructionResolutionStrategy::ResolveNestedScopesTree // always resolve as tree, collapse later if needed for string display
-        }
-        else {
-            NestedInstructionResolutionStrategy::None
-        }
-    }
-}
-
-impl Default for DisassemblerOptions {
-    fn default() -> DisassemblerOptions {
-        DisassemblerOptions {
-            tree: true,
-            colorized: true,
-            recursive: true,
-        }
-    }
+#[derive(Default, Clone, Debug, PartialEq)]
+pub enum InnerInstructions<'a> {
+    #[default]
+    None,
+    Flat(&'a Vec<Instruction>),
+    Tree(&'a InstructionTree<Instruction>),
 }
 
 /// Converts a raw DXB body in to human-readable disassembled instructions string
@@ -90,7 +68,7 @@ pub fn disassemble_body_to_string(body: &[u8], options: DisassemblerOptions) -> 
     let (instructions, err) = disassemble_body(body, options.nested_instructions_resolution_strategy());
     let instructions = instruction_tree_to_detailed_tree(instructions);
 
-    let mut output = "\n\n=== Disassembled DXB Body ===\n".to_string();
+    let mut output = String::new();
 
     if options.tree {
         disassemble_body_to_string_inner(
@@ -116,11 +94,20 @@ pub fn disassemble_body_to_string(body: &[u8], options: DisassemblerOptions) -> 
             write!(&mut output, "[!] Parser Error: {}", err).unwrap();
         }
     }
-    writeln!(&mut output, "==== END ===\n").unwrap();
 
     output
 }
 
+/// Converts a raw DXB body into a list of disassembled Instruction values
+pub fn disassemble_body(body: &[u8], nested_instruction_resolution_strategy: NestedInstructionResolutionStrategy) -> (InstructionTree<Instruction>, Option<DXBParserError>) {
+    let mut iterator = iterate_instructions(Rc::new(RefCell::new(body.to_vec())), nested_instruction_resolution_strategy);
+    let mut tree = InstructionTree::new(Instruction::Regular(RegularInstruction::UnboundedStatements)); // initial tree root, gets overridden
+    let err = disassemble_body_inner(&mut iterator, &mut tree, CountOrUnbounded::UnboundedStart, true);
+    (tree, err)
+}
+
+
+/// Writes a detailed instruction tree to an output string recursively with optional colorization and indentation
 fn write_flat_instructions(output: &mut String, instructions: DetailedInstructionTree, colorized: bool, level: u32) {
     for (instruction, inner_instructions) in instructions.0.flatten() {
         write!(
@@ -140,19 +127,19 @@ fn write_flat_instructions(output: &mut String, instructions: DetailedInstructio
     }
 }
 
+/// Writes a single instruction to an output string with optional colorization and indentation
 fn write_instruction(
     output: &mut String,
     instruction: &Instruction,
     level: u32,
     colorized: bool
 ) {
-    let mut buffer = Buffer::ansi();
     if colorized {
         let color = color_for_level(level);
-        buffer.set_color(ColorSpec::new().set_fg(Some(color))).unwrap();
+        output.write_fg(color);
     }
 
-    write!(&mut buffer, "{}",
+    write!(output, "{}",
         match instruction {
             Instruction::Regular(instr) => InstructionCode::from(instr).to_string(),
             Instruction::Type(instr) => TypeInstructionCode::from(instr).to_string(),
@@ -160,33 +147,33 @@ fn write_instruction(
     ).unwrap();
 
     if colorized {
-        buffer.set_color(&ColorSpec::new()).unwrap();
+        output.write_reset();
     }
 
     if let Some(metadata_string) = instruction.metadata_string() {
-        write!(&mut buffer, " {}", metadata_string).unwrap();
+        write!(output, " {}", metadata_string).unwrap();
     }
 
-    writeln!(output, "{}", String::from_utf8_lossy(&buffer.into_inner())).unwrap();
+    writeln!(output, "").unwrap();
 }
 
 
-fn color_for_level(level: u32) -> Color {
+/// Returns an instruction text color for a given level
+fn color_for_level(level: u32) -> AnsiColor {
     match level % 10 {
-        0 => Color::Rgb(0, 153, 204),    // deep sky blue
-        1 => Color::Rgb(0, 204, 153),    // teal
-        2 => Color::Rgb(51, 204, 102),   // green
-        3 => Color::Rgb(153, 255, 51),   // lime green
-        4 => Color::Rgb(255, 221, 51),   // golden yellow
-        5 => Color::Rgb(204, 204, 255),  // light periwinkle
-        6 => Color::Rgb(153, 153, 255),  // soft purple
-        7 => Color::Rgb(153, 102, 204),  // medium purple
-        8 => Color::Rgb(255, 153, 204),  // pink
-        9 => Color::Rgb(255, 204, 229),  // soft pink / rose
-        _ => Color::Rgb(200, 200, 200),  // neutral fallback
+        0 => AnsiColor::Rgb(0, 153, 204),    // deep sky blue
+        1 => AnsiColor::Rgb(0, 204, 153),    // teal
+        2 => AnsiColor::Rgb(51, 204, 102),   // green
+        3 => AnsiColor::Rgb(153, 255, 51),   // lime green
+        4 => AnsiColor::Rgb(255, 221, 51),   // golden yellow
+        5 => AnsiColor::Rgb(204, 204, 255),  // light periwinkle
+        6 => AnsiColor::Rgb(153, 153, 255),  // soft purple
+        7 => AnsiColor::Rgb(153, 102, 204),  // medium purple
+        8 => AnsiColor::Rgb(255, 153, 204),  // pink
+        9 => AnsiColor::Rgb(255, 204, 229),  // soft pink / rose
+        _ => AnsiColor::Rgb(200, 200, 200),  // neutral fallback
     }
 }
-
 
 
 fn disassemble_body_to_string_inner(
@@ -246,7 +233,7 @@ fn disassemble_body_to_string_inner(
 }
 
 
-fn instruction_tree_to_detailed_tree(instructions: Tree<Instruction>) -> DetailedInstructionTree {
+fn instruction_tree_to_detailed_tree(instructions: InstructionTree<Instruction>) -> DetailedInstructionTree {
     DetailedInstructionTree(instructions.map(|i| {
         let inner = get_inner_instructions_as_detailed_tree(&i).map(Box::new);
         (i, inner)
@@ -264,18 +251,9 @@ fn get_inner_instructions_as_detailed_tree(instruction: &Instruction) -> Option<
         _ => None
     }
 }
-
-/// Converts a raw DXB body into a list of disassembled Instruction values
-pub fn disassemble_body(body: &[u8], nested_instruction_resolution_strategy: NestedInstructionResolutionStrategy) -> (Tree<Instruction>, Option<DXBParserError>) {
-    let mut iterator = iterate_instructions(Rc::new(RefCell::new(body.to_vec())), nested_instruction_resolution_strategy);
-    let mut tree = Tree::new(Instruction::Regular(RegularInstruction::UnboundedStatements)); // initial tree root, gets overridden
-    let err = disassemble_body_inner(&mut iterator, &mut tree, CountOrUnbounded::UnboundedStart, true);
-    (tree, err)
-}
-
 fn disassemble_body_inner(
     iterator: &mut impl Iterator<Item = Result<Instruction, DXBParserError>>,
-    parent: &mut Tree<Instruction>,
+    parent: &mut InstructionTree<Instruction>,
     count_or_unbounded: CountOrUnbounded,
     is_root: bool,
 ) -> Option<DXBParserError> {
@@ -290,7 +268,7 @@ fn disassemble_body_inner(
                     Ok(instruction) => {
                         // get next expected children
                         let next_expected_count = instruction.get_next_expected_instructions().total_count();
-                        let mut tree = Tree::new(instruction);
+                        let mut tree = InstructionTree::new(instruction);
 
                         let err = match next_expected_count {
                             Some(next_expected_count) => {
@@ -333,11 +311,12 @@ fn disassemble_body_inner(
 }
 
 
+#[cfg(feature = "disassembler")]
 #[macro_export]
 macro_rules! assert_instructions_equal {
     ($dxb:expr, $expected:expr) => {{
         use crate::global::protocol_structures::instructions::NestedInstructionResolutionStrategy;
-        use crate::global::protocol_structures::disassembler::disassemble_body;
+        use crate::disassembler::disassemble_body;
 
         let (instructions, err) = disassemble_body($dxb, NestedInstructionResolutionStrategy::ResolveNestedScopesFlat);
         if let Some(err) = err {
@@ -350,11 +329,12 @@ macro_rules! assert_instructions_equal {
     }}
 }
 
+#[cfg(feature = "disassembler")]
 #[macro_export]
 macro_rules! assert_regular_instructions_equal {
     ($dxb:expr, $expected:expr) => {{
         use crate::global::protocol_structures::instructions::NestedInstructionResolutionStrategy;
-        use crate::global::protocol_structures::disassembler::disassemble_body;
+        use crate::disassembler::disassemble_body;
 
         let (instructions, err) = disassemble_body($dxb, NestedInstructionResolutionStrategy::ResolveNestedScopesFlat);
         if let Some(err) = err {
@@ -392,7 +372,7 @@ mod tests {
     /// empty dxb
     #[case(
         &[],
-        Tree::new(Instruction::Regular(RegularInstruction::UnboundedStatements)),
+        InstructionTree::new(Instruction::Regular(RegularInstruction::UnboundedStatements)),
         Some(DXBParserError::ExpectingMoreInstructions)
     )]
 
@@ -402,7 +382,7 @@ mod tests {
             Instruction::Regular(RegularInstruction::True),
             Instruction::Regular(RegularInstruction::False),
         ],
-        Tree::new(Instruction::Regular(RegularInstruction::True)),
+        InstructionTree::new(Instruction::Regular(RegularInstruction::True)),
         Some(DXBParserError::UnexpectedBytesAfterEndOfInstructions)
     )]
 
@@ -414,11 +394,11 @@ mod tests {
             Instruction::Regular(RegularInstruction::True),
             Instruction::Regular(RegularInstruction::False),
         ],
-        Tree {
+        InstructionTree {
             instruction: Box::new(Instruction::Regular(RegularInstruction::Statements(StatementsData {statements_count: 2, terminated: true}))),
             children: vec![
-                Tree::new(Instruction::Regular(RegularInstruction::True)),
-                Tree::new(Instruction::Regular(RegularInstruction::False)),
+                InstructionTree::new(Instruction::Regular(RegularInstruction::True)),
+                InstructionTree::new(Instruction::Regular(RegularInstruction::False)),
             ]
         },
         None
@@ -432,12 +412,12 @@ mod tests {
             Instruction::Regular(RegularInstruction::False),
             Instruction::Regular(RegularInstruction::UnboundedStatementsEnd(UnboundedStatementsData {terminated: false})),
         ],
-        Tree {
+        InstructionTree {
             instruction: Box::new(Instruction::Regular(RegularInstruction::UnboundedStatements)),
             children: vec![
-                Tree::new(Instruction::Regular(RegularInstruction::True)),
-                Tree::new(Instruction::Regular(RegularInstruction::False)),
-                Tree::new(Instruction::Regular(RegularInstruction::UnboundedStatementsEnd(UnboundedStatementsData {terminated: false})))
+                InstructionTree::new(Instruction::Regular(RegularInstruction::True)),
+                InstructionTree::new(Instruction::Regular(RegularInstruction::False)),
+                InstructionTree::new(Instruction::Regular(RegularInstruction::UnboundedStatementsEnd(UnboundedStatementsData {terminated: false})))
             ]
         },
         None
@@ -453,18 +433,18 @@ mod tests {
             Instruction::Regular(RegularInstruction::UnboundedStatementsEnd(UnboundedStatementsData {terminated: false})),
             Instruction::Regular(RegularInstruction::Null),
         ],
-        Tree {
+        InstructionTree {
             instruction: Box::new(Instruction::Regular(RegularInstruction::Statements(StatementsData {statements_count: 2, terminated: true}))),
             children: vec![
-                Tree {
+                InstructionTree {
                     instruction: Box::new(Instruction::Regular(RegularInstruction::UnboundedStatements)),
                     children: vec![
-                        Tree::new(Instruction::Regular(RegularInstruction::True)),
-                        Tree::new(Instruction::Regular(RegularInstruction::False)),
-                        Tree::new(Instruction::Regular(RegularInstruction::UnboundedStatementsEnd(UnboundedStatementsData {terminated: false})))
+                        InstructionTree::new(Instruction::Regular(RegularInstruction::True)),
+                        InstructionTree::new(Instruction::Regular(RegularInstruction::False)),
+                        InstructionTree::new(Instruction::Regular(RegularInstruction::UnboundedStatementsEnd(UnboundedStatementsData {terminated: false})))
                     ]
                 },
-                Tree::new(Instruction::Regular(RegularInstruction::Null)),
+                InstructionTree::new(Instruction::Regular(RegularInstruction::Null)),
             ]
         },
         None
@@ -475,7 +455,7 @@ mod tests {
         &[
             Instruction::Regular(RegularInstruction::True),
         ],
-        Tree::new(Instruction::Regular(RegularInstruction::True)),
+        InstructionTree::new(Instruction::Regular(RegularInstruction::True)),
         None
     )]
 
@@ -485,10 +465,10 @@ mod tests {
             Instruction::Regular(RegularInstruction::Statements(StatementsData {statements_count: 2, terminated: true})),
             Instruction::Regular(RegularInstruction::True),
         ],
-        Tree {
+        InstructionTree {
             instruction: Box::new(Instruction::Regular(RegularInstruction::Statements(StatementsData {statements_count: 2, terminated: true}))),
             children: vec![
-                Tree::new(Instruction::Regular(RegularInstruction::True)),
+                InstructionTree::new(Instruction::Regular(RegularInstruction::True)),
             ]
         },
         Some(DXBParserError::ExpectingMoreInstructions)
@@ -508,7 +488,7 @@ mod tests {
             })),
             Instruction::Regular(RegularInstruction::True)
         ],
-        Tree {
+        InstructionTree {
             instruction: Box::new(Instruction::Regular(RegularInstruction::RemoteExecution(InstructionBlockData {
                 length: 2,
                 injected_variable_count: 0,
@@ -519,7 +499,7 @@ mod tests {
                 ]
             }))),
             children: vec![
-                Tree::new(Instruction::Regular(RegularInstruction::True)),
+                InstructionTree::new(Instruction::Regular(RegularInstruction::True)),
             ]
         },
         None
@@ -527,7 +507,7 @@ mod tests {
 
     fn disassemble_statements(
         #[case] instructions: &[Instruction],
-        #[case] expected_tree: Tree<Instruction>,
+        #[case] expected_tree: InstructionTree<Instruction>,
         #[case] expected_err: Option<DXBParserError>,
     ) {
         let dxb = instructions_to_bytes(instructions.to_vec());
@@ -558,7 +538,7 @@ mod tests {
         let (tree, err) = disassemble_body(&dxb, NestedInstructionResolutionStrategy::ResolveNestedScopesFlat);
 
         assert_eq!(err, None);
-        assert_eq!(tree, Tree {
+        assert_eq!(tree, InstructionTree {
             instruction: Box::new(Instruction::Regular(RegularInstruction::_RemoteExecutionDebugFlat(InstructionBlockDataDebugFlat {
                 length: 5,
                 injected_variable_count: 0,
@@ -570,7 +550,7 @@ mod tests {
                 ]
             }))),
             children: vec![
-                Tree::new(Instruction::Regular(RegularInstruction::True)),
+                InstructionTree::new(Instruction::Regular(RegularInstruction::True)),
             ]
         });
     }
@@ -608,21 +588,21 @@ mod tests {
         }));
 
         assert_eq!(err, None);
-        assert_eq!(tree, Tree {
+        assert_eq!(tree, InstructionTree {
             instruction: Box::new(Instruction::Regular(RegularInstruction::_RemoteExecutionDebugTree(InstructionBlockDataDebugTree {
                 length: 5,
                 injected_variable_count: 0,
                 injected_variables: vec![],
-                body: Tree {
+                body: InstructionTree {
                     instruction: Box::new(Instruction::Regular(RegularInstruction::Add)),
                     children: vec![
-                        Tree::new(Instruction::Regular(RegularInstruction::UInt8(UInt8Data(42)))),
-                        Tree::new(Instruction::Regular(RegularInstruction::UInt8(UInt8Data(43)))),
+                        InstructionTree::new(Instruction::Regular(RegularInstruction::UInt8(UInt8Data(42)))),
+                        InstructionTree::new(Instruction::Regular(RegularInstruction::UInt8(UInt8Data(43)))),
                     ]
                 }
             }))),
             children: vec![
-                Tree::new(Instruction::Regular(RegularInstruction::True)),
+                InstructionTree::new(Instruction::Regular(RegularInstruction::True)),
             ]
         });
     }

@@ -57,6 +57,7 @@ pub mod traits;
 pub mod types;
 pub mod utils;
 pub mod values;
+pub mod disassembler;
 
 // reexport macros
 pub use datex_macros_internal as macros;

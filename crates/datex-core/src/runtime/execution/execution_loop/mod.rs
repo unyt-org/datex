@@ -546,8 +546,8 @@ pub fn inner_execution_loop(
                             RegularInstruction::RemoteExecution(_) |
                             RegularInstruction::SharedRefWithValue(_) |
                             RegularInstruction::TypeExpression => unreachable!(),
-                            RegularInstruction::_RemoteExecutionDebugFlat(_) => unreachable!(),
-                            RegularInstruction::_RemoteExecutionDebugTree(_) => unreachable!(),
+                            #[cfg(feature = "disassembler")]
+                            RegularInstruction::_RemoteExecutionDebugFlat(_) | RegularInstruction::_RemoteExecutionDebugTree(_) => unreachable!(),
                         })
                     } else {
                         None

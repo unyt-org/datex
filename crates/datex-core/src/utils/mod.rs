@@ -7,3 +7,4 @@ pub mod maybe_action;
 pub mod maybe_async;
 pub mod task_manager;
 pub mod uuid;
+pub mod ansi_colors;

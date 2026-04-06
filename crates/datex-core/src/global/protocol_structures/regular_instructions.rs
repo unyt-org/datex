@@ -1,4 +1,3 @@
-use std::io::Write;
 use core::fmt::Write as FmtWrite;
 use core::fmt::Display;
 use binrw::io::{Read, Seek};
@@ -8,8 +7,10 @@ use serde::{Serialize, Serializer};
 use serde::ser::SerializeTuple;
 use crate::dxb_parser::body::DXBParserError;
 use crate::global::instruction_codes::InstructionCode;
-use crate::global::protocol_structures::instruction_data::{ApplyData, DecimalData, Float32Data, Float64Data, FloatAsInt16Data, FloatAsInt32Data, InstructionBlockData, InstructionBlockDataDebugFlat, InstructionBlockDataDebugTree, Int128Data, Int16Data, Int32Data, Int64Data, Int8Data, IntegerData, ListData, MapData, ModifyStackValue, Move, PerformMove, PushToStackMultiple, RawInternalPointerAddress, RawLocalPointerAddress, RawRemotePointerAddress, SetSharedContainerValue, SharedRef, SharedRefWithValue, ShortListData, ShortMapData, ShortStatementsData, ShortTextData, ShortTextDataRaw, StackIndex, StatementsData, TextData, TextDataRaw, UInt128Data, UInt16Data, UInt32Data, UInt64Data, UInt8Data, UnboundedStatementsData};
-use crate::global::protocol_structures::instructions::{InnerInstructions, NextExpectedInstructions};
+#[cfg(feature = "disassembler")]
+use crate::disassembler::InnerInstructions;
+use crate::global::protocol_structures::instruction_data::{ApplyData, DecimalData, Float32Data, Float64Data, FloatAsInt16Data, FloatAsInt32Data, InstructionBlockData, Int128Data, Int16Data, Int32Data, Int64Data, Int8Data, IntegerData, ListData, MapData, ModifyStackValue, Move, PerformMove, PushToStackMultiple, RawInternalPointerAddress, RawLocalPointerAddress, RawRemotePointerAddress, SetSharedContainerValue, SharedRef, SharedRefWithValue, ShortListData, ShortMapData, ShortStatementsData, ShortTextData, ShortTextDataRaw, StackIndex, StatementsData, TextData, TextDataRaw, UInt128Data, UInt16Data, UInt32Data, UInt64Data, UInt8Data, UnboundedStatementsData};
+use crate::global::protocol_structures::instructions::{NextExpectedInstructions};
 use crate::shared_values::pointer_address::PointerAddress;
 use crate::values::core_values::decimal::utils::decimal_to_string;
 use crate::values::core_values::endpoint::Endpoint;
@@ -52,10 +53,12 @@ pub enum RegularInstruction {
     RemoteExecution(InstructionBlockData),
     /// Debug variant for RemoteExecution, includes full remote execution instruction list (flat) instead of raw dxb
     /// This variant is only used by the disassembler
-    _RemoteExecutionDebugFlat(InstructionBlockDataDebugFlat),
+    #[cfg(feature = "disassembler")]
+    _RemoteExecutionDebugFlat(crate::global::protocol_structures::instruction_data::InstructionBlockDataDebugFlat),
     /// Debug variant for RemoteExecution, includes full remote execution instruction tree instead of raw dxb
     /// This variant is only used by the disassembler
-    _RemoteExecutionDebugTree(InstructionBlockDataDebugTree),
+    #[cfg(feature = "disassembler")]
+    _RemoteExecutionDebugTree(crate::global::protocol_structures::instruction_data::InstructionBlockDataDebugTree),
 
     ShortText(ShortTextData),
     Text(TextData),
@@ -238,8 +241,8 @@ impl From<&RegularInstruction> for InstructionCode {
             RegularInstruction::Unbox => InstructionCode::UNBOX,
             RegularInstruction::TypedValue => InstructionCode::TYPED_VALUE,
             RegularInstruction::TypeExpression => InstructionCode::TYPE_EXPRESSION,
-            RegularInstruction::_RemoteExecutionDebugFlat(_) => InstructionCode::REMOTE_EXECUTION,
-            RegularInstruction::_RemoteExecutionDebugTree(_) => InstructionCode::REMOTE_EXECUTION,
+            #[cfg(feature = "disassembler")]
+            RegularInstruction::_RemoteExecutionDebugFlat(_) | RegularInstruction::_RemoteExecutionDebugTree(_) => InstructionCode::REMOTE_EXECUTION,
         }
     }
 }
@@ -249,7 +252,9 @@ impl RegularInstruction {
     /// Returns how many (if any) regular or type instructions are expected as child instructions for a given instructions
     pub fn get_next_expected_instructions(&self) -> NextExpectedInstructions {
         match self {
-            RegularInstruction::RemoteExecution(_) |
+            RegularInstruction::RemoteExecution(_)  => NextExpectedInstructions::Regular(1), // receivers
+
+            #[cfg(feature = "disassembler")]
             RegularInstruction::_RemoteExecutionDebugTree(_) |
             RegularInstruction::_RemoteExecutionDebugFlat(_) => NextExpectedInstructions::Regular(1), // receivers
 
@@ -863,6 +868,7 @@ impl RegularInstruction {
                     data.injected_variables
                 )
             }
+            #[cfg(feature = "disassembler")]
             RegularInstruction::_RemoteExecutionDebugTree(data) => {
                 write!(
                     string,
@@ -871,6 +877,7 @@ impl RegularInstruction {
                     data.injected_variables
                 )
             }
+            #[cfg(feature = "disassembler")]
             RegularInstruction::_RemoteExecutionDebugFlat(data) => {
                 write!(
                     string,
@@ -909,6 +916,7 @@ impl RegularInstruction {
         Some(string)
     }
 
+    #[cfg(feature = "disassembler")]
     pub fn inner_instructions(&self) -> InnerInstructions {
         match self {
             RegularInstruction::_RemoteExecutionDebugTree(data) => InnerInstructions::Tree(&data.body),
@@ -919,6 +927,7 @@ impl RegularInstruction {
 }
 
 /// Serializes RegularInstruction to tuple (instruction code as string, optional metadata as string)
+#[cfg(feature = "disassembler")]
 impl Serialize for RegularInstruction {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where

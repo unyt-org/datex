@@ -1,12 +1,12 @@
 use core::{fmt::Display, prelude::rust_2024::*};
 use serde::Serialize;
-use crate::global::protocol_structures::disassembler::Tree;
 use crate::global::protocol_structures::regular_instructions::RegularInstruction;
 use crate::global::protocol_structures::type_instructions::TypeInstruction;
 use crate::prelude::*;
 
-#[derive(Clone, Debug, PartialEq, Serialize)]
-#[serde(untagged)]
+#[derive(Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "disassembler", derive(Serialize))]
+#[cfg_attr(feature = "disassembler", serde(untagged))]
 pub enum Instruction {
     // regular instruction
     Regular(RegularInstruction),
@@ -42,6 +42,7 @@ impl Display for Instruction {
         }
     }
 }
+
 
 impl From<RegularInstruction> for Instruction {
     fn from(instruction: RegularInstruction) -> Self {
@@ -92,12 +93,4 @@ pub enum NestedInstructionResolutionStrategy {
     ResolveNestedScopesFlat,
     /// Recursively resolves nested instructions scopes (e.g. for remote execution) as an instructions tree structure
     ResolveNestedScopesTree,
-}
-
-#[derive(Default, Clone, Debug, PartialEq)]
-pub enum InnerInstructions<'a> {
-    #[default]
-    None,
-    Flat(&'a Vec<Instruction>),
-    Tree(&'a Tree<Instruction>),
 }

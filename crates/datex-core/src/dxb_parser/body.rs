@@ -5,7 +5,6 @@ use crate::{
     },
     global::{
         protocol_structures::instruction_data::{ UInt8Data },
-        type_instruction_codes::TypeInstructionCode,
     },
     runtime::execution::macros::yield_unwrap,
 };
@@ -16,8 +15,6 @@ use binrw::{BinRead, io::Cursor};
 use core::{
     cell::RefCell, convert::TryFrom, fmt, fmt::Display, result::Result,
 };
-use crate::global::protocol_structures::disassembler::disassemble_body;
-use crate::global::protocol_structures::instruction_data::{InstructionBlockDataDebugFlat, InstructionBlockDataDebugTree};
 use crate::global::protocol_structures::instructions::{Instruction, NestedInstructionResolutionStrategy};
 use crate::global::protocol_structures::regular_instructions::{RegularInstruction};
 use crate::global::protocol_structures::type_instructions::TypeInstruction;
@@ -171,10 +168,12 @@ pub fn iterate_instructions(
                 NextInstructionType::Regular => {
                     let instruction = yield_unwrap!(RegularInstruction::read(&mut reader));
                     let instruction = if let RegularInstruction::RemoteExecution(instruction_block_data) = instruction {
-                        // FIXME: put behind disassembler feature flag
                         match nested_instruction_resolution_strategy {
+                            #[cfg(feature = "disassembler")]
                             NestedInstructionResolutionStrategy::ResolveNestedScopesFlat | NestedInstructionResolutionStrategy::ResolveNestedScopesTree => {
-                                let (inner_instructions, err) = disassemble_body(
+                                use crate::global::protocol_structures::instruction_data::{InstructionBlockDataDebugFlat, InstructionBlockDataDebugTree};
+
+                                let (inner_instructions, err) = crate::disassembler::disassemble_body(
                                     &instruction_block_data.body,
                                     nested_instruction_resolution_strategy
                                 );
