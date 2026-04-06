@@ -413,7 +413,6 @@ fn compile_ast(
     compilation_context: &mut CompilationContext,
     options: CompileOptions,
 ) -> Result<CompilationScope, CompilerError> {
-    info!("ast {:#?}", ast.metadata.borrow());
     let compilation_scope =
         compile_rich_ast(compilation_context, ast, options.compile_scope)?;
     Ok(compilation_scope)
