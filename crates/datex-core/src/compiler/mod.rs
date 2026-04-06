@@ -1497,10 +1497,15 @@ pub mod tests {
         compile_template, parse_datex_script_to_rich_ast_simple_error,
     };
 
-    use crate::{assert_instructions_equal, assert_regular_instructions_equal, compiler::scope::CompilationScope, global::{
+    use crate::{compiler::scope::CompilationScope, global::{
         instruction_codes::InstructionCode,
         type_instruction_codes::TypeInstructionCode,
     }, libs::core::CoreLibPointerId, runtime::execution::context::ExecutionMode};
+
+    #[cfg(feature = "disassembler")]
+    use crate::{assert_instructions_equal, assert_regular_instructions_equal};
+    #[cfg(feature = "disassembler")]
+    use crate::global::protocol_structures::instruction_data::InstructionBlockDataDebugFlat;
 
     use crate::{
         compiler::error::CompilerError, prelude::*,
@@ -1511,8 +1516,8 @@ pub mod tests {
     use core::assert_matches;
     use log::*;
     use crate::disassembler::print_disassembled;
-    use crate::global::protocol_structures::injected_variable_type::{InjectedVariableType, LocalInjectedVariableType, SharedInjectedVariableType};
-    use crate::global::protocol_structures::instruction_data::{InstructionBlockData, InstructionBlockDataDebugFlat, InstructionBlockDataDebugTree, IntegerData, StackIndex, StatementsData, UInt8Data};
+    use crate::global::protocol_structures::injected_variable_type::{InjectedVariableType, SharedInjectedVariableType};
+    use crate::global::protocol_structures::instruction_data::{InstructionBlockData, IntegerData, StackIndex, StatementsData, UInt8Data};
     use crate::global::protocol_structures::instructions::Instruction;
     use crate::global::protocol_structures::regular_instructions::RegularInstruction;
     use crate::values::core_values::integer::Integer;
@@ -1873,6 +1878,7 @@ pub mod tests {
     }
 
     #[test]
+    #[cfg(feature = "disassembler")]
     fn range_i64() {
         let start = 128i64;
         let end = 256i64;
@@ -2452,6 +2458,7 @@ pub mod tests {
     }
 
     #[test]
+    #[cfg(feature = "disassembler")]
     fn nested_statements() {
         flexi_logger::init();
         let script = r#"
@@ -2567,6 +2574,7 @@ pub mod tests {
     }
 
     #[test]
+    #[cfg(feature = "disassembler")]
     fn remote_execution_injected_const() {
         let script = "const x = 42u8; 1u8 :: x";
         let (res, _) =
@@ -2592,6 +2600,7 @@ pub mod tests {
     }
 
     #[test]
+    #[cfg(feature = "disassembler")]
     fn remote_execution_injected_shared_move() {
         // var x only refers to a value, not a ref, but since it is transferred to a
         // remote context, its state is synced via a ref (VariableReference model)
@@ -2619,6 +2628,7 @@ pub mod tests {
     }
 
     #[test]
+    #[cfg(feature = "disassembler")]
     fn remote_execution_injected_shared_ref() {
         let script = "const x = shared 42u8; 1u8 :: 'x";
         let (res, _) =
@@ -2649,6 +2659,7 @@ pub mod tests {
     }
 
     #[test]
+    #[cfg(feature = "disassembler")]
     fn remote_execution_injected_consts() {
         let script = "const x = 42u8; const y = 69u8; 1u8 :: x + y";
         let (res, _) =
