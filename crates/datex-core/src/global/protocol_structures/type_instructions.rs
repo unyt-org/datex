@@ -1,4 +1,3 @@
-use std::io::Write;
 use core::fmt::Write as FmtWrite;
 use core::fmt::Display;
 use binrw::io::{Read, Seek};

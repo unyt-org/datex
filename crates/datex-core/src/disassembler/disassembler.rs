@@ -354,7 +354,6 @@ mod tests {
     use crate::core_compiler::value_compiler::{append_instruction};
     use binrw::io::{Cursor};
     use rstest::rstest;
-    use crate::compiler::{compile_script, CompileOptions};
     use crate::global::protocol_structures::instruction_data::{InstructionBlockData, InstructionBlockDataDebugFlat, InstructionBlockDataDebugTree, StatementsData, UInt8Data, UnboundedStatementsData};
     use crate::global::protocol_structures::regular_instructions::RegularInstruction;
     use super::*;
@@ -574,18 +573,7 @@ mod tests {
         ];
         let dxb = instructions_to_bytes(instructions.to_vec());
         let (tree, err) = disassemble_body(&dxb, NestedInstructionResolutionStrategy::ResolveNestedScopesTree);
-
-        println!("{}", disassemble_body_to_string(&dxb, DisassemblerOptions {
-            tree: true,
-            colorized: true,
-            recursive: true,
-        }));
-
-        println!("{}", disassemble_body_to_string(&dxb, DisassemblerOptions {
-            tree: false,
-            colorized: true,
-            recursive: true,
-        }));
+        
 
         assert_eq!(err, None);
         assert_eq!(tree, InstructionTree {
@@ -611,6 +599,8 @@ mod tests {
     #[cfg(all(feature = "std", feature = "compiler"))]
     #[test]
     fn disassemble_string_test() {
+        use crate::compiler::{compile_script, CompileOptions};
+
         let script = r#"
             var x = 5;
             var y = 42;

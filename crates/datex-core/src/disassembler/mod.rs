@@ -6,6 +6,7 @@ pub use disassembler::*;
 use crate::disassembler::options::DisassemblerOptions;
 use cfg_if::cfg_if;
 use log::info;
+use crate::prelude::*;
 
 /// Converts a DXB block to a human-readable assembly string representation and prints it to stdout
 pub fn print_disassembled(dxb: &[u8]) {
