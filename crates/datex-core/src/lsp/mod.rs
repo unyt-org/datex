@@ -4,6 +4,8 @@ mod utils;
 mod variable_declaration_finder;
 use core::cell::RefCell;
 
+pub mod io;
+
 use crate::{
     ast::expressions::{
         DatexExpressionData, VariableAccess, ValueAccessType, VariableAssignment,
@@ -28,11 +30,7 @@ use realhydroper_lsp::{
 };
 
 use crate::prelude::*;
-
-#[cfg(feature = "lsp_wasm")]
 use futures::io::{AsyncRead, AsyncWrite};
-#[cfg(not(feature = "lsp_wasm"))]
-use tokio::io::{AsyncRead, AsyncWrite};
 
 pub struct LanguageServerBackend {
     pub client: Client,
@@ -420,7 +418,8 @@ where
 #[cfg(test)]
 mod tests {
     use core::str::FromStr;
-
+    use futures::channel::mpsc;
+    use futures_util::StreamExt;
     use crate::{
         prelude::*, runtime::RuntimeConfig,
         values::core_values::endpoint::Endpoint,
@@ -429,10 +428,10 @@ mod tests {
     use super::*;
     use crate::runtime::RuntimeRunner;
     use tokio::{
-        io::{AsyncReadExt, AsyncWriteExt, duplex},
         time::{Duration, timeout},
     };
     use tokio::task::LocalSet;
+    use crate::lsp::io::{Reader, Writer};
 
     #[tokio::test(flavor = "current_thread")]
     async fn test_lsp_initialization() {
@@ -441,10 +440,13 @@ mod tests {
                 Endpoint::from_str("@lspler").unwrap(),
             ))
                 .run(async |runtime| {
-                    let (mut client_read, server_write) = duplex(1024);
-                    let (server_read, mut client_write) = duplex(1024);
+                    let (tx_to_lsp, rx_from_client) = mpsc::unbounded::<Vec<u8>>();
+                    let (tx_to_client, mut rx_from_lsp) = mpsc::unbounded::<Vec<u8>>();
 
-                    let lsp_future = create_lsp(runtime, server_read, server_write);
+                    let reader = Reader::new(rx_from_client);
+                    let writer = Writer::new(tx_to_client);
+
+                    let lsp_future = create_lsp(runtime, reader, writer);
                     let lsp_handle = tokio::task::spawn_local(lsp_future);
 
                     // Send initialize request
@@ -465,20 +467,18 @@ mod tests {
                         init_body
                     );
 
-                    client_write
-                        .write_all(init_request.as_bytes())
-                        .await
+                    tx_to_lsp
+                        .unbounded_send(init_request.as_bytes().to_vec())
                         .unwrap();
 
                     // Read response
-                    let mut buffer = vec![0; 1024];
-                    let n =
-                        timeout(Duration::from_secs(2), client_read.read(&mut buffer))
+                    let response =
+                        timeout(Duration::from_secs(2), rx_from_lsp.next())
                             .await
                             .unwrap()
                             .unwrap();
 
-                    let response = String::from_utf8_lossy(&buffer[..n]);
+                    let response = String::from_utf8_lossy(&response);
                     assert!(response.contains(r#""id":1"#));
                     lsp_handle.abort();
                 })

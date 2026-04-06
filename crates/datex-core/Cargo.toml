@@ -106,6 +106,7 @@ internment = { version = "0.8.6", optional = true }
 # lsp dependencies (optional)
 realhydroper-lsp = { version = "0.22.0", default-features = false, features = [
     "proposed",
+    "runtime-agnostic"
 ], optional = true }
 
 
@@ -286,10 +287,8 @@ disassembler = []
 ### LSP-related features ######################################################
 
 lsp = ["dep:realhydroper-lsp", "compiler"]
-# lsp support
-lsp_tokio = ["lsp", "realhydroper-lsp/runtime-tokio"]
-# enable runtime-agnostic feature for realhydroper-lsp in wasm
-lsp_wasm = ["lsp", "realhydroper-lsp/runtime-agnostic"]
+lsp_tokio = ["lsp"]
+lsp_wasm = ["lsp"]
 
 
 ### Utils for creating macros #################################################
