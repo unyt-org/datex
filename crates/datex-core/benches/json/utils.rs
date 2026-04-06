@@ -15,6 +15,7 @@ use datex_core::{
 use json_syntax::Parse;
 use serde_json::Value;
 use std::{io::Read, rc::Rc};
+use datex_core::runtime::execution::execution_input::ExecutionCallerMetadata;
 
 pub fn get_json_test_string(file_path: &str) -> String {
     // read json from test file
@@ -45,6 +46,7 @@ pub fn json_to_datex_value(json: &str) -> ValueContainer {
         .expect("Failed to parse JSON string");
     let exec_input = ExecutionInput::new(
         &dxb,
+        ExecutionCallerMetadata::local_default(),
         ExecutionOptions::default(),
         Rc::new(RuntimeInternal::stub()),
     );
@@ -74,6 +76,7 @@ pub fn json_to_runtime_value_datex<'a>(json: &'a str) {
     .expect("Failed to parse JSON string");
     let exec_input = ExecutionInput::new(
         &dxb,
+        ExecutionCallerMetadata::local_default(),
         ExecutionOptions::default(),
         Rc::new(RuntimeInternal::stub()),
     );
@@ -120,6 +123,7 @@ pub fn json_to_dxb<'a>(json: &'a str) {
 pub fn dxb_to_runtime_value(dxb: &[u8]) {
     let exec_input = ExecutionInput::new(
         dxb,
+        ExecutionCallerMetadata::local_default(),
         ExecutionOptions::default(),
         Rc::new(RuntimeInternal::stub()),
     );
@@ -143,13 +147,13 @@ pub fn runtime_value_to_json_baseline_json_syntax(value: &json_syntax::Value) {
 }
 
 pub fn runtime_value_to_json_datex(value: &ValueContainer) {
-    let dxb = compile_value_container(value);
+    let dxb = compile_value_container(value).unwrap();
     let string = decompile_body(&dxb, DecompileOptions::json_compat()).unwrap();
     assert!(!string.is_empty(), "Expected DATEX string to be non-empty");
 }
 
 pub fn runtime_value_to_dxb(value: &ValueContainer) {
-    let dxb = compile_value_container(value);
+    let dxb = compile_value_container(value).unwrap();
     assert!(!dxb.is_empty(), "Expected DXB to be non-empty");
 }
 
