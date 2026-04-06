@@ -4,8 +4,11 @@ use crate::global::protocol_structures::instructions::NestedInstructionResolutio
 #[derive(Debug, Serialize, Deserialize)]
 #[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
 pub struct DisassemblerOptions {
+    #[serde(default)]
     pub tree: bool,
+    #[serde(default)]
     pub colorized: bool,
+    #[serde(default)]
     pub recursive: bool,
 }
 
