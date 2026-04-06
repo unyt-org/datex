@@ -1513,7 +1513,7 @@ pub mod tests {
     use log::*;
     use crate::global::protocol_structures::disassembler::{disassemble_body, disassemble_body_to_string, DisassemblerOptions};
     use crate::global::protocol_structures::injected_variable_type::{InjectedVariableType, LocalInjectedVariableType, SharedInjectedVariableType};
-    use crate::global::protocol_structures::instruction_data::{InstructionBlockData, IntegerData, StackIndex, StatementsData, UInt8Data};
+    use crate::global::protocol_structures::instruction_data::{InstructionBlockData, InstructionBlockDataDebugFlat, InstructionBlockDataDebugTree, IntegerData, StackIndex, StatementsData, UInt8Data};
     use crate::global::protocol_structures::instructions::Instruction;
     use crate::global::protocol_structures::regular_instructions::RegularInstruction;
     use crate::values::core_values::integer::Integer;
@@ -2578,18 +2578,13 @@ pub mod tests {
                 RegularInstruction::ShortStatements(StatementsData {statements_count: 2, terminated: false}),
                 RegularInstruction::PushToStack,
                 RegularInstruction::UInt8(UInt8Data(42)),
-                RegularInstruction::RemoteExecution(InstructionBlockData {
+                RegularInstruction::_RemoteExecutionDebugFlat(InstructionBlockDataDebugFlat {
                     length: 5,
                     injected_variable_count: 1,
                     // FIXME should be local
                     injected_variables: vec![(StackIndex(0), InjectedVariableType::Shared(SharedInjectedVariableType::Move))],
                     body: vec![
-                        InstructionCode::TAKE_STACK_VALUE.into(),
-                        // slot index as u32
-                        0,
-                        0,
-                        0,
-                        0,
+                        Instruction::Regular(RegularInstruction::TakeStackValue(StackIndex(0))),
                     ]
                 }),
                 RegularInstruction::UInt8(UInt8Data(1)),
@@ -2611,18 +2606,13 @@ pub mod tests {
                 RegularInstruction::PushToStack,
                 RegularInstruction::CreateShared,
                 RegularInstruction::UInt8(UInt8Data(42)),
-                RegularInstruction::RemoteExecution(InstructionBlockData {
+                RegularInstruction::_RemoteExecutionDebugFlat(InstructionBlockDataDebugFlat {
                     length: 5,
                     injected_variable_count: 1,
                     injected_variables: vec![(StackIndex(0), InjectedVariableType::Shared(SharedInjectedVariableType::Move))],
                     body: vec![
-                        InstructionCode::TAKE_STACK_VALUE.into(),
-                        // slot index as u32
-                        0,
-                        0,
-                        0,
-                        0,
-                    ]
+                        Instruction::Regular(RegularInstruction::TakeStackValue(StackIndex(0))),
+                    ],
                 }),
                 RegularInstruction::UInt8(UInt8Data(1)),
             ]

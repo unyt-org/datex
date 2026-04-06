@@ -1,4 +1,5 @@
 use core::{fmt::Display, prelude::rust_2024::*};
+use termcolor::Color;
 use crate::global::protocol_structures::regular_instructions::RegularInstruction;
 use crate::global::protocol_structures::type_instructions::TypeInstruction;
 use crate::prelude::*;
@@ -19,10 +20,10 @@ impl Instruction {
         }
     }
     
-    pub fn to_formatted_string(&self) -> String {
+    pub fn metadata_string(&self) -> Option<String> {
         match self {
-            Instruction::Regular(instr) => instr.to_formatted_string(),
-            Instruction::Type(instr) => instr.to_formatted_string(),
+            Instruction::Regular(instr) => instr.metadata_string(),
+            Instruction::Type(instr) => instr.metadata_string(),
         }
     }
 }
@@ -78,4 +79,15 @@ impl NextExpectedInstructions {
             NextExpectedInstructions::RegularAndType(regular_count, type_count) => Some(CountOrUnbounded::Count(regular_count + type_count)),
         }
     }
+}
+
+#[derive(Default, Clone, Debug, Copy, PartialEq, Eq)]
+pub enum NestedInstructionResolutionStrategy {
+    /// Does not resolve nested instructions scopes (e.g. for remote execution)
+    #[default]
+    None,
+    /// Recursively resolves nested instructions scopes (e.g. for remote execution) as an instructions vector
+    ResolveNestedScopesFlat,
+    /// Recursively resolves nested instructions scopes (e.g. for remote execution) as an instructions tree structure
+    ResolveNestedScopesTree,
 }

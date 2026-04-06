@@ -43,6 +43,7 @@ use num_enum::TryFromPrimitive;
 use crate::ast::expressions::{CloneExpression, SlotAssignment};
 use crate::global::operators::binary::ArithmeticOperator;
 use crate::global::protocol_structures::instruction_data::UnboundedStatementsData;
+use crate::global::protocol_structures::instructions::NestedInstructionResolutionStrategy;
 use crate::global::protocol_structures::regular_instructions::RegularInstruction;
 use crate::global::protocol_structures::type_instructions::TypeInstruction;
 
@@ -106,12 +107,13 @@ impl
     }
 }
 
+// TODO: don't convert to AST directly, first generate disassembler tree, then convert to AST?
 pub fn ast_from_bytecode(
     dxb: &[u8],
 ) -> Result<DatexExpression, DXBParserError> {
     let mut collector = InstructionCollector::<CollectedAstResult>::default();
 
-    for instruction in iterate_instructions(Rc::new(RefCell::new(dxb.to_vec())))
+    for instruction in iterate_instructions(Rc::new(RefCell::new(dxb.to_vec())), NestedInstructionResolutionStrategy::default())
     {
         let instruction = instruction?;
 
@@ -389,6 +391,9 @@ pub fn ast_from_bytecode(
                             | RegularInstruction::RemoteExecution(_)
                             | RegularInstruction::TypeExpression => {
                                 unreachable!()
+                            }
+                            RegularInstruction::_RemoteExecutionDebugFlat(_) | RegularInstruction::_RemoteExecutionDebugTree(_) => {
+                                todo!("also map to ast")
                             }
                         }
                         .with_default_span(),

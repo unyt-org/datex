@@ -1,12 +1,14 @@
-use core::fmt::Write;
+use std::io::Write;
+use core::fmt::Write as FmtWrite;
 use core::fmt::Display;
 use binrw::io::{Read, Seek};
 use binrw::{BinRead, BinResult, BinWrite, Endian};
 use binrw::meta::{EndianKind, ReadEndian};
+use termcolor::{Buffer, ColorSpec, Color, WriteColor};
 use crate::dxb_parser::body::DXBParserError;
 use crate::global::instruction_codes::InstructionCode;
-use crate::global::protocol_structures::instruction_data::{ApplyData, DecimalData, Float32Data, Float64Data, FloatAsInt16Data, FloatAsInt32Data, InstructionBlockData, Int128Data, Int16Data, Int32Data, Int64Data, Int8Data, IntegerData, ListData, MapData, ModifyStackValue, Move, PerformMove, PushToStackMultiple, RawInternalPointerAddress, RawLocalPointerAddress, RawRemotePointerAddress, SetSharedContainerValue, SharedRef, SharedRefWithValue, ShortListData, ShortMapData, ShortStatementsData, ShortTextData, ShortTextDataRaw, StackIndex, StatementsData, TextData, TextDataRaw, UInt128Data, UInt16Data, UInt32Data, UInt64Data, UInt8Data, UnboundedStatementsData};
-use crate::global::protocol_structures::instructions::NextExpectedInstructions;
+use crate::global::protocol_structures::instruction_data::{ApplyData, DecimalData, Float32Data, Float64Data, FloatAsInt16Data, FloatAsInt32Data, InstructionBlockData, InstructionBlockDataDebugFlat, InstructionBlockDataDebugTree, Int128Data, Int16Data, Int32Data, Int64Data, Int8Data, IntegerData, ListData, MapData, ModifyStackValue, Move, PerformMove, PushToStackMultiple, RawInternalPointerAddress, RawLocalPointerAddress, RawRemotePointerAddress, SetSharedContainerValue, SharedRef, SharedRefWithValue, ShortListData, ShortMapData, ShortStatementsData, ShortTextData, ShortTextDataRaw, StackIndex, StatementsData, TextData, TextDataRaw, UInt128Data, UInt16Data, UInt32Data, UInt64Data, UInt8Data, UnboundedStatementsData};
+use crate::global::protocol_structures::instructions::{NestedInstructionResolutionStrategy, NextExpectedInstructions};
 use crate::shared_values::pointer_address::PointerAddress;
 use crate::values::core_values::decimal::utils::decimal_to_string;
 use crate::values::core_values::endpoint::Endpoint;
@@ -47,6 +49,12 @@ pub enum RegularInstruction {
     Decimal(DecimalData),
 
     RemoteExecution(InstructionBlockData),
+    /// Debug variant for RemoteExecution, includes full remote execution instruction list (flat) instead of raw dxb
+    /// This variant is only used by the disassembler
+    _RemoteExecutionDebugFlat(InstructionBlockDataDebugFlat),
+    /// Debug variant for RemoteExecution, includes full remote execution instruction tree instead of raw dxb
+    /// This variant is only used by the disassembler
+    _RemoteExecutionDebugTree(InstructionBlockDataDebugTree),
 
     ShortText(ShortTextData),
     Text(TextData),
@@ -229,6 +237,8 @@ impl From<&RegularInstruction> for InstructionCode {
             RegularInstruction::Unbox => InstructionCode::UNBOX,
             RegularInstruction::TypedValue => InstructionCode::TYPED_VALUE,
             RegularInstruction::TypeExpression => InstructionCode::TYPE_EXPRESSION,
+            RegularInstruction::_RemoteExecutionDebugFlat(_) => InstructionCode::REMOTE_EXECUTION,
+            RegularInstruction::_RemoteExecutionDebugTree(_) => InstructionCode::REMOTE_EXECUTION,
         }
     }
 }
@@ -238,7 +248,9 @@ impl RegularInstruction {
     /// Returns how many (if any) regular or type instructions are expected as child instructions for a given instructions
     pub fn get_next_expected_instructions(&self) -> NextExpectedInstructions {
         match self {
-            RegularInstruction::RemoteExecution(_) => NextExpectedInstructions::Regular(1), // receivers
+            RegularInstruction::RemoteExecution(_) |
+            RegularInstruction::_RemoteExecutionDebugTree(_) |
+            RegularInstruction::_RemoteExecutionDebugFlat(_) => NextExpectedInstructions::Regular(1), // receivers
 
             RegularInstruction::ShortList(list) | RegularInstruction::List(list) =>
                 NextExpectedInstructions::Regular(list.element_count), // list elements
@@ -652,18 +664,6 @@ impl RegularInstruction {
 
         InstructionCode::try_from(instruction_code)
             .map_err(|_| DXBParserError::InvalidInstructionCode(instruction_code))
-    }
-
-    pub fn to_formatted_string(&self) -> String {
-        let mut string = String::new();
-        let code = InstructionCode::from(self);
-        write!(&mut string, "\x1b[38;2;39;149;245m{}\x1b[0m", code).unwrap();
-
-        if let Some(metadata_string) = self.metadata_string() {
-            write!(&mut string, " {}", metadata_string).unwrap();
-        }
-
-        string
     }
 
     pub fn metadata_string(&self) -> Option<String> {

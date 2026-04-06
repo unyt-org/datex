@@ -1,8 +1,10 @@
-use core::fmt::Write;
+use std::io::Write;
+use core::fmt::Write as FmtWrite;
 use core::fmt::Display;
 use binrw::io::{Read, Seek};
 use binrw::{BinRead, BinResult, BinWrite, Endian};
 use binrw::meta::{EndianKind, ReadEndian};
+use termcolor::{Buffer, Color, ColorSpec, WriteColor};
 use crate::dxb_parser::body::DXBParserError;
 use crate::global::instruction_codes::InstructionCode;
 use crate::global::protocol_structures::instruction_data::{ImplTypeData, IntegerData, ListData, ShortTextData, TextData, TypeReferenceData};
@@ -95,18 +97,6 @@ impl TypeInstruction {
 
         TypeInstructionCode::try_from(instruction_code)
             .map_err(|_| DXBParserError::InvalidInstructionCode(instruction_code))
-    }
-
-    pub fn to_formatted_string(&self) -> String {
-        let mut string = String::new();
-        let code = TypeInstructionCode::from(self);
-        write!(&mut string, "\x1b[38;2;245;39;176m{}\x1b[0m", code).unwrap();
-
-        if let Some(metadata_string) = self.metadata_string() {
-            write!(&mut string, " {}", metadata_string).unwrap();
-        }
-
-        string
     }
 
     pub fn metadata_string(&self) -> Option<String> {

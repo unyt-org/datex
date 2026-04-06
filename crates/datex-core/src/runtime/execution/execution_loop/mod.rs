@@ -74,7 +74,7 @@ use alloc::rc::Rc;
 use core::cell::RefCell;
 use crate::global::protocol_structures::injected_variable_type::{InjectedVariableType, SharedInjectedVariableType};
 use crate::global::protocol_structures::instruction_data::{ModifyStackValue, UnboundedStatementsData};
-use crate::global::protocol_structures::instructions::{Instruction};
+use crate::global::protocol_structures::instructions::{Instruction, NestedInstructionResolutionStrategy};
 use crate::global::protocol_structures::regular_instructions::RegularInstruction;
 use crate::global::protocol_structures::type_instructions::TypeInstruction;
 use crate::runtime::execution::execution_loop::remote_execution_blocks::compile_remote_execution_block;
@@ -261,7 +261,7 @@ pub fn inner_execution_loop(
         let mut collector =
             InstructionCollector::<CollectedExecutionResult>::default();
 
-        for instruction_result in iterate_instructions(dxb_body) {
+        for instruction_result in iterate_instructions(dxb_body, NestedInstructionResolutionStrategy::None) {
             let instruction = match instruction_result {
                 Ok(instruction) => instruction,
                 Err(DXBParserError::ExpectingMoreInstructions) => {
@@ -546,6 +546,8 @@ pub fn inner_execution_loop(
                             RegularInstruction::RemoteExecution(_) |
                             RegularInstruction::SharedRefWithValue(_) |
                             RegularInstruction::TypeExpression => unreachable!(),
+                            RegularInstruction::_RemoteExecutionDebugFlat(_) => unreachable!(),
+                            RegularInstruction::_RemoteExecutionDebugTree(_) => unreachable!(),
                         })
                     } else {
                         None

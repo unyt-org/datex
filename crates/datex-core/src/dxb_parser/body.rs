@@ -16,7 +16,9 @@ use binrw::{BinRead, io::Cursor};
 use core::{
     cell::RefCell, convert::TryFrom, fmt, fmt::Display, result::Result,
 };
-use crate::global::protocol_structures::instructions::{Instruction};
+use crate::global::protocol_structures::disassembler::disassemble_body;
+use crate::global::protocol_structures::instruction_data::{InstructionBlockDataDebugFlat, InstructionBlockDataDebugTree};
+use crate::global::protocol_structures::instructions::{Instruction, NestedInstructionResolutionStrategy};
 use crate::global::protocol_structures::regular_instructions::{RegularInstruction};
 use crate::global::protocol_structures::type_instructions::TypeInstruction;
 
@@ -127,6 +129,7 @@ impl Display for DXBParserError {
 // TODO #676: we must ensure while an execution for a block runs, no other executions run using the same next_instructions_stack - maybe also find a solution without Rc<RefCell>
 pub fn iterate_instructions(
     dxb_body_ref: Rc<RefCell<Vec<u8>>>,
+    nested_instruction_resolution_strategy: NestedInstructionResolutionStrategy,
 ) -> impl Iterator<Item = Result<Instruction, DXBParserError>> {
     gen move {
         // create a stack to track next instructions
@@ -167,6 +170,42 @@ pub fn iterate_instructions(
 
                 NextInstructionType::Regular => {
                     let instruction = yield_unwrap!(RegularInstruction::read(&mut reader));
+                    let instruction = if let RegularInstruction::RemoteExecution(instruction_block_data) = instruction {
+                        // FIXME: put behind disassembler feature flag
+                        match nested_instruction_resolution_strategy {
+                            NestedInstructionResolutionStrategy::ResolveNestedScopesFlat | NestedInstructionResolutionStrategy::ResolveNestedScopesTree => {
+                                let (inner_instructions, err) = disassemble_body(
+                                    &instruction_block_data.body,
+                                    nested_instruction_resolution_strategy
+                                );
+
+                                if let Some(err) = err {
+                                    return yield Err(err);
+                                }
+                                if nested_instruction_resolution_strategy == NestedInstructionResolutionStrategy::ResolveNestedScopesFlat {
+                                    RegularInstruction::_RemoteExecutionDebugFlat(InstructionBlockDataDebugFlat {
+                                        length: instruction_block_data.length,
+                                        injected_variable_count: instruction_block_data.injected_variable_count,
+                                        injected_variables: instruction_block_data.injected_variables,
+                                        body: inner_instructions.flatten(),
+                                    })
+                                }
+                                else {
+                                    RegularInstruction::_RemoteExecutionDebugTree(InstructionBlockDataDebugTree {
+                                        length: instruction_block_data.length,
+                                        injected_variable_count: instruction_block_data.injected_variable_count,
+                                        injected_variables: instruction_block_data.injected_variables,
+                                        body: inner_instructions,
+                                    })
+                                }
+                            }
+                            _ => RegularInstruction::RemoteExecution(instruction_block_data)
+                        }
+                    }
+                    else {
+                        instruction
+                    };
+
 
                     yield_unwrap!(next_instructions_stack.handle_next_expected_instructions(
                         instruction.get_next_expected_instructions()
@@ -195,16 +234,6 @@ pub fn iterate_instructions(
     }
 }
 
-fn get_next_type_instruction_code(
-    mut reader: &mut Cursor<Vec<u8>>,
-) -> Result<TypeInstructionCode, DXBParserError> {
-    let instruction_code = u8::read(&mut reader)
-        .map_err(|_| DXBParserError::FailedToReadInstructionCode)?;
-
-    TypeInstructionCode::try_from(instruction_code)
-        .map_err(|_| DXBParserError::InvalidInstructionCode(instruction_code))
-}
-
 #[cfg(test)]
 mod tests {
     use core::assert_matches;
@@ -214,7 +243,7 @@ mod tests {
     fn iterate_dxb(
         data: Vec<u8>,
     ) -> impl Iterator<Item = Result<Instruction, DXBParserError>> {
-        iterate_instructions(Rc::new(RefCell::new(data)))
+        iterate_instructions(Rc::new(RefCell::new(data)), NestedInstructionResolutionStrategy::default())
     }
 
     #[test]
@@ -324,7 +353,7 @@ mod tests {
     fn expect_more_instructions_after_partial() {
         let data = vec![InstructionCode::LIST as u8, 0x02, 0x00, 0x00, 0x00]; // LIST with 2 elements but no elements provided
         let data_ref = Rc::new(RefCell::new(data));
-        let mut iterator = iterate_instructions(data_ref.clone());
+        let mut iterator = iterate_instructions(data_ref.clone(), NestedInstructionResolutionStrategy::default());
         // first instruction should be LIST
         let result = iterator.next().unwrap();
         assert!(matches!(
@@ -372,7 +401,7 @@ mod tests {
     fn unbounded_expect_more_instructions() {
         let data = vec![InstructionCode::UNBOUNDED_STATEMENTS as u8]; // Start unbounded statements
         let data_ref = Rc::new(RefCell::new(data));
-        let mut iterator = iterate_instructions(data_ref.clone());
+        let mut iterator = iterate_instructions(data_ref.clone(), NestedInstructionResolutionStrategy::default());
         // first instruction should be UNBOUNDED_STATEMENTS
         let result = iterator.next().unwrap();
         assert!(matches!(
