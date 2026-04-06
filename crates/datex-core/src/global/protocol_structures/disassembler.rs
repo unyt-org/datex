@@ -200,7 +200,7 @@ fn disassemble_body_to_string_inner(
         output,
         "{}{}",
         indent,
-        if is_root_child || is_inner {""} else if is_last_child || children_len > 0 { "└─ " } else { "├─ " },
+        if is_root_child {""} else if is_inner {"↳  "} else if is_last_child || children_len > 0 { "└─ " } else { "├─ " },
     ).unwrap();
 
     write_instruction(
@@ -214,7 +214,7 @@ fn disassemble_body_to_string_inner(
         disassemble_body_to_string_inner(
             output,
             *inner,
-            indent_width + 1,
+            if is_root_child {0} else {indent_width + 1},
             false,
             false,
             true,
@@ -371,6 +371,7 @@ mod tests {
     use crate::core_compiler::value_compiler::{append_instruction};
     use binrw::io::{Cursor};
     use rstest::rstest;
+    use crate::compiler::{compile_script, CompileOptions};
     use crate::global::protocol_structures::instruction_data::{InstructionBlockData, InstructionBlockDataDebugFlat, InstructionBlockDataDebugTree, StatementsData, UInt8Data, UnboundedStatementsData};
     use crate::global::protocol_structures::regular_instructions::RegularInstruction;
     use super::*;
@@ -623,4 +624,35 @@ mod tests {
         });
     }
 
+    #[ignore]
+    #[cfg(all(feature = "std", feature = "compiler"))]
+    #[test]
+    fn disassemble_string_test() {
+        let script = r#"
+            var x = 5;
+            var y = 42;
+            @example :: (
+                1;2;3;
+                @test :: (1 + 2);
+            )
+        "#;
+        let (dxb, _) = compile_script(script, CompileOptions::default()).unwrap();
+        println!("{}", disassemble_body_to_string(&dxb, DisassemblerOptions {
+            tree: true,
+            colorized: true,
+            recursive: true,
+        }));
+
+        println!("{}", disassemble_body_to_string(&dxb, DisassemblerOptions {
+            tree: false,
+            colorized: true,
+            recursive: true,
+        }));
+
+        println!("{}", disassemble_body_to_string(&dxb, DisassemblerOptions {
+            tree: true,
+            colorized: true,
+            recursive: false,
+        }));
+    }
 }
