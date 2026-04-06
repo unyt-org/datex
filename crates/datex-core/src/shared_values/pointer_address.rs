@@ -28,11 +28,22 @@ impl ReferencedPointerAddress {
         address[endpoint_slice.len()..endpoint_slice.len() + id.len()].copy_from_slice(&id);
         ReferencedPointerAddress::Remote(address)
     }
+
+    pub fn to_address_string(&self) -> String {
+        match self {
+            ReferencedPointerAddress::Remote(bytes) => hex::encode(bytes),
+            ReferencedPointerAddress::Internal(bytes) => hex::encode(bytes),
+        }
+    }
 }
 
 impl OwnedPointerAddress {
     pub fn new(address: [u8; 5]) -> Self {
         OwnedPointerAddress { address }
+    }
+
+    pub fn to_address_string(&self) -> String {
+        hex::encode(self.address)
     }
 
     pub const NULL: OwnedPointerAddress =
@@ -175,14 +186,9 @@ impl PointerAddress {
     pub fn to_address_string(&self) -> String {
         match self {
             PointerAddress::Owned(local_address) => {
-                hex::encode(local_address.address)
+                local_address.to_address_string()
             }
-            PointerAddress::Referenced(ReferencedPointerAddress::Remote(
-                bytes,
-            )) => hex::encode(bytes),
-            PointerAddress::Referenced(ReferencedPointerAddress::Internal(
-                bytes,
-            )) => hex::encode(bytes),
+            PointerAddress::Referenced(address) => address.to_address_string(),
         }
     }
 }

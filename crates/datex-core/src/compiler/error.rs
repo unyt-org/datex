@@ -13,10 +13,10 @@ use core::{
     ops::Range,
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum CompilerError {
     UnexpectedTerm(Box<DatexExpression>),
-    SerializationError(binrw::Error),
+    SerializationError(String),
     BigDecimalOutOfBoundsError,
     IntegerOutOfBoundsError,
     InvalidPlaceholderCount,
@@ -265,7 +265,7 @@ impl From<TypeError> for CompilerError {
 
 impl From<binrw::Error> for CompilerError {
     fn from(value: binrw::Error) -> Self {
-        CompilerError::SerializationError(value)
+        CompilerError::SerializationError(value.to_string())
     }
 }
 

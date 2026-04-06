@@ -4,6 +4,7 @@ use crate::dxb_parser::body::{iterate_instructions, DXBParserError};
 use core::fmt::{Debug, Write};
 use std::io::Write as StdWrite;
 use binrw::{BinRead, BinWrite};
+use serde::Serialize;
 use termcolor::{Buffer, Color, ColorSpec, WriteColor};
 use crate::global::instruction_codes::InstructionCode;
 use crate::global::protocol_structures::instruction_data::{StatementsData};
@@ -13,9 +14,10 @@ use crate::global::type_instruction_codes::TypeInstructionCode;
 use crate::prelude::*;
 
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct Tree<T> where T: Debug + Clone {
     instruction: Box<T>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
     children: Vec<Tree<T>>,
 }
 
@@ -41,6 +43,12 @@ impl<T> Tree<T> where T: Debug + Clone {
         }
     }
 }
+
+#[derive(Debug, Clone)]
+struct DetailedInstructionTree(
+    pub Tree<(Instruction, Option<Box<DetailedInstructionTree>>)>
+);
+
 
 pub struct DisassemblerOptions {
     pub tree: bool,
@@ -236,11 +244,6 @@ fn disassemble_body_to_string_inner(
         );
     }
 }
-
-#[derive(Debug, Clone)]
-struct DetailedInstructionTree(
-    pub Tree<(Instruction, Option<Box<DetailedInstructionTree>>)>
-);
 
 
 fn instruction_tree_to_detailed_tree(instructions: Tree<Instruction>) -> DetailedInstructionTree {

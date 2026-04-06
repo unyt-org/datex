@@ -4,11 +4,14 @@ use core::fmt::Display;
 use binrw::io::{Read, Seek};
 use binrw::{BinRead, BinResult, BinWrite, Endian};
 use binrw::meta::{EndianKind, ReadEndian};
+use serde::{Serialize, Serializer};
+use serde::ser::SerializeTuple;
 use termcolor::{Buffer, Color, ColorSpec, WriteColor};
 use crate::dxb_parser::body::DXBParserError;
 use crate::global::instruction_codes::InstructionCode;
 use crate::global::protocol_structures::instruction_data::{ImplTypeData, IntegerData, ListData, ShortTextData, TextData, TypeReferenceData};
 use crate::global::protocol_structures::instructions::NextExpectedInstructions;
+use crate::global::protocol_structures::regular_instructions::RegularInstruction;
 use crate::global::type_instruction_codes::TypeInstructionCode;
 use crate::shared_values::pointer_address::PointerAddress;
 use crate::values::core_values::r#type::TypeMetadata;
@@ -35,6 +38,27 @@ impl From<&TypeInstruction> for TypeInstructionCode {
             TypeInstruction::LiteralInteger(_) => TypeInstructionCode::TYPE_LITERAL_INTEGER,
             TypeInstruction::List(_) => TypeInstructionCode::TYPE_LIST,
             TypeInstruction::Range => TypeInstructionCode::TYPE_RANGE,
+        }
+    }
+}
+
+/// Serializes TypeInstruction to tuple (instruction code as string, optional metadata as string)
+impl Serialize for TypeInstruction {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer
+    {
+        let instruction_code = TypeInstructionCode::from(self).to_string();
+        let metadata_string = self.metadata_string();
+
+        if let Some(metadata_string) = metadata_string {
+            let mut state = serializer.serialize_tuple(2)?;
+            state.serialize_element(&instruction_code)?;
+            state.serialize_element(&metadata_string)?;
+            state.end()
+        }
+        else {
+            serializer.serialize_str(&instruction_code)
         }
     }
 }

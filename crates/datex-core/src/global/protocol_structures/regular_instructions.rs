@@ -4,11 +4,12 @@ use core::fmt::Display;
 use binrw::io::{Read, Seek};
 use binrw::{BinRead, BinResult, BinWrite, Endian};
 use binrw::meta::{EndianKind, ReadEndian};
-use termcolor::{Buffer, ColorSpec, Color, WriteColor};
+use serde::{Serialize, Serializer};
+use serde::ser::SerializeTuple;
 use crate::dxb_parser::body::DXBParserError;
 use crate::global::instruction_codes::InstructionCode;
 use crate::global::protocol_structures::instruction_data::{ApplyData, DecimalData, Float32Data, Float64Data, FloatAsInt16Data, FloatAsInt32Data, InstructionBlockData, InstructionBlockDataDebugFlat, InstructionBlockDataDebugTree, Int128Data, Int16Data, Int32Data, Int64Data, Int8Data, IntegerData, ListData, MapData, ModifyStackValue, Move, PerformMove, PushToStackMultiple, RawInternalPointerAddress, RawLocalPointerAddress, RawRemotePointerAddress, SetSharedContainerValue, SharedRef, SharedRefWithValue, ShortListData, ShortMapData, ShortStatementsData, ShortTextData, ShortTextDataRaw, StackIndex, StatementsData, TextData, TextDataRaw, UInt128Data, UInt16Data, UInt32Data, UInt64Data, UInt8Data, UnboundedStatementsData};
-use crate::global::protocol_structures::instructions::{NestedInstructionResolutionStrategy, NextExpectedInstructions};
+use crate::global::protocol_structures::instructions::{InnerInstructions, NextExpectedInstructions};
 use crate::shared_values::pointer_address::PointerAddress;
 use crate::values::core_values::decimal::utils::decimal_to_string;
 use crate::values::core_values::endpoint::Endpoint;
@@ -701,7 +702,7 @@ impl RegularInstruction {
                 write!(string, "{}", data.0)
             }
             RegularInstruction::Apply(count) => {
-                write!(string, "(arg_count: {})", count.arg_count)
+                write!(string, "[arg_count: {}]", count.arg_count)
             }
             RegularInstruction::BigInteger(data) => {
                 write!(string, "{}", data.0)
@@ -746,10 +747,10 @@ impl RegularInstruction {
                 write!(string, "{}", data.0)
             }
             RegularInstruction::Statements(data) => {
-                write!(string, "(count: {}, terminated: {})", data.statements_count, data.terminated)
+                write!(string, "[count: {}, terminated: {}]", data.statements_count, data.terminated)
             }
             RegularInstruction::ShortStatements(data) => {
-                write!(string, "(count: {}, terminated: {})", data.statements_count, data.terminated)
+                write!(string, "[count: {}, terminated: {}]", data.statements_count, data.terminated)
             }
             RegularInstruction::List(data) => {
                 write!(string, "{}", data.element_count)
@@ -797,7 +798,7 @@ impl RegularInstruction {
             RegularInstruction::RequestRemoteSharedRef(address) => {
                 write!(
                     string,
-                    "({}:{})",
+                    "[{}:{}]",
                     address.endpoint().expect("Invalid endpoint"),
                     hex::encode(address.id)
                 )
@@ -805,7 +806,7 @@ impl RegularInstruction {
             RegularInstruction::RequestRemoteSharedRefMut(address) => {
                 write!(
                     string,
-                    "({}:{})",
+                    "[{}:{}]",
                     address.endpoint().expect("Invalid endpoint"),
                     hex::encode(address.id)
                 )
@@ -813,28 +814,28 @@ impl RegularInstruction {
             RegularInstruction::GetLocalSharedRef(address) => {
                 write!(
                     string,
-                    "(origin_id: {})",
+                    "[origin_id: {}]",
                     hex::encode(address.bytes)
                 )
             }
             RegularInstruction::GetInternalSharedRef(address) => {
                 write!(
                     string,
-                    "(internal_id: {})",
+                    "[internal_id: {}]",
                     hex::encode(address.id)
                 )
             }
             RegularInstruction::SharedRef(shared_ref) => {
                 write!(
                     string,
-                    "(ref_mutability: {:?}, address: {})",
+                    "[ref_mutability: {:?}, address: {}]",
                     shared_ref.ref_mutability, PointerAddress::from(&shared_ref.address)
                 )
             }
             RegularInstruction::SharedRefWithValue(shared_ref) => {
                 write!(
                     string,
-                    "(ref_mutability: {:?}, address: {}, container_mutability: {:?})",
+                    "[ref_mutability: {:?}, address: {}, container_mutability: {:?}]",
                     shared_ref.ref_mutability,
                     PointerAddress::from(&shared_ref.address),
                     shared_ref.container_mutability
@@ -843,27 +844,43 @@ impl RegularInstruction {
             RegularInstruction::PerformMove(perform_move) => {
                 write!(
                     string,
-                    "(pointers: {})",
+                    "[pointers: {}]",
                     perform_move.pointers.iter().map(|(_mut, addr)| hex::encode(addr.bytes)).collect::<Vec<_>>().join(", ")
                 )
             }
             RegularInstruction::Move(mv) => {
                 write!(
                     string,
-                    "(pointer_count: {}, mappings: {:?})",
+                    "[pointer_count: {}, mappings: {:?}]",
                     mv.pointer_count, mv.address_mappings
                 )
             }
-            RegularInstruction::RemoteExecution(block) => {
+            RegularInstruction::RemoteExecution(data) => {
                 write!(
                     string,
-                    "(length: {}, injected_slot_count: {})",
-                    block.length,
-                    block.injected_variable_count
+                    "[length: {}, injected_variables: {:?}]",
+                    data.length,
+                    data.injected_variables
+                )
+            }
+            RegularInstruction::_RemoteExecutionDebugTree(data) => {
+                write!(
+                    string,
+                    "[length: {}, injected_variables: {:?}]",
+                    data.length,
+                    data.injected_variables
+                )
+            }
+            RegularInstruction::_RemoteExecutionDebugFlat(data) => {
+                write!(
+                    string,
+                    "[length: {}, injected_variables: {:?}]",
+                    data.length,
+                    data.injected_variables
                 )
             }
             RegularInstruction::ModifyStackValue(modify_slot) => {
-                write!(string, "{:?} {}", modify_slot.index, modify_slot.operator)
+                write!(string, "[index: {:?}, operator: {}]", modify_slot.index, modify_slot.operator)
             }
             RegularInstruction::GetPropertyIndex(uint_32_data) => {
                 write!(string, "{}", uint_32_data.0)
@@ -890,6 +907,43 @@ impl RegularInstruction {
         }.unwrap();
 
         Some(string)
+    }
+
+    pub fn inner_instructions(&self) -> InnerInstructions {
+        match self {
+            RegularInstruction::_RemoteExecutionDebugTree(data) => InnerInstructions::Tree(&data.body),
+            RegularInstruction::_RemoteExecutionDebugFlat(data) => InnerInstructions::Flat(&data.body),
+            _ => InnerInstructions::None
+        }
+    }
+}
+
+/// Serializes RegularInstruction to tuple (instruction code as string, optional metadata as string)
+impl Serialize for RegularInstruction {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer
+    {
+        let instruction_code = InstructionCode::from(self).to_string();
+        let metadata_string = self.metadata_string();
+
+        if let Some(metadata_string) = metadata_string {
+            let inner_instructions = self.inner_instructions();
+            let count = if inner_instructions == InnerInstructions::None { 2 } else { 3 };
+
+            let mut state = serializer.serialize_tuple(count)?;
+            state.serialize_element(&instruction_code)?;
+            state.serialize_element(&metadata_string)?;
+            match inner_instructions {
+                InnerInstructions::Tree(data) => state.serialize_element(&data)?,
+                InnerInstructions::Flat(data) => state.serialize_element(&data)?,
+                InnerInstructions::None => {}
+            }
+            state.end()
+        }
+        else {
+            serializer.serialize_str(&instruction_code)
+        }
     }
 }
 
