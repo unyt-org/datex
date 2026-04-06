@@ -4,9 +4,8 @@ use crate::{
     utils::buffers::append_u32,
     values::value_container::ValueContainer,
 };
-
+use binrw::io::Cursor;
 use crate::prelude::*;
-use std::io::Cursor;
 use crate::core_compiler::core_compilation_context::CoreCompilationContext;
 use crate::core_compiler::value_compiler::append_instruction_code_new;
 use crate::global::protocol_structures::instruction_data::StackIndex;
