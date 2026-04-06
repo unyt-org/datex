@@ -62,15 +62,15 @@ impl<'a> ExecutionInput<'a> {
             runtime,
         }
     }
-    pub fn new_with_slots(
+    pub fn new_with_stack(
         dxb_body: &'a [u8],
         caller_metadata: ExecutionCallerMetadata,
         options: ExecutionOptions,
         runtime: Rc<RuntimeInternal>,
-        slots: RuntimeExecutionStack,
+        stack: RuntimeExecutionStack,
     ) -> Self {
         let state =
-            ExecutionLoopState::new(dxb_body.to_vec(), runtime.clone(), slots, caller_metadata.clone());
+            ExecutionLoopState::new(dxb_body.to_vec(), runtime.clone(), stack, caller_metadata.clone());
         Self {
             options,
             caller_metadata,

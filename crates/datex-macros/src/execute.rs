@@ -62,18 +62,16 @@ fn prepare_setup(input: ExecuteMacroInput) -> TokenStream {
     let placeholder_count = script.chars().filter(|&c| c == '?').count();
     let arg_count = input.args.len();
 
-    let slot_inserts = input
+    let stack_init = input
         .args
         .iter()
-        .enumerate()
-        .map(|(i, placeholder)| {
-            let idx = i as u32;
+        .map(|placeholder| {
             match placeholder {
                 Placeholder::ValueContainer(_) => quote! {
-                    slots.insert(#idx, None);
+                    stack_values.push(None);
                 },
                 Placeholder::Expression(expr) => quote! {
-                    slots.insert(#idx, Some(ValueContainer::from(#expr)));
+                    stack_values.push(Some(ValueContainer::from(#expr)));
                 },
             }
         })
@@ -110,26 +108,26 @@ fn prepare_setup(input: ExecuteMacroInput) -> TokenStream {
         .to_compile_error();
     }
     quote! {{
-        use datex_core::runtime::execution::execution_loop::state::{
-            RuntimeExecutionState, RuntimeExecutionSlots
-        };
+        use datex_core::runtime::execution::execution_loop::state::RuntimeExecutionStack;
+        use datex_core::runtime::execution::execution_input::ExecutionCallerMetadata;
         use datex_core::values::value_container::ValueContainer;
         use datex_core::collections::HashMap;
         use datex_core::runtime::execution::{ExecutionInput, ExecutionOptions};
         use datex_core::runtime::RuntimeInternal;
         use datex_core::prelude::*;
 
-        let mut slots: HashMap<u32, Option<ValueContainer>> = HashMap::new();
-        #(#slot_inserts)*
+        let mut stack_values: Vec<Option<ValueContainer>> = Vec::new();
+        #(#stack_init)*
 
-        let runtime_execution_slots = RuntimeExecutionSlots { slots };
+        let runtime_execution_stack = RuntimeExecutionStack { values: stack_values };
         let dxb_body: &'static [u8] = &[#(#dxb),*];
         let runtime = Rc::new(RuntimeInternal::stub());
-        ExecutionInput::new_with_slots(
+        ExecutionInput::new_with_stack(
             &dxb_body,
+            ExecutionCallerMetadata::local_default(),
             ExecutionOptions::default(),
             runtime,
-            runtime_execution_slots
+            runtime_execution_stack
         )
     }}
 }
