@@ -3,7 +3,7 @@
 //! You can create `bool` in `if` condition with any variable type
 //! 
 //! # Example of usage in DATEX
-//! ```
+//! ```datex
 //! var test_bool = true;
 //! !test_bool # will output false
 //! 

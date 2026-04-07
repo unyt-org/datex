@@ -306,6 +306,9 @@ pub fn ast_from_bytecode(
                                 | RegularInstruction::Subtract
                                 | RegularInstruction::Multiply
                                 | RegularInstruction::Divide
+                                | RegularInstruction::And
+                                | RegularInstruction::Or
+                                | RegularInstruction::Not
                                 | RegularInstruction::UnaryMinus
                                 | RegularInstruction::UnaryPlus
                                 | RegularInstruction::BitwiseNot
