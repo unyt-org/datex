@@ -114,6 +114,12 @@ pub enum RegularInstruction {
     Multiply,
     Divide,
 
+    // logical operations
+    And,
+    Or,
+    Not,
+    // Xor // not implemented yet
+
     // unary operator
     // TODO #432 add missing unary operators
     UnaryMinus,
@@ -296,6 +302,12 @@ impl Display for RegularInstruction {
             RegularInstruction::Subtract => core::write!(f, "SUBTRACT"),
             RegularInstruction::Multiply => core::write!(f, "MULTIPLY"),
             RegularInstruction::Divide => core::write!(f, "DIVIDE"),
+
+            // Logical Instructions
+            RegularInstruction::And => core::write!(f, "AND"),
+            RegularInstruction::Or => core::write!(f, "OR"),
+            RegularInstruction::Not => core::write!(f, "NOT"),
+            // RegularInstruction::Xor => core::write!(f, "XOR"), // not implemented yet
 
             // equality checks
             RegularInstruction::StructuralEqual => {

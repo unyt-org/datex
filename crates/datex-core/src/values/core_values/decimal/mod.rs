@@ -288,7 +288,8 @@ impl Neg for &Decimal {
     }
 }
 
-// I will leave old version for backup, it cost nothing for compiler, bc it delete dead code while compiling
+// I will leave old version for backup, it cost nothing for compiler and runtime, bc it delete commented code while compiling
+/* 
 impl Decimal {
     fn add(lhs: &Self, rhs: &Self) -> Self {
         use Decimal::*;
@@ -304,6 +305,23 @@ impl Decimal {
         }
     }
 }
+
+impl Add for &Decimal {
+    type Output = Decimal;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        Decimal::add(self, rhs)
+    }
+}
+
+impl Add for Decimal {
+    type Output = Decimal;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        Decimal::add(&self, &rhs)
+    }
+}
+*/ 
 
 // &D + &D must allocate, its just a fallback
 impl Add<&Decimal> for &Decimal {
@@ -365,21 +383,6 @@ impl Add<Decimal> for Decimal {
     }
 }
 
-// impl Add for &Decimal {
-//     type Output = Decimal;
-
-//     fn add(self, rhs: Self) -> Self::Output {
-//         Decimal::add(self, rhs)
-//     }
-// }
-
-// impl Add for Decimal {
-//     type Output = Decimal;
-// 
-//     fn add(self, rhs: Self) -> Self::Output {
-//         Decimal::add(&self, &rhs)
-//     }
-// }
 
 impl Decimal {
     fn sub (lhs: &Decimal, rhs: &Decimal) -> Self {

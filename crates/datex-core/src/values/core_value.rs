@@ -1,3 +1,43 @@
+//! Core value type representing all possible runtime values in DATEX.
+//! 
+//! This is the fundamental enum that powers the entire type system, supporting
+//! everything from primitive types (integers, decimals, text) to complex structures
+//! (lists, maps, callables) and special values (null, endpoints, ranges).
+//! 
+//! # Type System Overview
+//! 
+//! | Variant | Purpose | Example |
+//! |---------|---------|---------|
+//! | `Null` | Absence of value | `Null` |
+//! | [`Boolean`] | True/false logic | `true`, `false` |
+//! | [`Integer`] | Arbitrary-precision integers | `42`, `-1000` |
+//! | `TypedInteger` | Fixed-size integers (i8, u32, etc.) | `42u32`, `-128i8` |
+//! | `Decimal` | Arbitrary-precision decimals | `3.14159` |
+//! | `Text` | UTF-8 strings | `"Hello"` |
+//! | `List` | Ordered collections | `[1, 2, 3]` |
+//! | `Map` | Key-value stores | `{"key": value}` |
+//! | `Callable` | Functions/closures | `|x| x + 1` |
+//! | `Range` | Inclusive/exclusive ranges | `1..10`, `0..=5` |
+//! 
+//! # Operations
+//! 
+//! Most variants support standard mathematical operations through operator overloading:
+//! 
+//! ```
+//! # use datex_core::values::core_value::CoreValue;
+//! let a = CoreValue::Integer(42.into());
+//! let b = CoreValue::Integer(58.into());
+//! let sum = (a + b).unwrap(); // CoreValue::Integer(100.into())
+//! ```
+//! 
+//! ## Addition Rules
+//! 
+//! - **Text + Anything** → Text concatenation
+//! - **Integer + Integer** → Integer addition
+//! - **Decimal + Decimal** → Decimal addition
+//! - **Mixed numeric types** → Auto-promotion to broader type
+//! - **Type mismatch** → Returns `Err(ValueError::InvalidOperation)`
+
 use crate::prelude::*;
 use core::result::Result;
 use datex_macros_internal::FromCoreValue;
@@ -32,6 +72,7 @@ use core::{
     fmt::{Display, Formatter},
     ops::{Add, AddAssign, Neg, Not, Sub, Mul, Div},
 };
+
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, FromCoreValue)]
 pub enum CoreValue {
@@ -1127,5 +1168,13 @@ mod tests {
             .to_string(),
             "11..13"
         );
+    }
+
+    #[test]
+    fn test_doc() {
+    let a = CoreValue::Integer(42.into());
+    let b = CoreValue::Integer(58.into());
+    let sum = (a + b).unwrap();
+    assert_eq!(sum, CoreValue::Integer(100.into()));
     }
 }

@@ -1,5 +1,5 @@
 pub mod interrupts;
-mod operations;
+pub mod operations;
 mod runtime_value;
 mod slots;
 pub mod state;
@@ -18,7 +18,7 @@ use crate::{
         instruction_codes::InstructionCode,
         operators::{
             AssignmentOperator, BinaryOperator, ComparisonOperator,
-            UnaryOperator,
+            UnaryOperator, binary::LogicalOperator,
         },
         protocol_structures::instructions::{
             ApplyData, DecimalData, Float32Data, Float64Data, FloatAsInt16Data,
@@ -36,9 +36,7 @@ use crate::{
                 InterruptProvider,
             },
             operations::{
-                handle_assignment_operation, handle_binary_operation,
-                handle_comparison_operation, handle_unary_operation,
-                set_property,
+                handle_assignment_operation, handle_binary_operation, handle_comparison_operation, handle_logical_operation, handle_unary_operation, set_property
             },
             runtime_value::RuntimeValue,
             slots::{get_internal_slot_value, get_slot_value},
@@ -438,6 +436,9 @@ pub fn inner_execution_loop(
                             RegularInstruction::Subtract |
                             RegularInstruction::Multiply |
                             RegularInstruction::Divide |
+                            RegularInstruction::And |
+                            RegularInstruction::Or |
+                            RegularInstruction::Not |
                             RegularInstruction::UnaryMinus |
                             RegularInstruction::UnaryPlus |
                             RegularInstruction::BitwiseNot |
@@ -650,6 +651,53 @@ pub fn inner_execution_loop(
                                     );
                                     RuntimeValue::ValueContainer(yield_unwrap!(
                                         res
+                                    ))
+                                    .into()
+                                }
+
+                                RegularInstruction::And 
+                                | RegularInstruction::Or => {
+                                    let right = yield_unwrap!(
+                                        collected_results
+                                            .pop_cloned_value_container_result_assert_existing(&state)
+                                    );
+                                    let left = yield_unwrap!(
+                                        collected_results
+                                            .pop_cloned_value_container_result_assert_existing(&state)
+                                    );
+
+                                    let res = handle_binary_operation(
+                                        BinaryOperator::from(
+                                            regular_instruction,
+                                        ), 
+                                        &left, 
+                                        &right,
+                                    );
+                                    RuntimeValue::ValueContainer(yield_unwrap!(
+                                        res
+                                    ))
+                                    .into()
+                                }
+
+                                RegularInstruction::Not => {
+                                    let mut target = yield_unwrap!(
+                                        collected_results
+                                            .pop_runtime_value_result_assert_existing()
+                                    );
+                                    let res = target.with_mut_value_container(
+                                        &mut state.slots,
+                                        |target| {
+                                            handle_unary_operation(
+                                                UnaryOperator::from(
+                                                    regular_instruction,
+                                                ),
+                                                target.clone(), // TODO #646: is unary operation supposed to take ownership?
+                                                &state.runtime_internal.memory,
+                                            )
+                                        },
+                                    );
+                                    RuntimeValue::ValueContainer(yield_unwrap!(
+                                        yield_unwrap!(res)
                                     ))
                                     .into()
                                 }
@@ -1274,3 +1322,4 @@ pub fn inner_execution_loop(
         }
     }
 }
+

@@ -48,14 +48,34 @@ pub fn handle_unary_shared_value_operation(
         }
     })
 }
+
+// use crate::runtime::ExecutionContext::Local;
+// use crate::values::value_container::ValueContainer::Shared;
+
 pub fn handle_unary_logical_operation(
     operator: LogicalUnaryOperator,
-    _value_container: ValueContainer,
+    value_container: ValueContainer,
 ) -> Result<ValueContainer, ExecutionError> {
-    unimplemented!(
-        "Logical unary operations are not implemented yet: {operator:?}"
-    )
+    match operator {
+        LogicalUnaryOperator::Not => {
+            let val = value_container
+                .to_value()
+                .borrow()
+                .cast_to_bool()
+                .unwrap(); // No unwrap
+
+            Ok(ValueContainer::from(!val))
+        }
+    }
 }
+
+// pub fn handle_unary_logical_operation(
+//     operator: LogicalUnaryOperator,
+//     value: ValueContainer,
+// ) -> Result<ValueContainer, ExecutionError> {
+//     todo!("implement unary logical operation")
+// }
+
 pub fn handle_unary_arithmetic_operation(
     operator: ArithmeticUnaryOperator,
     value_container: ValueContainer,
@@ -189,13 +209,27 @@ pub fn handle_bitwise_operation(
 
 pub fn handle_logical_operation(
     operator: LogicalOperator,
-    _lhs: &ValueContainer,
-    _rhs: &ValueContainer,
+    lhs: &ValueContainer,
+    rhs: &ValueContainer,
 ) -> Result<ValueContainer, ExecutionError> {
-    // apply operation to active value
-    {
-        core::todo!("#410 Implement logical operation for {:?}", operator);
-    }
+    let lhs_bool = lhs
+        .to_value()
+        .borrow()
+        .cast_to_bool()
+        .unwrap();
+
+    let rhs_bool = rhs
+        .to_value()
+        .borrow()
+        .cast_to_bool()
+        .unwrap();
+
+    let result = match operator {
+        LogicalOperator::And => lhs_bool.0 && rhs_bool.0,
+        LogicalOperator::Or => lhs_bool.0 || rhs_bool.0,
+    };
+    
+    Ok(ValueContainer::from(result))
 }
 
 pub fn handle_range_operation(
@@ -233,5 +267,24 @@ pub fn handle_binary_operation(
         BinaryOperator::Range(range_op) => {
             handle_range_operation(range_op, lhs, rhs)
         }
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn test_handle_logical_operation_and() {
+        let lhs = ValueContainer::from(true);
+        let rhs = ValueContainer::from(true);
+        let result = handle_logical_operation(LogicalOperator::And, &lhs, &rhs).unwrap();
+        assert_eq!(result, ValueContainer::from(true));
+    }
+    #[test]
+    fn test_handle_unary_logical_operation_not() {
+        let val = ValueContainer::from(true);
+        let result = handle_unary_logical_operation(LogicalUnaryOperator::Not, val).unwrap();
+        assert_eq!(result, ValueContainer::from(false));
     }
 }

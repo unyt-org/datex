@@ -1,3 +1,40 @@
+//! # Binary Operators for the Language
+//! 
+//! This module defines all binary operators available in the language,
+//! along with their conversion to instruction codes for the VM.
+//! 
+//! ## Operator Categories
+//! 
+//! | Category | Operators |
+//! |----------|-----------|
+//! | Arithmetic | `+`, `-`, `*`, `/`, `%`, `^` |
+//! | Logical | `and`, `or` |
+//! | Bitwise | `&`, `\|`, `~` |
+//! | Range | `..`, `..=` |
+//! 
+//! ## Instruction Code Mapping
+//! 
+//! Each operator maps to an [`InstructionCode`] for the VM:
+//! 
+//! | Operator | Instruction |
+//! |----------|-------------|
+//! | `+` | `ADD` |
+//! | `-` | `SUBTRACT` |
+//! | `*` | `MULTIPLY` |
+//! | `/` | `DIVIDE` |
+//! | `%` | `MODULO` |
+//! | `^` (power) | `POWER` |
+//! | `and` | `AND` |
+//! | `or` | `OR` |
+//! | `&` | `AND` (bitwise) |
+//! | `\|` | `OR` (bitwise) |
+//! | `~` | `NOT` |
+//! | `^` (XOR) | Not implemented |
+//! | `..` | Not implemented yet |
+//! | `..=` | `Range` |
+//! 
+//! The Bitwise form is doing exactly the same, its just an other variant or writing the same.
+
 use core::fmt::Display;
 
 use crate::global::{
@@ -38,7 +75,9 @@ pub enum ArithmeticOperator {
     Modulo,   // %
     Power,    // ^
 }
+
 impl Display for ArithmeticOperator {
+    /// Allow to print Arithmetic operator as string
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         core::write!(
             f,
@@ -54,7 +93,9 @@ impl Display for ArithmeticOperator {
         )
     }
 }
+
 impl From<&ArithmeticOperator> for InstructionCode {
+    /// Converts a Arithmetic operator to its corresponding instruction code.
     fn from(op: &ArithmeticOperator) -> Self {
         match op {
             ArithmeticOperator::Add => InstructionCode::ADD,
@@ -74,6 +115,7 @@ pub enum LogicalOperator {
 }
 
 impl From<&LogicalOperator> for InstructionCode {
+    /// Converts a Logical operator to its corresponding instruction code.
     fn from(op: &LogicalOperator) -> Self {
         match op {
             LogicalOperator::And => InstructionCode::AND,
@@ -83,6 +125,7 @@ impl From<&LogicalOperator> for InstructionCode {
 }
 
 impl Display for LogicalOperator {
+    /// Allows printing `LogicalOperator` values as strings.
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         core::write!(
             f,
@@ -95,6 +138,19 @@ impl Display for LogicalOperator {
     }
 }
 
+/// Bitwise operators for binary-level operations.
+/// 
+/// # Operators
+/// 
+/// | Operator | Name | Example |
+/// |----------|------|---------|
+/// | `&` | Bitwise AND | `a & b` |
+/// | `\|` | Bitwise OR | `a \| b` |
+/// | `^` | Bitwise XOR | `a ^ b` |
+/// | `~` | Bitwise NOT | `~a` |
+/// 
+/// # Note
+/// XOR (`^`) is currently unimplemented and will panic at runtime.
 #[derive(Clone, Debug, PartialEq, Copy)]
 pub enum BitwiseOperator {
     And, // &
@@ -103,13 +159,26 @@ pub enum BitwiseOperator {
     Not, // ~
 }
 
+/// Range operators for creating sequences.
+/// This is very similar to Rust code
+/// 
+/// # Operators
+/// 
+/// | Operator | Name | Example |
+/// |----------|------|---------|
+/// | `..` | Exclusive range | `1..10` (1 to 9) |
+/// | `..=` | Inclusive range | `1..=10` (1 to 10) |
 #[derive(Clone, Debug, PartialEq, Copy)]
 pub enum RangeOperator {
+    /// Exclusive range (start..end) - end is NOT included
     Exclusive, // ..
+    
+    /// Inclusive range (start..=end) - end is included
     Inclusive, // ..=
 }
 
 impl From<&RangeOperator> for InstructionCode {
+    /// Converts a RangeOperator operator to its corresponding instruction code.
     fn from(op: &RangeOperator) -> Self {
         match op {
             RangeOperator::Inclusive => InstructionCode::RANGE,
@@ -137,6 +206,7 @@ impl Display for RangeOperator {
 }
 
 impl From<&BitwiseOperator> for InstructionCode {
+    /// Converts a bitwise operator to its corresponding instruction code.
     fn from(op: &BitwiseOperator) -> Self {
         match op {
             BitwiseOperator::And => InstructionCode::AND,
@@ -262,7 +332,12 @@ impl From<&RegularInstruction> for BinaryOperator {
             RegularInstruction::Range => {
                 BinaryOperator::Range(RangeOperator::Inclusive)
             }
-
+            RegularInstruction::And => {
+                BinaryOperator::Logical(LogicalOperator::And)
+            }
+            RegularInstruction::Or => {
+                BinaryOperator::Logical(LogicalOperator::Or)
+            }
             _ => {
                 core::todo!(
                     "#155 Binary operator for instruction {:?} not implemented",

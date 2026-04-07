@@ -1,13 +1,24 @@
 use crate::{
-    global::protocol_structures::instructions::*,
+    global::{
+        protocol_structures::instructions::*,
+        operators::{
+            binary::LogicalOperator, LogicalUnaryOperator
+        },
+    },
     libs::core::{CoreLibPointerId, get_core_lib_value},
     runtime::{
         RuntimeInternal,
         execution::{
             context::{ExecutionMode, RemoteExecutionContext},
-            execution_loop::interrupts::{
-                ExternalExecutionInterrupt, InterruptResult,
+            execution_loop::{
+                interrupts::{
+                    ExternalExecutionInterrupt, InterruptResult,
+                },
+                operations::{
+                    handle_unary_logical_operation, handle_assignment_operation, handle_binary_operation, handle_comparison_operation, handle_logical_operation, handle_unary_operation, set_property
+                },
             },
+            
         },
     },
     traits::apply::Apply,
@@ -786,5 +797,72 @@ mod tests {
                 ))),
             ],
         )
+    }
+
+    #[test]
+    fn test_and_true_true() {
+        let lhs = ValueContainer::from(true);
+        let rhs = ValueContainer::from(true);
+        let result = handle_logical_operation(LogicalOperator::And, &lhs, &rhs).unwrap();
+        assert_eq!(result, ValueContainer::from(true));
+    }
+    #[test]
+    fn test_and_true_false() {
+        let lhs = ValueContainer::from(true);
+        let rhs = ValueContainer::from(false);
+        let result = handle_logical_operation(LogicalOperator::And, &lhs, &rhs).unwrap();
+        assert_eq!(result, ValueContainer::from(false));
+    }
+    #[test]
+    fn test_or_false_true() {
+        let lhs = ValueContainer::from(false);
+        let rhs = ValueContainer::from(true);
+        let result = handle_logical_operation(LogicalOperator::Or, &lhs, &rhs).unwrap();
+        assert_eq!(result, ValueContainer::from(true));
+    }
+    #[test]
+    fn test_or_false_false() {
+        let lhs = ValueContainer::from(false);
+        let rhs = ValueContainer::from(false);
+        let result = handle_logical_operation(LogicalOperator::Or, &lhs, &rhs).unwrap();
+        assert_eq!(result, ValueContainer::from(false));
+    }
+    #[test]
+    fn test_not_true() {
+        let val = ValueContainer::from(true);
+        let result = handle_unary_logical_operation(LogicalUnaryOperator::Not, val).unwrap();
+        assert_eq!(result, ValueContainer::from(false));
+    }
+    #[test]
+    fn test_not_false() {
+        let val = ValueContainer::from(false);
+        let result = handle_unary_logical_operation(LogicalUnaryOperator::Not, val).unwrap();
+        assert_eq!(result, ValueContainer::from(true));
+    }
+    #[test]
+    fn test_and_truthy_string() {
+        let lhs = ValueContainer::from("hello");
+        let rhs = ValueContainer::from(true);
+        let result = handle_logical_operation(LogicalOperator::And, &lhs, &rhs).unwrap();
+        assert_eq!(result, ValueContainer::from(true));
+    }
+    #[test]
+    fn test_or_truthy_zero() {
+        let lhs = ValueContainer::from(0i8);
+        let rhs = ValueContainer::from(true);
+        let result = handle_logical_operation(LogicalOperator::Or, &lhs, &rhs).unwrap();
+        assert_eq!(result, ValueContainer::from(true));
+    }
+    #[test]
+    fn test_not_truthy_string() {
+        let val = ValueContainer::from("hello");
+        let result = handle_unary_logical_operation(LogicalUnaryOperator::Not, val).unwrap();
+        assert_eq!(result, ValueContainer::from(false));
+    }
+    #[test]
+    fn test_not_truthy_empty_string() {
+        let val = ValueContainer::from("");
+        let result = handle_unary_logical_operation(LogicalUnaryOperator::Not, val).unwrap();
+        assert_eq!(result, ValueContainer::from(true));
     }
 }
