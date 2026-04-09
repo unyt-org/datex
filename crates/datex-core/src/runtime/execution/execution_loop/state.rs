@@ -13,9 +13,12 @@ use crate::{
     values::value_container::ValueContainer,
 };
 use core::{cell::RefCell, fmt::Debug};
+use crate::global::protocol_structures::injected_values::{InjectedValueDeclaration, InjectedValueType, SharedInjectedValueType};
 use crate::global::protocol_structures::instruction_data::StackIndex;
 use crate::prelude::*;
 use crate::runtime::execution::execution_input::ExecutionCallerMetadata;
+use crate::runtime::execution::macros::yield_unwrap;
+use crate::values::borrowed_value_container::BorrowedValueContainer;
 
 pub struct ExecutionLoopState {
     pub iterator: Box<
@@ -147,5 +150,38 @@ impl RuntimeExecutionStack {
         else {
             Err(ExecutionError::StackOutOfBoundsAccess(index))
         }
+    }
+
+    /// Resolves a list of injected values to actual values on the stack
+    pub fn resolve_injected_values(&mut self, injected_values: &[InjectedValueDeclaration]) -> Result<Vec<BorrowedValueContainer>, ExecutionError> {
+        let mut moved: Vec<Option<_>> = vec![None; injected_values.len()];
+
+        // perform all mutable operations (removing moved shared values)
+        for (i, InjectedValueDeclaration {index, ty}) in injected_values.iter().enumerate() {
+            if matches!(ty, InjectedValueType::Shared(SharedInjectedValueType::Move)) {
+                moved[i] = Some(self.take_stack_value(*index)?);
+            }
+        }
+
+        // collect all values
+        let mut resolved_values = Vec::with_capacity(injected_values.len());
+        for (i, InjectedValueDeclaration {index, ty}) in injected_values.iter().enumerate() {
+            resolved_values.push(match ty {
+                InjectedValueType::Shared(SharedInjectedValueType::Move) => {
+                    match moved[i].take().unwrap() {
+                        ValueContainer::Shared(shared) => BorrowedValueContainer::Shared(shared),
+                        ValueContainer::Local(_) => return Err(ExecutionError::ExpectedSharedValue)
+                    }
+                }
+                _ => {
+                    match self.get_stack_value(*index)? {
+                        ValueContainer::Shared(shared) => BorrowedValueContainer::Shared(shared.clone()),
+                        ValueContainer::Local(value) => BorrowedValueContainer::Local(value),
+                    }
+                }
+            });
+        }
+
+        Ok(resolved_values)
     }
 }

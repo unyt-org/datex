@@ -1516,7 +1516,7 @@ pub mod tests {
     use core::assert_matches;
     use log::*;
     use crate::disassembler::print_disassembled;
-    use crate::global::protocol_structures::injected_values::{InjectedValue, InjectedValueType, SharedInjectedValueType};
+    use crate::global::protocol_structures::injected_values::{InjectedValueDeclaration, InjectedValueType, SharedInjectedValueType};
     use crate::global::protocol_structures::instruction_data::{InstructionBlockData, IntegerData, StackIndex, StatementsData, UInt8Data};
     use crate::global::protocol_structures::instructions::Instruction;
     use crate::global::protocol_structures::regular_instructions::RegularInstruction;
@@ -2589,7 +2589,7 @@ pub mod tests {
                     length: 5,
                     injected_variable_count: 1,
                     // FIXME should be local
-                    injected_values: vec![InjectedValue {index: StackIndex(0), ty: InjectedValueType::Shared(SharedInjectedValueType::Move)}],
+                    injected_values: vec![InjectedValueDeclaration {index: StackIndex(0), ty: InjectedValueType::Shared(SharedInjectedValueType::Move)}],
                     body: vec![
                         Instruction::Regular(RegularInstruction::TakeStackValue(StackIndex(0))),
                     ]
@@ -2617,7 +2617,7 @@ pub mod tests {
                 RegularInstruction::_RemoteExecutionDebugFlat(InstructionBlockDataDebugFlat {
                     length: 5,
                     injected_variable_count: 1,
-                    injected_values: vec![InjectedValue {index: StackIndex(0), ty: InjectedValueType::Shared(SharedInjectedValueType::Move)}],
+                    injected_values: vec![InjectedValueDeclaration {index: StackIndex(0), ty: InjectedValueType::Shared(SharedInjectedValueType::Move)}],
                     body: vec![
                         Instruction::Regular(RegularInstruction::TakeStackValue(StackIndex(0))),
                     ],
@@ -2643,7 +2643,7 @@ pub mod tests {
                 RegularInstruction::_RemoteExecutionDebugFlat(InstructionBlockDataDebugFlat {
                     length: 5,
                     injected_variable_count: 1,
-                    injected_values: vec![InjectedValue {index: StackIndex(0), ty: InjectedValueType::Shared(SharedInjectedValueType::Ref)}],
+                    injected_values: vec![InjectedValueDeclaration {index: StackIndex(0), ty: InjectedValueType::Shared(SharedInjectedValueType::Ref)}],
                     body: vec![
                         Instruction::Regular(RegularInstruction::GetStackValueSharedRef(StackIndex(0))),
                     ],
@@ -2672,8 +2672,8 @@ pub mod tests {
                     injected_variable_count: 2,
                     injected_values: vec![
                         // FIXME should be local
-                        InjectedValue {index: StackIndex(0), ty: InjectedValueType::Shared(SharedInjectedValueType::Move)},
-                        InjectedValue {index: StackIndex(1), ty: InjectedValueType::Shared(SharedInjectedValueType::Move)},
+                        InjectedValueDeclaration {index: StackIndex(0), ty: InjectedValueType::Shared(SharedInjectedValueType::Move)},
+                        InjectedValueDeclaration {index: StackIndex(1), ty: InjectedValueType::Shared(SharedInjectedValueType::Move)},
                     ],
                     body: vec![
                         Instruction::Regular(RegularInstruction::Add),
@@ -2705,7 +2705,7 @@ pub mod tests {
                     injected_variable_count: 1,
                     injected_values: vec![
                         // FIXME should be local
-                        InjectedValue {index: StackIndex(1), ty: InjectedValueType::Shared(SharedInjectedValueType::Move)},
+                        InjectedValueDeclaration {index: StackIndex(1), ty: InjectedValueType::Shared(SharedInjectedValueType::Move)},
                     ],
                     body: vec![
                         Instruction::Regular(RegularInstruction::ShortStatements(StatementsData {statements_count: 2, terminated: false})),

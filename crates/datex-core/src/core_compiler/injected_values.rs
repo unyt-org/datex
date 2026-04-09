@@ -3,7 +3,7 @@ use binrw::io::Cursor;
 use crate::core_compiler::core_compilation_context::CoreCompilationContext;
 use crate::core_compiler::value_compiler::{append_instruction_code, append_instruction_code_new, append_perform_moves, append_shared_container, append_statements_preamble};
 use crate::global::instruction_codes::InstructionCode;
-use crate::global::protocol_structures::injected_values::{InjectedValue, InjectedValueType, SharedInjectedValueType};
+use crate::global::protocol_structures::injected_values::{InjectedValueDeclaration, InjectedValueType, SharedInjectedValueType};
 use crate::global::protocol_structures::instruction_data::{InstructionBlockData, StackIndex};
 use crate::runtime::execution::ExecutionError;
 use crate::shared_values::shared_container::SharedContainer;
@@ -14,14 +14,7 @@ use crate::values::borrowed_value_container::BorrowedValueContainer;
 /// Prepends injected values to an instruction block
 /// This is used for remote execution blocks and function bodies.
 ///
-/// Refs are injected as separate slots at the top, e.g.:
-/// #0 = GET_REF x;
-/// #1 = GET_REF_MUT y;
-///
-/// Moves are performed in a single perform_move instruction:
-/// #2 = PERFORM_MOVE a, b, ...;
-/// #3 = #2.0
-/// #4 = #2.1
+/// TODO:
 pub fn compile_injected_values(
     instruction_block_data: InstructionBlockData,
     slot_values: Vec<BorrowedValueContainer>,
@@ -77,7 +70,7 @@ fn compile_preamble(
     let mut moved_pointers: Vec<SharedContainer> = vec![];
 
     // build dxb
-    for (slot_addr, (InjectedValue {ty: external_slot_type, ..}, slot_value)) in exec_block_data
+    for (slot_addr, (InjectedValueDeclaration {ty: external_slot_type, ..}, slot_value)) in exec_block_data
         .injected_values
         .into_iter()
         .zip(slot_values.into_iter())
@@ -159,7 +152,7 @@ fn compile_preform_move_preamble(
 #[cfg(test)]
 mod tests {
     use crate::global::instruction_codes::InstructionCode;
-    use crate::global::protocol_structures::injected_values::{InjectedValue, InjectedValueType, SharedInjectedValueType};
+    use crate::global::protocol_structures::injected_values::{InjectedValueDeclaration, InjectedValueType, SharedInjectedValueType};
     use crate::global::protocol_structures::instruction_data::{InstructionBlockData, StackIndex};
     use crate::core_compiler::injected_values::compile_injected_values;
     use crate::shared_values::pointer::{OwnedPointer};
@@ -185,7 +178,7 @@ mod tests {
         let exec_block_data = InstructionBlockData {
             injected_value_count: 1,
             length: 1,
-            injected_values: vec![InjectedValue {index: StackIndex(0), ty: InjectedValueType::Shared(SharedInjectedValueType::Ref)}],
+            injected_values: vec![InjectedValueDeclaration {index: StackIndex(0), ty: InjectedValueType::Shared(SharedInjectedValueType::Ref)}],
             body: vec![InstructionCode::NULL as u8],
         };
         let res = compile_injected_values(exec_block_data, vec![shared_value]).unwrap().0;
@@ -218,8 +211,8 @@ mod tests {
             injected_value_count: 2,
             length: 1,
             injected_values: vec![
-                InjectedValue {index: StackIndex(0), ty: InjectedValueType::Shared(SharedInjectedValueType::Ref)},
-                InjectedValue {index: StackIndex(1), ty: InjectedValueType::Shared(SharedInjectedValueType::RefMut)},
+                InjectedValueDeclaration {index: StackIndex(0), ty: InjectedValueType::Shared(SharedInjectedValueType::Ref)},
+                InjectedValueDeclaration {index: StackIndex(1), ty: InjectedValueType::Shared(SharedInjectedValueType::RefMut)},
             ],
             body: vec![InstructionCode::NULL as u8],
         };
@@ -261,7 +254,7 @@ mod tests {
         let exec_block_data = InstructionBlockData {
             injected_value_count: 1,
             length: 1,
-            injected_values: vec![InjectedValue {index: StackIndex(0), ty: InjectedValueType::Shared(SharedInjectedValueType::Move)}],
+            injected_values: vec![InjectedValueDeclaration {index: StackIndex(0), ty: InjectedValueType::Shared(SharedInjectedValueType::Move)}],
             body: vec![InstructionCode::NULL as u8],
         };
         let res = compile_injected_values(exec_block_data, vec![shared_value]).unwrap().0;
@@ -298,8 +291,8 @@ mod tests {
             injected_value_count: 2,
             length: 1,
             injected_values: vec![
-                InjectedValue {index: StackIndex(0), ty: InjectedValueType::Shared(SharedInjectedValueType::Move)},
-                InjectedValue {index: StackIndex(1), ty: InjectedValueType::Shared(SharedInjectedValueType::Ref)},
+                InjectedValueDeclaration {index: StackIndex(0), ty: InjectedValueType::Shared(SharedInjectedValueType::Move)},
+                InjectedValueDeclaration {index: StackIndex(1), ty: InjectedValueType::Shared(SharedInjectedValueType::Ref)},
             ],
             body: vec![InstructionCode::NULL as u8],
         };

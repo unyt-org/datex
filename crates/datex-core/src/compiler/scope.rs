@@ -10,7 +10,7 @@ use crate::{
     runtime::execution::context::ExecutionMode,
 };
 use core::cell::RefCell;
-use crate::global::protocol_structures::injected_values::{InjectedValue, InjectedValueType};
+use crate::global::protocol_structures::injected_values::{InjectedValueDeclaration, InjectedValueType};
 use crate::global::protocol_structures::instruction_data::StackIndex;
 
 #[derive(Debug, Default, Clone)]
@@ -30,7 +30,7 @@ pub struct ExternalParentScope {
     /// mapping for injected variables from parent scope stack index to child stack index
     pub injected_variables_map: HashMap<StackIndex, StackIndex>,
     /// list of injected values with parent stack index and variable type. The index in the vector is the child stack index (starting from 0)
-    pub injected_values: Vec<InjectedValue>,
+    pub injected_values: Vec<InjectedValueDeclaration>,
 }
 
 impl ExternalParentScope {
@@ -58,7 +58,7 @@ impl ExternalParentScope {
             // otherwise, map variable and store mapping
             let child_stack_index = StackIndex(self.injected_variables_map.len() as u32);
             self.injected_variables_map.insert(variable_parent_index, child_stack_index);
-            self.injected_values.push(InjectedValue {index: variable_parent_index, ty: value_type });
+            self.injected_values.push(InjectedValueDeclaration {index: variable_parent_index, ty: value_type });
             Ok(Some((child_stack_index, variable_kind)))
         }
         else {

@@ -30,7 +30,7 @@ pub enum InjectedValueType {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, BinRead, BinWrite)]
-pub struct InjectedValue {
+pub struct InjectedValueDeclaration {
     pub(crate) index: StackIndex,
     pub(crate) ty: InjectedValueType,
 }

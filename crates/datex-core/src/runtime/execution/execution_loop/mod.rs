@@ -70,7 +70,7 @@ use crate::{
 };
 use alloc::rc::Rc;
 use core::cell::RefCell;
-use crate::global::protocol_structures::injected_values::{InjectedValue, InjectedValueType, SharedInjectedValueType};
+use crate::global::protocol_structures::injected_values::{InjectedValueDeclaration, InjectedValueType, SharedInjectedValueType};
 use crate::global::protocol_structures::instruction_data::{ModifyStackValue, UnboundedStatementsData};
 use crate::global::protocol_structures::instructions::{Instruction, NestedInstructionResolutionStrategy};
 use crate::global::protocol_structures::regular_instructions::RegularInstruction;
@@ -1165,46 +1165,17 @@ pub fn inner_execution_loop(
                                 RegularInstruction::RemoteExecution(
                                     exec_block_data,
                                 ) => {
-
-                                    // get slots (moved or referenced)
-                                    let injected = &exec_block_data.injected_values;
-                                    let mut moved: Vec<Option<_>> = vec![None; injected.len()];
-
-                                    // perform all mutable operations (removing moved shared values)
-                                    for (i, InjectedValue {index, ty}) in injected.iter().enumerate() {
-                                        if matches!(ty, InjectedValueType::Shared(SharedInjectedValueType::Move)) {
-                                            moved[i] = Some(yield_unwrap!(state.stack.take_stack_value(*index)));
-                                        }
-                                    }
-
-                                    // collect all slots
-                                    let mut slots = Vec::with_capacity(injected.len());
-                                    for (i, InjectedValue {index, ty}) in injected.iter().enumerate() {
-                                        slots.push(match ty {
-                                            InjectedValueType::Shared(SharedInjectedValueType::Move) => {
-                                                match moved[i].take().unwrap() {
-                                                    ValueContainer::Shared(shared) => BorrowedValueContainer::Shared(shared),
-                                                    ValueContainer::Local(_) => return yield Err(ExecutionError::ExpectedSharedValue)
-                                                }
-                                            }
-                                            _ => {
-                                                match yield_unwrap!(get_stack_value(&state, *index)) {
-                                                    ValueContainer::Shared(shared) => BorrowedValueContainer::Shared(shared.clone()),
-                                                    ValueContainer::Local(value) => BorrowedValueContainer::Local(value),
-                                                }
-                                            }
-                                        });
-                                    }
-
                                     let receivers = yield_unwrap!(
                                         collected_results
                                             .pop_cloned_value_container_result_assert_existing(&state)
                                     );
-
+                                    
+                                    let injected_values = yield_unwrap!(state.stack.resolve_injected_values(&exec_block_data.injected_values));
+                                    
                                     // build dxb
                                     let (buffer, moving_containers) = yield_unwrap!(compile_injected_values(
                                         exec_block_data,
-                                        slots,
+                                        injected_values,
                                     ));
 
                                     // store moving pointers

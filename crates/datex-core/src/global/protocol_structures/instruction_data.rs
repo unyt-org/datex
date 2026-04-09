@@ -10,7 +10,7 @@ use modular_bitfield::prelude::B4;
 use serde::Serialize;
 use crate::core_compiler::value_compiler::append_instruction;
 use crate::global::operators::AssignmentOperator;
-use crate::global::protocol_structures::injected_values::{InjectedValue, InjectedValueType};
+use crate::global::protocol_structures::injected_values::{InjectedValueDeclaration, InjectedValueType};
 use crate::global::protocol_structures::instructions::Instruction;
 use crate::global::type_instruction_codes::{TypeLocalOrShared, TypeMutabilityCode, TypeReferenceMutabilityCode};
 use crate::serde::Deserialize;
@@ -436,7 +436,7 @@ pub struct InstructionBlockData {
     pub length: u32,
     pub injected_value_count: u32,
     #[br(count = injected_value_count)]
-    pub injected_values: Vec<InjectedValue>,
+    pub injected_values: Vec<InjectedValueDeclaration>,
     #[br(count = length)]
     pub body: Vec<u8>,
 }
@@ -450,7 +450,7 @@ cfg_if! {
         pub struct InstructionBlockDataDebugTree {
             pub length: u32,
             pub injected_variable_count: u32,
-            pub injected_values: Vec<InjectedValue>,
+            pub injected_values: Vec<InjectedValueDeclaration>,
             pub body: InstructionTree<Instruction>,
         }
 
@@ -458,7 +458,7 @@ cfg_if! {
         pub struct InstructionBlockDataDebugFlat {
             pub length: u32,
             pub injected_variable_count: u32,
-            pub injected_values: Vec<InjectedValue>,
+            pub injected_values: Vec<InjectedValueDeclaration>,
             pub body: Vec<Instruction>,
         }
 
