@@ -62,7 +62,7 @@ use precompiler::{
 };
 use crate::ast::expressions::ValueAccessType;
 use crate::core_compiler::value_compiler::{append_instruction, append_instruction_code_new, append_regular_instruction, append_shared_container, append_statements_preamble, append_value};
-use crate::global::protocol_structures::injected_variable_type::{InjectedVariableType, LocalInjectedVariableType, SharedInjectedVariableType};
+use crate::global::protocol_structures::injected_values::{InjectedValueType, LocalInjectedValueType, SharedInjectedValueType};
 use crate::global::protocol_structures::instruction_data::{InstructionBlockData, ModifyStackValue, SetSharedContainerValue, StackIndex};
 use crate::global::protocol_structures::regular_instructions::RegularInstruction;
 use crate::shared_values::pointer::PointerReferenceMutability;
@@ -1152,13 +1152,13 @@ fn compile_expression(
             compilation_context.mark_has_non_static_value();
 
             let slot_type = match access_type {
-                ValueAccessType::SharedRefMut => InjectedVariableType::Shared(SharedInjectedVariableType::RefMut),
-                ValueAccessType::SharedRef => InjectedVariableType::Shared(SharedInjectedVariableType::Ref),
+                ValueAccessType::SharedRefMut => InjectedValueType::Shared(SharedInjectedValueType::RefMut),
+                ValueAccessType::SharedRef => InjectedValueType::Shared(SharedInjectedValueType::Ref),
                 // TODO: map to local slot types depending on type
-                ValueAccessType::MoveOrCopy => InjectedVariableType::Shared(SharedInjectedVariableType::Move),
+                ValueAccessType::MoveOrCopy => InjectedValueType::Shared(SharedInjectedValueType::Move),
                 // TODO:
-                ValueAccessType::Clone => InjectedVariableType::Local(LocalInjectedVariableType::Move),
-                ValueAccessType::Borrow => InjectedVariableType::Shared(SharedInjectedVariableType::Move),
+                ValueAccessType::Clone => InjectedValueType::Local(LocalInjectedValueType::Move),
+                ValueAccessType::Borrow => InjectedValueType::Shared(SharedInjectedValueType::Move),
             };
 
             let slot_access = match access_type {
@@ -1216,8 +1216,8 @@ fn compile_expression(
                 RegularInstruction::RemoteExecution(InstructionBlockData {
                     // block size (len of compilation_context.buffer)
                     length: execution_block_ctx.cursor().get_ref().len() as u32,
-                    injected_variable_count: external_parent_scope.injected_variables.len() as u32,
-                    injected_variables: external_parent_scope.injected_variables,
+                    injected_value_count: external_parent_scope.injected_values.len() as u32,
+                    injected_values: external_parent_scope.injected_values,
                     body: execution_block_ctx.into_buffer(),
                 })
             )?;
@@ -1516,7 +1516,7 @@ pub mod tests {
     use core::assert_matches;
     use log::*;
     use crate::disassembler::print_disassembled;
-    use crate::global::protocol_structures::injected_variable_type::{InjectedVariableType, SharedInjectedVariableType};
+    use crate::global::protocol_structures::injected_values::{InjectedValue, InjectedValueType, SharedInjectedValueType};
     use crate::global::protocol_structures::instruction_data::{InstructionBlockData, IntegerData, StackIndex, StatementsData, UInt8Data};
     use crate::global::protocol_structures::instructions::Instruction;
     use crate::global::protocol_structures::regular_instructions::RegularInstruction;
@@ -2589,7 +2589,7 @@ pub mod tests {
                     length: 5,
                     injected_variable_count: 1,
                     // FIXME should be local
-                    injected_variables: vec![(StackIndex(0), InjectedVariableType::Shared(SharedInjectedVariableType::Move))],
+                    injected_values: vec![InjectedValue {index: StackIndex(0), ty: InjectedValueType::Shared(SharedInjectedValueType::Move)}],
                     body: vec![
                         Instruction::Regular(RegularInstruction::TakeStackValue(StackIndex(0))),
                     ]
@@ -2617,7 +2617,7 @@ pub mod tests {
                 RegularInstruction::_RemoteExecutionDebugFlat(InstructionBlockDataDebugFlat {
                     length: 5,
                     injected_variable_count: 1,
-                    injected_variables: vec![(StackIndex(0), InjectedVariableType::Shared(SharedInjectedVariableType::Move))],
+                    injected_values: vec![InjectedValue {index: StackIndex(0), ty: InjectedValueType::Shared(SharedInjectedValueType::Move)}],
                     body: vec![
                         Instruction::Regular(RegularInstruction::TakeStackValue(StackIndex(0))),
                     ],
@@ -2643,7 +2643,7 @@ pub mod tests {
                 RegularInstruction::_RemoteExecutionDebugFlat(InstructionBlockDataDebugFlat {
                     length: 5,
                     injected_variable_count: 1,
-                    injected_variables: vec![(StackIndex(0), InjectedVariableType::Shared(SharedInjectedVariableType::Ref))],
+                    injected_values: vec![InjectedValue {index: StackIndex(0), ty: InjectedValueType::Shared(SharedInjectedValueType::Ref)}],
                     body: vec![
                         Instruction::Regular(RegularInstruction::GetStackValueSharedRef(StackIndex(0))),
                     ],
@@ -2670,10 +2670,10 @@ pub mod tests {
                 RegularInstruction::_RemoteExecutionDebugFlat(InstructionBlockDataDebugFlat {
                     length: 11,
                     injected_variable_count: 2,
-                    injected_variables: vec![
+                    injected_values: vec![
                         // FIXME should be local
-                        (StackIndex(0), InjectedVariableType::Shared(SharedInjectedVariableType::Move)),
-                        (StackIndex(1), InjectedVariableType::Shared(SharedInjectedVariableType::Move)),
+                        InjectedValue {index: StackIndex(0), ty: InjectedValueType::Shared(SharedInjectedValueType::Move)},
+                        InjectedValue {index: StackIndex(1), ty: InjectedValueType::Shared(SharedInjectedValueType::Move)},
                     ],
                     body: vec![
                         Instruction::Regular(RegularInstruction::Add),
@@ -2703,9 +2703,9 @@ pub mod tests {
                 RegularInstruction::_RemoteExecutionDebugFlat(InstructionBlockDataDebugFlat {
                     length: 17,
                     injected_variable_count: 1,
-                    injected_variables: vec![
+                    injected_values: vec![
                         // FIXME should be local
-                        (StackIndex(1), InjectedVariableType::Shared(SharedInjectedVariableType::Move)),
+                        InjectedValue {index: StackIndex(1), ty: InjectedValueType::Shared(SharedInjectedValueType::Move)},
                     ],
                     body: vec![
                         Instruction::Regular(RegularInstruction::ShortStatements(StatementsData {statements_count: 2, terminated: false})),
@@ -2754,7 +2754,7 @@ pub mod tests {
                 0,
                 0,
                 // FIXME
-                InjectedVariableType::Shared(SharedInjectedVariableType::Move).into(),
+                InjectedValueType::Shared(SharedInjectedValueType::Move).into(),
                 // nested remote execution
                 InstructionCode::REMOTE_EXECUTION.into(),
                 // --- start of block 2
@@ -2774,7 +2774,7 @@ pub mod tests {
                 0,
                 0,
                 // FIXME
-                InjectedVariableType::Shared(SharedInjectedVariableType::Move).into(),
+                InjectedValueType::Shared(SharedInjectedValueType::Move).into(),
                 InstructionCode::TAKE_STACK_VALUE.into(),
                 // slot index as u32
                 0,
@@ -2829,14 +2829,14 @@ pub mod tests {
                 0,
                 0,
                 // FIXME
-                InjectedVariableType::Shared(SharedInjectedVariableType::Move).into(),
+                InjectedValueType::Shared(SharedInjectedValueType::Move).into(),
                 // slot 0
                 1,
                 0,
                 0,
                 0,
                 // FIXME
-                InjectedVariableType::Shared(SharedInjectedVariableType::Move).into(),
+                InjectedValueType::Shared(SharedInjectedValueType::Move).into(),
                 // nested remote execution
                 InstructionCode::REMOTE_EXECUTION.into(),
                 // --- start of block 2
@@ -2856,7 +2856,7 @@ pub mod tests {
                 0,
                 0,
                 // FIXME
-                InjectedVariableType::Shared(SharedInjectedVariableType::Move).into(),
+                InjectedValueType::Shared(SharedInjectedValueType::Move).into(),
                 InstructionCode::TAKE_STACK_VALUE.into(),
                 // slot index as u32
                 0,

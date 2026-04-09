@@ -184,16 +184,16 @@ pub fn iterate_instructions(
                                 if nested_instruction_resolution_strategy == NestedInstructionResolutionStrategy::ResolveNestedScopesFlat {
                                     RegularInstruction::_RemoteExecutionDebugFlat(InstructionBlockDataDebugFlat {
                                         length: instruction_block_data.length,
-                                        injected_variable_count: instruction_block_data.injected_variable_count,
-                                        injected_variables: instruction_block_data.injected_variables,
+                                        injected_variable_count: instruction_block_data.injected_value_count,
+                                        injected_values: instruction_block_data.injected_values,
                                         body: inner_instructions.flatten(),
                                     })
                                 }
                                 else {
                                     RegularInstruction::_RemoteExecutionDebugTree(InstructionBlockDataDebugTree {
                                         length: instruction_block_data.length,
-                                        injected_variable_count: instruction_block_data.injected_variable_count,
-                                        injected_variables: instruction_block_data.injected_variables,
+                                        injected_variable_count: instruction_block_data.injected_value_count,
+                                        injected_values: instruction_block_data.injected_values,
                                         body: inner_instructions,
                                     })
                                 }

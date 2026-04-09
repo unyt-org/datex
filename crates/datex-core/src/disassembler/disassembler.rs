@@ -478,8 +478,8 @@ mod tests {
         &[
             Instruction::Regular(RegularInstruction::RemoteExecution(InstructionBlockData {
                 length: 2,
-                injected_variable_count: 0,
-                injected_variables: vec![],
+                injected_value_count: 0,
+                injected_values: vec![],
                 body: vec![
                     InstructionCode::UINT_8 as u8,
                     42,
@@ -490,8 +490,8 @@ mod tests {
         InstructionTree {
             instruction: Box::new(Instruction::Regular(RegularInstruction::RemoteExecution(InstructionBlockData {
                 length: 2,
-                injected_variable_count: 0,
-                injected_variables: vec![],
+                injected_value_count: 0,
+                injected_values: vec![],
                 body: vec![
                     InstructionCode::UINT_8 as u8,
                     42,
@@ -521,8 +521,8 @@ mod tests {
         let instructions = vec![
             Instruction::Regular(RegularInstruction::RemoteExecution(InstructionBlockData {
                 length: 5,
-                injected_variable_count: 0,
-                injected_variables: vec![],
+                injected_value_count: 0,
+                injected_values: vec![],
                 body: vec![
                     InstructionCode::ADD as u8,
                     InstructionCode::UINT_8 as u8,
@@ -541,7 +541,7 @@ mod tests {
             instruction: Box::new(Instruction::Regular(RegularInstruction::_RemoteExecutionDebugFlat(InstructionBlockDataDebugFlat {
                 length: 5,
                 injected_variable_count: 0,
-                injected_variables: vec![],
+                injected_values: vec![],
                 body: vec![
                     Instruction::Regular(RegularInstruction::Add),
                     Instruction::Regular(RegularInstruction::UInt8(UInt8Data(42))),
@@ -559,8 +559,8 @@ mod tests {
         let instructions = vec![
             Instruction::Regular(RegularInstruction::RemoteExecution(InstructionBlockData {
                 length: 5,
-                injected_variable_count: 0,
-                injected_variables: vec![],
+                injected_value_count: 0,
+                injected_values: vec![],
                 body: vec![
                     InstructionCode::ADD as u8,
                     InstructionCode::UINT_8 as u8,
@@ -573,14 +573,14 @@ mod tests {
         ];
         let dxb = instructions_to_bytes(instructions.to_vec());
         let (tree, err) = disassemble_body(&dxb, NestedInstructionResolutionStrategy::ResolveNestedScopesTree);
-        
+
 
         assert_eq!(err, None);
         assert_eq!(tree, InstructionTree {
             instruction: Box::new(Instruction::Regular(RegularInstruction::_RemoteExecutionDebugTree(InstructionBlockDataDebugTree {
                 length: 5,
                 injected_variable_count: 0,
-                injected_variables: vec![],
+                injected_values: vec![],
                 body: InstructionTree {
                     instruction: Box::new(Instruction::Regular(RegularInstruction::Add)),
                     children: vec![

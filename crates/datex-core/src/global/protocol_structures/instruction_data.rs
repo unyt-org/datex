@@ -10,7 +10,7 @@ use modular_bitfield::prelude::B4;
 use serde::Serialize;
 use crate::core_compiler::value_compiler::append_instruction;
 use crate::global::operators::AssignmentOperator;
-use crate::global::protocol_structures::injected_variable_type::InjectedVariableType;
+use crate::global::protocol_structures::injected_values::{InjectedValue, InjectedValueType};
 use crate::global::protocol_structures::instructions::Instruction;
 use crate::global::type_instruction_codes::{TypeLocalOrShared, TypeMutabilityCode, TypeReferenceMutabilityCode};
 use crate::serde::Deserialize;
@@ -434,9 +434,9 @@ pub struct Move {
 #[brw(little)]
 pub struct InstructionBlockData {
     pub length: u32,
-    pub injected_variable_count: u32,
-    #[br(count = injected_variable_count)]
-    pub injected_variables: Vec<(StackIndex, InjectedVariableType)>,
+    pub injected_value_count: u32,
+    #[br(count = injected_value_count)]
+    pub injected_values: Vec<InjectedValue>,
     #[br(count = length)]
     pub body: Vec<u8>,
 }
@@ -450,7 +450,7 @@ cfg_if! {
         pub struct InstructionBlockDataDebugTree {
             pub length: u32,
             pub injected_variable_count: u32,
-            pub injected_variables: Vec<(StackIndex, InjectedVariableType)>,
+            pub injected_values: Vec<InjectedValue>,
             pub body: InstructionTree<Instruction>,
         }
 
@@ -458,7 +458,7 @@ cfg_if! {
         pub struct InstructionBlockDataDebugFlat {
             pub length: u32,
             pub injected_variable_count: u32,
-            pub injected_variables: Vec<(StackIndex, InjectedVariableType)>,
+            pub injected_values: Vec<InjectedValue>,
             pub body: Vec<Instruction>,
         }
 
@@ -467,7 +467,7 @@ cfg_if! {
                 InstructionBlockDataDebugFlat {
                     length: instruction_block_data.length,
                     injected_variable_count: instruction_block_data.injected_variable_count,
-                    injected_variables: instruction_block_data.injected_variables.clone(),
+                    injected_values: instruction_block_data.injected_values.clone(),
                     body: instruction_block_data.body.flatten(),
                 }
             }
@@ -481,8 +481,8 @@ cfg_if! {
                 }
                 Self {
                     length: value.length,
-                    injected_variable_count: value.injected_variable_count,
-                    injected_variables: value.injected_variables.clone(),
+                    injected_value_count: value.injected_variable_count,
+                    injected_values: value.injected_values.clone(),
                     body: cursor.into_inner(),
                 }
             }

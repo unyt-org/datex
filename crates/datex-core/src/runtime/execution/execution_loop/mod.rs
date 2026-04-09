@@ -3,11 +3,10 @@ mod operations;
 mod runtime_value;
 mod slots;
 pub mod state;
-mod remote_execution_blocks;
 
 use crate::{
     dxb_parser::{
-        body::{DXBParserError, iterate_instructions},
+        body::{iterate_instructions, DXBParserError},
         instruction_collector::{
             CollectedResults, CollectionResultsPopper, FullOrPartialResult,
             InstructionCollector, LastUnboundedResultCollector,
@@ -15,9 +14,8 @@ use crate::{
         },
     },
     global::{
-        instruction_codes::InstructionCode,
         operators::{
-            AssignmentOperator, BinaryOperator, ComparisonOperator,
+            BinaryOperator, ComparisonOperator,
             UnaryOperator,
         },
         protocol_structures::instruction_data::{
@@ -28,7 +26,6 @@ use crate::{
     },
     prelude::*,
     runtime::execution::{
-        ExecutionError, InvalidProgramError,
         execution_loop::{
             interrupts::{
                 ExecutionInterrupt, ExternalExecutionInterrupt,
@@ -42,11 +39,12 @@ use crate::{
             runtime_value::RuntimeValue,
             slots::{get_internal_stack_value, get_stack_value},
             state::RuntimeExecutionState,
-        },
-        macros::{
+        }, macros::{
             interrupt, interrupt_with_maybe_value, interrupt_with_value,
             yield_unwrap,
         },
+        ExecutionError,
+        InvalidProgramError,
     },
     shared_values::{
         pointer::PointerReferenceMutability, pointer_address::PointerAddress,
@@ -55,12 +53,12 @@ use crate::{
     types::{
         definition::TypeDefinition,
         structural_type_definition::StructuralTypeDefinition,
-    },
-    utils::buffers::append_u32,
+    }
+    ,
     values::{
         core_value::CoreValue,
         core_values::{
-            decimal::{Decimal, typed_decimal::TypedDecimal},
+            decimal::{typed_decimal::TypedDecimal, Decimal},
             integer::typed_integer::TypedInteger,
             list::List,
             map::{Map, MapKey},
@@ -72,14 +70,14 @@ use crate::{
 };
 use alloc::rc::Rc;
 use core::cell::RefCell;
-use crate::global::protocol_structures::injected_variable_type::{InjectedVariableType, SharedInjectedVariableType};
+use crate::global::protocol_structures::injected_values::{InjectedValue, InjectedValueType, SharedInjectedValueType};
 use crate::global::protocol_structures::instruction_data::{ModifyStackValue, UnboundedStatementsData};
 use crate::global::protocol_structures::instructions::{Instruction, NestedInstructionResolutionStrategy};
 use crate::global::protocol_structures::regular_instructions::RegularInstruction;
 use crate::global::protocol_structures::type_instructions::TypeInstruction;
-use crate::runtime::execution::execution_loop::remote_execution_blocks::compile_remote_execution_block;
+use crate::core_compiler::injected_values::compile_injected_values;
 use crate::runtime::execution::macros::interrupt_with_values;
-use crate::shared_values::pointer::{Pointer, ReferencedPointer};
+use crate::shared_values::pointer::ReferencedPointer;
 use crate::shared_values::pointer_address::ReferencedPointerAddress;
 use crate::shared_values::shared_container::{SharedContainerInner, SharedContainerMutability};
 use crate::values::borrowed_value_container::BorrowedValueContainer;
@@ -1169,28 +1167,28 @@ pub fn inner_execution_loop(
                                 ) => {
 
                                     // get slots (moved or referenced)
-                                    let injected = &exec_block_data.injected_variables;
+                                    let injected = &exec_block_data.injected_values;
                                     let mut moved: Vec<Option<_>> = vec![None; injected.len()];
 
                                     // perform all mutable operations (removing moved shared values)
-                                    for (i, (addr, slot_type)) in injected.iter().enumerate() {
-                                        if matches!(slot_type, InjectedVariableType::Shared(SharedInjectedVariableType::Move)) {
-                                            moved[i] = Some(yield_unwrap!(state.stack.take_stack_value(*addr)));
+                                    for (i, InjectedValue {index, ty}) in injected.iter().enumerate() {
+                                        if matches!(ty, InjectedValueType::Shared(SharedInjectedValueType::Move)) {
+                                            moved[i] = Some(yield_unwrap!(state.stack.take_stack_value(*index)));
                                         }
                                     }
 
                                     // collect all slots
                                     let mut slots = Vec::with_capacity(injected.len());
-                                    for (i, (addr, slot_type)) in injected.iter().enumerate() {
-                                        slots.push(match slot_type {
-                                            InjectedVariableType::Shared(SharedInjectedVariableType::Move) => {
+                                    for (i, InjectedValue {index, ty}) in injected.iter().enumerate() {
+                                        slots.push(match ty {
+                                            InjectedValueType::Shared(SharedInjectedValueType::Move) => {
                                                 match moved[i].take().unwrap() {
                                                     ValueContainer::Shared(shared) => BorrowedValueContainer::Shared(shared),
                                                     ValueContainer::Local(_) => return yield Err(ExecutionError::ExpectedSharedValue)
                                                 }
                                             }
                                             _ => {
-                                                match yield_unwrap!(get_stack_value(&state, *addr)) {
+                                                match yield_unwrap!(get_stack_value(&state, *index)) {
                                                     ValueContainer::Shared(shared) => BorrowedValueContainer::Shared(shared.clone()),
                                                     ValueContainer::Local(value) => BorrowedValueContainer::Local(value),
                                                 }
@@ -1204,7 +1202,7 @@ pub fn inner_execution_loop(
                                     );
 
                                     // build dxb
-                                    let (buffer, moving_containers) = yield_unwrap!(compile_remote_execution_block(
+                                    let (buffer, moving_containers) = yield_unwrap!(compile_injected_values(
                                         exec_block_data,
                                         slots,
                                     ));

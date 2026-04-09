@@ -1,9 +1,10 @@
 use binrw::io::{Read, Seek, Write};
 use binrw::{BinRead, BinResult, BinWrite, Endian};
+use crate::global::protocol_structures::instruction_data::StackIndex;
 use crate::prelude::*;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum SharedInjectedVariableType {
+pub enum SharedInjectedValueType {
     // shared x
     Move,
     // 'shared x
@@ -13,7 +14,7 @@ pub enum SharedInjectedVariableType {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum LocalInjectedVariableType {
+pub enum LocalInjectedValueType {
     /// The value is moved into the child scope and no longer used afterward
     Move,
     /// The value is moved into the child scope but still used afterward (clone or immutable ref (&x))
@@ -23,44 +24,50 @@ pub enum LocalInjectedVariableType {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum InjectedVariableType {
-    Local(LocalInjectedVariableType),
-    Shared(SharedInjectedVariableType),
+pub enum InjectedValueType {
+    Local(LocalInjectedValueType),
+    Shared(SharedInjectedValueType),
 }
 
-impl From<InjectedVariableType> for u8 {
-    fn from(injected_value_type: InjectedVariableType) -> Self {
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, BinRead, BinWrite)]
+pub struct InjectedValue {
+    pub(crate) index: StackIndex,
+    pub(crate) ty: InjectedValueType,
+}
+
+impl From<InjectedValueType> for u8 {
+    fn from(injected_value_type: InjectedValueType) -> Self {
         match injected_value_type {
-            InjectedVariableType::Local(local_type) => match local_type {
-                LocalInjectedVariableType::Move => 0,
-                LocalInjectedVariableType::Copy => 1,
-                LocalInjectedVariableType::RefMut => 2,
+            InjectedValueType::Local(local_type) => match local_type {
+                LocalInjectedValueType::Move => 0,
+                LocalInjectedValueType::Copy => 1,
+                LocalInjectedValueType::RefMut => 2,
             },
-            InjectedVariableType::Shared(shared_type) => match shared_type {
-                SharedInjectedVariableType::Move => 3,
-                SharedInjectedVariableType::Ref => 4,
-                SharedInjectedVariableType::RefMut => 5,
+            InjectedValueType::Shared(shared_type) => match shared_type {
+                SharedInjectedValueType::Move => 3,
+                SharedInjectedValueType::Ref => 4,
+                SharedInjectedValueType::RefMut => 5,
             },
         }
     }
 }
 
-impl TryFrom<u8> for InjectedVariableType {
+impl TryFrom<u8> for InjectedValueType {
     type Error = ();
     fn try_from(value: u8) -> Result<Self, Self::Error> {
         match value {
-            0 => Ok(InjectedVariableType::Local(LocalInjectedVariableType::Move)),
-            1 => Ok(InjectedVariableType::Local(LocalInjectedVariableType::Copy)),
-            2 => Ok(InjectedVariableType::Local(LocalInjectedVariableType::RefMut)),
-            3 => Ok(InjectedVariableType::Shared(SharedInjectedVariableType::Move)),
-            4 => Ok(InjectedVariableType::Shared(SharedInjectedVariableType::Ref)),
-            5 => Ok(InjectedVariableType::Shared(SharedInjectedVariableType::RefMut)),
+            0 => Ok(InjectedValueType::Local(LocalInjectedValueType::Move)),
+            1 => Ok(InjectedValueType::Local(LocalInjectedValueType::Copy)),
+            2 => Ok(InjectedValueType::Local(LocalInjectedValueType::RefMut)),
+            3 => Ok(InjectedValueType::Shared(SharedInjectedValueType::Move)),
+            4 => Ok(InjectedValueType::Shared(SharedInjectedValueType::Ref)),
+            5 => Ok(InjectedValueType::Shared(SharedInjectedValueType::RefMut)),
             _ => Err(()),
         }
     }
 }
 
-impl BinWrite for InjectedVariableType {
+impl BinWrite for InjectedValueType {
     type Args<'a> = ();
 
     fn write_options<W: Write + Seek>(
@@ -73,7 +80,7 @@ impl BinWrite for InjectedVariableType {
         if endian != Endian::Little {
             return Err(binrw::Error::AssertFail {
                 pos: writer.stream_position().unwrap_or(0),
-                message: "Only little-endian is supported for InjectedVariableType"
+                message: "Only little-endian is supported for InjectedValueType"
                     .to_string(),
             });
         }
@@ -84,7 +91,7 @@ impl BinWrite for InjectedVariableType {
     }
 }
 
-impl BinRead for InjectedVariableType {
+impl BinRead for InjectedValueType {
     type Args<'a> = ();
 
     fn read_options<R: Read + Seek>(
@@ -96,16 +103,16 @@ impl BinRead for InjectedVariableType {
         if endian != Endian::Little {
             return Err(binrw::Error::AssertFail {
                 pos: reader.stream_position().unwrap_or(0),
-                message: "Only little-endian is supported for InjectedVariableType"
+                message: "Only little-endian is supported for InjectedValueType"
                     .to_string(),
             });
         }
         // read type
         let mut type_buf = [0u8; 1];
         reader.read_exact(&mut type_buf)?;
-        let value_type = InjectedVariableType::try_from(type_buf[0]).map_err(|_| binrw::Error::AssertFail {
+        let value_type = InjectedValueType::try_from(type_buf[0]).map_err(|_| binrw::Error::AssertFail {
             pos: reader.stream_position().unwrap_or(0),
-            message: format!("Invalid InjectedVariableType value: {}", type_buf[0]),
+            message: format!("Invalid InjectedValueType value: {}", type_buf[0]),
         })?;
         Ok(value_type)
     }

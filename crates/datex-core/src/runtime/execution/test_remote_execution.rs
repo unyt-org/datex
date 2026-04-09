@@ -148,6 +148,7 @@ pub async fn test_remote_inline_implicit_context() {
 #[tokio::test]
 #[cfg(feature = "compiler")]
 pub async fn test_remote_shared_value_inject_move() {
+    flexi_logger::init();
     let endpoint_a = Endpoint::new("@test_a");
     let endpoint_b = Endpoint::new("@test_b");
 

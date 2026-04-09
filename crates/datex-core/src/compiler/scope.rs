@@ -10,7 +10,7 @@ use crate::{
     runtime::execution::context::ExecutionMode,
 };
 use core::cell::RefCell;
-use crate::global::protocol_structures::injected_variable_type::InjectedVariableType;
+use crate::global::protocol_structures::injected_values::{InjectedValue, InjectedValueType};
 use crate::global::protocol_structures::instruction_data::StackIndex;
 
 #[derive(Debug, Default, Clone)]
@@ -29,8 +29,8 @@ pub struct ExternalParentScope {
 
     /// mapping for injected variables from parent scope stack index to child stack index
     pub injected_variables_map: HashMap<StackIndex, StackIndex>,
-    /// list of injected variables with parent stack index and variable type. The index is the child stack index (starting from 0)
-    pub injected_variables: Vec<(StackIndex, InjectedVariableType)>,
+    /// list of injected values with parent stack index and variable type. The index in the vector is the child stack index (starting from 0)
+    pub injected_values: Vec<InjectedValue>,
 }
 
 impl ExternalParentScope {
@@ -38,7 +38,7 @@ impl ExternalParentScope {
         Self {
             scope: Box::new(scope),
             injected_variables_map: HashMap::new(),
-            injected_variables: Vec::new(),
+            injected_values: Vec::new(),
         }
     }
 
@@ -47,9 +47,9 @@ impl ExternalParentScope {
     pub fn resolve_variable_name(
         &mut self,
         name: &str,
-        slot_type: InjectedVariableType,
+        value_type: InjectedValueType,
     ) -> Result<Option<(StackIndex, VariableKind)>, ()> {
-        let variable = self.scope.resolve_variable_name(name, Some(slot_type))?;
+        let variable = self.scope.resolve_variable_name(name, Some(value_type))?;
         if let Some((variable_parent_index, variable_kind)) = variable {
             // parent variable already registered
             if let Some(injected_variable) = self.injected_variables_map.get(&variable_parent_index) {
@@ -58,7 +58,7 @@ impl ExternalParentScope {
             // otherwise, map variable and store mapping
             let child_stack_index = StackIndex(self.injected_variables_map.len() as u32);
             self.injected_variables_map.insert(variable_parent_index, child_stack_index);
-            self.injected_variables.push((variable_parent_index, slot_type));
+            self.injected_values.push(InjectedValue {index: variable_parent_index, ty: value_type });
             Ok(Some((child_stack_index, variable_kind)))
         }
         else {
@@ -157,7 +157,7 @@ impl CompilationScope {
     pub fn resolve_variable_name(
         &mut self,
         name: &str,
-        slot_type: Option<InjectedVariableType>,
+        slot_type: Option<InjectedValueType>,
     ) -> Result<Option<(StackIndex, VariableKind)>, ()> {
         if let Some(variable) = self.variables.get(name) {
             Ok(Some((variable.index, variable.kind)))
@@ -182,7 +182,7 @@ impl CompilationScope {
     pub fn resolve_variable_name_with_slot_type(
         &mut self,
         name: &str,
-        slot_type: InjectedVariableType,
+        slot_type: InjectedValueType,
     ) -> Option<(StackIndex, VariableKind)> {
         self.resolve_variable_name(name, Some(slot_type)).unwrap()
     }

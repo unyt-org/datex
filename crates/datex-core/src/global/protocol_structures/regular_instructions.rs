@@ -865,7 +865,7 @@ impl RegularInstruction {
                     string,
                     "[length: {}, injected_variables: {:?}]",
                     data.length,
-                    data.injected_variables
+                    data.injected_values
                 )
             }
             #[cfg(feature = "disassembler")]
@@ -874,7 +874,7 @@ impl RegularInstruction {
                     string,
                     "[length: {}, injected_variables: {:?}]",
                     data.length,
-                    data.injected_variables
+                    data.injected_values
                 )
             }
             #[cfg(feature = "disassembler")]
@@ -883,7 +883,7 @@ impl RegularInstruction {
                     string,
                     "[length: {}, injected_variables: {:?}]",
                     data.length,
-                    data.injected_variables
+                    data.injected_values
                 )
             }
             RegularInstruction::ModifyStackValue(modify_slot) => {

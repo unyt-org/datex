@@ -2,6 +2,9 @@ use crate::shared_values::shared_container::SharedContainer;
 use crate::values::value::Value;
 use crate::values::value_container::ValueContainer;
 
+/// A variant of the normal [`ValueContainer`] which holds a borrowed reference to a local value instead
+/// of an owned value
+/// Shared values are still owned.
 pub enum BorrowedValueContainer<'a> {
     Local(&'a Value),
     Shared(SharedContainer)
