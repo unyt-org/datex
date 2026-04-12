@@ -6,7 +6,7 @@ use crate::{
         type_instruction_codes::TypeInstructionCode,
     },
     prelude::*,
-    shared_values::pointer::ReferenceMutability,
+    shared_values::shared_containers::ReferenceMutability,
     types::definition::TypeDefinition,
     utils::buffers::append_u8,
     values::core_values::r#type::Type,

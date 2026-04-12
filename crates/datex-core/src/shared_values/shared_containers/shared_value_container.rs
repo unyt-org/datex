@@ -10,6 +10,7 @@ use crate::{
 
 use crate::{prelude::*};
 use core::{cell::RefCell, fmt::Debug, prelude::rust_2024::*};
+use core::fmt::Display;
 
 pub struct SharedValueContainer {
     // pub(crate) pointer: Pointer,
@@ -45,6 +46,20 @@ impl Debug for SharedValueContainer {
             .field("allowed_type", &self.allowed_type)
             .field("observers", &self.observers.len())
             .finish()
+    }
+}
+
+impl Display for SharedValueContainer {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(
+            f, 
+            "shared {}{}",
+            self.value_container,
+            match &self.mutability {
+                SharedContainerMutability::Mutable => "mut ",
+                SharedContainerMutability::Immutable => "",
+            }
+        )
     }
 }
 

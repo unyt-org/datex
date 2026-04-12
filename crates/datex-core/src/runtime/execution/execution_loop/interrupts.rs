@@ -4,7 +4,7 @@ use crate::{
     values::value_container::ValueContainer,
 };
 
-use crate::{prelude::*, shared_values::pointer::ReferenceMutability};
+use crate::{prelude::*, shared_values::shared_containers::ReferenceMutability};
 use crate::global::protocol_structures::instruction_data::{RawInternalPointerAddress, RawLocalPointerAddress, RawRemotePointerAddress};
 use crate::shared_values::shared_container::SharedContainerMutability;
 

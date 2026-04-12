@@ -337,7 +337,7 @@ mod tests {
     };
     use core::assert_matches;
     use crate::ast::expressions::{CloneExpression, GetSharedRef, ValueAccessType};
-    use crate::shared_values::pointer::ReferenceMutability;
+    use crate::shared_values::shared_containers::ReferenceMutability;
 
     #[test]
     fn parse_boolean_true() {

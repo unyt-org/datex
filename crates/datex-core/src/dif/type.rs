@@ -12,7 +12,7 @@ use crate::{
 use crate::{
     prelude::*,
     shared_values::{
-        pointer::ReferenceMutability, pointer_address::PointerAddress,
+        pointer_address::PointerAddress,
     },
     values::core_values::r#type::{
         LocalMutability, LocalReferenceMutability, TypeMetadata,
@@ -23,6 +23,7 @@ use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{
     Deserialize, Serialize, de::IntoDeserializer, ser::SerializeStruct,
 };
+use crate::shared_values::shared_containers::SharedContainerOwnership;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum DIFTypeDefinition {
@@ -485,7 +486,7 @@ pub enum DIFTypeMetadata {
     /// with an additional reference mutability (e.g. 'mut shared mut User)
     Shared {
         mutability: SharedContainerMutability,
-        reference_mutability: Option<ReferenceMutability>,
+        ownership: SharedContainerOwnership,
     },
 }
 
@@ -525,7 +526,7 @@ impl From<TypeMetadata> for DIFTypeMetadata {
                 reference_mutability,
             } => DIFTypeMetadata::Shared {
                 mutability,
-                reference_mutability,
+                ownership: reference_mutability,
             },
         }
     }
@@ -543,10 +544,10 @@ impl From<DIFTypeMetadata> for TypeMetadata {
             },
             DIFTypeMetadata::Shared {
                 mutability,
-                reference_mutability,
+                ownership,
             } => TypeMetadata::Shared {
                 mutability,
-                reference_mutability,
+                ownership,
             },
         }
     }
@@ -595,7 +596,7 @@ impl Serialize for DIFType {
             }
             DIFTypeMetadata::Shared {
                 mutability,
-                reference_mutability,
+                ownership: reference_mutability,
             } => {
                 state.serialize_field("shared", &true)?;
                 state.serialize_field("mut", mutability)?;
@@ -684,7 +685,7 @@ impl<'de> Deserialize<'de> for DIFType {
                                 SharedContainerMutability::Immutable
                             }
                         },
-                        reference_mutability: reference_mutability.map(|rm| {
+                        ownership: reference_mutability.map(|rm| {
                             match rm {
                                 LocalReferenceMutability::Mutable => {
                                     ReferenceMutability::Mutable

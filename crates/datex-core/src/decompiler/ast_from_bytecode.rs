@@ -33,7 +33,7 @@ use crate::{
     ast::expressions::{CreateShared, GetSharedRef, RequestSharedRef},
     prelude::*,
     shared_values::{
-        pointer::ReferenceMutability, pointer_address::PointerAddress,
+        pointer_address::PointerAddress,
         shared_container::SharedContainerMutability,
     },
 };
@@ -46,6 +46,7 @@ use crate::global::protocol_structures::instruction_data::UnboundedStatementsDat
 use crate::global::protocol_structures::instructions::NestedInstructionResolutionStrategy;
 use crate::global::protocol_structures::regular_instructions::RegularInstruction;
 use crate::global::protocol_structures::type_instructions::TypeInstruction;
+use crate::shared_values::shared_containers::ReferenceMutability;
 
 #[derive(Debug)]
 enum CollectedAstResult {

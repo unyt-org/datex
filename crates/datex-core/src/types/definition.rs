@@ -6,13 +6,13 @@ use crate::{
     },
     values::core_values::{callable::CallableSignature, r#type::Type},
 };
-use core::{cell::RefCell, fmt::Display, hash::Hash, prelude::rust_2024::*};
+use core::{fmt::Display, hash::Hash, prelude::rust_2024::*};
 
 use crate::{
     prelude::*, shared_values::pointer_address::PointerAddress,
     values::core_values::r#type::TypeMetadata,
 };
-use crate::shared_values::shared_containers::shared_type_container::SharedTypeContainer;
+use crate::shared_values::shared_containers::SharedContainerContainingType;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TypeDefinition {
@@ -24,7 +24,7 @@ pub enum TypeDefinition {
     Collection(CollectionTypeDefinition),
 
     /// type A = B
-    SharedReference(Rc<RefCell<SharedTypeContainer>>), // integer
+    SharedReference(SharedContainerContainingType), // integer
 
     /// type, used for nested types with references (e.g. &mut & x)
     Type(Box<Type>),
@@ -249,7 +249,7 @@ impl TypeDefinition {
 
     /// Creates a new reference type.
     pub fn shared_reference(
-        reference: Rc<RefCell<SharedTypeContainer>>,
+        reference: SharedContainerContainingType,
     ) -> Self {
         TypeDefinition::SharedReference(reference)
     }

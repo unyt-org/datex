@@ -1,12 +1,8 @@
-use core::fmt::Display;
-use binrw::{BinRead, BinWrite};
-use num_enum::TryFromPrimitive;
-use serde::Serialize;
-use crate::serde::Deserialize;
+use std::cell::Ref;
+use crate::shared_values::pointer_address::{EndpointOwnedPointerAddress, PointerAddress};
 use crate::shared_values::shared_container::ExternalSharedContainer;
+use crate::shared_values::shared_container::shared_value_container::SharedValueContainer;
 use crate::shared_values::shared_containers::EndpointOwnedSharedContainer;
-use crate::shared_values::shared_containers::shared_type_container::SharedTypeContainer;
-use crate::shared_values::shared_containers::shared_value_container::SharedValueContainer;
 
 /// Wrapper containing either an endpoint-owned shared container or an external shared container
 #[derive(Debug)]
@@ -15,10 +11,38 @@ pub enum SharedContainerInner {
     External(ExternalSharedContainer),
 }
 
+impl SharedContainerInner {
 
-/// Wrapper containing either a [SharedValueContainer] or a [SharedTypeContainer]
-#[derive(Debug, PartialEq)]
-pub enum SharedContainerValueOrType {
-    Value(SharedValueContainer),
-    Type(SharedTypeContainer),
+    /// Get an immutable reference to the contained value
+    pub fn value(&self) -> &SharedValueContainer {
+        match self {
+            SharedContainerInner::EndpointOwned(endpoint_owned) => &endpoint_owned.value,
+            SharedContainerInner::External(external) => &external.value,
+        }
+    }
+
+    /// Get a mutable reference to the contained value
+    pub fn value_mut(&mut self) -> &mut SharedValueContainer {
+        match self {
+            SharedContainerInner::EndpointOwned(endpoint_owned) => &mut endpoint_owned.value,
+            SharedContainerInner::External(external) => &mut external.value,
+        }
+    }
+
+    /// Take the contained value out of the container, consuming the container in the process.
+    pub fn take_value(self) -> SharedValueContainer {
+        match self {
+            SharedContainerInner::EndpointOwned(owned) => owned.value,
+            SharedContainerInner::External(referenced) => referenced.value,
+        }
+    }
+
+    /// Get the inner [PointerAddress].
+    pub fn pointer_address(&self) -> PointerAddress {
+        match self {
+            SharedContainerInner::EndpointOwned(endpoint_owned) => PointerAddress::EndpointOwned(endpoint_owned.address.clone()),
+            SharedContainerInner::External(external) => PointerAddress::External(external.address.clone()),
+        }
+    }
+
 }

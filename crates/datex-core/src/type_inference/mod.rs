@@ -57,6 +57,7 @@ use crate::{
 };
 use core::{cell::RefCell, ops::Range, panic, str::FromStr};
 use crate::ast::expressions::ValueAccessType;
+use crate::shared_values::shared_container::{ReferenceMutability, SharedContainerOwnership};
 use crate::shared_values::shared_containers::shared_type_container::SharedTypeContainer;
 
 pub mod error;
@@ -1164,8 +1165,10 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
         //         span: Some(span.clone()),
         //     });
         // }
-        if expression_type.shared_reference_mutability()
-            != Some(ReferenceMutability::Mutable)
+        let ownership = expression_type.shared_container_ownership();
+        
+        if ownership != Some(&SharedContainerOwnership::Referenced(ReferenceMutability::Mutable)) &&
+            ownership != Some(&SharedContainerOwnership::Owned)
         {
             return Err(SpannedTypeError {
                 error: TypeError::AssignmentToImmutableReference(

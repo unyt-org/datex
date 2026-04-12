@@ -46,73 +46,6 @@ use crate::shared_values::shared_containers::shared_value_container::SharedValue
 
 
 
-// // FIXME: try to deprecate clone
-// impl Clone for SharedContainer {
-//     fn clone(&self) -> Self {
-//         SharedContainer {
-//             inner: self.inner.clone(),
-//             reference_mutability: Some(ReferenceMutability::Immutable),
-//         }
-//     }
-// }
-
-impl SharedContainerInner {
-    pub fn value(&self) -> &SharedContainerValueOrType {
-        match self {
-            SharedContainerInner::EndpointOwned(owned) => &owned.value_or_type,
-            SharedContainerInner::External(referenced) => &referenced.value_or_type,
-        }
-    }
-
-    pub fn value_mut(&mut self) -> &mut SharedContainerValueOrType {
-        match self {
-            SharedContainerInner::EndpointOwned(owned) => &mut owned.value_or_type,
-            SharedContainerInner::External(referenced) => &mut referenced.value_or_type,
-        }
-    }
-
-    pub fn take_value(self) -> SharedContainerValueOrType {
-        match self {
-            SharedContainerInner::EndpointOwned(owned) => owned.value_or_type,
-            SharedContainerInner::External(referenced) => referenced.value_or_type,
-        }
-    }
-
-
-    pub fn pointer_address(&self) -> PointerAddress {
-        match self {
-            SharedContainerInner::EndpointOwned(owned) => PointerAddress::EndpointOwned(owned.pointer.address().clone()),
-            SharedContainerInner::External(referenced) => PointerAddress::External(referenced.pointer.address().clone()),
-        }
-    }
-
-    pub fn change_to_referenced(&mut self, referenced_pointer: ExternalPointer) {
-        // mem replace workaround to get owned value_or_type
-        let original_value_or_type = mem::replace(self, SharedContainerInner::EndpointOwned(EndpointOwnedSharedContainerInner {
-            value_or_type: SharedContainerValueOrType::Value(SharedValueContainer {
-                value_container: ValueContainer::Local(Value::null()),
-                allowed_type: TypeDefinition::Unit,
-                observers: Default::default(),
-                mutability: SharedContainerMutability::Immutable,
-            }),
-            pointer: EndpointOwnedPointer::NULL,
-        })).take_value();
-
-        *self = SharedContainerInner::External(ExternalSharedContainerInner {
-            value_or_type: original_value_or_type,
-            pointer: referenced_pointer
-        });
-    }
-}
-
-impl Display for SharedContainerInner {
-    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
-        match self {
-            SharedContainerInner::EndpointOwned(owned) => write!(f, "{}", owned.value_or_type),
-            SharedContainerInner::External(referenced) => write!(f, "{}", referenced.value_or_type),
-        }
-    }
-}
 
 impl SharedContainerValueOrType {
     /// Gets the mutability of the shared value.
@@ -252,23 +185,6 @@ impl Display for SharedValueCreationError {
 }
 
 impl SharedContainer {
-    pub fn pointer_address(&self) -> PointerAddress {
-        self.inner.borrow().pointer_address()
-    }
-
-    pub fn value(&self) -> Ref<'_, SharedContainerValueOrType> {
-        Ref::map(self.inner.borrow(), |inner| inner.value())
-    }
-
-    pub fn value_mut(&self) -> RefMut<'_, SharedContainerValueOrType> {
-        RefMut::map(self.inner.borrow_mut(), |inner| inner.value_mut())
-    }
-
-    /// Gets the mutability of the shared value.
-    /// TypeReferences are always immutable.
-    pub(crate) fn mutability(&self) -> SharedContainerMutability {
-        self.value().mutability()
-    }
 
     /// Checks if the reference can be mutated by the current endpoint.
     pub(crate) fn can_mutate(&self) -> bool {
@@ -294,23 +210,6 @@ impl SharedContainer {
         self.inner.borrow_mut().change_to_referenced(ExternalPointer::new(remote_address));
 
         Ok(())
-    }
-
-    pub fn try_derive_mutable_reference(&self) -> Result<Self, ()> {
-        if !self.can_mutate() {
-            return Err(());
-        }
-
-        Ok(SharedContainer {
-            inner: self.inner.clone(),
-            reference_mutability: Some(ReferenceMutability::Mutable),
-        })
-    }
-
-    /// Clones the shared container as a mutable reference if possible, otherwise as an immutable reference
-    pub fn derive_with_max_mutability(&self) -> Self {
-        self.try_derive_mutable_reference()
-            .unwrap_or_else(|_| self.derive_reference())
     }
 
     /// Returns the shared container if it is owned (not a reference), otherwise returns an error.
@@ -417,7 +316,7 @@ impl SharedContainer {
         pointer: EndpointOwnedPointer,
         maybe_nominal_type_declaration: Option<NominalTypeDeclaration>,
     ) -> Self {
-        let type_reference = SharedTypeContainer::new(
+        let type_reference = SharedContainerContainingType::new(
             type_value,
             maybe_nominal_type_declaration,
         );

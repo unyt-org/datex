@@ -4,12 +4,12 @@ use crate::{
 };
 
 use crate::{
-    shared_values::pointer::ReferenceMutability,
     values::core_values::r#type::{LocalMutability, LocalReferenceMutability},
 };
 use modular_bitfield::Specifier;
 use num_enum::TryFromPrimitive;
 use strum::Display;
+use crate::shared_values::shared_containers::{ReferenceMutability, SharedContainerOwnership};
 
 #[allow(non_camel_case_types)]
 #[derive(
@@ -73,30 +73,30 @@ pub enum TypeReferenceMutabilityCode {
     Value,              // default
 }
 
-impl From<&TypeReferenceMutabilityCode> for Option<ReferenceMutability> {
+impl From<&TypeReferenceMutabilityCode> for SharedContainerOwnership {
     fn from(value: &TypeReferenceMutabilityCode) -> Self {
         match value {
             TypeReferenceMutabilityCode::MutableReference => {
-                Some(ReferenceMutability::Mutable)
+                SharedContainerOwnership::Referenced(ReferenceMutability::Mutable)
             }
             TypeReferenceMutabilityCode::ImmutableReference => {
-                Some(ReferenceMutability::Immutable)
+                SharedContainerOwnership::Referenced(ReferenceMutability::Immutable)
             }
-            TypeReferenceMutabilityCode::Value => None,
+            TypeReferenceMutabilityCode::Value => SharedContainerOwnership::Owned,
         }
     }
 }
 
-impl From<&Option<ReferenceMutability>> for TypeReferenceMutabilityCode {
-    fn from(value: &Option<ReferenceMutability>) -> Self {
+impl From<&SharedContainerOwnership> for TypeReferenceMutabilityCode {
+    fn from(value: &SharedContainerOwnership) -> Self {
         match value {
-            Some(ReferenceMutability::Mutable) => {
+            SharedContainerOwnership::Referenced(ReferenceMutability::Mutable) => {
                 TypeReferenceMutabilityCode::MutableReference
             }
-            Some(ReferenceMutability::Immutable) => {
+            SharedContainerOwnership::Referenced(ReferenceMutability::Immutable) => {
                 TypeReferenceMutabilityCode::ImmutableReference
             }
-            None => TypeReferenceMutabilityCode::Value,
+            SharedContainerOwnership::Owned => TypeReferenceMutabilityCode::ImmutableReference,
         }
     }
 }

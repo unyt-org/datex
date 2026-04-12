@@ -6,7 +6,7 @@ use crate::{
     },
     prelude::*,
     shared_values::{
-        pointer::ReferenceMutability, pointer_address::PointerAddress,
+        shared_containers::ReferenceMutability, pointer_address::PointerAddress,
         shared_container::SharedContainerMutability,
     },
     traits::structural_eq::StructuralEq,
@@ -32,7 +32,8 @@ use core::{
     unimplemented,
 };
 use serde::{Deserialize, Serialize};
-use crate::shared_values::shared_containers::shared_type_container::SharedTypeContainer;
+use crate::shared_values::shared_container::SharedContainerContainingType;
+use crate::shared_values::shared_containers::SharedContainerOwnership;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum LocalReferenceMutability {
@@ -58,7 +59,7 @@ pub enum TypeMetadata {
     /// with an additional reference mutability (e.g. 'mut shared mut User)
     Shared {
         mutability: SharedContainerMutability,
-        reference_mutability: Option<ReferenceMutability>,
+        ownership: SharedContainerOwnership,
     },
 }
 
@@ -74,7 +75,7 @@ impl Default for TypeMetadata {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Type {
     pub type_definition: TypeDefinition,
-    pub base_type: Option<Rc<RefCell<SharedTypeContainer>>>,
+    pub base_type: Option<SharedContainerContainingType>,
     pub metadata: TypeMetadata,
 }
 
@@ -154,7 +155,7 @@ impl Type {
     pub fn is_reference(&self) -> bool {
         core::matches!(self.type_definition, TypeDefinition::SharedReference(_))
     }
-    pub fn inner_reference(&self) -> Option<Rc<RefCell<SharedTypeContainer>>> {
+    pub fn inner_reference(&self) -> Option<Rc<RefCell<SharedContainerContainingType>>> {
         if let TypeDefinition::SharedReference(reference) =
             &self.type_definition
         {
@@ -174,16 +175,16 @@ impl Type {
         }
     }
 
-    /// Mutability for a reference to a shared type (e.g. &mut shared X), if applicable
-    pub fn shared_reference_mutability(
+    /// Ownership type for a shared container
+    pub fn shared_container_ownership(
         &self,
-    ) -> Option<ReferenceMutability> {
+    ) -> Option<&SharedContainerOwnership> {
         match &self.metadata {
             TypeMetadata::Local { .. } => None,
             TypeMetadata::Shared {
-                reference_mutability,
+                ownership,
                 ..
-            } => reference_mutability.clone(),
+            } => Some(ownership),
         }
     }
 
@@ -231,7 +232,7 @@ impl Type {
 
     /// Creates a reference type pointing to the given TypeReference
     pub fn shared_reference(
-        type_definition: Rc<RefCell<SharedTypeContainer>>,
+        type_definition: Rc<RefCell<SharedContainerContainingType>>,
         metadata: TypeMetadata,
     ) -> Self {
         Type {
@@ -311,7 +312,7 @@ impl Type {
     /// User/variant -> User
     pub fn base_type_reference(
         &self,
-    ) -> Option<Rc<RefCell<SharedTypeContainer>>> {
+    ) -> Option<Rc<RefCell<SharedContainerContainingType>>> {
         // has direct base type (e.g. integer/u8 -> integer)
         if let Some(base_type) = &self.base_type {
             return Some(base_type.clone());

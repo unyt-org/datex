@@ -28,7 +28,6 @@ use log::info;
 use strum::IntoEnumIterator;
 use crate::shared_values::pointer::ExternalPointer;
 use crate::shared_values::shared_container::SharedContainerInner;
-use crate::shared_values::shared_containers::shared_type_container::{NominalTypeDeclaration, SharedTypeContainer};
 
 type CoreLibTypes = HashMap<CoreLibPointerId, Type>;
 type CoreLibVals = HashMap<CoreLibPointerId, SharedContainer>;

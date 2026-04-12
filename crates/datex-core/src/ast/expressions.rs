@@ -9,7 +9,7 @@ use crate::{
         UnaryOperator, assignment::AssignmentOperator,
     },
     shared_values::{
-        pointer::ReferenceMutability, pointer_address::PointerAddress,
+        pointer_address::PointerAddress,
         shared_container::SharedContainerMutability,
     },
     values::{
@@ -27,6 +27,7 @@ use crate::{
 };
 pub use crate::{prelude::*, values::core_values::callable::CallableKind};
 use core::{fmt::Display, ops, ops::Neg};
+use crate::shared_values::shared_container::ReferenceMutability;
 
 #[derive(Clone, Debug)]
 /// An expression in the AST

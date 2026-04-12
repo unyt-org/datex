@@ -208,7 +208,7 @@ impl<'a> From<OwnedValueKey> for ValueKey<'a> {
     }
 }
 
-#[derive(Clone, Debug, Eq)]
+#[derive(Debug, Eq, Clone)]
 pub enum ValueContainer {
     Local(Value), // TODO #767: add references to local values (for recursive structures)
     Shared(SharedContainer),

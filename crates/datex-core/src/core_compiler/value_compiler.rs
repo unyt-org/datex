@@ -28,7 +28,7 @@ use binrw::io::Write;
 use crate::{
     prelude::*,
     shared_values::{
-        pointer::ReferenceMutability,
+        shared_containers::ReferenceMutability,
         pointer_address::{PointerAddress, ExternalPointerAddress},
     },
     values::core_values::r#type::TypeMetadata,

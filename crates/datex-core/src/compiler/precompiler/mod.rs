@@ -29,7 +29,6 @@ use crate::{
     },
     global::operators::{binary::ArithmeticOperator, BinaryOperator},
     libs::core::CoreLibPointerId,
-    shared_values::pointer::ReferenceMutability,
     types::definition::TypeDefinition,
     utils::maybe_action::{collect_or_pass_error, ErrorCollector, MaybeAction},
     values::core_values::r#type::{Type, TypeMetadata},
@@ -46,7 +45,7 @@ use precompiled_ast::{AstMetadata, RichAst, VariableShape};
 use scope::NewScopeType;
 use scope_stack::PrecompilerScopeStack;
 use crate::ast::expressions::{CloneExpression, GetSharedRef, Unbox, UnboxAssignment, ValueAccessType};
-use crate::shared_values::shared_containers::shared_type_container::{NominalTypeDeclaration, SharedTypeContainer};
+use crate::shared_values::shared_containers::ReferenceMutability;
 
 pub struct Precompiler<'a> {
     ast_metadata: Rc<RefCell<AstMetadata>>,
@@ -746,7 +745,6 @@ mod tests {
         },
         parser::Parser,
         shared_values::{
-            pointer::ReferenceMutability,
             pointer_address::PointerAddress,
             shared_container::SharedContainerMutability,
         },

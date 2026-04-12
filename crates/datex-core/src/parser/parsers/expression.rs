@@ -22,7 +22,7 @@ use crate::{
     },
     prelude::*,
     shared_values::{
-        pointer::ReferenceMutability, pointer_address::PointerAddress,
+        pointer_address::PointerAddress,
         shared_container::SharedContainerMutability,
     },
     values::core_values::{
@@ -30,6 +30,7 @@ use crate::{
     },
 };
 use crate::ast::expressions::CloneExpression;
+use crate::shared_values::shared_containers::ReferenceMutability;
 
 static UNARY_BP: u8 = 29; // weaker than property access / apply, stronger than all other binary operators
 
@@ -674,12 +675,12 @@ mod tests {
         },
         prelude::*,
         shared_values::{
-            pointer::ReferenceMutability,
             pointer_address::PointerAddress,
             shared_container::SharedContainerMutability,
         },
         values::core_values::r#type::LocalReferenceMutability,
     };
+    use crate::shared_values::shared_containers::ReferenceMutability;
 
     #[test]
     fn parse_simple_binary_expression() {

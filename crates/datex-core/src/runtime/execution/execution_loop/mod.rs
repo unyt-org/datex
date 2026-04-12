@@ -47,7 +47,7 @@ use crate::{
         InvalidProgramError,
     },
     shared_values::{
-        pointer::ReferenceMutability, pointer_address::PointerAddress,
+        shared_containers::ReferenceMutability, pointer_address::PointerAddress,
         shared_container::SharedContainer,
     },
     types::{
@@ -1177,7 +1177,7 @@ pub fn inner_execution_loop(
                                         exec_block_data,
                                         injected_values,
                                     ));
-                                    
+
                                     // store moving pointers
                                     if !moving_containers.is_empty() {
                                         yield_unwrap!(
