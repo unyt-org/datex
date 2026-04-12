@@ -2,13 +2,12 @@
 use crate::ast::expressions::DatexExpressionData;
 use crate::{
     libs::core::{
-        CoreLibPointerId, get_core_lib_type, get_core_lib_type_reference,
+        get_core_lib_type, get_core_lib_type_reference, CoreLibPointerId,
     },
     prelude::*,
     shared_values::{
-        pointer::PointerReferenceMutability, pointer_address::PointerAddress,
+        pointer::ReferenceMutability, pointer_address::PointerAddress,
         shared_container::SharedContainerMutability,
-        shared_type_container::SharedTypeContainer,
     },
     traits::structural_eq::StructuralEq,
     types::{
@@ -33,6 +32,7 @@ use core::{
     unimplemented,
 };
 use serde::{Deserialize, Serialize};
+use crate::shared_values::shared_containers::shared_type_container::SharedTypeContainer;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum LocalReferenceMutability {
@@ -58,7 +58,7 @@ pub enum TypeMetadata {
     /// with an additional reference mutability (e.g. 'mut shared mut User)
     Shared {
         mutability: SharedContainerMutability,
-        reference_mutability: Option<PointerReferenceMutability>,
+        reference_mutability: Option<ReferenceMutability>,
     },
 }
 
@@ -177,7 +177,7 @@ impl Type {
     /// Mutability for a reference to a shared type (e.g. &mut shared X), if applicable
     pub fn shared_reference_mutability(
         &self,
-    ) -> Option<PointerReferenceMutability> {
+    ) -> Option<ReferenceMutability> {
         match &self.metadata {
             TypeMetadata::Local { .. } => None,
             TypeMetadata::Shared {
@@ -520,8 +520,8 @@ impl Display for Type {
                 reference_mutability,
             } => {
                 let ref_prefix = match reference_mutability {
-                    Some(PointerReferenceMutability::Immutable) => "'",
-                    Some(PointerReferenceMutability::Mutable) => "'mut ",
+                    Some(ReferenceMutability::Immutable) => "'",
+                    Some(ReferenceMutability::Mutable) => "'mut ",
                     None => "",
                 };
                 let shared_prefix = match mutability {
@@ -658,12 +658,12 @@ mod tests {
     use crate::prelude::*;
 
     use crate::{
-        libs::core::{CoreLibPointerId, get_core_lib_type},
+        libs::core::{get_core_lib_type, CoreLibPointerId},
         values::{
             core_values::{
-                integer::{Integer, typed_integer::TypedInteger},
-                text::Text,
+                integer::{typed_integer::TypedInteger, Integer},
                 r#type::{Type, TypeMetadata},
+                text::Text,
             },
             value_container::ValueContainer,
         },

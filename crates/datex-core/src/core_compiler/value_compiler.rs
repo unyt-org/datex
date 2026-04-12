@@ -28,8 +28,8 @@ use binrw::io::Write;
 use crate::{
     prelude::*,
     shared_values::{
-        pointer::PointerReferenceMutability,
-        pointer_address::{PointerAddress, ReferencedPointerAddress},
+        pointer::ReferenceMutability,
+        pointer_address::{PointerAddress, ExternalPointerAddress},
     },
     values::core_values::r#type::TypeMetadata,
 };
@@ -125,7 +125,7 @@ pub fn append_shared_container(
         // ref
         Some(mutability) => {
             match shared_container.pointer_address() {
-                PointerAddress::Owned(owned_address) => {
+                PointerAddress::EndpointOwned(owned_address) => {
                     // owned ref + value
                     if !remote_endpoint_has_value {
                         append_regular_instruction(
@@ -468,27 +468,27 @@ pub fn append_float_as_i32(cursor: &mut ByteCursor, int: i32) {
 pub fn append_get_shared_ref(
     context: &mut CoreCompilationContext,
     address: &PointerAddress,
-    mutability: &PointerReferenceMutability,
+    mutability: &ReferenceMutability,
 ) {
     match address {
-        PointerAddress::Referenced(ReferencedPointerAddress::Internal(id)) => {
+        PointerAddress::External(ExternalPointerAddress::Builtin(id)) => {
             append_get_internal_ref(context.cursor_mut(), id);
         }
-        PointerAddress::Owned(local_address) => {
+        PointerAddress::EndpointOwned(local_address) => {
             append_instruction_code_new(
                 context.cursor_mut(),
                 InstructionCode::GET_LOCAL_SHARED_REF,
             );
             context.cursor_mut().write_all(&local_address.address).unwrap();
         }
-        PointerAddress::Referenced(ReferencedPointerAddress::Remote(id)) => {
+        PointerAddress::External(ExternalPointerAddress::Remote(id)) => {
             append_instruction_code_new(
                 context.cursor_mut(),
                 match mutability {
-                    PointerReferenceMutability::Immutable => {
+                    ReferenceMutability::Immutable => {
                         InstructionCode::REQUEST_REMOTE_SHARED_REF
                     }
-                    PointerReferenceMutability::Mutable => {
+                    ReferenceMutability::Mutable => {
                         InstructionCode::REQUEST_REMOTE_SHARED_REF_MUT
                     }
                 },

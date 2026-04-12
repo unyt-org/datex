@@ -284,7 +284,7 @@ mod tests {
         },
     };
     use core::{assert_matches, cell::RefCell};
-    use crate::shared_values::pointer::OwnedPointer;
+    use crate::shared_values::pointer::EndpointOwnedPointer;
 
     #[test]
     fn push() {
@@ -294,7 +294,7 @@ mod tests {
             ValueContainer::from(3),
         ];
         let list_ref =
-            SharedContainer::boxed_owned_mut(List::from(list), OwnedPointer::NULL);
+            SharedContainer::boxed_owned_mut(List::from(list), EndpointOwnedPointer::NULL);
         list_ref
             .try_append_value(0, None, ValueContainer::from(4))
             .expect("Failed to push value to list");
@@ -304,7 +304,7 @@ mod tests {
         // Try to push to immutable value
         let int_ref = SharedContainer::boxed_owned_immut(
             List::from(vec![ValueContainer::from(42)]),
-            OwnedPointer::NULL,
+            EndpointOwnedPointer::NULL,
         );
         let result =
             int_ref.try_append_value(0, None, ValueContainer::from(99));
@@ -312,7 +312,7 @@ mod tests {
 
         // Try to push to non-list value
         let int_ref =
-            SharedContainer::boxed_owned_mut(42, OwnedPointer::NULL);
+            SharedContainer::boxed_owned_mut(42, EndpointOwnedPointer::NULL);
         let result =
             int_ref.try_append_value(0, None, ValueContainer::from(99));
         assert_matches!(result, Err(AccessError::InvalidOperation(_)));
@@ -326,7 +326,7 @@ mod tests {
         ]);
         let map_ref = SharedContainer::boxed_owned_mut(
             ValueContainer::from(map),
-            OwnedPointer::NULL,
+            EndpointOwnedPointer::NULL,
         );
         // Set existing property
         map_ref
@@ -352,7 +352,7 @@ mod tests {
         ];
         let list_ref = SharedContainer::boxed_owned_mut(
             ValueContainer::from(list),
-            OwnedPointer::NULL,
+            EndpointOwnedPointer::NULL,
         );
 
         // Set existing index
@@ -374,7 +374,7 @@ mod tests {
 
         // Try to set index on non-map value
         let int_ref =
-            SharedContainer::boxed_owned_mut(42, OwnedPointer::NULL);
+            SharedContainer::boxed_owned_mut(42, EndpointOwnedPointer::NULL);
         let result =
             int_ref.try_set_property(0, None, 0, ValueContainer::from(99));
         assert_matches!(result, Err(AccessError::InvalidOperation(_)));
@@ -388,7 +388,7 @@ mod tests {
         ]);
         let struct_ref = SharedContainer::boxed_owned_mut(
             ValueContainer::from(struct_val),
-            OwnedPointer::NULL,
+            EndpointOwnedPointer::NULL,
         );
 
         // Set existing property
@@ -409,7 +409,7 @@ mod tests {
 
         // // Try to set property on non-struct value
         let int_ref =
-            SharedContainer::boxed_owned_mut(42, OwnedPointer::NULL);
+            SharedContainer::boxed_owned_mut(42, EndpointOwnedPointer::NULL);
         let result = int_ref.try_set_property(
             0,
             None,
@@ -421,7 +421,7 @@ mod tests {
 
     #[test]
     fn immutable_reference_fails() {
-        let r = SharedContainer::boxed_owned_immut(42, OwnedPointer::NULL);
+        let r = SharedContainer::boxed_owned_immut(42, EndpointOwnedPointer::NULL);
         assert_matches!(
             r.try_replace(0, None, 43),
             Err(AccessError::ImmutableReference)
@@ -430,7 +430,7 @@ mod tests {
         let r = SharedContainer::try_boxed_owned(
             42.into(),
             None,
-            OwnedPointer::NULL,
+            EndpointOwnedPointer::NULL,
             SharedContainerMutability::Immutable,
         )
         .unwrap();

@@ -18,7 +18,7 @@ use core::fmt::{self};
 
 use crate::{
     decompiler::{FormattingMode, FormattingOptions, IndentType},
-    shared_values::pointer::PointerReferenceMutability,
+    shared_values::pointer::ReferenceMutability,
     values::core_values::r#type::LocalReferenceMutability,
 };
 use crate::ast::expressions::{UnboxSlotAssignment, ValueAccessType};
@@ -546,13 +546,13 @@ impl AstToSourceCodeConverter {
             }
             DatexExpressionData::GetSharedRef(create_shared_ref) => {
                 match &create_shared_ref.mutability {
-                    PointerReferenceMutability::Mutable => {
+                    ReferenceMutability::Mutable => {
                         format!(
                             "'mut {}",
                             self.format(&create_shared_ref.expression)
                         )
                     }
-                    PointerReferenceMutability::Immutable => {
+                    ReferenceMutability::Immutable => {
                         format!(
                             "'{}",
                             self.format(&create_shared_ref.expression)
@@ -636,8 +636,8 @@ impl AstToSourceCodeConverter {
                 format!(
                     "{}{}",
                     match get_shared_ref.mutability {
-                        PointerReferenceMutability::Mutable => "'mut ",
-                        PointerReferenceMutability::Immutable => "'",
+                        ReferenceMutability::Mutable => "'mut ",
+                        ReferenceMutability::Immutable => "'",
                     },
                     get_shared_ref.address,
                 )

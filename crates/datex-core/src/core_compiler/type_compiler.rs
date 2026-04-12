@@ -6,7 +6,7 @@ use crate::{
         type_instruction_codes::TypeInstructionCode,
     },
     prelude::*,
-    shared_values::pointer::PointerReferenceMutability,
+    shared_values::pointer::ReferenceMutability,
     types::definition::TypeDefinition,
     utils::buffers::append_u8,
     values::core_values::r#type::Type,
@@ -51,7 +51,7 @@ pub fn append_type_definition(
                 append_get_shared_ref(
                     context,
                     impl_type,
-                    &PointerReferenceMutability::Immutable,
+                    &ReferenceMutability::Immutable,
                 )
             }
 
@@ -65,7 +65,7 @@ pub fn append_type_definition(
             append_get_shared_ref(
                 context,
                 &pointer_address,
-                &PointerReferenceMutability::Immutable,
+                &ReferenceMutability::Immutable,
             )
         }
         _ => todo!("#637 Type definition compilation not implemented yet"),

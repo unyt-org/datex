@@ -22,7 +22,7 @@ use crate::{
     },
     prelude::*,
     shared_values::{
-        pointer::PointerReferenceMutability, pointer_address::PointerAddress,
+        pointer::ReferenceMutability, pointer_address::PointerAddress,
         shared_container::SharedContainerMutability,
     },
     values::core_values::{
@@ -519,7 +519,7 @@ impl Parser {
                     self.advance()?; // consume pointer address
 
                     Ok(DatexExpressionData::RequestSharedRef(RequestSharedRef {
-                        mutability: PointerReferenceMutability::Immutable,
+                        mutability: ReferenceMutability::Immutable,
                         address,
                     })
                     .with_span(span))
@@ -530,7 +530,7 @@ impl Parser {
                     let span = op.span.start..rhs.span.end;
 
                     Ok(DatexExpressionData::GetSharedRef(GetSharedRef {
-                        mutability: PointerReferenceMutability::Immutable,
+                        mutability: ReferenceMutability::Immutable,
                         expression: Box::new(rhs),
                     })
                     .with_span(span))
@@ -551,7 +551,7 @@ impl Parser {
                     self.advance()?; // consume pointer address
 
                     Ok(DatexExpressionData::RequestSharedRef(RequestSharedRef {
-                        mutability: PointerReferenceMutability::Mutable,
+                        mutability: ReferenceMutability::Mutable,
                         address,
                     })
                     .with_span(span))
@@ -562,7 +562,7 @@ impl Parser {
                     let span = op.span.start..rhs.span.end;
 
                     Ok(DatexExpressionData::GetSharedRef(GetSharedRef {
-                        mutability: PointerReferenceMutability::Mutable,
+                        mutability: ReferenceMutability::Mutable,
                         expression: Box::new(rhs),
                     })
                     .with_span(span))
@@ -674,7 +674,7 @@ mod tests {
         },
         prelude::*,
         shared_values::{
-            pointer::PointerReferenceMutability,
+            pointer::ReferenceMutability,
             pointer_address::PointerAddress,
             shared_container::SharedContainerMutability,
         },
@@ -1243,7 +1243,7 @@ mod tests {
         assert_eq!(
             expr.data,
             DatexExpressionData::GetSharedRef(GetSharedRef {
-                mutability: PointerReferenceMutability::Immutable,
+                mutability: ReferenceMutability::Immutable,
                 expression: Box::new(
                     DatexExpressionData::Identifier("myVar".to_string())
                         .with_default_span()
@@ -1273,7 +1273,7 @@ mod tests {
         assert_eq!(
             expr.data,
             DatexExpressionData::GetSharedRef(GetSharedRef {
-                mutability: PointerReferenceMutability::Mutable,
+                mutability: ReferenceMutability::Mutable,
                 expression: Box::new(
                     DatexExpressionData::Identifier("myVar".to_string())
                         .with_default_span()
@@ -1314,7 +1314,7 @@ mod tests {
         assert_eq!(
             expr.data,
             DatexExpressionData::GetSharedRef(GetSharedRef {
-                mutability: PointerReferenceMutability::Immutable,
+                mutability: ReferenceMutability::Immutable,
                 expression: Box::new(
                     DatexExpressionData::PropertyAccess(PropertyAccess {
                         base: Box::new(
@@ -1363,10 +1363,10 @@ mod tests {
         assert_eq!(
             expr.data,
             DatexExpressionData::GetSharedRef(GetSharedRef {
-                mutability: PointerReferenceMutability::Mutable,
+                mutability: ReferenceMutability::Mutable,
                 expression: Box::new(
                     DatexExpressionData::GetSharedRef(GetSharedRef {
-                        mutability: PointerReferenceMutability::Immutable,
+                        mutability: ReferenceMutability::Immutable,
                         expression: Box::new(
                             DatexExpressionData::Identifier(
                                 "myVar".to_string()
@@ -1424,7 +1424,7 @@ mod tests {
             DatexExpressionData::Unbox(Unbox {
                 expression: Box::new(
                     DatexExpressionData::GetSharedRef(GetSharedRef {
-                        mutability: PointerReferenceMutability::Immutable,
+                        mutability: ReferenceMutability::Immutable,
                         expression: Box::new(
                             DatexExpressionData::Identifier(
                                 "myVar".to_string()
@@ -2049,7 +2049,7 @@ mod tests {
             expr.data,
             DatexExpressionData::RequestSharedRef(RequestSharedRef {
                 address: PointerAddress::try_from("ABCDEF").unwrap(),
-                mutability: PointerReferenceMutability::Immutable,
+                mutability: ReferenceMutability::Immutable,
             })
         );
     }
@@ -2061,7 +2061,7 @@ mod tests {
             expr.data,
             DatexExpressionData::RequestSharedRef(RequestSharedRef {
                 address: PointerAddress::try_from("ABCDEF").unwrap(),
-                mutability: PointerReferenceMutability::Mutable,
+                mutability: ReferenceMutability::Mutable,
             })
         );
     }

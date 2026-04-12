@@ -65,7 +65,7 @@ use crate::core_compiler::value_compiler::{append_instruction, append_instructio
 use crate::global::protocol_structures::injected_values::{InjectedValueType, LocalInjectedValueType, SharedInjectedValueType};
 use crate::global::protocol_structures::instruction_data::{InstructionBlockData, ModifyStackValue, SetSharedContainerValue, StackIndex};
 use crate::global::protocol_structures::regular_instructions::RegularInstruction;
-use crate::shared_values::pointer::PointerReferenceMutability;
+use crate::shared_values::pointer::ReferenceMutability;
 
 pub mod context;
 pub mod error;
@@ -1292,10 +1292,10 @@ fn compile_expression(
             compilation_context.mark_has_non_static_value();
             compilation_context
                 .append_instruction_code(match create_shared_ref.mutability {
-                    PointerReferenceMutability::Immutable => {
+                    ReferenceMutability::Immutable => {
                         InstructionCode::GET_SHARED_REF
                     }
-                    PointerReferenceMutability::Mutable => {
+                    ReferenceMutability::Mutable => {
                         InstructionCode::GET_SHARED_REF_MUT
                     }
                 });

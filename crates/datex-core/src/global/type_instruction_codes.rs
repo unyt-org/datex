@@ -4,7 +4,7 @@ use crate::{
 };
 
 use crate::{
-    shared_values::pointer::PointerReferenceMutability,
+    shared_values::pointer::ReferenceMutability,
     values::core_values::r#type::{LocalMutability, LocalReferenceMutability},
 };
 use modular_bitfield::Specifier;
@@ -73,27 +73,27 @@ pub enum TypeReferenceMutabilityCode {
     Value,              // default
 }
 
-impl From<&TypeReferenceMutabilityCode> for Option<PointerReferenceMutability> {
+impl From<&TypeReferenceMutabilityCode> for Option<ReferenceMutability> {
     fn from(value: &TypeReferenceMutabilityCode) -> Self {
         match value {
             TypeReferenceMutabilityCode::MutableReference => {
-                Some(PointerReferenceMutability::Mutable)
+                Some(ReferenceMutability::Mutable)
             }
             TypeReferenceMutabilityCode::ImmutableReference => {
-                Some(PointerReferenceMutability::Immutable)
+                Some(ReferenceMutability::Immutable)
             }
             TypeReferenceMutabilityCode::Value => None,
         }
     }
 }
 
-impl From<&Option<PointerReferenceMutability>> for TypeReferenceMutabilityCode {
-    fn from(value: &Option<PointerReferenceMutability>) -> Self {
+impl From<&Option<ReferenceMutability>> for TypeReferenceMutabilityCode {
+    fn from(value: &Option<ReferenceMutability>) -> Self {
         match value {
-            Some(PointerReferenceMutability::Mutable) => {
+            Some(ReferenceMutability::Mutable) => {
                 TypeReferenceMutabilityCode::MutableReference
             }
-            Some(PointerReferenceMutability::Immutable) => {
+            Some(ReferenceMutability::Immutable) => {
                 TypeReferenceMutabilityCode::ImmutableReference
             }
             None => TypeReferenceMutabilityCode::Value,

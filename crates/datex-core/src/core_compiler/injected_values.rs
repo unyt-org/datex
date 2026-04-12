@@ -97,7 +97,7 @@ pub fn compile_shared_value_preamble(compilation_context: &mut CoreCompilationCo
         cursor,
         RegularInstruction::PushToStack,
     );
-    
+
     // push NULL to stack#1 if no moves
     if moved_ptr_addresses.is_empty() {
         append_regular_instruction(
@@ -222,7 +222,7 @@ mod tests {
     use crate::global::protocol_structures::injected_values::{InjectedValueDeclaration, InjectedValueType, SharedInjectedValueType};
     use crate::global::protocol_structures::instruction_data::{InstructionBlockData, StackIndex};
     use crate::core_compiler::injected_values::compile_injected_values;
-    use crate::shared_values::pointer::{OwnedPointer};
+    use crate::shared_values::pointer::{EndpointOwnedPointer};
     use crate::shared_values::shared_container::SharedContainer;
     use crate::prelude::*;
     use crate::values::borrowed_value_container::BorrowedValueContainer;
@@ -241,7 +241,7 @@ mod tests {
 
     #[test]
     fn remote_execution_with_injected_ref_value() {
-        let shared_value = BorrowedValueContainer::Shared(SharedContainer::boxed_owned_immut(42, OwnedPointer::NULL));
+        let shared_value = BorrowedValueContainer::Shared(SharedContainer::boxed_owned_immut(42, EndpointOwnedPointer::NULL));
         let exec_block_data = InstructionBlockData {
             injected_value_count: 1,
             length: 1,
@@ -272,8 +272,8 @@ mod tests {
 
     #[test]
     fn remote_execution_multiple_ref_values() {
-        let shared_value1 = BorrowedValueContainer::Shared(SharedContainer::boxed_owned_immut(42, OwnedPointer::NULL));
-        let shared_value2 = BorrowedValueContainer::Shared(SharedContainer::boxed_owned_mut(100, OwnedPointer::NULL));
+        let shared_value1 = BorrowedValueContainer::Shared(SharedContainer::boxed_owned_immut(42, EndpointOwnedPointer::NULL));
+        let shared_value2 = BorrowedValueContainer::Shared(SharedContainer::boxed_owned_mut(100, EndpointOwnedPointer::NULL));
         let exec_block_data = InstructionBlockData {
             injected_value_count: 2,
             length: 1,
@@ -317,7 +317,7 @@ mod tests {
 
     #[test]
     fn remote_execution_with_injected_moved_value() {
-        let shared_value = BorrowedValueContainer::Shared(SharedContainer::boxed_owned_immut(42, OwnedPointer::NULL));
+        let shared_value = BorrowedValueContainer::Shared(SharedContainer::boxed_owned_immut(42, EndpointOwnedPointer::NULL));
         let exec_block_data = InstructionBlockData {
             injected_value_count: 1,
             length: 1,
@@ -352,8 +352,8 @@ mod tests {
 
     #[test]
     fn remote_execution_moved_value_and_ref() {
-        let shared_value1 = BorrowedValueContainer::Shared(SharedContainer::boxed_owned_immut(42, OwnedPointer::NULL));
-        let shared_value2 = BorrowedValueContainer::Shared(SharedContainer::boxed_owned_mut(100, OwnedPointer::NULL));
+        let shared_value1 = BorrowedValueContainer::Shared(SharedContainer::boxed_owned_immut(42, EndpointOwnedPointer::NULL));
+        let shared_value2 = BorrowedValueContainer::Shared(SharedContainer::boxed_owned_mut(100, EndpointOwnedPointer::NULL));
         let exec_block_data = InstructionBlockData {
             injected_value_count: 2,
             length: 1,

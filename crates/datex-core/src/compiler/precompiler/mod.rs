@@ -13,7 +13,7 @@ use crate::{
     ast::{
         expressions::{
             BinaryOperation, DatexExpression, DatexExpressionData,
-            RequestSharedRef, RemoteExecution, Statements, TypeDeclaration,
+            RemoteExecution, RequestSharedRef, Statements, TypeDeclaration,
             TypeDeclarationKind, VariableAccess, VariableAssignment,
             VariableDeclaration, VariableKind, VariantAccess,
         },
@@ -27,21 +27,18 @@ use crate::{
         SimpleCompilerErrorOrDetailedCompilerErrorWithRichAst,
         SpannedCompilerError,
     },
-    global::operators::{BinaryOperator, binary::ArithmeticOperator},
+    global::operators::{binary::ArithmeticOperator, BinaryOperator},
     libs::core::CoreLibPointerId,
-    shared_values::{
-        pointer::{PointerReferenceMutability},
-        shared_type_container::{NominalTypeDeclaration, SharedTypeContainer},
-    },
+    shared_values::pointer::ReferenceMutability,
     types::definition::TypeDefinition,
-    utils::maybe_action::{ErrorCollector, MaybeAction, collect_or_pass_error},
+    utils::maybe_action::{collect_or_pass_error, ErrorCollector, MaybeAction},
     values::core_values::r#type::{Type, TypeMetadata},
     visitor::{
-        VisitAction,
-        expression::{ExpressionVisitor, visitable::ExpressionVisitResult},
+        expression::{visitable::ExpressionVisitResult, ExpressionVisitor},
         type_expression::{
-            TypeExpressionVisitor, visitable::TypeExpressionVisitResult,
+            visitable::TypeExpressionVisitResult, TypeExpressionVisitor,
         },
+        VisitAction,
     },
 };
 use options::PrecompilerOptions;
@@ -49,6 +46,7 @@ use precompiled_ast::{AstMetadata, RichAst, VariableShape};
 use scope::NewScopeType;
 use scope_stack::PrecompilerScopeStack;
 use crate::ast::expressions::{CloneExpression, GetSharedRef, Unbox, UnboxAssignment, ValueAccessType};
+use crate::shared_values::shared_containers::shared_type_container::{NominalTypeDeclaration, SharedTypeContainer};
 
 pub struct Precompiler<'a> {
     ast_metadata: Rc<RefCell<AstMetadata>>,
@@ -380,7 +378,7 @@ impl Precompiler<'_> {
                     ResolvedVariable::PointerAddress(pointer_address) => {
                         DatexExpressionData::RequestSharedRef(RequestSharedRef {
                             address: pointer_address,
-                            mutability: PointerReferenceMutability::Immutable,
+                            mutability: ReferenceMutability::Immutable,
                         })
                             .with_span(span.clone())
                     }
@@ -748,7 +746,7 @@ mod tests {
         },
         parser::Parser,
         shared_values::{
-            pointer::PointerReferenceMutability,
+            pointer::ReferenceMutability,
             pointer_address::PointerAddress,
             shared_container::SharedContainerMutability,
         },
@@ -925,7 +923,7 @@ mod tests {
                     ast: DatexExpression { data: DatexExpressionData::RequestSharedRef(RequestSharedRef{address, mutability}), ..},
                     ..
                 }
-            ) if address == CoreLibPointerId::Boolean.into() && mutability == PointerReferenceMutability::Immutable
+            ) if address == CoreLibPointerId::Boolean.into() && mutability == ReferenceMutability::Immutable
         );
         let result = parse_and_precompile("integer");
         assert_matches!(
@@ -935,7 +933,7 @@ mod tests {
                     ast: DatexExpression { data: DatexExpressionData::RequestSharedRef(RequestSharedRef{address, mutability}), ..},
                     ..
                 }
-            ) if address == CoreLibPointerId::Integer(None).into()  && mutability == PointerReferenceMutability::Immutable
+            ) if address == CoreLibPointerId::Integer(None).into()  && mutability == ReferenceMutability::Immutable
         );
 
         let result = parse_and_precompile("integer/u8");
@@ -1372,7 +1370,7 @@ mod tests {
                             name: "x".to_string(),
                             init_expression: Box::new(
                                 DatexExpressionData::GetSharedRef(GetSharedRef {
-                                    mutability: PointerReferenceMutability::Immutable,
+                                    mutability: ReferenceMutability::Immutable,
                                     expression: Box::new(
                                         DatexExpressionData::CreateShared(CreateShared {
                                             expression: Box::new(DatexExpressionData::Integer(

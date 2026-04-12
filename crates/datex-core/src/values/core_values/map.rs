@@ -654,7 +654,7 @@ mod tests {
             value_container::ValueContainer,
         },
     };
-    use crate::shared_values::pointer::OwnedPointer;
+    use crate::shared_values::pointer::EndpointOwnedPointer;
 
     #[test]
     fn test_map() {
@@ -681,7 +681,7 @@ mod tests {
         let mut map = Map::default();
         let key = ValueContainer::Shared(SharedContainer::boxed_owned_immut(
             ValueContainer::from(42),
-            OwnedPointer::NULL,
+            EndpointOwnedPointer::NULL,
         ));
         map.set(key.clone(), "value");
         // same reference should be found
@@ -692,7 +692,7 @@ mod tests {
         // new reference with same value should not be found
         let new_key = ValueContainer::Shared(SharedContainer::boxed_owned_immut(
             ValueContainer::from(42),
-            OwnedPointer::NULL,
+            EndpointOwnedPointer::NULL,
         ));
         assert!(!map.has(&new_key));
         assert!(map.get(&new_key).is_err());

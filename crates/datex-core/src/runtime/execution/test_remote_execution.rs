@@ -201,7 +201,7 @@ pub async fn test_remote_shared_value_inject_ref() {
                 }
                 assert_matches!(
                     shared_container.pointer_address(),
-                    PointerAddress::Owned(..)
+                    PointerAddress::EndpointOwned(..)
                 );
                 assert_eq!(
                     shared_container.mutability(),
@@ -245,7 +245,7 @@ pub async fn test_remote_shared_value_return(
                 shared_container.assert_owned().expect("shared container should be owned");
                 assert_matches!(
                     shared_container.pointer_address(),
-                    PointerAddress::Owned(..)
+                    PointerAddress::EndpointOwned(..)
                 );
                 assert_eq!(
                     shared_container.mutability(),
@@ -290,7 +290,7 @@ pub async fn test_remote_shared_roundtrip_move(
                 shared_container.assert_owned().expect("shared container should be owned");
                 assert_matches!(
                     shared_container.pointer_address(),
-                    PointerAddress::Owned(..)
+                    PointerAddress::EndpointOwned(..)
                 );
                 assert_eq!(
                     shared_container.mutability(),

@@ -47,7 +47,7 @@ use crate::{
         InvalidProgramError,
     },
     shared_values::{
-        pointer::PointerReferenceMutability, pointer_address::PointerAddress,
+        pointer::ReferenceMutability, pointer_address::PointerAddress,
         shared_container::SharedContainer,
     },
     types::{
@@ -77,8 +77,8 @@ use crate::global::protocol_structures::regular_instructions::RegularInstruction
 use crate::global::protocol_structures::type_instructions::TypeInstruction;
 use crate::core_compiler::injected_values::compile_injected_values;
 use crate::runtime::execution::macros::interrupt_with_values;
-use crate::shared_values::pointer::ReferencedPointer;
-use crate::shared_values::pointer_address::ReferencedPointerAddress;
+use crate::shared_values::pointer::ExternalPointer;
+use crate::shared_values::pointer_address::ExternalPointerAddress;
 use crate::shared_values::shared_container::{SharedContainerInner, SharedContainerMutability};
 use crate::values::borrowed_value_container::BorrowedValueContainer;
 
@@ -374,7 +374,7 @@ pub fn inner_execution_loop(
                             RegularInstruction::RequestRemoteSharedRef(address) => Some(interrupt_with_value!(
                                     interrupt_provider,
                                     ExecutionInterrupt::External(
-                                        ExternalExecutionInterrupt::GetReferenceToRemotePointer(address, PointerReferenceMutability::Immutable)
+                                        ExternalExecutionInterrupt::GetReferenceToRemotePointer(address, ReferenceMutability::Immutable)
                                     )
                                 ).into()),
 
@@ -382,7 +382,7 @@ pub fn inner_execution_loop(
                             RegularInstruction::RequestRemoteSharedRefMut(address) => Some(interrupt_with_value!(
                                     interrupt_provider,
                                     ExecutionInterrupt::External(
-                                        ExternalExecutionInterrupt::GetReferenceToRemotePointer(address, PointerReferenceMutability::Mutable)
+                                        ExternalExecutionInterrupt::GetReferenceToRemotePointer(address, ReferenceMutability::Mutable)
                                     )
                                 ).into()),
 
@@ -597,7 +597,7 @@ pub fn inner_execution_loop(
                                             ExecutionInterrupt::External(
                                                 ExternalExecutionInterrupt::GetReferenceToRemotePointer(
                                                     address,
-                                                    PointerReferenceMutability::Immutable,
+                                                    ReferenceMutability::Immutable,
                                                 ),
                                             )
                                         }
@@ -1255,7 +1255,7 @@ pub fn inner_execution_loop(
                                             .pop_cloned_value_container_result_assert_existing(&state)
                                     );
                                     // get referenced pointer from address
-                                    let pointer = ReferencedPointer::new(ReferencedPointerAddress::remote_for_endpoint(&state.caller_metadata.endpoint, shared_ref.address.bytes));
+                                    let pointer = ExternalPointer::new(ExternalPointerAddress::remote_for_endpoint(&state.caller_metadata.endpoint, shared_ref.address.bytes));
 
                                     // unwrap ok since allowed_type in None.
                                     // TODO: allowed type

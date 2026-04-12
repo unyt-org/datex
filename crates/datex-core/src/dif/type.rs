@@ -12,7 +12,7 @@ use crate::{
 use crate::{
     prelude::*,
     shared_values::{
-        pointer::PointerReferenceMutability, pointer_address::PointerAddress,
+        pointer::ReferenceMutability, pointer_address::PointerAddress,
     },
     values::core_values::r#type::{
         LocalMutability, LocalReferenceMutability, TypeMetadata,
@@ -485,7 +485,7 @@ pub enum DIFTypeMetadata {
     /// with an additional reference mutability (e.g. 'mut shared mut User)
     Shared {
         mutability: SharedContainerMutability,
-        reference_mutability: Option<PointerReferenceMutability>,
+        reference_mutability: Option<ReferenceMutability>,
     },
 }
 
@@ -687,10 +687,10 @@ impl<'de> Deserialize<'de> for DIFType {
                         reference_mutability: reference_mutability.map(|rm| {
                             match rm {
                                 LocalReferenceMutability::Mutable => {
-                                    PointerReferenceMutability::Mutable
+                                    ReferenceMutability::Mutable
                                 }
                                 LocalReferenceMutability::Immutable => {
-                                    PointerReferenceMutability::Immutable
+                                    ReferenceMutability::Immutable
                                 }
                             }
                         }),

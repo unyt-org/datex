@@ -49,7 +49,7 @@ use datex_core::{
         },
     },
     shared_values::{
-        pointer::PointerReferenceMutability, pointer_address::PointerAddress,
+        pointer::ReferenceMutability, pointer_address::PointerAddress,
         shared_container::SharedContainerMutability,
     },
     values::core_values::error::NumberParseError,
@@ -3440,7 +3440,7 @@ fn pointer_address() {
         expr,
         DatexExpressionData::RequestSharedRef(RequestSharedRef {
             address: PointerAddress::internal([0x12, 0x34, 0x56]),
-            mutability: PointerReferenceMutability::Immutable,
+            mutability: ReferenceMutability::Immutable,
         })
     );
 
@@ -3451,7 +3451,7 @@ fn pointer_address() {
         expr,
         DatexExpressionData::RequestSharedRef(RequestSharedRef {
             address: PointerAddress::owned([0x12, 0x34, 0x56, 0x78, 0x9A]),
-            mutability: PointerReferenceMutability::Immutable,
+            mutability: ReferenceMutability::Immutable,
         })
     );
 
@@ -3466,7 +3466,7 @@ fn pointer_address() {
                 0x56, 0x78, 0x90, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
                 0x00, 0x00, 0x00, 0x00, 0x00, 0x42
             ]),
-            mutability: PointerReferenceMutability::Immutable,
+            mutability: ReferenceMutability::Immutable,
         })
     );
 

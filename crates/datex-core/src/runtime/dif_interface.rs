@@ -20,7 +20,7 @@ use crate::{
 };
 use core::result::Result;
 use core::cell::Ref;
-use crate::shared_values::pointer_address::OwnedPointerAddress;
+use crate::shared_values::pointer_address::EndpointOwnedPointerAddress;
 
 impl RuntimeInternal {
     fn resolve_in_memory_reference(
@@ -145,7 +145,7 @@ impl DIFInterface for RuntimeInternal {
         value: DIFValueContainer,
         allowed_type: Option<DIFTypeDefinition>,
         mutability: SharedContainerMutability,
-    ) -> Result<OwnedPointerAddress, DIFCreatePointerError> {
+    ) -> Result<EndpointOwnedPointerAddress, DIFCreatePointerError> {
         let container = value.to_value_container(&self.memory)?;
         let type_container = if let Some(_allowed_type) = &allowed_type {
             core::todo!(
@@ -287,7 +287,7 @@ mod tests {
                         SharedContainerMutability::Mutable,
                     )
                     .expect("Failed to create pointer");
-                let pointer_address = PointerAddress::Owned(pointer_address);
+                let pointer_address = PointerAddress::EndpointOwned(pointer_address);
 
                 let observed = Rc::new(RefCell::new(None));
                 let observed_clone = observed.clone();

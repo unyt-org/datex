@@ -1,5 +1,4 @@
 use crate::{
-    shared_values::shared_type_container::SharedTypeContainer,
     traits::structural_eq::StructuralEq,
     types::{
         collection_type_definition::CollectionTypeDefinition,
@@ -13,6 +12,7 @@ use crate::{
     prelude::*, shared_values::pointer_address::PointerAddress,
     values::core_values::r#type::TypeMetadata,
 };
+use crate::shared_values::shared_containers::shared_type_container::SharedTypeContainer;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TypeDefinition {

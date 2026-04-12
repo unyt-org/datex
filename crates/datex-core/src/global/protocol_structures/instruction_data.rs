@@ -14,8 +14,8 @@ use crate::global::protocol_structures::injected_values::{InjectedValueDeclarati
 use crate::global::protocol_structures::instructions::Instruction;
 use crate::global::type_instruction_codes::{TypeLocalOrShared, TypeMutabilityCode, TypeReferenceMutabilityCode};
 use crate::serde::Deserialize;
-use crate::shared_values::pointer::PointerReferenceMutability;
-use crate::shared_values::pointer_address::{OwnedPointerAddress, PointerAddress, ReferencedPointerAddress};
+use crate::shared_values::pointer::ReferenceMutability;
+use crate::shared_values::pointer_address::{EndpointOwnedPointerAddress, PointerAddress, ExternalPointerAddress};
 use crate::shared_values::shared_container::SharedContainerMutability;
 use crate::values::core_values::decimal::Decimal;
 use crate::values::core_values::endpoint::{Endpoint, EndpointParsingError};
@@ -315,7 +315,7 @@ impl TryFrom<PointerAddress> for RawRemotePointerAddress {
     type Error = PointerAddressConversionError;
     fn try_from(ptr: PointerAddress) -> Result<Self, Self::Error> {
         match ptr {
-            PointerAddress::Referenced(ReferencedPointerAddress::Remote(
+            PointerAddress::External(ExternalPointerAddress::Remote(
                                            bytes,
                                        )) => Ok(RawRemotePointerAddress { id: bytes }),
             _ => Err(PointerAddressConversionError),
@@ -364,13 +364,13 @@ impl RawPointerAddress {
 impl From<PointerAddress> for RawPointerAddress {
     fn from(ptr: PointerAddress) -> Self {
         match ptr {
-            PointerAddress::Referenced(ReferencedPointerAddress::Remote(bytes)) => {
+            PointerAddress::External(ExternalPointerAddress::Remote(bytes)) => {
                 RawPointerAddress::Remote(RawRemotePointerAddress { id: bytes })
             }
-            PointerAddress::Referenced(ReferencedPointerAddress::Internal(bytes)) => {
+            PointerAddress::External(ExternalPointerAddress::Builtin(bytes)) => {
                 RawPointerAddress::Internal(RawInternalPointerAddress { id: bytes })
             }
-            PointerAddress::Owned(OwnedPointerAddress {address} ) => {
+            PointerAddress::EndpointOwned(EndpointOwnedPointerAddress {address} ) => {
                 RawPointerAddress::Local(RawLocalPointerAddress { bytes: address })
             }
         }
@@ -397,14 +397,14 @@ pub struct PerformMove {
 #[brw(little)]
 pub struct SharedRef {
     pub address: RawPointerAddress,
-    pub ref_mutability: PointerReferenceMutability,
+    pub ref_mutability: ReferenceMutability,
 }
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
 #[brw(little)]
 pub struct SharedRefWithValue {
     pub address: RawLocalPointerAddress, // address of the caller
-    pub ref_mutability: PointerReferenceMutability,
+    pub ref_mutability: ReferenceMutability,
     pub container_mutability: SharedContainerMutability,
 }
 

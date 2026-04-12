@@ -1,28 +1,24 @@
 use crate::{
     collections::HashMap,
-    libs::core::{CoreLibPointerId, load_core_lib},
-    shared_values::{
-        shared_container::SharedContainer,
-        shared_type_container::SharedTypeContainer,
-        shared_value_container::SharedValueContainer,
-    },
+    libs::core::{load_core_lib, CoreLibPointerId},
+    shared_values::shared_container::SharedContainer,
     types::error::IllegalTypeError,
     values::core_values::endpoint::Endpoint,
 };
 use binrw::io::Cursor;
-use core::{cell::RefCell, result::Result};
+use core::result::Result;
 use core::cell::Ref;
 use crate::{
     prelude::*,
-    shared_values::{
-        pointer_address::{
-            OwnedPointerAddress, PointerAddress, ReferencedPointerAddress,
-        },
+    shared_values::pointer_address::{
+        EndpointOwnedPointerAddress, ExternalPointerAddress, PointerAddress,
     },
 };
 use crate::global::protocol_structures::instruction_data::RawRemotePointerAddress;
-use crate::shared_values::pointer::OwnedPointer;
-use crate::shared_values::shared_container::{SharedContainerInner, SharedContainerValueOrType};
+use crate::shared_values::pointer::EndpointOwnedPointer;
+use crate::shared_values::shared_container::SharedContainerValueOrType;
+use crate::shared_values::shared_containers::shared_type_container::SharedTypeContainer;
+use crate::shared_values::shared_containers::shared_value_container::SharedValueContainer;
 
 #[derive(Debug, Default)]
 pub struct Memory {
@@ -148,14 +144,14 @@ impl Memory {
             let writer = Cursor::new(Vec::new());
             let mut bytes = writer.into_inner();
             bytes.extend_from_slice(&raw_address.id);
-            PointerAddress::Referenced(ReferencedPointerAddress::Remote(
+            PointerAddress::External(ExternalPointerAddress::Remote(
                 <[u8; 26]>::try_from(bytes).unwrap(),
             ))
         }
     }
 
     /// Creates a new unique local owned pointer.
-    pub fn get_new_owned_local_pointer(&mut self) -> OwnedPointer {
+    pub fn get_new_owned_local_pointer(&mut self) -> EndpointOwnedPointer {
         let timestamp = crate::time::now_ms();
         // new timestamp, reset counter
         if timestamp != self.last_timestamp {
@@ -177,6 +173,6 @@ impl Memory {
             (self.local_counter & 0xFF) as u8,
         ];
 
-        OwnedPointer::new(OwnedPointerAddress::new(id))
+        EndpointOwnedPointer::new(EndpointOwnedPointerAddress::new(id))
     }
 }

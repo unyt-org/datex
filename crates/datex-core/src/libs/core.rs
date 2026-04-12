@@ -1,10 +1,7 @@
 use crate::{
     collections::HashMap,
     runtime::memory::Memory,
-    shared_values::{
-        shared_container::SharedContainer,
-        shared_type_container::{NominalTypeDeclaration, SharedTypeContainer},
-    },
+    shared_values::shared_container::SharedContainer,
     types::definition::TypeDefinition,
     values::{
         core_value::CoreValue,
@@ -22,17 +19,16 @@ use crate::{
 
 use crate::{
     prelude::*,
-    shared_values::{
-        pointer_address::{PointerAddress, ReferencedPointerAddress},
-    },
+    shared_values::pointer_address::{ExternalPointerAddress, PointerAddress},
     values::core_values::r#type::TypeMetadata,
 };
 use core::{cell::RefCell, iter::once, result::Result};
 use datex_macros_internal::LibTypeString;
 use log::info;
 use strum::IntoEnumIterator;
-use crate::shared_values::pointer::{ReferencedPointer};
+use crate::shared_values::pointer::ExternalPointer;
 use crate::shared_values::shared_container::SharedContainerInner;
+use crate::shared_values::shared_containers::shared_type_container::{NominalTypeDeclaration, SharedTypeContainer};
 
 type CoreLibTypes = HashMap<CoreLibPointerId, Type>;
 type CoreLibVals = HashMap<CoreLibPointerId, SharedContainer>;
@@ -164,13 +160,13 @@ impl CoreLibPointerId {
 
 impl From<CoreLibPointerId> for PointerAddress {
     fn from(id: CoreLibPointerId) -> Self {
-        PointerAddress::Referenced(ReferencedPointerAddress::from(&id))
+        PointerAddress::External(ExternalPointerAddress::from(&id))
     }
 }
 
-impl From<&CoreLibPointerId> for ReferencedPointerAddress {
+impl From<&CoreLibPointerId> for ExternalPointerAddress {
     fn from(id: &CoreLibPointerId) -> Self {
-        ReferencedPointerAddress::Internal(id.to_bytes())
+        ExternalPointerAddress::Builtin(id.to_bytes())
     }
 }
 
@@ -178,7 +174,7 @@ impl TryFrom<&PointerAddress> for CoreLibPointerId {
     type Error = String;
     fn try_from(address: &PointerAddress) -> Result<Self, Self::Error> {
         match address {
-            PointerAddress::Referenced(ReferencedPointerAddress::Internal(
+            PointerAddress::External(ExternalPointerAddress::Builtin(
                 id_bytes,
             )) => {
                 let mut id_array = [0u8; 4];
@@ -509,7 +505,7 @@ fn create_core_type(
                         variant,
                     },
                     Pointer::new_reference(
-                        ReferencedPointerAddress::from(&pointer_id),
+                        ExternalPointerAddress::from(&pointer_id),
                     ),
                 )
             ))),

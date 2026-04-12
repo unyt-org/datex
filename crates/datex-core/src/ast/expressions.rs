@@ -9,7 +9,7 @@ use crate::{
         UnaryOperator, assignment::AssignmentOperator,
     },
     shared_values::{
-        pointer::PointerReferenceMutability, pointer_address::PointerAddress,
+        pointer::ReferenceMutability, pointer_address::PointerAddress,
         shared_container::SharedContainerMutability,
     },
     values::{
@@ -386,11 +386,11 @@ pub enum ValueAccessType {
     MoveOrCopy,
 }
 
-impl From<&PointerReferenceMutability> for ValueAccessType {
-    fn from(mutability: &PointerReferenceMutability) -> Self {
+impl From<&ReferenceMutability> for ValueAccessType {
+    fn from(mutability: &ReferenceMutability) -> Self {
         match mutability {
-            PointerReferenceMutability::Mutable => ValueAccessType::SharedRefMut,
-            PointerReferenceMutability::Immutable => ValueAccessType::SharedRef,
+            ReferenceMutability::Mutable => ValueAccessType::SharedRefMut,
+            ReferenceMutability::Immutable => ValueAccessType::SharedRef,
         }
     }
 }
@@ -488,7 +488,7 @@ pub struct VariableAccess {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct RequestSharedRef {
-    pub mutability: PointerReferenceMutability,
+    pub mutability: ReferenceMutability,
     pub address: PointerAddress,
 }
 
@@ -595,7 +595,7 @@ pub struct CreateShared {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct GetSharedRef {
-    pub mutability: PointerReferenceMutability,
+    pub mutability: ReferenceMutability,
     pub expression: Box<DatexExpression>,
 }
 

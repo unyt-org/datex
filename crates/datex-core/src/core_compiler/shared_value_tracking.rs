@@ -1,10 +1,9 @@
 use alloc::rc::Rc;
-use std::cell::RefCell;
+use core::cell::{Ref, RefCell};
 use crate::collections::HashMap;
 use crate::global::protocol_structures::instruction_data::StackIndex;
-use crate::shared_values::pointer::{PointerReferenceMutability};
-use crate::shared_values::pointer_address::{OwnedPointerAddress, PointerAddress};
-use crate::shared_values::shared_container::{OwnedSharedContainerInner, SharedContainer, SharedContainerInner};
+use crate::shared_values::pointer_address::{EndpointOwnedPointerAddress, PointerAddress};
+use crate::shared_values::shared_container::{OwnedSharedContainer, SharedContainer, SharedContainerInner};
 
 /// Helper struct used during compilation to keep track which shared values are moved or referenced
 #[derive(Debug)]
@@ -52,46 +51,34 @@ impl SharedValueTracking {
 
         match (new_current_mutability, current_mutability) {
             // mutable > immutable
-            (Some(PointerReferenceMutability::Mutable), Some(PointerReferenceMutability::Immutable)) => true,
+            (Some(ReferenceMutability::Mutable), Some(ReferenceMutability::Immutable)) => true,
             // move > immutable, move > mutable
-            (None, Some(PointerReferenceMutability::Immutable | PointerReferenceMutability::Mutable)) => true,
+            (None, Some(ReferenceMutability::Immutable | ReferenceMutability::Mutable)) => true,
             _ => false
         }
     }
 
     /// Extracts all registered owned shared values
-    pub fn into_moved_shared_values(self) -> Vec<SharedContainer> {
+    pub fn into_moved_shared_values(self) -> Vec<OwnedSharedContainer> {
         self.shared_values
             .into_iter()
             .filter_map(|(_, (container, _))| {
-                let is_owned = match container.reference_mutability {
-                    None => match &*container.inner.borrow() {
-                        SharedContainerInner::Owned(_) => true,
-                        _ => false,
-                    }
-                    _ => false,
-                };
-                if is_owned {
-                    Some(container)
-                }
-                else {
-                    None
+                match container {
+                    SharedContainer::Owned(owned) => Some(owned),
+                    SharedContainer::Referenced(_) => None,
                 }
             })
             .collect()
     }
 
     /// Get all registered owned shared values
-    pub fn get_moved_shared_addresses(&self) -> Vec<OwnedPointerAddress> {
+    pub fn get_moved_shared_addresses(&self) -> Vec<Ref<EndpointOwnedPointerAddress>> {
         self.shared_values
             .iter()
             .filter_map(|(_, (container, _))| {
-                match container.reference_mutability {
-                    None => match &*container.inner.borrow() {
-                        SharedContainerInner::Owned(owned) => Some(owned.pointer.address().clone()),
-                        _ => None,
-                    }
-                    _ => None,
+                match container {
+                    SharedContainer::Owned(owned) => Some(owned.pointer_address()),
+                    SharedContainer::Referenced(_) => None,
                 }
             })
             .collect()

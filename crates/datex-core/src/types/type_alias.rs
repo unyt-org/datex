@@ -1,9 +1,7 @@
 use core::fmt::Display;
 
-use crate::{
-    shared_values::shared_type_container::NominalTypeDeclaration,
-    values::core_values::r#type::Type,
-};
+use crate::values::core_values::r#type::Type;
+use crate::shared_values::shared_containers::shared_type_container::NominalTypeDeclaration;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TypeAlias {

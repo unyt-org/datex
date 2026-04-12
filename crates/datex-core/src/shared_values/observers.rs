@@ -1,16 +1,14 @@
 use crate::{
     dif::update::{DIFUpdate, DIFUpdateData},
-    shared_values::{
-        shared_container::SharedContainer,
-        shared_value_container::SharedValueContainer,
-    },
+    shared_values::shared_container::SharedContainer,
 };
 
 use crate::prelude::*;
-use core::{cell::RefCell, fmt::Display, result::Result};
+use core::{fmt::Display, result::Result};
 use std::cell::RefMut;
 use serde::{Deserialize, Serialize};
-use crate::shared_values::shared_container::{SharedContainerInner, SharedContainerValueOrType};
+use crate::shared_values::shared_container::SharedContainerValueOrType;
+use crate::shared_values::shared_containers::shared_value_container::SharedValueContainer;
 
 #[derive(Debug)]
 pub enum ObserverError {
@@ -181,8 +179,8 @@ impl SharedContainer {
 mod tests {
     use crate::{
         dif::{
-            representation::DIFValueRepresentation,
             r#type::DIFTypeDefinition,
+            representation::DIFValueRepresentation,
             update::{DIFUpdate, DIFUpdateData},
             value::{DIFValue, DIFValueContainer},
         },
@@ -196,7 +194,7 @@ mod tests {
         values::{core_values::map::Map, value_container::ValueContainer},
     };
     use core::{assert_matches, cell::RefCell};
-    use crate::shared_values::pointer::OwnedPointer;
+    use crate::shared_values::pointer::EndpointOwnedPointer;
 
     /// Helper function to record DIF updates observed on a reference
     /// Returns a Rc<RefCell<Vec<DIFUpdate>>> that contains all observed updates
@@ -228,7 +226,7 @@ mod tests {
         let r = SharedContainer::try_boxed_owned(
             42.into(),
             None,
-            OwnedPointer::NULL,
+            EndpointOwnedPointer::NULL,
             SharedContainerMutability::Immutable,
         )
         .unwrap();
@@ -240,7 +238,7 @@ mod tests {
         let r = SharedContainer::try_boxed_owned(
             42.into(),
             None,
-            OwnedPointer::NULL,
+            EndpointOwnedPointer::NULL,
             SharedContainerMutability::Mutable,
         )
         .unwrap();
@@ -249,7 +247,7 @@ mod tests {
 
     #[test]
     fn observe_and_unobserve() {
-        let r = SharedContainer::boxed_owned_mut(42, OwnedPointer::NULL);
+        let r = SharedContainer::boxed_owned_mut(42, EndpointOwnedPointer::NULL);
         assert!(!r.has_observers());
         let observer_id = r.observe(Observer::new(|_, _| {})).unwrap();
         assert_eq!(observer_id, 0);
@@ -264,7 +262,7 @@ mod tests {
 
     #[test]
     fn observer_ids_incremental() {
-        let r = SharedContainer::boxed_owned_mut(42, OwnedPointer::NULL);
+        let r = SharedContainer::boxed_owned_mut(42, EndpointOwnedPointer::NULL);
         let id1 = r.observe(Observer::new(|_, _| {})).unwrap();
         let id2 = r.observe(Observer::new(|_, _| {})).unwrap();
         assert_eq!(id1, 0);
@@ -279,7 +277,7 @@ mod tests {
     #[test]
     fn observe_replace() {
         let int_ref =
-            SharedContainer::boxed_owned_mut(42, OwnedPointer::NULL);
+            SharedContainer::boxed_owned_mut(42, EndpointOwnedPointer::NULL);
         let observed_updates =
             record_dif_updates(&int_ref, 0, ObserveOptions::default());
 
@@ -304,7 +302,7 @@ mod tests {
     #[test]
     fn observe_replace_same_transceiver() {
         let int_ref =
-            SharedContainer::boxed_owned_mut(42, OwnedPointer::NULL);
+            SharedContainer::boxed_owned_mut(42, EndpointOwnedPointer::NULL);
         let observed_update =
             record_dif_updates(&int_ref, 0, ObserveOptions::default());
 
@@ -320,7 +318,7 @@ mod tests {
     #[test]
     fn observe_replace_same_transceiver_relay_own_updates() {
         let int_ref =
-            SharedContainer::boxed_owned_mut(42, OwnedPointer::NULL);
+            SharedContainer::boxed_owned_mut(42, EndpointOwnedPointer::NULL);
         let observed_update = record_dif_updates(
             &int_ref,
             0,
@@ -354,7 +352,7 @@ mod tests {
                 ("a".to_string(), ValueContainer::from(1)),
                 ("b".to_string(), ValueContainer::from(2)),
             ]),
-            OwnedPointer::NULL,
+            EndpointOwnedPointer::NULL,
         );
         let observed_updates =
             record_dif_updates(&reference, 0, ObserveOptions::default());

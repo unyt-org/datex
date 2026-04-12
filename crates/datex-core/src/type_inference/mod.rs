@@ -1,10 +1,9 @@
 use crate::{
     ast::resolved_variable::ResolvedVariable,
     global::operators::{
-        AssignmentOperator, BinaryOperator, LogicalUnaryOperator, UnaryOperator,
+        BinaryOperator, LogicalUnaryOperator, UnaryOperator,
     },
     libs::core::get_core_lib_type_reference,
-    shared_values::shared_type_container::SharedTypeContainer,
     type_inference::{error::TypeError, options::ErrorHandling},
     types::definition::TypeDefinition,
 };
@@ -13,9 +12,9 @@ use crate::{
     ast::{
         expressions::{
             Apply, BinaryOperation, CallableDeclaration, ComparisonOperation,
-            Conditional, GetRef, DatexExpression, DatexExpressionData,
-            GenericInstantiation, RequestSharedRef, List, Map, PropertyAccess,
-            PropertyAssignment, RangeDeclaration, RemoteExecution, Slot,
+            Conditional, DatexExpression, DatexExpressionData, GenericInstantiation,
+            GetRef, List, Map, PropertyAccess, PropertyAssignment,
+            RangeDeclaration, RemoteExecution, RequestSharedRef, Slot,
             SlotAssignment, Statements, TypeDeclaration, UnaryOperation, Unbox,
             UnboxAssignment, VariableAccess, VariableAssignment,
             VariableDeclaration, VariantAccess,
@@ -27,11 +26,10 @@ use crate::{
         },
     },
     compiler::precompiler::precompiled_ast::{AstMetadata, RichAst},
-    libs::core::{CoreLibPointerId, get_core_lib_type},
+    libs::core::{get_core_lib_type, CoreLibPointerId},
     prelude::*,
     shared_values::{
-        pointer::{Pointer, PointerReferenceMutability},
-        pointer_address::{PointerAddress, ReferencedPointerAddress},
+        pointer_address::{ExternalPointerAddress, PointerAddress},
     },
     type_inference::{
         error::{
@@ -43,22 +41,23 @@ use crate::{
     values::core_values::{
         boolean::Boolean,
         callable::CallableSignature,
-        decimal::{Decimal, typed_decimal::TypedDecimal},
+        decimal::{typed_decimal::TypedDecimal, Decimal},
         endpoint::Endpoint,
-        integer::{Integer, typed_integer::TypedInteger},
-        text::Text,
+        integer::{typed_integer::TypedInteger, Integer},
         r#type::{LocalMutability, Type, TypeMetadata},
+        text::Text,
     },
     visitor::{
-        VisitAction,
-        expression::{ExpressionVisitor, visitable::ExpressionVisitResult},
+        expression::{visitable::ExpressionVisitResult, ExpressionVisitor},
         type_expression::{
-            TypeExpressionVisitor, visitable::TypeExpressionVisitResult,
+            visitable::TypeExpressionVisitResult, TypeExpressionVisitor,
         },
+        VisitAction,
     },
 };
 use core::{cell::RefCell, ops::Range, panic, str::FromStr};
 use crate::ast::expressions::ValueAccessType;
+use crate::shared_values::shared_containers::shared_type_container::SharedTypeContainer;
 
 pub mod error;
 pub mod options;
@@ -383,7 +382,7 @@ impl TypeExpressionVisitor<SpannedTypeError> for TypeInference {
     ) -> TypeExpressionVisitResult<SpannedTypeError> {
         if matches!(
             pointer_address,
-            PointerAddress::Referenced(ReferencedPointerAddress::Internal(_))
+            PointerAddress::External(ExternalPointerAddress::Builtin(_))
         ) {
             mark_type(get_core_lib_type(
                 CoreLibPointerId::try_from(&pointer_address.to_owned())
@@ -527,7 +526,7 @@ fn resolve_type_variant_access(
     variant_name: &str,
 ) -> Option<PointerAddress> {
     match base {
-        PointerAddress::Referenced(ReferencedPointerAddress::Internal(_)) => {
+        PointerAddress::External(ExternalPointerAddress::Builtin(_)) => {
             let base_ref = get_core_lib_type_reference(
                 CoreLibPointerId::try_from(base).unwrap(),
             );
@@ -1104,7 +1103,7 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
         Ok(VisitAction::ReplaceRecurse(DatexExpression::new(
             DatexExpressionData::RequestSharedRef(RequestSharedRef {
                 address: variant_type,
-                mutability: PointerReferenceMutability::Immutable,
+                mutability: ReferenceMutability::Immutable,
             }),
             span.clone(),
         )))
@@ -1166,7 +1165,7 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
         //     });
         // }
         if expression_type.shared_reference_mutability()
-            != Some(PointerReferenceMutability::Mutable)
+            != Some(ReferenceMutability::Mutable)
         {
             return Err(SpannedTypeError {
                 error: TypeError::AssignmentToImmutableReference(
@@ -1183,7 +1182,7 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
         span: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
         match &shared_ref.address {
-            PointerAddress::Referenced(ReferencedPointerAddress::Internal(
+            PointerAddress::External(ExternalPointerAddress::Builtin(
                 _,
             )) => mark_type(get_core_lib_type(
                 CoreLibPointerId::try_from(&shared_ref.address.to_owned())
@@ -1241,17 +1240,13 @@ mod tests {
             precompiled_ast::{AstMetadata, RichAst},
             scope_stack::PrecompilerScopeStack,
         },
-        global::operators::{BinaryOperator, binary::ArithmeticOperator},
+        global::operators::{binary::ArithmeticOperator, BinaryOperator},
         libs::core::{
-            CoreLibPointerId, get_core_lib_type, get_core_lib_type_reference,
+            get_core_lib_type, get_core_lib_type_reference, CoreLibPointerId,
         },
         parser::Parser,
-        prelude::*,
-        shared_values::{
-            shared_type_container::{
-                NominalTypeDeclaration, SharedTypeContainer,
-            },
-        },
+        prelude::*
+        ,
         type_inference::{
             error::{SpannedTypeError, TypeError},
             infer_expression_type_detailed_errors,
@@ -1267,15 +1262,18 @@ mod tests {
             core_values::{
                 boolean::Boolean,
                 callable::{CallableKind, CallableSignature},
-                decimal::{Decimal, typed_decimal::TypedDecimal},
+                decimal::{typed_decimal::TypedDecimal, Decimal},
                 endpoint::Endpoint,
                 integer::{
-                    Integer,
                     typed_integer::{IntegerTypeVariant, TypedInteger},
+                    Integer,
                 },
                 r#type::{Type, TypeMetadata},
             },
         },
+    };
+    use crate::shared_values::shared_containers::shared_type_container::{
+        NominalTypeDeclaration, SharedTypeContainer,
     };
 
     /// Infers type errors for the given source code.

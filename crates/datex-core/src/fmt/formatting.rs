@@ -12,7 +12,7 @@ use crate::{
         options::{StatementFormatting, VariantFormatting},
     },
     prelude::*,
-    shared_values::pointer::PointerReferenceMutability,
+    shared_values::pointer::ReferenceMutability,
     values::core_values::{
         decimal::typed_decimal::TypedDecimal,
         integer::typed_integer::TypedInteger, r#type::LocalReferenceMutability,
@@ -51,8 +51,8 @@ impl<'a> Formatter<'a> {
             }
             DatexExpressionData::GetSharedRef(create_shared_ref) => {
                 (match create_shared_ref.mutability {
-                    PointerReferenceMutability::Immutable => a.text("'"),
-                    PointerReferenceMutability::Mutable => a.text("'mut "),
+                    ReferenceMutability::Immutable => a.text("'"),
+                    ReferenceMutability::Mutable => a.text("'mut "),
                 }) + self.format_datex_expression(&create_shared_ref.expression)
             }
             DatexExpressionData::BinaryOperation(BinaryOperation {

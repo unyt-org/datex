@@ -33,7 +33,7 @@ use crate::{
     ast::expressions::{CreateShared, GetSharedRef, RequestSharedRef},
     prelude::*,
     shared_values::{
-        pointer::PointerReferenceMutability, pointer_address::PointerAddress,
+        pointer::ReferenceMutability, pointer_address::PointerAddress,
         shared_container::SharedContainerMutability,
     },
 };
@@ -244,28 +244,28 @@ pub fn ast_from_bytecode(
                             RegularInstruction::RequestRemoteSharedRef(raw_address) => {
                                 DatexExpressionData::RequestSharedRef(RequestSharedRef {
                                     address: PointerAddress::from(&raw_address),
-                                    mutability: PointerReferenceMutability::Immutable
+                                    mutability: ReferenceMutability::Immutable
                                 })
                             }
 
                             RegularInstruction::RequestRemoteSharedRefMut(raw_address) => {
                                 DatexExpressionData::RequestSharedRef(RequestSharedRef {
                                     address: PointerAddress::from(&raw_address),
-                                    mutability: PointerReferenceMutability::Mutable
+                                    mutability: ReferenceMutability::Mutable
                                 })
                             }
 
                             RegularInstruction::GetLocalSharedRef(raw_address) => {
                                 DatexExpressionData::RequestSharedRef(RequestSharedRef {
                                     address: PointerAddress::from(&raw_address),
-                                    mutability: PointerReferenceMutability::Immutable
+                                    mutability: ReferenceMutability::Immutable
                                 })
                             }
 
                             RegularInstruction::GetInternalSharedRef(raw_address) => {
                                 DatexExpressionData::RequestSharedRef(RequestSharedRef {
                                     address: PointerAddress::from(&raw_address),
-                                    mutability: PointerReferenceMutability::Immutable
+                                    mutability: ReferenceMutability::Immutable
                                 })
                             }
 
@@ -302,7 +302,7 @@ pub fn ast_from_bytecode(
 
                             RegularInstruction::GetStackValueSharedRef(slot_address) => {
                                 DatexExpressionData::GetSharedRef(GetSharedRef {
-                                    mutability: PointerReferenceMutability::Immutable,
+                                    mutability: ReferenceMutability::Immutable,
                                     expression: Box::new(DatexExpressionData::Slot(Slot::Addressed(
                                         slot_address.0,
                                     )).with_default_span())
@@ -311,7 +311,7 @@ pub fn ast_from_bytecode(
 
                             RegularInstruction::GetStackValueSharedRefMut(slot_address) => {
                                 DatexExpressionData::GetSharedRef(GetSharedRef {
-                                    mutability: PointerReferenceMutability::Mutable,
+                                    mutability: ReferenceMutability::Mutable,
                                     expression: Box::new(DatexExpressionData::Slot(Slot::Addressed(
                                         slot_address.0,
                                     )).with_default_span())
@@ -556,7 +556,7 @@ pub fn ast_from_bytecode(
                                 let expr = collected_results.pop_value_result();
                                 DatexExpressionData::GetSharedRef(
                                     GetSharedRef {
-                                        mutability: PointerReferenceMutability::Immutable,
+                                        mutability: ReferenceMutability::Immutable,
                                         expression: Box::new(expr),
                                     },
                                 )
