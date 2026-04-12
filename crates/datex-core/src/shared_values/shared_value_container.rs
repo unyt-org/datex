@@ -8,11 +8,11 @@ use crate::{
     values::{value::Value, value_container::ValueContainer},
 };
 
-use crate::{prelude::*, shared_values::pointer::Pointer};
+use crate::{prelude::*};
 use core::{cell::RefCell, fmt::Debug, prelude::rust_2024::*};
 
 pub struct SharedValueContainer {
-    pub(crate) pointer: Pointer,
+    // pub(crate) pointer: Pointer,
     /// the value that this reference points to
     pub value_container: ValueContainer,
     /// pointer id, can be initialized as None for local pointers
@@ -26,13 +26,11 @@ pub struct SharedValueContainer {
 impl SharedValueContainer {
     pub fn new(
         value_container: ValueContainer,
-        pointer: Pointer,
         allowed_type: TypeDefinition,
         mutability: SharedContainerMutability,
     ) -> Self {
         SharedValueContainer {
             value_container,
-            pointer,
             allowed_type,
             observers: FreeHashMap::new(),
             mutability,
@@ -44,7 +42,6 @@ impl Debug for SharedValueContainer {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("ReferenceData")
             .field("value_container", &self.value_container)
-            .field("pointer_address", &self.pointer.address())
             .field("allowed_type", &self.allowed_type)
             .field("observers", &self.observers.len())
             .finish()
@@ -64,14 +61,10 @@ impl SharedValueContainer {
     }
 
     pub fn resolve_current_value(&self) -> Rc<RefCell<Value>> {
-        self.value_container.to_value()
+        self.value_container.to_cloned_value()
     }
 
     pub fn is_mutable(&self) -> bool {
         core::matches!(self.mutability, SharedContainerMutability::Mutable)
-    }
-    
-    pub fn pointer(&self) -> &Pointer {
-        &self.pointer
     }
 }

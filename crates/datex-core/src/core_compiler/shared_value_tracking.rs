@@ -1,56 +1,99 @@
+use alloc::rc::Rc;
+use std::cell::RefCell;
 use crate::collections::HashMap;
 use crate::global::protocol_structures::instruction_data::StackIndex;
-use crate::shared_values::pointer::PointerReferenceMutability;
-use crate::shared_values::shared_container::{SharedContainerInner};
+use crate::shared_values::pointer::{PointerReferenceMutability};
+use crate::shared_values::pointer_address::{OwnedPointerAddress, PointerAddress};
+use crate::shared_values::shared_container::{OwnedSharedContainerInner, SharedContainer, SharedContainerInner};
 
 /// Helper struct used during compilation to keep track which shared values are moved or referenced
 #[derive(Debug)]
 pub struct SharedValueTracking {
     /// shared values that were injected in the compiler, with a reference mutability if referenced, or None if moved
-    pub shared_values: HashMap<SharedContainerInner, (Option<PointerReferenceMutability>, StackIndex)>,
-    pub current_slot_address: StackIndex
+    pub shared_values: HashMap<PointerAddress, (SharedContainer, StackIndex)>,
+    pub current_stack_index: StackIndex
 }
 
 impl SharedValueTracking {
 
-    pub fn new(start_address: StackIndex) -> SharedValueTracking {
+    pub fn new() -> SharedValueTracking {
         SharedValueTracking {
             shared_values: HashMap::new(),
-            current_slot_address: start_address,
+            current_stack_index: StackIndex(1),
         }
     }
 
-    /// Registers a new shared value with minimum required ownership. Returns a slot address that can be used to access this value
-    pub fn register_shared_value(&mut self, shared_value: SharedContainerInner, ownership: Option<PointerReferenceMutability>) -> StackIndex {
-        if let Some((existing, address)) = self.shared_values.get(&shared_value) {
-            let address = *address;
-            self.shared_values.insert(shared_value, (Self::max_ownership(existing, &ownership), address));
-            address
+    /// Registers a new shared value. Returns a stack index that can be used to access this value
+    pub fn register_shared_value(&mut self, shared_container: SharedContainer) -> StackIndex {
+        let address = shared_container.pointer_address();
+        if let Some((existing, stack_index)) = self.shared_values.get(&address) {
+            let stack_index = *stack_index;
+            if Self::has_higher_ownership(existing, &shared_container) {
+                self.shared_values.insert(address, (shared_container, stack_index));
+            }
+            stack_index
         } else {
-            let address = self.current_slot_address;
-            self.current_slot_address = StackIndex(self.current_slot_address.0 + 1);
-            self.shared_values.insert(shared_value, (ownership, address));
-            address
+            let stack_index = self.current_stack_index;
+            self.current_stack_index = StackIndex(self.current_stack_index.0 + 1);
+            self.shared_values.insert(address, (shared_container, stack_index));
+            stack_index
         }
     }
 
-    /// Determines the maximum required ownership for a shared value based on the current tracking and a new reference mutability.
-    fn max_ownership(current: &Option<PointerReferenceMutability>, new: &Option<PointerReferenceMutability>) -> Option<PointerReferenceMutability> {
+    /// Determine whether the new container has a higher ownership level than the current
+    fn has_higher_ownership(current: &SharedContainer, new: &SharedContainer) -> bool {
+        let current_mutability = &current.reference_mutability;
+        let new_current_mutability = &new.reference_mutability;
+
         // both the same, no change
-        if current == new {
-            *current
+        if current_mutability == new_current_mutability {
+            return false;
         }
-        // at least one move -> move required
-        else if current.is_none() || new.is_none() {
-            None
+
+        match (new_current_mutability, current_mutability) {
+            // mutable > immutable
+            (Some(PointerReferenceMutability::Mutable), Some(PointerReferenceMutability::Immutable)) => true,
+            // move > immutable, move > mutable
+            (None, Some(PointerReferenceMutability::Immutable | PointerReferenceMutability::Mutable)) => true,
+            _ => false
         }
-        // at least one mutable -> mutable reference
-        else if current.unwrap() == PointerReferenceMutability::Mutable || new.unwrap() == PointerReferenceMutability::Mutable {
-            Some(PointerReferenceMutability::Mutable)
-        }
-        // default: immutable reference
-        else {
-            Some(PointerReferenceMutability::Immutable)
-        }
+    }
+
+    /// Extracts all registered owned shared values
+    pub fn into_moved_shared_values(self) -> Vec<SharedContainer> {
+        self.shared_values
+            .into_iter()
+            .filter_map(|(_, (container, _))| {
+                let is_owned = match container.reference_mutability {
+                    None => match &*container.inner.borrow() {
+                        SharedContainerInner::Owned(_) => true,
+                        _ => false,
+                    }
+                    _ => false,
+                };
+                if is_owned {
+                    Some(container)
+                }
+                else {
+                    None
+                }
+            })
+            .collect()
+    }
+
+    /// Get all registered owned shared values
+    pub fn get_moved_shared_addresses(&self) -> Vec<OwnedPointerAddress> {
+        self.shared_values
+            .iter()
+            .filter_map(|(_, (container, _))| {
+                match container.reference_mutability {
+                    None => match &*container.inner.borrow() {
+                        SharedContainerInner::Owned(owned) => Some(owned.pointer.address().clone()),
+                        _ => None,
+                    }
+                    _ => None,
+                }
+            })
+            .collect()
     }
 }

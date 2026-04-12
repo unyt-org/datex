@@ -23,6 +23,7 @@ pub enum CompilerError {
     TooManyApplyArguments, // more than 255 arguments
     NonStaticValue,
     SharedRefToNonSharedValue,
+    ExpectedOwnedSharedValue,
     UndeclaredVariable(String),
     InvalidRedeclaration(String),
     SubvariantNotFound(String, String),
@@ -345,6 +346,12 @@ impl Display for CompilerError {
                 core::write!(
                     f,
                     "Cannot create shared reference to non-shared value"
+                )
+            }
+            CompilerError::ExpectedOwnedSharedValue => {
+                core::write!(
+                    f,
+                    "Expected owned shared value, but found non-owned value"
                 )
             }
             CompilerError::SharedMutRefToImmutableValue => {

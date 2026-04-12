@@ -567,7 +567,6 @@ mod tests {
             memory
                 .get_value_reference(&CoreLibPointerId::Core.into())
                 .unwrap()
-                .borrow()
                 .value_container
         );
     }

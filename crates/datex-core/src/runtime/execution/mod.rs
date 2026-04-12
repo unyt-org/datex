@@ -131,7 +131,7 @@ pub async fn execute_dxb(
                 // assert that receivers is a single endpoint
                 // TODO #230: support advanced receivers
                 let receiver_endpoint =
-                    receivers.to_value().borrow().cast_to_endpoint().unwrap();
+                    receivers.to_cloned_value().borrow().cast_to_endpoint().unwrap();
                 let mut remote_execution_context = RemoteExecutionContext::new(
                     receiver_endpoint,
                     ExecutionMode::Static,
@@ -483,7 +483,7 @@ mod tests {
     #[test]
     fn empty_list() {
         let result = execute_datex_script_debug_with_result("[]");
-        let list: List = result.to_value().borrow().cast_to_list().unwrap();
+        let list: List = result.to_cloned_value().borrow().cast_to_list().unwrap();
         assert_eq!(list.len(), 0);
         assert_eq!(result, Vec::<ValueContainer>::new().into());
         assert_eq!(result, ValueContainer::from(Vec::<ValueContainer>::new()));
@@ -492,7 +492,7 @@ mod tests {
     #[test]
     fn list() {
         let result = execute_datex_script_debug_with_result("[1, 2, 3]");
-        let list: List = result.to_value().borrow().cast_to_list().unwrap();
+        let list: List = result.to_cloned_value().borrow().cast_to_list().unwrap();
         let expected = datex_list![
             Integer::from(1i8),
             Integer::from(2i8),
@@ -609,7 +609,7 @@ mod tests {
     fn map() {
         let result =
             execute_datex_script_debug_with_result("{x: 1, y: 2, z: 42}");
-        let map: CoreValue = result.clone().to_value().borrow().clone().inner;
+        let map: CoreValue = result.clone().to_cloned_value().borrow().clone().inner;
         let map: Map = map.try_into().unwrap();
 
         // form and size
@@ -646,7 +646,7 @@ mod tests {
     #[test]
     fn empty_map() {
         let result = execute_datex_script_debug_with_result("{}");
-        let map: CoreValue = result.clone().to_value().borrow().clone().inner;
+        let map: CoreValue = result.clone().to_cloned_value().borrow().clone().inner;
         let map: Map = map.try_into().unwrap();
 
         // form and size
@@ -803,7 +803,7 @@ mod tests {
         .await
         .unwrap();
         assert!(res.is_some());
-        let env = res.unwrap().to_value().borrow().cast_to_map().unwrap();
+        let env = res.unwrap().to_cloned_value().borrow().cast_to_map().unwrap();
         assert_eq!(env.get("TEST_ENV_VAR"), Ok(&"test_value".into()));
     }
 

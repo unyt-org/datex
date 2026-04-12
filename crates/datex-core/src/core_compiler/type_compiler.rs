@@ -17,7 +17,7 @@ use crate::global::protocol_structures::type_instructions::TypeInstruction;
 
 /// Compiles a given type container to a DXB body
 pub fn compile_type(ty: &Type) -> Vec<u8> {
-    let mut context = CoreCompilationContext::new(Vec::new(), StackIndex(0));
+    let mut context = CoreCompilationContext::new(Vec::new());
     append_type(&mut context, ty);
 
     context.into_buffer()
@@ -88,12 +88,11 @@ pub fn append_type_space_instruction_code_new(
 }
 
 
-pub fn append_type_instruction(cursor: &mut ByteCursor, instruction: TypeInstruction) -> BinResult<()> {
+pub fn append_type_instruction(cursor: &mut ByteCursor, instruction: TypeInstruction) {
     // add instruction code
-    cursor.write_all(&[TypeInstructionCode::from(&instruction) as u8])?;
+    cursor.write_all(&[TypeInstructionCode::from(&instruction) as u8]).unwrap();
     // add instruction
-    instruction.write(cursor)?;
-    Ok(())
+    instruction.write(cursor).unwrap();
 }
 
 

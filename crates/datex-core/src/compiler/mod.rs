@@ -512,10 +512,10 @@ fn compile_expression(
 
     match data {
         DatexExpressionData::Integer(int) => {
-            append_integer(compilation_context.cursor(), &int)?;
+            append_integer(compilation_context.cursor(), &int);
         }
         DatexExpressionData::TypedInteger(typed_int) => {
-            append_encoded_integer(compilation_context.cursor(), &typed_int)?;
+            append_encoded_integer(compilation_context.cursor(), &typed_int);
         }
         DatexExpressionData::Decimal(decimal) => match &decimal {
             Decimal::Finite(big_decimal) if big_decimal.is_integer() => {
@@ -524,33 +524,33 @@ fn compile_expression(
                 } else if let Some(int) = big_decimal.to_i32() {
                     append_float_as_i32(compilation_context.cursor(), int);
                 } else {
-                    append_decimal(compilation_context.cursor(), &decimal)?;
+                    append_decimal(compilation_context.cursor(), &decimal);
                 }
             }
             _ => {
-                append_decimal(compilation_context.cursor(), &decimal)?;
+                append_decimal(compilation_context.cursor(), &decimal);
             }
         },
         DatexExpressionData::TypedDecimal(typed_decimal) => {
             append_typed_decimal(
                 &mut compilation_context.core_context,
                 &typed_decimal,
-            )?;
+            );
         }
         DatexExpressionData::Text(text) => {
-            append_text(compilation_context.cursor(), &text)?;
+            append_text(compilation_context.cursor(), &text);
         }
         DatexExpressionData::Boolean(boolean) => {
-            append_boolean(compilation_context.cursor(), boolean)?;
+            append_boolean(compilation_context.cursor(), boolean);
         }
         DatexExpressionData::Endpoint(endpoint) => {
-            append_endpoint(compilation_context.cursor(), &endpoint)?;
+            append_endpoint(compilation_context.cursor(), &endpoint);
         }
         DatexExpressionData::Null => {
             append_regular_instruction(
                 compilation_context.cursor(),
                 RegularInstruction::Null,
-            )?;
+            );
         }
         DatexExpressionData::List(list) => {
             match list.items.len() {
@@ -1072,7 +1072,7 @@ fn compile_expression(
                     append_regular_instruction(
                         compilation_context.cursor(),
                         RegularInstruction::SetStackValue(stack_index),
-                    )?;
+                    );
                 }
                 Some(operator @ AssignmentOperator::AddAssign)
                 | Some(operator @ AssignmentOperator::SubtractAssign) => {
@@ -1098,7 +1098,7 @@ fn compile_expression(
                             index: stack_index,
                             operator,
                         }),
-                    )?;
+                    );
                 }
                 op => core::todo!("#436 Handle assignment operator: {op:?}"),
             }
@@ -1124,7 +1124,7 @@ fn compile_expression(
                 RegularInstruction::SetSharedContainerValue(SetSharedContainerValue {
                     operator,
                 }),
-            )?;
+            );
 
             // compile unbox expression
             scope = compile_expression(
@@ -1220,7 +1220,7 @@ fn compile_expression(
                     injected_values: external_parent_scope.injected_values,
                     body: execution_block_ctx.into_buffer(),
                 })
-            )?;
+            );
 
             // insert compiled caller expression
             scope = compile_expression(

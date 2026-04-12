@@ -576,7 +576,7 @@ impl From<&CoreValue> for Type {
             CoreValue::List(list) => {
                 let types = list
                     .iter()
-                    .map(|v| Type::from(v.to_value().borrow().inner.clone()))
+                    .map(|v| Type::from(v.to_cloned_value().borrow().inner.clone()))
                     .collect::<Vec<_>>();
                 Type::structural(
                     StructuralTypeDefinition::List(types),
@@ -590,12 +590,12 @@ impl From<&CoreValue> for Type {
                         (
                             Type::from(
                                 ValueContainer::from(key)
-                                    .to_value()
+                                    .to_cloned_value()
                                     .borrow()
                                     .inner
                                     .clone(),
                             ),
-                            Type::from(value.to_value().borrow().inner.clone()),
+                            Type::from(value.to_cloned_value().borrow().inner.clone()),
                         )
                     })
                     .collect::<Vec<_>>();

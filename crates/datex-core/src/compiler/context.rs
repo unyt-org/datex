@@ -48,7 +48,7 @@ impl CompilationContext {
     ) -> Self {
         CompilationContext {
             inserted_value_index: 0,
-            core_context: CoreCompilationContext::new(buffer, StackIndex(0)),
+            core_context: CoreCompilationContext::new(buffer),
             inserted_values,
             has_non_static_value: false,
             execution_mode,

@@ -489,7 +489,7 @@ impl Serializer for &mut DatexSerializer {
         if name == "datex::endpoint" {
             let endpoint = value
                 .serialize(&mut *self)?
-                .to_value()
+                .to_cloned_value()
                 .borrow()
                 .cast_to_endpoint()
                 .unwrap();
@@ -844,7 +844,7 @@ mod tests {
         let result = result.unwrap();
         assert_structural_eq!(
             result
-                .to_value()
+                .to_cloned_value()
                 .borrow()
                 .cast_to_map()
                 .unwrap()

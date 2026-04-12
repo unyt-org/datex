@@ -105,7 +105,7 @@ impl StructuralTypeDefinition {
     /// 1 | 2 matches integer -> true
     /// integer matches 1 | 2 -> false
     pub fn value_matches(&self, value: &ValueContainer) -> bool {
-        match (self, &value.to_value().borrow().inner) {
+        match (self, &value.to_cloned_value().borrow().inner) {
             (StructuralTypeDefinition::Integer(a), CoreValue::Integer(b)) => {
                 a == b
             }

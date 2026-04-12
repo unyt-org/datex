@@ -1,7 +1,7 @@
 pub mod interrupts;
 mod operations;
 mod runtime_value;
-mod slots;
+mod internal_slots;
 pub mod state;
 
 use crate::{
@@ -37,7 +37,7 @@ use crate::{
                 set_property,
             },
             runtime_value::RuntimeValue,
-            slots::{get_internal_stack_value, get_stack_value},
+            internal_slots::{get_internal_slot_value, get_stack_value},
             state::RuntimeExecutionState,
         }, macros::{
             interrupt, interrupt_with_maybe_value, interrupt_with_value,
@@ -411,7 +411,7 @@ pub fn inner_execution_loop(
 
                             RegularInstruction::GetInternalSlot(StackIndex(address)) => {
                                 Some(RuntimeValue::ValueContainer(yield_unwrap!(
-                                    get_internal_stack_value(
+                                    get_internal_slot_value(
                                         &state,
                                         address,
                                     )
@@ -1169,26 +1169,28 @@ pub fn inner_execution_loop(
                                         collected_results
                                             .pop_cloned_value_container_result_assert_existing(&state)
                                     );
-                                    
+
                                     let injected_values = yield_unwrap!(state.stack.resolve_injected_values(&exec_block_data.injected_values));
-                                    
+
                                     // build dxb
                                     let (buffer, moving_containers) = yield_unwrap!(compile_injected_values(
                                         exec_block_data,
                                         injected_values,
                                     ));
-
+                                    
                                     // store moving pointers
                                     if !moving_containers.is_empty() {
-                                        // ensure receiver is single endpoint
-                                        if let CoreValue::Endpoint(ref single_receiver) = receivers.to_value().borrow().inner {
-                                            state.runtime_internal.add_moving_pointers(single_receiver.clone(), moving_containers);
-                                        }
-                                        else {
-                                            return yield Err(ExecutionError::MoveToMultipleEndpoints)
-                                        }
+                                        yield_unwrap!(
+                                            // ensure receiver is single endpoint
+                                            if let CoreValue::Endpoint(single_receiver) = receivers.to_cloned_value().borrow().inner.clone() {
+                                                state.runtime_internal.add_moving_pointers(single_receiver, moving_containers)
+                                                    .map_err(|_| ExecutionError::ExpectedOwnedSharedValue)
+                                            }
+                                            else {
+                                                Err(ExecutionError::MoveToMultipleEndpoints)
+                                            }
+                                        );
                                     }
-
 
                                     interrupt_with_maybe_value!(
                                         interrupt_provider,

@@ -45,7 +45,7 @@ use crate::runtime::execution::InvalidProgramError;
 use crate::runtime::request_move::compile_request_move;
 use crate::shared_values::pointer::OwnedPointer;
 use crate::shared_values::pointer_address::{OwnedPointerAddress, PointerAddress, ReferencedPointerAddress};
-use crate::shared_values::shared_container::{SharedContainer, SharedContainerMutability};
+use crate::shared_values::shared_container::{SharedContainer, SharedContainerInner, SharedContainerMutability};
 use crate::values::core_value::CoreValue;
 use crate::values::value::Value;
 
@@ -474,6 +474,7 @@ impl RuntimeInternal {
     }
 
     /// Adds a pointer that is approved for move to a specific endpoint
+    /// Returns an error if any moving shared container is not an owned pointer
     pub(crate) fn add_moving_pointers(
         &self,
         new_owner: Endpoint,

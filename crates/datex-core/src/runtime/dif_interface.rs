@@ -258,7 +258,6 @@ mod tests {
         values::{core_values::map::Map, value_container::ValueContainer},
     };
     use core::cell::RefCell;
-    use crate::shared_values::pointer::Pointer;
     use crate::shared_values::pointer_address::PointerAddress;
 
     #[test]

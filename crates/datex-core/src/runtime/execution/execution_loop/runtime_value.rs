@@ -2,7 +2,7 @@ use crate::{
     runtime::execution::{
         ExecutionError,
         execution_loop::{
-            slots::get_stack_value,
+            internal_slots::get_stack_value,
             state::{RuntimeExecutionStack, RuntimeExecutionState},
         },
     },

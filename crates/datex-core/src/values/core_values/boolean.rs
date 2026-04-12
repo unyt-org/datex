@@ -66,7 +66,7 @@ impl<T: Into<ValueContainer>> TryFrom<Option<T>> for Boolean {
             Some(v) => {
                 let boolean: ValueContainer = v.into();
                 boolean
-                    .to_value()
+                    .to_cloned_value()
                     .borrow()
                     .cast_to_bool()
                     .ok_or(ValueError::TypeConversionError)

@@ -184,7 +184,7 @@ pub async fn test_remote_shared_value_inject_ref() {
             let result = runtime_a
                 .execute("var x = shared 42; @test_b :: ['x + 1, 'x]", &[], None)
                 .await
-                .unwrap().unwrap().to_value();
+                .unwrap().unwrap().to_cloned_value();
             let result_list = result.borrow().cast_to_list().unwrap();
             let result_vec = result_list.as_vec();
 

@@ -30,7 +30,7 @@ use crate::{
     global::operators::{BinaryOperator, binary::ArithmeticOperator},
     libs::core::CoreLibPointerId,
     shared_values::{
-        pointer::{Pointer, PointerReferenceMutability},
+        pointer::{PointerReferenceMutability},
         shared_type_container::{NominalTypeDeclaration, SharedTypeContainer},
     },
     types::definition::TypeDefinition,
@@ -277,11 +277,10 @@ impl<'a> Precompiler<'a> {
                 Rc::new(RefCell::new(SharedTypeContainer::nominal(
                     Type::UNIT,
                     NominalTypeDeclaration::from(data.name.clone()),
-                    Pointer::NULL,
                 )))
             }
             TypeDeclarationKind::Structural => Rc::new(RefCell::new(
-                SharedTypeContainer::anonymous(Type::UNIT, Pointer::NULL),
+                SharedTypeContainer::anonymous(Type::UNIT),
             )),
         };
 

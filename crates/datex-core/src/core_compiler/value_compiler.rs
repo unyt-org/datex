@@ -33,35 +33,55 @@ use crate::{
     },
     values::core_values::r#type::TypeMetadata,
 };
+use crate::compiler::error::CompilerError;
 use crate::core_compiler::core_compilation_context::{ByteCursor, CoreCompilationContext};
 use crate::core_compiler::type_compiler::{append_type_instruction, append_type_space_instruction_code_new};
 use crate::global::protocol_structures::instruction_data::{Float32Data, Float64Data, Int128Data, Int16Data, Int32Data, Int64Data, Int8Data, IntegerData, ListData, MapData, RawLocalPointerAddress, RawPointerAddress, SharedRef, SharedRefWithValue, StackIndex, TypeMetadataBin, UInt128Data, UInt16Data, UInt32Data, UInt64Data, UInt8Data};
 use crate::global::protocol_structures::instructions::Instruction;
 use crate::global::protocol_structures::regular_instructions::RegularInstruction;
+use crate::runtime::execution::ExecutionError;
 use crate::shared_values::shared_container::SharedContainer;
 
+#[derive(Clone, Debug, PartialEq)]
+pub enum SharedValueCompilationError {
+    ExpectedOwnedSharedValue,
+}
 
+impl From<SharedValueCompilationError> for CompilerError {
+    fn from(error: SharedValueCompilationError) -> CompilerError {
+        match error {
+            SharedValueCompilationError::ExpectedOwnedSharedValue => CompilerError::ExpectedOwnedSharedValue
+        }
+    }
+}
 
+impl From<SharedValueCompilationError> for ExecutionError {
+    fn from(error: SharedValueCompilationError) -> ExecutionError {
+        match error {
+            SharedValueCompilationError::ExpectedOwnedSharedValue => ExecutionError::ExpectedOwnedSharedValue
+        }
+    }
+}
 
 /// Compiles a given value container to a DXB body
 /// For local values, the value is just serialized
 /// For shared values, a reference with maximum mutability is serialized (no move)
-pub fn compile_value_container(value_container: &ValueContainer) -> BinResult<Vec<u8>> {
-    let mut context = CoreCompilationContext::new(Vec::with_capacity(256), StackIndex(0));
+pub fn compile_value_container(value_container: &ValueContainer) -> Result<Vec<u8>, SharedValueCompilationError> {
+    let mut context = CoreCompilationContext::new(Vec::with_capacity(256));
     append_value_container(&mut context, value_container)?;
 
     Ok(context.into_buffer())
 }
 
-pub fn compile_value(value_container: &Value) -> BinResult<Vec<u8>> {
-    let mut context = CoreCompilationContext::new(Vec::with_capacity(256), StackIndex(0));
+pub fn compile_value(value_container: &Value) -> Result<Vec<u8>, SharedValueCompilationError> {
+    let mut context = CoreCompilationContext::new(Vec::with_capacity(256));
     append_value(&mut context, value_container)?;
 
     Ok(context.into_buffer())
 }
 
-pub fn compile_shared_container(shared_container: &SharedContainer, insert_value: bool) -> BinResult<Vec<u8>>  {
-    let mut context = CoreCompilationContext::new(Vec::with_capacity(256), StackIndex(0));
+pub fn compile_shared_container(shared_container: &SharedContainer, insert_value: bool) -> Result<Vec<u8>, SharedValueCompilationError> {
+    let mut context = CoreCompilationContext::new(Vec::with_capacity(256));
     append_shared_container(&mut context, shared_container, insert_value)?;
     Ok(context.into_buffer())
 }
@@ -73,14 +93,13 @@ pub fn compile_shared_container(shared_container: &SharedContainer, insert_value
 pub fn append_value_container(
     context: &mut CoreCompilationContext,
     value_container: &ValueContainer,
-) -> BinResult<()> {
+) -> Result<(), SharedValueCompilationError> {
     match value_container {
-        ValueContainer::Local(value) => append_value(context, &value)?,
+        ValueContainer::Local(value) => append_value(context, &value),
         ValueContainer::Shared(reference) => {
-            append_shared_container(context, &reference, true)?;
+            append_shared_container(context, &reference, true)
         }
     }
-    Ok(())
 }
 
 /// Appends a shared container to the buffer a reference
@@ -88,7 +107,7 @@ pub fn append_shared_container_as_ref(
     context: &mut CoreCompilationContext,
     shared_container: &SharedContainer,
     insert_value: bool,
-) -> BinResult<()> {
+) -> Result<(), SharedValueCompilationError> {
     append_shared_container(context, &shared_container.derive_with_max_mutability(), insert_value)
 }
 
@@ -100,15 +119,15 @@ pub fn append_shared_container_as_ref(
 pub fn append_shared_container(
     context: &mut CoreCompilationContext,
     shared_container: &SharedContainer,
-    insert_value: bool,
-) -> BinResult<()> {
+    remote_endpoint_has_value: bool,
+) -> Result<(), SharedValueCompilationError> {
     match &shared_container.reference_mutability {
         // ref
         Some(mutability) => {
-            match shared_container.pointer().address() {
+            match shared_container.pointer_address() {
                 PointerAddress::Owned(owned_address) => {
                     // owned ref + value
-                    if insert_value {
+                    if !remote_endpoint_has_value {
                         append_regular_instruction(
                             context.cursor_mut(),
                             RegularInstruction::SharedRefWithValue(SharedRefWithValue {
@@ -116,12 +135,12 @@ pub fn append_shared_container(
                                 container_mutability: shared_container.mutability(),
                                 ref_mutability: *mutability,
                             })
-                        )?;
+                        );
 
                         // insert value with container mutability
-                        if insert_value {
-                            append_value(context, &shared_container.collapse_to_value().borrow())?;
-                        }
+                        shared_container.with_collapsed_value_mut(|value| {
+                            append_value(context, value)
+                        })?
                     }
                     // owned ref without value
                     else {
@@ -131,37 +150,29 @@ pub fn append_shared_container(
                                 address: RawPointerAddress::Local(RawLocalPointerAddress { bytes: owned_address.address}),
                                 ref_mutability: *mutability,
                             })
-                        )?;
+                        );
                     }
                 }
                 address => {
-                    if insert_value {
-                        return Err(binrw::Error::AssertFail {
-                            pos: context.cursor_mut().position(),
-                            message: "Cannot insert value for non-owned shared container".to_string(),
-                        }); // not allowed for non-owned pointer to share ref with value
-                    }
                     append_regular_instruction(
                         context.cursor_mut(),
                         RegularInstruction::SharedRef(SharedRef {
                             address: RawPointerAddress::from(address),
                             ref_mutability: *mutability,
                         })
-                    )?;
+                    );
                 }
             };
-
-            Ok(())
         },
         None => {
             // FIXME
             append_instruction_code_new(context.cursor_mut(), InstructionCode::TAKE_PROPERTY_INDEX);
             append_u32(context.cursor_mut(), 0); // list index 0 (only moving a single pointer)
-            append_perform_moves(context, &[shared_container]).unwrap();
-
-            Ok(())
+            append_perform_moves(context, &[shared_container])?;
         },
     }
+
+    Ok(())
 }
 
 /// Appends multiple shared containers as moves to the buffer
@@ -169,7 +180,7 @@ pub fn append_shared_container(
 pub fn append_perform_moves(
     context: &mut CoreCompilationContext,
     shared_containers: &[&SharedContainer],
-) -> Result<(), ()> {
+) -> Result<(), SharedValueCompilationError> {
     append_instruction_code_new(context.cursor_mut(), InstructionCode::PERFORM_MOVE);
     append_u32(context.cursor_mut(), shared_containers.len() as u32); // number of moved values
     for shared_container in shared_containers {
@@ -178,7 +189,7 @@ pub fn append_perform_moves(
             append_local_pointer_address(context.cursor_mut(), local_address);
         }
         else {
-            return Err(());
+            return Err(SharedValueCompilationError::ExpectedOwnedSharedValue);
         }
     }
     Ok(())
@@ -195,12 +206,12 @@ pub fn append_local_pointer_address(cursor: &mut ByteCursor, local_address: [u8;
 }
 
 
-pub fn append_value(context: &mut CoreCompilationContext, value: &Value) -> BinResult<()> {
+pub fn append_value(context: &mut CoreCompilationContext, value: &Value) -> Result<(), SharedValueCompilationError> {
     // append non-default type information
     if !value.has_default_type() {
         append_type_cast(context, &value.actual_type)?;
     }
-    match &value.inner {
+    Ok(match &value.inner {
         CoreValue::Type(_ty) => {
             core::todo!("#439 Type value not supported in CompilationContext");
         }
@@ -244,7 +255,7 @@ pub fn append_value(context: &mut CoreCompilationContext, value: &Value) -> BinR
                         RegularInstruction::List(ListData {
                             element_count: val.len(),
                         })
-                    )?;
+                    );
                 }
             }
 
@@ -252,7 +263,7 @@ pub fn append_value(context: &mut CoreCompilationContext, value: &Value) -> BinR
                 append_value_container(context, item.into())?;
             }
 
-            Ok(())
+            ()
         }
         CoreValue::Map(val) => {
             // if map size < 256, use SHORT_MAP
@@ -267,7 +278,7 @@ pub fn append_value(context: &mut CoreCompilationContext, value: &Value) -> BinR
                         RegularInstruction::Map(MapData {
                             element_count: val.size() as u32, // FIXME #633: casting from usize to u32 here
                         })
-                    )?;
+                    );
                 }
             }
             for (key, value) in val.iter() {
@@ -277,20 +288,24 @@ pub fn append_value(context: &mut CoreCompilationContext, value: &Value) -> BinR
                     value,
                 )?;
             }
-
-            Ok(())
         }
         CoreValue::Range(range) => {
-            append_regular_instruction(context.cursor_mut(), RegularInstruction::Range)?;
+            append_regular_instruction(context.cursor_mut(), RegularInstruction::Range);
             append_value_container(context, (&*range.start).into())?;
             append_value_container(context, (&*range.end).into())?;
-            Ok(())
         }
-    }
+    })
 }
 
-pub fn append_type_cast(context: &mut CoreCompilationContext, ty: &TypeDefinition) -> BinResult<()> {
-    append_regular_instruction(context.cursor_mut(), RegularInstruction::TypedValue)?;
+pub fn append_internal_type_cast(context: &mut CoreCompilationContext, core_lib_pointer_id: CoreLibPointerId) {
+    append_type_cast(
+        context,
+        &get_core_lib_type_definition(core_lib_pointer_id),
+    ).unwrap(); // internal type, cast can never fail
+}
+
+pub fn append_type_cast(context: &mut CoreCompilationContext, ty: &TypeDefinition) -> Result<(), SharedValueCompilationError> {
+    append_regular_instruction(context.cursor_mut(), RegularInstruction::TypedValue);
 
     // append type instruction
     let instruction_code = TypeInstructionCode::from(ty);
@@ -306,7 +321,7 @@ pub fn append_type_cast(context: &mut CoreCompilationContext, ty: &TypeDefinitio
     Ok(())
 }
 
-pub fn append_text(cursor: &mut ByteCursor, string: &str) -> BinResult<()> {
+pub fn append_text(cursor: &mut ByteCursor, string: &str) {
     let bytes = string.as_bytes();
     let len = bytes.len();
 
@@ -318,12 +333,10 @@ pub fn append_text(cursor: &mut ByteCursor, string: &str) -> BinResult<()> {
         append_u32(cursor, len as u32);
     }
 
-    cursor.write_all(&bytes[..len])?;
-
-    Ok(())
+    cursor.write_all(&bytes[..len]).unwrap();
 }
 
-pub fn append_boolean(cursor: &mut ByteCursor, boolean: bool) -> BinResult<()> {
+pub fn append_boolean(cursor: &mut ByteCursor, boolean: bool) {
     if boolean {
         append_regular_instruction(cursor, RegularInstruction::True)
     } else {
@@ -331,39 +344,39 @@ pub fn append_boolean(cursor: &mut ByteCursor, boolean: bool) -> BinResult<()> {
     }
 }
 
-pub fn append_decimal(cursor: &mut ByteCursor, decimal: &Decimal) -> BinResult<()> {
+pub fn append_decimal(cursor: &mut ByteCursor, decimal: &Decimal) {
     append_instruction_code_new(cursor, InstructionCode::DECIMAL);
-    append_big_decimal(cursor, decimal)
+    append_big_decimal(cursor, decimal);
 }
 
-pub fn append_big_decimal(cursor: &mut ByteCursor, decimal: &Decimal) -> BinResult<()> {
-    decimal.write_le(cursor)
+pub fn append_big_decimal(cursor: &mut ByteCursor, decimal: &Decimal) {
+    decimal.write_le(cursor).unwrap();
 }
 
-pub fn append_endpoint(cursor: &mut ByteCursor, endpoint: &Endpoint) -> BinResult<()> {
+pub fn append_endpoint(cursor: &mut ByteCursor, endpoint: &Endpoint) {
     append_instruction_code_new(cursor, InstructionCode::ENDPOINT);
-    endpoint.write_le(cursor)
+    endpoint.write_le(cursor).unwrap();
 }
 
 /// Appends a typed integer with explicit type casts
-pub fn append_typed_integer(context: &mut CoreCompilationContext, integer: &TypedInteger) -> BinResult<()> {
-    append_type_cast(
+pub fn append_typed_integer(context: &mut CoreCompilationContext, integer: &TypedInteger) {
+    append_internal_type_cast(
         context,
-        &get_core_lib_type_definition(CoreLibPointerId::from(integer)),
-    )?;
-    append_encoded_integer(context.cursor_mut(), integer)
+        CoreLibPointerId::from(integer)
+    );
+    append_encoded_integer(context.cursor_mut(), integer);
 }
 
 /// Appends a default, unsized integer
-pub fn append_integer(cursor: &mut ByteCursor, integer: &Integer) -> BinResult<()> {
+pub fn append_integer(cursor: &mut ByteCursor, integer: &Integer) {
     append_regular_instruction(
         cursor,
         RegularInstruction::Integer(IntegerData(integer.clone())) // FIXME: no clone
-    )
+    );
 }
 
 /// Appends an encoded integer without explicit type casts
-pub fn append_encoded_integer(cursor: &mut ByteCursor, integer: &TypedInteger) -> BinResult<()> {
+pub fn append_encoded_integer(cursor: &mut ByteCursor, integer: &TypedInteger) {
     let instruction = match integer {
         TypedInteger::I8(val) => RegularInstruction::Int8(Int8Data(*val)),
         TypedInteger::I16(val) => RegularInstruction::Int16(Int16Data(*val)),
@@ -381,27 +394,27 @@ pub fn append_encoded_integer(cursor: &mut ByteCursor, integer: &TypedInteger) -
     append_regular_instruction(
         cursor,
         instruction,
-    )
+    );
 }
 
-pub fn append_encoded_decimal(cursor: &mut ByteCursor, decimal: &TypedDecimal) -> BinResult<()> {
-    fn append_f32_or_f64(cursor: &mut ByteCursor, decimal: &TypedDecimal) -> BinResult<()> {
+pub fn append_encoded_decimal(cursor: &mut ByteCursor, decimal: &TypedDecimal) {
+    fn append_f32_or_f64(cursor: &mut ByteCursor, decimal: &TypedDecimal) {
         match decimal {
             TypedDecimal::F32(val) => {
                 append_regular_instruction(
                     cursor,
                     RegularInstruction::DecimalF32(Float32Data(val.into_inner())),
-                )
+                );
             }
             TypedDecimal::F64(val) => {
                 append_regular_instruction(
                     cursor,
                     RegularInstruction::DecimalF64(Float64Data(val.into_inner())),
-                )
+                );
             }
             TypedDecimal::Decimal(val) => {
                 append_instruction_code_new(cursor, InstructionCode::DECIMAL_BIG);
-                append_big_decimal(cursor, val)
+                append_big_decimal(cursor, val);
             }
         }
     }
@@ -435,12 +448,12 @@ pub fn append_big_integer(cursor: &mut ByteCursor, integer: &Integer) {
         .expect("Failed to write big integer");
 }
 
-pub fn append_typed_decimal(context: &mut CoreCompilationContext, decimal: &TypedDecimal) -> BinResult<()> {
-    append_type_cast(
+pub fn append_typed_decimal(context: &mut CoreCompilationContext, decimal: &TypedDecimal) {
+    append_internal_type_cast(
         context,
-        &get_core_lib_type_definition(CoreLibPointerId::from(decimal)),
-    )?;
-    append_encoded_decimal(context.cursor_mut(), decimal)
+        CoreLibPointerId::from(decimal),
+    );
+    append_encoded_decimal(context.cursor_mut(), decimal);
 }
 
 pub fn append_float_as_i16(cursor: &mut ByteCursor, int: i16) {
@@ -494,7 +507,7 @@ pub fn append_key_value_pair(
     context: &mut CoreCompilationContext,
     key: &ValueContainer,
     value: &ValueContainer,
-) -> BinResult<()> {
+) -> Result<(), SharedValueCompilationError> {
     // insert key
     match key {
         // if text, append_key_string, else dynamic
@@ -502,10 +515,10 @@ pub fn append_key_value_pair(
             inner: CoreValue::Text(text),
             ..
         }) => {
-            append_key_string(context.cursor_mut(), &text.0)?;
+            append_key_string(context.cursor_mut(), &text.0);
         }
         _ => {
-            append_regular_instruction(context.cursor_mut(), RegularInstruction::KeyValueDynamic)?;
+            append_regular_instruction(context.cursor_mut(), RegularInstruction::KeyValueDynamic);
             append_value_container(context, key)?;
         }
     }
@@ -513,30 +526,28 @@ pub fn append_key_value_pair(
     append_value_container(context, value)
 }
 
-pub fn append_key_string(cursor: &mut ByteCursor, key_string: &str) -> BinResult<()> {
+pub fn append_key_string(cursor: &mut ByteCursor, key_string: &str) {
     let bytes = key_string.as_bytes();
     let len = bytes.len();
 
     if len < 256 {
         append_instruction_code_new(cursor, InstructionCode::KEY_VALUE_SHORT_TEXT);
         append_u8(cursor, len as u8);
-        cursor.write_all(&bytes[..len])?;
-        Ok(())
+        cursor.write_all(&bytes[..len]).unwrap();
     } else {
         append_instruction_code_new(cursor, InstructionCode::KEY_VALUE_DYNAMIC);
-        append_text(cursor, key_string)
+        append_text(cursor, key_string);
     }
 }
 
-pub fn append_regular_instruction(cursor: &mut ByteCursor, instruction: RegularInstruction) -> BinResult<()> {
+pub fn append_regular_instruction(cursor: &mut ByteCursor, instruction: RegularInstruction) {
     // add instruction code
-    cursor.write_all(&[InstructionCode::from(&instruction) as u8])?;
+    cursor.write_all(&[InstructionCode::from(&instruction) as u8]).unwrap();
     // add instruction
-    instruction.write(cursor)?;
-    Ok(())
+    instruction.write(cursor).unwrap();
 }
 
-pub fn append_instruction(cursor: &mut ByteCursor, instruction: Instruction) -> BinResult<()> {
+pub fn append_instruction(cursor: &mut ByteCursor, instruction: Instruction) {
     match instruction {
         Instruction::Regular(instruction) => append_regular_instruction(cursor, instruction),
         Instruction::Type(instruction) => append_type_instruction(cursor, instruction),

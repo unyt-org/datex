@@ -11,11 +11,10 @@ use crate::{
 };
 use binrw::io::Cursor;
 use core::{cell::RefCell, result::Result};
-
+use core::cell::Ref;
 use crate::{
     prelude::*,
     shared_values::{
-        pointer::Pointer,
         pointer_address::{
             OwnedPointerAddress, PointerAddress, ReferencedPointerAddress,
         },
@@ -23,7 +22,7 @@ use crate::{
 };
 use crate::global::protocol_structures::instruction_data::RawRemotePointerAddress;
 use crate::shared_values::pointer::OwnedPointer;
-use crate::shared_values::shared_container::SharedContainerInner;
+use crate::shared_values::shared_container::{SharedContainerInner, SharedContainerValueOrType};
 
 #[derive(Debug, Default)]
 pub struct Memory {
@@ -72,21 +71,27 @@ impl Memory {
     pub fn get_value_reference(
         &self,
         pointer_address: &PointerAddress,
-    ) -> Option<&Rc<RefCell<SharedValueContainer>>> {
-        self.get_reference(pointer_address).and_then(|r| match &r.value {
-            SharedContainerInner::Value(v) => Some(v),
-            _ => None,
-        })
+    ) -> Option<Ref<SharedValueContainer>> {
+        let reference = self.get_reference(pointer_address)?;
+        Ref::filter_map(reference.value(), |container|
+            match container {
+                SharedContainerValueOrType::Value(v) => Some(v),
+                _ => None,
+            }
+        ).ok()
     }
 
     pub fn get_type_reference(
         &self,
         pointer_address: &PointerAddress,
-    ) -> Option<&Rc<RefCell<SharedTypeContainer>>> {
-        self.get_reference(pointer_address).and_then(|r| match &r.value {
-            SharedContainerInner::Type(t) => Some(t),
-            _ => None,
-        })
+    ) -> Option<Ref<SharedTypeContainer>> {
+        let reference = self.get_reference(pointer_address)?;
+        Ref::filter_map(reference.value(), |container|
+            match container {
+                SharedContainerValueOrType::Type(v) => Some(v),
+                _ => None,
+            }
+        ).ok()
     }
 
     /// Helper function to get a core value directly from memory
@@ -102,14 +107,17 @@ impl Memory {
     pub fn get_core_type_reference(
         &self,
         pointer_id: CoreLibPointerId,
-    ) -> Result<Rc<RefCell<SharedTypeContainer>>, IllegalTypeError> {
+    ) -> Result<Ref<SharedTypeContainer>, IllegalTypeError> {
         let reference = self
             .get_reference(&pointer_id.into())
             .ok_or(IllegalTypeError::TypeNotFound)?;
-        match &reference.value {
-            SharedContainerInner::Type(def) => Ok(def.clone()),
-            _ => Err(IllegalTypeError::TypeNotFound),
-        }
+ 
+        Ref::filter_map(reference.value(), |container|
+            match container {
+                SharedContainerValueOrType::Type(def) => Some(def),
+                _ => None
+            }
+        ).map_err(|_| IllegalTypeError::TypeNotFound)
     }
 
     /// Helper function to get a core type directly from memory, asserting that is can be used as a type
@@ -117,7 +125,7 @@ impl Memory {
     pub fn get_core_type_reference_unchecked(
         &self,
         pointer_id: CoreLibPointerId,
-    ) -> Rc<RefCell<SharedTypeContainer>> {
+    ) -> Ref<SharedTypeContainer> {
         // FIXME #415: Mark as unchecked
         self.get_core_type_reference(pointer_id)
             .expect("core type not found or cannot be used as a type")

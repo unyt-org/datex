@@ -89,7 +89,7 @@ fn compare_datex_result_with_json(json_string: &str) {
     println!(" JSON Value: {json_value}");
     println!(
         " DATEX Value: {datex_value} ({})",
-        datex_value.to_value().borrow().actual_type
+        datex_value.to_cloned_value().borrow().actual_type
     );
     println!(
         " Converted JSON Value: {json_value_converted} ({})",
@@ -97,7 +97,7 @@ fn compare_datex_result_with_json(json_string: &str) {
     );
     assert_structural_eq!(
         json_value_converted,
-        *datex_value.to_value().borrow()
+        *datex_value.to_cloned_value().borrow()
     );
 }
 

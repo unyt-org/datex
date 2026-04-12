@@ -81,7 +81,7 @@ impl<T: Into<ValueContainer>> TryFrom<Option<T>> for Endpoint {
         if let Some(value) = value {
             let container: ValueContainer = value.into();
             if let Some(endpoint) =
-                container.to_value().borrow().cast_to_endpoint()
+                container.to_cloned_value().borrow().cast_to_endpoint()
             {
                 return Ok(endpoint);
             }

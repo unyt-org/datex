@@ -9,7 +9,7 @@ use crate::{
     libs::core::CoreLibPointerId,
     prelude::*,
     runtime::execution::ExecutionError,
-    shared_values::{pointer::Pointer, pointer_address::PointerAddress},
+    shared_values::{pointer_address::PointerAddress},
     traits::apply::Apply,
     types::{
         definition::TypeDefinition,
@@ -21,6 +21,8 @@ use crate::{
     },
 };
 use core::option::Option;
+use crate::values::core_value::CoreValue;
+use crate::values::value::Value;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct NominalTypeDeclaration {
@@ -61,7 +63,6 @@ pub struct SharedTypeContainer {
     pub type_value: Type,
     /// optional nominal type declaration
     pub nominal_type_declaration: Option<NominalTypeDeclaration>,
-    pub(crate) pointer: Pointer,
 }
 
 impl SharedTypeContainer {
@@ -69,19 +70,16 @@ impl SharedTypeContainer {
     pub fn new(
         type_value: Type,
         nominal_type_declaration: Option<NominalTypeDeclaration>,
-        pointer: Pointer,
     ) -> Self {
         SharedTypeContainer {
             type_value,
             nominal_type_declaration,
-            pointer,
         }
     }
     
     pub fn nominal<T>(
         type_value: Type,
         nominal_type_declaration: T,
-        pointer: Pointer,
     ) -> Self
     where
         T: Into<NominalTypeDeclaration>,
@@ -89,14 +87,12 @@ impl SharedTypeContainer {
         SharedTypeContainer {
             type_value,
             nominal_type_declaration: Some(nominal_type_declaration.into()),
-            pointer,
         }
     }
-    pub fn anonymous(type_value: Type, pointer: Pointer) -> Self {
+    pub fn anonymous(type_value: Type) -> Self {
         SharedTypeContainer {
             type_value,
             nominal_type_declaration: None,
-            pointer,
         }
     }
     pub fn as_ref_cell(self) -> Rc<RefCell<SharedTypeContainer>> {
@@ -120,9 +116,21 @@ impl SharedTypeContainer {
             }
         }
     }
-    
-    pub fn pointer(&self) -> &Pointer {
-        &self.pointer
+
+    pub(crate) fn with_collapsed_value<R, F: FnOnce(&mut Value) -> R>(
+        &self,
+        f: F,
+    ) -> R {
+        match &self.type_value.type_definition {
+            TypeDefinition::SharedReference(reference) => {
+                // If this is a reference type, resolve it to its current reference
+                reference.borrow().with_collapsed_value(f)
+            }
+            _ => {
+                // If this is not a reference type, return it directly
+                f(&mut Value::from(CoreValue::Type(self.type_value.clone())))
+            }
+        }
     }
 }
 
@@ -170,25 +178,25 @@ impl Apply for SharedTypeContainer {
         if let Ok(core_lib_id) = core_lib_id {
             match core_lib_id {
                 CoreLibPointerId::Integer(None) => arg
-                    .to_value()
+                    .to_cloned_value()
                     .borrow()
                     .cast_to_integer()
                     .map(|i| Some(ValueContainer::from(i)))
                     .ok_or_else(|| ExecutionError::InvalidTypeCast),
                 CoreLibPointerId::Integer(Some(variant)) => arg
-                    .to_value()
+                    .to_cloned_value()
                     .borrow()
                     .cast_to_typed_integer(variant)
                     .map(|i| Some(ValueContainer::from(i)))
                     .ok_or_else(|| ExecutionError::InvalidTypeCast),
                 CoreLibPointerId::Decimal(None) => arg
-                    .to_value()
+                    .to_cloned_value()
                     .borrow()
                     .cast_to_decimal()
                     .map(|d| Some(ValueContainer::from(d)))
                     .ok_or_else(|| ExecutionError::InvalidTypeCast),
                 CoreLibPointerId::Decimal(Some(variant)) => arg
-                    .to_value()
+                    .to_cloned_value()
                     .borrow()
                     .cast_to_typed_decimal(variant)
                     .map(|d| Some(ValueContainer::from(d)))

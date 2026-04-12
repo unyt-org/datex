@@ -79,7 +79,7 @@ impl SharedContainer {
             ),
         };
 
-        self.with_value_unchecked(|value| {
+        self.with_collapsed_value_mut(|value| {
             value.try_set_property(key, val.clone())
         })?;
 
@@ -106,10 +106,10 @@ impl SharedContainer {
             ),
         };
 
-        self.with_value_unchecked(|core_value| {
+        self.with_collapsed_value_mut(|core_value| {
             // Set the value directly, ensuring it is a ValueContainer
             core_value.inner =
-                value_container.to_value().borrow().inner.clone();
+                value_container.to_cloned_value().borrow().inner.clone();
         });
 
         self.notify_observers(&dif_update.with_source(source_id));
@@ -133,7 +133,7 @@ impl SharedContainer {
             ),
         };
 
-        self.with_value_unchecked(move |core_value| {
+        self.with_collapsed_value_mut(move |core_value| {
             match &mut core_value.inner {
                 CoreValue::List(list) => {
                     list.push(value_container);
@@ -169,7 +169,7 @@ impl SharedContainer {
             None => &DIFUpdateData::delete(DIFKey::from_value_key(&key)),
         };
 
-        self.with_value_unchecked(|value| {
+        self.with_collapsed_value_mut(|value| {
             match value.inner {
                 CoreValue::Map(ref mut map) => {
                     key.with_value_container(|key| map.delete(key))?;
@@ -204,7 +204,7 @@ impl SharedContainer {
     ) -> Result<(), AccessError> {
         self.assert_can_mutate()?;
 
-        self.with_value_unchecked(|value| {
+        self.with_collapsed_value_mut(|value| {
             match value.inner {
                 CoreValue::Map(ref mut map) => {
                     map.clear()?;
@@ -247,7 +247,7 @@ impl SharedContainer {
             ),
         };
 
-        self.with_value_unchecked(|value| {
+        self.with_collapsed_value_mut(|value| {
             match value.inner {
                 CoreValue::List(ref mut list) => {
                     list.splice(range, items);
@@ -272,9 +272,7 @@ impl SharedContainer {
 mod tests {
     use crate::{
         prelude::*,
-        runtime::memory::Memory,
         shared_values::{
-            pointer::Pointer,
             shared_container::{
                 AccessError, IndexOutOfBoundsError, SharedContainer,
                 SharedContainerMutability,

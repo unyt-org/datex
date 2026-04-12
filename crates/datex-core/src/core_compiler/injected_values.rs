@@ -1,71 +1,138 @@
+use core::cell::RefCell;
 use binrw::io::Write;
-use binrw::io::Cursor;
 use crate::core_compiler::core_compilation_context::CoreCompilationContext;
-use crate::core_compiler::value_compiler::{append_instruction_code, append_instruction_code_new, append_perform_moves, append_shared_container, append_statements_preamble};
+use crate::core_compiler::value_compiler::{append_instruction_code, append_instruction_code_new, append_perform_moves, append_regular_instruction, append_shared_container, append_statements_preamble, append_value, SharedValueCompilationError};
 use crate::global::instruction_codes::InstructionCode;
 use crate::global::protocol_structures::injected_values::{InjectedValueDeclaration, InjectedValueType, SharedInjectedValueType};
-use crate::global::protocol_structures::instruction_data::{InstructionBlockData, StackIndex};
+use crate::global::protocol_structures::instruction_data::{InstructionBlockData, PerformMove, RawLocalPointerAddress, StackIndex};
+use crate::global::protocol_structures::regular_instructions::RegularInstruction;
 use crate::runtime::execution::ExecutionError;
-use crate::shared_values::shared_container::SharedContainer;
+use crate::shared_values::shared_container::{SharedContainer, SharedContainerInner};
 use crate::utils::buffers::{append_u32, append_u8};
 use crate::prelude::*;
 use crate::values::borrowed_value_container::BorrowedValueContainer;
+pub fn compile_injected_values(
+    instruction_block_data: InstructionBlockData,
+    injected_values: Vec<BorrowedValueContainer>,
+) -> Result<(Vec<u8>, Vec<SharedContainer>), SharedValueCompilationError> {
+    let mut context = CoreCompilationContext::new(Vec::new());
+    compile_injected_values_with_context(
+        &mut context,
+        instruction_block_data,
+        injected_values
+    )?;
+    Ok(context.into_buffer_and_moved_values())
+}
 
 /// Prepends injected values to an instruction block
 /// This is used for remote execution blocks and function bodies.
 ///
-/// TODO:
-pub fn compile_injected_values(
+/// #stack ..= (
+/// ///    Set($1, $2,)
+///    #0 = MOVE (1,2,34);
+///
+///    -----
+///    #parent = SHARED_REF 1;
+///    #child = {p: #parent}
+///    #parent.c = #child;
+///    #3 = #0[1]
+///    -----
+///
+///
+///    [
+///      #stack[1],
+///       parent {
+///          x: parent,
+///          y: #stack[2]
+///       },
+///       #stack[3],
+///       {
+///         x: 1,
+///       }
+///    ]
+///
+/// )
+///
+/// compile_injected_values ()
+/// for chilren(compile_injected_values)
+/// Set.add(shared)
+/// Instruction::
+/// x;
+pub fn compile_injected_values_with_context(
+    compilation_context: &mut CoreCompilationContext,
     instruction_block_data: InstructionBlockData,
-    slot_values: Vec<BorrowedValueContainer>,
-) -> Result<(Vec<u8>, Vec<SharedContainer>), ExecutionError> {
+    injected_values: Vec<BorrowedValueContainer>,
+) -> Result<(), SharedValueCompilationError> {
 
     if instruction_block_data
         .injected_values
-        .len() != slot_values.len() {
+        .len() != injected_values.len() {
         unreachable!(); // length must always match
     }
 
-    let moved_pointers_slot_index = instruction_block_data
-        .injected_values
-        .len() as u32;
-
-    // one slot assignment statement for each slot + original instructions block
-    let mut preamble_statements_count = slot_values.len() as u32;
-
-    let (mut slot_preamble, moved_owned_containers) = compile_preamble(moved_pointers_slot_index, instruction_block_data.clone(), slot_values)?;
-
-    // if there are any moved pointers, we need to compile the preform_move instruction and allocate a slot for the moved pointers
-    if !moved_owned_containers.is_empty() {
-        // + 1 statement for perform move
-        preamble_statements_count += 1;
-        let move_preamble = compile_preform_move_preamble(moved_pointers_slot_index, &moved_owned_containers.iter().collect::<Vec<&SharedContainer>>());
-        // prepend before slot_preamble
-        slot_preamble = [move_preamble, slot_preamble].concat();
+    for injected_value in injected_values {
+        match injected_value {
+            BorrowedValueContainer::Local(local_value) => {
+                append_value(compilation_context, local_value)?;
+            }
+            BorrowedValueContainer::Shared(shared_value) => {
+                append_shared_container(compilation_context, &shared_value, false)?;
+            }
+        }
     }
 
-    let final_buffer = if preamble_statements_count > 0 {
-        let mut final_buffer = Cursor::new(Vec::with_capacity(6 + instruction_block_data.body.len() + slot_preamble.len()));
-        append_statements_preamble(&mut final_buffer, preamble_statements_count as usize + 1, false);
-        final_buffer.write_all(&slot_preamble).unwrap();
-        final_buffer.write_all(
-            &instruction_block_data.body,
-        ).unwrap();
-        final_buffer.into_inner()
-    }
-    else {
-        instruction_block_data.body
-    };
+    // compile preamble
 
-    Ok((final_buffer, moved_owned_containers))
+    // ?
+    Ok(())
 }
+
+pub fn compile_shared_value_preamble(compilation_context: &mut CoreCompilationContext) {
+    let shared_value_tracking = &compilation_context.shared_value_tracking;
+    let cursor = &mut compilation_context.cursor;
+
+    let moved_ptr_addresses = shared_value_tracking.get_moved_shared_addresses();
+
+    append_regular_instruction(
+        cursor,
+        RegularInstruction::PushToStack,
+    );
+    
+    // push NULL to stack#1 if no moves
+    if moved_ptr_addresses.is_empty() {
+        append_regular_instruction(
+            cursor,
+            RegularInstruction::Null,
+        )
+    }
+    // push moves
+    else {
+        append_regular_instruction(
+            cursor,
+            RegularInstruction::PerformMove(PerformMove {
+                pointer_count: moved_ptr_addresses.len() as u32,
+                pointers: moved_ptr_addresses
+                    .iter()
+                    .map(|shared_container| {
+                        (
+                            0, // TODO: insert value or not?
+                            RawLocalPointerAddress {bytes: shared_container.address }
+                        )
+                    })
+                    .collect(),
+            })
+        );
+    }
+}
+
+
 
 fn compile_preamble(
     moved_pointers_slot_index: u32,
     exec_block_data: InstructionBlockData,
     slot_values: Vec<BorrowedValueContainer>,
 ) -> Result<(Vec<u8>, Vec<SharedContainer>), ExecutionError> {
-    let mut context = CoreCompilationContext::new(Vec::new(), StackIndex(0));
+    let mut context = CoreCompilationContext::new(Vec::new());
 
     let mut moved_pointers: Vec<SharedContainer> = vec![];
 
@@ -136,7 +203,7 @@ fn compile_preform_move_preamble(
     moved_pointers_slot_index: u32,
     moved_pointers: &[&SharedContainer]
 ) -> Vec<u8> {
-    let mut context = CoreCompilationContext::new(Vec::new(), StackIndex(0));
+    let mut context = CoreCompilationContext::new(Vec::new());
     context.cursor_mut().write_all(&[InstructionCode::PUSH_TO_STACK as u8]).unwrap();
 
     append_u32(context.cursor_mut(), moved_pointers_slot_index);

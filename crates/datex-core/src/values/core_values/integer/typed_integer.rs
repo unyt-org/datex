@@ -931,7 +931,7 @@ impl<T: Into<ValueContainer>> TryFrom<Option<T>> for TypedInteger {
             Some(v) => {
                 let integer: ValueContainer = v.into();
                 integer
-                    .to_value()
+                    .to_cloned_value()
                     .borrow()
                     ._cast_to_integer_internal()
                     .ok_or(ValueError::TypeConversionError)

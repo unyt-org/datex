@@ -563,7 +563,7 @@ impl ComHub {
                     let endpoint: Endpoint = obj
                         .get("endpoint")
                         .unwrap()
-                        .to_value()
+                        .to_cloned_value()
                         .borrow()
                         .cast_to_endpoint()
                         .unwrap();
@@ -580,7 +580,7 @@ impl ComHub {
                             let interface_type = socket_obj
                                 .get("interface_type")
                                 .unwrap()
-                                .to_value()
+                                .to_cloned_value()
                                 .borrow()
                                 .cast_to_text()
                                 .0;
@@ -597,14 +597,14 @@ impl ComHub {
                             let channel = socket_obj
                                 .get("channel")
                                 .unwrap()
-                                .to_value()
+                                .to_cloned_value()
                                 .borrow()
                                 .cast_to_text()
                                 .0;
                             let socket_uuid = socket_obj
                                 .get("socket_uuid")
                                 .unwrap()
-                                .to_value()
+                                .to_cloned_value()
                                 .borrow()
                                 .cast_to_text()
                                 .0;
@@ -621,14 +621,14 @@ impl ComHub {
                     let direction = obj
                         .get("direction")
                         .unwrap()
-                        .to_value()
+                        .to_cloned_value()
                         .borrow()
                         .cast_to_text()
                         .0;
                     let fork_nr = obj
                         .get("fork_nr")
                         .unwrap()
-                        .to_value()
+                        .to_cloned_value()
                         .borrow()
                         .cast_to_text()
                         .0;

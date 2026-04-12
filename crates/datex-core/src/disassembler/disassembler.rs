@@ -361,7 +361,7 @@ mod tests {
     fn instructions_to_bytes(instructions: Vec<Instruction>) -> Vec<u8> {
         let mut cursor = Cursor::new(Vec::new());
         for instruction in instructions {
-            append_instruction(&mut cursor, instruction).unwrap();
+            append_instruction(&mut cursor, instruction);
         }
         cursor.into_inner()
     }

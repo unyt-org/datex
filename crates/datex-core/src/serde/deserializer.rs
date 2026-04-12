@@ -244,7 +244,7 @@ impl<'de> Deserializer<'de> for DatexDeserializer<'de> {
     {
         match self {
             DatexDeserializer::ValueContainer(value)
-                if value.to_value().borrow().is_null() =>
+                if value.to_cloned_value().borrow().is_null() =>
             {
                 visitor.visit_none()
             }
@@ -520,7 +520,7 @@ impl<'de> Deserializer<'de> for DatexDeserializer<'de> {
                 Err(DeserializationError::CanNotDeserialize("f32".to_string()))
             }
             DatexDeserializer::ValueContainer(value) => {
-                match &value.to_value().borrow().inner {
+                match &value.to_cloned_value().borrow().inner {
                     CoreValue::Decimal(decimal) => {
                         visitor.visit_f32(decimal.into_f32())
                     }
@@ -550,7 +550,7 @@ impl<'de> Deserializer<'de> for DatexDeserializer<'de> {
                 Err(DeserializationError::CanNotDeserialize("f64".to_string()))
             }
             DatexDeserializer::ValueContainer(value) => {
-                match &value.to_value().borrow().inner {
+                match &value.to_cloned_value().borrow().inner {
                     CoreValue::Decimal(decimal) => {
                         visitor.visit_f64(decimal.into_f64())
                     }
@@ -580,7 +580,7 @@ impl<'de> Deserializer<'de> for DatexDeserializer<'de> {
                 Err(DeserializationError::CanNotDeserialize("i8".to_string()))
             }
             DatexDeserializer::ValueContainer(value) => {
-                match &value.to_value().borrow().inner {
+                match &value.to_cloned_value().borrow().inner {
                     CoreValue::Integer(i) => {
                         visitor.visit_i8(i.as_wrapped_i8())
                     }
@@ -610,7 +610,7 @@ impl<'de> Deserializer<'de> for DatexDeserializer<'de> {
                 Err(DeserializationError::CanNotDeserialize("i16".to_string()))
             }
             DatexDeserializer::ValueContainer(value) => {
-                match &value.to_value().borrow().inner {
+                match &value.to_cloned_value().borrow().inner {
                     CoreValue::Integer(i) => {
                         visitor.visit_i16(i.as_wrapped_i16())
                     }
@@ -640,7 +640,7 @@ impl<'de> Deserializer<'de> for DatexDeserializer<'de> {
                 Err(DeserializationError::CanNotDeserialize("i32".to_string()))
             }
             DatexDeserializer::ValueContainer(value) => {
-                match &value.to_value().borrow().inner {
+                match &value.to_cloned_value().borrow().inner {
                     CoreValue::Integer(i) => {
                         visitor.visit_i32(i.as_wrapped_i32())
                     }
@@ -670,7 +670,7 @@ impl<'de> Deserializer<'de> for DatexDeserializer<'de> {
                 Err(DeserializationError::CanNotDeserialize("i64".to_string()))
             }
             DatexDeserializer::ValueContainer(value) => {
-                match &value.to_value().borrow().inner {
+                match &value.to_cloned_value().borrow().inner {
                     CoreValue::Integer(i) => {
                         visitor.visit_i64(i.as_wrapped_i64())
                     }
@@ -700,7 +700,7 @@ impl<'de> Deserializer<'de> for DatexDeserializer<'de> {
                 Err(DeserializationError::CanNotDeserialize("i128".to_string()))
             }
             DatexDeserializer::ValueContainer(value) => {
-                match &value.to_value().borrow().inner {
+                match &value.to_cloned_value().borrow().inner {
                     CoreValue::Integer(i) => {
                         visitor.visit_i128(i.as_wrapped_i128())
                     }
@@ -730,7 +730,7 @@ impl<'de> Deserializer<'de> for DatexDeserializer<'de> {
                 Err(DeserializationError::CanNotDeserialize("u8".to_string()))
             }
             DatexDeserializer::ValueContainer(value) => {
-                match &value.to_value().borrow().inner {
+                match &value.to_cloned_value().borrow().inner {
                     CoreValue::Integer(i) => {
                         visitor.visit_u8(i.as_wrapped_u8())
                     }
@@ -760,7 +760,7 @@ impl<'de> Deserializer<'de> for DatexDeserializer<'de> {
                 Err(DeserializationError::CanNotDeserialize("u16".to_string()))
             }
             DatexDeserializer::ValueContainer(value) => {
-                match &value.to_value().borrow().inner {
+                match &value.to_cloned_value().borrow().inner {
                     CoreValue::Integer(i) => {
                         visitor.visit_u16(i.as_wrapped_u16())
                     }
@@ -790,7 +790,7 @@ impl<'de> Deserializer<'de> for DatexDeserializer<'de> {
                 Err(DeserializationError::CanNotDeserialize("u32".to_string()))
             }
             DatexDeserializer::ValueContainer(value) => {
-                match &value.to_value().borrow().inner {
+                match &value.to_cloned_value().borrow().inner {
                     CoreValue::Integer(i) => {
                         visitor.visit_u32(i.as_wrapped_u32())
                     }
@@ -820,7 +820,7 @@ impl<'de> Deserializer<'de> for DatexDeserializer<'de> {
                 Err(DeserializationError::CanNotDeserialize("u64".to_string()))
             }
             DatexDeserializer::ValueContainer(value) => {
-                match &value.to_value().borrow().inner {
+                match &value.to_cloned_value().borrow().inner {
                     CoreValue::Integer(i) => {
                         visitor.visit_u64(i.as_wrapped_u64())
                     }
@@ -850,7 +850,7 @@ impl<'de> Deserializer<'de> for DatexDeserializer<'de> {
                 Err(DeserializationError::CanNotDeserialize("u128".to_string()))
             }
             DatexDeserializer::ValueContainer(value) => {
-                match &value.to_value().borrow().inner {
+                match &value.to_cloned_value().borrow().inner {
                     CoreValue::Integer(i) => {
                         visitor.visit_u128(i.as_wrapped_u128())
                     }

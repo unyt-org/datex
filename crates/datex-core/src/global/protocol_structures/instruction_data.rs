@@ -477,7 +477,7 @@ cfg_if! {
             fn from(value: &InstructionBlockDataDebugFlat) -> Self {
                 let mut cursor = Cursor::new(Vec::new());
                 for instruction in &value.body {
-                    append_instruction(&mut cursor, instruction.clone()).unwrap();
+                    append_instruction(&mut cursor, instruction.clone());
                 }
                 Self {
                     length: value.length,

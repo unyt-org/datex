@@ -8,8 +8,9 @@ use crate::{
 
 use crate::prelude::*;
 use core::{cell::RefCell, fmt::Display, result::Result};
+use std::cell::RefMut;
 use serde::{Deserialize, Serialize};
-use crate::shared_values::shared_container::SharedContainerInner;
+use crate::shared_values::shared_container::{SharedContainerInner, SharedContainerValueOrType};
 
 #[derive(Debug)]
 pub enum ObserverError {
@@ -71,7 +72,6 @@ impl SharedContainer {
         // Add the observer to the list of observers
         Ok(self
             .ensure_mutable_container()?
-            .borrow_mut()
             .observers
             .add(observer))
 
@@ -83,7 +83,6 @@ impl SharedContainer {
     pub fn unobserve(&self, observer_id: u32) -> Result<(), ObserverError> {
         let removed = self
             .ensure_mutable_container()?
-            .borrow_mut()
             .observers
             .remove(observer_id);
         if removed.is_some() {
@@ -100,9 +99,8 @@ impl SharedContainer {
         observer_id: u32,
         options: ObserveOptions,
     ) -> Result<(), ObserverError> {
-        let vr = self.ensure_mutable_container()?;
-        let mut vr_borrow = vr.borrow_mut();
-        if let Some(observer) = vr_borrow.observers.get_mut(&observer_id) {
+        let mut container = self.ensure_mutable_container()?;
+        if let Some(observer) = container.observers.get_mut(&observer_id) {
             observer.options = options;
             Ok(())
         } else {
@@ -113,10 +111,10 @@ impl SharedContainer {
     /// Returns a list of all observer IDs currently registered to this reference.
     /// A type reference or immutable reference will always return an empty list.
     pub fn observers_ids(&self) -> Vec<u32> {
-        match &self.value {
-            SharedContainerInner::Type(_) => vec![],
-            SharedContainerInner::Value(vr) => {
-                vr.borrow().observers.keys().cloned().collect()
+        match &*self.value() {
+            SharedContainerValueOrType::Type(_) => vec![],
+            SharedContainerValueOrType::Value(container) => {
+                container.observers.keys().cloned().collect()
             }
         }
     }
@@ -135,24 +133,23 @@ impl SharedContainer {
     /// Returns an ObserverError if the reference is immutable (or a type container).
     fn ensure_mutable_container(
         &self,
-    ) -> Result<Rc<RefCell<SharedValueContainer>>, ObserverError> {
+    ) -> Result<RefMut<SharedValueContainer>, ObserverError> {
         if !self.is_mutable() {
             return Err(ObserverError::ImmutableReference);
         }
-        match &self.value {
-            SharedContainerInner::Value(v) => Ok(v.clone()),
-            SharedContainerInner::Type(_) => unreachable!(), // is never mutable, already checked above
-        }
+        Ok(RefMut::map(self.value_mut(), |val| match val {
+            SharedContainerValueOrType::Value(v) => v,
+            SharedContainerValueOrType::Type(_) => unreachable!(), // is never mutable, already checked above
+        }))
     }
 
     /// Notifies all observers of a change represented by the given DIFUpdate.
     pub fn notify_observers(&self, dif: &DIFUpdate) {
-        let observer_callbacks: Vec<ObserverCallback> = match &self.value {
-            SharedContainerInner::Type(_) => return, // no observers
-            SharedContainerInner::Value(vr) => {
+        let observer_callbacks: Vec<ObserverCallback> = match &*self.value() {
+            SharedContainerValueOrType::Type(_) => return, // no observers
+            SharedContainerValueOrType::Value(container) => {
                 // Clone observers while holding borrow
-                let vr_ref = vr.borrow();
-                vr_ref
+                container
                     .observers
                     .iter()
                     .filter(|(_, f)| {
@@ -173,9 +170,9 @@ impl SharedContainer {
 
     /// Check if there are any observers registered
     pub fn has_observers(&self) -> bool {
-        match &self.value {
-            SharedContainerInner::Type(_) => false,
-            SharedContainerInner::Value(vr) => !vr.borrow().observers.is_empty(),
+        match &*self.value() {
+            SharedContainerValueOrType::Type(_) => false,
+            SharedContainerValueOrType::Value(container) => !container.observers.is_empty(),
         }
     }
 }
@@ -190,12 +187,10 @@ mod tests {
             value::{DIFValue, DIFValueContainer},
         },
         prelude::*,
-        runtime::memory::Memory,
         shared_values::{
             observers::{
                 ObserveOptions, Observer, ObserverError, TransceiverId,
             },
-            pointer::Pointer,
             shared_container::{SharedContainer, SharedContainerMutability},
         },
         values::{core_values::map::Map, value_container::ValueContainer},
