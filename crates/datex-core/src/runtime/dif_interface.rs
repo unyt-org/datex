@@ -14,7 +14,7 @@ use crate::{
     shared_values::{
         observers::{ObserveOptions, Observer, TransceiverId},
         pointer_address::PointerAddress,
-        shared_container::{SharedContainer, SharedContainerMutability},
+        shared_container::{SharedContainerValueOrType, SharedContainerMutability},
     },
     values::value_container::ValueContainer,
 };
@@ -26,7 +26,7 @@ impl RuntimeInternal {
     fn resolve_in_memory_reference(
         &'_ self,
         address: &PointerAddress,
-    ) -> Option<Ref<'_, SharedContainer>> {
+    ) -> Option<Ref<'_, SharedContainerValueOrType>> {
         Ref::filter_map(self.memory.borrow(), |memory| {
             memory.get_reference(address)
         }).ok()
@@ -36,7 +36,7 @@ impl RuntimeInternal {
     async fn resolve_reference(
         &self,
         address: &PointerAddress,
-    ) -> Option<SharedContainer> {
+    ) -> Option<SharedContainerValueOrType> {
         self.memory.borrow().get_reference(address).cloned()
     }
 }
@@ -158,7 +158,7 @@ impl DIFInterface for RuntimeInternal {
         let pointer = self.memory.borrow_mut().get_new_owned_local_pointer();
         let address = pointer.address().clone();
 
-        let reference = SharedContainer::try_boxed_owned(
+        let reference = SharedContainerValueOrType::try_boxed_owned(
             container,
             type_container,
             pointer,

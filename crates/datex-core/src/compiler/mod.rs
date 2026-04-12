@@ -65,7 +65,7 @@ use crate::core_compiler::value_compiler::{append_instruction, append_instructio
 use crate::global::protocol_structures::injected_values::{InjectedValueType, LocalInjectedValueType, SharedInjectedValueType};
 use crate::global::protocol_structures::instruction_data::{InstructionBlockData, ModifyStackValue, SetSharedContainerValue, StackIndex};
 use crate::global::protocol_structures::regular_instructions::RegularInstruction;
-use crate::shared_values::shared_container::OwnedOrReferencedSharedContainer;
+use crate::shared_values::shared_container::SharedContainer;
 use crate::shared_values::shared_containers::ReferenceMutability;
 
 pub mod context;
@@ -665,7 +665,7 @@ fn compile_expression(
                             },
                             ValueAccessType::MoveOrCopy => {
                                 match *shared_container {
-                                    OwnedOrReferencedSharedContainer::Owned(shared_container) => {
+                                    SharedContainer::Owned(shared_container) => {
                                         append_shared_container(
                                             compilation_context.core_context(),
                                             &shared_container.into(),

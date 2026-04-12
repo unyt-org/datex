@@ -2,7 +2,7 @@ use core::cell::RefCell;
 use crate::core_compiler::shared_value_tracking::SharedValueTracking;
 use binrw::io::Cursor;
 use crate::prelude::*;
-use crate::shared_values::shared_container::{SharedContainer, SharedContainerInner};
+use crate::shared_values::shared_container::{SharedContainerValueOrType, SharedContainerInner};
 
 pub type ByteCursor = Cursor<Vec<u8>>;
 
@@ -31,7 +31,7 @@ impl CoreCompilationContext {
         self.cursor.into_inner()
     }
 
-    pub fn into_buffer_and_moved_values(self) -> (Vec<u8>, Vec<SharedContainer>) {
+    pub fn into_buffer_and_moved_values(self) -> (Vec<u8>, Vec<SharedContainerValueOrType>) {
         (
             self.cursor.into_inner(),
             self.shared_value_tracking.into_moved_shared_values()

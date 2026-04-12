@@ -644,7 +644,7 @@ mod tests {
     use crate::{
         prelude::*,
         shared_values::{
-            shared_container::SharedContainer,
+            shared_container::SharedContainerValueOrType,
         },
         values::{
             core_values::{
@@ -654,7 +654,10 @@ mod tests {
             value_container::ValueContainer,
         },
     };
-    use crate::shared_values::pointer::EndpointOwnedPointer;
+    use crate::shared_values::pointer_address::EndpointOwnedPointerAddress;
+    use crate::shared_values::shared_container::SharedContainerMutability;
+    use crate::shared_values::shared_containers::{EndpointOwnedSharedContainer, OwnedSharedContainer, SharedContainer};
+    use crate::shared_values::shared_containers::shared_value_container::SharedValueContainer;
 
     #[test]
     fn test_map() {
@@ -679,10 +682,14 @@ mod tests {
     #[test]
     fn test_ref_keys() {
         let mut map = Map::default();
-        let key = ValueContainer::Shared(SharedContainer::boxed_owned_immut(
-            ValueContainer::from(42),
-            EndpointOwnedPointer::NULL,
-        ));
+        let key = ValueContainer::shared(
+            SharedContainer::new_owned_with_inferred_allowed_type(
+                ValueContainer::from(42),
+                SharedContainerMutability::Immutable,
+                EndpointOwnedPointerAddress::NULL
+            )
+        );
+        
         map.set(key.clone(), "value");
         // same reference should be found
         assert_eq!(map.size(), 1);
@@ -690,10 +697,13 @@ mod tests {
         assert_eq!(map.get(&key).unwrap().to_string(), "\"value\"");
 
         // new reference with same value should not be found
-        let new_key = ValueContainer::Shared(SharedContainer::boxed_owned_immut(
-            ValueContainer::from(42),
-            EndpointOwnedPointer::NULL,
-        ));
+        let new_key = ValueContainer::shared(
+            SharedContainer::new_owned_with_inferred_allowed_type(
+                ValueContainer::from(42),
+                SharedContainerMutability::Immutable,
+                EndpointOwnedPointerAddress::NULL
+            )
+        );
         assert!(!map.has(&new_key));
         assert!(map.get(&new_key).is_err());
     }

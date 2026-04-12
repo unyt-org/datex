@@ -11,7 +11,7 @@ use crate::{
     },
     shared_values::{
         observers::TransceiverId,
-        shared_container::{AccessError, SharedContainer},
+        shared_container::{AccessError, SharedContainerValueOrType},
     },
     traits::{apply::Apply, value_eq::ValueEq},
     types::definition::TypeDefinition,
@@ -211,7 +211,7 @@ impl<'a> From<OwnedValueKey> for ValueKey<'a> {
 #[derive(Debug, Eq, Clone)]
 pub enum ValueContainer {
     Local(Value), // TODO #767: add references to local values (for recursive structures)
-    Shared(SharedContainer),
+    Shared(SharedContainerValueOrType),
 }
 
 impl<'a> Deserialize<'a> for ValueContainer {
@@ -315,6 +315,16 @@ impl Display for ValueContainer {
 }
 
 impl ValueContainer {
+
+    /// Creates a new [ValueContainer::Shared] from a [SharedContainerValueOrType]
+    pub fn shared(shared: impl Into<SharedContainerValueOrType>) -> Self {
+        ValueContainer::Shared(shared.into())
+    }
+
+    /// Creates a new [ValueContainer::Local] from a [Value]
+    pub fn local(value: impl Into<Value>) -> Self {
+        ValueContainer::Local(value.into())
+    }
 
     /// Calls a fn with a reference to the current inner collapsed value of the  container
     pub(crate) fn with_collapsed_value<R, F: FnOnce(&Value) -> R>(
@@ -423,7 +433,7 @@ impl ValueContainer {
     }
 
     /// Returns the contained SharedContainer if it is a SharedContainer, otherwise returns None.
-    pub fn maybe_shared(&self) -> Option<&SharedContainer> {
+    pub fn maybe_shared(&self) -> Option<&SharedContainerValueOrType> {
         if let ValueContainer::Shared(shared) = self {
             Some(shared)
         } else {
@@ -434,7 +444,7 @@ impl ValueContainer {
     /// Runs a closure with the contained SharedContainer if it is a SharedContainer, otherwise returns None.
     pub fn with_maybe_shared<F, R>(&self, f: F) -> Option<R>
     where
-        F: FnOnce(&SharedContainer) -> R,
+        F: FnOnce(&SharedContainerValueOrType) -> R,
     {
         if let ValueContainer::Shared(shared) = self {
             Some(f(shared))
@@ -444,7 +454,7 @@ impl ValueContainer {
     }
 
     /// Returns a reference to the contained SharedContainer, panics if it is not a SharedContainer.
-    pub fn shared_unchecked(&self) -> &SharedContainer {
+    pub fn shared_unchecked(&self) -> &SharedContainerValueOrType {
         match self {
             ValueContainer::Shared(shared) => shared,
             _ => {

@@ -48,7 +48,7 @@ use crate::{
     },
     shared_values::{
         shared_containers::ReferenceMutability, pointer_address::PointerAddress,
-        shared_container::SharedContainer,
+        shared_container::SharedContainerValueOrType,
     },
     types::{
         definition::TypeDefinition,
@@ -611,7 +611,7 @@ pub fn inner_execution_loop(
                                         ..
                                     })) => ty,
                                     // Type Reference
-                                    Some(ValueContainer::Shared(SharedContainer {
+                                    Some(ValueContainer::Shared(SharedContainerValueOrType {
                                         value: SharedContainerInner::Type(type_ref),
                                         .. })) => Type::new(
                                         TypeDefinition::SharedReference(
@@ -779,11 +779,11 @@ pub fn inner_execution_loop(
                                     let pointer = state.runtime_internal.memory.borrow_mut().get_new_owned_local_pointer();
 
                                     let shared_container = match instruction {
-                                        RegularInstruction::CreateShared => SharedContainer::boxed_owned_immut(
+                                        RegularInstruction::CreateShared => SharedContainerValueOrType::boxed_owned_immut(
                                             target,
                                             pointer,
                                         ),
-                                        RegularInstruction::CreateSharedMut => SharedContainer::boxed_owned_mut(
+                                        RegularInstruction::CreateSharedMut => SharedContainerValueOrType::boxed_owned_mut(
                                             target,
                                             pointer,
                                         ),
@@ -1259,7 +1259,7 @@ pub fn inner_execution_loop(
 
                                     // unwrap ok since allowed_type in None.
                                     // TODO: allowed type
-                                    let container = SharedContainer::try_boxed_ref(
+                                    let container = SharedContainerValueOrType::try_boxed_ref(
                                         value,
                                         None,
                                         pointer,

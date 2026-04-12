@@ -1,7 +1,7 @@
 use crate::{
     dif::{r#type::DIFTypeDefinition, value::DIFValueContainer},
     shared_values::shared_container::{
-        SharedContainer, SharedContainerMutability, mutability_as_int,
+        SharedContainerValueOrType, SharedContainerMutability, mutability_as_int,
     },
 };
 use serde::{Deserialize, Serialize};
@@ -16,7 +16,7 @@ pub struct DIFReference {
 }
 
 impl DIFReference {
-    pub fn from_reference(reference: &SharedContainer) -> Self {
+    pub fn from_reference(reference: &SharedContainerValueOrType) -> Self {
         let value = DIFValueContainer::from_value_container(
             &reference.value_container(),
         );

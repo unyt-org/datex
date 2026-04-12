@@ -11,12 +11,12 @@ use crate::{
 use crate::{prelude::*};
 use core::{cell::RefCell, fmt::Debug, prelude::rust_2024::*};
 use core::fmt::Display;
+use crate::shared_values::shared_container::{SharedValueCreationError};
 
 pub struct SharedValueContainer {
     // pub(crate) pointer: Pointer,
     /// the value that this reference points to
     pub value_container: ValueContainer,
-    /// pointer id, can be initialized as None for local pointers
     /// custom type for the pointer that the Datex value is allowed to reference
     pub allowed_type: TypeDefinition,
     /// list of observer callbacks
@@ -25,11 +25,36 @@ pub struct SharedValueContainer {
 }
 
 impl SharedValueContainer {
-    pub fn new(
+
+    /// Tries to create a new [SharedValueContainer] with an initial [ValueContainer],
+    /// an allowed type and a [SharedContainerMutability].
+    /// If the allowed [TypeDefinition] is not a superset of the [ValueContainer]'s allowed type,
+    /// an error is returned
+    pub fn try_new(
         value_container: ValueContainer,
         allowed_type: TypeDefinition,
         mutability: SharedContainerMutability,
+    ) -> Result<Self, SharedValueCreationError> {
+        // TODO #286: make sure allowed type is superset of reference's allowed type
+
+        Ok(
+            SharedValueContainer {
+                value_container,
+                allowed_type,
+                observers: FreeHashMap::new(),
+                mutability,
+            }
+        )
+    }
+
+    /// Creates a new [SharedValueContainer] with an initial [ValueContainer] and
+    /// a [SharedContainerMutability].
+    /// The allowed type is inferred from the value_container's allowed type.
+    pub fn new_with_inferred_allowed_type(
+        value_container: ValueContainer,
+        mutability: SharedContainerMutability,
     ) -> Self {
+        let allowed_type = value_container.allowed_type();
         SharedValueContainer {
             value_container,
             allowed_type,
@@ -52,7 +77,7 @@ impl Debug for SharedValueContainer {
 impl Display for SharedValueContainer {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(
-            f, 
+            f,
             "shared {}{}",
             self.value_container,
             match &self.mutability {

@@ -8,7 +8,7 @@ pub struct IndexOutOfBoundsError {
     pub index: u32,
 }
 
-impl Display for crate::shared_values::shared_container::IndexOutOfBoundsError {
+impl Display for IndexOutOfBoundsError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "Index out of bounds: {}", self.index)
     }
@@ -19,7 +19,7 @@ pub struct KeyNotFoundError {
     pub key: ValueContainer,
 }
 
-impl Display for crate::shared_values::shared_container::KeyNotFoundError {
+impl Display for KeyNotFoundError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "Property not found: {}", self.key)
     }
@@ -29,49 +29,49 @@ impl Display for crate::shared_values::shared_container::KeyNotFoundError {
 pub enum AccessError {
     ImmutableReference,
     InvalidOperation(String),
-    KeyNotFound(crate::shared_values::shared_container::KeyNotFoundError),
-    IndexOutOfBounds(crate::shared_values::shared_container::IndexOutOfBoundsError),
+    KeyNotFound(KeyNotFoundError),
+    IndexOutOfBounds(IndexOutOfBoundsError),
     MapAccessError(MapAccessError),
     InvalidIndexKey,
 }
 
-impl From<crate::shared_values::shared_container::IndexOutOfBoundsError> for crate::shared_values::shared_container::AccessError {
-    fn from(err: crate::shared_values::shared_container::IndexOutOfBoundsError) -> Self {
-        crate::shared_values::shared_container::AccessError::IndexOutOfBounds(err)
+impl From<IndexOutOfBoundsError> for AccessError {
+    fn from(err: IndexOutOfBoundsError) -> Self {
+        AccessError::IndexOutOfBounds(err)
     }
 }
 
-impl From<MapAccessError> for crate::shared_values::shared_container::AccessError {
+impl From<MapAccessError> for AccessError {
     fn from(err: MapAccessError) -> Self {
-        crate::shared_values::shared_container::AccessError::MapAccessError(err)
+        AccessError::MapAccessError(err)
     }
 }
 
-impl From<crate::shared_values::shared_container::KeyNotFoundError> for crate::shared_values::shared_container::AccessError {
-    fn from(err: crate::shared_values::shared_container::KeyNotFoundError) -> Self {
-        crate::shared_values::shared_container::AccessError::KeyNotFound(err)
+impl From<KeyNotFoundError> for AccessError {
+    fn from(err: KeyNotFoundError) -> Self {
+        AccessError::KeyNotFound(err)
     }
 }
 
-impl Display for crate::shared_values::shared_container::AccessError {
+impl Display for AccessError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
-            crate::shared_values::shared_container::AccessError::MapAccessError(err) => {
+            AccessError::MapAccessError(err) => {
                 write!(f, "Map access error: {}", err)
             }
-            crate::shared_values::shared_container::AccessError::ImmutableReference => {
+            AccessError::ImmutableReference => {
                 write!(f, "Cannot modify an immutable reference")
             }
-            crate::shared_values::shared_container::AccessError::InvalidOperation(op) => {
+            AccessError::InvalidOperation(op) => {
                 write!(f, "Invalid operation: {}", op)
             }
-            crate::shared_values::shared_container::AccessError::KeyNotFound(key) => {
+            AccessError::KeyNotFound(key) => {
                 write!(f, "{}", key)
             }
-            crate::shared_values::shared_container::AccessError::IndexOutOfBounds(error) => {
+            AccessError::IndexOutOfBounds(error) => {
                 write!(f, "{}", error)
             }
-            crate::shared_values::shared_container::AccessError::InvalidIndexKey => {
+            AccessError::InvalidIndexKey => {
                 write!(f, "Invalid index key")
             }
         }
@@ -82,10 +82,10 @@ impl Display for crate::shared_values::shared_container::AccessError {
 pub enum TypeError {
     TypeMismatch { expected: Type, found: Type },
 }
-impl Display for crate::shared_values::shared_container::TypeError {
+impl Display for TypeError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
-            crate::shared_values::shared_container::TypeError::TypeMismatch { expected, found } => write!(
+            TypeError::TypeMismatch { expected, found } => write!(
                 f,
                 "Type mismatch: expected {}, found {}",
                 expected, found
@@ -97,16 +97,16 @@ impl Display for crate::shared_values::shared_container::TypeError {
 #[derive(Debug)]
 pub enum AssignmentError {
     ImmutableReference,
-    TypeError(Box<crate::shared_values::shared_container::TypeError>),
+    TypeError(Box<TypeError>),
 }
 
-impl Display for crate::shared_values::shared_container::AssignmentError {
+impl Display for AssignmentError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
-            crate::shared_values::shared_container::AssignmentError::ImmutableReference => {
+            AssignmentError::ImmutableReference => {
                 write!(f, "Cannot assign to an immutable reference")
             }
-            crate::shared_values::shared_container::AssignmentError::TypeError(e) => {
+            AssignmentError::TypeError(e) => {
                 write!(f, "Type error: {}", e)
             }
         }

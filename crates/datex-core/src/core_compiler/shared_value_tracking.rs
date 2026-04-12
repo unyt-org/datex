@@ -3,13 +3,13 @@ use core::cell::{Ref, RefCell};
 use crate::collections::HashMap;
 use crate::global::protocol_structures::instruction_data::StackIndex;
 use crate::shared_values::pointer_address::{EndpointOwnedPointerAddress, PointerAddress};
-use crate::shared_values::shared_container::{OwnedSharedContainer, SharedContainer, SharedContainerInner};
+use crate::shared_values::shared_container::{OwnedSharedContainer, SharedContainerValueOrType, SharedContainerInner};
 
 /// Helper struct used during compilation to keep track which shared values are moved or referenced
 #[derive(Debug)]
 pub struct SharedValueTracking {
     /// shared values that were injected in the compiler, with a reference mutability if referenced, or None if moved
-    pub shared_values: HashMap<PointerAddress, (SharedContainer, StackIndex)>,
+    pub shared_values: HashMap<PointerAddress, (SharedContainerValueOrType, StackIndex)>,
     pub current_stack_index: StackIndex
 }
 
@@ -23,7 +23,7 @@ impl SharedValueTracking {
     }
 
     /// Registers a new shared value. Returns a stack index that can be used to access this value
-    pub fn register_shared_value(&mut self, shared_container: SharedContainer) -> StackIndex {
+    pub fn register_shared_value(&mut self, shared_container: SharedContainerValueOrType) -> StackIndex {
         let address = shared_container.pointer_address();
         if let Some((existing, stack_index)) = self.shared_values.get(&address) {
             let stack_index = *stack_index;
@@ -40,7 +40,7 @@ impl SharedValueTracking {
     }
 
     /// Determine whether the new container has a higher ownership level than the current
-    fn has_higher_ownership(current: &SharedContainer, new: &SharedContainer) -> bool {
+    fn has_higher_ownership(current: &SharedContainerValueOrType, new: &SharedContainerValueOrType) -> bool {
         let current_mutability = &current.reference_mutability;
         let new_current_mutability = &new.reference_mutability;
 
@@ -64,8 +64,8 @@ impl SharedValueTracking {
             .into_iter()
             .filter_map(|(_, (container, _))| {
                 match container {
-                    SharedContainer::Owned(owned) => Some(owned),
-                    SharedContainer::Referenced(_) => None,
+                    SharedContainerValueOrType::Owned(owned) => Some(owned),
+                    SharedContainerValueOrType::Referenced(_) => None,
                 }
             })
             .collect()
@@ -77,8 +77,8 @@ impl SharedValueTracking {
             .iter()
             .filter_map(|(_, (container, _))| {
                 match container {
-                    SharedContainer::Owned(owned) => Some(owned.pointer_address()),
-                    SharedContainer::Referenced(_) => None,
+                    SharedContainerValueOrType::Owned(owned) => Some(owned.pointer_address()),
+                    SharedContainerValueOrType::Referenced(_) => None,
                 }
             })
             .collect()

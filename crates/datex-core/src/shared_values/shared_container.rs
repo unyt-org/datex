@@ -68,168 +68,166 @@ impl Display for SharedValueCreationError {
     }
 }
 
-impl SharedContainer {
+impl SharedContainerValueOrType {
 
-    /// Creates a new shared owned value containing the given value container
-    pub fn try_boxed_owned(
-        value_container: ValueContainer,
-        allowed_type: Option<TypeDefinition>,
-        pointer: EndpointOwnedPointer,
-        mutability: SharedContainerMutability,
-    ) -> Result<Self, SharedValueCreationError> {
-        let allowed_type =
-            allowed_type.unwrap_or_else(|| value_container.allowed_type());
-
-        // TODO #286: make sure allowed type is superset of reference's allowed type
-        Ok(SharedContainer {
-            inner: Rc::new(RefCell::new(SharedContainerInner::EndpointOwned(EndpointOwnedSharedContainerInner {
-                value_or_type: SharedContainerValueOrType::Value(SharedValueContainer::new(
-                    value_container,
-                    allowed_type,
-                    mutability,
-                )),
-                pointer,
-            }))),
-            reference_mutability: None,
-        })
-    }
-
-    /// Creates a new shared ref value containing the given value container
-    pub fn try_boxed_ref(
-        value_container: ValueContainer,
-        allowed_type: Option<TypeDefinition>,
-        pointer: ExternalPointer,
-        mutability: SharedContainerMutability,
-        reference_mutability: ReferenceMutability,
-    ) -> Result<Self, SharedValueCreationError> {
-        let allowed_type =
-            allowed_type.unwrap_or_else(|| value_container.allowed_type());
-
-        // TODO #286: make sure allowed type is superset of reference's allowed type
-        Ok(SharedContainer {
-            inner: Rc::new(RefCell::new(SharedContainerInner::External(ExternalSharedContainerInner {
-                value_or_type: SharedContainerValueOrType::Value(SharedValueContainer::new(
-                    value_container,
-                    allowed_type,
-                    mutability,
-                )),
-                pointer,
-            }))),
-            reference_mutability: Some(reference_mutability),
-        })
-    }
-
-    /// Create a new shared type container
-    /// The pointer must be an owned pointer, since we create a new shared value
-    pub fn new_from_type(
-        type_value: Type,
-        pointer: EndpointOwnedPointer,
-        maybe_nominal_type_declaration: Option<NominalTypeDeclaration>,
-    ) -> Self {
-        let type_reference = SharedContainerContainingType::new(
-            type_value,
-            maybe_nominal_type_declaration,
-        );
-        SharedContainer {
-            inner: Rc::new(RefCell::new(SharedContainerInner::EndpointOwned(EndpointOwnedSharedContainerInner {
-                value_or_type: SharedContainerValueOrType::Type(type_reference),
-                pointer,
-            }))),
-            reference_mutability: None,
-        }
-    }
-
-    /// The pointer must be an owned pointer, since we create a new shared value
-    pub fn boxed_owned_mut(
-        value_container: impl Into<ValueContainer>,
-        pointer: EndpointOwnedPointer,
-    ) -> Self {
-        SharedContainer::boxed_owned(
-            value_container,
-            pointer,
-            SharedContainerMutability::Mutable,
-        )
-    }
-
-    /// The pointer must be an owned pointer, since we create a new shared value
-    pub fn boxed_owned_immut(
-        value_container: impl Into<ValueContainer>,
-        pointer: EndpointOwnedPointer,
-    ) -> Self {
-        SharedContainer::boxed_owned(
-            value_container,
-            pointer,
-            SharedContainerMutability::Immutable,
-        )
-    }
-
-    /// The pointer must be an owned pointer, since we create a new shared value
-    pub fn boxed_owned(
-        value_container: impl Into<ValueContainer>,
-        pointer: EndpointOwnedPointer,
-        mutability: SharedContainerMutability
-    ) -> Self {
-        SharedContainer::try_boxed_owned(
-            value_container.into(),
-            None,
-            pointer,
-            mutability
-        )
-            .unwrap() // always Ok, since we dont provide an allowed type that could mismatch
-    }
-
-    /// Creates an owned pointer (no ref), but for an internal pointer address, not an OwnedPointer
-    pub(crate) fn boxed_owned_with_internal_pointer(
-        value_container: impl Into<ValueContainer>,
-        internal_pointer_address: [u8; 3],
-    ) -> Self {
-        let value_container = value_container.into();
-        let allowed_type = value_container.allowed_type();
-
-        SharedContainer {
-            inner: Rc::new(RefCell::new(SharedContainerInner::External(ExternalSharedContainerInner {
-                value_or_type: SharedContainerValueOrType::Value(SharedValueContainer::new(
-                    value_container,
-                    allowed_type,
-                    SharedContainerMutability::Immutable,
-                )),
-                pointer: ExternalPointer::new(
-                    ExternalPointerAddress::Builtin(
-                        internal_pointer_address,
-                    ),
-                )
-            }))),
-            reference_mutability: None,
-        }
-    }
-
-    pub fn boxed_ref(
-        value_container: impl Into<ValueContainer>,
-        pointer: ExternalPointer,
-    ) -> Self {
-        SharedContainer::try_boxed_ref(
-            value_container.into(),
-            None,
-            pointer,
-            SharedContainerMutability::Immutable,
-            ReferenceMutability::Immutable,
-        )
-        .unwrap() // always Ok, since we dont provide an allowed type that could mismatch
-    }
-
-    pub fn boxed_mut_ref(
-        value_container: impl Into<ValueContainer>,
-        pointer: ExternalPointer,
-    ) -> Self {
-        SharedContainer::try_boxed_ref(
-            value_container.into(),
-            None,
-            pointer,
-            SharedContainerMutability::Mutable,
-            ReferenceMutability::Mutable,
-        )
-        .unwrap() // always Ok, since we don't provide an allowed type that could mismatch
-    }
+    // /// Creates a new shared owned value containing the given value container
+    // pub fn try_boxed_owned(
+    //     shared_value_container: SharedValueContainer,
+    //     pointer: EndpointOwnedPointer,
+    // ) -> Result<Self, SharedValueCreationError> {
+    //     let allowed_type =
+    //         allowed_type.unwrap_or_else(|| value_container.allowed_type());
+    //
+    //     // TODO #286: make sure allowed type is superset of reference's allowed type
+    //     Ok(SharedContainer {
+    //         inner: Rc::new(RefCell::new(SharedContainerInner::EndpointOwned(EndpointOwnedSharedContainerInner {
+    //             value_or_type: SharedContainerValueOrType::Value(SharedValueContainer::new(
+    //                 value_container,
+    //                 allowed_type,
+    //                 mutability,
+    //             )),
+    //             pointer,
+    //         }))),
+    //         reference_mutability: None,
+    //     })
+    // }
+    //
+    // /// Creates a new shared ref value containing the given value container
+    // pub fn try_boxed_ref(
+    //     value_container: ValueContainer,
+    //     allowed_type: Option<TypeDefinition>,
+    //     pointer: ExternalPointer,
+    //     mutability: SharedContainerMutability,
+    //     reference_mutability: ReferenceMutability,
+    // ) -> Result<Self, SharedValueCreationError> {
+    //     let allowed_type =
+    //         allowed_type.unwrap_or_else(|| value_container.allowed_type());
+    //
+    //     // TODO #286: make sure allowed type is superset of reference's allowed type
+    //     Ok(SharedContainer {
+    //         inner: Rc::new(RefCell::new(SharedContainerInner::External(ExternalSharedContainerInner {
+    //             value_or_type: SharedContainerValueOrType::Value(SharedValueContainer::new(
+    //                 value_container,
+    //                 allowed_type,
+    //                 mutability,
+    //             )),
+    //             pointer,
+    //         }))),
+    //         reference_mutability: Some(reference_mutability),
+    //     })
+    // }
+    //
+    // /// Create a new shared type container
+    // /// The pointer must be an owned pointer, since we create a new shared value
+    // pub fn new_from_type(
+    //     type_value: Type,
+    //     pointer: EndpointOwnedPointer,
+    //     maybe_nominal_type_declaration: Option<NominalTypeDeclaration>,
+    // ) -> Self {
+    //     let type_reference = SharedContainerContainingType::new(
+    //         type_value,
+    //         maybe_nominal_type_declaration,
+    //     );
+    //     SharedContainer {
+    //         inner: Rc::new(RefCell::new(SharedContainerInner::EndpointOwned(EndpointOwnedSharedContainerInner {
+    //             value_or_type: SharedContainerValueOrType::Type(type_reference),
+    //             pointer,
+    //         }))),
+    //         reference_mutability: None,
+    //     }
+    // }
+    //
+    // /// The pointer must be an owned pointer, since we create a new shared value
+    // pub fn boxed_owned_mut(
+    //     value_container: impl Into<ValueContainer>,
+    //     pointer: EndpointOwnedPointer,
+    // ) -> Self {
+    //     SharedContainer::boxed_owned(
+    //         value_container,
+    //         pointer,
+    //         SharedContainerMutability::Mutable,
+    //     )
+    // }
+    //
+    // /// The pointer must be an owned pointer, since we create a new shared value
+    // pub fn boxed_owned_immut(
+    //     value_container: impl Into<ValueContainer>,
+    //     pointer: EndpointOwnedPointer,
+    // ) -> Self {
+    //     SharedContainer::boxed_owned(
+    //         value_container,
+    //         pointer,
+    //         SharedContainerMutability::Immutable,
+    //     )
+    // }
+    //
+    // /// The pointer must be an owned pointer, since we create a new shared value
+    // pub fn boxed_owned(
+    //     value_container: impl Into<ValueContainer>,
+    //     pointer: EndpointOwnedPointer,
+    //     mutability: SharedContainerMutability
+    // ) -> Self {
+    //     SharedContainer::try_boxed_owned(
+    //         value_container.into(),
+    //         None,
+    //         pointer,
+    //         mutability
+    //     )
+    //         .unwrap() // always Ok, since we dont provide an allowed type that could mismatch
+    // }
+    //
+    // /// Creates an owned pointer (no ref), but for an internal pointer address, not an OwnedPointer
+    // pub(crate) fn boxed_owned_with_internal_pointer(
+    //     value_container: impl Into<ValueContainer>,
+    //     internal_pointer_address: [u8; 3],
+    // ) -> Self {
+    //     let value_container = value_container.into();
+    //     let allowed_type = value_container.allowed_type();
+    //
+    //     SharedContainer {
+    //         inner: Rc::new(RefCell::new(SharedContainerInner::External(ExternalSharedContainerInner {
+    //             value_or_type: SharedContainerValueOrType::Value(SharedValueContainer::new(
+    //                 value_container,
+    //                 allowed_type,
+    //                 SharedContainerMutability::Immutable,
+    //             )),
+    //             pointer: ExternalPointer::new(
+    //                 ExternalPointerAddress::Builtin(
+    //                     internal_pointer_address,
+    //                 ),
+    //             )
+    //         }))),
+    //         reference_mutability: None,
+    //     }
+    // }
+    //
+    // pub fn boxed_ref(
+    //     value_container: impl Into<ValueContainer>,
+    //     pointer: ExternalPointer,
+    // ) -> Self {
+    //     SharedContainer::try_boxed_ref(
+    //         value_container.into(),
+    //         None,
+    //         pointer,
+    //         SharedContainerMutability::Immutable,
+    //         ReferenceMutability::Immutable,
+    //     )
+    //     .unwrap() // always Ok, since we dont provide an allowed type that could mismatch
+    // }
+    //
+    // pub fn boxed_mut_ref(
+    //     value_container: impl Into<ValueContainer>,
+    //     pointer: ExternalPointer,
+    // ) -> Self {
+    //     SharedContainer::try_boxed_ref(
+    //         value_container.into(),
+    //         None,
+    //         pointer,
+    //         SharedContainerMutability::Mutable,
+    //         ReferenceMutability::Mutable,
+    //     )
+    //     .unwrap() // always Ok, since we don't provide an allowed type that could mismatch
+    // }
 
     /// Calls a fn with a mutable reference to the current inner collapsed value of the shared container
     pub(crate) fn with_collapsed_value_mut<R, F: FnOnce(&mut Value) -> R>(
@@ -327,7 +325,7 @@ impl SharedContainer {
     }
 }
 /// Getter for references
-impl SharedContainer {
+impl SharedContainerValueOrType {
     /// Gets a property on the value if applicable (e.g. for map and structs)
     // FIXME #296 make this return a reference to a value container
     // Just for later as myRef.x += 1
@@ -351,7 +349,7 @@ impl SharedContainer {
     }
 }
 
-impl Apply for SharedContainer {
+impl Apply for SharedContainerValueOrType {
     fn apply(
         &self,
         args: &[ValueContainer],
@@ -393,7 +391,7 @@ mod tests {
         // creating a mutable shared container from a value should work
         let value = ValueContainer::from(42);
         let reference =
-            SharedContainer::boxed_owned_mut(value, EndpointOwnedPointer::NULL);
+            SharedContainerValueOrType::boxed_owned_mut(value, EndpointOwnedPointer::NULL);
         assert_eq!(reference.mutability(), SharedContainerMutability::Mutable);
     }
 
@@ -402,7 +400,7 @@ mod tests {
         let mut map = Map::default();
         map.set("name", ValueContainer::from("Jonas"));
         map.set("age", ValueContainer::from(30));
-        let reference = SharedContainer::boxed_owned_immut(
+        let reference = SharedContainerValueOrType::boxed_owned_immut(
             ValueContainer::from(map),
             EndpointOwnedPointer::NULL,
         );
@@ -427,7 +425,7 @@ mod tests {
             ("name".to_string(), ValueContainer::from("Jonas")),
             ("age".to_string(), ValueContainer::from(30)),
         ]);
-        let reference = SharedContainer::boxed_owned_immut(
+        let reference = SharedContainerValueOrType::boxed_owned_immut(
             ValueContainer::from(struct_val),
             EndpointOwnedPointer::NULL,
         );
@@ -453,7 +451,7 @@ mod tests {
             ValueContainer::from(2),
             ValueContainer::from(3),
         ];
-        let reference = SharedContainer::boxed_owned_immut(
+        let reference = SharedContainerValueOrType::boxed_owned_immut(
             ValueContainer::from(list),
             EndpointOwnedPointer::NULL,
         );
@@ -479,7 +477,7 @@ mod tests {
             }))
         );
 
-        let text_ref = SharedContainer::boxed_owned_immut(
+        let text_ref = SharedContainerValueOrType::boxed_owned_immut(
             ValueContainer::from("hello"),
             EndpointOwnedPointer::NULL,
         );
@@ -500,7 +498,7 @@ mod tests {
     fn reference_identity() {
         let value = 42;
         let reference1 =
-            SharedContainer::boxed_owned_immut(value, EndpointOwnedPointer::NULL);
+            SharedContainerValueOrType::boxed_owned_immut(value, EndpointOwnedPointer::NULL);
         let reference2 = reference1.clone();
 
         // cloned reference should be equal (identical)
@@ -515,18 +513,18 @@ mod tests {
         // separate reference containing the same value should not be equal
         assert_ne!(
             reference1,
-            SharedContainer::boxed_owned_immut(value, EndpointOwnedPointer::NULL)
+            SharedContainerValueOrType::boxed_owned_immut(value, EndpointOwnedPointer::NULL)
         );
     }
 
     #[test]
     fn reference_value_equality() {
         let value = 42;
-        let reference1 = ValueContainer::Shared(SharedContainer::boxed_owned_immut(
+        let reference1 = ValueContainer::Shared(SharedContainerValueOrType::boxed_owned_immut(
             value,
             EndpointOwnedPointer::NULL,
         ));
-        let reference2 = ValueContainer::Shared(SharedContainer::boxed_owned_immut(
+        let reference2 = ValueContainer::Shared(SharedContainerValueOrType::boxed_owned_immut(
             value,
             EndpointOwnedPointer::NULL,
         ));
@@ -539,8 +537,8 @@ mod tests {
 
     #[test]
     fn reference_structural_equality() {
-        let reference1 = SharedContainer::boxed_owned_immut(42.0, EndpointOwnedPointer::NULL);
-        let reference2 = SharedContainer::boxed_owned_immut(42, EndpointOwnedPointer::NULL);
+        let reference1 = SharedContainerValueOrType::boxed_owned_immut(42.0, EndpointOwnedPointer::NULL);
+        let reference2 = SharedContainerValueOrType::boxed_owned_immut(42, EndpointOwnedPointer::NULL);
 
         // different references should not be equal a.k.a. identical
         assert_ne!(reference1, reference2);
@@ -556,7 +554,7 @@ mod tests {
         map_a.set("number", ValueContainer::from(42));
         map_a.set(
             "obj",
-            ValueContainer::Shared(SharedContainer::boxed_owned_immut(
+            ValueContainer::Shared(SharedContainerValueOrType::boxed_owned_immut(
                 Map::default(),
                 EndpointOwnedPointer::NULL,
             )),
@@ -564,11 +562,11 @@ mod tests {
 
         // construct map_a as a value first
         let map_a_original_ref = ValueContainer::Shared(
-            SharedContainer::boxed_owned_immut(map_a, EndpointOwnedPointer::NULL),
+            SharedContainerValueOrType::boxed_owned_immut(map_a, EndpointOwnedPointer::NULL),
         );
 
         // create map_b as a reference
-        let map_b_ref = SharedContainer::try_boxed_owned(
+        let map_b_ref = SharedContainerValueOrType::try_boxed_owned(
             Map::default().into(),
             None,
             EndpointOwnedPointer::NULL,

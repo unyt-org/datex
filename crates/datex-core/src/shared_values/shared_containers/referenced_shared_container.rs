@@ -4,7 +4,7 @@ use core::cell::Ref;
 use core::fmt::Display;
 use std::cell::RefMut;
 use crate::shared_values::pointer_address::PointerAddress;
-use crate::shared_values::shared_container::{OwnedSharedContainer, SharedContainerInner, SharedContainerMutability};
+use crate::shared_values::shared_container::{EndpointOwnedSharedContainer, OwnedSharedContainer, SharedContainerInner, SharedContainerMutability};
 use crate::shared_values::shared_containers::ReferenceMutability;
 
 /// Wrapper struct for a reference to a shared value (i.e. `'shared X` or `'mut shared X`).
@@ -14,12 +14,32 @@ use crate::shared_values::shared_containers::ReferenceMutability;
 pub struct ReferencedSharedContainer {
     /// The inner container contains the actual value which can be shared between multiple owners.
     /// This can either be a [SharedContainerInner::EndpointOwned] or a [SharedContainerInner::External]
-    pub(crate) inner: Rc<RefCell<SharedContainerInner>>,
+    inner: Rc<RefCell<SharedContainerInner>>,
     /// The mutability of the reference (either `'mut shared X` or `'shared X`)
-    pub(crate) reference_mutability: ReferenceMutability,
+    reference_mutability: ReferenceMutability,
 }
 
 impl ReferencedSharedContainer {
+
+    /// Creates a new mutable [ReferencedSharedContainer] from an existing mutable [Rc<RefCell<SharedContainerInner>>]
+    /// 
+    /// IMPORTANT: this method should only be called after validating that 
+    /// the [SharedContainerMutability] of the inner container is mutable.
+    pub(crate) fn new_mutable_unchecked(inner: Rc<RefCell<SharedContainerInner>>) -> Self {
+        ReferencedSharedContainer {
+            inner,
+            reference_mutability: ReferenceMutability::Mutable,
+        }
+    }
+    
+    /// Creates a new immutable [ReferencedSharedContainer] from an existing mutable or immmutable [Rc<RefCell<SharedContainerInner>>]
+    pub(crate) fn new_immutable(inner: Rc<RefCell<SharedContainerInner>>) -> Self {
+        ReferencedSharedContainer {
+            inner,
+            reference_mutability: ReferenceMutability::Immutable,
+        }
+    }
+
 
     /// Get a reference to the inner [Rc<RefCell<SharedContainerInner>>]
     pub fn inner_rc(&self) -> &Rc<RefCell<SharedContainerInner>> {

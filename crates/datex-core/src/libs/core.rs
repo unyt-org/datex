@@ -1,7 +1,7 @@
 use crate::{
     collections::HashMap,
     runtime::memory::Memory,
-    shared_values::shared_container::SharedContainer,
+    shared_values::shared_container::SharedContainerValueOrType,
     types::definition::TypeDefinition,
     values::{
         core_value::CoreValue,
@@ -30,7 +30,7 @@ use crate::shared_values::pointer::ExternalPointer;
 use crate::shared_values::shared_container::SharedContainerInner;
 
 type CoreLibTypes = HashMap<CoreLibPointerId, Type>;
-type CoreLibVals = HashMap<CoreLibPointerId, SharedContainer>;
+type CoreLibVals = HashMap<CoreLibPointerId, SharedContainerValueOrType>;
 
 #[cfg_attr(not(feature = "embassy_runtime"), thread_local)]
 pub static mut CORE_LIB_TYPES: Option<CoreLibTypes> = None;
@@ -211,14 +211,14 @@ pub fn get_core_lib_type_reference(
 /// Retrieves either a core library type or value by its CoreLibPointerId.
 pub fn get_core_lib_value(
     id: impl Into<CoreLibPointerId>,
-) -> Option<SharedContainer> {
+) -> Option<SharedContainerValueOrType> {
     let id = id.into();
     with_full_core_lib(|core_lib_types, core_lib_values| {
         // try types first
         if let Some(ty) = core_lib_types.get(&id) {
             match &ty.type_definition {
                 TypeDefinition::SharedReference(tr) => Some(
-                    SharedContainer {
+                    SharedContainerValueOrType {
                         value: SharedContainerInner::Type(tr.clone()),
                         reference_mutability: None,
                     },
@@ -260,7 +260,7 @@ pub fn load_core_lib(memory: &mut Memory) {
                         .unwrap()
                         .to_string();
                     let reference =
-                        SharedContainer {
+                        SharedContainerValueOrType {
                             value: SharedContainerInner::Type(type_reference.clone()),
                             reference_mutability: None,
                         };
@@ -279,7 +279,7 @@ pub fn load_core_lib(memory: &mut Memory) {
 
         // TODO #455: dont store variants as separate entries in core_struct (e.g., integer/u8, integer/i32, only keep integer)
         // Import variants directly by variant access operator from base type (e.g., integer -> integer/u8)
-        let core_struct = SharedContainer::boxed_owned_with_internal_pointer(
+        let core_struct = SharedContainerValueOrType::boxed_owned_with_internal_pointer(
             Map::from_iter(types_structure),
             CoreLibPointerId::Core.to_bytes(),
         );
@@ -320,10 +320,10 @@ pub fn create_core_lib_types() -> HashMap<CoreLibPointerId, Type> {
     .collect::<HashMap<CoreLibPointerId, Type>>()
 }
 
-pub fn create_core_lib_vals() -> HashMap<CoreLibPointerId, SharedContainer> {
+pub fn create_core_lib_vals() -> HashMap<CoreLibPointerId, SharedContainerValueOrType> {
     vec![print()]
         .into_iter()
-        .collect::<HashMap<CoreLibPointerId, SharedContainer>>()
+        .collect::<HashMap<CoreLibPointerId, SharedContainerValueOrType>>()
 }
 
 type CoreLibTypeDefinition = (CoreLibPointerId, Type);
@@ -405,10 +405,10 @@ pub fn integer_variant(
     )
 }
 
-pub fn print() -> (CoreLibPointerId, SharedContainer) {
+pub fn print() -> (CoreLibPointerId, SharedContainerValueOrType) {
     (
         CoreLibPointerId::Print,
-        SharedContainer::boxed_owned_with_internal_pointer(
+        SharedContainerValueOrType::boxed_owned_with_internal_pointer(
             Value::callable(
                 Some("print".to_string()),
                 CallableSignature {

@@ -1,7 +1,7 @@
 use crate::{
     collections::HashMap,
     libs::core::{load_core_lib, CoreLibPointerId},
-    shared_values::shared_container::SharedContainer,
+    shared_values::shared_container::SharedContainerValueOrType,
     types::error::IllegalTypeError,
     values::core_values::endpoint::Endpoint,
 };
@@ -28,7 +28,7 @@ pub struct Memory {
     /// Last timestamp used for a new local pointer id
     last_timestamp: u64,
     /// All non-local pointers
-    pointers: HashMap<PointerAddress, SharedContainer>,
+    pointers: HashMap<PointerAddress, SharedContainerValueOrType>,
 }
 
 impl Memory {
@@ -48,7 +48,7 @@ impl Memory {
     /// Registers a new shared container in memory. If the reference has no PointerAddress, a new local one is generated.
     /// If the reference is already registered (has a PointerAddress), the existing address is returned and no new registration is done.
     /// Returns the PointerAddress of the registered reference.
-    pub fn register_shared_container(&mut self, reference: &SharedContainer) {
+    pub fn register_shared_container(&mut self, reference: &SharedContainerValueOrType) {
         let pointer_address = reference.pointer_address();
         // check if reference is already registered (if it has an address, we assume it is registered)
         self.pointers
@@ -60,7 +60,7 @@ impl Memory {
     pub fn get_reference(
         &self,
         pointer_address: &PointerAddress,
-    ) -> Option<&SharedContainer> {
+    ) -> Option<&SharedContainerValueOrType> {
         self.pointers.get(pointer_address)
     }
 
@@ -94,7 +94,7 @@ impl Memory {
     pub fn get_core_reference(
         &self,
         pointer_id: CoreLibPointerId,
-    ) -> &SharedContainer {
+    ) -> &SharedContainerValueOrType {
         self.get_reference(&pointer_id.into())
             .expect("core reference not found in memory")
     }

@@ -1,4 +1,4 @@
-use crate::shared_values::shared_container::SharedContainer;
+use crate::shared_values::shared_container::SharedContainerValueOrType;
 use crate::values::value::Value;
 use crate::values::value_container::ValueContainer;
 
@@ -7,7 +7,7 @@ use crate::values::value_container::ValueContainer;
 /// Shared values are still owned.
 pub enum BorrowedValueContainer<'a> {
     Local(&'a Value),
-    Shared(SharedContainer)
+    Shared(SharedContainerValueOrType)
 }
 
 
@@ -17,8 +17,8 @@ impl<'a> From<&'a Value> for BorrowedValueContainer<'a> {
     }
 }
 
-impl From<SharedContainer> for BorrowedValueContainer<'_> {
-    fn from(shared_container: SharedContainer) -> Self {
+impl From<SharedContainerValueOrType> for BorrowedValueContainer<'_> {
+    fn from(shared_container: SharedContainerValueOrType) -> Self {
         BorrowedValueContainer::Shared(shared_container)
     }
 }

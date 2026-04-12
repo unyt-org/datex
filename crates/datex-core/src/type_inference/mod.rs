@@ -1166,7 +1166,7 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
         //     });
         // }
         let ownership = expression_type.shared_container_ownership();
-        
+
         if ownership != Some(&SharedContainerOwnership::Referenced(ReferenceMutability::Mutable)) &&
             ownership != Some(&SharedContainerOwnership::Owned)
         {
@@ -1275,9 +1275,7 @@ mod tests {
             },
         },
     };
-    use crate::shared_values::shared_containers::shared_type_container::{
-        NominalTypeDeclaration, SharedTypeContainer,
-    };
+
 
     /// Infers type errors for the given source code.
     /// Panics if parsing or precompilation succeeds.

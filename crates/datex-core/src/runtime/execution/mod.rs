@@ -26,7 +26,7 @@ pub use errors::*;
 pub use execution_input::{ExecutionInput, ExecutionOptions};
 pub use stack_dump::*;
 use crate::global::protocol_structures::instruction_data::{RawInternalPointerAddress, RawLocalPointerAddress, RawRemotePointerAddress};
-use crate::shared_values::shared_container::SharedContainer;
+use crate::shared_values::shared_container::SharedContainerValueOrType;
 
 pub mod context;
 mod errors;
@@ -187,7 +187,7 @@ fn get_remote_pointer_value(
     runtime_internal: &Rc<RuntimeInternal>,
     address: RawRemotePointerAddress,
     _mutability: ReferenceMutability,
-) -> Result<Option<SharedContainer>, ExecutionError> {
+) -> Result<Option<SharedContainerValueOrType>, ExecutionError> {
     let memory = runtime_internal.memory.borrow();
     let resolved_address =
         memory.get_pointer_address_from_raw_full_address(address);
@@ -201,7 +201,7 @@ fn get_remote_pointer_value(
 fn get_internal_pointer_value(
     runtime_internal: &Rc<RuntimeInternal>,
     address: RawInternalPointerAddress,
-) -> Result<SharedContainer, ExecutionError> {
+) -> Result<SharedContainerValueOrType, ExecutionError> {
     // first try to get from memory
     if let Ok(shared_container) =
         get_internal_pointer_value_from_memory(runtime_internal, &address)
@@ -222,7 +222,7 @@ fn get_internal_pointer_value(
 fn get_internal_pointer_value_from_memory(
     runtime_internal: &Rc<RuntimeInternal>,
     address: &RawInternalPointerAddress,
-) -> Result<SharedContainer, ExecutionError> {
+) -> Result<SharedContainerValueOrType, ExecutionError> {
     let pointer_address = PointerAddress::External(
         ExternalPointerAddress::Builtin(address.id),
     );
@@ -264,7 +264,7 @@ mod tests {
             },
         },
         shared_values::shared_container::{
-            SharedContainer, SharedContainerMutability,
+            SharedContainerValueOrType, SharedContainerMutability,
         },
         traits::{structural_eq::StructuralEq, value_eq::ValueEq},
         values::{
@@ -693,7 +693,7 @@ mod tests {
         let result = execute_datex_script_debug_with_result(
             "const x = 'mut shared mut 42; x",
         );
-        assert_matches!(result, ValueContainer::Shared(SharedContainer {
+        assert_matches!(result, ValueContainer::Shared(SharedContainerValueOrType {
             reference_mutability: Some(ReferenceMutability::Mutable),
             value: SharedContainerInner::Value(ref value),
         }) if value.borrow().mutability.clone() == SharedContainerMutability::Mutable);
@@ -705,7 +705,7 @@ mod tests {
         let result = execute_datex_script_debug_with_result(
             "const x = 'shared mut 42; x",
         );
-        assert_matches!(result, ValueContainer::Shared(SharedContainer {
+        assert_matches!(result, ValueContainer::Shared(SharedContainerValueOrType {
             reference_mutability: Some(ReferenceMutability::Immutable),
             value: SharedContainerInner::Value(ref value),
         }) if value.borrow().mutability.clone() == SharedContainerMutability::Mutable);
@@ -717,7 +717,7 @@ mod tests {
         let result = execute_datex_script_debug_with_result(
             "const x = 'shared 42; x",
         );
-        assert_matches!(result, ValueContainer::Shared(SharedContainer {
+        assert_matches!(result, ValueContainer::Shared(SharedContainerValueOrType {
             reference_mutability: Some(ReferenceMutability::Immutable),
             value: SharedContainerInner::Value(ref value),
         }) if value.borrow().mutability.clone() == SharedContainerMutability::Immutable);
@@ -729,7 +729,7 @@ mod tests {
         let result = execute_datex_script_debug_with_result(
             "const x = shared 42; x",
         );
-        assert_matches!(result, ValueContainer::Shared(SharedContainer {
+        assert_matches!(result, ValueContainer::Shared(SharedContainerValueOrType {
             reference_mutability: None,
             value: SharedContainerInner::Value(ref value),
         }) if value.borrow().mutability.clone() == SharedContainerMutability::Immutable);
@@ -741,7 +741,7 @@ mod tests {
         let result = execute_datex_script_debug_with_result(
             "const x = shared mut 42; x",
         );
-        assert_matches!(result, ValueContainer::Shared(SharedContainer {
+        assert_matches!(result, ValueContainer::Shared(SharedContainerValueOrType {
             reference_mutability: None,
             value: SharedContainerInner::Value(ref value),
         }) if value.borrow().mutability.clone() == SharedContainerMutability::Mutable);
@@ -856,7 +856,7 @@ mod tests {
             vec!["1", "integer", "integer"],
             vec![
                 Some(Integer::from(1).into()),
-                Some(ValueContainer::Shared(SharedContainer {
+                Some(ValueContainer::Shared(SharedContainerValueOrType {
                     value: SharedContainerInner::Type(
                         get_core_lib_type_reference(CoreLibPointerId::Integer(
                             None,
@@ -864,7 +864,7 @@ mod tests {
                     ),
                     reference_mutability: None,
                 })),
-                Some(ValueContainer::Shared(SharedContainer {
+                Some(ValueContainer::Shared(SharedContainerValueOrType {
                     value: SharedContainerInner::Type(
                         get_core_lib_type_reference(CoreLibPointerId::Integer(
                             None,

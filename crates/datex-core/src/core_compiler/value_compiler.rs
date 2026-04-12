@@ -40,7 +40,7 @@ use crate::global::protocol_structures::instruction_data::{Float32Data, Float64D
 use crate::global::protocol_structures::instructions::Instruction;
 use crate::global::protocol_structures::regular_instructions::RegularInstruction;
 use crate::runtime::execution::ExecutionError;
-use crate::shared_values::shared_container::SharedContainer;
+use crate::shared_values::shared_container::SharedContainerValueOrType;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum SharedValueCompilationError {
@@ -80,7 +80,7 @@ pub fn compile_value(value_container: &Value) -> Result<Vec<u8>, SharedValueComp
     Ok(context.into_buffer())
 }
 
-pub fn compile_shared_container(shared_container: &SharedContainer, insert_value: bool) -> Result<Vec<u8>, SharedValueCompilationError> {
+pub fn compile_shared_container(shared_container: &SharedContainerValueOrType, insert_value: bool) -> Result<Vec<u8>, SharedValueCompilationError> {
     let mut context = CoreCompilationContext::new(Vec::with_capacity(256));
     append_shared_container(&mut context, shared_container, insert_value)?;
     Ok(context.into_buffer())
@@ -105,7 +105,7 @@ pub fn append_value_container(
 /// Appends a shared container to the buffer a reference
 pub fn append_shared_container_as_ref(
     context: &mut CoreCompilationContext,
-    shared_container: &SharedContainer,
+    shared_container: &SharedContainerValueOrType,
     insert_value: bool,
 ) -> Result<(), SharedValueCompilationError> {
     append_shared_container(context, &shared_container.derive_with_max_mutability(), insert_value)
@@ -118,7 +118,7 @@ pub fn append_shared_container_as_ref(
 /// TODO: set insert_value only if for remote execution and not already on remote endpoint
 pub fn append_shared_container(
     context: &mut CoreCompilationContext,
-    shared_container: &SharedContainer,
+    shared_container: &SharedContainerValueOrType,
     remote_endpoint_has_value: bool,
 ) -> Result<(), SharedValueCompilationError> {
     match &shared_container.reference_mutability {
@@ -179,7 +179,7 @@ pub fn append_shared_container(
 /// TODO: Also handle moves of nested shared values!
 pub fn append_perform_moves(
     context: &mut CoreCompilationContext,
-    shared_containers: &[&SharedContainer],
+    shared_containers: &[&SharedContainerValueOrType],
 ) -> Result<(), SharedValueCompilationError> {
     append_instruction_code_new(context.cursor_mut(), InstructionCode::PERFORM_MOVE);
     append_u32(context.cursor_mut(), shared_containers.len() as u32); // number of moved values
