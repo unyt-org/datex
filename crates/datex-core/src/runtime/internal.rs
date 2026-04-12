@@ -43,7 +43,6 @@ use crate::global::protocol_structures::instruction_data::RawLocalPointerAddress
 use crate::runtime::execution::execution_input::ExecutionCallerMetadata;
 use crate::runtime::execution::InvalidProgramError;
 use crate::runtime::request_move::compile_request_move;
-use crate::shared_values::pointer::EndpointOwnedPointer;
 use crate::shared_values::pointer_address::{EndpointOwnedPointerAddress, PointerAddress, ExternalPointerAddress};
 use crate::shared_values::shared_container::{SharedContainerValueOrType, SharedContainerInner, SharedContainerMutability};
 use crate::values::core_value::CoreValue;
@@ -441,7 +440,7 @@ impl RuntimeInternal {
         pointers: Vec<(SharedContainerMutability, RawLocalPointerAddress)>,
     ) -> Result<Vec<SharedContainerValueOrType>, ExecutionError> {
         let pointer_mapping = pointers.into_iter().map(|original| {
-            (original, RawLocalPointerAddress { bytes: self.memory.borrow_mut().get_new_owned_local_pointer().address().address})
+            (original, RawLocalPointerAddress { bytes: self.memory.borrow_mut().get_new_endpoint_owned_pointer_address().address})
         }).collect::<Vec<_>>();
         let body = compile_request_move(
             &(pointer_mapping

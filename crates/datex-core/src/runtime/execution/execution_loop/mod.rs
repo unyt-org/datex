@@ -776,7 +776,7 @@ pub fn inner_execution_loop(
                                         collected_results
                                             .pop_cloned_value_container_result_assert_existing(&state)
                                     );
-                                    let pointer = state.runtime_internal.memory.borrow_mut().get_new_owned_local_pointer();
+                                    let pointer = state.runtime_internal.memory.borrow_mut().get_new_endpoint_owned_pointer_address();
 
                                     let shared_container = match instruction {
                                         RegularInstruction::CreateShared => SharedContainerValueOrType::boxed_owned_immut(

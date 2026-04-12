@@ -13,7 +13,8 @@ use crate::{
 };
 use crate::runtime::execution::execution_input::ExecutionCallerMetadata;
 use crate::shared_values::pointer_address::PointerAddress;
-use crate::shared_values::shared_container::{SharedContainerMutability};
+use crate::shared_values::shared_container::{SharedContainer, SharedContainerMutability};
+use crate::shared_values::shared_containers::SharedContainerValueOrType;
 
 #[tokio::test]
 #[cfg(feature = "compiler")]
@@ -196,15 +197,16 @@ pub async fn test_remote_shared_value_inject_ref() {
 
             // 'x
             if let ValueContainer::Shared(shared_container) = &result_vec[1] {
-                if shared_container.reference_mutability.is_some() {
-                    panic!("shared container ref should not be owned")
-                }
+                assert_matches!(
+                    shared_container,
+                    SharedContainerValueOrType::Value(SharedContainer::Referenced(..))
+                );
                 assert_matches!(
                     shared_container.pointer_address(),
                     PointerAddress::EndpointOwned(..)
                 );
                 assert_eq!(
-                    shared_container.mutability(),
+                    shared_container.as_inner().value().mutability,
                     SharedContainerMutability::Immutable
                 );
                 assert_eq!(
@@ -242,13 +244,13 @@ pub async fn test_remote_shared_value_return(
                 .await
                 .unwrap().unwrap();
             if let ValueContainer::Shared(shared_container) = result {
-                shared_container.assert_owned().expect("shared container should be owned");
+                shared_container.try_get_owned().expect("shared container should be owned");
                 assert_matches!(
                     shared_container.pointer_address(),
                     PointerAddress::EndpointOwned(..)
                 );
                 assert_eq!(
-                    shared_container.mutability(),
+                    shared_container.as_inner().value().mutability,
                     mutable_value
                 );
                 assert_eq!(
@@ -287,13 +289,13 @@ pub async fn test_remote_shared_roundtrip_move(
                 .await
                 .unwrap().unwrap();
             if let ValueContainer::Shared(shared_container) = result {
-                shared_container.assert_owned().expect("shared container should be owned");
+                shared_container.try_get_owned().expect("shared container should be owned");
                 assert_matches!(
                     shared_container.pointer_address(),
                     PointerAddress::EndpointOwned(..)
                 );
                 assert_eq!(
-                    shared_container.mutability(),
+                    shared_container.as_inner().value().mutability,
                     mutable_value
                 );
                 assert_eq!(

@@ -4,7 +4,7 @@ use core::cell::{Ref, RefMut};
 use core::fmt::Display;
 use core::mem;
 use crate::shared_values::pointer_address::{EndpointOwnedPointerAddress, ExternalPointerAddress};
-use crate::shared_values::shared_container::{ReferenceMutability, SharedContainerInner, SharedContainerMutability, SharedValueCreationError};
+use crate::shared_values::shared_container::{SharedContainerInner, SharedContainerMutability, SharedValueCreationError};
 use crate::shared_values::shared_containers::{EndpointOwnedSharedContainer, ReferencedSharedContainer};
 use crate::shared_values::shared_containers::shared_value_container::SharedValueContainer;
 use crate::types::definition::TypeDefinition;

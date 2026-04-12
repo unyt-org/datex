@@ -8,6 +8,7 @@ use crate::{
 use binrw::io::Cursor;
 use core::result::Result;
 use core::cell::Ref;
+use std::cell::RefCell;
 use crate::{
     prelude::*,
     shared_values::pointer_address::{
@@ -15,10 +16,9 @@ use crate::{
     },
 };
 use crate::global::protocol_structures::instruction_data::RawRemotePointerAddress;
-use crate::shared_values::pointer::EndpointOwnedPointer;
-use crate::shared_values::shared_container::SharedContainerValueOrType;
-use crate::shared_values::shared_containers::shared_type_container::SharedTypeContainer;
+use crate::shared_values::shared_container::SharedContainerInner;
 use crate::shared_values::shared_containers::shared_value_container::SharedValueContainer;
+use crate::shared_values::shared_containers::SharedContainer;
 
 #[derive(Debug, Default)]
 pub struct Memory {
@@ -28,7 +28,7 @@ pub struct Memory {
     /// Last timestamp used for a new local pointer id
     last_timestamp: u64,
     /// All non-local pointers
-    pointers: HashMap<PointerAddress, SharedContainerValueOrType>,
+    pointers: HashMap<PointerAddress, Rc<RefCell<SharedContainerInner>>>,
 }
 
 impl Memory {
@@ -48,20 +48,20 @@ impl Memory {
     /// Registers a new shared container in memory. If the reference has no PointerAddress, a new local one is generated.
     /// If the reference is already registered (has a PointerAddress), the existing address is returned and no new registration is done.
     /// Returns the PointerAddress of the registered reference.
-    pub fn register_shared_container(&mut self, reference: &SharedContainerValueOrType) {
-        let pointer_address = reference.pointer_address();
+    pub fn register_shared_container(&mut self, container: &SharedContainer) {
+        let pointer_address = container.pointer_address();
         // check if reference is already registered (if it has an address, we assume it is registered)
         self.pointers
             .entry(pointer_address)
-            .or_insert_with(|| reference.derive_with_max_mutability());
+            .or_insert_with(|| container.inner_rc().clone());
     }
 
     /// Returns a reference stored at the given PointerAddress, if it exists.
     pub fn get_reference(
         &self,
         pointer_address: &PointerAddress,
-    ) -> Option<&SharedContainerValueOrType> {
-        self.pointers.get(pointer_address)
+    ) -> Option<Rc<RefCell<SharedContainerInner>>> {
+        self.pointers.get(pointer_address).cloned()
     }
 
     pub fn get_value_reference(
@@ -151,7 +151,7 @@ impl Memory {
     }
 
     /// Creates a new unique local owned pointer.
-    pub fn get_new_owned_local_pointer(&mut self) -> EndpointOwnedPointer {
+    pub fn get_new_endpoint_owned_pointer_address(&mut self) -> EndpointOwnedPointerAddress {
         let timestamp = crate::time::now_ms();
         // new timestamp, reset counter
         if timestamp != self.last_timestamp {
@@ -173,6 +173,6 @@ impl Memory {
             (self.local_counter & 0xFF) as u8,
         ];
 
-        EndpointOwnedPointer::new(EndpointOwnedPointerAddress::new(id))
+        EndpointOwnedPointerAddress::new(id)
     }
 }

@@ -283,6 +283,7 @@ mod tests {
     use crate::runtime::execution::execution_input::ExecutionCallerMetadata;
     use crate::shared_values::shared_container::SharedContainerInner;
     use crate::shared_values::shared_containers::shared_value_container::SharedValueContainer;
+    use crate::shared_values::shared_containers::{OwnedSharedContainer, ReferencedSharedContainer, SharedContainer};
 
     fn execute_datex_script_debug(
         datex_script: &str,
@@ -693,10 +694,14 @@ mod tests {
         let result = execute_datex_script_debug_with_result(
             "const x = 'mut shared mut 42; x",
         );
-        assert_matches!(result, ValueContainer::Shared(SharedContainerValueOrType {
-            reference_mutability: Some(ReferenceMutability::Mutable),
-            value: SharedContainerInner::Value(ref value),
-        }) if value.borrow().mutability.clone() == SharedContainerMutability::Mutable);
+        assert_matches!(result, ValueContainer::Shared(SharedContainerValueOrType::Value(
+            SharedContainer::Referenced(
+                ReferencedSharedContainer {
+                    inner: ref inner,
+                    reference_mutability: ReferenceMutability::Mutable,
+                }
+            )
+        )) if inner.borrow().value().mutability.clone() == SharedContainerMutability::Mutable);
         assert_value_eq!(result, ValueContainer::from(Integer::from(42)));
     }
 
@@ -705,10 +710,14 @@ mod tests {
         let result = execute_datex_script_debug_with_result(
             "const x = 'shared mut 42; x",
         );
-        assert_matches!(result, ValueContainer::Shared(SharedContainerValueOrType {
-            reference_mutability: Some(ReferenceMutability::Immutable),
-            value: SharedContainerInner::Value(ref value),
-        }) if value.borrow().mutability.clone() == SharedContainerMutability::Mutable);
+        assert_matches!(result, ValueContainer::Shared(SharedContainerValueOrType::Value(
+            SharedContainer::Referenced(
+                ReferencedSharedContainer {
+                    inner: ref inner,
+                    reference_mutability: ReferenceMutability::Immutable,
+                }
+            )
+        )) if inner.borrow().value().mutability.clone() == SharedContainerMutability::Mutable);
         assert_value_eq!(result, ValueContainer::from(Integer::from(42)));
     }
 
@@ -717,10 +726,14 @@ mod tests {
         let result = execute_datex_script_debug_with_result(
             "const x = 'shared 42; x",
         );
-        assert_matches!(result, ValueContainer::Shared(SharedContainerValueOrType {
-            reference_mutability: Some(ReferenceMutability::Immutable),
-            value: SharedContainerInner::Value(ref value),
-        }) if value.borrow().mutability.clone() == SharedContainerMutability::Immutable);
+        assert_matches!(result, ValueContainer::Shared(SharedContainerValueOrType::Value(
+            SharedContainer::Referenced(
+                ReferencedSharedContainer {
+                    inner: ref inner,
+                    reference_mutability: ReferenceMutability::Immutable,
+                }
+            )
+        )) if inner.borrow().value().mutability.clone() == SharedContainerMutability::Immutable);
         assert_value_eq!(result, ValueContainer::from(Integer::from(42)));
     }
 
@@ -729,10 +742,14 @@ mod tests {
         let result = execute_datex_script_debug_with_result(
             "const x = shared 42; x",
         );
-        assert_matches!(result, ValueContainer::Shared(SharedContainerValueOrType {
-            reference_mutability: None,
-            value: SharedContainerInner::Value(ref value),
-        }) if value.borrow().mutability.clone() == SharedContainerMutability::Immutable);
+        assert_matches!(result, ValueContainer::Shared(SharedContainerValueOrType::Value(
+            SharedContainer::Owned(
+                OwnedSharedContainer {
+                    inner: ref inner,
+                }
+            )
+        )) if inner.borrow().value().mutability.clone() == SharedContainerMutability::Immutable);
+        
         assert_value_eq!(result, ValueContainer::from(Integer::from(42)));
     }
 
@@ -741,10 +758,13 @@ mod tests {
         let result = execute_datex_script_debug_with_result(
             "const x = shared mut 42; x",
         );
-        assert_matches!(result, ValueContainer::Shared(SharedContainerValueOrType {
-            reference_mutability: None,
-            value: SharedContainerInner::Value(ref value),
-        }) if value.borrow().mutability.clone() == SharedContainerMutability::Mutable);
+        assert_matches!(result, ValueContainer::Shared(SharedContainerValueOrType::Value(
+            SharedContainer::Owned(
+                OwnedSharedContainer {
+                    inner: ref inner,
+                }
+            )
+        )) if inner.borrow().value().mutability.clone() == SharedContainerMutability::Mutable);
         assert_value_eq!(result, ValueContainer::from(Integer::from(42)));
     }
 
@@ -765,7 +785,7 @@ mod tests {
         assert_value_eq!(result, ValueContainer::from(Integer::from(43)));
         assert_matches!(result, ValueContainer::Shared(..));
         if let ValueContainer::Shared(shared) = &result {
-            assert_eq!(shared.mutability(), SharedContainerMutability::Mutable);
+            assert_eq!(shared.as_inner().value().mutability, SharedContainerMutability::Mutable);
         } else {
             panic!("Expected shared value");
         }
