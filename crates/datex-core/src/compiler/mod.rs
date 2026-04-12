@@ -65,6 +65,7 @@ use crate::core_compiler::value_compiler::{append_instruction, append_instructio
 use crate::global::protocol_structures::injected_values::{InjectedValueType, LocalInjectedValueType, SharedInjectedValueType};
 use crate::global::protocol_structures::instruction_data::{InstructionBlockData, ModifyStackValue, SetSharedContainerValue, StackIndex};
 use crate::global::protocol_structures::regular_instructions::RegularInstruction;
+use crate::shared_values::shared_container::OwnedOrReferencedSharedContainer;
 use crate::shared_values::shared_containers::ReferenceMutability;
 
 pub mod context;
@@ -646,30 +647,33 @@ fn compile_expression(
                     ValueContainer::Shared(shared_container) => {
                         match placeholder_type {
                             ValueAccessType::SharedRefMut => {
-                                let shared_container = shared_container
+                                let shared_container_mut_ref = shared_container
                                     .try_derive_mutable_reference()
                                     .map_err(|_| CompilerError::SharedMutRefToImmutableValue)?;
                                 append_shared_container(
                                     compilation_context.core_context(),
-                                    &shared_container,
+                                    &shared_container_mut_ref.into(),
                                     true,
                                 )?;
                             }
                             ValueAccessType::SharedRef => {
                                 append_shared_container(
                                     compilation_context.core_context(),
-                                    &shared_container.derive_reference(),
+                                    &shared_container.derive_immutable_reference().into(),
                                     true,
                                 )?;
                             },
                             ValueAccessType::MoveOrCopy => {
-                                shared_container.assert_owned()
-                                    .map_err(|_| CompilerError::InvalidConversionFromRefToOwnedValue)?;
-                                append_shared_container(
-                                    compilation_context.core_context(),
-                                    &shared_container,
-                                    true,
-                                )?;
+                                match *shared_container {
+                                    OwnedOrReferencedSharedContainer::Owned(shared_container) => {
+                                        append_shared_container(
+                                            compilation_context.core_context(),
+                                            &shared_container.into(),
+                                            true,
+                                        )?;
+                                    }
+                                    _ => return Err(CompilerError::InvalidConversionFromRefToOwnedValue),
+                                }
                             },
                             ValueAccessType::Clone => {
                                 let cloned = shared_container.value_container();
@@ -692,7 +696,7 @@ fn compile_expression(
                             ValueAccessType::Borrow => {
                                 append_shared_container(
                                     compilation_context.core_context(),
-                                    &shared_container.derive_reference(),
+                                    &shared_container.derive_with_max_mutability().into(),
                                     true,
                                 )?;
                             }

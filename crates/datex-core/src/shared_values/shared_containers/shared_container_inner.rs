@@ -1,6 +1,5 @@
-use std::cell::Ref;
-use crate::shared_values::pointer_address::{EndpointOwnedPointerAddress, PointerAddress};
-use crate::shared_values::shared_container::ExternalSharedContainer;
+use crate::shared_values::pointer_address::{PointerAddress};
+use crate::shared_values::shared_container::{ExternalSharedContainer};
 use crate::shared_values::shared_container::shared_value_container::SharedValueContainer;
 use crate::shared_values::shared_containers::EndpointOwnedSharedContainer;
 
@@ -44,5 +43,4 @@ impl SharedContainerInner {
             SharedContainerInner::External(external) => PointerAddress::External(external.address.clone()),
         }
     }
-
 }
