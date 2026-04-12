@@ -12,7 +12,7 @@ use crate::{
     },
 };
 use crate::runtime::execution::execution_input::ExecutionCallerMetadata;
-use crate::shared_values::pointer::{Pointer};
+use crate::shared_values::pointer_address::PointerAddress;
 use crate::shared_values::shared_container::{SharedContainerMutability};
 
 #[tokio::test]
@@ -200,8 +200,8 @@ pub async fn test_remote_shared_value_inject_ref() {
                     panic!("shared container ref should not be owned")
                 }
                 assert_matches!(
-                    shared_container.pointer().clone(),
-                    Pointer::Owned(..)
+                    shared_container.pointer_address(),
+                    PointerAddress::Owned(..)
                 );
                 assert_eq!(
                     shared_container.mutability(),
@@ -244,8 +244,8 @@ pub async fn test_remote_shared_value_return(
             if let ValueContainer::Shared(shared_container) = result {
                 shared_container.assert_owned().expect("shared container should be owned");
                 assert_matches!(
-                    shared_container.pointer().clone(),
-                    Pointer::Owned(..)
+                    shared_container.pointer_address(),
+                    PointerAddress::Owned(..)
                 );
                 assert_eq!(
                     shared_container.mutability(),
@@ -289,8 +289,8 @@ pub async fn test_remote_shared_roundtrip_move(
             if let ValueContainer::Shared(shared_container) = result {
                 shared_container.assert_owned().expect("shared container should be owned");
                 assert_matches!(
-                    shared_container.pointer().clone(),
-                    Pointer::Owned(..)
+                    shared_container.pointer_address(),
+                    PointerAddress::Owned(..)
                 );
                 assert_eq!(
                     shared_container.mutability(),

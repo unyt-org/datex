@@ -339,13 +339,9 @@ impl ValueContainer {
     }
 
     /// Gets a cloned, collapsed inner value. Use [`ValueContainer::with_collapsed_value`] instead whenever possible
+    #[deprecated(note = "use with_collapsed_value")]
     pub fn to_cloned_value(&self) -> Rc<RefCell<Value>> {
-        match self {
-            ValueContainer::Local(value) => {
-                Rc::new(RefCell::new(value.clone()))
-            }
-            ValueContainer::Shared(pointer) => pointer.collapse_to_cloned_value(),
-        }
+        unimplemented!("use with_collapsed_value")
     }
 
     pub fn is_type(&self) -> bool {

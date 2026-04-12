@@ -23,7 +23,6 @@ use crate::{
 use crate::{
     prelude::*,
     shared_values::{
-        pointer::{Pointer, PointerReferenceMutability},
         pointer_address::{PointerAddress, ReferencedPointerAddress},
     },
     values::core_values::r#type::TypeMetadata,
@@ -32,8 +31,7 @@ use core::{cell::RefCell, iter::once, result::Result};
 use datex_macros_internal::LibTypeString;
 use log::info;
 use strum::IntoEnumIterator;
-use crate::shared_values::pointer::{OwnedPointer, ReferencedPointer};
-use crate::shared_values::pointer_address::OwnedPointerAddress;
+use crate::shared_values::pointer::{ReferencedPointer};
 use crate::shared_values::shared_container::SharedContainerInner;
 
 type CoreLibTypes = HashMap<CoreLibPointerId, Type>;

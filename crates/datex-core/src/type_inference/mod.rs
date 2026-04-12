@@ -560,7 +560,6 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
             TypeDefinition::SharedReference(reference) => reference,
             _ => Rc::new(RefCell::new(SharedTypeContainer::anonymous(
                 inner_type,
-                Pointer::NULL,
             ))),
         };
 
@@ -1249,7 +1248,6 @@ mod tests {
         parser::Parser,
         prelude::*,
         shared_values::{
-            pointer::Pointer,
             shared_type_container::{
                 NominalTypeDeclaration, SharedTypeContainer,
             },
@@ -1641,7 +1639,6 @@ mod tests {
                 SharedTypeContainer::nominal(
                     get_core_lib_type(CoreLibPointerId::Integer(None)),
                     NominalTypeDeclaration::from("A".to_string()),
-                    Pointer::NULL,
                 ),
             ))),
             TypeMetadata::default(),

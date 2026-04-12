@@ -644,8 +644,7 @@ mod tests {
     use crate::{
         prelude::*,
         shared_values::{
-            pointer::Pointer, shared_container::SharedContainer,
-            shared_value_container::SharedValueContainer,
+            shared_container::SharedContainer,
         },
         values::{
             core_values::{
