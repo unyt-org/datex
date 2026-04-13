@@ -12,7 +12,7 @@ use std::cell::RefCell;
 use crate::{
     prelude::*,
     shared_values::pointer_address::{
-        EndpointOwnedPointerAddress, ExternalPointerAddress, PointerAddress,
+        SelfOwnedPointerAddress, ExternalPointerAddress, PointerAddress,
     },
 };
 use crate::global::protocol_structures::instruction_data::RawRemotePointerAddress;
@@ -151,7 +151,7 @@ impl Memory {
     }
 
     /// Creates a new unique local owned pointer.
-    pub fn get_new_endpoint_owned_pointer_address(&mut self) -> EndpointOwnedPointerAddress {
+    pub fn get_new_endpoint_owned_pointer_address(&mut self) -> SelfOwnedPointerAddress {
         let timestamp = crate::time::now_ms();
         // new timestamp, reset counter
         if timestamp != self.last_timestamp {
@@ -173,6 +173,6 @@ impl Memory {
             (self.local_counter & 0xFF) as u8,
         ];
 
-        EndpointOwnedPointerAddress::new(id)
+        SelfOwnedPointerAddress::new(id)
     }
 }

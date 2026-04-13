@@ -5,7 +5,7 @@ use crate::{
     },
     libs::core::CoreLibPointerId,
     runtime::memory::Memory,
-    types::definition::TypeDefinition,
+    types::structural_type_definition::StructuralTypeDefinition,
     values::{
         core_value::CoreValue,
         core_values::{
@@ -280,11 +280,11 @@ impl DIFValue {
 /// - List
 /// - Map (if not empty, otherwise we cannot distinguish between empty map and empty list since both are represented as [] in DIF)
 fn get_type_if_non_default(
-    type_definition: &TypeDefinition,
+    type_definition: &StructuralTypeDefinition,
     is_empty_map: bool,
 ) -> Option<DIFTypeDefinition> {
     match type_definition {
-        TypeDefinition::SharedReference(inner) => {
+        StructuralTypeDefinition::Shared(inner) => {
             if let Ok(address) =
                 CoreLibPointerId::try_from(&inner.borrow().pointer().address())
                 && (core::matches!(

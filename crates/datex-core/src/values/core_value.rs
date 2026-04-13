@@ -5,7 +5,7 @@ use datex_macros_internal::FromCoreValue;
 use crate::{
     libs::core::{CoreLibPointerId, get_core_lib_type_reference},
     traits::{structural_eq::StructuralEq, value_eq::ValueEq},
-    types::definition::TypeDefinition,
+    types::structural_type_definition::StructuralTypeDefinition,
     values::{
         core_values::{
             boolean::Boolean,
@@ -259,8 +259,8 @@ impl CoreValue {
     /// This method uses the CoreLibPointerId to retrieve the corresponding
     /// type reference from the core library.
     /// For example, a CoreValue::TypedInteger(i32) will return the type ref integer/i32
-    pub fn default_type_definition(&self) -> TypeDefinition {
-        TypeDefinition::SharedReference(get_core_lib_type_reference(
+    pub fn default_type_definition(&self) -> StructuralTypeDefinition {
+        StructuralTypeDefinition::Shared(get_core_lib_type_reference(
             CoreLibPointerId::from(self),
         ))
     }

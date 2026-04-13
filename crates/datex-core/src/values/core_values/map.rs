@@ -643,9 +643,6 @@ impl TryFrom<CoreValue> for Map {
 mod tests {
     use crate::{
         prelude::*,
-        shared_values::{
-            shared_container::SharedContainerValueOrType,
-        },
         values::{
             core_values::{
                 decimal::{Decimal, typed_decimal::TypedDecimal},
@@ -654,9 +651,9 @@ mod tests {
             value_container::ValueContainer,
         },
     };
-    use crate::shared_values::pointer_address::EndpointOwnedPointerAddress;
+    use crate::shared_values::pointer_address::SelfOwnedPointerAddress;
     use crate::shared_values::shared_container::SharedContainerMutability;
-    use crate::shared_values::shared_containers::{EndpointOwnedSharedContainer, OwnedSharedContainer, SharedContainer};
+    use crate::shared_values::shared_containers::{SelfOwnedSharedContainer, OwnedSharedContainer, SharedContainer};
     use crate::shared_values::shared_containers::shared_value_container::SharedValueContainer;
 
     #[test]
@@ -682,14 +679,14 @@ mod tests {
     #[test]
     fn test_ref_keys() {
         let mut map = Map::default();
-        let key = ValueContainer::shared(
+        let key = ValueContainer::Shared(
             SharedContainer::new_owned_with_inferred_allowed_type(
                 ValueContainer::from(42),
                 SharedContainerMutability::Immutable,
-                EndpointOwnedPointerAddress::NULL
+                SelfOwnedPointerAddress::NULL
             )
         );
-        
+
         map.set(key.clone(), "value");
         // same reference should be found
         assert_eq!(map.size(), 1);
@@ -697,11 +694,11 @@ mod tests {
         assert_eq!(map.get(&key).unwrap().to_string(), "\"value\"");
 
         // new reference with same value should not be found
-        let new_key = ValueContainer::shared(
+        let new_key = ValueContainer::Shared(
             SharedContainer::new_owned_with_inferred_allowed_type(
                 ValueContainer::from(42),
                 SharedContainerMutability::Immutable,
-                EndpointOwnedPointerAddress::NULL
+                SelfOwnedPointerAddress::NULL
             )
         );
         assert!(!map.has(&new_key));

@@ -7,7 +7,7 @@ use crate::{
     },
     prelude::*,
     shared_values::shared_containers::ReferenceMutability,
-    types::definition::TypeDefinition,
+    types::structural_type_definition::StructuralTypeDefinition,
     utils::buffers::append_u8,
     values::core_values::r#type::Type,
 };
@@ -38,10 +38,10 @@ pub fn append_type(context: &mut CoreCompilationContext, ty: &Type) {
 
 pub fn append_type_definition(
     context: &mut CoreCompilationContext,
-    type_definition: &TypeDefinition,
+    type_definition: &StructuralTypeDefinition,
 ) {
     match type_definition {
-        TypeDefinition::ImplType(ty, impls) => {
+        StructuralTypeDefinition::ImplType(ty, impls) => {
             // Append the number of impls
             let impl_count = impls.len() as u8;
             append_u8(context.cursor_mut(), impl_count);
@@ -58,7 +58,7 @@ pub fn append_type_definition(
             // Append the base type
             append_type(context, ty);
         }
-        TypeDefinition::SharedReference(type_ref) => {
+        StructuralTypeDefinition::Shared(type_ref) => {
             // TODO #636: ensure pointer_address exists here
             let type_ref = type_ref.borrow();
             let pointer_address = type_ref.pointer().address();

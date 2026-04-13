@@ -11,8 +11,8 @@ use crate::{
     },
     traits::structural_eq::StructuralEq,
     types::{
-        definition::TypeDefinition,
         structural_type_definition::StructuralTypeDefinition,
+        literal_type_definition::LiteralTypeDefinition,
     },
     values::{
         core_value::CoreValue,
@@ -34,6 +34,13 @@ use core::{
 use serde::{Deserialize, Serialize};
 use crate::shared_values::shared_container::SharedContainerContainingType;
 use crate::shared_values::shared_containers::SharedContainerOwnership;
+
+#[derive(Debug, PartialEq, Eq, Clone, Hash)]
+pub enum Type {
+    Alias(TypeDefinition),
+    Nominal(NominalTypeDefinition),
+}
+
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum LocalReferenceMutability {
@@ -72,14 +79,26 @@ impl Default for TypeMetadata {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Type {
-    pub type_definition: TypeDefinition,
-    pub base_type: Option<SharedContainerContainingType>,
+
+#[derive(Debug, PartialEq, Eq, Clone, Hash)]
+pub struct TypeDefinition {
+    pub structural_definition: StructuralTypeDefinition,
     pub metadata: TypeMetadata,
 }
 
-// x: &User; Type {reference: }
+#[derive(Debug, PartialEq, Eq, Clone, Hash)]
+pub enum NominalTypeDefinition {
+    Base {
+        definition: TypeDefinition,
+        name: String
+    },
+    Variant {
+        definition: TypeDefinition,
+        base: SharedContainerContainingType,
+        variant_name: String,
+    }
+}
+
 
 impl Hash for Type {
     fn hash<H: Hasher>(&self, state: &mut H) {
@@ -136,7 +155,7 @@ impl Type {
 
 impl Type {
     pub const UNIT: Type = Type {
-        type_definition: TypeDefinition::Unit,
+        type_definition: StructuralTypeDefinition::Unit,
         base_type: None,
         metadata: TypeMetadata::Local {
             mutability: LocalMutability::Immutable,
@@ -144,19 +163,19 @@ impl Type {
         },
     };
     pub fn is_structural(&self) -> bool {
-        core::matches!(self.type_definition, TypeDefinition::Structural(_))
+        core::matches!(self.type_definition, StructuralTypeDefinition::Literal(_))
     }
     pub fn is_union(&self) -> bool {
-        core::matches!(self.type_definition, TypeDefinition::Union(_))
+        core::matches!(self.type_definition, StructuralTypeDefinition::Union(_))
     }
     pub fn is_unit(&self) -> bool {
-        core::matches!(self.type_definition, TypeDefinition::Unit)
+        core::matches!(self.type_definition, StructuralTypeDefinition::Unit)
     }
     pub fn is_reference(&self) -> bool {
-        core::matches!(self.type_definition, TypeDefinition::SharedReference(_))
+        core::matches!(self.type_definition, StructuralTypeDefinition::Shared(_))
     }
     pub fn inner_reference(&self) -> Option<Rc<RefCell<SharedContainerContainingType>>> {
-        if let TypeDefinition::SharedReference(reference) =
+        if let StructuralTypeDefinition::Shared(reference) =
             &self.type_definition
         {
             Some(reference.clone())
@@ -167,8 +186,8 @@ impl Type {
 
     pub fn structural_type_definition(
         &self,
-    ) -> Option<&StructuralTypeDefinition> {
-        if let TypeDefinition::Structural(s) = &self.type_definition {
+    ) -> Option<&LiteralTypeDefinition> {
+        if let StructuralTypeDefinition::Literal(s) = &self.type_definition {
             Some(s)
         } else {
             None
@@ -222,7 +241,7 @@ impl Type {
     /// Creates a new Type with the given TypeDefinition and optional ReferenceMutability
     /// FIXME #607: If the TypeDefinition is a Reference, the ReferenceMutability must be Some,
     /// otherwise it must be None.
-    pub fn new(type_definition: TypeDefinition, prefix: TypeMetadata) -> Self {
+    pub fn new(type_definition: StructuralTypeDefinition, prefix: TypeMetadata) -> Self {
         Type {
             type_definition,
             base_type: None,
@@ -236,7 +255,7 @@ impl Type {
         metadata: TypeMetadata,
     ) -> Self {
         Type {
-            type_definition: TypeDefinition::SharedReference(type_definition),
+            type_definition: StructuralTypeDefinition::Shared(type_definition),
             base_type: None,
             metadata,
         }
@@ -244,11 +263,11 @@ impl Type {
 
     /// Creates a structural type from the given structural type definition
     pub fn structural(
-        structural_type: impl Into<StructuralTypeDefinition>,
+        structural_type: impl Into<LiteralTypeDefinition>,
         prefix: TypeMetadata,
     ) -> Self {
         Type {
-            type_definition: TypeDefinition::structural(structural_type),
+            type_definition: StructuralTypeDefinition::structural(structural_type),
             base_type: None,
             metadata: prefix,
         }
@@ -260,7 +279,7 @@ impl Type {
         T: Into<Type>,
     {
         Type {
-            type_definition: TypeDefinition::union(types),
+            type_definition: StructuralTypeDefinition::union(types),
             base_type: None,
             metadata: prefix,
         }
@@ -272,7 +291,7 @@ impl Type {
         prefix: TypeMetadata,
     ) -> Self {
         Type {
-            type_definition: TypeDefinition::intersection(members),
+            type_definition: StructuralTypeDefinition::intersection(members),
             base_type: None,
             metadata: prefix,
         }
@@ -284,7 +303,7 @@ impl Type {
         prefix: TypeMetadata,
     ) -> Self {
         Type {
-            type_definition: TypeDefinition::callable(signature),
+            type_definition: StructuralTypeDefinition::callable(signature),
             base_type: None,
             metadata: prefix,
         }
@@ -296,7 +315,7 @@ impl Type {
         prefix: TypeMetadata,
     ) -> Self {
         Type {
-            type_definition: TypeDefinition::impl_type(base_type, impl_types),
+            type_definition: StructuralTypeDefinition::impl_type(base_type, impl_types),
             base_type: None,
             metadata: prefix,
         }
@@ -322,13 +341,13 @@ impl Type {
             return None;
         }
         Some(match &self.type_definition {
-            TypeDefinition::Structural(value) => get_core_lib_type_reference(
+            StructuralTypeDefinition::Literal(value) => get_core_lib_type_reference(
                 value.get_core_lib_type_pointer_id(),
             ),
-            TypeDefinition::Union(_) => {
+            StructuralTypeDefinition::Union(_) => {
                 core::todo!("#322 handle union base type"); // generic type base type / type
             }
-            TypeDefinition::SharedReference(reference) => {
+            StructuralTypeDefinition::Shared(reference) => {
                 let type_ref = reference.borrow();
                 if let Ok(core_lib_id) =
                     CoreLibPointerId::try_from(&type_ref.pointer().address())
@@ -376,7 +395,7 @@ impl Type {
     /// 1 matches integer | text -> true
     pub fn matches_type(&self, other: &Type) -> bool {
         match &self.type_definition {
-            TypeDefinition::Union(members) => {
+            StructuralTypeDefinition::Union(members) => {
                 // If self is a union, check if any member matches the other type
                 for member in members {
                     if member.matches_type(other) {
@@ -385,7 +404,7 @@ impl Type {
                 }
                 false
             }
-            TypeDefinition::Intersection(members) => {
+            StructuralTypeDefinition::Intersection(members) => {
                 // If self is an intersection, all members must match the other type
                 for member in members {
                     if !member.matches_type(other) {
@@ -410,7 +429,7 @@ impl Type {
         }
 
         match &other.type_definition {
-            TypeDefinition::SharedReference(reference) => {
+            StructuralTypeDefinition::Shared(reference) => {
                 // compare base type of atomic_type with the referenced type
                 if let Some(atomic_base_type_reference) =
                     atomic_type.base_type_reference()
@@ -420,7 +439,7 @@ impl Type {
                     false
                 }
             }
-            TypeDefinition::Union(members) => {
+            StructuralTypeDefinition::Union(members) => {
                 // atomic type must match at least one member of the union
                 for member in members {
                     if Type::atomic_matches_type(atomic_type, member) {
@@ -429,7 +448,7 @@ impl Type {
                 }
                 false
             }
-            TypeDefinition::Intersection(members) => {
+            StructuralTypeDefinition::Intersection(members) => {
                 // atomic type must match all members of the intersection
                 for member in members {
                     if !Type::atomic_matches_type(atomic_type, member) {
@@ -456,35 +475,35 @@ impl Type {
 
         match &match_type.type_definition {
             // e.g. 1 matches 1 | 2
-            TypeDefinition::Union(types) => {
+            StructuralTypeDefinition::Union(types) => {
                 // value must match at least one of the union types
                 types.iter().any(|t| Type::value_matches_type(value, t))
             }
-            TypeDefinition::Intersection(types) => {
+            StructuralTypeDefinition::Intersection(types) => {
                 // value must match all of the intersection types
                 types.iter().all(|t| Type::value_matches_type(value, t))
             }
-            TypeDefinition::Structural(structural_type) => {
+            StructuralTypeDefinition::Literal(structural_type) => {
                 structural_type.value_matches(value)
             }
-            TypeDefinition::SharedReference(_reference) => {
+            StructuralTypeDefinition::Shared(_reference) => {
                 core::todo!("#327 handle reference type matching");
                 //reference.value_matches(value)
             }
-            TypeDefinition::Type(inner_type) => {
+            StructuralTypeDefinition::Type(inner_type) => {
                 // TODO #464: also check mutability of current type?
                 inner_type.value_matches(value)
             }
-            TypeDefinition::Callable(_signature) => {
+            StructuralTypeDefinition::Callable(_signature) => {
                 core::todo!("#328 handle function type matching");
             }
-            TypeDefinition::Collection(_collection_type) => {
+            StructuralTypeDefinition::Collection(_collection_type) => {
                 core::todo!("#329 handle collection type matching");
             }
-            TypeDefinition::Unit => false, // unit type does not match any value
-            TypeDefinition::Never => false,
-            TypeDefinition::Unknown => false,
-            TypeDefinition::ImplType(ty, _) => {
+            StructuralTypeDefinition::Unit => false, // unit type does not match any value
+            StructuralTypeDefinition::Never => false,
+            StructuralTypeDefinition::Unknown => false,
+            StructuralTypeDefinition::ImplType(ty, _) => {
                 Type::value_matches_type(value, ty)
             }
         }
@@ -544,34 +563,34 @@ impl From<&CoreValue> for Type {
     fn from(value: &CoreValue) -> Self {
         match value {
             CoreValue::Null => Type::structural(
-                StructuralTypeDefinition::Null,
+                LiteralTypeDefinition::Null,
                 TypeMetadata::default(),
             ),
             CoreValue::Boolean(b) => Type::structural(
-                StructuralTypeDefinition::Boolean(b.clone()),
+                LiteralTypeDefinition::Boolean(b.clone()),
                 TypeMetadata::default(),
             ),
             CoreValue::Text(s) => {
                 Type::structural(s.clone(), TypeMetadata::default())
             }
             CoreValue::Decimal(d) => Type::structural(
-                StructuralTypeDefinition::Decimal(d.clone()),
+                LiteralTypeDefinition::Decimal(d.clone()),
                 TypeMetadata::default(),
             ),
             CoreValue::TypedDecimal(td) => Type::structural(
-                StructuralTypeDefinition::TypedDecimal(td.clone()),
+                LiteralTypeDefinition::TypedDecimal(td.clone()),
                 TypeMetadata::default(),
             ),
             CoreValue::Integer(i) => Type::structural(
-                StructuralTypeDefinition::Integer(i.clone()),
+                LiteralTypeDefinition::Integer(i.clone()),
                 TypeMetadata::default(),
             ),
             CoreValue::TypedInteger(ti) => Type::structural(
-                StructuralTypeDefinition::TypedInteger(ti.clone()),
+                LiteralTypeDefinition::TypedInteger(ti.clone()),
                 TypeMetadata::default(),
             ),
             CoreValue::Endpoint(e) => Type::structural(
-                StructuralTypeDefinition::Endpoint(e.clone()),
+                LiteralTypeDefinition::Endpoint(e.clone()),
                 TypeMetadata::default(),
             ),
             CoreValue::List(list) => {
@@ -580,7 +599,7 @@ impl From<&CoreValue> for Type {
                     .map(|v| Type::from(v.to_cloned_value().borrow().inner.clone()))
                     .collect::<Vec<_>>();
                 Type::structural(
-                    StructuralTypeDefinition::List(types),
+                    LiteralTypeDefinition::List(types),
                     TypeMetadata::default(),
                 )
             }
@@ -601,7 +620,7 @@ impl From<&CoreValue> for Type {
                     })
                     .collect::<Vec<_>>();
                 Type::structural(
-                    StructuralTypeDefinition::Map(struct_types),
+                    LiteralTypeDefinition::Map(struct_types),
                     TypeMetadata::default(),
                 )
             }
@@ -616,26 +635,26 @@ impl From<CoreValue> for Type {
 }
 
 #[cfg(feature = "compiler")]
-impl TryFrom<&DatexExpressionData> for StructuralTypeDefinition {
+impl TryFrom<&DatexExpressionData> for LiteralTypeDefinition {
     type Error = ();
 
     fn try_from(expr: &DatexExpressionData) -> Result<Self, Self::Error> {
         Ok(match expr {
-            DatexExpressionData::Null => StructuralTypeDefinition::Null,
+            DatexExpressionData::Null => LiteralTypeDefinition::Null,
             DatexExpressionData::Boolean(b) => {
-                StructuralTypeDefinition::Boolean(Boolean::from(*b))
+                LiteralTypeDefinition::Boolean(Boolean::from(*b))
             }
             DatexExpressionData::Text(s) => {
-                StructuralTypeDefinition::Text(Text::from(s.clone()))
+                LiteralTypeDefinition::Text(Text::from(s.clone()))
             }
             DatexExpressionData::Decimal(d) => {
-                StructuralTypeDefinition::Decimal(d.clone())
+                LiteralTypeDefinition::Decimal(d.clone())
             }
             DatexExpressionData::Integer(i) => {
-                StructuralTypeDefinition::Integer(i.clone())
+                LiteralTypeDefinition::Integer(i.clone())
             }
             DatexExpressionData::Endpoint(e) => {
-                StructuralTypeDefinition::Endpoint(e.clone())
+                LiteralTypeDefinition::Endpoint(e.clone())
             }
             _ => return Err(()),
         })
@@ -648,7 +667,7 @@ impl TryFrom<&DatexExpressionData> for Type {
 
     fn try_from(expr: &DatexExpressionData) -> Result<Self, Self::Error> {
         Ok(Type::structural(
-            StructuralTypeDefinition::try_from(expr)?,
+            LiteralTypeDefinition::try_from(expr)?,
             TypeMetadata::default(),
         ))
     }

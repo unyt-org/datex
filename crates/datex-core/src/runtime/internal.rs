@@ -43,7 +43,7 @@ use crate::global::protocol_structures::instruction_data::RawLocalPointerAddress
 use crate::runtime::execution::execution_input::ExecutionCallerMetadata;
 use crate::runtime::execution::InvalidProgramError;
 use crate::runtime::request_move::compile_request_move;
-use crate::shared_values::pointer_address::{EndpointOwnedPointerAddress, PointerAddress, ExternalPointerAddress};
+use crate::shared_values::pointer_address::{SelfOwnedPointerAddress, PointerAddress, ExternalPointerAddress};
 use crate::shared_values::shared_container::{SharedContainerValueOrType, SharedContainerInner, SharedContainerMutability};
 use crate::values::core_value::CoreValue;
 use crate::values::value::Value;
@@ -66,7 +66,7 @@ pub struct RuntimeInternal {
         RefCell<HashMap<IncomingEndpointContextSectionId, ExecutionContext>>,
 
     /// list of currently owned shared values that are in the approved for moving to another endpoint
-    pub moving_pointers: RefCell<HashMap<Endpoint, HashMap<EndpointOwnedPointerAddress, SharedContainerValueOrType>>>,
+    pub moving_pointers: RefCell<HashMap<Endpoint, HashMap<SelfOwnedPointerAddress, SharedContainerValueOrType>>>,
 }
 
 macro_rules! get_execution_context {
@@ -462,7 +462,7 @@ impl RuntimeInternal {
                     .map(|(value, ((mutability, _), new_address))| {
                     SharedContainerValueOrType::boxed_owned(
                         value,
-                        EndpointOwnedPointer::new(EndpointOwnedPointerAddress::new(new_address.bytes)),
+                        EndpointOwnedPointer::new(SelfOwnedPointerAddress::new(new_address.bytes)),
                         mutability
                     )
                 }).collect::<Vec<_>>();
@@ -482,10 +482,10 @@ impl RuntimeInternal {
         let pointers = moving_pointers
             .into_iter()
             .map(|pointer| {
-                let address = EndpointOwnedPointerAddress::new(pointer.try_get_owned_local_address().ok_or(())?);
+                let address = SelfOwnedPointerAddress::new(pointer.try_get_owned_local_address().ok_or(())?);
                 Ok((address, pointer))
             })
-            .collect::<Result<Vec<(EndpointOwnedPointerAddress, SharedContainerValueOrType)>, ()>>()?;
+            .collect::<Result<Vec<(SelfOwnedPointerAddress, SharedContainerValueOrType)>, ()>>()?;
 
         self.moving_pointers.borrow_mut()
             .entry(new_owner)
@@ -504,7 +504,7 @@ impl RuntimeInternal {
         let moving_pointers = pointer_borrow.get_mut(from_endpoint).ok_or(ExecutionError::UnauthorizedMove)?;
 
         let values = pointer_mapping.into_iter().map(|(original, new)| {
-            let original_address = EndpointOwnedPointerAddress::new(original.bytes);
+            let original_address = SelfOwnedPointerAddress::new(original.bytes);
             let new_address = ExternalPointerAddress::remote_for_endpoint(from_endpoint, new.bytes);
             let shared_container = moving_pointers.remove(&original_address).ok_or(ExecutionError::UnauthorizedMove)?;
 

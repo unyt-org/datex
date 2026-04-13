@@ -3,7 +3,7 @@ use crate::{
         observers::Observer, shared_container::SharedContainerMutability,
     },
     traits::value_eq::ValueEq,
-    types::definition::TypeDefinition,
+    types::structural_type_definition::StructuralTypeDefinition,
     utils::freemap::FreeHashMap,
     values::{value::Value, value_container::ValueContainer},
 };
@@ -18,7 +18,7 @@ pub struct SharedValueContainer {
     /// the value that this reference points to
     pub value_container: ValueContainer,
     /// custom type for the pointer that the Datex value is allowed to reference
-    pub allowed_type: TypeDefinition,
+    pub allowed_type: StructuralTypeDefinition,
     /// list of observer callbacks
     pub observers: FreeHashMap<u32, Observer>,
     pub mutability: SharedContainerMutability,
@@ -28,11 +28,11 @@ impl SharedValueContainer {
 
     /// Tries to create a new [SharedValueContainer] with an initial [ValueContainer],
     /// an allowed type and a [SharedContainerMutability].
-    /// If the allowed [TypeDefinition] is not a superset of the [ValueContainer]'s allowed type,
+    /// If the allowed [StructuralTypeDefinition] is not a superset of the [ValueContainer]'s allowed type,
     /// an error is returned
     pub fn try_new(
         value_container: ValueContainer,
-        allowed_type: TypeDefinition,
+        allowed_type: StructuralTypeDefinition,
         mutability: SharedContainerMutability,
     ) -> Result<Self, SharedValueCreationError> {
         // TODO #286: make sure allowed type is superset of reference's allowed type

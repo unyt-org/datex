@@ -17,7 +17,7 @@ use crate::{
 use core::{fmt::Display, result::Result};
 
 use crate::{prelude::*, shared_values::pointer_address::PointerAddress};
-use crate::shared_values::pointer_address::EndpointOwnedPointerAddress;
+use crate::shared_values::pointer_address::SelfOwnedPointerAddress;
 
 #[derive(Debug)]
 pub enum DIFObserveError {
@@ -180,7 +180,7 @@ pub trait DIFInterface {
         value: DIFValueContainer,
         allowed_type: Option<DIFTypeDefinition>,
         mutability: SharedContainerMutability,
-    ) -> Result<EndpointOwnedPointerAddress, DIFCreatePointerError>;
+    ) -> Result<SelfOwnedPointerAddress, DIFCreatePointerError>;
 
     /// Resolves a pointer address of a pointer that may not be in memory.
     /// If the pointer is not in memory, it will be loaded from external storage.

@@ -5,7 +5,7 @@ use crate::{
     },
     libs::core::{CoreLibPointerId, get_core_lib_type_definition},
     runtime::memory::Memory,
-    types::structural_type_definition::StructuralTypeDefinition,
+    types::literal_type_definition::LiteralTypeDefinition,
     values::{
         core_value::CoreValue,
         core_values::{
@@ -232,44 +232,44 @@ pub enum DeserializeMapOrArray<T> {
 
 impl DIFTypeRepresentation {
     pub fn from_structural_type_definition(
-        struct_def: &StructuralTypeDefinition,
+        struct_def: &LiteralTypeDefinition,
     ) -> Self {
         match struct_def {
-            StructuralTypeDefinition::Null => DIFTypeRepresentation::Null,
-            StructuralTypeDefinition::Boolean(b) => {
+            LiteralTypeDefinition::Null => DIFTypeRepresentation::Null,
+            LiteralTypeDefinition::Boolean(b) => {
                 DIFTypeRepresentation::Boolean(b.as_bool())
             }
-            StructuralTypeDefinition::Integer(i) => {
+            LiteralTypeDefinition::Integer(i) => {
                 // FIXME #392: this can overflow
                 DIFTypeRepresentation::Number(i.as_i128().unwrap() as f64)
             }
-            StructuralTypeDefinition::TypedInteger(i) => {
+            LiteralTypeDefinition::TypedInteger(i) => {
                 DIFTypeRepresentation::Number(i.as_i128().unwrap() as f64)
             }
-            StructuralTypeDefinition::Range((start, end)) => {
+            LiteralTypeDefinition::Range((start, end)) => {
                 DIFTypeRepresentation::Array(vec![
                     DIFType::from_type(start),
                     DIFType::from_type(end),
                 ])
             }
-            StructuralTypeDefinition::Decimal(d) => {
+            LiteralTypeDefinition::Decimal(d) => {
                 DIFTypeRepresentation::Number(d.into_f64())
             }
-            StructuralTypeDefinition::TypedDecimal(d) => {
+            LiteralTypeDefinition::TypedDecimal(d) => {
                 DIFTypeRepresentation::Number(d.as_f64())
             }
-            StructuralTypeDefinition::Text(t) => {
+            LiteralTypeDefinition::Text(t) => {
                 DIFTypeRepresentation::String(t.0.clone())
             }
-            StructuralTypeDefinition::Endpoint(endpoint) => {
+            LiteralTypeDefinition::Endpoint(endpoint) => {
                 DIFTypeRepresentation::String(endpoint.to_string())
             }
-            StructuralTypeDefinition::List(arr) => {
+            LiteralTypeDefinition::List(arr) => {
                 DIFTypeRepresentation::Array(
                     arr.iter().map(DIFType::from_type).collect(),
                 )
             }
-            StructuralTypeDefinition::Map(fields) => {
+            LiteralTypeDefinition::Map(fields) => {
                 DIFTypeRepresentation::Map(
                     fields
                         .iter()

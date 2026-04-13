@@ -4,7 +4,8 @@ use core::cell::Ref;
 use core::fmt::Display;
 use std::cell::RefMut;
 use crate::shared_values::pointer_address::PointerAddress;
-use crate::shared_values::shared_container::{EndpointOwnedSharedContainer, OwnedSharedContainer, SharedContainerInner, SharedContainerMutability};
+use crate::shared_values::shared_container::{SelfOwnedSharedContainer, SharedContainerInner, SharedContainerMutability};
+use crate::shared_values::shared_containers::expose_rc_internal::ExposeRcInternal;
 use crate::shared_values::shared_containers::ReferenceMutability;
 
 /// Wrapper struct for a reference to a shared value (i.e. `'shared X` or `'mut shared X`).
@@ -22,8 +23,8 @@ pub struct ReferencedSharedContainer {
 impl ReferencedSharedContainer {
 
     /// Creates a new mutable [ReferencedSharedContainer] from an existing mutable [Rc<RefCell<SharedContainerInner>>]
-    /// 
-    /// IMPORTANT: this method should only be called after validating that 
+    ///
+    /// IMPORTANT: this method should only be called after validating that
     /// the [SharedContainerMutability] of the inner container is mutable.
     pub(crate) fn new_mutable_unchecked(inner: Rc<RefCell<SharedContainerInner>>) -> Self {
         ReferencedSharedContainer {
@@ -31,7 +32,7 @@ impl ReferencedSharedContainer {
             reference_mutability: ReferenceMutability::Mutable,
         }
     }
-    
+
     /// Creates a new immutable [ReferencedSharedContainer] from an existing mutable or immmutable [Rc<RefCell<SharedContainerInner>>]
     pub(crate) fn new_immutable(inner: Rc<RefCell<SharedContainerInner>>) -> Self {
         ReferencedSharedContainer {
@@ -40,12 +41,6 @@ impl ReferencedSharedContainer {
         }
     }
 
-
-    /// Get a reference to the inner [Rc<RefCell<SharedContainerInner>>]
-    pub fn inner_rc(&self) -> &Rc<RefCell<SharedContainerInner>> {
-        &self.inner
-    }
-    
     pub fn as_inner(&self) -> Ref<SharedContainerInner> {
         self.inner.borrow()
     }
@@ -57,8 +52,8 @@ impl ReferencedSharedContainer {
     pub fn pointer_address(&self) -> PointerAddress {
         self.as_inner().pointer_address()
     }
-    
-    /// Get the [SharedContainerMutability] of the inner [EndpointOwnedSharedContainer].
+
+    /// Get the [SharedContainerMutability] of the inner [SelfOwnedSharedContainer].
     pub fn container_mutability(&self) -> SharedContainerMutability {
         self.as_inner().value().mutability.clone()
     }
@@ -84,18 +79,31 @@ impl ReferencedSharedContainer {
     pub(crate) fn can_mutate(&self) -> bool {
         self.reference_mutability == ReferenceMutability::Mutable
     }
+
+    /// Returns the [ReferenceMutability] of this reference
+    pub fn reference_mutability(&self) -> ReferenceMutability {
+        self.reference_mutability.clone()
+    }
+
 }
 
 impl Display for ReferencedSharedContainer {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(
-            f, 
-            "{}{}", 
+            f,
+            "{}{}",
             match self.reference_mutability {
                 ReferenceMutability::Immutable => "'",
                 ReferenceMutability::Mutable => "'mut ",
             },
             self.as_inner().value(),
         )
+    }
+}
+
+impl ExposeRcInternal for ReferencedSharedContainer {
+    type Shared = SharedContainerInner;
+    fn get_rc_internal(&self) -> &Rc<RefCell<Self::Shared>> {
+        &self.inner
     }
 }

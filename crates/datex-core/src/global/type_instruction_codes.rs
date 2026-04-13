@@ -1,6 +1,6 @@
 use crate::{
     shared_values::shared_container::SharedContainerMutability,
-    types::definition::TypeDefinition,
+    types::structural_type_definition::StructuralTypeDefinition,
 };
 
 use crate::{
@@ -35,32 +35,32 @@ pub enum TypeInstructionCode {
     TYPE_LITERAL_SHORT_TEXT,
 }
 
-impl From<&TypeDefinition> for TypeInstructionCode {
-    fn from(value: &TypeDefinition) -> Self {
+impl From<&StructuralTypeDefinition> for TypeInstructionCode {
+    fn from(value: &StructuralTypeDefinition) -> Self {
         match value {
-            TypeDefinition::ImplType(_, _) => {
+            StructuralTypeDefinition::ImplType(_, _) => {
                 TypeInstructionCode::TYPE_WITH_IMPLS
             }
-            TypeDefinition::SharedReference(_) => {
+            StructuralTypeDefinition::Shared(_) => {
                 TypeInstructionCode::SHARED_TYPE_REFERENCE
             }
-            TypeDefinition::Unit => todo!(),
-            TypeDefinition::Unknown => todo!(),
-            TypeDefinition::Never => todo!(),
-            TypeDefinition::Structural(_) => {
+            StructuralTypeDefinition::Unit => todo!(),
+            StructuralTypeDefinition::Unknown => todo!(),
+            StructuralTypeDefinition::Never => todo!(),
+            StructuralTypeDefinition::Literal(_) => {
                 todo!()
             }
-            TypeDefinition::Intersection(_) => {
+            StructuralTypeDefinition::Intersection(_) => {
                 todo!()
             }
-            TypeDefinition::Union(_) => todo!(),
-            TypeDefinition::Callable { .. } => {
+            StructuralTypeDefinition::Union(_) => todo!(),
+            StructuralTypeDefinition::Callable { .. } => {
                 todo!()
             }
-            TypeDefinition::Collection(_) => {
+            StructuralTypeDefinition::Collection(_) => {
                 todo!()
             }
-            TypeDefinition::Type(_) => unreachable!(), // TODO #668: nested types
+            StructuralTypeDefinition::Type(_) => unreachable!(), // TODO #668: nested types
         }
     }
 }

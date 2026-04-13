@@ -14,7 +14,7 @@ use crate::{
         shared_container::{AccessError, SharedContainerValueOrType},
     },
     traits::{apply::Apply, value_eq::ValueEq},
-    types::definition::TypeDefinition,
+    types::structural_type_definition::StructuralTypeDefinition,
     values::{core_value::CoreValue, core_values::r#type::Type},
 };
 
@@ -29,6 +29,7 @@ use core::{
     ops::{Add, FnOnce, Neg, Sub},
 };
 use serde::{Deserialize, de::DeserializeOwned};
+use crate::shared_values::shared_containers::SharedContainer;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum ValueError {
@@ -211,7 +212,7 @@ impl<'a> From<OwnedValueKey> for ValueKey<'a> {
 #[derive(Debug, Eq, Clone)]
 pub enum ValueContainer {
     Local(Value), // TODO #767: add references to local values (for recursive structures)
-    Shared(SharedContainerValueOrType),
+    Shared(SharedContainer),
 }
 
 impl<'a> Deserialize<'a> for ValueContainer {
@@ -315,12 +316,7 @@ impl Display for ValueContainer {
 }
 
 impl ValueContainer {
-
-    /// Creates a new [ValueContainer::Shared] from a [SharedContainerValueOrType]
-    pub fn shared(shared: impl Into<SharedContainerValueOrType>) -> Self {
-        ValueContainer::Shared(shared.into())
-    }
-
+    
     /// Creates a new [ValueContainer::Local] from a [Value]
     pub fn local(value: impl Into<Value>) -> Self {
         ValueContainer::Local(value.into())
@@ -372,7 +368,7 @@ impl ValueContainer {
     }
 
     /// Returns the actual type of the contained value, resolving shared values if necessary.
-    pub fn actual_value_type(&self) -> TypeDefinition {
+    pub fn actual_value_type(&self) -> StructuralTypeDefinition {
         match self {
             ValueContainer::Local(local) => local.actual_type().clone(),
             ValueContainer::Shared(shared) => shared.actual_type().clone(),
@@ -391,7 +387,7 @@ impl ValueContainer {
                 Type::new(
                     // when nesting references, we need to keep the reference information
                     if inner_type.is_shared_type() {
-                        TypeDefinition::Type(Box::new(inner_type))
+                        StructuralTypeDefinition::Type(Box::new(inner_type))
                     }
                     // for simple non-ref type, we can collapse the definition
                     else {
@@ -411,7 +407,7 @@ impl ValueContainer {
     /// Returns the allowed type of the value container
     /// For local values, this is the same as the actual type.
     /// For shared values, this is the defined allowed type
-    pub fn allowed_type(&self) -> TypeDefinition {
+    pub fn allowed_type(&self) -> StructuralTypeDefinition {
         match self {
             ValueContainer::Local(value) => *value.actual_type.clone(),
             ValueContainer::Shared(shared) => shared.allowed_type(),

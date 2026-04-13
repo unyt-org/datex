@@ -1,8 +1,7 @@
 use crate::{
     collections::HashMap,
     runtime::memory::Memory,
-    shared_values::shared_container::SharedContainerValueOrType,
-    types::definition::TypeDefinition,
+    types::structural_type_definition::StructuralTypeDefinition,
     values::{
         core_value::CoreValue,
         core_values::{
@@ -26,11 +25,11 @@ use core::{cell::RefCell, iter::once, result::Result};
 use datex_macros_internal::LibTypeString;
 use log::info;
 use strum::IntoEnumIterator;
-use crate::shared_values::pointer::ExternalPointer;
 use crate::shared_values::shared_container::SharedContainerInner;
+use crate::shared_values::shared_containers::SharedContainer;
 
 type CoreLibTypes = HashMap<CoreLibPointerId, Type>;
-type CoreLibVals = HashMap<CoreLibPointerId, SharedContainerValueOrType>;
+type CoreLibVals = HashMap<CoreLibPointerId, SharedContainer>;
 
 #[cfg_attr(not(feature = "embassy_runtime"), thread_local)]
 pub static mut CORE_LIB_TYPES: Option<CoreLibTypes> = None;
@@ -203,7 +202,7 @@ pub fn get_core_lib_type_reference(
 ) -> Rc<RefCell<SharedTypeContainer>> {
     let type_container = get_core_lib_type(id);
     match type_container.type_definition {
-        TypeDefinition::SharedReference(tr) => tr,
+        StructuralTypeDefinition::Shared(tr) => tr,
         _ => core::panic!("Core lib type is not a TypeReference"),
     }
 }
@@ -217,7 +216,7 @@ pub fn get_core_lib_value(
         // try types first
         if let Some(ty) = core_lib_types.get(&id) {
             match &ty.type_definition {
-                TypeDefinition::SharedReference(tr) => Some(
+                StructuralTypeDefinition::Shared(tr) => Some(
                     SharedContainerValueOrType {
                         value: SharedContainerInner::Type(tr.clone()),
                         reference_mutability: None,
@@ -233,7 +232,7 @@ pub fn get_core_lib_value(
 
 pub fn get_core_lib_type_definition(
     id: impl Into<CoreLibPointerId>,
-) -> TypeDefinition {
+) -> StructuralTypeDefinition {
     get_core_lib_type(id).type_definition
 }
 
@@ -252,7 +251,7 @@ pub fn load_core_lib(memory: &mut Memory) {
         let mut types_structure = core_lib_types
             .values()
             .map(|ty| match &ty.type_definition {
-                TypeDefinition::SharedReference(type_reference) => {
+                StructuralTypeDefinition::Shared(type_reference) => {
                     let name = type_reference
                         .borrow()
                         .nominal_type_declaration
@@ -480,7 +479,7 @@ fn create_core_type(
 ) -> CoreLibTypeDefinition {
     let base_type_ref = match base_type {
         Some(Type {
-            type_definition: TypeDefinition::SharedReference(reference),
+            type_definition: StructuralTypeDefinition::Shared(reference),
             ..
         }) => Some(reference),
         Some(_) => {
@@ -492,11 +491,11 @@ fn create_core_type(
         pointer_id.clone(),
         Type::new(
             // &shared type<()>
-            TypeDefinition::shared_reference(Rc::new(RefCell::new(
+            StructuralTypeDefinition::shared_reference(Rc::new(RefCell::new(
                 SharedTypeContainer::nominal(
                     Type {
                         base_type: base_type_ref,
-                        type_definition: TypeDefinition::Unit,
+                        type_definition: StructuralTypeDefinition::Unit,
                         metadata: TypeMetadata::default(),
                     },
                     NominalTypeDeclaration {

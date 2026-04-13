@@ -8,8 +8,8 @@ use crate::{
         },
     },
     types::{
-        definition::TypeDefinition,
         structural_type_definition::StructuralTypeDefinition,
+        literal_type_definition::LiteralTypeDefinition,
     },
     values::{
         core_value::CoreValue, core_values::r#type::Type, value::Value,
@@ -171,35 +171,35 @@ fn value_to_datex_expression(value: &Value) -> DatexExpressionData {
 
 fn type_to_type_expression(type_value: &Type) -> TypeExpression {
     match &type_value.type_definition {
-        TypeDefinition::Structural(struct_type) => match struct_type {
-            StructuralTypeDefinition::Integer(integer) => {
+        StructuralTypeDefinition::Literal(struct_type) => match struct_type {
+            LiteralTypeDefinition::Integer(integer) => {
                 TypeExpressionData::Integer(integer.clone()).with_default_span()
             }
-            StructuralTypeDefinition::Text(text) => {
+            LiteralTypeDefinition::Text(text) => {
                 TypeExpressionData::Text(text.0.clone()).with_default_span()
             }
-            StructuralTypeDefinition::Boolean(boolean) => {
+            LiteralTypeDefinition::Boolean(boolean) => {
                 TypeExpressionData::Boolean(boolean.0).with_default_span()
             }
-            StructuralTypeDefinition::Decimal(decimal) => {
+            LiteralTypeDefinition::Decimal(decimal) => {
                 TypeExpressionData::Decimal(decimal.clone()).with_default_span()
             }
-            StructuralTypeDefinition::TypedInteger(typed_integer) => {
+            LiteralTypeDefinition::TypedInteger(typed_integer) => {
                 TypeExpressionData::TypedInteger(typed_integer.clone())
                     .with_default_span()
             }
-            StructuralTypeDefinition::TypedDecimal(typed_decimal) => {
+            LiteralTypeDefinition::TypedDecimal(typed_decimal) => {
                 TypeExpressionData::TypedDecimal(typed_decimal.clone())
                     .with_default_span()
             }
-            StructuralTypeDefinition::Endpoint(endpoint) => {
+            LiteralTypeDefinition::Endpoint(endpoint) => {
                 TypeExpressionData::Endpoint(endpoint.clone())
                     .with_default_span()
             }
-            StructuralTypeDefinition::Null => {
+            LiteralTypeDefinition::Null => {
                 TypeExpressionData::Null.with_default_span()
             }
-            StructuralTypeDefinition::Range((start_type, end_type)) => {
+            LiteralTypeDefinition::Range((start_type, end_type)) => {
                 let x = type_to_type_expression(start_type);
                 let y = type_to_type_expression(end_type);
                 TypeExpressionData::Range(RangeTypeExpr {
@@ -214,14 +214,14 @@ fn type_to_type_expression(type_value: &Type) -> TypeExpression {
             ))
             .with_default_span(),
         },
-        TypeDefinition::Union(union_types) => TypeExpressionData::Union(Union(
+        StructuralTypeDefinition::Union(union_types) => TypeExpressionData::Union(Union(
             union_types
                 .iter()
                 .map(type_to_type_expression)
                 .collect::<Vec<TypeExpression>>(),
         ))
         .with_default_span(),
-        TypeDefinition::Intersection(intersection_types) => {
+        StructuralTypeDefinition::Intersection(intersection_types) => {
             TypeExpressionData::Intersection(Intersection(
                 intersection_types
                     .iter()
@@ -230,8 +230,8 @@ fn type_to_type_expression(type_value: &Type) -> TypeExpression {
             ))
             .with_default_span()
         }
-        TypeDefinition::Unit => TypeExpressionData::Unit.with_default_span(),
-        TypeDefinition::SharedReference(type_reference) => {
+        StructuralTypeDefinition::Unit => TypeExpressionData::Unit.with_default_span(),
+        StructuralTypeDefinition::Shared(type_reference) => {
             // try to resolve to core lib value
             if let Ok(core_lib_type) = CoreLibPointerId::try_from(
                 &type_reference.borrow().pointer().address(),

@@ -3,11 +3,12 @@ use core::cell::RefCell;
 use core::cell::{Ref, RefMut};
 use core::fmt::Display;
 use core::mem;
-use crate::shared_values::pointer_address::{EndpointOwnedPointerAddress, ExternalPointerAddress};
+use crate::shared_values::pointer_address::{SelfOwnedPointerAddress, ExternalPointerAddress};
 use crate::shared_values::shared_container::{SharedContainerInner, SharedContainerMutability, SharedValueCreationError};
-use crate::shared_values::shared_containers::{EndpointOwnedSharedContainer, ReferencedSharedContainer};
+use crate::shared_values::shared_containers::{SelfOwnedSharedContainer, ReferencedSharedContainer};
+use crate::shared_values::shared_containers::expose_rc_internal::ExposeRcInternal;
 use crate::shared_values::shared_containers::shared_value_container::SharedValueContainer;
-use crate::types::definition::TypeDefinition;
+use crate::types::structural_type_definition::StructuralTypeDefinition;
 use crate::values::core_value::CoreValue;
 use crate::values::value::Value;
 use crate::values::value_container::ValueContainer;
@@ -29,47 +30,47 @@ pub struct OwnedSharedContainer {
 
 impl OwnedSharedContainer {
 
-    /// Creates a new owned container from an [EndpointOwnedSharedContainer]
-    pub fn new_from_endpoint_owned_container(container: EndpointOwnedSharedContainer) -> Self {
+    /// Creates a new owned container from an [SelfOwnedSharedContainer]
+    pub fn new_from_endpoint_owned_container(container: SelfOwnedSharedContainer) -> Self {
         OwnedSharedContainer {
             inner: Rc::new(RefCell::new(SharedContainerInner::EndpointOwned(container)))
         }
     }
 
-    /// Tries to create a new [OwnedSharedContainer] with an initial [ValueContainer], 
-    /// an allowed [TypeDefinition], a [SharedContainerMutability] and an [EndpointOwnedPointerAddress].
-    /// 
+    /// Tries to create a new [OwnedSharedContainer] with an initial [ValueContainer],
+    /// an allowed [StructuralTypeDefinition], a [SharedContainerMutability] and an [SelfOwnedPointerAddress].
+    ///
     /// If the allowed type is not a superset of the [ValueContainer]'s allowed type,
     /// an error is returned
     pub fn try_new(
         value_container: ValueContainer,
-        allowed_type: TypeDefinition,
+        allowed_type: StructuralTypeDefinition,
         mutability: SharedContainerMutability,
-        address: EndpointOwnedPointerAddress
+        address: SelfOwnedPointerAddress
     ) -> Result<Self, SharedValueCreationError> {
         Ok(OwnedSharedContainer::new_from_endpoint_owned_container(
-            EndpointOwnedSharedContainer::new(
+            SelfOwnedSharedContainer::new(
                 SharedValueContainer::try_new(
                     value_container,
                     allowed_type,
                     mutability,
-                )?, 
+                )?,
                 address
             )
         ))
     }
 
     /// Creates a new [OwnedSharedContainer] with an initial [ValueContainer],
-    /// a [SharedContainerMutability], and an [EndpointOwnedPointerAddress].
-    /// 
+    /// a [SharedContainerMutability], and an [SelfOwnedPointerAddress].
+    ///
     /// The allowed type is inferred from the value_container's allowed type.
     pub fn new_with_inferred_allowed_type(
         value_container: ValueContainer,
         mutability: SharedContainerMutability,
-        address: EndpointOwnedPointerAddress
+        address: SelfOwnedPointerAddress
     ) -> Self {
         OwnedSharedContainer::new_from_endpoint_owned_container(
-            EndpointOwnedSharedContainer::new(
+            SelfOwnedSharedContainer::new(
                 SharedValueContainer::new_with_inferred_allowed_type(
                     value_container,
                     mutability,
@@ -77,11 +78,6 @@ impl OwnedSharedContainer {
                 address
             )
         )
-    }
-    
-    /// Get a reference to the inner [Rc<RefCell<SharedContainerInner>>]
-    pub fn inner_rc(&self) -> &Rc<RefCell<SharedContainerInner>> {
-        &self.inner
     }
 
     pub fn as_inner(&self) -> Ref<SharedContainerInner> {
@@ -91,33 +87,33 @@ impl OwnedSharedContainer {
         self.inner.borrow_mut()
     }
 
-    /// Get a [Ref] to the inner [EndpointOwnedSharedContainer].
+    /// Get a [Ref] to the inner [SelfOwnedSharedContainer].
     /// It is guaranteed that the contained [SharedContainerInner] is always a [SharedContainerInner::EndpointOwned].
-    pub fn as_endpoint_owned_shared_container(&self) -> Ref<EndpointOwnedSharedContainer> {
+    pub fn as_self_owned_shared_container(&self) -> Ref<SelfOwnedSharedContainer> {
         Ref::map(self.as_inner(), |inner| match inner {
             SharedContainerInner::EndpointOwned(inner) => inner,
             _ => unreachable!("OwnedSharedContainer must contain an EndpointOwned inner value")
         })
     }
 
-    /// Get a [RefMut] to the inner [EndpointOwnedSharedContainer].
+    /// Get a [RefMut] to the inner [SelfOwnedSharedContainer].
     /// It is guaranteed that the contained [SharedContainerInner] is always a [SharedContainerInner::EndpointOwned].
-    pub fn as_endpoint_owned_shared_container_mut(&self) -> RefMut<EndpointOwnedSharedContainer> {
+    pub fn as_self_owned_shared_container_mut(&self) -> RefMut<SelfOwnedSharedContainer> {
         RefMut::map(self.as_inner_mut(), |inner| match inner {
             SharedContainerInner::EndpointOwned(inner) => inner,
             _ => unreachable!("OwnedSharedContainer must contain an EndpointOwned inner value")
         })
     }
 
-    /// Get a [Ref] to the inner [EndpointOwnedPointerAddress].
-    /// It is guaranteed that the pointer address is always a [EndpointOwnedPointerAddress].
-    pub fn pointer_address(&self) -> Ref<EndpointOwnedPointerAddress> {
-        Ref::map(self.as_endpoint_owned_shared_container(), |inner| inner.address())
+    /// Get a [Ref] to the inner [SelfOwnedPointerAddress].
+    /// It is guaranteed that the pointer address is always a [SelfOwnedPointerAddress].
+    pub fn pointer_address(&self) -> Ref<SelfOwnedPointerAddress> {
+        Ref::map(self.as_self_owned_shared_container(), |inner| inner.address())
     }
 
-    /// Get the [SharedContainerMutability] of the inner [EndpointOwnedSharedContainer].
+    /// Get the [SharedContainerMutability] of the inner [SelfOwnedSharedContainer].
     pub fn container_mutability(&self) -> SharedContainerMutability {
-        self.as_endpoint_owned_shared_container().value().mutability.clone()
+        self.as_self_owned_shared_container().value().mutability.clone()
     }
 
     /// Creates a new immutable [ReferencedSharedContainer] pointing to the same inner value as this [OwnedSharedContainer].
@@ -157,14 +153,14 @@ impl OwnedSharedContainer {
         // replace previous with null value
         // FIXME: find a more efficient way to do this enum variant swap
         let previous =
-            mem::replace(&mut *inner, SharedContainerInner::EndpointOwned(EndpointOwnedSharedContainer::new(
+            mem::replace(&mut *inner, SharedContainerInner::EndpointOwned(SelfOwnedSharedContainer::new(
                 SharedValueContainer {
-                    value_container: ValueContainer::Local(Value {inner: CoreValue::Null, actual_type: Box::new(TypeDefinition::Unit) }),
-                    allowed_type: TypeDefinition::Unit,
+                    value_container: ValueContainer::Local(Value {inner: CoreValue::Null, actual_type: Box::new(StructuralTypeDefinition::Unit) }),
+                    allowed_type: StructuralTypeDefinition::Unit,
                     observers: Default::default(),
                     mutability: SharedContainerMutability::Immutable,
                 },
-                EndpointOwnedPointerAddress::NULL,
+                SelfOwnedPointerAddress::NULL,
             )));
 
         *inner = match previous {
@@ -183,6 +179,13 @@ impl OwnedSharedContainer {
 
 impl Display for OwnedSharedContainer {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "{}", self.as_endpoint_owned_shared_container().value())
+        write!(f, "{}", self.as_self_owned_shared_container().value())
+    }
+}
+
+impl ExposeRcInternal for OwnedSharedContainer {
+    type Shared = SharedContainerInner;
+    fn get_rc_internal(&self) -> &Rc<RefCell<Self::Shared>> {
+        &self.inner
     }
 }

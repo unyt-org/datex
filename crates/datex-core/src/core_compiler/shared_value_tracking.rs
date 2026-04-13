@@ -2,7 +2,7 @@ use alloc::rc::Rc;
 use core::cell::{Ref, RefCell};
 use crate::collections::HashMap;
 use crate::global::protocol_structures::instruction_data::StackIndex;
-use crate::shared_values::pointer_address::{EndpointOwnedPointerAddress, PointerAddress};
+use crate::shared_values::pointer_address::{SelfOwnedPointerAddress, PointerAddress};
 use crate::shared_values::shared_container::{OwnedSharedContainer, SharedContainerValueOrType, SharedContainerInner};
 
 /// Helper struct used during compilation to keep track which shared values are moved or referenced
@@ -72,7 +72,7 @@ impl SharedValueTracking {
     }
 
     /// Get all registered owned shared values
-    pub fn get_moved_shared_addresses(&self) -> Vec<Ref<EndpointOwnedPointerAddress>> {
+    pub fn get_moved_shared_addresses(&self) -> Vec<Ref<SelfOwnedPointerAddress>> {
         self.shared_values
             .iter()
             .filter_map(|(_, (container, _))| {

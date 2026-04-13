@@ -5,7 +5,7 @@ use crate::{
     },
     libs::core::get_core_lib_type_reference,
     type_inference::{error::TypeError, options::ErrorHandling},
-    types::definition::TypeDefinition,
+    types::structural_type_definition::StructuralTypeDefinition,
 };
 
 use crate::{
@@ -37,7 +37,7 @@ use crate::{
         },
         options::InferExpressionTypeOptions,
     },
-    types::structural_type_definition::StructuralTypeDefinition,
+    types::literal_type_definition::LiteralTypeDefinition,
     values::core_values::{
         boolean::Boolean,
         callable::CallableSignature,
@@ -249,7 +249,7 @@ impl TypeInference {
 }
 
 fn mark_structural_type<E>(
-    definition: StructuralTypeDefinition,
+    definition: LiteralTypeDefinition,
 ) -> Result<VisitAction<E>, SpannedTypeError> {
     mark_type(Type::structural(definition, TypeMetadata::default()))
 }
@@ -263,14 +263,14 @@ impl TypeExpressionVisitor<SpannedTypeError> for TypeInference {
         integer: &mut Integer,
         _: &Range<usize>,
     ) -> TypeExpressionVisitResult<SpannedTypeError> {
-        mark_structural_type(StructuralTypeDefinition::Integer(integer.clone()))
+        mark_structural_type(LiteralTypeDefinition::Integer(integer.clone()))
     }
     fn visit_typed_integer_type(
         &mut self,
         typed_integer: &mut TypedInteger,
         _: &Range<usize>,
     ) -> TypeExpressionVisitResult<SpannedTypeError> {
-        mark_structural_type(StructuralTypeDefinition::TypedInteger(
+        mark_structural_type(LiteralTypeDefinition::TypedInteger(
             typed_integer.clone(),
         ))
     }
@@ -279,14 +279,14 @@ impl TypeExpressionVisitor<SpannedTypeError> for TypeInference {
         decimal: &mut Decimal,
         _: &Range<usize>,
     ) -> TypeExpressionVisitResult<SpannedTypeError> {
-        mark_structural_type(StructuralTypeDefinition::Decimal(decimal.clone()))
+        mark_structural_type(LiteralTypeDefinition::Decimal(decimal.clone()))
     }
     fn visit_typed_decimal_type(
         &mut self,
         decimal: &mut TypedDecimal,
         _: &Range<usize>,
     ) -> TypeExpressionVisitResult<SpannedTypeError> {
-        mark_structural_type(StructuralTypeDefinition::TypedDecimal(
+        mark_structural_type(LiteralTypeDefinition::TypedDecimal(
             decimal.clone(),
         ))
     }
@@ -295,7 +295,7 @@ impl TypeExpressionVisitor<SpannedTypeError> for TypeInference {
         boolean: &mut bool,
         _: &Range<usize>,
     ) -> TypeExpressionVisitResult<SpannedTypeError> {
-        mark_structural_type(StructuralTypeDefinition::Boolean(Boolean::from(
+        mark_structural_type(LiteralTypeDefinition::Boolean(Boolean::from(
             *boolean,
         )))
     }
@@ -304,7 +304,7 @@ impl TypeExpressionVisitor<SpannedTypeError> for TypeInference {
         text: &mut String,
         _: &Range<usize>,
     ) -> TypeExpressionVisitResult<SpannedTypeError> {
-        mark_structural_type(StructuralTypeDefinition::Text(Text::from(
+        mark_structural_type(LiteralTypeDefinition::Text(Text::from(
             text.clone(),
         )))
     }
@@ -312,14 +312,14 @@ impl TypeExpressionVisitor<SpannedTypeError> for TypeInference {
         &mut self,
         _: &Range<usize>,
     ) -> TypeExpressionVisitResult<SpannedTypeError> {
-        mark_structural_type(StructuralTypeDefinition::Null)
+        mark_structural_type(LiteralTypeDefinition::Null)
     }
     fn visit_endpoint_type(
         &mut self,
         endpoint: &mut Endpoint,
         _: &Range<usize>,
     ) -> TypeExpressionVisitResult<SpannedTypeError> {
-        mark_structural_type(StructuralTypeDefinition::Endpoint(
+        mark_structural_type(LiteralTypeDefinition::Endpoint(
             endpoint.clone(),
         ))
     }
@@ -358,14 +358,14 @@ impl TypeExpressionVisitor<SpannedTypeError> for TypeInference {
             let field_type = self.infer_type_expression(field_type_expr)?;
             fields.push((field_name, field_type));
         }
-        mark_structural_type(StructuralTypeDefinition::Map(fields))
+        mark_structural_type(LiteralTypeDefinition::Map(fields))
     }
     fn visit_structural_list_type(
         &mut self,
         structural_list: &mut StructuralList,
         _: &Range<usize>,
     ) -> TypeExpressionVisitResult<SpannedTypeError> {
-        mark_structural_type(StructuralTypeDefinition::List(
+        mark_structural_type(LiteralTypeDefinition::List(
             structural_list
                 .0
                 .iter_mut()
@@ -557,7 +557,7 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
     ) -> ExpressionVisitResult<SpannedTypeError> {
         let inner_type = self.infer_expression(&mut create_ref.expression)?;
         let ref_type = match inner_type.type_definition {
-            TypeDefinition::SharedReference(reference) => reference,
+            StructuralTypeDefinition::Shared(reference) => reference,
             _ => Rc::new(RefCell::new(SharedTypeContainer::anonymous(
                 inner_type,
             ))),
@@ -671,14 +671,14 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
         integer: &mut Integer,
         _: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
-        mark_structural_type(StructuralTypeDefinition::Integer(integer.clone()))
+        mark_structural_type(LiteralTypeDefinition::Integer(integer.clone()))
     }
     fn visit_typed_integer(
         &mut self,
         typed_integer: &mut TypedInteger,
         _: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
-        mark_structural_type(StructuralTypeDefinition::TypedInteger(
+        mark_structural_type(LiteralTypeDefinition::TypedInteger(
             typed_integer.clone(),
         ))
     }
@@ -687,14 +687,14 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
         decimal: &mut Decimal,
         _: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
-        mark_structural_type(StructuralTypeDefinition::Decimal(decimal.clone()))
+        mark_structural_type(LiteralTypeDefinition::Decimal(decimal.clone()))
     }
     fn visit_typed_decimal(
         &mut self,
         decimal: &mut TypedDecimal,
         _: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
-        mark_structural_type(StructuralTypeDefinition::TypedDecimal(
+        mark_structural_type(LiteralTypeDefinition::TypedDecimal(
             decimal.clone(),
         ))
     }
@@ -703,7 +703,7 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
         boolean: &mut bool,
         _: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
-        mark_structural_type(StructuralTypeDefinition::Boolean(Boolean::from(
+        mark_structural_type(LiteralTypeDefinition::Boolean(Boolean::from(
             *boolean,
         )))
     }
@@ -712,7 +712,7 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
         text: &mut String,
         _: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
-        mark_structural_type(StructuralTypeDefinition::Text(Text::from(
+        mark_structural_type(LiteralTypeDefinition::Text(Text::from(
             text.clone(),
         )))
     }
@@ -720,14 +720,14 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
         &mut self,
         _: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
-        mark_structural_type(StructuralTypeDefinition::Null)
+        mark_structural_type(LiteralTypeDefinition::Null)
     }
     fn visit_endpoint(
         &mut self,
         endpoint: &mut Endpoint,
         _: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
-        mark_structural_type(StructuralTypeDefinition::Endpoint(
+        mark_structural_type(LiteralTypeDefinition::Endpoint(
             endpoint.clone(),
         ))
     }
@@ -779,7 +779,7 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
                     && left == right
                 {
                     mark_type(Type::new(
-                        TypeDefinition::SharedReference(left),
+                        StructuralTypeDefinition::Shared(left),
                         TypeMetadata::default(),
                     ))
                 } else {
@@ -832,7 +832,7 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
                 Some(r) => {
                     // FIXME #620 is this necessary?
                     reference.borrow_mut().type_value = Type::new(
-                        TypeDefinition::SharedReference(r.clone()),
+                        StructuralTypeDefinition::Shared(r.clone()),
                         TypeMetadata::default(),
                     );
                 }
@@ -849,7 +849,7 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
         list: &mut List,
         _: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
-        mark_structural_type(StructuralTypeDefinition::List(
+        mark_structural_type(LiteralTypeDefinition::List(
             list.items
                 .iter_mut()
                 .map(|elem_type_expr| self.infer_expression(elem_type_expr))
@@ -864,7 +864,7 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
     ) -> ExpressionVisitResult<SpannedTypeError> {
         let x = self.infer_expression(&mut range.start)?;
         let y = self.infer_expression(&mut range.end)?;
-        let z = StructuralTypeDefinition::Range((Box::new(x), Box::new(y)));
+        let z = LiteralTypeDefinition::Range((Box::new(x), Box::new(y)));
         mark_structural_type(z)
     }
 
@@ -879,7 +879,7 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
             let value_type = self.infer_expression(value_expr)?;
             fields.push((key_type, value_type));
         }
-        mark_structural_type(StructuralTypeDefinition::Map(fields))
+        mark_structural_type(LiteralTypeDefinition::Map(fields))
     }
 
     fn visit_apply(
@@ -1257,8 +1257,8 @@ mod tests {
             infer_expression_type_with_errors,
         },
         types::{
-            definition::TypeDefinition,
             structural_type_definition::StructuralTypeDefinition,
+            literal_type_definition::LiteralTypeDefinition,
         },
         values::{
             core_value::CoreValue,
@@ -1533,7 +1533,7 @@ mod tests {
                 &mut DatexExpressionData::Boolean(true).with_default_span()
             ),
             Type::structural(
-                StructuralTypeDefinition::Boolean(Boolean(true)),
+                LiteralTypeDefinition::Boolean(Boolean(true)),
                 TypeMetadata::default()
             )
         );
@@ -1543,7 +1543,7 @@ mod tests {
                 &mut DatexExpressionData::Boolean(false).with_default_span()
             ),
             Type::structural(
-                StructuralTypeDefinition::Boolean(Boolean(false)),
+                LiteralTypeDefinition::Boolean(Boolean(false)),
                 TypeMetadata::default()
             )
         );
@@ -1553,7 +1553,7 @@ mod tests {
                 &mut DatexExpressionData::Null.with_default_span()
             ),
             Type::structural(
-                StructuralTypeDefinition::Null,
+                LiteralTypeDefinition::Null,
                 TypeMetadata::default()
             )
         );
@@ -1564,7 +1564,7 @@ mod tests {
                     .with_default_span()
             ),
             Type::structural(
-                StructuralTypeDefinition::Decimal(Decimal::from(1.23)),
+                LiteralTypeDefinition::Decimal(Decimal::from(1.23)),
                 TypeMetadata::default()
             )
         );
@@ -1575,7 +1575,7 @@ mod tests {
                     .with_default_span()
             ),
             Type::structural(
-                StructuralTypeDefinition::Integer(Integer::from(42)),
+                LiteralTypeDefinition::Integer(Integer::from(42)),
                 TypeMetadata::default()
             )
         );
@@ -1592,7 +1592,7 @@ mod tests {
                 .with_default_span()
             ),
             Type::structural(
-                StructuralTypeDefinition::List(vec![
+                LiteralTypeDefinition::List(vec![
                     Type::from(CoreValue::from(Integer::from(1))),
                     Type::from(CoreValue::from(Integer::from(2))),
                     Type::from(CoreValue::from(Integer::from(3)))
@@ -1612,9 +1612,9 @@ mod tests {
                 .with_default_span()
             ),
             Type::structural(
-                StructuralTypeDefinition::Map(vec![(
+                LiteralTypeDefinition::Map(vec![(
                     Type::structural(
-                        StructuralTypeDefinition::Text("a".to_string().into()),
+                        LiteralTypeDefinition::Text("a".to_string().into()),
                         TypeMetadata::default()
                     ),
                     Type::from(CoreValue::from(Integer::from(1)))
@@ -1634,7 +1634,7 @@ mod tests {
         let var_a = metadata.variable_metadata(0).unwrap();
 
         let nominal_type_def = Type::new(
-            TypeDefinition::SharedReference(Rc::new(RefCell::new(
+            StructuralTypeDefinition::Shared(Rc::new(RefCell::new(
                 SharedTypeContainer::nominal(
                     get_core_lib_type(CoreLibPointerId::Integer(None)),
                     NominalTypeDeclaration::from("A".to_string()),
@@ -1719,12 +1719,12 @@ mod tests {
             let structural_type_definition =
                 bor.structural_type_definition().unwrap();
             let fields = match structural_type_definition {
-                StructuralTypeDefinition::Map(fields) => fields,
+                LiteralTypeDefinition::Map(fields) => fields,
                 _ => unreachable!(),
             };
             let inner_union = &fields[1].1.type_definition;
             match inner_union {
-                TypeDefinition::Union(members) => {
+                StructuralTypeDefinition::Union(members) => {
                     assert_eq!(members.len(), 2);
                     members[0].clone()
                 }
@@ -1740,7 +1740,7 @@ mod tests {
         assert_eq!(
             inferred,
             Type::structural(
-                StructuralTypeDefinition::Integer(42.into()),
+                LiteralTypeDefinition::Integer(42.into()),
                 TypeMetadata::default()
             )
         );
@@ -1749,7 +1749,7 @@ mod tests {
         assert_eq!(
             inferred,
             Type::structural(
-                StructuralTypeDefinition::Endpoint(
+                LiteralTypeDefinition::Endpoint(
                     Endpoint::from_str("@endpoint").unwrap()
                 ),
                 TypeMetadata::default()
@@ -1760,7 +1760,7 @@ mod tests {
         assert_eq!(
             inferred,
             Type::structural(
-                StructuralTypeDefinition::Text("hello world".into()),
+                LiteralTypeDefinition::Text("hello world".into()),
                 TypeMetadata::default()
             )
         );
@@ -1769,7 +1769,7 @@ mod tests {
         assert_eq!(
             inferred,
             Type::structural(
-                StructuralTypeDefinition::Boolean(true.into()),
+                LiteralTypeDefinition::Boolean(true.into()),
                 TypeMetadata::default()
             )
         );
@@ -1778,7 +1778,7 @@ mod tests {
         assert_eq!(
             inferred,
             Type::structural(
-                StructuralTypeDefinition::Null,
+                LiteralTypeDefinition::Null,
                 TypeMetadata::default()
             )
         );
@@ -1790,7 +1790,7 @@ mod tests {
         assert_eq!(
             inferred,
             Type::structural(
-                StructuralTypeDefinition::Integer(30.into()),
+                LiteralTypeDefinition::Integer(30.into()),
                 TypeMetadata::default()
             )
         );
@@ -1805,7 +1805,7 @@ mod tests {
         assert_eq!(
             inferred,
             Type::structural(
-                StructuralTypeDefinition::Integer(42.into()),
+                LiteralTypeDefinition::Integer(42.into()),
                 TypeMetadata::default()
             )
         );
@@ -1817,7 +1817,7 @@ mod tests {
         assert_eq!(
             inferred,
             Type::structural(
-                StructuralTypeDefinition::Integer(42.into()),
+                LiteralTypeDefinition::Integer(42.into()),
                 TypeMetadata::default()
             )
         );
@@ -1853,7 +1853,7 @@ mod tests {
         assert_eq!(
             inferred_type,
             Type::structural(
-                StructuralTypeDefinition::Integer(Integer::from(100)),
+                LiteralTypeDefinition::Integer(Integer::from(100)),
                 TypeMetadata::default()
             )
         );
@@ -1897,7 +1897,7 @@ mod tests {
                 annotated_type,
                 assigned_type
             } if *annotated_type == get_core_lib_type(CoreLibPointerId::Integer(None))
-              && assigned_type == &Type::structural(StructuralTypeDefinition::Text("hello".to_string().into()), TypeMetadata::default())
+              && assigned_type == &Type::structural(LiteralTypeDefinition::Text("hello".to_string().into()), TypeMetadata::default())
         );
     }
 
@@ -1917,7 +1917,7 @@ mod tests {
         assert_eq!(
             inferred_type,
             Type::structural(
-                StructuralTypeDefinition::TypedInteger(TypedInteger::U8(42)),
+                LiteralTypeDefinition::TypedInteger(TypedInteger::U8(42)),
                 TypeMetadata::default()
             )
         );
@@ -1927,7 +1927,7 @@ mod tests {
         assert_eq!(
             inferred_type,
             Type::structural(
-                StructuralTypeDefinition::TypedInteger(TypedInteger::I32(42)),
+                LiteralTypeDefinition::TypedInteger(TypedInteger::I32(42)),
                 TypeMetadata::default()
             )
         );
@@ -1937,7 +1937,7 @@ mod tests {
         assert_eq!(
             inferred_type,
             Type::structural(
-                StructuralTypeDefinition::TypedDecimal(TypedDecimal::from(
+                LiteralTypeDefinition::TypedDecimal(TypedDecimal::from(
                     42.69_f32
                 )),
                 TypeMetadata::default()
@@ -1951,7 +1951,7 @@ mod tests {
         assert_eq!(
             inferred_type,
             Type::structural(
-                StructuralTypeDefinition::Integer(Integer::from(42)),
+                LiteralTypeDefinition::Integer(Integer::from(42)),
                 TypeMetadata::default()
             )
         );
@@ -1961,7 +1961,7 @@ mod tests {
         assert_eq!(
             inferred_type,
             Type::structural(
-                StructuralTypeDefinition::Decimal(
+                LiteralTypeDefinition::Decimal(
                     Decimal::from_string("3/4").unwrap()
                 ),
                 TypeMetadata::default()
@@ -1973,7 +1973,7 @@ mod tests {
         assert_eq!(
             inferred_type,
             Type::structural(
-                StructuralTypeDefinition::Boolean(Boolean(true)),
+                LiteralTypeDefinition::Boolean(Boolean(true)),
                 TypeMetadata::default()
             )
         );
@@ -1983,7 +1983,7 @@ mod tests {
         assert_eq!(
             inferred_type,
             Type::structural(
-                StructuralTypeDefinition::Boolean(Boolean(false)),
+                LiteralTypeDefinition::Boolean(Boolean(false)),
                 TypeMetadata::default()
             )
         );
@@ -1993,7 +1993,7 @@ mod tests {
         assert_eq!(
             inferred_type,
             Type::structural(
-                StructuralTypeDefinition::Text("hello".to_string().into()),
+                LiteralTypeDefinition::Text("hello".to_string().into()),
                 TypeMetadata::default()
             )
         );
@@ -2013,7 +2013,7 @@ mod tests {
                         IntegerTypeVariant::U8
                     ))),
                     Type::structural(
-                        StructuralTypeDefinition::Integer(Integer::from(42)),
+                        LiteralTypeDefinition::Integer(Integer::from(42)),
                         TypeMetadata::default()
                     )
                 ],
@@ -2047,7 +2047,7 @@ mod tests {
         assert_eq!(
             inferred_type,
             Type::structural(
-                StructuralTypeDefinition::Map(vec![]),
+                LiteralTypeDefinition::Map(vec![]),
                 TypeMetadata::default()
             )
         );
@@ -2061,10 +2061,10 @@ mod tests {
         assert_eq!(
             inferred_type,
             Type::structural(
-                StructuralTypeDefinition::Map(vec![
+                LiteralTypeDefinition::Map(vec![
                     (
                         Type::structural(
-                            StructuralTypeDefinition::Text(
+                            LiteralTypeDefinition::Text(
                                 "a".to_string().into()
                             ),
                             TypeMetadata::default()
@@ -2075,7 +2075,7 @@ mod tests {
                     ),
                     (
                         Type::structural(
-                            StructuralTypeDefinition::Text(
+                            LiteralTypeDefinition::Text(
                                 "b".to_string().into()
                             ),
                             TypeMetadata::default()
@@ -2114,7 +2114,7 @@ mod tests {
         assert_eq!(
             var_metadata.var_type,
             Some(Type::structural(
-                StructuralTypeDefinition::Integer(Integer::from(10)),
+                LiteralTypeDefinition::Integer(Integer::from(10)),
                 TypeMetadata::default()
             )),
         );

@@ -2,11 +2,14 @@ mod owned_shared_container;
 mod referenced_shared_container;
 mod shared_container_inner;
 mod ownership;
-mod endpoint_owned_shared_container;
+mod self_owned_shared_container;
 mod external_shared_container;
 pub mod shared_type_container;
 pub mod shared_value_container;
 mod shared_container_mutability;
+mod expose_rc_internal;
+mod shared_container_containing_type;
+// IMPORTANT: don't expose this module, for internal use only
 
 use alloc::rc::Rc;
 use core::fmt::{Display, Formatter};
@@ -17,55 +20,18 @@ pub use owned_shared_container::*;
 pub use referenced_shared_container::*;
 pub use shared_container_inner::*;
 pub use ownership::*;
-pub use endpoint_owned_shared_container::*;
+pub use self_owned_shared_container::*;
 pub use external_shared_container::*;
 pub use shared_container_mutability::*;
-use crate::shared_values::pointer_address::{EndpointOwnedPointerAddress, PointerAddress};
+pub use shared_container_containing_type::*;
+use crate::shared_values::pointer_address::{SelfOwnedPointerAddress, PointerAddress};
+use crate::shared_values::shared_containers::expose_rc_internal::ExposeRcInternal;
 use crate::traits::identity::Identity;
 use crate::traits::structural_eq::StructuralEq;
 use crate::traits::value_eq::ValueEq;
 use crate::values::core_value::CoreValue;
 use crate::values::value_container::ValueContainer;
 
-/// Top-level wrapper for any shared container, distinguishing between
-/// containers that are guaranteed to contain a [CoreValue::Type] and normal value containers without this constraint.
-/// Can be trivially dereferenced to an [SharedContainer] regardless of the variant.
-#[derive(Debug, Clone)]
-pub enum SharedContainerValueOrType {
-    /// A normal [SharedContainer] without any guarantees about the contained value
-    Value(SharedContainer),
-    /// An [SharedContainer] which is guaranteed to always have an inner value of type [CoreValue::Type]
-    Type(SharedContainerContainingType),
-}
-
-impl Deref for SharedContainerValueOrType {
-    type Target = SharedContainer;
-    fn deref(&self) -> &Self::Target {
-        match self {
-            SharedContainerValueOrType::Value(shared_container) => shared_container,
-            SharedContainerValueOrType::Type(type_container) => type_container.deref(),
-        }
-    }
-}
-
-impl PartialEq for SharedContainerValueOrType {
-    fn eq(&self, other: &Self) -> bool {
-        self.deref() == other.deref()
-    }
-}
-
-impl Eq for SharedContainerValueOrType {}
-
-impl Identity for SharedContainerValueOrType {
-    fn identical(&self, other: &Self) -> bool {
-        self.deref().identical(other.deref())
-    }
-}
-
-/// A wrapper around an [SharedContainer] which guarantees
-/// that the contained value is always a [CoreValue::Type]
-#[derive(Debug, Clone)]
-pub struct SharedContainerContainingType(SharedContainer);
 
 impl Deref for SharedContainerContainingType {
     type Target = SharedContainer;
@@ -89,13 +55,13 @@ pub enum SharedContainer {
 impl SharedContainer {
 
     /// Creates a new owned [SharedContainer] with an initial [ValueContainer],
-    /// a [SharedContainerMutability], and an [EndpointOwnedPointerAddress].
+    /// a [SharedContainerMutability], and an [SelfOwnedPointerAddress].
     ///
     /// The allowed type is inferred from the value_container's allowed type.
     pub fn new_owned_with_inferred_allowed_type(
         value_container: ValueContainer,
         mutability: SharedContainerMutability,
-        address: EndpointOwnedPointerAddress,
+        address: SelfOwnedPointerAddress,
     ) -> Self {
         SharedContainer::Owned(OwnedSharedContainer::new_with_inferred_allowed_type(
             value_container,
@@ -103,14 +69,7 @@ impl SharedContainer {
             address,
         ))
     }
-    
-    /// Get a reference to the inner [Rc<RefCell<SharedContainerInner>>]
-    pub fn inner_rc(&self) -> &Rc<RefCell<SharedContainerInner>> {
-        match self {
-            SharedContainer::Owned(owned) => owned.inner_rc(),
-            SharedContainer::Referenced(referenced) => referenced.inner_rc(),
-        }
-    }
+
 
     pub fn as_inner(&self) -> Ref<SharedContainerInner> {
         match self {
@@ -164,6 +123,14 @@ impl SharedContainer {
             SharedContainer::Referenced(referenced) => referenced.can_mutate(),
         }
     }
+
+    /// Returns the [SharedContainerOwnership] of this shared container
+    pub fn ownership(&self) -> SharedContainerOwnership {
+        match self {
+            SharedContainer::Owned(owned) => SharedContainerOwnership::Owned,
+            SharedContainer::Referenced(referenced) => SharedContainerOwnership::Referenced(referenced.reference_mutability())
+        }
+    }
 }
 
 /// Custom clone implementation for [SharedContainer].
@@ -193,7 +160,7 @@ impl Display for SharedContainer {
 /// Two references are identical if they point to the same inner value (Rc pointer equality)
 impl Identity for SharedContainer {
     fn identical(&self, other: &Self) -> bool {
-        Rc::ptr_eq(&self.inner_rc(), &other.inner_rc())
+        Rc::ptr_eq(&self.get_rc_internal(), &other.get_rc_internal())
     }
 }
 
@@ -221,7 +188,7 @@ impl ValueEq for SharedContainer {
 
 impl Hash for SharedContainer {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        let ptr = Rc::as_ptr(&self.inner_rc());
+        let ptr = Rc::as_ptr(&self.get_rc_internal());
         ptr.hash(state); // hash the address
     }
 }
@@ -238,8 +205,12 @@ impl From<ReferencedSharedContainer> for SharedContainer {
     }
 }
 
-impl From<SharedContainer> for SharedContainerValueOrType {
-    fn from(value: SharedContainer) -> Self {
-        SharedContainerValueOrType::Value(value)
+impl ExposeRcInternal for SharedContainer {
+    type Shared = SharedContainerInner;
+    fn get_rc_internal(&self) -> &Rc<RefCell<Self::Shared>> {
+        match self {
+            SharedContainer::Owned(owned) => owned.get_rc_internal(),
+            SharedContainer::Referenced(referenced) => referenced.get_rc_internal(),
+        }
     }
 }

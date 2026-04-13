@@ -29,7 +29,7 @@ use crate::{
     },
     global::operators::{binary::ArithmeticOperator, BinaryOperator},
     libs::core::CoreLibPointerId,
-    types::definition::TypeDefinition,
+    types::structural_type_definition::StructuralTypeDefinition,
     utils::maybe_action::{collect_or_pass_error, ErrorCollector, MaybeAction},
     values::core_values::r#type::{Type, TypeMetadata},
     visitor::{
@@ -283,7 +283,7 @@ impl<'a> Precompiler<'a> {
 
         // register placeholder ref in metadata
         let type_def = Type::new(
-            TypeDefinition::shared_reference(reference),
+            StructuralTypeDefinition::shared_reference(reference),
             TypeMetadata::default(),
         );
         {

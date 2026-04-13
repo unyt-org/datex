@@ -7,7 +7,7 @@ use crate::{
         type_instruction_codes::TypeInstructionCode,
     },
     libs::core::{CoreLibPointerId, get_core_lib_type_definition},
-    types::definition::TypeDefinition,
+    types::structural_type_definition::StructuralTypeDefinition,
     utils::buffers::{
         append_i16, append_i32, append_u8, append_u32
     },
@@ -304,7 +304,7 @@ pub fn append_internal_type_cast(context: &mut CoreCompilationContext, core_lib_
     ).unwrap(); // internal type, cast can never fail
 }
 
-pub fn append_type_cast(context: &mut CoreCompilationContext, ty: &TypeDefinition) -> Result<(), SharedValueCompilationError> {
+pub fn append_type_cast(context: &mut CoreCompilationContext, ty: &StructuralTypeDefinition) -> Result<(), SharedValueCompilationError> {
     append_regular_instruction(context.cursor_mut(), RegularInstruction::TypedValue);
 
     // append type instruction

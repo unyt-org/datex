@@ -1,21 +1,21 @@
-use crate::shared_values::pointer_address::{EndpointOwnedPointerAddress, ExternalPointerAddress};
+use crate::shared_values::pointer_address::{SelfOwnedPointerAddress, ExternalPointerAddress};
 use crate::shared_values::shared_container::shared_value_container::SharedValueContainer;
 use crate::shared_values::shared_containers::ExternalSharedContainer;
 
-/// A shared container with an endpoint-owned pointer address
+/// A shared container with a pointer address owned by the local endpoint
 #[derive(Debug)]
-pub struct EndpointOwnedSharedContainer {
+pub struct SelfOwnedSharedContainer {
     value: SharedValueContainer,
-    address: EndpointOwnedPointerAddress,
+    address: SelfOwnedPointerAddress,
     // TODO #766: additional fields will probably be added later, e.g. previous owners
     // subscribers: Vec<(Endpoint, Permissions)>,
 }
 
-impl EndpointOwnedSharedContainer {
+impl SelfOwnedSharedContainer {
     
-    /// Creates a new [EndpointOwnedSharedContainer]
-    pub fn new(shared_value_container: SharedValueContainer, address: EndpointOwnedPointerAddress) -> Self {
-        EndpointOwnedSharedContainer {
+    /// Creates a new [SelfOwnedSharedContainer]
+    pub fn new(shared_value_container: SharedValueContainer, address: SelfOwnedPointerAddress) -> Self {
+        SelfOwnedSharedContainer {
             value: shared_value_container,
             address,
         }
@@ -33,11 +33,11 @@ impl EndpointOwnedSharedContainer {
         &mut self.value
     }
     
-    pub fn address(&self) -> &EndpointOwnedPointerAddress {
+    pub fn address(&self) -> &SelfOwnedPointerAddress {
         &self.address
     }
     
-    /// Converts the [EndpointOwnedSharedContainer] into an [ExternalSharedContainer],
+    /// Converts the [SelfOwnedSharedContainer] into an [ExternalSharedContainer],
     /// setting the provided [ExternalPointerAddress]
     /// TODO: handle subscriber transfer somewhere
     pub fn convert_to_external_container(

@@ -51,8 +51,8 @@ use crate::{
         shared_container::SharedContainerValueOrType,
     },
     types::{
-        definition::TypeDefinition,
         structural_type_definition::StructuralTypeDefinition,
+        literal_type_definition::LiteralTypeDefinition,
     }
     ,
     values::{
@@ -614,7 +614,7 @@ pub fn inner_execution_loop(
                                     Some(ValueContainer::Shared(SharedContainerValueOrType {
                                         value: SharedContainerInner::Type(type_ref),
                                         .. })) => Type::new(
-                                        TypeDefinition::SharedReference(
+                                        StructuralTypeDefinition::Shared(
                                             type_ref,
                                         ),
                                         metadata,
@@ -885,7 +885,7 @@ pub fn inner_execution_loop(
                                         ValueContainer::Local(Value {
                                             inner: CoreValue::Type(ty),
                                             actual_type: Box::new(
-                                                TypeDefinition::Unknown,
+                                                StructuralTypeDefinition::Unknown,
                                             ), // TODO #648: type for type
                                         }),
                                     )
@@ -1288,7 +1288,7 @@ pub fn inner_execution_loop(
                                         let base_type =
                                             collected_results.pop_type_result();
                                         Type::new(
-                                            TypeDefinition::ImplType(
+                                            StructuralTypeDefinition::ImplType(
                                                 Box::new(base_type),
                                                 impl_type_data
                                                     .impls
@@ -1306,8 +1306,8 @@ pub fn inner_execution_loop(
                                         let type_end =
                                             collected_results.pop_type_result();
                                         let x = Type::from(
-                                            TypeDefinition::structural(
-                                                StructuralTypeDefinition::Range(
+                                            StructuralTypeDefinition::structural(
+                                                LiteralTypeDefinition::Range(
                                                     (
                                                         Box::new(type_start),
                                                         Box::new(type_end),

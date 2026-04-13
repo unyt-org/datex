@@ -749,7 +749,7 @@ mod tests {
                 }
             )
         )) if inner.borrow().value().mutability.clone() == SharedContainerMutability::Immutable);
-        
+
         assert_value_eq!(result, ValueContainer::from(Integer::from(42)));
     }
 

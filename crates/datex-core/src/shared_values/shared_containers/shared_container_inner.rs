@@ -1,12 +1,12 @@
 use crate::shared_values::pointer_address::{PointerAddress};
 use crate::shared_values::shared_container::{ExternalSharedContainer};
 use crate::shared_values::shared_container::shared_value_container::SharedValueContainer;
-use crate::shared_values::shared_containers::EndpointOwnedSharedContainer;
+use crate::shared_values::shared_containers::SelfOwnedSharedContainer;
 
-/// Wrapper containing either an [EndpointOwnedSharedContainer] or an [ExternalSharedContainer].
+/// Wrapper containing either an [SelfOwnedSharedContainer] or an [ExternalSharedContainer].
 #[derive(Debug)]
 pub enum SharedContainerInner {
-    EndpointOwned(EndpointOwnedSharedContainer),
+    EndpointOwned(SelfOwnedSharedContainer),
     External(ExternalSharedContainer),
 }
 

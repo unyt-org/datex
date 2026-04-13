@@ -12,14 +12,14 @@ use crate::{
             EndpointOwnedPointer, ExternalPointer,
         },
         pointer_address::{
-            EndpointOwnedPointerAddress, ExternalPointerAddress, PointerAddress,
+            SelfOwnedPointerAddress, ExternalPointerAddress, PointerAddress,
         },
     },
     traits::{
         apply::Apply, identity::Identity, structural_eq::StructuralEq,
         value_eq::ValueEq,
     },
-    types::definition::TypeDefinition,
+    types::structural_type_definition::StructuralTypeDefinition,
     values::{
         core_values::r#type::Type,
         value::Value,
@@ -274,14 +274,14 @@ impl SharedContainerValueOrType {
         }
     }
 
-    pub fn allowed_type(&self) -> TypeDefinition {
+    pub fn allowed_type(&self) -> StructuralTypeDefinition {
         match &*self.value() {
             SharedContainerValueOrType::Value(vr) => vr.allowed_type.clone(),
             SharedContainerValueOrType::Type(_) => core::todo!("#293 type Type"),
         }
     }
 
-    pub fn actual_type(&self) -> TypeDefinition {
+    pub fn actual_type(&self) -> StructuralTypeDefinition {
         match &*self.value() {
             SharedContainerValueOrType::Value(vr) => vr
                 .value_container
