@@ -330,7 +330,7 @@ impl ValueContainer {
     ) -> R {
         match self {
             ValueContainer::Local(value) => f(value),
-            ValueContainer::Shared(shared) => shared.with_collapsed_value_mut(f),
+            ValueContainer::Shared(shared) => shared.with_collapsed_value(f),
         }
     }
 
@@ -349,13 +349,6 @@ impl ValueContainer {
     #[deprecated(note = "use with_collapsed_value")]
     pub fn to_cloned_value(&self) -> Rc<RefCell<Value>> {
         unimplemented!("use with_collapsed_value")
-    }
-
-    pub fn is_type(&self) -> bool {
-        match self {
-            ValueContainer::Local(value) => value.is_type(),
-            ValueContainer::Shared(reference) => reference.is_type(),
-        }
     }
     
     /// Performs a clone used by the "clone" command

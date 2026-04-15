@@ -26,7 +26,7 @@ impl DIFReference {
         DIFReference {
             value,
             allowed_type,
-            mutability: reference.mutability(),
+            mutability: reference.container_mutability()
         }
     }
 }

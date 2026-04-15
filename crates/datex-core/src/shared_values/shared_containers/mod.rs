@@ -76,7 +76,7 @@ impl SharedContainer {
             SharedContainer::Referenced(referenced) => referenced.inner_mut(),
         }
     }
-    
+
     /// Gets a [Ref] to the currently assigned [BaseSharedValueContainer] of the shared container (not resolved recursively)
     pub fn base_shared_container(&self) -> Ref<BaseSharedValueContainer> {
         match self {
@@ -116,7 +116,15 @@ impl SharedContainer {
             SharedContainer::Referenced(referenced) => referenced.value_container_mut(),
         }
     }
-    
+
+    /// Get the [SharedContainerMutability] of the inner container.
+    pub fn container_mutability(&self) -> SharedContainerMutability {
+        match self {
+            SharedContainer::Owned(owned) => owned.container_mutability(),
+            SharedContainer::Referenced(referenced) => referenced.container_mutability(),
+        }
+    }
+
     /// Calls the provided callback with a mut reference to the recursively collapsed inner value of the shared container
     pub fn with_collapsed_value_mut<R>(&self, f: impl FnOnce(&mut Value) -> R) -> R {
         match &mut self.inner_mut().base_shared_container_mut().value_container {

@@ -11,8 +11,8 @@ use std::ops::Deref;
 use crate::{
     prelude::*, shared_values::pointer_address::PointerAddress,
 };
-use crate::shared_values::shared_containers::SharedContainerContainingType;
 use crate::types::r#type::Type;
+use crate::types::shared_container_containing_type::SharedContainerContainingType;
 use crate::types::type_definition::{TypeDefinition, TypeMetadata};
 
 #[derive(Debug, Clone, PartialEq, Eq)]

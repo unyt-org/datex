@@ -1,7 +1,6 @@
 use serde::Serialize;
 use crate::serde::Deserialize;
 use crate::shared_values::shared_containers::{SharedContainerMutability, SharedContainerOwnership};
-use crate::types::literal_type_definition::LiteralTypeDefinition;
 use crate::types::r#type::Type;
 use crate::types::structural_type_definition::StructuralTypeDefinition;
 
@@ -33,6 +32,50 @@ pub enum TypeMetadata {
     },
 }
 
+impl TypeMetadata {
+    /// Ownership type for a shared container
+    pub fn shared_container_ownership(
+        &self,
+    ) -> Option<&SharedContainerOwnership> {
+        match self {
+            TypeMetadata::Local { .. } => None,
+            TypeMetadata::Shared {
+                ownership,
+                ..
+            } => Some(ownership),
+        }
+    }
+
+    /// Mutability for a shared type (e.g. shared mut X / shared X), if applicable
+    pub fn shared_mutability(&self) -> Option<SharedContainerMutability> {
+        match self {
+            TypeMetadata::Local { .. } => None,
+            TypeMetadata::Shared { mutability, .. } => Some(mutability.clone()),
+        }
+    }
+
+    /// Mutability for a reference to a local type (e.g. &mut X), if applicable
+    pub fn local_reference_mutability(
+        &self,
+    ) -> Option<LocalReferenceMutability> {
+        match self {
+            TypeMetadata::Local {
+                reference_mutability: local_reference_mutability,
+                ..
+            } => local_reference_mutability.clone(),
+            TypeMetadata::Shared { .. } => None,
+        }
+    }
+
+    /// Whether this type is a shared type (e.g. shared X, shared mut X, &shared X, &mut shared X)
+    pub fn is_shared_type(&self) -> bool {
+        match self {
+            TypeMetadata::Shared { .. } => true,
+            TypeMetadata::Local { .. } => false,
+        }
+    }
+}
+
 impl Default for TypeMetadata {
     fn default() -> Self {
         TypeMetadata::Local {
@@ -42,12 +85,12 @@ impl Default for TypeMetadata {
     }
 }
 
-
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct TypeDefinition {
     pub structural_definition: StructuralTypeDefinition,
     pub metadata: TypeMetadata,
 }
+
 
 impl From<TypeDefinition> for Type {
     fn from(x: TypeDefinition) -> Self {

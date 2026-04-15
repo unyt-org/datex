@@ -14,19 +14,20 @@ use crate::{
     shared_values::{
         observers::{ObserveOptions, Observer, TransceiverId},
         pointer_address::PointerAddress,
-        shared_containers::{SharedContainerValueOrType, SharedContainerMutability},
+        shared_containers::{SharedContainerMutability},
     },
     values::value_container::ValueContainer,
 };
 use core::result::Result;
 use core::cell::Ref;
 use crate::shared_values::pointer_address::SelfOwnedPointerAddress;
+use crate::shared_values::shared_containers::ReferencedSharedContainer;
 
 impl RuntimeInternal {
     fn resolve_in_memory_reference(
         &'_ self,
         address: &PointerAddress,
-    ) -> Option<Ref<'_, SharedContainerValueOrType>> {
+    ) -> Option<Ref<'_, ReferencedSharedContainer>> {
         Ref::filter_map(self.memory.borrow(), |memory| {
             memory.get_reference(address)
         }).ok()
@@ -36,7 +37,7 @@ impl RuntimeInternal {
     async fn resolve_reference(
         &self,
         address: &PointerAddress,
-    ) -> Option<SharedContainerValueOrType> {
+    ) -> Option<ReferencedSharedContainer> {
         self.memory.borrow().get_reference(address).cloned()
     }
 }

@@ -1612,7 +1612,7 @@ mod tests {
                         LiteralTypeDefinition::Text("a".to_string()).into()
                     ),
                     Type::Alias(
-                        LiteralTypeDefinition::Integer(Integer::from(1)).into()´
+                        LiteralTypeDefinition::Integer(Integer::from(1)).into()
                     )
                 )]).into()
             )

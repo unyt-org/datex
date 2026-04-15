@@ -9,14 +9,14 @@ use crate::{
     shared_values::{
         observers::{ObserveOptions, ObserverError, TransceiverId},
         shared_containers::{
-            AccessError, AssignmentError, SharedContainerMutability,
-            SharedValueCreationError, TypeError,
+            SharedContainerMutability,
         },
     },
 };
 use core::{fmt::Display, result::Result};
 
 use crate::{prelude::*, shared_values::pointer_address::PointerAddress};
+use crate::shared_values::errors::{AccessError, AssignmentError, SharedValueCreationError, TypeError};
 use crate::shared_values::pointer_address::SelfOwnedPointerAddress;
 
 #[derive(Debug)]

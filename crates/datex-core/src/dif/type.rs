@@ -17,11 +17,9 @@ use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{
     de::IntoDeserializer, ser::SerializeStruct, Deserialize, Serialize,
 };
-use crate::shared_values::shared_containers::SharedContainerOwnership;
-use crate::types::r#type::{
-    LocalMutability, LocalReferenceMutability, TypeMetadata,
-};
+use crate::shared_values::shared_containers::{ReferenceMutability, SharedContainerOwnership};
 use crate::types::r#type::Type;
+use crate::types::type_definition::{LocalMutability, LocalReferenceMutability, TypeMetadata};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum DIFTypeDefinition {

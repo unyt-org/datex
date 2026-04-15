@@ -108,50 +108,6 @@ impl Type {
 }
 
 impl Type {
-    /// Ownership type for a shared container
-    pub fn shared_container_ownership(
-        &self,
-    ) -> Option<&SharedContainerOwnership> {
-        match &self.metadata {
-            TypeMetadata::Local { .. } => None,
-            TypeMetadata::Shared {
-                ownership,
-                ..
-            } => Some(ownership),
-        }
-    }
-
-    /// Mutability for a shared type (e.g. shared mut X / shared X), if applicable
-    pub fn shared_mutability(&self) -> Option<SharedContainerMutability> {
-        match &self.metadata {
-            TypeMetadata::Local { .. } => None,
-            TypeMetadata::Shared { mutability, .. } => Some(mutability.clone()),
-        }
-    }
-
-    /// Mutability for a reference to a local type (e.g. &mut X), if applicable
-    pub fn local_reference_mutability(
-        &self,
-    ) -> Option<LocalReferenceMutability> {
-        match &self.metadata {
-            TypeMetadata::Local {
-                reference_mutability: local_reference_mutability,
-                ..
-            } => local_reference_mutability.clone(),
-            TypeMetadata::Shared { .. } => None,
-        }
-    }
-
-    /// Whether this type is a shared type (e.g. shared X, shared mut X, &shared X, &mut shared X)
-    pub fn is_shared_type(&self) -> bool {
-        match &self.metadata {
-            TypeMetadata::Shared { .. } => true,
-            TypeMetadata::Local { .. } => false,
-        }
-    }
-}
-
-impl Type {
     /// Creates a reference type pointing to the given TypeReference
     pub fn shared_reference(
         type_definition: Rc<RefCell<SharedContainerContainingType>>,
