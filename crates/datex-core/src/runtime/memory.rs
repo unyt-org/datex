@@ -1,7 +1,6 @@
 use crate::{
     collections::HashMap,
     libs::core::{load_core_lib, CoreLibPointerId},
-    shared_values::shared_containers::SharedContainerValueOrType,
     types::error::IllegalTypeError,
     values::core_values::endpoint::Endpoint,
 };
@@ -16,7 +15,7 @@ use crate::{
     },
 };
 use crate::global::protocol_structures::instruction_data::RawRemotePointerAddress;
-use crate::shared_values::shared_containers::SharedContainerInner;
+use crate::shared_values::shared_containers::{ReferencedSharedContainer, SharedContainerInner};
 use crate::shared_values::shared_containers::base_shared_value_container::BaseSharedValueContainer;
 use crate::shared_values::shared_containers::SharedContainer;
 
@@ -28,7 +27,7 @@ pub struct Memory {
     /// Last timestamp used for a new local pointer id
     last_timestamp: u64,
     /// All non-local pointers
-    pointers: HashMap<PointerAddress, Rc<RefCell<SharedContainerInner>>>,
+    pointers: HashMap<PointerAddress, ReferencedSharedContainer>,
 }
 
 impl Memory {
@@ -60,34 +59,8 @@ impl Memory {
     pub fn get_reference(
         &self,
         pointer_address: &PointerAddress,
-    ) -> Option<Rc<RefCell<SharedContainerInner>>> {
-        self.pointers.get(pointer_address).cloned()
-    }
-
-    pub fn get_value_reference(
-        &self,
-        pointer_address: &PointerAddress,
-    ) -> Option<Ref<BaseSharedValueContainer>> {
-        let reference = self.get_reference(pointer_address)?;
-        Ref::filter_map(reference.value(), |container|
-            match container {
-                SharedContainerValueOrType::Value(v) => Some(v),
-                _ => None,
-            }
-        ).ok()
-    }
-
-    pub fn get_type_reference(
-        &self,
-        pointer_address: &PointerAddress,
-    ) -> Option<Ref<SharedTypeContainer>> {
-        let reference = self.get_reference(pointer_address)?;
-        Ref::filter_map(reference.value(), |container|
-            match container {
-                SharedContainerValueOrType::Type(v) => Some(v),
-                _ => None,
-            }
-        ).ok()
+    ) -> Option<&ReferencedSharedContainer> {
+        self.pointers.get(pointer_address)
     }
 
     /// Helper function to get a core value directly from memory

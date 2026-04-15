@@ -247,9 +247,15 @@ impl TypeInference {
 }
 
 fn mark_structural_type<E>(
+    definition: StructuralTypeDefinition,
+) -> Result<VisitAction<E>, SpannedTypeError> {
+    mark_type(Type::Alias(definition.into()))
+}
+
+fn mark_literal_type<E>(
     definition: LiteralTypeDefinition,
 ) -> Result<VisitAction<E>, SpannedTypeError> {
-    mark_type(Type::structural(definition, TypeMetadata::default()))
+    mark_type(Type::Alias(definition.into()))
 }
 fn mark_type<E>(ty: Type) -> Result<VisitAction<E>, SpannedTypeError> {
     Ok(VisitAction::SetTypeSkipChildren(ty))
@@ -261,14 +267,14 @@ impl TypeExpressionVisitor<SpannedTypeError> for TypeInference {
         integer: &mut Integer,
         _: &Range<usize>,
     ) -> TypeExpressionVisitResult<SpannedTypeError> {
-        mark_structural_type(LiteralTypeDefinition::Integer(integer.clone()))
+        mark_literal_type(LiteralTypeDefinition::Integer(integer.clone()))
     }
     fn visit_typed_integer_type(
         &mut self,
         typed_integer: &mut TypedInteger,
         _: &Range<usize>,
     ) -> TypeExpressionVisitResult<SpannedTypeError> {
-        mark_structural_type(LiteralTypeDefinition::TypedInteger(
+        mark_literal_type(LiteralTypeDefinition::TypedInteger(
             typed_integer.clone(),
         ))
     }
@@ -277,14 +283,14 @@ impl TypeExpressionVisitor<SpannedTypeError> for TypeInference {
         decimal: &mut Decimal,
         _: &Range<usize>,
     ) -> TypeExpressionVisitResult<SpannedTypeError> {
-        mark_structural_type(LiteralTypeDefinition::Decimal(decimal.clone()))
+        mark_literal_type(LiteralTypeDefinition::Decimal(decimal.clone()))
     }
     fn visit_typed_decimal_type(
         &mut self,
         decimal: &mut TypedDecimal,
         _: &Range<usize>,
     ) -> TypeExpressionVisitResult<SpannedTypeError> {
-        mark_structural_type(LiteralTypeDefinition::TypedDecimal(
+        mark_literal_type(LiteralTypeDefinition::TypedDecimal(
             decimal.clone(),
         ))
     }
@@ -293,31 +299,27 @@ impl TypeExpressionVisitor<SpannedTypeError> for TypeInference {
         boolean: &mut bool,
         _: &Range<usize>,
     ) -> TypeExpressionVisitResult<SpannedTypeError> {
-        mark_structural_type(LiteralTypeDefinition::Boolean(Boolean::from(
-            *boolean,
-        )))
+        mark_literal_type(LiteralTypeDefinition::Boolean(*boolean))
     }
     fn visit_text_type(
         &mut self,
         text: &mut String,
         _: &Range<usize>,
     ) -> TypeExpressionVisitResult<SpannedTypeError> {
-        mark_structural_type(LiteralTypeDefinition::Text(Text::from(
-            text.clone(),
-        )))
+        mark_literal_type(LiteralTypeDefinition::Text(text.clone()))
     }
     fn visit_null_type(
         &mut self,
         _: &Range<usize>,
     ) -> TypeExpressionVisitResult<SpannedTypeError> {
-        mark_structural_type(LiteralTypeDefinition::Null)
+        mark_literal_type(LiteralTypeDefinition::Null)
     }
     fn visit_endpoint_type(
         &mut self,
         endpoint: &mut Endpoint,
         _: &Range<usize>,
     ) -> TypeExpressionVisitResult<SpannedTypeError> {
-        mark_structural_type(LiteralTypeDefinition::Endpoint(
+        mark_literal_type(LiteralTypeDefinition::Endpoint(
             endpoint.clone(),
         ))
     }
@@ -356,14 +358,14 @@ impl TypeExpressionVisitor<SpannedTypeError> for TypeInference {
             let field_type = self.infer_type_expression(field_type_expr)?;
             fields.push((field_name, field_type));
         }
-        mark_structural_type(LiteralTypeDefinition::Map(fields))
+        mark_structural_type(StructuralTypeDefinition::Map(fields))
     }
     fn visit_structural_list_type(
         &mut self,
         structural_list: &mut StructuralList,
         _: &Range<usize>,
     ) -> TypeExpressionVisitResult<SpannedTypeError> {
-        mark_structural_type(LiteralTypeDefinition::List(
+        mark_structural_type(StructuralTypeDefinition::List(
             structural_list
                 .0
                 .iter_mut()
@@ -669,14 +671,14 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
         integer: &mut Integer,
         _: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
-        mark_structural_type(LiteralTypeDefinition::Integer(integer.clone()))
+        mark_literal_type(LiteralTypeDefinition::Integer(integer.clone()))
     }
     fn visit_typed_integer(
         &mut self,
         typed_integer: &mut TypedInteger,
         _: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
-        mark_structural_type(LiteralTypeDefinition::TypedInteger(
+        mark_literal_type(LiteralTypeDefinition::TypedInteger(
             typed_integer.clone(),
         ))
     }
@@ -685,14 +687,14 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
         decimal: &mut Decimal,
         _: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
-        mark_structural_type(LiteralTypeDefinition::Decimal(decimal.clone()))
+        mark_literal_type(LiteralTypeDefinition::Decimal(decimal.clone()))
     }
     fn visit_typed_decimal(
         &mut self,
         decimal: &mut TypedDecimal,
         _: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
-        mark_structural_type(LiteralTypeDefinition::TypedDecimal(
+        mark_literal_type(LiteralTypeDefinition::TypedDecimal(
             decimal.clone(),
         ))
     }
@@ -701,27 +703,27 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
         boolean: &mut bool,
         _: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
-        mark_structural_type(LiteralTypeDefinition::Boolean(*boolean))
+        mark_literal_type(LiteralTypeDefinition::Boolean(*boolean))
     }
     fn visit_text(
         &mut self,
         text: &mut String,
         _: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
-        mark_structural_type(LiteralTypeDefinition::Text(text.clone()))
+        mark_literal_type(LiteralTypeDefinition::Text(text.clone()))
     }
     fn visit_null(
         &mut self,
         _: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
-        mark_structural_type(LiteralTypeDefinition::Null)
+        mark_literal_type(LiteralTypeDefinition::Null)
     }
     fn visit_endpoint(
         &mut self,
         endpoint: &mut Endpoint,
         _: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
-        mark_structural_type(LiteralTypeDefinition::Endpoint(
+        mark_literal_type(LiteralTypeDefinition::Endpoint(
             endpoint.clone(),
         ))
     }
@@ -843,7 +845,7 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
         list: &mut List,
         _: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
-        mark_structural_type(LiteralTypeDefinition::List(
+        mark_literal_type(LiteralTypeDefinition::List(
             list.items
                 .iter_mut()
                 .map(|elem_type_expr| self.infer_expression(elem_type_expr))
@@ -858,7 +860,7 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
     ) -> ExpressionVisitResult<SpannedTypeError> {
         let x = self.infer_expression(&mut range.start)?;
         let y = self.infer_expression(&mut range.end)?;
-        let z = LiteralTypeDefinition::Range((Box::new(x), Box::new(y)));
+        let z = StructuralTypeDefinition::Range((Box::new(x), Box::new(y)));
         mark_structural_type(z)
     }
 
@@ -873,7 +875,7 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
             let value_type = self.infer_expression(value_expr)?;
             fields.push((key_type, value_type));
         }
-        mark_structural_type(LiteralTypeDefinition::Map(fields))
+        mark_structural_type(StructuralTypeDefinition::Map(fields))
     }
 
     fn visit_apply(
@@ -1527,7 +1529,7 @@ mod tests {
                 &mut DatexExpressionData::Boolean(true).with_default_span()
             ),
             Type::structural(
-                LiteralTypeDefinition::Boolean(Boolean(true)),
+                LiteralTypeDefinition::Boolean(true),
                 TypeMetadata::default()
             )
         );
@@ -1537,7 +1539,7 @@ mod tests {
                 &mut DatexExpressionData::Boolean(false).with_default_span()
             ),
             Type::structural(
-                LiteralTypeDefinition::Boolean(Boolean(false)),
+                LiteralTypeDefinition::Boolean(false),
                 TypeMetadata::default()
             )
         );
@@ -1585,13 +1587,12 @@ mod tests {
                 ]))
                 .with_default_span()
             ),
-            Type::structural(
-                LiteralTypeDefinition::List(vec![
+            Type::Alias(
+                StructuralTypeDefinition::List(vec![
                     Type::from(CoreValue::from(Integer::from(1))),
                     Type::from(CoreValue::from(Integer::from(2))),
                     Type::from(CoreValue::from(Integer::from(3)))
-                ]),
-                TypeMetadata::default()
+                ]).into()
             )
         );
 
@@ -1605,15 +1606,15 @@ mod tests {
                 )]))
                 .with_default_span()
             ),
-            Type::structural(
-                LiteralTypeDefinition::Map(vec![(
-                    Type::structural(
-                        LiteralTypeDefinition::Text("a".to_string().into()),
-                        TypeMetadata::default()
+            Type::Alias(
+                StructuralTypeDefinition::Map(vec![(
+                    Type::Alias(
+                        LiteralTypeDefinition::Text("a".to_string()).into()
                     ),
-                    Type::from(CoreValue::from(Integer::from(1)))
-                )]),
-                TypeMetadata::default()
+                    Type::Alias(
+                        LiteralTypeDefinition::Integer(Integer::from(1)).into()´
+                    )
+                )]).into()
             )
         );
     }
@@ -1649,7 +1650,7 @@ mod tests {
         let metadata = metadata.borrow();
         let var_a = metadata.variable_metadata(0).unwrap();
         let var_type = var_a.var_type.as_ref().unwrap();
-        if let Some(reference) = &var_type.inner_reference() {
+        if let StructuralTypeDefinition::Shared(reference) = &var_type.definition().structural_definition {
             assert_eq!(
                 reference,
                 &get_core_lib_type_reference(CoreLibPointerId::Integer(None))
@@ -1689,7 +1690,7 @@ mod tests {
         let metadata = metadata.borrow();
         let var = metadata.variable_metadata(0).unwrap();
         let var_type = var.var_type.as_ref().unwrap();
-        assert!(var_type.is_reference());
+        assert_matches!(var_type.definition().structural_definition, StructuralTypeDefinition::Shared(_));
     }
 
     #[test]
@@ -1704,7 +1705,7 @@ mod tests {
         let metadata = metadata.borrow();
         let var = metadata.variable_metadata(0).unwrap();
         let var_type = var.var_type.as_ref().unwrap();
-        assert!(var_type.is_reference());
+        assert_matches!(var_type.definition().structural_definition, StructuralTypeDefinition::Shared(_));
 
         // get next field, as wrapped in union
         let next = {
@@ -1713,10 +1714,10 @@ mod tests {
             let structural_type_definition =
                 bor.structural_type_definition().unwrap();
             let fields = match structural_type_definition {
-                LiteralTypeDefinition::Map(fields) => fields,
+                StructuralTypeDefinition::Map(fields) => fields,
                 _ => unreachable!(),
             };
-            let inner_union = &fields[1].1.type_definition;
+            let inner_union = &fields[1].1.definition().structural_definition;
             match inner_union {
                 StructuralTypeDefinition::Union(members) => {
                     assert_eq!(members.len(), 2);
@@ -1967,7 +1968,7 @@ mod tests {
         assert_eq!(
             inferred_type,
             Type::structural(
-                LiteralTypeDefinition::Boolean(Boolean(true)),
+                LiteralTypeDefinition::Boolean(true),
                 TypeMetadata::default()
             )
         );
@@ -1977,7 +1978,7 @@ mod tests {
         assert_eq!(
             inferred_type,
             Type::structural(
-                LiteralTypeDefinition::Boolean(Boolean(false)),
+                LiteralTypeDefinition::Boolean(false),
                 TypeMetadata::default()
             )
         );
@@ -2040,9 +2041,8 @@ mod tests {
         let inferred_type = infer_from_script_get_reference_type("type X = {}");
         assert_eq!(
             inferred_type,
-            Type::structural(
-                LiteralTypeDefinition::Map(vec![]),
-                TypeMetadata::default()
+            Type::Alias(
+                StructuralTypeDefinition::Map(vec![]).into()
             )
         );
     }
@@ -2054,8 +2054,8 @@ mod tests {
         );
         assert_eq!(
             inferred_type,
-            Type::structural(
-                LiteralTypeDefinition::Map(vec![
+            Type::Alias(
+                StructuralTypeDefinition::Map(vec![
                     (
                         Type::structural(
                             LiteralTypeDefinition::Text(
@@ -2076,8 +2076,7 @@ mod tests {
                         ),
                         get_core_lib_type(CoreLibPointerId::Decimal(None))
                     )
-                ]),
-                TypeMetadata::default()
+                ]).into()
             )
         );
     }
