@@ -1,7 +1,7 @@
 use crate::{
     collections::HashMap,
     libs::core::{load_core_lib, CoreLibPointerId},
-    shared_values::shared_container::SharedContainerValueOrType,
+    shared_values::shared_containers::SharedContainerValueOrType,
     types::error::IllegalTypeError,
     values::core_values::endpoint::Endpoint,
 };
@@ -16,8 +16,8 @@ use crate::{
     },
 };
 use crate::global::protocol_structures::instruction_data::RawRemotePointerAddress;
-use crate::shared_values::shared_container::SharedContainerInner;
-use crate::shared_values::shared_containers::shared_value_container::SharedValueContainer;
+use crate::shared_values::shared_containers::SharedContainerInner;
+use crate::shared_values::shared_containers::base_shared_value_container::BaseSharedValueContainer;
 use crate::shared_values::shared_containers::SharedContainer;
 
 #[derive(Debug, Default)]
@@ -67,7 +67,7 @@ impl Memory {
     pub fn get_value_reference(
         &self,
         pointer_address: &PointerAddress,
-    ) -> Option<Ref<SharedValueContainer>> {
+    ) -> Option<Ref<BaseSharedValueContainer>> {
         let reference = self.get_reference(pointer_address)?;
         Ref::filter_map(reference.value(), |container|
             match container {

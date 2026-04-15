@@ -1,6 +1,6 @@
 use crate::shared_values::pointer_address::{PointerAddress};
-use crate::shared_values::shared_container::{ExternalSharedContainer};
-use crate::shared_values::shared_container::shared_value_container::SharedValueContainer;
+use crate::shared_values::shared_containers::{ExternalSharedContainer};
+use crate::shared_values::shared_containers::base_shared_value_container::BaseSharedValueContainer;
 use crate::shared_values::shared_containers::SelfOwnedSharedContainer;
 
 /// Wrapper containing either an [SelfOwnedSharedContainer] or an [ExternalSharedContainer].
@@ -13,7 +13,7 @@ pub enum SharedContainerInner {
 impl SharedContainerInner {
 
     /// Get an immutable reference to the contained value
-    pub fn value(&self) -> &SharedValueContainer {
+    pub fn base_shared_container(&self) -> &BaseSharedValueContainer {
         match self {
             SharedContainerInner::EndpointOwned(endpoint_owned) => endpoint_owned.value(),
             SharedContainerInner::External(external) => external.value(),
@@ -21,7 +21,7 @@ impl SharedContainerInner {
     }
 
     /// Get a mutable reference to the contained value
-    pub fn value_mut(&mut self) -> &mut SharedValueContainer {
+    pub fn base_shared_container_mut(&mut self) -> &mut BaseSharedValueContainer {
         match self {
             SharedContainerInner::EndpointOwned(endpoint_owned) => endpoint_owned.value_mut(),
             SharedContainerInner::External(external) => external.value_mut(),
@@ -29,7 +29,7 @@ impl SharedContainerInner {
     }
 
     /// Take the contained value out of the container, consuming the container in the process.
-    pub fn take_value(self) -> SharedValueContainer {
+    pub fn take_value(self) -> BaseSharedValueContainer {
         match self {
             SharedContainerInner::EndpointOwned(owned) => owned.take_value(),
             SharedContainerInner::External(referenced) => referenced.take_value(),

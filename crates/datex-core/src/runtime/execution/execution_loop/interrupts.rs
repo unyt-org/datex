@@ -6,7 +6,7 @@ use crate::{
 
 use crate::{prelude::*, shared_values::shared_containers::ReferenceMutability};
 use crate::global::protocol_structures::instruction_data::{RawInternalPointerAddress, RawLocalPointerAddress, RawRemotePointerAddress};
-use crate::shared_values::shared_container::SharedContainerMutability;
+use crate::shared_values::shared_containers::SharedContainerMutability;
 
 #[derive(Debug)]
 pub enum ExecutionInterrupt {

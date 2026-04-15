@@ -48,7 +48,7 @@ use crate::{
     runtime::execution::context::ExecutionMode,
     shared_values::{
         pointer_address::PointerAddress,
-        shared_container::SharedContainerMutability,
+        shared_containers::SharedContainerMutability,
     },
     time::Instant,
     utils::buffers::{append_u8, append_u16, append_u32},
@@ -65,7 +65,7 @@ use crate::core_compiler::value_compiler::{append_instruction, append_instructio
 use crate::global::protocol_structures::injected_values::{InjectedValueType, LocalInjectedValueType, SharedInjectedValueType};
 use crate::global::protocol_structures::instruction_data::{InstructionBlockData, ModifyStackValue, SetSharedContainerValue, StackIndex};
 use crate::global::protocol_structures::regular_instructions::RegularInstruction;
-use crate::shared_values::shared_container::SharedContainer;
+use crate::shared_values::shared_containers::SharedContainer;
 use crate::shared_values::shared_containers::ReferenceMutability;
 
 pub mod context;
@@ -664,7 +664,7 @@ fn compile_expression(
                                 )?;
                             },
                             ValueAccessType::MoveOrCopy => {
-                                match *shared_container {
+                                match shared_container {
                                     SharedContainer::Owned(shared_container) => {
                                         append_shared_container(
                                             compilation_context.core_context(),
@@ -676,7 +676,7 @@ fn compile_expression(
                                 }
                             },
                             ValueAccessType::Clone => {
-                                let cloned = shared_container.value_container();
+                                let cloned = shared_container.inner().base_shared_container().value_container.clone();
                                 match cloned {
                                     ValueContainer::Local(value) => {
                                         append_value(

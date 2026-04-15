@@ -8,15 +8,15 @@ use crate::{
     prelude::*,
     values::core_values::{
         callable::CallableKind,
-        decimal::{Decimal, typed_decimal::TypedDecimal},
+        decimal::{typed_decimal::TypedDecimal, Decimal},
         endpoint::Endpoint,
-        integer::{Integer, typed_integer::TypedInteger},
-        r#type::Type,
+        integer::{typed_integer::TypedInteger, Integer},
     },
 };
 
 use crate::shared_values::pointer_address::PointerAddress;
 use core::ops;
+use crate::types::r#type::Type;
 
 #[derive(Clone, Debug, PartialEq)]
 /// The different kinds of type expressions in the AST

@@ -3,16 +3,16 @@ use url::Url;
 use crate::{
     collections::HashMap,
     compiler::{
-        CompileOptions,
         error::{
             DetailedCompilerErrors, DetailedCompilerErrorsWithMaybeRichAst,
         },
         parse_datex_script_to_rich_ast_detailed_errors,
         precompiler::precompiled_ast::RichAst,
+        CompileOptions,
     },
     runtime::Runtime,
-    values::core_values::r#type::Type,
 };
+use crate::types::r#type::Type;
 
 /// Represents a file in the compiler workspace with its URL, cached content and AST.
 pub struct WorkspaceFile {

@@ -28,9 +28,7 @@ use crate::{
     compiler::precompiler::precompiled_ast::{AstMetadata, RichAst},
     libs::core::{get_core_lib_type, CoreLibPointerId},
     prelude::*,
-    shared_values::{
-        pointer_address::{ExternalPointerAddress, PointerAddress},
-    },
+    shared_values::pointer_address::{ExternalPointerAddress, PointerAddress},
     type_inference::{
         error::{
             DetailedTypeErrors, SimpleOrDetailedTypeError, SpannedTypeError,
@@ -44,7 +42,6 @@ use crate::{
         decimal::{typed_decimal::TypedDecimal, Decimal},
         endpoint::Endpoint,
         integer::{typed_integer::TypedInteger, Integer},
-        r#type::{LocalMutability, Type, TypeMetadata},
         text::Text,
     },
     visitor::{
@@ -57,8 +54,9 @@ use crate::{
 };
 use core::{cell::RefCell, ops::Range, panic, str::FromStr};
 use crate::ast::expressions::ValueAccessType;
-use crate::shared_values::shared_container::{ReferenceMutability, SharedContainerOwnership};
-use crate::shared_values::shared_containers::shared_type_container::SharedTypeContainer;
+use crate::shared_values::shared_containers::{ReferenceMutability, SharedContainerOwnership};
+use crate::types::r#type::{Type};
+use crate::types::type_definition::TypeMetadata;
 
 pub mod error;
 pub mod options;
@@ -703,18 +701,14 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
         boolean: &mut bool,
         _: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
-        mark_structural_type(LiteralTypeDefinition::Boolean(Boolean::from(
-            *boolean,
-        )))
+        mark_structural_type(LiteralTypeDefinition::Boolean(*boolean))
     }
     fn visit_text(
         &mut self,
         text: &mut String,
         _: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
-        mark_structural_type(LiteralTypeDefinition::Text(Text::from(
-            text.clone(),
-        )))
+        mark_structural_type(LiteralTypeDefinition::Text(text.clone()))
     }
     fn visit_null(
         &mut self,
@@ -1257,8 +1251,8 @@ mod tests {
             infer_expression_type_with_errors,
         },
         types::{
-            structural_type_definition::StructuralTypeDefinition,
             literal_type_definition::LiteralTypeDefinition,
+            structural_type_definition::StructuralTypeDefinition,
         },
         values::{
             core_value::CoreValue,
@@ -1271,11 +1265,11 @@ mod tests {
                     typed_integer::{IntegerTypeVariant, TypedInteger},
                     Integer,
                 },
-                r#type::{Type, TypeMetadata},
             },
         },
     };
-
+    use crate::types::r#type::{Type};
+    use crate::types::type_definition::TypeMetadata;
 
     /// Infers type errors for the given source code.
     /// Panics if parsing or precompilation succeeds.

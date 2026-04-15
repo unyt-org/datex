@@ -1,6 +1,5 @@
 use crate::{
     prelude::*,
-    shared_values::shared_container::IndexOutOfBoundsError,
     traits::structural_eq::StructuralEq,
     values::{
         core_value::CoreValue,
@@ -12,6 +11,7 @@ use core::{
     ops::{Index, Range},
     result::Result,
 };
+use crate::shared_values::errors::IndexOutOfBoundsError;
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct List(Vec<ValueContainer>);

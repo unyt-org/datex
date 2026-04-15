@@ -3,11 +3,12 @@ use core::cell::RefCell;
 use core::cell::{Ref, RefMut};
 use core::fmt::Display;
 use core::mem;
+use crate::shared_values::errors::SharedValueCreationError;
 use crate::shared_values::pointer_address::{SelfOwnedPointerAddress, ExternalPointerAddress};
-use crate::shared_values::shared_container::{SharedContainerInner, SharedContainerMutability, SharedValueCreationError};
-use crate::shared_values::shared_containers::{SelfOwnedSharedContainer, ReferencedSharedContainer};
+use crate::shared_values::shared_containers::{SelfOwnedSharedContainer, ReferencedSharedContainer, SharedContainerInner, SharedContainerMutability};
 use crate::shared_values::shared_containers::expose_rc_internal::ExposeRcInternal;
-use crate::shared_values::shared_containers::shared_value_container::SharedValueContainer;
+use crate::shared_values::shared_containers::base_shared_value_container::BaseSharedValueContainer;
+use crate::types::r#type::Type;
 use crate::types::structural_type_definition::StructuralTypeDefinition;
 use crate::values::core_value::CoreValue;
 use crate::values::value::Value;
@@ -31,7 +32,7 @@ pub struct OwnedSharedContainer {
 impl OwnedSharedContainer {
 
     /// Creates a new owned container from an [SelfOwnedSharedContainer]
-    pub fn new_from_endpoint_owned_container(container: SelfOwnedSharedContainer) -> Self {
+    pub fn new_from_self_owned_container(container: SelfOwnedSharedContainer) -> Self {
         OwnedSharedContainer {
             inner: Rc::new(RefCell::new(SharedContainerInner::EndpointOwned(container)))
         }
@@ -48,9 +49,9 @@ impl OwnedSharedContainer {
         mutability: SharedContainerMutability,
         address: SelfOwnedPointerAddress
     ) -> Result<Self, SharedValueCreationError> {
-        Ok(OwnedSharedContainer::new_from_endpoint_owned_container(
+        Ok(OwnedSharedContainer::new_from_self_owned_container(
             SelfOwnedSharedContainer::new(
-                SharedValueContainer::try_new(
+                BaseSharedValueContainer::try_new(
                     value_container,
                     allowed_type,
                     mutability,
@@ -69,9 +70,9 @@ impl OwnedSharedContainer {
         mutability: SharedContainerMutability,
         address: SelfOwnedPointerAddress
     ) -> Self {
-        OwnedSharedContainer::new_from_endpoint_owned_container(
+        OwnedSharedContainer::new_from_self_owned_container(
             SelfOwnedSharedContainer::new(
-                SharedValueContainer::new_with_inferred_allowed_type(
+                BaseSharedValueContainer::new_with_inferred_allowed_type(
                     value_container,
                     mutability,
                 ),
@@ -80,17 +81,42 @@ impl OwnedSharedContainer {
         )
     }
 
-    pub fn as_inner(&self) -> Ref<SharedContainerInner> {
+    pub fn inner(&self) -> Ref<SharedContainerInner> {
         self.inner.borrow()
     }
-    pub fn as_inner_mut(&self) -> RefMut<SharedContainerInner> {
+    pub fn inner_mut(&self) -> RefMut<SharedContainerInner> {
         self.inner.borrow_mut()
+    }
+
+    /// Gets a [Ref] to the currently assigned [BaseSharedValueContainer] of the shared container (not resolved recursively)
+    pub fn base_shared_container(&self) -> Ref<BaseSharedValueContainer> {
+        Ref::map(self.inner(), |inner| inner.base_shared_container())
+    }
+
+    /// Gets a [RefMut] to the currently assigned [BaseSharedValueContainer] of the shared container (not resolved recursively)
+    pub fn base_shared_container_mut(&self) -> RefMut<BaseSharedValueContainer> {
+        RefMut::map(self.inner_mut(), |inner| inner.base_shared_container_mut())
+    }
+
+    /// Gets a [Ref] to the currently assigned [ValueContainer] of the shared container (not resolved recursively)
+    pub fn value_container(&self) -> Ref<ValueContainer> {
+        Ref::map(self.base_shared_container(), |base_shared_container| &base_shared_container.value_container)
+    }
+
+    /// Gets a [Ref] to the currently assigned allowed [StructuralTypeDefinition] of the shared container (not resolved recursively)
+    pub fn allowed_type(&self) -> Ref<StructuralTypeDefinition> {
+        Ref::map(self.base_shared_container(), |base_shared_container| &base_shared_container.allowed_type)
+    }
+
+    /// Gets a [RefMut] to the currently assigned [ValueContainer] of the shared container (not resolved recursively)
+    pub fn value_container_mut(&self) -> RefMut<ValueContainer> {
+        RefMut::map(self.base_shared_container_mut(), |base_shared_container| &mut base_shared_container.value_container)
     }
 
     /// Get a [Ref] to the inner [SelfOwnedSharedContainer].
     /// It is guaranteed that the contained [SharedContainerInner] is always a [SharedContainerInner::EndpointOwned].
     pub fn as_self_owned_shared_container(&self) -> Ref<SelfOwnedSharedContainer> {
-        Ref::map(self.as_inner(), |inner| match inner {
+        Ref::map(self.inner(), |inner| match inner {
             SharedContainerInner::EndpointOwned(inner) => inner,
             _ => unreachable!("OwnedSharedContainer must contain an EndpointOwned inner value")
         })
@@ -99,7 +125,7 @@ impl OwnedSharedContainer {
     /// Get a [RefMut] to the inner [SelfOwnedSharedContainer].
     /// It is guaranteed that the contained [SharedContainerInner] is always a [SharedContainerInner::EndpointOwned].
     pub fn as_self_owned_shared_container_mut(&self) -> RefMut<SelfOwnedSharedContainer> {
-        RefMut::map(self.as_inner_mut(), |inner| match inner {
+        RefMut::map(self.inner_mut(), |inner| match inner {
             SharedContainerInner::EndpointOwned(inner) => inner,
             _ => unreachable!("OwnedSharedContainer must contain an EndpointOwned inner value")
         })
@@ -149,12 +175,12 @@ impl OwnedSharedContainer {
         self,
         external_address: ExternalPointerAddress,
     ) {
-        let mut inner = self.as_inner_mut();
+        let mut inner = self.inner_mut();
         // replace previous with null value
         // FIXME: find a more efficient way to do this enum variant swap
         let previous =
             mem::replace(&mut *inner, SharedContainerInner::EndpointOwned(SelfOwnedSharedContainer::new(
-                SharedValueContainer {
+                BaseSharedValueContainer {
                     value_container: ValueContainer::Local(Value {inner: CoreValue::Null, actual_type: Box::new(StructuralTypeDefinition::Unit) }),
                     allowed_type: StructuralTypeDefinition::Unit,
                     observers: Default::default(),

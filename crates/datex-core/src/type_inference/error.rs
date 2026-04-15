@@ -3,8 +3,9 @@ use core::{fmt::Display, ops::Range};
 
 use crate::{
     global::operators::binary::ArithmeticOperator,
-    utils::maybe_action::ErrorCollector, values::core_values::r#type::Type,
+    utils::maybe_action::ErrorCollector,
 };
+use crate::types::r#type::Type;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum TypeError {

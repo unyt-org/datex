@@ -1,4 +1,4 @@
-use crate::values::core_values::r#type::Type;
+use crate::types::r#type::Type;
 
 pub mod expression;
 pub mod type_expression;

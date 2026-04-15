@@ -9,7 +9,6 @@ use crate::{
             decimal::typed_decimal::DecimalTypeVariant,
             integer::typed_integer::IntegerTypeVariant,
             map::Map,
-            r#type::Type,
         },
         value::Value,
         value_container::ValueContainer,
@@ -19,14 +18,14 @@ use crate::{
 use crate::{
     prelude::*,
     shared_values::pointer_address::{ExternalPointerAddress, PointerAddress},
-    values::core_values::r#type::TypeMetadata,
 };
 use core::{cell::RefCell, iter::once, result::Result};
 use datex_macros_internal::LibTypeString;
 use log::info;
 use strum::IntoEnumIterator;
-use crate::shared_values::shared_container::SharedContainerInner;
+use crate::shared_values::shared_containers::SharedContainerInner;
 use crate::shared_values::shared_containers::SharedContainer;
+use crate::types::r#type::{Type, TypeMetadata};
 
 type CoreLibTypes = HashMap<CoreLibPointerId, Type>;
 type CoreLibVals = HashMap<CoreLibPointerId, SharedContainer>;
@@ -491,7 +490,7 @@ fn create_core_type(
         pointer_id.clone(),
         Type::new(
             // &shared type<()>
-            StructuralTypeDefinition::shared_reference(Rc::new(RefCell::new(
+            StructuralTypeDefinition::shared(Rc::new(RefCell::new(
                 SharedTypeContainer::nominal(
                     Type {
                         base_type: base_type_ref,

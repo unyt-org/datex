@@ -6,24 +6,26 @@ use crate::{
         core_value::CoreValue,
         core_values::{
             boolean::Boolean,
-            decimal::{Decimal, typed_decimal::TypedDecimal},
+            decimal::{typed_decimal::TypedDecimal, Decimal},
             endpoint::Endpoint,
-            integer::{Integer, typed_integer::TypedInteger},
+            integer::{typed_integer::TypedInteger, Integer},
             text::Text,
-            r#type::Type,
         },
         value_container::ValueContainer,
     },
 };
 use core::{fmt::Display, hash::Hash, unimplemented};
+use crate::types::r#type::Type;
+use crate::types::structural_type_definition::StructuralTypeDefinition;
+
 #[derive(Debug, Clone, PartialEq, Hash, Eq)]
 pub enum LiteralTypeDefinition {
     Integer(Integer),
     TypedInteger(TypedInteger),
     Decimal(Decimal),
     TypedDecimal(TypedDecimal),
-    Text(Text),       // FIXME #373 use String
-    Boolean(Boolean), // FIXME #374 use bool
+    Text(String),
+    Boolean(bool),
     Endpoint(Endpoint),
     Null,
 }
@@ -43,12 +45,12 @@ impl_from_typed_int!(u8, u16, u32, u64, i8, i16, i32, i64);
 
 impl From<String> for LiteralTypeDefinition {
     fn from(value: String) -> Self {
-        LiteralTypeDefinition::Text(Text::from(value))
+        LiteralTypeDefinition::Text(value)
     }
 }
 impl From<&str> for LiteralTypeDefinition {
     fn from(value: &str) -> Self {
-        LiteralTypeDefinition::Text(Text::from(value))
+        LiteralTypeDefinition::Text(value.to_string())
     }
 }
 
@@ -77,11 +79,11 @@ impl From<Decimal> for LiteralTypeDefinition {
 
 impl From<Text> for LiteralTypeDefinition {
     fn from(value: Text) -> Self {
-        LiteralTypeDefinition::Text(value)
+        LiteralTypeDefinition::Text(value.0)
     }
 }
-impl From<Boolean> for LiteralTypeDefinition {
-    fn from(value: Boolean) -> Self {
+impl From<bool> for LiteralTypeDefinition {
+    fn from(value: bool) -> Self {
         LiteralTypeDefinition::Boolean(value)
     }
 }
@@ -242,6 +244,12 @@ impl Display for LiteralTypeDefinition {
     }
 }
 
+impl From<LiteralTypeDefinition> for StructuralTypeDefinition {
+    fn from(value: LiteralTypeDefinition) -> Self {
+        StructuralTypeDefinition::Literal(value)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::{
@@ -252,11 +260,11 @@ mod tests {
             core_values::{
                 integer::Integer,
                 text::Text,
-                r#type::{Type, TypeMetadata},
             },
             value_container::ValueContainer,
         },
     };
+    use crate::types::r#type::{Type, TypeMetadata};
 
     #[test]
     fn test_structural_type_display() {

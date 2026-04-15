@@ -1,6 +1,8 @@
 use serde::Serialize;
 use crate::serde::Deserialize;
-use crate::shared_values::shared_container::{SharedContainerMutability, SharedContainerOwnership};
+use crate::shared_values::shared_containers::{SharedContainerMutability, SharedContainerOwnership};
+use crate::types::literal_type_definition::LiteralTypeDefinition;
+use crate::types::r#type::Type;
 use crate::types::structural_type_definition::StructuralTypeDefinition;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -44,5 +46,11 @@ impl Default for TypeMetadata {
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct TypeDefinition {
     pub structural_definition: StructuralTypeDefinition,
-    pub metadata: crate::values::core_values::r#type::TypeMetadata,
+    pub metadata: TypeMetadata,
+}
+
+impl From<TypeDefinition> for Type {
+    fn from(x: TypeDefinition) -> Self {
+        Type::Alias(x)
+    }
 }

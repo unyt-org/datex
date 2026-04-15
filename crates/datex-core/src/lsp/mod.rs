@@ -8,7 +8,7 @@ pub mod io;
 
 use crate::{
     ast::expressions::{
-        DatexExpressionData, VariableAccess, ValueAccessType, VariableAssignment,
+        DatexExpressionData, ValueAccessType, VariableAccess, VariableAssignment,
         VariableDeclaration,
     },
     collections::HashMap,
@@ -20,17 +20,17 @@ use crate::{
         variable_declaration_finder::VariableDeclarationFinder,
     },
     runtime::Runtime,
-    values::core_values::r#type::Type,
     visitor::expression::ExpressionVisitor,
 };
 use realhydroper_lsp::{
-    Client, LanguageServer, LspService, Server,
-    jsonrpc::{Error, ErrorCode},
-    lsp_types::*,
+    jsonrpc::{Error, ErrorCode}, lsp_types::*, Client, LanguageServer,
+    LspService,
+    Server,
 };
 
 use crate::prelude::*;
 use futures::io::{AsyncRead, AsyncWrite};
+use crate::types::r#type::Type;
 
 pub struct LanguageServerBackend {
     pub client: Client,
@@ -427,9 +427,7 @@ mod tests {
 
     use super::*;
     use crate::runtime::RuntimeRunner;
-    use tokio::{
-        time::{Duration, timeout},
-    };
+    use tokio::time::{timeout, Duration};
     use tokio::task::LocalSet;
     use crate::lsp::io::{Reader, Writer};
 

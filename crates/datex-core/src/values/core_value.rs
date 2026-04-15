@@ -3,7 +3,7 @@ use core::result::Result;
 use datex_macros_internal::FromCoreValue;
 
 use crate::{
-    libs::core::{CoreLibPointerId, get_core_lib_type_reference},
+    libs::core::{get_core_lib_type_reference, CoreLibPointerId},
     traits::{structural_eq::StructuralEq, value_eq::ValueEq},
     types::structural_type_definition::StructuralTypeDefinition,
     values::{
@@ -11,19 +11,18 @@ use crate::{
             boolean::Boolean,
             callable::Callable,
             decimal::{
-                Decimal,
                 typed_decimal::{DecimalTypeVariant, TypedDecimal},
+                Decimal,
             },
             endpoint::Endpoint,
             integer::{
-                Integer,
                 typed_integer::{IntegerTypeVariant, TypedInteger},
+                Integer,
             },
             list::List,
             map::Map,
             range::Range,
             text::Text,
-            r#type::Type,
         },
         value_container::{ValueContainer, ValueError},
     },
@@ -32,6 +31,7 @@ use core::{
     fmt::{Display, Formatter},
     ops::{Add, AddAssign, Neg, Not, Sub},
 };
+use crate::types::r#type::Type;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, FromCoreValue)]
 pub enum CoreValue {

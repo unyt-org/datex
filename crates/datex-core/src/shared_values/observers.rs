@@ -1,13 +1,13 @@
 use crate::{
     dif::update::{DIFUpdate, DIFUpdateData},
-    shared_values::shared_container::SharedContainerValueOrType,
 };
 
 use crate::prelude::*;
 use core::{fmt::Display, result::Result};
 use std::cell::RefMut;
 use serde::{Deserialize, Serialize};
-use crate::shared_values::shared_containers::shared_value_container::SharedValueContainer;
+use crate::shared_values::shared_containers::base_shared_value_container::BaseSharedValueContainer;
+use crate::shared_values::shared_containers::SharedContainer;
 
 #[derive(Debug)]
 pub enum ObserverError {
@@ -61,7 +61,7 @@ impl Observer {
     }
 }
 
-impl SharedContainerValueOrType {
+impl SharedContainer {
     /// Adds an observer to this reference that will be notified on value changes.
     /// Returns an error if the reference is immutable or a type reference.
     /// The returned u32 is an observer ID that can be used to remove the observer later.
@@ -109,8 +109,8 @@ impl SharedContainerValueOrType {
     /// A type reference or immutable reference will always return an empty list.
     pub fn observers_ids(&self) -> Vec<u32> {
         match &*self.value() {
-            SharedContainerValueOrType::Type(_) => vec![],
-            SharedContainerValueOrType::Value(container) => {
+            SharedContainer::Type(_) => vec![],
+            SharedContainer::Value(container) => {
                 container.observers.keys().cloned().collect()
             }
         }
@@ -130,21 +130,21 @@ impl SharedContainerValueOrType {
     /// Returns an ObserverError if the reference is immutable (or a type container).
     fn ensure_mutable_container(
         &self,
-    ) -> Result<RefMut<SharedValueContainer>, ObserverError> {
+    ) -> Result<RefMut<BaseSharedValueContainer>, ObserverError> {
         if !self.is_mutable() {
             return Err(ObserverError::ImmutableReference);
         }
         Ok(RefMut::map(self.value_mut(), |val| match val {
-            SharedContainerValueOrType::Value(v) => v,
-            SharedContainerValueOrType::Type(_) => unreachable!(), // is never mutable, already checked above
+            SharedContainer::Value(v) => v,
+            SharedContainer::Type(_) => unreachable!(), // is never mutable, already checked above
         }))
     }
 
     /// Notifies all observers of a change represented by the given DIFUpdate.
     pub fn notify_observers(&self, dif: &DIFUpdate) {
         let observer_callbacks: Vec<ObserverCallback> = match &*self.value() {
-            SharedContainerValueOrType::Type(_) => return, // no observers
-            SharedContainerValueOrType::Value(container) => {
+            SharedContainer::Type(_) => return, // no observers
+            SharedContainer::Value(container) => {
                 // Clone observers while holding borrow
                 container
                     .observers
@@ -168,8 +168,8 @@ impl SharedContainerValueOrType {
     /// Check if there are any observers registered
     pub fn has_observers(&self) -> bool {
         match &*self.value() {
-            SharedContainerValueOrType::Type(_) => false,
-            SharedContainerValueOrType::Value(container) => !container.observers.is_empty(),
+            SharedContainer::Type(_) => false,
+            SharedContainer::Value(container) => !container.observers.is_empty(),
         }
     }
 }
@@ -188,7 +188,7 @@ mod tests {
             observers::{
                 ObserveOptions, Observer, ObserverError, TransceiverId,
             },
-            shared_container::{SharedContainerValueOrType, SharedContainerMutability},
+            shared_containers::{SharedContainer, SharedContainerMutability},
         },
         values::{core_values::map::Map, value_container::ValueContainer},
     };
@@ -199,7 +199,7 @@ mod tests {
     /// Returns a Rc<RefCell<Vec<DIFUpdate>>> that contains all observed updates
     /// The caller can borrow this to inspect the updates after performing operations on the reference
     fn record_dif_updates(
-        reference: &SharedContainerValueOrType,
+        reference: &SharedContainer,
         transceiver_id: TransceiverId,
         observe_options: ObserveOptions,
     ) -> Rc<RefCell<Vec<DIFUpdate<'static>>>> {
@@ -222,7 +222,7 @@ mod tests {
 
     #[test]
     fn immutable_reference_observe_fails() {
-        let r = SharedContainerValueOrType::try_boxed_owned(
+        let r = SharedContainer::try_boxed_owned(
             42.into(),
             None,
             EndpointOwnedPointer::NULL,
@@ -234,7 +234,7 @@ mod tests {
             Err(ObserverError::ImmutableReference)
         );
 
-        let r = SharedContainerValueOrType::try_boxed_owned(
+        let r = SharedContainer::try_boxed_owned(
             42.into(),
             None,
             EndpointOwnedPointer::NULL,
@@ -246,7 +246,7 @@ mod tests {
 
     #[test]
     fn observe_and_unobserve() {
-        let r = SharedContainerValueOrType::boxed_owned_mut(42, EndpointOwnedPointer::NULL);
+        let r = SharedContainer::boxed_owned_mut(42, EndpointOwnedPointer::NULL);
         assert!(!r.has_observers());
         let observer_id = r.observe(Observer::new(|_, _| {})).unwrap();
         assert_eq!(observer_id, 0);
@@ -261,7 +261,7 @@ mod tests {
 
     #[test]
     fn observer_ids_incremental() {
-        let r = SharedContainerValueOrType::boxed_owned_mut(42, EndpointOwnedPointer::NULL);
+        let r = SharedContainer::boxed_owned_mut(42, EndpointOwnedPointer::NULL);
         let id1 = r.observe(Observer::new(|_, _| {})).unwrap();
         let id2 = r.observe(Observer::new(|_, _| {})).unwrap();
         assert_eq!(id1, 0);
@@ -276,7 +276,7 @@ mod tests {
     #[test]
     fn observe_replace() {
         let int_ref =
-            SharedContainerValueOrType::boxed_owned_mut(42, EndpointOwnedPointer::NULL);
+            SharedContainer::boxed_owned_mut(42, EndpointOwnedPointer::NULL);
         let observed_updates =
             record_dif_updates(&int_ref, 0, ObserveOptions::default());
 
@@ -301,7 +301,7 @@ mod tests {
     #[test]
     fn observe_replace_same_transceiver() {
         let int_ref =
-            SharedContainerValueOrType::boxed_owned_mut(42, EndpointOwnedPointer::NULL);
+            SharedContainer::boxed_owned_mut(42, EndpointOwnedPointer::NULL);
         let observed_update =
             record_dif_updates(&int_ref, 0, ObserveOptions::default());
 
@@ -317,7 +317,7 @@ mod tests {
     #[test]
     fn observe_replace_same_transceiver_relay_own_updates() {
         let int_ref =
-            SharedContainerValueOrType::boxed_owned_mut(42, EndpointOwnedPointer::NULL);
+            SharedContainer::boxed_owned_mut(42, EndpointOwnedPointer::NULL);
         let observed_update = record_dif_updates(
             &int_ref,
             0,
@@ -346,7 +346,7 @@ mod tests {
 
     #[test]
     fn observe_update_property() {
-        let reference = SharedContainerValueOrType::boxed_owned_mut(
+        let reference = SharedContainer::boxed_owned_mut(
             Map::from(vec![
                 ("a".to_string(), ValueContainer::from(1)),
                 ("b".to_string(), ValueContainer::from(2)),

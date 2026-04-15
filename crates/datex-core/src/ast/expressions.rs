@@ -5,21 +5,20 @@ use crate::{
         type_expressions::TypeExpression,
     },
     global::operators::{
-        ArithmeticUnaryOperator, BinaryOperator, ComparisonOperator,
-        UnaryOperator, assignment::AssignmentOperator,
+        assignment::AssignmentOperator, ArithmeticUnaryOperator, BinaryOperator,
+        ComparisonOperator, UnaryOperator,
     },
     shared_values::{
         pointer_address::PointerAddress,
-        shared_container::SharedContainerMutability,
+        shared_containers::SharedContainerMutability,
     },
     values::{
         core_value::CoreValue,
         core_values,
         core_values::{
-            decimal::{Decimal, typed_decimal::TypedDecimal},
+            decimal::{typed_decimal::TypedDecimal, Decimal},
             endpoint::Endpoint,
-            integer::{Integer, typed_integer::TypedInteger},
-            r#type::{LocalReferenceMutability, Type},
+            integer::{typed_integer::TypedInteger, Integer},
         },
         value::Value,
         value_container::ValueContainer,
@@ -27,7 +26,9 @@ use crate::{
 };
 pub use crate::{prelude::*, values::core_values::callable::CallableKind};
 use core::{fmt::Display, ops, ops::Neg};
-use crate::shared_values::shared_container::ReferenceMutability;
+use crate::shared_values::shared_containers::ReferenceMutability;
+use crate::types::r#type::Type;
+use crate::types::type_definition::LocalReferenceMutability;
 
 #[derive(Clone, Debug)]
 /// An expression in the AST
@@ -339,13 +340,13 @@ pub struct Conditional {
 #[derive(Clone, Debug, PartialEq)]
 pub enum TypeDeclarationKind {
     Nominal,
-    Structural,
+    Alias,
 }
 impl Display for TypeDeclarationKind {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             TypeDeclarationKind::Nominal => core::write!(f, "type"),
-            TypeDeclarationKind::Structural => core::write!(f, "typealias"),
+            TypeDeclarationKind::Alias => core::write!(f, "typealias"),
         }
     }
 }
@@ -354,7 +355,7 @@ impl TypeDeclarationKind {
         matches!(self, TypeDeclarationKind::Nominal)
     }
     pub fn is_structural(&self) -> bool {
-        matches!(self, TypeDeclarationKind::Structural)
+        matches!(self, TypeDeclarationKind::Alias)
     }
 }
 

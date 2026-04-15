@@ -41,7 +41,7 @@ pub fn handle_unary_shared_value_operation(
     Ok(match operator {
         SharedValueUnaryOperator::Unbox => {
             if let ValueContainer::Shared(reference) = value_container {
-                reference.value_container()
+                reference.value_container().clone()
             } else {
                 return Err(ExecutionError::InvalidUnbox);
             }

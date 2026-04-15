@@ -13,8 +13,7 @@ use crate::{
 };
 use crate::runtime::execution::execution_input::ExecutionCallerMetadata;
 use crate::shared_values::pointer_address::PointerAddress;
-use crate::shared_values::shared_container::{SharedContainer, SharedContainerMutability};
-use crate::shared_values::shared_containers::SharedContainerValueOrType;
+use crate::shared_values::shared_containers::{SharedContainer, SharedContainerMutability};
 
 #[tokio::test]
 #[cfg(feature = "compiler")]
@@ -199,18 +198,18 @@ pub async fn test_remote_shared_value_inject_ref() {
             if let ValueContainer::Shared(shared_container) = &result_vec[1] {
                 assert_matches!(
                     shared_container,
-                    SharedContainerValueOrType::Value(SharedContainer::Referenced(..))
+                    SharedContainer::Referenced(..)
                 );
                 assert_matches!(
                     shared_container.pointer_address(),
                     PointerAddress::EndpointOwned(..)
                 );
                 assert_eq!(
-                    shared_container.as_inner().value().mutability,
+                    shared_container.inner().base_shared_container().mutability,
                     SharedContainerMutability::Immutable
                 );
                 assert_eq!(
-                    shared_container.value_container(),
+                    *shared_container.value_container(),
                     ValueContainer::from(Integer::from(42))
                 )
             }
@@ -250,11 +249,11 @@ pub async fn test_remote_shared_value_return(
                     PointerAddress::EndpointOwned(..)
                 );
                 assert_eq!(
-                    shared_container.as_inner().value().mutability,
+                    shared_container.inner().base_shared_container().mutability,
                     mutable_value
                 );
                 assert_eq!(
-                    shared_container.value_container(),
+                    *shared_container.value_container(),
                     ValueContainer::from(Integer::from(42))
                 )
             }
@@ -295,11 +294,11 @@ pub async fn test_remote_shared_roundtrip_move(
                     PointerAddress::EndpointOwned(..)
                 );
                 assert_eq!(
-                    shared_container.as_inner().value().mutability,
+                    shared_container.inner().base_shared_container().mutability,
                     mutable_value
                 );
                 assert_eq!(
-                    shared_container.value_container(),
+                    *shared_container.value_container(),
                     ValueContainer::from(Integer::from(42))
                 )
             }

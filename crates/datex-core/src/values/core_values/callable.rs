@@ -2,9 +2,10 @@ use crate::{
     prelude::*,
     runtime::execution::ExecutionError,
     traits::{apply::Apply, structural_eq::StructuralEq},
-    values::{core_values::r#type::Type, value_container::ValueContainer},
+    values::value_container::ValueContainer,
 };
 use core::fmt::{Display, Formatter};
+use crate::types::r#type::Type;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum CallableKind {

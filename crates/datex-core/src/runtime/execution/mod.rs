@@ -26,7 +26,7 @@ pub use errors::*;
 pub use execution_input::{ExecutionInput, ExecutionOptions};
 pub use stack_dump::*;
 use crate::global::protocol_structures::instruction_data::{RawInternalPointerAddress, RawLocalPointerAddress, RawRemotePointerAddress};
-use crate::shared_values::shared_container::SharedContainerValueOrType;
+use crate::shared_values::shared_containers::SharedContainerValueOrType;
 
 pub mod context;
 mod errors;
@@ -263,7 +263,7 @@ mod tests {
                 execution_input::ExecutionOptions,
             },
         },
-        shared_values::shared_container::{
+        shared_values::shared_containers::{
             SharedContainerValueOrType, SharedContainerMutability,
         },
         traits::{structural_eq::StructuralEq, value_eq::ValueEq},
@@ -281,8 +281,8 @@ mod tests {
     use core::assert_matches;
     use log::{debug, info};
     use crate::runtime::execution::execution_input::ExecutionCallerMetadata;
-    use crate::shared_values::shared_container::SharedContainerInner;
-    use crate::shared_values::shared_containers::shared_value_container::SharedValueContainer;
+    use crate::shared_values::shared_containers::SharedContainerInner;
+    use crate::shared_values::shared_containers::base_shared_value_container::BaseSharedValueContainer;
     use crate::shared_values::shared_containers::{OwnedSharedContainer, ReferencedSharedContainer, SharedContainer};
 
     fn execute_datex_script_debug(
@@ -785,7 +785,7 @@ mod tests {
         assert_value_eq!(result, ValueContainer::from(Integer::from(43)));
         assert_matches!(result, ValueContainer::Shared(..));
         if let ValueContainer::Shared(shared) = &result {
-            assert_eq!(shared.as_inner().value().mutability, SharedContainerMutability::Mutable);
+            assert_eq!(shared.inner().base_shared_container().mutability, SharedContainerMutability::Mutable);
         } else {
             panic!("Expected shared value");
         }

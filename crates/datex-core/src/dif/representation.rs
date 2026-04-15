@@ -29,6 +29,7 @@ use serde::{
     de::{MapAccess, SeqAccess, Visitor},
     ser::{SerializeMap, SerializeSeq},
 };
+use crate::types::structural_type_definition::StructuralTypeDefinition;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum DIFValueRepresentation {
@@ -232,44 +233,21 @@ pub enum DeserializeMapOrArray<T> {
 
 impl DIFTypeRepresentation {
     pub fn from_structural_type_definition(
-        struct_def: &LiteralTypeDefinition,
+        structural_definition: &StructuralTypeDefinition,
     ) -> Self {
-        match struct_def {
-            LiteralTypeDefinition::Null => DIFTypeRepresentation::Null,
-            LiteralTypeDefinition::Boolean(b) => {
-                DIFTypeRepresentation::Boolean(b.as_bool())
-            }
-            LiteralTypeDefinition::Integer(i) => {
-                // FIXME #392: this can overflow
-                DIFTypeRepresentation::Number(i.as_i128().unwrap() as f64)
-            }
-            LiteralTypeDefinition::TypedInteger(i) => {
-                DIFTypeRepresentation::Number(i.as_i128().unwrap() as f64)
-            }
-            LiteralTypeDefinition::Range((start, end)) => {
+        match structural_definition {
+            StructuralTypeDefinition::Range((start, end)) => {
                 DIFTypeRepresentation::Array(vec![
                     DIFType::from_type(start),
                     DIFType::from_type(end),
                 ])
             }
-            LiteralTypeDefinition::Decimal(d) => {
-                DIFTypeRepresentation::Number(d.into_f64())
-            }
-            LiteralTypeDefinition::TypedDecimal(d) => {
-                DIFTypeRepresentation::Number(d.as_f64())
-            }
-            LiteralTypeDefinition::Text(t) => {
-                DIFTypeRepresentation::String(t.0.clone())
-            }
-            LiteralTypeDefinition::Endpoint(endpoint) => {
-                DIFTypeRepresentation::String(endpoint.to_string())
-            }
-            LiteralTypeDefinition::List(arr) => {
+            StructuralTypeDefinition::List(arr) => {
                 DIFTypeRepresentation::Array(
                     arr.iter().map(DIFType::from_type).collect(),
                 )
             }
-            LiteralTypeDefinition::Map(fields) => {
+            StructuralTypeDefinition::Map(fields) => {
                 DIFTypeRepresentation::Map(
                     fields
                         .iter()
@@ -279,6 +257,42 @@ impl DIFTypeRepresentation {
                         .collect(),
                 )
             }
+            StructuralTypeDefinition::Literal(literal_definition) => match literal_definition {
+                LiteralTypeDefinition::Null => DIFTypeRepresentation::Null,
+                LiteralTypeDefinition::Boolean(b) => {
+                    DIFTypeRepresentation::Boolean(b.as_bool())
+                }
+                LiteralTypeDefinition::Integer(i) => {
+                    // FIXME #392: this can overflow
+                    DIFTypeRepresentation::Number(i.as_i128().unwrap() as f64)
+                }
+                LiteralTypeDefinition::TypedInteger(i) => {
+                    DIFTypeRepresentation::Number(i.as_i128().unwrap() as f64)
+                }
+
+                LiteralTypeDefinition::Decimal(d) => {
+                    DIFTypeRepresentation::Number(d.into_f64())
+                }
+                LiteralTypeDefinition::TypedDecimal(d) => {
+                    DIFTypeRepresentation::Number(d.as_f64())
+                }
+                LiteralTypeDefinition::Text(t) => {
+                    DIFTypeRepresentation::String(t.0.clone())
+                }
+                LiteralTypeDefinition::Endpoint(endpoint) => {
+                    DIFTypeRepresentation::String(endpoint.to_string())
+                }
+            },
+            StructuralTypeDefinition::Collection(_) => todo!()
+            StructuralTypeDefinition::Shared(_) => todo!()
+            StructuralTypeDefinition::Type(_) => todo!()
+            StructuralTypeDefinition::Callable(_) => todo!()
+            StructuralTypeDefinition::ImplType(_, _) => todo!()
+            StructuralTypeDefinition::Intersection(_) => todo!()
+            StructuralTypeDefinition::Union(_) => todo!()
+            StructuralTypeDefinition::Unit => todo!()
+            StructuralTypeDefinition::Never => todo!()
+            StructuralTypeDefinition::Unknown => todo!()
         }
     }
 }

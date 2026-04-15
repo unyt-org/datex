@@ -1,36 +1,35 @@
 use crate::{
     ast::{
         expressions::{
-            Apply, BinaryOperation, ComparisonOperation, CreateMut, GetRef,
-            CreateShared, GetSharedRef, DatexExpression,
-            DatexExpressionData, GenericInstantiation, RequestSharedRef,
-            PropertyAccess, PropertyAssignment, RangeDeclaration,
-            RemoteExecution, SlotAssignment, UnaryOperation, Unbox,
+            Apply, BinaryOperation, ComparisonOperation, CreateMut, CreateShared,
+            DatexExpression, DatexExpressionData, GenericInstantiation,
+            GetRef, GetSharedRef, PropertyAccess,
+            PropertyAssignment, RangeDeclaration, RemoteExecution,
+            RequestSharedRef, SlotAssignment, UnaryOperation, Unbox,
             UnboxAssignment, VariableAssignment,
         },
         spanned::Spanned,
     },
     global::operators::{
-        ArithmeticUnaryOperator, AssignmentOperator, BinaryOperator,
-        ComparisonOperator, LogicalUnaryOperator, UnaryOperator,
-        binary::{ArithmeticOperator, BitwiseOperator, LogicalOperator},
+        binary::{ArithmeticOperator, BitwiseOperator, LogicalOperator}, ArithmeticUnaryOperator, AssignmentOperator,
+        BinaryOperator, ComparisonOperator, LogicalUnaryOperator,
+        UnaryOperator,
     },
     parser::{
-        Parser,
         errors::{ParserError, SpannedParserError},
         lexer::{SpannedToken, Token},
+        Parser,
     },
     prelude::*,
     shared_values::{
         pointer_address::PointerAddress,
-        shared_container::SharedContainerMutability,
+        shared_containers::SharedContainerMutability,
     },
-    values::core_values::{
-        error::NumberParseError, r#type::LocalReferenceMutability,
-    },
+    values::core_values::error::NumberParseError,
 };
 use crate::ast::expressions::CloneExpression;
 use crate::shared_values::shared_containers::ReferenceMutability;
+use crate::types::type_definition::LocalReferenceMutability;
 
 static UNARY_BP: u8 = 29; // weaker than property access / apply, stronger than all other binary operators
 
@@ -655,9 +654,9 @@ mod tests {
         ast::{
             expressions::{
                 Apply, BinaryOperation, ComparisonOperation, CreateMut,
-                GetRef, CreateShared, GetSharedRef, DatexExpressionData,
-                GenericInstantiation, RequestSharedRef, PropertyAccess,
-                PropertyAssignment, RemoteExecution, Slot, SlotAssignment,
+                CreateShared, DatexExpressionData, GenericInstantiation, GetRef,
+                GetSharedRef, PropertyAccess, PropertyAssignment,
+                RemoteExecution, RequestSharedRef, Slot, SlotAssignment,
                 Statements, UnaryOperation, Unbox, UnboxAssignment,
                 VariableAssignment,
             },
@@ -665,9 +664,9 @@ mod tests {
             type_expressions::TypeExpressionData,
         },
         global::operators::{
-            ArithmeticUnaryOperator, AssignmentOperator, BinaryOperator,
-            ComparisonOperator, LogicalUnaryOperator, UnaryOperator,
-            binary::{ArithmeticOperator, BitwiseOperator, LogicalOperator},
+            binary::{ArithmeticOperator, BitwiseOperator, LogicalOperator}, ArithmeticUnaryOperator, AssignmentOperator,
+            BinaryOperator, ComparisonOperator, LogicalUnaryOperator,
+            UnaryOperator,
         },
         parser::{
             errors::ParserError,
@@ -676,11 +675,11 @@ mod tests {
         prelude::*,
         shared_values::{
             pointer_address::PointerAddress,
-            shared_container::SharedContainerMutability,
+            shared_containers::SharedContainerMutability,
         },
-        values::core_values::r#type::LocalReferenceMutability,
     };
     use crate::shared_values::shared_containers::ReferenceMutability;
+    use crate::types::type_definition::LocalReferenceMutability;
 
     #[test]
     fn parse_simple_binary_expression() {

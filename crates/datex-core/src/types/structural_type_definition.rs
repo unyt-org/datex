@@ -4,15 +4,16 @@ use crate::{
         collection_type_definition::CollectionTypeDefinition,
         literal_type_definition::LiteralTypeDefinition,
     },
-    values::core_values::{callable::CallableSignature, r#type::Type},
+    values::core_values::callable::CallableSignature,
 };
 use core::{fmt::Display, hash::Hash, prelude::rust_2024::*};
-
+use std::ops::Deref;
 use crate::{
     prelude::*, shared_values::pointer_address::PointerAddress,
-    values::core_values::r#type::TypeMetadata,
 };
 use crate::shared_values::shared_containers::SharedContainerContainingType;
+use crate::types::r#type::Type;
+use crate::types::type_definition::{TypeDefinition, TypeMetadata};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StructuralTypeDefinition {
@@ -73,7 +74,7 @@ impl Hash for StructuralTypeDefinition {
                 value.hash(state);
             }
             StructuralTypeDefinition::Shared(reference) => {
-                reference.borrow().hash(state);
+                reference.hash(state);
             }
             StructuralTypeDefinition::Type(value) => {
                 value.hash(state);
@@ -119,7 +120,7 @@ impl Display for StructuralTypeDefinition {
             StructuralTypeDefinition::Collection(value) => core::write!(f, "{}", value),
             StructuralTypeDefinition::Literal(value) => core::write!(f, "{}", value),
             StructuralTypeDefinition::Shared(reference) => {
-                core::write!(f, "{}", reference.borrow())
+                core::write!(f, "{}", reference.deref())
             }
             StructuralTypeDefinition::Type(ty) => core::write!(f, "{}", ty),
             StructuralTypeDefinition::Unit => core::write!(f, "()"),
@@ -136,7 +137,7 @@ impl Display for StructuralTypeDefinition {
             StructuralTypeDefinition::Union(types) => {
                 let is_level_zero = types.iter().all(|t| {
                     core::matches!(
-                        t.type_definition,
+                        t.definition().structural_definition,
                         StructuralTypeDefinition::Literal(_)
                             | StructuralTypeDefinition::Shared(_)
                     )
@@ -219,18 +220,32 @@ impl StructuralEq for StructuralTypeDefinition {
 }
 
 impl StructuralTypeDefinition {
-    /// Creates a new structural type.
-    pub fn structural(
-        structural_type: impl Into<LiteralTypeDefinition>,
-    ) -> Self {
-        StructuralTypeDefinition::Literal(structural_type.into())
+
+    /// Calls the provided callback with a reference to the recursively collapsed inner [StructuralTypeDefinition] value
+    pub fn with_collapsed_structural_type_definition<R>(&self, f: impl FnOnce(&StructuralTypeDefinition) -> R) -> R {
+        match self {
+            StructuralTypeDefinition::Shared(reference) =>
+                // collapse shared container to inner Type
+                reference.with_collapsed_type_value(|ty| {
+                    // collapse Type definition to inner StructuralTypeDefinition
+                    ty.definition().structural_definition.with_collapsed_structural_type_definition(f)
+                }),
+            _ => f(self)
+        }
     }
 
-    /// Creates a new structural list type.
+    /// Creates a new literal type.
+    pub fn literal(
+        literal_type: impl Into<LiteralTypeDefinition>,
+    ) -> Self {
+        StructuralTypeDefinition::Literal(literal_type.into())
+    }
+
+    /// Creates a new list type.
     pub fn list(element_types: Vec<Type>) -> Self {
-        StructuralTypeDefinition::Literal(LiteralTypeDefinition::List(
+        StructuralTypeDefinition::List(
             element_types,
-        ))
+        )
     }
 
     /// Creates a new union type.
@@ -251,8 +266,8 @@ impl StructuralTypeDefinition {
         StructuralTypeDefinition::Intersection(types)
     }
 
-    /// Creates a new reference type.
-    pub fn shared_reference(
+    /// Creates a new shared type.
+    pub fn shared(
         reference: SharedContainerContainingType,
     ) -> Self {
         StructuralTypeDefinition::Shared(reference)
@@ -267,21 +282,21 @@ impl StructuralTypeDefinition {
     pub fn impl_type(ty: impl Into<Type>, impls: Vec<PointerAddress>) -> Self {
         StructuralTypeDefinition::ImplType(Box::new(ty.into()), impls)
     }
+}
 
-    pub fn into_type(self, prefix: TypeMetadata) -> Type {
-        Type {
-            type_definition: self,
-            base_type: None,
-            metadata: prefix,
+impl From<StructuralTypeDefinition> for TypeDefinition {
+    fn from(structural_definition: StructuralTypeDefinition) -> Self {
+        TypeDefinition {
+            structural_definition,
+            metadata: TypeMetadata::default(),
         }
     }
 }
 
-impl From<StructuralTypeDefinition> for Type {
-    fn from(type_definition: StructuralTypeDefinition) -> Self {
-        Type {
-            type_definition,
-            base_type: None,
+impl From<LiteralTypeDefinition> for TypeDefinition {
+    fn from(literal_definition: LiteralTypeDefinition) -> Self {
+        TypeDefinition {
+            structural_definition: literal_definition.into(),
             metadata: TypeMetadata::default(),
         }
     }

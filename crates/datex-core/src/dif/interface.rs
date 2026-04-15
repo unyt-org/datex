@@ -8,7 +8,7 @@ use crate::{
     runtime::execution::ExecutionError,
     shared_values::{
         observers::{ObserveOptions, ObserverError, TransceiverId},
-        shared_container::{
+        shared_containers::{
             AccessError, AssignmentError, SharedContainerMutability,
             SharedValueCreationError, TypeError,
         },

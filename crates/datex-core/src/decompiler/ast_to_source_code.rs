@@ -16,12 +16,10 @@ use crate::prelude::*;
 use alloc::format;
 use core::fmt::{self};
 
-use crate::{
-    decompiler::{FormattingMode, FormattingOptions, IndentType},
-    values::core_values::r#type::LocalReferenceMutability,
-};
+use crate::decompiler::{FormattingMode, FormattingOptions, IndentType};
 use crate::ast::expressions::{UnboxSlotAssignment, ValueAccessType};
 use crate::shared_values::shared_containers::ReferenceMutability;
+use crate::types::type_definition::LocalReferenceMutability;
 
 #[derive(Clone, Default)]
 pub enum BraceStyle {
@@ -889,8 +887,8 @@ mod tests {
             spanned::Spanned,
             type_expressions::TypeExpressionData,
         },
-        decompiler::options::FormattingOptions,
-        global::operators::assignment::AssignmentOperator,
+        decompiler::options::FormattingOptions
+        ,
         parser::Parser,
         values::core_values::decimal::Decimal,
     };

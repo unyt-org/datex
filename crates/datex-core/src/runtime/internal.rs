@@ -44,7 +44,7 @@ use crate::runtime::execution::execution_input::ExecutionCallerMetadata;
 use crate::runtime::execution::InvalidProgramError;
 use crate::runtime::request_move::compile_request_move;
 use crate::shared_values::pointer_address::{SelfOwnedPointerAddress, PointerAddress, ExternalPointerAddress};
-use crate::shared_values::shared_container::{SharedContainerValueOrType, SharedContainerInner, SharedContainerMutability};
+use crate::shared_values::shared_containers::{SharedContainerValueOrType, SharedContainerInner, SharedContainerMutability};
 use crate::values::core_value::CoreValue;
 use crate::values::value::Value;
 

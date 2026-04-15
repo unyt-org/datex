@@ -2,7 +2,7 @@ use crate::{
     dxb_parser::body::DXBParserError,
     network::com_hub::network_response::ResponseError,
     runtime::execution::execution_loop::state::ExecutionLoopState,
-    shared_values::shared_container::{
+    shared_values::errors::{
         AccessError, AssignmentError, SharedValueCreationError,
     },
     types::error::IllegalTypeError,
@@ -74,6 +74,7 @@ pub enum ExecutionError {
     InvalidUnbox,
     InvalidTypeCast,
     ExpectedTypeValue,
+    InvalidSharedValueType,
     ExpectedSharedValue,
     ExpectedOwnedSharedValue,
     MutableReferenceToNonMutableValue,
@@ -179,6 +180,9 @@ impl Display for ExecutionError {
             }
             ExecutionError::ExpectedTypeValue => {
                 core::write!(f, "Expected a type value")
+            }
+            ExecutionError::InvalidSharedValueType => {
+                core::write!(f, "Invalid shared value type")
             }
             ExecutionError::AccessError(err) => {
                 core::write!(f, "Access error: {err}")

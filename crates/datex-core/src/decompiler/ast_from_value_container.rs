@@ -8,11 +8,11 @@ use crate::{
         },
     },
     types::{
-        structural_type_definition::StructuralTypeDefinition,
         literal_type_definition::LiteralTypeDefinition,
+        structural_type_definition::StructuralTypeDefinition,
     },
     values::{
-        core_value::CoreValue, core_values::r#type::Type, value::Value,
+        core_value::CoreValue, value::Value,
         value_container::ValueContainer,
     },
 };
@@ -23,6 +23,9 @@ use crate::{
     prelude::*,
 };
 use alloc::format;
+use crate::shared_values::shared_containers::SharedContainer;
+use crate::types::r#type::Type;
+use crate::types::type_definition::TypeDefinition;
 
 impl From<&ValueContainer> for DatexExpressionData {
     /// Converts a ValueContainer into a DatexExpression AST.
@@ -31,19 +34,17 @@ impl From<&ValueContainer> for DatexExpressionData {
         match value {
             ValueContainer::Local(value) => value_to_datex_expression(value),
             ValueContainer::Shared(shared) => {
-                let reference_mutability =
-                    shared.reference_mutability.clone();
-                match reference_mutability {
-                    Some(reference_mutability) => {
+                match shared {
+                    SharedContainer::Referenced(referenced_container) => {
                         DatexExpressionData::GetSharedRef(GetSharedRef {
-                            mutability: reference_mutability,
+                            mutability: referenced_container.reference_mutability(),
                             expression: Box::new(
                                 DatexExpressionData::CreateShared(
                                     CreateShared {
-                                        mutability: shared.mutability(),
+                                        mutability: referenced_container.container_mutability(),
                                         expression: Box::new(
                                             DatexExpressionData::from(
-                                                &shared.value_container(),
+                                                &*shared.value_container()
                                             )
                                             .with_default_span(),
                                         ),
@@ -53,11 +54,11 @@ impl From<&ValueContainer> for DatexExpressionData {
                             ),
                         })
                     }
-                    _ => DatexExpressionData::CreateShared(CreateShared {
-                        mutability: shared.mutability(),
+                    SharedContainer::Owned(owned_container) => DatexExpressionData::CreateShared(CreateShared {
+                        mutability: owned_container.container_mutability(),
                         expression: Box::new(
                             DatexExpressionData::from(
-                                &shared.value_container(),
+                                &*owned_container.value_container(),
                             )
                             .with_default_span(),
                         ),
@@ -170,7 +171,18 @@ fn value_to_datex_expression(value: &Value) -> DatexExpressionData {
 }
 
 fn type_to_type_expression(type_value: &Type) -> TypeExpression {
-    match &type_value.type_definition {
+    // TODO: handle nominal types
+    type_definition_to_type_expression(&type_value.definition())
+}
+
+fn type_definition_to_type_expression(type_value: &TypeDefinition) -> TypeExpression {
+    // TODO: handle type metadata
+    structural_type_definition_to_type_expression(&type_value.structural_definition)
+}
+
+
+fn structural_type_definition_to_type_expression(type_definition: &StructuralTypeDefinition) -> TypeExpression {
+    match type_definition {
         StructuralTypeDefinition::Literal(struct_type) => match struct_type {
             LiteralTypeDefinition::Integer(integer) => {
                 TypeExpressionData::Integer(integer.clone()).with_default_span()
@@ -199,21 +211,21 @@ fn type_to_type_expression(type_value: &Type) -> TypeExpression {
             LiteralTypeDefinition::Null => {
                 TypeExpressionData::Null.with_default_span()
             }
-            LiteralTypeDefinition::Range((start_type, end_type)) => {
-                let x = type_to_type_expression(start_type);
-                let y = type_to_type_expression(end_type);
-                TypeExpressionData::Range(RangeTypeExpr {
-                    start: Box::new(x),
-                    end: Box::new(y),
-                })
-                .with_default_span()
-            }
             _ => TypeExpressionData::Text(format!(
                 "[[STRUCTURAL TYPE {:?}]]",
                 struct_type
             ))
-            .with_default_span(),
+                .with_default_span(),
         },
+        StructuralTypeDefinition::Range((start_type, end_type)) => {
+            let x = type_to_type_expression(start_type);
+            let y = type_to_type_expression(end_type);
+            TypeExpressionData::Range(RangeTypeExpr {
+                start: Box::new(x),
+                end: Box::new(y),
+            })
+                .with_default_span()
+        }
         StructuralTypeDefinition::Union(union_types) => TypeExpressionData::Union(Union(
             union_types
                 .iter()
@@ -234,7 +246,7 @@ fn type_to_type_expression(type_value: &Type) -> TypeExpression {
         StructuralTypeDefinition::Shared(type_reference) => {
             // try to resolve to core lib value
             if let Ok(core_lib_type) = CoreLibPointerId::try_from(
-                &type_reference.borrow().pointer().address(),
+                &type_reference.pointer_address(),
             ) {
                 TypeExpressionData::Identifier(core_lib_type.to_string())
                     .with_default_span()
@@ -244,7 +256,7 @@ fn type_to_type_expression(type_value: &Type) -> TypeExpression {
         }
         _ => TypeExpressionData::Text(format!(
             "[[TYPE {:?}]]",
-            type_value.type_definition
+            type_definition
         ))
         .with_default_span(),
     }
@@ -260,8 +272,8 @@ mod tests {
         },
         values::{
             core_values::{
-                decimal::{Decimal, typed_decimal::TypedDecimal},
-                integer::{Integer, typed_integer::TypedInteger},
+                decimal::{typed_decimal::TypedDecimal, Decimal},
+                integer::{typed_integer::TypedInteger, Integer},
                 range::Range,
             },
             value::Value,
@@ -269,7 +281,7 @@ mod tests {
         },
     };
 
-    use crate::{prelude::*, values::core_values};
+    use crate::prelude::*;
     #[test]
     fn test_integer_to_ast() {
         let value = ValueContainer::from(Integer::from(42));

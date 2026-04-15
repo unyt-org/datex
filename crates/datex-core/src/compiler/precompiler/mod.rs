@@ -31,7 +31,6 @@ use crate::{
     libs::core::CoreLibPointerId,
     types::structural_type_definition::StructuralTypeDefinition,
     utils::maybe_action::{collect_or_pass_error, ErrorCollector, MaybeAction},
-    values::core_values::r#type::{Type, TypeMetadata},
     visitor::{
         expression::{visitable::ExpressionVisitResult, ExpressionVisitor},
         type_expression::{
@@ -46,6 +45,9 @@ use scope::NewScopeType;
 use scope_stack::PrecompilerScopeStack;
 use crate::ast::expressions::{CloneExpression, GetSharedRef, Unbox, UnboxAssignment, ValueAccessType};
 use crate::shared_values::shared_containers::ReferenceMutability;
+use crate::types::nominal_type_definition::NominalTypeDefinition;
+use crate::types::r#type::{Type};
+use crate::types::type_definition::{TypeDefinition, TypeMetadata};
 
 pub struct Precompiler<'a> {
     ast_metadata: Rc<RefCell<AstMetadata>>,
@@ -269,23 +271,18 @@ impl<'a> Precompiler<'a> {
         let type_id =
             self.add_new_variable(data.name.clone(), VariableShape::Type);
 
-        let reference = match data.kind {
+        let type_def = match data.kind {
             TypeDeclarationKind::Nominal => {
-                Rc::new(RefCell::new(SharedTypeContainer::nominal(
-                    Type::UNIT,
-                    NominalTypeDeclaration::from(data.name.clone()),
-                )))
+                Type::Nominal(NominalTypeDefinition::new_base(
+                    StructuralTypeDefinition::Unknown.into(),
+                    data.name.clone()
+                ))
+            },
+            TypeDeclarationKind::Alias => {
+                Type::Alias(StructuralTypeDefinition::Unknown.into())
             }
-            TypeDeclarationKind::Structural => Rc::new(RefCell::new(
-                SharedTypeContainer::anonymous(Type::UNIT),
-            )),
         };
 
-        // register placeholder ref in metadata
-        let type_def = Type::new(
-            StructuralTypeDefinition::shared_reference(reference),
-            TypeMetadata::default(),
-        );
         {
             self.ast_metadata
                 .borrow_mut()
@@ -746,14 +743,13 @@ mod tests {
         parser::Parser,
         shared_values::{
             pointer_address::PointerAddress,
-            shared_container::SharedContainerMutability,
+            shared_containers::SharedContainerMutability,
         },
-        values::core_values::{
-            integer::Integer, r#type::LocalReferenceMutability,
-        },
+        values::core_values::integer::Integer,
     };
     use core::assert_matches;
     use crate::ast::expressions::CreateShared;
+    use crate::types::type_definition::LocalReferenceMutability;
     use crate::values::core_values::endpoint::Endpoint;
 
     fn precompile(

@@ -1,7 +1,33 @@
 use core::fmt::Display;
 use crate::values::core_values::map::MapAccessError;
-use crate::values::core_values::r#type::Type;
+use crate::types::r#type::Type;
 use crate::values::value_container::ValueContainer;
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum SharedValueCreationError {
+    InvalidType,
+    MutabilityMismatch,
+}
+
+impl Display for SharedValueCreationError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            SharedValueCreationError::InvalidType => {
+                write!(
+                    f,
+                    "Cannot create shared value from value container: invalid type"
+                )
+            }
+            SharedValueCreationError::MutabilityMismatch => {
+                write!(
+                    f,
+                    "Cannot create mutable shared value for immutable value"
+                )
+            }
+        }
+    }
+}
+
 
 #[derive(Debug)]
 pub struct IndexOutOfBoundsError {

@@ -27,6 +27,7 @@ use crate::{
     prelude::*,
     runtime::execution::{
         execution_loop::{
+            internal_slots::{get_internal_slot_value, get_stack_value},
             interrupts::{
                 ExecutionInterrupt, ExternalExecutionInterrupt,
                 InterruptProvider,
@@ -37,7 +38,6 @@ use crate::{
                 set_property,
             },
             runtime_value::RuntimeValue,
-            internal_slots::{get_internal_slot_value, get_stack_value},
             state::RuntimeExecutionState,
         }, macros::{
             interrupt, interrupt_with_maybe_value, interrupt_with_value,
@@ -47,12 +47,12 @@ use crate::{
         InvalidProgramError,
     },
     shared_values::{
-        shared_containers::ReferenceMutability, pointer_address::PointerAddress,
-        shared_container::SharedContainerValueOrType,
+        pointer_address::PointerAddress,
+        shared_containers::ReferenceMutability,
     },
     types::{
-        structural_type_definition::StructuralTypeDefinition,
         literal_type_definition::LiteralTypeDefinition,
+        structural_type_definition::StructuralTypeDefinition,
     }
     ,
     values::{
@@ -62,7 +62,6 @@ use crate::{
             integer::typed_integer::TypedInteger,
             list::List,
             map::{Map, MapKey},
-            r#type::{Type, TypeMetadata},
         },
         value::Value,
         value_container::{OwnedValueKey, ValueContainer},
@@ -70,17 +69,18 @@ use crate::{
 };
 use alloc::rc::Rc;
 use core::cell::RefCell;
-use crate::global::protocol_structures::injected_values::{InjectedValueDeclaration, InjectedValueType, SharedInjectedValueType};
 use crate::global::protocol_structures::instruction_data::{ModifyStackValue, UnboundedStatementsData};
 use crate::global::protocol_structures::instructions::{Instruction, NestedInstructionResolutionStrategy};
 use crate::global::protocol_structures::regular_instructions::RegularInstruction;
 use crate::global::protocol_structures::type_instructions::TypeInstruction;
 use crate::core_compiler::injected_values::compile_injected_values;
 use crate::runtime::execution::macros::interrupt_with_values;
-use crate::shared_values::pointer::ExternalPointer;
 use crate::shared_values::pointer_address::ExternalPointerAddress;
-use crate::shared_values::shared_container::{SharedContainerInner, SharedContainerMutability};
-use crate::values::borrowed_value_container::BorrowedValueContainer;
+use crate::shared_values::shared_containers::{SelfOwnedSharedContainer, SharedContainerInner, SharedContainerMutability};
+use crate::shared_values::shared_containers::{ExternalSharedContainer, OwnedSharedContainer, ReferencedSharedContainer, SharedContainer};
+use crate::shared_values::shared_containers::base_shared_value_container::BaseSharedValueContainer;
+use crate::types::r#type::{Type};
+use crate::types::type_definition::{TypeDefinition, TypeMetadata};
 
 #[derive(Debug)]
 enum CollectedExecutionResult {
@@ -427,7 +427,7 @@ pub fn inner_execution_loop(
                                 let value = yield_unwrap!(state.stack.get_stack_value(index));
                                 match value {
                                     ValueContainer::Shared(container) => Some(RuntimeValue::ValueContainer(
-                                        ValueContainer::Shared(container.derive_reference())
+                                        ValueContainer::Shared(SharedContainer::Referenced(container.derive_immutable_reference()))
                                     )),
                                     _ => return yield Err(ExecutionError::ExpectedSharedValue)
                                 }
@@ -436,13 +436,13 @@ pub fn inner_execution_loop(
                                 let value = yield_unwrap!(state.stack.get_stack_value(index));
                                 match value {
                                     ValueContainer::Shared(container) => Some(RuntimeValue::ValueContainer(
-                                        ValueContainer::Shared(
+                                        ValueContainer::Shared(SharedContainer::Referenced(
                                             yield_unwrap!(
                                                 container
                                                     .try_derive_mutable_reference()
                                                     .map_err(|_| ExecutionError::MutableReferenceToNonMutableValue)
                                             )
-                                        )
+                                        ))
                                     )),
                                     _ => return yield Err(ExecutionError::ExpectedSharedValue)
                                 }
@@ -563,16 +563,10 @@ pub fn inner_execution_loop(
                     {
                         Some(match type_instruction {
                             TypeInstruction::LiteralInteger(integer) => {
-                                Type::structural(
-                                    integer.0,
-                                    TypeMetadata::default(),
-                                )
+                                Type::Alias(LiteralTypeDefinition::Integer(integer.0).into())
                             }
                             TypeInstruction::LiteralText(text_data) => {
-                                Type::structural(
-                                    text_data.0,
-                                    TypeMetadata::default(),
-                                )
+                                Type::Alias(LiteralTypeDefinition::Text(text_data.0).into())
                             }
 
                             TypeInstruction::SharedTypeReference(type_ref) => {
@@ -610,15 +604,16 @@ pub fn inner_execution_loop(
                                         inner: CoreValue::Type(ty),
                                         ..
                                     })) => ty,
-                                    // Type Reference
-                                    Some(ValueContainer::Shared(SharedContainerValueOrType {
-                                        value: SharedContainerInner::Type(type_ref),
-                                        .. })) => Type::new(
-                                        StructuralTypeDefinition::Shared(
-                                            type_ref,
-                                        ),
-                                        metadata,
-                                    ),
+                                    // FIXME:
+                                    // // Type Reference
+                                    // Some(ValueContainer::Shared(SharedContainer {
+                                    //     value: SharedContainerInner::Type(type_ref),
+                                    //     .. })) => Type::new(
+                                    //     StructuralTypeDefinition::Shared(
+                                    //         type_ref,
+                                    //     ),
+                                    //     metadata,
+                                    // ),
                                     _ => {
                                         return yield Err(
                                             ExecutionError::ExpectedTypeValue,
@@ -772,23 +767,23 @@ pub fn inner_execution_loop(
                                     RegularInstruction::CreateShared |
                                     RegularInstruction::CreateSharedMut
                                 ) => {
-                                    let target = yield_unwrap!(
+                                    let value = yield_unwrap!(
                                         collected_results
                                             .pop_cloned_value_container_result_assert_existing(&state)
                                     );
                                     let pointer = state.runtime_internal.memory.borrow_mut().get_new_endpoint_owned_pointer_address();
-
-                                    let shared_container = match instruction {
-                                        RegularInstruction::CreateShared => SharedContainerValueOrType::boxed_owned_immut(
-                                            target,
-                                            pointer,
-                                        ),
-                                        RegularInstruction::CreateSharedMut => SharedContainerValueOrType::boxed_owned_mut(
-                                            target,
-                                            pointer,
-                                        ),
+                                    let mutability = match instruction {
+                                        RegularInstruction::CreateShared => SharedContainerMutability::Mutable,
+                                        RegularInstruction::CreateSharedMut => SharedContainerMutability::Immutable,
                                         _ => unreachable!(),
                                     };
+
+                                    let shared_container = SharedContainer::Owned(OwnedSharedContainer::new_from_self_owned_container(
+                                        SelfOwnedSharedContainer::new(
+                                            BaseSharedValueContainer::new_with_inferred_allowed_type(value, mutability),
+                                            pointer,
+                                        ),
+                                    ));
 
                                     RuntimeValue::ValueContainer(ValueContainer::Shared(shared_container))
                                         .into()
@@ -802,7 +797,9 @@ pub fn inner_execution_loop(
 
                                     // value_container must be a shared value, otherwise we cannot create a reference to it
                                     if let ValueContainer::Shared(shared) = target {
-                                        RuntimeValue::ValueContainer(ValueContainer::Shared(shared.derive_reference()))
+                                        RuntimeValue::ValueContainer(ValueContainer::Shared(
+                                            SharedContainer::Referenced(shared.derive_immutable_reference())
+                                        ))
                                             .into()
                                     } else {
                                         return yield Err(ExecutionError::ExpectedSharedValue);
@@ -820,7 +817,7 @@ pub fn inner_execution_loop(
                                         let mut_ref = yield_unwrap!(
                                             shared.try_derive_mutable_reference().map_err(|_| ExecutionError::MutableReferenceToNonMutableValue)
                                         );
-                                        RuntimeValue::ValueContainer(ValueContainer::Shared(mut_ref))
+                                        RuntimeValue::ValueContainer(ValueContainer::Shared(SharedContainer::Referenced(mut_ref)))
                                             .into()
                                     } else {
                                         return yield Err(ExecutionError::ExpectedSharedValue);
@@ -865,7 +862,7 @@ pub fn inner_execution_loop(
                                         ValueContainer::Local(value) => {
                                             // FIXME #647: only using type definition here, refactor and/or add checks
                                             *value.actual_type =
-                                                ty.type_definition;
+                                                ty.into_definition().structural_definition;
                                         }
                                         _ => panic!(
                                             "Expected ValueContainer::Value for type casting"
@@ -1255,17 +1252,18 @@ pub fn inner_execution_loop(
                                             .pop_cloned_value_container_result_assert_existing(&state)
                                     );
                                     // get referenced pointer from address
-                                    let pointer = ExternalPointer::new(ExternalPointerAddress::remote_for_endpoint(&state.caller_metadata.endpoint, shared_ref.address.bytes));
+                                    let pointer_address = ExternalPointerAddress::remote_for_endpoint(&state.caller_metadata.endpoint, shared_ref.address.bytes);
 
-                                    // unwrap ok since allowed_type in None.
-                                    // TODO: allowed type
-                                    let container = SharedContainerValueOrType::try_boxed_ref(
-                                        value,
-                                        None,
-                                        pointer,
-                                        shared_ref.container_mutability,
-                                        shared_ref.ref_mutability,
-                                    ).unwrap();
+                                    let referenced_container = yield_unwrap!(ReferencedSharedContainer::try_new_external(
+                                        yield_unwrap!(BaseSharedValueContainer::try_new(
+                                            value,
+                                            StructuralTypeDefinition::Unknown,  // TODO: allowed type
+                                            shared_ref.container_mutability,
+                                        )),
+                                        pointer_address,
+                                        shared_ref.ref_mutability
+                                    ).map_err(|err| ExecutionError::InvalidSharedValueType));
+                                    let container = SharedContainer::Referenced(referenced_container);
                                     CollectedExecutionResult::Value(Some(ValueContainer::Shared(container).into()))
                                 },
 
@@ -1287,8 +1285,8 @@ pub fn inner_execution_loop(
                                         );
                                         let base_type =
                                             collected_results.pop_type_result();
-                                        Type::new(
-                                            StructuralTypeDefinition::ImplType(
+                                        Type::Alias(TypeDefinition {
+                                            structural_definition: StructuralTypeDefinition::ImplType(
                                                 Box::new(base_type),
                                                 impl_type_data
                                                     .impls
@@ -1297,23 +1295,20 @@ pub fn inner_execution_loop(
                                                     .collect(),
                                             ),
                                             metadata,
-                                        )
+                                        })
                                         .into()
                                     }
                                     TypeInstruction::Range => {
+                                        // TODO: add metadata everywhere
                                         let type_start =
                                             collected_results.pop_type_result();
                                         let type_end =
                                             collected_results.pop_type_result();
-                                        let x = Type::from(
-                                            StructuralTypeDefinition::structural(
-                                                LiteralTypeDefinition::Range(
-                                                    (
-                                                        Box::new(type_start),
-                                                        Box::new(type_end),
-                                                    ),
-                                                ),
-                                            ),
+                                        let x = Type::Alias(
+                                            StructuralTypeDefinition::Range((
+                                                Box::new(type_start),
+                                                Box::new(type_end),
+                                            )).into(),
                                         );
                                         x.into()
                                     }

@@ -1,5 +1,6 @@
-use crate::{prelude::*, values::core_values::r#type::Type};
+use crate::prelude::*;
 use core::fmt::Display;
+use crate::types::r#type::Type;
 
 // TODO #377: Rename to Generic type definition?
 #[derive(Debug, Clone, PartialEq, Hash, Eq)]

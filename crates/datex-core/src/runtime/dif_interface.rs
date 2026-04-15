@@ -14,7 +14,7 @@ use crate::{
     shared_values::{
         observers::{ObserveOptions, Observer, TransceiverId},
         pointer_address::PointerAddress,
-        shared_container::{SharedContainerValueOrType, SharedContainerMutability},
+        shared_containers::{SharedContainerValueOrType, SharedContainerMutability},
     },
     values::value_container::ValueContainer,
 };
@@ -253,7 +253,7 @@ mod tests {
         runtime::{RuntimeConfig, RuntimeRunner},
         shared_values::{
             observers::ObserveOptions,
-            shared_container::SharedContainerMutability,
+            shared_containers::SharedContainerMutability,
         },
         values::{core_values::map::Map, value_container::ValueContainer},
     };

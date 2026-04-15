@@ -5,16 +5,14 @@ mod ownership;
 mod self_owned_shared_container;
 mod external_shared_container;
 pub mod shared_type_container;
-pub mod shared_value_container;
+pub mod base_shared_value_container;
 mod shared_container_mutability;
 mod expose_rc_internal;
-mod shared_container_containing_type;
 // IMPORTANT: don't expose this module, for internal use only
 
 use alloc::rc::Rc;
 use core::fmt::{Display, Formatter};
-use core::cell::{Ref, RefCell};
-use core::ops::Deref;
+use core::cell::{Ref, RefCell, RefMut};
 use std::hash::{Hash, Hasher};
 pub use owned_shared_container::*;
 pub use referenced_shared_container::*;
@@ -23,22 +21,17 @@ pub use ownership::*;
 pub use self_owned_shared_container::*;
 pub use external_shared_container::*;
 pub use shared_container_mutability::*;
-pub use shared_container_containing_type::*;
-use crate::shared_values::pointer_address::{SelfOwnedPointerAddress, PointerAddress};
+pub use crate::types::shared_container_containing_type::*;
+use crate::shared_values::pointer_address::{PointerAddress, SelfOwnedPointerAddress};
+use crate::shared_values::shared_containers::base_shared_value_container::BaseSharedValueContainer;
 use crate::shared_values::shared_containers::expose_rc_internal::ExposeRcInternal;
 use crate::traits::identity::Identity;
 use crate::traits::structural_eq::StructuralEq;
 use crate::traits::value_eq::ValueEq;
-use crate::values::core_value::CoreValue;
+use crate::types::structural_type_definition::StructuralTypeDefinition;
+use crate::values::value::Value;
 use crate::values::value_container::ValueContainer;
 
-
-impl Deref for SharedContainerContainingType {
-    type Target = SharedContainer;
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
 
 
 /// Top-level wrapper for any owned or referenced shared container,
@@ -71,10 +64,73 @@ impl SharedContainer {
     }
 
 
-    pub fn as_inner(&self) -> Ref<SharedContainerInner> {
+    pub fn inner(&self) -> Ref<SharedContainerInner> {
         match self {
-            SharedContainer::Owned(owned) => owned.as_inner(),
-            SharedContainer::Referenced(referenced) => referenced.as_inner(),
+            SharedContainer::Owned(owned) => owned.inner(),
+            SharedContainer::Referenced(referenced) => referenced.inner(),
+        }
+    }
+
+    pub fn inner_mut(&self) -> RefMut<SharedContainerInner> {
+        match self {
+            SharedContainer::Owned(owned) => owned.inner_mut(),
+            SharedContainer::Referenced(referenced) => referenced.inner_mut(),
+        }
+    }
+    
+    /// Gets a [Ref] to the currently assigned [BaseSharedValueContainer] of the shared container (not resolved recursively)
+    pub fn base_shared_container(&self) -> Ref<BaseSharedValueContainer> {
+        match self {
+            SharedContainer::Owned(owned) => owned.base_shared_container(),
+            SharedContainer::Referenced(referenced) => referenced.base_shared_container(),
+        }
+    }
+
+    /// Gets a [RefMut] to the currently assigned [BaseSharedValueContainer] of the shared container (not resolved recursively)
+    pub fn base_shared_container_mut(&self) -> RefMut<BaseSharedValueContainer> {
+        match self {
+            SharedContainer::Owned(owned) => owned.base_shared_container_mut(),
+            SharedContainer::Referenced(referenced) => referenced.base_shared_container_mut(),
+        }
+    }
+
+    /// Gets a [Ref] to the currently assigned [ValueContainer] of the shared container (not resolved recursively)
+    pub fn value_container(&self) -> Ref<ValueContainer> {
+        match self {
+            SharedContainer::Owned(owned) => owned.value_container(),
+            SharedContainer::Referenced(referenced) => referenced.value_container(),
+        }
+    }
+
+    /// Gets a [Ref] to the currently assigned allowed [StructuralTypeDefinition] of the shared container (not resolved recursively)
+    pub fn allowed_type(&self) -> Ref<StructuralTypeDefinition> {
+        match self {
+            SharedContainer::Owned(owned) => owned.allowed_type(),
+            SharedContainer::Referenced(referenced) => referenced.allowed_type(),
+        }
+    }
+
+    /// Gets a [RefMut] to the currently assigned [ValueContainer] of the shared container (not resolved recursively)
+    pub fn value_container_mut(&self) -> RefMut<ValueContainer> {
+        match self {
+            SharedContainer::Owned(owned) => owned.value_container_mut(),
+            SharedContainer::Referenced(referenced) => referenced.value_container_mut(),
+        }
+    }
+    
+    /// Calls the provided callback with a mut reference to the recursively collapsed inner value of the shared container
+    pub fn with_collapsed_value_mut<R>(&self, f: impl FnOnce(&mut Value) -> R) -> R {
+        match &mut self.inner_mut().base_shared_container_mut().value_container {
+            ValueContainer::Local(v) => f(v),
+            ValueContainer::Shared(shared) => shared.with_collapsed_value_mut(f),
+        }
+    }
+
+    /// Calls the provided callback with a reference to the recursively collapsed inner value of the shared container
+    pub fn with_collapsed_value<R>(&self, f: impl FnOnce(&Value) -> R) -> R {
+        match &self.inner().base_shared_container().value_container {
+            ValueContainer::Local(v) => f(v),
+            ValueContainer::Shared(shared) => shared.with_collapsed_value(f),
         }
     }
 
@@ -175,14 +231,14 @@ impl PartialEq for SharedContainer {
 
 impl StructuralEq for SharedContainer {
     fn structural_eq(&self, other: &Self) -> bool {
-        self.as_inner().value().value_container.structural_eq(&other.as_inner().value().value_container)
+        self.inner().base_shared_container().value_container.structural_eq(&other.inner().base_shared_container().value_container)
     }
 }
 
 
 impl ValueEq for SharedContainer {
     fn value_eq(&self, other: &Self) -> bool {
-        self.as_inner().value().value_container.value_eq(&other.as_inner().value().value_container)
+        self.inner().base_shared_container().value_container.value_eq(&other.inner().base_shared_container().value_container)
     }
 }
 

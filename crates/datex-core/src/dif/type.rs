@@ -1,29 +1,27 @@
 use crate::{
-    dif::{DIFConvertible, representation::DIFTypeRepresentation},
+    dif::{representation::DIFTypeRepresentation, DIFConvertible},
     runtime::memory::Memory,
-    shared_values::shared_container::SharedContainerMutability,
+    shared_values::shared_containers::SharedContainerMutability,
     types::{
-        structural_type_definition::StructuralTypeDefinition,
         literal_type_definition::LiteralTypeDefinition,
+        structural_type_definition::StructuralTypeDefinition,
     },
-    values::core_values::r#type::Type,
 };
 
 use crate::{
     prelude::*,
-    shared_values::{
-        pointer_address::PointerAddress,
-    },
-    values::core_values::r#type::{
-        LocalMutability, LocalReferenceMutability, TypeMetadata,
-    },
+    shared_values::pointer_address::PointerAddress,
 };
 use core::{cell::RefCell, prelude::rust_2024::*};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{
-    Deserialize, Serialize, de::IntoDeserializer, ser::SerializeStruct,
+    de::IntoDeserializer, ser::SerializeStruct, Deserialize, Serialize,
 };
 use crate::shared_values::shared_containers::SharedContainerOwnership;
+use crate::types::r#type::{
+    LocalMutability, LocalReferenceMutability, TypeMetadata,
+};
+use crate::types::r#type::Type;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum DIFTypeDefinition {
@@ -374,7 +372,7 @@ impl DIFStructuralTypeDefinition {
 }
 
 impl DIFTypeDefinition {
-    pub fn from_type_definition(type_def: &StructuralTypeDefinition) -> Self {
+    pub fn from_structural_type_definition(type_def: &StructuralTypeDefinition) -> Self {
         match type_def {
             StructuralTypeDefinition::Collection(_collection_def) => {
                 core::todo!("#387 handle collection type conversion");
@@ -720,7 +718,7 @@ impl DIFType {
         DIFType {
             name: None,
             metadata: ty.metadata.clone().into(),
-            type_definition: DIFTypeDefinition::from_type_definition(
+            type_definition: DIFTypeDefinition::from_structural_type_definition(
                 &ty.type_definition,
             ),
         }
@@ -730,7 +728,7 @@ impl DIFType {
         DIFType {
             name: None,
             metadata: DIFTypeMetadata::default(),
-            type_definition: DIFTypeDefinition::from_type_definition(type_def),
+            type_definition: DIFTypeDefinition::from_structural_type_definition(type_def),
         }
     }
 

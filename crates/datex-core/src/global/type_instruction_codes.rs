@@ -1,15 +1,13 @@
 use crate::{
-    shared_values::shared_container::SharedContainerMutability,
+    shared_values::shared_containers::SharedContainerMutability,
     types::structural_type_definition::StructuralTypeDefinition,
 };
 
-use crate::{
-    values::core_values::r#type::{LocalMutability, LocalReferenceMutability},
-};
 use modular_bitfield::Specifier;
 use num_enum::TryFromPrimitive;
 use strum::Display;
 use crate::shared_values::shared_containers::{ReferenceMutability, SharedContainerOwnership};
+use crate::types::type_definition::{LocalMutability, LocalReferenceMutability};
 
 #[allow(non_camel_case_types)]
 #[derive(

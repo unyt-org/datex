@@ -10,9 +10,8 @@ use crate::global::protocol_structures::instruction_data::{ImplTypeData, Integer
 use crate::global::protocol_structures::instructions::NextExpectedInstructions;
 use crate::global::type_instruction_codes::TypeInstructionCode;
 use crate::shared_values::pointer_address::PointerAddress;
-use crate::values::core_values::r#type::TypeMetadata;
 use crate::prelude::*;
-
+use crate::types::type_definition::TypeMetadata;
 
 #[derive(Clone, Debug, PartialEq, BinWrite)]
 #[brw(little)]

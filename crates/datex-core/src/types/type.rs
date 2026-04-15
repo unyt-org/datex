@@ -6,13 +6,13 @@ use crate::{
     },
     prelude::*,
     shared_values::{
-        shared_containers::ReferenceMutability, pointer_address::PointerAddress,
-        shared_container::SharedContainerMutability,
+        pointer_address::PointerAddress, shared_containers::SharedContainerMutability,
+        shared_containers::ReferenceMutability,
     },
     traits::structural_eq::StructuralEq,
     types::{
-        structural_type_definition::StructuralTypeDefinition,
         literal_type_definition::LiteralTypeDefinition,
+        structural_type_definition::StructuralTypeDefinition,
     },
     values::{
         core_value::CoreValue,
@@ -32,8 +32,10 @@ use core::{
     unimplemented,
 };
 use serde::{Deserialize, Serialize};
-use crate::shared_values::shared_container::SharedContainerContainingType;
+use crate::types::shared_container_containing_type::SharedContainerContainingType;
 use crate::shared_values::shared_containers::SharedContainerOwnership;
+use crate::types::nominal_type_definition::NominalTypeDefinition;
+use crate::types::type_definition::TypeDefinition;
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub enum Type {
@@ -41,77 +43,29 @@ pub enum Type {
     Nominal(NominalTypeDefinition),
 }
 
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum LocalReferenceMutability {
-    Mutable,
-    Immutable,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum LocalMutability {
-    Mutable,
-    Immutable,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-/// Combination of &/&mut, '/'mut shared and mut prefixes
-pub enum TypeMetadata {
-    /// Local types can be mut or not, and can optionally be a reference type with an additional reference mutability (e.g. &mut User)
-    Local {
-        mutability: LocalMutability,
-        reference_mutability: Option<LocalReferenceMutability>,
-    },
-    /// Shared types are always (shared or shared mut) and can optionally be a non-owned, reference type
-    /// with an additional reference mutability (e.g. 'mut shared mut User)
-    Shared {
-        mutability: SharedContainerMutability,
-        ownership: SharedContainerOwnership,
-    },
-}
-
-impl Default for TypeMetadata {
-    fn default() -> Self {
-        TypeMetadata::Local {
-            mutability: LocalMutability::Immutable,
-            reference_mutability: None,
-        }
-    }
-}
-
-
-#[derive(Debug, PartialEq, Eq, Clone, Hash)]
-pub struct TypeDefinition {
-    pub structural_definition: StructuralTypeDefinition,
-    pub metadata: TypeMetadata,
-}
-
-#[derive(Debug, PartialEq, Eq, Clone, Hash)]
-pub enum NominalTypeDefinition {
-    Base {
-        definition: TypeDefinition,
-        name: String
-    },
-    Variant {
-        definition: TypeDefinition,
-        base: SharedContainerContainingType,
-        variant_name: String,
-    }
-}
-
-
-impl Hash for Type {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.type_definition.hash(state);
-        self.metadata.hash(state);
-        if let Some(ptr) = &self.base_type {
-            let ptr = Rc::as_ptr(ptr);
-            ptr.hash(state); // hash the address
-        }
-    }
-}
-
 impl Type {
+
+    /// Get the inner [TypeDefinition]
+    pub fn definition(&self) -> &TypeDefinition {
+        match self {
+            Type::Alias(type_def) => type_def,
+            Type::Nominal(nominal_def) => nominal_def.definition(),
+        }
+    }
+
+    /// Convert to the inner [TypeDefinition]
+    pub fn into_definition(self) -> TypeDefinition {
+        match self {
+            Type::Alias(type_def) => type_def,
+            Type::Nominal(nominal_def) => nominal_def.into_definition(),
+        }
+    }
+
+    /// Calls the provided callback with a reference to the recursively collapsed inner [StructuralTypeDefinition] value
+    pub fn with_collapsed_structural_type_definition<R>(&self, f: impl FnOnce(&StructuralTypeDefinition) -> R) -> R {
+        self.definition().structural_definition.with_collapsed_structural_type_definition(f)
+    }
+
     pub fn unit() -> Self {
         get_core_lib_type(CoreLibPointerId::Unit)
     }
@@ -154,46 +108,6 @@ impl Type {
 }
 
 impl Type {
-    pub const UNIT: Type = Type {
-        type_definition: StructuralTypeDefinition::Unit,
-        base_type: None,
-        metadata: TypeMetadata::Local {
-            mutability: LocalMutability::Immutable,
-            reference_mutability: None,
-        },
-    };
-    pub fn is_structural(&self) -> bool {
-        core::matches!(self.type_definition, StructuralTypeDefinition::Literal(_))
-    }
-    pub fn is_union(&self) -> bool {
-        core::matches!(self.type_definition, StructuralTypeDefinition::Union(_))
-    }
-    pub fn is_unit(&self) -> bool {
-        core::matches!(self.type_definition, StructuralTypeDefinition::Unit)
-    }
-    pub fn is_reference(&self) -> bool {
-        core::matches!(self.type_definition, StructuralTypeDefinition::Shared(_))
-    }
-    pub fn inner_reference(&self) -> Option<Rc<RefCell<SharedContainerContainingType>>> {
-        if let StructuralTypeDefinition::Shared(reference) =
-            &self.type_definition
-        {
-            Some(reference.clone())
-        } else {
-            None
-        }
-    }
-
-    pub fn structural_type_definition(
-        &self,
-    ) -> Option<&LiteralTypeDefinition> {
-        if let StructuralTypeDefinition::Literal(s) = &self.type_definition {
-            Some(s)
-        } else {
-            None
-        }
-    }
-
     /// Ownership type for a shared container
     pub fn shared_container_ownership(
         &self,
@@ -238,17 +152,6 @@ impl Type {
 }
 
 impl Type {
-    /// Creates a new Type with the given TypeDefinition and optional ReferenceMutability
-    /// FIXME #607: If the TypeDefinition is a Reference, the ReferenceMutability must be Some,
-    /// otherwise it must be None.
-    pub fn new(type_definition: StructuralTypeDefinition, prefix: TypeMetadata) -> Self {
-        Type {
-            type_definition,
-            base_type: None,
-            metadata: prefix,
-        }
-    }
-
     /// Creates a reference type pointing to the given TypeReference
     pub fn shared_reference(
         type_definition: Rc<RefCell<SharedContainerContainingType>>,
@@ -267,7 +170,7 @@ impl Type {
         prefix: TypeMetadata,
     ) -> Self {
         Type {
-            type_definition: StructuralTypeDefinition::structural(structural_type),
+            type_definition: StructuralTypeDefinition::literal(structural_type),
             base_type: None,
             metadata: prefix,
         }
@@ -682,12 +585,12 @@ mod tests {
         values::{
             core_values::{
                 integer::{typed_integer::TypedInteger, Integer},
-                r#type::{Type, TypeMetadata},
                 text::Text,
             },
             value_container::ValueContainer,
         },
     };
+    use crate::types::r#type::{Type, TypeMetadata};
 
     #[test]
     fn test_match_equal_values() {

@@ -19,8 +19,8 @@ use crate::shared_values::shared_containers::{ReferenceMutability, SharedContain
 use crate::values::core_values::decimal::Decimal;
 use crate::values::core_values::endpoint::{Endpoint, EndpointParsingError};
 use crate::values::core_values::integer::Integer;
-use crate::values::core_values::r#type::TypeMetadata;
 use crate::prelude::*;
+use crate::types::type_definition::TypeMetadata;
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
 #[brw(little)]

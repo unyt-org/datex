@@ -2,7 +2,6 @@ use crate::{
     collections::HashMap,
     prelude::*,
     random::RandomState,
-    shared_values::shared_container::KeyNotFoundError,
     traits::structural_eq::StructuralEq,
     values::{
         core_value::CoreValue,
@@ -17,6 +16,7 @@ use core::{
     result::Result,
 };
 use indexmap::IndexMap;
+use crate::shared_values::errors::KeyNotFoundError;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Map {
@@ -652,9 +652,9 @@ mod tests {
         },
     };
     use crate::shared_values::pointer_address::SelfOwnedPointerAddress;
-    use crate::shared_values::shared_container::SharedContainerMutability;
+    use crate::shared_values::shared_containers::SharedContainerMutability;
     use crate::shared_values::shared_containers::{SelfOwnedSharedContainer, OwnedSharedContainer, SharedContainer};
-    use crate::shared_values::shared_containers::shared_value_container::SharedValueContainer;
+    use crate::shared_values::shared_containers::base_shared_value_container::BaseSharedValueContainer;
 
     #[test]
     fn test_map() {

@@ -6,30 +6,31 @@ use crate::{
     prelude::*,
     runtime::execution::ExecutionError,
     serde::{
-        deserializer::{DatexDeserializer, from_value_container},
+        deserializer::{from_value_container, DatexDeserializer},
         error::DeserializationError,
     },
     shared_values::{
         observers::TransceiverId,
-        shared_container::{AccessError, SharedContainerValueOrType},
     },
     traits::{apply::Apply, value_eq::ValueEq},
     types::structural_type_definition::StructuralTypeDefinition,
-    values::{core_value::CoreValue, core_values::r#type::Type},
+    values::core_value::CoreValue,
 };
 
 use crate::{
     dif::update::DIFUpdateData,
     serde::{error::SerializationError, serializer::to_value_container},
-    values::core_values::r#type::TypeMetadata,
 };
 use core::{
     fmt::Display,
     hash::{Hash, Hasher},
     ops::{Add, FnOnce, Neg, Sub},
 };
-use serde::{Deserialize, de::DeserializeOwned};
+use serde::{de::DeserializeOwned, Deserialize};
+use crate::shared_values::errors::AccessError;
 use crate::shared_values::shared_containers::SharedContainer;
+use crate::types::r#type::{Type};
+use crate::types::type_definition::TypeMetadata;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum ValueError {
@@ -329,7 +330,7 @@ impl ValueContainer {
     ) -> R {
         match self {
             ValueContainer::Local(value) => f(value),
-            ValueContainer::Shared(shared) => shared.with_collapsed_value(f),
+            ValueContainer::Shared(shared) => shared.with_collapsed_value_mut(f),
         }
     }
 
@@ -363,7 +364,7 @@ impl ValueContainer {
     pub fn get_cloned(&self) -> ValueContainer {
         match self {
             ValueContainer::Local(value) => ValueContainer::Local(value.clone()),
-            ValueContainer::Shared(shared) => shared.value_container()
+            ValueContainer::Shared(shared) => shared.value_container().clone(),
         }
     }
 
@@ -429,7 +430,7 @@ impl ValueContainer {
     }
 
     /// Returns the contained SharedContainer if it is a SharedContainer, otherwise returns None.
-    pub fn maybe_shared(&self) -> Option<&SharedContainerValueOrType> {
+    pub fn maybe_shared(&self) -> Option<&SharedContainer> {
         if let ValueContainer::Shared(shared) = self {
             Some(shared)
         } else {
@@ -440,7 +441,7 @@ impl ValueContainer {
     /// Runs a closure with the contained SharedContainer if it is a SharedContainer, otherwise returns None.
     pub fn with_maybe_shared<F, R>(&self, f: F) -> Option<R>
     where
-        F: FnOnce(&SharedContainerValueOrType) -> R,
+        F: FnOnce(&SharedContainer) -> R,
     {
         if let ValueContainer::Shared(shared) = self {
             Some(f(shared))
@@ -450,7 +451,7 @@ impl ValueContainer {
     }
 
     /// Returns a reference to the contained SharedContainer, panics if it is not a SharedContainer.
-    pub fn shared_unchecked(&self) -> &SharedContainerValueOrType {
+    pub fn shared_unchecked(&self) -> &SharedContainer {
         match self {
             ValueContainer::Shared(shared) => shared,
             _ => {
@@ -544,19 +545,19 @@ impl Add<&ValueContainer> for &ValueContainer {
                 lhs + rhs
             }
             (ValueContainer::Shared(lhs), ValueContainer::Shared(rhs)) => {
-                lhs.with_collapsed_value(|lhs| {
-                    rhs.with_collapsed_value(|rhs| {
+                lhs.with_collapsed_value_mut(|lhs| {
+                    rhs.with_collapsed_value_mut(|rhs| {
                         lhs + rhs
                     })
                 })
             }
             (ValueContainer::Local(lhs), ValueContainer::Shared(rhs)) => {
-                rhs.with_collapsed_value(|rhs| {
+                rhs.with_collapsed_value_mut(|rhs| {
                     lhs + rhs
                 })
             }
             (ValueContainer::Shared(lhs), ValueContainer::Local(rhs)) => {
-                lhs.with_collapsed_value(|lhs| {
+                lhs.with_collapsed_value_mut(|lhs| {
                     lhs + rhs
                 })
             }
@@ -581,19 +582,19 @@ impl Sub<&ValueContainer> for &ValueContainer {
                 lhs - rhs
             }
             (ValueContainer::Shared(lhs), ValueContainer::Shared(rhs)) => {
-                lhs.with_collapsed_value(|lhs| {
-                    rhs.with_collapsed_value(|rhs| {
+                lhs.with_collapsed_value_mut(|lhs| {
+                    rhs.with_collapsed_value_mut(|rhs| {
                         lhs - rhs
                     })
                 })
             }
             (ValueContainer::Local(lhs), ValueContainer::Shared(rhs)) => {
-                rhs.with_collapsed_value(|rhs| {
+                rhs.with_collapsed_value_mut(|rhs| {
                     lhs - rhs
                 })
             }
             (ValueContainer::Shared(lhs), ValueContainer::Local(rhs)) => {
-                lhs.with_collapsed_value(|lhs| {
+                lhs.with_collapsed_value_mut(|lhs| {
                     lhs - rhs
                 })
             }
@@ -608,7 +609,7 @@ impl Neg for ValueContainer {
         match self {
             ValueContainer::Local(value) => (-value).map(ValueContainer::Local),
             ValueContainer::Shared(reference) => {
-                reference.with_collapsed_value(|value| {
+                reference.with_collapsed_value_mut(|value| {
                      (-value).map(ValueContainer::Local)
                 })
             }

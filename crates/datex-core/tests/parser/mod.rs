@@ -50,7 +50,7 @@ use datex_core::{
     },
     shared_values::{
         shared_containers::ReferenceMutability, pointer_address::PointerAddress,
-        shared_container::SharedContainerMutability,
+        shared_containers::SharedContainerMutability,
     },
     values::core_values::error::NumberParseError,
 };

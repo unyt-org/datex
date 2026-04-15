@@ -8,24 +8,24 @@ use crate::{
         precompiler::precompiled_ast::VariableMetadata,
     },
     lsp::{
-        LanguageServerBackend, errors::SpannedLSPCompilerError,
-        type_hint_collector::TypeHintCollector,
+        errors::SpannedLSPCompilerError, type_hint_collector::TypeHintCollector,
+        LanguageServerBackend,
     },
     values::core_values::{
-        decimal::{Decimal, typed_decimal::TypedDecimal},
+        decimal::{typed_decimal::TypedDecimal, Decimal},
         endpoint::Endpoint,
-        integer::{Integer, typed_integer::TypedInteger},
-        r#type::Type,
+        integer::{typed_integer::TypedInteger, Integer},
     },
     visitor::{
-        VisitAction, expression::ExpressionVisitor,
-        type_expression::TypeExpressionVisitor,
+        expression::ExpressionVisitor, type_expression::TypeExpressionVisitor,
+        VisitAction,
     },
 };
 use realhydroper_lsp::lsp_types::{
     MessageType, Position, Range, TextDocumentPositionParams,
 };
 use url::Url;
+use crate::types::r#type::Type;
 
 impl LanguageServerBackend {
     pub async fn update_file_contents(&self, url: Url, content: String) {

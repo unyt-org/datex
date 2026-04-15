@@ -300,10 +300,10 @@ fn get_type_if_non_default(
             {
                 None
             } else {
-                Some(DIFTypeDefinition::from_type_definition(type_definition))
+                Some(DIFTypeDefinition::from_structural_type_definition(type_definition))
             }
         }
-        _ => Some(DIFTypeDefinition::from_type_definition(type_definition)),
+        _ => Some(DIFTypeDefinition::from_structural_type_definition(type_definition)),
     }
 }
 

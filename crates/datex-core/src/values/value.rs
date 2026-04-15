@@ -2,7 +2,6 @@ use crate::{
     libs::core::CoreLibPointerId,
     prelude::*,
     runtime::execution::ExecutionError,
-    shared_values::shared_container::AccessError,
     traits::{apply::Apply, structural_eq::StructuralEq, value_eq::ValueEq},
     types::structural_type_definition::StructuralTypeDefinition,
     values::{
@@ -21,6 +20,7 @@ use core::{
     result::Result,
 };
 use log::error;
+use crate::shared_values::errors::AccessError;
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub struct Value {
