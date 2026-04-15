@@ -23,9 +23,10 @@ use core::{cell::RefCell, iter::once, result::Result};
 use datex_macros_internal::LibTypeString;
 use log::info;
 use strum::IntoEnumIterator;
-use crate::shared_values::shared_containers::SharedContainerInner;
+use crate::shared_values::shared_containers::{SharedContainerInner};
 use crate::shared_values::shared_containers::SharedContainer;
-use crate::types::r#type::{Type, TypeMetadata};
+use crate::types::r#type::{Type};
+use crate::types::shared_container_containing_type::SharedContainerContainingType;
 
 type CoreLibTypes = HashMap<CoreLibPointerId, Type>;
 type CoreLibVals = HashMap<CoreLibPointerId, SharedContainer>;
@@ -198,7 +199,7 @@ pub fn get_core_lib_type(id: impl Into<CoreLibPointerId>) -> Type {
 
 pub fn get_core_lib_type_reference(
     id: impl Into<CoreLibPointerId>,
-) -> Rc<RefCell<SharedTypeContainer>> {
+) -> Rc<RefCell<SharedContainerContainingType>> {
     let type_container = get_core_lib_type(id);
     match type_container.type_definition {
         StructuralTypeDefinition::Shared(tr) => tr,
@@ -209,14 +210,14 @@ pub fn get_core_lib_type_reference(
 /// Retrieves either a core library type or value by its CoreLibPointerId.
 pub fn get_core_lib_value(
     id: impl Into<CoreLibPointerId>,
-) -> Option<SharedContainerValueOrType> {
+) -> Option<SharedContainer> {
     let id = id.into();
     with_full_core_lib(|core_lib_types, core_lib_values| {
         // try types first
         if let Some(ty) = core_lib_types.get(&id) {
             match &ty.type_definition {
                 StructuralTypeDefinition::Shared(tr) => Some(
-                    SharedContainerValueOrType {
+                    SharedContainer {
                         value: SharedContainerInner::Type(tr.clone()),
                         reference_mutability: None,
                     },
@@ -403,7 +404,7 @@ pub fn integer_variant(
     )
 }
 
-pub fn print() -> (CoreLibPointerId, SharedContainerValueOrType) {
+pub fn print() -> (CoreLibPointerId, SharedContainer) {
     (
         CoreLibPointerId::Print,
         SharedContainerValueOrType::boxed_owned_with_internal_pointer(

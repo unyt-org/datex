@@ -26,7 +26,7 @@ pub use errors::*;
 pub use execution_input::{ExecutionInput, ExecutionOptions};
 pub use stack_dump::*;
 use crate::global::protocol_structures::instruction_data::{RawInternalPointerAddress, RawLocalPointerAddress, RawRemotePointerAddress};
-use crate::shared_values::shared_containers::SharedContainerValueOrType;
+use crate::shared_values::shared_containers::{ReferencedSharedContainer, SharedContainer};
 
 pub mod context;
 mod errors;
@@ -155,7 +155,7 @@ pub async fn execute_dxb(
                     .request_pointer_move(&caller_metadata.endpoint, pointers)
                     .await?
                     .into_iter()
-                    .map(ValueContainer::Shared)
+                    .map(|v| ValueContainer::Shared(SharedContainer::Owned(v)))
                     .collect();
                 interrupt_provider.provide_result(InterruptResult::ResolvedValues(moved_values));
             }
@@ -187,7 +187,7 @@ fn get_remote_pointer_value(
     runtime_internal: &Rc<RuntimeInternal>,
     address: RawRemotePointerAddress,
     _mutability: ReferenceMutability,
-) -> Result<Option<SharedContainerValueOrType>, ExecutionError> {
+) -> Result<Option<SharedContainer>, ExecutionError> {
     let memory = runtime_internal.memory.borrow();
     let resolved_address =
         memory.get_pointer_address_from_raw_full_address(address);
@@ -201,7 +201,7 @@ fn get_remote_pointer_value(
 fn get_internal_pointer_value(
     runtime_internal: &Rc<RuntimeInternal>,
     address: RawInternalPointerAddress,
-) -> Result<SharedContainerValueOrType, ExecutionError> {
+) -> Result<SharedContainer, ExecutionError> {
     // first try to get from memory
     if let Ok(shared_container) =
         get_internal_pointer_value_from_memory(runtime_internal, &address)
@@ -222,7 +222,7 @@ fn get_internal_pointer_value(
 fn get_internal_pointer_value_from_memory(
     runtime_internal: &Rc<RuntimeInternal>,
     address: &RawInternalPointerAddress,
-) -> Result<SharedContainerValueOrType, ExecutionError> {
+) -> Result<SharedContainer, ExecutionError> {
     let pointer_address = PointerAddress::External(
         ExternalPointerAddress::Builtin(address.id),
     );

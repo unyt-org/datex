@@ -21,7 +21,6 @@ pub use ownership::*;
 pub use self_owned_shared_container::*;
 pub use external_shared_container::*;
 pub use shared_container_mutability::*;
-pub use crate::types::shared_container_containing_type::*;
 use crate::shared_values::pointer_address::{PointerAddress, SelfOwnedPointerAddress};
 use crate::shared_values::shared_containers::base_shared_value_container::BaseSharedValueContainer;
 use crate::shared_values::shared_containers::expose_rc_internal::ExposeRcInternal;

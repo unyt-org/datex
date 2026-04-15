@@ -1177,16 +1177,13 @@ pub fn inner_execution_loop(
 
                                     // store moving pointers
                                     if !moving_containers.is_empty() {
-                                        yield_unwrap!(
-                                            // ensure receiver is single endpoint
-                                            if let CoreValue::Endpoint(single_receiver) = receivers.to_cloned_value().borrow().inner.clone() {
-                                                state.runtime_internal.add_moving_pointers(single_receiver, moving_containers)
-                                                    .map_err(|_| ExecutionError::ExpectedOwnedSharedValue)
-                                            }
-                                            else {
-                                                Err(ExecutionError::MoveToMultipleEndpoints)
-                                            }
-                                        );
+                                        // ensure receiver is single endpoint
+                                        if let CoreValue::Endpoint(single_receiver) = receivers.to_cloned_value().borrow().inner.clone() {
+                                            state.runtime_internal.add_moving_pointers(single_receiver, moving_containers);
+                                        }
+                                        else {
+                                            Err(ExecutionError::MoveToMultipleEndpoints)
+                                        }
                                     }
 
                                     interrupt_with_maybe_value!(

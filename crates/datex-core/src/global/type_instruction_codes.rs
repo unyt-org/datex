@@ -59,6 +59,9 @@ impl From<&StructuralTypeDefinition> for TypeInstructionCode {
                 todo!()
             }
             StructuralTypeDefinition::Type(_) => unreachable!(), // TODO #668: nested types
+            StructuralTypeDefinition::List(_) => todo!(),
+            StructuralTypeDefinition::Map(_) => todo!(),
+            StructuralTypeDefinition::Range(_) => todo!(),
         }
     }
 }

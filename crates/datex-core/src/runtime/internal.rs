@@ -43,8 +43,8 @@ use crate::global::protocol_structures::instruction_data::RawLocalPointerAddress
 use crate::runtime::execution::execution_input::ExecutionCallerMetadata;
 use crate::runtime::execution::InvalidProgramError;
 use crate::runtime::request_move::compile_request_move;
-use crate::shared_values::pointer_address::{SelfOwnedPointerAddress, PointerAddress, ExternalPointerAddress};
-use crate::shared_values::shared_containers::{SharedContainerValueOrType, SharedContainerInner, SharedContainerMutability};
+use crate::shared_values::pointer_address::{SelfOwnedPointerAddress, ExternalPointerAddress};
+use crate::shared_values::shared_containers::{SharedContainerMutability, SharedContainer, OwnedSharedContainer};
 use crate::values::core_value::CoreValue;
 use crate::values::value::Value;
 
@@ -66,7 +66,7 @@ pub struct RuntimeInternal {
         RefCell<HashMap<IncomingEndpointContextSectionId, ExecutionContext>>,
 
     /// list of currently owned shared values that are in the approved for moving to another endpoint
-    pub moving_pointers: RefCell<HashMap<Endpoint, HashMap<SelfOwnedPointerAddress, SharedContainerValueOrType>>>,
+    pub moving_pointers: RefCell<HashMap<Endpoint, HashMap<SelfOwnedPointerAddress, OwnedSharedContainer>>>,
 }
 
 macro_rules! get_execution_context {
@@ -438,7 +438,7 @@ impl RuntimeInternal {
         self: Rc<RuntimeInternal>,
         from_endpoint: &Endpoint,
         pointers: Vec<(SharedContainerMutability, RawLocalPointerAddress)>,
-    ) -> Result<Vec<SharedContainerValueOrType>, ExecutionError> {
+    ) -> Result<Vec<OwnedSharedContainer>, ExecutionError> {
         let pointer_mapping = pointers.into_iter().map(|original| {
             (original, RawLocalPointerAddress { bytes: self.memory.borrow_mut().get_new_endpoint_owned_pointer_address().address})
         }).collect::<Vec<_>>();
@@ -460,11 +460,7 @@ impl RuntimeInternal {
                 let owned_values = pointer_values.into_iter()
                     .zip(pointer_mapping.into_iter())
                     .map(|(value, ((mutability, _), new_address))| {
-                    SharedContainerValueOrType::boxed_owned(
-                        value,
-                        EndpointOwnedPointer::new(SelfOwnedPointerAddress::new(new_address.bytes)),
-                        mutability
-                    )
+                        todo!("call move to local on existing ref if exists?! otherwise create new owned container")
                 }).collect::<Vec<_>>();
                 Ok(owned_values)
             }
@@ -477,22 +473,19 @@ impl RuntimeInternal {
     pub(crate) fn add_moving_pointers(
         &self,
         new_owner: Endpoint,
-        moving_pointers: Vec<SharedContainerValueOrType>,
-    ) -> Result<(), ()> {
-        let pointers = moving_pointers
+        moving_owned_values: Vec<OwnedSharedContainer>,
+    ) {
+        let pointers = moving_owned_values
             .into_iter()
             .map(|pointer| {
-                let address = SelfOwnedPointerAddress::new(pointer.try_get_owned_local_address().ok_or(())?);
-                Ok((address, pointer))
-            })
-            .collect::<Result<Vec<(SelfOwnedPointerAddress, SharedContainerValueOrType)>, ()>>()?;
+                let address = pointer.pointer_address().clone();
+                (address, pointer)
+            });
 
         self.moving_pointers.borrow_mut()
             .entry(new_owner)
             .or_insert_with(HashMap::new)
             .extend(pointers);
-
-        Ok(())
     }
 
     pub(crate) fn handle_pointer_move_to_remote(
@@ -508,8 +501,8 @@ impl RuntimeInternal {
             let new_address = ExternalPointerAddress::remote_for_endpoint(from_endpoint, new.bytes);
             let shared_container = moving_pointers.remove(&original_address).ok_or(ExecutionError::UnauthorizedMove)?;
 
-            let value = shared_container.value_container();
-            shared_container.move_to_remote(new_address).map_err(|_| ExecutionError::UnauthorizedMove)?;
+            let value = shared_container.value_container().clone();
+            shared_container.move_to_external(new_address);
             Ok(value)
         })
             .collect::<Result<Vec<_>, ExecutionError>>()?;

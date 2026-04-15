@@ -188,10 +188,10 @@ fn structural_type_definition_to_type_expression(type_definition: &StructuralTyp
                 TypeExpressionData::Integer(integer.clone()).with_default_span()
             }
             LiteralTypeDefinition::Text(text) => {
-                TypeExpressionData::Text(text.0.clone()).with_default_span()
+                TypeExpressionData::Text(text.clone()).with_default_span()
             }
             LiteralTypeDefinition::Boolean(boolean) => {
-                TypeExpressionData::Boolean(boolean.0).with_default_span()
+                TypeExpressionData::Boolean(boolean).with_default_span()
             }
             LiteralTypeDefinition::Decimal(decimal) => {
                 TypeExpressionData::Decimal(decimal.clone()).with_default_span()

@@ -114,9 +114,10 @@ impl RuntimeInternal {
                 match value {
                     ValueContainer::Shared(shared_container) => {
                         let compiled = compile_shared_container(&shared_container, true);
-                        if shared_container.is_owned() {
-                            self.add_moving_pointers(receiver_endpoint.clone(), vec![shared_container]).unwrap();
-                        }
+                        // FIXME
+                        // if shared_container.is_owned() {
+                        //     self.add_moving_pointers(receiver_endpoint.clone(), vec![shared_container]);
+                        // }
                         compiled.unwrap()
                     },
                     ValueContainer::Local(value) => compile_value(&value).unwrap(),
