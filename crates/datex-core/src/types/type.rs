@@ -70,46 +70,6 @@ impl Type {
             .structural_definition
             .with_collapsed_structural_type_definition(f)
     }
-
-    pub fn unit() -> Self {
-        core_lib_type(CoreLibTypeId::Unit)
-    }
-    pub fn null() -> Self {
-        core_lib_type(CoreLibTypeId::Null)
-    }
-    pub fn never() -> Self {
-        core_lib_type(CoreLibTypeId::Never)
-    }
-    pub fn unknown() -> Self {
-        core_lib_type(CoreLibTypeId::Unknown)
-    }
-    pub fn text() -> Self {
-        core_lib_type(CoreLibTypeId::Text)
-    }
-    pub fn integer() -> Self {
-        core_lib_type(CoreLibTypeId::Integer(None))
-    }
-    pub fn typed_integer(variant: IntegerTypeVariant) -> Self {
-        core_lib_type(CoreLibTypeId::Integer(Some(variant)))
-    }
-    pub fn decimal() -> Self {
-        core_lib_type(CoreLibTypeId::Decimal(None))
-    }
-    pub fn typed_decimal(variant: DecimalTypeVariant) -> Self {
-        core_lib_type(CoreLibTypeId::Decimal(Some(variant)))
-    }
-    pub fn boolean() -> Self {
-        core_lib_type(CoreLibTypeId::Boolean)
-    }
-    pub fn endpoint() -> Self {
-        core_lib_type(CoreLibTypeId::Endpoint)
-    }
-    pub fn ty() -> Self {
-        core_lib_type(CoreLibTypeId::Type)
-    }
-    pub fn range() -> Self {
-        core_lib_type(CoreLibTypeId::Range)
-    }
 }
 
 impl Type {
