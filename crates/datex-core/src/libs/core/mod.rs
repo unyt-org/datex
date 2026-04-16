@@ -2,7 +2,7 @@ use crate::{
     collections::HashMap,
     libs::core::{
         core_lib_id::{CoreLibId, CoreLibIdTrait},
-        type_id::CoreLibBaseTypeId,
+        type_id::{CoreLibBaseTypeId, CoreLibTypeId, CoreLibVariantTypeId},
         value_id::CoreLibValueId,
     },
     runtime::memory::Memory,
@@ -16,7 +16,6 @@ use crate::{
     types::{
         nominal_type_definition::NominalTypeDefinition,
         structural_type_definition::StructuralTypeDefinition,
-        type_definition::TypeDefinition,
     },
     values::{
         core_value::CoreValue,
@@ -64,7 +63,7 @@ fn with_core_lib<R>(handler: impl FnOnce(&CoreLib) -> R) -> R {
     }
 }
 
-pub fn core_lib_type(id: CoreLibBaseTypeId) -> SharedContainerContainingType {
+pub fn core_lib_type(id: CoreLibTypeId) -> SharedContainerContainingType {
     with_core_lib(|entries| unsafe {
         SharedContainerContainingType::new_unchecked(
             SharedContainer::Referenced(
@@ -94,13 +93,19 @@ pub fn load_core_lib(memory: &mut Memory) {
                 memory.register_referenced_shared_container(
                     &entry.clone().into(),
                 );
-                (id.name(), entry)
+                (
+                    id.name(),
+                    ValueContainer::Shared(SharedContainer::Referenced(
+                        entry.clone(),
+                    )),
+                )
             })
             .collect::<Vec<(String, ValueContainer)>>();
-        let core_struct = SharedContainer::new_owned_with_inferred_allowed_type(
-            ValueContainer::Local(Value::from(mapping)),
-            SharedContainerMutability::Immutable,
-            CoreLibValueId::Core.into(),
+        let core_struct = SharedContainer::Referenced(
+            ReferencedSharedContainer::new_immutable_external(
+                Map::from(mapping).into(),
+                CoreLibValueId::Core.into(),
+            ),
         );
         memory.register_referenced_shared_container(
             &core_struct.derive_immutable_reference(),
@@ -118,36 +123,28 @@ pub fn create_core_lib() -> CoreLib {
 /// Creates a new instance of the core library as a ValueContainer
 /// including all core types as properties.
 pub fn create_core_lib_types() -> CoreLib {
-    let integer = create_core_type(CoreLibBaseTypeId::Integer(None));
-    let decimal = create_core_type(CoreLibBaseTypeId::Decimal(None));
-    vec![
-        create_core_type(CoreLibBaseTypeId::Endpoint),
-        create_core_type(CoreLibBaseTypeId::Null),
-        create_core_type(CoreLibBaseTypeId::Boolean),
-        integer.clone(),
-        decimal.clone(),
-        create_core_type(CoreLibBaseTypeId::Type),
-        create_core_type(CoreLibBaseTypeId::Text),
-        create_core_type(CoreLibBaseTypeId::List),
-        create_core_type(CoreLibBaseTypeId::Map),
-        create_core_type(CoreLibBaseTypeId::Range),
-        create_core_type(CoreLibBaseTypeId::Callable),
-        create_core_type(CoreLibBaseTypeId::Unit),
-        create_core_type(CoreLibBaseTypeId::Never),
-        create_core_type(CoreLibBaseTypeId::Unknown),
-    ]
-    .into_iter()
-    .chain(once(integer.clone()))
-    .chain(
-        IntegerTypeVariant::iter()
-            .map(|variant| integer_variant(integer.1.clone(), variant)),
-    )
-    .chain(once(decimal.clone()))
-    .chain(
-        DecimalTypeVariant::iter()
-            .map(|variant| decimal_variant(decimal.1.clone(), variant)),
-    )
-    .collect::<HashMap<CoreLibId, ReferencedSharedContainer>>()
+    CoreLibBaseTypeId::iter()
+        .flat_map(|id| {
+            let type_def = create_core_type(id);
+            CoreLibVariantTypeId::variant_ids(&id)
+                .into_iter()
+                .map(|variant_id| {
+                    create_type(
+                        NominalTypeDefinition::Variant {
+                            definition: StructuralTypeDefinition::Unit.into(),
+                            base: unsafe {
+                                SharedContainerContainingType::new_unchecked(
+                                    type_def.1.clone().into(),
+                                )
+                            },
+                            variant_name: variant_id.variant_name(),
+                        },
+                        CoreLibTypeId::Variant(variant_id),
+                    )
+                })
+                .chain(once(type_def))
+        })
+        .collect::<HashMap<CoreLibId, ReferencedSharedContainer>>()
 }
 
 pub fn create_core_lib_vals() -> HashMap<CoreLibId, ReferencedSharedContainer> {
@@ -158,52 +155,24 @@ pub fn create_core_lib_vals() -> HashMap<CoreLibId, ReferencedSharedContainer> {
 
 type CoreLibTypeDefinition = (CoreLibId, ReferencedSharedContainer);
 
-pub fn decimal_variant(
-    base: SharedContainerContainingType,
-    variant: DecimalTypeVariant,
-) -> CoreLibTypeDefinition {
-    create_type(
-        NominalTypeDefinition::Variant {
-            definition: StructuralTypeDefinition::Unit.into(),
-            base,
-            variant_name: variant.to_string(),
-        },
-        CoreLibBaseTypeId::Decimal(Some(variant)),
-    )
-}
-
 /// Creates a new core lib type via definition and id
 pub fn create_type(
     definition: NominalTypeDefinition,
-    id: CoreLibBaseTypeId,
+    id: CoreLibTypeId,
 ) -> CoreLibTypeDefinition {
     let core_lib_id = CoreLibId::Type(id);
     (
         core_lib_id,
         ReferencedSharedContainer::new_immutable_external(
             Type::Nominal(definition).into(),
-            ExternalPointerAddress::Builtin(id.to_bytes()),
+            id.into(),
         ),
     )
 }
 
-pub fn integer_variant(
-    base: SharedContainerContainingType,
-    variant: IntegerTypeVariant,
-) -> CoreLibTypeDefinition {
-    create_type(
-        NominalTypeDefinition::Variant {
-            definition: StructuralTypeDefinition::Unit.into(),
-            base,
-            variant_name: variant.to_string(),
-        },
-        CoreLibBaseTypeId::Integer(Some(variant)),
-    )
-}
-
-pub fn print() -> (CoreLibValueId, ReferencedSharedContainer) {
+pub fn print() -> (CoreLibId, ReferencedSharedContainer) {
     (
-        CoreLibValueId::Print,
+        CoreLibId::Value(CoreLibValueId::Print),
         ReferencedSharedContainer::new_immutable_external(
             Value::callable(
                 Some("print".to_string()),
@@ -264,7 +233,7 @@ pub fn print() -> (CoreLibValueId, ReferencedSharedContainer) {
                 }),
             )
             .into(),
-            ExternalPointerAddress::from(&CoreLibValueId::Print),
+            ExternalPointerAddress::from(CoreLibValueId::Print),
         ),
     )
 }
@@ -276,7 +245,7 @@ fn create_core_type(pointer_id: CoreLibBaseTypeId) -> CoreLibTypeDefinition {
             definition: StructuralTypeDefinition::Unit.into(),
             name: pointer_id.to_string(),
         },
-        pointer_id,
+        CoreLibTypeId::Base(pointer_id),
     )
 }
 
@@ -288,36 +257,6 @@ mod tests {
 
     use super::*;
 
-    use itertools::Itertools;
-
-    #[test]
-    fn core_lib() {
-        assert!(has_core_lib_type(CoreLibBaseTypeId::Endpoint));
-        assert!(has_core_lib_type(CoreLibBaseTypeId::Null));
-        assert!(has_core_lib_type(CoreLibBaseTypeId::Boolean));
-        assert!(has_core_lib_type(CoreLibBaseTypeId::Integer(None)));
-        assert!(has_core_lib_type(CoreLibBaseTypeId::Decimal(None)));
-        assert!(has_core_lib_type(CoreLibBaseTypeId::Type));
-        assert!(has_core_lib_type(CoreLibBaseTypeId::Text));
-        assert!(has_core_lib_type(CoreLibBaseTypeId::List));
-        assert!(has_core_lib_type(CoreLibBaseTypeId::Map));
-        assert!(has_core_lib_type(CoreLibBaseTypeId::Range));
-        assert!(has_core_lib_type(CoreLibBaseTypeId::Callable));
-        assert!(has_core_lib_type(CoreLibBaseTypeId::Unit));
-        assert!(has_core_lib_type(CoreLibBaseTypeId::Never));
-        assert!(has_core_lib_type(CoreLibBaseTypeId::Unknown));
-        for variant in IntegerTypeVariant::iter() {
-            assert!(has_core_lib_type(CoreLibBaseTypeId::Integer(Some(
-                variant
-            ))));
-        }
-        for variant in DecimalTypeVariant::iter() {
-            assert!(has_core_lib_type(CoreLibBaseTypeId::Decimal(Some(
-                variant
-            ))));
-        }
-    }
-
     #[test]
     fn debug() {
         let mut memory = Memory::new(Endpoint::LOCAL);
@@ -325,120 +264,16 @@ mod tests {
         info!(
             "{}",
             memory
-                .get_value_reference(&CoreLibBaseTypeId::Core.into())
-                .unwrap()
-                .value_container
+                .get_core_reference(CoreLibValueId::Core.into())
+                .value_container()
         );
-    }
-
-    #[test]
-    fn core_lib_type_addresses() {
-        let integer_base = "integer";
-        let integer_u8 = "integer/u8";
-        let integer_i32 = "integer/i32";
-        let decimal_base = "decimal";
-        let decimal_f64 = "decimal/f64";
-
-        assert_eq!(
-            CoreLibBaseTypeId::from_str(integer_base),
-            Ok(CoreLibBaseTypeId::Integer(None))
-        );
-        assert_eq!(
-            CoreLibBaseTypeId::from_str(integer_u8),
-            Ok(CoreLibBaseTypeId::Integer(Some(IntegerTypeVariant::U8)))
-        );
-        assert_eq!(
-            CoreLibBaseTypeId::from_str(integer_i32),
-            Ok(CoreLibBaseTypeId::Integer(Some(IntegerTypeVariant::I32)))
-        );
-        assert_eq!(
-            CoreLibBaseTypeId::from_str(decimal_base),
-            Ok(CoreLibBaseTypeId::Decimal(None))
-        );
-        assert_eq!(
-            CoreLibBaseTypeId::from_str(decimal_f64),
-            Ok(CoreLibBaseTypeId::Decimal(Some(DecimalTypeVariant::F64)))
-        );
-
-        assert_eq!(CoreLibBaseTypeId::Integer(None).to_string(), integer_base);
-        assert_eq!(
-            CoreLibBaseTypeId::Integer(Some(IntegerTypeVariant::U8))
-                .to_string(),
-            integer_u8
-        );
-        assert_eq!(
-            CoreLibBaseTypeId::Integer(Some(IntegerTypeVariant::I32))
-                .to_string(),
-            integer_i32
-        );
-        assert_eq!(CoreLibBaseTypeId::Decimal(None).to_string(), decimal_base);
-        assert_eq!(
-            CoreLibBaseTypeId::Decimal(Some(DecimalTypeVariant::F64))
-                .to_string(),
-            decimal_f64
-        );
-    }
-
-    #[test]
-    fn core_lib_pointer_id_conversion() {
-        let core_id = CoreLibBaseTypeId::Core;
-        let pointer_address: PointerAddress = core_id.clone().into();
-        let converted_id: CoreLibBaseTypeId =
-            (&pointer_address).try_into().unwrap();
-        assert_eq!(core_id, converted_id);
-
-        let boolean_id = CoreLibBaseTypeId::Boolean;
-        let pointer_address: PointerAddress = boolean_id.clone().into();
-        let converted_id: CoreLibBaseTypeId =
-            (&pointer_address).try_into().unwrap();
-        assert_eq!(boolean_id, converted_id);
-
-        let integer_id =
-            CoreLibBaseTypeId::Integer(Some(IntegerTypeVariant::I32));
-        let pointer_address: PointerAddress = integer_id.clone().into();
-        let converted_id: CoreLibBaseTypeId =
-            (&pointer_address).try_into().unwrap();
-        assert_eq!(integer_id, converted_id);
-
-        let decimal_id =
-            CoreLibBaseTypeId::Decimal(Some(DecimalTypeVariant::F64));
-        let pointer_address: PointerAddress = decimal_id.clone().into();
-        let converted_id: CoreLibBaseTypeId =
-            (&pointer_address).try_into().unwrap();
-        assert_eq!(decimal_id, converted_id);
-
-        let type_id = CoreLibBaseTypeId::Type;
-        let pointer_address: PointerAddress = type_id.clone().into();
-        let converted_id: CoreLibBaseTypeId =
-            (&pointer_address).try_into().unwrap();
-        assert_eq!(type_id, converted_id);
-    }
-
-    #[test]
-    fn base_type_simple() {
-        // integer -> integer -> integer ...
-        let integer_type = core_lib_type(CoreLibBaseTypeId::Integer(None));
-        let integer_base = integer_type.base_type_reference();
-        assert_eq!(integer_base.unwrap().borrow().to_string(), "integer");
-    }
-
-    #[test]
-    fn base_type_complex() {
-        // integer/u8 -> integer -> integer -> integer ...
-        let integer_u8_type = core_lib_type(CoreLibBaseTypeId::Integer(Some(
-            IntegerTypeVariant::U8,
-        )));
-        assert_eq!(integer_u8_type.to_string(), "integer/u8");
-
-        let integer = integer_u8_type.base_type_reference();
-        assert_eq!(integer.unwrap().borrow().to_string(), "integer");
     }
 
     #[ignore]
     #[test]
     #[cfg(feature = "std")]
     fn print_core_lib_addresses_as_hex() {
-        with_core_lib(|core_lib_types, _| {
+        with_core_lib(|core_lib_types| {
             let sorted_entries = core_lib_types
                 .keys()
                 .map(|k| (k.clone(), PointerAddress::from(k.clone())))

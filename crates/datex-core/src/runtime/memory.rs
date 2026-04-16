@@ -1,7 +1,7 @@
 use crate::{
     collections::HashMap,
     global::protocol_structures::instruction_data::RawRemotePointerAddress,
-    libs::core::{CoreLibTypeId, load_core_lib},
+    libs::core::{CoreLibTypeId, core_lib_id::CoreLibId, load_core_lib},
     prelude::*,
     shared_values::{
         pointer_address::{
@@ -70,8 +70,8 @@ impl Memory {
     /// Helper function to get a core value directly from memory
     pub fn get_core_reference(
         &self,
-        pointer_id: CoreLibTypeId,
-    ) -> &SharedContainerValueOrType {
+        pointer_id: CoreLibId,
+    ) -> &ReferencedSharedContainer {
         self.get_reference(&pointer_id.into())
             .expect("core reference not found in memory")
     }

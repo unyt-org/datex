@@ -13,7 +13,7 @@
 #![feature(thread_local)]
 #![feature(future_join)]
 #![allow(static_mut_refs)]
-
+#![feature(variant_count)]
 extern crate alloc;
 extern crate num_integer;
 
@@ -47,6 +47,7 @@ pub mod type_inference;
 pub mod visitor;
 
 pub mod core_compiler;
+pub mod disassembler;
 pub mod dxb_parser;
 #[cfg(all(feature = "macro_utils", feature = "std", feature = "compiler"))]
 pub mod macro_utils;
@@ -57,7 +58,6 @@ pub mod traits;
 pub mod types;
 pub mod utils;
 pub mod values;
-pub mod disassembler;
 
 // reexport macros
 pub use datex_macros_internal as macros;
