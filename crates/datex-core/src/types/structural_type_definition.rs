@@ -1,19 +1,17 @@
 use crate::{
+    prelude::*,
+    shared_values::pointer_address::PointerAddress,
     traits::structural_eq::StructuralEq,
     types::{
         collection_type_definition::CollectionTypeDefinition,
         literal_type_definition::LiteralTypeDefinition,
+        shared_container_containing_type::SharedContainerContainingType,
+        r#type::Type,
+        type_definition::{TypeDefinition, TypeMetadata},
     },
     values::core_values::callable::CallableSignature,
 };
 use core::{fmt::Display, hash::Hash, prelude::rust_2024::*};
-use std::ops::Deref;
-use crate::{
-    prelude::*, shared_values::pointer_address::PointerAddress,
-};
-use crate::types::r#type::Type;
-use crate::types::shared_container_containing_type::SharedContainerContainingType;
-use crate::types::type_definition::{TypeDefinition, TypeMetadata};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StructuralTypeDefinition {
@@ -73,6 +71,21 @@ impl Hash for StructuralTypeDefinition {
             StructuralTypeDefinition::Literal(value) => {
                 value.hash(state);
             }
+            StructuralTypeDefinition::Map(entries) => {
+                for (key, value) in entries {
+                    key.hash(state);
+                    value.hash(state);
+                }
+            }
+            StructuralTypeDefinition::List(elements) => {
+                for element in elements {
+                    element.hash(state);
+                }
+            }
+            StructuralTypeDefinition::Range((start, end)) => {
+                start.hash(state);
+                end.hash(state);
+            }
             StructuralTypeDefinition::Shared(reference) => {
                 reference.hash(state);
             }
@@ -117,8 +130,28 @@ impl Hash for StructuralTypeDefinition {
 impl Display for StructuralTypeDefinition {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
-            StructuralTypeDefinition::Collection(value) => core::write!(f, "{}", value),
-            StructuralTypeDefinition::Literal(value) => core::write!(f, "{}", value),
+            StructuralTypeDefinition::Collection(value) => {
+                core::write!(f, "{}", value)
+            }
+            StructuralTypeDefinition::Map(entries) => {
+                let entries_str: Vec<String> = entries
+                    .iter()
+                    .map(|(key, value)| format!("{}: {}", key, value))
+                    .collect();
+                core::write!(f, "{{{}}}", entries_str.join(", "))
+            }
+            StructuralTypeDefinition::List(elements) => {
+                let elements_str: Vec<String> =
+                    elements.iter().map(|e| e.to_string()).collect();
+                core::write!(f, "[{}]", elements_str.join(", "))
+            }
+            StructuralTypeDefinition::Range((start, end)) => {
+                core::write!(f, "{}..{}", start, end)
+            }
+
+            StructuralTypeDefinition::Literal(value) => {
+                core::write!(f, "{}", value)
+            }
             StructuralTypeDefinition::Shared(reference) => {
                 core::write!(f, "{}", reference.deref())
             }
@@ -200,10 +233,14 @@ impl Display for StructuralTypeDefinition {
 impl StructuralEq for StructuralTypeDefinition {
     fn structural_eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (StructuralTypeDefinition::Literal(a), StructuralTypeDefinition::Literal(b)) => {
-                a.structural_eq(b)
-            }
-            (StructuralTypeDefinition::Union(a), StructuralTypeDefinition::Union(b)) => {
+            (
+                StructuralTypeDefinition::Literal(a),
+                StructuralTypeDefinition::Literal(b),
+            ) => a.structural_eq(b),
+            (
+                StructuralTypeDefinition::Union(a),
+                StructuralTypeDefinition::Union(b),
+            ) => {
                 if a.len() != b.len() {
                     return false;
                 }
@@ -220,32 +257,34 @@ impl StructuralEq for StructuralTypeDefinition {
 }
 
 impl StructuralTypeDefinition {
-
     /// Calls the provided callback with a reference to the recursively collapsed inner [StructuralTypeDefinition] value
-    pub fn with_collapsed_structural_type_definition<R>(&self, f: impl FnOnce(&StructuralTypeDefinition) -> R) -> R {
+    pub fn with_collapsed_structural_type_definition<R>(
+        &self,
+        f: impl FnOnce(&StructuralTypeDefinition) -> R,
+    ) -> R {
         match self {
             StructuralTypeDefinition::Shared(reference) =>
-                // collapse shared container to inner Type
+            // collapse shared container to inner Type
+            {
                 reference.with_collapsed_type_value(|ty| {
                     // collapse Type definition to inner StructuralTypeDefinition
-                    ty.definition().structural_definition.with_collapsed_structural_type_definition(f)
-                }),
-            _ => f(self)
+                    ty.definition()
+                        .structural_definition
+                        .with_collapsed_structural_type_definition(f)
+                })
+            }
+            _ => f(self),
         }
     }
 
     /// Creates a new literal type.
-    pub fn literal(
-        literal_type: impl Into<LiteralTypeDefinition>,
-    ) -> Self {
+    pub fn literal(literal_type: impl Into<LiteralTypeDefinition>) -> Self {
         StructuralTypeDefinition::Literal(literal_type.into())
     }
 
     /// Creates a new list type.
     pub fn list(element_types: Vec<Type>) -> Self {
-        StructuralTypeDefinition::List(
-            element_types,
-        )
+        StructuralTypeDefinition::List(element_types)
     }
 
     /// Creates a new union type.
@@ -267,9 +306,7 @@ impl StructuralTypeDefinition {
     }
 
     /// Creates a new shared type.
-    pub fn shared(
-        reference: SharedContainerContainingType,
-    ) -> Self {
+    pub fn shared(reference: SharedContainerContainingType) -> Self {
         StructuralTypeDefinition::Shared(reference)
     }
 

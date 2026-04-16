@@ -1,19 +1,24 @@
-use std::ops::Deref;
-use binrw::io::Write;
-use binrw::BinWrite;
 use crate::{
-    core_compiler::value_compiler::append_get_shared_ref,
-    global::type_instruction_codes::TypeInstructionCode,
+    core_compiler::{
+        core_compilation_context::{ByteCursor, CoreCompilationContext},
+        value_compiler::append_get_shared_ref,
+    },
+    global::{
+        protocol_structures::{
+            instruction_data::TypeMetadataBin,
+            type_instructions::TypeInstruction,
+        },
+        type_instruction_codes::TypeInstructionCode,
+    },
     prelude::*,
     shared_values::shared_containers::ReferenceMutability,
-    types::structural_type_definition::StructuralTypeDefinition,
+    types::{
+        structural_type_definition::StructuralTypeDefinition, r#type::Type,
+        type_definition::TypeDefinition,
+    },
     utils::buffers::append_u8,
 };
-use crate::core_compiler::core_compilation_context::{ByteCursor, CoreCompilationContext};
-use crate::global::protocol_structures::instruction_data::TypeMetadataBin;
-use crate::global::protocol_structures::type_instructions::TypeInstruction;
-use crate::types::r#type::Type;
-use crate::types::type_definition::TypeDefinition;
+use binrw::{BinWrite, io::Write};
 
 /// Compiles a given type container to a DXB body
 pub fn compile_type(ty: &Type) -> Vec<u8> {
@@ -29,11 +34,16 @@ pub fn append_type(context: &mut CoreCompilationContext, ty: &Type) {
     append_type_definition(context, &ty.definition());
 }
 
-
-pub fn append_type_definition(context: &mut CoreCompilationContext, ty: &TypeDefinition) {
+pub fn append_type_definition(
+    context: &mut CoreCompilationContext,
+    ty: &TypeDefinition,
+) {
     // append instruction code
     let instruction_code = TypeInstructionCode::from(&ty.structural_definition);
-    append_type_space_instruction_code_new(context.cursor_mut(), instruction_code);
+    append_type_space_instruction_code_new(
+        context.cursor_mut(),
+        instruction_code,
+    );
 
     // append metadata
     let metadata = TypeMetadataBin::from(&ty.metadata);
@@ -93,14 +103,17 @@ pub fn append_type_space_instruction_code_new(
     cursor.write_all(&[code as u8]).unwrap();
 }
 
-
-pub fn append_type_instruction(cursor: &mut ByteCursor, instruction: TypeInstruction) {
+pub fn append_type_instruction(
+    cursor: &mut ByteCursor,
+    instruction: TypeInstruction,
+) {
     // add instruction code
-    cursor.write_all(&[TypeInstructionCode::from(&instruction) as u8]).unwrap();
+    cursor
+        .write_all(&[TypeInstructionCode::from(&instruction) as u8])
+        .unwrap();
     // add instruction
     instruction.write(cursor).unwrap();
 }
-
 
 pub fn append_type_metadata(cursor: &mut ByteCursor, code: TypeMetadataBin) {
     append_u8(cursor, code.into_bytes()[0]);
