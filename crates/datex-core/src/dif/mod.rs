@@ -36,7 +36,7 @@ mod tests {
             value::{DIFValue, DIFValueContainer},
             DIFConvertible,
         },
-        libs::core::CoreLibPointerId,
+        libs::core::CoreLibTypeId,
         prelude::*,
         shared_values::pointer_address::PointerAddress,
         types::structural_type_definition::StructuralTypeDefinition,
@@ -104,7 +104,7 @@ mod tests {
             assert_eq!(
                 dif_value.ty,
                 Some(DIFTypeDefinition::Reference(
-                    CoreLibPointerId::Integer(Some(IntegerTypeVariant::I32))
+                    CoreLibTypeId::Integer(Some(IntegerTypeVariant::I32))
                         .into()
                 ))
             );
@@ -161,7 +161,7 @@ mod tests {
                         name: None,
                         metadata: DIFTypeMetadata::default(),
                         type_definition: DIFTypeDefinition::Reference(
-                            PointerAddress::from(CoreLibPointerId::Integer(
+                            PointerAddress::from(CoreLibTypeId::Integer(
                                 None
                             ))
                         )

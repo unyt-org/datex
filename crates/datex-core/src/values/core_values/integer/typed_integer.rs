@@ -10,7 +10,7 @@ use crate::values::{
 };
 
 use crate::{
-    libs::core::CoreLibPointerId, prelude::*,
+    libs::core::CoreLibTypeId, prelude::*,
     traits::structural_eq::StructuralEq,
 };
 
@@ -99,9 +99,9 @@ impl Serialize for TypedInteger {
     }
 }
 
-impl From<&TypedInteger> for CoreLibPointerId {
+impl From<&TypedInteger> for CoreLibTypeId {
     fn from(value: &TypedInteger) -> Self {
-        CoreLibPointerId::Integer(Some(value.variant()))
+        CoreLibTypeId::Integer(Some(value.variant()))
     }
 }
 

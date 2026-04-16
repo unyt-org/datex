@@ -13,15 +13,17 @@ use crate::{
     runtime::RuntimeInternal,
     shared_values::{
         observers::{ObserveOptions, Observer, TransceiverId},
-        pointer_address::PointerAddress,
-        shared_containers::{SharedContainerMutability},
+        pointer_address::{PointerAddress, SelfOwnedPointerAddress},
+        shared_containers::{
+            OwnedSharedContainer, ReferencedSharedContainer,
+            SelfOwnedSharedContainer, SharedContainer,
+            SharedContainerMutability,
+            base_shared_value_container::BaseSharedValueContainer,
+        },
     },
     values::value_container::ValueContainer,
 };
-use core::result::Result;
-use core::cell::Ref;
-use crate::shared_values::pointer_address::SelfOwnedPointerAddress;
-use crate::shared_values::shared_containers::ReferencedSharedContainer;
+use core::{cell::Ref, result::Result};
 
 impl RuntimeInternal {
     fn resolve_in_memory_reference(
@@ -30,9 +32,10 @@ impl RuntimeInternal {
     ) -> Option<Ref<'_, ReferencedSharedContainer>> {
         Ref::filter_map(self.memory.borrow(), |memory| {
             memory.get_reference(address)
-        }).ok()
+        })
+        .ok()
     }
-    
+
     // FIXME #398 implement async resolution
     async fn resolve_reference(
         &self,
@@ -156,18 +159,26 @@ impl DIFInterface for RuntimeInternal {
             None
         };
 
-        let pointer = self.memory.borrow_mut().get_new_endpoint_owned_pointer_address();
+        let pointer = self
+            .memory
+            .borrow_mut()
+            .get_new_endpoint_owned_pointer_address();
         let address = pointer.address().clone();
 
-        let reference = SharedContainerValueOrType::try_boxed_owned(
-            container,
-            type_container,
-            pointer,
-            mutability,
+        let reference = SharedContainer::Owned(
+            OwnedSharedContainer::new_from_self_owned_container(
+                SelfOwnedSharedContainer::new(
+                    BaseSharedValueContainer::try_new(
+                        value_container,
+                        mutability,
+                    ),
+                    address,
+                ),
+            ),
         )?;
         self.memory
             .borrow_mut()
-            .register_shared_container(&reference);
+            .register_referenced_shared_container(&reference);
         Ok(address)
     }
 
@@ -253,13 +264,12 @@ mod tests {
         prelude::*,
         runtime::{RuntimeConfig, RuntimeRunner},
         shared_values::{
-            observers::ObserveOptions,
+            observers::ObserveOptions, pointer_address::PointerAddress,
             shared_containers::SharedContainerMutability,
         },
         values::{core_values::map::Map, value_container::ValueContainer},
     };
     use core::cell::RefCell;
-    use crate::shared_values::pointer_address::PointerAddress;
 
     #[test]
     fn struct_serde() {
@@ -288,7 +298,8 @@ mod tests {
                         SharedContainerMutability::Mutable,
                     )
                     .expect("Failed to create pointer");
-                let pointer_address = PointerAddress::EndpointOwned(pointer_address);
+                let pointer_address =
+                    PointerAddress::EndpointOwned(pointer_address);
 
                 let observed = Rc::new(RefCell::new(None));
                 let observed_clone = observed.clone();

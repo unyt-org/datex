@@ -14,7 +14,7 @@ use crate::{
     },
     fmt::options::{FormattingOptions, TypeDeclarationFormatting},
     global::operators::{BinaryOperator, ComparisonOperator, UnaryOperator},
-    libs::core::CoreLibPointerId,
+    libs::core::CoreLibTypeId,
     parser::ParserOptions,
     prelude::*,
 };
@@ -165,7 +165,7 @@ impl<'a> Formatter<'a> {
             }) => a.text(name.clone()),
 
             TypeExpressionData::GetReference(ptr) => {
-                if let Ok(core_lib) = CoreLibPointerId::try_from(ptr) {
+                if let Ok(core_lib) = CoreLibTypeId::try_from(ptr) {
                     a.text(core_lib.to_string())
                 } else {
                     a.text(ptr.to_string())

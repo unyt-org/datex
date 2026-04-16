@@ -32,7 +32,7 @@ use crate::{
         type_compiler::compile_type_expression,
     },
     global::{instruction_codes::InstructionCode, slots::InternalSlot},
-    libs::core::CoreLibPointerId,
+    libs::core::CoreLibTypeId,
     prelude::*,
 };
 
@@ -1267,7 +1267,7 @@ fn compile_expression(
                 }
                 "core" => append_get_internal_ref(
                     compilation_context.cursor(),
-                    PointerAddress::from(CoreLibPointerId::Core)
+                    PointerAddress::from(CoreLibTypeId::Core)
                         .internal_bytes()
                         .unwrap(),
                 ),
@@ -1504,7 +1504,7 @@ pub mod tests {
     use crate::{compiler::scope::CompilationScope, global::{
         instruction_codes::InstructionCode,
         type_instruction_codes::TypeInstructionCode,
-    }, libs::core::CoreLibPointerId, runtime::execution::context::ExecutionMode};
+    }, libs::core::CoreLibTypeId, runtime::execution::context::ExecutionMode};
 
     #[cfg(feature = "disassembler")]
     use crate::{assert_instructions_equal, assert_regular_instructions_equal};
@@ -3028,7 +3028,7 @@ pub mod tests {
             vec![InstructionCode::GET_INTERNAL_SHARED_REF.into()];
         // pointer id
         instructions.append(
-            &mut PointerAddress::from(CoreLibPointerId::Integer(None))
+            &mut PointerAddress::from(CoreLibTypeId::Integer(None))
                 .bytes()
                 .to_vec(),
         );

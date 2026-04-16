@@ -1,5 +1,5 @@
 use crate::{
-    libs::core::CoreLibPointerId,
+    libs::core::CoreLibTypeId,
     prelude::*,
     traits::structural_eq::StructuralEq,
     values::{
@@ -171,27 +171,27 @@ impl LiteralTypeDefinition {
     }
 
     /// Get the core lib type pointer id for this structural type definition
-    pub fn get_core_lib_type_pointer_id(&self) -> CoreLibPointerId {
+    pub fn get_core_lib_type_pointer_id(&self) -> CoreLibTypeId {
         match self {
             LiteralTypeDefinition::Integer(_) => {
-                CoreLibPointerId::Integer(None)
+                CoreLibTypeId::Integer(None)
             }
             LiteralTypeDefinition::TypedInteger(typed) => {
-                CoreLibPointerId::Integer(Some(typed.variant()))
+                CoreLibTypeId::Integer(Some(typed.variant()))
             }
             LiteralTypeDefinition::Decimal(_) => {
-                CoreLibPointerId::Decimal(None)
+                CoreLibTypeId::Decimal(None)
             }
             LiteralTypeDefinition::TypedDecimal(typed) => {
-                CoreLibPointerId::Decimal(Some(typed.variant()))
+                CoreLibTypeId::Decimal(Some(typed.variant()))
             }
-            LiteralTypeDefinition::Text(_) => CoreLibPointerId::Text,
-            LiteralTypeDefinition::Boolean(_) => CoreLibPointerId::Boolean,
-            LiteralTypeDefinition::Endpoint(_) => CoreLibPointerId::Endpoint,
-            LiteralTypeDefinition::Null => CoreLibPointerId::Null,
-            LiteralTypeDefinition::List(_) => CoreLibPointerId::List,
-            LiteralTypeDefinition::Range(_) => CoreLibPointerId::Range,
-            LiteralTypeDefinition::Map(_) => CoreLibPointerId::Map,
+            LiteralTypeDefinition::Text(_) => CoreLibTypeId::Text,
+            LiteralTypeDefinition::Boolean(_) => CoreLibTypeId::Boolean,
+            LiteralTypeDefinition::Endpoint(_) => CoreLibTypeId::Endpoint,
+            LiteralTypeDefinition::Null => CoreLibTypeId::Null,
+            LiteralTypeDefinition::List(_) => CoreLibTypeId::List,
+            LiteralTypeDefinition::Range(_) => CoreLibTypeId::Range,
+            LiteralTypeDefinition::Map(_) => CoreLibTypeId::Map,
         }
     }
 }

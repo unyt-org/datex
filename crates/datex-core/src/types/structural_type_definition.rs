@@ -1,4 +1,5 @@
 use crate::{
+    libs::core::{CoreLibTypeId, get_core_lib_type_reference},
     prelude::*,
     shared_values::pointer_address::PointerAddress,
     traits::structural_eq::StructuralEq,
@@ -12,6 +13,7 @@ use crate::{
     values::core_values::callable::CallableSignature,
 };
 use core::{fmt::Display, hash::Hash, prelude::rust_2024::*};
+use std::cell::RefCell;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StructuralTypeDefinition {
@@ -318,6 +320,59 @@ impl StructuralTypeDefinition {
     /// Creates a new type with impls.
     pub fn impl_type(ty: impl Into<Type>, impls: Vec<PointerAddress>) -> Self {
         StructuralTypeDefinition::ImplType(Box::new(ty.into()), impls)
+    }
+}
+
+impl StructuralTypeDefinition {
+    /// Map a type definition (e.g. 42u8) to it's upper level base type (e.g. integer)
+    /// integer/u8 -> integer
+    /// integer -> integer
+    /// 42u8 -> integer
+    /// 42 -> integer
+    /// User/variant -> User
+    pub fn base_core_lib_type(
+        &self,
+    ) -> Option<Rc<RefCell<SharedContainerContainingType>>> {
+        Some(match &self {
+            StructuralTypeDefinition::Literal(value) => {
+                get_core_lib_type_reference(
+                    value.get_core_lib_type_pointer_id(),
+                )
+            }
+            StructuralTypeDefinition::Union(_) => {
+                core::todo!("#322 handle union base type"); // generic type base type / type
+            }
+            StructuralTypeDefinition::Shared(reference) => {
+                let type_ref = reference.borrow();
+                if let Ok(core_lib_id) =
+                    CoreLibTypeId::try_from(&type_ref.pointer().address())
+                {
+                    match core_lib_id {
+                        // for integer and decimal variants, return the base type
+                        CoreLibTypeId::Integer(Some(_)) => {
+                            get_core_lib_type_reference(
+                                CoreLibTypeId::Integer(None),
+                            )
+                        }
+                        CoreLibTypeId::Decimal(Some(_)) => {
+                            get_core_lib_type_reference(
+                                CoreLibTypeId::Decimal(None),
+                            )
+                        }
+                        // otherwise, reference is already base type
+                        _ => reference.clone(),
+                    }
+                } else {
+                    todo!("#608 handle non-core lib type base type");
+                }
+            }
+            _ => core::panic!("Unhandled type definition for base type"),
+        })
+    }
+
+    pub fn base_type(&self) -> Option<Type> {
+        self.base_core_lib_type()
+            .map(|r| Type::shared_reference(r, TypeMetadata::default()))
     }
 }
 

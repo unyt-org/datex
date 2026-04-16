@@ -85,7 +85,7 @@ foldhash = { version = "0.2.0", default-features = false }
 cfg-if = "1.0.1"
 async-trait = "0.1.87"
 strum_macros = { version = "0.27.1" }
-datex-macros-internal = { path = "../datex-macros-internal", version = "0.0.1" }
+datex-macros-internal = { path = "../datex-macros-internal", version = "0.0.2" }
 
 # nostd-only dependencies (optional)
 hashbrown = { version = "0.16.0", features = ["serde"], optional = true }
@@ -106,7 +106,7 @@ internment = { version = "0.8.6", optional = true }
 # lsp dependencies (optional)
 realhydroper-lsp = { version = "0.22.0", default-features = false, features = [
     "proposed",
-    "runtime-agnostic"
+    "runtime-agnostic",
 ], optional = true }
 
 

@@ -1,37 +1,44 @@
-mod owned_shared_container;
-mod referenced_shared_container;
-mod shared_container_inner;
-mod ownership;
-mod self_owned_shared_container;
-mod external_shared_container;
-pub mod shared_type_container;
 pub mod base_shared_value_container;
-mod shared_container_mutability;
 mod expose_rc_internal;
+mod external_shared_container;
+mod owned_shared_container;
+mod ownership;
+mod referenced_shared_container;
+mod self_owned_shared_container;
+mod shared_container_inner;
+mod shared_container_mutability;
+pub mod shared_type_container;
 // IMPORTANT: don't expose this module, for internal use only
 
+use crate::{
+    shared_values::{
+        pointer_address::{
+            ExternalPointerAddress, PointerAddress, SelfOwnedPointerAddress,
+        },
+        shared_containers::{
+            base_shared_value_container::BaseSharedValueContainer,
+            expose_rc_internal::ExposeRcInternal,
+        },
+    },
+    traits::{
+        identity::Identity, structural_eq::StructuralEq, value_eq::ValueEq,
+    },
+    types::structural_type_definition::StructuralTypeDefinition,
+    values::{value::Value, value_container::ValueContainer},
+};
 use alloc::rc::Rc;
-use core::fmt::{Display, Formatter};
-use core::cell::{Ref, RefCell, RefMut};
-use std::hash::{Hash, Hasher};
-pub use owned_shared_container::*;
-pub use referenced_shared_container::*;
-pub use shared_container_inner::*;
-pub use ownership::*;
-pub use self_owned_shared_container::*;
+use core::{
+    cell::{Ref, RefCell, RefMut},
+    fmt::{Display, Formatter},
+    hash::{Hash, Hasher},
+};
 pub use external_shared_container::*;
+pub use owned_shared_container::*;
+pub use ownership::*;
+pub use referenced_shared_container::*;
+pub use self_owned_shared_container::*;
+pub use shared_container_inner::*;
 pub use shared_container_mutability::*;
-use crate::shared_values::pointer_address::{PointerAddress, SelfOwnedPointerAddress};
-use crate::shared_values::shared_containers::base_shared_value_container::BaseSharedValueContainer;
-use crate::shared_values::shared_containers::expose_rc_internal::ExposeRcInternal;
-use crate::traits::identity::Identity;
-use crate::traits::structural_eq::StructuralEq;
-use crate::traits::value_eq::ValueEq;
-use crate::types::structural_type_definition::StructuralTypeDefinition;
-use crate::values::value::Value;
-use crate::values::value_container::ValueContainer;
-
-
 
 /// Top-level wrapper for any owned or referenced shared container,
 /// which can either be an owned shared container or a reference to a shared container.
@@ -45,7 +52,6 @@ pub enum SharedContainer {
 }
 
 impl SharedContainer {
-
     /// Creates a new owned [SharedContainer] with an initial [ValueContainer],
     /// a [SharedContainerMutability], and an [SelfOwnedPointerAddress].
     ///
@@ -55,13 +61,14 @@ impl SharedContainer {
         mutability: SharedContainerMutability,
         address: SelfOwnedPointerAddress,
     ) -> Self {
-        SharedContainer::Owned(OwnedSharedContainer::new_with_inferred_allowed_type(
-            value_container,
-            mutability,
-            address,
-        ))
+        SharedContainer::Owned(
+            OwnedSharedContainer::new_with_inferred_allowed_type(
+                value_container,
+                mutability,
+                address,
+            ),
+        )
     }
-
 
     pub fn inner(&self) -> Ref<SharedContainerInner> {
         match self {
@@ -81,15 +88,21 @@ impl SharedContainer {
     pub fn base_shared_container(&self) -> Ref<BaseSharedValueContainer> {
         match self {
             SharedContainer::Owned(owned) => owned.base_shared_container(),
-            SharedContainer::Referenced(referenced) => referenced.base_shared_container(),
+            SharedContainer::Referenced(referenced) => {
+                referenced.base_shared_container()
+            }
         }
     }
 
     /// Gets a [RefMut] to the currently assigned [BaseSharedValueContainer] of the shared container (not resolved recursively)
-    pub fn base_shared_container_mut(&self) -> RefMut<BaseSharedValueContainer> {
+    pub fn base_shared_container_mut(
+        &self,
+    ) -> RefMut<BaseSharedValueContainer> {
         match self {
             SharedContainer::Owned(owned) => owned.base_shared_container_mut(),
-            SharedContainer::Referenced(referenced) => referenced.base_shared_container_mut(),
+            SharedContainer::Referenced(referenced) => {
+                referenced.base_shared_container_mut()
+            }
         }
     }
 
@@ -97,7 +110,9 @@ impl SharedContainer {
     pub fn value_container(&self) -> Ref<ValueContainer> {
         match self {
             SharedContainer::Owned(owned) => owned.value_container(),
-            SharedContainer::Referenced(referenced) => referenced.value_container(),
+            SharedContainer::Referenced(referenced) => {
+                referenced.value_container()
+            }
         }
     }
 
@@ -105,7 +120,9 @@ impl SharedContainer {
     pub fn allowed_type(&self) -> Ref<StructuralTypeDefinition> {
         match self {
             SharedContainer::Owned(owned) => owned.allowed_type(),
-            SharedContainer::Referenced(referenced) => referenced.allowed_type(),
+            SharedContainer::Referenced(referenced) => {
+                referenced.allowed_type()
+            }
         }
     }
 
@@ -113,7 +130,9 @@ impl SharedContainer {
     pub fn value_container_mut(&self) -> RefMut<ValueContainer> {
         match self {
             SharedContainer::Owned(owned) => owned.value_container_mut(),
-            SharedContainer::Referenced(referenced) => referenced.value_container_mut(),
+            SharedContainer::Referenced(referenced) => {
+                referenced.value_container_mut()
+            }
         }
     }
 
@@ -121,15 +140,23 @@ impl SharedContainer {
     pub fn container_mutability(&self) -> SharedContainerMutability {
         match self {
             SharedContainer::Owned(owned) => owned.container_mutability(),
-            SharedContainer::Referenced(referenced) => referenced.container_mutability(),
+            SharedContainer::Referenced(referenced) => {
+                referenced.container_mutability()
+            }
         }
     }
 
     /// Calls the provided callback with a mut reference to the recursively collapsed inner value of the shared container
-    pub fn with_collapsed_value_mut<R>(&self, f: impl FnOnce(&mut Value) -> R) -> R {
-        match &mut self.inner_mut().base_shared_container_mut().value_container {
+    pub fn with_collapsed_value_mut<R>(
+        &self,
+        f: impl FnOnce(&mut Value) -> R,
+    ) -> R {
+        match &mut self.inner_mut().base_shared_container_mut().value_container
+        {
             ValueContainer::Local(v) => f(v),
-            ValueContainer::Shared(shared) => shared.with_collapsed_value_mut(f),
+            ValueContainer::Shared(shared) => {
+                shared.with_collapsed_value_mut(f)
+            }
         }
     }
 
@@ -143,8 +170,12 @@ impl SharedContainer {
 
     pub fn pointer_address(&self) -> PointerAddress {
         match self {
-            SharedContainer::Owned(owned) => PointerAddress::EndpointOwned(owned.pointer_address().clone()),
-            SharedContainer::Referenced(referenced) => referenced.pointer_address(),
+            SharedContainer::Owned(owned) => {
+                PointerAddress::EndpointOwned(owned.pointer_address().clone())
+            }
+            SharedContainer::Referenced(referenced) => {
+                referenced.pointer_address()
+            }
         }
     }
 
@@ -152,16 +183,24 @@ impl SharedContainer {
     pub fn derive_immutable_reference(&self) -> ReferencedSharedContainer {
         match self {
             SharedContainer::Owned(owned) => owned.derive_immutable_reference(),
-            SharedContainer::Referenced(referenced) => referenced.derive_immutable_reference(),
+            SharedContainer::Referenced(referenced) => {
+                referenced.derive_immutable_reference()
+            }
         }
     }
 
     /// Tries to create a new mutable [ReferencedSharedContainer] pointing to the same inner value as this [OwnedSharedContainer].
     /// Returns an [Err] if the current reference_mutability is [ReferenceMutability::Immutable] or the container itself is not mutable
-    pub fn try_derive_mutable_reference(&self) -> Result<ReferencedSharedContainer, ()> {
+    pub fn try_derive_mutable_reference(
+        &self,
+    ) -> Result<ReferencedSharedContainer, ()> {
         match self {
-            SharedContainer::Owned(owned) => owned.try_derive_mutable_reference(),
-            SharedContainer::Referenced(referenced) => referenced.try_derive_mutable_reference(),
+            SharedContainer::Owned(owned) => {
+                owned.try_derive_mutable_reference()
+            }
+            SharedContainer::Referenced(referenced) => {
+                referenced.try_derive_mutable_reference()
+            }
         }
     }
 
@@ -191,7 +230,11 @@ impl SharedContainer {
     pub fn ownership(&self) -> SharedContainerOwnership {
         match self {
             SharedContainer::Owned(owned) => SharedContainerOwnership::Owned,
-            SharedContainer::Referenced(referenced) => SharedContainerOwnership::Referenced(referenced.reference_mutability())
+            SharedContainer::Referenced(referenced) => {
+                SharedContainerOwnership::Referenced(
+                    referenced.reference_mutability(),
+                )
+            }
         }
     }
 }
@@ -203,9 +246,13 @@ impl Clone for SharedContainer {
     fn clone(&self) -> Self {
         match self {
             // An owned container cannot be cloned, only a new reference can be created
-            SharedContainer::Owned(owned) => SharedContainer::Referenced(owned.derive_with_max_mutability()),
+            SharedContainer::Owned(owned) => {
+                SharedContainer::Referenced(owned.derive_with_max_mutability())
+            }
             // A referenced container can be cloned
-            SharedContainer::Referenced(referenced) => SharedContainer::Referenced(referenced.clone()),
+            SharedContainer::Referenced(referenced) => {
+                SharedContainer::Referenced(referenced.clone())
+            }
         }
     }
 }
@@ -214,11 +261,12 @@ impl Display for SharedContainer {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
         match self {
             SharedContainer::Owned(owned) => write!(f, "{}", owned),
-            SharedContainer::Referenced(referenced) => write!(f, "{}", referenced),
+            SharedContainer::Referenced(referenced) => {
+                write!(f, "{}", referenced)
+            }
         }
     }
 }
-
 
 /// Two references are identical if they point to the same inner value (Rc pointer equality)
 impl Identity for SharedContainer {
@@ -238,14 +286,21 @@ impl PartialEq for SharedContainer {
 
 impl StructuralEq for SharedContainer {
     fn structural_eq(&self, other: &Self) -> bool {
-        self.inner().base_shared_container().value_container.structural_eq(&other.inner().base_shared_container().value_container)
+        self.inner()
+            .base_shared_container()
+            .value_container
+            .structural_eq(
+                &other.inner().base_shared_container().value_container,
+            )
     }
 }
 
-
 impl ValueEq for SharedContainer {
     fn value_eq(&self, other: &Self) -> bool {
-        self.inner().base_shared_container().value_container.value_eq(&other.inner().base_shared_container().value_container)
+        self.inner()
+            .base_shared_container()
+            .value_container
+            .value_eq(&other.inner().base_shared_container().value_container)
     }
 }
 
@@ -273,7 +328,9 @@ impl ExposeRcInternal for SharedContainer {
     fn get_rc_internal(&self) -> &Rc<RefCell<Self::Shared>> {
         match self {
             SharedContainer::Owned(owned) => owned.get_rc_internal(),
-            SharedContainer::Referenced(referenced) => referenced.get_rc_internal(),
+            SharedContainer::Referenced(referenced) => {
+                referenced.get_rc_internal()
+            }
         }
     }
 }

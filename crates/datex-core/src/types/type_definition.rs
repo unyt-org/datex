@@ -1,8 +1,13 @@
+use crate::{
+    serde::Deserialize,
+    shared_values::shared_containers::{
+        SharedContainerMutability, SharedContainerOwnership,
+    },
+    types::{
+        structural_type_definition::StructuralTypeDefinition, r#type::Type,
+    },
+};
 use serde::Serialize;
-use crate::serde::Deserialize;
-use crate::shared_values::shared_containers::{SharedContainerMutability, SharedContainerOwnership};
-use crate::types::r#type::Type;
-use crate::types::structural_type_definition::StructuralTypeDefinition;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum LocalReferenceMutability {
@@ -39,10 +44,7 @@ impl TypeMetadata {
     ) -> Option<&SharedContainerOwnership> {
         match self {
             TypeMetadata::Local { .. } => None,
-            TypeMetadata::Shared {
-                ownership,
-                ..
-            } => Some(ownership),
+            TypeMetadata::Shared { ownership, .. } => Some(ownership),
         }
     }
 
@@ -90,7 +92,6 @@ pub struct TypeDefinition {
     pub structural_definition: StructuralTypeDefinition,
     pub metadata: TypeMetadata,
 }
-
 
 impl From<TypeDefinition> for Type {
     fn from(x: TypeDefinition) -> Self {

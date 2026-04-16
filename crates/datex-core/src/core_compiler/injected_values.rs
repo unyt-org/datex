@@ -2,10 +2,9 @@ use crate::{
     core_compiler::{
         core_compilation_context::CoreCompilationContext,
         value_compiler::{
-            SharedValueCompilationError, append_instruction_code,
-            append_instruction_code_new, append_perform_moves,
-            append_regular_instruction, append_shared_container,
-            append_statements_preamble, append_value,
+            SharedValueCompilationError, append_instruction_code_new,
+            append_perform_moves, append_regular_instruction,
+            append_shared_container, append_statements_preamble, append_value,
         },
     },
     global::{

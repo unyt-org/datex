@@ -3,7 +3,7 @@ use crate::{
         DIFConvertible, representation::DIFValueRepresentation,
         r#type::DIFTypeDefinition,
     },
-    libs::core::CoreLibPointerId,
+    libs::core::CoreLibTypeId,
     runtime::memory::Memory,
     types::structural_type_definition::StructuralTypeDefinition,
     values::{
@@ -286,17 +286,17 @@ fn get_type_if_non_default(
     match type_definition {
         StructuralTypeDefinition::Shared(inner) => {
             if let Ok(address) =
-                CoreLibPointerId::try_from(&inner.borrow().pointer().address())
+                CoreLibTypeId::try_from(&inner.borrow().pointer().address())
                 && (core::matches!(
                         address,
-                        CoreLibPointerId::Decimal(Some(DecimalTypeVariant::F64))
-                            | CoreLibPointerId::Boolean
-                            | CoreLibPointerId::Text
-                            | CoreLibPointerId::List
-                            | CoreLibPointerId::Null
+                        CoreLibTypeId::Decimal(Some(DecimalTypeVariant::F64))
+                            | CoreLibTypeId::Boolean
+                            | CoreLibTypeId::Text
+                            | CoreLibTypeId::List
+                            | CoreLibTypeId::Null
                     ) ||
                     // map is default only if not empty
-                    (core::matches!(address, CoreLibPointerId::Map) && !is_empty_map))
+                    (core::matches!(address, CoreLibTypeId::Map) && !is_empty_map))
             {
                 None
             } else {
@@ -311,7 +311,7 @@ fn get_type_if_non_default(
 mod tests {
     use crate::{
         dif::{DIFConvertible, r#type::DIFTypeDefinition, value::DIFValue},
-        libs::core::CoreLibPointerId,
+        libs::core::CoreLibTypeId,
         runtime::memory::Memory,
         values::{
             core_values::{
@@ -360,7 +360,7 @@ mod tests {
         if let DIFTypeDefinition::Reference(reference) = dif.ty.unwrap() {
             assert_eq!(
                 reference,
-                CoreLibPointerId::Integer(Some(IntegerTypeVariant::U16)).into()
+                CoreLibTypeId::Integer(Some(IntegerTypeVariant::U16)).into()
             );
         } else {
             core::panic!("Expected reference type");
@@ -371,7 +371,7 @@ mod tests {
         if let DIFTypeDefinition::Reference(reference) = dif.ty.unwrap() {
             assert_eq!(
                 reference,
-                CoreLibPointerId::Integer(Some(IntegerTypeVariant::I64)).into()
+                CoreLibTypeId::Integer(Some(IntegerTypeVariant::I64)).into()
             );
         } else {
             core::panic!("Expected reference type");

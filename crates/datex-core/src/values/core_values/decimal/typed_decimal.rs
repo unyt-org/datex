@@ -1,5 +1,5 @@
 use crate::{
-    libs::core::CoreLibPointerId,
+    libs::core::CoreLibTypeId,
     prelude::*,
     traits::{structural_eq::StructuralEq, value_eq::ValueEq},
     values::core_values::{decimal::Decimal, error::NumberParseError},
@@ -191,9 +191,9 @@ impl PartialEq for TypedDecimal {
     }
 }
 
-impl From<&TypedDecimal> for CoreLibPointerId {
+impl From<&TypedDecimal> for CoreLibTypeId {
     fn from(value: &TypedDecimal) -> Self {
-        CoreLibPointerId::Decimal(Some(value.variant()))
+        CoreLibTypeId::Decimal(Some(value.variant()))
     }
 }
 

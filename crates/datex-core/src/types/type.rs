@@ -1,18 +1,22 @@
 #[cfg(feature = "compiler")]
 use crate::ast::expressions::DatexExpressionData;
 use crate::{
-    libs::core::{
-        get_core_lib_type, get_core_lib_type_reference, CoreLibPointerId,
-    },
+    libs::core::{CoreLibTypeId, core_lib_type, get_core_lib_type_reference},
     prelude::*,
     shared_values::{
-        pointer_address::PointerAddress, shared_containers::SharedContainerMutability,
-        shared_containers::ReferenceMutability,
+        pointer_address::PointerAddress,
+        shared_containers::{
+            ReferenceMutability, SharedContainerMutability,
+            SharedContainerOwnership,
+        },
     },
     traits::structural_eq::StructuralEq,
     types::{
         literal_type_definition::LiteralTypeDefinition,
+        nominal_type_definition::NominalTypeDefinition,
+        shared_container_containing_type::SharedContainerContainingType,
         structural_type_definition::StructuralTypeDefinition,
+        type_definition::TypeDefinition,
     },
     values::{
         core_value::CoreValue,
@@ -32,11 +36,8 @@ use core::{
     unimplemented,
 };
 use serde::{Deserialize, Serialize};
-use crate::types::shared_container_containing_type::SharedContainerContainingType;
-use crate::shared_values::shared_containers::SharedContainerOwnership;
-use crate::types::nominal_type_definition::NominalTypeDefinition;
-use crate::types::type_definition::TypeDefinition;
 
+// {x: &integer}
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub enum Type {
     Alias(TypeDefinition),
@@ -44,7 +45,6 @@ pub enum Type {
 }
 
 impl Type {
-
     /// Get the inner [TypeDefinition]
     pub fn definition(&self) -> &TypeDefinition {
         match self {
@@ -62,183 +62,57 @@ impl Type {
     }
 
     /// Calls the provided callback with a reference to the recursively collapsed inner [StructuralTypeDefinition] value
-    pub fn with_collapsed_structural_type_definition<R>(&self, f: impl FnOnce(&StructuralTypeDefinition) -> R) -> R {
-        self.definition().structural_definition.with_collapsed_structural_type_definition(f)
+    pub fn with_collapsed_structural_type_definition<R>(
+        &self,
+        f: impl FnOnce(&StructuralTypeDefinition) -> R,
+    ) -> R {
+        self.definition()
+            .structural_definition
+            .with_collapsed_structural_type_definition(f)
     }
 
     pub fn unit() -> Self {
-        get_core_lib_type(CoreLibPointerId::Unit)
+        core_lib_type(CoreLibTypeId::Unit)
     }
     pub fn null() -> Self {
-        get_core_lib_type(CoreLibPointerId::Null)
+        core_lib_type(CoreLibTypeId::Null)
     }
     pub fn never() -> Self {
-        get_core_lib_type(CoreLibPointerId::Never)
+        core_lib_type(CoreLibTypeId::Never)
     }
     pub fn unknown() -> Self {
-        get_core_lib_type(CoreLibPointerId::Unknown)
+        core_lib_type(CoreLibTypeId::Unknown)
     }
     pub fn text() -> Self {
-        get_core_lib_type(CoreLibPointerId::Text)
+        core_lib_type(CoreLibTypeId::Text)
     }
     pub fn integer() -> Self {
-        get_core_lib_type(CoreLibPointerId::Integer(None))
+        core_lib_type(CoreLibTypeId::Integer(None))
     }
     pub fn typed_integer(variant: IntegerTypeVariant) -> Self {
-        get_core_lib_type(CoreLibPointerId::Integer(Some(variant)))
+        core_lib_type(CoreLibTypeId::Integer(Some(variant)))
     }
     pub fn decimal() -> Self {
-        get_core_lib_type(CoreLibPointerId::Decimal(None))
+        core_lib_type(CoreLibTypeId::Decimal(None))
     }
     pub fn typed_decimal(variant: DecimalTypeVariant) -> Self {
-        get_core_lib_type(CoreLibPointerId::Decimal(Some(variant)))
+        core_lib_type(CoreLibTypeId::Decimal(Some(variant)))
     }
     pub fn boolean() -> Self {
-        get_core_lib_type(CoreLibPointerId::Boolean)
+        core_lib_type(CoreLibTypeId::Boolean)
     }
     pub fn endpoint() -> Self {
-        get_core_lib_type(CoreLibPointerId::Endpoint)
+        core_lib_type(CoreLibTypeId::Endpoint)
     }
     pub fn ty() -> Self {
-        get_core_lib_type(CoreLibPointerId::Type)
+        core_lib_type(CoreLibTypeId::Type)
     }
     pub fn range() -> Self {
-        get_core_lib_type(CoreLibPointerId::Range)
+        core_lib_type(CoreLibTypeId::Range)
     }
 }
 
 impl Type {
-    /// Creates a reference type pointing to the given TypeReference
-    pub fn shared_reference(
-        type_definition: Rc<RefCell<SharedContainerContainingType>>,
-        metadata: TypeMetadata,
-    ) -> Self {
-        Type {
-            type_definition: StructuralTypeDefinition::Shared(type_definition),
-            base_type: None,
-            metadata,
-        }
-    }
-
-    /// Creates a structural type from the given structural type definition
-    pub fn structural(
-        structural_type: impl Into<LiteralTypeDefinition>,
-        prefix: TypeMetadata,
-    ) -> Self {
-        Type {
-            type_definition: StructuralTypeDefinition::literal(structural_type),
-            base_type: None,
-            metadata: prefix,
-        }
-    }
-
-    /// Creates a union type from the given member types
-    pub fn union<T>(types: Vec<T>, prefix: TypeMetadata) -> Self
-    where
-        T: Into<Type>,
-    {
-        Type {
-            type_definition: StructuralTypeDefinition::union(types),
-            base_type: None,
-            metadata: prefix,
-        }
-    }
-
-    /// Creates an intersection type from the given member types
-    pub fn intersection<T: Into<Type>>(
-        members: Vec<T>,
-        prefix: TypeMetadata,
-    ) -> Self {
-        Type {
-            type_definition: StructuralTypeDefinition::intersection(members),
-            base_type: None,
-            metadata: prefix,
-        }
-    }
-
-    /// Creates a function type from the given parameter types and return type
-    pub fn callable(
-        signature: CallableSignature,
-        prefix: TypeMetadata,
-    ) -> Self {
-        Type {
-            type_definition: StructuralTypeDefinition::callable(signature),
-            base_type: None,
-            metadata: prefix,
-        }
-    }
-
-    pub fn impl_type(
-        base_type: impl Into<Type>,
-        impl_types: Vec<PointerAddress>,
-        prefix: TypeMetadata,
-    ) -> Self {
-        Type {
-            type_definition: StructuralTypeDefinition::impl_type(base_type, impl_types),
-            base_type: None,
-            metadata: prefix,
-        }
-    }
-}
-
-impl Type {
-    /// Converts a specific type (e.g. 42u8) to its base nominal type (e.g. integer)
-    /// integer/u8 -> integer
-    /// integer -> integer
-    /// 42u8 -> integer
-    /// 42 -> integer
-    /// User/variant -> User
-    pub fn base_type_reference(
-        &self,
-    ) -> Option<Rc<RefCell<SharedContainerContainingType>>> {
-        // has direct base type (e.g. integer/u8 -> integer)
-        if let Some(base_type) = &self.base_type {
-            return Some(base_type.clone());
-        }
-        // unit type has no base type
-        if self.is_unit() {
-            return None;
-        }
-        Some(match &self.type_definition {
-            StructuralTypeDefinition::Literal(value) => get_core_lib_type_reference(
-                value.get_core_lib_type_pointer_id(),
-            ),
-            StructuralTypeDefinition::Union(_) => {
-                core::todo!("#322 handle union base type"); // generic type base type / type
-            }
-            StructuralTypeDefinition::Shared(reference) => {
-                let type_ref = reference.borrow();
-                if let Ok(core_lib_id) =
-                    CoreLibPointerId::try_from(&type_ref.pointer().address())
-                {
-                    match core_lib_id {
-                        // for integer and decimal variants, return the base type
-                        CoreLibPointerId::Integer(Some(_)) => {
-                            get_core_lib_type_reference(
-                                CoreLibPointerId::Integer(None),
-                            )
-                        }
-                        CoreLibPointerId::Decimal(Some(_)) => {
-                            get_core_lib_type_reference(
-                                CoreLibPointerId::Decimal(None),
-                            )
-                        }
-                        // otherwise, reference is already base type
-                        _ => reference.clone(),
-                    }
-                } else {
-                    todo!("#608 handle non-core lib type base type");
-                }
-            }
-            _ => core::panic!("Unhandled type definition for base type"),
-        })
-    }
-
-    pub fn base_type(&self) -> Option<Type> {
-        self.base_type_reference()
-            .map(|r| Type::shared_reference(r, TypeMetadata::default()))
-    }
-
     /// 1 matches 1 -> true
     /// 1 matches 2 -> false
     /// 1 matches 1 | 2 -> true
@@ -455,7 +329,9 @@ impl From<&CoreValue> for Type {
             CoreValue::List(list) => {
                 let types = list
                     .iter()
-                    .map(|v| Type::from(v.to_cloned_value().borrow().inner.clone()))
+                    .map(|v| {
+                        Type::from(v.to_cloned_value().borrow().inner.clone())
+                    })
                     .collect::<Vec<_>>();
                 Type::structural(
                     LiteralTypeDefinition::List(types),
@@ -474,7 +350,9 @@ impl From<&CoreValue> for Type {
                                     .inner
                                     .clone(),
                             ),
-                            Type::from(value.to_cloned_value().borrow().inner.clone()),
+                            Type::from(
+                                value.to_cloned_value().borrow().inner.clone(),
+                            ),
                         )
                     })
                     .collect::<Vec<_>>();
@@ -537,16 +415,16 @@ mod tests {
     use crate::prelude::*;
 
     use crate::{
-        libs::core::{get_core_lib_type, CoreLibPointerId},
+        libs::core::{CoreLibTypeId, core_lib_type},
+        types::r#type::{Type, TypeMetadata},
         values::{
             core_values::{
-                integer::{typed_integer::TypedInteger, Integer},
+                integer::{Integer, typed_integer::TypedInteger},
                 text::Text,
             },
             value_container::ValueContainer,
         },
     };
-    use crate::types::r#type::{Type, TypeMetadata};
 
     #[test]
     fn test_match_equal_values() {
@@ -620,8 +498,8 @@ mod tests {
             Type::structural(Integer::from(1), TypeMetadata::default())
                 .matches_type(&Type::union(
                     vec![
-                        get_core_lib_type(CoreLibPointerId::Integer(None)),
-                        get_core_lib_type(CoreLibPointerId::Text),
+                        core_lib_type(CoreLibTypeId::Integer(None)),
+                        core_lib_type(CoreLibTypeId::Text),
                     ],
                     TypeMetadata::default()
                 ))

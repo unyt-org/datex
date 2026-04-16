@@ -26,7 +26,7 @@ use crate::{
         },
     },
     compiler::precompiler::precompiled_ast::{AstMetadata, RichAst},
-    libs::core::{get_core_lib_type, CoreLibPointerId},
+    libs::core::{core_lib_type, CoreLibTypeId},
     prelude::*,
     shared_values::pointer_address::{ExternalPointerAddress, PointerAddress},
     type_inference::{
@@ -385,8 +385,8 @@ impl TypeExpressionVisitor<SpannedTypeError> for TypeInference {
             pointer_address,
             PointerAddress::External(ExternalPointerAddress::Builtin(_))
         ) {
-            mark_type(get_core_lib_type(
-                CoreLibPointerId::try_from(&pointer_address.to_owned())
+            mark_type(core_lib_type(
+                CoreLibTypeId::try_from(&pointer_address.to_owned())
                     .unwrap(),
             ))
         } else {
@@ -529,7 +529,7 @@ fn resolve_type_variant_access(
     match base {
         PointerAddress::External(ExternalPointerAddress::Builtin(_)) => {
             let base_ref = get_core_lib_type_reference(
-                CoreLibPointerId::try_from(base).unwrap(),
+                CoreLibTypeId::try_from(base).unwrap(),
             );
             let base_name = base_ref
                 .borrow()
@@ -538,7 +538,7 @@ fn resolve_type_variant_access(
                 .unwrap()
                 .name
                 .clone();
-            CoreLibPointerId::from_str(&format!(
+            CoreLibTypeId::from_str(&format!(
                 "{}/{}",
                 base_name, variant_name
             ))
@@ -1183,8 +1183,8 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
         match &shared_ref.address {
             PointerAddress::External(ExternalPointerAddress::Builtin(
                 _,
-            )) => mark_type(get_core_lib_type(
-                CoreLibPointerId::try_from(&shared_ref.address.to_owned())
+            )) => mark_type(core_lib_type(
+                CoreLibTypeId::try_from(&shared_ref.address.to_owned())
                     .unwrap(),
             )),
             _ => Err(SpannedTypeError {
@@ -1241,7 +1241,7 @@ mod tests {
         },
         global::operators::{binary::ArithmeticOperator, BinaryOperator},
         libs::core::{
-            get_core_lib_type, get_core_lib_type_reference, CoreLibPointerId,
+            core_lib_type, get_core_lib_type_reference, CoreLibTypeId,
         },
         parser::Parser,
         prelude::*
@@ -1395,7 +1395,7 @@ mod tests {
         let res = infer_from_script(src);
         assert_eq!(
             res,
-            get_core_lib_type(CoreLibPointerId::Integer(Some(
+            core_lib_type(CoreLibTypeId::Integer(Some(
                 IntegerTypeVariant::U8
             )))
         );
@@ -1408,7 +1408,7 @@ mod tests {
         let res = infer_from_script(src);
         assert_eq!(
             res,
-            get_core_lib_type(CoreLibPointerId::Integer(Some(
+            core_lib_type(CoreLibTypeId::Integer(Some(
                 IntegerTypeVariant::U8
             )))
         );
@@ -1420,7 +1420,7 @@ mod tests {
         let res = infer_from_script(src);
         assert_eq!(
             res,
-            get_core_lib_type(CoreLibPointerId::Integer(Some(
+            core_lib_type(CoreLibTypeId::Integer(Some(
                 IntegerTypeVariant::U8
             )))
         );
@@ -1433,7 +1433,7 @@ mod tests {
         let res = infer_from_script(src);
         assert_eq!(
             res,
-            get_core_lib_type(CoreLibPointerId::Integer(Some(
+            core_lib_type(CoreLibTypeId::Integer(Some(
                 IntegerTypeVariant::U8
             )))
         );
@@ -1474,16 +1474,16 @@ mod tests {
                     parameter_types: vec![
                         (
                             Some("a".to_string()),
-                            get_core_lib_type(CoreLibPointerId::Integer(None))
+                            core_lib_type(CoreLibTypeId::Integer(None))
                         ),
                         (
                             Some("b".to_string()),
-                            get_core_lib_type(CoreLibPointerId::Integer(None))
+                            core_lib_type(CoreLibTypeId::Integer(None))
                         ),
                     ],
                     rest_parameter_type: None,
-                    return_type: Some(Box::new(get_core_lib_type(
-                        CoreLibPointerId::Integer(None)
+                    return_type: Some(Box::new(core_lib_type(
+                        CoreLibTypeId::Integer(None)
                     ))),
                     yeet_type: None,
                 },
@@ -1506,11 +1506,11 @@ mod tests {
                     parameter_types: vec![
                         (
                             Some("a".to_string()),
-                            get_core_lib_type(CoreLibPointerId::Integer(None))
+                            core_lib_type(CoreLibTypeId::Integer(None))
                         ),
                         (
                             Some("b".to_string()),
-                            get_core_lib_type(CoreLibPointerId::Integer(None))
+                            core_lib_type(CoreLibTypeId::Integer(None))
                         ),
                     ],
                     rest_parameter_type: None,
@@ -1631,7 +1631,7 @@ mod tests {
         let nominal_type_def = Type::new(
             StructuralTypeDefinition::Shared(Rc::new(RefCell::new(
                 SharedTypeContainer::nominal(
-                    get_core_lib_type(CoreLibPointerId::Integer(None)),
+                    core_lib_type(CoreLibTypeId::Integer(None)),
                     NominalTypeDeclaration::from("A".to_string()),
                 ),
             ))),
@@ -1653,7 +1653,7 @@ mod tests {
         if let StructuralTypeDefinition::Shared(reference) = &var_type.definition().structural_definition {
             assert_eq!(
                 reference,
-                &get_core_lib_type_reference(CoreLibPointerId::Integer(None))
+                &get_core_lib_type_reference(CoreLibTypeId::Integer(None))
             );
         } else {
             panic!("Expected TypeReference");
@@ -1662,7 +1662,7 @@ mod tests {
         let inferred_type = infer_from_script("typealias X = integer/u8");
         assert_eq!(
             inferred_type,
-            get_core_lib_type(CoreLibPointerId::Integer(Some(
+            core_lib_type(CoreLibTypeId::Integer(Some(
                 IntegerTypeVariant::U8,
             )))
         );
@@ -1670,14 +1670,14 @@ mod tests {
         let inferred_type = infer_from_script("typealias X = decimal");
         assert_eq!(
             inferred_type,
-            get_core_lib_type(CoreLibPointerId::Decimal(None))
+            core_lib_type(CoreLibTypeId::Decimal(None))
         );
 
         let inferred_type = infer_from_script("typealias X = boolean");
-        assert_eq!(inferred_type, get_core_lib_type(CoreLibPointerId::Boolean));
+        assert_eq!(inferred_type, core_lib_type(CoreLibTypeId::Boolean));
 
         let inferred_type = infer_from_script("typealias X = text");
-        assert_eq!(inferred_type, get_core_lib_type(CoreLibPointerId::Text));
+        assert_eq!(inferred_type, core_lib_type(CoreLibTypeId::Text));
     }
 
     #[test]
@@ -1869,8 +1869,8 @@ mod tests {
             var_type,
             &Type::union(
                 vec![
-                    get_core_lib_type(CoreLibPointerId::Text),
-                    get_core_lib_type(CoreLibPointerId::Integer(None))
+                    core_lib_type(CoreLibTypeId::Text),
+                    core_lib_type(CoreLibTypeId::Integer(None))
                 ],
                 TypeMetadata::default()
             )
@@ -1891,7 +1891,7 @@ mod tests {
             TypeError::AssignmentTypeMismatch {
                 annotated_type,
                 assigned_type
-            } if *annotated_type == get_core_lib_type(CoreLibPointerId::Integer(None))
+            } if *annotated_type == core_lib_type(CoreLibTypeId::Integer(None))
               && assigned_type == &Type::structural(LiteralTypeDefinition::Text("hello".to_string().into()), TypeMetadata::default())
         );
     }
@@ -2004,7 +2004,7 @@ mod tests {
             inferred_type,
             Type::intersection(
                 vec![
-                    get_core_lib_type(CoreLibPointerId::Integer(Some(
+                    core_lib_type(CoreLibTypeId::Integer(Some(
                         IntegerTypeVariant::U8
                     ))),
                     Type::structural(
@@ -2026,10 +2026,10 @@ mod tests {
             inferred_type,
             Type::union(
                 vec![
-                    get_core_lib_type(CoreLibPointerId::Integer(Some(
+                    core_lib_type(CoreLibTypeId::Integer(Some(
                         IntegerTypeVariant::U8
                     ))),
-                    get_core_lib_type(CoreLibPointerId::Decimal(None))
+                    core_lib_type(CoreLibTypeId::Decimal(None))
                 ],
                 TypeMetadata::default()
             )
@@ -2063,7 +2063,7 @@ mod tests {
                             ),
                             TypeMetadata::default()
                         ),
-                        get_core_lib_type(CoreLibPointerId::Integer(Some(
+                        core_lib_type(CoreLibTypeId::Integer(Some(
                             IntegerTypeVariant::U8
                         )))
                     ),
@@ -2074,7 +2074,7 @@ mod tests {
                             ),
                             TypeMetadata::default()
                         ),
-                        get_core_lib_type(CoreLibPointerId::Decimal(None))
+                        core_lib_type(CoreLibTypeId::Decimal(None))
                     )
                 ]).into()
             )
@@ -2115,8 +2115,8 @@ mod tests {
 
     #[test]
     fn infer_binary_expression_types() {
-        let integer = get_core_lib_type(CoreLibPointerId::Integer(None));
-        let decimal = get_core_lib_type(CoreLibPointerId::Decimal(None));
+        let integer = core_lib_type(CoreLibTypeId::Integer(None));
+        let decimal = core_lib_type(CoreLibTypeId::Decimal(None));
 
         // integer - integer = integer
         let mut expr = DatexExpressionData::BinaryOperation(BinaryOperation {

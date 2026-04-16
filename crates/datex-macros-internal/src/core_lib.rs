@@ -2,11 +2,11 @@ use proc_macro2::TokenStream;
 use quote::quote;
 use syn::{Data, DataEnum, DeriveInput, Variant};
 
-pub fn derive_lib_type_string(input: DeriveInput) -> TokenStream {
+pub fn derive_core_string(input: DeriveInput) -> TokenStream {
     let name = input.ident;
 
     let Data::Enum(DataEnum { variants, .. }) = input.data else {
-        core::panic!("#[derive(LibTypeString)] only works on enums");
+        core::panic!("#[derive(CoreLibString)] only works on enums");
     };
 
     // Create match arms for Display and FromStr
@@ -25,7 +25,6 @@ pub fn derive_lib_type_string(input: DeriveInput) -> TokenStream {
                 #var_name => Ok(#name::#ident),
             });
         } else {
-            // Variant with data, e.g. Integer(Option<IntegerTypeVariant>)
             to_str_arms.push(quote! {
                 #name::#ident(Some(inner)) => core::write!(f, "{}/{}", #var_name, inner.to_string().to_lowercase()),
             });
@@ -35,7 +34,7 @@ pub fn derive_lib_type_string(input: DeriveInput) -> TokenStream {
             from_str_arms.push(quote! {
                 s if s.starts_with(concat!(#var_name, "/")) => {
                     let suffix = &s[#var_name.len()+1..];
-                    Ok(#name::#ident(Some(suffix.parse().map_err(|_| format!("Invalid {} variant: {}", #var_name, suffix))?)))
+                    Ok(#name::#ident(Some(suffix.parse().map_err(|_| alloc::format!("Invalid {} variant: {}", #var_name, suffix))?)))
                 }
             });
             from_str_arms.push(quote! {
@@ -54,11 +53,11 @@ pub fn derive_lib_type_string(input: DeriveInput) -> TokenStream {
         }
 
         impl core::str::FromStr for #name {
-            type Err = String;
+            type Err = alloc::string::String;
             fn from_str(s: &str) -> Result<Self, Self::Err> {
                 match s {
                     #(#from_str_arms)*
-                    _ => Err(format!("Unknown variant for {}: {}", stringify!(#name), s)),
+                    _ => Err(alloc::format!("Unknown variant for {}: {}", stringify!(#name), s)),
                 }
             }
         }

@@ -3,7 +3,7 @@ use crate::{
         r#type::{DIFType, DIFTypeDefinition},
         value::{DIFReferenceNotFoundError, DIFValueContainer},
     },
-    libs::core::{CoreLibPointerId, get_core_lib_type_definition},
+    libs::core::{CoreLibTypeId, get_core_lib_type_definition},
     runtime::memory::Memory,
     types::literal_type_definition::LiteralTypeDefinition,
     values::{
@@ -76,19 +76,19 @@ impl DIFValueRepresentation {
             DIFValueRepresentation::Null => Value::null(),
             DIFValueRepresentation::String(str) => Value {
                 actual_type: Box::new(get_core_lib_type_definition(
-                    CoreLibPointerId::Text,
+                    CoreLibTypeId::Text,
                 )),
                 inner: CoreValue::Text(str.clone().into()),
             },
             DIFValueRepresentation::Boolean(b) => Value {
                 actual_type: Box::new(get_core_lib_type_definition(
-                    CoreLibPointerId::Boolean,
+                    CoreLibTypeId::Boolean,
                 )),
                 inner: CoreValue::Boolean((*b).into()),
             },
             DIFValueRepresentation::Number(n) => Value {
                 actual_type: Box::new(get_core_lib_type_definition(
-                    CoreLibPointerId::Decimal(Some(DecimalTypeVariant::F64)),
+                    CoreLibTypeId::Decimal(Some(DecimalTypeVariant::F64)),
                 )),
                 inner: CoreValue::TypedDecimal(TypedDecimal::F64(
                     OrderedFloat::from(*n),
@@ -96,7 +96,7 @@ impl DIFValueRepresentation {
             },
             DIFValueRepresentation::Array(array) => Value {
                 actual_type: Box::new(get_core_lib_type_definition(
-                    CoreLibPointerId::List,
+                    CoreLibTypeId::List,
                 )),
                 inner: CoreValue::List(
                     array
@@ -113,7 +113,7 @@ impl DIFValueRepresentation {
                 }
                 Value {
                     actual_type: Box::new(get_core_lib_type_definition(
-                        CoreLibPointerId::Map,
+                        CoreLibTypeId::Map,
                     )),
                     inner: CoreValue::Map(map.into()),
                 }
@@ -128,7 +128,7 @@ impl DIFValueRepresentation {
                 }
                 Value {
                     actual_type: Box::new(get_core_lib_type_definition(
-                        CoreLibPointerId::Map,
+                        CoreLibTypeId::Map,
                     )),
                     inner: CoreValue::Map(core_map.into()),
                 }
@@ -150,11 +150,11 @@ impl DIFValueRepresentation {
     ) -> Result<Value, DIFReferenceNotFoundError> {
         let val = match type_definition {
             DIFTypeDefinition::Reference(r) => {
-                if let Ok(core_lib_ptr_id) = CoreLibPointerId::try_from(r) {
+                if let Ok(core_lib_ptr_id) = CoreLibTypeId::try_from(r) {
                     match core_lib_ptr_id {
                         // special mappings:
                         // type map and represented as object -> convert to map
-                        CoreLibPointerId::Map
+                        CoreLibTypeId::Map
                             if let DIFValueRepresentation::Object(object) =
                                 self =>
                         {
@@ -169,7 +169,7 @@ impl DIFValueRepresentation {
                             ))))
                         }
                         // type map and represented as empty array -> convert to empty map
-                        CoreLibPointerId::Map
+                        CoreLibTypeId::Map
                             if let DIFValueRepresentation::Array(array) =
                                 self =>
                         {
@@ -184,14 +184,14 @@ impl DIFValueRepresentation {
                             ))))
                         }
                         // type integer and represented as string -> convert to integer
-                        CoreLibPointerId::Integer(None)
+                        CoreLibTypeId::Integer(None)
                             if let DIFValueRepresentation::String(s) = self =>
                         {
                             Some(Value::from(CoreValue::Integer(
                                 Integer::from_string(s).unwrap(),
                             )))
                         }
-                        CoreLibPointerId::Integer(Some(variant))
+                        CoreLibTypeId::Integer(Some(variant))
                             if let DIFValueRepresentation::String(s) = self =>
                         {
                             Some(Value::from(CoreValue::TypedInteger(

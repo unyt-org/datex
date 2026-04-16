@@ -1,4 +1,5 @@
 use crate::{
+    prelude::*, shared_values::errors::IndexOutOfBoundsError,
     traits::structural_eq::StructuralEq,
 };
 use core::{
@@ -7,7 +8,6 @@ use core::{
     result::Result,
 };
 use serde::{Deserialize, Serialize};
-use crate::shared_values::errors::IndexOutOfBoundsError;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Text(pub String);

@@ -28,7 +28,7 @@ use crate::{
         SpannedCompilerError,
     },
     global::operators::{binary::ArithmeticOperator, BinaryOperator},
-    libs::core::CoreLibPointerId,
+    libs::core::CoreLibTypeId,
     types::structural_type_definition::StructuralTypeDefinition,
     utils::maybe_action::{collect_or_pass_error, ErrorCollector, MaybeAction},
     visitor::{
@@ -244,7 +244,7 @@ impl<'a> Precompiler<'a> {
             Ok(ResolvedVariable::VariableId(id))
         }
         // try to resolve core variable
-        else if let Ok(core) = CoreLibPointerId::from_str(name) {
+        else if let Ok(core) = CoreLibTypeId::from_str(name) {
             Ok(ResolvedVariable::PointerAddress(core.into()))
         } else {
             Err(CompilerError::UndeclaredVariable(name.to_string()))
@@ -871,7 +871,7 @@ mod tests {
                                 TypeExpressionData::Text("a".to_string())
                                     .with_default_span(),
                                 TypeExpressionData::GetReference(
-                                    CoreLibPointerId::Integer(None).into()
+                                    CoreLibTypeId::Integer(None).into()
                                 )
                                 .with_default_span(),
                             )])
@@ -917,7 +917,7 @@ mod tests {
                     ast: DatexExpression { data: DatexExpressionData::RequestSharedRef(RequestSharedRef{address, mutability}), ..},
                     ..
                 }
-            ) if address == CoreLibPointerId::Boolean.into() && mutability == ReferenceMutability::Immutable
+            ) if address == CoreLibTypeId::Boolean.into() && mutability == ReferenceMutability::Immutable
         );
         let result = parse_and_precompile("integer");
         assert_matches!(
@@ -927,7 +927,7 @@ mod tests {
                     ast: DatexExpression { data: DatexExpressionData::RequestSharedRef(RequestSharedRef{address, mutability}), ..},
                     ..
                 }
-            ) if address == CoreLibPointerId::Integer(None).into()  && mutability == ReferenceMutability::Immutable
+            ) if address == CoreLibTypeId::Integer(None).into()  && mutability == ReferenceMutability::Immutable
         );
 
         let result = parse_and_precompile("integer/u8");
@@ -935,7 +935,7 @@ mod tests {
             result.unwrap().ast,
             DatexExpressionData::VariantAccess(VariantAccess {
                 base: ResolvedVariable::PointerAddress(
-                    CoreLibPointerId::Integer(None).into()
+                    CoreLibTypeId::Integer(None).into()
                 ),
                 name: "integer".to_string(),
                 variant: "u8".to_string(),
@@ -953,7 +953,7 @@ mod tests {
             result.ast,
             DatexExpressionData::VariantAccess(VariantAccess {
                 base: ResolvedVariable::PointerAddress(
-                    CoreLibPointerId::Integer(None).into()
+                    CoreLibTypeId::Integer(None).into()
                 ),
                 name: "integer".to_string(),
                 variant: "u8".to_string(),
@@ -967,7 +967,7 @@ mod tests {
             result.ast,
             DatexExpressionData::VariantAccess(VariantAccess {
                 base: ResolvedVariable::PointerAddress(
-                    CoreLibPointerId::Integer(None).into()
+                    CoreLibTypeId::Integer(None).into()
                 ),
                 name: "integer".to_string(),
                 variant: "invalid".to_string(),
@@ -1292,7 +1292,7 @@ mod tests {
                 id: Some(0),
                 name: "x".to_string(),
                 definition: TypeExpressionData::GetReference(
-                    PointerAddress::from(CoreLibPointerId::Integer(None))
+                    PointerAddress::from(CoreLibTypeId::Integer(None))
                 )
                 .with_default_span(),
                 hoisted: true,

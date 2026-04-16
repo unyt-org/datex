@@ -3,21 +3,23 @@ use core::result::Result;
 use datex_macros_internal::FromCoreValue;
 
 use crate::{
-    libs::core::{get_core_lib_type_reference, CoreLibPointerId},
+    libs::core::{CoreLibTypeId, get_core_lib_type_reference},
     traits::{structural_eq::StructuralEq, value_eq::ValueEq},
-    types::structural_type_definition::StructuralTypeDefinition,
+    types::{
+        structural_type_definition::StructuralTypeDefinition, r#type::Type,
+    },
     values::{
         core_values::{
             boolean::Boolean,
             callable::Callable,
             decimal::{
-                typed_decimal::{DecimalTypeVariant, TypedDecimal},
                 Decimal,
+                typed_decimal::{DecimalTypeVariant, TypedDecimal},
             },
             endpoint::Endpoint,
             integer::{
-                typed_integer::{IntegerTypeVariant, TypedInteger},
                 Integer,
+                typed_integer::{IntegerTypeVariant, TypedInteger},
             },
             list::List,
             map::Map,
@@ -31,7 +33,6 @@ use core::{
     fmt::{Display, Formatter},
     ops::{Add, AddAssign, Neg, Not, Sub},
 };
-use crate::types::r#type::Type;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, FromCoreValue)]
 pub enum CoreValue {
@@ -221,22 +222,22 @@ impl From<f64> for CoreValue {
     }
 }
 
-impl From<&CoreValue> for CoreLibPointerId {
+impl From<&CoreValue> for CoreLibTypeId {
     fn from(value: &CoreValue) -> Self {
         match value {
-            CoreValue::Map(_) => CoreLibPointerId::Map,
-            CoreValue::List(_) => CoreLibPointerId::List,
-            CoreValue::Text(_) => CoreLibPointerId::Text,
-            CoreValue::Boolean(_) => CoreLibPointerId::Boolean,
-            CoreValue::TypedInteger(i) => CoreLibPointerId::from(i),
-            CoreValue::TypedDecimal(d) => CoreLibPointerId::from(d),
-            CoreValue::Integer(_) => CoreLibPointerId::Integer(None),
-            CoreValue::Decimal(_) => CoreLibPointerId::Decimal(None),
-            CoreValue::Endpoint(_) => CoreLibPointerId::Endpoint,
-            CoreValue::Null => CoreLibPointerId::Null,
-            CoreValue::Type(_) => CoreLibPointerId::Type,
-            CoreValue::Callable(_) => CoreLibPointerId::Callable,
-            CoreValue::Range(_) => CoreLibPointerId::Range,
+            CoreValue::Map(_) => CoreLibTypeId::Map,
+            CoreValue::List(_) => CoreLibTypeId::List,
+            CoreValue::Text(_) => CoreLibTypeId::Text,
+            CoreValue::Boolean(_) => CoreLibTypeId::Boolean,
+            CoreValue::TypedInteger(i) => CoreLibTypeId::from(i),
+            CoreValue::TypedDecimal(d) => CoreLibTypeId::from(d),
+            CoreValue::Integer(_) => CoreLibTypeId::Integer(None),
+            CoreValue::Decimal(_) => CoreLibTypeId::Decimal(None),
+            CoreValue::Endpoint(_) => CoreLibTypeId::Endpoint,
+            CoreValue::Null => CoreLibTypeId::Null,
+            CoreValue::Type(_) => CoreLibTypeId::Type,
+            CoreValue::Callable(_) => CoreLibTypeId::Callable,
+            CoreValue::Range(_) => CoreLibTypeId::Range,
         }
     }
 }
@@ -261,7 +262,7 @@ impl CoreValue {
     /// For example, a CoreValue::TypedInteger(i32) will return the type ref integer/i32
     pub fn default_type_definition(&self) -> StructuralTypeDefinition {
         StructuralTypeDefinition::Shared(get_core_lib_type_reference(
-            CoreLibPointerId::from(self),
+            CoreLibTypeId::from(self),
         ))
     }
 

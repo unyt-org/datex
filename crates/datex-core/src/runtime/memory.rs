@@ -1,23 +1,23 @@
 use crate::{
     collections::HashMap,
-    libs::core::{load_core_lib, CoreLibPointerId},
+    global::protocol_structures::instruction_data::RawRemotePointerAddress,
+    libs::core::{CoreLibTypeId, load_core_lib},
+    prelude::*,
+    shared_values::{
+        pointer_address::{
+            ExternalPointerAddress, PointerAddress, SelfOwnedPointerAddress,
+        },
+        shared_containers::{
+            ReferencedSharedContainer, SharedContainer, SharedContainerInner,
+            base_shared_value_container::BaseSharedValueContainer,
+        },
+    },
     types::error::IllegalTypeError,
     values::core_values::endpoint::Endpoint,
 };
 use binrw::io::Cursor;
-use core::result::Result;
-use core::cell::Ref;
+use core::{cell::Ref, result::Result};
 use std::cell::RefCell;
-use crate::{
-    prelude::*,
-    shared_values::pointer_address::{
-        SelfOwnedPointerAddress, ExternalPointerAddress, PointerAddress,
-    },
-};
-use crate::global::protocol_structures::instruction_data::RawRemotePointerAddress;
-use crate::shared_values::shared_containers::{ReferencedSharedContainer, SharedContainerInner};
-use crate::shared_values::shared_containers::base_shared_value_container::BaseSharedValueContainer;
-use crate::shared_values::shared_containers::SharedContainer;
 
 #[derive(Debug, Default)]
 pub struct Memory {
@@ -44,15 +44,19 @@ impl Memory {
         memory
     }
 
-    /// Registers a new shared container in memory. If the reference has no PointerAddress, a new local one is generated.
+    /// Registers a referenced shared container in memory. If the reference has no PointerAddress, a new local one is generated.
     /// If the reference is already registered (has a PointerAddress), the existing address is returned and no new registration is done.
+    /// Owned shared containers shall not be registered in memory.
     /// Returns the PointerAddress of the registered reference.
-    pub fn register_shared_container(&mut self, container: &SharedContainer) {
+    pub fn register_referenced_shared_container(
+        &mut self,
+        container: &ReferencedSharedContainer,
+    ) {
         let pointer_address = container.pointer_address();
         // check if reference is already registered (if it has an address, we assume it is registered)
         self.pointers
             .entry(pointer_address)
-            .or_insert_with(|| container.inner_rc().clone());
+            .or_insert_with(|| container.clone());
     }
 
     /// Returns a reference stored at the given PointerAddress, if it exists.
@@ -66,7 +70,7 @@ impl Memory {
     /// Helper function to get a core value directly from memory
     pub fn get_core_reference(
         &self,
-        pointer_id: CoreLibPointerId,
+        pointer_id: CoreLibTypeId,
     ) -> &SharedContainerValueOrType {
         self.get_reference(&pointer_id.into())
             .expect("core reference not found in memory")
@@ -75,25 +79,24 @@ impl Memory {
     /// Helper function to get a core type directly from memory if it can be used as a type
     pub fn get_core_type_reference(
         &self,
-        pointer_id: CoreLibPointerId,
+        pointer_id: CoreLibTypeId,
     ) -> Result<Ref<SharedTypeContainer>, IllegalTypeError> {
         let reference = self
             .get_reference(&pointer_id.into())
             .ok_or(IllegalTypeError::TypeNotFound)?;
- 
-        Ref::filter_map(reference.value(), |container|
-            match container {
-                SharedContainerValueOrType::Type(def) => Some(def),
-                _ => None
-            }
-        ).map_err(|_| IllegalTypeError::TypeNotFound)
+
+        Ref::filter_map(reference.value(), |container| match container {
+            SharedContainerValueOrType::Type(def) => Some(def),
+            _ => None,
+        })
+        .map_err(|_| IllegalTypeError::TypeNotFound)
     }
 
     /// Helper function to get a core type directly from memory, asserting that is can be used as a type
     /// Panics if the core type is not found or cannot be used as a type.
     pub fn get_core_type_reference_unchecked(
         &self,
-        pointer_id: CoreLibPointerId,
+        pointer_id: CoreLibTypeId,
     ) -> Ref<SharedTypeContainer> {
         // FIXME #415: Mark as unchecked
         self.get_core_type_reference(pointer_id)
@@ -124,7 +127,9 @@ impl Memory {
     }
 
     /// Creates a new unique local owned pointer.
-    pub fn get_new_endpoint_owned_pointer_address(&mut self) -> SelfOwnedPointerAddress {
+    pub fn get_new_endpoint_owned_pointer_address(
+        &mut self,
+    ) -> SelfOwnedPointerAddress {
         let timestamp = crate::time::now_ms();
         // new timestamp, reset counter
         if timestamp != self.last_timestamp {

@@ -1,5 +1,5 @@
 use crate::{
-    libs::core::CoreLibPointerId,
+    libs::core::CoreLibTypeId,
     prelude::*,
     runtime::execution::ExecutionError,
     traits::{apply::Apply, structural_eq::StructuralEq, value_eq::ValueEq},
@@ -145,12 +145,12 @@ impl Value {
     pub fn has_default_type(&self) -> bool {
         if let StructuralTypeDefinition::Shared(type_reference) =
             self.actual_type.as_ref()
-            && let Ok(actual_type_core_ptr_id) = CoreLibPointerId::try_from(
+            && let Ok(actual_type_core_ptr_id) = CoreLibTypeId::try_from(
                 &type_reference.borrow().pointer().address(),
             )
         {
             // actual_type has core type pointer id which is equal to the default core type pointer id of self.inner
-            let self_default_type_ptr_id = CoreLibPointerId::from(&self.inner);
+            let self_default_type_ptr_id = CoreLibTypeId::from(&self.inner);
             self_default_type_ptr_id == actual_type_core_ptr_id
         } else {
             false
@@ -364,7 +364,7 @@ mod tests {
     use super::*;
     use crate::{
         assert_structural_eq, datex_list,
-        libs::core::{get_core_lib_type, get_core_lib_type_reference},
+        libs::core::{core_lib_type, get_core_lib_type_reference},
         prelude::*,
         values::core_values::{
             endpoint::Endpoint,
@@ -534,7 +534,7 @@ mod tests {
         let val = Value {
             inner: CoreValue::Integer(Integer::from(42)),
             actual_type: Box::new(StructuralTypeDefinition::ImplType(
-                Box::new(get_core_lib_type(CoreLibPointerId::Integer(None))),
+                Box::new(core_lib_type(CoreLibTypeId::Integer(None))),
                 vec![],
             )),
         };
