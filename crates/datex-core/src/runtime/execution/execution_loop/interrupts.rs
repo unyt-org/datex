@@ -5,7 +5,7 @@ use crate::{
 };
 
 use crate::{prelude::*, shared_values::shared_containers::ReferenceMutability};
-use crate::global::protocol_structures::instruction_data::{RawInternalPointerAddress, RawLocalPointerAddress, RawRemotePointerAddress};
+use crate::global::protocol_structures::instruction_data::{RawBuiltinPointerAddress, RawLocalPointerAddress, RawRemotePointerAddress};
 use crate::shared_values::shared_containers::SharedContainerMutability;
 
 #[derive(Debug)]
@@ -24,7 +24,7 @@ pub enum ExternalExecutionInterrupt {
         ReferenceMutability,
     ),
     GetReferenceToLocalPointer(RawLocalPointerAddress),
-    GetReferenceInternalPointer(RawInternalPointerAddress),
+    GetReferenceToBuiltinPointer(RawBuiltinPointerAddress),
     RemoteExecution(ValueContainer, Vec<u8>),
     Apply(ValueContainer, Vec<ValueContainer>),
     /// Request to move a list of pointers from the current caller endpoint to the local endpoint 

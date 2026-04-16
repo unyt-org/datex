@@ -10,7 +10,7 @@ use crate::values::{
 };
 
 use crate::{
-    libs::core::CoreLibTypeId, prelude::*,
+    prelude::*,
     traits::structural_eq::StructuralEq,
 };
 
@@ -25,6 +25,7 @@ use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{Deserialize, Serialize};
 use strum::Display;
 use strum_macros::{AsRefStr, EnumIter, EnumString};
+use crate::libs::core::type_id::{CoreLibTypeId, CoreLibVariantTypeId};
 
 /// The integer type variants to be used as a inline
 /// definition in DATEX (such as 42u32 or -42i64).
@@ -101,7 +102,7 @@ impl Serialize for TypedInteger {
 
 impl From<&TypedInteger> for CoreLibTypeId {
     fn from(value: &TypedInteger) -> Self {
-        CoreLibTypeId::Integer(Some(value.variant()))
+        CoreLibTypeId::Variant(CoreLibVariantTypeId::Integer(value.variant()))
     }
 }
 

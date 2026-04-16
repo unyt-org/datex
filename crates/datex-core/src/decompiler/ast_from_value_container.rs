@@ -19,10 +19,10 @@ use crate::{
 
 use crate::{
     ast::expressions::{CallableDeclaration, CreateShared, GetSharedRef},
-    libs::core::CoreLibPointerId,
     prelude::*,
 };
 use alloc::format;
+use crate::libs::core::core_lib_id::CoreLibId;
 use crate::shared_values::shared_containers::SharedContainer;
 use crate::types::r#type::Type;
 use crate::types::type_definition::TypeDefinition;
@@ -245,8 +245,8 @@ fn structural_type_definition_to_type_expression(type_definition: &StructuralTyp
         StructuralTypeDefinition::Unit => TypeExpressionData::Unit.with_default_span(),
         StructuralTypeDefinition::Shared(type_reference) => {
             // try to resolve to core lib value
-            if let Ok(core_lib_type) = CoreLibPointerId::try_from(
-                &type_reference.pointer_address(),
+            if let Ok(core_lib_type) = CoreLibId::try_from(
+                type_reference.pointer_address(),
             ) {
                 TypeExpressionData::Identifier(core_lib_type.to_string())
                     .with_default_span()

@@ -1,5 +1,5 @@
+use core::fmt::Display;
 use core::ops::Deref;
-
 use crate::{
     libs::core::{type_id::CoreLibTypeId, value_id::CoreLibValueId},
     prelude::*,
@@ -38,6 +38,15 @@ impl From<CoreLibTypeId> for CoreLibId {
 impl From<CoreLibValueId> for CoreLibId {
     fn from(value_id: CoreLibValueId) -> Self {
         CoreLibId::Value(value_id)
+    }
+}
+
+impl Display for CoreLibId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            CoreLibId::Type(type_id) => write!(f, "{}", type_id.to_string()),
+            CoreLibId::Value(value_id) => write!(f, "{}", value_id.to_string()),
+        }
     }
 }
 
@@ -82,5 +91,30 @@ impl<T: CoreLibIdTrait> From<T> for ExternalPointerAddress {
         ExternalPointerAddress::Builtin(
             core_lib_id.into().to_le_bytes()[0..3].try_into().unwrap(),
         )
+    }
+}
+
+
+impl TryFrom<ExternalPointerAddress> for CoreLibId {
+    type Error = ();
+    fn try_from(external: ExternalPointerAddress) -> Result<Self, Self::Error> {
+        if let ExternalPointerAddress::Builtin(bytes) = external {
+            let id = u16::from_le_bytes(bytes[0..2].try_into().unwrap());
+            CoreLibId::try_from(CoreLibIdIndex(id))
+        } else {
+            Err(())
+        }
+    }
+}
+
+impl TryFrom<PointerAddress> for CoreLibId {
+    type Error = ();
+
+    fn try_from(pointer: PointerAddress) -> Result<Self, Self::Error> {
+        if let PointerAddress::External(external) = pointer {
+            CoreLibId::try_from(external)
+        } else {
+            Err(())
+        }
     }
 }

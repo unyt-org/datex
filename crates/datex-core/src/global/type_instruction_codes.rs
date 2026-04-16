@@ -68,64 +68,64 @@ impl From<&StructuralTypeDefinition> for TypeInstructionCode {
 
 #[derive(Clone, Debug, PartialEq, Display, Specifier)]
 #[bits = 2]
-pub enum TypeReferenceMutabilityCode {
+pub enum TypeOwnershipCode {
     MutableReference,   // &mut / 'mut
     ImmutableReference, // & / '
     Value,              // default
 }
 
-impl From<&TypeReferenceMutabilityCode> for SharedContainerOwnership {
-    fn from(value: &TypeReferenceMutabilityCode) -> Self {
+impl From<&TypeOwnershipCode> for SharedContainerOwnership {
+    fn from(value: &TypeOwnershipCode) -> Self {
         match value {
-            TypeReferenceMutabilityCode::MutableReference => {
+            TypeOwnershipCode::MutableReference => {
                 SharedContainerOwnership::Referenced(ReferenceMutability::Mutable)
             }
-            TypeReferenceMutabilityCode::ImmutableReference => {
+            TypeOwnershipCode::ImmutableReference => {
                 SharedContainerOwnership::Referenced(ReferenceMutability::Immutable)
             }
-            TypeReferenceMutabilityCode::Value => SharedContainerOwnership::Owned,
+            TypeOwnershipCode::Value => SharedContainerOwnership::Owned,
         }
     }
 }
 
-impl From<&SharedContainerOwnership> for TypeReferenceMutabilityCode {
+impl From<&SharedContainerOwnership> for TypeOwnershipCode {
     fn from(value: &SharedContainerOwnership) -> Self {
         match value {
             SharedContainerOwnership::Referenced(ReferenceMutability::Mutable) => {
-                TypeReferenceMutabilityCode::MutableReference
+                TypeOwnershipCode::MutableReference
             }
             SharedContainerOwnership::Referenced(ReferenceMutability::Immutable) => {
-                TypeReferenceMutabilityCode::ImmutableReference
+                TypeOwnershipCode::ImmutableReference
             }
-            SharedContainerOwnership::Owned => TypeReferenceMutabilityCode::ImmutableReference,
+            SharedContainerOwnership::Owned => TypeOwnershipCode::ImmutableReference,
         }
     }
 }
 
-impl From<&Option<LocalReferenceMutability>> for TypeReferenceMutabilityCode {
+impl From<&Option<LocalReferenceMutability>> for TypeOwnershipCode {
     fn from(value: &Option<LocalReferenceMutability>) -> Self {
         match value {
             Some(LocalReferenceMutability::Mutable) => {
-                TypeReferenceMutabilityCode::MutableReference
+                TypeOwnershipCode::MutableReference
             }
             Some(LocalReferenceMutability::Immutable) => {
-                TypeReferenceMutabilityCode::ImmutableReference
+                TypeOwnershipCode::ImmutableReference
             }
-            None => TypeReferenceMutabilityCode::Value,
+            None => TypeOwnershipCode::Value,
         }
     }
 }
 
-impl From<&TypeReferenceMutabilityCode> for Option<LocalReferenceMutability> {
-    fn from(value: &TypeReferenceMutabilityCode) -> Self {
+impl From<&TypeOwnershipCode> for Option<LocalReferenceMutability> {
+    fn from(value: &TypeOwnershipCode) -> Self {
         match value {
-            TypeReferenceMutabilityCode::MutableReference => {
+            TypeOwnershipCode::MutableReference => {
                 Some(LocalReferenceMutability::Mutable)
             }
-            TypeReferenceMutabilityCode::ImmutableReference => {
+            TypeOwnershipCode::ImmutableReference => {
                 Some(LocalReferenceMutability::Immutable)
             }
-            TypeReferenceMutabilityCode::Value => None,
+            TypeOwnershipCode::Value => None,
         }
     }
 }

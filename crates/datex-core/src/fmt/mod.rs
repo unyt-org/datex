@@ -14,11 +14,11 @@ use crate::{
     },
     fmt::options::{FormattingOptions, TypeDeclarationFormatting},
     global::operators::{BinaryOperator, ComparisonOperator, UnaryOperator},
-    libs::core::CoreLibTypeId,
     parser::ParserOptions,
     prelude::*,
 };
 use pretty::{DocAllocator, DocBuilder, RcAllocator, RcDoc};
+use crate::libs::core::core_lib_id::CoreLibId;
 
 mod bracketing;
 mod formatting;
@@ -165,8 +165,8 @@ impl<'a> Formatter<'a> {
             }) => a.text(name.clone()),
 
             TypeExpressionData::GetReference(ptr) => {
-                if let Ok(core_lib) = CoreLibTypeId::try_from(ptr) {
-                    a.text(core_lib.to_string())
+                if let Ok(core_lib_id) = CoreLibId::try_from(ptr.clone()) {
+                    a.text(core_lib_id.to_string())
                 } else {
                     a.text(ptr.to_string())
                 }

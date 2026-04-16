@@ -402,7 +402,7 @@ pub fn inner_execution_loop(
                                 Some(interrupt_with_value!(
                                     interrupt_provider,
                                     ExecutionInterrupt::External(
-                                        ExternalExecutionInterrupt::GetReferenceInternalPointer(
+                                        ExternalExecutionInterrupt::GetReferenceToBuiltinPointer(
                                             address
                                         )
                                     )
@@ -585,7 +585,7 @@ pub fn inner_execution_loop(
                                         RawPointerAddress::Internal(
                                             address,
                                         ) => {
-                                            ExecutionInterrupt::External(ExternalExecutionInterrupt::GetReferenceInternalPointer(address))
+                                            ExecutionInterrupt::External(ExternalExecutionInterrupt::GetReferenceToBuiltinPointer(address))
                                         }
                                         RawPointerAddress::Remote(address) => {
                                             ExecutionInterrupt::External(
@@ -1182,7 +1182,7 @@ pub fn inner_execution_loop(
                                             state.runtime_internal.add_moving_pointers(single_receiver, moving_containers);
                                         }
                                         else {
-                                            Err(ExecutionError::MoveToMultipleEndpoints)
+                                            return yield Err(ExecutionError::MoveToMultipleEndpoints)
                                         }
                                     }
 

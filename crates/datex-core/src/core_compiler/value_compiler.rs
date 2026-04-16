@@ -6,7 +6,6 @@ use crate::{
         instruction_codes::InstructionCode,
         type_instruction_codes::TypeInstructionCode,
     },
-    libs::core::{CoreLibTypeId, get_core_lib_type_definition},
     types::structural_type_definition::StructuralTypeDefinition,
     utils::buffers::{append_i16, append_i32, append_u8, append_u32},
     values::{
@@ -51,6 +50,8 @@ use crate::{
     },
     types::type_definition::TypeMetadata,
 };
+use crate::libs::core::core_lib_type;
+use crate::libs::core::type_id::CoreLibTypeId;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum SharedValueCompilationError {
@@ -350,7 +351,7 @@ pub fn append_internal_type_cast(
 ) {
     append_type_cast(
         context,
-        &get_core_lib_type_definition(core_lib_pointer_id),
+        &StructuralTypeDefinition::Shared(core_lib_type(core_lib_pointer_id)),
     )
     .unwrap(); // internal type, cast can never fail
 }

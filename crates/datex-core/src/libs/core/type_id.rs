@@ -1,3 +1,4 @@
+use core::fmt::Display;
 use core::mem::variant_count;
 
 use crate::{
@@ -22,12 +23,16 @@ use strum::{EnumIter, IntoEnumIterator};
     PartialEq,
     Eq,
     Hash,
-    CoreLibString,
+    CoreLibString, // TODO: don't derive, must distinguish between e.g. boolean/Map upper/lowercase
     EnumIter,
     IntoPrimitive,
     TryFromPrimitive,
 )]
 #[repr(u16)]
+/// A base type defined in the core library
+/// Every variant automatically gets mapped to a new nominal type definition with
+/// the enum variant name in lowercase as the name, and stored in the core library map
+/// with the name as a key.
 pub enum CoreLibBaseTypeId {
     Type,     // #core.type
     Null,     // #core.null
@@ -52,6 +57,20 @@ const DECIMAL_VARIANT_COUNT: u16 = variant_count::<DecimalTypeVariant>() as u16;
 pub enum CoreLibVariantTypeId {
     Integer(IntegerTypeVariant),
     Decimal(DecimalTypeVariant),
+}
+
+impl Display for CoreLibVariantTypeId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}/", CoreLibBaseTypeId::from(self.clone()))?;
+        match self {
+            CoreLibVariantTypeId::Integer(variant) => {
+                write!(f, "{}", variant)
+            }
+            CoreLibVariantTypeId::Decimal(variant) => {
+                write!(f, "{}", variant)
+            }
+        }
+    }
 }
 
 impl TryFrom<CoreLibIdIndex> for CoreLibVariantTypeId {
@@ -137,11 +156,31 @@ pub enum CoreLibTypeId {
     Variant(CoreLibVariantTypeId),
 }
 
+impl From<CoreLibVariantTypeId> for CoreLibBaseTypeId {
+    fn from(id: CoreLibVariantTypeId) -> Self {
+        match id {
+            CoreLibVariantTypeId::Integer(_) => CoreLibBaseTypeId::Integer,
+            CoreLibVariantTypeId::Decimal(_) => CoreLibBaseTypeId::Decimal,
+        }
+    }
+}
+
 impl CoreLibIdTrait for CoreLibTypeId {
     fn name(&self) -> String {
         match self {
             CoreLibTypeId::Base(base_id) => base_id.name(),
             CoreLibTypeId::Variant(variant_id) => variant_id.name(),
+        }
+    }
+}
+
+impl Display for CoreLibTypeId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            CoreLibTypeId::Base(base_id) => write!(f, "{}", base_id.to_string()),
+            CoreLibTypeId::Variant(variant_id) => {
+                write!(f, "{}", variant_id.to_string())
+            }
         }
     }
 }

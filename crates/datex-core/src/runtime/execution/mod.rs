@@ -1,5 +1,5 @@
 use crate::{
-    libs::core::{CoreLibTypeId, core_lib_value},
+    libs::core::{core_lib_entry},
     runtime::{
         RuntimeInternal,
         execution::{
@@ -15,7 +15,7 @@ use crate::{
 
 use crate::{
     global::protocol_structures::instruction_data::{
-        RawInternalPointerAddress, RawLocalPointerAddress,
+        RawBuiltinPointerAddress, RawLocalPointerAddress,
         RawRemotePointerAddress,
     },
     prelude::*,
@@ -31,6 +31,7 @@ pub use errors::*;
 pub use execution_input::{ExecutionInput, ExecutionOptions};
 use log::info;
 pub use stack_dump::*;
+use crate::libs::core::core_lib_id::CoreLibId;
 
 pub mod context;
 mod errors;
@@ -56,12 +57,12 @@ pub fn execute_dxb_sync(
                 mutability,
             ) => interrupt_provider.provide_result(
                 InterruptResult::ResolvedValue(
-                    get_remote_pointer_value(
+                    get_remote_shared_container_reference(
                         &runtime_internal,
                         address,
                         mutability,
                     )?
-                    .map(ValueContainer::Shared),
+                    .map(|v| ValueContainer::Shared(SharedContainer::Referenced(v)))
                 ),
             ),
             ExternalExecutionInterrupt::GetReferenceToLocalPointer(address) => {
@@ -70,18 +71,18 @@ pub fn execute_dxb_sync(
                     InterruptResult::ResolvedValue(get_local_pointer_value(
                         &runtime_internal,
                         address,
-                    )?),
+                    ).map(|v| ValueContainer::Shared(SharedContainer::Referenced(v))))
                 );
             }
-            ExternalExecutionInterrupt::GetReferenceInternalPointer(
+            ExternalExecutionInterrupt::GetReferenceToBuiltinPointer(
                 address,
             ) => {
                 interrupt_provider.provide_result(
                     InterruptResult::ResolvedValue(Some(
-                        ValueContainer::Shared(get_internal_pointer_value(
+                        ValueContainer::Shared(SharedContainer::Referenced(get_builtin_shared_value_reference(
                             &runtime_internal,
                             address,
-                        )?),
+                        )?)),
                     )),
                 );
             }
@@ -113,12 +114,12 @@ pub async fn execute_dxb(
             ) => {
                 interrupt_provider.provide_result(
                     InterruptResult::ResolvedValue(
-                        get_remote_pointer_value(
+                        get_remote_shared_container_reference(
                             &runtime_internal,
                             address,
                             mutability,
                         )?
-                        .map(ValueContainer::Shared),
+                        .map(|v| ValueContainer::Shared(SharedContainer::Referenced(v)))
                     ),
                 );
             }
@@ -131,15 +132,15 @@ pub async fn execute_dxb(
                     )?),
                 );
             }
-            ExternalExecutionInterrupt::GetReferenceInternalPointer(
+            ExternalExecutionInterrupt::GetReferenceToBuiltinPointer(
                 address,
             ) => {
                 interrupt_provider.provide_result(
                     InterruptResult::ResolvedValue(Some(
-                        ValueContainer::Shared(get_internal_pointer_value(
+                        ValueContainer::Shared(SharedContainer::Referenced(get_builtin_shared_value_reference(
                             &runtime_internal,
                             address,
-                        )?),
+                        )?)),
                     )),
                 );
             }
@@ -210,11 +211,11 @@ fn handle_apply(
     })
 }
 
-fn get_remote_pointer_value(
+fn get_remote_shared_container_reference(
     runtime_internal: &Rc<RuntimeInternal>,
     address: RawRemotePointerAddress,
     _mutability: ReferenceMutability,
-) -> Result<Option<SharedContainer>, ExecutionError> {
+) -> Result<Option<ReferencedSharedContainer>, ExecutionError> {
     let memory = runtime_internal.memory.borrow();
     let resolved_address =
         memory.get_pointer_address_from_raw_full_address(address);
@@ -223,29 +224,27 @@ fn get_remote_pointer_value(
     Ok(memory.get_reference(&resolved_address).cloned())
 }
 
-fn get_internal_pointer_value(
+fn get_builtin_shared_value_reference(
     runtime_internal: &Rc<RuntimeInternal>,
-    address: RawInternalPointerAddress,
-) -> Result<SharedContainer, ExecutionError> {
+    address: RawBuiltinPointerAddress,
+) -> Result<ReferencedSharedContainer, ExecutionError> {
     // first try to get from memory
     if let Ok(shared_container) =
-        get_internal_pointer_value_from_memory(runtime_internal, &address)
+        get_builtin_shared_value_reference_from_memory(runtime_internal, &address)
     {
         return Ok(shared_container);
     }
 
-    let core_lib_id = CoreLibTypeId::try_from(&PointerAddress::External(
-        ExternalPointerAddress::Builtin(address.id),
-    ));
+    let core_lib_id = CoreLibId::try_from(ExternalPointerAddress::Builtin(address.id));
     core_lib_id
         .map_err(|_| ExecutionError::ReferenceNotFound)
-        .map(|id| core_lib_value(id).ok_or(ExecutionError::ReferenceNotFound))?
+        .map(|id| core_lib_entry(id))
 }
 
-fn get_internal_pointer_value_from_memory(
+fn get_builtin_shared_value_reference_from_memory(
     runtime_internal: &Rc<RuntimeInternal>,
-    address: &RawInternalPointerAddress,
-) -> Result<SharedContainer, ExecutionError> {
+    address: &RawBuiltinPointerAddress,
+) -> Result<ReferencedSharedContainer, ExecutionError> {
     let pointer_address =
         PointerAddress::External(ExternalPointerAddress::Builtin(address.id));
     let memory = runtime_internal.memory.borrow();
@@ -259,13 +258,13 @@ fn get_internal_pointer_value_from_memory(
 fn get_local_pointer_value(
     runtime_internal: &Rc<RuntimeInternal>,
     address: RawLocalPointerAddress,
-) -> Result<Option<ValueContainer>, ExecutionError> {
+) -> Option<ReferencedSharedContainer> {
     // convert slot to InternalSlot enum
-    Ok(runtime_internal
+    runtime_internal
         .memory
         .borrow()
         .get_reference(&PointerAddress::owned(address.bytes))
-        .map(|r| ValueContainer::Shared(r.clone())))
+        .cloned()
 }
 
 #[cfg(test)]
@@ -277,7 +276,6 @@ mod tests {
         compiler::{CompileOptions, compile_script, scope::CompilationScope},
         datex_list,
         global::instruction_codes::InstructionCode,
-        libs::core::get_core_lib_type_reference,
         runtime::{
             RuntimeConfig, RuntimeRunner,
             execution::{
@@ -288,7 +286,6 @@ mod tests {
         shared_values::shared_containers::{
             OwnedSharedContainer, ReferencedSharedContainer, SharedContainer,
             SharedContainerInner, SharedContainerMutability,
-            SharedContainerValueOrType,
             base_shared_value_container::BaseSharedValueContainer,
         },
         traits::{structural_eq::StructuralEq, value_eq::ValueEq},

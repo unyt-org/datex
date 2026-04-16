@@ -77,7 +77,7 @@ pub fn append_structural_type_definition(
         }
         StructuralTypeDefinition::Shared(type_ref) => {
             // TODO #636: ensure pointer_address exists here
-            let pointer_address = type_ref.deref().pointer_address();
+            let pointer_address = type_ref.pointer_address();
             append_get_shared_ref(
                 context,
                 &pointer_address,

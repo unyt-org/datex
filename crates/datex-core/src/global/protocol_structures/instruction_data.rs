@@ -12,7 +12,7 @@ use crate::core_compiler::value_compiler::append_instruction;
 use crate::global::operators::AssignmentOperator;
 use crate::global::protocol_structures::injected_values::{InjectedValueDeclaration, InjectedValueType};
 use crate::global::protocol_structures::instructions::Instruction;
-use crate::global::type_instruction_codes::{TypeLocalOrShared, TypeMutabilityCode, TypeReferenceMutabilityCode};
+use crate::global::type_instruction_codes::{TypeLocalOrShared, TypeMutabilityCode, TypeOwnershipCode};
 use crate::serde::Deserialize;
 use crate::shared_values::pointer_address::{SelfOwnedPointerAddress, PointerAddress, ExternalPointerAddress};
 use crate::shared_values::shared_containers::{ReferenceMutability, SharedContainerMutability};
@@ -330,7 +330,7 @@ pub struct RawLocalPointerAddress {
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
 #[brw(little)]
-pub struct RawInternalPointerAddress {
+pub struct RawBuiltinPointerAddress {
     pub id: [u8; 3],
 }
 
@@ -340,7 +340,7 @@ pub enum RawPointerAddress {
     #[brw(magic = 0u8)]
     Local(RawLocalPointerAddress),
     #[brw(magic = 1u8)]
-    Internal(RawInternalPointerAddress),
+    Internal(RawBuiltinPointerAddress),
     #[brw(magic = 2u8)]
     Remote(RawRemotePointerAddress),
 }
@@ -367,7 +367,7 @@ impl From<PointerAddress> for RawPointerAddress {
                 RawPointerAddress::Remote(RawRemotePointerAddress { id: bytes })
             }
             PointerAddress::External(ExternalPointerAddress::Builtin(bytes)) => {
-                RawPointerAddress::Internal(RawInternalPointerAddress { id: bytes })
+                RawPointerAddress::Internal(RawBuiltinPointerAddress { id: bytes })
             }
             PointerAddress::EndpointOwned(SelfOwnedPointerAddress {address} ) => {
                 RawPointerAddress::Local(RawLocalPointerAddress { bytes: address })
@@ -546,7 +546,7 @@ pub struct TypeReferenceData {
 #[br(map = Self::from_bytes)]
 #[brw(little)]
 pub struct TypeMetadataBin {
-    pub reference_mutability: TypeReferenceMutabilityCode,
+    pub ownership: TypeOwnershipCode,
     pub mutability: TypeMutabilityCode,
     pub type_local_or_shared: TypeLocalOrShared,
     _unused: B4,
@@ -557,11 +557,11 @@ impl From<&TypeMetadataBin> for TypeMetadata {
         match value.type_local_or_shared() {
             TypeLocalOrShared::Local => TypeMetadata::Local {
                 mutability: (&value.mutability()).into(),
-                reference_mutability: (&value.reference_mutability()).into(),
+                reference_mutability: (&value.ownership()).into(),
             },
             TypeLocalOrShared::Shared => TypeMetadata::Shared {
                 mutability: (&value.mutability()).into(),
-                reference_mutability: (&value.reference_mutability()).into(),
+                ownership: (&value.ownership()).into(),
             },
         }
     }
@@ -576,14 +576,14 @@ impl From<&TypeMetadata> for TypeMetadataBin {
             } => Self::new()
                 .with_type_local_or_shared(TypeLocalOrShared::Local)
                 .with_mutability(mutability.into())
-                .with_reference_mutability(reference_mutability.into()),
+                .with_ownership(reference_mutability.into()),
             TypeMetadata::Shared {
                 mutability,
-                reference_mutability,
+                ownership,
             } => Self::new()
                 .with_type_local_or_shared(TypeLocalOrShared::Shared)
                 .with_mutability(mutability.into())
-                .with_reference_mutability(reference_mutability.into()),
+                .with_ownership(ownership.into()),
         }
     }
 }

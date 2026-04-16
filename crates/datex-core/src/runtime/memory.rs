@@ -1,23 +1,19 @@
 use crate::{
     collections::HashMap,
     global::protocol_structures::instruction_data::RawRemotePointerAddress,
-    libs::core::{CoreLibTypeId, core_lib_id::CoreLibId, load_core_lib},
+    libs::core::{core_lib_id::CoreLibId, load_core_lib},
     prelude::*,
     shared_values::{
         pointer_address::{
             ExternalPointerAddress, PointerAddress, SelfOwnedPointerAddress,
         },
         shared_containers::{
-            ReferencedSharedContainer, SharedContainer, SharedContainerInner,
-            base_shared_value_container::BaseSharedValueContainer,
+            ReferencedSharedContainer,
         },
     },
-    types::error::IllegalTypeError,
     values::core_values::endpoint::Endpoint,
 };
 use binrw::io::Cursor;
-use core::{cell::Ref, result::Result};
-use std::cell::RefCell;
 
 #[derive(Debug, Default)]
 pub struct Memory {
@@ -26,7 +22,8 @@ pub struct Memory {
     local_counter: u64,
     /// Last timestamp used for a new local pointer id
     last_timestamp: u64,
-    /// All non-local pointers
+    /// Shared values that are actively referenced or owned somewhere 
+    /// in the runtime or on remote endpoints
     pointers: HashMap<PointerAddress, ReferencedSharedContainer>,
 }
 
@@ -74,33 +71,6 @@ impl Memory {
     ) -> &ReferencedSharedContainer {
         self.get_reference(&pointer_id.into())
             .expect("core reference not found in memory")
-    }
-
-    /// Helper function to get a core type directly from memory if it can be used as a type
-    pub fn get_core_type_reference(
-        &self,
-        pointer_id: CoreLibTypeId,
-    ) -> Result<Ref<SharedTypeContainer>, IllegalTypeError> {
-        let reference = self
-            .get_reference(&pointer_id.into())
-            .ok_or(IllegalTypeError::TypeNotFound)?;
-
-        Ref::filter_map(reference.value(), |container| match container {
-            SharedContainerValueOrType::Type(def) => Some(def),
-            _ => None,
-        })
-        .map_err(|_| IllegalTypeError::TypeNotFound)
-    }
-
-    /// Helper function to get a core type directly from memory, asserting that is can be used as a type
-    /// Panics if the core type is not found or cannot be used as a type.
-    pub fn get_core_type_reference_unchecked(
-        &self,
-        pointer_id: CoreLibTypeId,
-    ) -> Ref<SharedTypeContainer> {
-        // FIXME #415: Mark as unchecked
-        self.get_core_type_reference(pointer_id)
-            .expect("core type not found or cannot be used as a type")
     }
 
     /// Takes a RawFullPointerAddress and converts it to a PointerAddress::Local or PointerAddress::Remote,

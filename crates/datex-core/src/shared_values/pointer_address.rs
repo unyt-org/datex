@@ -4,7 +4,7 @@ use crate::{
 
 use core::{fmt::Display, result::Result};
 use serde::{Deserialize, Serialize};
-use crate::global::protocol_structures::instruction_data::{RawInternalPointerAddress, RawLocalPointerAddress, RawPointerAddress, RawRemotePointerAddress};
+use crate::global::protocol_structures::instruction_data::{RawBuiltinPointerAddress, RawLocalPointerAddress, RawPointerAddress, RawRemotePointerAddress};
 use crate::values::core_values::endpoint::Endpoint;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -154,8 +154,8 @@ impl From<&RawLocalPointerAddress> for PointerAddress {
     }
 }
 
-impl From<&RawInternalPointerAddress> for PointerAddress {
-    fn from(raw: &RawInternalPointerAddress) -> Self {
+impl From<&RawBuiltinPointerAddress> for PointerAddress {
+    fn from(raw: &RawBuiltinPointerAddress) -> Self {
         PointerAddress::External(ExternalPointerAddress::Builtin(raw.id))
     }
 }

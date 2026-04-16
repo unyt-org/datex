@@ -9,7 +9,7 @@ use crate::dxb_parser::body::DXBParserError;
 use crate::global::instruction_codes::InstructionCode;
 #[cfg(feature = "disassembler")]
 use crate::disassembler::InnerInstructions;
-use crate::global::protocol_structures::instruction_data::{ApplyData, DecimalData, Float32Data, Float64Data, FloatAsInt16Data, FloatAsInt32Data, InstructionBlockData, Int128Data, Int16Data, Int32Data, Int64Data, Int8Data, IntegerData, ListData, MapData, ModifyStackValue, Move, PerformMove, PushToStackMultiple, RawInternalPointerAddress, RawLocalPointerAddress, RawRemotePointerAddress, SetSharedContainerValue, SharedRef, SharedRefWithValue, ShortListData, ShortMapData, ShortStatementsData, ShortTextData, ShortTextDataRaw, StackIndex, StatementsData, TextData, TextDataRaw, UInt128Data, UInt16Data, UInt32Data, UInt64Data, UInt8Data, UnboundedStatementsData};
+use crate::global::protocol_structures::instruction_data::{ApplyData, DecimalData, Float32Data, Float64Data, FloatAsInt16Data, FloatAsInt32Data, InstructionBlockData, Int128Data, Int16Data, Int32Data, Int64Data, Int8Data, IntegerData, ListData, MapData, ModifyStackValue, Move, PerformMove, PushToStackMultiple, RawBuiltinPointerAddress, RawLocalPointerAddress, RawRemotePointerAddress, SetSharedContainerValue, SharedRef, SharedRefWithValue, ShortListData, ShortMapData, ShortStatementsData, ShortTextData, ShortTextDataRaw, StackIndex, StatementsData, TextData, TextDataRaw, UInt128Data, UInt16Data, UInt32Data, UInt64Data, UInt8Data, UnboundedStatementsData};
 use crate::global::protocol_structures::instructions::{NextExpectedInstructions};
 use crate::shared_values::pointer_address::PointerAddress;
 use crate::values::core_values::decimal::utils::decimal_to_string;
@@ -126,7 +126,7 @@ pub enum RegularInstruction {
     // 'mut $ABCDE
     RequestRemoteSharedRefMut(RawRemotePointerAddress),
     GetLocalSharedRef(RawLocalPointerAddress),
-    GetInternalSharedRef(RawInternalPointerAddress),
+    GetInternalSharedRef(RawBuiltinPointerAddress),
 
     SharedRef(SharedRef),
     SharedRefWithValue(SharedRefWithValue), // shared ref with current value (only if caller owns the pointer)
@@ -626,7 +626,7 @@ impl RegularInstruction {
             }
 
             InstructionCode::GET_INTERNAL_SHARED_REF => {
-                RawInternalPointerAddress::read(reader).map(RegularInstruction::GetInternalSharedRef)
+                RawBuiltinPointerAddress::read(reader).map(RegularInstruction::GetInternalSharedRef)
             }
 
             InstructionCode::PERFORM_MOVE => {

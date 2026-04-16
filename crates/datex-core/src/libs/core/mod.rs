@@ -7,7 +7,6 @@ use crate::{
     },
     runtime::memory::Memory,
     shared_values::{
-        pointer_address::SelfOwnedPointerAddress,
         shared_containers::{
             OwnedSharedContainer, ReferencedSharedContainer,
             SharedContainerMutability,
@@ -74,11 +73,11 @@ pub fn core_lib_type(id: CoreLibTypeId) -> SharedContainerContainingType {
 }
 
 /// Retrieves either a core library type or value by its CoreLibPointerId.
-pub fn core_lib_value(id: CoreLibValueId) -> ReferencedSharedContainer {
+pub fn core_lib_entry(id: CoreLibId) -> ReferencedSharedContainer {
     let id = id.into();
     with_core_lib(|entries| {
         entries
-            .get(&CoreLibId::Value(id))
+            .get(&id)
             .expect("Core lib value not found")
             .clone()
     })
@@ -120,21 +119,22 @@ pub fn create_core_lib() -> CoreLib {
         .collect()
 }
 
-/// Creates a new instance of the core library as a ValueContainer
-/// including all core types as properties.
+/// Returns a map of all core library type values by id
 pub fn create_core_lib_types() -> CoreLib {
     CoreLibBaseTypeId::iter()
         .flat_map(|id| {
-            let type_def = create_core_type(id);
+            let base_type_def = create_core_type(id);
+            let base_type_def_container = SharedContainer::Referenced(base_type_def.1.clone());
             CoreLibVariantTypeId::variant_ids(&id)
                 .into_iter()
-                .map(|variant_id| {
+                .map(move |variant_id| {
                     create_type(
                         NominalTypeDefinition::Variant {
                             definition: StructuralTypeDefinition::Unit.into(),
+                            // Note: This is safe because we know that the base is a type
                             base: unsafe {
                                 SharedContainerContainingType::new_unchecked(
-                                    type_def.1.clone().into(),
+                                    base_type_def_container.clone(),
                                 )
                             },
                             variant_name: variant_id.variant_name(),
@@ -142,11 +142,12 @@ pub fn create_core_lib_types() -> CoreLib {
                         CoreLibTypeId::Variant(variant_id),
                     )
                 })
-                .chain(once(type_def))
+                .chain(once(base_type_def))
         })
         .collect::<HashMap<CoreLibId, ReferencedSharedContainer>>()
 }
 
+/// Returns a map of all core library values (excluding type values) by id
 pub fn create_core_lib_vals() -> HashMap<CoreLibId, ReferencedSharedContainer> {
     vec![print()]
         .into_iter()
@@ -181,7 +182,7 @@ pub fn print() -> (CoreLibId, ReferencedSharedContainer) {
                     parameter_types: vec![],
                     rest_parameter_type: Some((
                         Some("values".to_string()),
-                        Box::new(Type::unknown()),
+                        Box::new(Type::Alias(StructuralTypeDefinition::Unknown.into())),
                     )),
                     return_type: None,
                     yeet_type: None,
@@ -252,7 +253,8 @@ fn create_core_type(pointer_id: CoreLibBaseTypeId) -> CoreLibTypeDefinition {
 #[cfg(test)]
 mod tests {
     use core::str::FromStr;
-
+    use itertools::Itertools;
+    use crate::shared_values::pointer_address::PointerAddress;
     use crate::values::core_values::endpoint::Endpoint;
 
     use super::*;
@@ -294,7 +296,7 @@ mod tests {
     /// `cargo test create_core_type_ts_mapping -- --show-output --ignored`
     fn create_core_type_ts_mapping() {
         let core_lib = create_core_lib_types();
-        let mut core_lib: Vec<(CoreLibBaseTypeId, PointerAddress)> = core_lib
+        let mut core_lib: Vec<(CoreLibId, PointerAddress)> = core_lib
             .keys()
             .map(|key| (key.clone(), PointerAddress::from(key.clone())))
             .collect();
