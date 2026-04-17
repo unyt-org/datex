@@ -1,10 +1,23 @@
-use core::cmp::Ordering;
+use crate::serde::Deserialize;
 use binrw::{BinRead, BinWrite};
+use core::{cmp::Ordering, fmt::Display};
 use num_enum::TryFromPrimitive;
 use serde::Serialize;
-use crate::serde::Deserialize;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, TryFromPrimitive, Serialize, Deserialize, BinRead, BinWrite, PartialOrd)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Hash,
+    TryFromPrimitive,
+    Serialize,
+    Deserialize,
+    BinRead,
+    BinWrite,
+    PartialOrd,
+)]
 #[brw(repr(u8))]
 #[repr(u8)]
 pub enum ReferenceMutability {
@@ -15,10 +28,19 @@ pub enum ReferenceMutability {
 impl Ord for ReferenceMutability {
     fn cmp(&self, other: &Self) -> Ordering {
         match (self, other) {
-            (ReferenceMutability::Immutable, ReferenceMutability::Immutable) => Ordering::Equal,
-            (ReferenceMutability::Immutable, ReferenceMutability::Mutable) => Ordering::Less,
-            (ReferenceMutability::Mutable, ReferenceMutability::Immutable) => Ordering::Greater,
-            (ReferenceMutability::Mutable, ReferenceMutability::Mutable) => Ordering::Equal,
+            (
+                ReferenceMutability::Immutable,
+                ReferenceMutability::Immutable,
+            ) => Ordering::Equal,
+            (ReferenceMutability::Immutable, ReferenceMutability::Mutable) => {
+                Ordering::Less
+            }
+            (ReferenceMutability::Mutable, ReferenceMutability::Immutable) => {
+                Ordering::Greater
+            }
+            (ReferenceMutability::Mutable, ReferenceMutability::Mutable) => {
+                Ordering::Equal
+            }
         }
     }
 }
@@ -29,13 +51,39 @@ pub enum SharedContainerOwnership {
     Referenced(ReferenceMutability),
 }
 
+impl Display for SharedContainerOwnership {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            SharedContainerOwnership::Owned => write!(f, ""),
+            SharedContainerOwnership::Referenced(mutability) => {
+                match mutability {
+                    ReferenceMutability::Immutable => write!(f, "'"),
+                    ReferenceMutability::Mutable => write!(f, "'mut"),
+                }
+            }
+        }
+    }
+}
+
 impl Ord for SharedContainerOwnership {
     fn cmp(&self, other: &Self) -> Ordering {
         match (self, other) {
-            (SharedContainerOwnership::Owned, SharedContainerOwnership::Owned) => Ordering::Equal,
-            (SharedContainerOwnership::Owned, SharedContainerOwnership::Referenced(_)) => Ordering::Greater,
-            (SharedContainerOwnership::Referenced(_), SharedContainerOwnership::Owned) => Ordering::Less,
-            (SharedContainerOwnership::Referenced(m1), SharedContainerOwnership::Referenced(m2)) => m1.cmp(m2),
+            (
+                SharedContainerOwnership::Owned,
+                SharedContainerOwnership::Owned,
+            ) => Ordering::Equal,
+            (
+                SharedContainerOwnership::Owned,
+                SharedContainerOwnership::Referenced(_),
+            ) => Ordering::Greater,
+            (
+                SharedContainerOwnership::Referenced(_),
+                SharedContainerOwnership::Owned,
+            ) => Ordering::Less,
+            (
+                SharedContainerOwnership::Referenced(m1),
+                SharedContainerOwnership::Referenced(m2),
+            ) => m1.cmp(m2),
         }
     }
 }

@@ -96,7 +96,7 @@ impl SharedContainer {
 
     /// Sets the currently assigned [ValueContainer] of the shared container to a new value container.
     pub fn try_set_value_container(
-        &self,
+        &mut self,
         new_value_container: ValueContainer,
     ) -> Result<(), ()> {
         self.base_shared_container()

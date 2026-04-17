@@ -1,5 +1,5 @@
 use crate::{
-    libs::core::CoreLibTypeId,
+    libs::core::core_lib_type,
     prelude::*,
     shared_values::pointer_address::PointerAddress,
     traits::structural_eq::StructuralEq,
@@ -12,7 +12,7 @@ use crate::{
     },
     values::core_values::callable::CallableSignature,
 };
-use core::{cell::RefCell, fmt::Display, hash::Hash, prelude::rust_2024::*};
+use core::{fmt::Display, hash::Hash, ops::Deref, prelude::rust_2024::*};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TypeDefinition {
@@ -30,9 +30,10 @@ pub enum TypeDefinition {
     /// type A = B
     Shared(SharedContainerContainingType), // integer
 
-    /// type, used for nested types with references (e.g. &mut & x)
-    Nominal(Box<Type>),
-
+    // FIXME DO we still need Type(Type) here?
+    // Hopefully no, as nominal type definitions refering other types need
+    // shared contaienr containing types in the chain
+    //
     /// a callable type definition (signature)
     Callable(CallableSignature),
 
@@ -89,9 +90,6 @@ impl Hash for TypeDefinition {
             }
             TypeDefinition::Shared(reference) => {
                 reference.hash(state);
-            }
-            TypeDefinition::Type(value) => {
-                value.hash(state);
             }
 
             TypeDefinition::Unit => 0_u8.hash(state),
@@ -156,7 +154,6 @@ impl Display for TypeDefinition {
             TypeDefinition::Shared(reference) => {
                 core::write!(f, "{}", reference.deref())
             }
-            TypeDefinition::Type(ty) => core::write!(f, "{}", ty),
             TypeDefinition::Unit => core::write!(f, "()"),
             TypeDefinition::Unknown => core::write!(f, "unknown"),
             TypeDefinition::Never => core::write!(f, "never"),
@@ -172,8 +169,7 @@ impl Display for TypeDefinition {
                 let is_level_zero = types.iter().all(|t| {
                     core::matches!(
                         t.definition().structural_definition,
-                        TypeDefinition::Literal(_)
-                            | TypeDefinition::Shared(_)
+                        TypeDefinition::Literal(_) | TypeDefinition::Shared(_)
                     )
                 });
                 let types_str: Vec<String> =
@@ -234,14 +230,10 @@ impl Display for TypeDefinition {
 impl StructuralEq for TypeDefinition {
     fn structural_eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (
-                TypeDefinition::Literal(a),
-                TypeDefinition::Literal(b),
-            ) => a.structural_eq(b),
-            (
-                TypeDefinition::Union(a),
-                TypeDefinition::Union(b),
-            ) => {
+            (TypeDefinition::Literal(a), TypeDefinition::Literal(b)) => {
+                a.structural_eq(b)
+            }
+            (TypeDefinition::Union(a), TypeDefinition::Union(b)) => {
                 if a.len() != b.len() {
                     return false;
                 }
@@ -329,44 +321,18 @@ impl TypeDefinition {
     /// 42u8 -> integer
     /// 42 -> integer
     /// User/variant -> User
-    pub fn base_core_lib_type(
-        &self,
-    ) -> Option<Rc<RefCell<SharedContainerContainingType>>> {
-        Some(match &self {
+    pub fn base_core_lib_type(&self) -> SharedContainerContainingType {
+        match &self {
             TypeDefinition::Literal(value) => {
-                get_core_lib_type_reference(
-                    value.get_core_lib_type_pointer_id(),
-                )
+                core_lib_type(value.get_core_lib_type_pointer_id())
             }
             TypeDefinition::Union(_) => {
                 core::todo!("#322 handle union base type"); // generic type base type / type
             }
-            TypeDefinition::Shared(reference) => {
-                let type_ref = reference.borrow();
-                if let Ok(core_lib_id) =
-                    CoreLibTypeId::try_from(&type_ref.pointer().address())
-                {
-                    match core_lib_id {
-                        // for integer and decimal variants, return the base type
-                        CoreLibTypeId::Integer(Some(_)) => {
-                            get_core_lib_type_reference(CoreLibTypeId::Integer(
-                                None,
-                            ))
-                        }
-                        CoreLibTypeId::Decimal(Some(_)) => {
-                            get_core_lib_type_reference(CoreLibTypeId::Decimal(
-                                None,
-                            ))
-                        }
-                        // otherwise, reference is already base type
-                        _ => reference.clone(),
-                    }
-                } else {
-                    todo!("#608 handle non-core lib type base type");
-                }
-            }
+            TypeDefinition::Shared(reference) => reference
+                .with_collapsed_type_value(|ty| ty.base_core_lib_type()),
             _ => core::panic!("Unhandled type definition for base type"),
-        })
+        }
     }
 
     pub fn base_type(&self) -> Option<Type> {
@@ -378,7 +344,7 @@ impl TypeDefinition {
 impl From<TypeDefinition> for TypeDefinitionWithMetadata {
     fn from(structural_definition: TypeDefinition) -> Self {
         TypeDefinitionWithMetadata {
-            structural_definition,
+            definition: structural_definition,
             metadata: TypeMetadata::default(),
         }
     }
@@ -387,7 +353,7 @@ impl From<TypeDefinition> for TypeDefinitionWithMetadata {
 impl From<LiteralTypeDefinition> for TypeDefinitionWithMetadata {
     fn from(literal_definition: LiteralTypeDefinition) -> Self {
         TypeDefinitionWithMetadata {
-            structural_definition: literal_definition.into(),
+            definition: literal_definition.into(),
             metadata: TypeMetadata::default(),
         }
     }

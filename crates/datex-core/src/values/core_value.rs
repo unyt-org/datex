@@ -4,6 +4,10 @@ use crate::{
         type_id::{CoreLibBaseTypeId, CoreLibTypeId, CoreLibVariantTypeId},
     },
     prelude::*,
+    types::{
+        nominal_type_definition::NominalTypeDefinition,
+        shared_container_containing_type::SharedContainerContainingType,
+    },
 };
 use core::result::Result;
 use datex_macros_internal::FromCoreValue;
@@ -49,7 +53,8 @@ pub enum CoreValue {
     Endpoint(Endpoint),
     List(List),
     Map(Map),
-    Type(TypeDefinition),
+    Type(Type),
+    NominalType(NominalTypeDefinition),
     Callable(Callable),
     Range(Range),
 }

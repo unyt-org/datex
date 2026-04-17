@@ -1,11 +1,21 @@
-use core::fmt::Display;
+use crate::serde::Deserialize;
 use binrw::{BinRead, BinWrite};
+use core::fmt::Display;
 use num_enum::TryFromPrimitive;
 use serde::Serialize;
-use crate::serde::Deserialize;
 
 #[derive(
-    Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, TryFromPrimitive, BinRead, BinWrite)]
+    Clone,
+    Debug,
+    PartialEq,
+    Eq,
+    Hash,
+    Serialize,
+    Deserialize,
+    TryFromPrimitive,
+    BinRead,
+    BinWrite,
+)]
 #[brw(repr(u8))]
 #[repr(u8)]
 pub enum SharedContainerMutability {
@@ -13,11 +23,19 @@ pub enum SharedContainerMutability {
     Mutable = 1,
 }
 
+impl Display for SharedContainerMutability {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            SharedContainerMutability::Immutable => write!(f, ""),
+            SharedContainerMutability::Mutable => write!(f, "mut"),
+        }
+    }
+}
 
 pub mod mutability_as_int {
     use super::SharedContainerMutability;
     use crate::prelude::*;
-    use serde::{de::Error, Deserialize, Deserializer, Serializer};
+    use serde::{Deserialize, Deserializer, Serializer, de::Error};
 
     pub fn serialize<S>(
         value: &SharedContainerMutability,
@@ -55,7 +73,7 @@ pub mod mutability_option_as_int {
     use super::SharedContainerMutability;
 
     use crate::prelude::*;
-    use serde::{de::Error, Deserialize, Deserializer, Serializer};
+    use serde::{Deserialize, Deserializer, Serializer, de::Error};
 
     pub fn serialize<S>(
         value: &Option<SharedContainerMutability>,
@@ -93,15 +111,5 @@ pub mod mutability_option_as_int {
             }
             None => None,
         })
-    }
-}
-
-
-impl Display for SharedContainerMutability {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        match self {
-            SharedContainerMutability::Mutable => write!(f, "mut"),
-            SharedContainerMutability::Immutable => write!(f, ""),
-        }
     }
 }

@@ -70,7 +70,7 @@ impl BaseSharedValueContainer {
     /// Sets the currently assigned [ValueContainer] of the shared container to a new value container.
     /// Returns an error if the new value container's allowed type is not compatible with the allowed type of the shared container
     pub fn try_set_value_container(
-        &self,
+        &mut self,
         new_value_container: ValueContainer,
     ) -> Result<(), ()> {
         // TODO do type checking to ensure new value container's allowed type is compatible with self.allowed_type

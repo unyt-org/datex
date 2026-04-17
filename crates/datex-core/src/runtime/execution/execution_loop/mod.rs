@@ -1274,7 +1274,7 @@ pub fn inner_execution_loop(
                                         let base_type =
                                             collected_results.pop_type_result();
                                         Type::Alias(TypeDefinitionWithMetadata {
-                                            structural_definition: TypeDefinition::ImplType(
+                                            definition: TypeDefinition::ImplType(
                                                 Box::new(base_type),
                                                 impl_type_data
                                                     .impls

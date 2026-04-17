@@ -39,7 +39,7 @@ pub fn append_type_definition(
     ty: &TypeDefinitionWithMetadata,
 ) {
     // append instruction code
-    let instruction_code = TypeInstructionCode::from(&ty.structural_definition);
+    let instruction_code = TypeInstructionCode::from(&ty.definition);
     append_type_space_instruction_code_new(
         context.cursor_mut(),
         instruction_code,
@@ -50,7 +50,7 @@ pub fn append_type_definition(
     append_type_metadata(context.cursor_mut(), metadata);
 
     // append structural type definition
-    append_structural_type_definition(context, &ty.structural_definition);
+    append_structural_type_definition(context, &ty.definition);
 }
 
 pub fn append_structural_type_definition(

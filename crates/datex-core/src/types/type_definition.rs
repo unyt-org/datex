@@ -1,10 +1,17 @@
 use crate::{
+    alloc::string::ToString,
+    shared_values::shared_containers::ReferenceMutability,
+};
+use core::{fmt::Display, ops::Deref};
+
+use crate::{
     serde::Deserialize,
     shared_values::shared_containers::{
         SharedContainerMutability, SharedContainerOwnership,
     },
     types::{
         structural_type_definition::TypeDefinition, r#type::Type,
+        type_match::TypeMatch,
     },
 };
 use serde::Serialize;
@@ -35,6 +42,41 @@ pub enum TypeMetadata {
         mutability: SharedContainerMutability,
         ownership: SharedContainerOwnership,
     },
+}
+
+impl Display for TypeMetadata {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            TypeMetadata::Local {
+                mutability,
+                reference_mutability,
+            } => {
+                let mutability_str = match mutability {
+                    LocalMutability::Mutable => "mut ",
+                    LocalMutability::Immutable => "",
+                };
+                let reference_str = match reference_mutability {
+                    Some(LocalReferenceMutability::Mutable) => "&mut ",
+                    Some(LocalReferenceMutability::Immutable) => "&",
+                    None => "",
+                };
+                write!(f, "{}{}", reference_str, mutability_str)
+            }
+            TypeMetadata::Shared {
+                mutability,
+                ownership,
+            } => {
+                write!(f, "{}", ownership)?;
+                match ownership {
+                    SharedContainerOwnership::Referenced(
+                        ReferenceMutability::Mutable,
+                    ) => write!(f, " ")?,
+                    _ => (),
+                };
+                write!(f, "{}", mutability)
+            }
+        }
+    }
 }
 
 impl TypeMetadata {
@@ -78,6 +120,37 @@ impl TypeMetadata {
     }
 }
 
+impl TypeMatch for TypeMetadata {
+    fn matches(&self, other: &Self) -> bool {
+        match (self, other) {
+            (
+                TypeMetadata::Local {
+                    mutability: mutability1,
+                    reference_mutability: reference_mutability1,
+                },
+                TypeMetadata::Local {
+                    mutability: mutability2,
+                    reference_mutability: reference_mutability2,
+                },
+            ) => {
+                mutability1 == mutability2
+                    && reference_mutability1 == reference_mutability2
+            }
+            (
+                TypeMetadata::Shared {
+                    mutability: mutability1,
+                    ownership: ownership1,
+                },
+                TypeMetadata::Shared {
+                    mutability: mutability2,
+                    ownership: ownership2,
+                },
+            ) => mutability1 == mutability2 && ownership1 == ownership2,
+            _ => false,
+        }
+    }
+}
+
 impl Default for TypeMetadata {
     fn default() -> Self {
         TypeMetadata::Local {
@@ -89,12 +162,28 @@ impl Default for TypeMetadata {
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct TypeDefinitionWithMetadata {
-    pub structural_definition: TypeDefinition,
+    pub definition: TypeDefinition,
     pub metadata: TypeMetadata,
+}
+
+impl TypeMatch for TypeDefinitionWithMetadata {
+    fn matches(&self, definition: &Self) -> bool {
+        if !self.metadata.matches(&definition.metadata) {
+            return false;
+        }
+        // FIXME
+        false
+    }
 }
 
 impl From<TypeDefinitionWithMetadata> for Type {
     fn from(x: TypeDefinitionWithMetadata) -> Self {
         Type::Alias(x)
+    }
+}
+
+impl Display for TypeDefinitionWithMetadata {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "{} {}", self.metadata, self.definition)
     }
 }

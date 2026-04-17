@@ -1,8 +1,10 @@
-use crate::types::{
-    shared_container_containing_type::SharedContainerContainingType,
-    type_definition::TypeDefinitionWithMetadata,
+use crate::{
+    prelude::*,
+    types::{
+        shared_container_containing_type::SharedContainerContainingType,
+        type_definition::TypeDefinitionWithMetadata,
+    },
 };
-
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub enum NominalTypeDefinition {
     Base {
