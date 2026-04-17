@@ -1,5 +1,5 @@
 use crate::{
-    libs::core::{core_lib_entry},
+    libs::core::core_lib_entry,
     runtime::{
         RuntimeInternal,
         execution::{
@@ -18,6 +18,7 @@ use crate::{
         RawBuiltinPointerAddress, RawLocalPointerAddress,
         RawRemotePointerAddress,
     },
+    libs::core::core_lib_id::CoreLibId,
     prelude::*,
     shared_values::{
         pointer_address::{ExternalPointerAddress, PointerAddress},
@@ -31,7 +32,6 @@ pub use errors::*;
 pub use execution_input::{ExecutionInput, ExecutionOptions};
 use log::info;
 pub use stack_dump::*;
-use crate::libs::core::core_lib_id::CoreLibId;
 
 pub mod context;
 mod errors;
@@ -62,16 +62,22 @@ pub fn execute_dxb_sync(
                         address,
                         mutability,
                     )?
-                    .map(|v| ValueContainer::Shared(SharedContainer::Referenced(v)))
+                    .map(|v| {
+                        ValueContainer::Shared(SharedContainer::Referenced(v))
+                    }),
                 ),
             ),
             ExternalExecutionInterrupt::GetReferenceToLocalPointer(address) => {
                 // TODO #401: in the future, local pointer addresses should be relative to the block sender, not the local runtime
                 interrupt_provider.provide_result(
-                    InterruptResult::ResolvedValue(get_local_pointer_value(
-                        &runtime_internal,
-                        address,
-                    ).map(|v| ValueContainer::Shared(SharedContainer::Referenced(v))))
+                    InterruptResult::ResolvedValue(
+                        get_local_pointer_value(&runtime_internal, address)
+                            .map(|v| {
+                                ValueContainer::Shared(
+                                    SharedContainer::Referenced(v),
+                                )
+                            }),
+                    ),
                 );
             }
             ExternalExecutionInterrupt::GetReferenceToBuiltinPointer(
@@ -79,10 +85,12 @@ pub fn execute_dxb_sync(
             ) => {
                 interrupt_provider.provide_result(
                     InterruptResult::ResolvedValue(Some(
-                        ValueContainer::Shared(SharedContainer::Referenced(get_builtin_shared_value_reference(
-                            &runtime_internal,
-                            address,
-                        )?)),
+                        ValueContainer::Shared(SharedContainer::Referenced(
+                            get_builtin_shared_value_reference(
+                                &runtime_internal,
+                                address,
+                            )?,
+                        )),
                     )),
                 );
             }
@@ -119,17 +127,21 @@ pub async fn execute_dxb(
                             address,
                             mutability,
                         )?
-                        .map(|v| ValueContainer::Shared(SharedContainer::Referenced(v)))
+                        .map(|v| {
+                            ValueContainer::Shared(SharedContainer::Referenced(
+                                v,
+                            ))
+                        }),
                     ),
                 );
             }
             ExternalExecutionInterrupt::GetReferenceToLocalPointer(address) => {
                 // TODO #402: in the future, local pointer addresses should be relative to the block sender, not the local runtime
                 interrupt_provider.provide_result(
-                    InterruptResult::ResolvedValue(get_local_pointer_value(
-                        &runtime_internal,
-                        address,
-                    )?),
+                    InterruptResult::ResolvedValue(
+                        get_local_pointer_value(&runtime_internal, address)
+                            .ok()?,
+                    ),
                 );
             }
             ExternalExecutionInterrupt::GetReferenceToBuiltinPointer(
@@ -137,10 +149,12 @@ pub async fn execute_dxb(
             ) => {
                 interrupt_provider.provide_result(
                     InterruptResult::ResolvedValue(Some(
-                        ValueContainer::Shared(SharedContainer::Referenced(get_builtin_shared_value_reference(
-                            &runtime_internal,
-                            address,
-                        )?)),
+                        ValueContainer::Shared(SharedContainer::Referenced(
+                            get_builtin_shared_value_reference(
+                                &runtime_internal,
+                                address,
+                            )?,
+                        )),
                     )),
                 );
             }
@@ -229,13 +243,15 @@ fn get_builtin_shared_value_reference(
     address: RawBuiltinPointerAddress,
 ) -> Result<ReferencedSharedContainer, ExecutionError> {
     // first try to get from memory
-    if let Ok(shared_container) =
-        get_builtin_shared_value_reference_from_memory(runtime_internal, &address)
-    {
+    if let Ok(shared_container) = get_builtin_shared_value_reference_from_memory(
+        runtime_internal,
+        &address,
+    ) {
         return Ok(shared_container);
     }
 
-    let core_lib_id = CoreLibId::try_from(ExternalPointerAddress::Builtin(address.id));
+    let core_lib_id =
+        CoreLibId::try_from(ExternalPointerAddress::Builtin(address.id));
     core_lib_id
         .map_err(|_| ExecutionError::ReferenceNotFound)
         .map(|id| core_lib_entry(id))
