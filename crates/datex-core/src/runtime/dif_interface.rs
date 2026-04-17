@@ -12,13 +12,13 @@ use crate::{
     prelude::*,
     runtime::RuntimeInternal,
     shared_values::{
-        observers::{ObserveOptions, Observer, TransceiverId},
         pointer_address::{PointerAddress, SelfOwnedPointerAddress},
         shared_containers::{
             OwnedSharedContainer, ReferencedSharedContainer,
             SelfOwnedSharedContainer, SharedContainer,
             SharedContainerMutability,
             base_shared_value_container::BaseSharedValueContainer,
+            observers::{ObserveOptions, Observer, TransceiverId},
         },
     },
     values::value_container::ValueContainer,
@@ -55,17 +55,18 @@ impl DIFInterface for RuntimeInternal {
         let reference = self
             .resolve_in_memory_reference(&address)
             .ok_or(DIFUpdateError::ReferenceNotFound)?;
+        let mut base_reference = reference.base_shared_container_mut();
         match update {
             DIFUpdateData::Set { key, value } => {
                 let value_container = value.to_value_container(&self.memory)?;
                 match key {
-                    DIFKey::Text(key) => reference.try_set_property(
+                    DIFKey::Text(key) => base_reference.try_set_property(
                         source_id,
                         Some(update),
                         key,
                         value_container,
                     )?,
-                    DIFKey::Index(key) => reference.try_set_property(
+                    DIFKey::Index(key) => base_reference.try_set_property(
                         source_id,
                         Some(update),
                         *key,
@@ -73,7 +74,7 @@ impl DIFInterface for RuntimeInternal {
                     )?,
                     DIFKey::Value(key) => {
                         let key = key.to_value_container(&self.memory)?;
-                        reference.try_set_property(
+                        base_reference.try_set_property(
                             source_id,
                             Some(update),
                             &key,
@@ -82,31 +83,32 @@ impl DIFInterface for RuntimeInternal {
                     }
                 }
             }
-            DIFUpdateData::Replace { value } => reference.try_replace(
+            DIFUpdateData::Replace { value } => base_reference.try_replace(
                 source_id,
                 Some(update),
                 value.to_value_container(&self.memory)?,
             )?,
-            DIFUpdateData::Append { value } => reference.try_append_value(
-                source_id,
-                Some(update),
-                value.to_value_container(&self.memory)?,
-            )?,
-            DIFUpdateData::Clear => reference.try_clear(source_id)?,
+            DIFUpdateData::Append { value } => base_reference
+                .try_append_value(
+                    source_id,
+                    Some(update),
+                    value.to_value_container(&self.memory)?,
+                )?,
+            DIFUpdateData::Clear => base_reference.try_clear(source_id)?,
             DIFUpdateData::Delete { key } => match key {
-                DIFKey::Text(key) => reference.try_delete_property(
+                DIFKey::Text(key) => base_reference.try_delete_property(
                     source_id,
                     Some(update),
                     key,
                 )?,
-                DIFKey::Index(key) => reference.try_delete_property(
+                DIFKey::Index(key) => base_reference.try_delete_property(
                     source_id,
                     Some(update),
                     *key,
                 )?,
                 DIFKey::Value(key) => {
                     let key = key.to_value_container(&self.memory)?;
-                    reference.try_delete_property(
+                    base_reference.try_delete_property(
                         source_id,
                         Some(update),
                         &key,
@@ -118,7 +120,7 @@ impl DIFInterface for RuntimeInternal {
                 delete_count,
                 items,
             } => {
-                reference.try_list_splice(
+                base_reference.try_list_splice(
                     source_id,
                     Some(update),
                     *start..(start + delete_count),
@@ -151,34 +153,37 @@ impl DIFInterface for RuntimeInternal {
         mutability: SharedContainerMutability,
     ) -> Result<SelfOwnedPointerAddress, DIFCreatePointerError> {
         let container = value.to_value_container(&self.memory)?;
-        let type_container = if let Some(_allowed_type) = &allowed_type {
-            core::todo!(
+        if let Some(_allowed_type) = &allowed_type {
+            todo!(
                 "FIXME: Implement type_container creation from DIFTypeDefinition"
             )
-        } else {
-            None
-        };
+        }
 
-        let pointer = self
+        let address = self
             .memory
             .borrow_mut()
             .get_new_endpoint_owned_pointer_address();
-        let address = pointer.address().clone();
 
-        let reference = SharedContainer::Owned(
-            OwnedSharedContainer::new_from_self_owned_container(
-                SelfOwnedSharedContainer::new(
-                    BaseSharedValueContainer::try_new(
-                        value_container,
-                        mutability,
-                    ),
-                    address,
-                ),
-            ),
-        )?;
+        let base = if let Some(allowed_type) = allowed_type {
+            BaseSharedValueContainer::try_new(
+                container,
+                allowed_type.to_type_definition(&self.memory),
+                mutability,
+            )?
+        } else {
+            BaseSharedValueContainer::new_with_inferred_allowed_type(
+                container, mutability,
+            )
+        };
+
+        let owned = OwnedSharedContainer::new_from_self_owned_container(
+            SelfOwnedSharedContainer::new(base, address.clone()),
+        );
         self.memory
             .borrow_mut()
-            .register_referenced_shared_container(&reference);
+            .register_referenced_shared_container(
+                &owned.derive_with_max_mutability(),
+            );
         Ok(address)
     }
 
@@ -216,7 +221,7 @@ impl DIFInterface for RuntimeInternal {
         let reference = self
             .resolve_in_memory_reference(&address)
             .ok_or(DIFObserveError::ReferenceNotFound)?;
-        Ok(reference.observe(Observer {
+        Ok(reference.base_shared_container_mut().observe(Observer {
             transceiver_id,
             options,
             callback: Rc::new(callback),
@@ -233,6 +238,7 @@ impl DIFInterface for RuntimeInternal {
             .resolve_in_memory_reference(&address)
             .ok_or(DIFObserveError::ReferenceNotFound)?;
         reference
+            .base_shared_container_mut()
             .update_observer_options(observer_id, options)
             .map_err(DIFObserveError::ObserveError)
     }
@@ -246,6 +252,7 @@ impl DIFInterface for RuntimeInternal {
             .resolve_in_memory_reference(&address)
             .ok_or(DIFObserveError::ReferenceNotFound)?;
         reference
+            .base_shared_container_mut()
             .unobserve(observer_id)
             .map_err(DIFObserveError::ObserveError)
     }
@@ -264,8 +271,10 @@ mod tests {
         prelude::*,
         runtime::{RuntimeConfig, RuntimeRunner},
         shared_values::{
-            observers::ObserveOptions, pointer_address::PointerAddress,
-            shared_containers::SharedContainerMutability,
+            pointer_address::PointerAddress,
+            shared_containers::{
+                SharedContainerMutability, observers::ObserveOptions,
+            },
         },
         values::{core_values::map::Map, value_container::ValueContainer},
     };
@@ -316,7 +325,7 @@ mod tests {
                             0,
                             pointer_address_clone.clone(),
                             ObserveOptions::default(),
-                            move |update, _| {
+                            move |update: &DIFUpdateData, _id| {
                                 observed_clone.replace(Some(update.clone()));
                                 // unobserve after first update
                                 runtime_clone

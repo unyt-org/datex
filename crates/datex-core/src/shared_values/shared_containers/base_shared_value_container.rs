@@ -1,7 +1,5 @@
 use crate::{
-    shared_values::{
-        observers::Observer, shared_containers::observers::Observer,
-    },
+    shared_values::shared_containers::observers::Observer,
     traits::value_eq::ValueEq,
     types::structural_type_definition::TypeDefinition,
     utils::freemap::FreeHashMap,

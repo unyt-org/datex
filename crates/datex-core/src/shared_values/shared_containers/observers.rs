@@ -161,13 +161,13 @@ mod tests {
         },
         prelude::*,
         shared_values::{
-            observers::{
-                ObserveOptions, Observer, ObserverError, TransceiverId,
-            },
             pointer_address::SelfOwnedPointerAddress,
             shared_containers::{
                 SharedContainer, SharedContainerMutability,
                 base_shared_value_container::BaseSharedValueContainer,
+                observers::{
+                    ObserveOptions, Observer, ObserverError, TransceiverId,
+                },
             },
         },
         values::{core_values::map::Map, value_container::ValueContainer},
@@ -201,7 +201,7 @@ mod tests {
 
     #[test]
     fn immutable_reference_observe_fails() {
-        let r = BaseSharedValueContainer::new_with_inferred_allowed_type(
+        let mut r = BaseSharedValueContainer::new_with_inferred_allowed_type(
             42,
             SharedContainerMutability::Immutable,
         );
@@ -210,7 +210,7 @@ mod tests {
             Err(ObserverError::ImmutableReference)
         );
 
-        let r = BaseSharedValueContainer::new_with_inferred_allowed_type(
+        let mut r = BaseSharedValueContainer::new_with_inferred_allowed_type(
             42,
             SharedContainerMutability::Mutable,
         );
@@ -219,7 +219,7 @@ mod tests {
 
     #[test]
     fn observe_and_unobserve() {
-        let r = BaseSharedValueContainer::new_with_inferred_allowed_type(
+        let mut r = BaseSharedValueContainer::new_with_inferred_allowed_type(
             42,
             SharedContainerMutability::Mutable,
         );
@@ -237,7 +237,7 @@ mod tests {
 
     #[test]
     fn observer_ids_incremental() {
-        let r = BaseSharedValueContainer::new_with_inferred_allowed_type(
+        let mut r = BaseSharedValueContainer::new_with_inferred_allowed_type(
             42,
             SharedContainerMutability::Mutable,
         );
@@ -301,10 +301,11 @@ mod tests {
 
     #[test]
     fn observe_replace_same_transceiver_relay_own_updates() {
-        let int_ref = BaseSharedValueContainer::new_with_inferred_allowed_type(
-            42,
-            SharedContainerMutability::Mutable,
-        );
+        let mut int_ref =
+            BaseSharedValueContainer::new_with_inferred_allowed_type(
+                42,
+                SharedContainerMutability::Mutable,
+            );
         let observed_update = record_dif_updates(
             &int_ref,
             0,
@@ -333,13 +334,14 @@ mod tests {
 
     #[test]
     fn observe_update_property() {
-        let reference = SharedContainer::boxed_owned_mut(
-            Map::from(vec![
-                ("a".to_string(), ValueContainer::from(1)),
-                ("b".to_string(), ValueContainer::from(2)),
-            ]),
-            EndpointOwnedPointer::NULL,
-        );
+        let mut reference =
+            BaseSharedValueContainer::new_with_inferred_allowed_type(
+                Map::from(vec![
+                    ("a".to_string(), ValueContainer::from(1)),
+                    ("b".to_string(), ValueContainer::from(2)),
+                ]),
+                SharedContainerMutability::Mutable,
+            );
         let observed_updates =
             record_dif_updates(&reference, 0, ObserveOptions::default());
         // Update a property
