@@ -490,6 +490,20 @@ impl ValueContainer {
             }
         }
     }
+
+    pub fn try_delete_property<'a>(
+        &mut self,
+        source_id: TransceiverId,
+        maybe_update_data: Option<&'a DIFUpdateData>,
+        key: impl Into<ValueKey<'a>>,
+    ) -> Result<(), AccessError> {
+        match self {
+            ValueContainer::Local(v) => v.try_delete_property(key),
+            ValueContainer::Shared(r) => {
+                r.try_delete_property(source_id, maybe_update_data, key)
+            }
+        }
+    }
 }
 
 impl Apply for ValueContainer {
@@ -587,9 +601,7 @@ impl Neg for ValueContainer {
 
     fn neg(self) -> Self::Output {
         match self {
-            ValueContainer::Local(value) => {
-                (-value).map(ValueContainer::Local)
-            }
+            ValueContainer::Local(value) => (-value).map(ValueContainer::Local),
             ValueContainer::Shared(reference) => reference
                 .with_collapsed_value_mut(|value| {
                     (-value).map(ValueContainer::Local)

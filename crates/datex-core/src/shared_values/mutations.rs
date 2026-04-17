@@ -4,9 +4,10 @@ use crate::{
         value::DIFValueContainer,
     },
     runtime::memory::Memory,
-    shared_values::{
+    shared_values::shared_containers::{
+        SharedContainerMutability,
+        base_shared_value_container::BaseSharedValueContainer,
         observers::TransceiverId,
-        shared_containers::{SharedContainer},
     },
     values::{
         core_value::CoreValue,
@@ -15,8 +16,7 @@ use crate::{
 };
 use core::{cell::RefCell, ops::FnOnce, prelude::rust_2024::*};
 
-use crate::prelude::*;
-use crate::shared_values::errors::AccessError;
+use crate::{prelude::*, shared_values::errors::AccessError};
 
 pub enum DIFUpdateDataOrMemory<'a> {
     Update(&'a DIFUpdateData),
@@ -35,7 +35,7 @@ impl<'a> From<&'a RefCell<Memory>> for DIFUpdateDataOrMemory<'a> {
     }
 }
 
-impl SharedContainer {
+impl BaseSharedValueContainer {
     /// Internal function that handles updates
     /// - Checks if the reference is mutable
     /// - Calls the provided handler to perform the update and get the DIFUpdateData
@@ -54,6 +54,11 @@ impl SharedContainer {
         Ok(())
     }
 
+    /// Checks if the container is mutable
+    pub fn can_mutate(&self) -> bool {
+        matches!(self.mutability, SharedContainerMutability::Mutable)
+    }
+
     fn assert_can_mutate(&self) -> Result<(), AccessError> {
         if !self.can_mutate() {
             return Err(AccessError::ImmutableReference);
@@ -63,7 +68,7 @@ impl SharedContainer {
 
     /// Sets a property on the value if applicable (e.g. for maps)
     pub fn try_set_property<'a>(
-        &self,
+        &mut self,
         source_id: TransceiverId,
         maybe_dif_update_data: Option<&DIFUpdateData>,
         key: impl Into<ValueKey<'a>>,
@@ -81,17 +86,28 @@ impl SharedContainer {
             ),
         };
 
-        self.with_collapsed_value_mut(|value| {
-            value.try_set_property(key, val.clone())
-        })?;
+        self.value_container.try_set_property(
+            source_id,
+            maybe_dif_update_data,
+            key,
+            val,
+        )?;
 
         self.notify_observers(&dif_update.with_source(source_id));
         Ok(())
     }
 
+    pub fn try_get_property<'a>(
+        &self,
+        key: impl Into<ValueKey<'a>>,
+    ) -> Result<ValueContainer, AccessError> {
+        let key = key.into();
+        self.value_container.try_get_property(key)
+    }
+
     /// Sets a value on the reference if it is mutable and the type is compatible.
     pub fn try_replace(
-        &self,
+        &mut self,
         source_id: TransceiverId,
         maybe_dif_update_data: Option<&DIFUpdateData>,
         value: impl Into<ValueContainer>,
@@ -99,21 +115,16 @@ impl SharedContainer {
         self.assert_can_mutate()?;
 
         // TODO #306: ensure type compatibility with allowed_type
-        let value_container = &value.into();
+        let value_container = value.into();
 
         let dif_update = match maybe_dif_update_data {
             Some(update) => update,
             None => &DIFUpdateData::replace(
-                DIFValueContainer::from_value_container(value_container),
+                DIFValueContainer::from_value_container(&value_container),
             ),
         };
 
-        self.with_collapsed_value_mut(|core_value| {
-            // Set the value directly, ensuring it is a ValueContainer
-            core_value.inner =
-                value_container.to_cloned_value().borrow().inner.clone();
-        });
-
+        self.value_container = value_container;
         self.notify_observers(&dif_update.with_source(source_id));
         Ok(())
     }
@@ -135,21 +146,20 @@ impl SharedContainer {
             ),
         };
 
-        self.with_collapsed_value_mut(move |core_value| {
-            match &mut core_value.inner {
+        self.value_container.with_collapsed_value_mut(|value| {
+            match &mut value.inner {
                 CoreValue::List(list) => {
                     list.push(value_container);
                 }
                 _ => {
                     return Err(AccessError::InvalidOperation(format!(
                         "Cannot push value to non-list value: {:?}",
-                        core_value
+                        value
                     )));
                 }
             }
-
             Ok(())
-        })?;
+        });
 
         self.notify_observers(&dif_update.with_source(source_id));
         Ok(())
@@ -171,30 +181,11 @@ impl SharedContainer {
             None => &DIFUpdateData::delete(DIFKey::from_value_key(&key)),
         };
 
-        self.with_collapsed_value_mut(|value| {
-            match value.inner {
-                CoreValue::Map(ref mut map) => {
-                    key.with_value_container(|key| map.delete(key))?;
-                }
-                CoreValue::List(ref mut list) => {
-                    if let Some(index) = key.try_as_index() {
-                        list.delete(index).map_err(|err| {
-                            AccessError::IndexOutOfBounds(err)
-                        })?;
-                    } else {
-                        return Err(AccessError::InvalidIndexKey);
-                    }
-                }
-                _ => {
-                    return Err(AccessError::InvalidOperation(format!(
-                        "Cannot delete property '{:?}' on non-map value: {:?}",
-                        key, value
-                    )));
-                }
-            }
-
-            Ok(())
-        })?;
+        self.value_container.try_delete_property(
+            source_id,
+            maybe_dif_update_data,
+            key,
+        )?;
 
         self.notify_observers(&dif_update.with_source(source_id));
         Ok(())
@@ -206,7 +197,7 @@ impl SharedContainer {
     ) -> Result<(), AccessError> {
         self.assert_can_mutate()?;
 
-        self.with_collapsed_value_mut(|value| {
+        self.value_container.with_collapsed_value_mut(|value| {
             match value.inner {
                 CoreValue::Map(ref mut map) => {
                     map.clear()?;
@@ -249,7 +240,7 @@ impl SharedContainer {
             ),
         };
 
-        self.with_collapsed_value_mut(|value| {
+        self.value_container.with_collapsed_value_mut(|value| {
             match value.inner {
                 CoreValue::List(ref mut list) => {
                     list.splice(range, items);
@@ -275,9 +266,10 @@ mod tests {
     use crate::{
         prelude::*,
         shared_values::{
+            errors::{AccessError, IndexOutOfBoundsError},
             shared_containers::{
-                AccessError, IndexOutOfBoundsError, SharedContainer,
-                SharedContainerMutability,
+                SharedContainer, SharedContainerMutability,
+                base_shared_value_container::BaseSharedValueContainer,
             },
         },
         values::{
@@ -286,7 +278,6 @@ mod tests {
         },
     };
     use core::{assert_matches, cell::RefCell};
-    use crate::shared_values::pointer::EndpointOwnedPointer;
 
     #[test]
     fn push() {
@@ -295,8 +286,10 @@ mod tests {
             ValueContainer::from(2),
             ValueContainer::from(3),
         ];
-        let list_ref =
-            SharedContainer::boxed_owned_mut(List::from(list), EndpointOwnedPointer::NULL);
+        let list_ref = BaseSharedValueContainer::new_with_inferred_allowed_type(
+            List::from(list),
+            SharedContainerMutability::Mutable,
+        );
         list_ref
             .try_append_value(0, None, ValueContainer::from(4))
             .expect("Failed to push value to list");
@@ -304,17 +297,19 @@ mod tests {
         assert_eq!(updated_value, ValueContainer::from(4));
 
         // Try to push to immutable value
-        let int_ref = SharedContainer::boxed_owned_immut(
+        let int_ref = BaseSharedValueContainer::new_with_inferred_allowed_type(
             List::from(vec![ValueContainer::from(42)]),
-            EndpointOwnedPointer::NULL,
+            SharedContainerMutability::Immutable,
         );
         let result =
             int_ref.try_append_value(0, None, ValueContainer::from(99));
         assert_matches!(result, Err(AccessError::ImmutableReference));
 
         // Try to push to non-list value
-        let int_ref =
-            SharedContainer::boxed_owned_mut(42, EndpointOwnedPointer::NULL);
+        let int_ref = BaseSharedValueContainer::new_with_inferred_allowed_type(
+            42,
+            SharedContainerMutability::Mutable,
+        );
         let result =
             int_ref.try_append_value(0, None, ValueContainer::from(99));
         assert_matches!(result, Err(AccessError::InvalidOperation(_)));
@@ -326,10 +321,11 @@ mod tests {
             ("key1".to_string(), ValueContainer::from(1)),
             ("key2".to_string(), ValueContainer::from(2)),
         ]);
-        let map_ref = SharedContainer::boxed_owned_mut(
-            ValueContainer::from(map),
-            EndpointOwnedPointer::NULL,
-        );
+        let mut map_ref =
+            BaseSharedValueContainer::new_with_inferred_allowed_type(
+                ValueContainer::from(map),
+                SharedContainerMutability::Mutable,
+            );
         // Set existing property
         map_ref
             .try_set_property(0, None, "key1", ValueContainer::from(42))
@@ -352,10 +348,11 @@ mod tests {
             ValueContainer::from(2),
             ValueContainer::from(3),
         ];
-        let list_ref = SharedContainer::boxed_owned_mut(
-            ValueContainer::from(list),
-            EndpointOwnedPointer::NULL,
-        );
+        let mut list_ref =
+            BaseSharedValueContainer::new_with_inferred_allowed_type(
+                List::from(list),
+                SharedContainerMutability::Mutable,
+            );
 
         // Set existing index
         list_ref
@@ -375,8 +372,11 @@ mod tests {
         );
 
         // Try to set index on non-map value
-        let int_ref =
-            SharedContainer::boxed_owned_mut(42, EndpointOwnedPointer::NULL);
+        let mut int_ref =
+            BaseSharedValueContainer::new_with_inferred_allowed_type(
+                42,
+                SharedContainerMutability::Mutable,
+            );
         let result =
             int_ref.try_set_property(0, None, 0, ValueContainer::from(99));
         assert_matches!(result, Err(AccessError::InvalidOperation(_)));
@@ -388,10 +388,11 @@ mod tests {
             (ValueContainer::from("name"), ValueContainer::from("Alice")),
             (ValueContainer::from("age"), ValueContainer::from(30)),
         ]);
-        let struct_ref = SharedContainer::boxed_owned_mut(
-            ValueContainer::from(struct_val),
-            EndpointOwnedPointer::NULL,
-        );
+        let mut struct_ref =
+            BaseSharedValueContainer::new_with_inferred_allowed_type(
+                ValueContainer::from(struct_val),
+                SharedContainerMutability::Mutable,
+            );
 
         // Set existing property
         struct_ref
@@ -410,8 +411,11 @@ mod tests {
         assert_matches!(result, Ok(()));
 
         // // Try to set property on non-struct value
-        let int_ref =
-            SharedContainer::boxed_owned_mut(42, EndpointOwnedPointer::NULL);
+        let mut int_ref =
+            BaseSharedValueContainer::new_with_inferred_allowed_type(
+                42,
+                SharedContainerMutability::Mutable,
+            );
         let result = int_ref.try_set_property(
             0,
             None,
@@ -423,19 +427,19 @@ mod tests {
 
     #[test]
     fn immutable_reference_fails() {
-        let r = SharedContainer::boxed_owned_immut(42, EndpointOwnedPointer::NULL);
+        let mut r = BaseSharedValueContainer::new_with_inferred_allowed_type(
+            42,
+            SharedContainerMutability::Immutable,
+        );
         assert_matches!(
             r.try_replace(0, None, 43),
             Err(AccessError::ImmutableReference)
         );
 
-        let r = SharedContainer::try_boxed_owned(
-            42.into(),
-            None,
-            EndpointOwnedPointer::NULL,
+        let mut r = BaseSharedValueContainer::new_with_inferred_allowed_type(
+            42,
             SharedContainerMutability::Immutable,
-        )
-        .unwrap();
+        );
         assert_matches!(
             r.try_replace(0, None, 43),
             Err(AccessError::ImmutableReference)

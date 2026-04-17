@@ -1,5 +1,5 @@
 use crate::{
-    libs::core::CoreLibTypeId,
+    libs::core::type_id::CoreLibTypeId,
     prelude::*,
     runtime::execution::ExecutionError,
     traits::{apply::Apply, structural_eq::StructuralEq, value_eq::ValueEq},
@@ -225,6 +225,36 @@ impl Value {
         }
     }
 
+    pub fn try_delete_property<'a>(
+        &mut self,
+        key: impl Into<ValueKey<'a>>,
+    ) -> Result<(), AccessError> {
+        match self.inner {
+            CoreValue::Map(ref mut map) => {
+                // If the value is a map, delete the property
+                map.delete(key)?;
+                Ok(())
+            }
+            CoreValue::List(ref mut list) => {
+                if let Some(index) = key.into().try_as_index() {
+                    list.delete(index)?;
+                    Ok(())
+                } else {
+                    Err(AccessError::InvalidIndexKey)
+                }
+            }
+            CoreValue::Text(_) => Err(AccessError::InvalidOperation(
+                "Cannot delete property on text".to_string(),
+            )),
+            _ => {
+                // If the value is not an map, we cannot delete a property
+                Err(AccessError::InvalidOperation(
+                    "Cannot delete property".to_string(),
+                ))
+            }
+        }
+    }
+
     /// Sets a property on the value if applicable (e.g. for maps)
     pub fn try_set_property<'a>(
         &mut self,
@@ -364,7 +394,7 @@ mod tests {
     use super::*;
     use crate::{
         assert_structural_eq, datex_list,
-        libs::core::{core_lib_type, get_core_lib_type_reference},
+        libs::core::{core_lib_type, type_id::CoreLibBaseTypeId},
         prelude::*,
         values::core_values::{
             endpoint::Endpoint,
@@ -534,7 +564,9 @@ mod tests {
         let val = Value {
             inner: CoreValue::Integer(Integer::from(42)),
             actual_type: Box::new(TypeDefinition::ImplType(
-                Box::new(core_lib_type(CoreLibTypeId::Integer(None))),
+                Box::new(core_lib_type(CoreLibTypeId::Base(
+                    CoreLibBaseTypeId::Integer,
+                ))),
                 vec![],
             )),
         };
