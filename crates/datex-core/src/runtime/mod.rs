@@ -23,6 +23,7 @@ mod runner;
 mod request_move;
 #[cfg(test)]
 pub mod test_utils;
+pub mod pointer_address_provider;
 
 use self::memory::Memory;
 pub use config::*;

@@ -4,6 +4,8 @@ use crate::{
     shared_values::pointer_address::{ExternalPointerAddress, PointerAddress},
 };
 use core::{fmt::Display, ops::Deref};
+use core::str::FromStr;
+
 pub const TYPE_SPACE_BASE: u16 = 0;
 pub const TYPE_VARIANT_SPACE_BASE: u16 = 500;
 pub const VALUE_SPACE_BASE: u16 = 1000;
@@ -29,6 +31,15 @@ pub enum CoreLibId {
     Type(CoreLibTypeId),
     Value(CoreLibValueId),
 }
+
+impl CoreLibId {
+    pub fn try_from_str(string: &str) -> Option<Self> {
+        CoreLibTypeId::try_from_str(string)
+            .map(CoreLibId::Type)
+            .or_else(|| CoreLibValueId::from_str(string).map(CoreLibId::Value).ok())
+    }
+}
+
 impl From<CoreLibTypeId> for CoreLibId {
     fn from(type_id: CoreLibTypeId) -> Self {
         CoreLibId::Type(type_id)

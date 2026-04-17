@@ -1,5 +1,5 @@
 pub mod base_shared_value_container;
-mod expose_rc_internal; // IMPORTANT: don't expose this module, for internal use only
+mod internal_traits; // IMPORTANT: don't expose this module, for internal use only
 mod external_shared_container;
 pub mod observers;
 mod owned_shared_container;
@@ -17,7 +17,7 @@ use crate::{
         },
         shared_containers::{
             base_shared_value_container::BaseSharedValueContainer,
-            expose_rc_internal::ExposeRcInternal,
+            internal_traits::_ExposeRcInternal,
             observers::{Observer, ObserverError},
         },
     },
@@ -40,6 +40,7 @@ pub use referenced_shared_container::*;
 pub use self_owned_shared_container::*;
 pub use shared_container_inner::*;
 pub use shared_container_mutability::*;
+use crate::runtime::pointer_address_provider::SelfOwnedPointerAddressProvider;
 
 /// Top-level wrapper for any owned or referenced shared container,
 /// which can either be an owned shared container or a reference to a shared container.
@@ -54,20 +55,42 @@ pub enum SharedContainer {
 
 impl SharedContainer {
     /// Creates a new owned [SharedContainer] with an initial [ValueContainer],
-    /// a [SharedContainerMutability], and an [SelfOwnedPointerAddress].
+    /// a [SharedContainerMutability], and a [SelfOwnedPointerAddressProvider].
     ///
     /// The allowed type is inferred from the value_container's allowed type.
     pub fn new_owned_with_inferred_allowed_type<T: Into<ValueContainer>>(
         value_container: T,
         mutability: SharedContainerMutability,
-        address: SelfOwnedPointerAddress,
+        address_provider: &mut SelfOwnedPointerAddressProvider,
     ) -> Self {
         SharedContainer::Owned(
             OwnedSharedContainer::new_with_inferred_allowed_type(
                 value_container.into(),
                 mutability,
-                address,
+                address_provider,
             ),
+        )
+    }
+
+    /// Creates a new owned [SharedContainer] with an initial [ValueContainer],
+    /// a [SharedContainerMutability], and a [SelfOwnedPointerAddress].
+    ///
+    /// The allowed type is inferred from the value_container's allowed type.
+    /// 
+    /// The caller must ensure that the address is not used anywhere else.
+    pub unsafe fn new_owned_with_inferred_allowed_type_unsafe<T: Into<ValueContainer>>(
+        value_container: T,
+        mutability: SharedContainerMutability,
+        address: SelfOwnedPointerAddress,
+    ) -> Self {
+        SharedContainer::Owned(
+            unsafe {
+                OwnedSharedContainer::new_with_inferred_allowed_type_unsafe(
+                    value_container.into(),
+                    mutability,
+                    address,
+                )
+            }
         )
     }
 
@@ -342,7 +365,7 @@ impl From<ReferencedSharedContainer> for SharedContainer {
     }
 }
 
-impl ExposeRcInternal for SharedContainer {
+impl _ExposeRcInternal for SharedContainer {
     type Shared = SharedContainerInner;
     fn get_rc_internal(&self) -> &Rc<RefCell<Self::Shared>> {
         match self {

@@ -1,5 +1,5 @@
 use core::{fmt::Display, mem::variant_count};
-
+use core::str::FromStr;
 use crate::{
     libs::core::core_lib_id::{
         CoreLibIdIndex, CoreLibIdTrait, TYPE_SPACE_BASE,
@@ -14,6 +14,9 @@ use crate::{
 use datex_macros_internal::CoreLibString;
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use strum::{EnumIter, IntoEnumIterator};
+use strum_macros::{Display, EnumString};
+use crate::libs::core::core_lib_id::CoreLibId;
+use crate::libs::core::value_id::CoreLibValueId;
 
 #[derive(
     Debug,
@@ -22,12 +25,14 @@ use strum::{EnumIter, IntoEnumIterator};
     PartialEq,
     Eq,
     Hash,
-    CoreLibString, // TODO: don't derive, must distinguish between e.g. boolean/Map upper/lowercase
     EnumIter,
     IntoPrimitive,
     TryFromPrimitive,
+    EnumString,
+    Display
 )]
 #[repr(u16)]
+#[strum(serialize_all = "snake_case")]
 /// A base type defined in the core library
 /// Every variant automatically gets mapped to a new nominal type definition with
 /// the enum variant name in lowercase as the name, and stored in the core library map
@@ -41,11 +46,17 @@ pub enum CoreLibBaseTypeId {
     Text,     // #core.text
     Endpoint, // #core.endpoint
     List,     // #core.List
+    #[strum(serialize = "Map")]
     Map,      // #core.Map
+    #[strum(serialize = "Callable")]
     Callable, // #core.Callable
+    #[strum(serialize = "Unit")]
     Unit,     // #core.Unit
+    #[strum(serialize = "Never")]
     Never,    // #core.never
+    #[strum(serialize = "Unknown")]
     Unknown,  // #core.unknown
+    #[strum(serialize = "Range")]
     Range,    // #core.range
 }
 
@@ -153,6 +164,15 @@ impl CoreLibIdTrait for CoreLibVariantTypeId {
 pub enum CoreLibTypeId {
     Base(CoreLibBaseTypeId),
     Variant(CoreLibVariantTypeId),
+}
+
+
+impl CoreLibTypeId {
+    pub fn try_from_str(string: &str) -> Option<Self> {
+        CoreLibBaseTypeId::from_str(string)
+            .map(CoreLibTypeId::Base)
+            .ok()
+    }
 }
 
 impl From<CoreLibVariantTypeId> for CoreLibBaseTypeId {

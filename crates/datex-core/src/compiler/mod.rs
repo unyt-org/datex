@@ -32,7 +32,6 @@ use crate::{
         type_compiler::compile_type_expression,
     },
     global::{instruction_codes::InstructionCode, slots::InternalSlot},
-    libs::core::CoreLibTypeId,
     prelude::*,
 };
 
@@ -65,6 +64,8 @@ use crate::core_compiler::value_compiler::{append_instruction, append_instructio
 use crate::global::protocol_structures::injected_values::{InjectedValueType, LocalInjectedValueType, SharedInjectedValueType};
 use crate::global::protocol_structures::instruction_data::{InstructionBlockData, ModifyStackValue, SetSharedContainerValue, StackIndex};
 use crate::global::protocol_structures::regular_instructions::RegularInstruction;
+use crate::libs::core::core_lib_id::CoreLibId;
+use crate::libs::core::value_id::CoreLibValueId;
 use crate::shared_values::shared_containers::SharedContainer;
 use crate::shared_values::shared_containers::ReferenceMutability;
 
@@ -1267,7 +1268,7 @@ fn compile_expression(
                 }
                 "core" => append_get_internal_ref(
                     compilation_context.cursor(),
-                    PointerAddress::from(CoreLibTypeId::Core)
+                    PointerAddress::from(CoreLibId::Value(CoreLibValueId::Core))
                         .internal_bytes()
                         .unwrap(),
                 ),
@@ -1504,7 +1505,7 @@ pub mod tests {
     use crate::{compiler::scope::CompilationScope, global::{
         instruction_codes::InstructionCode,
         type_instruction_codes::TypeInstructionCode,
-    }, libs::core::CoreLibTypeId, runtime::execution::context::ExecutionMode};
+    }, runtime::execution::context::ExecutionMode};
 
     #[cfg(feature = "disassembler")]
     use crate::{assert_instructions_equal, assert_regular_instructions_equal};
@@ -1524,6 +1525,8 @@ pub mod tests {
     use crate::global::protocol_structures::instruction_data::{InstructionBlockData, IntegerData, StackIndex, StatementsData, UInt8Data};
     use crate::global::protocol_structures::instructions::Instruction;
     use crate::global::protocol_structures::regular_instructions::RegularInstruction;
+    use crate::libs::core::core_lib_id::CoreLibId;
+    use crate::libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId};
     use crate::values::core_values::integer::Integer;
 
     fn compile_and_log(datex_script: &str) -> Vec<u8> {
@@ -3028,7 +3031,7 @@ pub mod tests {
             vec![InstructionCode::GET_INTERNAL_SHARED_REF.into()];
         // pointer id
         instructions.append(
-            &mut PointerAddress::from(CoreLibTypeId::Integer(None))
+            &mut PointerAddress::from(CoreLibId::Type(CoreLibTypeId::Base(CoreLibBaseTypeId::Integer)))
                 .bytes()
                 .to_vec(),
         );

@@ -5,9 +5,11 @@ use crate::{
     prelude::*,
     shared_values::pointer_address::{ExternalPointerAddress, PointerAddress},
 };
-use datex_macros_internal::CoreLibString;
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use strum::EnumIter;
+use strum_macros::{Display, EnumString};
+use crate::libs::core::core_lib_id::CoreLibId;
+use crate::libs::core::type_id::CoreLibTypeId;
 
 #[derive(
     Debug,
@@ -16,11 +18,12 @@ use strum::EnumIter;
     PartialEq,
     Eq,
     Hash,
-    CoreLibString,
-    IntoPrimitive,
-    TryFromPrimitive,
     EnumIter,
+    EnumString,
+    Display,
+    TryFromPrimitive,
 )]
+#[strum(serialize_all = "snake_case")]
 #[repr(u16)]
 pub enum CoreLibValueId {
     Core,  // #core

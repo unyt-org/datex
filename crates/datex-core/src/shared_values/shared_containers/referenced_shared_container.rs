@@ -5,7 +5,7 @@ use crate::{
             ExternalSharedContainer, ReferenceMutability, SharedContainerInner,
             SharedContainerMutability,
             base_shared_value_container::BaseSharedValueContainer,
-            expose_rc_internal::ExposeRcInternal,
+            internal_traits::_ExposeRcInternal,
         },
     },
     types::structural_type_definition::TypeDefinition,
@@ -16,6 +16,7 @@ use core::{
     cell::{Ref, RefCell, RefMut},
     fmt::Display,
 };
+use crate::runtime::memory::Memory;
 
 /// Wrapper struct for a reference to a shared value (i.e. `'shared X` or `'mut shared X`).
 ///
@@ -56,10 +57,13 @@ impl ReferencedSharedContainer {
     /// Tries to create a new immutable [ReferencedSharedContainer] containing a [SharedContainerInner::External]
     /// Returns an [Err] if the provided [ReferenceMutability] is [ReferenceMutability::Mutable] while
     /// the [SharedContainerMutability] of the container is [SharedContainerMutability::Immutable]
-    pub(crate) fn try_new_external(
+    ///
+    /// The caller must ensure that the [ExternalPointerAddress] does not yet exist in the [Memory]
+    pub(crate) unsafe fn try_new_external(
         container: BaseSharedValueContainer,
         address: ExternalPointerAddress,
         reference_mutability: ReferenceMutability,
+        memory: &mut Memory
     ) -> Result<Self, ()> {
         // invalid reference mutability
         if reference_mutability == ReferenceMutability::Mutable
@@ -70,25 +74,30 @@ impl ReferencedSharedContainer {
 
         Ok(ReferencedSharedContainer {
             inner: Rc::new(RefCell::new(SharedContainerInner::External(
-                ExternalSharedContainer::new(container, address),
+                unsafe {ExternalSharedContainer::create_external_shared_container(container, address, memory)},
             ))),
             reference_mutability,
         })
     }
 
-    pub(crate) fn new_immutable_external(
+    /// The caller must ensure that the [ExternalPointerAddress] does not yet exist in the [Memory]
+    pub(crate) unsafe fn new_immutable_external(
         value_container: ValueContainer,
         address: ExternalPointerAddress,
+        memory: &mut Memory
     ) -> Self {
-        ReferencedSharedContainer::try_new_external(
-            BaseSharedValueContainer::new_with_inferred_allowed_type(
-                value_container,
-                SharedContainerMutability::Immutable,
-            ),
-            address,
-            ReferenceMutability::Immutable,
-        )
-        .unwrap()
+        unsafe {
+            ReferencedSharedContainer::try_new_external(
+                BaseSharedValueContainer::new_with_inferred_allowed_type(
+                    value_container,
+                    SharedContainerMutability::Immutable,
+                ),
+                address,
+                ReferenceMutability::Immutable,
+                memory,
+            )
+                .unwrap()
+        }
     }
 
     pub fn inner(&self) -> Ref<SharedContainerInner> {
@@ -185,7 +194,7 @@ impl Display for ReferencedSharedContainer {
     }
 }
 
-impl ExposeRcInternal for ReferencedSharedContainer {
+impl _ExposeRcInternal for ReferencedSharedContainer {
     type Shared = SharedContainerInner;
     fn get_rc_internal(&self) -> &Rc<RefCell<Self::Shared>> {
         &self.inner

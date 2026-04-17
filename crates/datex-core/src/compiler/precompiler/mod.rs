@@ -28,7 +28,6 @@ use crate::{
         SpannedCompilerError,
     },
     global::operators::{binary::ArithmeticOperator, BinaryOperator},
-    libs::core::CoreLibTypeId,
     types::structural_type_definition::TypeDefinition,
     utils::maybe_action::{collect_or_pass_error, ErrorCollector, MaybeAction},
     visitor::{
@@ -44,6 +43,9 @@ use precompiled_ast::{AstMetadata, RichAst, VariableShape};
 use scope::NewScopeType;
 use scope_stack::PrecompilerScopeStack;
 use crate::ast::expressions::{CloneExpression, GetSharedRef, Unbox, UnboxAssignment, ValueAccessType};
+use crate::libs::core::core_lib_id::CoreLibId;
+use crate::libs::core::type_id::CoreLibTypeId;
+use crate::shared_values::pointer_address::PointerAddress;
 use crate::shared_values::shared_containers::ReferenceMutability;
 use crate::types::nominal_type_definition::NominalTypeDefinition;
 use crate::types::r#type::{Type};
@@ -244,8 +246,8 @@ impl<'a> Precompiler<'a> {
             Ok(ResolvedVariable::VariableId(id))
         }
         // try to resolve core variable
-        else if let Ok(core) = CoreLibTypeId::from_str(name) {
-            Ok(ResolvedVariable::PointerAddress(core.into()))
+        else if let Some(core) = CoreLibId::try_from_str(name) {
+            Ok(ResolvedVariable::PointerAddress(PointerAddress::External(core.into())))
         } else {
             Err(CompilerError::UndeclaredVariable(name.to_string()))
         }
@@ -273,7 +275,7 @@ impl<'a> Precompiler<'a> {
 
         let type_def = match data.kind {
             TypeDeclarationKind::Nominal => {
-                Type::Nominal(NominalTypeDefinition::new_base(
+                Type::nominal(NominalTypeDefinition::new_base(
                     TypeDefinition::Unknown.into(),
                     data.name.clone()
                 ))
@@ -749,8 +751,10 @@ mod tests {
     };
     use core::assert_matches;
     use crate::ast::expressions::CreateShared;
+    use crate::libs::core::type_id::{CoreLibBaseTypeId, CoreLibVariantTypeId};
     use crate::types::type_definition::LocalReferenceMutability;
     use crate::values::core_values::endpoint::Endpoint;
+    use crate::values::core_values::integer::typed_integer::IntegerTypeVariant;
 
     fn precompile(
         ast: DatexExpression,
@@ -871,7 +875,7 @@ mod tests {
                                 TypeExpressionData::Text("a".to_string())
                                     .with_default_span(),
                                 TypeExpressionData::GetReference(
-                                    CoreLibTypeId::Integer(None).into()
+                                    CoreLibTypeId::Base(CoreLibBaseTypeId::Integer).into()
                                 )
                                 .with_default_span(),
                             )])
@@ -917,7 +921,7 @@ mod tests {
                     ast: DatexExpression { data: DatexExpressionData::RequestSharedRef(RequestSharedRef{address, mutability}), ..},
                     ..
                 }
-            ) if address == CoreLibTypeId::Boolean.into() && mutability == ReferenceMutability::Immutable
+            ) if address == CoreLibTypeId::Base(CoreLibBaseTypeId::Boolean).into() && mutability == ReferenceMutability::Immutable
         );
         let result = parse_and_precompile("integer");
         assert_matches!(
@@ -927,7 +931,7 @@ mod tests {
                     ast: DatexExpression { data: DatexExpressionData::RequestSharedRef(RequestSharedRef{address, mutability}), ..},
                     ..
                 }
-            ) if address == CoreLibTypeId::Integer(None).into()  && mutability == ReferenceMutability::Immutable
+            ) if address == CoreLibTypeId::Base(CoreLibBaseTypeId::Integer).into()  && mutability == ReferenceMutability::Immutable
         );
 
         let result = parse_and_precompile("integer/u8");
@@ -935,7 +939,7 @@ mod tests {
             result.unwrap().ast,
             DatexExpressionData::VariantAccess(VariantAccess {
                 base: ResolvedVariable::PointerAddress(
-                    CoreLibTypeId::Integer(None).into()
+                    CoreLibVariantTypeId::Integer(IntegerTypeVariant::U8).into()
                 ),
                 name: "integer".to_string(),
                 variant: "u8".to_string(),
@@ -953,7 +957,7 @@ mod tests {
             result.ast,
             DatexExpressionData::VariantAccess(VariantAccess {
                 base: ResolvedVariable::PointerAddress(
-                    CoreLibTypeId::Integer(None).into()
+                    CoreLibTypeId::Base(CoreLibBaseTypeId::Integer).into()
                 ),
                 name: "integer".to_string(),
                 variant: "u8".to_string(),
@@ -967,7 +971,7 @@ mod tests {
             result.ast,
             DatexExpressionData::VariantAccess(VariantAccess {
                 base: ResolvedVariable::PointerAddress(
-                    CoreLibTypeId::Integer(None).into()
+                    CoreLibTypeId::Base(CoreLibBaseTypeId::Integer).into()
                 ),
                 name: "integer".to_string(),
                 variant: "invalid".to_string(),
@@ -1292,7 +1296,7 @@ mod tests {
                 id: Some(0),
                 name: "x".to_string(),
                 definition: TypeExpressionData::GetReference(
-                    PointerAddress::from(CoreLibTypeId::Integer(None))
+                    PointerAddress::from(CoreLibTypeId::Base(CoreLibBaseTypeId::Integer))
                 )
                 .with_default_span(),
                 hoisted: true,

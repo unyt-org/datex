@@ -19,6 +19,7 @@ use futures_util::{
     join,
 };
 use log::info;
+use crate::runtime::pointer_address_provider::SelfOwnedPointerAddressProvider;
 
 pub struct RuntimeRunner {
     pub runtime: Runtime,
@@ -38,11 +39,13 @@ impl RuntimeRunner {
 
         let (com_hub, com_hub_task_future) =
             ComHub::create(endpoint.clone(), incoming_sections_sender);
-        let memory = RefCell::new(Memory::new(endpoint.clone()));
+        let memory = RefCell::new(Memory::new());
+        let pointer_address_provider = RefCell::new(SelfOwnedPointerAddressProvider::new(endpoint.clone()));
 
         let runtime = Runtime::new(RuntimeInternal::new(
             endpoint,
             memory,
+            pointer_address_provider,
             config,
             com_hub,
             task_manager,

@@ -4,19 +4,14 @@ use crate::{
         value_compiler::{
             SharedValueCompilationError, append_instruction_code_new,
             append_perform_moves, append_regular_instruction,
-            append_shared_container, append_statements_preamble, append_value,
+            append_shared_container, append_value,
         },
     },
     global::{
         instruction_codes::InstructionCode,
         protocol_structures::{
-            injected_values::{
-                InjectedValueDeclaration, InjectedValueType,
-                SharedInjectedValueType,
-            },
             instruction_data::{
                 InstructionBlockData, PerformMove, RawLocalPointerAddress,
-                StackIndex,
             },
             regular_instructions::RegularInstruction,
         },

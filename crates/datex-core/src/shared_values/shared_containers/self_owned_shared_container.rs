@@ -1,3 +1,4 @@
+use crate::runtime::memory::Memory;
 use crate::shared_values::pointer_address::{SelfOwnedPointerAddress, ExternalPointerAddress};
 use crate::shared_values::shared_containers::base_shared_value_container::BaseSharedValueContainer;
 use crate::shared_values::shared_containers::ExternalSharedContainer;
@@ -39,14 +40,21 @@ impl SelfOwnedSharedContainer {
     
     /// Converts the [SelfOwnedSharedContainer] into an [ExternalSharedContainer],
     /// setting the provided [ExternalPointerAddress]
+    ///
+    /// The caller must ensure that the [ExternalPointerAddress] does not yet exist in the [Memory]
+    /// 
     /// TODO: handle subscriber transfer somewhere
-    pub fn convert_to_external_container(
+    pub unsafe fn convert_to_external_container(
         self,
         external_address: ExternalPointerAddress,
+        memory: &mut Memory
     ) -> ExternalSharedContainer {
-        ExternalSharedContainer::new(
-            self.value,
-            external_address,
-        )
+        unsafe {
+            ExternalSharedContainer::create_external_shared_container(
+                self.value,
+                external_address,
+                memory
+            )
+        }
     }
 }

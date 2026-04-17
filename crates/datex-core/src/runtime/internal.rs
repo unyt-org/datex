@@ -49,10 +49,12 @@ use crate::{
 use alloc::rc::Rc;
 use core::{cell::RefCell, pin::Pin, slice};
 use log::{debug, error, info};
+use crate::runtime::pointer_address_provider::SelfOwnedPointerAddressProvider;
 
 #[derive(Debug)]
 pub struct RuntimeInternal {
     pub memory: RefCell<Memory>,
+    pub pointer_address_provider: RefCell<SelfOwnedPointerAddressProvider>,
     pub com_hub: Rc<ComHub>,
     pub endpoint: Endpoint,
     pub config: RuntimeConfig,
@@ -98,6 +100,7 @@ impl RuntimeInternal {
     pub(crate) fn new(
         endpoint: Endpoint,
         memory: RefCell<Memory>,
+        pointer_address_provider: RefCell<SelfOwnedPointerAddressProvider>,
         config: RuntimeConfig,
         com_hub: Rc<ComHub>,
         task_manager: TaskManager,
@@ -106,6 +109,7 @@ impl RuntimeInternal {
         RuntimeInternal {
             endpoint,
             memory,
+            pointer_address_provider,
             config,
             com_hub,
             task_manager,
@@ -121,7 +125,8 @@ impl RuntimeInternal {
         let (sender, receiver) = create_unbounded_channel();
         RuntimeInternal::new(
             Endpoint::default(),
-            RefCell::new(Memory::default()),
+            RefCell::new(Memory::new()),
+            RefCell::new(SelfOwnedPointerAddressProvider::new(Endpoint::default())),
             RuntimeConfig::default(),
             ComHub::create(Endpoint::default(), sender).0,
             TaskManager::create().0,
@@ -460,9 +465,9 @@ impl RuntimeInternal {
                     original,
                     RawLocalPointerAddress {
                         bytes: self
-                            .memory
+                            .pointer_address_provider
                             .borrow_mut()
-                            .get_new_endpoint_owned_pointer_address()
+                            .get_new_self_owned_address()
                             .address,
                     },
                 )

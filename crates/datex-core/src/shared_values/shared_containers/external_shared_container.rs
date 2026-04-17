@@ -1,4 +1,5 @@
-use crate::shared_values::pointer_address::{ExternalPointerAddress};
+use crate::runtime::memory::Memory;
+use crate::shared_values::pointer_address::{ExternalPointerAddress, PointerAddress};
 use crate::shared_values::shared_containers::base_shared_value_container::BaseSharedValueContainer;
 
 /// A shared container with an external pointer
@@ -10,13 +11,19 @@ pub struct ExternalSharedContainer {
 }
 
 impl ExternalSharedContainer {
-    pub fn new(shared_value_container: BaseSharedValueContainer, address: ExternalPointerAddress) -> Self {
+    /// Create a new [ExternalSharedContainer] with a given [ExternalPointerAddress].
+    /// The caller must ensure that the [ExternalPointerAddress] does not yet exist in the [Memory]
+    pub unsafe fn create_external_shared_container(shared_value_container: BaseSharedValueContainer, address: ExternalPointerAddress, memory: &mut Memory) -> ExternalSharedContainer {
+
+        if memory.has_reference(&PointerAddress::External(address.clone())) {
+            panic!("Cannot create ExternalSharedContainer with address that already exists in memory");
+        }
+
         ExternalSharedContainer {
             value: shared_value_container,
             address,
         }
     }
-
     pub fn value(&self) -> &BaseSharedValueContainer {
         &self.value
     }

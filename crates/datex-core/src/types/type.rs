@@ -34,6 +34,11 @@ pub enum Type {
 }
 
 impl Type {
+    
+    pub fn nominal(definition: NominalTypeDefinition) -> Type {
+        Type::Nominal(SharedContainerContainingNominalType::new_from_definition(definition))
+    }
+    
     /// Collapses nominal type definitions to their underlying type definitions with metadata
     pub fn with_collapsed_definition_with_metadata<R>(
         &self,

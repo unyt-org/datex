@@ -9,7 +9,6 @@ use crate::{
     },
     types::{
         literal_type_definition::LiteralTypeDefinition,
-        structural_type_definition::StructuralTypeDefinition,
     },
     values::{
         core_value::CoreValue, value::Value,
@@ -25,7 +24,6 @@ use alloc::format;
 use crate::libs::core::core_lib_id::CoreLibId;
 use crate::shared_values::shared_containers::SharedContainer;
 use crate::types::r#type::Type;
-use crate::types::type_definition::TypeDefinition;
 
 impl From<&ValueContainer> for DatexExpressionData {
     /// Converts a ValueContainer into a DatexExpression AST.

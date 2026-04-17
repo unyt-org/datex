@@ -58,7 +58,6 @@ impl From<&TypeDefinition> for TypeInstructionCode {
             TypeDefinition::Collection(_) => {
                 todo!()
             }
-            TypeDefinition::Type(_) => unreachable!(), // TODO #668: nested types
             TypeDefinition::List(_) => todo!(),
             TypeDefinition::Map(_) => todo!(),
             TypeDefinition::Range(_) => todo!(),

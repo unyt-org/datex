@@ -31,7 +31,9 @@ pub fn compile_type(ty: &Type) -> Vec<u8> {
 pub fn append_type(context: &mut CoreCompilationContext, ty: &Type) {
     // TODO: handle nominal type additional data via separate instruction
     // append type definition
-    append_type_definition(context, &ty.definition());
+    ty.with_collapsed_definition_with_metadata(|ty| {
+        append_type_definition(context, ty);
+    })
 }
 
 pub fn append_type_definition(
