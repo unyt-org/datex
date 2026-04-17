@@ -14,10 +14,12 @@ use crate::{
     },
 };
 
-use crate::prelude::*;
+use crate::{
+    core_compiler::value_compiler::{compile_shared_container, compile_value},
+    prelude::*,
+};
 use core::result::Result;
 use log::info;
-use crate::core_compiler::value_compiler::{compile_shared_container, compile_value};
 
 impl RuntimeInternal {
     pub(crate) async fn handle_incoming_sections_task(
@@ -53,11 +55,15 @@ impl RuntimeInternal {
         match &result {
             Ok(Some(result)) => info!(
                 "Successful Execution result (on {} from {}): {}",
-                self.endpoint, endpoint,
+                self.endpoint,
+                endpoint,
                 {
                     #[cfg(feature = "decompiler")]
                     {
-                        crate::decompiler::decompile_value(result, crate::decompiler::DecompileOptions::colorized())
+                        crate::decompiler::decompile_value(
+                            result,
+                            crate::decompiler::DecompileOptions::colorized(),
+                        )
                     }
                     #[cfg(not(feature = "decompiler"))]
                     {
@@ -113,14 +119,17 @@ impl RuntimeInternal {
             let dxb = if let Some(value) = value {
                 match value {
                     ValueContainer::Shared(shared_container) => {
-                        let compiled = compile_shared_container(&shared_container, true);
+                        let compiled =
+                            compile_shared_container(&shared_container, true);
                         // FIXME
                         // if shared_container.is_owned() {
                         //     self.add_moving_pointers(receiver_endpoint.clone(), vec![shared_container]);
                         // }
                         compiled.unwrap()
-                    },
-                    ValueContainer::Local(value) => compile_value(&value).unwrap(),
+                    }
+                    ValueContainer::Local(value) => {
+                        compile_value(&value).unwrap()
+                    }
                 }
             } else {
                 vec![]

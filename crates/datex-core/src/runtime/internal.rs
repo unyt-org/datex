@@ -1,6 +1,7 @@
 use crate::{
     channel::mpsc::{UnboundedReceiver, create_unbounded_channel},
     collections::HashMap,
+    disassembler::print_disassembled,
     global::{
         dxb_block::{
             DXBBlock, IncomingEndpointContextSectionId, IncomingSection,
@@ -8,6 +9,7 @@ use crate::{
         },
         protocol_structures::{
             block_header::BlockHeader, encrypted_header::EncryptedHeader,
+            instruction_data::RawLocalPointerAddress,
             routing_header::RoutingHeader,
         },
     },
@@ -21,32 +23,32 @@ use crate::{
     runtime::{
         RuntimeConfig, RuntimeConfigInterface,
         execution::{
-            ExecutionError,
+            ExecutionError, InvalidProgramError,
             context::{
                 ExecutionContext, ExecutionMode, RemoteExecutionContext,
                 ScriptExecutionError,
             },
+            execution_input::ExecutionCallerMetadata,
         },
         memory::Memory,
+        request_move::compile_request_move,
+    },
+    shared_values::{
+        pointer_address::{ExternalPointerAddress, SelfOwnedPointerAddress},
+        shared_containers::{
+            OwnedSharedContainer, SharedContainer, SharedContainerMutability,
+        },
     },
     time::Instant,
     utils::task_manager::TaskManager,
     values::{
-        core_values::endpoint::Endpoint, value_container::ValueContainer,
+        core_value::CoreValue, core_values::endpoint::Endpoint, value::Value,
+        value_container::ValueContainer,
     },
 };
 use alloc::rc::Rc;
 use core::{cell::RefCell, pin::Pin, slice};
 use log::{debug, error, info};
-use crate::disassembler::print_disassembled;
-use crate::global::protocol_structures::instruction_data::RawLocalPointerAddress;
-use crate::runtime::execution::execution_input::ExecutionCallerMetadata;
-use crate::runtime::execution::InvalidProgramError;
-use crate::runtime::request_move::compile_request_move;
-use crate::shared_values::pointer_address::{SelfOwnedPointerAddress, ExternalPointerAddress};
-use crate::shared_values::shared_containers::{SharedContainerMutability, SharedContainer, OwnedSharedContainer};
-use crate::values::core_value::CoreValue;
-use crate::values::value::Value;
 
 #[derive(Debug)]
 pub struct RuntimeInternal {
@@ -66,7 +68,12 @@ pub struct RuntimeInternal {
         RefCell<HashMap<IncomingEndpointContextSectionId, ExecutionContext>>,
 
     /// list of currently owned shared values that are in the approved for moving to another endpoint
-    pub moving_pointers: RefCell<HashMap<Endpoint, HashMap<SelfOwnedPointerAddress, OwnedSharedContainer>>>,
+    pub moving_pointers: RefCell<
+        HashMap<
+            Endpoint,
+            HashMap<SelfOwnedPointerAddress, OwnedSharedContainer>,
+        >,
+    >,
 }
 
 macro_rules! get_execution_context {
@@ -184,8 +191,7 @@ impl RuntimeInternal {
         inserted_values: &[ValueContainer],
         execution_context: Option<&mut ExecutionContext>,
     ) -> Result<Option<ValueContainer>, ScriptExecutionError> {
-        let execution_context =
-            get_execution_context!(self, execution_context);
+        let execution_context = get_execution_context!(self, execution_context);
         let compile_start = Instant::now();
         let dxb = execution_context.compile(script, inserted_values)?;
         debug!(
@@ -215,8 +221,7 @@ impl RuntimeInternal {
         inserted_values: &[ValueContainer],
         execution_context: Option<&mut ExecutionContext>,
     ) -> Result<Option<ValueContainer>, ScriptExecutionError> {
-        let execution_context =
-            get_execution_context!(self, execution_context);
+        let execution_context = get_execution_context!(self, execution_context);
         let compile_start = Instant::now();
         let dxb = execution_context.compile(script, inserted_values)?;
         debug!(
@@ -254,7 +259,8 @@ impl RuntimeInternal {
                 get_execution_context!(self, execution_context);
             match execution_context {
                 ExecutionContext::Remote(context) => {
-                    RuntimeInternal::execute_remote(self, context, dxb_body).await
+                    RuntimeInternal::execute_remote(self, context, dxb_body)
+                        .await
                 }
                 ExecutionContext::Local(_) => {
                     execution_context.execute_dxb(&dxb_body).await
@@ -269,8 +275,7 @@ impl RuntimeInternal {
         execution_context: Option<&mut ExecutionContext>,
         _end_execution: bool,
     ) -> Result<Option<ValueContainer>, ExecutionError> {
-        let execution_context =
-            get_execution_context!(self, execution_context);
+        let execution_context = get_execution_context!(self, execution_context);
         match execution_context {
             ExecutionContext::Remote(_) => {
                 Err(ExecutionError::RequiresAsyncExecution)
@@ -298,7 +303,11 @@ impl RuntimeInternal {
             let caller_metadata = ExecutionCallerMetadata {
                 endpoint: incoming_section.get_sender(),
             };
-            ExecutionContext::local(ExecutionMode::unbounded(), self.clone(), caller_metadata)
+            ExecutionContext::local(
+                ExecutionMode::unbounded(),
+                self.clone(),
+                caller_metadata,
+            )
         }
     }
 
@@ -326,8 +335,12 @@ impl RuntimeInternal {
         };
         let encrypted_header = EncryptedHeader::default();
 
-        let mut block =
-            DXBBlock::new(routing_header, block_header, encrypted_header, dxb_body);
+        let mut block = DXBBlock::new(
+            routing_header,
+            block_header,
+            encrypted_header,
+            dxb_body,
+        );
 
         block
             .set_receivers(slice::from_ref(&remote_execution_context.endpoint));
@@ -353,8 +366,11 @@ impl RuntimeInternal {
     ) {
         let section_context_id =
             incoming_section.get_section_context_id().clone();
-        let mut context =
-            Self::take_execution_context(self.clone(), &section_context_id, &incoming_section);
+        let mut context = Self::take_execution_context(
+            self.clone(),
+            &section_context_id,
+            &incoming_section,
+        );
         info!(
             "Executing incoming section with index: {}",
             incoming_section.get_section_index()
@@ -396,8 +412,7 @@ impl RuntimeInternal {
 
         // insert the context back into the map for future use
         // TODO #638: is this needed or can we drop the context after execution here?
-        self
-            .execution_contexts
+        self.execution_contexts
             .borrow_mut()
             .insert(section_context_id, context);
 
@@ -409,8 +424,7 @@ impl RuntimeInternal {
         block: DXBBlock,
         execution_context: Option<&mut ExecutionContext>,
     ) -> Result<Option<ValueContainer>, ExecutionError> {
-        let execution_context =
-            get_execution_context!(self, execution_context);
+        let execution_context = get_execution_context!(self, execution_context);
         // assert that the execution context is local
         if !core::matches!(execution_context, ExecutionContext::Local(_)) {
             unreachable!(
@@ -439,23 +453,46 @@ impl RuntimeInternal {
         from_endpoint: &Endpoint,
         pointers: Vec<(SharedContainerMutability, RawLocalPointerAddress)>,
     ) -> Result<Vec<OwnedSharedContainer>, ExecutionError> {
-        let pointer_mapping = pointers.into_iter().map(|original| {
-            (original, RawLocalPointerAddress { bytes: self.memory.borrow_mut().get_new_endpoint_owned_pointer_address().address})
-        }).collect::<Vec<_>>();
+        let pointer_mapping = pointers
+            .into_iter()
+            .map(|original| {
+                (
+                    original,
+                    RawLocalPointerAddress {
+                        bytes: self
+                            .memory
+                            .borrow_mut()
+                            .get_new_endpoint_owned_pointer_address()
+                            .address,
+                    },
+                )
+            })
+            .collect::<Vec<_>>();
         let body = compile_request_move(
             &(pointer_mapping
                 .iter()
                 .map(|((_, original), new)| (original.clone(), new.clone()))
-                .collect::<Vec<_>>())
+                .collect::<Vec<_>>()),
         );
-        let moved_values = self.clone().execute_dxb(
-            body,
-            Some(&mut ExecutionContext::Remote(RemoteExecutionContext::new(from_endpoint.clone(), ExecutionMode::Static))),
-            true
-        ).await?;
+        let moved_values = self
+            .clone()
+            .execute_dxb(
+                body,
+                Some(&mut ExecutionContext::Remote(
+                    RemoteExecutionContext::new(
+                        from_endpoint.clone(),
+                        ExecutionMode::Static,
+                    ),
+                )),
+                true,
+            )
+            .await?;
         // moved values should be list
         match moved_values {
-            Some(ValueContainer::Local(Value {inner: CoreValue::List(list), ..})) => {
+            Some(ValueContainer::Local(Value {
+                inner: CoreValue::List(list),
+                ..
+            })) => {
                 let pointer_values = list.into_vec();
                 let owned_values = pointer_values.into_iter()
                     .zip(pointer_mapping.into_iter())
@@ -464,7 +501,9 @@ impl RuntimeInternal {
                 }).collect::<Vec<_>>();
                 Ok(owned_values)
             }
-            _ => Err(ExecutionError::InvalidProgram(InvalidProgramError::ExpectedValue))
+            _ => Err(ExecutionError::InvalidProgram(
+                InvalidProgramError::ExpectedValue,
+            )),
         }
     }
 
@@ -475,14 +514,13 @@ impl RuntimeInternal {
         new_owner: Endpoint,
         moving_owned_values: Vec<OwnedSharedContainer>,
     ) {
-        let pointers = moving_owned_values
-            .into_iter()
-            .map(|pointer| {
-                let address = pointer.pointer_address().clone();
-                (address, pointer)
-            });
+        let pointers = moving_owned_values.into_iter().map(|pointer| {
+            let address = pointer.pointer_address().clone();
+            (address, pointer)
+        });
 
-        self.moving_pointers.borrow_mut()
+        self.moving_pointers
+            .borrow_mut()
             .entry(new_owner)
             .or_insert_with(HashMap::new)
             .extend(pointers);
@@ -494,17 +532,27 @@ impl RuntimeInternal {
         pointer_mapping: Vec<(RawLocalPointerAddress, RawLocalPointerAddress)>,
     ) -> Result<Vec<ValueContainer>, ExecutionError> {
         let mut pointer_borrow = self.moving_pointers.borrow_mut();
-        let moving_pointers = pointer_borrow.get_mut(from_endpoint).ok_or(ExecutionError::UnauthorizedMove)?;
+        let moving_pointers = pointer_borrow
+            .get_mut(from_endpoint)
+            .ok_or(ExecutionError::UnauthorizedMove)?;
 
-        let values = pointer_mapping.into_iter().map(|(original, new)| {
-            let original_address = SelfOwnedPointerAddress::new(original.bytes);
-            let new_address = ExternalPointerAddress::remote_for_endpoint(from_endpoint, new.bytes);
-            let shared_container = moving_pointers.remove(&original_address).ok_or(ExecutionError::UnauthorizedMove)?;
+        let values = pointer_mapping
+            .into_iter()
+            .map(|(original, new)| {
+                let original_address =
+                    SelfOwnedPointerAddress::new(original.bytes);
+                let new_address = ExternalPointerAddress::remote_for_endpoint(
+                    from_endpoint,
+                    new.bytes,
+                );
+                let shared_container = moving_pointers
+                    .remove(&original_address)
+                    .ok_or(ExecutionError::UnauthorizedMove)?;
 
-            let value = shared_container.value_container().clone();
-            shared_container.move_to_external(new_address);
-            Ok(value)
-        })
+                let value = shared_container.value_container().clone();
+                shared_container.move_to_external(new_address);
+                Ok(value)
+            })
             .collect::<Result<Vec<_>, ExecutionError>>()?;
         Ok(values)
     }

@@ -1,5 +1,7 @@
 use crate::{
-    shared_values::observers::Observer,
+    shared_values::{
+        observers::Observer, shared_containers::observers::Observer,
+    },
     traits::value_eq::ValueEq,
     types::structural_type_definition::TypeDefinition,
     utils::freemap::FreeHashMap,
@@ -34,7 +36,7 @@ pub struct BaseSharedValueContainer {
 impl BaseSharedValueContainer {
     /// Tries to create a new [BaseSharedValueContainer] with an initial [ValueContainer],
     /// an allowed type and a [SharedContainerMutability].
-    /// If the allowed [StructuralTypeDefinition] is not a superset of the [ValueContainer]'s allowed type,
+    /// If the allowed [TypeDefinition] is not a superset of the [ValueContainer]'s allowed type,
     /// an error is returned
     pub fn try_new(
         value_container: ValueContainer,
@@ -54,10 +56,11 @@ impl BaseSharedValueContainer {
     /// Creates a new [BaseSharedValueContainer] with an initial [ValueContainer] and
     /// a [SharedContainerMutability].
     /// The allowed type is inferred from the value_container's allowed type.
-    pub fn new_with_inferred_allowed_type(
-        value_container: ValueContainer,
+    pub fn new_with_inferred_allowed_type<T: Into<ValueContainer>>(
+        value_container: T,
         mutability: SharedContainerMutability,
     ) -> Self {
+        let value_container = value_container.into();
         let allowed_type = value_container.allowed_type();
         BaseSharedValueContainer {
             value_container,

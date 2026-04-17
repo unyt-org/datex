@@ -1,6 +1,7 @@
 pub mod base_shared_value_container;
-mod expose_rc_internal;
+mod expose_rc_internal; // IMPORTANT: don't expose this module, for internal use only
 mod external_shared_container;
+pub mod observers;
 mod owned_shared_container;
 mod ownership;
 mod referenced_shared_container;
@@ -8,7 +9,6 @@ mod self_owned_shared_container;
 mod shared_container_inner;
 mod shared_container_mutability;
 pub mod shared_type_container;
-// IMPORTANT: don't expose this module, for internal use only
 
 use crate::{
     shared_values::{
@@ -18,6 +18,7 @@ use crate::{
         shared_containers::{
             base_shared_value_container::BaseSharedValueContainer,
             expose_rc_internal::ExposeRcInternal,
+            observers::{Observer, ObserverError},
         },
     },
     traits::{
@@ -94,13 +95,13 @@ impl SharedContainer {
         }
     }
 
-    /// Sets the currently assigned [ValueContainer] of the shared container to a new value container.
-    pub fn try_set_value_container(
-        &mut self,
-        new_value_container: ValueContainer,
-    ) -> Result<(), ()> {
-        self.base_shared_container()
-            .try_set_value_container(new_value_container)
+    /// Adds an observer to this shared container that will be notified on value changes.
+    pub fn observe(&self, observer: Observer) -> Result<u32, ObserverError> {
+        self.base_shared_container_mut().observe(observer)
+    }
+
+    pub fn unobserve(&self, observer_id: u32) -> Result<(), ObserverError> {
+        self.base_shared_container_mut().unobserve(observer_id)
     }
 
     /// Gets a [RefMut] to the currently assigned [BaseSharedValueContainer] of the shared container (not resolved recursively)
@@ -115,6 +116,15 @@ impl SharedContainer {
         }
     }
 
+    /// Sets the currently assigned [ValueContainer] of the shared container to a new value container.
+    pub fn try_set_value_container(
+        &mut self,
+        new_value_container: ValueContainer,
+    ) -> Result<(), ()> {
+        self.base_shared_container_mut()
+            .try_set_value_container(new_value_container)
+    }
+
     /// Gets a [Ref] to the currently assigned [ValueContainer] of the shared container (not resolved recursively)
     pub fn value_container(&self) -> Ref<ValueContainer> {
         match self {
@@ -125,7 +135,7 @@ impl SharedContainer {
         }
     }
 
-    /// Gets a [Ref] to the currently assigned allowed [StructuralTypeDefinition] of the shared container (not resolved recursively)
+    /// Gets a [Ref] to the currently assigned allowed [TypeDefinition] of the shared container (not resolved recursively)
     pub fn allowed_type(&self) -> Ref<TypeDefinition> {
         match self {
             SharedContainer::Owned(owned) => owned.allowed_type(),

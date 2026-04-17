@@ -124,7 +124,7 @@ impl ReferencedSharedContainer {
         })
     }
 
-    /// Gets a [Ref] to the currently assigned allowed [StructuralTypeDefinition] of the shared container (not resolved recursively)
+    /// Gets a [Ref] to the currently assigned allowed [TypeDefinition] of the shared container (not resolved recursively)
     pub fn allowed_type(&self) -> Ref<TypeDefinition> {
         Ref::map(self.base_shared_container(), |base_shared_container| {
             &base_shared_container.allowed_type

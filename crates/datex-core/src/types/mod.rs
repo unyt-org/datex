@@ -13,4 +13,3 @@ pub mod structural_type_definition;
 pub mod r#type;
 pub mod type_definition;
 pub mod type_match;
-pub mod type_match;

@@ -48,7 +48,7 @@ impl Type {
     }
 
     /// Collapses nominal type definitions to their underlying structural type definitions
-    pub fn with_collapsed_structural_type_definition<R>(
+    pub fn with_collapsed_type_definition<R>(
         &self,
         f: impl FnOnce(&TypeDefinition) -> R,
     ) -> R {

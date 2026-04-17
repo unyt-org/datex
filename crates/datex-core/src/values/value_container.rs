@@ -6,12 +6,10 @@ use crate::{
     prelude::*,
     runtime::execution::ExecutionError,
     serde::{
-        deserializer::{from_value_container, DatexDeserializer},
+        deserializer::{DatexDeserializer, from_value_container},
         error::DeserializationError,
     },
-    shared_values::{
-        observers::TransceiverId,
-    },
+    shared_values::observers::TransceiverId,
     traits::{apply::Apply, value_eq::ValueEq},
     types::structural_type_definition::TypeDefinition,
     values::core_value::CoreValue,
@@ -20,17 +18,15 @@ use crate::{
 use crate::{
     dif::update::DIFUpdateData,
     serde::{error::SerializationError, serializer::to_value_container},
+    shared_values::{errors::AccessError, shared_containers::SharedContainer},
+    types::{r#type::Type, type_definition::TypeMetadata},
 };
 use core::{
     fmt::Display,
     hash::{Hash, Hasher},
     ops::{Add, FnOnce, Neg, Sub},
 };
-use serde::{de::DeserializeOwned, Deserialize};
-use crate::shared_values::errors::AccessError;
-use crate::shared_values::shared_containers::SharedContainer;
-use crate::types::r#type::{Type};
-use crate::types::type_definition::TypeMetadata;
+use serde::{Deserialize, de::DeserializeOwned};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum ValueError {
@@ -138,7 +134,6 @@ impl From<ValueContainer> for ValueKey<'_> {
         ValueKey::Value(Cow::Owned(value_container))
     }
 }
-
 
 impl<'a> ValueKey<'a> {
     pub fn try_as_text(&self) -> Option<&str> {
@@ -309,15 +304,15 @@ impl Display for ValueContainer {
         match self {
             ValueContainer::Local(value) => core::write!(f, "{value}"),
             // TODO #118: only simple temporary way to distinguish between Value and Pointer
-            ValueContainer::Shared(reference) => {
-                reference.with_collapsed_value_mut(|reference| write!(f, "&({})", reference))
-            }
+            ValueContainer::Shared(reference) => reference
+                .with_collapsed_value_mut(|reference| {
+                    write!(f, "&({})", reference)
+                }),
         }
     }
 }
 
 impl ValueContainer {
-    
     /// Creates a new [ValueContainer::Local] from a [Value]
     pub fn local(value: impl Into<Value>) -> Self {
         ValueContainer::Local(value.into())
@@ -341,7 +336,9 @@ impl ValueContainer {
     ) -> R {
         match self {
             ValueContainer::Local(value) => f(value),
-            ValueContainer::Shared(shared) => shared.with_collapsed_value_mut(f),
+            ValueContainer::Shared(shared) => {
+                shared.with_collapsed_value_mut(f)
+            }
         }
     }
 
@@ -350,13 +347,15 @@ impl ValueContainer {
     pub fn to_cloned_value(&self) -> Rc<RefCell<Value>> {
         unimplemented!("use with_collapsed_value")
     }
-    
+
     /// Performs a clone used by the "clone" command
     /// Local values are just cloned normally
     /// For shared value, the inner value container is cloned (shared x -> x)
     pub fn get_cloned(&self) -> ValueContainer {
         match self {
-            ValueContainer::Local(value) => ValueContainer::Local(value.clone()),
+            ValueContainer::Local(value) => {
+                ValueContainer::Local(value.clone())
+            }
             ValueContainer::Shared(shared) => shared.value_container().clone(),
         }
     }
@@ -537,24 +536,18 @@ impl Add<&ValueContainer> for &ValueContainer {
             (ValueContainer::Local(lhs), ValueContainer::Local(rhs)) => {
                 lhs + rhs
             }
-            (ValueContainer::Shared(lhs), ValueContainer::Shared(rhs)) => {
-                lhs.with_collapsed_value_mut(|lhs| {
-                    rhs.with_collapsed_value_mut(|rhs| {
-                        lhs + rhs
-                    })
-                })
-            }
+            (ValueContainer::Shared(lhs), ValueContainer::Shared(rhs)) => lhs
+                .with_collapsed_value_mut(|lhs| {
+                    rhs.with_collapsed_value_mut(|rhs| lhs + rhs)
+                }),
             (ValueContainer::Local(lhs), ValueContainer::Shared(rhs)) => {
-                rhs.with_collapsed_value_mut(|rhs| {
-                    lhs + rhs
-                })
+                rhs.with_collapsed_value_mut(|rhs| lhs + rhs)
             }
             (ValueContainer::Shared(lhs), ValueContainer::Local(rhs)) => {
-                lhs.with_collapsed_value_mut(|lhs| {
-                    lhs + rhs
-                })
+                lhs.with_collapsed_value_mut(|lhs| lhs + rhs)
             }
-        }.map(ValueContainer::Local)
+        }
+        .map(ValueContainer::Local)
     }
 }
 
@@ -574,24 +567,18 @@ impl Sub<&ValueContainer> for &ValueContainer {
             (ValueContainer::Local(lhs), ValueContainer::Local(rhs)) => {
                 lhs - rhs
             }
-            (ValueContainer::Shared(lhs), ValueContainer::Shared(rhs)) => {
-                lhs.with_collapsed_value_mut(|lhs| {
-                    rhs.with_collapsed_value_mut(|rhs| {
-                        lhs - rhs
-                    })
-                })
-            }
+            (ValueContainer::Shared(lhs), ValueContainer::Shared(rhs)) => lhs
+                .with_collapsed_value_mut(|lhs| {
+                    rhs.with_collapsed_value_mut(|rhs| lhs - rhs)
+                }),
             (ValueContainer::Local(lhs), ValueContainer::Shared(rhs)) => {
-                rhs.with_collapsed_value_mut(|rhs| {
-                    lhs - rhs
-                })
+                rhs.with_collapsed_value_mut(|rhs| lhs - rhs)
             }
             (ValueContainer::Shared(lhs), ValueContainer::Local(rhs)) => {
-                lhs.with_collapsed_value_mut(|lhs| {
-                    lhs - rhs
-                })
+                lhs.with_collapsed_value_mut(|lhs| lhs - rhs)
             }
-        }.map(ValueContainer::Local)
+        }
+        .map(ValueContainer::Local)
     }
 }
 
@@ -600,12 +587,13 @@ impl Neg for ValueContainer {
 
     fn neg(self) -> Self::Output {
         match self {
-            ValueContainer::Local(value) => (-value).map(ValueContainer::Local),
-            ValueContainer::Shared(reference) => {
-                reference.with_collapsed_value_mut(|value| {
-                     (-value).map(ValueContainer::Local)
-                })
+            ValueContainer::Local(value) => {
+                (-value).map(ValueContainer::Local)
             }
+            ValueContainer::Shared(reference) => reference
+                .with_collapsed_value_mut(|value| {
+                    (-value).map(ValueContainer::Local)
+                }),
         }
     }
 }

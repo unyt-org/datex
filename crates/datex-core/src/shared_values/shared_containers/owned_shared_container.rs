@@ -14,7 +14,7 @@ use crate::{
         core_value::CoreValue, value::Value, value_container::ValueContainer,
     },
 };
-use alloc::rc::Rc;
+use alloc::{boxed::Box, rc::Rc};
 use core::{
     cell::{Ref, RefCell, RefMut},
     fmt::Display,
@@ -49,7 +49,7 @@ impl OwnedSharedContainer {
     }
 
     /// Tries to create a new [OwnedSharedContainer] with an initial [ValueContainer],
-    /// an allowed [StructuralTypeDefinition], a [SharedContainerMutability] and an [SelfOwnedPointerAddress].
+    /// an allowed [TypeDefinition], a [SharedContainerMutability] and an [SelfOwnedPointerAddress].
     ///
     /// If the allowed type is not a superset of the [ValueContainer]'s allowed type,
     /// an error is returned
@@ -117,7 +117,7 @@ impl OwnedSharedContainer {
         })
     }
 
-    /// Gets a [Ref] to the currently assigned allowed [StructuralTypeDefinition] of the shared container (not resolved recursively)
+    /// Gets a [Ref] to the currently assigned allowed [TypeDefinition] of the shared container (not resolved recursively)
     pub fn allowed_type(&self) -> Ref<TypeDefinition> {
         Ref::map(self.base_shared_container(), |base_shared_container| {
             &base_shared_container.allowed_type

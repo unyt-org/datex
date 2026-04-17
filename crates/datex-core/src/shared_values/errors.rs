@@ -1,8 +1,11 @@
+use crate::{
+    prelude::*,
+    types::r#type::Type,
+    values::{
+        core_values::map::MapAccessError, value_container::ValueContainer,
+    },
+};
 use core::fmt::Display;
-use crate::values::core_values::map::MapAccessError;
-use crate::types::r#type::Type;
-use crate::values::value_container::ValueContainer;
-
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum SharedValueCreationError {
     InvalidType,
@@ -27,7 +30,6 @@ impl Display for SharedValueCreationError {
         }
     }
 }
-
 
 #[derive(Debug)]
 pub struct IndexOutOfBoundsError {

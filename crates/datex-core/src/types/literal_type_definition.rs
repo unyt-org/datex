@@ -1,22 +1,23 @@
 use crate::{
-    libs::core::CoreLibTypeId,
+    libs::core::type_id::{
+        CoreLibBaseTypeId, CoreLibTypeId, CoreLibVariantTypeId,
+    },
     prelude::*,
     traits::structural_eq::StructuralEq,
+    types::{structural_type_definition::TypeDefinition, r#type::Type},
     values::{
         core_value::CoreValue,
         core_values::{
             boolean::Boolean,
-            decimal::{typed_decimal::TypedDecimal, Decimal},
+            decimal::{Decimal, typed_decimal::TypedDecimal},
             endpoint::Endpoint,
-            integer::{typed_integer::TypedInteger, Integer},
+            integer::{Integer, typed_integer::TypedInteger},
             text::Text,
         },
         value_container::ValueContainer,
     },
 };
 use core::{fmt::Display, hash::Hash, unimplemented};
-use crate::types::r#type::Type;
-use crate::types::structural_type_definition::TypeDefinition;
 
 #[derive(Debug, Clone, PartialEq, Hash, Eq)]
 pub enum LiteralTypeDefinition {
@@ -103,95 +104,100 @@ impl LiteralTypeDefinition {
     /// 1 matches 1 | 2 -> true
     /// 1 | 2 matches integer -> true
     /// integer matches 1 | 2 -> false
-    pub fn value_matches(&self, value: &ValueContainer) -> bool {
-        match (self, &value.to_cloned_value().borrow().inner) {
-            (LiteralTypeDefinition::Integer(a), CoreValue::Integer(b)) => {
-                a == b
-            }
-            (
-                LiteralTypeDefinition::TypedInteger(a),
-                CoreValue::TypedInteger(b),
-            ) => a == b,
-            (LiteralTypeDefinition::Decimal(a), CoreValue::Decimal(b)) => {
-                a == b
-            }
-            (
-                LiteralTypeDefinition::TypedDecimal(a),
-                CoreValue::TypedDecimal(b),
-            ) => a == b,
-            (LiteralTypeDefinition::Text(a), CoreValue::Text(b)) => a == b,
-            (LiteralTypeDefinition::Boolean(a), CoreValue::Boolean(b)) => {
-                a == b
-            }
-            (LiteralTypeDefinition::Endpoint(a), CoreValue::Endpoint(b)) => {
-                a == b
-            }
-            (LiteralTypeDefinition::Null, CoreValue::Null) => true,
+    // pub fn value_matches(&self, value: &ValueContainer) -> bool {
+    //     match (self, &value.to_cloned_value().borrow().inner) {
+    //         (LiteralTypeDefinition::Integer(a), CoreValue::Integer(b)) => {
+    //             a == b
+    //         }
+    //         (
+    //             LiteralTypeDefinition::TypedInteger(a),
+    //             CoreValue::TypedInteger(b),
+    //         ) => a == b,
+    //         (LiteralTypeDefinition::Decimal(a), CoreValue::Decimal(b)) => {
+    //             a == b
+    //         }
+    //         (
+    //             LiteralTypeDefinition::TypedDecimal(a),
+    //             CoreValue::TypedDecimal(b),
+    //         ) => a == b,
+    //         (LiteralTypeDefinition::Text(a), CoreValue::Text(b)) => a == b,
+    //         (LiteralTypeDefinition::Boolean(a), CoreValue::Boolean(b)) => {
+    //             a == b
+    //         }
+    //         (LiteralTypeDefinition::Endpoint(a), CoreValue::Endpoint(b)) => {
+    //             a == b
+    //         }
+    //         (LiteralTypeDefinition::Null, CoreValue::Null) => true,
 
-            // // Check that all elements in the list match the element type
-            // (
-            //     StructuralTypeDefinition::List(box elem_type),
-            //     CoreValue::List(list),
-            // ) => list.into_iter().all(|item| elem_type.value_matches(item)),
-            //
-            // // Check that all keys and values in the map match their types
-            // (
-            //     StructuralTypeDefinition::Map(box (key_type, value_type)),
-            //     CoreValue::Map(map),
-            // ) => map.iter().all(|(k, v)| {
-            //     key_type.value_matches(k) && value_type.value_matches(v)
-            // }),
+    //         // // Check that all elements in the list match the element type
+    //         // (
+    //         //     StructuralTypeDefinition::List(box elem_type),
+    //         //     CoreValue::List(list),
+    //         // ) => list.into_iter().all(|item| elem_type.value_matches(item)),
+    //         //
+    //         // // Check that all keys and values in the map match their types
+    //         // (
+    //         //     StructuralTypeDefinition::Map(box (key_type, value_type)),
+    //         //     CoreValue::Map(map),
+    //         // ) => map.iter().all(|(k, v)| {
+    //         //     key_type.value_matches(k) && value_type.value_matches(v)
+    //         // }),
 
-            // Check that all fields in the map are present and match their types
-            (
-                LiteralTypeDefinition::Map(field_types),
-                CoreValue::Map(_map),
-            ) => field_types.iter().all(|(_field_name, _field_type)| {
-                core::todo!("#375 handle key matching")
-                // map.get(&field_name_value).is_some_and(|field_value| {
-                //     field_type.value_matches(field_value)
-                // })
-            }),
+    //         // Check that all fields in the map are present and match their types
+    //         (LiteralTypeDefinition::Map(field_types), CoreValue::Map(_map)) => {
+    //             field_types.iter().all(|(_field_name, _field_type)| {
+    //                 core::todo!("#375 handle key matching")
+    //                 // map.get(&field_name_value).is_some_and(|field_value| {
+    //                 //     field_type.value_matches(field_value)
+    //                 // })
+    //             })
+    //         }
 
-            // list
-            (
-                LiteralTypeDefinition::List(type_list),
-                CoreValue::List(list),
-            ) => {
-                if type_list.len() != list.len() as usize {
-                    return false;
-                }
-                type_list
-                    .iter()
-                    .zip(list.iter())
-                    .all(|(t, v)| t.value_matches(v))
-            }
-            _ => unimplemented!("handle complex structural type matching"),
-        }
-    }
+    //         // list
+    //         (LiteralTypeDefinition::List(type_list), CoreValue::List(list)) => {
+    //             if type_list.len() != list.len() as usize {
+    //                 return false;
+    //             }
+    //             type_list
+    //                 .iter()
+    //                 .zip(list.iter())
+    //                 .all(|(t, v)| t.value_matches(v))
+    //         }
+    //         _ => unimplemented!("handle complex structural type matching"),
+    //     }
+    // }
 
     /// Get the core lib type pointer id for this structural type definition
     pub fn get_core_lib_type_pointer_id(&self) -> CoreLibTypeId {
         match self {
             LiteralTypeDefinition::Integer(_) => {
-                CoreLibTypeId::Integer(None)
+                CoreLibTypeId::Base(CoreLibBaseTypeId::Integer)
             }
             LiteralTypeDefinition::TypedInteger(typed) => {
-                CoreLibTypeId::Integer(Some(typed.variant()))
+                CoreLibTypeId::Variant(CoreLibVariantTypeId::Integer(
+                    typed.variant(),
+                ))
             }
             LiteralTypeDefinition::Decimal(_) => {
-                CoreLibTypeId::Decimal(None)
+                CoreLibTypeId::Base(CoreLibBaseTypeId::Decimal)
             }
             LiteralTypeDefinition::TypedDecimal(typed) => {
-                CoreLibTypeId::Decimal(Some(typed.variant()))
+                CoreLibTypeId::Variant(CoreLibVariantTypeId::Decimal(
+                    typed.variant(),
+                ))
             }
-            LiteralTypeDefinition::Text(_) => CoreLibTypeId::Text,
-            LiteralTypeDefinition::Boolean(_) => CoreLibTypeId::Boolean,
-            LiteralTypeDefinition::Endpoint(_) => CoreLibTypeId::Endpoint,
-            LiteralTypeDefinition::Null => CoreLibTypeId::Null,
-            LiteralTypeDefinition::List(_) => CoreLibTypeId::List,
-            LiteralTypeDefinition::Range(_) => CoreLibTypeId::Range,
-            LiteralTypeDefinition::Map(_) => CoreLibTypeId::Map,
+            LiteralTypeDefinition::Text(_) => {
+                CoreLibTypeId::Base(CoreLibBaseTypeId::Text)
+            }
+            LiteralTypeDefinition::Boolean(_) => {
+                CoreLibTypeId::Base(CoreLibBaseTypeId::Boolean)
+            }
+            LiteralTypeDefinition::Endpoint(_) => {
+                CoreLibTypeId::Base(CoreLibBaseTypeId::Endpoint)
+            }
+            LiteralTypeDefinition::Null => {
+                CoreLibTypeId::Base(CoreLibBaseTypeId::Null)
+            }
         }
     }
 }
@@ -225,21 +231,6 @@ impl Display for LiteralTypeDefinition {
                 core::write!(f, "{}", endpoint)
             }
             LiteralTypeDefinition::Null => core::write!(f, "null"),
-            LiteralTypeDefinition::Range((start, end)) => {
-                core::write!(f, "{}..{}", start, end)
-            }
-            LiteralTypeDefinition::List(types) => {
-                let types_str: Vec<String> =
-                    types.iter().map(|t| t.to_string()).collect();
-                core::write!(f, "[{}]", types_str.join(", "))
-            }
-            LiteralTypeDefinition::Map(fields) => {
-                let fields_str: Vec<String> = fields
-                    .iter()
-                    .map(|(k, v)| format!("{}: {}", k, v))
-                    .collect();
-                core::write!(f, "{{{}}}", fields_str.join(", "))
-            }
         }
     }
 }
@@ -254,17 +245,13 @@ impl From<LiteralTypeDefinition> for TypeDefinition {
 mod tests {
     use crate::{
         prelude::*,
-        types::literal_type_definition::LiteralTypeDefinition,
+        types::{literal_type_definition::LiteralTypeDefinition, r#type::Type},
         values::{
             core_value::CoreValue,
-            core_values::{
-                integer::Integer,
-                text::Text,
-            },
+            core_values::{integer::Integer, text::Text},
             value_container::ValueContainer,
         },
     };
-    use crate::types::r#type::{Type, TypeMetadata};
 
     #[test]
     fn test_structural_type_display() {

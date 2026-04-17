@@ -166,19 +166,9 @@ impl Display for TypeDefinition {
             }
 
             TypeDefinition::Union(types) => {
-                let is_level_zero = types.iter().all(|t| {
-                    core::matches!(
-                        t.definition().structural_definition,
-                        TypeDefinition::Literal(_) | TypeDefinition::Shared(_)
-                    )
-                });
                 let types_str: Vec<String> =
                     types.iter().map(|t| t.to_string()).collect();
-                if is_level_zero {
-                    core::write!(f, "{}", types_str.join(" | "))
-                } else {
-                    core::write!(f, "({})", types_str.join(" | "))
-                }
+                core::write!(f, "({})", types_str.join(" | "))
             }
             TypeDefinition::Intersection(types) => {
                 let types_str: Vec<String> =
@@ -250,20 +240,15 @@ impl StructuralEq for TypeDefinition {
 }
 
 impl TypeDefinition {
-    /// Calls the provided callback with a reference to the recursively collapsed inner [StructuralTypeDefinition] value
-    pub fn with_collapsed_structural_type_definition<R>(
-        &self,
-        f: impl FnOnce(&TypeDefinition) -> R,
-    ) -> R {
+    /// Calls the provided callback with a reference to the recursively collapsed inner [TypeDefinition] value
+    pub fn with_collapsed<R>(&self, f: impl FnOnce(&TypeDefinition) -> R) -> R {
         match self {
             TypeDefinition::Shared(reference) =>
             // collapse shared container to inner Type
             {
                 reference.with_collapsed_type_value(|ty| {
                     // collapse Type definition to inner StructuralTypeDefinition
-                    ty.definition()
-                        .structural_definition
-                        .with_collapsed_structural_type_definition(f)
+                    ty.with_collapsed_type_definition(f)
                 })
             }
             _ => f(self),

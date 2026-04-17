@@ -20,9 +20,9 @@ mod internal;
 pub mod memory;
 mod runner;
 
+mod request_move;
 #[cfg(test)]
 pub mod test_utils;
-mod request_move;
 
 use self::memory::Memory;
 pub use config::*;
