@@ -9,7 +9,7 @@ use crate::shared_values::shared_containers::{SelfOwnedSharedContainer, Referenc
 use crate::shared_values::shared_containers::expose_rc_internal::ExposeRcInternal;
 use crate::shared_values::shared_containers::base_shared_value_container::BaseSharedValueContainer;
 use crate::types::r#type::Type;
-use crate::types::structural_type_definition::StructuralTypeDefinition;
+use crate::types::structural_type_definition::TypeDefinition;
 use crate::values::core_value::CoreValue;
 use crate::values::value::Value;
 use crate::values::value_container::ValueContainer;
@@ -45,7 +45,7 @@ impl OwnedSharedContainer {
     /// an error is returned
     pub fn try_new(
         value_container: ValueContainer,
-        allowed_type: StructuralTypeDefinition,
+        allowed_type: TypeDefinition,
         mutability: SharedContainerMutability,
         address: SelfOwnedPointerAddress
     ) -> Result<Self, SharedValueCreationError> {
@@ -104,7 +104,7 @@ impl OwnedSharedContainer {
     }
 
     /// Gets a [Ref] to the currently assigned allowed [StructuralTypeDefinition] of the shared container (not resolved recursively)
-    pub fn allowed_type(&self) -> Ref<StructuralTypeDefinition> {
+    pub fn allowed_type(&self) -> Ref<TypeDefinition> {
         Ref::map(self.base_shared_container(), |base_shared_container| &base_shared_container.allowed_type)
     }
 
@@ -181,8 +181,8 @@ impl OwnedSharedContainer {
         let previous =
             mem::replace(&mut *inner, SharedContainerInner::EndpointOwned(SelfOwnedSharedContainer::new(
                 BaseSharedValueContainer {
-                    value_container: ValueContainer::Local(Value {inner: CoreValue::Null, actual_type: Box::new(StructuralTypeDefinition::Unit) }),
-                    allowed_type: StructuralTypeDefinition::Unit,
+                    value_container: ValueContainer::Local(Value {inner: CoreValue::Null, actual_type: Box::new(TypeDefinition::Unit) }),
+                    allowed_type: TypeDefinition::Unit,
                     observers: Default::default(),
                     mutability: SharedContainerMutability::Immutable,
                 },

@@ -5,7 +5,7 @@ use crate::{
     },
     libs::core::get_core_lib_type_reference,
     type_inference::{error::TypeError, options::ErrorHandling},
-    types::structural_type_definition::StructuralTypeDefinition,
+    types::structural_type_definition::TypeDefinition,
 };
 
 use crate::{
@@ -247,7 +247,7 @@ impl TypeInference {
 }
 
 fn mark_structural_type<E>(
-    definition: StructuralTypeDefinition,
+    definition: TypeDefinition,
 ) -> Result<VisitAction<E>, SpannedTypeError> {
     mark_type(Type::Alias(definition.into()))
 }
@@ -358,14 +358,14 @@ impl TypeExpressionVisitor<SpannedTypeError> for TypeInference {
             let field_type = self.infer_type_expression(field_type_expr)?;
             fields.push((field_name, field_type));
         }
-        mark_structural_type(StructuralTypeDefinition::Map(fields))
+        mark_structural_type(TypeDefinition::Map(fields))
     }
     fn visit_structural_list_type(
         &mut self,
         structural_list: &mut StructuralList,
         _: &Range<usize>,
     ) -> TypeExpressionVisitResult<SpannedTypeError> {
-        mark_structural_type(StructuralTypeDefinition::List(
+        mark_structural_type(TypeDefinition::List(
             structural_list
                 .0
                 .iter_mut()
@@ -557,7 +557,7 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
     ) -> ExpressionVisitResult<SpannedTypeError> {
         let inner_type = self.infer_expression(&mut create_ref.expression)?;
         let ref_type = match inner_type.type_definition {
-            StructuralTypeDefinition::Shared(reference) => reference,
+            TypeDefinition::Shared(reference) => reference,
             _ => Rc::new(RefCell::new(SharedTypeContainer::anonymous(
                 inner_type,
             ))),
@@ -775,7 +775,7 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
                     && left == right
                 {
                     mark_type(Type::new(
-                        StructuralTypeDefinition::Shared(left),
+                        TypeDefinition::Shared(left),
                         TypeMetadata::default(),
                     ))
                 } else {
@@ -828,7 +828,7 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
                 Some(r) => {
                     // FIXME #620 is this necessary?
                     reference.borrow_mut().type_value = Type::new(
-                        StructuralTypeDefinition::Shared(r.clone()),
+                        TypeDefinition::Shared(r.clone()),
                         TypeMetadata::default(),
                     );
                 }
@@ -860,7 +860,7 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
     ) -> ExpressionVisitResult<SpannedTypeError> {
         let x = self.infer_expression(&mut range.start)?;
         let y = self.infer_expression(&mut range.end)?;
-        let z = StructuralTypeDefinition::Range((Box::new(x), Box::new(y)));
+        let z = TypeDefinition::Range((Box::new(x), Box::new(y)));
         mark_structural_type(z)
     }
 
@@ -875,7 +875,7 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
             let value_type = self.infer_expression(value_expr)?;
             fields.push((key_type, value_type));
         }
-        mark_structural_type(StructuralTypeDefinition::Map(fields))
+        mark_structural_type(TypeDefinition::Map(fields))
     }
 
     fn visit_apply(
@@ -1254,7 +1254,7 @@ mod tests {
         },
         types::{
             literal_type_definition::LiteralTypeDefinition,
-            structural_type_definition::StructuralTypeDefinition,
+            structural_type_definition::TypeDefinition,
         },
         values::{
             core_value::CoreValue,
@@ -1588,7 +1588,7 @@ mod tests {
                 .with_default_span()
             ),
             Type::Alias(
-                StructuralTypeDefinition::List(vec![
+                TypeDefinition::List(vec![
                     Type::from(CoreValue::from(Integer::from(1))),
                     Type::from(CoreValue::from(Integer::from(2))),
                     Type::from(CoreValue::from(Integer::from(3)))
@@ -1607,7 +1607,7 @@ mod tests {
                 .with_default_span()
             ),
             Type::Alias(
-                StructuralTypeDefinition::Map(vec![(
+                TypeDefinition::Map(vec![(
                     Type::Alias(
                         LiteralTypeDefinition::Text("a".to_string()).into()
                     ),
@@ -1629,7 +1629,7 @@ mod tests {
         let var_a = metadata.variable_metadata(0).unwrap();
 
         let nominal_type_def = Type::new(
-            StructuralTypeDefinition::Shared(Rc::new(RefCell::new(
+            TypeDefinition::Shared(Rc::new(RefCell::new(
                 SharedTypeContainer::nominal(
                     core_lib_type(CoreLibTypeId::Integer(None)),
                     NominalTypeDeclaration::from("A".to_string()),
@@ -1650,7 +1650,7 @@ mod tests {
         let metadata = metadata.borrow();
         let var_a = metadata.variable_metadata(0).unwrap();
         let var_type = var_a.var_type.as_ref().unwrap();
-        if let StructuralTypeDefinition::Shared(reference) = &var_type.definition().structural_definition {
+        if let TypeDefinition::Shared(reference) = &var_type.definition().structural_definition {
             assert_eq!(
                 reference,
                 &get_core_lib_type_reference(CoreLibTypeId::Integer(None))
@@ -1690,7 +1690,7 @@ mod tests {
         let metadata = metadata.borrow();
         let var = metadata.variable_metadata(0).unwrap();
         let var_type = var.var_type.as_ref().unwrap();
-        assert_matches!(var_type.definition().structural_definition, StructuralTypeDefinition::Shared(_));
+        assert_matches!(var_type.definition().structural_definition, TypeDefinition::Shared(_));
     }
 
     #[test]
@@ -1705,7 +1705,7 @@ mod tests {
         let metadata = metadata.borrow();
         let var = metadata.variable_metadata(0).unwrap();
         let var_type = var.var_type.as_ref().unwrap();
-        assert_matches!(var_type.definition().structural_definition, StructuralTypeDefinition::Shared(_));
+        assert_matches!(var_type.definition().structural_definition, TypeDefinition::Shared(_));
 
         // get next field, as wrapped in union
         let next = {
@@ -1714,12 +1714,12 @@ mod tests {
             let structural_type_definition =
                 bor.structural_type_definition().unwrap();
             let fields = match structural_type_definition {
-                StructuralTypeDefinition::Map(fields) => fields,
+                TypeDefinition::Map(fields) => fields,
                 _ => unreachable!(),
             };
             let inner_union = &fields[1].1.definition().structural_definition;
             match inner_union {
-                StructuralTypeDefinition::Union(members) => {
+                TypeDefinition::Union(members) => {
                     assert_eq!(members.len(), 2);
                     members[0].clone()
                 }
@@ -2042,7 +2042,7 @@ mod tests {
         assert_eq!(
             inferred_type,
             Type::Alias(
-                StructuralTypeDefinition::Map(vec![]).into()
+                TypeDefinition::Map(vec![]).into()
             )
         );
     }
@@ -2055,7 +2055,7 @@ mod tests {
         assert_eq!(
             inferred_type,
             Type::Alias(
-                StructuralTypeDefinition::Map(vec![
+                TypeDefinition::Map(vec![
                     (
                         Type::structural(
                             LiteralTypeDefinition::Text(

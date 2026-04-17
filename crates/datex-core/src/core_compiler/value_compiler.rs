@@ -6,7 +6,7 @@ use crate::{
         instruction_codes::InstructionCode,
         type_instruction_codes::TypeInstructionCode,
     },
-    types::structural_type_definition::StructuralTypeDefinition,
+    types::structural_type_definition::TypeDefinition,
     utils::buffers::{append_i16, append_i32, append_u8, append_u32},
     values::{
         core_value::CoreValue,
@@ -22,7 +22,6 @@ use crate::{
 use binrw::{BinWrite, io::Write};
 
 use crate::{
-    compiler::error::CompilerError,
     core_compiler::{
         core_compilation_context::{ByteCursor, CoreCompilationContext},
         type_compiler::{
@@ -40,6 +39,7 @@ use crate::{
         instructions::Instruction,
         regular_instructions::RegularInstruction,
     },
+    libs::core::{core_lib_type, type_id::CoreLibTypeId},
     prelude::*,
     runtime::execution::ExecutionError,
     shared_values::{
@@ -50,22 +50,10 @@ use crate::{
     },
     types::type_definition::TypeMetadata,
 };
-use crate::libs::core::core_lib_type;
-use crate::libs::core::type_id::CoreLibTypeId;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum SharedValueCompilationError {
     ExpectedOwnedSharedValue,
-}
-
-impl From<SharedValueCompilationError> for CompilerError {
-    fn from(error: SharedValueCompilationError) -> CompilerError {
-        match error {
-            SharedValueCompilationError::ExpectedOwnedSharedValue => {
-                CompilerError::ExpectedOwnedSharedValue
-            }
-        }
-    }
 }
 
 impl From<SharedValueCompilationError> for ExecutionError {
@@ -351,14 +339,14 @@ pub fn append_internal_type_cast(
 ) {
     append_type_cast(
         context,
-        &StructuralTypeDefinition::Shared(core_lib_type(core_lib_pointer_id)),
+        &TypeDefinition::Shared(core_lib_type(core_lib_pointer_id)),
     )
     .unwrap(); // internal type, cast can never fail
 }
 
 pub fn append_type_cast(
     context: &mut CoreCompilationContext,
-    ty: &StructuralTypeDefinition,
+    ty: &TypeDefinition,
 ) -> Result<(), SharedValueCompilationError> {
     append_regular_instruction(
         context.cursor_mut(),

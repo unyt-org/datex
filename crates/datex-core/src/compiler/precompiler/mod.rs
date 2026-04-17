@@ -29,7 +29,7 @@ use crate::{
     },
     global::operators::{binary::ArithmeticOperator, BinaryOperator},
     libs::core::CoreLibTypeId,
-    types::structural_type_definition::StructuralTypeDefinition,
+    types::structural_type_definition::TypeDefinition,
     utils::maybe_action::{collect_or_pass_error, ErrorCollector, MaybeAction},
     visitor::{
         expression::{visitable::ExpressionVisitResult, ExpressionVisitor},
@@ -47,7 +47,7 @@ use crate::ast::expressions::{CloneExpression, GetSharedRef, Unbox, UnboxAssignm
 use crate::shared_values::shared_containers::ReferenceMutability;
 use crate::types::nominal_type_definition::NominalTypeDefinition;
 use crate::types::r#type::{Type};
-use crate::types::type_definition::{TypeDefinition, TypeMetadata};
+use crate::types::type_definition::{TypeDefinitionWithMetadata, TypeMetadata};
 
 pub struct Precompiler<'a> {
     ast_metadata: Rc<RefCell<AstMetadata>>,
@@ -274,12 +274,12 @@ impl<'a> Precompiler<'a> {
         let type_def = match data.kind {
             TypeDeclarationKind::Nominal => {
                 Type::Nominal(NominalTypeDefinition::new_base(
-                    StructuralTypeDefinition::Unknown.into(),
+                    TypeDefinition::Unknown.into(),
                     data.name.clone()
                 ))
             },
             TypeDeclarationKind::Alias => {
-                Type::Alias(StructuralTypeDefinition::Unknown.into())
+                Type::Alias(TypeDefinition::Unknown.into())
             }
         };
 

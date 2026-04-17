@@ -29,7 +29,7 @@ use serde::{
     de::{MapAccess, SeqAccess, Visitor},
     ser::{SerializeMap, SerializeSeq},
 };
-use crate::types::structural_type_definition::StructuralTypeDefinition;
+use crate::types::structural_type_definition::TypeDefinition;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum DIFValueRepresentation {
@@ -233,21 +233,21 @@ pub enum DeserializeMapOrArray<T> {
 
 impl DIFTypeRepresentation {
     pub fn from_structural_type_definition(
-        structural_definition: &StructuralTypeDefinition,
+        structural_definition: &TypeDefinition,
     ) -> Self {
         match structural_definition {
-            StructuralTypeDefinition::Range((start, end)) => {
+            TypeDefinition::Range((start, end)) => {
                 DIFTypeRepresentation::Array(vec![
                     DIFType::from_type(start),
                     DIFType::from_type(end),
                 ])
             }
-            StructuralTypeDefinition::List(arr) => {
+            TypeDefinition::List(arr) => {
                 DIFTypeRepresentation::Array(
                     arr.iter().map(DIFType::from_type).collect(),
                 )
             }
-            StructuralTypeDefinition::Map(fields) => {
+            TypeDefinition::Map(fields) => {
                 DIFTypeRepresentation::Map(
                     fields
                         .iter()
@@ -257,7 +257,7 @@ impl DIFTypeRepresentation {
                         .collect(),
                 )
             }
-            StructuralTypeDefinition::Literal(literal_definition) => match literal_definition {
+            TypeDefinition::Literal(literal_definition) => match literal_definition {
                 LiteralTypeDefinition::Null => DIFTypeRepresentation::Null,
                 LiteralTypeDefinition::Boolean(b) => {
                     DIFTypeRepresentation::Boolean(b.as_bool())
@@ -283,16 +283,16 @@ impl DIFTypeRepresentation {
                     DIFTypeRepresentation::String(endpoint.to_string())
                 }
             },
-            StructuralTypeDefinition::Collection(_) => todo!()
-            StructuralTypeDefinition::Shared(_) => todo!()
-            StructuralTypeDefinition::Type(_) => todo!()
-            StructuralTypeDefinition::Callable(_) => todo!()
-            StructuralTypeDefinition::ImplType(_, _) => todo!()
-            StructuralTypeDefinition::Intersection(_) => todo!()
-            StructuralTypeDefinition::Union(_) => todo!()
-            StructuralTypeDefinition::Unit => todo!()
-            StructuralTypeDefinition::Never => todo!()
-            StructuralTypeDefinition::Unknown => todo!()
+            TypeDefinition::Collection(_) => todo!()
+            TypeDefinition::Shared(_) => todo!()
+            TypeDefinition::Type(_) => todo!()
+            TypeDefinition::Callable(_) => todo!()
+            TypeDefinition::ImplType(_, _) => todo!()
+            TypeDefinition::Intersection(_) => todo!()
+            TypeDefinition::Union(_) => todo!()
+            TypeDefinition::Unit => todo!()
+            TypeDefinition::Never => todo!()
+            TypeDefinition::Unknown => todo!()
         }
     }
 }

@@ -13,7 +13,7 @@ use crate::{
         observers::TransceiverId,
     },
     traits::{apply::Apply, value_eq::ValueEq},
-    types::structural_type_definition::StructuralTypeDefinition,
+    types::structural_type_definition::TypeDefinition,
     values::core_value::CoreValue,
 };
 
@@ -362,7 +362,7 @@ impl ValueContainer {
     }
 
     /// Returns the actual type of the contained value, resolving shared values if necessary.
-    pub fn actual_value_type(&self) -> StructuralTypeDefinition {
+    pub fn actual_value_type(&self) -> TypeDefinition {
         match self {
             ValueContainer::Local(local) => local.actual_type().clone(),
             ValueContainer::Shared(shared) => shared.actual_type().clone(),
@@ -381,7 +381,7 @@ impl ValueContainer {
                 Type::new(
                     // when nesting references, we need to keep the reference information
                     if inner_type.is_shared_type() {
-                        StructuralTypeDefinition::Type(Box::new(inner_type))
+                        TypeDefinition::Type(Box::new(inner_type))
                     }
                     // for simple non-ref type, we can collapse the definition
                     else {
@@ -401,7 +401,7 @@ impl ValueContainer {
     /// Returns the allowed type of the value container
     /// For local values, this is the same as the actual type.
     /// For shared values, this is the defined allowed type
-    pub fn allowed_type(&self) -> StructuralTypeDefinition {
+    pub fn allowed_type(&self) -> TypeDefinition {
         match self {
             ValueContainer::Local(value) => *value.actual_type.clone(),
             ValueContainer::Shared(shared) => shared.allowed_type(),

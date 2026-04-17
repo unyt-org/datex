@@ -4,7 +4,7 @@ use crate::{
     shared_values::shared_containers::SharedContainerMutability,
     types::{
         literal_type_definition::LiteralTypeDefinition,
-        structural_type_definition::StructuralTypeDefinition,
+        structural_type_definition::TypeDefinition,
     },
 };
 
@@ -370,42 +370,42 @@ impl DIFStructuralTypeDefinition {
 }
 
 impl DIFTypeDefinition {
-    pub fn from_structural_type_definition(type_def: &StructuralTypeDefinition) -> Self {
+    pub fn from_structural_type_definition(type_def: &TypeDefinition) -> Self {
         match type_def {
-            StructuralTypeDefinition::Collection(_collection_def) => {
+            TypeDefinition::Collection(_collection_def) => {
                 core::todo!("#387 handle collection type conversion");
             }
-            StructuralTypeDefinition::Literal(struct_def) => {
+            TypeDefinition::Literal(struct_def) => {
                 DIFTypeDefinition::Structural(Box::new(
                     DIFStructuralTypeDefinition::from_structural_definition(
                         struct_def,
                     ),
                 ))
             }
-            StructuralTypeDefinition::Shared(type_ref) => {
+            TypeDefinition::Shared(type_ref) => {
                 DIFTypeDefinition::Reference(
                     type_ref.borrow().pointer().address(),
                 )
             }
-            StructuralTypeDefinition::Type(type_val) => DIFTypeDefinition::Type(
+            TypeDefinition::Type(type_val) => DIFTypeDefinition::Type(
                 Box::new(DIFType::from_type(type_val.as_ref())),
             ),
-            StructuralTypeDefinition::Intersection(types) => {
+            TypeDefinition::Intersection(types) => {
                 DIFTypeDefinition::Intersection(
                     types.iter().map(DIFType::from_type).collect(),
                 )
             }
-            StructuralTypeDefinition::Union(types) => DIFTypeDefinition::Union(
+            TypeDefinition::Union(types) => DIFTypeDefinition::Union(
                 types.iter().map(DIFType::from_type).collect(),
             ),
-            StructuralTypeDefinition::ImplType(ty, impls) => DIFTypeDefinition::ImplType(
+            TypeDefinition::ImplType(ty, impls) => DIFTypeDefinition::ImplType(
                 Box::new(DIFType::from_type(ty)),
                 impls.clone(),
             ),
-            StructuralTypeDefinition::Unit => DIFTypeDefinition::Unit,
-            StructuralTypeDefinition::Never => DIFTypeDefinition::Never,
-            StructuralTypeDefinition::Unknown => DIFTypeDefinition::Unknown,
-            StructuralTypeDefinition::Callable(callable) => DIFTypeDefinition::Callable {
+            TypeDefinition::Unit => DIFTypeDefinition::Unit,
+            TypeDefinition::Never => DIFTypeDefinition::Never,
+            TypeDefinition::Unknown => DIFTypeDefinition::Unknown,
+            TypeDefinition::Callable(callable) => DIFTypeDefinition::Callable {
                 parameters: callable
                     .parameter_types
                     .iter()
@@ -434,14 +434,14 @@ impl DIFTypeDefinition {
     pub(crate) fn to_type_definition(
         &self,
         memory: &RefCell<Memory>,
-    ) -> StructuralTypeDefinition {
+    ) -> TypeDefinition {
         match self {
             DIFTypeDefinition::Intersection(types) => {
-                StructuralTypeDefinition::Intersection(
+                TypeDefinition::Intersection(
                     types.iter().map(|t| t.to_type(memory)).collect(),
                 )
             }
-            DIFTypeDefinition::Union(types) => StructuralTypeDefinition::Union(
+            DIFTypeDefinition::Union(types) => TypeDefinition::Union(
                 types.iter().map(|t| t.to_type(memory)).collect(),
             ),
             DIFTypeDefinition::Reference(type_ref_addr) => {
@@ -450,18 +450,18 @@ impl DIFTypeDefinition {
                     .get_type_reference(type_ref_addr)
                     .expect("Reference not found in memory")
                     .clone();
-                StructuralTypeDefinition::Shared(type_ref)
+                TypeDefinition::Shared(type_ref)
             }
             DIFTypeDefinition::Type(dif_type) => {
-                StructuralTypeDefinition::Type(Box::new(dif_type.to_type(memory)))
+                TypeDefinition::Type(Box::new(dif_type.to_type(memory)))
             }
-            DIFTypeDefinition::ImplType(ty, impls) => StructuralTypeDefinition::ImplType(
+            DIFTypeDefinition::ImplType(ty, impls) => TypeDefinition::ImplType(
                 Box::new(ty.to_type(memory)),
                 impls.clone(),
             ),
-            DIFTypeDefinition::Unit => StructuralTypeDefinition::Unit,
-            DIFTypeDefinition::Never => StructuralTypeDefinition::Never,
-            DIFTypeDefinition::Unknown => StructuralTypeDefinition::Unknown,
+            DIFTypeDefinition::Unit => TypeDefinition::Unit,
+            DIFTypeDefinition::Never => TypeDefinition::Never,
+            DIFTypeDefinition::Unknown => TypeDefinition::Unknown,
             _ => {
                 core::todo!(
                     "DIFTypeDefinition::to_type_definition for this variant is not implemented yet"
@@ -722,7 +722,7 @@ impl DIFType {
         }
     }
 
-    pub(crate) fn from_type_definition(type_def: &StructuralTypeDefinition) -> Self {
+    pub(crate) fn from_type_definition(type_def: &TypeDefinition) -> Self {
         DIFType {
             name: None,
             metadata: DIFTypeMetadata::default(),
@@ -741,7 +741,7 @@ impl DIFType {
     pub(crate) fn to_type_definition(
         &self,
         memory: &RefCell<Memory>,
-    ) -> StructuralTypeDefinition {
+    ) -> TypeDefinition {
         DIFTypeDefinition::to_type_definition(&self.type_definition, memory)
     }
 }

@@ -8,7 +8,7 @@ use crate::{
             expose_rc_internal::ExposeRcInternal,
         },
     },
-    types::structural_type_definition::StructuralTypeDefinition,
+    types::structural_type_definition::TypeDefinition,
     values::value_container::ValueContainer,
 };
 use alloc::rc::Rc;
@@ -125,7 +125,7 @@ impl ReferencedSharedContainer {
     }
 
     /// Gets a [Ref] to the currently assigned allowed [StructuralTypeDefinition] of the shared container (not resolved recursively)
-    pub fn allowed_type(&self) -> Ref<StructuralTypeDefinition> {
+    pub fn allowed_type(&self) -> Ref<TypeDefinition> {
         Ref::map(self.base_shared_container(), |base_shared_container| {
             &base_shared_container.allowed_type
         })

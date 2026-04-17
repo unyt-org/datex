@@ -1,6 +1,6 @@
 use crate::{
     shared_values::shared_containers::SharedContainerMutability,
-    types::structural_type_definition::StructuralTypeDefinition,
+    types::structural_type_definition::TypeDefinition,
 };
 
 use modular_bitfield::Specifier;
@@ -33,35 +33,35 @@ pub enum TypeInstructionCode {
     TYPE_LITERAL_SHORT_TEXT,
 }
 
-impl From<&StructuralTypeDefinition> for TypeInstructionCode {
-    fn from(value: &StructuralTypeDefinition) -> Self {
+impl From<&TypeDefinition> for TypeInstructionCode {
+    fn from(value: &TypeDefinition) -> Self {
         match value {
-            StructuralTypeDefinition::ImplType(_, _) => {
+            TypeDefinition::ImplType(_, _) => {
                 TypeInstructionCode::TYPE_WITH_IMPLS
             }
-            StructuralTypeDefinition::Shared(_) => {
+            TypeDefinition::Shared(_) => {
                 TypeInstructionCode::SHARED_TYPE_REFERENCE
             }
-            StructuralTypeDefinition::Unit => todo!(),
-            StructuralTypeDefinition::Unknown => todo!(),
-            StructuralTypeDefinition::Never => todo!(),
-            StructuralTypeDefinition::Literal(_) => {
+            TypeDefinition::Unit => todo!(),
+            TypeDefinition::Unknown => todo!(),
+            TypeDefinition::Never => todo!(),
+            TypeDefinition::Literal(_) => {
                 todo!()
             }
-            StructuralTypeDefinition::Intersection(_) => {
+            TypeDefinition::Intersection(_) => {
                 todo!()
             }
-            StructuralTypeDefinition::Union(_) => todo!(),
-            StructuralTypeDefinition::Callable { .. } => {
+            TypeDefinition::Union(_) => todo!(),
+            TypeDefinition::Callable { .. } => {
                 todo!()
             }
-            StructuralTypeDefinition::Collection(_) => {
+            TypeDefinition::Collection(_) => {
                 todo!()
             }
-            StructuralTypeDefinition::Type(_) => unreachable!(), // TODO #668: nested types
-            StructuralTypeDefinition::List(_) => todo!(),
-            StructuralTypeDefinition::Map(_) => todo!(),
-            StructuralTypeDefinition::Range(_) => todo!(),
+            TypeDefinition::Type(_) => unreachable!(), // TODO #668: nested types
+            TypeDefinition::List(_) => todo!(),
+            TypeDefinition::Map(_) => todo!(),
+            TypeDefinition::Range(_) => todo!(),
         }
     }
 }

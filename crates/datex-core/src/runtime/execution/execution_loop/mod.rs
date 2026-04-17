@@ -6,14 +6,13 @@ pub mod state;
 
 use crate::{
     dxb_parser::{
-        body::{iterate_instructions, DXBParserError},
+        body::{DXBParserError, iterate_instructions},
         instruction_collector::{
             CollectedResults, CollectionResultsPopper, FullOrPartialResult,
             InstructionCollector, LastUnboundedResultCollector,
             ResultCollector, StatementResultCollectionStrategy,
         },
-    },
-    global::{
+    }, global::{
         operators::{
             BinaryOperator, ComparisonOperator,
             UnaryOperator,
@@ -23,10 +22,8 @@ use crate::{
             FloatAsInt32Data, IntegerData, RawPointerAddress,
             ShortTextData, StackIndex, TextData,
         },
-    },
-    prelude::*,
-    runtime::execution::{
-        execution_loop::{
+    }, prelude::*, runtime::execution::{
+        ExecutionError, InvalidProgramError, execution_loop::{
             internal_slots::{get_internal_slot_value, get_stack_value},
             interrupts::{
                 ExecutionInterrupt, ExternalExecutionInterrupt,
@@ -42,30 +39,22 @@ use crate::{
         }, macros::{
             interrupt, interrupt_with_maybe_value, interrupt_with_value,
             yield_unwrap,
-        },
-        ExecutionError,
-        InvalidProgramError,
-    },
-    shared_values::{
-        pointer_address::PointerAddress,
-        shared_containers::ReferenceMutability,
-    },
-    types::{
-        literal_type_definition::LiteralTypeDefinition,
-        structural_type_definition::StructuralTypeDefinition,
-    }
-    ,
-    values::{
+        }
+    }, shared_values::{
+        errors::AssignmentError, pointer_address::PointerAddress, shared_containers::ReferenceMutability
+    }, type_inference::error::TypeError, types::{
+        error::IllegalTypeError, literal_type_definition::LiteralTypeDefinition, structural_type_definition::TypeDefinition
+    }, values::{
         core_value::CoreValue,
         core_values::{
-            decimal::{typed_decimal::TypedDecimal, Decimal},
+            decimal::{Decimal, typed_decimal::TypedDecimal},
             integer::typed_integer::TypedInteger,
             list::List,
             map::{Map, MapKey},
         },
         value::Value,
         value_container::{OwnedValueKey, ValueContainer},
-    },
+    }
 };
 use alloc::rc::Rc;
 use core::cell::RefCell;
@@ -80,7 +69,7 @@ use crate::shared_values::shared_containers::{SelfOwnedSharedContainer, SharedCo
 use crate::shared_values::shared_containers::{ExternalSharedContainer, OwnedSharedContainer, ReferencedSharedContainer, SharedContainer};
 use crate::shared_values::shared_containers::base_shared_value_container::BaseSharedValueContainer;
 use crate::types::r#type::{Type};
-use crate::types::type_definition::{TypeDefinition, TypeMetadata};
+use crate::types::type_definition::{TypeDefinitionWithMetadata, TypeMetadata};
 
 #[derive(Debug)]
 enum CollectedExecutionResult {
@@ -882,7 +871,7 @@ pub fn inner_execution_loop(
                                         ValueContainer::Local(Value {
                                             inner: CoreValue::Type(ty),
                                             actual_type: Box::new(
-                                                StructuralTypeDefinition::Unknown,
+                                                TypeDefinition::Unknown,
                                             ), // TODO #648: type for type
                                         }),
                                     )
@@ -945,7 +934,9 @@ pub fn inner_execution_loop(
                                                     )?,
                                                     None => todo!()
                                                 };
-                                                reference.set_value_container(res)?;
+                                                reference.try_set_value_container(res).map_err(|_| ExecutionError::AssignmentError(AssignmentError::TypeError(
+                                                    TypeError::AssignmentTypeMismatch { annotated_type: reference.allowed_type(), assigned_type: res.actual_type() }
+                                                )))?;
                                                 Ok(RuntimeValue::ValueContainer(
                                                     ref_value_container.clone(),
                                                 ))
@@ -1254,7 +1245,7 @@ pub fn inner_execution_loop(
                                     let referenced_container = yield_unwrap!(ReferencedSharedContainer::try_new_external(
                                         yield_unwrap!(BaseSharedValueContainer::try_new(
                                             value,
-                                            StructuralTypeDefinition::Unknown,  // TODO: allowed type
+                                            TypeDefinition::Unknown,  // TODO: allowed type
                                             shared_ref.container_mutability,
                                         )),
                                         pointer_address,
@@ -1282,8 +1273,8 @@ pub fn inner_execution_loop(
                                         );
                                         let base_type =
                                             collected_results.pop_type_result();
-                                        Type::Alias(TypeDefinition {
-                                            structural_definition: StructuralTypeDefinition::ImplType(
+                                        Type::Alias(TypeDefinitionWithMetadata {
+                                            structural_definition: TypeDefinition::ImplType(
                                                 Box::new(base_type),
                                                 impl_type_data
                                                     .impls
@@ -1302,7 +1293,7 @@ pub fn inner_execution_loop(
                                         let type_end =
                                             collected_results.pop_type_result();
                                         let x = Type::Alias(
-                                            StructuralTypeDefinition::Range((
+                                            TypeDefinition::Range((
                                                 Box::new(type_start),
                                                 Box::new(type_end),
                                             )).into(),

@@ -4,7 +4,7 @@ use crate::{
         SharedContainerMutability, SharedContainerOwnership,
     },
     types::{
-        structural_type_definition::StructuralTypeDefinition, r#type::Type,
+        structural_type_definition::TypeDefinition, r#type::Type,
     },
 };
 use serde::Serialize;
@@ -88,13 +88,13 @@ impl Default for TypeMetadata {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
-pub struct TypeDefinition {
-    pub structural_definition: StructuralTypeDefinition,
+pub struct TypeDefinitionWithMetadata {
+    pub structural_definition: TypeDefinition,
     pub metadata: TypeMetadata,
 }
 
-impl From<TypeDefinition> for Type {
-    fn from(x: TypeDefinition) -> Self {
+impl From<TypeDefinitionWithMetadata> for Type {
+    fn from(x: TypeDefinitionWithMetadata) -> Self {
         Type::Alias(x)
     }
 }

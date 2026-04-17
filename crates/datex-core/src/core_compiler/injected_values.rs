@@ -28,7 +28,6 @@ use crate::{
     values::borrowed_value_container::BorrowedValueContainer,
 };
 use binrw::io::Write;
-use core::cell::RefCell;
 pub fn compile_injected_values(
     instruction_block_data: InstructionBlockData,
     injected_values: Vec<BorrowedValueContainer>,
@@ -149,75 +148,75 @@ fn compile_preamble(
     slot_values: Vec<BorrowedValueContainer>,
 ) -> Result<(Vec<u8>, Vec<OwnedSharedContainer>), ExecutionError> {
     let mut context = CoreCompilationContext::new(Vec::new());
+    todo!()
+    // let mut moved_pointers: Vec<OwnedSharedContainer> = vec![];
 
-    let mut moved_pointers: Vec<OwnedSharedContainer> = vec![];
+    // // build dxb
+    // for (
+    //     slot_addr,
+    //     (
+    //         InjectedValueDeclaration {
+    //             ty: external_slot_type,
+    //             ..
+    //         },
+    //         slot_value,
+    //     ),
+    // ) in exec_block_data
+    //     .injected_values
+    //     .into_iter()
+    //     .zip(slot_values.into_iter())
+    //     .enumerate()
+    // {
+    //     context
+    //         .cursor_mut()
+    //         .write_all(&[InstructionCode::PUSH_TO_STACK as u8])
+    //         .unwrap();
+    //     append_u32(context.cursor_mut(), slot_addr as u32);
+    //     match external_slot_type {
+    //         InjectedValueType::Local(_) => {
+    //             todo!()
+    //         }
+    //         InjectedValueType::Shared(shared_slot_type) => {
+    //             let shared_container = match shared_slot_type {
+    //                 SharedInjectedValueType::Move => {
+    //                     // get moved value from moved_pointers_slot
+    //                     let index = moved_pointers.len() as u32;
 
-    // build dxb
-    for (
-        slot_addr,
-        (
-            InjectedValueDeclaration {
-                ty: external_slot_type,
-                ..
-            },
-            slot_value,
-        ),
-    ) in exec_block_data
-        .injected_values
-        .into_iter()
-        .zip(slot_values.into_iter())
-        .enumerate()
-    {
-        context
-            .cursor_mut()
-            .write_all(&[InstructionCode::PUSH_TO_STACK as u8])
-            .unwrap();
-        append_u32(context.cursor_mut(), slot_addr as u32);
-        match external_slot_type {
-            InjectedValueType::Local(_) => {
-                todo!()
-            }
-            InjectedValueType::Shared(shared_slot_type) => {
-                let shared_container = match shared_slot_type {
-                    SharedInjectedValueType::Move => {
-                        // get moved value from moved_pointers_slot
-                        let index = moved_pointers.len() as u32;
+    //                     match slot_value {
+    //                         BorrowedValueContainer::Local(_) => return Err(ExecutionError::ExpectedSharedValue),
+    //                         BorrowedValueContainer::Shared(shared_container) => {
+    //                             shared_container.assert_owned().map_err(|_| ExecutionError::ExpectedOwnedSharedValue)?;
+    //                             moved_pointers.push(shared_container);
+    //                             append_instruction_code_new(context.cursor_mut(), InstructionCode::TAKE_PROPERTY_INDEX);
+    //                             append_u32(context.cursor_mut(), index);
+    //                             append_instruction_code_new(context.cursor_mut(), InstructionCode::CLONE_STACK_VALUE);
+    //                             append_u32(context.cursor_mut(), moved_pointers_slot_index);
+    //                             continue;
+    //                         }
+    //                     }
+    //                 },
+    //                 SharedInjectedValueType::Ref => match slot_value {
+    //                     BorrowedValueContainer::Local(_) => return Err(ExecutionError::ExpectedSharedValue),
+    //                     BorrowedValueContainer::Shared(shared_container) => {
+    //                         shared_container.derive_reference()
+    //                     }
+    //                 }
+    //                 SharedInjectedValueType::RefMut => match slot_value {
+    //                     BorrowedValueContainer::Local(_) => return Err(ExecutionError::ExpectedSharedValue),
+    //                     BorrowedValueContainer::Shared(shared_container) => {
+    //                         shared_container.try_derive_mutable_reference()
+    //                             .map_err(|_| ExecutionError::MutableReferenceToNonMutableValue)?
+    //                     }
+    //                 }
+    //             };
 
-                        match slot_value {
-                            BorrowedValueContainer::Local(_) => return Err(ExecutionError::ExpectedSharedValue),
-                            BorrowedValueContainer::Shared(shared_container) => {
-                                shared_container.assert_owned().map_err(|_| ExecutionError::ExpectedOwnedSharedValue)?;
-                                moved_pointers.push(shared_container);
-                                append_instruction_code_new(context.cursor_mut(), InstructionCode::TAKE_PROPERTY_INDEX);
-                                append_u32(context.cursor_mut(), index);
-                                append_instruction_code_new(context.cursor_mut(), InstructionCode::CLONE_STACK_VALUE);
-                                append_u32(context.cursor_mut(), moved_pointers_slot_index);
-                                continue;
-                            }
-                        }
-                    },
-                    SharedInjectedValueType::Ref => match slot_value {
-                        BorrowedValueContainer::Local(_) => return Err(ExecutionError::ExpectedSharedValue),
-                        BorrowedValueContainer::Shared(shared_container) => {
-                            shared_container.derive_reference()
-                        }
-                    }
-                    SharedInjectedValueType::RefMut => match slot_value {
-                        BorrowedValueContainer::Local(_) => return Err(ExecutionError::ExpectedSharedValue),
-                        BorrowedValueContainer::Shared(shared_container) => {
-                            shared_container.try_derive_mutable_reference()
-                                .map_err(|_| ExecutionError::MutableReferenceToNonMutableValue)?
-                        }
-                    }
-                };
+    //             append_shared_container(&mut context, &shared_container, true)
+    //                 .unwrap();
+    //         }
+    //     }
+    // }
 
-                append_shared_container(&mut context, &shared_container, true)
-                    .unwrap();
-            }
-        }
-    }
-
-    Ok((context.into_buffer(), moved_pointers))
+    // Ok((context.into_buffer(), moved_pointers))
 }
 
 fn compile_preform_move_preamble(
@@ -252,6 +251,13 @@ mod tests {
             },
         },
         prelude::*,
+        shared_values::{
+            pointer_address::SelfOwnedPointerAddress,
+            shared_containers::{
+                OwnedSharedContainer, SelfOwnedSharedContainer,
+                SharedContainer, SharedContainerMutability,
+            },
+        },
         values::borrowed_value_container::BorrowedValueContainer,
     };
 
@@ -269,10 +275,11 @@ mod tests {
 
     #[test]
     fn remote_execution_with_injected_ref_value() {
-        let shared_value = BorrowedValueContainer::Shared(
-            SharedContainerValueOrType::boxed_owned_immut(
-                42,
-                EndpointOwnedPointer::NULL,
+        let shared_value = SharedContainer::Owned(
+            OwnedSharedContainer::new_with_inferred_allowed_type(
+                42.into(),
+                SharedContainerMutability::Immutable,
+                SelfOwnedPointerAddress::NULL,
             ),
         );
         let exec_block_data = InstructionBlockData {
@@ -284,9 +291,10 @@ mod tests {
             }],
             body: vec![InstructionCode::NULL as u8],
         };
-        let res = compile_injected_values(exec_block_data, vec![shared_value])
-            .unwrap()
-            .0;
+        let res =
+            compile_injected_values(exec_block_data, vec![shared_value.into()])
+                .unwrap()
+                .0;
         // should allocate slot and then compile the shared value into the buffer, followed by the body
         assert_eq!(
             res,
@@ -320,18 +328,18 @@ mod tests {
 
     #[test]
     fn remote_execution_multiple_ref_values() {
-        let shared_value1 = BorrowedValueContainer::Shared(
-            SharedContainerValueOrType::boxed_owned_immut(
+        let shared_value1 =
+            SharedContainer::new_owned_with_inferred_allowed_type(
                 42,
-                EndpointOwnedPointer::NULL,
-            ),
-        );
-        let shared_value2 = BorrowedValueContainer::Shared(
-            SharedContainerValueOrType::boxed_owned_mut(
+                SharedContainerMutability::Immutable,
+                SelfOwnedPointerAddress::NULL,
+            );
+        let shared_value2 =
+            SharedContainer::new_owned_with_inferred_allowed_type(
                 100,
-                EndpointOwnedPointer::NULL,
-            ),
-        );
+                SharedContainerMutability::Mutable,
+                SelfOwnedPointerAddress::NULL,
+            );
         let exec_block_data = InstructionBlockData {
             injected_value_count: 2,
             length: 1,
@@ -351,7 +359,7 @@ mod tests {
         };
         let res = compile_injected_values(
             exec_block_data,
-            vec![shared_value1, shared_value2],
+            vec![shared_value1.into(), shared_value2.into()],
         )
         .unwrap()
         .0;
@@ -407,12 +415,12 @@ mod tests {
 
     #[test]
     fn remote_execution_with_injected_moved_value() {
-        let shared_value = BorrowedValueContainer::Shared(
-            SharedContainerValueOrType::boxed_owned_immut(
+        let shared_value =
+            SharedContainer::new_owned_with_inferred_allowed_type(
                 42,
-                EndpointOwnedPointer::NULL,
-            ),
-        );
+                SharedContainerMutability::Immutable,
+                SelfOwnedPointerAddress::NULL,
+            );
         let exec_block_data = InstructionBlockData {
             injected_value_count: 1,
             length: 1,
@@ -422,9 +430,10 @@ mod tests {
             }],
             body: vec![InstructionCode::NULL as u8],
         };
-        let res = compile_injected_values(exec_block_data, vec![shared_value])
-            .unwrap()
-            .0;
+        let res =
+            compile_injected_values(exec_block_data, vec![shared_value.into()])
+                .unwrap()
+                .0;
         // should allocate slot and then compile the shared value into the buffer, followed by the body
         assert_eq!(
             res,
@@ -471,18 +480,18 @@ mod tests {
 
     #[test]
     fn remote_execution_moved_value_and_ref() {
-        let shared_value1 = BorrowedValueContainer::Shared(
-            SharedContainerValueOrType::boxed_owned_immut(
+        let shared_value1 =
+            SharedContainer::new_owned_with_inferred_allowed_type(
                 42,
-                EndpointOwnedPointer::NULL,
-            ),
-        );
-        let shared_value2 = BorrowedValueContainer::Shared(
-            SharedContainerValueOrType::boxed_owned_mut(
+                SharedContainerMutability::Immutable,
+                SelfOwnedPointerAddress::NULL,
+            );
+        let shared_value2 =
+            SharedContainer::new_owned_with_inferred_allowed_type(
                 100,
-                EndpointOwnedPointer::NULL,
-            ),
-        );
+                SharedContainerMutability::Immutable,
+                SelfOwnedPointerAddress::NULL,
+            );
         let exec_block_data = InstructionBlockData {
             injected_value_count: 2,
             length: 1,
@@ -502,7 +511,7 @@ mod tests {
         };
         let res = compile_injected_values(
             exec_block_data,
-            vec![shared_value1, shared_value2],
+            vec![shared_value1.into(), shared_value2.into()],
         )
         .unwrap()
         .0;

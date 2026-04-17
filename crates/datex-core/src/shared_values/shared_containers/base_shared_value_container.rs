@@ -1,25 +1,30 @@
 use crate::{
-    shared_values::{
-        observers::Observer,
-    },
+    shared_values::observers::Observer,
     traits::value_eq::ValueEq,
-    types::structural_type_definition::StructuralTypeDefinition,
+    types::structural_type_definition::TypeDefinition,
     utils::freemap::FreeHashMap,
     values::{value::Value, value_container::ValueContainer},
 };
 
-use crate::{prelude::*};
-use core::{cell::RefCell, fmt::Debug, prelude::rust_2024::*};
-use core::fmt::Display;
-use crate::shared_values::errors::SharedValueCreationError;
-use crate::shared_values::shared_containers::SharedContainerMutability;
+use crate::{
+    prelude::*,
+    shared_values::{
+        errors::SharedValueCreationError,
+        shared_containers::SharedContainerMutability,
+    },
+};
+use core::{
+    cell::RefCell,
+    fmt::{Debug, Display},
+    prelude::rust_2024::*,
+};
 
 pub struct BaseSharedValueContainer {
     // pub(crate) pointer: Pointer,
     /// the value that this reference points to
     pub value_container: ValueContainer,
     /// custom type for the pointer that the Datex value is allowed to reference
-    pub allowed_type: StructuralTypeDefinition,
+    pub allowed_type: TypeDefinition,
     /// list of observer callbacks
     /// TODO: move observers to ValueContainer?
     pub observers: FreeHashMap<u32, Observer>,
@@ -27,26 +32,23 @@ pub struct BaseSharedValueContainer {
 }
 
 impl BaseSharedValueContainer {
-
     /// Tries to create a new [BaseSharedValueContainer] with an initial [ValueContainer],
     /// an allowed type and a [SharedContainerMutability].
     /// If the allowed [StructuralTypeDefinition] is not a superset of the [ValueContainer]'s allowed type,
     /// an error is returned
     pub fn try_new(
         value_container: ValueContainer,
-        allowed_type: StructuralTypeDefinition,
+        allowed_type: TypeDefinition,
         mutability: SharedContainerMutability,
     ) -> Result<Self, SharedValueCreationError> {
         // TODO #286: make sure allowed type is superset of reference's allowed type
 
-        Ok(
-            BaseSharedValueContainer {
-                value_container,
-                allowed_type,
-                observers: FreeHashMap::new(),
-                mutability,
-            }
-        )
+        Ok(BaseSharedValueContainer {
+            value_container,
+            allowed_type,
+            observers: FreeHashMap::new(),
+            mutability,
+        })
     }
 
     /// Creates a new [BaseSharedValueContainer] with an initial [ValueContainer] and
@@ -63,6 +65,17 @@ impl BaseSharedValueContainer {
             observers: FreeHashMap::new(),
             mutability,
         }
+    }
+
+    /// Sets the currently assigned [ValueContainer] of the shared container to a new value container.
+    /// Returns an error if the new value container's allowed type is not compatible with the allowed type of the shared container
+    pub fn try_set_value_container(
+        &self,
+        new_value_container: ValueContainer,
+    ) -> Result<(), ()> {
+        // TODO do type checking to ensure new value container's allowed type is compatible with self.allowed_type
+        self.value_container = new_value_container;
+        Ok(())
     }
 }
 

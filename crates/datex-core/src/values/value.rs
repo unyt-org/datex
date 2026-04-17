@@ -3,7 +3,7 @@ use crate::{
     prelude::*,
     runtime::execution::ExecutionError,
     traits::{apply::Apply, structural_eq::StructuralEq, value_eq::ValueEq},
-    types::structural_type_definition::StructuralTypeDefinition,
+    types::structural_type_definition::TypeDefinition,
     values::{
         core_value::CoreValue,
         core_values::{
@@ -25,7 +25,7 @@ use crate::shared_values::errors::AccessError;
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub struct Value {
     pub inner: CoreValue,
-    pub actual_type: Box<StructuralTypeDefinition>,
+    pub actual_type: Box<TypeDefinition>,
 }
 
 /// Two values are structurally equal, if their inner values are structurally equal, regardless
@@ -101,7 +101,7 @@ impl Value {
                 signature: signature.clone(),
                 body,
             }),
-            actual_type: Box::new(StructuralTypeDefinition::callable(signature)),
+            actual_type: Box::new(TypeDefinition::callable(signature)),
         }
     }
 
@@ -129,7 +129,7 @@ impl Value {
     pub fn is_list(&self) -> bool {
         core::matches!(self.inner, CoreValue::List(_))
     }
-    pub fn actual_type(&self) -> &StructuralTypeDefinition {
+    pub fn actual_type(&self) -> &TypeDefinition {
         self.actual_type.as_ref()
     }
 
@@ -143,7 +143,7 @@ impl Value {
     /// the variant must be included in the compiler output - so we need to handle theses cases as well.
     /// Generally speaking, all variants except the few integer variants should never be considered default types.
     pub fn has_default_type(&self) -> bool {
-        if let StructuralTypeDefinition::Shared(type_reference) =
+        if let TypeDefinition::Shared(type_reference) =
             self.actual_type.as_ref()
             && let Ok(actual_type_core_ptr_id) = CoreLibTypeId::try_from(
                 &type_reference.borrow().pointer().address(),
@@ -533,7 +533,7 @@ mod tests {
 
         let val = Value {
             inner: CoreValue::Integer(Integer::from(42)),
-            actual_type: Box::new(StructuralTypeDefinition::ImplType(
+            actual_type: Box::new(TypeDefinition::ImplType(
                 Box::new(core_lib_type(CoreLibTypeId::Integer(None))),
                 vec![],
             )),

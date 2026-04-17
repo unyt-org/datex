@@ -13,8 +13,8 @@ use crate::{
     prelude::*,
     shared_values::shared_containers::ReferenceMutability,
     types::{
-        structural_type_definition::StructuralTypeDefinition, r#type::Type,
-        type_definition::TypeDefinition,
+        structural_type_definition::TypeDefinition, r#type::Type,
+        type_definition::TypeDefinitionWithMetadata,
     },
     utils::buffers::append_u8,
 };
@@ -36,7 +36,7 @@ pub fn append_type(context: &mut CoreCompilationContext, ty: &Type) {
 
 pub fn append_type_definition(
     context: &mut CoreCompilationContext,
-    ty: &TypeDefinition,
+    ty: &TypeDefinitionWithMetadata,
 ) {
     // append instruction code
     let instruction_code = TypeInstructionCode::from(&ty.structural_definition);
@@ -55,10 +55,10 @@ pub fn append_type_definition(
 
 pub fn append_structural_type_definition(
     context: &mut CoreCompilationContext,
-    type_definition: &StructuralTypeDefinition,
+    type_definition: &TypeDefinition,
 ) {
     match type_definition {
-        StructuralTypeDefinition::ImplType(ty, impls) => {
+        TypeDefinition::ImplType(ty, impls) => {
             // Append the number of impls
             let impl_count = impls.len() as u8;
             append_u8(context.cursor_mut(), impl_count);
@@ -75,7 +75,7 @@ pub fn append_structural_type_definition(
             // Append the base type
             append_type(context, ty);
         }
-        StructuralTypeDefinition::Shared(type_ref) => {
+        TypeDefinition::Shared(type_ref) => {
             // TODO #636: ensure pointer_address exists here
             let pointer_address = type_ref.pointer_address();
             append_get_shared_ref(

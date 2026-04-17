@@ -1,6 +1,7 @@
 use crate::{
     ast::expressions::DatexExpression,
     compiler::precompiler::precompiled_ast::RichAst,
+    core_compiler::value_compiler::SharedValueCompilationError,
     parser::errors::{ParserError, SpannedParserError},
     serde::error::DeserializationError,
     type_inference::error::{DetailedTypeErrors, SpannedTypeError, TypeError},
@@ -38,6 +39,16 @@ pub enum CompilerError {
     ParserError(ParserError),
     SharedMutRefToImmutableValue,
     InvalidConversionFromRefToOwnedValue,
+}
+
+impl From<SharedValueCompilationError> for CompilerError {
+    fn from(error: SharedValueCompilationError) -> CompilerError {
+        match error {
+            SharedValueCompilationError::ExpectedOwnedSharedValue => {
+                CompilerError::ExpectedOwnedSharedValue
+            }
+        }
+    }
 }
 
 /// A compiler error that can be linked to a specific span in the source code
@@ -105,7 +116,6 @@ impl From<SpannedCompilerError> for DeserializationError {
         DeserializationError::CompilerError(e)
     }
 }
-
 
 #[derive(Debug, Default)]
 pub struct DetailedCompilerErrors {
@@ -262,7 +272,6 @@ impl From<TypeError> for CompilerError {
         CompilerError::TypeError(value)
     }
 }
-
 
 impl From<binrw::Error> for CompilerError {
     fn from(value: binrw::Error) -> Self {

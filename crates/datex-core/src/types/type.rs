@@ -15,8 +15,8 @@ use crate::{
         literal_type_definition::LiteralTypeDefinition,
         nominal_type_definition::NominalTypeDefinition,
         shared_container_containing_type::SharedContainerContainingType,
-        structural_type_definition::StructuralTypeDefinition,
-        type_definition::TypeDefinition,
+        structural_type_definition::TypeDefinition,
+        type_definition::TypeDefinitionWithMetadata,
     },
     values::{
         core_value::CoreValue,
@@ -28,25 +28,18 @@ use crate::{
         value_container::ValueContainer,
     },
 };
-use core::{
-    cell::RefCell,
-    fmt::Display,
-    hash::{Hash, Hasher},
-    result::Result,
-    unimplemented,
-};
-use serde::{Deserialize, Serialize};
+use core::{fmt::Display, hash::Hash, unimplemented};
 
 // {x: &integer}
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub enum Type {
-    Alias(TypeDefinition),
+    Alias(TypeDefinitionWithMetadata),
     Nominal(NominalTypeDefinition),
 }
 
 impl Type {
     /// Get the inner [TypeDefinition]
-    pub fn definition(&self) -> &TypeDefinition {
+    pub fn definition(&self) -> &TypeDefinitionWithMetadata {
         match self {
             Type::Alias(type_def) => type_def,
             Type::Nominal(nominal_def) => nominal_def.definition(),
@@ -54,7 +47,7 @@ impl Type {
     }
 
     /// Convert to the inner [TypeDefinition]
-    pub fn into_definition(self) -> TypeDefinition {
+    pub fn into_definition(self) -> TypeDefinitionWithMetadata {
         match self {
             Type::Alias(type_def) => type_def,
             Type::Nominal(nominal_def) => nominal_def.into_definition(),
@@ -64,7 +57,7 @@ impl Type {
     /// Calls the provided callback with a reference to the recursively collapsed inner [StructuralTypeDefinition] value
     pub fn with_collapsed_structural_type_definition<R>(
         &self,
-        f: impl FnOnce(&StructuralTypeDefinition) -> R,
+        f: impl FnOnce(&TypeDefinition) -> R,
     ) -> R {
         self.definition()
             .structural_definition
@@ -88,7 +81,7 @@ impl Type {
     /// 1 matches integer | text -> true
     pub fn matches_type(&self, other: &Type) -> bool {
         match &self.type_definition {
-            StructuralTypeDefinition::Union(members) => {
+            TypeDefinition::Union(members) => {
                 // If self is a union, check if any member matches the other type
                 for member in members {
                     if member.matches_type(other) {
@@ -97,7 +90,7 @@ impl Type {
                 }
                 false
             }
-            StructuralTypeDefinition::Intersection(members) => {
+            TypeDefinition::Intersection(members) => {
                 // If self is an intersection, all members must match the other type
                 for member in members {
                     if !member.matches_type(other) {
@@ -122,7 +115,7 @@ impl Type {
         }
 
         match &other.type_definition {
-            StructuralTypeDefinition::Shared(reference) => {
+            TypeDefinition::Shared(reference) => {
                 // compare base type of atomic_type with the referenced type
                 if let Some(atomic_base_type_reference) =
                     atomic_type.base_type_reference()
@@ -132,7 +125,7 @@ impl Type {
                     false
                 }
             }
-            StructuralTypeDefinition::Union(members) => {
+            TypeDefinition::Union(members) => {
                 // atomic type must match at least one member of the union
                 for member in members {
                     if Type::atomic_matches_type(atomic_type, member) {
@@ -141,7 +134,7 @@ impl Type {
                 }
                 false
             }
-            StructuralTypeDefinition::Intersection(members) => {
+            TypeDefinition::Intersection(members) => {
                 // atomic type must match all members of the intersection
                 for member in members {
                     if !Type::atomic_matches_type(atomic_type, member) {
@@ -168,35 +161,35 @@ impl Type {
 
         match &match_type.type_definition {
             // e.g. 1 matches 1 | 2
-            StructuralTypeDefinition::Union(types) => {
+            TypeDefinition::Union(types) => {
                 // value must match at least one of the union types
                 types.iter().any(|t| Type::value_matches_type(value, t))
             }
-            StructuralTypeDefinition::Intersection(types) => {
+            TypeDefinition::Intersection(types) => {
                 // value must match all of the intersection types
                 types.iter().all(|t| Type::value_matches_type(value, t))
             }
-            StructuralTypeDefinition::Literal(structural_type) => {
+            TypeDefinition::Literal(structural_type) => {
                 structural_type.value_matches(value)
             }
-            StructuralTypeDefinition::Shared(_reference) => {
+            TypeDefinition::Shared(_reference) => {
                 core::todo!("#327 handle reference type matching");
                 //reference.value_matches(value)
             }
-            StructuralTypeDefinition::Type(inner_type) => {
+            TypeDefinition::Type(inner_type) => {
                 // TODO #464: also check mutability of current type?
                 inner_type.value_matches(value)
             }
-            StructuralTypeDefinition::Callable(_signature) => {
+            TypeDefinition::Callable(_signature) => {
                 core::todo!("#328 handle function type matching");
             }
-            StructuralTypeDefinition::Collection(_collection_type) => {
+            TypeDefinition::Collection(_collection_type) => {
                 core::todo!("#329 handle collection type matching");
             }
-            StructuralTypeDefinition::Unit => false, // unit type does not match any value
-            StructuralTypeDefinition::Never => false,
-            StructuralTypeDefinition::Unknown => false,
-            StructuralTypeDefinition::ImplType(ty, _) => {
+            TypeDefinition::Unit => false, // unit type does not match any value
+            TypeDefinition::Never => false,
+            TypeDefinition::Unknown => false,
+            TypeDefinition::ImplType(ty, _) => {
                 Type::value_matches_type(value, ty)
             }
         }

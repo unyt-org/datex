@@ -16,7 +16,7 @@ use crate::{
 };
 use core::{fmt::Display, hash::Hash, unimplemented};
 use crate::types::r#type::Type;
-use crate::types::structural_type_definition::StructuralTypeDefinition;
+use crate::types::structural_type_definition::TypeDefinition;
 
 #[derive(Debug, Clone, PartialEq, Hash, Eq)]
 pub enum LiteralTypeDefinition {
@@ -244,9 +244,9 @@ impl Display for LiteralTypeDefinition {
     }
 }
 
-impl From<LiteralTypeDefinition> for StructuralTypeDefinition {
+impl From<LiteralTypeDefinition> for TypeDefinition {
     fn from(value: LiteralTypeDefinition) -> Self {
-        StructuralTypeDefinition::Literal(value)
+        TypeDefinition::Literal(value)
     }
 }
 

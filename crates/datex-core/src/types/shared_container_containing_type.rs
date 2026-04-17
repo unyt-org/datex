@@ -3,7 +3,7 @@ use core::ops::Deref;
 use crate::{
     shared_values::shared_containers::SharedContainer,
     types::{
-        structural_type_definition::StructuralTypeDefinition, r#type::Type,
+        structural_type_definition::TypeDefinition, r#type::Type,
     },
     values::core_value::CoreValue,
 };
@@ -30,7 +30,7 @@ impl SharedContainerContainingType {
             .base_shared_container()
             .allowed_type
             .with_collapsed_structural_type_definition(|allowed_type| {
-                !matches!(allowed_type, StructuralTypeDefinition::Type(_))
+                !matches!(allowed_type, TypeDefinition::Type(_))
             })
         {
             return Err(());

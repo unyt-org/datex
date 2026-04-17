@@ -1,10 +1,9 @@
-use core::fmt::Display;
-use core::ops::Deref;
 use crate::{
     libs::core::{type_id::CoreLibTypeId, value_id::CoreLibValueId},
     prelude::*,
     shared_values::pointer_address::{ExternalPointerAddress, PointerAddress},
 };
+use core::{fmt::Display, ops::Deref};
 pub const TYPE_SPACE_BASE: u16 = 0;
 pub const TYPE_VARIANT_SPACE_BASE: u16 = 500;
 pub const VALUE_SPACE_BASE: u16 = 1000;
@@ -42,7 +41,7 @@ impl From<CoreLibValueId> for CoreLibId {
 }
 
 impl Display for CoreLibId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut alloc::fmt::Formatter<'_>) -> alloc::fmt::Result {
         match self {
             CoreLibId::Type(type_id) => write!(f, "{}", type_id.to_string()),
             CoreLibId::Value(value_id) => write!(f, "{}", value_id.to_string()),
@@ -93,7 +92,6 @@ impl<T: CoreLibIdTrait> From<T> for ExternalPointerAddress {
         )
     }
 }
-
 
 impl TryFrom<ExternalPointerAddress> for CoreLibId {
     type Error = ();

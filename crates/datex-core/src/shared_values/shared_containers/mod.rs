@@ -23,7 +23,7 @@ use crate::{
     traits::{
         identity::Identity, structural_eq::StructuralEq, value_eq::ValueEq,
     },
-    types::structural_type_definition::StructuralTypeDefinition,
+    types::structural_type_definition::TypeDefinition,
     values::{value::Value, value_container::ValueContainer},
 };
 use alloc::rc::Rc;
@@ -56,14 +56,14 @@ impl SharedContainer {
     /// a [SharedContainerMutability], and an [SelfOwnedPointerAddress].
     ///
     /// The allowed type is inferred from the value_container's allowed type.
-    pub fn new_owned_with_inferred_allowed_type(
-        value_container: ValueContainer,
+    pub fn new_owned_with_inferred_allowed_type<T: Into<ValueContainer>>(
+        value_container: T,
         mutability: SharedContainerMutability,
         address: SelfOwnedPointerAddress,
     ) -> Self {
         SharedContainer::Owned(
             OwnedSharedContainer::new_with_inferred_allowed_type(
-                value_container,
+                value_container.into(),
                 mutability,
                 address,
             ),
@@ -94,6 +94,15 @@ impl SharedContainer {
         }
     }
 
+    /// Sets the currently assigned [ValueContainer] of the shared container to a new value container.
+    pub fn try_set_value_container(
+        &self,
+        new_value_container: ValueContainer,
+    ) -> Result<(), ()> {
+        self.base_shared_container()
+            .try_set_value_container(new_value_container)
+    }
+
     /// Gets a [RefMut] to the currently assigned [BaseSharedValueContainer] of the shared container (not resolved recursively)
     pub fn base_shared_container_mut(
         &self,
@@ -117,7 +126,7 @@ impl SharedContainer {
     }
 
     /// Gets a [Ref] to the currently assigned allowed [StructuralTypeDefinition] of the shared container (not resolved recursively)
-    pub fn allowed_type(&self) -> Ref<StructuralTypeDefinition> {
+    pub fn allowed_type(&self) -> Ref<TypeDefinition> {
         match self {
             SharedContainer::Owned(owned) => owned.allowed_type(),
             SharedContainer::Referenced(referenced) => {

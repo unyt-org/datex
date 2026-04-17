@@ -1,13 +1,16 @@
-use crate::prelude::*;
+use crate::{
+    libs::core::{
+        core_lib_type,
+        type_id::{CoreLibBaseTypeId, CoreLibTypeId, CoreLibVariantTypeId},
+    },
+    prelude::*,
+};
 use core::result::Result;
 use datex_macros_internal::FromCoreValue;
 
 use crate::{
-    libs::core::{CoreLibTypeId, get_core_lib_type_reference},
     traits::{structural_eq::StructuralEq, value_eq::ValueEq},
-    types::{
-        structural_type_definition::StructuralTypeDefinition, r#type::Type,
-    },
+    types::{structural_type_definition::TypeDefinition, r#type::Type},
     values::{
         core_values::{
             boolean::Boolean,
@@ -46,7 +49,7 @@ pub enum CoreValue {
     Endpoint(Endpoint),
     List(List),
     Map(Map),
-    Type(Type),
+    Type(TypeDefinition),
     Callable(Callable),
     Range(Range),
 }
@@ -225,19 +228,35 @@ impl From<f64> for CoreValue {
 impl From<&CoreValue> for CoreLibTypeId {
     fn from(value: &CoreValue) -> Self {
         match value {
-            CoreValue::Map(_) => CoreLibTypeId::Map,
-            CoreValue::List(_) => CoreLibTypeId::List,
-            CoreValue::Text(_) => CoreLibTypeId::Text,
-            CoreValue::Boolean(_) => CoreLibTypeId::Boolean,
-            CoreValue::TypedInteger(i) => CoreLibTypeId::from(i),
-            CoreValue::TypedDecimal(d) => CoreLibTypeId::from(d),
-            CoreValue::Integer(_) => CoreLibTypeId::Integer(None),
-            CoreValue::Decimal(_) => CoreLibTypeId::Decimal(None),
-            CoreValue::Endpoint(_) => CoreLibTypeId::Endpoint,
-            CoreValue::Null => CoreLibTypeId::Null,
-            CoreValue::Type(_) => CoreLibTypeId::Type,
-            CoreValue::Callable(_) => CoreLibTypeId::Callable,
-            CoreValue::Range(_) => CoreLibTypeId::Range,
+            CoreValue::Map(_) => CoreLibTypeId::Base(CoreLibBaseTypeId::Map),
+            CoreValue::List(_) => CoreLibTypeId::Base(CoreLibBaseTypeId::List),
+            CoreValue::Text(_) => CoreLibTypeId::Base(CoreLibBaseTypeId::Text),
+            CoreValue::Boolean(_) => {
+                CoreLibTypeId::Base(CoreLibBaseTypeId::Boolean)
+            }
+            CoreValue::TypedInteger(i) => CoreLibTypeId::Variant(
+                CoreLibVariantTypeId::Integer(i.variant()),
+            ),
+            CoreValue::TypedDecimal(d) => CoreLibTypeId::Variant(
+                CoreLibVariantTypeId::Decimal(d.variant()),
+            ),
+            CoreValue::Integer(_) => {
+                CoreLibTypeId::Base(CoreLibBaseTypeId::Integer)
+            }
+            CoreValue::Decimal(_) => {
+                CoreLibTypeId::Base(CoreLibBaseTypeId::Decimal)
+            }
+            CoreValue::Endpoint(_) => {
+                CoreLibTypeId::Base(CoreLibBaseTypeId::Endpoint)
+            }
+            CoreValue::Null => CoreLibTypeId::Base(CoreLibBaseTypeId::Null),
+            CoreValue::Type(_) => CoreLibTypeId::Base(CoreLibBaseTypeId::Type),
+            CoreValue::Callable(_) => {
+                CoreLibTypeId::Base(CoreLibBaseTypeId::Callable)
+            }
+            CoreValue::Range(_) => {
+                CoreLibTypeId::Base(CoreLibBaseTypeId::Range)
+            }
         }
     }
 }
@@ -260,10 +279,8 @@ impl CoreValue {
     /// This method uses the CoreLibPointerId to retrieve the corresponding
     /// type reference from the core library.
     /// For example, a CoreValue::TypedInteger(i32) will return the type ref integer/i32
-    pub fn default_type_definition(&self) -> StructuralTypeDefinition {
-        StructuralTypeDefinition::Shared(get_core_lib_type_reference(
-            CoreLibTypeId::from(self),
-        ))
+    pub fn default_type_definition(&self) -> TypeDefinition {
+        TypeDefinition::Shared(core_lib_type(CoreLibTypeId::from(self)))
     }
 
     // TODO #313: allow cast of any CoreValue to Type, as structural type can always be constructed?

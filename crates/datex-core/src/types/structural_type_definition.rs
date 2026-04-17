@@ -1,5 +1,5 @@
 use crate::{
-    libs::core::{CoreLibTypeId, get_core_lib_type_reference},
+    libs::core::CoreLibTypeId,
     prelude::*,
     shared_values::pointer_address::PointerAddress,
     traits::structural_eq::StructuralEq,
@@ -8,15 +8,14 @@ use crate::{
         literal_type_definition::LiteralTypeDefinition,
         shared_container_containing_type::SharedContainerContainingType,
         r#type::Type,
-        type_definition::{TypeDefinition, TypeMetadata},
+        type_definition::{TypeDefinitionWithMetadata, TypeMetadata},
     },
     values::core_values::callable::CallableSignature,
 };
-use core::{fmt::Display, hash::Hash, prelude::rust_2024::*};
-use std::cell::RefCell;
+use core::{cell::RefCell, fmt::Display, hash::Hash, prelude::rust_2024::*};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum StructuralTypeDefinition {
+pub enum TypeDefinition {
     /// e.g. 1, "example"
     Literal(LiteralTypeDefinition),
 
@@ -32,7 +31,7 @@ pub enum StructuralTypeDefinition {
     Shared(SharedContainerContainingType), // integer
 
     /// type, used for nested types with references (e.g. &mut & x)
-    Type(Box<Type>),
+    Nominal(Box<Type>),
 
     /// a callable type definition (signature)
     Callable(CallableSignature),
@@ -64,52 +63,52 @@ pub enum StructuralTypeDefinition {
     Unknown,
 }
 
-impl Hash for StructuralTypeDefinition {
+impl Hash for TypeDefinition {
     fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
         match self {
-            StructuralTypeDefinition::Collection(value) => {
+            TypeDefinition::Collection(value) => {
                 value.hash(state);
             }
-            StructuralTypeDefinition::Literal(value) => {
+            TypeDefinition::Literal(value) => {
                 value.hash(state);
             }
-            StructuralTypeDefinition::Map(entries) => {
+            TypeDefinition::Map(entries) => {
                 for (key, value) in entries {
                     key.hash(state);
                     value.hash(state);
                 }
             }
-            StructuralTypeDefinition::List(elements) => {
+            TypeDefinition::List(elements) => {
                 for element in elements {
                     element.hash(state);
                 }
             }
-            StructuralTypeDefinition::Range((start, end)) => {
+            TypeDefinition::Range((start, end)) => {
                 start.hash(state);
                 end.hash(state);
             }
-            StructuralTypeDefinition::Shared(reference) => {
+            TypeDefinition::Shared(reference) => {
                 reference.hash(state);
             }
-            StructuralTypeDefinition::Type(value) => {
+            TypeDefinition::Type(value) => {
                 value.hash(state);
             }
 
-            StructuralTypeDefinition::Unit => 0_u8.hash(state),
-            StructuralTypeDefinition::Unknown => 1_u8.hash(state),
-            StructuralTypeDefinition::Never => 2_u8.hash(state),
+            TypeDefinition::Unit => 0_u8.hash(state),
+            TypeDefinition::Unknown => 1_u8.hash(state),
+            TypeDefinition::Never => 2_u8.hash(state),
 
-            StructuralTypeDefinition::Union(types) => {
+            TypeDefinition::Union(types) => {
                 for ty in types {
                     ty.hash(state);
                 }
             }
-            StructuralTypeDefinition::Intersection(types) => {
+            TypeDefinition::Intersection(types) => {
                 for ty in types {
                     ty.hash(state);
                 }
             }
-            StructuralTypeDefinition::Callable(callable) => {
+            TypeDefinition::Callable(callable) => {
                 callable.kind.hash(state);
                 for (name, ty) in callable.parameter_types.iter() {
                     name.hash(state);
@@ -119,7 +118,7 @@ impl Hash for StructuralTypeDefinition {
                 callable.return_type.hash(state);
                 callable.yeet_type.hash(state);
             }
-            StructuralTypeDefinition::ImplType(ty, impls) => {
+            TypeDefinition::ImplType(ty, impls) => {
                 ty.hash(state);
                 for marker in impls {
                     marker.hash(state);
@@ -129,39 +128,39 @@ impl Hash for StructuralTypeDefinition {
     }
 }
 
-impl Display for StructuralTypeDefinition {
+impl Display for TypeDefinition {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
-            StructuralTypeDefinition::Collection(value) => {
+            TypeDefinition::Collection(value) => {
                 core::write!(f, "{}", value)
             }
-            StructuralTypeDefinition::Map(entries) => {
+            TypeDefinition::Map(entries) => {
                 let entries_str: Vec<String> = entries
                     .iter()
                     .map(|(key, value)| format!("{}: {}", key, value))
                     .collect();
                 core::write!(f, "{{{}}}", entries_str.join(", "))
             }
-            StructuralTypeDefinition::List(elements) => {
+            TypeDefinition::List(elements) => {
                 let elements_str: Vec<String> =
                     elements.iter().map(|e| e.to_string()).collect();
                 core::write!(f, "[{}]", elements_str.join(", "))
             }
-            StructuralTypeDefinition::Range((start, end)) => {
+            TypeDefinition::Range((start, end)) => {
                 core::write!(f, "{}..{}", start, end)
             }
 
-            StructuralTypeDefinition::Literal(value) => {
+            TypeDefinition::Literal(value) => {
                 core::write!(f, "{}", value)
             }
-            StructuralTypeDefinition::Shared(reference) => {
+            TypeDefinition::Shared(reference) => {
                 core::write!(f, "{}", reference.deref())
             }
-            StructuralTypeDefinition::Type(ty) => core::write!(f, "{}", ty),
-            StructuralTypeDefinition::Unit => core::write!(f, "()"),
-            StructuralTypeDefinition::Unknown => core::write!(f, "unknown"),
-            StructuralTypeDefinition::Never => core::write!(f, "never"),
-            StructuralTypeDefinition::ImplType(ty, impls) => {
+            TypeDefinition::Type(ty) => core::write!(f, "{}", ty),
+            TypeDefinition::Unit => core::write!(f, "()"),
+            TypeDefinition::Unknown => core::write!(f, "unknown"),
+            TypeDefinition::Never => core::write!(f, "never"),
+            TypeDefinition::ImplType(ty, impls) => {
                 core::write!(f, "{}", ty)?;
                 for marker in impls {
                     core::write!(f, " + {}", marker)?;
@@ -169,12 +168,12 @@ impl Display for StructuralTypeDefinition {
                 Ok(())
             }
 
-            StructuralTypeDefinition::Union(types) => {
+            TypeDefinition::Union(types) => {
                 let is_level_zero = types.iter().all(|t| {
                     core::matches!(
                         t.definition().structural_definition,
-                        StructuralTypeDefinition::Literal(_)
-                            | StructuralTypeDefinition::Shared(_)
+                        TypeDefinition::Literal(_)
+                            | TypeDefinition::Shared(_)
                     )
                 });
                 let types_str: Vec<String> =
@@ -185,12 +184,12 @@ impl Display for StructuralTypeDefinition {
                     core::write!(f, "({})", types_str.join(" | "))
                 }
             }
-            StructuralTypeDefinition::Intersection(types) => {
+            TypeDefinition::Intersection(types) => {
                 let types_str: Vec<String> =
                     types.iter().map(|t| t.to_string()).collect();
                 core::write!(f, "({})", types_str.join(" & "))
             }
-            StructuralTypeDefinition::Callable(callable) => {
+            TypeDefinition::Callable(callable) => {
                 let mut params_code: Vec<String> = callable
                     .parameter_types
                     .iter()
@@ -232,16 +231,16 @@ impl Display for StructuralTypeDefinition {
     }
 }
 
-impl StructuralEq for StructuralTypeDefinition {
+impl StructuralEq for TypeDefinition {
     fn structural_eq(&self, other: &Self) -> bool {
         match (self, other) {
             (
-                StructuralTypeDefinition::Literal(a),
-                StructuralTypeDefinition::Literal(b),
+                TypeDefinition::Literal(a),
+                TypeDefinition::Literal(b),
             ) => a.structural_eq(b),
             (
-                StructuralTypeDefinition::Union(a),
-                StructuralTypeDefinition::Union(b),
+                TypeDefinition::Union(a),
+                TypeDefinition::Union(b),
             ) => {
                 if a.len() != b.len() {
                     return false;
@@ -258,14 +257,14 @@ impl StructuralEq for StructuralTypeDefinition {
     }
 }
 
-impl StructuralTypeDefinition {
+impl TypeDefinition {
     /// Calls the provided callback with a reference to the recursively collapsed inner [StructuralTypeDefinition] value
     pub fn with_collapsed_structural_type_definition<R>(
         &self,
-        f: impl FnOnce(&StructuralTypeDefinition) -> R,
+        f: impl FnOnce(&TypeDefinition) -> R,
     ) -> R {
         match self {
-            StructuralTypeDefinition::Shared(reference) =>
+            TypeDefinition::Shared(reference) =>
             // collapse shared container to inner Type
             {
                 reference.with_collapsed_type_value(|ty| {
@@ -281,12 +280,12 @@ impl StructuralTypeDefinition {
 
     /// Creates a new literal type.
     pub fn literal(literal_type: impl Into<LiteralTypeDefinition>) -> Self {
-        StructuralTypeDefinition::Literal(literal_type.into())
+        TypeDefinition::Literal(literal_type.into())
     }
 
     /// Creates a new list type.
     pub fn list(element_types: Vec<Type>) -> Self {
-        StructuralTypeDefinition::List(element_types)
+        TypeDefinition::List(element_types)
     }
 
     /// Creates a new union type.
@@ -295,7 +294,7 @@ impl StructuralTypeDefinition {
         T: Into<Type>,
     {
         let types = types.into_iter().map(|t| t.into()).collect();
-        StructuralTypeDefinition::Union(types)
+        TypeDefinition::Union(types)
     }
 
     /// Creates a new intersection type.
@@ -304,26 +303,26 @@ impl StructuralTypeDefinition {
         T: Into<Type>,
     {
         let types = types.into_iter().map(|t| t.into()).collect();
-        StructuralTypeDefinition::Intersection(types)
+        TypeDefinition::Intersection(types)
     }
 
     /// Creates a new shared type.
     pub fn shared(reference: SharedContainerContainingType) -> Self {
-        StructuralTypeDefinition::Shared(reference)
+        TypeDefinition::Shared(reference)
     }
 
     /// Creates a new callable type.
     pub fn callable(signature: CallableSignature) -> Self {
-        StructuralTypeDefinition::Callable(signature)
+        TypeDefinition::Callable(signature)
     }
 
     /// Creates a new type with impls.
     pub fn impl_type(ty: impl Into<Type>, impls: Vec<PointerAddress>) -> Self {
-        StructuralTypeDefinition::ImplType(Box::new(ty.into()), impls)
+        TypeDefinition::ImplType(Box::new(ty.into()), impls)
     }
 }
 
-impl StructuralTypeDefinition {
+impl TypeDefinition {
     /// Map a type definition (e.g. 42u8) to it's upper level base type (e.g. integer)
     /// integer/u8 -> integer
     /// integer -> integer
@@ -334,15 +333,15 @@ impl StructuralTypeDefinition {
         &self,
     ) -> Option<Rc<RefCell<SharedContainerContainingType>>> {
         Some(match &self {
-            StructuralTypeDefinition::Literal(value) => {
+            TypeDefinition::Literal(value) => {
                 get_core_lib_type_reference(
                     value.get_core_lib_type_pointer_id(),
                 )
             }
-            StructuralTypeDefinition::Union(_) => {
+            TypeDefinition::Union(_) => {
                 core::todo!("#322 handle union base type"); // generic type base type / type
             }
-            StructuralTypeDefinition::Shared(reference) => {
+            TypeDefinition::Shared(reference) => {
                 let type_ref = reference.borrow();
                 if let Ok(core_lib_id) =
                     CoreLibTypeId::try_from(&type_ref.pointer().address())
@@ -350,14 +349,14 @@ impl StructuralTypeDefinition {
                     match core_lib_id {
                         // for integer and decimal variants, return the base type
                         CoreLibTypeId::Integer(Some(_)) => {
-                            get_core_lib_type_reference(
-                                CoreLibTypeId::Integer(None),
-                            )
+                            get_core_lib_type_reference(CoreLibTypeId::Integer(
+                                None,
+                            ))
                         }
                         CoreLibTypeId::Decimal(Some(_)) => {
-                            get_core_lib_type_reference(
-                                CoreLibTypeId::Decimal(None),
-                            )
+                            get_core_lib_type_reference(CoreLibTypeId::Decimal(
+                                None,
+                            ))
                         }
                         // otherwise, reference is already base type
                         _ => reference.clone(),
@@ -376,18 +375,18 @@ impl StructuralTypeDefinition {
     }
 }
 
-impl From<StructuralTypeDefinition> for TypeDefinition {
-    fn from(structural_definition: StructuralTypeDefinition) -> Self {
-        TypeDefinition {
+impl From<TypeDefinition> for TypeDefinitionWithMetadata {
+    fn from(structural_definition: TypeDefinition) -> Self {
+        TypeDefinitionWithMetadata {
             structural_definition,
             metadata: TypeMetadata::default(),
         }
     }
 }
 
-impl From<LiteralTypeDefinition> for TypeDefinition {
+impl From<LiteralTypeDefinition> for TypeDefinitionWithMetadata {
     fn from(literal_definition: LiteralTypeDefinition) -> Self {
-        TypeDefinition {
+        TypeDefinitionWithMetadata {
             structural_definition: literal_definition.into(),
             metadata: TypeMetadata::default(),
         }

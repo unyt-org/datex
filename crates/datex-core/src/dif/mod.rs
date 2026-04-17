@@ -39,7 +39,7 @@ mod tests {
         libs::core::CoreLibTypeId,
         prelude::*,
         shared_values::pointer_address::PointerAddress,
-        types::structural_type_definition::StructuralTypeDefinition,
+        types::structural_type_definition::TypeDefinition,
         values::{
             core_value::CoreValue,
             core_values::integer::typed_integer::IntegerTypeVariant,
@@ -145,7 +145,7 @@ mod tests {
     fn dif_value_with_type() {
         let val = ValueContainer::Local(Value {
             inner: CoreValue::Null,
-            actual_type: Box::new(StructuralTypeDefinition::ImplType(
+            actual_type: Box::new(TypeDefinition::ImplType(
                 Box::new(Type::integer()),
                 vec![PointerAddress::owned([0, 0, 0, 0, 0])],
             )),
