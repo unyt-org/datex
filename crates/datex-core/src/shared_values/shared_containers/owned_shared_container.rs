@@ -239,7 +239,7 @@ impl OwnedSharedContainer {
                 BaseSharedValueContainer {
                     value_container: ValueContainer::Local(Value {
                         inner: CoreValue::Null,
-                        actual_type: Type::from(TypeDefinition::Unit),
+                        custom_type: None,
                     }),
                     allowed_type: Type::from(TypeDefinition::Unit),
                     observers: Default::default(),

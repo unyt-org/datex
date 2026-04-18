@@ -76,19 +76,19 @@ impl DIFValueRepresentation {
         Ok(match self {
             DIFValueRepresentation::Null => Value::null(),
             DIFValueRepresentation::String(str) => Value {
-                actual_type: Box::new(get_core_lib_type_definition(
+                custom_type: Box::new(get_core_lib_type_definition(
                     CoreLibTypeId::Text,
                 )),
                 inner: CoreValue::Text(str.clone().into()),
             },
             DIFValueRepresentation::Boolean(b) => Value {
-                actual_type: Box::new(get_core_lib_type_definition(
+                custom_type: Box::new(get_core_lib_type_definition(
                     CoreLibTypeId::Boolean,
                 )),
                 inner: CoreValue::Boolean((*b).into()),
             },
             DIFValueRepresentation::Number(n) => Value {
-                actual_type: Box::new(get_core_lib_type_definition(
+                custom_type: Box::new(get_core_lib_type_definition(
                     CoreLibTypeId::Decimal(Some(DecimalTypeVariant::F64)),
                 )),
                 inner: CoreValue::TypedDecimal(TypedDecimal::F64(
@@ -96,7 +96,7 @@ impl DIFValueRepresentation {
                 )),
             },
             DIFValueRepresentation::Array(array) => Value {
-                actual_type: Box::new(get_core_lib_type_definition(
+                custom_type: Box::new(get_core_lib_type_definition(
                     CoreLibTypeId::List,
                 )),
                 inner: CoreValue::List(
@@ -113,7 +113,7 @@ impl DIFValueRepresentation {
                     map.push((k, v.to_value_container(memory)?));
                 }
                 Value {
-                    actual_type: Box::new(get_core_lib_type_definition(
+                    custom_type: Box::new(get_core_lib_type_definition(
                         CoreLibTypeId::Map,
                     )),
                     inner: CoreValue::Map(map.into()),
@@ -128,7 +128,7 @@ impl DIFValueRepresentation {
                     );
                 }
                 Value {
-                    actual_type: Box::new(get_core_lib_type_definition(
+                    custom_type: Box::new(get_core_lib_type_definition(
                         CoreLibTypeId::Map,
                     )),
                     inner: CoreValue::Map(core_map.into()),
@@ -220,7 +220,7 @@ impl DIFValueRepresentation {
         let ty = type_definition.to_type_definition(memory);
 
         Ok(Value {
-            actual_type: Box::new(ty),
+            custom_type: Box::new(ty),
             ..val
         })
     }

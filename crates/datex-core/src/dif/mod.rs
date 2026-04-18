@@ -145,7 +145,7 @@ mod tests {
     fn dif_value_with_type() {
         let val = ValueContainer::Local(Value {
             inner: CoreValue::Null,
-            actual_type: Box::new(TypeDefinition::ImplType(
+            custom_type: Box::new(TypeDefinition::ImplType(
                 Box::new(Type::integer()),
                 vec![PointerAddress::owned([0, 0, 0, 0, 0])],
             )),

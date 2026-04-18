@@ -9,7 +9,7 @@ use crate::{
         pointer_address::PointerAddress, shared_containers::SharedContainer,
     },
     types::{
-        nominal_type_definition::NominalTypeDefinition, r#type::Type,
+        nominal_type_definition::NominalTypeDefinition,
         type_match::TypeMatch,
     },
     values::core_value::CoreValue,
@@ -31,7 +31,7 @@ impl SharedContainerContainingNominalType {
 
     pub fn new_from_definition(definition: NominalTypeDefinition, address_provider: &mut SelfOwnedPointerAddressProvider) -> SharedContainerContainingNominalType {
         SharedContainerContainingNominalType(SharedContainer::new_owned_with_inferred_allowed_type(
-            CoreValue::NominalType(definition).into(),
+            CoreValue::NominalType(definition),
             SharedContainerMutability::Immutable,
             address_provider
         ))

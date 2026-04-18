@@ -21,12 +21,14 @@ use core::{
     result::Result,
 };
 use log::error;
+use crate::runtime::memory::Memory;
 use crate::types::r#type::Type;
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub struct Value {
     pub inner: CoreValue,
-    pub actual_type: Type,
+    // actual type of the value - if [None], use default type for given value
+    pub custom_type: Option<Type>,
 }
 
 /// Two values are structurally equal, if their inner values are structurally equal, regardless
@@ -77,10 +79,9 @@ impl Apply for Value {
 impl<T: Into<CoreValue>> From<T> for Value {
     fn from(inner: T) -> Self {
         let inner = inner.into();
-        let new_type = inner.default_type_definition();
         Value {
             inner,
-            actual_type: Box::new(new_type),
+            custom_type: None,
         }
     }
 }
@@ -102,7 +103,7 @@ impl Value {
                 signature: signature.clone(),
                 body,
             }),
-            actual_type: Box::new(TypeDefinition::callable(signature)),
+            custom_type: Some(Type::from(TypeDefinition::callable(signature))),
         }
     }
 
@@ -130,9 +131,6 @@ impl Value {
     pub fn is_list(&self) -> bool {
         core::matches!(self.inner, CoreValue::List(_))
     }
-    pub fn actual_type(&self) -> &TypeDefinition {
-        self.actual_type.as_ref()
-    }
 
     /// Returns true if the current Value's actual type is the same as its default type
     /// E.g. if the type is integer for an Integer value, or integer/u8 for a typed integer value
@@ -143,18 +141,21 @@ impl Value {
     /// integer variants (despite bigint) can be distinguished based on the instruction code, but for text variants,
     /// the variant must be included in the compiler output - so we need to handle theses cases as well.
     /// Generally speaking, all variants except the few integer variants should never be considered default types.
-    pub fn has_default_type(&self) -> bool {
-        if let TypeDefinition::Shared(type_reference) =
-            self.actual_type.as_ref()
-            && let Ok(actual_type_core_ptr_id) = CoreLibTypeId::try_from(
-                &type_reference.borrow().pointer().address(),
-            )
-        {
-            // actual_type has core type pointer id which is equal to the default core type pointer id of self.inner
-            let self_default_type_ptr_id = CoreLibTypeId::from(&self.inner);
-            self_default_type_ptr_id == actual_type_core_ptr_id
-        } else {
-            false
+    pub fn has_default_type(&self, memory: &mut Memory) -> bool {
+        match &self.custom_type {
+            None => true,
+            Some(Type::Nominal(nominal_type)) => {
+                nominal_type == &self.default_nominal_type(memory)
+            },
+            Some(_) => false,
+        }
+    }
+    
+    /// Returns the actual type, generating the default type from the provided memory if no custom typoe is set
+    pub fn actual_type(&self, memory: &mut Memory) -> Type {
+        match &self.custom_type {
+            Some(actual_type) => actual_type.clone(),
+            None => Type::Nominal(self.default_nominal_type(memory))
         }
     }
 
@@ -248,7 +249,7 @@ impl Value {
                 "Cannot delete property on text".to_string(),
             )),
             _ => {
-                // If the value is not an map, we cannot delete a property
+                // If the value is not a map, we cannot delete a property
                 Err(AccessError::InvalidOperation(
                     "Cannot delete property".to_string(),
                 ))
@@ -297,7 +298,7 @@ impl Value {
                 }
             }
             _ => {
-                // If the value is not an map, we cannot set a property
+                // If the value is not a map, we cannot set a property
                 return Err(AccessError::InvalidOperation(format!(
                     "Cannot set property '{}' on non-map value: {:?}",
                     key, self
@@ -395,7 +396,7 @@ mod tests {
     use super::*;
     use crate::{
         assert_structural_eq, datex_list,
-        libs::core::{core_lib_type, type_id::CoreLibBaseTypeId},
+        libs::core::{type_id::CoreLibBaseTypeId},
         prelude::*,
         values::core_values::{
             endpoint::Endpoint,
@@ -556,22 +557,32 @@ mod tests {
 
     #[test]
     fn default_types() {
+        let memory = &mut Memory::new();
         let val = Value::from(Integer::from(42));
-        assert!(val.has_default_type());
+        assert!(val.has_default_type(memory));
 
         let val = Value::from(42i8);
-        assert!(val.has_default_type());
+        assert!(val.has_default_type(memory));
 
         let val = Value {
             inner: CoreValue::Integer(Integer::from(42)),
-            actual_type: Box::new(TypeDefinition::ImplType(
-                Box::new(core_lib_type(CoreLibTypeId::Base(
-                    CoreLibBaseTypeId::Integer,
-                ))),
-                vec![],
-            )),
+            custom_type: Some(memory.get_core_type(CoreLibTypeId::Base(
+                CoreLibBaseTypeId::Integer,
+            )))
         };
 
-        assert!(!val.has_default_type());
+        assert!(val.has_default_type(memory));
+
+        let val = Value {
+            inner: CoreValue::Integer(Integer::from(42)),
+            custom_type: Some(Type::Alias(TypeDefinition::ImplType(
+                Box::new(memory.get_core_type(CoreLibTypeId::Base(
+                    CoreLibBaseTypeId::Integer,
+                ))),
+                vec![]
+            ).into()))
+        };
+
+        assert!(!val.has_default_type(memory));
     }
 }

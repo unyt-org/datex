@@ -55,6 +55,7 @@ use crate::ast::expressions::ValueAccessType;
 use crate::shared_values::shared_containers::{ReferenceMutability, SharedContainerOwnership};
 use crate::types::r#type::{Type};
 use crate::types::type_definition_with_metadata::{LocalMutability, TypeMetadata};
+use crate::types::type_match::TypeMatch;
 
 pub mod error;
 pub mod options;
@@ -584,7 +585,7 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
         statements: &mut Statements,
         _: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
-        let mut inferred_type = Type::unit();
+        let mut inferred_type = Type::from(TypeDefinition::Unit);
 
         // Infer type for each statement in order
         for statement in statements.statements.iter_mut() {
@@ -594,7 +595,7 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
         // If the statements block ends with a terminator (semicolon, etc.),
         // it returns the unit type, otherwise, it returns the last inferred type.
         if statements.is_terminated {
-            inferred_type = Type::unit();
+            inferred_type = Type::from(TypeDefinition::Unit);
         }
 
         Ok(VisitAction::SetTypeSkipChildren(inferred_type))
@@ -605,7 +606,7 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
         var_access: &mut VariableAccess,
         _: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
-        mark_type(self.variable_type(var_access.id).unwrap_or(Type::never()))
+        mark_type(self.variable_type(var_access.id).unwrap_or(Type::from(TypeDefinition::Never)))
     }
 
     fn visit_property_assignment(
@@ -644,11 +645,11 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
 
         let assigned_type =
             self.infer_expression(&mut variable_assignment.expression)?;
-        let annotated_type = self.variable_type(id).unwrap_or(Type::never());
+        let annotated_type = self.variable_type(id).unwrap_or(Type::from(TypeDefinition::Never));
 
         match variable_assignment.operator {
             None => {
-                if !assigned_type.matches_type(&annotated_type) {
+                if !assigned_type.matches(&annotated_type) {
                     return Err(SpannedTypeError {
                         error: TypeError::AssignmentTypeMismatch {
                             annotated_type,
@@ -1239,9 +1240,6 @@ mod tests {
             scope_stack::PrecompilerScopeStack,
         },
         global::operators::{binary::ArithmeticOperator, BinaryOperator},
-        libs::core::{
-            core_lib_type, get_core_lib_type_reference, CoreLibTypeId,
-        },
         parser::Parser,
         prelude::*
         ,
@@ -1253,7 +1251,6 @@ mod tests {
         },
         types::{
             literal_type_definition::LiteralTypeDefinition,
-            type_definition::TypeDefinition,
         },
         values::{
             core_value::CoreValue,

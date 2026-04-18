@@ -49,7 +49,9 @@ use crate::{
     },
     types::type_definition_with_metadata::TypeMetadata,
 };
+use crate::core_compiler::type_compiler::append_type;
 use crate::libs::core::type_id::CoreLibTypeId;
+use crate::types::r#type::Type;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum SharedValueCompilationError {
@@ -231,8 +233,8 @@ pub fn append_value(
     value: &Value,
 ) -> Result<(), SharedValueCompilationError> {
     // append non-default type information
-    if !value.has_default_type() {
-        append_type_cast(context, &value.actual_type)?;
+    if let Some(custom_type) = &value.custom_type {
+        append_type_cast(context, custom_type)?;
     }
     Ok(match &value.inner {
         CoreValue::Type(_ty) => {
@@ -346,26 +348,15 @@ pub fn append_core_type_cast(
 
 pub fn append_type_cast(
     context: &mut CoreCompilationContext,
-    ty: &TypeDefinition,
+    ty: &Type,
 ) -> Result<(), SharedValueCompilationError> {
     append_regular_instruction(
         context.cursor_mut(),
         RegularInstruction::TypedValue,
     );
 
-    // append type instruction
-    let instruction_code = TypeInstructionCode::from(ty);
-    append_type_space_instruction_code_new(
-        context.cursor_mut(),
-        instruction_code,
-    );
-
-    // append type information for non-core types
-    let metadata = TypeMetadataBin::from(&TypeMetadata::default());
-    append_type_metadata(context.cursor_mut(), metadata);
-
-    // append type definition
-    append_structural_type_definition(context, ty);
+    // append type
+    append_type(context, ty);
 
     Ok(())
 }

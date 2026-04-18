@@ -24,6 +24,7 @@ use alloc::format;
 use crate::libs::core::core_lib_id::CoreLibId;
 use crate::shared_values::shared_containers::SharedContainer;
 use crate::types::r#type::Type;
+use crate::types::type_definition::TypeDefinition;
 
 impl From<&ValueContainer> for DatexExpressionData {
     /// Converts a ValueContainer into a DatexExpression AST.
@@ -168,9 +169,11 @@ fn value_to_datex_expression(value: &Value) -> DatexExpressionData {
     }
 }
 
-fn type_to_type_expression(type_value: &Type) -> TypeExpression {
-    // TODO: handle nominal types
-    type_definition_to_type_expression(&type_value.definition())
+fn type_to_type_expression(ty: &Type) -> TypeExpression {
+    match ty {
+        Type::Nominal(container) => todo!(),
+        Type::Alias(definition) => type_definition_to_type_expression(&ty.definition())
+    }
 }
 
 fn type_definition_to_type_expression(type_value: &TypeDefinition) -> TypeExpression {

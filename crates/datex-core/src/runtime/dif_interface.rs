@@ -15,7 +15,7 @@ use crate::{
         pointer_address::{PointerAddress, SelfOwnedPointerAddress},
         shared_containers::{
             OwnedSharedContainer, ReferencedSharedContainer,
-            SelfOwnedSharedContainer, SharedContainer,
+            SelfOwnedSharedContainer,
             SharedContainerMutability,
             base_shared_value_container::BaseSharedValueContainer,
             observers::{ObserveOptions, Observer, TransceiverId},
@@ -160,9 +160,9 @@ impl DIFInterface for RuntimeInternal {
         }
 
         let address = self
-            .memory
+            .pointer_address_provider
             .borrow_mut()
-            .get_new_endpoint_owned_pointer_address();
+            .get_new_self_owned_address();
 
         let base = if let Some(allowed_type) = allowed_type {
             BaseSharedValueContainer::try_new(

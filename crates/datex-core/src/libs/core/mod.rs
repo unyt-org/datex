@@ -46,6 +46,7 @@ use log::info;
 use strum::IntoEnumIterator;
 use crate::libs::library::Library;
 use crate::runtime::pointer_address_provider::SelfOwnedPointerAddressProvider;
+use crate::types::shared_container_containing_nominal_type::SharedContainerContainingNominalType;
 
 pub struct CoreLibrary;
 
@@ -253,13 +254,21 @@ impl Memory {
             .expect("core reference not found in memory")
     }
 
-    /// Helper function to get a core type value directly from memory
-    pub fn get_core_type_reference(&self, id: CoreLibTypeId) -> SharedContainerContainingType {
+    /// Helper function to get a [SharedContainerContainingNominalType] directly from memory
+    /// by [CoreLibTypeId]
+    pub fn get_core_type_reference(&self, id: CoreLibTypeId) -> SharedContainerContainingNominalType {
         unsafe {
-            SharedContainerContainingType::new_unchecked(
+            SharedContainerContainingNominalType::new_unchecked(
                 SharedContainer::Referenced(self.get_core_reference(CoreLibId::Type(id)).clone())
             )
         }
+    }
+
+    /// Helper function to get a [Type::Nominal] directly from memory by [CoreLibTypeId]
+    pub fn get_core_type(&self, id: CoreLibTypeId) -> Type {
+        Type::Nominal(
+            self.get_core_type_reference(id)
+        )
     }
 }
 

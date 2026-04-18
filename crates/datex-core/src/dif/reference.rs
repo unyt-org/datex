@@ -6,11 +6,12 @@ use crate::{
     },
 };
 use serde::{Deserialize, Serialize};
+use crate::dif::r#type::DIFType;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct DIFReference {
     pub value: DIFValueContainer,
-    pub allowed_type: DIFTypeDefinition,
+    pub allowed_type: DIFType,
     #[serde(rename = "mut")]
     #[serde(with = "mutability_as_int")]
     pub mutability: SharedContainerMutability,
@@ -21,8 +22,8 @@ impl DIFReference {
         let value = DIFValueContainer::from_value_container(
             &reference.value_container(),
         );
-        let allowed_type = DIFTypeDefinition::from_structural_type_definition(
-            &reference.allowed_type(),
+        let allowed_type = DIFType::from_type(
+            &*reference.allowed_type(),
         );
         DIFReference {
             value,

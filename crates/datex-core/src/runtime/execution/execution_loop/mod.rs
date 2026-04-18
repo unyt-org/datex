@@ -43,7 +43,7 @@ use crate::{
     }, shared_values::{
         errors::AssignmentError, pointer_address::PointerAddress, shared_containers::ReferenceMutability
     }, type_inference::error::TypeError, types::{
-        error::IllegalTypeError, literal_type_definition::LiteralTypeDefinition, type_definition::TypeDefinition
+        literal_type_definition::LiteralTypeDefinition
     }, values::{
         core_value::CoreValue,
         core_values::{
@@ -850,7 +850,7 @@ pub fn inner_execution_loop(
 
                                     match &mut value_container {
                                         ValueContainer::Local(value) => {
-                                            value.actual_type = ty;
+                                            value.custom_type = Some(ty);
                                         }
                                         _ => panic!(
                                             "Expected ValueContainer::Value for type casting"
@@ -869,7 +869,7 @@ pub fn inner_execution_loop(
                                     RuntimeValue::ValueContainer(
                                         ValueContainer::Local(Value {
                                             inner: CoreValue::Type(ty),
-                                            actual_type: Type::from(TypeDefinition::Unknown), // TODO #648: type for type
+                                            custom_type: None, // TODO #648: type for type
                                         }),
                                     )
                                     .into()
@@ -1239,15 +1239,21 @@ pub fn inner_execution_loop(
                                     // get referenced pointer from address
                                     let pointer_address = ExternalPointerAddress::remote_for_endpoint(&state.caller_metadata.endpoint, shared_ref.address.bytes);
 
-                                    let referenced_container = yield_unwrap!(ReferencedSharedContainer::try_new_external(
+                                    if state.runtime_internal.memory.borrow().has_reference(PointerAddress::External(pointer_address.clone())) {
+                                        return yield Err(ExecutionError::Unknown); // TODO: error
+                                    }
+
+                                    // Note: safe because we checked if the address already exists in memory before
+                                    let referenced_container = yield_unwrap!(unsafe {ReferencedSharedContainer::try_new_external(
                                         yield_unwrap!(BaseSharedValueContainer::try_new(
                                             value,
-                                            TypeDefinition::Unknown,  // TODO: allowed type
+                                            Type::from(TypeDefinition::Unknown),  // TODO: allowed type
                                             shared_ref.container_mutability,
                                         )),
                                         pointer_address,
-                                        shared_ref.ref_mutability
-                                    ).map_err(|err| ExecutionError::InvalidSharedValueType));
+                                        shared_ref.ref_mutability,
+                                        &mut *state.runtime_internal.memory.borrow_mut(),
+                                    )}.map_err(|err| ExecutionError::InvalidSharedValueType));
                                     let container = SharedContainer::Referenced(referenced_container);
                                     CollectedExecutionResult::Value(Some(ValueContainer::Shared(container).into()))
                                 },

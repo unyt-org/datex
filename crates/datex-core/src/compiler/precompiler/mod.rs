@@ -45,6 +45,7 @@ use scope_stack::PrecompilerScopeStack;
 use crate::ast::expressions::{CloneExpression, GetSharedRef, Unbox, UnboxAssignment, ValueAccessType};
 use crate::libs::core::core_lib_id::CoreLibId;
 use crate::libs::core::type_id::CoreLibTypeId;
+use crate::runtime::{Runtime, RuntimeInternal};
 use crate::shared_values::pointer_address::PointerAddress;
 use crate::shared_values::shared_containers::ReferenceMutability;
 use crate::types::nominal_type_definition::NominalTypeDefinition;
@@ -56,6 +57,7 @@ pub struct Precompiler<'a> {
     scope_stack: &'a mut PrecompilerScopeStack,
     collected_errors: Option<DetailedCompilerErrors>,
     is_first_level_expression: bool,
+    runtime: Runtime,
 }
 
 /// Precompile the AST by resolving variable references and collecting metadata.
@@ -64,6 +66,7 @@ pub fn precompile_ast_simple_error(
     ast: DatexExpression,
     scope_stack: &mut PrecompilerScopeStack,
     ast_metadata: Rc<RefCell<AstMetadata>>,
+    runtime: Runtime,
 ) -> Result<RichAst, SpannedCompilerError> {
     precompile_ast(
         ast,
@@ -72,6 +75,7 @@ pub fn precompile_ast_simple_error(
         PrecompilerOptions {
             detailed_errors: false,
         },
+        runtime,
     )
     .map_err(|e| {
         match e {
@@ -89,6 +93,7 @@ pub fn precompile_ast_detailed_errors(
     ast: DatexExpression,
     scope_stack: &mut PrecompilerScopeStack,
     ast_metadata: Rc<RefCell<AstMetadata>>,
+    runtime: Runtime,
 ) -> Result<RichAst, DetailedCompilerErrorsWithRichAst> {
     precompile_ast(
         ast,
@@ -97,6 +102,7 @@ pub fn precompile_ast_detailed_errors(
         PrecompilerOptions {
             detailed_errors: true,
         },
+        runtime,
     )
     .map_err(|e| {
         match e {
@@ -114,20 +120,23 @@ pub fn precompile_ast(
     scope_stack: &mut PrecompilerScopeStack,
     ast_metadata: Rc<RefCell<AstMetadata>>,
     options: PrecompilerOptions,
+    runtime: Runtime,
 ) -> Result<RichAst, SimpleCompilerErrorOrDetailedCompilerErrorWithRichAst> {
-    Precompiler::new(scope_stack, ast_metadata).precompile(ast, options)
+    Precompiler::new(scope_stack, ast_metadata, runtime).precompile(ast, options)
 }
 
 impl<'a> Precompiler<'a> {
     pub fn new(
         scope_stack: &'a mut PrecompilerScopeStack,
         ast_metadata: Rc<RefCell<AstMetadata>>,
+        runtime: Runtime,
     ) -> Self {
         Self {
             ast_metadata,
             scope_stack,
             collected_errors: None,
             is_first_level_expression: true,
+            runtime,
         }
     }
 
@@ -275,10 +284,13 @@ impl<'a> Precompiler<'a> {
 
         let type_def = match data.kind {
             TypeDeclarationKind::Nominal => {
-                Type::nominal(NominalTypeDefinition::new_base(
-                    TypeDefinition::Unknown.into(),
-                    data.name.clone()
-                ))
+                Type::nominal(
+                    NominalTypeDefinition::new_base(
+                        TypeDefinition::Unknown.into(),
+                        data.name.clone()
+                    ),
+                    &mut *self.runtime.pointer_address_provider().borrow_mut()
+                )
             },
             TypeDeclarationKind::Alias => {
                 Type::Alias(TypeDefinition::Unknown.into())
@@ -752,6 +764,7 @@ mod tests {
     use core::assert_matches;
     use crate::ast::expressions::CreateShared;
     use crate::libs::core::type_id::{CoreLibBaseTypeId, CoreLibVariantTypeId};
+    use crate::runtime::{RuntimeConfig, RuntimeRunner};
     use crate::types::type_definition_with_metadata::LocalReferenceMutability;
     use crate::values::core_values::endpoint::Endpoint;
     use crate::values::core_values::integer::typed_integer::IntegerTypeVariant;
@@ -761,9 +774,10 @@ mod tests {
         options: PrecompilerOptions,
     ) -> Result<RichAst, SimpleCompilerErrorOrDetailedCompilerErrorWithRichAst>
     {
+        let runtime = RuntimeRunner::new(RuntimeConfig::default()).runtime;
         let mut scope_stack = PrecompilerScopeStack::default();
         let ast_metadata = Rc::new(RefCell::new(AstMetadata::default()));
-        Precompiler::new(&mut scope_stack, ast_metadata)
+        Precompiler::new(&mut scope_stack, ast_metadata, runtime)
             .precompile(ast, options)
     }
 
@@ -837,10 +851,11 @@ mod tests {
     fn parse_and_precompile_spanned_result(
         src: &str,
     ) -> Result<RichAst, SpannedCompilerError> {
+        let runtime = RuntimeRunner::new(RuntimeConfig::default()).runtime;
         let mut scope_stack = PrecompilerScopeStack::default();
         let ast_metadata = Rc::new(RefCell::new(AstMetadata::default()));
         let ast = Parser::parse_with_default_options(src)?;
-        precompile_ast_simple_error(ast, &mut scope_stack, ast_metadata)
+        precompile_ast_simple_error(ast, &mut scope_stack, ast_metadata, runtime)
     }
 
     fn parse_and_precompile(src: &str) -> Result<RichAst, CompilerError> {

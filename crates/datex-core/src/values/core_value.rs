@@ -1,6 +1,5 @@
 use crate::{
     libs::core::{
-        core_lib_type,
         type_id::{CoreLibBaseTypeId, CoreLibTypeId, CoreLibVariantTypeId},
     },
     prelude::*,
@@ -40,6 +39,8 @@ use core::{
     fmt::{Display, Formatter},
     ops::{Add, AddAssign, Neg, Not, Sub},
 };
+use crate::runtime::memory::Memory;
+use crate::types::shared_container_containing_nominal_type::SharedContainerContainingNominalType;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, FromCoreValue)]
 pub enum CoreValue {
@@ -261,6 +262,9 @@ impl From<&CoreValue> for CoreLibTypeId {
             }
             CoreValue::Range(_) => {
                 CoreLibTypeId::Base(CoreLibBaseTypeId::Range)
+            },
+            CoreValue::NominalType(nominal_type) => {
+                CoreLibTypeId::Base(CoreLibBaseTypeId::Never) // TODO: what is the type of nominal type? do we even need to handle this?
             }
         }
     }
@@ -284,8 +288,8 @@ impl CoreValue {
     /// This method uses the CoreLibPointerId to retrieve the corresponding
     /// type reference from the core library.
     /// For example, a CoreValue::TypedInteger(i32) will return the type ref integer/i32
-    pub fn default_type_definition(&self) -> TypeDefinition {
-        TypeDefinition::Shared(core_lib_type(CoreLibTypeId::from(self)))
+    pub fn default_nominal_type(&self, memory: &mut Memory) -> SharedContainerContainingNominalType {
+        memory.get_core_type_reference(CoreLibTypeId::from(self))
     }
 
     // TODO #313: allow cast of any CoreValue to Type, as structural type can always be constructed?
@@ -798,7 +802,8 @@ impl Display for CoreValue {
             CoreValue::Integer(integer) => core::write!(f, "{integer}"),
             CoreValue::Decimal(decimal) => core::write!(f, "{decimal}"),
             CoreValue::List(list) => core::write!(f, "{list}"),
-            CoreValue::Callable(_callable) => core::write!(f, "[[ callable ]]"), // TODO #605
+            CoreValue::Callable(_callable) => core::write!(f, "[[ callable ]]"),
+            CoreValue::NominalType(container) => write!(f, "{container}"),
         }
     }
 }
@@ -815,7 +820,7 @@ mod tests {
     #[test]
     fn type_construct() {
         let a = CoreValue::from(42i32);
-        assert_eq!(a.default_type_definition().to_string(), "integer/i32");
+        assert_eq!(a.default_nominal_type(&mut Memory::new()).to_string(), "integer/i32");
     }
 
     #[test]

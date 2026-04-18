@@ -372,7 +372,7 @@ impl ValueContainer {
     pub fn actual_container_type(&self) -> Type {
         match self {
             ValueContainer::Local(value) => {
-                Type::new(*value.actual_type.clone(), TypeMetadata::default())
+                Type::new(*value.custom_type.clone(), TypeMetadata::default())
             }
             ValueContainer::Shared(shared) => {
                 let inner_type =
@@ -402,7 +402,7 @@ impl ValueContainer {
     /// For shared values, this is the defined allowed type
     pub fn allowed_type(&self) -> Type {
         match self {
-            ValueContainer::Local(value) => *value.actual_type.clone(),
+            ValueContainer::Local(value) => *value.custom_type.clone(),
             ValueContainer::Shared(shared) => shared.allowed_type(),
         }
     }

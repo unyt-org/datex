@@ -29,6 +29,7 @@ use self::memory::Memory;
 pub use config::*;
 pub use internal::*;
 pub use runner::*;
+use crate::runtime::pointer_address_provider::SelfOwnedPointerAddressProvider;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -73,6 +74,10 @@ impl Runtime {
 
     pub fn memory(&self) -> &RefCell<Memory> {
         &self.internal.memory
+    }
+
+    pub fn pointer_address_provider(&self) -> &RefCell<SelfOwnedPointerAddressProvider> {
+        &self.internal.pointer_address_provider
     }
 
     #[cfg(feature = "compiler")]

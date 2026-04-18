@@ -268,7 +268,7 @@ impl DIFValue {
 
         DIFValue {
             value: dif_core_value,
-            ty: get_type_if_non_default(&value.actual_type, is_empty_map),
+            ty: get_type_if_non_default(&value.custom_type, is_empty_map),
         }
     }
 }
