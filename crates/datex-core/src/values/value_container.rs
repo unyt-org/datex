@@ -9,9 +9,9 @@ use crate::{
         deserializer::{DatexDeserializer, from_value_container},
         error::DeserializationError,
     },
-    shared_values::observers::TransceiverId,
+    shared_values::shared_containers::observers::TransceiverId,
     traits::{apply::Apply, value_eq::ValueEq},
-    types::structural_type_definition::TypeDefinition,
+    types::type_definition::TypeDefinition,
     values::core_value::CoreValue,
 };
 
@@ -19,7 +19,7 @@ use crate::{
     dif::update::DIFUpdateData,
     serde::{error::SerializationError, serializer::to_value_container},
     shared_values::{errors::AccessError, shared_containers::SharedContainer},
-    types::{r#type::Type, type_definition::TypeMetadata},
+    types::{r#type::Type, type_definition_with_metadata::TypeMetadata},
 };
 use core::{
     fmt::Display,
@@ -400,7 +400,7 @@ impl ValueContainer {
     /// Returns the allowed type of the value container
     /// For local values, this is the same as the actual type.
     /// For shared values, this is the defined allowed type
-    pub fn allowed_type(&self) -> TypeDefinition {
+    pub fn allowed_type(&self) -> Type {
         match self {
             ValueContainer::Local(value) => *value.actual_type.clone(),
             ValueContainer::Shared(shared) => shared.allowed_type(),

@@ -50,6 +50,7 @@ use alloc::rc::Rc;
 use core::{cell::RefCell, pin::Pin, slice};
 use log::{debug, error, info};
 use crate::runtime::pointer_address_provider::SelfOwnedPointerAddressProvider;
+use crate::shared_values::pointer_address::PointerAddress;
 
 #[derive(Debug)]
 pub struct RuntimeInternal {
@@ -535,6 +536,7 @@ impl RuntimeInternal {
         self: Rc<RuntimeInternal>,
         from_endpoint: &Endpoint,
         pointer_mapping: Vec<(RawLocalPointerAddress, RawLocalPointerAddress)>,
+        memory: &mut Memory,
     ) -> Result<Vec<ValueContainer>, ExecutionError> {
         let mut pointer_borrow = self.moving_pointers.borrow_mut();
         let moving_pointers = pointer_borrow
@@ -555,7 +557,18 @@ impl RuntimeInternal {
                     .ok_or(ExecutionError::UnauthorizedMove)?;
 
                 let value = shared_container.value_container().clone();
-                shared_container.move_to_external(new_address);
+
+                // make sure external pointer does not already exist in memory
+                if memory.has_reference(&PointerAddress::External(new_address.clone())) {
+                    return Err(ExecutionError::InvalidMove);
+                }
+                else {
+                    // Note: safe because we checked before if address is already in memory
+                    unsafe {
+                        shared_container.move_to_external(new_address, memory);
+                    }
+                }
+
                 Ok(value)
             })
             .collect::<Result<Vec<_>, ExecutionError>>()?;

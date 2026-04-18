@@ -9,11 +9,12 @@ mod self_owned_shared_container;
 mod shared_container_inner;
 mod shared_container_mutability;
 pub mod shared_type_container;
+pub mod mutations;
 
 use crate::{
     shared_values::{
         pointer_address::{
-            ExternalPointerAddress, PointerAddress, SelfOwnedPointerAddress,
+            PointerAddress, SelfOwnedPointerAddress,
         },
         shared_containers::{
             base_shared_value_container::BaseSharedValueContainer,
@@ -23,8 +24,8 @@ use crate::{
     },
     traits::{
         identity::Identity, structural_eq::StructuralEq, value_eq::ValueEq,
-    },
-    types::structural_type_definition::TypeDefinition,
+    }
+    ,
     values::{value::Value, value_container::ValueContainer},
 };
 use alloc::rc::Rc;
@@ -41,6 +42,7 @@ pub use self_owned_shared_container::*;
 pub use shared_container_inner::*;
 pub use shared_container_mutability::*;
 use crate::runtime::pointer_address_provider::SelfOwnedPointerAddressProvider;
+use crate::types::r#type::Type;
 
 /// Top-level wrapper for any owned or referenced shared container,
 /// which can either be an owned shared container or a reference to a shared container.
@@ -141,7 +143,7 @@ impl SharedContainer {
 
     /// Sets the currently assigned [ValueContainer] of the shared container to a new value container.
     pub fn try_set_value_container(
-        &mut self,
+        &self,
         new_value_container: ValueContainer,
     ) -> Result<(), ()> {
         self.base_shared_container_mut()
@@ -158,8 +160,8 @@ impl SharedContainer {
         }
     }
 
-    /// Gets a [Ref] to the currently assigned allowed [TypeDefinition] of the shared container (not resolved recursively)
-    pub fn allowed_type(&self) -> Ref<TypeDefinition> {
+    /// Gets a [Ref] to the currently assigned allowed [Type] of the shared container (not resolved recursively)
+    pub fn allowed_type(&self) -> Ref<Type> {
         match self {
             SharedContainer::Owned(owned) => owned.allowed_type(),
             SharedContainer::Referenced(referenced) => {

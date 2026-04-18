@@ -11,7 +11,7 @@ use crate::global::protocol_structures::instructions::NextExpectedInstructions;
 use crate::global::type_instruction_codes::TypeInstructionCode;
 use crate::shared_values::pointer_address::PointerAddress;
 use crate::prelude::*;
-use crate::types::type_definition::TypeMetadata;
+use crate::types::type_definition_with_metadata::TypeMetadata;
 
 #[derive(Clone, Debug, PartialEq, BinWrite)]
 #[brw(little)]

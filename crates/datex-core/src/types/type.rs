@@ -2,29 +2,22 @@
 use crate::ast::expressions::DatexExpressionData;
 use crate::{
     prelude::*,
-    shared_values::{
-        pointer_address::PointerAddress,
-        shared_containers::{
-            ReferenceMutability, SharedContainerMutability,
-            SharedContainerOwnership,
-        },
-    },
     traits::structural_eq::StructuralEq,
     types::{
         literal_type_definition::LiteralTypeDefinition,
         nominal_type_definition::NominalTypeDefinition,
         shared_container_containing_nominal_type::SharedContainerContainingNominalType,
         shared_container_containing_type::SharedContainerContainingType,
-        structural_type_definition::TypeDefinition,
-        type_definition::TypeDefinitionWithMetadata, type_match::TypeMatch,
+        type_definition::TypeDefinition,
+        type_definition_with_metadata::TypeDefinitionWithMetadata, type_match::TypeMatch,
     },
-    values::{self, core_value::CoreValue, value_container::ValueContainer},
 };
 use core::{
     fmt::{Display, write},
     hash::Hash,
     ops::Deref,
 };
+use crate::runtime::pointer_address_provider::SelfOwnedPointerAddressProvider;
 
 // {x: &integer}
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
@@ -34,11 +27,11 @@ pub enum Type {
 }
 
 impl Type {
-    
-    pub fn nominal(definition: NominalTypeDefinition) -> Type {
-        Type::Nominal(SharedContainerContainingNominalType::new_from_definition(definition))
+
+    pub fn nominal(definition: NominalTypeDefinition, address_provider: &mut SelfOwnedPointerAddressProvider) -> Type {
+        Type::Nominal(SharedContainerContainingNominalType::new_from_definition(definition, address_provider))
     }
-    
+
     /// Collapses nominal type definitions to their underlying type definitions with metadata
     pub fn with_collapsed_definition_with_metadata<R>(
         &self,
@@ -72,6 +65,12 @@ impl Type {
     }
 }
 
+impl<T: Into<TypeDefinitionWithMetadata>> From<T> for Type {
+    fn from(definition: T) -> Self {
+        Type::Alias(definition.into())
+    }
+}
+
 impl TypeMatch for Type {
     /// 1 matches integer -> true
     /// integer matches 1 -> false
@@ -95,35 +94,6 @@ impl TypeMatch for Type {
                 }
             }
         }
-        // match (&other) {
-        //     // if other is a nominal type, compare with its collapsed definition
-        //     Type::Nominal(nom) => return,
-        // }
-
-        // match &self.type_definition {
-        //     TypeDefinition::Union(members) => {
-        //         // If self is a union, check if any member matches the other type
-        //         for member in members {
-        //             if member.matches_type(other) {
-        //                 return true;
-        //             }
-        //         }
-        //         false
-        //     }
-        //     TypeDefinition::Intersection(members) => {
-        //         // If self is an intersection, all members must match the other type
-        //         for member in members {
-        //             if !member.matches_type(other) {
-        //                 return false;
-        //             }
-        //         }
-        //         true
-        //     }
-        //     _ => {
-        //         // atomic type match
-        //         Type::atomic_matches_type(self, other)
-        //     }
-        // }
     }
 }
 
@@ -334,10 +304,10 @@ impl TryFrom<&DatexExpressionData> for LiteralTypeDefinition {
         Ok(match expr {
             DatexExpressionData::Null => LiteralTypeDefinition::Null,
             DatexExpressionData::Boolean(b) => {
-                LiteralTypeDefinition::Boolean(Boolean::from(*b))
+                LiteralTypeDefinition::Boolean(*b)
             }
             DatexExpressionData::Text(s) => {
-                LiteralTypeDefinition::Text(Text::from(s.clone()))
+                LiteralTypeDefinition::Text(s.clone())
             }
             DatexExpressionData::Decimal(d) => {
                 LiteralTypeDefinition::Decimal(d.clone())
@@ -358,9 +328,8 @@ impl TryFrom<&DatexExpressionData> for Type {
     type Error = ();
 
     fn try_from(expr: &DatexExpressionData) -> Result<Self, Self::Error> {
-        Ok(Type::structural(
+        Ok(Type::from(
             LiteralTypeDefinition::try_from(expr)?,
-            TypeMetadata::default(),
         ))
     }
 }
@@ -370,7 +339,6 @@ mod tests {
     use crate::prelude::*;
 
     use crate::{
-        libs::core::core_lib_type,
         types::r#type::Type,
         values::{
             core_values::{

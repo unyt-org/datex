@@ -86,6 +86,7 @@ pub enum ExecutionError {
     ),
     InvalidApply,
     UnauthorizedMove,
+    InvalidMove,
     MoveToMultipleEndpoints
 }
 impl From<SharedValueCreationError> for ExecutionError {
@@ -203,6 +204,9 @@ impl Display for ExecutionError {
             }
             ExecutionError::UnauthorizedMove => {
                 core::write!(f, "Unauthorized move of shared pointer")
+            }
+            ExecutionError::InvalidMove => {
+                core::write!(f, "Invalid move of shared pointer")
             }
             ExecutionError::MoveToMultipleEndpoints => {
                 core::write!(f, "Illegal move to multiple endpoints")

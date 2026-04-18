@@ -9,7 +9,7 @@ use crate::{
             internal_traits::_ExposeRcInternal,
         },
     },
-    types::structural_type_definition::TypeDefinition,
+    types::type_definition::TypeDefinition,
     values::{
         core_value::CoreValue, value::Value, value_container::ValueContainer,
     },
@@ -23,6 +23,7 @@ use core::{
 use crate::runtime::memory::Memory;
 use crate::runtime::pointer_address_provider::SelfOwnedPointerAddressProvider;
 use crate::shared_values::pointer_address::PointerAddress;
+use crate::types::r#type::Type;
 
 /// Wrapper struct for an owned shared value (i.e. `shared X`)
 /// It is guaranteed that the inner value is a [SharedContainerInner::EndpointOwned].
@@ -52,13 +53,13 @@ impl OwnedSharedContainer {
     }
 
     /// Tries to create a new [OwnedSharedContainer] with an initial [ValueContainer],
-    /// an allowed [TypeDefinition], a [SharedContainerMutability] and an [SelfOwnedPointerAddress].
+    /// an allowed [Type], a [SharedContainerMutability] and an [SelfOwnedPointerAddress].
     ///
     /// If the allowed type is not a superset of the [ValueContainer]'s allowed type,
     /// an error is returned
     pub fn try_new(
         value_container: ValueContainer,
-        allowed_type: TypeDefinition,
+        allowed_type: Type,
         mutability: SharedContainerMutability,
         address: SelfOwnedPointerAddress,
     ) -> Result<Self, SharedValueCreationError> {
@@ -142,8 +143,8 @@ impl OwnedSharedContainer {
         })
     }
 
-    /// Gets a [Ref] to the currently assigned allowed [TypeDefinition] of the shared container (not resolved recursively)
-    pub fn allowed_type(&self) -> Ref<TypeDefinition> {
+    /// Gets a [Ref] to the currently assigned allowed [Type] of the shared container (not resolved recursively)
+    pub fn allowed_type(&self) -> Ref<Type> {
         Ref::map(self.base_shared_container(), |base_shared_container| {
             &base_shared_container.allowed_type
         })
@@ -226,6 +227,8 @@ impl OwnedSharedContainer {
 
     /// Moves an owned shared container by converting it to a [ReferencedSharedContainer] with an [ExternalPointer] pointing to the given remote address.
     /// Drops the original owned shared container
+    ///
+    /// The caller must ensure that the [ExternalPointerAddress] does not yet exist in the [Memory]
     pub unsafe fn move_to_external(self, external_address: ExternalPointerAddress, memory: &mut Memory) {
         let mut inner = self.inner_mut();
         // replace previous with null value
@@ -236,9 +239,9 @@ impl OwnedSharedContainer {
                 BaseSharedValueContainer {
                     value_container: ValueContainer::Local(Value {
                         inner: CoreValue::Null,
-                        actual_type: Box::new(TypeDefinition::Unit),
+                        actual_type: Type::from(TypeDefinition::Unit),
                     }),
-                    allowed_type: TypeDefinition::Unit,
+                    allowed_type: Type::from(TypeDefinition::Unit),
                     observers: Default::default(),
                     mutability: SharedContainerMutability::Immutable,
                 },
@@ -249,7 +252,7 @@ impl OwnedSharedContainer {
         *inner = match previous {
             SharedContainerInner::EndpointOwned(owned) => {
                 SharedContainerInner::External(
-                   owned.convert_to_external_container(external_address, memory),
+                  unsafe { owned.convert_to_external_container(external_address, memory) },
                 )
             }
             _ => unreachable!(

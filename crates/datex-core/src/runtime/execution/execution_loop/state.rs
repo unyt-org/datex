@@ -9,7 +9,7 @@ use crate::{
             },
         },
     },
-    shared_values::observers::TransceiverId,
+    shared_values::shared_containers::observers::TransceiverId,
     values::value_container::ValueContainer,
 };
 use core::{cell::RefCell, fmt::Debug};

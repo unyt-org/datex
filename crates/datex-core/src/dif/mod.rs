@@ -36,10 +36,9 @@ mod tests {
             value::{DIFValue, DIFValueContainer},
             DIFConvertible,
         },
-        libs::core::CoreLibTypeId,
         prelude::*,
         shared_values::pointer_address::PointerAddress,
-        types::structural_type_definition::TypeDefinition,
+        types::type_definition::TypeDefinition,
         values::{
             core_value::CoreValue,
             core_values::integer::typed_integer::IntegerTypeVariant,
@@ -48,6 +47,7 @@ mod tests {
         },
     };
     use alloc::string::ToString;
+    use crate::libs::core::type_id::{CoreLibTypeId, CoreLibVariantTypeId};
     use crate::types::r#type::Type;
 
     fn dif_value_circle(value_container: ValueContainer) -> DIFValueContainer {
@@ -104,7 +104,7 @@ mod tests {
             assert_eq!(
                 dif_value.ty,
                 Some(DIFTypeDefinition::Reference(
-                    CoreLibTypeId::Integer(Some(IntegerTypeVariant::I32))
+                    CoreLibTypeId::Variant(CoreLibVariantTypeId::Integer(IntegerTypeVariant::I32))
                         .into()
                 ))
             );

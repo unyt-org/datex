@@ -1,189 +1,339 @@
 use crate::{
-    alloc::string::ToString,
-    shared_values::shared_containers::ReferenceMutability,
-};
-use core::{fmt::Display, ops::Deref};
-
-use crate::{
-    serde::Deserialize,
-    shared_values::shared_containers::{
-        SharedContainerMutability, SharedContainerOwnership,
-    },
+    prelude::*,
+    shared_values::pointer_address::PointerAddress,
+    traits::structural_eq::StructuralEq,
     types::{
-        structural_type_definition::TypeDefinition, r#type::Type,
-        type_match::TypeMatch,
+        collection_type_definition::CollectionTypeDefinition,
+        literal_type_definition::LiteralTypeDefinition,
+        shared_container_containing_type::SharedContainerContainingType,
+        r#type::Type,
+        type_definition_with_metadata::{TypeDefinitionWithMetadata, TypeMetadata},
     },
+    values::core_values::callable::CallableSignature,
 };
-use serde::Serialize;
+use core::{fmt::Display, hash::Hash, ops::Deref, prelude::rust_2024::*};
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum LocalReferenceMutability {
-    Mutable,
-    Immutable,
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum TypeDefinition {
+    /// e.g. 1, "example"
+    Literal(LiteralTypeDefinition),
+
+    List(Vec<Type>), // e.g. [&mut integer, text, boolean]
+    Map(Vec<(Type, Type)>),
+    Range((Box<Type>, Box<Type>)),
+
+    // TODO #371: Rename to generic?
+    /// e.g. [integer], [integer; 5], Map<string, integer>
+    Collection(CollectionTypeDefinition),
+
+    /// type A = B
+    Shared(SharedContainerContainingType), // integer
+
+    // FIXME DO we still need Type(Type) here?
+    // Hopefully no, as nominal type definitions referring other types need
+    // shared container containing types in the chain
+    //
+    /// a callable type definition (signature)
+    Callable(CallableSignature),
+
+    /// innerType + Marker1 + Marker2
+    /// A special type that behaves like `innerType` but is marked with additional
+    /// pointer addresses that represent meta information about the type.
+    /// The type is treated as equivalent to `innerType` for most operations,
+    /// but the impl markers can be used to enforce additional constraints during
+    /// type checking or runtime behavior.
+    ImplType(Box<Type>, Vec<PointerAddress>),
+
+    /// NOTE: all the types below can never exist as actual types of a runtime value - they are only
+    /// relevant for type space definitions and type checking.
+
+    /// A & B & C
+    Intersection(Vec<Type>),
+
+    /// A | B | C
+    Union(Vec<Type>),
+
+    /// () - e.g. if a function has no return type
+    Unit,
+
+    /// never type
+    Never,
+
+    /// unknown type
+    Unknown,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum LocalMutability {
-    Mutable,
-    Immutable,
+impl Hash for TypeDefinition {
+    fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
+        match self {
+            TypeDefinition::Collection(value) => {
+                value.hash(state);
+            }
+            TypeDefinition::Literal(value) => {
+                value.hash(state);
+            }
+            TypeDefinition::Map(entries) => {
+                for (key, value) in entries {
+                    key.hash(state);
+                    value.hash(state);
+                }
+            }
+            TypeDefinition::List(elements) => {
+                for element in elements {
+                    element.hash(state);
+                }
+            }
+            TypeDefinition::Range((start, end)) => {
+                start.hash(state);
+                end.hash(state);
+            }
+            TypeDefinition::Shared(reference) => {
+                reference.hash(state);
+            }
+
+            TypeDefinition::Unit => 0_u8.hash(state),
+            TypeDefinition::Unknown => 1_u8.hash(state),
+            TypeDefinition::Never => 2_u8.hash(state),
+
+            TypeDefinition::Union(types) => {
+                for ty in types {
+                    ty.hash(state);
+                }
+            }
+            TypeDefinition::Intersection(types) => {
+                for ty in types {
+                    ty.hash(state);
+                }
+            }
+            TypeDefinition::Callable(callable) => {
+                callable.kind.hash(state);
+                for (name, ty) in callable.parameter_types.iter() {
+                    name.hash(state);
+                    ty.hash(state);
+                }
+                callable.rest_parameter_type.hash(state);
+                callable.return_type.hash(state);
+                callable.yeet_type.hash(state);
+            }
+            TypeDefinition::ImplType(ty, impls) => {
+                ty.hash(state);
+                for marker in impls {
+                    marker.hash(state);
+                }
+            }
+        }
+    }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-/// Combination of &/&mut, '/'mut shared and mut prefixes
-pub enum TypeMetadata {
-    /// Local types can be mut or not, and can optionally be a reference type with an additional reference mutability (e.g. &mut User)
-    Local {
-        mutability: LocalMutability,
-        reference_mutability: Option<LocalReferenceMutability>,
-    },
-    /// Shared types are always (shared or shared mut) and can optionally be a non-owned, reference type
-    /// with an additional reference mutability (e.g. 'mut shared mut User)
-    Shared {
-        mutability: SharedContainerMutability,
-        ownership: SharedContainerOwnership,
-    },
-}
-
-impl Display for TypeMetadata {
+impl Display for TypeDefinition {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
-            TypeMetadata::Local {
-                mutability,
-                reference_mutability,
-            } => {
-                let mutability_str = match mutability {
-                    LocalMutability::Mutable => "mut ",
-                    LocalMutability::Immutable => "",
-                };
-                let reference_str = match reference_mutability {
-                    Some(LocalReferenceMutability::Mutable) => "&mut ",
-                    Some(LocalReferenceMutability::Immutable) => "&",
-                    None => "",
-                };
-                write!(f, "{}{}", reference_str, mutability_str)
+            TypeDefinition::Collection(value) => {
+                core::write!(f, "{}", value)
             }
-            TypeMetadata::Shared {
-                mutability,
-                ownership,
-            } => {
-                write!(f, "{}", ownership)?;
-                match ownership {
-                    SharedContainerOwnership::Referenced(
-                        ReferenceMutability::Mutable,
-                    ) => write!(f, " ")?,
-                    _ => (),
+            TypeDefinition::Map(entries) => {
+                let entries_str: Vec<String> = entries
+                    .iter()
+                    .map(|(key, value)| format!("{}: {}", key, value))
+                    .collect();
+                core::write!(f, "{{{}}}", entries_str.join(", "))
+            }
+            TypeDefinition::List(elements) => {
+                let elements_str: Vec<String> =
+                    elements.iter().map(|e| e.to_string()).collect();
+                core::write!(f, "[{}]", elements_str.join(", "))
+            }
+            TypeDefinition::Range((start, end)) => {
+                core::write!(f, "{}..{}", start, end)
+            }
+
+            TypeDefinition::Literal(value) => {
+                core::write!(f, "{}", value)
+            }
+            TypeDefinition::Shared(reference) => {
+                core::write!(f, "{}", reference.deref())
+            }
+            TypeDefinition::Unit => core::write!(f, "()"),
+            TypeDefinition::Unknown => core::write!(f, "unknown"),
+            TypeDefinition::Never => core::write!(f, "never"),
+            TypeDefinition::ImplType(ty, impls) => {
+                core::write!(f, "{}", ty)?;
+                for marker in impls {
+                    core::write!(f, " + {}", marker)?;
+                }
+                Ok(())
+            }
+
+            TypeDefinition::Union(types) => {
+                let types_str: Vec<String> =
+                    types.iter().map(|t| t.to_string()).collect();
+                core::write!(f, "({})", types_str.join(" | "))
+            }
+            TypeDefinition::Intersection(types) => {
+                let types_str: Vec<String> =
+                    types.iter().map(|t| t.to_string()).collect();
+                core::write!(f, "({})", types_str.join(" & "))
+            }
+            TypeDefinition::Callable(callable) => {
+                let mut params_code: Vec<String> = callable
+                    .parameter_types
+                    .iter()
+                    .map(|(param_name, param_type)| match param_name {
+                        Some(name) => format!("{}: {}", name, param_type),
+                        None => format!("{}", param_type),
+                    })
+                    .collect();
+                // handle rest parameter
+                if let Some((param_name, param_type)) =
+                    &callable.rest_parameter_type
+                {
+                    params_code.push(match param_name {
+                        Some(name) => format!("...{}: {}", name, param_type),
+                        None => format!("...{}", param_type),
+                    });
+                }
+
+                let return_type_code = match &callable.return_type {
+                    Some(return_type) => format!(" -> {}", return_type),
+                    None => " -> ()".to_string(),
                 };
-                write!(f, "{}", mutability)
+
+                let yeet_type_code = match &callable.yeet_type {
+                    Some(yeet_type) => format!(" yeets {}", yeet_type),
+                    None => "".to_string(),
+                };
+
+                core::write!(
+                    f,
+                    "{} ({}){}{}",
+                    callable.kind,
+                    params_code.join(", "),
+                    return_type_code,
+                    yeet_type_code
+                )
             }
         }
     }
 }
 
-impl TypeMetadata {
-    /// Ownership type for a shared container
-    pub fn shared_container_ownership(
-        &self,
-    ) -> Option<&SharedContainerOwnership> {
-        match self {
-            TypeMetadata::Local { .. } => None,
-            TypeMetadata::Shared { ownership, .. } => Some(ownership),
-        }
-    }
-
-    /// Mutability for a shared type (e.g. shared mut X / shared X), if applicable
-    pub fn shared_mutability(&self) -> Option<SharedContainerMutability> {
-        match self {
-            TypeMetadata::Local { .. } => None,
-            TypeMetadata::Shared { mutability, .. } => Some(mutability.clone()),
-        }
-    }
-
-    /// Mutability for a reference to a local type (e.g. &mut X), if applicable
-    pub fn local_reference_mutability(
-        &self,
-    ) -> Option<LocalReferenceMutability> {
-        match self {
-            TypeMetadata::Local {
-                reference_mutability: local_reference_mutability,
-                ..
-            } => local_reference_mutability.clone(),
-            TypeMetadata::Shared { .. } => None,
-        }
-    }
-
-    /// Whether this type is a shared type (e.g. shared X, shared mut X, &shared X, &mut shared X)
-    pub fn is_shared_type(&self) -> bool {
-        match self {
-            TypeMetadata::Shared { .. } => true,
-            TypeMetadata::Local { .. } => false,
-        }
-    }
-}
-
-impl TypeMatch for TypeMetadata {
-    fn matches(&self, other: &Self) -> bool {
+impl StructuralEq for TypeDefinition {
+    fn structural_eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (
-                TypeMetadata::Local {
-                    mutability: mutability1,
-                    reference_mutability: reference_mutability1,
-                },
-                TypeMetadata::Local {
-                    mutability: mutability2,
-                    reference_mutability: reference_mutability2,
-                },
-            ) => {
-                mutability1 == mutability2
-                    && reference_mutability1 == reference_mutability2
+            (TypeDefinition::Literal(a), TypeDefinition::Literal(b)) => {
+                a.structural_eq(b)
             }
-            (
-                TypeMetadata::Shared {
-                    mutability: mutability1,
-                    ownership: ownership1,
-                },
-                TypeMetadata::Shared {
-                    mutability: mutability2,
-                    ownership: ownership2,
-                },
-            ) => mutability1 == mutability2 && ownership1 == ownership2,
+            (TypeDefinition::Union(a), TypeDefinition::Union(b)) => {
+                if a.len() != b.len() {
+                    return false;
+                }
+                for (item_a, item_b) in a.iter().zip(b.iter()) {
+                    if !item_a.structural_eq(item_b) {
+                        return false;
+                    }
+                }
+                true
+            }
             _ => false,
         }
     }
 }
 
-impl Default for TypeMetadata {
-    fn default() -> Self {
-        TypeMetadata::Local {
-            mutability: LocalMutability::Immutable,
-            reference_mutability: None,
+impl TypeDefinition {
+    /// Calls the provided callback with a reference to the recursively collapsed inner [TypeDefinition] value
+    pub fn with_collapsed<R>(&self, f: impl FnOnce(&TypeDefinition) -> R) -> R {
+        match self {
+            TypeDefinition::Shared(reference) =>
+            // collapse shared container to inner Type
+            {
+                reference.with_collapsed_type_value(|ty| {
+                    // collapse Type definition to inner StructuralTypeDefinition
+                    ty.with_collapsed_type_definition(f)
+                })
+            }
+            _ => f(self),
+        }
+    }
+
+    /// Creates a new literal type.
+    pub fn literal(literal_type: impl Into<LiteralTypeDefinition>) -> Self {
+        TypeDefinition::Literal(literal_type.into())
+    }
+
+    /// Creates a new list type.
+    pub fn list(element_types: Vec<Type>) -> Self {
+        TypeDefinition::List(element_types)
+    }
+
+    /// Creates a new union type.
+    pub fn union<T>(types: Vec<T>) -> Self
+    where
+        T: Into<Type>,
+    {
+        let types = types.into_iter().map(|t| t.into()).collect();
+        TypeDefinition::Union(types)
+    }
+
+    /// Creates a new intersection type.
+    pub fn intersection<T>(types: Vec<T>) -> Self
+    where
+        T: Into<Type>,
+    {
+        let types = types.into_iter().map(|t| t.into()).collect();
+        TypeDefinition::Intersection(types)
+    }
+
+    /// Creates a new shared type.
+    pub fn shared(reference: SharedContainerContainingType) -> Self {
+        TypeDefinition::Shared(reference)
+    }
+
+    /// Creates a new callable type.
+    pub fn callable(signature: CallableSignature) -> Self {
+        TypeDefinition::Callable(signature)
+    }
+
+    /// Creates a new type with impls.
+    pub fn impl_type(ty: impl Into<Type>, impls: Vec<PointerAddress>) -> Self {
+        TypeDefinition::ImplType(Box::new(ty.into()), impls)
+    }
+}
+
+impl TypeDefinition {
+    /// Map a type definition (e.g. 42u8) to it's upper level base type (e.g. integer)
+    /// integer/u8 -> integer
+    /// integer -> integer
+    /// 42u8 -> integer
+    /// 42 -> integer
+    /// User/variant -> User
+    pub fn base_core_lib_type(&self) -> SharedContainerContainingType {
+        match &self {
+            TypeDefinition::Literal(value) => {
+                core_lib_type(value.get_core_lib_type_pointer_id())
+            }
+            TypeDefinition::Union(_) => {
+                core::todo!("#322 handle union base type"); // generic type base type / type
+            }
+            TypeDefinition::Shared(reference) => reference
+                .with_collapsed_type_value(|ty| ty.base_core_lib_type()),
+            _ => core::panic!("Unhandled type definition for base type"),
         }
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Hash)]
-pub struct TypeDefinitionWithMetadata {
-    pub definition: TypeDefinition,
-    pub metadata: TypeMetadata,
-}
-
-impl TypeMatch for TypeDefinitionWithMetadata {
-    fn matches(&self, definition: &Self) -> bool {
-        if !self.metadata.matches(&definition.metadata) {
-            return false;
+impl From<TypeDefinition> for TypeDefinitionWithMetadata {
+    fn from(structural_definition: TypeDefinition) -> Self {
+        TypeDefinitionWithMetadata {
+            definition: structural_definition,
+            metadata: TypeMetadata::default(),
         }
-        // FIXME
-        false
     }
 }
 
-impl From<TypeDefinitionWithMetadata> for Type {
-    fn from(x: TypeDefinitionWithMetadata) -> Self {
-        Type::Alias(x)
-    }
-}
-
-impl Display for TypeDefinitionWithMetadata {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "{} {}", self.metadata, self.definition)
+impl From<LiteralTypeDefinition> for TypeDefinitionWithMetadata {
+    fn from(literal_definition: LiteralTypeDefinition) -> Self {
+        TypeDefinitionWithMetadata {
+            definition: literal_definition.into(),
+            metadata: TypeMetadata::default(),
+        }
     }
 }

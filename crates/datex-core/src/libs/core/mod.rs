@@ -12,7 +12,7 @@ use crate::{
     },
     types::{
         nominal_type_definition::NominalTypeDefinition,
-        structural_type_definition::TypeDefinition,
+        type_definition::TypeDefinition,
     },
     values::{
         core_value::CoreValue,
@@ -45,6 +45,7 @@ use crate::{
 use log::info;
 use strum::IntoEnumIterator;
 use crate::libs::library::Library;
+use crate::runtime::pointer_address_provider::SelfOwnedPointerAddressProvider;
 
 pub struct CoreLibrary;
 
@@ -98,7 +99,7 @@ impl CoreLibrary {
         let mut types = HashMap::<CoreLibId, ReferencedSharedContainer>::new();
 
         for id in CoreLibBaseTypeId::iter() {
-            let base_type_def = unsafe {Self::create_core_type(id, memory) };
+            let base_type_def = unsafe { Self::create_core_type(id, memory) };
             let base_type_def_container =
                 SharedContainer::Referenced(base_type_def.1.clone());
             for variant_id in CoreLibVariantTypeId::variant_ids(&id) {
@@ -137,14 +138,14 @@ impl CoreLibrary {
     unsafe fn create_type(
         definition: NominalTypeDefinition,
         id: CoreLibTypeId,
-        memory: &mut Memory
+        memory: &mut Memory,
     ) -> CoreLibTypeDefinition {
         let core_lib_id = CoreLibId::Type(id);
         (
             core_lib_id,
             unsafe {
                 ReferencedSharedContainer::new_immutable_external(
-                    Type::nominal(definition).into(),
+                    ValueContainer::from(CoreValue::NominalType(definition)),
                     id.into(),
                     memory
                 )
@@ -314,7 +315,7 @@ mod tests {
                 println!("{}_{}: \"{}\",", base_id, variant_id.variant_name(), PointerAddress::from(variant_id).to_string().strip_prefix("$").unwrap());
             }
         }
-        
+
         println!("}} as const;");
     }
 }

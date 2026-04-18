@@ -8,7 +8,7 @@ use crate::{
             internal_traits::_ExposeRcInternal,
         },
     },
-    types::structural_type_definition::TypeDefinition,
+    types::type_definition::TypeDefinition,
     values::value_container::ValueContainer,
 };
 use alloc::rc::Rc;
@@ -17,6 +17,7 @@ use core::{
     fmt::Display,
 };
 use crate::runtime::memory::Memory;
+use crate::types::r#type::Type;
 
 /// Wrapper struct for a reference to a shared value (i.e. `'shared X` or `'mut shared X`).
 ///
@@ -134,7 +135,7 @@ impl ReferencedSharedContainer {
     }
 
     /// Gets a [Ref] to the currently assigned allowed [TypeDefinition] of the shared container (not resolved recursively)
-    pub fn allowed_type(&self) -> Ref<TypeDefinition> {
+    pub fn allowed_type(&self) -> Ref<Type> {
         Ref::map(self.base_shared_container(), |base_shared_container| {
             &base_shared_container.allowed_type
         })

@@ -20,7 +20,7 @@ use crate::values::core_values::decimal::Decimal;
 use crate::values::core_values::endpoint::{Endpoint, EndpointParsingError};
 use crate::values::core_values::integer::Integer;
 use crate::prelude::*;
-use crate::types::type_definition::TypeMetadata;
+use crate::types::type_definition_with_metadata::TypeMetadata;
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
 #[brw(little)]

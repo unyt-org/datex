@@ -43,7 +43,7 @@ use crate::{
     }, shared_values::{
         errors::AssignmentError, pointer_address::PointerAddress, shared_containers::ReferenceMutability
     }, type_inference::error::TypeError, types::{
-        error::IllegalTypeError, literal_type_definition::LiteralTypeDefinition, structural_type_definition::TypeDefinition
+        error::IllegalTypeError, literal_type_definition::LiteralTypeDefinition, type_definition::TypeDefinition
     }, values::{
         core_value::CoreValue,
         core_values::{
@@ -69,7 +69,8 @@ use crate::shared_values::shared_containers::{SelfOwnedSharedContainer, SharedCo
 use crate::shared_values::shared_containers::{ExternalSharedContainer, OwnedSharedContainer, ReferencedSharedContainer, SharedContainer};
 use crate::shared_values::shared_containers::base_shared_value_container::BaseSharedValueContainer;
 use crate::types::r#type::{Type};
-use crate::types::type_definition::{TypeDefinitionWithMetadata, TypeMetadata};
+use crate::types::type_definition::TypeDefinition;
+use crate::types::type_definition_with_metadata::{TypeDefinitionWithMetadata, TypeMetadata};
 
 #[derive(Debug)]
 enum CollectedExecutionResult {
@@ -760,7 +761,7 @@ pub fn inner_execution_loop(
                                         collected_results
                                             .pop_cloned_value_container_result_assert_existing(&state)
                                     );
-                                    let pointer = state.runtime_internal.memory.borrow_mut().get_new_endpoint_owned_pointer_address();
+                                    let pointer = state.runtime_internal.pointer_address_provider.borrow_mut().get_new_self_owned_address();
                                     let mutability = match instruction {
                                         RegularInstruction::CreateShared => SharedContainerMutability::Mutable,
                                         RegularInstruction::CreateSharedMut => SharedContainerMutability::Immutable,
@@ -849,9 +850,7 @@ pub fn inner_execution_loop(
 
                                     match &mut value_container {
                                         ValueContainer::Local(value) => {
-                                            // FIXME #647: only using type definition here, refactor and/or add checks
-                                            *value.actual_type =
-                                                ty.into_definition().structural_definition;
+                                            value.actual_type = ty;
                                         }
                                         _ => panic!(
                                             "Expected ValueContainer::Value for type casting"
@@ -870,9 +869,7 @@ pub fn inner_execution_loop(
                                     RuntimeValue::ValueContainer(
                                         ValueContainer::Local(Value {
                                             inner: CoreValue::Type(ty),
-                                            actual_type: Box::new(
-                                                TypeDefinition::Unknown,
-                                            ), // TODO #648: type for type
+                                            actual_type: Type::from(TypeDefinition::Unknown), // TODO #648: type for type
                                         }),
                                     )
                                     .into()
@@ -935,7 +932,7 @@ pub fn inner_execution_loop(
                                                     None => todo!()
                                                 };
                                                 reference.try_set_value_container(res).map_err(|_| ExecutionError::AssignmentError(AssignmentError::TypeError(
-                                                    TypeError::AssignmentTypeMismatch { annotated_type: reference.allowed_type(), assigned_type: res.actual_type() }
+                                                    TypeError::AssignmentTypeMismatch { annotated_type: reference.allowed_type().clone(), assigned_type: res.actual_type() }
                                                 )))?;
                                                 Ok(RuntimeValue::ValueContainer(
                                                     ref_value_container.clone(),

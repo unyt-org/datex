@@ -1,6 +1,5 @@
 use crate::{
     collections::HashMap,
-    libs::core::{core_lib_id::CoreLibId, load_core_lib},
     prelude::*,
     shared_values::{
         pointer_address::{

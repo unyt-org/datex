@@ -3,9 +3,8 @@ use crate::{
         DIFConvertible, representation::DIFValueRepresentation,
         r#type::DIFTypeDefinition,
     },
-    libs::core::CoreLibTypeId,
     runtime::memory::Memory,
-    types::structural_type_definition::TypeDefinition,
+    types::type_definition::TypeDefinition,
     values::{
         core_value::CoreValue,
         core_values::{
@@ -21,6 +20,9 @@ use core::{cell::RefCell, result::Result};
 use serde::{Deserialize, Serialize};
 
 use crate::{prelude::*, shared_values::pointer_address::PointerAddress};
+use crate::libs::core::type_id::CoreLibTypeId;
+use crate::shared_values::shared_containers::SharedContainer;
+use crate::types::r#type::Type;
 
 #[derive(Debug)]
 pub struct DIFReferenceNotFoundError;
@@ -87,13 +89,13 @@ impl DIFValueContainer {
         memory: &RefCell<Memory>,
     ) -> Result<ValueContainer, DIFReferenceNotFoundError> {
         Ok(match self {
-            DIFValueContainer::Reference(address) => ValueContainer::Shared(
+            DIFValueContainer::Reference(address) => ValueContainer::Shared(SharedContainer::Referenced(
                 memory
                     .borrow()
                     .get_reference(address)
                     .ok_or(DIFReferenceNotFoundError)?
                     .clone(),
-            ),
+            )),
             DIFValueContainer::Value(v) => {
                 ValueContainer::Local(v.to_value(memory)?)
             }
@@ -280,10 +282,10 @@ impl DIFValue {
 /// - List
 /// - Map (if not empty, otherwise we cannot distinguish between empty map and empty list since both are represented as [] in DIF)
 fn get_type_if_non_default(
-    type_definition: &TypeDefinition,
+    ty: &Type,
     is_empty_map: bool,
 ) -> Option<DIFTypeDefinition> {
-    match type_definition {
+    match ty {
         TypeDefinition::Shared(inner) => {
             if let Ok(address) =
                 CoreLibTypeId::try_from(&inner.borrow().pointer().address())
@@ -300,10 +302,10 @@ fn get_type_if_non_default(
             {
                 None
             } else {
-                Some(DIFTypeDefinition::from_structural_type_definition(type_definition))
+                Some(DIFTypeDefinition::from_structural_type_definition(ty))
             }
         }
-        _ => Some(DIFTypeDefinition::from_structural_type_definition(type_definition)),
+        _ => Some(DIFTypeDefinition::from_structural_type_definition(ty)),
     }
 }
 

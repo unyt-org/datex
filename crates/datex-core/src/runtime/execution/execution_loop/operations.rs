@@ -19,6 +19,7 @@ use crate::{
 use core::cell::RefCell;
 
 use crate::{prelude::*, runtime::memory::Memory};
+use crate::types::r#type::Type;
 
 pub fn set_property(
     target: &mut ValueContainer,
@@ -127,8 +128,8 @@ pub fn handle_comparison_operation(
         }
         ComparisonOperator::Matches => {
             // TODO #407: Fix matches, rhs will always be a type, so actual_type() call is wrong
-            let v_type = rhs.actual_container_type(); // Type::try_from(value_container)?;
-            let val = v_type.value_matches(lhs);
+            let v_type = Type::try_from(rhs)?;
+            let val = v_type.matched_by_value(lhs);
             Ok(ValueContainer::from(val))
         }
         _ => {

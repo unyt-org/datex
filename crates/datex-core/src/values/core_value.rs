@@ -14,7 +14,7 @@ use datex_macros_internal::FromCoreValue;
 
 use crate::{
     traits::{structural_eq::StructuralEq, value_eq::ValueEq},
-    types::{structural_type_definition::TypeDefinition, r#type::Type},
+    types::{type_definition::TypeDefinition, r#type::Type},
     values::{
         core_values::{
             boolean::Boolean,

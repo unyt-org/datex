@@ -3,7 +3,7 @@ use crate::{
     prelude::*,
     runtime::execution::ExecutionError,
     traits::{apply::Apply, structural_eq::StructuralEq, value_eq::ValueEq},
-    types::structural_type_definition::TypeDefinition,
+    types::type_definition::TypeDefinition,
     values::{
         core_value::CoreValue,
         core_values::{
@@ -21,11 +21,12 @@ use core::{
     result::Result,
 };
 use log::error;
+use crate::types::r#type::Type;
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub struct Value {
     pub inner: CoreValue,
-    pub actual_type: Box<TypeDefinition>,
+    pub actual_type: Type,
 }
 
 /// Two values are structurally equal, if their inner values are structurally equal, regardless

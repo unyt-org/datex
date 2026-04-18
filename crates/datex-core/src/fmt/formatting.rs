@@ -18,7 +18,7 @@ use crate::{
     },
 };
 use crate::shared_values::shared_containers::ReferenceMutability;
-use crate::types::type_definition::LocalReferenceMutability;
+use crate::types::type_definition_with_metadata::LocalReferenceMutability;
 
 impl<'a> Formatter<'a> {
     pub fn datex_expression_to_source_code(

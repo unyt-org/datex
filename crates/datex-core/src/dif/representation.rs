@@ -3,7 +3,6 @@ use crate::{
         r#type::{DIFType, DIFTypeDefinition},
         value::{DIFReferenceNotFoundError, DIFValueContainer},
     },
-    libs::core::{CoreLibTypeId, get_core_lib_type_definition},
     runtime::memory::Memory,
     types::literal_type_definition::LiteralTypeDefinition,
     values::{
@@ -29,7 +28,9 @@ use serde::{
     de::{MapAccess, SeqAccess, Visitor},
     ser::{SerializeMap, SerializeSeq},
 };
-use crate::types::structural_type_definition::TypeDefinition;
+use crate::libs::core::core_lib_id::CoreLibId;
+use crate::libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId, CoreLibVariantTypeId};
+use crate::types::type_definition::TypeDefinition;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum DIFValueRepresentation {
@@ -150,11 +151,12 @@ impl DIFValueRepresentation {
     ) -> Result<Value, DIFReferenceNotFoundError> {
         let val = match type_definition {
             DIFTypeDefinition::Reference(r) => {
-                if let Ok(core_lib_ptr_id) = CoreLibTypeId::try_from(r) {
-                    match core_lib_ptr_id {
+                if let Ok(core_lib_id) = CoreLibId::try_from(r.clone()) &&
+                    let CoreLibId::Type(core_lib_type_id) = core_lib_id {
+                    match core_lib_type_id {
                         // special mappings:
                         // type map and represented as object -> convert to map
-                        CoreLibTypeId::Map
+                        CoreLibTypeId::Base(CoreLibBaseTypeId::Map)
                             if let DIFValueRepresentation::Object(object) =
                                 self =>
                         {
@@ -169,7 +171,7 @@ impl DIFValueRepresentation {
                             ))))
                         }
                         // type map and represented as empty array -> convert to empty map
-                        CoreLibTypeId::Map
+                        CoreLibTypeId::Base(CoreLibBaseTypeId::Map)
                             if let DIFValueRepresentation::Array(array) =
                                 self =>
                         {
@@ -184,14 +186,14 @@ impl DIFValueRepresentation {
                             ))))
                         }
                         // type integer and represented as string -> convert to integer
-                        CoreLibTypeId::Integer(None)
+                        CoreLibTypeId::Base(CoreLibBaseTypeId::Integer)
                             if let DIFValueRepresentation::String(s) = self =>
                         {
                             Some(Value::from(CoreValue::Integer(
                                 Integer::from_string(s).unwrap(),
                             )))
                         }
-                        CoreLibTypeId::Integer(Some(variant))
+                        CoreLibTypeId::Variant(CoreLibVariantTypeId::Integer(variant))
                             if let DIFValueRepresentation::String(s) = self =>
                         {
                             Some(Value::from(CoreValue::TypedInteger(
@@ -260,7 +262,7 @@ impl DIFTypeRepresentation {
             TypeDefinition::Literal(literal_definition) => match literal_definition {
                 LiteralTypeDefinition::Null => DIFTypeRepresentation::Null,
                 LiteralTypeDefinition::Boolean(b) => {
-                    DIFTypeRepresentation::Boolean(b.as_bool())
+                    DIFTypeRepresentation::Boolean(*b)
                 }
                 LiteralTypeDefinition::Integer(i) => {
                     // FIXME #392: this can overflow
@@ -277,22 +279,21 @@ impl DIFTypeRepresentation {
                     DIFTypeRepresentation::Number(d.as_f64())
                 }
                 LiteralTypeDefinition::Text(t) => {
-                    DIFTypeRepresentation::String(t.0.clone())
+                    DIFTypeRepresentation::String(t.clone())
                 }
                 LiteralTypeDefinition::Endpoint(endpoint) => {
                     DIFTypeRepresentation::String(endpoint.to_string())
                 }
             },
-            TypeDefinition::Collection(_) => todo!()
-            TypeDefinition::Shared(_) => todo!()
-            TypeDefinition::Type(_) => todo!()
-            TypeDefinition::Callable(_) => todo!()
-            TypeDefinition::ImplType(_, _) => todo!()
-            TypeDefinition::Intersection(_) => todo!()
-            TypeDefinition::Union(_) => todo!()
-            TypeDefinition::Unit => todo!()
-            TypeDefinition::Never => todo!()
-            TypeDefinition::Unknown => todo!()
+            TypeDefinition::Collection(_) => todo!(),
+            TypeDefinition::Shared(_) => todo!(),
+            TypeDefinition::Callable(_) => todo!(),
+            TypeDefinition::ImplType(_, _) => todo!(),
+            TypeDefinition::Intersection(_) => todo!(),
+            TypeDefinition::Union(_) => todo!(),
+            TypeDefinition::Unit => todo!(),
+            TypeDefinition::Never => todo!(),
+            TypeDefinition::Unknown => todo!(),
         }
     }
 }

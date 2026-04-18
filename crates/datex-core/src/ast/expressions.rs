@@ -28,7 +28,7 @@ pub use crate::{prelude::*, values::core_values::callable::CallableKind};
 use core::{fmt::Display, ops, ops::Neg};
 use crate::shared_values::shared_containers::ReferenceMutability;
 use crate::types::r#type::Type;
-use crate::types::type_definition::LocalReferenceMutability;
+use crate::types::type_definition_with_metadata::LocalReferenceMutability;
 
 #[derive(Clone, Debug)]
 /// An expression in the AST

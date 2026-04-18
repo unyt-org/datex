@@ -2,7 +2,7 @@ use crate::{
     prelude::*,
     types::{
         shared_container_containing_type::SharedContainerContainingType,
-        type_definition::TypeDefinitionWithMetadata,
+        type_definition_with_metadata::TypeDefinitionWithMetadata,
     },
 };
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]

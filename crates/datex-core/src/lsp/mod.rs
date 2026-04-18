@@ -31,6 +31,7 @@ use realhydroper_lsp::{
 use crate::prelude::*;
 use futures::io::{AsyncRead, AsyncWrite};
 use crate::types::r#type::Type;
+use crate::types::type_definition::TypeDefinition;
 
 pub struct LanguageServerBackend {
     pub client: Client,
@@ -193,7 +194,7 @@ impl LanguageServer for LanguageServerBackend {
                         "{} {}: {}",
                         variable_metadata.shape,
                         name,
-                        variable_metadata.var_type.unwrap_or(Type::unknown())
+                        variable_metadata.var_type.unwrap_or(Type::from(TypeDefinition::Unknown))
                     )))
                 }
 
@@ -213,7 +214,7 @@ impl LanguageServer for LanguageServerBackend {
                         },
                         variable_metadata.shape,
                         name,
-                        variable_metadata.var_type.unwrap_or(Type::unknown())
+                        variable_metadata.var_type.unwrap_or(Type::from(TypeDefinition::Unknown))
                     )))
                 }
 

@@ -4,17 +4,14 @@ use crate::{
     },
     prelude::*,
     traits::structural_eq::StructuralEq,
-    types::{structural_type_definition::TypeDefinition, r#type::Type},
+    types::{type_definition::TypeDefinition},
     values::{
-        core_value::CoreValue,
         core_values::{
-            boolean::Boolean,
             decimal::{Decimal, typed_decimal::TypedDecimal},
             endpoint::Endpoint,
             integer::{Integer, typed_integer::TypedInteger},
             text::Text,
         },
-        value_container::ValueContainer,
     },
 };
 use core::{fmt::Display, hash::Hash, unimplemented};
@@ -252,40 +249,39 @@ mod tests {
             value_container::ValueContainer,
         },
     };
+    use crate::types::type_definition::TypeDefinition;
 
     #[test]
     fn test_structural_type_display() {
         let int_type = LiteralTypeDefinition::Integer(Integer::from(42));
         assert_eq!(int_type.to_string(), "42");
 
-        let text_type = LiteralTypeDefinition::Text(Text::from("Hello"));
+        let text_type = LiteralTypeDefinition::Text("Hello".to_string());
         assert_eq!(text_type.to_string(), r#""Hello""#);
 
-        let list_type = LiteralTypeDefinition::List(vec![
-            Type::structural(
+        let list_type = TypeDefinition::List(vec![
+            Type::from(
                 LiteralTypeDefinition::Integer(Integer::from(1)),
-                TypeMetadata::default(),
             )
             .into(),
-            Type::structural(
-                LiteralTypeDefinition::Text(Text::from("World")),
-                TypeMetadata::default(),
+            Type::from(
+                LiteralTypeDefinition::Text("World".to_string()),
             )
             .into(),
         ]);
         assert_eq!(list_type.to_string(), r#"[1, "World"]"#);
 
-        let struct_type = LiteralTypeDefinition::Map(vec![
+        let struct_type = TypeDefinition::Map(vec![
             (
-                Type::structural("id".to_string(), TypeMetadata::default())
+                LiteralTypeDefinition::Text("id".to_string())
                     .into(),
-                Type::structural(int_type.clone(), TypeMetadata::default())
+                int_type
                     .into(),
             ),
             (
-                Type::structural("name".to_string(), TypeMetadata::default())
+                LiteralTypeDefinition::Text("name".to_string())
                     .into(),
-                Type::structural(text_type.clone(), TypeMetadata::default())
+                text_type
                     .into(),
             ),
         ]);
@@ -299,7 +295,7 @@ mod tests {
             ValueContainer::from(CoreValue::Integer(Integer::from(42)));
         assert!(int_type.value_matches(&int_value));
 
-        let text_type = LiteralTypeDefinition::Text(Text::from("Hello"));
+        let text_type = LiteralTypeDefinition::Text("Hello".to_string());
         let text_value =
             ValueContainer::from(CoreValue::Text(Text::from("Hello")));
         assert!(text_type.value_matches(&text_value));

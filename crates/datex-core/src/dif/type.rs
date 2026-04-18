@@ -4,7 +4,7 @@ use crate::{
     shared_values::shared_containers::SharedContainerMutability,
     types::{
         literal_type_definition::LiteralTypeDefinition,
-        structural_type_definition::TypeDefinition,
+        type_definition::TypeDefinition,
     },
 };
 
@@ -19,7 +19,7 @@ use serde::{
 };
 use crate::shared_values::shared_containers::{ReferenceMutability, SharedContainerOwnership};
 use crate::types::r#type::Type;
-use crate::types::type_definition::{LocalMutability, LocalReferenceMutability, TypeMetadata};
+use crate::types::type_definition_with_metadata::{LocalMutability, LocalReferenceMutability, TypeMetadata};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum DIFTypeDefinition {

@@ -28,7 +28,7 @@ use crate::{
         SpannedCompilerError,
     },
     global::operators::{binary::ArithmeticOperator, BinaryOperator},
-    types::structural_type_definition::TypeDefinition,
+    types::type_definition::TypeDefinition,
     utils::maybe_action::{collect_or_pass_error, ErrorCollector, MaybeAction},
     visitor::{
         expression::{visitable::ExpressionVisitResult, ExpressionVisitor},
@@ -49,7 +49,7 @@ use crate::shared_values::pointer_address::PointerAddress;
 use crate::shared_values::shared_containers::ReferenceMutability;
 use crate::types::nominal_type_definition::NominalTypeDefinition;
 use crate::types::r#type::{Type};
-use crate::types::type_definition::{TypeDefinitionWithMetadata, TypeMetadata};
+use crate::types::type_definition_with_metadata::{TypeDefinitionWithMetadata, TypeMetadata};
 
 pub struct Precompiler<'a> {
     ast_metadata: Rc<RefCell<AstMetadata>>,
@@ -752,7 +752,7 @@ mod tests {
     use core::assert_matches;
     use crate::ast::expressions::CreateShared;
     use crate::libs::core::type_id::{CoreLibBaseTypeId, CoreLibVariantTypeId};
-    use crate::types::type_definition::LocalReferenceMutability;
+    use crate::types::type_definition_with_metadata::LocalReferenceMutability;
     use crate::values::core_values::endpoint::Endpoint;
     use crate::values::core_values::integer::typed_integer::IntegerTypeVariant;
 

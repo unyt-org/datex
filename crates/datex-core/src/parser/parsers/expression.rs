@@ -29,7 +29,7 @@ use crate::{
 };
 use crate::ast::expressions::CloneExpression;
 use crate::shared_values::shared_containers::ReferenceMutability;
-use crate::types::type_definition::LocalReferenceMutability;
+use crate::types::type_definition_with_metadata::LocalReferenceMutability;
 
 static UNARY_BP: u8 = 29; // weaker than property access / apply, stronger than all other binary operators
 
@@ -679,7 +679,7 @@ mod tests {
         },
     };
     use crate::shared_values::shared_containers::ReferenceMutability;
-    use crate::types::type_definition::LocalReferenceMutability;
+    use crate::types::type_definition_with_metadata::LocalReferenceMutability;
 
     #[test]
     fn parse_simple_binary_expression() {

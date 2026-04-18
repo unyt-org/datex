@@ -13,8 +13,8 @@ use crate::{
     prelude::*,
     shared_values::shared_containers::ReferenceMutability,
     types::{
-        structural_type_definition::TypeDefinition, r#type::Type,
-        type_definition::TypeDefinitionWithMetadata,
+        type_definition::TypeDefinition, r#type::Type,
+        type_definition_with_metadata::TypeDefinitionWithMetadata,
     },
     utils::buffers::append_u8,
 };

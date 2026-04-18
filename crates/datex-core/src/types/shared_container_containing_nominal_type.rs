@@ -14,6 +14,7 @@ use crate::{
     },
     values::core_value::CoreValue,
 };
+use crate::runtime::pointer_address_provider::SelfOwnedPointerAddressProvider;
 use crate::shared_values::shared_containers::SharedContainerMutability;
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
@@ -27,14 +28,15 @@ impl Deref for SharedContainerContainingNominalType {
 }
 
 impl SharedContainerContainingNominalType {
-    
-    pub fn new_from_definition(definition: NominalTypeDefinition) -> SharedContainerContainingNominalType {
+
+    pub fn new_from_definition(definition: NominalTypeDefinition, address_provider: &mut SelfOwnedPointerAddressProvider) -> SharedContainerContainingNominalType {
         SharedContainerContainingNominalType(SharedContainer::new_owned_with_inferred_allowed_type(
             CoreValue::NominalType(definition).into(),
             SharedContainerMutability::Immutable,
+            address_provider
         ))
     }
-    
+
     /// Creates a new [SharedContainerContainingNominalType] from a [SharedContainer] without checking the constraint.
     /// The caller must ensure that the constraint for [SharedContainerContainingNominalType] is satisfied
     /// (i.e. the allowed type of the container is a [StructuralTypeDefinition::NominalType])

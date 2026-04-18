@@ -178,7 +178,7 @@ mod tests {
     /// Returns a Rc<RefCell<Vec<DIFUpdate>>> that contains all observed updates
     /// The caller can borrow this to inspect the updates after performing operations on the reference
     fn record_dif_updates(
-        reference: &BaseSharedValueContainer,
+        reference: &mut BaseSharedValueContainer,
         transceiver_id: TransceiverId,
         observe_options: ObserveOptions,
     ) -> Rc<RefCell<Vec<DIFUpdate<'static>>>> {
@@ -260,7 +260,7 @@ mod tests {
                 SharedContainerMutability::Mutable,
             );
         let observed_updates =
-            record_dif_updates(&int_ref, 0, ObserveOptions::default());
+            record_dif_updates(&mut int_ref, 0, ObserveOptions::default());
 
         // Update the value of the reference
         int_ref
@@ -288,7 +288,7 @@ mod tests {
                 SharedContainerMutability::Mutable,
             );
         let observed_update =
-            record_dif_updates(&int_ref, 0, ObserveOptions::default());
+            record_dif_updates(&mut int_ref, 0, ObserveOptions::default());
 
         // Update the value of the reference
         int_ref
@@ -307,7 +307,7 @@ mod tests {
                 SharedContainerMutability::Mutable,
             );
         let observed_update = record_dif_updates(
-            &int_ref,
+            &mut int_ref,
             0,
             ObserveOptions {
                 relay_own_updates: true,
@@ -343,7 +343,7 @@ mod tests {
                 SharedContainerMutability::Mutable,
             );
         let observed_updates =
-            record_dif_updates(&reference, 0, ObserveOptions::default());
+            record_dif_updates(&mut reference, 0, ObserveOptions::default());
         // Update a property
         reference
             .try_set_property(1, None, "a", "val".into())

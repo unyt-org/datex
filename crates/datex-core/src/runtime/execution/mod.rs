@@ -1,5 +1,4 @@
 use crate::{
-    libs::core::core_lib_entry,
     runtime::{
         RuntimeInternal,
         execution::{
@@ -140,7 +139,11 @@ pub async fn execute_dxb(
                 interrupt_provider.provide_result(
                     InterruptResult::ResolvedValue(
                         get_local_pointer_value(&runtime_internal, address)
-                            .ok()?,
+                            .map(|v| {
+                                ValueContainer::Shared(
+                                    SharedContainer::Referenced(v),
+                                )
+                            }),
                     ),
                 );
             }
@@ -201,6 +204,7 @@ pub async fn execute_dxb(
                     runtime_internal.clone().handle_pointer_move_to_remote(
                         &caller_metadata.endpoint,
                         address_mapping,
+                        &mut *runtime_internal.memory.borrow_mut(),
                     )?;
                 interrupt_provider.provide_result(
                     InterruptResult::ResolvedValues(moved_values),
@@ -230,9 +234,10 @@ fn get_remote_shared_container_reference(
     address: RawRemotePointerAddress,
     _mutability: ReferenceMutability,
 ) -> Result<Option<ReferencedSharedContainer>, ExecutionError> {
+    let address_provider = runtime_internal.pointer_address_provider.borrow();
     let memory = runtime_internal.memory.borrow();
     let resolved_address =
-        memory.get_pointer_address_from_raw_full_address(address);
+        address_provider.get_pointer_address_from_raw_full_address(address);
     // convert slot to InternalSlot enum
     // TODO #770: resolve from remote, handle mutability
     Ok(memory.get_reference(&resolved_address).cloned())
@@ -241,25 +246,6 @@ fn get_remote_shared_container_reference(
 fn get_builtin_shared_value_reference(
     runtime_internal: &Rc<RuntimeInternal>,
     address: RawBuiltinPointerAddress,
-) -> Result<ReferencedSharedContainer, ExecutionError> {
-    // first try to get from memory
-    if let Ok(shared_container) = get_builtin_shared_value_reference_from_memory(
-        runtime_internal,
-        &address,
-    ) {
-        return Ok(shared_container);
-    }
-
-    let core_lib_id =
-        CoreLibId::try_from(ExternalPointerAddress::Builtin(address.id));
-    core_lib_id
-        .map_err(|_| ExecutionError::ReferenceNotFound)
-        .map(|id| core_lib_entry(id))
-}
-
-fn get_builtin_shared_value_reference_from_memory(
-    runtime_internal: &Rc<RuntimeInternal>,
-    address: &RawBuiltinPointerAddress,
 ) -> Result<ReferencedSharedContainer, ExecutionError> {
     let pointer_address =
         PointerAddress::External(ExternalPointerAddress::Builtin(address.id));

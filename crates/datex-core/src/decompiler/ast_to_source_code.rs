@@ -19,7 +19,7 @@ use core::fmt::{self};
 use crate::decompiler::{FormattingMode, FormattingOptions, IndentType};
 use crate::ast::expressions::{UnboxSlotAssignment, ValueAccessType};
 use crate::shared_values::shared_containers::ReferenceMutability;
-use crate::types::type_definition::LocalReferenceMutability;
+use crate::types::type_definition_with_metadata::LocalReferenceMutability;
 
 #[derive(Clone, Default)]
 pub enum BraceStyle {

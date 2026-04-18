@@ -131,7 +131,7 @@ impl BaseSharedValueContainer {
 
     /// Pushes a value to the reference if it is a list.
     pub fn try_append_value<'a>(
-        &self,
+        &mut self,
         source_id: TransceiverId,
         maybe_dif_update_data: Option<&DIFUpdateData>,
         value: impl Into<ValueContainer>,
@@ -159,7 +159,7 @@ impl BaseSharedValueContainer {
                 }
             }
             Ok(())
-        });
+        })?;
 
         self.notify_observers(&dif_update.with_source(source_id));
         Ok(())
@@ -168,7 +168,7 @@ impl BaseSharedValueContainer {
     /// Tries to delete a property from the reference if it is a map.
     /// Notifies observers if successful.
     pub fn try_delete_property<'a>(
-        &self,
+        &mut self,
         source_id: TransceiverId,
         maybe_dif_update_data: Option<&DIFUpdateData>,
         key: impl Into<ValueKey<'a>>,
@@ -192,7 +192,7 @@ impl BaseSharedValueContainer {
     }
 
     pub fn try_clear(
-        &self,
+        &mut self,
         source_id: TransceiverId,
     ) -> Result<(), AccessError> {
         self.assert_can_mutate()?;
@@ -221,7 +221,7 @@ impl BaseSharedValueContainer {
     }
 
     pub fn try_list_splice<'a>(
-        &self,
+        &mut self,
         source_id: TransceiverId,
         maybe_dif_update_data: Option<&DIFUpdateData>,
         range: core::ops::Range<u32>,
@@ -286,7 +286,7 @@ mod tests {
             ValueContainer::from(2),
             ValueContainer::from(3),
         ];
-        let list_ref = BaseSharedValueContainer::new_with_inferred_allowed_type(
+        let mut list_ref = BaseSharedValueContainer::new_with_inferred_allowed_type(
             List::from(list),
             SharedContainerMutability::Mutable,
         );
@@ -297,7 +297,7 @@ mod tests {
         assert_eq!(updated_value, ValueContainer::from(4));
 
         // Try to push to immutable value
-        let int_ref = BaseSharedValueContainer::new_with_inferred_allowed_type(
+        let mut int_ref = BaseSharedValueContainer::new_with_inferred_allowed_type(
             List::from(vec![ValueContainer::from(42)]),
             SharedContainerMutability::Immutable,
         );
@@ -306,7 +306,7 @@ mod tests {
         assert_matches!(result, Err(AccessError::ImmutableReference));
 
         // Try to push to non-list value
-        let int_ref = BaseSharedValueContainer::new_with_inferred_allowed_type(
+        let mut int_ref = BaseSharedValueContainer::new_with_inferred_allowed_type(
             42,
             SharedContainerMutability::Mutable,
         );
