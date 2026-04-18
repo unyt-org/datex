@@ -25,6 +25,7 @@ use crate::libs::core::core_lib_id::CoreLibId;
 use crate::shared_values::shared_containers::SharedContainer;
 use crate::types::r#type::Type;
 use crate::types::type_definition::TypeDefinition;
+use crate::types::type_definition_with_metadata::TypeDefinitionWithMetadata;
 
 impl From<&ValueContainer> for DatexExpressionData {
     /// Converts a ValueContainer into a DatexExpression AST.
@@ -165,6 +166,9 @@ fn value_to_datex_expression(value: &Value) -> DatexExpressionData {
                     injected_variable_count: None,
                 },
             ))
+        },
+        CoreValue::NominalType(_) => {
+            todo!()
         }
     }
 }
@@ -172,19 +176,21 @@ fn value_to_datex_expression(value: &Value) -> DatexExpressionData {
 fn type_to_type_expression(ty: &Type) -> TypeExpression {
     match ty {
         Type::Nominal(container) => todo!(),
-        Type::Alias(definition) => type_definition_to_type_expression(&ty.definition())
+        Type::Alias(definition) => ty.with_collapsed_definition_with_metadata(|def| {
+            type_definition_to_type_expression(def)
+        })
     }
 }
 
-fn type_definition_to_type_expression(type_value: &TypeDefinition) -> TypeExpression {
+fn type_definition_to_type_expression(type_def_with_metadata: &TypeDefinitionWithMetadata) -> TypeExpression {
     // TODO: handle type metadata
-    structural_type_definition_to_type_expression(&type_value.structural_definition)
+    structural_type_definition_to_type_expression(&type_def_with_metadata.definition)
 }
 
 
-fn structural_type_definition_to_type_expression(type_definition: &StructuralTypeDefinition) -> TypeExpression {
+fn structural_type_definition_to_type_expression(type_definition: &TypeDefinition) -> TypeExpression {
     match type_definition {
-        StructuralTypeDefinition::Literal(struct_type) => match struct_type {
+        TypeDefinition::Literal(struct_type) => match struct_type {
             LiteralTypeDefinition::Integer(integer) => {
                 TypeExpressionData::Integer(integer.clone()).with_default_span()
             }
@@ -218,7 +224,7 @@ fn structural_type_definition_to_type_expression(type_definition: &StructuralTyp
             ))
                 .with_default_span(),
         },
-        StructuralTypeDefinition::Range((start_type, end_type)) => {
+        TypeDefinition::Range((start_type, end_type)) => {
             let x = type_to_type_expression(start_type);
             let y = type_to_type_expression(end_type);
             TypeExpressionData::Range(RangeTypeExpr {
@@ -227,14 +233,14 @@ fn structural_type_definition_to_type_expression(type_definition: &StructuralTyp
             })
                 .with_default_span()
         }
-        StructuralTypeDefinition::Union(union_types) => TypeExpressionData::Union(Union(
+        TypeDefinition::Union(union_types) => TypeExpressionData::Union(Union(
             union_types
                 .iter()
                 .map(type_to_type_expression)
                 .collect::<Vec<TypeExpression>>(),
         ))
         .with_default_span(),
-        StructuralTypeDefinition::Intersection(intersection_types) => {
+        TypeDefinition::Intersection(intersection_types) => {
             TypeExpressionData::Intersection(Intersection(
                 intersection_types
                     .iter()
@@ -243,8 +249,8 @@ fn structural_type_definition_to_type_expression(type_definition: &StructuralTyp
             ))
             .with_default_span()
         }
-        StructuralTypeDefinition::Unit => TypeExpressionData::Unit.with_default_span(),
-        StructuralTypeDefinition::Shared(type_reference) => {
+        TypeDefinition::Unit => TypeExpressionData::Unit.with_default_span(),
+        TypeDefinition::Shared(type_reference) => {
             // try to resolve to core lib value
             if let Ok(core_lib_type) = CoreLibId::try_from(
                 type_reference.pointer_address(),

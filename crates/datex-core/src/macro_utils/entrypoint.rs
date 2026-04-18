@@ -13,6 +13,7 @@ use syn::{
     Attribute, FnArg, Ident, ItemFn, LitStr, Pat, PatIdent, Token, Type,
     parse::{Parse, ParseStream},
 };
+use crate::runtime::{Runtime, RuntimeRunner};
 
 #[derive(Debug)]
 pub struct ParsedAttributes {
@@ -251,6 +252,8 @@ fn compile_datex_config(config: &RuntimeConfig) -> Vec<u8> {
         "?",
         &[Some(ValueContainer::from_serializable(config).unwrap())],
         CompileOptions::default(),
+        // FIXME: stub runtime for now
+        Runtime::stub()
     )
     .expect("failed to compile DATEX config file");
     dxb

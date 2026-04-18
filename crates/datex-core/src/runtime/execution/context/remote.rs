@@ -5,14 +5,16 @@ use crate::{
     runtime::execution::context::{ExecutionContext, ExecutionMode},
     values::core_values::endpoint::Endpoint,
 };
+use crate::runtime::Runtime;
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct RemoteExecutionContext {
     #[cfg(feature = "compiler")]
     pub compile_scope: CompilationScope,
     pub endpoint: Endpoint,
     pub context_id: Option<OutgoingContextId>,
     pub execution_mode: ExecutionMode,
+    pub runtime: Runtime,
 }
 
 impl RemoteExecutionContext {
@@ -20,6 +22,7 @@ impl RemoteExecutionContext {
     pub fn new(
         endpoint: impl Into<Endpoint>,
         execution_mode: ExecutionMode,
+        runtime: Runtime,
     ) -> Self {
         RemoteExecutionContext {
             #[cfg(feature = "compiler")]
@@ -27,22 +30,25 @@ impl RemoteExecutionContext {
             endpoint: endpoint.into(),
             context_id: None,
             execution_mode,
+            runtime,
         }
     }
 }
 
 impl ExecutionContext {
-    pub fn remote(endpoint: impl Into<Endpoint>) -> Self {
+    pub fn remote(endpoint: impl Into<Endpoint>, runtime: Runtime) -> Self {
         ExecutionContext::Remote(RemoteExecutionContext::new(
             endpoint,
             ExecutionMode::Static,
+            runtime,
         ))
     }
 
-    pub fn remote_unbounded(endpoint: impl Into<Endpoint>) -> Self {
+    pub fn remote_unbounded(endpoint: impl Into<Endpoint>, runtime: Runtime) -> Self {
         ExecutionContext::Remote(RemoteExecutionContext::new(
             endpoint,
             ExecutionMode::unbounded(),
+            runtime,
         ))
     }
 }

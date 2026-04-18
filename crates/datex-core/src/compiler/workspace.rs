@@ -86,6 +86,7 @@ impl CompilerWorkspace {
         let rich_ast = parse_datex_script_to_rich_ast_detailed_errors(
             &content,
             &mut options,
+            self.runtime.clone()
         )?;
         Ok(rich_ast)
     }

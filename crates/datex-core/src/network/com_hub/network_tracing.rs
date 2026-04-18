@@ -35,6 +35,7 @@ use serde::{Deserialize, Serialize};
 use serde_with::{DurationMilliSeconds, serde_as};
 use crate::core_compiler::value_compiler::compile_value;
 use crate::runtime::execution::execution_input::ExecutionCallerMetadata;
+use crate::runtime::Runtime;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
@@ -533,7 +534,7 @@ impl ComHub {
     ) -> Option<Vec<NetworkTraceHop>> {
         // convert DATEX to hops
         let dxb = block.body.clone();
-        let runtime_stub = Rc::new(RuntimeInternal::stub());
+        let runtime_stub = Runtime::stub(); // FIXME
         let exec_input = ExecutionInput::new(
             &dxb,
             ExecutionCallerMetadata::local_default(),

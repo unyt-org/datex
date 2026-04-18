@@ -332,6 +332,9 @@ pub fn append_value(
             append_value_container(context, (&*range.start).into())?;
             append_value_container(context, (&*range.end).into())?;
         }
+        CoreValue::NominalType(_) => {
+            todo!()
+        }
     })
 }
 
@@ -339,11 +342,8 @@ pub fn append_core_type_cast(
     context: &mut CoreCompilationContext,
     core_lib_type_id: CoreLibTypeId,
 ) {
-    append_type_cast(
-        context,
-        &TypeDefinition::Shared(core_lib_type(core_lib_type_id)),
-    )
-    .unwrap(); // internal type, cast can never fail
+    // TODO: append type cast with only id (no need to access shared container)
+    todo!()
 }
 
 pub fn append_type_cast(

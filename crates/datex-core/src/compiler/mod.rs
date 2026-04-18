@@ -66,6 +66,7 @@ use crate::global::protocol_structures::instruction_data::{InstructionBlockData,
 use crate::global::protocol_structures::regular_instructions::RegularInstruction;
 use crate::libs::core::core_lib_id::CoreLibId;
 use crate::libs::core::value_id::CoreLibValueId;
+use crate::runtime::Runtime;
 use crate::shared_values::shared_containers::SharedContainer;
 use crate::shared_values::shared_containers::ReferenceMutability;
 
@@ -199,8 +200,9 @@ impl Variable {
 /// This function is used to create a block that can be sent over the network.
 pub fn compile_block(
     datex_script: &str,
+    runtime: Runtime
 ) -> Result<Vec<u8>, SimpleOrDetailedCompilerError> {
-    let (body, _) = compile_script(datex_script, CompileOptions::default())?;
+    let (body, _) = compile_script(datex_script, CompileOptions::default(), runtime)?;
 
     let routing_header = RoutingHeader::default();
 
@@ -218,8 +220,9 @@ pub fn compile_block(
 pub fn compile_script(
     datex_script: &str,
     options: CompileOptions,
+    runtime: Runtime,
 ) -> Result<(Vec<u8>, CompilationScope), SpannedCompilerError> {
-    compile_template(datex_script, &[], options)
+    compile_template(datex_script, &[], options, runtime)
 }
 
 /// Directly extracts a static value from a DATEX script as a `ValueContainer`.
@@ -240,10 +243,12 @@ pub fn extract_static_value_from_script(
 pub fn compile_script_or_return_static_value(
     datex_script: &str,
     mut options: CompileOptions,
+    runtime: Runtime
 ) -> Result<(StaticValueOrDXB, CompilationScope), SpannedCompilerError> {
     let ast = parse_datex_script_to_rich_ast_simple_error(
         datex_script,
         &mut options,
+        runtime,
     )?;
     let mut compilation_context = CompilationContext::new(
         Vec::with_capacity(256),
@@ -293,6 +298,7 @@ fn ensure_statements(
 pub fn parse_datex_script_to_rich_ast_simple_error(
     datex_script: &str,
     options: &mut CompileOptions,
+    runtime: Runtime,
 ) -> Result<RichAst, SpannedCompilerError> {
     // TODO #481: do this (somewhere else)
     // // shortcut if datex_script is "?" - call compile_value_container directly
@@ -336,6 +342,7 @@ pub fn parse_datex_script_to_rich_ast_simple_error(
         PrecompilerOptions {
             detailed_errors: false,
         },
+        runtime,
     )
     .map_err(|e| match e {
         SimpleCompilerErrorOrDetailedCompilerErrorWithRichAst::Simple(e) => e,
@@ -357,6 +364,7 @@ pub fn parse_datex_script_to_rich_ast_simple_error(
 pub fn parse_datex_script_to_rich_ast_detailed_errors(
     datex_script: &str,
     options: &mut CompileOptions,
+    runtime: Runtime
 ) -> Result<RichAst, DetailedCompilerErrorsWithMaybeRichAst> {
     let (ast, parser_errors) =
         Parser::parse_collecting_with_default_options(datex_script)
@@ -367,6 +375,7 @@ pub fn parse_datex_script_to_rich_ast_detailed_errors(
         PrecompilerOptions {
             detailed_errors: true,
         },
+        runtime,
     )
     .map_err(|e| match e {
         SimpleCompilerErrorOrDetailedCompilerErrorWithRichAst::Detailed(
@@ -387,10 +396,12 @@ pub fn compile_template(
     datex_script: &str,
     inserted_values: &[Option<ValueContainer>],
     mut options: CompileOptions,
+    runtime: Runtime
 ) -> Result<(Vec<u8>, CompilationScope), SpannedCompilerError> {
     let ast = parse_datex_script_to_rich_ast_simple_error(
         datex_script,
         &mut options,
+        runtime
     )?;
     let mut compilation_context = CompilationContext::new(
         Vec::with_capacity(256),
@@ -442,12 +453,12 @@ fn extract_static_value_from_ast(
 /// compile!("? + ?", 1, 2);
 #[macro_export]
 macro_rules! compile {
-    ($fmt:literal $(, $arg:expr )* $(,)?) => {
+    ($runtime:expr, $fmt:literal $(, $arg:expr )* $(,)?) => {
         {
             let script: &str = $fmt.into();
             let values: &[Option<$crate::values::value_container::ValueContainer>] = &[$(Some($arg.into())),*];
 
-            $crate::compiler::compile_template(&script, values, $crate::compiler::CompileOptions::default())
+            $crate::compiler::compile_template(&script, values, $crate::compiler::CompileOptions::default(), $runtime)
         }
     }
 }
@@ -457,6 +468,7 @@ fn precompile_to_rich_ast(
     valid_parse_result: DatexExpression,
     scope: &mut CompilationScope,
     precompiler_options: PrecompilerOptions,
+    runtime: Runtime,
 ) -> Result<RichAst, SimpleCompilerErrorOrDetailedCompilerErrorWithRichAst> {
     // if static execution mode and scope already used, return error
     if scope.execution_mode == ExecutionMode::Static && scope.was_used {
@@ -479,6 +491,7 @@ fn precompile_to_rich_ast(
             &mut precompiler_data.precompiler_scope_stack.borrow_mut(),
             precompiler_data.rich_ast.metadata.clone(),
             precompiler_options,
+            runtime
         )?
     } else {
         // if no precompiler data, just use the AST with default metadata
@@ -1527,11 +1540,16 @@ pub mod tests {
     use crate::global::protocol_structures::regular_instructions::RegularInstruction;
     use crate::libs::core::core_lib_id::CoreLibId;
     use crate::libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId};
+    use crate::runtime::{Runtime, RuntimeConfig, RuntimeRunner};
     use crate::values::core_values::integer::Integer;
+
+    fn get_stub_runtime() -> Runtime {
+        Runtime::stub()
+    }
 
     fn compile_and_log(datex_script: &str) -> Vec<u8> {
         let (result, _) =
-            compile_script(datex_script, CompileOptions::default()).unwrap();
+            compile_script(datex_script, CompileOptions::default(), get_stub_runtime()).unwrap();
         info!(
             "{:?}",
             result
@@ -1546,7 +1564,7 @@ pub mod tests {
     fn get_compilation_context(script: &str) -> CompilationContext {
         let mut options = CompileOptions::default();
         let ast =
-            parse_datex_script_to_rich_ast_simple_error(script, &mut options)
+            parse_datex_script_to_rich_ast_simple_error(script, &mut options, get_stub_runtime())
                 .unwrap();
 
         let mut compilation_context = CompilationContext::new(
@@ -1576,6 +1594,7 @@ pub mod tests {
                 let (dxb, new_compilation_scope) = compile_script(
                     script_part,
                     CompileOptions::new_with_scope(compilation_scope),
+                    get_stub_runtime()
                 )
                 .unwrap();
                 compilation_scope = new_compilation_scope;
@@ -2327,6 +2346,7 @@ pub mod tests {
                 Some(TypedInteger::from(2u8).into()),
             ],
             CompileOptions::default(),
+            get_stub_runtime()
         );
         assert_eq!(
             result.unwrap().0,
@@ -2343,14 +2363,14 @@ pub mod tests {
     #[test]
     fn compile_macro() {
         let a = TypedInteger::from(1u8);
-        let result = compile!("?", a);
+        let result = compile!(get_stub_runtime(), "?", a);
         assert_eq!(result.unwrap().0, vec![InstructionCode::UINT_8.into(), 1,]);
     }
 
     #[test]
     fn compile_macro_multi() {
         let result =
-            compile!("? + ?", TypedInteger::from(1u8), TypedInteger::from(2u8));
+            compile!(get_stub_runtime(), "? + ?", TypedInteger::from(1u8), TypedInteger::from(2u8));
         assert_eq!(
             result.unwrap().0,
             vec![
@@ -2439,6 +2459,7 @@ pub mod tests {
         let (res, _) = compile_script_or_return_static_value(
             script,
             CompileOptions::default(),
+            get_stub_runtime()
         )
         .unwrap();
         assert_matches!(
@@ -2450,6 +2471,7 @@ pub mod tests {
         let (res, _) = compile_script_or_return_static_value(
             script,
             CompileOptions::default(),
+            get_stub_runtime()
         )
         .unwrap();
         assert_matches!(
@@ -2480,7 +2502,7 @@ pub mod tests {
             z;
         "#;
         let (res, _) =
-            compile_script(script, CompileOptions::default()).unwrap();
+            compile_script(script, CompileOptions::default(), get_stub_runtime()).unwrap();
         print_disassembled(&res);
         assert_regular_instructions_equal!(
             &res,
@@ -2506,7 +2528,7 @@ pub mod tests {
     fn remote_execution() {
         let script = "42u8 :: 43u8";
         let (res, _) =
-            compile_script(script, CompileOptions::default()).unwrap();
+            compile_script(script, CompileOptions::default(), get_stub_runtime()).unwrap();
         assert_eq!(
             res,
             vec![
@@ -2537,7 +2559,7 @@ pub mod tests {
     fn remote_execution_expression() {
         let script = "42u8 :: 1u8 + 2u8";
         let (res, _) =
-            compile_script(script, CompileOptions::default()).unwrap();
+            compile_script(script, CompileOptions::default(), get_stub_runtime()).unwrap();
         assert_eq!(
             res,
             vec![
@@ -2572,7 +2594,11 @@ pub mod tests {
     fn remote_execution_invalid_reassignment_of_external_variable() {
         flexi_logger::init();
         let script = "var x = 42u8; 1u8 :: (x = 43u8)";
-        let result = compile_script(script, CompileOptions::default());
+        let result = compile_script(
+            script,
+            CompileOptions::default(),
+            get_stub_runtime()
+        );
         assert!(result.is_err());
         assert_matches!(
             result.err().unwrap().error,
@@ -2585,7 +2611,7 @@ pub mod tests {
     fn remote_execution_injected_const() {
         let script = "const x = 42u8; 1u8 :: x";
         let (res, _) =
-            compile_script(script, CompileOptions::default()).unwrap();
+            compile_script(script, CompileOptions::default(), get_stub_runtime()).unwrap();
         assert_regular_instructions_equal!(
             &res,
             [
@@ -2613,7 +2639,7 @@ pub mod tests {
         // remote context, its state is synced via a ref (VariableReference model)
         let script = "const x = shared 42u8; 1u8 :: x";
         let (res, _) =
-            compile_script(script, CompileOptions::default()).unwrap();
+            compile_script(script, CompileOptions::default(), get_stub_runtime()).unwrap();
         assert_regular_instructions_equal!(
             &res,
             [
@@ -2639,7 +2665,7 @@ pub mod tests {
     fn remote_execution_injected_shared_ref() {
         let script = "const x = shared 42u8; 1u8 :: 'x";
         let (res, _) =
-            compile_script(script, CompileOptions::default()).unwrap();
+            compile_script(script, CompileOptions::default(), get_stub_runtime()).unwrap();
         assert_regular_instructions_equal!(
             &res,
             [
@@ -2665,7 +2691,7 @@ pub mod tests {
     fn remote_execution_injected_consts() {
         let script = "const x = 42u8; const y = 69u8; 1u8 :: x + y";
         let (res, _) =
-            compile_script(script, CompileOptions::default()).unwrap();
+            compile_script(script, CompileOptions::default(), get_stub_runtime()).unwrap();
         assert_regular_instructions_equal!(
             &res,
             [
@@ -2698,7 +2724,7 @@ pub mod tests {
         let script =
             "const x = 42u8; const y = 69u8; 1u8 :: (const x = 5u8; x + y)";
         let (res, _) =
-            compile_script(script, CompileOptions::default()).unwrap();
+            compile_script(script, CompileOptions::default(), get_stub_runtime()).unwrap();
         assert_regular_instructions_equal!(
             &res,
             [
@@ -2732,7 +2758,7 @@ pub mod tests {
     fn remote_execution_nested() {
         let script = "const x = 42u8; (1u8 :: (2u8 :: x))";
         let (res, _) =
-            compile_script(script, CompileOptions::default()).unwrap();
+            compile_script(script, CompileOptions::default(), get_stub_runtime()).unwrap();
 
         assert_eq!(
             res,
@@ -2804,7 +2830,7 @@ pub mod tests {
     fn remote_execution_nested2() {
         let script = "const x = 42u8; const y = 43u8; (1u8 :: (y :: x))";
         let (res, _) =
-            compile_script(script, CompileOptions::default()).unwrap();
+            compile_script(script, CompileOptions::default(),get_stub_runtime()).unwrap();
 
         assert_eq!(
             res,
@@ -2888,7 +2914,7 @@ pub mod tests {
     #[test]
     fn assignment_to_const() {
         let script = "const a = 42; a = 43";
-        let result = compile_script(script, CompileOptions::default())
+        let result = compile_script(script, CompileOptions::default(), get_stub_runtime())
             .map_err(|e| e.error);
         assert_matches!(result, Err(CompilerError::AssignmentToConst { .. }));
     }
@@ -2896,7 +2922,7 @@ pub mod tests {
     #[test]
     fn assignment_to_const_mut() {
         let script = "const a = &mut 42; a = 43";
-        let result = compile_script(script, CompileOptions::default())
+        let result = compile_script(script, CompileOptions::default(), get_stub_runtime())
             .map_err(|e| e.error);
         assert_matches!(result, Err(CompilerError::AssignmentToConst { .. }));
     }
@@ -2904,21 +2930,21 @@ pub mod tests {
     #[test]
     fn internal_assignment_to_const_mut() {
         let script = "const a = &mut 42; *a = 43";
-        let result = compile_script(script, CompileOptions::default());
+        let result = compile_script(script, CompileOptions::default(), get_stub_runtime());
         assert_matches!(result, Ok(_));
     }
 
     #[test]
     fn addition_to_const_mut_ref() {
         let script = "const a = &mut 42; *a += 1;";
-        let result = compile_script(script, CompileOptions::default());
+        let result = compile_script(script, CompileOptions::default(), get_stub_runtime());
         assert_matches!(result, Ok(_));
     }
 
     #[test]
     fn addition_to_const_variable() {
         let script = "const a = 42; a += 1";
-        let result = compile_script(script, CompileOptions::default())
+        let result = compile_script(script, CompileOptions::default(), get_stub_runtime())
             .map_err(|e| e.error);
         assert_matches!(result, Err(CompilerError::AssignmentToConst { .. }));
     }
@@ -2927,7 +2953,7 @@ pub mod tests {
     fn internal_slot_endpoint() {
         let script = "#endpoint";
         let (res, _) =
-            compile_script(script, CompileOptions::default()).unwrap();
+            compile_script(script, CompileOptions::default(), get_stub_runtime()).unwrap();
         assert_eq!(
             res,
             vec![
@@ -2945,7 +2971,7 @@ pub mod tests {
     fn internal_slot_caller() {
         let script = "#caller";
         let (res, _) =
-            compile_script(script, CompileOptions::default()).unwrap();
+            compile_script(script, CompileOptions::default(), get_stub_runtime()).unwrap();
         assert_eq!(
             res,
             vec![
@@ -2964,7 +2990,7 @@ pub mod tests {
     fn unbox() {
         let script = "*10u8";
         let (res, _) =
-            compile_script(script, CompileOptions::default()).unwrap();
+            compile_script(script, CompileOptions::default(), get_stub_runtime()).unwrap();
         assert_eq!(
             res,
             vec![
@@ -2980,7 +3006,7 @@ pub mod tests {
     fn unbox_slot() {
         let script = "const x = 10u8; *x";
         let (res, _) =
-            compile_script(script, CompileOptions::default()).unwrap();
+            compile_script(script, CompileOptions::default(), get_stub_runtime()).unwrap();
         assert_eq!(
             res,
             vec![
@@ -3005,7 +3031,7 @@ pub mod tests {
     fn type_literal_integer() {
         let script = "type<1>";
         let (res, _) =
-            compile_script(script, CompileOptions::default()).unwrap();
+            compile_script(script, CompileOptions::default(), get_stub_runtime()).unwrap();
         assert_eq!(
             res,
             vec![
@@ -3026,7 +3052,7 @@ pub mod tests {
     fn type_core_type_integer() {
         let script = "integer";
         let (res, _) =
-            compile_script(script, CompileOptions::default()).unwrap();
+            compile_script(script, CompileOptions::default(), get_stub_runtime()).unwrap();
         let mut instructions: Vec<u8> =
             vec![InstructionCode::GET_INTERNAL_SHARED_REF.into()];
         // pointer id

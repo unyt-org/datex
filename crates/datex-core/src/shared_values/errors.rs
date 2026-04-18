@@ -6,6 +6,8 @@ use crate::{
     },
 };
 use core::fmt::Display;
+use crate::type_inference::error::TypeError;
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum SharedValueCreationError {
     InvalidType,
@@ -102,22 +104,6 @@ impl Display for AccessError {
             AccessError::InvalidIndexKey => {
                 write!(f, "Invalid index key")
             }
-        }
-    }
-}
-
-#[derive(Debug)]
-pub enum TypeError {
-    TypeMismatch { expected: Type, found: Type },
-}
-impl Display for TypeError {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        match self {
-            TypeError::TypeMismatch { expected, found } => write!(
-                f,
-                "Type mismatch: expected {}, found {}",
-                expected, found
-            ),
         }
     }
 }

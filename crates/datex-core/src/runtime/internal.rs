@@ -50,6 +50,7 @@ use alloc::rc::Rc;
 use core::{cell::RefCell, pin::Pin, slice};
 use log::{debug, error, info};
 use crate::runtime::pointer_address_provider::SelfOwnedPointerAddressProvider;
+use crate::runtime::Runtime;
 use crate::shared_values::pointer_address::PointerAddress;
 
 #[derive(Debug)]
@@ -95,6 +96,15 @@ macro_rules! get_execution_context {
             }
         }
     };
+}
+
+impl From<Rc<RuntimeInternal>> for Runtime {
+    fn from(value: Rc<RuntimeInternal>) -> Self {
+        Runtime {
+            internal: value,
+            version: env!("CARGO_PKG_VERSION").into(), // TODO move version into RuntimeInternal
+        }
+    }
 }
 
 impl RuntimeInternal {
@@ -197,7 +207,7 @@ impl RuntimeInternal {
         inserted_values: &[ValueContainer],
         execution_context: Option<&mut ExecutionContext>,
     ) -> Result<Option<ValueContainer>, ScriptExecutionError> {
-        let execution_context = get_execution_context!(self, execution_context);
+        let execution_context = get_execution_context!(Runtime::from(self.clone()), execution_context);
         let compile_start = Instant::now();
         let dxb = execution_context.compile(script, inserted_values)?;
         debug!(
@@ -227,7 +237,7 @@ impl RuntimeInternal {
         inserted_values: &[ValueContainer],
         execution_context: Option<&mut ExecutionContext>,
     ) -> Result<Option<ValueContainer>, ScriptExecutionError> {
-        let execution_context = get_execution_context!(self, execution_context);
+        let execution_context = get_execution_context!(Runtime::from(self.clone()), execution_context);
         let compile_start = Instant::now();
         let dxb = execution_context.compile(script, inserted_values)?;
         debug!(
@@ -262,7 +272,7 @@ impl RuntimeInternal {
     > {
         Box::pin(async move {
             let execution_context =
-                get_execution_context!(self, execution_context);
+                get_execution_context!(Runtime::from(self.clone()), execution_context);
             match execution_context {
                 ExecutionContext::Remote(context) => {
                     RuntimeInternal::execute_remote(self, context, dxb_body)
@@ -281,7 +291,7 @@ impl RuntimeInternal {
         execution_context: Option<&mut ExecutionContext>,
         _end_execution: bool,
     ) -> Result<Option<ValueContainer>, ExecutionError> {
-        let execution_context = get_execution_context!(self, execution_context);
+        let execution_context = get_execution_context!(Runtime::from(self), execution_context);
         match execution_context {
             ExecutionContext::Remote(_) => {
                 Err(ExecutionError::RequiresAsyncExecution)
@@ -300,6 +310,7 @@ impl RuntimeInternal {
         context_id: &IncomingEndpointContextSectionId,
         incoming_section: &IncomingSection,
     ) -> ExecutionContext {
+        let runtime = Runtime::from(self.clone());
         let mut execution_contexts = self.execution_contexts.borrow_mut();
         // get execution context by context_id or create a new one if it doesn't exist
         let execution_context = execution_contexts.remove(context_id);
@@ -311,7 +322,7 @@ impl RuntimeInternal {
             };
             ExecutionContext::local(
                 ExecutionMode::unbounded(),
-                self.clone(),
+                runtime,
                 caller_metadata,
             )
         }
@@ -430,7 +441,7 @@ impl RuntimeInternal {
         block: DXBBlock,
         execution_context: Option<&mut ExecutionContext>,
     ) -> Result<Option<ValueContainer>, ExecutionError> {
-        let execution_context = get_execution_context!(self, execution_context);
+        let execution_context = get_execution_context!(Runtime::from(self.clone()), execution_context);
         // assert that the execution context is local
         if !core::matches!(execution_context, ExecutionContext::Local(_)) {
             unreachable!(
@@ -488,6 +499,7 @@ impl RuntimeInternal {
                     RemoteExecutionContext::new(
                         from_endpoint.clone(),
                         ExecutionMode::Static,
+                        Runtime::from(self),
                     ),
                 )),
                 true,

@@ -10,9 +10,10 @@ use crate::{
 use core::{fmt::Display, result::Result};
 
 use crate::{prelude::*, shared_values::pointer_address::PointerAddress};
-use crate::shared_values::errors::{AccessError, AssignmentError, SharedValueCreationError, TypeError};
+use crate::shared_values::errors::{AccessError, AssignmentError, SharedValueCreationError};
 use crate::shared_values::pointer_address::SelfOwnedPointerAddress;
 use crate::shared_values::shared_containers::SharedContainer;
+use crate::type_inference::error::TypeError;
 use crate::types::r#type::Type;
 use crate::value_updates::update_data::UpdateData;
 use crate::values::value_container::ValueContainer;

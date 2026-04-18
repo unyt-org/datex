@@ -356,7 +356,12 @@ mod tests {
     use rstest::rstest;
     use crate::global::protocol_structures::instruction_data::{InstructionBlockData, InstructionBlockDataDebugFlat, InstructionBlockDataDebugTree, StatementsData, UInt8Data, UnboundedStatementsData};
     use crate::global::protocol_structures::regular_instructions::RegularInstruction;
+    use crate::runtime::{Runtime, RuntimeConfig, RuntimeRunner};
     use super::*;
+
+    fn get_stub_runtime() -> Runtime {
+        Runtime::stub()
+    }
 
     fn instructions_to_bytes(instructions: Vec<Instruction>) -> Vec<u8> {
         let mut cursor = Cursor::new(Vec::new());
@@ -609,7 +614,7 @@ mod tests {
                 @test :: (1 + 2);
             )
         "#;
-        let (dxb, _) = compile_script(script, CompileOptions::default()).unwrap();
+        let (dxb, _) = compile_script(script, CompileOptions::default(), get_stub_runtime()).unwrap();
         println!("{}", disassemble_body_to_string(&dxb, DisassemblerOptions {
             tree: true,
             colorized: true,

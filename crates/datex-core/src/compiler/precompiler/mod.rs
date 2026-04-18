@@ -774,7 +774,7 @@ mod tests {
         options: PrecompilerOptions,
     ) -> Result<RichAst, SimpleCompilerErrorOrDetailedCompilerErrorWithRichAst>
     {
-        let runtime = RuntimeRunner::new(RuntimeConfig::default()).runtime;
+        let runtime = Runtime::stub();
         let mut scope_stack = PrecompilerScopeStack::default();
         let ast_metadata = Rc::new(RefCell::new(AstMetadata::default()));
         Precompiler::new(&mut scope_stack, ast_metadata, runtime)
@@ -851,7 +851,7 @@ mod tests {
     fn parse_and_precompile_spanned_result(
         src: &str,
     ) -> Result<RichAst, SpannedCompilerError> {
-        let runtime = RuntimeRunner::new(RuntimeConfig::default()).runtime;
+        let runtime = Runtime::stub();
         let mut scope_stack = PrecompilerScopeStack::default();
         let ast_metadata = Rc::new(RefCell::new(AstMetadata::default()));
         let ast = Parser::parse_with_default_options(src)?;

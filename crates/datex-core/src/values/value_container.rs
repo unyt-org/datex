@@ -368,10 +368,10 @@ impl ValueContainer {
     }
 
     /// Returns the actual type of the contained value, resolving shared values if necessary.
-    pub fn actual_value_type(&self, memory: &mut Memory) -> Type {
+    pub fn actual_type(&self, memory: &mut Memory) -> Type {
         match self {
             ValueContainer::Local(local) => local.actual_type(memory).clone(),
-            ValueContainer::Shared(shared) => shared.actual_type().clone(),
+            ValueContainer::Shared(shared) => shared.actual_type(memory).clone(),
         }
     }
 

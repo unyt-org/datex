@@ -13,7 +13,7 @@ use execution::context::{
 };
 
 mod config;
-pub mod dif_interface;
+// pub mod dif_interface;
 pub mod execution;
 mod incoming_sections;
 mod internal;

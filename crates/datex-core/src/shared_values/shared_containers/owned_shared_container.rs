@@ -245,7 +245,7 @@ impl OwnedSharedContainer {
                     observers: Default::default(),
                     mutability: SharedContainerMutability::Immutable,
                 },
-                SelfOwnedPointerAddress::NULL,
+                SelfOwnedPointerAddress {address: [0; 5]},
             )),
         );
 

@@ -20,6 +20,7 @@ use core::cell::RefCell;
 
 use crate::{prelude::*, runtime::memory::Memory};
 use crate::types::r#type::Type;
+use crate::types::type_match::TypeMatch;
 
 pub fn set_property(
     target: &mut ValueContainer,

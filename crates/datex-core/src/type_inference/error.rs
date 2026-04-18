@@ -20,8 +20,8 @@ pub enum TypeError {
 
     // can not assign value to variable of different type
     AssignmentTypeMismatch {
-        annotated_type: Type,
-        assigned_type: Type,
+        expected: Type,
+        found: Type,
     },
 }
 
@@ -62,8 +62,8 @@ impl Display for TypeError {
                 )
             }
             TypeError::AssignmentTypeMismatch {
-                annotated_type,
-                assigned_type,
+                expected: annotated_type,
+                found: assigned_type,
             } => {
                 write!(
                     f,

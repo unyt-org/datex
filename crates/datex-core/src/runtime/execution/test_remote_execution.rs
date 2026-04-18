@@ -31,7 +31,7 @@ pub async fn test_basic_remote_execution() {
 
             // create an execution context for @test_b
             let mut remote_execution_context =
-                ExecutionContext::remote_unbounded(endpoint_b);
+                ExecutionContext::remote_unbounded(endpoint_b, runtime_b);
 
             // execute script remotely on @test_b
             let result = runtime_a
@@ -63,10 +63,10 @@ pub async fn test_remote_execution_persistent_context() {
     use_mock_setup_with_two_connected_runtimes(
         endpoint_a.clone(),
         endpoint_b.clone(),
-        async |runtime_a, _runtime_b| {
+        async |runtime_a, runtime_b| {
             // create an execution context for @test_b
             let mut remote_execution_context =
-                ExecutionContext::remote_unbounded(endpoint_b);
+                ExecutionContext::remote_unbounded(endpoint_b, runtime_b);
 
             // execute script remotely on @test_b
             let result = runtime_a
@@ -107,7 +107,7 @@ pub async fn test_remote_inline() {
             // create an execution context for @test_b
             let mut execution_context = ExecutionContext::local(
                 ExecutionMode::unbounded(),
-                runtime_a.internal.clone(),
+                runtime_a.clone(),
                 ExecutionCallerMetadata::local_default(),
             );
 

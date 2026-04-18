@@ -652,8 +652,8 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
                 if !assigned_type.matches(&annotated_type) {
                     return Err(SpannedTypeError {
                         error: TypeError::AssignmentTypeMismatch {
-                            annotated_type,
-                            assigned_type,
+                            expected: annotated_type,
+                            found: assigned_type,
                         },
                         span: Some(span.clone()),
                     });
@@ -742,8 +742,8 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
                 if !init_type.matches_type(&annotated_type) {
                     self.record_error(SpannedTypeError::new_with_span(
                         TypeError::AssignmentTypeMismatch {
-                            annotated_type: annotated_type.clone(),
-                            assigned_type: init_type,
+                            expected: annotated_type.clone(),
+                            found: init_type,
                         },
                         span.clone(),
                     ))?;
@@ -1020,8 +1020,8 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
         {
             self.record_error(SpannedTypeError {
                 error: TypeError::AssignmentTypeMismatch {
-                    annotated_type: *annotated_return_type.clone(),
-                    assigned_type: inferred_return_type,
+                    expected: *annotated_return_type.clone(),
+                    found: inferred_return_type,
                 },
                 span: Some(span.clone()),
             })?;
@@ -1877,8 +1877,8 @@ mod tests {
         assert_matches!(
             &error.error,
             TypeError::AssignmentTypeMismatch {
-                annotated_type,
-                assigned_type
+                expected,
+                found
             } if *annotated_type == core_lib_type(CoreLibTypeId::Integer(None))
               && assigned_type == &Type::structural(LiteralTypeDefinition::Text("hello".to_string().into()), TypeMetadata::default())
         );

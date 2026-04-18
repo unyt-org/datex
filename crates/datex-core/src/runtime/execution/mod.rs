@@ -45,7 +45,7 @@ mod test_remote_execution;
 pub fn execute_dxb_sync(
     input: ExecutionInput,
 ) -> Result<Option<ValueContainer>, ExecutionError> {
-    let runtime_internal = input.runtime.clone();
+    let runtime = input.runtime.clone();
     let (interrupt_provider, execution_loop) = input.execution_loop();
 
     for output in execution_loop {
@@ -57,7 +57,7 @@ pub fn execute_dxb_sync(
             ) => interrupt_provider.provide_result(
                 InterruptResult::ResolvedValue(
                     get_remote_shared_container_reference(
-                        &runtime_internal,
+                        &runtime.internal,
                         address,
                         mutability,
                     )?
@@ -70,7 +70,7 @@ pub fn execute_dxb_sync(
                 // TODO #401: in the future, local pointer addresses should be relative to the block sender, not the local runtime
                 interrupt_provider.provide_result(
                     InterruptResult::ResolvedValue(
-                        get_local_pointer_value(&runtime_internal, address)
+                        get_local_pointer_value(&runtime.internal, address)
                             .map(|v| {
                                 ValueContainer::Shared(
                                     SharedContainer::Referenced(v),
@@ -86,7 +86,7 @@ pub fn execute_dxb_sync(
                     InterruptResult::ResolvedValue(Some(
                         ValueContainer::Shared(SharedContainer::Referenced(
                             get_builtin_shared_value_reference(
-                                &runtime_internal,
+                                &runtime.internal,
                                 address,
                             )?,
                         )),
@@ -108,7 +108,7 @@ pub fn execute_dxb_sync(
 pub async fn execute_dxb(
     input: ExecutionInput<'_>,
 ) -> Result<Option<ValueContainer>, ExecutionError> {
-    let runtime_internal = input.runtime.clone();
+    let runtime = input.runtime.clone();
     let caller_metadata = input.caller_metadata.clone();
     let (interrupt_provider, execution_loop) = input.execution_loop();
 
@@ -122,7 +122,7 @@ pub async fn execute_dxb(
                 interrupt_provider.provide_result(
                     InterruptResult::ResolvedValue(
                         get_remote_shared_container_reference(
-                            &runtime_internal,
+                            &runtime.internal,
                             address,
                             mutability,
                         )?
@@ -138,7 +138,7 @@ pub async fn execute_dxb(
                 // TODO #402: in the future, local pointer addresses should be relative to the block sender, not the local runtime
                 interrupt_provider.provide_result(
                     InterruptResult::ResolvedValue(
-                        get_local_pointer_value(&runtime_internal, address)
+                        get_local_pointer_value(&runtime.internal, address)
                             .map(|v| {
                                 ValueContainer::Shared(
                                     SharedContainer::Referenced(v),
@@ -154,7 +154,7 @@ pub async fn execute_dxb(
                     InterruptResult::ResolvedValue(Some(
                         ValueContainer::Shared(SharedContainer::Referenced(
                             get_builtin_shared_value_reference(
-                                &runtime_internal,
+                                &runtime.internal,
                                 address,
                             )?,
                         )),
@@ -172,9 +172,10 @@ pub async fn execute_dxb(
                 let mut remote_execution_context = RemoteExecutionContext::new(
                     receiver_endpoint,
                     ExecutionMode::Static,
+                    runtime.clone()
                 );
                 let res = RuntimeInternal::execute_remote(
-                    runtime_internal.clone(),
+                    runtime.internal.clone(),
                     &mut remote_execution_context,
                     body,
                 )
@@ -188,7 +189,7 @@ pub async fn execute_dxb(
                     .provide_result(InterruptResult::ResolvedValue(res));
             }
             ExternalExecutionInterrupt::RequestMove(pointers) => {
-                let moved_values = runtime_internal
+                let moved_values = runtime.internal
                     .clone()
                     .request_pointer_move(&caller_metadata.endpoint, pointers)
                     .await?
@@ -201,10 +202,10 @@ pub async fn execute_dxb(
             }
             ExternalExecutionInterrupt::Move(address_mapping) => {
                 let moved_values =
-                    runtime_internal.clone().handle_pointer_move_to_remote(
+                    runtime.internal.clone().handle_pointer_move_to_remote(
                         &caller_metadata.endpoint,
                         address_mapping,
-                        &mut *runtime_internal.memory.borrow_mut(),
+                        &mut *runtime.memory().borrow_mut(),
                     )?;
                 interrupt_provider.provide_result(
                     InterruptResult::ResolvedValues(moved_values),
@@ -301,20 +302,21 @@ mod tests {
             },
         },
     };
-    use binrw::meta::EndianKind::Runtime;
     use core::assert_matches;
     use log::{debug, info};
+    use crate::runtime::Runtime;
 
     fn execute_datex_script_debug(
         datex_script: &str,
     ) -> Option<ValueContainer> {
+        let runtime = Runtime::stub();
         let (dxb, _) =
-            compile_script(datex_script, CompileOptions::default()).unwrap();
+            compile_script(datex_script, CompileOptions::default(), runtime.clone()).unwrap();
         let context = ExecutionInput::new(
             &dxb,
             ExecutionCallerMetadata::local_default(),
             ExecutionOptions { verbose: true },
-            Rc::new(RuntimeInternal::stub()),
+            runtime
         );
         execute_dxb_sync(context).unwrap()
     }
@@ -324,11 +326,13 @@ mod tests {
     ) -> impl Iterator<Item = Result<Option<ValueContainer>, ExecutionError>>
     {
         gen move {
+            let runtime = Runtime::stub();
+
             let datex_script_parts = datex_script_parts.collect::<Vec<_>>();
             let mut execution_context =
                 ExecutionContext::Local(LocalExecutionContext::new(
                     ExecutionMode::unbounded(),
-                    Rc::new(RuntimeInternal::stub()),
+                    runtime.clone(),
                     ExecutionCallerMetadata::local_default(),
                 ));
             let mut compilation_scope =
@@ -346,6 +350,7 @@ mod tests {
                 let (dxb, new_compilation_scope) = compile_script(
                     script_part,
                     CompileOptions::new_with_scope(compilation_scope),
+                    runtime.clone()
                 )
                 .unwrap();
                 compilation_scope = new_compilation_scope;
@@ -372,13 +377,14 @@ mod tests {
     fn execute_datex_script_debug_with_error(
         datex_script: &str,
     ) -> Result<Option<ValueContainer>, ExecutionError> {
+        let runtime = Runtime::stub();
         let (dxb, _) =
-            compile_script(datex_script, CompileOptions::default()).unwrap();
+            compile_script(datex_script, CompileOptions::default(), runtime.clone()).unwrap();
         let context = ExecutionInput::new(
             &dxb,
             ExecutionCallerMetadata::local_default(),
             ExecutionOptions { verbose: true },
-            Rc::new(RuntimeInternal::stub()),
+            runtime
         );
         execute_dxb_sync(context)
     }
@@ -396,7 +402,7 @@ mod tests {
             dxb_body,
             ExecutionCallerMetadata::local_default(),
             ExecutionOptions { verbose: true },
-            Rc::new(RuntimeInternal::stub()),
+            Runtime::stub(),
         );
         execute_dxb_sync(context)
     }
@@ -408,13 +414,13 @@ mod tests {
         RuntimeRunner::new(config)
             .run(async |runtime| {
                 let (dxb, _) =
-                    compile_script(datex_script, CompileOptions::default())
+                    compile_script(datex_script, CompileOptions::default(), runtime.clone())
                         .unwrap();
                 let context = ExecutionInput::new(
                     &dxb,
                     ExecutionCallerMetadata::local_default(),
                     ExecutionOptions { verbose: true },
-                    runtime.internal,
+                    runtime,
                 );
                 execute_dxb(context).await
             })

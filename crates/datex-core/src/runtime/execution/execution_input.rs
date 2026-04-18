@@ -1,13 +1,10 @@
-use crate::runtime::{
-    RuntimeInternal,
-    execution::{
-        ExecutionError,
-        execution_loop::{
-            interrupts::{ExternalExecutionInterrupt, InterruptProvider},
-            state::{ExecutionLoopState, RuntimeExecutionStack},
-        },
+use crate::runtime::{RuntimeInternal, execution::{
+    ExecutionError,
+    execution_loop::{
+        interrupts::{ExternalExecutionInterrupt, InterruptProvider},
+        state::{ExecutionLoopState, RuntimeExecutionStack},
     },
-};
+}, Runtime};
 
 use crate::prelude::*;
 use crate::values::core_values::endpoint::Endpoint;
@@ -44,7 +41,7 @@ pub struct ExecutionInput<'a> {
     pub dxb_body: &'a [u8],
     /// For persisting execution state across multiple executions (e.g., for REPL scenarios).
     pub loop_state: Option<ExecutionLoopState>,
-    pub runtime: Rc<RuntimeInternal>,
+    pub runtime: Runtime,
 }
 
 impl<'a> ExecutionInput<'a> {
@@ -52,7 +49,7 @@ impl<'a> ExecutionInput<'a> {
         dxb_body: &'a [u8],
         caller_metadata: ExecutionCallerMetadata,
         options: ExecutionOptions,
-        runtime: Rc<RuntimeInternal>,
+        runtime: Runtime,
     ) -> Self {
         Self {
             options,
@@ -66,7 +63,7 @@ impl<'a> ExecutionInput<'a> {
         dxb_body: &'a [u8],
         caller_metadata: ExecutionCallerMetadata,
         options: ExecutionOptions,
-        runtime: Rc<RuntimeInternal>,
+        runtime: Runtime,
         stack: RuntimeExecutionStack,
     ) -> Self {
         let state =

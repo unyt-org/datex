@@ -18,6 +18,7 @@ use crate::global::protocol_structures::instruction_data::StackIndex;
 use crate::prelude::*;
 use crate::runtime::execution::execution_input::ExecutionCallerMetadata;
 use crate::runtime::execution::macros::yield_unwrap;
+use crate::runtime::Runtime;
 use crate::values::borrowed_value_container::BorrowedValueContainer;
 
 pub struct ExecutionLoopState {
@@ -30,12 +31,12 @@ pub struct ExecutionLoopState {
 impl ExecutionLoopState {
     pub fn new(
         dxb_body: Vec<u8>,
-        runtime: Rc<RuntimeInternal>,
+        runtime: Runtime,
         stack: RuntimeExecutionStack,
         caller_metadata: ExecutionCallerMetadata,
     ) -> Self {
         let state = RuntimeExecutionState {
-            runtime_internal: runtime.clone(),
+            runtime: runtime.clone(),
             source_id: 0, // TODO #640: set proper source ID
             stack,
             caller_metadata,
@@ -67,7 +68,7 @@ impl Debug for ExecutionLoopState {
 pub struct RuntimeExecutionState {
     /// Local memory stack for current execution context.
     pub stack: RuntimeExecutionStack,
-    pub runtime_internal: Rc<RuntimeInternal>,
+    pub runtime: Runtime,
     pub source_id: TransceiverId,
     pub caller_metadata: ExecutionCallerMetadata
 }

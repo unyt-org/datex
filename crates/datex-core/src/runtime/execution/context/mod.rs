@@ -17,6 +17,7 @@ use log::info;
 pub use remote::*;
 pub use script::*;
 use crate::runtime::execution::execution_input::ExecutionCallerMetadata;
+use crate::runtime::Runtime;
 
 mod local;
 mod remote;
@@ -60,6 +61,13 @@ impl ExecutionContext {
         }
     }
 
+    fn runtime(&self) -> &Runtime {
+        match self {
+            ExecutionContext::Local(LocalExecutionContext { runtime, .. }) => runtime,
+            ExecutionContext::Remote(RemoteExecutionContext { runtime, .. }) => runtime,
+        }
+    }
+
     /// Compiles a script using the compile scope of the execution context
     #[cfg(feature = "compiler")]
     pub fn compile(
@@ -78,6 +86,7 @@ impl ExecutionContext {
                 .collect::<Vec<_>>()
                 .as_slice(),
             CompileOptions::new_with_scope(compile_scope.clone()),
+            self.runtime().clone()
         );
         match res {
             Ok((bytes, compile_scope)) => {

@@ -42,7 +42,7 @@ use crate::{
         }
     }, shared_values::{
         errors::AssignmentError, pointer_address::PointerAddress, shared_containers::ReferenceMutability
-    }, type_inference::error::TypeError, types::{
+    }, types::{
         literal_type_definition::LiteralTypeDefinition
     }, values::{
         core_value::CoreValue,
@@ -68,6 +68,7 @@ use crate::shared_values::pointer_address::ExternalPointerAddress;
 use crate::shared_values::shared_containers::{SelfOwnedSharedContainer, SharedContainerInner, SharedContainerMutability};
 use crate::shared_values::shared_containers::{ExternalSharedContainer, OwnedSharedContainer, ReferencedSharedContainer, SharedContainer};
 use crate::shared_values::shared_containers::base_shared_value_container::BaseSharedValueContainer;
+use crate::type_inference::error::TypeError;
 use crate::types::r#type::{Type};
 use crate::types::type_definition::TypeDefinition;
 use crate::types::type_definition_with_metadata::{TypeDefinitionWithMetadata, TypeMetadata};
@@ -761,7 +762,7 @@ pub fn inner_execution_loop(
                                         collected_results
                                             .pop_cloned_value_container_result_assert_existing(&state)
                                     );
-                                    let pointer = state.runtime_internal.pointer_address_provider.borrow_mut().get_new_self_owned_address();
+                                    let pointer = state.runtime.pointer_address_provider().borrow_mut().get_new_self_owned_address();
                                     let mutability = match instruction {
                                         RegularInstruction::CreateShared => SharedContainerMutability::Mutable,
                                         RegularInstruction::CreateSharedMut => SharedContainerMutability::Immutable,
@@ -830,7 +831,7 @@ pub fn inner_execution_loop(
                                                     regular_instruction,
                                                 ),
                                                 target.clone(), // TODO #646: is unary operation supposed to take ownership?
-                                                &state.runtime_internal.memory,
+                                                &state.runtime.memory(),
                                             )
                                         },
                                     );
@@ -932,7 +933,10 @@ pub fn inner_execution_loop(
                                                     None => todo!()
                                                 };
                                                 reference.try_set_value_container(res).map_err(|_| ExecutionError::AssignmentError(AssignmentError::TypeError(
-                                                    TypeError::AssignmentTypeMismatch { annotated_type: reference.allowed_type().clone(), assigned_type: res.actual_type() }
+                                                    Box::new(TypeError::AssignmentTypeMismatch {
+                                                        expected: reference.allowed_type().clone(),
+                                                        found: res.actual_type(&mut *state.runtime.memory().borrow_mut())
+                                                    })
                                                 )))?;
                                                 Ok(RuntimeValue::ValueContainer(
                                                     ref_value_container.clone(),
@@ -1167,7 +1171,7 @@ pub fn inner_execution_loop(
                                     if !moving_containers.is_empty() {
                                         // ensure receiver is single endpoint
                                         if let CoreValue::Endpoint(single_receiver) = receivers.to_cloned_value().borrow().inner.clone() {
-                                            state.runtime_internal.add_moving_pointers(single_receiver, moving_containers);
+                                            state.runtime.internal.add_moving_pointers(single_receiver, moving_containers);
                                         }
                                         else {
                                             return yield Err(ExecutionError::MoveToMultipleEndpoints)
@@ -1239,7 +1243,7 @@ pub fn inner_execution_loop(
                                     // get referenced pointer from address
                                     let pointer_address = ExternalPointerAddress::remote_for_endpoint(&state.caller_metadata.endpoint, shared_ref.address.bytes);
 
-                                    if state.runtime_internal.memory.borrow().has_reference(PointerAddress::External(pointer_address.clone())) {
+                                    if state.runtime.memory().borrow().has_reference(&PointerAddress::External(pointer_address.clone())) {
                                         return yield Err(ExecutionError::Unknown); // TODO: error
                                     }
 
@@ -1252,7 +1256,7 @@ pub fn inner_execution_loop(
                                         )),
                                         pointer_address,
                                         shared_ref.ref_mutability,
-                                        &mut *state.runtime_internal.memory.borrow_mut(),
+                                        &mut *state.runtime.memory().borrow_mut(),
                                     )}.map_err(|err| ExecutionError::InvalidSharedValueType));
                                     let container = SharedContainer::Referenced(referenced_container);
                                     CollectedExecutionResult::Value(Some(ValueContainer::Shared(container).into()))

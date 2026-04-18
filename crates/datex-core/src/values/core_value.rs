@@ -803,7 +803,7 @@ impl Display for CoreValue {
             CoreValue::Decimal(decimal) => core::write!(f, "{decimal}"),
             CoreValue::List(list) => core::write!(f, "{list}"),
             CoreValue::Callable(_callable) => core::write!(f, "[[ callable ]]"),
-            CoreValue::NominalType(container) => write!(f, "{container}"),
+            CoreValue::NominalType(container) => todo!()
         }
     }
 }

@@ -255,6 +255,7 @@ mod tests {
         },
         values::borrowed_value_container::BorrowedValueContainer,
     };
+    use crate::runtime::pointer_address_provider::SelfOwnedPointerAddressProvider;
 
     #[test]
     fn remote_execution_no_injected_values() {
@@ -270,11 +271,13 @@ mod tests {
 
     #[test]
     fn remote_execution_with_injected_ref_value() {
+        let address_provider = &mut SelfOwnedPointerAddressProvider::default();
+
         let shared_value = SharedContainer::Owned(
             OwnedSharedContainer::new_with_inferred_allowed_type(
                 42.into(),
                 SharedContainerMutability::Immutable,
-                SelfOwnedPointerAddress::NULL,
+                address_provider,
             ),
         );
         let exec_block_data = InstructionBlockData {
@@ -323,17 +326,19 @@ mod tests {
 
     #[test]
     fn remote_execution_multiple_ref_values() {
+        let address_provider = &mut SelfOwnedPointerAddressProvider::default();
+
         let shared_value1 =
             SharedContainer::new_owned_with_inferred_allowed_type(
                 42,
                 SharedContainerMutability::Immutable,
-                SelfOwnedPointerAddress::NULL,
+                address_provider,
             );
         let shared_value2 =
             SharedContainer::new_owned_with_inferred_allowed_type(
                 100,
                 SharedContainerMutability::Mutable,
-                SelfOwnedPointerAddress::NULL,
+                address_provider,
             );
         let exec_block_data = InstructionBlockData {
             injected_value_count: 2,
@@ -410,11 +415,13 @@ mod tests {
 
     #[test]
     fn remote_execution_with_injected_moved_value() {
+        let address_provider = &mut SelfOwnedPointerAddressProvider::default();
+
         let shared_value =
             SharedContainer::new_owned_with_inferred_allowed_type(
                 42,
                 SharedContainerMutability::Immutable,
-                SelfOwnedPointerAddress::NULL,
+                address_provider,
             );
         let exec_block_data = InstructionBlockData {
             injected_value_count: 1,
@@ -475,17 +482,19 @@ mod tests {
 
     #[test]
     fn remote_execution_moved_value_and_ref() {
+        let address_provider = &mut SelfOwnedPointerAddressProvider::default();
+
         let shared_value1 =
             SharedContainer::new_owned_with_inferred_allowed_type(
                 42,
                 SharedContainerMutability::Immutable,
-                SelfOwnedPointerAddress::NULL,
+                address_provider,
             );
         let shared_value2 =
             SharedContainer::new_owned_with_inferred_allowed_type(
                 100,
                 SharedContainerMutability::Immutable,
-                SelfOwnedPointerAddress::NULL,
+                address_provider,
             );
         let exec_block_data = InstructionBlockData {
             injected_value_count: 2,

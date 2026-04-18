@@ -19,6 +19,7 @@ use crate::{
 };
 use pretty::{DocAllocator, DocBuilder, RcAllocator, RcDoc};
 use crate::libs::core::core_lib_id::CoreLibId;
+use crate::runtime::{Runtime, RuntimeConfig, RuntimeRunner};
 
 mod bracketing;
 mod formatting;
@@ -66,6 +67,8 @@ impl<'a> Formatter<'a> {
                 },
                 ..Default::default()
             },
+            // FIXME: stub runtime for now
+            Runtime::stub()
         )
         .expect("Failed to parse Datex script");
         Self {

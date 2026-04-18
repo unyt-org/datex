@@ -41,6 +41,7 @@ pub use referenced_shared_container::*;
 pub use self_owned_shared_container::*;
 pub use shared_container_inner::*;
 pub use shared_container_mutability::*;
+use crate::runtime::memory::Memory;
 use crate::runtime::pointer_address_provider::SelfOwnedPointerAddressProvider;
 use crate::types::r#type::Type;
 
@@ -78,7 +79,7 @@ impl SharedContainer {
     /// a [SharedContainerMutability], and a [SelfOwnedPointerAddress].
     ///
     /// The allowed type is inferred from the value_container's allowed type.
-    /// 
+    ///
     /// The caller must ensure that the address is not used anywhere else.
     pub unsafe fn new_owned_with_inferred_allowed_type_unsafe<T: Into<ValueContainer>>(
         value_container: T,
@@ -168,6 +169,11 @@ impl SharedContainer {
                 referenced.allowed_type()
             }
         }
+    }
+
+    /// Gets the current actual [Type] of the collapsed inner [Value]
+    pub fn actual_type(&self, memory: &mut Memory) -> Type {
+        self.with_collapsed_value(|value| value.actual_type(memory))
     }
 
     /// Gets a [RefMut] to the currently assigned [ValueContainer] of the shared container (not resolved recursively)

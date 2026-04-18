@@ -45,9 +45,6 @@ impl SelfOwnedPointerAddress {
     pub fn to_address_string(&self) -> String {
         hex::encode(self.address)
     }
-
-    pub const NULL: SelfOwnedPointerAddress =
-        SelfOwnedPointerAddress { address: [0u8; 5] };
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -60,8 +57,6 @@ pub enum PointerAddress {
 }
 
 impl PointerAddress {
-    pub const NULL: PointerAddress =
-        PointerAddress::EndpointOwned(SelfOwnedPointerAddress::NULL);
 
     pub fn owned(address: [u8; 5]) -> Self {
         PointerAddress::EndpointOwned(SelfOwnedPointerAddress::new(address))
