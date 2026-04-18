@@ -21,7 +21,6 @@ extern crate num_integer;
 extern crate std;
 
 pub mod channel;
-pub mod dif;
 pub mod prelude;
 
 #[cfg(feature = "ast")]
@@ -58,6 +57,7 @@ pub mod traits;
 pub mod types;
 pub mod utils;
 pub mod values;
+mod value_updates;
 
 // reexport macros
 pub use datex_macros_internal as macros;

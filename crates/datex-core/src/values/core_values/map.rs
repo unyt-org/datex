@@ -6,7 +6,7 @@ use crate::{
     values::{
         core_value::CoreValue,
         value::Value,
-        value_container::{ValueContainer, ValueKey},
+        value_container::{ValueContainer, BorrowedValueKey},
     },
 };
 
@@ -83,7 +83,7 @@ impl Map {
     /// Returns None if the key is not found.
     pub fn get<'a>(
         &self,
-        key: impl Into<ValueKey<'a>>,
+        key: impl Into<BorrowedValueKey<'a>>,
     ) -> Result<&ValueContainer, KeyNotFoundError> {
         let key = key.into();
         match self {
@@ -104,7 +104,7 @@ impl Map {
     }
 
     /// Checks if the map contains the given key.
-    pub fn has<'a>(&self, key: impl Into<ValueKey<'a>>) -> bool {
+    pub fn has<'a>(&self, key: impl Into<BorrowedValueKey<'a>>) -> bool {
         match self {
             Map::Dynamic(map) => {
                 key.into().with_value_container(|key| map.contains_key(key))
@@ -126,7 +126,7 @@ impl Map {
     /// Removes a key from the map, returning the value if it existed.
     pub fn delete<'a>(
         &mut self,
-        key: impl Into<ValueKey<'a>>,
+        key: impl Into<BorrowedValueKey<'a>>,
     ) -> Result<ValueContainer, MapAccessError> {
         let key = key.into();
         match self {
@@ -159,7 +159,7 @@ impl Map {
     /// Sets a value in the map, panicking if it fails.
     pub(crate) fn set<'a>(
         &mut self,
-        key: impl Into<ValueKey<'a>>,
+        key: impl Into<BorrowedValueKey<'a>>,
         value: impl Into<ValueContainer>,
     ) {
         self.try_set(key, value)
@@ -170,7 +170,7 @@ impl Map {
     /// This is the preferred way to set values in the map.
     pub(crate) fn try_set<'a>(
         &mut self,
-        key: impl Into<ValueKey<'a>>,
+        key: impl Into<BorrowedValueKey<'a>>,
         value: impl Into<ValueContainer>,
     ) -> Result<(), KeyNotFoundError> {
         let key = key.into();
@@ -297,11 +297,11 @@ impl From<MapKey> for ValueContainer {
     }
 }
 
-impl<'a> From<&'a MapKey> for ValueKey<'a> {
+impl<'a> From<&'a MapKey> for BorrowedValueKey<'a> {
     fn from(key: &'a MapKey) -> Self {
         match key {
-            MapKey::Text(text) => ValueKey::Text(Cow::Borrowed(text)),
-            MapKey::Value(value) => ValueKey::Value(Cow::Borrowed(value)),
+            MapKey::Text(text) => BorrowedValueKey::Text(Cow::Borrowed(text)),
+            MapKey::Value(value) => BorrowedValueKey::Value(Cow::Borrowed(value)),
         }
     }
 }

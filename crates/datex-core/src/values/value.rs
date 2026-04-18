@@ -10,7 +10,7 @@ use crate::{
             callable::{Callable, CallableBody, CallableSignature},
             integer::typed_integer::TypedInteger,
         },
-        value_container::{ValueContainer, ValueError, ValueKey},
+        value_container::{ValueContainer, ValueError, BorrowedValueKey},
     },
 };
 
@@ -162,7 +162,7 @@ impl Value {
     /// Gets a property on the value if applicable (e.g. for map and structs)
     pub fn try_get_property<'a>(
         &self,
-        key: impl Into<ValueKey<'a>>,
+        key: impl Into<BorrowedValueKey<'a>>,
     ) -> Result<ValueContainer, AccessError> {
         match self.inner {
             CoreValue::Map(ref map) => {
@@ -196,7 +196,7 @@ impl Value {
     /// Takes (removes) a property from the value if applicable (e.g. for map and structs)
     pub fn try_take_property<'a>(
         &mut self,
-        key: impl Into<ValueKey<'a>>,
+        key: impl Into<BorrowedValueKey<'a>>,
     ) -> Result<ValueContainer, AccessError> {
         match self.inner {
             CoreValue::Map(ref mut map) => {
@@ -229,7 +229,7 @@ impl Value {
 
     pub fn try_delete_property<'a>(
         &mut self,
-        key: impl Into<ValueKey<'a>>,
+        key: impl Into<BorrowedValueKey<'a>>,
     ) -> Result<(), AccessError> {
         match self.inner {
             CoreValue::Map(ref mut map) => {
@@ -260,7 +260,7 @@ impl Value {
     /// Sets a property on the value if applicable (e.g. for maps)
     pub fn try_set_property<'a>(
         &mut self,
-        key: impl Into<ValueKey<'a>>,
+        key: impl Into<BorrowedValueKey<'a>>,
         val: ValueContainer,
     ) -> Result<(), AccessError> {
         let key = key.into();

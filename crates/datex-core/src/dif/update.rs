@@ -1,12 +1,15 @@
 use crate::{
     dif::{DIFConvertible, value::DIFValueContainer},
     shared_values::shared_containers::observers::TransceiverId,
-    values::value_container::ValueKey,
+    values::value_container::BorrowedValueKey,
 };
 use core::prelude::rust_2024::*;
 use serde::{Deserialize, Serialize};
 
 use crate::prelude::*;
+use crate::values::core_values::map::MapKey;
+use crate::values::value_container::ValueContainer;
+
 /// Represents a key in the Datex Interface Format (DIF).
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "lowercase", content = "value")]
@@ -21,11 +24,11 @@ pub enum DIFKey {
 }
 
 impl DIFKey {
-    pub fn from_value_key(key: &ValueKey) -> Self {
+    pub fn from_value_key(key: &BorrowedValueKey) -> Self {
         match key {
-            ValueKey::Text(s) => DIFKey::Text(s.to_string()),
-            ValueKey::Index(i) => DIFKey::Index(*i),
-            ValueKey::Value(v) => {
+            BorrowedValueKey::Text(s) => DIFKey::Text(s.to_string()),
+            BorrowedValueKey::Index(i) => DIFKey::Index(*i),
+            BorrowedValueKey::Value(v) => {
                 DIFKey::Value(DIFValueContainer::from_value_container(v))
             }
         }
@@ -69,38 +72,6 @@ impl<'a> DIFUpdate<'a> {
 // TODO #386 optimize structural representation by using integer values for enum variants
 // and shrink down keys (kind: 0, 1, 2 instead of "clear", "set", "remove", ...)
 
-/// Represents an update operation for a DIF value.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[serde(tag = "kind", rename_all = "snake_case")]
-pub enum DIFUpdateData {
-    /// Represents a replacement operation for a DIF value.
-    Replace { value: DIFValueContainer },
-
-    /// Represents an update to a specific property of a DIF value.
-    /// The `key` specifies which property to update, and `value` is the new value for that property.
-    Set {
-        key: DIFKey,
-        value: DIFValueContainer,
-    },
-
-    /// Represents the removal of a specific property from a DIF value.
-    Delete { key: DIFKey },
-
-    /// Represents clearing all elements from a collection-type DIF value (like an array or map).
-    Clear,
-
-    /// Represents adding a new element to a collection-type DIF value (like an array or map).
-    Append { value: DIFValueContainer },
-
-    /// Special update operation for list values that allows splicing
-    ListSplice {
-        start: u32,
-        delete_count: u32,
-        items: Vec<DIFValueContainer>,
-    },
-}
-
-impl DIFConvertible for DIFUpdateData {}
 
 impl DIFUpdateData {
     /// Creates a new `DIFUpdateData::Replace` variant with the given value.

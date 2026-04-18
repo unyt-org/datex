@@ -1,8 +1,4 @@
 use crate::{
-    dif::{
-        update::{DIFKey, DIFUpdateData},
-        value::DIFValueContainer,
-    },
     runtime::memory::Memory,
     shared_values::shared_containers::{
         SharedContainerMutability,
@@ -11,31 +7,41 @@ use crate::{
     },
     values::{
         core_value::CoreValue,
-        value_container::{ValueContainer, ValueKey},
+        value_container::{ValueContainer, BorrowedValueKey},
     },
 };
 use core::{cell::RefCell, ops::FnOnce, prelude::rust_2024::*};
 
 use crate::{prelude::*, shared_values::errors::AccessError};
+use crate::value_updates::update_data::UpdateData;
 
-pub enum DIFUpdateDataOrMemory<'a> {
-    Update(&'a DIFUpdateData),
+pub enum UpdateDataOrMemory<'a> {
+    Update(&'a UpdateData),
     Memory(&'a RefCell<Memory>),
 }
 
-impl<'a> From<&'a DIFUpdateData> for DIFUpdateDataOrMemory<'a> {
-    fn from(update: &'a DIFUpdateData) -> Self {
-        DIFUpdateDataOrMemory::Update(update)
+impl<'a> From<&'a UpdateData> for UpdateDataOrMemory<'a> {
+    fn from(update: &'a UpdateData) -> Self {
+        UpdateDataOrMemory::Update(update)
     }
 }
 
-impl<'a> From<&'a RefCell<Memory>> for DIFUpdateDataOrMemory<'a> {
+impl<'a> From<&'a RefCell<Memory>> for UpdateDataOrMemory<'a> {
     fn from(memory: &'a RefCell<Memory>) -> Self {
-        DIFUpdateDataOrMemory::Memory(memory)
+        UpdateDataOrMemory::Memory(memory)
     }
 }
 
 impl BaseSharedValueContainer {
+
+    pub fn update(
+        &mut self,
+        update_data: UpdateData
+    ) -> Result<(), AccessError> {
+        // TODO: implement new update handling
+        todo!()
+    }
+
     /// Internal function that handles updates
     /// - Checks if the reference is mutable
     /// - Calls the provided handler to perform the update and get the DIFUpdateData
@@ -44,7 +50,7 @@ impl BaseSharedValueContainer {
     fn handle_update<'a>(
         &self,
         _source_id: TransceiverId,
-        handler: impl FnOnce() -> Result<&'a DIFUpdateData, AccessError>,
+        handler: impl FnOnce() -> Result<&'a UpdateData, AccessError>,
     ) -> Result<(), AccessError> {
         if !self.can_mutate() {
             return Err(AccessError::ImmutableReference);
@@ -70,8 +76,8 @@ impl BaseSharedValueContainer {
     pub fn try_set_property<'a>(
         &mut self,
         source_id: TransceiverId,
-        maybe_dif_update_data: Option<&DIFUpdateData>,
-        key: impl Into<ValueKey<'a>>,
+        maybe_dif_update_data: Option<&UpdateData>,
+        key: impl Into<BorrowedValueKey<'a>>,
         val: ValueContainer,
     ) -> Result<(), AccessError> {
         self.assert_can_mutate()?;
@@ -80,7 +86,7 @@ impl BaseSharedValueContainer {
 
         let dif_update = match maybe_dif_update_data {
             Some(update) => update,
-            None => &DIFUpdateData::set(
+            None => &UpdateData::set(
                 DIFKey::from_value_key(&key),
                 DIFValueContainer::from_value_container(&val),
             ),
@@ -99,7 +105,7 @@ impl BaseSharedValueContainer {
 
     pub fn try_get_property<'a>(
         &self,
-        key: impl Into<ValueKey<'a>>,
+        key: impl Into<BorrowedValueKey<'a>>,
     ) -> Result<ValueContainer, AccessError> {
         let key = key.into();
         self.value_container.try_get_property(key)
@@ -171,7 +177,7 @@ impl BaseSharedValueContainer {
         &mut self,
         source_id: TransceiverId,
         maybe_dif_update_data: Option<&DIFUpdateData>,
-        key: impl Into<ValueKey<'a>>,
+        key: impl Into<BorrowedValueKey<'a>>,
     ) -> Result<(), AccessError> {
         self.assert_can_mutate()?;
         let key = key.into();

@@ -200,7 +200,7 @@ impl DIFInterface for RuntimeInternal {
         }
     }
 
-    fn resolve_pointer_address_in_memory(
+    fn resolve_pointer_address(
         &self,
         address: PointerAddress,
     ) -> Result<DIFReference, DIFResolveReferenceError> {

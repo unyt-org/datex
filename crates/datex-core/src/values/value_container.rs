@@ -16,7 +16,6 @@ use crate::{
 };
 
 use crate::{
-    dif::update::DIFUpdateData,
     serde::{error::SerializationError, serializer::to_value_container},
     shared_values::{errors::AccessError, shared_containers::SharedContainer},
     types::{r#type::Type, type_definition_with_metadata::TypeMetadata},
@@ -26,7 +25,8 @@ use core::{
     hash::{Hash, Hasher},
     ops::{Add, FnOnce, Neg, Sub},
 };
-use serde::{Deserialize, de::DeserializeOwned};
+use serde::{Deserialize, de::DeserializeOwned, Serialize};
+use crate::runtime::memory::Memory;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum ValueError {
@@ -53,26 +53,33 @@ impl Display for ValueError {
     }
 }
 
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum ValueKey {
+    Text(String),
+    Index(i64),
+    Value(ValueContainer),
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub enum ValueKey<'a> {
+pub enum BorrowedValueKey<'a> {
     Text(Cow<'a, str>),
     Index(i64),
     Value(Cow<'a, ValueContainer>),
 }
 
-impl<'a> ValueKey<'a> {
+impl<'a> BorrowedValueKey<'a> {
     pub fn with_value_container<R>(
         &self,
         callback: impl FnOnce(&ValueContainer) -> R,
     ) -> R {
         match self {
-            ValueKey::Value(value_container) => callback(value_container),
-            ValueKey::Text(text) => {
+            BorrowedValueKey::Value(value_container) => callback(value_container),
+            BorrowedValueKey::Text(text) => {
                 let value_container =
                     ValueContainer::Local(text.as_ref().into());
                 callback(&value_container)
             }
-            ValueKey::Index(index) => {
+            BorrowedValueKey::Index(index) => {
                 let value_container =
                     ValueContainer::Local(Value::from(*index));
                 callback(&value_container)
@@ -81,65 +88,65 @@ impl<'a> ValueKey<'a> {
     }
 }
 
-impl<'a> Display for ValueKey<'a> {
+impl<'a> Display for BorrowedValueKey<'a> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
-            ValueKey::Text(text) => core::write!(f, "{}", text),
-            ValueKey::Index(index) => core::write!(f, "{}", index),
-            ValueKey::Value(value_container) => {
+            BorrowedValueKey::Text(text) => core::write!(f, "{}", text),
+            BorrowedValueKey::Index(index) => core::write!(f, "{}", index),
+            BorrowedValueKey::Value(value_container) => {
                 core::write!(f, "{}", value_container)
             }
         }
     }
 }
 
-impl<'a> From<&'a String> for ValueKey<'a> {
+impl<'a> From<&'a String> for BorrowedValueKey<'a> {
     fn from(text: &'a String) -> Self {
-        ValueKey::Text(Cow::from(text))
+        BorrowedValueKey::Text(Cow::from(text))
     }
 }
 
-impl<'a> From<&'a str> for ValueKey<'a> {
+impl<'a> From<&'a str> for BorrowedValueKey<'a> {
     fn from(text: &'a str) -> Self {
-        ValueKey::Text(Cow::from(text))
+        BorrowedValueKey::Text(Cow::from(text))
     }
 }
 
-impl<'a> From<i64> for ValueKey<'a> {
+impl<'a> From<i64> for BorrowedValueKey<'a> {
     fn from(index: i64) -> Self {
-        ValueKey::Index(index)
+        BorrowedValueKey::Index(index)
     }
 }
 
-impl<'a> From<u32> for ValueKey<'a> {
+impl<'a> From<u32> for BorrowedValueKey<'a> {
     fn from(index: u32) -> Self {
-        ValueKey::Index(index as i64)
+        BorrowedValueKey::Index(index as i64)
     }
 }
 
-impl<'a> From<i32> for ValueKey<'a> {
+impl<'a> From<i32> for BorrowedValueKey<'a> {
     fn from(index: i32) -> Self {
-        ValueKey::Index(index as i64)
+        BorrowedValueKey::Index(index as i64)
     }
 }
 
-impl<'a> From<&'a ValueContainer> for ValueKey<'a> {
+impl<'a> From<&'a ValueContainer> for BorrowedValueKey<'a> {
     fn from(value_container: &'a ValueContainer) -> Self {
-        ValueKey::Value(Cow::Borrowed(value_container))
+        BorrowedValueKey::Value(Cow::Borrowed(value_container))
     }
 }
 
-impl From<ValueContainer> for ValueKey<'_> {
+impl From<ValueContainer> for BorrowedValueKey<'_> {
     fn from(value_container: ValueContainer) -> Self {
-        ValueKey::Value(Cow::Owned(value_container))
+        BorrowedValueKey::Value(Cow::Owned(value_container))
     }
 }
 
-impl<'a> ValueKey<'a> {
+impl<'a> BorrowedValueKey<'a> {
     pub fn try_as_text(&self) -> Option<&str> {
-        if let ValueKey::Text(text) = self {
+        if let BorrowedValueKey::Text(text) = self {
             Some(text)
-        } else if let ValueKey::Value(val) = self
+        } else if let BorrowedValueKey::Value(val) = self
             && let ValueContainer::Local(Value {
                 inner: CoreValue::Text(text),
                 ..
@@ -152,16 +159,16 @@ impl<'a> ValueKey<'a> {
     }
 
     pub fn try_as_index(&self) -> Option<i64> {
-        if let ValueKey::Index(index) = self {
+        if let BorrowedValueKey::Index(index) = self {
             Some(*index)
-        } else if let ValueKey::Value(value) = self
+        } else if let BorrowedValueKey::Value(value) = self
             && let ValueContainer::Local(Value {
                 inner: CoreValue::Integer(index),
                 ..
             }) = value.as_ref()
         {
             index.as_i64()
-        } else if let ValueKey::Value(value) = self
+        } else if let BorrowedValueKey::Value(value) = self
             && let ValueContainer::Local(Value {
                 inner: CoreValue::TypedInteger(index),
                 ..
@@ -174,14 +181,14 @@ impl<'a> ValueKey<'a> {
     }
 }
 
-impl<'a> From<ValueKey<'a>> for ValueContainer {
-    fn from(value_key: ValueKey) -> Self {
+impl<'a> From<BorrowedValueKey<'a>> for ValueContainer {
+    fn from(value_key: BorrowedValueKey) -> Self {
         match value_key {
-            ValueKey::Text(text) => {
+            BorrowedValueKey::Text(text) => {
                 ValueContainer::Local(text.into_owned().into())
             }
-            ValueKey::Index(index) => ValueContainer::Local(index.into()),
-            ValueKey::Value(value_container) => value_container.into_owned(),
+            BorrowedValueKey::Index(index) => ValueContainer::Local(index.into()),
+            BorrowedValueKey::Value(value_container) => value_container.into_owned(),
         }
     }
 }
@@ -193,13 +200,13 @@ pub enum OwnedValueKey {
     Value(ValueContainer),
 }
 
-impl<'a> From<OwnedValueKey> for ValueKey<'a> {
+impl<'a> From<OwnedValueKey> for BorrowedValueKey<'a> {
     fn from(owned: OwnedValueKey) -> Self {
         match owned {
-            OwnedValueKey::Text(text) => ValueKey::Text(Cow::Owned(text)),
-            OwnedValueKey::Index(index) => ValueKey::Index(index),
+            OwnedValueKey::Text(text) => BorrowedValueKey::Text(Cow::Owned(text)),
+            OwnedValueKey::Index(index) => BorrowedValueKey::Index(index),
             OwnedValueKey::Value(value_container) => {
-                ValueKey::Value(Cow::Owned(value_container))
+                BorrowedValueKey::Value(Cow::Owned(value_container))
             }
         }
     }
@@ -207,7 +214,7 @@ impl<'a> From<OwnedValueKey> for ValueKey<'a> {
 
 #[derive(Debug, Eq, Clone)]
 pub enum ValueContainer {
-    Local(Value), // TODO #767: add references to local values (for recursive structures)
+    Local(Value),
     Shared(SharedContainer),
 }
 
@@ -361,9 +368,9 @@ impl ValueContainer {
     }
 
     /// Returns the actual type of the contained value, resolving shared values if necessary.
-    pub fn actual_value_type(&self) -> TypeDefinition {
+    pub fn actual_value_type(&self, memory: &mut Memory) -> Type {
         match self {
-            ValueContainer::Local(local) => local.actual_type().clone(),
+            ValueContainer::Local(local) => local.actual_type(memory).clone(),
             ValueContainer::Shared(shared) => shared.actual_type().clone(),
         }
     }
@@ -454,7 +461,7 @@ impl ValueContainer {
 
     pub fn try_get_property<'a>(
         &self,
-        key: impl Into<ValueKey<'a>>,
+        key: impl Into<BorrowedValueKey<'a>>,
     ) -> Result<ValueContainer, AccessError> {
         match self {
             ValueContainer::Local(value) => value.try_get_property(key),
@@ -466,7 +473,7 @@ impl ValueContainer {
 
     pub fn try_take_property<'a>(
         &mut self,
-        key: impl Into<ValueKey<'a>>,
+        key: impl Into<BorrowedValueKey<'a>>,
     ) -> Result<ValueContainer, AccessError> {
         match self {
             ValueContainer::Local(value) => value.try_take_property(key),
@@ -480,7 +487,7 @@ impl ValueContainer {
         &mut self,
         source_id: TransceiverId,
         maybe_update_data: Option<&'a DIFUpdateData>,
-        key: impl Into<ValueKey<'a>>,
+        key: impl Into<BorrowedValueKey<'a>>,
         val: ValueContainer,
     ) -> Result<(), AccessError> {
         match self {
@@ -495,7 +502,7 @@ impl ValueContainer {
         &mut self,
         source_id: TransceiverId,
         maybe_update_data: Option<&'a DIFUpdateData>,
-        key: impl Into<ValueKey<'a>>,
+        key: impl Into<BorrowedValueKey<'a>>,
     ) -> Result<(), AccessError> {
         match self {
             ValueContainer::Local(v) => v.try_delete_property(key),

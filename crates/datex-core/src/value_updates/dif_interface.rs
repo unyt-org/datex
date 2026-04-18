@@ -1,8 +1,4 @@
 use crate::{
-    dif::{
-        update::DIFUpdateData,
-        value::{DIFReferenceNotFoundError},
-    },
     runtime::execution::ExecutionError,
     shared_values::{
         shared_containers::observers::{ObserveOptions, ObserverError, TransceiverId},
@@ -18,6 +14,7 @@ use crate::shared_values::errors::{AccessError, AssignmentError, SharedValueCrea
 use crate::shared_values::pointer_address::SelfOwnedPointerAddress;
 use crate::shared_values::shared_containers::SharedContainer;
 use crate::types::r#type::Type;
+use crate::value_updates::update_data::UpdateData;
 use crate::values::value_container::ValueContainer;
 
 #[derive(Debug)]
@@ -51,6 +48,9 @@ pub enum DIFUpdateError {
     AssignmentError(AssignmentError),
     TypeError(Box<TypeError>),
 }
+
+#[derive(Debug)]
+pub struct DIFReferenceNotFoundError;
 
 impl From<DIFReferenceNotFoundError> for DIFUpdateError {
     fn from(_: DIFReferenceNotFoundError) -> Self {
@@ -164,7 +164,7 @@ pub trait DIFInterface {
         &self,
         source_id: TransceiverId,
         address: PointerAddress,
-        update: &DIFUpdateData,
+        update: &UpdateData,
     ) -> Result<(), DIFUpdateError>;
 
     /// Executes an apply operation, applying the `value` to the `callee`.
@@ -197,7 +197,7 @@ pub trait DIFInterface {
         transceiver_id: TransceiverId,
         address: PointerAddress,
         options: ObserveOptions,
-        observer: impl Fn(&DIFUpdateData, TransceiverId) + 'static,
+        observer: impl Fn(&UpdateData) + 'static,
     ) -> Result<u32, DIFObserveError>;
 
     /// Updates the options for an existing observer on the pointer at the given address.
@@ -216,4 +216,6 @@ pub trait DIFInterface {
         address: PointerAddress,
         observer_id: u32,
     ) -> Result<(), DIFObserveError>;
+
+    // TODO: lock/unlock pointers
 }

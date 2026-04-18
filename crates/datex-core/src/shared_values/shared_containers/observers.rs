@@ -1,11 +1,10 @@
-use crate::dif::update::{DIFUpdate, DIFUpdateData};
-
 use crate::{
     prelude::*,
     shared_values::shared_containers::base_shared_value_container::BaseSharedValueContainer,
 };
 use core::{fmt::Display, result::Result};
 use serde::{Deserialize, Serialize};
+use crate::value_updates::update_data::{UpdateData, Update};
 
 #[derive(Debug)]
 pub enum ObserverError {
@@ -26,7 +25,7 @@ impl Display for ObserverError {
     }
 }
 
-pub type ObserverCallback = Rc<dyn Fn(&DIFUpdateData, TransceiverId)>;
+pub type ObserverCallback = Rc<dyn Fn(&Update)>;
 
 /// unique identifier for a transceiver (source of updates)
 /// 0-255 are reserved for DIF clients
@@ -48,7 +47,7 @@ pub struct Observer {
 impl Observer {
     /// Creates a new observer with the given callback function,
     /// using default options and a transceiver ID of 0.
-    pub fn new<F: Fn(&DIFUpdateData, TransceiverId) + 'static>(
+    pub fn new<F: Fn(&Update) + 'static>(
         callback: F,
     ) -> Self {
         Observer {
@@ -126,8 +125,8 @@ impl BaseSharedValueContainer {
         Ok(())
     }
 
-    /// Notifies all observers of a change represented by the given DIFUpdate.
-    pub fn notify_observers(&self, dif: &DIFUpdate) {
+    /// Notifies all observers of a change represented by the given [Update].
+    pub fn notify_observers(&self, dif: &Update) {
         let observer_callbacks: Vec<ObserverCallback> = self
             .observers
             .iter()
@@ -140,7 +139,7 @@ impl BaseSharedValueContainer {
 
         // Call each observer synchronously
         for callback in observer_callbacks {
-            callback(&dif.data, dif.source_id);
+            callback(&dif);
         }
     }
 
@@ -153,17 +152,10 @@ impl BaseSharedValueContainer {
 #[cfg(test)]
 mod tests {
     use crate::{
-        dif::{
-            representation::DIFValueRepresentation,
-            r#type::DIFTypeDefinition,
-            update::{DIFUpdate, DIFUpdateData},
-            value::{DIFValue, DIFValueContainer},
-        },
         prelude::*,
         shared_values::{
-            pointer_address::SelfOwnedPointerAddress,
             shared_containers::{
-                SharedContainer, SharedContainerMutability,
+                SharedContainerMutability,
                 base_shared_value_container::BaseSharedValueContainer,
                 observers::{
                     ObserveOptions, Observer, ObserverError, TransceiverId,
@@ -173,6 +165,8 @@ mod tests {
         values::{core_values::map::Map, value_container::ValueContainer},
     };
     use core::{assert_matches, cell::RefCell};
+    use crate::value_updates::update_data::{Update, UpdateData};
+    use crate::values::value_container::ValueKey;
 
     /// Helper function to record DIF updates observed on a reference
     /// Returns a Rc<RefCell<Vec<DIFUpdate>>> that contains all observed updates
@@ -181,17 +175,17 @@ mod tests {
         reference: &mut BaseSharedValueContainer,
         transceiver_id: TransceiverId,
         observe_options: ObserveOptions,
-    ) -> Rc<RefCell<Vec<DIFUpdate<'static>>>> {
+    ) -> Rc<RefCell<Vec<Update>>> {
         let update_collector = Rc::new(RefCell::new(Vec::new()));
         let update_collector_clone = update_collector.clone();
         reference
             .observe(Observer {
                 transceiver_id,
                 options: observe_options,
-                callback: Rc::new(move |update_data, source_id| {
-                    update_collector_clone.borrow_mut().push(DIFUpdate {
-                        source_id,
-                        data: Cow::Owned(update_data.clone()),
+                callback: Rc::new(move |update| {
+                    update_collector_clone.borrow_mut().push(Update {
+                        source_id: update.source_id,
+                        data: update.data.clone(),
                     });
                 }),
             })
@@ -206,7 +200,7 @@ mod tests {
             SharedContainerMutability::Immutable,
         );
         assert_matches!(
-            r.observe(Observer::new(|_, _| {})),
+            r.observe(Observer::new(|_| {})),
             Err(ObserverError::ImmutableReference)
         );
 
@@ -214,7 +208,7 @@ mod tests {
             42,
             SharedContainerMutability::Mutable,
         );
-        assert_matches!(r.observe(Observer::new(|_, _| {})), Ok(_));
+        assert_matches!(r.observe(Observer::new(|_| {})), Ok(_));
     }
 
     #[test]
@@ -224,7 +218,7 @@ mod tests {
             SharedContainerMutability::Mutable,
         );
         assert!(!r.has_observers());
-        let observer_id = r.observe(Observer::new(|_, _| {})).unwrap();
+        let observer_id = r.observe(Observer::new(|_| {})).unwrap();
         assert_eq!(observer_id, 0);
         assert!(r.has_observers());
         assert!(r.unobserve(observer_id).is_ok());
@@ -241,14 +235,14 @@ mod tests {
             42,
             SharedContainerMutability::Mutable,
         );
-        let id1 = r.observe(Observer::new(|_, _| {})).unwrap();
-        let id2 = r.observe(Observer::new(|_, _| {})).unwrap();
+        let id1 = r.observe(Observer::new(|_| {})).unwrap();
+        let id2 = r.observe(Observer::new(|_| {})).unwrap();
         assert_eq!(id1, 0);
         assert_eq!(id2, 1);
         assert!(r.unobserve(id1).is_ok());
-        let id3 = r.observe(Observer::new(|_, _| {})).unwrap();
+        let id3 = r.observe(Observer::new(|_| {})).unwrap();
         assert_eq!(id3, 0);
-        let id4 = r.observe(Observer::new(|_, _| {})).unwrap();
+        let id4 = r.observe(Observer::new(|_| {})).unwrap();
         assert_eq!(id4, 2);
     }
 
@@ -268,13 +262,11 @@ mod tests {
             .expect("Failed to set value");
 
         // Verify the observed update matches the expected change
-        let expected_update = DIFUpdate {
+        let expected_update = Update {
             source_id: 1,
-            data: Cow::Owned(DIFUpdateData::replace(
-                DIFValueContainer::from_value_container(&ValueContainer::from(
-                    43,
-                )),
-            )),
+            data: UpdateData::Replace {
+                value: ValueContainer::from(43)
+            },
         };
 
         assert_eq!(*observed_updates.borrow(), vec![expected_update]);
@@ -320,13 +312,11 @@ mod tests {
             .expect("Failed to set value");
 
         // update triggered, same transceiver id but relay_own_updates enabled
-        let expected_update = DIFUpdate {
+        let expected_update = Update {
             source_id: 0,
-            data: Cow::Owned(DIFUpdateData::replace(
-                DIFValueContainer::from_value_container(&ValueContainer::from(
-                    43,
-                )),
-            )),
+            data: UpdateData::Replace {
+                value: ValueContainer::from(43)
+            },
         };
 
         assert_eq!(*observed_update.borrow(), vec![expected_update]);
@@ -349,15 +339,12 @@ mod tests {
             .try_set_property(1, None, "a", "val".into())
             .expect("Failed to set property");
         // Verify the observed update matches the expected change
-        let expected_update = DIFUpdate {
+        let expected_update = Update {
             source_id: 1,
-            data: Cow::Owned(DIFUpdateData::set(
-                "a",
-                DIFValue::new(
-                    DIFValueRepresentation::String("val".to_string()),
-                    None as Option<DIFTypeDefinition>,
-                ),
-            )),
+            data: UpdateData::Set {
+                key: ValueKey::Text("a".to_string()),
+                value: ValueContainer::from("val"),
+            },
         };
         assert_eq!(*observed_updates.borrow(), vec![expected_update]);
     }
