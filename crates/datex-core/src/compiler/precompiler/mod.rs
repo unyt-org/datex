@@ -958,9 +958,7 @@ mod tests {
         assert_eq!(
             result.unwrap().ast,
             DatexExpressionData::VariantAccess(VariantAccess {
-                base: ResolvedVariable::PointerAddress(
-                    CoreLibVariantTypeId::Integer(IntegerTypeVariant::U8).into()
-                ),
+                base: ResolvedVariable::PointerAddress(CoreLibBaseTypeId::Integer.into()),
                 name: "integer".to_string(),
                 variant: "u8".to_string(),
             })

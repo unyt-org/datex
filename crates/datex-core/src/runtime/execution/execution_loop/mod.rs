@@ -1261,7 +1261,7 @@ pub fn inner_execution_loop(
                                     }
 
                                     // Note: safe because we checked if the address already exists in memory before
-                                    let referenced_container = yield_unwrap!(unsafe {ReferencedSharedContainer::try_new_external(
+                                    let referenced_container = yield_unwrap!(unsafe {ReferencedSharedContainer::try_new_external_from_base_container(
                                         yield_unwrap!(BaseSharedValueContainer::try_new(
                                             value,
                                             Type::from(LiteralTypeDefinition::Unknown),  // TODO: allowed type

@@ -17,6 +17,7 @@ use core::{
     fmt::Display,
 };
 use crate::runtime::memory::Memory;
+use crate::shared_values::errors::SharedValueCreationError;
 use crate::types::r#type::Type;
 use crate::values::value::Value;
 
@@ -61,7 +62,7 @@ impl ReferencedSharedContainer {
     /// the [SharedContainerMutability] of the container is [SharedContainerMutability::Immutable]
     ///
     /// The caller must ensure that the [ExternalPointerAddress] does not yet exist in the [Memory]
-    pub(crate) unsafe fn try_new_external(
+    pub(crate) unsafe fn try_new_external_from_base_container(
         container: BaseSharedValueContainer,
         address: ExternalPointerAddress,
         reference_mutability: ReferenceMutability,
@@ -82,14 +83,18 @@ impl ReferencedSharedContainer {
         })
     }
 
+    /// Creates a new immutable [ReferencedSharedContainer] containing a [SharedContainerInner::External]
+    /// with the provided [ValueContainer] and [ExternalPointerAddress].
+    /// Automatically infers the allowed type of the shared container from the provided [ValueContainer].
+    ///
     /// The caller must ensure that the [ExternalPointerAddress] does not yet exist in the [Memory]
-    pub(crate) unsafe fn new_immutable_external(
+    pub(crate) unsafe fn new_immutable_external_with_inferred_allowed_type(
         value_container: ValueContainer,
         address: ExternalPointerAddress,
         memory: &Memory
     ) -> Self {
         unsafe {
-            ReferencedSharedContainer::try_new_external(
+            ReferencedSharedContainer::try_new_external_from_base_container(
                 BaseSharedValueContainer::new_with_inferred_allowed_type(
                     value_container,
                     SharedContainerMutability::Immutable,
@@ -101,6 +106,36 @@ impl ReferencedSharedContainer {
             )
                 .unwrap()
         }
+    }
+
+    /// Tries to create a new immutable [ReferencedSharedContainer] containing a [SharedContainerInner::External]
+    /// with the provided [ValueContainer] and [ExternalPointerAddress].
+    ///
+    /// Sets the provided [SharedContainerMutability] and allowed [Type].
+    /// If the allowed [TypeDefinition] is not a superset of the [ValueContainer]'s allowed type,
+    /// an error is returned
+    ///
+    /// The caller must ensure that the [ExternalPointerAddress] does not yet exist in the [Memory]
+    pub(crate) unsafe fn try_new_external(
+        value_container: ValueContainer,
+        address: ExternalPointerAddress,
+        mutability: SharedContainerMutability,
+        allowed_type: Type,
+        memory: &Memory
+    ) -> Result<Self, SharedValueCreationError> {
+        Ok(unsafe {
+            ReferencedSharedContainer::try_new_external_from_base_container(
+                BaseSharedValueContainer::try_new(
+                    value_container,
+                    allowed_type,
+                    mutability,
+                )?,
+                address,
+                ReferenceMutability::Immutable,
+                memory,
+            )
+                .unwrap()
+        })
     }
 
     pub fn inner(&self) -> Ref<SharedContainerInner> {

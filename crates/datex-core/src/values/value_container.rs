@@ -425,7 +425,7 @@ impl ValueContainer {
                 let inner_type =
                     shared.value_container().actual_container_type(memory);
                 Type::Alias(TypeDefinitionWithMetadata {
-                    definition: TypeDefinition::Type(Box::new(inner_type)),
+                    definition: TypeDefinition::Nested(Box::new(inner_type)),
                     metadata: TypeMetadata::Shared {
                         mutability: shared.container_mutability(),
                         ownership: shared.ownership(),

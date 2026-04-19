@@ -68,7 +68,7 @@ pub enum CoreLibVariantTypeId {
 }
 
 impl Display for CoreLibVariantTypeId {
-    fn fmt(&self, f: &mut alloc::fmt::Formatter<'_>) -> alloc::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{}/", CoreLibBaseTypeId::from(self.clone()))?;
         match self {
             CoreLibVariantTypeId::Integer(variant) => {
@@ -204,7 +204,7 @@ impl CoreLibIdTrait for CoreLibTypeId {
 }
 
 impl Display for CoreLibTypeId {
-    fn fmt(&self, f: &mut alloc::fmt::Formatter<'_>) -> alloc::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             CoreLibTypeId::Base(base_id) => {
                 write!(f, "{}", base_id.to_string())

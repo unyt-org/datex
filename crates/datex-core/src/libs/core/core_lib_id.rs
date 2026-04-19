@@ -52,7 +52,7 @@ impl From<CoreLibValueId> for CoreLibId {
 }
 
 impl Display for CoreLibId {
-    fn fmt(&self, f: &mut alloc::fmt::Formatter<'_>) -> alloc::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             CoreLibId::Type(type_id) => write!(f, "{}", type_id.to_string()),
             CoreLibId::Value(value_id) => write!(f, "{}", value_id.to_string()),
@@ -98,9 +98,8 @@ impl<T: CoreLibIdTrait> From<T> for PointerAddress {
 }
 impl<T: CoreLibIdTrait> From<T> for ExternalPointerAddress {
     fn from(core_lib_id: T) -> Self {
-        ExternalPointerAddress::Builtin(
-            core_lib_id.into().to_le_bytes()[0..3].try_into().unwrap(),
-        )
+        let bytes: [u8; 2] = (core_lib_id).into().to_le_bytes().try_into().unwrap();
+        ExternalPointerAddress::Builtin([bytes[0], bytes[1], 0])
     }
 }
 

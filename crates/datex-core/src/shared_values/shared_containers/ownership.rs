@@ -16,13 +16,19 @@ use serde::Serialize;
     Deserialize,
     BinRead,
     BinWrite,
-    PartialOrd,
 )]
 #[brw(repr(u8))]
 #[repr(u8)]
 pub enum ReferenceMutability {
     Immutable = 0,
     Mutable = 1,
+}
+
+
+impl PartialOrd<Self> for ReferenceMutability {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
 }
 
 impl Ord for ReferenceMutability {
@@ -45,7 +51,7 @@ impl Ord for ReferenceMutability {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum SharedContainerOwnership {
     Owned,
     Referenced(ReferenceMutability),
@@ -62,6 +68,12 @@ impl Display for SharedContainerOwnership {
                 }
             }
         }
+    }
+}
+
+impl PartialOrd<Self> for SharedContainerOwnership {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
     }
 }
 

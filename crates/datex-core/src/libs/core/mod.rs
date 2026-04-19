@@ -1,3 +1,4 @@
+use itertools::Itertools;
 use crate::{
     collections::HashMap,
     libs::core::{
@@ -60,11 +61,11 @@ impl CoreLibrary {
     /// Loads the core library into the provided [Memory] instance.
     /// Caller must guarantee that the core library was not already loaded into the [Memory] instance
     pub unsafe fn load_core_lib(memory: &mut Memory) {
-        let mapping = Self::create_core_lib_entries(memory)
+        let mapping = unsafe { Self::create_core_lib_entries(memory) }
             .iter()
             .map(|(id, entry)| {
                 memory.register_referenced_shared_container(
-                    &entry.clone().into(),
+                    &entry.clone(),
                 );
                 (
                     id.name(),
@@ -74,9 +75,10 @@ impl CoreLibrary {
                 )
             })
             .collect::<Vec<(String, ValueContainer)>>();
+
         let core_struct = SharedContainer::Referenced(
             unsafe {
-                ReferencedSharedContainer::new_immutable_external(
+                ReferencedSharedContainer::new_immutable_external_with_inferred_allowed_type(
                     Map::from(mapping).into(),
                     CoreLibValueId::Core.into(),
                     memory
@@ -147,11 +149,13 @@ impl CoreLibrary {
         (
             core_lib_id,
             unsafe {
-                ReferencedSharedContainer::new_immutable_external(
+                ReferencedSharedContainer::try_new_external(
                     ValueContainer::from(CoreValue::NominalType(definition)),
                     id.into(),
-                    memory
-                )
+                    SharedContainerMutability::Immutable,
+                    Type::from(TypeDefinition::Type),
+                    memory,
+                ).unwrap()
             }
         )
     }
@@ -159,7 +163,7 @@ impl CoreLibrary {
     unsafe fn print(memory: &mut Memory) -> (CoreLibId, ReferencedSharedContainer) {
         (
             CoreLibId::Value(CoreLibValueId::Print),
-            ReferencedSharedContainer::new_immutable_external(
+            ReferencedSharedContainer::new_immutable_external_with_inferred_allowed_type(
                 Value::callable(
                     Some("print".to_string()),
                     CallableSignature {
@@ -252,8 +256,9 @@ impl Memory {
         &self,
         core_lib_id: impl Into<CoreLibId>,
     ) -> &ReferencedSharedContainer {
-        self.get_reference(&PointerAddress::from(core_lib_id.into()))
-            .expect("core reference not found in memory")
+        let pointer_address = PointerAddress::from(core_lib_id.into());
+        self.get_reference(&pointer_address)
+            .unwrap_or_else(|| panic!("core reference not found in memory: {}", pointer_address))
     }
 
     /// Helper function to get a [SharedContainerContainingNominalType] directly from memory

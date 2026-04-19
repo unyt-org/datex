@@ -32,7 +32,7 @@ pub enum TypeDefinition {
     Shared(SharedContainerContainingType), // integer
 
     /// needed for nested types with multiple reference layers (e.g. 'mut 'mut shared X)
-    Type(Box<Type>),
+    Nested(Box<Type>),
 
     // FIXME DO we still need Type(Type) here?
     // Hopefully no, as nominal type definitions referring other types need
@@ -57,6 +57,9 @@ pub enum TypeDefinition {
 
     /// A | B | C
     Union(Vec<Type>),
+
+    /// meta type for a type
+    Type,
 }
 
 impl Hash for TypeDefinition {
@@ -113,8 +116,13 @@ impl Hash for TypeDefinition {
                     marker.hash(state);
                 }
             }
-            TypeDefinition::Type(ty) => {
+            TypeDefinition::Nested(ty) => {
                 ty.hash(state);
+            }
+            TypeDefinition::Type => {
+                // no fields to hash
+                // TODO: can we do this?
+                0.hash(state);
             }
         }
     }
@@ -204,8 +212,11 @@ impl Display for TypeDefinition {
                     yeet_type_code
                 )
             }
-            TypeDefinition::Type(ty) => {
+            TypeDefinition::Nested(ty) => {
                 core::write!(f, "{}", ty)
+            }
+            TypeDefinition::Type => {
+                core::write!(f, "Type")
             }
         }
     }

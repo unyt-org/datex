@@ -572,7 +572,7 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
         let inner_type = self.infer_expression(&mut create_ref.expression)?;
 
         mark_type(Type::from(TypeDefinitionWithMetadata {
-            definition: TypeDefinition::Type(Box::new(inner_type)),
+            definition: TypeDefinition::Nested(Box::new(inner_type)),
             metadata: TypeMetadata::Local {
                 mutability: LocalMutability::Immutable,
                 reference_mutability: Some(create_ref.mutability.clone()),
@@ -976,7 +976,7 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
                 _ => {
                     match definition.definition {
                         // if nested type, collapse
-                        TypeDefinition::Type(ty) => *ty,
+                        TypeDefinition::Nested(ty) => *ty,
                         // else, just remove ref
                         def => {
                             Type::Alias(TypeDefinitionWithMetadata {
@@ -1659,7 +1659,7 @@ mod tests {
                         assert_eq!(name, "A");
                         assert_eq!(
                             definition.definition,
-                            TypeDefinition::Type(Box::new(memory.get_core_type(CoreLibBaseTypeId::Integer)))
+                            TypeDefinition::Nested(Box::new(memory.get_core_type(CoreLibBaseTypeId::Integer)))
                         );
                     },
                     _ => panic!("expected nominal type value"),
@@ -1685,7 +1685,7 @@ mod tests {
 
         if let Type::Alias(
             TypeDefinitionWithMetadata {
-                definition: TypeDefinition::Type(box Type::Nominal(nominal)), 
+                definition: TypeDefinition::Nested(box Type::Nominal(nominal)), 
                 ..
             }
         ) = var_type {

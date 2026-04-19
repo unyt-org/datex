@@ -18,14 +18,14 @@ use crate::libs::library::Library;
 pub struct Memory {
     /// Shared values that are actively referenced or owned somewhere
     /// in the runtime or on remote endpoints
-    pointers: HashMap<PointerAddress, ReferencedSharedContainer>,
+    values: HashMap<PointerAddress, ReferencedSharedContainer>,
 }
 
 impl Memory {
     /// Creates a new, Memory instance with the core library loaded.
     pub fn new() -> Memory {
         let mut memory = Memory {
-            pointers: HashMap::new(),
+            values: HashMap::new(),
         };
         // load core library
         // Note: safe because memory is newly initialized without core lib
@@ -46,7 +46,7 @@ impl Memory {
     ) {
         let pointer_address = container.pointer_address();
         // check if reference is already registered (if it has an address, we assume it is registered)
-        self.pointers
+        self.values
             .entry(pointer_address)
             .or_insert_with(|| container.clone());
     }
@@ -56,11 +56,15 @@ impl Memory {
         &self,
         pointer_address: &PointerAddress,
     ) -> Option<&ReferencedSharedContainer> {
-        self.pointers.get(pointer_address)
+        self.values.get(pointer_address)
     }
 
     /// Checks if a reference with the given PointerAddress exists in memory.
     pub fn has_reference(&self, pointer_address: &PointerAddress) -> bool {
-        self.pointers.contains_key(pointer_address)
+        self.values.contains_key(pointer_address)
+    }
+    
+    pub fn values(&self) -> &HashMap<PointerAddress, ReferencedSharedContainer> {
+        &self.values
     }
 }

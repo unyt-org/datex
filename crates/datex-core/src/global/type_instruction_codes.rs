@@ -58,7 +58,8 @@ impl From<&TypeDefinition> for TypeInstructionCode {
             TypeDefinition::List(_) => todo!(),
             TypeDefinition::Map(_) => todo!(),
             TypeDefinition::Range(_) => todo!(),
-            TypeDefinition::Type(_) => todo!()
+            TypeDefinition::Nested(_) => todo!(),
+            TypeDefinition::Type => todo!(),
         }
     }
 }
