@@ -23,6 +23,9 @@ use core::{
 use log::error;
 use crate::runtime::memory::Memory;
 use crate::types::r#type::Type;
+use crate::value_updates::errors::UpdateError;
+use crate::value_updates::update_data::{DeleteEntryUpdateData, ListSpliceUpdateData, ReplaceUpdateData, SetEntryUpdateData};
+use crate::value_updates::update_handler::UpdateHandler;
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub struct Value {
@@ -307,6 +310,28 @@ impl Value {
         }
 
         Ok(())
+    }
+}
+
+impl UpdateHandler for Value {
+    fn try_replace(&self, data: ReplaceUpdateData) -> Result<ValueContainer, UpdateError> {
+        todo!()
+    }
+
+    fn try_set_entry(&self, data: SetEntryUpdateData) -> Result<(), UpdateError> {
+        todo!()
+    }
+
+    fn try_delete_entry(&self, data: DeleteEntryUpdateData) -> Result<ValueContainer, UpdateError> {
+        todo!()
+    }
+
+    fn try_clear(&self) -> Result<Vec<ValueContainer>, UpdateError> {
+        todo!()
+    }
+
+    fn try_list_splice(&self, data: ListSpliceUpdateData) -> Result<Vec<ValueContainer>, UpdateError> {
+        todo!()
     }
 }
 

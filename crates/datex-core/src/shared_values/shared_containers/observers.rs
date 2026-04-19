@@ -165,6 +165,7 @@ mod tests {
         values::{core_values::map::Map, value_container::ValueContainer},
     };
     use core::{assert_matches, cell::RefCell};
+    use crate::runtime::memory::Memory;
     use crate::value_updates::update_data::{Update, UpdateData};
     use crate::values::value_container::ValueKey;
 
@@ -195,9 +196,12 @@ mod tests {
 
     #[test]
     fn immutable_reference_observe_fails() {
+        let memory = &mut Memory::new();
+
         let mut r = BaseSharedValueContainer::new_with_inferred_allowed_type(
             42,
             SharedContainerMutability::Immutable,
+            memory,
         );
         assert_matches!(
             r.observe(Observer::new(|_| {})),
@@ -207,15 +211,19 @@ mod tests {
         let mut r = BaseSharedValueContainer::new_with_inferred_allowed_type(
             42,
             SharedContainerMutability::Mutable,
+            memory,
         );
         assert_matches!(r.observe(Observer::new(|_| {})), Ok(_));
     }
 
     #[test]
     fn observe_and_unobserve() {
+        let memory = &mut Memory::new();
+
         let mut r = BaseSharedValueContainer::new_with_inferred_allowed_type(
             42,
             SharedContainerMutability::Mutable,
+            memory,
         );
         assert!(!r.has_observers());
         let observer_id = r.observe(Observer::new(|_| {})).unwrap();
@@ -231,9 +239,12 @@ mod tests {
 
     #[test]
     fn observer_ids_incremental() {
+        let memory = &mut Memory::new();
+
         let mut r = BaseSharedValueContainer::new_with_inferred_allowed_type(
             42,
             SharedContainerMutability::Mutable,
+            memory,
         );
         let id1 = r.observe(Observer::new(|_| {})).unwrap();
         let id2 = r.observe(Observer::new(|_| {})).unwrap();
@@ -248,10 +259,13 @@ mod tests {
 
     #[test]
     fn observe_replace() {
+        let memory = &mut Memory::new();
+
         let mut int_ref =
             BaseSharedValueContainer::new_with_inferred_allowed_type(
                 42,
                 SharedContainerMutability::Mutable,
+                memory,
             );
         let observed_updates =
             record_dif_updates(&mut int_ref, 0, ObserveOptions::default());
@@ -274,10 +288,13 @@ mod tests {
 
     #[test]
     fn observe_replace_same_transceiver() {
+        let memory = &mut Memory::new();
+
         let mut int_ref =
             BaseSharedValueContainer::new_with_inferred_allowed_type(
                 42,
                 SharedContainerMutability::Mutable,
+                memory,
             );
         let observed_update =
             record_dif_updates(&mut int_ref, 0, ObserveOptions::default());
@@ -293,10 +310,13 @@ mod tests {
 
     #[test]
     fn observe_replace_same_transceiver_relay_own_updates() {
+        let memory = &mut Memory::new();
+
         let mut int_ref =
             BaseSharedValueContainer::new_with_inferred_allowed_type(
                 42,
                 SharedContainerMutability::Mutable,
+                memory,
             );
         let observed_update = record_dif_updates(
             &mut int_ref,
@@ -324,6 +344,8 @@ mod tests {
 
     #[test]
     fn observe_update_property() {
+        let memory = &mut Memory::new();
+
         let mut reference =
             BaseSharedValueContainer::new_with_inferred_allowed_type(
                 Map::from(vec![
@@ -331,6 +353,7 @@ mod tests {
                     ("b".to_string(), ValueContainer::from(2)),
                 ]),
                 SharedContainerMutability::Mutable,
+                memory,
             );
         let observed_updates =
             record_dif_updates(&mut reference, 0, ObserveOptions::default());
@@ -341,7 +364,7 @@ mod tests {
         // Verify the observed update matches the expected change
         let expected_update = Update {
             source_id: 1,
-            data: UpdateData::Set {
+            data: UpdateData::SetEntry {
                 key: ValueKey::Text("a".to_string()),
                 value: ValueContainer::from("val"),
             },

@@ -205,7 +205,10 @@ impl<'a> Precompiler<'a> {
         // type inference - currently only if detailed errors are enabled
         // FIXME #675: always do type inference here, not only for detailed errors
         if options.detailed_errors {
-            let type_res = infer_expression_type_detailed_errors(&mut rich_ast);
+            let type_res = infer_expression_type_detailed_errors(
+                &mut rich_ast,
+                &mut *self.runtime.memory().borrow_mut(),
+            );
 
             // append type errors to collected_errors if any
             if let Some(collected_errors) = self.collected_errors.as_mut()
@@ -287,9 +290,10 @@ impl<'a> Precompiler<'a> {
                 Type::nominal(
                     NominalTypeDefinition::new_base(
                         TypeDefinition::Unknown.into(),
-                        data.name.clone()
+                        data.name.clone(),
                     ),
-                    &mut *self.runtime.pointer_address_provider().borrow_mut()
+                    &mut *self.runtime.pointer_address_provider().borrow_mut(),
+                    &mut *self.runtime.memory().borrow_mut(),
                 )
             },
             TypeDeclarationKind::Alias => {

@@ -1542,14 +1542,9 @@ pub mod tests {
     use crate::libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId};
     use crate::runtime::{Runtime, RuntimeConfig, RuntimeRunner};
     use crate::values::core_values::integer::Integer;
-
-    fn get_stub_runtime() -> Runtime {
-        Runtime::stub()
-    }
-
     fn compile_and_log(datex_script: &str) -> Vec<u8> {
         let (result, _) =
-            compile_script(datex_script, CompileOptions::default(), get_stub_runtime()).unwrap();
+            compile_script(datex_script, CompileOptions::default(), Runtime::stub()).unwrap();
         info!(
             "{:?}",
             result
@@ -1564,7 +1559,7 @@ pub mod tests {
     fn get_compilation_context(script: &str) -> CompilationContext {
         let mut options = CompileOptions::default();
         let ast =
-            parse_datex_script_to_rich_ast_simple_error(script, &mut options, get_stub_runtime())
+            parse_datex_script_to_rich_ast_simple_error(script, &mut options, Runtime::stub())
                 .unwrap();
 
         let mut compilation_context = CompilationContext::new(
@@ -1594,7 +1589,7 @@ pub mod tests {
                 let (dxb, new_compilation_scope) = compile_script(
                     script_part,
                     CompileOptions::new_with_scope(compilation_scope),
-                    get_stub_runtime()
+                    Runtime::stub()
                 )
                 .unwrap();
                 compilation_scope = new_compilation_scope;
@@ -2346,7 +2341,7 @@ pub mod tests {
                 Some(TypedInteger::from(2u8).into()),
             ],
             CompileOptions::default(),
-            get_stub_runtime()
+            Runtime::stub()
         );
         assert_eq!(
             result.unwrap().0,
@@ -2363,14 +2358,14 @@ pub mod tests {
     #[test]
     fn compile_macro() {
         let a = TypedInteger::from(1u8);
-        let result = compile!(get_stub_runtime(), "?", a);
+        let result = compile!(Runtime::stub(), "?", a);
         assert_eq!(result.unwrap().0, vec![InstructionCode::UINT_8.into(), 1,]);
     }
 
     #[test]
     fn compile_macro_multi() {
         let result =
-            compile!(get_stub_runtime(), "? + ?", TypedInteger::from(1u8), TypedInteger::from(2u8));
+            compile!(Runtime::stub(), "? + ?", TypedInteger::from(1u8), TypedInteger::from(2u8));
         assert_eq!(
             result.unwrap().0,
             vec![
@@ -2459,7 +2454,7 @@ pub mod tests {
         let (res, _) = compile_script_or_return_static_value(
             script,
             CompileOptions::default(),
-            get_stub_runtime()
+            Runtime::stub()
         )
         .unwrap();
         assert_matches!(
@@ -2471,7 +2466,7 @@ pub mod tests {
         let (res, _) = compile_script_or_return_static_value(
             script,
             CompileOptions::default(),
-            get_stub_runtime()
+            Runtime::stub()
         )
         .unwrap();
         assert_matches!(
@@ -2502,7 +2497,7 @@ pub mod tests {
             z;
         "#;
         let (res, _) =
-            compile_script(script, CompileOptions::default(), get_stub_runtime()).unwrap();
+            compile_script(script, CompileOptions::default(), Runtime::stub()).unwrap();
         print_disassembled(&res);
         assert_regular_instructions_equal!(
             &res,
@@ -2528,7 +2523,7 @@ pub mod tests {
     fn remote_execution() {
         let script = "42u8 :: 43u8";
         let (res, _) =
-            compile_script(script, CompileOptions::default(), get_stub_runtime()).unwrap();
+            compile_script(script, CompileOptions::default(), Runtime::stub()).unwrap();
         assert_eq!(
             res,
             vec![
@@ -2559,7 +2554,7 @@ pub mod tests {
     fn remote_execution_expression() {
         let script = "42u8 :: 1u8 + 2u8";
         let (res, _) =
-            compile_script(script, CompileOptions::default(), get_stub_runtime()).unwrap();
+            compile_script(script, CompileOptions::default(), Runtime::stub()).unwrap();
         assert_eq!(
             res,
             vec![
@@ -2597,7 +2592,7 @@ pub mod tests {
         let result = compile_script(
             script,
             CompileOptions::default(),
-            get_stub_runtime()
+            Runtime::stub()
         );
         assert!(result.is_err());
         assert_matches!(
@@ -2611,7 +2606,7 @@ pub mod tests {
     fn remote_execution_injected_const() {
         let script = "const x = 42u8; 1u8 :: x";
         let (res, _) =
-            compile_script(script, CompileOptions::default(), get_stub_runtime()).unwrap();
+            compile_script(script, CompileOptions::default(), Runtime::stub()).unwrap();
         assert_regular_instructions_equal!(
             &res,
             [
@@ -2639,7 +2634,7 @@ pub mod tests {
         // remote context, its state is synced via a ref (VariableReference model)
         let script = "const x = shared 42u8; 1u8 :: x";
         let (res, _) =
-            compile_script(script, CompileOptions::default(), get_stub_runtime()).unwrap();
+            compile_script(script, CompileOptions::default(), Runtime::stub()).unwrap();
         assert_regular_instructions_equal!(
             &res,
             [
@@ -2665,7 +2660,7 @@ pub mod tests {
     fn remote_execution_injected_shared_ref() {
         let script = "const x = shared 42u8; 1u8 :: 'x";
         let (res, _) =
-            compile_script(script, CompileOptions::default(), get_stub_runtime()).unwrap();
+            compile_script(script, CompileOptions::default(), Runtime::stub()).unwrap();
         assert_regular_instructions_equal!(
             &res,
             [
@@ -2691,7 +2686,7 @@ pub mod tests {
     fn remote_execution_injected_consts() {
         let script = "const x = 42u8; const y = 69u8; 1u8 :: x + y";
         let (res, _) =
-            compile_script(script, CompileOptions::default(), get_stub_runtime()).unwrap();
+            compile_script(script, CompileOptions::default(), Runtime::stub()).unwrap();
         assert_regular_instructions_equal!(
             &res,
             [
@@ -2724,7 +2719,7 @@ pub mod tests {
         let script =
             "const x = 42u8; const y = 69u8; 1u8 :: (const x = 5u8; x + y)";
         let (res, _) =
-            compile_script(script, CompileOptions::default(), get_stub_runtime()).unwrap();
+            compile_script(script, CompileOptions::default(), Runtime::stub()).unwrap();
         assert_regular_instructions_equal!(
             &res,
             [
@@ -2758,7 +2753,7 @@ pub mod tests {
     fn remote_execution_nested() {
         let script = "const x = 42u8; (1u8 :: (2u8 :: x))";
         let (res, _) =
-            compile_script(script, CompileOptions::default(), get_stub_runtime()).unwrap();
+            compile_script(script, CompileOptions::default(), Runtime::stub()).unwrap();
 
         assert_eq!(
             res,
@@ -2830,7 +2825,7 @@ pub mod tests {
     fn remote_execution_nested2() {
         let script = "const x = 42u8; const y = 43u8; (1u8 :: (y :: x))";
         let (res, _) =
-            compile_script(script, CompileOptions::default(),get_stub_runtime()).unwrap();
+            compile_script(script, CompileOptions::default(),Runtime::stub()).unwrap();
 
         assert_eq!(
             res,
@@ -2914,7 +2909,7 @@ pub mod tests {
     #[test]
     fn assignment_to_const() {
         let script = "const a = 42; a = 43";
-        let result = compile_script(script, CompileOptions::default(), get_stub_runtime())
+        let result = compile_script(script, CompileOptions::default(), Runtime::stub())
             .map_err(|e| e.error);
         assert_matches!(result, Err(CompilerError::AssignmentToConst { .. }));
     }
@@ -2922,7 +2917,7 @@ pub mod tests {
     #[test]
     fn assignment_to_const_mut() {
         let script = "const a = &mut 42; a = 43";
-        let result = compile_script(script, CompileOptions::default(), get_stub_runtime())
+        let result = compile_script(script, CompileOptions::default(), Runtime::stub())
             .map_err(|e| e.error);
         assert_matches!(result, Err(CompilerError::AssignmentToConst { .. }));
     }
@@ -2930,21 +2925,21 @@ pub mod tests {
     #[test]
     fn internal_assignment_to_const_mut() {
         let script = "const a = &mut 42; *a = 43";
-        let result = compile_script(script, CompileOptions::default(), get_stub_runtime());
+        let result = compile_script(script, CompileOptions::default(), Runtime::stub());
         assert_matches!(result, Ok(_));
     }
 
     #[test]
     fn addition_to_const_mut_ref() {
         let script = "const a = &mut 42; *a += 1;";
-        let result = compile_script(script, CompileOptions::default(), get_stub_runtime());
+        let result = compile_script(script, CompileOptions::default(), Runtime::stub());
         assert_matches!(result, Ok(_));
     }
 
     #[test]
     fn addition_to_const_variable() {
         let script = "const a = 42; a += 1";
-        let result = compile_script(script, CompileOptions::default(), get_stub_runtime())
+        let result = compile_script(script, CompileOptions::default(), Runtime::stub())
             .map_err(|e| e.error);
         assert_matches!(result, Err(CompilerError::AssignmentToConst { .. }));
     }
@@ -2953,7 +2948,7 @@ pub mod tests {
     fn internal_slot_endpoint() {
         let script = "#endpoint";
         let (res, _) =
-            compile_script(script, CompileOptions::default(), get_stub_runtime()).unwrap();
+            compile_script(script, CompileOptions::default(), Runtime::stub()).unwrap();
         assert_eq!(
             res,
             vec![
@@ -2971,7 +2966,7 @@ pub mod tests {
     fn internal_slot_caller() {
         let script = "#caller";
         let (res, _) =
-            compile_script(script, CompileOptions::default(), get_stub_runtime()).unwrap();
+            compile_script(script, CompileOptions::default(), Runtime::stub()).unwrap();
         assert_eq!(
             res,
             vec![
@@ -2990,7 +2985,7 @@ pub mod tests {
     fn unbox() {
         let script = "*10u8";
         let (res, _) =
-            compile_script(script, CompileOptions::default(), get_stub_runtime()).unwrap();
+            compile_script(script, CompileOptions::default(), Runtime::stub()).unwrap();
         assert_eq!(
             res,
             vec![
@@ -3006,7 +3001,7 @@ pub mod tests {
     fn unbox_slot() {
         let script = "const x = 10u8; *x";
         let (res, _) =
-            compile_script(script, CompileOptions::default(), get_stub_runtime()).unwrap();
+            compile_script(script, CompileOptions::default(), Runtime::stub()).unwrap();
         assert_eq!(
             res,
             vec![
@@ -3031,7 +3026,7 @@ pub mod tests {
     fn type_literal_integer() {
         let script = "type<1>";
         let (res, _) =
-            compile_script(script, CompileOptions::default(), get_stub_runtime()).unwrap();
+            compile_script(script, CompileOptions::default(), Runtime::stub()).unwrap();
         assert_eq!(
             res,
             vec![
@@ -3052,7 +3047,7 @@ pub mod tests {
     fn type_core_type_integer() {
         let script = "integer";
         let (res, _) =
-            compile_script(script, CompileOptions::default(), get_stub_runtime()).unwrap();
+            compile_script(script, CompileOptions::default(), Runtime::stub()).unwrap();
         let mut instructions: Vec<u8> =
             vec![InstructionCode::GET_INTERNAL_SHARED_REF.into()];
         // pointer id

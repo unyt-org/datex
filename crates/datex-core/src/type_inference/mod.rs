@@ -52,6 +52,7 @@ use crate::{
 };
 use core::{cell::RefCell, ops::Range, panic, str::FromStr};
 use crate::ast::expressions::ValueAccessType;
+use crate::runtime::memory::Memory;
 use crate::shared_values::shared_containers::{ReferenceMutability, SharedContainerOwnership};
 use crate::types::r#type::{Type};
 use crate::types::type_definition_with_metadata::{LocalMutability, TypeMetadata};
@@ -79,6 +80,7 @@ impl From<InferOutcome> for Type {
 
 pub fn infer_expression_type_simple_error(
     rich_ast: &mut RichAst,
+    memory: &mut Memory,
 ) -> Result<Type, SpannedTypeError> {
     match infer_expression_type(
         rich_ast,
@@ -86,6 +88,7 @@ pub fn infer_expression_type_simple_error(
             detailed_errors: false,
             error_handling: ErrorHandling::FailFast,
         },
+        memory,
     ) {
         Ok(InferOutcome::Ok(ty)) => Ok(ty),
         Ok(InferOutcome::OkWithErrors { ty, .. }) => Ok(ty),
@@ -96,6 +99,7 @@ pub fn infer_expression_type_simple_error(
 
 pub fn infer_expression_type_detailed_errors(
     rich_ast: &mut RichAst,
+    memory: &mut Memory,
 ) -> Result<Type, DetailedTypeErrors> {
     match infer_expression_type(
         rich_ast,
@@ -103,6 +107,7 @@ pub fn infer_expression_type_detailed_errors(
             detailed_errors: true,
             error_handling: ErrorHandling::Collect,
         },
+        memory,
     ) {
         Ok(InferOutcome::Ok(ty)) => Ok(ty),
         Ok(InferOutcome::OkWithErrors { .. }) => unreachable!(),
@@ -113,6 +118,7 @@ pub fn infer_expression_type_detailed_errors(
 
 pub fn infer_expression_type_with_errors(
     rich_ast: &mut RichAst,
+    memory: &mut Memory,
 ) -> Result<InferOutcome, SimpleOrDetailedTypeError> {
     infer_expression_type(
         rich_ast,
@@ -120,6 +126,7 @@ pub fn infer_expression_type_with_errors(
             detailed_errors: true,
             error_handling: ErrorHandling::CollectAndReturnType,
         },
+        memory
     )
 }
 
@@ -128,20 +135,23 @@ pub fn infer_expression_type_with_errors(
 fn infer_expression_type(
     rich_ast: &mut RichAst,
     options: InferExpressionTypeOptions,
+    memory: &mut Memory,
 ) -> Result<InferOutcome, SimpleOrDetailedTypeError> {
-    TypeInference::new(rich_ast.metadata.clone())
+    TypeInference::new(rich_ast.metadata.clone(), memory)
         .infer(&mut rich_ast.ast, options)
 }
-pub struct TypeInference {
+pub struct TypeInference<'a> {
     errors: Option<DetailedTypeErrors>,
     metadata: Rc<RefCell<AstMetadata>>,
+    memory: &'a mut Memory
 }
 
-impl TypeInference {
-    pub fn new(metadata: Rc<RefCell<AstMetadata>>) -> Self {
+impl<'a> TypeInference<'a> {
+    pub fn new(metadata: Rc<RefCell<AstMetadata>>, memory: &'a mut Memory) -> Self {
         TypeInference {
             metadata,
             errors: None,
+            memory
         }
     }
 
@@ -260,7 +270,7 @@ fn mark_type<E>(ty: Type) -> Result<VisitAction<E>, SpannedTypeError> {
     Ok(VisitAction::SetTypeSkipChildren(ty))
 }
 
-impl TypeExpressionVisitor<SpannedTypeError> for TypeInference {
+impl<'a> TypeExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
     fn visit_integer_type(
         &mut self,
         integer: &mut Integer,
@@ -549,7 +559,7 @@ fn resolve_type_variant_access(
     }
 }
 
-impl ExpressionVisitor<SpannedTypeError> for TypeInference {
+impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
     fn visit_get_ref(
         &mut self,
         create_ref: &mut GetRef,
@@ -1016,7 +1026,7 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
         // If they don't match, record an error
         // TODO #622: improve
         if let Some(annotated_return_type) = &signature.return_type
-            && !inferred_return_type.matches_type(annotated_return_type)
+            && !inferred_return_type.matches(annotated_return_type)
         {
             self.record_error(SpannedTypeError {
                 error: TypeError::AssignmentTypeMismatch {
@@ -1028,7 +1038,7 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
         }
 
         // Use the annotated type despite the mismatch
-        mark_type(Type::callable(signature, TypeMetadata::default()))
+        mark_type(Type::from(TypeDefinition::Callable(signature)))
     }
 
     fn visit_unary_operation(
@@ -1043,7 +1053,7 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
                 LogicalUnaryOperator::Not => Type::boolean(),
             },
             UnaryOperator::Arithmetic(_) | UnaryOperator::Bitwise(_) => {
-                inner.base_type().unwrap_or(Type::never())
+                inner.base_type().unwrap_or(Type::from(TypeDefinition::Unknown))
             }
             UnaryOperator::Reference(_) => return Err(SpannedTypeError {
                 error: TypeError::Unimplemented(
@@ -1266,19 +1276,23 @@ mod tests {
             },
         },
     };
+    use crate::runtime::memory::Memory;
+    use crate::runtime::Runtime;
     use crate::types::r#type::{Type};
+    use crate::types::type_definition::TypeDefinition;
     use crate::types::type_definition_with_metadata::TypeMetadata;
 
     /// Infers type errors for the given source code.
     /// Panics if parsing or precompilation succeeds.
     fn errors_for_script(src: &str) -> Vec<SpannedTypeError> {
+        let runtime = Runtime::stub();
         let ast = Parser::parse_with_default_options(src).unwrap();
         let mut scope_stack = PrecompilerScopeStack::default();
         let ast_metadata = Rc::new(RefCell::new(AstMetadata::default()));
         let mut res =
-            precompile_ast_simple_error(ast, &mut scope_stack, ast_metadata)
+            precompile_ast_simple_error(ast, &mut scope_stack, ast_metadata, runtime.clone())
                 .expect("Precompilation failed");
-        infer_expression_type_detailed_errors(&mut res)
+        infer_expression_type_detailed_errors(&mut res, &mut *runtime.memory().borrow_mut())
             .expect_err("Expected type errors")
             .errors
     }
@@ -1288,15 +1302,17 @@ mod tests {
     fn errors_for_expression(
         expr: &mut DatexExpression,
     ) -> Vec<SpannedTypeError> {
+        let runtime = Runtime::stub();
         let mut scope_stack = PrecompilerScopeStack::default();
         let ast_metadata = Rc::new(RefCell::new(AstMetadata::default()));
         let mut rich_ast = precompile_ast_simple_error(
             expr.clone(),
             &mut scope_stack,
             ast_metadata,
+            runtime.clone(),
         )
         .expect("Precompilation failed");
-        infer_expression_type_detailed_errors(&mut rich_ast)
+        infer_expression_type_detailed_errors(&mut rich_ast, &mut *runtime.memory().borrow_mut())
             .expect_err("Expected type errors")
             .errors
     }
@@ -1305,11 +1321,12 @@ mod tests {
     /// Panics if parsing, precompilation or type inference fails.
     /// Returns the RichAst containing the inferred types.
     fn ast_for_script(src: &str) -> RichAst {
+        let runtime = Runtime::stub();
         let ast = Parser::parse_with_default_options(src).unwrap();
         let mut scope_stack = PrecompilerScopeStack::default();
         let ast_metadata = Rc::new(RefCell::new(AstMetadata::default()));
         let mut res =
-            precompile_ast_simple_error(ast, &mut scope_stack, ast_metadata)
+            precompile_ast_simple_error(ast, &mut scope_stack, ast_metadata, runtime)
                 .expect("Precompilation failed");
         let inferred_res = infer_expression_type_simple_error(&mut res);
         if let Err(err) = infer_expression_type_simple_error(&mut res) {
@@ -1322,12 +1339,14 @@ mod tests {
     /// Infers the AST of the given expression.
     /// Panics if type inference fails.
     fn ast_for_expression(expr: &mut DatexExpression) -> RichAst {
+        let runtime = Runtime::stub();
         let mut scope_stack = PrecompilerScopeStack::default();
         let ast_metadata = Rc::new(RefCell::new(AstMetadata::default()));
         let mut rich_ast = precompile_ast_simple_error(
             expr.clone(),
             &mut scope_stack,
             ast_metadata,
+            runtime
         )
         .expect("Precompilation failed");
         infer_expression_type_simple_error(&mut rich_ast)
@@ -1342,28 +1361,16 @@ mod tests {
     /// For "var x = 42;", it returns the never type, as the statement is terminated.
     /// For "10 + 32", it returns the type of the binary operation.
     fn infer_from_script(src: &str) -> Type {
+        let runtime = Runtime::stub();
         let ast = Parser::parse_with_default_options(src).unwrap();
         let mut scope_stack = PrecompilerScopeStack::default();
         let ast_metadata = Rc::new(RefCell::new(AstMetadata::default()));
         let mut res =
-            precompile_ast_simple_error(ast, &mut scope_stack, ast_metadata)
+            precompile_ast_simple_error(ast, &mut scope_stack, ast_metadata, runtime.clone())
                 .expect("Precompilation failed");
-        infer_expression_type_with_errors(&mut res)
+        infer_expression_type_with_errors(&mut res, &mut *runtime.memory().borrow_mut())
             .expect("Type inference failed")
             .into()
-    }
-
-    /// Infers the type definition of the given source code.
-    /// Panics if parsing, precompilation or type inference fails.
-    /// Returns the TypeDefinition if the inferred type is a TypeReference.
-    fn infer_from_script_get_reference_type(src: &str) -> Type {
-        let inferred_type = infer_from_script(src);
-        inferred_type
-            .inner_reference()
-            .expect("Expected type to be a TypeReference")
-            .borrow()
-            .type_value
-            .clone()
     }
 
     /// Infers the type of the given expression.
@@ -1464,7 +1471,7 @@ mod tests {
         let res = infer_from_script(src);
         assert_eq!(
             res,
-            Type::callable(
+            Type::from(TypeDefinition::Callable(
                 CallableSignature {
                     kind: CallableKind::Function,
                     parameter_types: vec![
@@ -1483,8 +1490,7 @@ mod tests {
                     ))),
                     yeet_type: None,
                 },
-                TypeMetadata::default()
-            )
+            ))
         );
 
         let src = r#"
@@ -1496,7 +1502,7 @@ mod tests {
         let res = infer_from_script(src);
         assert_eq!(
             res,
-            Type::callable(
+            Type::from(TypeDefinition::Callable(
                 CallableSignature {
                     kind: CallableKind::Function,
                     parameter_types: vec![
@@ -1514,7 +1520,7 @@ mod tests {
                     yeet_type: None,
                 },
                 TypeMetadata::default()
-            )
+            ))
         );
     }
 
@@ -1524,9 +1530,8 @@ mod tests {
             infer_from_expression(
                 &mut DatexExpressionData::Boolean(true).with_default_span()
             ),
-            Type::structural(
+            Type::from(
                 LiteralTypeDefinition::Boolean(true),
-                TypeMetadata::default()
             )
         );
 
@@ -1534,9 +1539,8 @@ mod tests {
             infer_from_expression(
                 &mut DatexExpressionData::Boolean(false).with_default_span()
             ),
-            Type::structural(
+            Type::from(
                 LiteralTypeDefinition::Boolean(false),
-                TypeMetadata::default()
             )
         );
 
@@ -1544,9 +1548,8 @@ mod tests {
             infer_from_expression(
                 &mut DatexExpressionData::Null.with_default_span()
             ),
-            Type::structural(
+            Type::from(
                 LiteralTypeDefinition::Null,
-                TypeMetadata::default()
             )
         );
 
@@ -1555,9 +1558,8 @@ mod tests {
                 &mut DatexExpressionData::Decimal(Decimal::from(1.23))
                     .with_default_span()
             ),
-            Type::structural(
+            Type::from(
                 LiteralTypeDefinition::Decimal(Decimal::from(1.23)),
-                TypeMetadata::default()
             )
         );
 
@@ -1566,9 +1568,8 @@ mod tests {
                 &mut DatexExpressionData::Integer(Integer::from(42))
                     .with_default_span()
             ),
-            Type::structural(
+            Type::from(
                 LiteralTypeDefinition::Integer(Integer::from(42)),
-                TypeMetadata::default()
             )
         );
         assert_eq!(
@@ -1585,9 +1586,9 @@ mod tests {
             ),
             Type::Alias(
                 TypeDefinition::List(vec![
-                    Type::from(CoreValue::from(Integer::from(1))),
-                    Type::from(CoreValue::from(Integer::from(2))),
-                    Type::from(CoreValue::from(Integer::from(3)))
+                    Type::from(LiteralTypeDefinition::Integer(Integer::from(1))),
+                    Type::from(LiteralTypeDefinition::Integer(Integer::from(2))),
+                    Type::from(LiteralTypeDefinition::Integer(Integer::from(3)))
                 ]).into()
             )
         );
@@ -1896,7 +1897,7 @@ mod tests {
     #[test]
     fn infer_typed_literal() {
         let inferred_type =
-            infer_from_script_get_reference_type("type X = 42u8");
+            infer_from_script("type X = 42u8");
         assert_eq!(
             inferred_type,
             Type::from(
@@ -1905,7 +1906,7 @@ mod tests {
         );
 
         let inferred_type =
-            infer_from_script_get_reference_type("type X = 42i32");
+            infer_from_script("type X = 42i32");
         assert_eq!(
             inferred_type,
             Type::from(
@@ -1914,7 +1915,7 @@ mod tests {
         );
 
         let inferred_type =
-            infer_from_script_get_reference_type("type X = 42.69f32");
+            infer_from_script("type X = 42.69f32");
         assert_eq!(
             inferred_type,
             Type::from(
@@ -1927,7 +1928,7 @@ mod tests {
 
     #[test]
     fn infer_type_simple_literal() {
-        let inferred_type = infer_from_script_get_reference_type("type X = 42");
+        let inferred_type = infer_from_script("type X = 42");
         assert_eq!(
             inferred_type,
             Type::from(
@@ -1936,7 +1937,7 @@ mod tests {
         );
 
         let inferred_type =
-            infer_from_script_get_reference_type("type X = 3/4");
+            infer_from_script("type X = 3/4");
         assert_eq!(
             inferred_type,
             Type::from(
@@ -1947,7 +1948,7 @@ mod tests {
         );
 
         let inferred_type =
-            infer_from_script_get_reference_type("type X = true");
+            infer_from_script("type X = true");
         assert_eq!(
             inferred_type,
             Type::from(
@@ -1956,7 +1957,7 @@ mod tests {
         );
 
         let inferred_type =
-            infer_from_script_get_reference_type("type X = false");
+            infer_from_script("type X = false");
         assert_eq!(
             inferred_type,
             Type::from(
@@ -1965,7 +1966,7 @@ mod tests {
         );
 
         let inferred_type =
-            infer_from_script_get_reference_type(r#"type X = "hello""#);
+            infer_from_script(r#"type X = "hello""#);
         assert_eq!(
             inferred_type,
             Type::from(
@@ -1979,7 +1980,7 @@ mod tests {
     // by merging the member types if one is base (one level higher) than the other
     fn infer_intersection_type_expression() {
         let inferred_type =
-            infer_from_script_get_reference_type("type X = integer/u8 & 42");
+            infer_from_script("type X = integer/u8 & 42");
         assert_eq!(
             inferred_type,
             Type::intersection(
@@ -1998,7 +1999,7 @@ mod tests {
 
     #[test]
     fn infer_union_type_expression() {
-        let inferred_type = infer_from_script_get_reference_type(
+        let inferred_type = infer_from_script(
             "type X = integer/u8 | decimal",
         );
         assert_eq!(
@@ -2017,7 +2018,7 @@ mod tests {
 
     #[test]
     fn infer_empty_struct_type_expression() {
-        let inferred_type = infer_from_script_get_reference_type("type X = {}");
+        let inferred_type = infer_from_script("type X = {}");
         assert_eq!(
             inferred_type,
             Type::Alias(
@@ -2028,7 +2029,7 @@ mod tests {
 
     #[test]
     fn infer_struct_type_expression() {
-        let inferred_type = infer_from_script_get_reference_type(
+        let inferred_type = infer_from_script(
             "type X = { a: integer/u8, b: decimal }",
         );
         assert_eq!(

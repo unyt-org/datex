@@ -72,6 +72,9 @@ use crate::type_inference::error::TypeError;
 use crate::types::r#type::{Type};
 use crate::types::type_definition::TypeDefinition;
 use crate::types::type_definition_with_metadata::{TypeDefinitionWithMetadata, TypeMetadata};
+use crate::value_updates::update_data::DeleteEntryUpdateData;
+use crate::value_updates::update_handler::UpdateHandler;
+use crate::values::value_container::ValueKey;
 
 #[derive(Debug)]
 enum CollectedExecutionResult {
@@ -771,7 +774,11 @@ pub fn inner_execution_loop(
 
                                     let shared_container = SharedContainer::Owned(OwnedSharedContainer::new_from_self_owned_container(
                                         SelfOwnedSharedContainer::new(
-                                            BaseSharedValueContainer::new_with_inferred_allowed_type(value, mutability),
+                                            BaseSharedValueContainer::new_with_inferred_allowed_type(
+                                                value,
+                                                mutability,
+                                                &mut * state.runtime.memory().borrow_mut()
+                                            ),
                                             pointer,
                                         ),
                                     ));
@@ -924,7 +931,7 @@ pub fn inner_execution_loop(
                                                 ref_value_container.maybe_shared()
                                             {
                                                 let lhs = reference.value_container();
-                                                let res = match set_shared_container_value.operator {
+                                                let val = match set_shared_container_value.operator {
                                                     Some(operator) => handle_assignment_operation(
                                                         operator,
                                                         &lhs,
@@ -932,10 +939,10 @@ pub fn inner_execution_loop(
                                                     )?,
                                                     None => todo!()
                                                 };
-                                                reference.try_set_value_container(res).map_err(|_| ExecutionError::AssignmentError(AssignmentError::TypeError(
+                                                reference.try_set_value_container(val).map_err(|val| ExecutionError::AssignmentError(AssignmentError::TypeError(
                                                     Box::new(TypeError::AssignmentTypeMismatch {
                                                         expected: reference.allowed_type().clone(),
-                                                        found: res.actual_type(&mut *state.runtime.memory().borrow_mut())
+                                                        found: val.actual_type(&mut *state.runtime.memory().borrow_mut())
                                                     })
                                                 )))?;
                                                 Ok(RuntimeValue::ValueContainer(
@@ -1056,8 +1063,8 @@ pub fn inner_execution_loop(
                                     let res = target.with_mut_value_container(
                                         &mut state.stack,
                                         |target| {
-                                            target.try_take_property(
-                                                property_index,
+                                            target.try_delete_entry(
+                                                DeleteEntryUpdateData {key: ValueKey::Index(property_index as i64)},
                                             )
                                         },
                                     );
@@ -1170,7 +1177,11 @@ pub fn inner_execution_loop(
                                     // store moving pointers
                                     if !moving_containers.is_empty() {
                                         // ensure receiver is single endpoint
-                                        if let CoreValue::Endpoint(single_receiver) = receivers.to_cloned_value().borrow().inner.clone() {
+                                        let maybe_single_receiver = receivers.with_collapsed_value(|v| {
+                                            if let CoreValue::Endpoint(single_receiver) = &v.inner { Some(single_receiver.clone() )}
+                                            else { None }
+                                        });
+                                        if let Some(single_receiver) = maybe_single_receiver {
                                             state.runtime.internal.add_moving_pointers(single_receiver, moving_containers);
                                         }
                                         else {

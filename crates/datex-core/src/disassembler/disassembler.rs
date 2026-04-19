@@ -359,10 +359,6 @@ mod tests {
     use crate::runtime::{Runtime, RuntimeConfig, RuntimeRunner};
     use super::*;
 
-    fn get_stub_runtime() -> Runtime {
-        Runtime::stub()
-    }
-
     fn instructions_to_bytes(instructions: Vec<Instruction>) -> Vec<u8> {
         let mut cursor = Cursor::new(Vec::new());
         for instruction in instructions {
@@ -614,7 +610,7 @@ mod tests {
                 @test :: (1 + 2);
             )
         "#;
-        let (dxb, _) = compile_script(script, CompileOptions::default(), get_stub_runtime()).unwrap();
+        let (dxb, _) = compile_script(script, CompileOptions::default(), Runtime::stub()).unwrap();
         println!("{}", disassemble_body_to_string(&dxb, DisassemblerOptions {
             tree: true,
             colorized: true,

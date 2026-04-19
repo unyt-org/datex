@@ -15,6 +15,7 @@ use crate::{
 };
 use serde::Serialize;
 use crate::types::type_definition::TypeDefinition;
+use crate::values::value_container::ValueContainer;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum LocalReferenceMutability {
@@ -149,6 +150,10 @@ impl TypeMatch for TypeMetadata {
             _ => false,
         }
     }
+
+    fn matched_by_value(&self, value: &ValueContainer) -> bool {
+        unimplemented!()
+    }
 }
 
 impl Default for TypeMetadata {
@@ -173,6 +178,10 @@ impl TypeMatch for TypeDefinitionWithMetadata {
         }
         // FIXME
         false
+    }
+
+    fn matched_by_value(&self, value: &ValueContainer) -> bool {
+        todo!()
     }
 }
 

@@ -18,6 +18,7 @@ use core::{
     fmt::{Debug, Display},
     prelude::rust_2024::*,
 };
+use crate::runtime::memory::Memory;
 use crate::types::r#type::Type;
 
 pub struct BaseSharedValueContainer {
@@ -58,9 +59,10 @@ impl BaseSharedValueContainer {
     pub fn new_with_inferred_allowed_type<T: Into<ValueContainer>>(
         value_container: T,
         mutability: SharedContainerMutability,
+        memory: &mut Memory
     ) -> Self {
         let value_container = value_container.into();
-        let allowed_type = value_container.allowed_type();
+        let allowed_type = value_container.allowed_type(memory);
         BaseSharedValueContainer {
             value_container,
             allowed_type,
@@ -70,11 +72,11 @@ impl BaseSharedValueContainer {
     }
 
     /// Sets the currently assigned [ValueContainer] of the shared container to a new value container.
-    /// Returns an error if the new value container's allowed type is not compatible with the allowed type of the shared container
+    /// Returns the [ValueContainer] as an error if the new value container's allowed type is not compatible with the allowed type of the shared container
     pub fn try_set_value_container(
         &mut self,
         new_value_container: ValueContainer,
-    ) -> Result<(), ()> {
+    ) -> Result<(), ValueContainer> {
         // TODO do type checking to ensure new value container's allowed type is compatible with self.allowed_type
         self.value_container = new_value_container;
         Ok(())

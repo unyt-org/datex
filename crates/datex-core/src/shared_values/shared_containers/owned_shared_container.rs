@@ -83,6 +83,7 @@ impl OwnedSharedContainer {
         value_container: ValueContainer,
         mutability: SharedContainerMutability,
         address_provider: &mut SelfOwnedPointerAddressProvider,
+        memory: &mut Memory,
     ) -> Self {
         // Note: address provider guarantees new unique address
         unsafe {
@@ -90,6 +91,7 @@ impl OwnedSharedContainer {
                 value_container,
                 mutability,
                 address_provider.get_new_self_owned_address(),
+                memory,
             )
         }
     }
@@ -105,12 +107,14 @@ impl OwnedSharedContainer {
         value_container: ValueContainer,
         mutability: SharedContainerMutability,
         address: SelfOwnedPointerAddress,
+        memory: &mut Memory,
     ) -> Self {
         OwnedSharedContainer::new_from_self_owned_container(
             SelfOwnedSharedContainer::new(
                 BaseSharedValueContainer::new_with_inferred_allowed_type(
                     value_container,
                     mutability,
+                    memory
                 ),
                 address,
             ),

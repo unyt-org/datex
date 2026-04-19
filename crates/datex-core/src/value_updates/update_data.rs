@@ -7,30 +7,56 @@ use crate::values::value_container::{ValueContainer, ValueKey};
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum UpdateData {
     /// Represents a replacement operation for a value.
-    Replace { value: ValueContainer },
+    Replace(ReplaceUpdateData),
 
     /// Represents an update to a specific property of a value.
     /// The `key` specifies which property to update, and `value` is the new value for that property.
-    Set {
-        key: ValueKey,
-        value: ValueContainer,
-    },
+    SetEntry(SetEntryUpdateData),
 
     /// Represents the removal of a specific property from a value.
-    Delete { key: ValueKey },
+    DeleteEntry(DeleteEntryUpdateData),
 
     /// Represents clearing all elements from a collection-type value (like an array or map).
     Clear,
 
     /// Represents adding a new element to a collection-type value (like an array or map).
-    Append { value: ValueContainer },
+    Append(AppendUpdateData),
 
     /// Special update operation for list values that allows splicing
-    ListSplice {
-        start: u32,
-        delete_count: u32,
-        items: Vec<ValueContainer>,
-    },
+    ListSplice(ListSpliceUpdateData),
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub struct ReplaceUpdateData {
+    pub value: ValueContainer,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub struct SetEntryUpdateData {
+    pub key: ValueKey,
+    pub value: ValueContainer,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub struct DeleteEntryUpdateData {
+    pub key: ValueKey,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub struct AppendUpdateData {
+    pub value: ValueContainer,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub struct ListSpliceUpdateData {
+    pub start: u32,
+    pub delete_count: u32,
+    pub items: Vec<ValueContainer>,
 }
 
 

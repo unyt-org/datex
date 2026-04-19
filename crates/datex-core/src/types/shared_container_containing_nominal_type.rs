@@ -14,8 +14,10 @@ use crate::{
     },
     values::core_value::CoreValue,
 };
+use crate::runtime::memory::Memory;
 use crate::runtime::pointer_address_provider::SelfOwnedPointerAddressProvider;
 use crate::shared_values::shared_containers::SharedContainerMutability;
+use crate::values::value_container::ValueContainer;
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct SharedContainerContainingNominalType(SharedContainer);
@@ -27,13 +29,24 @@ impl Deref for SharedContainerContainingNominalType {
     }
 }
 
+impl From<SharedContainerContainingNominalType> for SharedContainer {
+    fn from(value: SharedContainerContainingNominalType) -> Self {
+        value.0
+    }
+}
+
 impl SharedContainerContainingNominalType {
 
-    pub fn new_from_definition(definition: NominalTypeDefinition, address_provider: &mut SelfOwnedPointerAddressProvider) -> SharedContainerContainingNominalType {
+    pub fn new_from_definition(
+        definition: NominalTypeDefinition, 
+        address_provider: &mut SelfOwnedPointerAddressProvider,
+        memory: &mut Memory
+    ) -> SharedContainerContainingNominalType {
         SharedContainerContainingNominalType(SharedContainer::new_owned_with_inferred_allowed_type(
             CoreValue::NominalType(definition),
             SharedContainerMutability::Immutable,
-            address_provider
+            address_provider,
+            memory
         ))
     }
 
@@ -80,5 +93,9 @@ impl TypeMatch for SharedContainerContainingNominalType {
                 _ => false,
             },
         )
+    }
+
+    fn matched_by_value(&self, value: &ValueContainer) -> bool {
+        todo!()
     }
 }

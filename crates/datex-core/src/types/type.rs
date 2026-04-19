@@ -17,7 +17,9 @@ use core::{
     hash::Hash,
     ops::Deref,
 };
+use crate::runtime::memory::Memory;
 use crate::runtime::pointer_address_provider::SelfOwnedPointerAddressProvider;
+use crate::values::value_container::ValueContainer;
 
 // {x: &integer}
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
@@ -28,8 +30,12 @@ pub enum Type {
 
 impl Type {
 
-    pub fn nominal(definition: NominalTypeDefinition, address_provider: &mut SelfOwnedPointerAddressProvider) -> Type {
-        Type::Nominal(SharedContainerContainingNominalType::new_from_definition(definition, address_provider))
+    pub fn nominal(
+        definition: NominalTypeDefinition,
+        address_provider: &mut SelfOwnedPointerAddressProvider,
+        memory: &mut Memory
+    ) -> Type {
+        Type::Nominal(SharedContainerContainingNominalType::new_from_definition(definition, address_provider, memory))
     }
 
     /// Collapses nominal type definitions to their underlying type definitions with metadata
@@ -94,6 +100,10 @@ impl TypeMatch for Type {
                 }
             }
         }
+    }
+
+    fn matched_by_value(&self, value: &ValueContainer) -> bool {
+        todo!()
     }
 }
 
@@ -348,38 +358,40 @@ mod tests {
             value_container::ValueContainer,
         },
     };
+    use crate::types::literal_type_definition::LiteralTypeDefinition;
+    use crate::types::type_match::TypeMatch;
 
     #[test]
     fn test_match_equal_values() {
         // 1u8 matches 1u8
-        assert!(Type::value_matches_type(
-            &TypedInteger::from(1u8).into(),
-            &Type::structural(1u8, TypeMetadata::default())
-        ));
+        assert!(
+            Type::from(LiteralTypeDefinition::TypedInteger(1u8.into()))
+                .matched_by_value(&TypedInteger::from(1u8).into())
+        );
 
         // 1u16 matches 1u16
-        assert!(Type::value_matches_type(
-            &TypedInteger::from(1u16).into(),
-            &Type::structural(1u16, TypeMetadata::default())
-        ));
+        assert!(
+            Type::from(LiteralTypeDefinition::TypedInteger(1u16.into()))
+                .matched_by_value(&TypedInteger::from(1u16).into())
+        );
 
         // 1 matches 1
-        assert!(Type::value_matches_type(
-            &ValueContainer::from(Integer::from(1)),
-            &Type::structural(Integer::from(1), TypeMetadata::default())
-        ));
+        assert!(
+            Type::from(LiteralTypeDefinition::Integer(1.into()))
+                .matched_by_value(&Integer::from(1).into())
+        );
 
         // "test" matches "test"
-        assert!(Type::value_matches_type(
-            &ValueContainer::from(Text::from("test")),
-            &Type::structural(Text::from("test"), TypeMetadata::default())
-        ));
+        assert!(
+            Type::from(LiteralTypeDefinition::Text("test".into()))
+                .matched_by_value(&Text::from("test").into())
+        );
     }
 
     #[test]
     fn test_match_union() {
         // 1 matches (1 | 2 | 3)
-        assert!(Type::value_matches_type(
+        assert!(Type::matched_by_value(
             &ValueContainer::from(Integer::from(1)),
             &Type::union(
                 vec![

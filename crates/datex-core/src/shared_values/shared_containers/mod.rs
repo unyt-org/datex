@@ -65,12 +65,14 @@ impl SharedContainer {
         value_container: T,
         mutability: SharedContainerMutability,
         address_provider: &mut SelfOwnedPointerAddressProvider,
+        memory: &mut Memory,
     ) -> Self {
         SharedContainer::Owned(
             OwnedSharedContainer::new_with_inferred_allowed_type(
                 value_container.into(),
                 mutability,
                 address_provider,
+                memory,
             ),
         )
     }
@@ -85,6 +87,7 @@ impl SharedContainer {
         value_container: T,
         mutability: SharedContainerMutability,
         address: SelfOwnedPointerAddress,
+        memory: &mut Memory,
     ) -> Self {
         SharedContainer::Owned(
             unsafe {
@@ -92,6 +95,7 @@ impl SharedContainer {
                     value_container.into(),
                     mutability,
                     address,
+                    memory,
                 )
             }
         )
@@ -143,10 +147,11 @@ impl SharedContainer {
     }
 
     /// Sets the currently assigned [ValueContainer] of the shared container to a new value container.
+    /// Returns the [ValueContainer] as an error if it could not be assigned
     pub fn try_set_value_container(
         &self,
         new_value_container: ValueContainer,
-    ) -> Result<(), ()> {
+    ) -> Result<(), ValueContainer> {
         self.base_shared_container_mut()
             .try_set_value_container(new_value_container)
     }

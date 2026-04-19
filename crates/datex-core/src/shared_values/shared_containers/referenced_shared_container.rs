@@ -92,6 +92,7 @@ impl ReferencedSharedContainer {
                 BaseSharedValueContainer::new_with_inferred_allowed_type(
                     value_container,
                     SharedContainerMutability::Immutable,
+                    memory,
                 ),
                 address,
                 ReferenceMutability::Immutable,

@@ -15,6 +15,8 @@ use crate::{
     },
 };
 use core::{fmt::Display, hash::Hash, unimplemented};
+use crate::types::type_match::TypeMatch;
+use crate::values::value_container::ValueContainer;
 
 #[derive(Debug, Clone, PartialEq, Hash, Eq)]
 pub enum LiteralTypeDefinition {
@@ -238,6 +240,15 @@ impl From<LiteralTypeDefinition> for TypeDefinition {
     }
 }
 
+impl TypeMatch for LiteralTypeDefinition {
+    fn matches(&self, other: &Self) -> bool {
+        self == other
+    }
+    fn matched_by_value(&self, value: &ValueContainer) -> bool {
+        todo!()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::{
@@ -250,6 +261,7 @@ mod tests {
         },
     };
     use crate::types::type_definition::TypeDefinition;
+    use crate::types::type_match::TypeMatch;
 
     #[test]
     fn test_structural_type_display() {
@@ -293,11 +305,11 @@ mod tests {
         let int_type = LiteralTypeDefinition::Integer(Integer::from(42));
         let int_value =
             ValueContainer::from(CoreValue::Integer(Integer::from(42)));
-        assert!(int_type.value_matches(&int_value));
+        assert!(int_type.matched_by_value(&int_value));
 
         let text_type = LiteralTypeDefinition::Text("Hello".to_string());
         let text_value =
             ValueContainer::from(CoreValue::Text(Text::from("Hello")));
-        assert!(text_type.value_matches(&text_value));
+        assert!(text_type.matched_by_value(&text_value));
     }
 }

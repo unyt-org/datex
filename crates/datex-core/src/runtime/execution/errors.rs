@@ -12,6 +12,8 @@ use core::fmt::Display;
 use crate::global::protocol_structures::instruction_data::StackIndex;
 use crate::global::slots::InternalSlot;
 use crate::prelude::*;
+use crate::value_updates::errors::UpdateError;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum InvalidProgramError {
     // any unterminated sequence, e.g. missing key in key-value pair
@@ -62,6 +64,7 @@ pub enum ExecutionError {
     ValueError(ValueError),
     InvalidProgram(InvalidProgramError),
     AccessError(AccessError),
+    UpdateError(UpdateError),
     Unknown,
     NotImplemented(String),
     StackValueNotAllocated(StackIndex),
@@ -98,6 +101,12 @@ impl From<SharedValueCreationError> for ExecutionError {
 impl From<AccessError> for ExecutionError {
     fn from(error: AccessError) -> Self {
         ExecutionError::AccessError(error)
+    }
+}
+
+impl From<UpdateError> for ExecutionError {
+    fn from(error: UpdateError) -> Self {
+        ExecutionError::UpdateError(error)
     }
 }
 

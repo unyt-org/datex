@@ -651,6 +651,8 @@ mod tests {
             value_container::ValueContainer,
         },
     };
+    use crate::runtime::memory::Memory;
+    use crate::runtime::pointer_address_provider::SelfOwnedPointerAddressProvider;
     use crate::shared_values::pointer_address::SelfOwnedPointerAddress;
     use crate::shared_values::shared_containers::SharedContainerMutability;
     use crate::shared_values::shared_containers::{SelfOwnedSharedContainer, OwnedSharedContainer, SharedContainer};
@@ -678,12 +680,16 @@ mod tests {
 
     #[test]
     fn test_ref_keys() {
+        let address_provider = &mut SelfOwnedPointerAddressProvider::default();
+        let memory = &mut Memory::new();
+        
         let mut map = Map::default();
         let key = ValueContainer::Shared(
             SharedContainer::new_owned_with_inferred_allowed_type(
                 ValueContainer::from(42),
                 SharedContainerMutability::Immutable,
-                SelfOwnedPointerAddress::NULL
+                address_provider,
+                memory
             )
         );
 
@@ -698,7 +704,8 @@ mod tests {
             SharedContainer::new_owned_with_inferred_allowed_type(
                 ValueContainer::from(42),
                 SharedContainerMutability::Immutable,
-                SelfOwnedPointerAddress::NULL
+                address_provider,
+                memory
             )
         );
         assert!(!map.has(&new_key));

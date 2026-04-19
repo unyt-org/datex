@@ -21,20 +21,21 @@ use serde::{
     forward_to_deserialize_any,
 };
 
-use crate::{prelude::*, runtime::RuntimeInternal};
+use crate::{prelude::*};
 use crate::runtime::execution::execution_input::ExecutionCallerMetadata;
+use crate::runtime::Runtime;
 
 /// Deserialize a value of type T from a byte slice containing DXB data
 pub fn from_bytes<T>(input: &[u8]) -> Result<T, DeserializationError>
 where
     T: DeserializeOwned,
 {
-    let runtime = RuntimeInternal::stub();
+    let runtime = Runtime::stub();
     let context = ExecutionInput::new(
         input,
         ExecutionCallerMetadata::local_default(),
         ExecutionOptions { verbose: true },
-        Rc::new(runtime),
+        runtime,
     );
     let value = execute_dxb_sync(context)
         .map_err(DeserializationError::ExecutionError)?
@@ -49,9 +50,11 @@ pub fn from_script<T>(script: &str) -> Result<T, DeserializationError>
 where
     T: DeserializeOwned,
 {
+    let runtime = Runtime::stub();
     let (dxb, _) = crate::compiler::compile_script(
         script,
         crate::compiler::CompileOptions::default(),
+        runtime,
     )
     .map_err(|err| DeserializationError::CanNotReadFile(err.to_string()))?;
     from_bytes(&dxb)
@@ -1077,7 +1080,7 @@ mod tests {
     #[test]
     fn enum_1() {
         let script = r#""Variant1""#;
-        let dxb = compile_script(script, CompileOptions::default())
+        let dxb = compile_script(script, CompileOptions::default(), Runtime::stub())
             .expect("Failed to compile script")
             .0;
         let result: TestEnum =
@@ -1088,7 +1091,7 @@ mod tests {
     #[test]
     fn enum_2() {
         let script = r#""Variant2""#;
-        let dxb = compile_script(script, CompileOptions::default())
+        let dxb = compile_script(script, CompileOptions::default(), Runtime::stub())
             .expect("Failed to compile script")
             .0;
         let result: TestEnum =
@@ -1103,7 +1106,7 @@ mod tests {
                 test_enum: "Variant1"
             }
         "#;
-        let dxb = compile_script(script, CompileOptions::default())
+        let dxb = compile_script(script, CompileOptions::default(), Runtime::stub())
             .expect("Failed to compile script")
             .0;
         let result: TestStruct2 =
@@ -1118,7 +1121,7 @@ mod tests {
                 endpoint: @jonas
             }
         "#;
-        let dxb = compile_script(script, CompileOptions::default())
+        let dxb = compile_script(script, CompileOptions::default(), Runtime::stub())
             .expect("Failed to compile script")
             .0;
         let result: TestStructWithEndpoint = from_bytes(&dxb)
@@ -1133,7 +1136,7 @@ mod tests {
                 optional_field: "Optional Value"
             }
         "#;
-        let dxb = compile_script(script, CompileOptions::default())
+        let dxb = compile_script(script, CompileOptions::default(), Runtime::stub())
             .expect("Failed to compile script")
             .0;
         let result: TestWithOptionalField = from_bytes(&dxb)
@@ -1149,7 +1152,7 @@ mod tests {
                 optional_field: null
             }
         "#;
-        let dxb = compile_script(script, CompileOptions::default())
+        let dxb = compile_script(script, CompileOptions::default(), Runtime::stub())
             .expect("Failed to compile script")
             .0;
         let result: TestWithOptionalField = from_bytes(&dxb)
@@ -1164,7 +1167,7 @@ mod tests {
                 endpoint: @jonas
             }
         "#;
-        let dxb = compile_script(script, CompileOptions::default())
+        let dxb = compile_script(script, CompileOptions::default(), Runtime::stub())
             .expect("Failed to compile script")
             .0;
         let result: TestStructWithOptionalEndpoint = from_bytes(&dxb)
@@ -1182,7 +1185,7 @@ mod tests {
     #[test]
     fn map() {
         let script = "{Variant1: \"Hello\"}";
-        let dxb = compile_script(script, CompileOptions::default())
+        let dxb = compile_script(script, CompileOptions::default(), Runtime::stub())
             .expect("Failed to compile script")
             .0;
         let result: ExampleEnum =
@@ -1190,7 +1193,7 @@ mod tests {
         assert!(core::matches!(result, ExampleEnum::Variant1(_)));
 
         let script = r#"{"Variant2": 42}"#;
-        let dxb = compile_script(script, CompileOptions::default())
+        let dxb = compile_script(script, CompileOptions::default(), Runtime::stub())
             .expect("Failed to compile script")
             .0;
         let result: ExampleEnum =

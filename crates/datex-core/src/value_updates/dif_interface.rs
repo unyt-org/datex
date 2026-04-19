@@ -15,6 +15,7 @@ use crate::shared_values::pointer_address::SelfOwnedPointerAddress;
 use crate::shared_values::shared_containers::SharedContainer;
 use crate::type_inference::error::TypeError;
 use crate::types::r#type::Type;
+use crate::value_updates::errors::UpdateError;
 use crate::value_updates::update_data::UpdateData;
 use crate::values::value_container::ValueContainer;
 
@@ -41,60 +42,16 @@ impl Display for DIFObserveError {
     }
 }
 
-#[derive(Debug)]
-pub enum DIFUpdateError {
-    ReferenceNotFound,
-    InvalidUpdate,
-    AccessError(AccessError),
-    AssignmentError(AssignmentError),
-    TypeError(Box<TypeError>),
-}
 
 #[derive(Debug)]
 pub struct DIFReferenceNotFoundError;
 
-impl From<DIFReferenceNotFoundError> for DIFUpdateError {
+impl From<DIFReferenceNotFoundError> for UpdateError {
     fn from(_: DIFReferenceNotFoundError) -> Self {
-        DIFUpdateError::ReferenceNotFound
-    }
-}
-impl From<AccessError> for DIFUpdateError {
-    fn from(err: AccessError) -> Self {
-        DIFUpdateError::AccessError(err)
-    }
-}
-impl From<AssignmentError> for DIFUpdateError {
-    fn from(err: AssignmentError) -> Self {
-        DIFUpdateError::AssignmentError(err)
-    }
-}
-impl From<TypeError> for DIFUpdateError {
-    fn from(err: TypeError) -> Self {
-        DIFUpdateError::TypeError(Box::new(err))
+        UpdateError::ReferenceNotFound
     }
 }
 
-impl Display for DIFUpdateError {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        match self {
-            DIFUpdateError::ReferenceNotFound => {
-                core::write!(f, "Reference not found")
-            }
-            DIFUpdateError::InvalidUpdate => {
-                core::write!(f, "Invalid update operation")
-            }
-            DIFUpdateError::AccessError(e) => {
-                core::write!(f, "Access error: {}", e)
-            }
-            DIFUpdateError::AssignmentError(e) => {
-                core::write!(f, "Assignment error: {}", e)
-            }
-            DIFUpdateError::TypeError(e) => {
-                core::write!(f, "Type error: {}", e)
-            }
-        }
-    }
-}
 
 #[derive(Debug)]
 pub enum DIFApplyError {
@@ -166,7 +123,7 @@ pub trait DIFInterface {
         source_id: TransceiverId,
         address: PointerAddress,
         update: &UpdateData,
-    ) -> Result<(), DIFUpdateError>;
+    ) -> Result<(), UpdateError>;
 
     /// Executes an apply operation, applying the `value` to the `callee`.
     fn apply(

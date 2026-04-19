@@ -166,6 +166,18 @@ pub enum CoreLibTypeId {
     Variant(CoreLibVariantTypeId),
 }
 
+impl From<CoreLibBaseTypeId> for CoreLibTypeId {
+    fn from(id: CoreLibBaseTypeId) -> Self {
+        CoreLibTypeId::Base(id)
+    }
+}
+
+impl From<CoreLibVariantTypeId> for CoreLibTypeId {
+    fn from(id: CoreLibVariantTypeId) -> Self {
+        CoreLibTypeId::Variant(id)
+    }
+}
+
 
 impl CoreLibTypeId {
     pub fn try_from_str(string: &str) -> Option<Self> {

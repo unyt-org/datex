@@ -304,6 +304,7 @@ mod tests {
     };
     use core::assert_matches;
     use log::{debug, info};
+    use crate::libs::core::type_id::CoreLibBaseTypeId;
     use crate::runtime::Runtime;
 
     fn execute_datex_script_debug(
@@ -323,10 +324,10 @@ mod tests {
 
     fn execute_datex_script_debug_unbounded(
         datex_script_parts: impl Iterator<Item = &'static str>,
+        runtime: Runtime,
     ) -> impl Iterator<Item = Result<Option<ValueContainer>, ExecutionError>>
     {
         gen move {
-            let runtime = Runtime::stub();
 
             let datex_script_parts = datex_script_parts.collect::<Vec<_>>();
             let mut execution_context =
@@ -362,11 +363,12 @@ mod tests {
     fn assert_unbounded_input_matches_output(
         input: Vec<&'static str>,
         expected_output: Vec<Option<ValueContainer>>,
+        runtime: Runtime,
     ) {
         let input = input.into_iter();
         let expected_output = expected_output.into_iter();
         for (result, expected) in
-            execute_datex_script_debug_unbounded(input.into_iter())
+            execute_datex_script_debug_unbounded(input.into_iter(), runtime.clone())
                 .zip(expected_output.into_iter())
         {
             let result = result.unwrap();
@@ -724,14 +726,12 @@ mod tests {
         let result = execute_datex_script_debug_with_result(
             "const x = 'mut shared mut 42; x",
         );
-        assert_matches!(result, ValueContainer::Shared(SharedContainerValueOrType::Value(
-            SharedContainer::Referenced(
-                ReferencedSharedContainer {
-                    inner: ref inner,
-                    reference_mutability: ReferenceMutability::Mutable,
-                }
-            )
-        )) if inner.borrow().value().mutability.clone() == SharedContainerMutability::Mutable);
+        assert_matches!(result, ValueContainer::Shared(SharedContainer::Referenced(
+            ref container @ ReferencedSharedContainer {
+                reference_mutability: ReferenceMutability::Mutable,
+                ..
+            }
+        )) if container.container_mutability().clone() == SharedContainerMutability::Mutable);
         assert_value_eq!(result, ValueContainer::from(Integer::from(42)));
     }
 
@@ -740,14 +740,13 @@ mod tests {
         let result = execute_datex_script_debug_with_result(
             "const x = 'shared mut 42; x",
         );
-        assert_matches!(result, ValueContainer::Shared(SharedContainerValueOrType::Value(
-            SharedContainer::Referenced(
-                ReferencedSharedContainer {
-                    inner: ref inner,
-                    reference_mutability: ReferenceMutability::Immutable,
-                }
-            )
-        )) if inner.borrow().value().mutability.clone() == SharedContainerMutability::Mutable);
+        assert_matches!(result, ValueContainer::Shared(SharedContainer::Referenced(
+            ref container @ ReferencedSharedContainer {
+                reference_mutability: ReferenceMutability::Immutable,
+                ..
+            }
+        )) if container.container_mutability().clone() == SharedContainerMutability::Mutable);
+
         assert_value_eq!(result, ValueContainer::from(Integer::from(42)));
     }
 
@@ -755,14 +754,13 @@ mod tests {
     fn shared_assignment_immut_ref() {
         let result =
             execute_datex_script_debug_with_result("const x = 'shared 42; x");
-        assert_matches!(result, ValueContainer::Shared(SharedContainerValueOrType::Value(
-            SharedContainer::Referenced(
-                ReferencedSharedContainer {
-                    inner: ref inner,
-                    reference_mutability: ReferenceMutability::Immutable,
-                }
-            )
-        )) if inner.borrow().value().mutability.clone() == SharedContainerMutability::Immutable);
+        assert_matches!(result, ValueContainer::Shared(SharedContainer::Referenced(
+            ref container @ ReferencedSharedContainer {
+                reference_mutability: ReferenceMutability::Immutable,
+                ..
+            }
+        )) if container.container_mutability().clone() == SharedContainerMutability::Immutable);
+
         assert_value_eq!(result, ValueContainer::from(Integer::from(42)));
     }
 
@@ -770,13 +768,9 @@ mod tests {
     fn shared_assignment_immut() {
         let result =
             execute_datex_script_debug_with_result("const x = shared 42; x");
-        assert_matches!(result, ValueContainer::Shared(SharedContainerValueOrType::Value(
-            SharedContainer::Owned(
-                OwnedSharedContainer {
-                    inner: ref inner,
-                }
-            )
-        )) if inner.borrow().value().mutability.clone() == SharedContainerMutability::Immutable);
+        assert_matches!(result, ValueContainer::Shared(SharedContainer::Owned(
+            ref container @ OwnedSharedContainer { .. }
+        )) if container.container_mutability().clone() == SharedContainerMutability::Immutable);
 
         assert_value_eq!(result, ValueContainer::from(Integer::from(42)));
     }
@@ -786,13 +780,9 @@ mod tests {
         let result = execute_datex_script_debug_with_result(
             "const x = shared mut 42; x",
         );
-        assert_matches!(result, ValueContainer::Shared(SharedContainerValueOrType::Value(
-            SharedContainer::Owned(
-                OwnedSharedContainer {
-                    inner: ref inner,
-                }
-            )
-        )) if inner.borrow().value().mutability.clone() == SharedContainerMutability::Mutable);
+        assert_matches!(result, ValueContainer::Shared(SharedContainer::Owned(
+            ref container @ OwnedSharedContainer { .. }
+        )) if container.container_mutability().clone() == SharedContainerMutability::Mutable);
         assert_value_eq!(result, ValueContainer::from(Integer::from(42)));
     }
 
@@ -906,32 +896,22 @@ mod tests {
         assert_unbounded_input_matches_output(
             vec!["1", "2"],
             vec![Some(Integer::from(1).into()), Some(Integer::from(2).into())],
+            Runtime::stub()
         )
     }
 
     #[test]
     fn continuous_execution_multiple_external_interrupts() {
+        let runtime = Runtime::stub();
+
         assert_unbounded_input_matches_output(
-            vec!["1", "integer", "integer"],
+            vec!["1", "integer", "boolean"],
             vec![
                 Some(Integer::from(1).into()),
-                Some(ValueContainer::Shared(SharedContainerValueOrType {
-                    value: SharedContainerInner::Type(
-                        get_core_lib_type_reference(CoreLibTypeId::Integer(
-                            None,
-                        )),
-                    ),
-                    reference_mutability: None,
-                })),
-                Some(ValueContainer::Shared(SharedContainerValueOrType {
-                    value: SharedContainerInner::Type(
-                        get_core_lib_type_reference(CoreLibTypeId::Integer(
-                            None,
-                        )),
-                    ),
-                    reference_mutability: None,
-                })),
+                Some(ValueContainer::Shared(runtime.clone().memory().borrow().get_core_type_reference(CoreLibBaseTypeId::Integer.into()).into())),
+                Some(ValueContainer::Shared(runtime.clone().memory().borrow().get_core_type_reference(CoreLibBaseTypeId::Boolean.into()).into())),
             ],
+            runtime,
         )
     }
 }
