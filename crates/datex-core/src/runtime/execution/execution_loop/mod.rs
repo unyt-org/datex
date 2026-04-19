@@ -1264,7 +1264,7 @@ pub fn inner_execution_loop(
                                     let referenced_container = yield_unwrap!(unsafe {ReferencedSharedContainer::try_new_external(
                                         yield_unwrap!(BaseSharedValueContainer::try_new(
                                             value,
-                                            Type::from(TypeDefinition::Unknown),  // TODO: allowed type
+                                            Type::from(LiteralTypeDefinition::Unknown),  // TODO: allowed type
                                             shared_ref.container_mutability,
                                         )),
                                         pointer_address,

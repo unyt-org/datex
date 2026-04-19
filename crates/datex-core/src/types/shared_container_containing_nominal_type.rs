@@ -17,6 +17,7 @@ use crate::{
 use crate::runtime::memory::Memory;
 use crate::runtime::pointer_address_provider::SelfOwnedPointerAddressProvider;
 use crate::shared_values::shared_containers::SharedContainerMutability;
+use crate::types::shared_container_containing_type::SharedContainerContainingType;
 use crate::values::value_container::ValueContainer;
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash, Serialize)]
@@ -32,6 +33,12 @@ impl Deref for SharedContainerContainingNominalType {
 impl From<SharedContainerContainingNominalType> for SharedContainer {
     fn from(value: SharedContainerContainingNominalType) -> Self {
         value.0
+    }
+}
+
+impl From<SharedContainerContainingNominalType> for SharedContainerContainingType {
+    fn from(value: SharedContainerContainingNominalType) -> Self {
+        unsafe { SharedContainerContainingType::new_unchecked(value.0) }
     }
 }
 
@@ -70,7 +77,7 @@ impl SharedContainerContainingNominalType {
 
     /// Tries to get the [CoreLibTypeId] of the inner type of the shared container, if it is a core library type
     pub fn try_get_core_lib_type_id(&self) -> Option<CoreLibTypeId> {
-        match CoreLibId::try_from(self.0.pointer_address()).ok()? {
+        match CoreLibId::try_from(&self.0.pointer_address()).ok()? {
             CoreLibId::Type(ty) => Some(ty),
             _ => None,
         }

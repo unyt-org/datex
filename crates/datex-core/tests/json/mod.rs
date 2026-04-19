@@ -22,6 +22,7 @@ use itertools::Itertools;
 use json_syntax::Parse;
 use std::path::PathBuf;
 use datex_core::runtime::execution::execution_input::ExecutionCallerMetadata;
+use datex_core::runtime::Runtime;
 
 fn json_value_to_datex_value(json: &json_syntax::Value) -> Value {
     match json {
@@ -70,10 +71,11 @@ fn json_value_to_datex_value(json: &json_syntax::Value) -> Value {
 }
 
 fn compare_datex_result_with_json(json_string: &str) {
+    let runtime = Runtime::stub();
     println!(" JSON String: {json_string}");
     let json_value = json_syntax::Value::parse_str(json_string).unwrap().0;
     let (dxb, _) =
-        compile_script(json_string, CompileOptions::default()).unwrap();
+        compile_script(json_string, CompileOptions::default(), runtime.clone()).unwrap();
     let exec_input = ExecutionInput::new(
         &dxb,
         ExecutionCallerMetadata::local_default(),
@@ -81,19 +83,17 @@ fn compare_datex_result_with_json(json_string: &str) {
             verbose: false,
             ..ExecutionOptions::default()
         },
-        Rc::new(RuntimeInternal::stub()),
+        runtime
     );
     let datex_value = execute_dxb_sync(exec_input).unwrap().unwrap();
     let json_value_converted = json_value_to_datex_value(&json_value);
 
     println!(" JSON Value: {json_value}");
     println!(
-        " DATEX Value: {datex_value} ({})",
-        datex_value.to_cloned_value().borrow().custom_type
+        " DATEX Value: {datex_value}",
     );
     println!(
-        " Converted JSON Value: {json_value_converted} ({})",
-        json_value_converted.custom_type
+        " Converted JSON Value: {json_value_converted}",
     );
     assert_structural_eq!(
         json_value_converted,
@@ -102,8 +102,9 @@ fn compare_datex_result_with_json(json_string: &str) {
 }
 
 fn get_datex_decompiled_from_json(json_string: &str) -> String {
+    let runtime = Runtime::stub();
     let (dxb, _) =
-        compile_script(json_string, CompileOptions::default()).unwrap();
+        compile_script(json_string, CompileOptions::default(), runtime).unwrap();
     let decompiled = decompile_body(
         &dxb,
         DecompileOptions {

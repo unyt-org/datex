@@ -19,15 +19,17 @@ use datex_core::{
     },
 };
 use datex_core::runtime::execution::execution_input::ExecutionCallerMetadata;
+use datex_core::runtime::Runtime;
 
 fn compile_and_execute(input: ValueContainer) -> ValueContainer {
-    let (dxb, _) = compile!("?", input.clone()).unwrap();
+    let runtime = Runtime::stub();
+    let (dxb, _) = compile!(runtime, "?", input.clone()).unwrap();
 
     execute_dxb_sync(ExecutionInput::new(
         &dxb,
         ExecutionCallerMetadata::local_default(),
         ExecutionOptions { verbose: true },
-        Rc::new(RuntimeInternal::stub()),
+        runtime,
     ))
     .unwrap()
     .unwrap()

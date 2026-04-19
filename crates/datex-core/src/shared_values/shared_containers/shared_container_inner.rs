@@ -29,7 +29,7 @@ impl SharedContainerInner {
     }
 
     /// Take the contained value out of the container, consuming the container in the process.
-    pub fn take_value(self) -> BaseSharedValueContainer {
+    pub fn take_base_shared_container(self) -> BaseSharedValueContainer {
         match self {
             SharedContainerInner::EndpointOwned(owned) => owned.take_value(),
             SharedContainerInner::External(referenced) => referenced.take_value(),

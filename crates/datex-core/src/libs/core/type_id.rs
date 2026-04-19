@@ -11,12 +11,10 @@ use crate::{
         integer::typed_integer::IntegerTypeVariant,
     },
 };
-use datex_macros_internal::CoreLibString;
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use strum::{EnumIter, IntoEnumIterator};
 use strum_macros::{Display, EnumString};
-use crate::libs::core::core_lib_id::CoreLibId;
-use crate::libs::core::value_id::CoreLibValueId;
+use crate::shared_values::pointer_address::ExternalPointerAddress;
 
 #[derive(
     Debug,
@@ -257,5 +255,14 @@ impl TryFrom<CoreLibIdIndex> for CoreLibBaseTypeId {
     fn try_from(id: CoreLibIdIndex) -> Result<Self, Self::Error> {
         let id = id.0.checked_sub(TYPE_SPACE_BASE).ok_or(())?;
         CoreLibBaseTypeId::try_from(id).map_err(|_| ())
+    }
+}
+
+
+impl TryFrom<&ExternalPointerAddress> for CoreLibTypeId {
+    type Error = ();
+
+    fn try_from(address: &ExternalPointerAddress) -> Result<Self, Self::Error> {
+        CoreLibTypeId::try_from(CoreLibIdIndex::try_from(address)?)
     }
 }

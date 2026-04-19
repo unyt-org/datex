@@ -42,9 +42,6 @@ impl From<&TypeDefinition> for TypeInstructionCode {
             TypeDefinition::Shared(_) => {
                 TypeInstructionCode::SHARED_TYPE_REFERENCE
             }
-            TypeDefinition::Unit => todo!(),
-            TypeDefinition::Unknown => todo!(),
-            TypeDefinition::Never => todo!(),
             TypeDefinition::Literal(_) => {
                 todo!()
             }

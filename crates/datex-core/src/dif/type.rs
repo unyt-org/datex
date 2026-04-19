@@ -317,11 +317,11 @@ impl<'de> Deserialize<'de> for DIFTypeDefinition {
                         let def =
                             def.ok_or_else(|| de::Error::missing_field("def"))?;
                         if let DIFTypeDefinitionData::Callable((
-                            parameters,
-                            rest_parameter,
-                            return_type,
-                            yeet_type,
-                        )) = def
+                                                                   parameters,
+                                                                   rest_parameter,
+                                                                   return_type,
+                                                                   yeet_type,
+                                                               )) = def
                         {
                             DIFTypeDefinition::Callable {
                                 parameters,

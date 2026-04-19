@@ -46,6 +46,8 @@ use log::info;
 use strum::IntoEnumIterator;
 use crate::libs::library::Library;
 use crate::runtime::pointer_address_provider::SelfOwnedPointerAddressProvider;
+use crate::shared_values::pointer_address::PointerAddress;
+use crate::types::literal_type_definition::LiteralTypeDefinition;
 use crate::types::shared_container_containing_nominal_type::SharedContainerContainingNominalType;
 
 pub struct CoreLibrary;
@@ -106,7 +108,7 @@ impl CoreLibrary {
             for variant_id in CoreLibVariantTypeId::variant_ids(&id) {
                 let (variant_id, variant_type) = unsafe { Self::create_type(
                     NominalTypeDefinition::Variant {
-                        definition: TypeDefinition::Unit.into(),
+                        definition: LiteralTypeDefinition::Unit.into(),
                         // Note: This is safe because we know that the base is a type
                         base: unsafe {
                             SharedContainerContainingType::new_unchecked(
@@ -165,7 +167,7 @@ impl CoreLibrary {
                         parameter_types: vec![],
                         rest_parameter_type: Some((
                             Some("values".to_string()),
-                            Box::new(Type::Alias(TypeDefinition::Unknown.into())),
+                            Box::new(Type::Alias(LiteralTypeDefinition::Unknown.into())),
                         )),
                         return_type: None,
                         yeet_type: None,
@@ -228,7 +230,7 @@ impl CoreLibrary {
         unsafe {
             Self::create_type(
                 NominalTypeDefinition::Base {
-                    definition: TypeDefinition::Unit.into(),
+                    definition: LiteralTypeDefinition::Unit.into(),
                     name: pointer_id.to_string(),
                 },
                 CoreLibTypeId::Base(pointer_id),
@@ -248,26 +250,26 @@ impl Memory {
     /// Helper function to get a core value directly from memory
     pub fn get_core_reference(
         &self,
-        core_lib_id: CoreLibId,
+        core_lib_id: impl Into<CoreLibId>,
     ) -> &ReferencedSharedContainer {
-        self.get_reference(&core_lib_id.into())
+        self.get_reference(&PointerAddress::from(core_lib_id.into()))
             .expect("core reference not found in memory")
     }
 
     /// Helper function to get a [SharedContainerContainingNominalType] directly from memory
     /// by [CoreLibTypeId]
-    pub fn get_core_type_reference(&self, id: CoreLibTypeId) -> SharedContainerContainingNominalType {
+    pub fn get_core_type_reference(&self, id: impl Into<CoreLibTypeId>) -> SharedContainerContainingNominalType {
         unsafe {
             SharedContainerContainingNominalType::new_unchecked(
-                SharedContainer::Referenced(self.get_core_reference(CoreLibId::Type(id)).clone())
+                SharedContainer::Referenced(self.get_core_reference(CoreLibId::Type(id.into())).clone())
             )
         }
     }
 
     /// Helper function to get a [Type::Nominal] directly from memory by [CoreLibTypeId]
-    pub fn get_core_type(&self, id: CoreLibTypeId) -> Type {
+    pub fn get_core_type(&self, id: impl Into<CoreLibTypeId>) -> Type {
         Type::Nominal(
-            self.get_core_type_reference(id)
+            self.get_core_type_reference(id.into())
         )
     }
 }
@@ -291,7 +293,7 @@ mod tests {
         info!(
             "{}",
             memory
-                .get_core_reference(CoreLibValueId::Core.into())
+                .get_core_reference(CoreLibValueId::Core)
                 .value_container()
         );
     }

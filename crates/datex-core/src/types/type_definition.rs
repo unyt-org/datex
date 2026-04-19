@@ -28,7 +28,7 @@ pub enum TypeDefinition {
     /// e.g. [integer], [integer; 5], Map<string, integer>
     Collection(CollectionTypeDefinition),
 
-    /// type A = B
+    /// typealias A = B
     Shared(SharedContainerContainingType), // integer
 
     /// needed for nested types with multiple reference layers (e.g. 'mut 'mut shared X)
@@ -57,15 +57,6 @@ pub enum TypeDefinition {
 
     /// A | B | C
     Union(Vec<Type>),
-
-    /// () - e.g. if a function has no return type
-    Unit,
-
-    /// never type
-    Never,
-
-    /// unknown type
-    Unknown,
 }
 
 impl Hash for TypeDefinition {
@@ -95,10 +86,6 @@ impl Hash for TypeDefinition {
             TypeDefinition::Shared(reference) => {
                 reference.hash(state);
             }
-
-            TypeDefinition::Unit => 0_u8.hash(state),
-            TypeDefinition::Unknown => 1_u8.hash(state),
-            TypeDefinition::Never => 2_u8.hash(state),
 
             TypeDefinition::Union(types) => {
                 for ty in types {
@@ -161,9 +148,6 @@ impl Display for TypeDefinition {
             TypeDefinition::Shared(reference) => {
                 core::write!(f, "{}", reference.deref())
             }
-            TypeDefinition::Unit => core::write!(f, "()"),
-            TypeDefinition::Unknown => core::write!(f, "unknown"),
-            TypeDefinition::Never => core::write!(f, "never"),
             TypeDefinition::ImplType(ty, impls) => {
                 core::write!(f, "{}", ty)?;
                 for marker in impls {

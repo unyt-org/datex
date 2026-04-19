@@ -11,7 +11,7 @@ use crate::types::r#type::Type;
 pub enum TypeError {
     SubvariantNotFound(String, String),
     // only for debugging purposes
-    InvaliUnboxType(Type),
+    InvalidUnboxType(Type),
     Unimplemented(String),
     MismatchedOperands(ArithmeticOperator, Type, Type),
     AssignmentToImmutableReference(String),
@@ -49,7 +49,7 @@ impl Display for TypeError {
                     ty, variant
                 )
             }
-            TypeError::InvaliUnboxType(ty) => {
+            TypeError::InvalidUnboxType(ty) => {
                 write!(f, "Cannot unbox value of type {}", ty)
             }
             TypeError::Unimplemented(msg) => {

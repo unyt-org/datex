@@ -27,7 +27,14 @@ pub enum LiteralTypeDefinition {
     Text(String),
     Boolean(bool),
     Endpoint(Endpoint),
+    /// null
     Null,
+    /// never
+    Never,
+    /// () - e.g. if a function has no return type
+    Unit,
+    /// unknown type
+    Unknown,
 }
 
 macro_rules! impl_from_typed_int {
@@ -197,6 +204,15 @@ impl LiteralTypeDefinition {
             LiteralTypeDefinition::Null => {
                 CoreLibTypeId::Base(CoreLibBaseTypeId::Null)
             }
+            LiteralTypeDefinition::Never => {
+                CoreLibTypeId::Base(CoreLibBaseTypeId::Never)
+            }
+            LiteralTypeDefinition::Unit => {
+                CoreLibTypeId::Base(CoreLibBaseTypeId::Unit)
+            }
+            LiteralTypeDefinition::Unknown => {
+                CoreLibTypeId::Base(CoreLibBaseTypeId::Unknown)
+            }
         }
     }
 }
@@ -230,6 +246,9 @@ impl Display for LiteralTypeDefinition {
                 core::write!(f, "{}", endpoint)
             }
             LiteralTypeDefinition::Null => core::write!(f, "null"),
+            LiteralTypeDefinition::Never => core::write!(f, "never"),
+            LiteralTypeDefinition::Unit => core::write!(f, "()"),
+            LiteralTypeDefinition::Unknown => core::write!(f, "unknown"),
         }
     }
 }

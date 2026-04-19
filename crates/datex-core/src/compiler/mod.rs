@@ -458,7 +458,7 @@ macro_rules! compile {
             let script: &str = $fmt.into();
             let values: &[Option<$crate::values::value_container::ValueContainer>] = &[$(Some($arg.into())),*];
 
-            $crate::compiler::compile_template(&script, values, $crate::compiler::CompileOptions::default(), $runtime)
+            $crate::compiler::compile_template(&script, values, $crate::compiler::CompileOptions::default(), $runtime.clone())
         }
     }
 }

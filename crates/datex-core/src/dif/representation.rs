@@ -291,9 +291,6 @@ impl DIFTypeRepresentation {
             TypeDefinition::ImplType(_, _) => todo!(),
             TypeDefinition::Intersection(_) => todo!(),
             TypeDefinition::Union(_) => todo!(),
-            TypeDefinition::Unit => todo!(),
-            TypeDefinition::Never => todo!(),
-            TypeDefinition::Unknown => todo!(),
         }
     }
 }

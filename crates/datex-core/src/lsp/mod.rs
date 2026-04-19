@@ -30,6 +30,7 @@ use realhydroper_lsp::{
 
 use crate::prelude::*;
 use futures::io::{AsyncRead, AsyncWrite};
+use crate::types::literal_type_definition::LiteralTypeDefinition;
 use crate::types::r#type::Type;
 use crate::types::type_definition::TypeDefinition;
 
@@ -194,7 +195,7 @@ impl LanguageServer for LanguageServerBackend {
                         "{} {}: {}",
                         variable_metadata.shape,
                         name,
-                        variable_metadata.var_type.unwrap_or(Type::from(TypeDefinition::Unknown))
+                        variable_metadata.var_type.unwrap_or(Type::from(LiteralTypeDefinition::Unknown))
                     )))
                 }
 
@@ -214,7 +215,7 @@ impl LanguageServer for LanguageServerBackend {
                         },
                         variable_metadata.shape,
                         name,
-                        variable_metadata.var_type.unwrap_or(Type::from(TypeDefinition::Unknown))
+                        variable_metadata.var_type.unwrap_or(Type::from(LiteralTypeDefinition::Unknown))
                     )))
                 }
 

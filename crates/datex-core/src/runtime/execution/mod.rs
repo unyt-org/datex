@@ -726,12 +726,10 @@ mod tests {
         let result = execute_datex_script_debug_with_result(
             "const x = 'mut shared mut 42; x",
         );
-        assert_matches!(result, ValueContainer::Shared(SharedContainer::Referenced(
-            ref container @ ReferencedSharedContainer {
-                reference_mutability: ReferenceMutability::Mutable,
-                ..
-            }
-        )) if container.container_mutability().clone() == SharedContainerMutability::Mutable);
+        assert_matches!(result, ValueContainer::Shared(SharedContainer::Referenced(ref container)) if
+            container.container_mutability().clone() == SharedContainerMutability::Mutable &&
+            container.reference_mutability() == ReferenceMutability::Mutable
+        );
         assert_value_eq!(result, ValueContainer::from(Integer::from(42)));
     }
 
@@ -740,12 +738,10 @@ mod tests {
         let result = execute_datex_script_debug_with_result(
             "const x = 'shared mut 42; x",
         );
-        assert_matches!(result, ValueContainer::Shared(SharedContainer::Referenced(
-            ref container @ ReferencedSharedContainer {
-                reference_mutability: ReferenceMutability::Immutable,
-                ..
-            }
-        )) if container.container_mutability().clone() == SharedContainerMutability::Mutable);
+        assert_matches!(result, ValueContainer::Shared(SharedContainer::Referenced(ref container)) if
+            container.container_mutability().clone() == SharedContainerMutability::Mutable &&
+            container.reference_mutability() == ReferenceMutability::Immutable
+        );
 
         assert_value_eq!(result, ValueContainer::from(Integer::from(42)));
     }
@@ -754,12 +750,10 @@ mod tests {
     fn shared_assignment_immut_ref() {
         let result =
             execute_datex_script_debug_with_result("const x = 'shared 42; x");
-        assert_matches!(result, ValueContainer::Shared(SharedContainer::Referenced(
-            ref container @ ReferencedSharedContainer {
-                reference_mutability: ReferenceMutability::Immutable,
-                ..
-            }
-        )) if container.container_mutability().clone() == SharedContainerMutability::Immutable);
+        assert_matches!(result, ValueContainer::Shared(SharedContainer::Referenced(ref container)) if
+            container.container_mutability().clone() == SharedContainerMutability::Immutable &&
+            container.reference_mutability() == ReferenceMutability::Immutable
+        );
 
         assert_value_eq!(result, ValueContainer::from(Integer::from(42)));
     }
@@ -768,9 +762,9 @@ mod tests {
     fn shared_assignment_immut() {
         let result =
             execute_datex_script_debug_with_result("const x = shared 42; x");
-        assert_matches!(result, ValueContainer::Shared(SharedContainer::Owned(
-            ref container @ OwnedSharedContainer { .. }
-        )) if container.container_mutability().clone() == SharedContainerMutability::Immutable);
+        assert_matches!(result, ValueContainer::Shared(SharedContainer::Owned(ref container)) if 
+            container.container_mutability().clone() == SharedContainerMutability::Immutable
+        );
 
         assert_value_eq!(result, ValueContainer::from(Integer::from(42)));
     }
@@ -908,8 +902,8 @@ mod tests {
             vec!["1", "integer", "boolean"],
             vec![
                 Some(Integer::from(1).into()),
-                Some(ValueContainer::Shared(runtime.clone().memory().borrow().get_core_type_reference(CoreLibBaseTypeId::Integer.into()).into())),
-                Some(ValueContainer::Shared(runtime.clone().memory().borrow().get_core_type_reference(CoreLibBaseTypeId::Boolean.into()).into())),
+                Some(ValueContainer::Shared(runtime.clone().memory().borrow().get_core_type_reference(CoreLibBaseTypeId::Integer).into())),
+                Some(ValueContainer::Shared(runtime.clone().memory().borrow().get_core_type_reference(CoreLibBaseTypeId::Boolean).into())),
             ],
             runtime,
         )

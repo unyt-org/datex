@@ -192,7 +192,7 @@ impl ReferencedSharedContainer {
 
     /// Returns the [ReferenceMutability] of this reference
     pub fn reference_mutability(&self) -> ReferenceMutability {
-        self.reference_mutability.clone()
+        self.reference_mutability
     }
 }
 

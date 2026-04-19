@@ -104,26 +104,43 @@ impl<T: CoreLibIdTrait> From<T> for ExternalPointerAddress {
     }
 }
 
-impl TryFrom<ExternalPointerAddress> for CoreLibId {
+impl TryFrom<&ExternalPointerAddress> for CoreLibIdIndex {
     type Error = ();
-    fn try_from(external: ExternalPointerAddress) -> Result<Self, Self::Error> {
-        if let ExternalPointerAddress::Builtin(bytes) = external {
-            let id = u16::from_le_bytes(bytes[0..2].try_into().unwrap());
-            CoreLibId::try_from(CoreLibIdIndex(id))
+    fn try_from(value: &ExternalPointerAddress) -> Result<Self, Self::Error> {
+        if let ExternalPointerAddress::Builtin(bytes) = value {
+            Ok(CoreLibIdIndex(u16::from_le_bytes(
+                bytes[0..2].try_into().unwrap(),
+            )))
         } else {
             Err(())
         }
     }
 }
 
-impl TryFrom<PointerAddress> for CoreLibId {
+impl TryFrom<&PointerAddress> for CoreLibIdIndex {
     type Error = ();
-
-    fn try_from(pointer: PointerAddress) -> Result<Self, Self::Error> {
-        if let PointerAddress::External(external) = pointer {
-            CoreLibId::try_from(external)
-        } else {
+    fn try_from(value: &PointerAddress) -> Result<Self, Self::Error> {
+        if let PointerAddress::External(value) = value {
+            CoreLibIdIndex::try_from(value)
+        }
+        else {
             Err(())
         }
+    }
+}
+
+
+impl TryFrom<&ExternalPointerAddress> for CoreLibId {
+    type Error = ();
+    fn try_from(external: &ExternalPointerAddress) -> Result<Self, Self::Error> {
+        CoreLibId::try_from(CoreLibIdIndex::try_from(external)?)
+    }
+}
+
+impl TryFrom<&PointerAddress> for CoreLibId {
+    type Error = ();
+
+    fn try_from(pointer: &PointerAddress) -> Result<Self, Self::Error> {
+        CoreLibId::try_from(CoreLibIdIndex::try_from(pointer)?)
     }
 }

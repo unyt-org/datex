@@ -249,11 +249,10 @@ fn structural_type_definition_to_type_expression(type_definition: &TypeDefinitio
             ))
             .with_default_span()
         }
-        TypeDefinition::Unit => TypeExpressionData::Unit.with_default_span(),
         TypeDefinition::Shared(type_reference) => {
             // try to resolve to core lib value
             if let Ok(core_lib_type) = CoreLibId::try_from(
-                type_reference.pointer_address(),
+                &type_reference.pointer_address(),
             ) {
                 TypeExpressionData::Identifier(core_lib_type.to_string())
                     .with_default_span()

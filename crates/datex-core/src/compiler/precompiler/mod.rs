@@ -48,6 +48,7 @@ use crate::libs::core::type_id::CoreLibTypeId;
 use crate::runtime::{Runtime, RuntimeInternal};
 use crate::shared_values::pointer_address::PointerAddress;
 use crate::shared_values::shared_containers::ReferenceMutability;
+use crate::types::literal_type_definition::LiteralTypeDefinition;
 use crate::types::nominal_type_definition::NominalTypeDefinition;
 use crate::types::r#type::{Type};
 use crate::types::type_definition_with_metadata::{TypeDefinitionWithMetadata, TypeMetadata};
@@ -289,7 +290,7 @@ impl<'a> Precompiler<'a> {
             TypeDeclarationKind::Nominal => {
                 Type::nominal(
                     NominalTypeDefinition::new_base(
-                        TypeDefinition::Unknown.into(),
+                        LiteralTypeDefinition::Unknown.into(),
                         data.name.clone(),
                     ),
                     &mut *self.runtime.pointer_address_provider().borrow_mut(),
@@ -297,7 +298,7 @@ impl<'a> Precompiler<'a> {
                 )
             },
             TypeDeclarationKind::Alias => {
-                Type::Alias(TypeDefinition::Unknown.into())
+                Type::Alias(LiteralTypeDefinition::Unknown.into())
             }
         };
 

@@ -168,7 +168,7 @@ impl<'a> Formatter<'a> {
             }) => a.text(name.clone()),
 
             TypeExpressionData::GetReference(ptr) => {
-                if let Ok(core_lib_id) = CoreLibId::try_from(ptr.clone()) {
+                if let Ok(core_lib_id) = CoreLibId::try_from(ptr) {
                     a.text(core_lib_id.to_string())
                 } else {
                     a.text(ptr.to_string())

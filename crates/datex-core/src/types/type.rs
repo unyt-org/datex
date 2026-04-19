@@ -449,8 +449,8 @@ mod tests {
             Type::from(LiteralTypeDefinition::Integer(Integer::from(1)))
                 .matches(&Type::from(TypeDefinition::Union(
                     vec![
-                        memory.get_core_type(CoreLibBaseTypeId::Integer.into()),
-                        memory.get_core_type(CoreLibBaseTypeId::Text.into()),
+                        memory.get_core_type(CoreLibBaseTypeId::Integer),
+                        memory.get_core_type(CoreLibBaseTypeId::Text),
                     ]
                 )))
         );

@@ -25,6 +25,7 @@ use crate::runtime::memory::Memory;
 use crate::runtime::pointer_address_provider::SelfOwnedPointerAddressProvider;
 use crate::serde::Deserialize;
 use crate::shared_values::pointer_address::PointerAddress;
+use crate::types::literal_type_definition::LiteralTypeDefinition;
 use crate::types::r#type::Type;
 
 /// Wrapper struct for an owned shared value (i.e. `shared X`)
@@ -260,7 +261,7 @@ impl OwnedSharedContainer {
                         inner: CoreValue::Null,
                         custom_type: None,
                     }),
-                    allowed_type: Type::from(TypeDefinition::Unit),
+                    allowed_type: Type::from(LiteralTypeDefinition::Unit),
                     observers: Default::default(),
                     mutability: SharedContainerMutability::Immutable,
                 },
