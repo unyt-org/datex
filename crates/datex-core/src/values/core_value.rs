@@ -288,7 +288,7 @@ impl CoreValue {
     /// This method uses the CoreLibPointerId to retrieve the corresponding
     /// type reference from the core library.
     /// For example, a CoreValue::TypedInteger(i32) will return the type ref integer/i32
-    pub fn default_nominal_type(&self, memory: &mut Memory) -> SharedContainerContainingNominalType {
+    pub fn default_nominal_type(&self, memory: &Memory) -> SharedContainerContainingNominalType {
         memory.get_core_type_reference(CoreLibTypeId::from(self))
     }
 

@@ -18,6 +18,7 @@ use core::{
 };
 use crate::runtime::memory::Memory;
 use crate::types::r#type::Type;
+use crate::values::value::Value;
 
 /// Wrapper struct for a reference to a shared value (i.e. `'shared X` or `'mut shared X`).
 ///
@@ -64,7 +65,7 @@ impl ReferencedSharedContainer {
         container: BaseSharedValueContainer,
         address: ExternalPointerAddress,
         reference_mutability: ReferenceMutability,
-        memory: &mut Memory
+        memory: &Memory
     ) -> Result<Self, ()> {
         // invalid reference mutability
         if reference_mutability == ReferenceMutability::Mutable
@@ -85,7 +86,7 @@ impl ReferencedSharedContainer {
     pub(crate) unsafe fn new_immutable_external(
         value_container: ValueContainer,
         address: ExternalPointerAddress,
-        memory: &mut Memory
+        memory: &Memory
     ) -> Self {
         unsafe {
             ReferencedSharedContainer::try_new_external(
@@ -133,6 +134,19 @@ impl ReferencedSharedContainer {
         RefMut::map(self.base_shared_container_mut(), |base_shared_container| {
             &mut base_shared_container.value_container
         })
+    }
+
+    /// Calls the provided callback with a mut reference to the recursively collapsed inner value of the shared container
+    pub fn with_collapsed_value_mut<R>(
+        &self,
+        f: impl FnOnce(&mut Value) -> R,
+    ) -> R {
+        self.inner_mut().base_shared_container_mut().with_collapsed_value_mut(f)
+    }
+
+    /// Calls the provided callback with a reference to the recursively collapsed inner value of the shared container
+    pub fn with_collapsed_value<R>(&self, f: impl FnOnce(&Value) -> R) -> R {
+        self.inner().base_shared_container().with_collapsed_value(f)
     }
 
     /// Gets a [Ref] to the currently assigned allowed [TypeDefinition] of the shared container (not resolved recursively)

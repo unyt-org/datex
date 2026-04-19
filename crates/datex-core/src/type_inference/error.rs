@@ -17,6 +17,7 @@ pub enum TypeError {
     AssignmentToImmutableReference(String),
     AssignmentToImmutableValue(String),
     AssignmentToConstant(String),
+    ReferenceToNonTypeValue,
 
     // can not assign value to variable of different type
     AssignmentTypeMismatch {
@@ -69,6 +70,12 @@ impl Display for TypeError {
                     f,
                     "Cannot assign {} to {}",
                     assigned_type, annotated_type
+                )
+            }
+            TypeError::ReferenceToNonTypeValue => {
+                write!(
+                    f,
+                    "Invalid reference to non-type value"
                 )
             }
         }

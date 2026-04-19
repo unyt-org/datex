@@ -256,6 +256,9 @@ impl Display for ExecutionError {
                     "Internal slot does not exist at index {index}"
                 )
             }
+            ExecutionError::UpdateError(err) => {
+                core::write!(f, "Value update error: {err}")
+            }
         }
     }
 }

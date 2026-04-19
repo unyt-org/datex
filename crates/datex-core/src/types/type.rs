@@ -17,8 +17,10 @@ use core::{
     hash::Hash,
     ops::Deref,
 };
+use serde::{Deserialize, Serialize};
 use crate::runtime::memory::Memory;
 use crate::runtime::pointer_address_provider::SelfOwnedPointerAddressProvider;
+use crate::values::core_value::CoreValue;
 use crate::values::value_container::ValueContainer;
 
 // {x: &integer}
@@ -33,7 +35,7 @@ impl Type {
     pub fn nominal(
         definition: NominalTypeDefinition,
         address_provider: &mut SelfOwnedPointerAddressProvider,
-        memory: &mut Memory
+        memory: &Memory
     ) -> Type {
         Type::Nominal(SharedContainerContainingNominalType::new_from_definition(definition, address_provider, memory))
     }
@@ -59,11 +61,12 @@ impl Type {
         self.with_collapsed_definition_with_metadata(|def| f(&def.definition))
     }
 
-    pub fn base_core_lib_type_reference(
+    pub fn base_core_lib_type(
         &self,
-    ) -> SharedContainerContainingType {
+        memory: &Memory
+    ) -> SharedContainerContainingNominalType {
         match self {
-            Type::Alias(type_def) => type_def.definition.base_core_lib_type(),
+            Type::Alias(type_def) => type_def.definition.base_core_lib_type(memory),
             Type::Nominal(nominal_def) => {
                 todo!()
             }
@@ -344,6 +347,26 @@ impl TryFrom<&DatexExpressionData> for Type {
     }
 }
 
+
+impl TryFrom<ValueContainer> for Type {
+    type Error = ();
+
+    fn try_from(value: ValueContainer) -> Result<Self, Self::Error> {
+        match value {
+            ValueContainer::Shared(shared) => {
+                SharedContainerContainingNominalType::try_from(shared)
+                    .map(Type::Nominal)
+            }
+            ValueContainer::Local(value) => {
+                match value.inner {
+                    CoreValue::Type(ty) => Ok(ty),
+                    _ => Err(())
+                }
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::prelude::*;
@@ -358,7 +381,10 @@ mod tests {
             value_container::ValueContainer,
         },
     };
+    use crate::libs::core::type_id::CoreLibBaseTypeId;
+    use crate::runtime::memory::Memory;
     use crate::types::literal_type_definition::LiteralTypeDefinition;
+    use crate::types::type_definition::TypeDefinition;
     use crate::types::type_match::TypeMatch;
 
     #[test]
@@ -391,53 +417,42 @@ mod tests {
     #[test]
     fn test_match_union() {
         // 1 matches (1 | 2 | 3)
-        assert!(Type::matched_by_value(
-            &ValueContainer::from(Integer::from(1)),
-            &Type::union(
+        assert!(
+            Type::from(TypeDefinition::Union(
                 vec![
-                    Type::structural(Integer::from(1), TypeMetadata::default()),
-                    Type::structural(Integer::from(2), TypeMetadata::default()),
-                    Type::structural(Integer::from(3), TypeMetadata::default()),
-                ],
-                TypeMetadata::default()
-            ),
-        ))
+                    LiteralTypeDefinition::Integer(Integer::from(1)).into(),
+                    LiteralTypeDefinition::Integer(Integer::from(2)).into(),
+                    LiteralTypeDefinition::Integer(Integer::from(3)).into()
+                ]
+            )).matched_by_value(&Integer::from(1).into())
+        );
     }
 
     #[test]
     fn type_matches_union_type() {
+        let memory = &Memory::new();
+
         // 1 matches (1 | 2 | 3)
         assert!(
-            Type::structural(Integer::from(1), TypeMetadata::default())
-                .matches_type(&Type::union(
+            Type::from(LiteralTypeDefinition::Integer(Integer::from(1)))
+                .matches(&Type::from(TypeDefinition::Union(
                     vec![
-                        Type::structural(
-                            Integer::from(1),
-                            TypeMetadata::default()
-                        ),
-                        Type::structural(
-                            Integer::from(2),
-                            TypeMetadata::default()
-                        ),
-                        Type::structural(
-                            Integer::from(3),
-                            TypeMetadata::default()
-                        ),
-                    ],
-                    TypeMetadata::default()
-                ))
+                        LiteralTypeDefinition::Integer(Integer::from(1)).into(),
+                        LiteralTypeDefinition::Integer(Integer::from(2)).into(),
+                        LiteralTypeDefinition::Integer(Integer::from(3)).into()
+                    ]
+                )))
         );
 
         // 1 matches integer | text
         assert!(
-            Type::structural(Integer::from(1), TypeMetadata::default())
-                .matches_type(&Type::union(
+            Type::from(LiteralTypeDefinition::Integer(Integer::from(1)))
+                .matches(&Type::from(TypeDefinition::Union(
                     vec![
-                        core_lib_type(CoreLibTypeId::Integer(None)),
-                        core_lib_type(CoreLibTypeId::Text),
-                    ],
-                    TypeMetadata::default()
-                ))
+                        memory.get_core_type(CoreLibBaseTypeId::Integer.into()),
+                        memory.get_core_type(CoreLibBaseTypeId::Text.into()),
+                    ]
+                )))
         );
     }
 

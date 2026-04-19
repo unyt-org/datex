@@ -273,7 +273,7 @@ mod tests {
     #[test]
     fn remote_execution_with_injected_ref_value() {
         let address_provider = &mut SelfOwnedPointerAddressProvider::default();
-        let memory = &mut Memory::new();
+        let memory = &Memory::new();
 
         let shared_value = SharedContainer::Owned(
             OwnedSharedContainer::new_with_inferred_allowed_type(
@@ -330,7 +330,7 @@ mod tests {
     #[test]
     fn remote_execution_multiple_ref_values() {
         let address_provider = &mut SelfOwnedPointerAddressProvider::default();
-        let memory = &mut Memory::new();
+        let memory = &Memory::new();
 
         let shared_value1 =
             SharedContainer::new_owned_with_inferred_allowed_type(
@@ -422,7 +422,7 @@ mod tests {
     #[test]
     fn remote_execution_with_injected_moved_value() {
         let address_provider = &mut SelfOwnedPointerAddressProvider::default();
-        let memory = &mut Memory::new();
+        let memory = &Memory::new();
 
         let shared_value =
             SharedContainer::new_owned_with_inferred_allowed_type(
@@ -491,7 +491,7 @@ mod tests {
     #[test]
     fn remote_execution_moved_value_and_ref() {
         let address_provider = &mut SelfOwnedPointerAddressProvider::default();
-        let memory = &mut Memory::new();
+        let memory = &Memory::new();
 
         let shared_value1 =
             SharedContainer::new_owned_with_inferred_allowed_type(

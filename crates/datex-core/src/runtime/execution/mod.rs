@@ -205,7 +205,7 @@ pub async fn execute_dxb(
                     runtime.internal.clone().handle_pointer_move_to_remote(
                         &caller_metadata.endpoint,
                         address_mapping,
-                        &mut *runtime.memory().borrow_mut(),
+                        &*runtime.memory().borrow(),
                     )?;
                 interrupt_provider.provide_result(
                     InterruptResult::ResolvedValues(moved_values),

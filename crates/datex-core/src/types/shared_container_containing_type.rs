@@ -1,5 +1,5 @@
 use core::ops::Deref;
-
+use serde::Serialize;
 use crate::{
     libs::core::{
         core_lib_id::CoreLibId,
@@ -14,7 +14,7 @@ use crate::{
 
 /// A wrapper around an [SharedContainer] which guarantees
 /// that the contained value is always a [CoreValue::Type]
-#[derive(Debug, PartialEq, Eq, Clone, Hash)]
+#[derive(Debug, PartialEq, Eq, Clone, Hash, Serialize)]
 pub struct SharedContainerContainingType(SharedContainer);
 
 impl Deref for SharedContainerContainingType {
@@ -25,24 +25,6 @@ impl Deref for SharedContainerContainingType {
 }
 
 impl SharedContainerContainingType {
-    // / Tries to wrap a [SharedContainer] into a [SharedContainerContainingType]
-    // / Returns if the constraint for [SharedContainerContainingType]] is not satisfied
-    // / (i.e. the allowed type of the container is not a [StructuralTypeDefinition::Type])
-    // pub fn try_new(container: SharedContainer) -> Result<Self, ()> {
-    //     // allowed type of container must only be "shared"
-    //     if container
-    //         .base_shared_container()
-    //         .allowed_type
-    //         .with_collapsed_structural_type_definition(|allowed_type| {
-    //             !matches!(allowed_type, TypeDefinition::Shared(_))
-    //         })
-    //     {
-    //         return Err(());
-    //     }
-
-    //     Ok(SharedContainerContainingType(container))
-    // }
-
     /// Creates a new [SharedContainerContainingType] from a [SharedContainer] without checking the constraint.
     /// The caller must ensure that the constraint for [SharedContainerContainingType] is satisfied
     /// (i.e. the allowed type of the container is a [StructuralTypeDefinition::Type])

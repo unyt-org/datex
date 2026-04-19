@@ -681,8 +681,8 @@ mod tests {
     #[test]
     fn test_ref_keys() {
         let address_provider = &mut SelfOwnedPointerAddressProvider::default();
-        let memory = &mut Memory::new();
-        
+        let memory = &Memory::new();
+
         let mut map = Map::default();
         let key = ValueContainer::Shared(
             SharedContainer::new_owned_with_inferred_allowed_type(

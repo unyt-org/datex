@@ -53,7 +53,7 @@ use crate::{
             map::{Map, MapKey},
         },
         value::Value,
-        value_container::{OwnedValueKey, ValueContainer},
+        value_container::{ValueContainer},
     }
 };
 use alloc::rc::Rc;
@@ -68,6 +68,7 @@ use crate::shared_values::pointer_address::ExternalPointerAddress;
 use crate::shared_values::shared_containers::{SelfOwnedSharedContainer, SharedContainerInner, SharedContainerMutability};
 use crate::shared_values::shared_containers::{ExternalSharedContainer, OwnedSharedContainer, ReferencedSharedContainer, SharedContainer};
 use crate::shared_values::shared_containers::base_shared_value_container::BaseSharedValueContainer;
+use crate::shared_values::shared_containers::observers::TransceiverId;
 use crate::type_inference::error::TypeError;
 use crate::types::r#type::{Type};
 use crate::types::type_definition::TypeDefinition;
@@ -1065,6 +1066,7 @@ pub fn inner_execution_loop(
                                         |target| {
                                             target.try_delete_entry(
                                                 DeleteEntryUpdateData {key: ValueKey::Index(property_index as i64)},
+                                                TransceiverId(0), // TODO
                                             )
                                         },
                                     );
@@ -1091,7 +1093,7 @@ pub fn inner_execution_loop(
                                         |target| {
                                             set_property(
                                                 target,
-                                                OwnedValueKey::Text(
+                                                ValueKey::Text(
                                                     property_data.0,
                                                 ),
                                                 value,
@@ -1119,7 +1121,7 @@ pub fn inner_execution_loop(
                                         |target| {
                                             set_property(
                                                 target,
-                                                OwnedValueKey::Index(
+                                                ValueKey::Index(
                                                     property_data.0 as i64,
                                                 ),
                                                 value,
@@ -1149,7 +1151,7 @@ pub fn inner_execution_loop(
                                         |target| {
                                             set_property(
                                                 target,
-                                                OwnedValueKey::Value(key),
+                                                ValueKey::Value(key),
                                                 value,
                                             )
                                         },

@@ -20,8 +20,10 @@ use core::{
     fmt::Display,
     mem,
 };
+use serde::Serialize;
 use crate::runtime::memory::Memory;
 use crate::runtime::pointer_address_provider::SelfOwnedPointerAddressProvider;
+use crate::serde::Deserialize;
 use crate::shared_values::pointer_address::PointerAddress;
 use crate::types::r#type::Type;
 
@@ -83,7 +85,7 @@ impl OwnedSharedContainer {
         value_container: ValueContainer,
         mutability: SharedContainerMutability,
         address_provider: &mut SelfOwnedPointerAddressProvider,
-        memory: &mut Memory,
+        memory: &Memory,
     ) -> Self {
         // Note: address provider guarantees new unique address
         unsafe {
@@ -107,7 +109,7 @@ impl OwnedSharedContainer {
         value_container: ValueContainer,
         mutability: SharedContainerMutability,
         address: SelfOwnedPointerAddress,
-        memory: &mut Memory,
+        memory: &Memory,
     ) -> Self {
         OwnedSharedContainer::new_from_self_owned_container(
             SelfOwnedSharedContainer::new(
@@ -159,6 +161,19 @@ impl OwnedSharedContainer {
         RefMut::map(self.base_shared_container_mut(), |base_shared_container| {
             &mut base_shared_container.value_container
         })
+    }
+
+    /// Calls the provided callback with a mut reference to the recursively collapsed inner value of the shared container
+    pub fn with_collapsed_value_mut<R>(
+        &self,
+        f: impl FnOnce(&mut Value) -> R,
+    ) -> R {
+        self.inner_mut().base_shared_container_mut().with_collapsed_value_mut(f)
+    }
+
+    /// Calls the provided callback with a reference to the recursively collapsed inner value of the shared container
+    pub fn with_collapsed_value<R>(&self, f: impl FnOnce(&Value) -> R) -> R {
+        self.inner().base_shared_container().with_collapsed_value(f)
     }
 
     /// Get a [Ref] to the inner [SelfOwnedSharedContainer].
@@ -233,7 +248,7 @@ impl OwnedSharedContainer {
     /// Drops the original owned shared container
     ///
     /// The caller must ensure that the [ExternalPointerAddress] does not yet exist in the [Memory]
-    pub unsafe fn move_to_external(self, external_address: ExternalPointerAddress, memory: &mut Memory) {
+    pub unsafe fn move_to_external(self, external_address: ExternalPointerAddress, memory: &Memory) {
         let mut inner = self.inner_mut();
         // replace previous with null value
         // FIXME: find a more efficient way to do this enum variant swap

@@ -34,6 +34,7 @@ use core::{
     fmt::{Display, Formatter},
     hash::{Hash, Hasher},
 };
+use serde::{Deserialize, Serialize, Serializer};
 pub use external_shared_container::*;
 pub use owned_shared_container::*;
 pub use ownership::*;
@@ -41,9 +42,13 @@ pub use referenced_shared_container::*;
 pub use self_owned_shared_container::*;
 pub use shared_container_inner::*;
 pub use shared_container_mutability::*;
+use crate::runtime::execution::ExecutionError;
 use crate::runtime::memory::Memory;
 use crate::runtime::pointer_address_provider::SelfOwnedPointerAddressProvider;
+use crate::shared_values::errors::AccessError;
+use crate::traits::apply::Apply;
 use crate::types::r#type::Type;
+use crate::values::value_container::BorrowedValueKey;
 
 /// Top-level wrapper for any owned or referenced shared container,
 /// which can either be an owned shared container or a reference to a shared container.
@@ -65,7 +70,7 @@ impl SharedContainer {
         value_container: T,
         mutability: SharedContainerMutability,
         address_provider: &mut SelfOwnedPointerAddressProvider,
-        memory: &mut Memory,
+        memory: &Memory,
     ) -> Self {
         SharedContainer::Owned(
             OwnedSharedContainer::new_with_inferred_allowed_type(
@@ -87,7 +92,7 @@ impl SharedContainer {
         value_container: T,
         mutability: SharedContainerMutability,
         address: SelfOwnedPointerAddress,
-        memory: &mut Memory,
+        memory: &Memory,
     ) -> Self {
         SharedContainer::Owned(
             unsafe {
@@ -177,7 +182,7 @@ impl SharedContainer {
     }
 
     /// Gets the current actual [Type] of the collapsed inner [Value]
-    pub fn actual_type(&self, memory: &mut Memory) -> Type {
+    pub fn actual_type(&self, memory: &Memory) -> Type {
         self.with_collapsed_value(|value| value.actual_type(memory))
     }
 
@@ -206,21 +211,19 @@ impl SharedContainer {
         &self,
         f: impl FnOnce(&mut Value) -> R,
     ) -> R {
-        match &mut self.inner_mut().base_shared_container_mut().value_container
-        {
-            ValueContainer::Local(v) => f(v),
-            ValueContainer::Shared(shared) => {
-                shared.with_collapsed_value_mut(f)
-            }
-        }
+        self.base_shared_container_mut().with_collapsed_value_mut(f)
     }
 
     /// Calls the provided callback with a reference to the recursively collapsed inner value of the shared container
     pub fn with_collapsed_value<R>(&self, f: impl FnOnce(&Value) -> R) -> R {
-        match &self.inner().base_shared_container().value_container {
-            ValueContainer::Local(v) => f(v),
-            ValueContainer::Shared(shared) => shared.with_collapsed_value(f),
-        }
+        self.base_shared_container().with_collapsed_value(f)
+    }
+    
+    pub fn try_get_property<'a>(
+        &self,
+        key: impl Into<BorrowedValueKey<'a>>,
+    ) -> Result<ValueContainer, AccessError> {
+        self.base_shared_container().try_get_property(key)
     }
 
     pub fn pointer_address(&self) -> PointerAddress {
@@ -312,6 +315,16 @@ impl Clone for SharedContainer {
     }
 }
 
+impl Serialize for SharedContainer {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer
+    {
+        // Only serialize the pointer address
+        self.pointer_address().serialize(serializer)
+    }
+}
+
 impl Display for SharedContainer {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
         match self {
@@ -331,6 +344,16 @@ impl Identity for SharedContainer {
 }
 
 impl Eq for SharedContainer {}
+
+impl Apply for SharedContainer {
+    fn apply(&self, args: &[ValueContainer]) -> Result<Option<ValueContainer>, ExecutionError> {
+        self.base_shared_container().apply(args)
+    }
+
+    fn apply_single(&self, arg: &ValueContainer) -> Result<Option<ValueContainer>, ExecutionError> {
+        self.base_shared_container().apply_single(arg)
+    }
+}
 
 /// PartialEq corresponds to pointer equality / identity for `Reference`.
 impl PartialEq for SharedContainer {

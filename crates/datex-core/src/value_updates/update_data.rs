@@ -20,7 +20,7 @@ pub enum UpdateData {
     Clear,
 
     /// Represents adding a new element to a collection-type value (like an array or map).
-    Append(AppendUpdateData),
+    AppendEntry(AppendEntryUpdateData),
 
     /// Special update operation for list values that allows splicing
     ListSplice(ListSpliceUpdateData),
@@ -47,7 +47,7 @@ pub struct DeleteEntryUpdateData {
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
-pub struct AppendUpdateData {
+pub struct AppendEntryUpdateData {
     pub value: ValueContainer,
 }
 

@@ -18,16 +18,21 @@ use core::{
     fmt::{Debug, Display},
     prelude::rust_2024::*,
 };
+use serde::Serialize;
+use crate::runtime::execution::ExecutionError;
 use crate::runtime::memory::Memory;
+use crate::serde::Deserialize;
+use crate::shared_values::errors::AccessError;
+use crate::traits::apply::Apply;
 use crate::types::r#type::Type;
+use crate::values::value_container::BorrowedValueKey;
 
 pub struct BaseSharedValueContainer {
-    // pub(crate) pointer: Pointer,
-    /// the value that this reference points to
+    /// The value of the container
     pub value_container: ValueContainer,
-    /// custom type for the pointer that the Datex value is allowed to reference
+    /// The [Type] that is allowed to be assigned to the shared container. This is used for type checking when assigning a new value container to the shared container.
     pub allowed_type: Type,
-    /// list of observer callbacks
+    /// List of observer callbacks
     /// TODO: move observers to ValueContainer?
     pub observers: FreeHashMap<u32, Observer>,
     pub mutability: SharedContainerMutability,
@@ -59,7 +64,7 @@ impl BaseSharedValueContainer {
     pub fn new_with_inferred_allowed_type<T: Into<ValueContainer>>(
         value_container: T,
         mutability: SharedContainerMutability,
-        memory: &mut Memory
+        memory: &Memory
     ) -> Self {
         let value_container = value_container.into();
         let allowed_type = value_container.allowed_type(memory);
@@ -68,6 +73,28 @@ impl BaseSharedValueContainer {
             allowed_type,
             observers: FreeHashMap::new(),
             mutability,
+        }
+    }
+
+    /// Calls the provided callback with a mut reference to the recursively collapsed inner value of the shared container
+    pub fn with_collapsed_value_mut<R>(
+        &mut self,
+        f: impl FnOnce(&mut Value) -> R,
+    ) -> R {
+        match &mut self.value_container
+        {
+            ValueContainer::Local(v) => f(v),
+            ValueContainer::Shared(shared) => {
+                shared.with_collapsed_value_mut(f)
+            }
+        }
+    }
+
+    /// Calls the provided callback with a reference to the recursively collapsed inner value of the shared container
+    pub fn with_collapsed_value<R>(&self, f: impl FnOnce(&Value) -> R) -> R {
+        match &self.value_container {
+            ValueContainer::Local(v) => f(v),
+            ValueContainer::Shared(shared) => shared.with_collapsed_value(f),
         }
     }
 
@@ -80,6 +107,15 @@ impl BaseSharedValueContainer {
         // TODO do type checking to ensure new value container's allowed type is compatible with self.allowed_type
         self.value_container = new_value_container;
         Ok(())
+    }
+
+    pub fn try_get_property<'a>(
+        &self,
+        key: impl Into<BorrowedValueKey<'a>>,
+    ) -> Result<ValueContainer, AccessError> {
+        self.with_collapsed_value(|value| {
+            value.try_get_property(key)
+        })
     }
 }
 
@@ -111,6 +147,20 @@ impl PartialEq for BaseSharedValueContainer {
     fn eq(&self, other: &Self) -> bool {
         // Two value references are equal if their value containers are equal
         self.value_container.value_eq(&other.value_container)
+    }
+}
+
+impl Apply for BaseSharedValueContainer {
+    fn apply(&self, args: &[ValueContainer]) -> Result<Option<ValueContainer>, ExecutionError> {
+        self.with_collapsed_value(|value| {
+            value.apply(args)
+        })
+    }
+
+    fn apply_single(&self, arg: &ValueContainer) -> Result<Option<ValueContainer>, ExecutionError> {
+        self.with_collapsed_value(|value| {
+            value.apply_single(arg)
+        })
     }
 }
 

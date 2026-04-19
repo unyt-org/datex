@@ -22,9 +22,10 @@ use core::{
 };
 use log::error;
 use crate::runtime::memory::Memory;
+use crate::shared_values::shared_containers::observers::TransceiverId;
 use crate::types::r#type::Type;
 use crate::value_updates::errors::UpdateError;
-use crate::value_updates::update_data::{DeleteEntryUpdateData, ListSpliceUpdateData, ReplaceUpdateData, SetEntryUpdateData};
+use crate::value_updates::update_data::{AppendEntryUpdateData, DeleteEntryUpdateData, ListSpliceUpdateData, ReplaceUpdateData, SetEntryUpdateData};
 use crate::value_updates::update_handler::UpdateHandler;
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
@@ -144,7 +145,7 @@ impl Value {
     /// integer variants (despite bigint) can be distinguished based on the instruction code, but for text variants,
     /// the variant must be included in the compiler output - so we need to handle theses cases as well.
     /// Generally speaking, all variants except the few integer variants should never be considered default types.
-    pub fn has_default_type(&self, memory: &mut Memory) -> bool {
+    pub fn has_default_type(&self, memory: &Memory) -> bool {
         match &self.custom_type {
             None => true,
             Some(Type::Nominal(nominal_type)) => {
@@ -153,9 +154,9 @@ impl Value {
             Some(_) => false,
         }
     }
-    
+
     /// Returns the actual type, generating the default type from the provided memory if no custom typoe is set
-    pub fn actual_type(&self, memory: &mut Memory) -> Type {
+    pub fn actual_type(&self, memory: &Memory) -> Type {
         match &self.custom_type {
             Some(actual_type) => actual_type.clone(),
             None => Type::Nominal(self.default_nominal_type(memory))
@@ -314,23 +315,27 @@ impl Value {
 }
 
 impl UpdateHandler for Value {
-    fn try_replace(&self, data: ReplaceUpdateData) -> Result<ValueContainer, UpdateError> {
+    fn try_replace(&self, data: ReplaceUpdateData, source_id: TransceiverId) -> Result<ValueContainer, UpdateError> {
         todo!()
     }
 
-    fn try_set_entry(&self, data: SetEntryUpdateData) -> Result<(), UpdateError> {
+    fn try_set_entry(&self, data: SetEntryUpdateData, source_id: TransceiverId) -> Result<(), UpdateError> {
         todo!()
     }
 
-    fn try_delete_entry(&self, data: DeleteEntryUpdateData) -> Result<ValueContainer, UpdateError> {
+    fn try_delete_entry(&self, data: DeleteEntryUpdateData, source_id: TransceiverId) -> Result<ValueContainer, UpdateError> {
         todo!()
     }
 
-    fn try_clear(&self) -> Result<Vec<ValueContainer>, UpdateError> {
+    fn try_append_entry(&self, data: AppendEntryUpdateData, source_id: TransceiverId) -> Result<(), UpdateError> {
         todo!()
     }
 
-    fn try_list_splice(&self, data: ListSpliceUpdateData) -> Result<Vec<ValueContainer>, UpdateError> {
+    fn try_clear(&self, source_id: TransceiverId) -> Result<Vec<ValueContainer>, UpdateError> {
+        todo!()
+    }
+
+    fn try_list_splice(&self, data: ListSpliceUpdateData, source_id: TransceiverId) -> Result<Vec<ValueContainer>, UpdateError> {
         todo!()
     }
 }
@@ -582,7 +587,7 @@ mod tests {
 
     #[test]
     fn default_types() {
-        let memory = &mut Memory::new();
+        let memory = &Memory::new();
         let val = Value::from(Integer::from(42));
         assert!(val.has_default_type(memory));
 

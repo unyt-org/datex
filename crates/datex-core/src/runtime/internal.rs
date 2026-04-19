@@ -548,7 +548,7 @@ impl RuntimeInternal {
         self: Rc<RuntimeInternal>,
         from_endpoint: &Endpoint,
         pointer_mapping: Vec<(RawLocalPointerAddress, RawLocalPointerAddress)>,
-        memory: &mut Memory,
+        memory: &Memory,
     ) -> Result<Vec<ValueContainer>, ExecutionError> {
         let mut pointer_borrow = self.moving_pointers.borrow_mut();
         let moving_pointers = pointer_borrow

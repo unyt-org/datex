@@ -12,6 +12,8 @@ use crate::{
     values::core_values::callable::CallableSignature,
 };
 use core::{fmt::Display, hash::Hash, ops::Deref, prelude::rust_2024::*};
+use crate::runtime::memory::Memory;
+use crate::types::shared_container_containing_nominal_type::SharedContainerContainingNominalType;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TypeDefinition {
@@ -28,6 +30,9 @@ pub enum TypeDefinition {
 
     /// type A = B
     Shared(SharedContainerContainingType), // integer
+
+    /// needed for nested types with multiple reference layers (e.g. 'mut 'mut shared X)
+    Type(Box<Type>),
 
     // FIXME DO we still need Type(Type) here?
     // Hopefully no, as nominal type definitions referring other types need
@@ -121,6 +126,9 @@ impl Hash for TypeDefinition {
                     marker.hash(state);
                 }
             }
+            TypeDefinition::Type(ty) => {
+                ty.hash(state);
+            }
         }
     }
 }
@@ -211,6 +219,9 @@ impl Display for TypeDefinition {
                     return_type_code,
                     yeet_type_code
                 )
+            }
+            TypeDefinition::Type(ty) => {
+                core::write!(f, "{}", ty)
             }
         }
     }
@@ -305,16 +316,16 @@ impl TypeDefinition {
     /// 42u8 -> integer
     /// 42 -> integer
     /// User/variant -> User
-    pub fn base_core_lib_type(&self) -> SharedContainerContainingType {
+    pub fn base_core_lib_type(&self, memory: &Memory) -> SharedContainerContainingNominalType {
         match &self {
             TypeDefinition::Literal(value) => {
-                core_lib_type(value.get_core_lib_type_pointer_id())
+                memory.get_core_type_reference(value.get_core_lib_type_pointer_id())
             }
             TypeDefinition::Union(_) => {
                 core::todo!("#322 handle union base type"); // generic type base type / type
             }
             TypeDefinition::Shared(reference) => reference
-                .with_collapsed_type_value(|ty| ty.base_core_lib_type()),
+                .with_collapsed_type_value(|ty| ty.base_core_lib_type(memory)),
             _ => core::panic!("Unhandled type definition for base type"),
         }
     }

@@ -44,16 +44,6 @@ impl Display for DIFObserveError {
 
 
 #[derive(Debug)]
-pub struct DIFReferenceNotFoundError;
-
-impl From<DIFReferenceNotFoundError> for UpdateError {
-    fn from(_: DIFReferenceNotFoundError) -> Self {
-        UpdateError::ReferenceNotFound
-    }
-}
-
-
-#[derive(Debug)]
 pub enum DIFApplyError {
     ExecutionError(ExecutionError),
     ReferenceNotFound,
@@ -75,12 +65,6 @@ impl Display for DIFApplyError {
 pub enum DIFCreatePointerError {
     ReferenceNotFound,
     ReferenceCreationError(SharedValueCreationError),
-}
-
-impl From<DIFReferenceNotFoundError> for DIFCreatePointerError {
-    fn from(_: DIFReferenceNotFoundError) -> Self {
-        DIFCreatePointerError::ReferenceNotFound
-    }
 }
 
 impl Display for DIFCreatePointerError {

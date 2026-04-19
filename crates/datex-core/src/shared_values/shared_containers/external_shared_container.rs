@@ -13,7 +13,7 @@ pub struct ExternalSharedContainer {
 impl ExternalSharedContainer {
     /// Create a new [ExternalSharedContainer] with a given [ExternalPointerAddress].
     /// The caller must ensure that the [ExternalPointerAddress] does not yet exist in the [Memory]
-    pub unsafe fn create_external_shared_container(shared_value_container: BaseSharedValueContainer, address: ExternalPointerAddress, memory: &mut Memory) -> ExternalSharedContainer {
+    pub unsafe fn create_external_shared_container(shared_value_container: BaseSharedValueContainer, address: ExternalPointerAddress, memory: &Memory) -> ExternalSharedContainer {
 
         if memory.has_reference(&PointerAddress::External(address.clone())) {
             panic!("Cannot create ExternalSharedContainer with address that already exists in memory");

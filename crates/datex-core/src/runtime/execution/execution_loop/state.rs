@@ -37,7 +37,7 @@ impl ExecutionLoopState {
     ) -> Self {
         let state = RuntimeExecutionState {
             runtime: runtime.clone(),
-            source_id: 0, // TODO #640: set proper source ID
+            source_id: TransceiverId(0), // TODO #640: set proper source ID
             stack,
             caller_metadata,
         };

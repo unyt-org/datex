@@ -27,8 +27,9 @@ use core::{
 };
 use serde::{Deserialize, de::DeserializeOwned, Serialize};
 use crate::runtime::memory::Memory;
+use crate::types::type_definition_with_metadata::TypeDefinitionWithMetadata;
 use crate::value_updates::errors::UpdateError;
-use crate::value_updates::update_data::{DeleteEntryUpdateData, ListSpliceUpdateData, ReplaceUpdateData, SetEntryUpdateData, Update};
+use crate::value_updates::update_data::{AppendEntryUpdateData, DeleteEntryUpdateData, ListSpliceUpdateData, ReplaceUpdateData, SetEntryUpdateData, Update};
 use crate::value_updates::update_handler::UpdateHandler;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -69,6 +70,31 @@ pub enum BorrowedValueKey<'a> {
     Index(i64),
     Value(Cow<'a, ValueContainer>),
 }
+
+impl<'a> From<ValueKey> for BorrowedValueKey<'a> {
+    fn from(owned: ValueKey) -> Self {
+        match owned {
+            ValueKey::Text(text) => BorrowedValueKey::Text(Cow::Owned(text)),
+            ValueKey::Index(index) => BorrowedValueKey::Index(index),
+            ValueKey::Value(value_container) => {
+                BorrowedValueKey::Value(Cow::Owned(value_container))
+            }
+        }
+    }
+}
+
+impl From<BorrowedValueKey<'_>> for ValueKey {
+    fn from(owned: BorrowedValueKey) -> Self {
+        match owned {
+            BorrowedValueKey::Text(text) => ValueKey::Text(text.into_owned()),
+            BorrowedValueKey::Index(index) => ValueKey::Index(index),
+            BorrowedValueKey::Value(value_container) => {
+                ValueKey::Value(value_container.into_owned())
+            }
+        }
+    }
+}
+
 
 impl<'a> BorrowedValueKey<'a> {
     pub fn with_value_container<R>(
@@ -145,6 +171,36 @@ impl From<ValueContainer> for BorrowedValueKey<'_> {
     }
 }
 
+impl<'a> From<&'a str> for ValueKey {
+    fn from(text: &'a str) -> Self {
+        ValueKey::Text(text.to_string())
+    }
+}
+
+impl From<ValueContainer> for ValueKey {
+    fn from(value_container: ValueContainer) -> Self {
+        ValueKey::Value(value_container)
+    }
+}
+
+impl From<i32> for ValueKey {
+    fn from(index: i32) -> Self {
+        ValueKey::Index(index as i64)
+    }
+}
+
+impl From<i64> for ValueKey {
+    fn from(index: i64) -> Self {
+        ValueKey::Index(index)
+    }
+}
+
+impl From<u32> for ValueKey {
+    fn from(index: u32) -> Self {
+        ValueKey::Index(index as i64)
+    }
+}
+
 impl<'a> BorrowedValueKey<'a> {
     pub fn try_as_text(&self) -> Option<&str> {
         if let BorrowedValueKey::Text(text) = self {
@@ -192,25 +248,6 @@ impl<'a> From<BorrowedValueKey<'a>> for ValueContainer {
             }
             BorrowedValueKey::Index(index) => ValueContainer::Local(index.into()),
             BorrowedValueKey::Value(value_container) => value_container.into_owned(),
-        }
-    }
-}
-
-#[derive(Debug)]
-pub enum OwnedValueKey {
-    Text(String),
-    Index(i64),
-    Value(ValueContainer),
-}
-
-impl<'a> From<OwnedValueKey> for BorrowedValueKey<'a> {
-    fn from(owned: OwnedValueKey) -> Self {
-        match owned {
-            OwnedValueKey::Text(text) => BorrowedValueKey::Text(Cow::Owned(text)),
-            OwnedValueKey::Index(index) => BorrowedValueKey::Index(index),
-            OwnedValueKey::Value(value_container) => {
-                BorrowedValueKey::Value(Cow::Owned(value_container))
-            }
         }
     }
 }
@@ -371,38 +408,29 @@ impl ValueContainer {
     }
 
     /// Returns the actual type of the contained value, resolving shared values if necessary.
-    pub fn actual_type(&self, memory: &mut Memory) -> Type {
+    pub fn actual_type(&self, memory: &Memory) -> Type {
         match self {
             ValueContainer::Local(local) => local.actual_type(memory).clone(),
             ValueContainer::Shared(shared) => shared.actual_type(memory).clone(),
         }
     }
 
-    /// Returns the actual type that describes the value container (e.g. integer or &&mut integer).
-    pub fn actual_container_type(&self) -> Type {
+    /// Returns the actual type that describes the value container (e.g. integer or 'mut shared mut integer).
+    pub fn actual_container_type(&self, memory: &Memory) -> Type {
         match self {
             ValueContainer::Local(value) => {
-                Type::new(*value.custom_type.clone(), TypeMetadata::default())
+                value.actual_type(memory)
             }
             ValueContainer::Shared(shared) => {
                 let inner_type =
-                    shared.value_container().actual_container_type();
-                Type::new(
-                    // when nesting references, we need to keep the reference information
-                    if inner_type.is_shared_type() {
-                        TypeDefinition::Type(Box::new(inner_type))
+                    shared.value_container().actual_container_type(memory);
+                Type::Alias(TypeDefinitionWithMetadata {
+                    definition: TypeDefinition::Type(Box::new(inner_type)),
+                    metadata: TypeMetadata::Shared {
+                        mutability: shared.container_mutability(),
+                        ownership: shared.ownership(),
                     }
-                    // for simple non-ref type, we can collapse the definition
-                    else {
-                        inner_type.type_definition
-                    },
-                    TypeMetadata::Shared {
-                        mutability: shared.mutability(),
-                        reference_mutability: shared
-                            .reference_mutability
-                            .clone(),
-                    },
-                )
+                })
             }
         }
     }
@@ -410,7 +438,7 @@ impl ValueContainer {
     /// Returns the allowed type of the value container
     /// For local values, this is the same as the actual type.
     /// For shared values, this is the defined allowed type
-    pub fn allowed_type(&self, memory: &mut Memory) -> Type {
+    pub fn allowed_type(&self, memory: &Memory) -> Type {
         match self {
             ValueContainer::Local(value) => value.actual_type(memory),
             ValueContainer::Shared(shared) => shared.allowed_type().clone(),
@@ -476,23 +504,27 @@ impl ValueContainer {
 }
 
 impl UpdateHandler for ValueContainer {
-    fn try_replace(&self, data: ReplaceUpdateData) -> Result<ValueContainer, UpdateError> {
+    fn try_replace(&self, data: ReplaceUpdateData, source_id: TransceiverId) -> Result<ValueContainer, UpdateError> {
         todo!()
     }
 
-    fn try_set_entry(&self, data: SetEntryUpdateData) -> Result<(), UpdateError> {
+    fn try_set_entry(&self, data: SetEntryUpdateData, source_id: TransceiverId) -> Result<(), UpdateError> {
         todo!()
     }
 
-    fn try_delete_entry(&self, data: DeleteEntryUpdateData) -> Result<ValueContainer, UpdateError> {
+    fn try_delete_entry(&self, data: DeleteEntryUpdateData, source_id: TransceiverId) -> Result<ValueContainer, UpdateError> {
         todo!()
     }
 
-    fn try_clear(&self) -> Result<Vec<ValueContainer>, UpdateError> {
+    fn try_append_entry(&self, data: AppendEntryUpdateData, source_id: TransceiverId) -> Result<(), UpdateError> {
         todo!()
     }
 
-    fn try_list_splice(&self, data: ListSpliceUpdateData) -> Result<Vec<ValueContainer>, UpdateError> {
+    fn try_clear(&self, source_id: TransceiverId) -> Result<Vec<ValueContainer>, UpdateError> {
+        todo!()
+    }
+
+    fn try_list_splice(&self, data: ListSpliceUpdateData, source_id: TransceiverId) -> Result<Vec<ValueContainer>, UpdateError> {
         todo!()
     }
 }

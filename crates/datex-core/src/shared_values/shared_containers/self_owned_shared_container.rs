@@ -2,6 +2,8 @@ use crate::runtime::memory::Memory;
 use crate::shared_values::pointer_address::{SelfOwnedPointerAddress, ExternalPointerAddress};
 use crate::shared_values::shared_containers::base_shared_value_container::BaseSharedValueContainer;
 use crate::shared_values::shared_containers::ExternalSharedContainer;
+use crate::values::value::Value;
+use crate::values::value_container::ValueContainer;
 
 /// A shared container with a pointer address owned by the local endpoint
 #[derive(Debug)]
@@ -38,6 +40,7 @@ impl SelfOwnedSharedContainer {
         &self.address
     }
     
+    
     /// Converts the [SelfOwnedSharedContainer] into an [ExternalSharedContainer],
     /// setting the provided [ExternalPointerAddress]
     ///
@@ -47,7 +50,7 @@ impl SelfOwnedSharedContainer {
     pub unsafe fn convert_to_external_container(
         self,
         external_address: ExternalPointerAddress,
-        memory: &mut Memory
+        memory: &Memory
     ) -> ExternalSharedContainer {
         unsafe {
             ExternalSharedContainer::create_external_shared_container(

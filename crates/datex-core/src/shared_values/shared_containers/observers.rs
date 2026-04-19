@@ -29,7 +29,8 @@ pub type ObserverCallback = Rc<dyn Fn(&Update)>;
 
 /// unique identifier for a transceiver (source of updates)
 /// 0-255 are reserved for DIF clients
-pub type TransceiverId = u32;
+#[derive(Debug, Default, Clone, Copy, Deserialize, Serialize, PartialEq, Eq, Hash)]
+pub struct TransceiverId(pub u32);
 
 #[derive(Debug, Clone, Copy, Default, Serialize, Deserialize)]
 pub struct ObserveOptions {
@@ -51,7 +52,7 @@ impl Observer {
         callback: F,
     ) -> Self {
         Observer {
-            transceiver_id: 0,
+            transceiver_id: TransceiverId(0),
             options: ObserveOptions::default(),
             callback: Rc::new(callback),
         }
@@ -166,7 +167,8 @@ mod tests {
     };
     use core::{assert_matches, cell::RefCell};
     use crate::runtime::memory::Memory;
-    use crate::value_updates::update_data::{Update, UpdateData};
+    use crate::value_updates::update_data::{ReplaceUpdateData, SetEntryUpdateData, Update, UpdateData};
+    use crate::value_updates::update_handler::UpdateHandler;
     use crate::values::value_container::ValueKey;
 
     /// Helper function to record DIF updates observed on a reference
@@ -196,7 +198,7 @@ mod tests {
 
     #[test]
     fn immutable_reference_observe_fails() {
-        let memory = &mut Memory::new();
+        let memory = &Memory::new();
 
         let mut r = BaseSharedValueContainer::new_with_inferred_allowed_type(
             42,
@@ -218,7 +220,7 @@ mod tests {
 
     #[test]
     fn observe_and_unobserve() {
-        let memory = &mut Memory::new();
+        let memory = &Memory::new();
 
         let mut r = BaseSharedValueContainer::new_with_inferred_allowed_type(
             42,
@@ -239,7 +241,7 @@ mod tests {
 
     #[test]
     fn observer_ids_incremental() {
-        let memory = &mut Memory::new();
+        let memory = &Memory::new();
 
         let mut r = BaseSharedValueContainer::new_with_inferred_allowed_type(
             42,
@@ -259,7 +261,7 @@ mod tests {
 
     #[test]
     fn observe_replace() {
-        let memory = &mut Memory::new();
+        let memory = &Memory::new();
 
         let mut int_ref =
             BaseSharedValueContainer::new_with_inferred_allowed_type(
@@ -268,7 +270,7 @@ mod tests {
                 memory,
             );
         let observed_updates =
-            record_dif_updates(&mut int_ref, 0, ObserveOptions::default());
+            record_dif_updates(&mut int_ref, TransceiverId(0), ObserveOptions::default());
 
         // Update the value of the reference
         int_ref
@@ -277,10 +279,10 @@ mod tests {
 
         // Verify the observed update matches the expected change
         let expected_update = Update {
-            source_id: 1,
-            data: UpdateData::Replace {
+            source_id: TransceiverId(1),
+            data: UpdateData::Replace(ReplaceUpdateData {
                 value: ValueContainer::from(43)
-            },
+            }),
         };
 
         assert_eq!(*observed_updates.borrow(), vec![expected_update]);
@@ -288,7 +290,7 @@ mod tests {
 
     #[test]
     fn observe_replace_same_transceiver() {
-        let memory = &mut Memory::new();
+        let memory = &Memory::new();
 
         let mut int_ref =
             BaseSharedValueContainer::new_with_inferred_allowed_type(
@@ -297,7 +299,7 @@ mod tests {
                 memory,
             );
         let observed_update =
-            record_dif_updates(&mut int_ref, 0, ObserveOptions::default());
+            record_dif_updates(&mut int_ref, TransceiverId(0), ObserveOptions::default());
 
         // Update the value of the reference
         int_ref
@@ -310,7 +312,7 @@ mod tests {
 
     #[test]
     fn observe_replace_same_transceiver_relay_own_updates() {
-        let memory = &mut Memory::new();
+        let memory = &Memory::new();
 
         let mut int_ref =
             BaseSharedValueContainer::new_with_inferred_allowed_type(
@@ -320,7 +322,7 @@ mod tests {
             );
         let observed_update = record_dif_updates(
             &mut int_ref,
-            0,
+            TransceiverId(0),
             ObserveOptions {
                 relay_own_updates: true,
             },
@@ -328,15 +330,17 @@ mod tests {
 
         // Update the value of the reference
         int_ref
-            .try_replace(0, None, 43)
+            .try_replace(ReplaceUpdateData {
+                value: ValueContainer::from(43),
+            }, TransceiverId(0))
             .expect("Failed to set value");
 
         // update triggered, same transceiver id but relay_own_updates enabled
         let expected_update = Update {
-            source_id: 0,
-            data: UpdateData::Replace {
+            source_id: TransceiverId(0),
+            data: UpdateData::Replace(ReplaceUpdateData {
                 value: ValueContainer::from(43)
-            },
+            }),
         };
 
         assert_eq!(*observed_update.borrow(), vec![expected_update]);
@@ -344,7 +348,7 @@ mod tests {
 
     #[test]
     fn observe_update_property() {
-        let memory = &mut Memory::new();
+        let memory = &Memory::new();
 
         let mut reference =
             BaseSharedValueContainer::new_with_inferred_allowed_type(
@@ -356,18 +360,21 @@ mod tests {
                 memory,
             );
         let observed_updates =
-            record_dif_updates(&mut reference, 0, ObserveOptions::default());
+            record_dif_updates(&mut reference, TransceiverId(0), ObserveOptions::default());
         // Update a property
         reference
-            .try_set_property(1, None, "a", "val".into())
+            .try_set_entry(SetEntryUpdateData {
+                key: "a".into(),
+                value: ValueContainer::from("val"),
+            }, TransceiverId(1))
             .expect("Failed to set property");
         // Verify the observed update matches the expected change
         let expected_update = Update {
-            source_id: 1,
-            data: UpdateData::SetEntry {
+            source_id: TransceiverId(1),
+            data: UpdateData::SetEntry(SetEntryUpdateData {
                 key: ValueKey::Text("a".to_string()),
                 value: ValueContainer::from("val"),
-            },
+            }),
         };
         assert_eq!(*observed_updates.borrow(), vec![expected_update]);
     }

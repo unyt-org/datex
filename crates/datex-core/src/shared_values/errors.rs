@@ -33,7 +33,7 @@ impl Display for SharedValueCreationError {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct IndexOutOfBoundsError {
     pub index: u32,
 }
@@ -55,9 +55,8 @@ impl Display for KeyNotFoundError {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum AccessError {
-    ImmutableReference,
     InvalidOperation(String),
     KeyNotFound(KeyNotFoundError),
     IndexOutOfBounds(IndexOutOfBoundsError),
@@ -88,9 +87,6 @@ impl Display for AccessError {
         match self {
             AccessError::MapAccessError(err) => {
                 write!(f, "Map access error: {}", err)
-            }
-            AccessError::ImmutableReference => {
-                write!(f, "Cannot modify an immutable reference")
             }
             AccessError::InvalidOperation(op) => {
                 write!(f, "Invalid operation: {}", op)

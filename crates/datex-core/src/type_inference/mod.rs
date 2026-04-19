@@ -57,6 +57,7 @@ use crate::shared_values::shared_containers::{ReferenceMutability, SharedContain
 use crate::types::r#type::{Type};
 use crate::types::type_definition_with_metadata::{LocalMutability, TypeMetadata};
 use crate::types::type_match::TypeMatch;
+use crate::values::core_value::CoreValue;
 
 pub mod error;
 pub mod options;
@@ -80,7 +81,7 @@ impl From<InferOutcome> for Type {
 
 pub fn infer_expression_type_simple_error(
     rich_ast: &mut RichAst,
-    memory: &mut Memory,
+    memory: &Memory,
 ) -> Result<Type, SpannedTypeError> {
     match infer_expression_type(
         rich_ast,
@@ -99,7 +100,7 @@ pub fn infer_expression_type_simple_error(
 
 pub fn infer_expression_type_detailed_errors(
     rich_ast: &mut RichAst,
-    memory: &mut Memory,
+    memory: &Memory,
 ) -> Result<Type, DetailedTypeErrors> {
     match infer_expression_type(
         rich_ast,
@@ -118,7 +119,7 @@ pub fn infer_expression_type_detailed_errors(
 
 pub fn infer_expression_type_with_errors(
     rich_ast: &mut RichAst,
-    memory: &mut Memory,
+    memory: &Memory,
 ) -> Result<InferOutcome, SimpleOrDetailedTypeError> {
     infer_expression_type(
         rich_ast,
@@ -135,7 +136,7 @@ pub fn infer_expression_type_with_errors(
 fn infer_expression_type(
     rich_ast: &mut RichAst,
     options: InferExpressionTypeOptions,
-    memory: &mut Memory,
+    memory: &Memory,
 ) -> Result<InferOutcome, SimpleOrDetailedTypeError> {
     TypeInference::new(rich_ast.metadata.clone(), memory)
         .infer(&mut rich_ast.ast, options)
@@ -143,11 +144,11 @@ fn infer_expression_type(
 pub struct TypeInference<'a> {
     errors: Option<DetailedTypeErrors>,
     metadata: Rc<RefCell<AstMetadata>>,
-    memory: &'a mut Memory
+    memory: &'a Memory
 }
 
 impl<'a> TypeInference<'a> {
-    pub fn new(metadata: Rc<RefCell<AstMetadata>>, memory: &'a mut Memory) -> Self {
+    pub fn new(metadata: Rc<RefCell<AstMetadata>>, memory: &'a Memory) -> Self {
         TypeInference {
             metadata,
             errors: None,
@@ -394,10 +395,24 @@ impl<'a> TypeExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
             pointer_address,
             PointerAddress::External(ExternalPointerAddress::Builtin(_))
         ) {
-            mark_type(core_lib_type(
-                CoreLibTypeId::try_from(&pointer_address.to_owned())
-                    .unwrap(),
-            ))
+            // try to resolve as type reference from memory
+            let ty = if let Some(container) = self.memory.get_reference(pointer_address) {
+                container.with_collapsed_value(|value| {
+                    if let CoreValue::Type(ty) = &value.inner {
+                        Some(ty.clone())
+                    }
+                    else { None }
+                })
+            }
+            else { None };
+
+            match ty {
+                Some(ty) => mark_type(ty),
+                None => Err(SpannedTypeError {
+                    error: TypeError::ReferenceToNonTypeValue,
+                    span: None,
+                })
+            }
         } else {
             panic!("GetReference not supported yet")
         }
@@ -749,7 +764,7 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
             if let Some(specific) = &mut variable_declaration.type_annotation {
                 // FIXME #619 check if matches
                 let annotated_type = self.infer_type_expression(specific)?;
-                if !init_type.matches_type(&annotated_type) {
+                if !init_type.matches(&annotated_type) {
                     self.record_error(SpannedTypeError::new_with_span(
                         TypeError::AssignmentTypeMismatch {
                             expected: annotated_type.clone(),

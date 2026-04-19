@@ -1,5 +1,5 @@
 use core::ops::Deref;
-
+use serde::{Deserialize, Serialize};
 use crate::{
     libs::core::{
         core_lib_id::CoreLibId,
@@ -19,7 +19,7 @@ use crate::runtime::pointer_address_provider::SelfOwnedPointerAddressProvider;
 use crate::shared_values::shared_containers::SharedContainerMutability;
 use crate::values::value_container::ValueContainer;
 
-#[derive(Debug, PartialEq, Eq, Clone, Hash)]
+#[derive(Debug, PartialEq, Eq, Clone, Hash, Serialize)]
 pub struct SharedContainerContainingNominalType(SharedContainer);
 
 impl Deref for SharedContainerContainingNominalType {
@@ -36,11 +36,10 @@ impl From<SharedContainerContainingNominalType> for SharedContainer {
 }
 
 impl SharedContainerContainingNominalType {
-
     pub fn new_from_definition(
-        definition: NominalTypeDefinition, 
+        definition: NominalTypeDefinition,
         address_provider: &mut SelfOwnedPointerAddressProvider,
-        memory: &mut Memory
+        memory: &Memory
     ) -> SharedContainerContainingNominalType {
         SharedContainerContainingNominalType(SharedContainer::new_owned_with_inferred_allowed_type(
             CoreValue::NominalType(definition),
@@ -74,6 +73,31 @@ impl SharedContainerContainingNominalType {
         match CoreLibId::try_from(self.0.pointer_address()).ok()? {
             CoreLibId::Type(ty) => Some(ty),
             _ => None,
+        }
+    }
+}
+
+impl TryFrom<SharedContainer> for SharedContainerContainingNominalType {
+    type Error = ();
+    fn try_from(value: SharedContainer) -> Result<Self, Self::Error> {
+        // container must be immutable and contain nominal type
+        if value.container_mutability() == SharedContainerMutability::Immutable {
+            if value.with_collapsed_value_mut(|v| {
+                match &v.inner {
+                    CoreValue::NominalType(_) => {
+                        true
+                    },
+                    _ => false
+                }
+            }) {
+                Ok(SharedContainerContainingNominalType(value))
+            }
+            else {
+                Err(())
+            }
+        }
+        else {
+            Err(())
         }
     }
 }
