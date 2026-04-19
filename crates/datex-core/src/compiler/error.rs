@@ -4,7 +4,7 @@ use crate::{
     core_compiler::value_compiler::SharedValueCompilationError,
     parser::errors::{ParserError, SpannedParserError},
     serde::error::DeserializationError,
-    type_inference::error::{DetailedTypeErrors, SpannedTypeError, TypeError},
+    type_inference::error::{DetailedTypeErrors, SpannedTypeError},
 };
 
 use crate::{prelude::*, utils::maybe_action::ErrorCollector};
@@ -13,6 +13,7 @@ use core::{
     fmt::{Display, Formatter},
     ops::Range,
 };
+use crate::types::error::TypeError;
 
 #[derive(Debug, Clone)]
 pub enum CompilerError {

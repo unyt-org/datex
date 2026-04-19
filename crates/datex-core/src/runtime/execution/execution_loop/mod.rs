@@ -69,7 +69,7 @@ use crate::shared_values::shared_containers::{SelfOwnedSharedContainer, SharedCo
 use crate::shared_values::shared_containers::{ExternalSharedContainer, OwnedSharedContainer, ReferencedSharedContainer, SharedContainer};
 use crate::shared_values::shared_containers::base_shared_value_container::BaseSharedValueContainer;
 use crate::shared_values::shared_containers::observers::TransceiverId;
-use crate::type_inference::error::TypeError;
+use crate::types::error::TypeError;
 use crate::types::r#type::{Type};
 use crate::types::type_definition::TypeDefinition;
 use crate::types::type_definition_with_metadata::{TypeDefinitionWithMetadata, TypeMetadata};

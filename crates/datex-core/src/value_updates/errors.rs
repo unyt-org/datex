@@ -1,6 +1,7 @@
 use core::fmt::Display;
 use crate::shared_values::errors::{AccessError};
-use crate::type_inference::error::TypeError;
+use crate::types::error::TypeError;
+use crate::prelude::*;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum UpdateError {

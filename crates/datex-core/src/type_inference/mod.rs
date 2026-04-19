@@ -3,7 +3,7 @@ use crate::{
     global::operators::{
         BinaryOperator, LogicalUnaryOperator, UnaryOperator,
     },
-    type_inference::{error::TypeError, options::ErrorHandling},
+    type_inference::{options::ErrorHandling},
     types::type_definition::TypeDefinition,
 };
 
@@ -56,6 +56,7 @@ use crate::libs::core::core_lib_id::{CoreLibId, CoreLibIdIndex};
 use crate::libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId, CoreLibVariantTypeId};
 use crate::runtime::memory::Memory;
 use crate::shared_values::shared_containers::{ReferenceMutability, SharedContainerOwnership};
+use crate::types::error::TypeError;
 use crate::types::r#type::{Type};
 use crate::types::type_definition_with_metadata::{LocalMutability, TypeDefinitionWithMetadata, TypeMetadata};
 use crate::types::type_match::TypeMatch;
@@ -1280,7 +1281,7 @@ mod tests {
         prelude::*
         ,
         type_inference::{
-            error::{SpannedTypeError, TypeError},
+            error::{SpannedTypeError},
             infer_expression_type_detailed_errors,
             infer_expression_type_simple_error,
             infer_expression_type_with_errors,
@@ -1306,6 +1307,7 @@ mod tests {
     use crate::runtime::memory::Memory;
     use crate::runtime::Runtime;
     use crate::shared_values::shared_containers::{OwnedSharedContainer, SharedContainer};
+    use crate::types::error::TypeError;
     use crate::types::nominal_type_definition::NominalTypeDefinition;
     use crate::types::r#type::{Type};
     use crate::types::shared_container_containing_nominal_type::SharedContainerContainingNominalType;
@@ -1685,7 +1687,7 @@ mod tests {
 
         if let Type::Alias(
             TypeDefinitionWithMetadata {
-                definition: TypeDefinition::Nested(box Type::Nominal(nominal)), 
+                definition: TypeDefinition::Nested(box Type::Nominal(nominal)),
                 ..
             }
         ) = var_type {

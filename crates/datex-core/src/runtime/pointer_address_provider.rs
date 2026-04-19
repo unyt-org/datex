@@ -1,7 +1,8 @@
-use std::io::Cursor;
 use crate::global::protocol_structures::instruction_data::RawRemotePointerAddress;
 use crate::shared_values::pointer_address::{ExternalPointerAddress, PointerAddress, SelfOwnedPointerAddress};
 use crate::values::core_values::endpoint::Endpoint;
+use binrw::io::Cursor;
+use crate::prelude::*;
 
 #[derive(Default, Debug)]
 pub struct SelfOwnedPointerAddressProvider {
