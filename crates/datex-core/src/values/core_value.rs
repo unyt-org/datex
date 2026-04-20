@@ -788,29 +788,29 @@ impl Neg for CoreValue {
 impl Display for CoreValue {
     fn fmt(&self, f: &mut Formatter) -> core::fmt::Result {
         match self {
-            CoreValue::Type(ty) => core::write!(f, "{ty}"),
-            CoreValue::Boolean(bool) => core::write!(f, "{bool}"),
-            CoreValue::TypedInteger(int) => core::write!(f, "{int}"),
-            CoreValue::TypedDecimal(decimal) => core::write!(f, "{decimal}"),
-            CoreValue::Text(text) => core::write!(f, "{text}"),
-            CoreValue::Null => core::write!(f, "null"),
-            CoreValue::Endpoint(endpoint) => core::write!(f, "{endpoint}"),
-            CoreValue::Map(map) => core::write!(f, "{map}"),
+            CoreValue::Type(ty) => write!(f, "{ty}"),
+            CoreValue::Boolean(bool) => write!(f, "{bool}"),
+            CoreValue::TypedInteger(int) => write!(f, "{int}"),
+            CoreValue::TypedDecimal(decimal) => write!(f, "{decimal}"),
+            CoreValue::Text(text) => write!(f, "{text}"),
+            CoreValue::Null => write!(f, "null"),
+            CoreValue::Endpoint(endpoint) => write!(f, "{endpoint}"),
+            CoreValue::Map(map) => write!(f, "{map}"),
             CoreValue::Range(range) => {
-                core::write!(f, "{}..{}", range.start, range.end)
+                write!(f, "{}..{}", range.start, range.end)
             }
-            CoreValue::Integer(integer) => core::write!(f, "{integer}"),
-            CoreValue::Decimal(decimal) => core::write!(f, "{decimal}"),
-            CoreValue::List(list) => core::write!(f, "{list}"),
-            CoreValue::Callable(_callable) => core::write!(f, "[[ callable ]]"),
-            CoreValue::NominalType(container) => todo!()
+            CoreValue::Integer(integer) => write!(f, "{integer}"),
+            CoreValue::Decimal(decimal) => write!(f, "{decimal}"),
+            CoreValue::List(list) => write!(f, "{list}"),
+            CoreValue::Callable(_callable) => write!(f, "[[ callable ]]"),
+            CoreValue::NominalType(container) => write!(f, "{container}"),
         }
     }
 }
 
 #[cfg(test)]
 /// This module contains tests for the CoreValue struct.
-/// Each CoreValue is a representation of a underlying native value.
+/// Each CoreValue is a representation of an underlying native value.
 /// The tests cover addition, casting, and type conversions.
 mod tests {
     use log::{debug, info};
@@ -820,7 +820,7 @@ mod tests {
     #[test]
     fn type_construct() {
         let a = CoreValue::from(42i32);
-        assert_eq!(a.default_nominal_type(&mut Memory::new()).to_string(), "integer/i32");
+        assert_eq!(a.default_nominal_type(&Memory::new()).with_collapsed_value(|v| v.to_string()), "integer/i32");
     }
 
     #[test]

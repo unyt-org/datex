@@ -30,6 +30,7 @@ use realhydroper_lsp::{
 
 use crate::prelude::*;
 use futures::io::{AsyncRead, AsyncWrite};
+use crate::libs::core::type_id::CoreLibBaseTypeId;
 use crate::types::literal_type_definition::LiteralTypeDefinition;
 use crate::types::r#type::Type;
 use crate::types::type_definition::TypeDefinition;
@@ -195,7 +196,7 @@ impl LanguageServer for LanguageServerBackend {
                         "{} {}: {}",
                         variable_metadata.shape,
                         name,
-                        variable_metadata.var_type.unwrap_or(Type::from(LiteralTypeDefinition::Unknown))
+                        variable_metadata.var_type.unwrap_or_else(|| self.compiler_workspace.borrow().memory().get_core_type(CoreLibBaseTypeId::Unknown))
                     )))
                 }
 
@@ -215,7 +216,7 @@ impl LanguageServer for LanguageServerBackend {
                         },
                         variable_metadata.shape,
                         name,
-                        variable_metadata.var_type.unwrap_or(Type::from(LiteralTypeDefinition::Unknown))
+                        variable_metadata.var_type.unwrap_or_else(|| self.compiler_workspace.borrow().memory().get_core_type(CoreLibBaseTypeId::Unknown))
                     )))
                 }
 
@@ -305,7 +306,7 @@ impl LanguageServer for LanguageServerBackend {
                     let file = workspace.get_file_mut(&uri).unwrap();
                     if let Some(RichAst { ast, .. }) = &mut file.rich_ast {
                         let mut finder = VariableDeclarationFinder::new(id);
-                        finder.visit_datex_expression(ast);
+                        finder.visit_datex_expression(ast).unwrap();
                         Ok(finder.variable_declaration_position.map(
                             |position| {
                                 GotoDefinitionResponse::Scalar(Location {

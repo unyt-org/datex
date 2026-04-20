@@ -34,6 +34,7 @@ pub enum TypeError {
     AssignmentToImmutableValue(String),
     AssignmentToConstant(String),
     ReferenceToNonTypeValue,
+    InvalidSharedReference,
 
     // can not assign value to variable of different type
     AssignmentTypeMismatch {
@@ -92,6 +93,12 @@ impl Display for TypeError {
                 write!(
                     f,
                     "Invalid reference to non-type value"
+                )
+            }
+            TypeError::InvalidSharedReference => {
+                write!(
+                    f,
+                    "Invalid shared reference to non-shared value"
                 )
             }
         }

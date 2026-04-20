@@ -21,6 +21,7 @@ use core::{
     mem,
 };
 use serde::Serialize;
+use crate::libs::core::type_id::CoreLibBaseTypeId;
 use crate::runtime::memory::Memory;
 use crate::runtime::pointer_address_provider::SelfOwnedPointerAddressProvider;
 use crate::serde::Deserialize;
@@ -261,7 +262,7 @@ impl OwnedSharedContainer {
                         inner: CoreValue::Null,
                         custom_type: None,
                     }),
-                    allowed_type: Type::from(LiteralTypeDefinition::Unit),
+                    allowed_type: memory.get_core_type(CoreLibBaseTypeId::Unit),
                     observers: Default::default(),
                     mutability: SharedContainerMutability::Immutable,
                 },

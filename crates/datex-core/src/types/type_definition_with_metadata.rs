@@ -187,6 +187,10 @@ impl TypeMatch for TypeDefinitionWithMetadata {
 
 impl Display for TypeDefinitionWithMetadata {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "{} {}", self.metadata, self.definition)
+        let metadata_str = self.metadata.to_string();
+        if !metadata_str.is_empty() {
+            write!(f, "{} ", metadata_str)?;
+        }
+        write!(f, "{}", self.definition)
     }
 }

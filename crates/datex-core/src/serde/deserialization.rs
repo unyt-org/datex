@@ -23,6 +23,7 @@ impl<'de, 'ctx> DeserializeSeed<'de> for DeserializationContext<'ctx, ValueConta
 }
 
 
+
 #[cfg(test)]
 mod tests {
     use crate::libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId};
@@ -38,11 +39,11 @@ mod tests {
         let outer = DeserializationContext::<ValueContainer>::new(&memory)
             .deserialize(&mut serde_json::Deserializer::from_str(json))
             .unwrap();
-        
+
         println!("{:#?}", outer);
 
         assert_eq!(
-            outer, 
+            outer,
             ValueContainer::Shared(SharedContainer::Referenced(memory.get_core_reference(CoreLibTypeId::Base(CoreLibBaseTypeId::Integer)).clone()))
         );
 

@@ -28,16 +28,13 @@ pub enum TypeDefinition {
     /// e.g. [integer], [integer; 5], Map<string, integer>
     Collection(CollectionTypeDefinition),
 
-    /// typealias A = B
+    /// typealias A = {b: B} // $A
+    /// typealias B = {a: $A}
     Shared(SharedContainerContainingType), // integer
-
+    
     /// needed for nested types with multiple reference layers (e.g. 'mut 'mut shared X)
     Nested(Box<Type>),
 
-    // FIXME DO we still need Type(Type) here?
-    // Hopefully no, as nominal type definitions referring other types need
-    // shared container containing types in the chain
-    //
     /// a callable type definition (signature)
     Callable(CallableSignature),
 
@@ -60,6 +57,9 @@ pub enum TypeDefinition {
 
     /// meta type for a type
     Type,
+
+    /// an internal type used for core types
+    Internal,
 }
 
 impl Hash for TypeDefinition {
@@ -123,6 +123,10 @@ impl Hash for TypeDefinition {
                 // no fields to hash
                 // TODO: can we do this?
                 0.hash(state);
+            }
+            TypeDefinition::Internal => {
+                // no fields to hash
+                1.hash(state);
             }
         }
     }
@@ -217,6 +221,9 @@ impl Display for TypeDefinition {
             }
             TypeDefinition::Type => {
                 core::write!(f, "Type")
+            }
+            TypeDefinition::Internal => {
+                core::write!(f, "[[Internal]]")
             }
         }
     }

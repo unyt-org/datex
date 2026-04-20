@@ -448,9 +448,14 @@ fn extract_static_value_from_ast(
 /// behaves like the format! macro.
 /// Example:
 /// ```
+/// use datex_core::runtime::Runtime;
 /// use datex_core::compile;
-/// compile!("4 + ?", 42);
-/// compile!("? + ?", 1, 2);
+/// let runtime: Runtime;
+///
+/// # runtime = Runtime::stub();
+/// compile!(runtime, "4 + ?", 42);
+/// compile!(runtime, "? + ?", 1, 2);
+/// ```
 #[macro_export]
 macro_rules! compile {
     ($runtime:expr, $fmt:literal $(, $arg:expr )* $(,)?) => {
@@ -3119,7 +3124,7 @@ pub mod tests {
             vec![
                 InstructionCode::GET_INTERNAL_SHARED_REF.into(),
                 // pointer id for integer
-                100,
+                3,
                 0,
                 0,
                 InstructionCode::UNBOUNDED_STATEMENTS_END.into(),

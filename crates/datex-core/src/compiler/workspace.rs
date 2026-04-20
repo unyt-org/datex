@@ -1,3 +1,4 @@
+use core::cell::Ref;
 use url::Url;
 
 use crate::{
@@ -12,6 +13,7 @@ use crate::{
     },
     runtime::Runtime,
 };
+use crate::runtime::memory::Memory;
 use crate::types::r#type::Type;
 
 /// Represents a file in the compiler workspace with its URL, cached content and AST.
@@ -89,5 +91,13 @@ impl CompilerWorkspace {
             self.runtime.clone()
         )?;
         Ok(rich_ast)
+    }
+    
+    pub fn runtime(&self) -> &Runtime {
+        &self.runtime
+    }
+    
+    pub fn memory(&self) -> Ref<'_, Memory> {
+        self.runtime.memory().borrow()
     }
 }

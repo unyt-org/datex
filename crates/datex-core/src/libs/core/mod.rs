@@ -61,25 +61,30 @@ impl CoreLibrary {
     /// Loads the core library into the provided [Memory] instance.
     /// Caller must guarantee that the core library was not already loaded into the [Memory] instance
     pub unsafe fn load_core_lib(memory: &mut Memory) {
-        let mapping = unsafe { Self::create_core_lib_entries(memory) }
-            .iter()
+        let type_entries = Self::generate_core_lib_types(memory).collect::<Vec<_>>();
+        for (_, type_entry) in type_entries.iter() {
+            memory.register_referenced_shared_container(type_entry);
+        }
+
+        let value_entries = Self::generate_core_lib_vals(memory).collect::<Vec<_>>();
+        for (_, value_entry) in value_entries.iter() {
+            memory.register_referenced_shared_container(value_entry);
+        }
+        
+        let entries = value_entries.iter().chain(type_entries.iter())
             .map(|(id, entry)| {
-                memory.register_referenced_shared_container(
-                    &entry.clone(),
-                );
                 (
                     id.name(),
                     ValueContainer::Shared(SharedContainer::Referenced(
                         entry.clone(),
                     )),
                 )
-            })
-            .collect::<Vec<(String, ValueContainer)>>();
-
+            }).collect::<Vec<_>>();
+        
         let core_struct = SharedContainer::Referenced(
             unsafe {
                 ReferencedSharedContainer::new_immutable_external_with_inferred_allowed_type(
-                    Map::from(mapping).into(),
+                    Map::from(entries).into(),
                     CoreLibValueId::Core.into(),
                     memory
                 )
@@ -90,60 +95,50 @@ impl CoreLibrary {
         );
     }
 
-    unsafe fn create_core_lib_entries(memory: &mut Memory) -> CoreLibMap {
-        unsafe {
-            Self::create_core_lib_types(memory)
-                .into_iter()
-                .chain(Self::create_core_lib_vals(memory))
-                .collect()
-        }
-    }
 
     /// Returns a map of all core library type values by id
-    unsafe fn create_core_lib_types(memory: &mut Memory) -> CoreLibMap {
-        let mut types = HashMap::<CoreLibId, ReferencedSharedContainer>::new();
-
-        for id in CoreLibBaseTypeId::iter() {
-            let base_type_def = unsafe { Self::create_core_type(id, memory) };
-            let base_type_def_container =
-                SharedContainer::Referenced(base_type_def.1.clone());
-            for variant_id in CoreLibVariantTypeId::variant_ids(&id) {
-                let (variant_id, variant_type) = unsafe { Self::create_type(
-                    NominalTypeDefinition::Variant {
-                        definition: LiteralTypeDefinition::Unit.into(),
-                        // Note: This is safe because we know that the base is a type
-                        base: unsafe {
-                            SharedContainerContainingType::new_unchecked(
-                                base_type_def_container.clone(),
-                            )
+    fn generate_core_lib_types(memory: &mut Memory) -> impl Iterator<Item = (CoreLibId, ReferencedSharedContainer)> {
+        gen {
+            for id in CoreLibBaseTypeId::iter() {
+                let base_type_def = unsafe { Self::create_core_type(id, memory) };
+                let base_type_def_container =
+                    SharedContainer::Referenced(base_type_def.1.clone());
+                for variant_id in CoreLibVariantTypeId::variant_ids(&id) {
+                    let (variant_id, variant_type) = unsafe { Self::create_type(
+                        NominalTypeDefinition::Variant {
+                            definition_type: TypeDefinition::Internal.into(),
+                            // Note: This is safe because we know that the base is a nominal type
+                            base: unsafe {
+                                SharedContainerContainingNominalType::new_unchecked(
+                                    base_type_def_container.clone(),
+                                )
+                            },
+                            variant_name: variant_id.variant_name(),
                         },
-                        variant_name: variant_id.variant_name(),
-                    },
-                    CoreLibTypeId::Variant(variant_id),
-                    memory,
-                )
-                };
-                types.insert(variant_id, variant_type);
+                        CoreLibTypeId::Variant(variant_id),
+                        memory,
+                    )
+                    };
+                    yield (variant_id, variant_type);
+                }
+
+                yield (base_type_def.0, base_type_def.1);
             }
-
-            types.insert(base_type_def.0.clone(), base_type_def.1.clone());
         }
-
-        types
     }
 
     /// Returns a map of all core library values (excluding type values) by id
-    unsafe fn create_core_lib_vals(memory: &mut Memory) -> HashMap<CoreLibId, ReferencedSharedContainer> {
-        unsafe {vec![Self::print(memory)]}
-            .into_iter()
-            .collect::<HashMap<CoreLibId, ReferencedSharedContainer>>()
+    unsafe fn generate_core_lib_vals(memory: &Memory) -> impl Iterator<Item = (CoreLibId, ReferencedSharedContainer)> {
+        gen {
+            yield Self::print(memory);
+        }
     }
 
     /// Creates a new core lib type via definition and id
     unsafe fn create_type(
         definition: NominalTypeDefinition,
         id: CoreLibTypeId,
-        memory: &mut Memory,
+        memory: &Memory,
     ) -> CoreLibTypeDefinition {
         let core_lib_id = CoreLibId::Type(id);
         (
@@ -160,7 +155,7 @@ impl CoreLibrary {
         )
     }
 
-    unsafe fn print(memory: &mut Memory) -> (CoreLibId, ReferencedSharedContainer) {
+    unsafe fn print(memory: &Memory) -> (CoreLibId, ReferencedSharedContainer) {
         (
             CoreLibId::Value(CoreLibValueId::Print),
             ReferencedSharedContainer::new_immutable_external_with_inferred_allowed_type(
@@ -171,7 +166,7 @@ impl CoreLibrary {
                         parameter_types: vec![],
                         rest_parameter_type: Some((
                             Some("values".to_string()),
-                            Box::new(Type::Alias(LiteralTypeDefinition::Unknown.into())),
+                            Box::new(memory.get_core_type(CoreLibBaseTypeId::Unknown)),
                         )),
                         return_type: None,
                         yeet_type: None,
@@ -234,7 +229,7 @@ impl CoreLibrary {
         unsafe {
             Self::create_type(
                 NominalTypeDefinition::Base {
-                    definition: LiteralTypeDefinition::Unit.into(),
+                    definition_type: TypeDefinition::Internal.into(),
                     name: pointer_id.to_string(),
                 },
                 CoreLibTypeId::Base(pointer_id),

@@ -63,6 +63,7 @@ use crate::global::protocol_structures::instructions::{Instruction, NestedInstru
 use crate::global::protocol_structures::regular_instructions::RegularInstruction;
 use crate::global::protocol_structures::type_instructions::TypeInstruction;
 use crate::core_compiler::injected_values::compile_injected_values;
+use crate::libs::core::type_id::CoreLibBaseTypeId;
 use crate::runtime::execution::macros::interrupt_with_values;
 use crate::shared_values::pointer_address::ExternalPointerAddress;
 use crate::shared_values::shared_containers::{SelfOwnedSharedContainer, SharedContainerInner, SharedContainerMutability};
@@ -1264,7 +1265,7 @@ pub fn inner_execution_loop(
                                     let referenced_container = yield_unwrap!(unsafe {ReferencedSharedContainer::try_new_external_from_base_container(
                                         yield_unwrap!(BaseSharedValueContainer::try_new(
                                             value,
-                                            Type::from(LiteralTypeDefinition::Unknown),  // TODO: allowed type
+                                            state.runtime.memory().borrow().get_core_type(CoreLibBaseTypeId::Unknown),
                                             shared_ref.container_mutability,
                                         )),
                                         pointer_address,

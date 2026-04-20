@@ -11,7 +11,7 @@ use syn::{
     punctuated::Punctuated,
     token::Comma,
 };
-
+use datex_core::runtime::Runtime;
 use crate::utils::expr_to_value_container;
 
 pub struct PrecompileInput {
@@ -35,11 +35,13 @@ impl Parse for PrecompileInput {
 }
 
 pub fn precompile(input: PrecompileInput) -> TokenStream {
+    let runtime = Runtime::stub();
     let PrecompileInput { script, args, .. } = input;
     let dxb = compile_template(
         &script,
         &args.iter().cloned().map(Some).collect::<Vec<_>>(),
         CompileOptions::default(),
+        runtime
     )
     .unwrap()
     .0;

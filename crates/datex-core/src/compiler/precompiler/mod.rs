@@ -44,14 +44,16 @@ use scope::NewScopeType;
 use scope_stack::PrecompilerScopeStack;
 use crate::ast::expressions::{CloneExpression, GetSharedRef, Unbox, UnboxAssignment, ValueAccessType};
 use crate::libs::core::core_lib_id::CoreLibId;
-use crate::libs::core::type_id::CoreLibTypeId;
+use crate::libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId};
 use crate::runtime::{Runtime, RuntimeInternal};
 use crate::shared_values::pointer_address::PointerAddress;
-use crate::shared_values::shared_containers::ReferenceMutability;
+use crate::shared_values::shared_containers::{ReferenceMutability, SharedContainer, SharedContainerMutability};
 use crate::types::literal_type_definition::LiteralTypeDefinition;
 use crate::types::nominal_type_definition::NominalTypeDefinition;
 use crate::types::r#type::{Type};
+use crate::types::shared_container_containing_type::SharedContainerContainingType;
 use crate::types::type_definition_with_metadata::{TypeDefinitionWithMetadata, TypeMetadata};
+use crate::values::core_value::CoreValue;
 
 pub struct Precompiler<'a> {
     ast_metadata: Rc<RefCell<AstMetadata>>,
@@ -208,7 +210,7 @@ impl<'a> Precompiler<'a> {
         if options.detailed_errors {
             let type_res = infer_expression_type_detailed_errors(
                 &mut rich_ast,
-                &mut *self.runtime.memory().borrow_mut(),
+                &self.runtime.memory().borrow(),
             );
 
             // append type errors to collected_errors if any
@@ -288,17 +290,27 @@ impl<'a> Precompiler<'a> {
 
         let type_def = match data.kind {
             TypeDeclarationKind::Nominal => {
+                let memory = self.runtime.memory().borrow();
                 Type::nominal(
                     NominalTypeDefinition::new_base(
-                        LiteralTypeDefinition::Unknown.into(),
+                        memory.get_core_type(CoreLibBaseTypeId::Unknown),
                         data.name.clone(),
                     ),
-                    &mut *self.runtime.pointer_address_provider().borrow_mut(),
-                    &mut *self.runtime.memory().borrow_mut(),
+                    &mut self.runtime.pointer_address_provider().borrow_mut(),
+                    &memory,
                 )
             },
             TypeDeclarationKind::Alias => {
-                Type::Alias(LiteralTypeDefinition::Unknown.into())
+                let memory = self.runtime.memory().borrow();
+                let unknown = memory.get_core_type(CoreLibBaseTypeId::Unknown);
+                Type::Alias(TypeDefinition::Shared(unsafe {
+                    SharedContainerContainingType::new_unchecked(SharedContainer::new_owned_with_inferred_allowed_type(
+                        CoreValue::Type(unknown),
+                        SharedContainerMutability::Mutable,
+                        &mut self.runtime.pointer_address_provider().borrow_mut(),
+                        &memory,
+                    ))
+                }).into())
             }
         };
 

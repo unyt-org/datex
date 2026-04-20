@@ -20,6 +20,8 @@ use core::{
 use serde::{Deserialize, Serialize};
 use crate::runtime::memory::Memory;
 use crate::runtime::pointer_address_provider::SelfOwnedPointerAddressProvider;
+use crate::shared_values::shared_containers::{ReferenceMutability, SharedContainerMutability, SharedContainerOwnership};
+use crate::types::type_definition_with_metadata::{LocalMutability, TypeMetadata};
 use crate::values::core_value::CoreValue;
 use crate::values::value_container::ValueContainer;
 
@@ -48,7 +50,9 @@ impl Type {
         match self {
             Type::Alias(type_def) => f(type_def),
             Type::Nominal(nominal_def) => {
-                nominal_def.with_collapsed_definition(|def| f(def.definition()))
+                nominal_def.with_collapsed_definition(|def|
+                    def.definition_type().with_collapsed_definition_with_metadata(f)
+                )
             }
         }
     }
@@ -70,6 +74,56 @@ impl Type {
             Type::Nominal(nominal_def) => {
                 todo!()
             }
+        }
+    }
+
+    /// Boxes the type in a new [TypeDefinition::Nested] with the provided metadata.
+    /// If the type is already a transparent wrapper (alias) with local metadata, it just updates the metadata without adding another nesting layer.
+    pub fn box_with_metadata(self, metadata: TypeMetadata) -> Type {
+        match self {
+            // if simple transparent with default local metadata, just update metadata without adding another nesting layer
+            Type::Alias(TypeDefinitionWithMetadata {metadata: TypeMetadata::Local { reference_mutability: Option::None, mutability: LocalMutability::Immutable }, definition}) => {
+                Type::Alias(TypeDefinitionWithMetadata {
+                    metadata,
+                    definition
+                })
+            },
+            // box otherwise
+            _ => Type::Alias(TypeDefinitionWithMetadata {
+                metadata,
+                definition: TypeDefinition::Nested(Box::new(self))
+            })
+        }
+    }
+    
+    /// Tries to convert the type into a shared reference type with the provided reference mutability. 
+    /// 
+    /// This only succeeds if the type is a already a type with [TypeMetadata::Shared] and the provided reference mutability is compatible with the ownership and mutability of the shared container.
+    pub fn try_convert_to_shared_ref(self, reference_mutability: ReferenceMutability) -> Result<Type, ()> {
+        match self {
+            // if simple transparent with default local metadata, just update metadata without adding another nesting layer
+            Type::Alias(TypeDefinitionWithMetadata {metadata: TypeMetadata::Shared { ownership, mutability }, definition}) => {
+                // max mutability that is allowed for the reference is determined by ownership and mutability of the shared container
+                let max_mutability = match &ownership {
+                    SharedContainerOwnership::Owned => match mutability {
+                        SharedContainerMutability::Immutable => ReferenceMutability::Immutable,
+                        SharedContainerMutability::Mutable => ReferenceMutability::Mutable,
+                    },
+                    SharedContainerOwnership::Referenced(reference_mutability) => *reference_mutability,
+                };
+                
+                if reference_mutability <= max_mutability {
+                    Ok(Type::Alias(TypeDefinitionWithMetadata {
+                        metadata: TypeMetadata::Shared { ownership: SharedContainerOwnership::Referenced(reference_mutability), mutability },
+                        definition
+                    }))
+                }
+                else {
+                    Err(())
+                }
+            },
+            // box otherwise
+            _ => Err(())
         }
     }
 }
@@ -315,7 +369,6 @@ impl TryFrom<&DatexExpressionData> for LiteralTypeDefinition {
 
     fn try_from(expr: &DatexExpressionData) -> Result<Self, Self::Error> {
         Ok(match expr {
-            DatexExpressionData::Null => LiteralTypeDefinition::Null,
             DatexExpressionData::Boolean(b) => {
                 LiteralTypeDefinition::Boolean(*b)
             }

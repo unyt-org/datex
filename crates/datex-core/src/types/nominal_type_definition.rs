@@ -1,56 +1,68 @@
+use core::fmt::Display;
 use crate::{
     prelude::*,
     types::{
-        shared_container_containing_type::SharedContainerContainingType,
         type_definition_with_metadata::TypeDefinitionWithMetadata,
     },
 };
+use crate::types::r#type::Type;
+use crate::types::shared_container_containing_nominal_type::SharedContainerContainingNominalType;
+
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub enum NominalTypeDefinition {
     Base {
-        definition: TypeDefinitionWithMetadata,
+        definition_type: Type,
         name: String,
     },
     Variant {
-        definition: TypeDefinitionWithMetadata,
-        base: SharedContainerContainingType,
+        definition_type: Type,
+        base: SharedContainerContainingNominalType,
         variant_name: String,
     },
 }
 
+impl Display for NominalTypeDefinition {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            NominalTypeDefinition::Base { name, .. } => write!(f, "{}", name),
+            NominalTypeDefinition::Variant { base, variant_name, .. } => write!(f, "{}/{}", base.with_collapsed_definition(|def| def.to_string()), variant_name),
+        }
+    }
+}
+
 impl NominalTypeDefinition {
     pub fn new_base(
-        definition: TypeDefinitionWithMetadata,
+        definition: Type,
         name: String,
     ) -> NominalTypeDefinition {
-        NominalTypeDefinition::Base { definition, name }
+        NominalTypeDefinition::Base { definition_type: definition, name }
     }
 
     pub fn new_variant(
-        definition: TypeDefinitionWithMetadata,
-        base: SharedContainerContainingType,
+        definition: Type,
+        base: SharedContainerContainingNominalType,
         variant_name: String,
     ) -> NominalTypeDefinition {
         NominalTypeDefinition::Variant {
-            definition,
+            definition_type: definition,
             base,
             variant_name,
         }
     }
 
-    /// Get the inner [TypeDefinition]
-    pub fn definition(&self) -> &TypeDefinitionWithMetadata {
+    /// Get the inner [Type]
+    pub fn definition_type(&self) -> &Type {
         match self {
-            NominalTypeDefinition::Base { definition, .. } => definition,
-            NominalTypeDefinition::Variant { definition, .. } => definition,
+            NominalTypeDefinition::Base { definition_type: definition, .. } => definition,
+            NominalTypeDefinition::Variant { definition_type: definition, .. } => definition,
         }
     }
 
-    /// Convert to the inner [TypeDefinition]
-    pub fn into_definition(self) -> TypeDefinitionWithMetadata {
+    /// Convert to the inner [Type]
+    pub fn into_definition_type(self) -> Type {
         match self {
-            NominalTypeDefinition::Base { definition, .. } => definition,
-            NominalTypeDefinition::Variant { definition, .. } => definition,
+            NominalTypeDefinition::Base { definition_type: definition, .. } => definition,
+            NominalTypeDefinition::Variant { definition_type: definition, .. } => definition,
         }
     }
 }

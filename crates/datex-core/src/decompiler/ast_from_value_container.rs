@@ -215,9 +215,6 @@ fn structural_type_definition_to_type_expression(type_definition: &TypeDefinitio
                 TypeExpressionData::Endpoint(endpoint.clone())
                     .with_default_span()
             }
-            LiteralTypeDefinition::Null => {
-                TypeExpressionData::Null.with_default_span()
-            }
             _ => TypeExpressionData::Text(format!(
                 "[[STRUCTURAL TYPE {:?}]]",
                 struct_type

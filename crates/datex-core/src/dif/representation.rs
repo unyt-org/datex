@@ -260,7 +260,6 @@ impl DIFTypeRepresentation {
                 )
             }
             TypeDefinition::Literal(literal_definition) => match literal_definition {
-                LiteralTypeDefinition::Null => DIFTypeRepresentation::Null,
                 LiteralTypeDefinition::Boolean(b) => {
                     DIFTypeRepresentation::Boolean(*b)
                 }

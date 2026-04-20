@@ -14,6 +14,12 @@ pub struct SpannedTypeError {
     pub span: Option<Range<usize>>,
 }
 
+impl PartialEq for SpannedTypeError {
+    fn eq(&self, other: &Self) -> bool {
+        self.error == other.error
+    }
+}
+
 impl SpannedTypeError {
     pub fn new_with_span(
         error: TypeError,
@@ -35,7 +41,7 @@ impl From<TypeError> for SpannedTypeError {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct DetailedTypeErrors {
     pub errors: Vec<SpannedTypeError>,
 }
@@ -52,7 +58,7 @@ impl DetailedTypeErrors {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum SimpleOrDetailedTypeError {
     Simple(SpannedTypeError),
     Detailed(DetailedTypeErrors),

@@ -11,7 +11,7 @@ use syn::{
     parse::{Parse, ParseStream},
     punctuated::Punctuated,
 };
-
+use datex_core::runtime::Runtime;
 use crate::utils::expr_to_value_container;
 
 enum Placeholder {
@@ -57,6 +57,7 @@ impl Parse for ExecuteMacroInput {
 }
 
 fn prepare_setup(input: ExecuteMacroInput) -> TokenStream {
+    let runtime = Runtime::stub();
     let script = input.program;
 
     let placeholder_count = script.chars().filter(|&c| c == '?').count();
@@ -87,7 +88,7 @@ fn prepare_setup(input: ExecuteMacroInput) -> TokenStream {
         .collect::<Vec<_>>();
 
     let dxb =
-        compile_template(&script, &placeholders, CompileOptions::default());
+        compile_template(&script, &placeholders, CompileOptions::default(), runtime);
     if let Err(e) = dxb {
         return syn::Error::new_spanned(
             script,
@@ -113,7 +114,7 @@ fn prepare_setup(input: ExecuteMacroInput) -> TokenStream {
         use datex_core::values::value_container::ValueContainer;
         use datex_core::collections::HashMap;
         use datex_core::runtime::execution::{ExecutionInput, ExecutionOptions};
-        use datex_core::runtime::RuntimeInternal;
+        use datex_core::runtime::Runtime;
         use datex_core::prelude::*;
 
         let mut stack_values: Vec<Option<ValueContainer>> = Vec::new();
@@ -121,7 +122,7 @@ fn prepare_setup(input: ExecuteMacroInput) -> TokenStream {
 
         let runtime_execution_stack = RuntimeExecutionStack { values: stack_values };
         let dxb_body: &'static [u8] = &[#(#dxb),*];
-        let runtime = Rc::new(RuntimeInternal::stub());
+        let runtime = Runtime::stub();
         ExecutionInput::new_with_stack(
             &dxb_body,
             ExecutionCallerMetadata::local_default(),

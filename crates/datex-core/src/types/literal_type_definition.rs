@@ -24,17 +24,9 @@ pub enum LiteralTypeDefinition {
     TypedInteger(TypedInteger),
     Decimal(Decimal),
     TypedDecimal(TypedDecimal),
-    Text(String),
+    Text(String), // TODO: use Text or String?
     Boolean(bool),
     Endpoint(Endpoint),
-    /// null
-    Null,
-    /// never
-    Never,
-    /// () - e.g. if a function has no return type
-    Unit,
-    /// unknown type
-    Unknown,
 }
 
 macro_rules! impl_from_typed_int {
@@ -201,18 +193,6 @@ impl LiteralTypeDefinition {
             LiteralTypeDefinition::Endpoint(_) => {
                 CoreLibTypeId::Base(CoreLibBaseTypeId::Endpoint)
             }
-            LiteralTypeDefinition::Null => {
-                CoreLibTypeId::Base(CoreLibBaseTypeId::Null)
-            }
-            LiteralTypeDefinition::Never => {
-                CoreLibTypeId::Base(CoreLibBaseTypeId::Never)
-            }
-            LiteralTypeDefinition::Unit => {
-                CoreLibTypeId::Base(CoreLibBaseTypeId::Unit)
-            }
-            LiteralTypeDefinition::Unknown => {
-                CoreLibTypeId::Base(CoreLibBaseTypeId::Unknown)
-            }
         }
     }
 }
@@ -238,17 +218,13 @@ impl Display for LiteralTypeDefinition {
             LiteralTypeDefinition::TypedDecimal(typed_decimal) => {
                 core::write!(f, "{}", typed_decimal)
             }
-            LiteralTypeDefinition::Text(text) => core::write!(f, "{}", text),
+            LiteralTypeDefinition::Text(text) => core::write!(f, "{}", Text::from(text.to_string())),
             LiteralTypeDefinition::Boolean(boolean) => {
                 core::write!(f, "{}", boolean)
             }
             LiteralTypeDefinition::Endpoint(endpoint) => {
                 core::write!(f, "{}", endpoint)
             }
-            LiteralTypeDefinition::Null => core::write!(f, "null"),
-            LiteralTypeDefinition::Never => core::write!(f, "never"),
-            LiteralTypeDefinition::Unit => core::write!(f, "()"),
-            LiteralTypeDefinition::Unknown => core::write!(f, "unknown"),
         }
     }
 }
