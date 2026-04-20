@@ -55,7 +55,7 @@ pub enum CoreValue {
     List(List),
     Map(Map),
     Type(Type),
-    NominalType(NominalTypeDefinition),
+    NominalTypeDefinition(NominalTypeDefinition),
     Callable(Callable),
     Range(Range),
 }
@@ -263,7 +263,7 @@ impl From<&CoreValue> for CoreLibTypeId {
             CoreValue::Range(_) => {
                 CoreLibTypeId::Base(CoreLibBaseTypeId::Range)
             },
-            CoreValue::NominalType(nominal_type) => {
+            CoreValue::NominalTypeDefinition(nominal_type) => {
                 CoreLibTypeId::Base(CoreLibBaseTypeId::Never) // TODO: what is the type of nominal type? do we even need to handle this?
             }
         }
@@ -292,15 +292,14 @@ impl CoreValue {
         memory.get_core_type_reference(CoreLibTypeId::from(self))
     }
 
-    // TODO #313: allow cast of any CoreValue to Type, as structural type can always be constructed?
-    // This method may be not required, the cast should be performed on the ValueContainer level
-    pub fn cast_to_type(&self) -> Option<&Type> {
-        match self {
-            CoreValue::Type(ty) => Some(ty),
-            _ => None,
-        }
+    /// Tries to get the current value as the specific [CoreValue] variant.
+    /// Does not perform any type conversion.
+    pub fn try_as<T>(self) -> Option<T> where T: TryFrom<CoreValue> {
+        T::try_from(self).ok()
     }
 
+    /// Casts the value to a [Text] value
+    /// Note: in contrast to [try_cast_to], [Text] values are not wrapped in quotation marks.
     pub fn cast_to_text(&self) -> Text {
         match self {
             CoreValue::Text(text) => text.clone(),
@@ -460,20 +459,6 @@ impl CoreValue {
         match self {
             CoreValue::Text(text) => Endpoint::try_from(text.as_str()).ok(),
             CoreValue::Endpoint(endpoint) => Some(endpoint.clone()),
-            _ => None,
-        }
-    }
-
-    pub fn cast_to_list(&self) -> Option<List> {
-        match self {
-            CoreValue::List(list) => Some(list.clone()),
-            _ => None,
-        }
-    }
-
-    pub fn cast_to_map(&self) -> Option<Map> {
-        match self {
-            CoreValue::Map(map) => Some(map.clone()),
             _ => None,
         }
     }
@@ -803,7 +788,7 @@ impl Display for CoreValue {
             CoreValue::Decimal(decimal) => write!(f, "{decimal}"),
             CoreValue::List(list) => write!(f, "{list}"),
             CoreValue::Callable(_callable) => write!(f, "[[ callable ]]"),
-            CoreValue::NominalType(container) => write!(f, "{container}"),
+            CoreValue::NominalTypeDefinition(container) => write!(f, "{container}"),
         }
     }
 }
@@ -836,7 +821,7 @@ mod tests {
 
     #[test]
     fn endpoint() {
-        let endpoint: Endpoint = CoreValue::from("@test").try_into().unwrap();
+        let endpoint: Endpoint = CoreValue::from("@test").cast_to_endpoint().unwrap();
         debug!("Endpoint: {endpoint}");
         assert_eq!(endpoint.to_string(), "@test");
     }

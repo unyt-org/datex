@@ -167,7 +167,7 @@ fn value_to_datex_expression(value: &Value) -> DatexExpressionData {
                 },
             ))
         },
-        CoreValue::NominalType(_) => {
+        CoreValue::NominalTypeDefinition(_) => {
             todo!()
         }
     }

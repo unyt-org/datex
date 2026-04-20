@@ -14,6 +14,7 @@ use crate::{
 use crate::runtime::execution::execution_input::ExecutionCallerMetadata;
 use crate::shared_values::pointer_address::PointerAddress;
 use crate::shared_values::shared_containers::{SharedContainer, SharedContainerMutability};
+use crate::values::core_values::list::List;
 
 #[tokio::test]
 #[cfg(feature = "compiler")]
@@ -184,8 +185,8 @@ pub async fn test_remote_shared_value_inject_ref() {
             let result = runtime_a
                 .execute("var x = shared 42; @test_b :: ['x + 1, 'x]", &[], None)
                 .await
-                .unwrap().unwrap().to_cloned_value();
-            let result_list = result.borrow().cast_to_list().unwrap();
+                .unwrap().unwrap();
+            let result_list = result.try_as::<List>().unwrap();
             let result_vec = result_list.as_vec();
 
             // 'x + 1

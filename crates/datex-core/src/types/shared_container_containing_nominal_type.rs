@@ -49,7 +49,7 @@ impl SharedContainerContainingNominalType {
         memory: &Memory
     ) -> SharedContainerContainingNominalType {
         SharedContainerContainingNominalType(SharedContainer::new_owned_with_inferred_allowed_type(
-            CoreValue::NominalType(definition),
+            CoreValue::NominalTypeDefinition(definition),
             SharedContainerMutability::Immutable,
             address_provider,
             memory
@@ -64,13 +64,13 @@ impl SharedContainerContainingNominalType {
     }
 
     /// Calls the provided callback with a reference to the recursively collapsed inner [NominalTypeDefinition] value of the shared container
-    /// The [SharedContainerContainingNominalType] guarantees that the inner value is always a [CoreValue::NominalType], so this method can never panic.
+    /// The [SharedContainerContainingNominalType] guarantees that the inner value is always a [CoreValue::NominalTypeDefinition], so this method can never panic.
     pub fn with_collapsed_definition<R>(
         &self,
         f: impl FnOnce(&NominalTypeDefinition) -> R,
     ) -> R {
         self.0.with_collapsed_value(|value| match &value.inner {
-            CoreValue::NominalType(ty) => f(ty),
+            CoreValue::NominalTypeDefinition(ty) => f(ty),
             _ => unreachable!("The constraint for SharedContainerContainingNominalType guarantees that the inner value is always a CoreValue::NominalType")
         })
     }
@@ -91,7 +91,7 @@ impl TryFrom<SharedContainer> for SharedContainerContainingNominalType {
         if value.container_mutability() == SharedContainerMutability::Immutable {
             if value.with_collapsed_value_mut(|v| {
                 match &v.inner {
-                    CoreValue::NominalType(_) => {
+                    CoreValue::NominalTypeDefinition(_) => {
                         true
                     },
                     _ => false

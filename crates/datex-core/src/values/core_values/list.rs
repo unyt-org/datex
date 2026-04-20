@@ -209,16 +209,6 @@ macro_rules! datex_list {
     };
 }
 
-impl TryFrom<CoreValue> for List {
-    type Error = ValueError;
-    fn try_from(value: CoreValue) -> Result<Self, Self::Error> {
-        if let Some(list) = value.cast_to_list() {
-            return Ok(list);
-        }
-        Err(ValueError::TypeConversionError)
-    }
-}
-
 impl From<List> for Vec<ValueContainer> {
     fn from(list: List) -> Self {
         list.0

@@ -924,24 +924,6 @@ impl From<u128> for TypedInteger {
     }
 }
 
-// new into
-impl<T: Into<ValueContainer>> TryFrom<Option<T>> for TypedInteger {
-    type Error = ValueError;
-    fn try_from(value: Option<T>) -> Result<Self, Self::Error> {
-        match value {
-            Some(v) => {
-                let integer: ValueContainer = v.into();
-                integer
-                    .to_cloned_value()
-                    .borrow()
-                    ._cast_to_integer_internal()
-                    .ok_or(ValueError::TypeConversionError)
-            }
-            None => Err(ValueError::IsVoid),
-        }
-    }
-}
-
 // FIXME #347 shall we allow negation of unsigned integers and wrap around?
 impl Neg for TypedInteger {
     type Output = Result<TypedInteger, ValueError>;

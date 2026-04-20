@@ -36,6 +36,7 @@ use serde_with::{DurationMilliSeconds, serde_as};
 use crate::core_compiler::value_compiler::compile_value;
 use crate::runtime::execution::execution_input::ExecutionCallerMetadata;
 use crate::runtime::Runtime;
+use crate::values::core_values::text::Text;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
@@ -555,21 +556,12 @@ impl ComHub {
                     ..
                 }) = value
                 {
-                    // FIXME #191 what should the access look like?
-                    // let endpoint: Endpoint = obj.get("endpoint").into();
-                    // let endpoint: Option<Endpoint> = obj.get("endpoint").try_into();
-                    // let endpoint: Endpoint = obj.get("endpoint").try_cast_to_endpoint().unwrap();
-                    // let endpoint: Endpoint = obj.get("endpoint").cast_to_endpoint();
-
-                    let endpoint: Endpoint = obj
+                    let endpoint = obj
                         .get("endpoint")
                         .unwrap()
-                        .to_cloned_value()
-                        .borrow()
-                        .cast_to_endpoint()
+                        .try_as()
                         .unwrap();
-                    let distance: TypedInteger =
-                        obj.get("distance").ok().cloned().try_into().unwrap();
+                    let distance: TypedInteger = obj.get("distance").ok().unwrap().try_as().unwrap();
 
                     let socket = obj.get("socket").unwrap();
                     let (interface_type, interface_name, channel, socket_uuid) =
@@ -581,9 +573,8 @@ impl ComHub {
                             let interface_type = socket_obj
                                 .get("interface_type")
                                 .unwrap()
-                                .to_cloned_value()
-                                .borrow()
-                                .cast_to_text()
+                                .try_as::<Text>()
+                                .unwrap()
                                 .0;
                             let interface_name =
                                 if let ValueContainer::Local(Value {
@@ -598,16 +589,14 @@ impl ComHub {
                             let channel = socket_obj
                                 .get("channel")
                                 .unwrap()
-                                .to_cloned_value()
-                                .borrow()
-                                .cast_to_text()
+                                .try_as::<Text>()
+                                .unwrap()
                                 .0;
                             let socket_uuid = socket_obj
                                 .get("socket_uuid")
                                 .unwrap()
-                                .to_cloned_value()
-                                .borrow()
-                                .cast_to_text()
+                                .try_as::<Text>()
+                                .unwrap()
                                 .0;
                             (
                                 interface_type,
@@ -622,22 +611,20 @@ impl ComHub {
                     let direction = obj
                         .get("direction")
                         .unwrap()
-                        .to_cloned_value()
-                        .borrow()
-                        .cast_to_text()
+                        .try_as::<Text>()
+                        .unwrap()
                         .0;
                     let fork_nr = obj
                         .get("fork_nr")
                         .unwrap()
-                        .to_cloned_value()
-                        .borrow()
-                        .cast_to_text()
+                        .try_as::<Text>()
+                        .unwrap()
                         .0;
                     let bounce_back: Boolean = obj
                         .get("bounce_back")
                         .ok()
-                        .cloned()
-                        .try_into()
+                        .unwrap()
+                        .try_as()
                         .unwrap();
 
                     hops.push(NetworkTraceHop {

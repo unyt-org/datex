@@ -18,6 +18,7 @@ use serde::ser::{
 use crate::{prelude::*, runtime::RuntimeInternal};
 use crate::runtime::execution::execution_input::ExecutionCallerMetadata;
 use crate::runtime::Runtime;
+use crate::values::core_values::endpoint::Endpoint;
 
 pub struct DatexSerializer {}
 
@@ -490,9 +491,7 @@ impl Serializer for &mut DatexSerializer {
         if name == "datex::endpoint" {
             let endpoint = value
                 .serialize(&mut *self)?
-                .to_cloned_value()
-                .borrow()
-                .cast_to_endpoint()
+                .try_as::<Endpoint>()
                 .unwrap();
             Ok(ValueContainer::from(endpoint))
         } else if name == "datex::value" {
@@ -845,9 +844,7 @@ mod tests {
         let result = result.unwrap();
         assert_structural_eq!(
             result
-                .to_cloned_value()
-                .borrow()
-                .cast_to_map()
+                .try_as::<Map>()
                 .unwrap()
                 .get("usize")
                 .unwrap(),

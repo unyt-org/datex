@@ -74,36 +74,6 @@ pub struct Endpoint {
     pub instance: EndpointInstance,
 }
 
-// new into
-impl<T: Into<ValueContainer>> TryFrom<Option<T>> for Endpoint {
-    type Error = ValueError;
-    fn try_from(value: Option<T>) -> Result<Self, Self::Error> {
-        if let Some(value) = value {
-            let container: ValueContainer = value.into();
-            if let Some(endpoint) =
-                container.to_cloned_value().borrow().cast_to_endpoint()
-            {
-                return Ok(endpoint);
-            }
-        }
-        Err(ValueError::TypeConversionError)
-    }
-}
-
-// also for ref
-// impl<T: Into<ValueContainer>> TryFrom<&Option<T>> for Endpoint {
-//     type Error = ValueError;
-//     fn try_from(value: &Option<T>) -> Result<Self, Self::Error> {
-//         if let Some(value) = value {
-//             let container: Ref<ValueContainer> = value.into();
-//             if let Some(endpoint) = container.cast_to_endpoint() {
-//                 return Ok(endpoint);
-//             }
-//         }
-//         Err(ValueError::TypeConversionError)
-//     }
-// }
-
 impl StructuralEq for Endpoint {
     fn structural_eq(&self, other: &Self) -> bool {
         self == other
@@ -129,15 +99,6 @@ impl TryFrom<String> for Endpoint {
     }
 }
 
-impl TryFrom<CoreValue> for Endpoint {
-    type Error = ValueError;
-    fn try_from(value: CoreValue) -> Result<Self, Self::Error> {
-        if let Some(endpoint) = value.cast_to_endpoint() {
-            return Ok(endpoint);
-        }
-        Err(ValueError::TypeConversionError)
-    }
-}
 
 #[derive(PartialEq, Debug, Clone, Eq)]
 pub enum InvalidEndpointError {

@@ -395,6 +395,15 @@ impl ValueContainer {
         unimplemented!("use with_collapsed_value")
     }
 
+    /// Tries to get the current collapsed value as a specific [CoreValue] variant.
+    /// Does not perform any type conversion.
+    /// Note: this performs a clone on the collapsed value
+    pub fn try_as<T>(&self) -> Option<T>  where T: TryFrom<CoreValue> {
+        self.with_collapsed_value(|value| {
+            value.inner.clone().try_as()
+        })
+    }
+
     /// Performs a clone used by the "clone" command
     /// Local values are just cloned normally
     /// For shared value, the inner value container is cloned (shared x -> x)

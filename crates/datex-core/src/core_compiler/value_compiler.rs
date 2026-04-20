@@ -332,7 +332,7 @@ pub fn append_value(
             append_value_container(context, (&*range.start).into())?;
             append_value_container(context, (&*range.end).into())?;
         }
-        CoreValue::NominalType(_) => {
+        CoreValue::NominalTypeDefinition(_) => {
             todo!()
         }
     })

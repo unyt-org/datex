@@ -145,7 +145,7 @@ impl CoreLibrary {
             core_lib_id,
             unsafe {
                 ReferencedSharedContainer::try_new_external(
-                    ValueContainer::from(CoreValue::NominalType(definition)),
+                    ValueContainer::from(CoreValue::NominalTypeDefinition(definition)),
                     id.into(),
                     SharedContainerMutability::Immutable,
                     Type::from(TypeDefinition::Type),

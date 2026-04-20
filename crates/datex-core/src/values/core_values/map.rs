@@ -627,18 +627,6 @@ where
     }
 }
 
-impl TryFrom<CoreValue> for Map {
-    type Error = String;
-
-    fn try_from(value: CoreValue) -> Result<Self, Self::Error> {
-        if let CoreValue::Map(map) = value {
-            Ok(map)
-        } else {
-            Err(format!("Expected CoreValue::Map, found {value:?}"))
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use crate::{
