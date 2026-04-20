@@ -1432,7 +1432,7 @@ mod tests {
             runtime.clone()
         )
         .expect("Precompilation failed");
-        infer_expression_type_simple_error(&mut rich_ast, &*runtime.memory().borrow())
+        infer_expression_type_simple_error(&mut rich_ast, &runtime.memory().borrow())
             .expect("Type inference failed");
         rich_ast
     }
@@ -1443,13 +1443,8 @@ mod tests {
     /// for "var x = 42; x", it returns the type of "x", as this is the last expression of the statements.
     /// For "var x = 42;", it returns the never type, as the statement is terminated.
     /// For "10 + 32", it returns the type of the binary operation.
-    fn infer_type_from_script(src: &str) -> Type {
-        match infer_from_script(src) {
-            InferOutcome::Ok(ty) => ty,
-            InferOutcome::OkWithErrors { ty, errors} => {
-                panic!("Type inference failed with error: {:#?}", errors);
-            }
-        }
+    fn infer_type_from_script_ignore_errors(src: &str) -> Type {
+        infer_from_script(src).to_type()
     }
 
     fn infer_from_script(src: &str) -> InferOutcome {
@@ -1489,7 +1484,7 @@ mod tests {
         let src = r#"
         var x = integer/u8
         "#;
-        let res = infer_type_from_script(src);
+        let res = infer_type_from_script_ignore_errors(src);
         assert_eq!(
             res,
             memory.get_core_type(CoreLibVariantTypeId::Integer(IntegerTypeVariant::U8))
@@ -1500,7 +1495,7 @@ mod tests {
         var x = integer;
         x/u8
         "#;
-        let res = infer_type_from_script(src);
+        let res = infer_type_from_script_ignore_errors(src);
         assert_eq!(
             res,
             memory.get_core_type(CoreLibVariantTypeId::Integer(IntegerTypeVariant::U8))
@@ -1510,7 +1505,7 @@ mod tests {
         let src = r#"
         typealias x = integer/u8
         "#;
-        let res = infer_type_from_script(src);
+        let res = infer_type_from_script_ignore_errors(src);
         assert_eq!(
             res,
             memory.get_core_type(CoreLibVariantTypeId::Integer(IntegerTypeVariant::U8))
@@ -1521,7 +1516,7 @@ mod tests {
         typealias x = integer;
         x/u8
         "#;
-        let res = infer_type_from_script(src);
+        let res = infer_type_from_script_ignore_errors(src);
         assert_eq!(
             res,
             memory.get_core_type(CoreLibVariantTypeId::Integer(IntegerTypeVariant::U8))
@@ -1556,7 +1551,7 @@ mod tests {
         )
         "#;
 
-        let res = infer_type_from_script(src);
+        let res = infer_type_from_script_ignore_errors(src);
         assert_eq!(
             res,
             Type::from(TypeDefinition::Callable(
@@ -1585,7 +1580,7 @@ mod tests {
         )
         "#;
 
-        let res = infer_type_from_script(src);
+        let res = infer_type_from_script_ignore_errors(src);
         assert_eq!(
             res,
             Type::from(TypeDefinition::Callable(
@@ -1748,22 +1743,22 @@ mod tests {
             panic!("Expected TypeReference");
         }
 
-        let inferred_type = infer_type_from_script("typealias X = integer/u8");
+        let inferred_type = infer_type_from_script_ignore_errors("typealias X = integer/u8");
         assert_eq!(
             inferred_type,
             memory.get_core_type(CoreLibVariantTypeId::Integer(IntegerTypeVariant::U8))
         );
 
-        let inferred_type = infer_type_from_script("typealias X = decimal");
+        let inferred_type = infer_type_from_script_ignore_errors("typealias X = decimal");
         assert_eq!(
             inferred_type,
             memory.get_core_type(CoreLibBaseTypeId::Decimal)
         );
 
-        let inferred_type = infer_type_from_script("typealias X = boolean");
+        let inferred_type = infer_type_from_script_ignore_errors("typealias X = boolean");
         assert_eq!(inferred_type, memory.get_core_type(CoreLibBaseTypeId::Boolean));
 
-        let inferred_type = infer_type_from_script("typealias X = text");
+        let inferred_type = infer_type_from_script_ignore_errors("typealias X = text");
         assert_eq!(inferred_type, memory.get_core_type(CoreLibBaseTypeId::Text));
     }
 
@@ -1820,7 +1815,7 @@ mod tests {
 
     #[test]
     fn infer_structural() {
-        let inferred = infer_type_from_script("42");
+        let inferred = infer_type_from_script_ignore_errors("42");
         assert_eq!(
             inferred,
             Type::from(
@@ -1828,7 +1823,7 @@ mod tests {
             )
         );
 
-        let inferred = infer_type_from_script("@endpoint");
+        let inferred = infer_type_from_script_ignore_errors("@endpoint");
         assert_eq!(
             inferred,
             Type::from(
@@ -1838,7 +1833,7 @@ mod tests {
             )
         );
 
-        let inferred = infer_type_from_script(r#""hello world""#);
+        let inferred = infer_type_from_script_ignore_errors(r#""hello world""#);
         assert_eq!(
             inferred,
             Type::from(
@@ -1846,7 +1841,7 @@ mod tests {
             )
         );
 
-        let inferred = infer_type_from_script("true");
+        let inferred = infer_type_from_script_ignore_errors("true");
         assert_eq!(
             inferred,
             Type::from(
@@ -1858,7 +1853,7 @@ mod tests {
     #[test]
     fn statements_expression() {
         let memory = &Memory::new();
-        let inferred = infer_type_from_script("10; 20; 30");
+        let inferred = infer_type_from_script_ignore_errors("10; 20; 30");
         assert_eq!(
             inferred,
             Type::from(
@@ -1866,13 +1861,13 @@ mod tests {
             )
         );
 
-        let inferred = infer_type_from_script("10; 20; 30;");
+        let inferred = infer_type_from_script_ignore_errors("10; 20; 30;");
         assert_eq!(inferred, memory.get_core_type(CoreLibBaseTypeId::Unit));
     }
 
     #[test]
     fn var_declaration() {
-        let inferred = infer_type_from_script("var x = 42");
+        let inferred = infer_type_from_script_ignore_errors("var x = 42");
         assert_eq!(
             inferred,
             Type::from(
@@ -1883,7 +1878,7 @@ mod tests {
 
     #[test]
     fn shared_containers() {
-        let inferred = infer_type_from_script("shared 42");
+        let inferred = infer_type_from_script_ignore_errors("shared 42");
         assert_eq!(
             inferred,
             Type::from(TypeDefinitionWithMetadata {
@@ -1895,7 +1890,7 @@ mod tests {
             })
         );
 
-        let inferred = infer_type_from_script("shared mut 42");
+        let inferred = infer_type_from_script_ignore_errors("shared mut 42");
         assert_eq!(
             inferred,
             Type::from(TypeDefinitionWithMetadata {
@@ -1910,7 +1905,7 @@ mod tests {
 
     #[test]
     fn shared_container_refs() {
-        let inferred = infer_type_from_script("'shared 42");
+        let inferred = infer_type_from_script_ignore_errors("'shared 42");
         assert_eq!(
             inferred,
             Type::from(TypeDefinitionWithMetadata {
@@ -1922,7 +1917,7 @@ mod tests {
             })
         );
 
-        let inferred = infer_type_from_script("'shared mut 42");
+        let inferred = infer_type_from_script_ignore_errors("'shared mut 42");
         assert_eq!(
             inferred,
             Type::from(TypeDefinitionWithMetadata {
@@ -1934,7 +1929,7 @@ mod tests {
             })
         );
 
-        let inferred = infer_type_from_script("'mut shared mut 42");
+        let inferred = infer_type_from_script_ignore_errors("'mut shared mut 42");
         assert_eq!(
             inferred,
             Type::from(TypeDefinitionWithMetadata {
@@ -2001,7 +1996,7 @@ mod tests {
     #[test]
     fn var_declaration_and_access() {
         let memory = &Memory::new();
-        let inferred = infer_type_from_script("var x = 42; x");
+        let inferred = infer_type_from_script_ignore_errors("var x = 42; x");
         assert_eq!(
             inferred,
             Type::from(
@@ -2009,7 +2004,7 @@ mod tests {
             )
         );
 
-        let inferred = infer_type_from_script("var y: integer = 100u8; y");
+        let inferred = infer_type_from_script_ignore_errors("var y: integer = 100u8; y");
         assert_eq!(inferred, memory.get_core_type(CoreLibBaseTypeId::Integer));
     }
 
@@ -2017,17 +2012,17 @@ mod tests {
     fn var_declaration_with_type_annotation() {
         let memory = &Memory::new();
         
-        let inferred = infer_type_from_script("var x: integer = 42");
+        let inferred = infer_type_from_script_ignore_errors("var x: integer = 42");
         assert_eq!(inferred, memory.get_core_type(CoreLibBaseTypeId::Integer));
-        let inferred = infer_type_from_script("var x: integer/u8 = 42");
+        let inferred = infer_type_from_script_ignore_errors("var x: integer/u8 = 42");
         assert_eq!(inferred, memory.get_core_type(CoreLibVariantTypeId::Integer(IntegerTypeVariant::U8)));
-        let inferred = infer_type_from_script("var x: decimal = 42");
+        let inferred = infer_type_from_script_ignore_errors("var x: decimal = 42");
         assert_eq!(inferred, memory.get_core_type(CoreLibBaseTypeId::Decimal));
 
-        let inferred = infer_type_from_script("var x: boolean = true");
+        let inferred = infer_type_from_script_ignore_errors("var x: boolean = true");
         assert_eq!(inferred, memory.get_core_type(CoreLibBaseTypeId::Boolean));
 
-        let inferred = infer_type_from_script(r#"var x: text = "hello""#);
+        let inferred = infer_type_from_script_ignore_errors(r#"var x: text = "hello""#);
         assert_eq!(inferred, memory.get_core_type(CoreLibBaseTypeId::Text));
     }
 
@@ -2037,7 +2032,7 @@ mod tests {
         var a = { b: 42 };
         a.b = 100
         "#;
-        let inferred_type = infer_type_from_script(src); // should be 100 of b property type
+        let inferred_type = infer_type_from_script_ignore_errors(src); // should be 100 of b property type
         assert_eq!(
             inferred_type,
             Type::from(
@@ -2092,17 +2087,17 @@ mod tests {
     #[test]
     fn binary_operation() {
         let memory = &Memory::new();
-        let inferred = infer_type_from_script("10 + 32");
+        let inferred = infer_type_from_script_ignore_errors("10 + 32");
         assert_eq!(inferred, memory.get_core_type(CoreLibBaseTypeId::Integer));
 
-        let inferred = infer_type_from_script(r#"10 + "test""#);
+        let inferred = infer_type_from_script_ignore_errors(r#"10 + "test""#);
         assert_eq!(inferred, memory.get_core_type(CoreLibBaseTypeId::Never));
     }
 
     #[test]
     fn infer_typed_literal() {
         let inferred_type =
-            infer_type_from_script("type X = 42u8");
+            infer_type_from_script_ignore_errors("type X = 42u8");
         assert_eq!(
             inferred_type,
             Type::from(
@@ -2111,7 +2106,7 @@ mod tests {
         );
 
         let inferred_type =
-            infer_type_from_script("type X = 42i32");
+            infer_type_from_script_ignore_errors("type X = 42i32");
         assert_eq!(
             inferred_type,
             Type::from(
@@ -2120,7 +2115,7 @@ mod tests {
         );
 
         let inferred_type =
-            infer_type_from_script("type X = 42.69f32");
+            infer_type_from_script_ignore_errors("type X = 42.69f32");
         assert_eq!(
             inferred_type,
             Type::from(
@@ -2133,7 +2128,7 @@ mod tests {
 
     #[test]
     fn infer_type_simple_literal() {
-        let inferred_type = infer_type_from_script("type X = 42");
+        let inferred_type = infer_type_from_script_ignore_errors("type X = 42");
         assert_eq!(
             inferred_type,
             Type::from(
@@ -2142,7 +2137,7 @@ mod tests {
         );
 
         let inferred_type =
-            infer_type_from_script("type X = 3/4");
+            infer_type_from_script_ignore_errors("type X = 3/4");
         assert_eq!(
             inferred_type,
             Type::from(
@@ -2153,7 +2148,7 @@ mod tests {
         );
 
         let inferred_type =
-            infer_type_from_script("type X = true");
+            infer_type_from_script_ignore_errors("type X = true");
         assert_eq!(
             inferred_type,
             Type::from(
@@ -2162,7 +2157,7 @@ mod tests {
         );
 
         let inferred_type =
-            infer_type_from_script("type X = false");
+            infer_type_from_script_ignore_errors("type X = false");
         assert_eq!(
             inferred_type,
             Type::from(
@@ -2171,7 +2166,7 @@ mod tests {
         );
 
         let inferred_type =
-            infer_type_from_script(r#"type X = "hello""#);
+            infer_type_from_script_ignore_errors(r#"type X = "hello""#);
         assert_eq!(
             inferred_type,
             Type::from(
@@ -2187,7 +2182,7 @@ mod tests {
         let memory = &Memory::new();
 
         let inferred_type =
-            infer_type_from_script("type X = integer/u8 & 42");
+            infer_type_from_script_ignore_errors("type X = integer/u8 & 42");
         assert_eq!(
             inferred_type,
             Type::from(TypeDefinition::Intersection(
@@ -2205,7 +2200,7 @@ mod tests {
     fn infer_union_type_expression() {
         let memory = &Memory::new();
 
-        let inferred_type = infer_type_from_script(
+        let inferred_type = infer_type_from_script_ignore_errors(
             "type X = integer/u8 | decimal",
         );
         assert_eq!(
@@ -2221,7 +2216,7 @@ mod tests {
 
     #[test]
     fn infer_empty_struct_type_expression() {
-        let inferred_type = infer_type_from_script("type X = {}");
+        let inferred_type = infer_type_from_script_ignore_errors("type X = {}");
         assert_eq!(
             inferred_type,
             Type::Alias(
@@ -2234,7 +2229,7 @@ mod tests {
     fn infer_struct_type_expression() {
         let memory = &Memory::new();
 
-        let inferred_type = infer_type_from_script(
+        let inferred_type = infer_type_from_script_ignore_errors(
             "type X = { a: integer/u8, b: decimal }",
         );
         assert_eq!(
