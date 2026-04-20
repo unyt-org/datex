@@ -9,18 +9,22 @@ pub use serde::Deserialize;
 pub mod deserializer;
 pub mod error;
 pub mod serializer;
+pub mod deserialization_context;
+pub mod deserialization;
+pub mod serialization;
 
-impl Serialize for ValueContainer {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        serializer.serialize_newtype_struct(
-            "datex::value",
-            &compile_value_container(self.into()).unwrap(),
-        )
-    }
-}
+// TODO: move
+// impl Serialize for ValueContainer {
+//     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+//     where
+//         S: serde::Serializer,
+//     {
+//         serializer.serialize_newtype_struct(
+//             "datex::value",
+//             &compile_value_container(self.into()).unwrap(),
+//         )
+//     }
+// }
 
 #[cfg(test)]
 #[cfg(feature = "decompiler")]
