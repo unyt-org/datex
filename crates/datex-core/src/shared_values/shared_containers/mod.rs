@@ -218,7 +218,7 @@ impl SharedContainer {
     pub fn with_collapsed_value<R>(&self, f: impl FnOnce(&Value) -> R) -> R {
         self.base_shared_container().with_collapsed_value(f)
     }
-    
+
     pub fn try_get_property<'a>(
         &self,
         key: impl Into<BorrowedValueKey<'a>>,
@@ -312,16 +312,6 @@ impl Clone for SharedContainer {
                 SharedContainer::Referenced(referenced.clone())
             }
         }
-    }
-}
-
-impl Serialize for SharedContainer {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer
-    {
-        // Only serialize the pointer address
-        self.pointer_address().serialize(serializer)
     }
 }
 
