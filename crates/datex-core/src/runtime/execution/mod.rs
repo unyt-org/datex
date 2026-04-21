@@ -799,6 +799,7 @@ mod tests {
         )
     }
 
+    // Bool tests
     #[test]
     fn test_and_true_true() {
         let lhs = ValueContainer::from(true);

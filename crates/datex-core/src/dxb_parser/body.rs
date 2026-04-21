@@ -472,6 +472,20 @@ pub fn iterate_instructions(
                             RegularInstruction::Divide
                         }
 
+                        // logical
+                        InstructionCode::AND => {
+                            next_instructions_stack.push_next_regular(2);
+                            RegularInstruction::And
+                        }
+                        InstructionCode::OR => {
+                            next_instructions_stack.push_next_regular(2);
+                            RegularInstruction::Or
+                        }
+                        InstructionCode::NOT => {
+                            next_instructions_stack.push_next_regular(1);
+                            RegularInstruction::Not
+                        }
+
                         InstructionCode::UNARY_MINUS => {
                             next_instructions_stack.push_next_regular(1);
                             RegularInstruction::UnaryMinus

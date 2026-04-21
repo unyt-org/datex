@@ -1,16 +1,29 @@
+//! The `Decimal` type is designed to represent any rational number, including integers and fractions. It supports a wide range of numeric operations and provides mechanisms for precise arithmetic and comparison.
+//!
+//! This type encapsulates various states of numbers:
+//! - `Finite`: A non-zero rational number.
+//! - `Nan`: Not-a-Number, representing undefined or unrepresentable results.
+//! - `Zero`: The number zero.
+//! - `NegZero`: Negative zero, which is considered equal to positive zero for most purposes.
+//! - `Infinity`: Positive infinity.
+//! - `NegInfinity`: Negative infinity.
+//!
+//! The `Decimal` type is implemented with a focus on precision and consistency across different operations. It leverages the `BigDecimal` and `BigRational` types from the `num` crate to handle large numbers and rational arithmetic efficiently.
+//!
+//! This type is particularly useful in financial calculations, scientific computing, and other domains where precision is crucial.
+
 use core::result::Result;
 pub mod rational;
 pub mod typed_decimal;
 pub mod utils;
-use crate::prelude::*;
 use crate::{
+    prelude::*,
     traits::{structural_eq::StructuralEq, value_eq::ValueEq},
     values::core_values::{
         decimal::typed_decimal::TypedDecimal, error::NumberParseError,
-        integer::Integer
+        integer::Integer,
     },
 };
-use num_traits::One;
 use bigdecimal::BigDecimal;
 use binrw::{
     BinRead, BinReaderExt, BinResult, BinWrite, Endian,
@@ -20,9 +33,11 @@ use core::{
     cmp::Ordering,
     fmt::Display,
     hash::Hash,
-    ops::{Add, Neg, Sub, Mul, Div, Rem, AddAssign},
+    ops::{Add, AddAssign, Div, Mul, Neg, Rem, Sub},
     str::FromStr,
 };
+use num_traits::One;
+
 use num::{BigInt, BigRational};
 use num_enum::TryFromPrimitive;
 use num_traits::{FromPrimitive, Zero};
@@ -259,7 +274,7 @@ impl Neg for Decimal {
 
     fn neg(self) -> Self::Output {
         use Decimal::*;
-        
+
         match self {
             Finite(value) => Finite(-value),
             Zero => NegZero,
@@ -278,7 +293,7 @@ impl Neg for &Decimal {
         use Decimal::*;
 
         match self {
-            Finite(value) => Finite(-value.clone()), 
+            Finite(value) => Finite(-value.clone()),
             Zero => NegZero,
             NegZero => Zero,
             Infinity => NegInfinity,
@@ -289,13 +304,13 @@ impl Neg for &Decimal {
 }
 
 // I will leave old version for backup, it cost nothing for compiler and runtime, bc it delete commented code while compiling
-/* 
+/*
 impl Decimal {
     fn add(lhs: &Self, rhs: &Self) -> Self {
         use Decimal::*;
-        
+
         match (lhs, rhs) {
-            (Finite(a), Finite(b)) => Self::from(a.clone() + b.clone()),    
+            (Finite(a), Finite(b)) => Self::from(a.clone() + b.clone()),
             (Zero, b) | (b, Zero) => b.clone(),
             (NegZero, b) | (b, NegZero) => b.clone(),
             (Infinity, NegInfinity) | (NegInfinity, Infinity) => Nan,
@@ -321,7 +336,7 @@ impl Add for Decimal {
         Decimal::add(&self, &rhs)
     }
 }
-*/ 
+*/
 
 // &D + &D must allocate, its just a fallback
 impl Add<&Decimal> for &Decimal {
@@ -340,7 +355,6 @@ impl Add<&Decimal> for &Decimal {
     }
 }
 
-
 // D + &D reuse left
 impl Add<&Decimal> for Decimal {
     type Output = Decimal;
@@ -348,10 +362,10 @@ impl Add<&Decimal> for Decimal {
         use Decimal::*;
         match (&mut self, rhs) {
             (Finite(a), Finite(b)) => {
-                *a += b; 
+                *a += b;
                 if a.is_zero() { Zero } else { self }
             }
-            (Zero | NegZero, b) => (*b).clone(), 
+            (Zero | NegZero, b) => (*b).clone(),
             (_, Zero | NegZero) => self,
             _ => &self + rhs,
         }
@@ -362,7 +376,7 @@ impl Add<&Decimal> for Decimal {
 impl Add<Decimal> for &Decimal {
     type Output = Decimal;
     fn add(self, rhs: Decimal) -> Self::Output {
-        rhs + self // Calls implementation #2
+        rhs + self
     }
 }
 
@@ -383,21 +397,52 @@ impl Add<Decimal> for Decimal {
     }
 }
 
+impl AddAssign<&Decimal> for Decimal {
+    fn add_assign(&mut self, rhs: &Decimal) {
+        // I use mem::replace to replace self with result, its perfect for AddAssign, much better than `add`.
+        let result = match (core::mem::replace(self, Decimal::Nan), rhs) {
+            (Decimal::Finite(mut a), Decimal::Finite(b)) => {
+                a += b;
+                if a.is_zero() {
+                    Decimal::Zero
+                } else {
+                    Decimal::Finite(a)
+                }
+            }
+            (Decimal::Zero | Decimal::NegZero, other) => other.clone(),
+            (a, Decimal::Zero | Decimal::NegZero) => a,
+            (Decimal::Infinity, Decimal::NegInfinity)
+            | (Decimal::NegInfinity, Decimal::Infinity) => Decimal::Nan,
+            (Decimal::Infinity, _) | (_, Decimal::Infinity) => {
+                Decimal::Infinity
+            }
+            (Decimal::NegInfinity, _) | (_, Decimal::NegInfinity) => {
+                Decimal::NegInfinity
+            }
+            _ => Decimal::Nan,
+        };
+
+        *self = result;
+    }
+}
+
+impl AddAssign<Decimal> for Decimal {
+    fn add_assign(&mut self, rhs: Decimal) {
+        self.add_assign(&rhs);
+    }
+}
 
 impl Decimal {
-    fn sub (lhs: &Decimal, rhs: &Decimal) -> Self {
+    fn sub(lhs: &Decimal, rhs: &Decimal) -> Self {
         use Decimal::*;
 
         match (lhs, rhs) {
-            (Finite(a), Finite(b)) => {
-                Self::from(a.clone() - b.clone())
-            }
+            (Finite(a), Finite(b)) => Self::from(a.clone() - b.clone()),
             (Zero, b) => -b.clone(),
             (a, Zero) => a.clone(),
             (NegZero, b) => -b.clone(),
             (a, NegZero) => a.clone(),
-            (Infinity, Infinity)
-            | (NegInfinity, NegInfinity) => Nan,
+            (Infinity, Infinity) | (NegInfinity, NegInfinity) => Nan,
             (_, Infinity) => NegInfinity,
             (Infinity, _) => Infinity,
             (Finite(_), NegInfinity) => Infinity,
@@ -405,7 +450,7 @@ impl Decimal {
             (Nan, _) | (_, Nan) => Nan,
         }
     }
-} 
+}
 
 impl Sub for &Decimal {
     type Output = Decimal;
@@ -431,12 +476,10 @@ impl Mul for Decimal {
 
         match (self, rhs) {
             (Finite(a), Finite(b)) => Self::from(a * b),
-            (NegZero, Zero)
-            | (Zero, NegZero) => Zero,
+            (NegZero, Zero) | (Zero, NegZero) => Zero,
             (Zero, b) | (b, Zero) => b,
             (NegZero, b) | (b, NegZero) => b,
-            (Infinity, NegInfinity)
-            | (NegInfinity, Infinity) => Nan,
+            (Infinity, NegInfinity) | (NegInfinity, Infinity) => Nan,
             (Infinity, _) | (_, Infinity) => Infinity,
             (NegInfinity, _) | (_, NegInfinity) => NegInfinity,
             (Nan, _) | (_, Nan) => Decimal::Nan,
@@ -453,10 +496,8 @@ impl Mul for &Decimal {
     }
 }
 
-impl Div for Decimal {
-    type Output = Self;
-
-    fn div(self, rhs: Self) -> Self::Output {
+impl Decimal {
+    fn div(self, rhs: Self) -> Self {
         use Decimal::*;
 
         match (self, rhs) {
@@ -465,14 +506,14 @@ impl Div for Decimal {
             (NegZero, _) => NegZero,
 
             // Rational division for finite values
-            (Finite(a), Finite(b)) => {
-                Finite(Rational::from_big_rational(a.big_rational / b.big_rational))
-            }
+            (Finite(a), Finite(b)) => Finite(Rational::from_big_rational(
+                a.big_rational / b.big_rational,
+            )),
 
             // Infinity rules
-            (Infinity, Infinity) 
-            | (NegInfinity, NegInfinity) 
-            | (Infinity, NegInfinity) 
+            (Infinity, Infinity)
+            | (NegInfinity, NegInfinity)
+            | (Infinity, NegInfinity)
             | (NegInfinity, Infinity) => Nan,
 
             (Finite(_), Infinity) => Zero,
@@ -480,18 +521,106 @@ impl Div for Decimal {
             (Infinity, Finite(_)) => Infinity,
             (NegInfinity, Finite(_)) => NegInfinity,
 
+            (Nan, _) | (_, Nan) => Nan,
+        }
+    }
+}
+
+impl Div<Decimal> for Decimal {
+    type Output = Decimal;
+
+    fn div(self, rhs: Decimal) -> Self::Output {
+        self.div(rhs)
+    }
+}
+
+impl Div<Decimal> for &Decimal {
+    type Output = Decimal;
+
+    fn div(self, rhs: Decimal) -> Self::Output {
+        self.clone().div(rhs)
+    }
+}
+
+impl Div<&Decimal> for Decimal {
+    type Output = Decimal;
+
+    fn div(self, rhs: &Decimal) -> Self::Output {
+        self.div(rhs.clone())
+    }
+}
+
+impl Div<&Decimal> for &Decimal {
+    type Output = Decimal;
+
+    fn div(self, rhs: &Decimal) -> Self::Output {
+        self.clone().div(rhs.clone())
+    }
+}
+
+impl Decimal {
+    fn rem(self, rhs: Self) -> Self {
+        use Decimal::*;
+        match (self, rhs) {
+            // x mod 0 = undefined bc we have to divide on 0
+            (_, Zero) | (_, NegZero) => Nan,
+            (Zero, _) => Zero,
+            (NegZero, _) => NegZero,
+
+            // Modulo for finite values
+            (Finite(a), Finite(b)) => Finite(Rational::from_big_rational(
+                a.big_rational % b.big_rational,
+            )),
+
+            // Infinity rules
+            (Infinity, Infinity)
+            | (NegInfinity, NegInfinity)
+            | (Infinity, NegInfinity)
+            | (NegInfinity, Infinity) => Nan,
+
+            // So, usually it must return a
+            (Finite(a), Infinity) => Finite(a),
+            (Finite(a), NegInfinity) => Finite(a),
+
+            // So, it must return undefined, bc Infinity represent boundless state, not real number
+            (Infinity, Finite(_)) => Nan,
+            (NegInfinity, Finite(_)) => Nan,
 
             (Nan, _) | (_, Nan) => Nan,
         }
     }
 }
 
-impl Div for &Decimal {
+// Rem is just a modulo from Math, like 12 mod 5 = 2; 2 is the Rest of dividing 12 by 5
+impl Rem<Decimal> for Decimal {
     type Output = Decimal;
 
-    fn div(self, rhs: Self) -> Self::Output {
-        // FIXME #334: Avoid cloning, as div should be applicable for refs only
-        Decimal::div(self.clone(), rhs.clone())
+    fn rem(self, rhs: Decimal) -> Self::Output {
+        self.rem(rhs)
+    }
+}
+
+impl Rem<Decimal> for &Decimal {
+    type Output = Decimal;
+
+    fn rem(self, rhs: Decimal) -> Self::Output {
+        self.clone().rem(rhs)
+    }
+}
+
+impl Rem<&Decimal> for Decimal {
+    type Output = Decimal;
+
+    fn rem(self, rhs: &Decimal) -> Self::Output {
+        self.rem(rhs.clone())
+    }
+}
+
+impl Rem<&Decimal> for &Decimal {
+    type Output = Decimal;
+
+    fn rem(self, rhs: &Decimal) -> Self::Output {
+        self.clone().rem(rhs.clone())
     }
 }
 
@@ -691,7 +820,7 @@ impl From<&TypedDecimal> for Decimal {
     fn from(typed: &TypedDecimal) -> Self {
         match typed {
             TypedDecimal::F32(f) => Decimal::from(f.into_inner()),
-            TypedDecimal::F64(f) => Decimal::from(f.into_inner()), 
+            TypedDecimal::F64(f) => Decimal::from(f.into_inner()),
             TypedDecimal::Decimal(d) => d.clone(), // #762 Implement Copy to avoid cloning. Then just use `*b`
         }
     }

@@ -1,15 +1,15 @@
 //! This is just a default `bool` type, same as in other languages
-//! 
+//!
 //! You can create `bool` in `if` condition with any variable type
-//! 
+//!
 //! # Example of usage in DATEX
-//! ```datex
+//! ```dx
 //! var test_bool = true;
 //! !test_bool # will output false
-//! 
+//!
 //! var test_var = "test";
 //! var is_true = test_var == "test"; # is_true become: true
-//! 
+//!
 //! test_bool or is_true # will output true, same as in Rust var1 || var2
 //! ```
 
@@ -32,7 +32,6 @@ impl Boolean {
     }
 }
 impl Boolean {
-    
     /// Swap `bool` value
     pub fn toggle(&mut self) {
         self.0 = !self.0;

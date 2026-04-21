@@ -1,3 +1,23 @@
+//! Typed integer is used for strict int definition. the difference between [`Integer`]
+//! and [`TypedInteger`] is strict definition, here is example
+//!
+//! # Example
+//! ```dx
+//! var test_num1 = 44u8 # same as rust unsigned 8 `u8` with value 44
+//! var test_num2 = -12i32 # same as rust signed 32 `i32` with value 12
+//! ```
+//!
+//! Any `uX` accept only positive non-floating dot numbers
+//!
+//! Any `iX` accept positive and negative numbers, but not with floating dot
+//!
+//! ## Available types
+//! ```dx
+//!    u8, u16, u32, u64, u128,
+//!    i8, i16, i32, i64, i128, IBig
+//! ```
+//! Work the same as in Rust with same limits like u8 has 0-255 limits and etc.
+
 use crate::values::{
     core_values::{
         error::NumberParseError,
@@ -17,7 +37,7 @@ use crate::{
 use core::{
     fmt::Display,
     hash::Hash,
-    ops::{Add, AddAssign, Neg, Sub, Mul, Div},
+    ops::{Add, AddAssign, Div, Mul, Neg, Sub},
     result::Result,
     unreachable,
 };
@@ -26,7 +46,7 @@ use serde::{Deserialize, Serialize};
 use strum::Display;
 use strum_macros::{AsRefStr, EnumIter, EnumString};
 
-/// The integer type variants to be used as a inline
+/// The integer type variants to be used as an inline
 /// definition in DATEX (such as 42u32 or -42i64).
 /// Note that changing the enum variants will change
 /// the way integers are parsed in DATEX scripts.
