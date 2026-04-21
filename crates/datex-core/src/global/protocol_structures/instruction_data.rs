@@ -369,7 +369,7 @@ impl From<PointerAddress> for RawPointerAddress {
             PointerAddress::External(ExternalPointerAddress::Builtin(bytes)) => {
                 RawPointerAddress::Internal(RawBuiltinPointerAddress { id: bytes })
             }
-            PointerAddress::EndpointOwned(SelfOwnedPointerAddress {address} ) => {
+            PointerAddress::SelfOwned(SelfOwnedPointerAddress {address} ) => {
                 RawPointerAddress::Local(RawLocalPointerAddress { bytes: address })
             }
         }

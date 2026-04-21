@@ -229,7 +229,7 @@ impl SharedContainer {
     pub fn pointer_address(&self) -> PointerAddress {
         match self {
             SharedContainer::Owned(owned) => {
-                PointerAddress::EndpointOwned(owned.pointer_address().clone())
+                PointerAddress::SelfOwned(owned.pointer_address().clone())
             }
             SharedContainer::Referenced(referenced) => {
                 referenced.pointer_address()

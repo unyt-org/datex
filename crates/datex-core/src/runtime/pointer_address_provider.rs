@@ -35,7 +35,7 @@ impl SelfOwnedPointerAddressProvider {
         {
             // TODO #639: check if it makes sense to take the last 5 bytes only here
             let last_bytes = &raw_address.id[raw_address.id.len() - 5..];
-            PointerAddress::owned(last_bytes.try_into().unwrap())
+            PointerAddress::self_owned(last_bytes.try_into().unwrap())
         } else {
             // combine raw_address.endpoint and raw_address.id to [u8; 26]
             let writer = Cursor::new(Vec::new());

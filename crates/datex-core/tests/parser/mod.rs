@@ -3439,7 +3439,7 @@ fn pointer_address() {
     assert_eq!(
         expr,
         DatexExpressionData::RequestSharedRef(RequestSharedRef {
-            address: PointerAddress::internal([0x12, 0x34, 0x56]),
+            address: PointerAddress::builtin([0x12, 0x34, 0x56]),
             mutability: ReferenceMutability::Immutable,
         })
     );
@@ -3450,7 +3450,7 @@ fn pointer_address() {
     assert_eq!(
         expr,
         DatexExpressionData::RequestSharedRef(RequestSharedRef {
-            address: PointerAddress::owned([0x12, 0x34, 0x56, 0x78, 0x9A]),
+            address: PointerAddress::self_owned([0x12, 0x34, 0x56, 0x78, 0x9A]),
             mutability: ReferenceMutability::Immutable,
         })
     );

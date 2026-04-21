@@ -230,7 +230,7 @@ impl OwnedSharedContainer {
     pub fn try_derive_mutable_reference(
         &self,
     ) -> Result<ReferencedSharedContainer, ()> {
-        if self.container_mutability() == SharedContainerMutability::Mutable {
+        if self.container_mutability() != SharedContainerMutability::Mutable {
             return Err(());
         }
 

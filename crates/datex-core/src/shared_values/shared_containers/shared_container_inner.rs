@@ -39,7 +39,7 @@ impl SharedContainerInner {
     /// Get the inner [PointerAddress].
     pub fn pointer_address(&self) -> PointerAddress {
         match self {
-            SharedContainerInner::EndpointOwned(endpoint_owned) => PointerAddress::EndpointOwned(endpoint_owned.address().clone()),
+            SharedContainerInner::EndpointOwned(endpoint_owned) => PointerAddress::SelfOwned(endpoint_owned.address().clone()),
             SharedContainerInner::External(external) => PointerAddress::External(external.address().clone()),
         }
     }

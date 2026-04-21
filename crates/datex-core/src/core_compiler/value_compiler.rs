@@ -522,7 +522,7 @@ pub fn append_get_shared_ref(
         PointerAddress::External(ExternalPointerAddress::Builtin(id)) => {
             append_get_internal_ref(context.cursor_mut(), id);
         }
-        PointerAddress::EndpointOwned(local_address) => {
+        PointerAddress::SelfOwned(local_address) => {
             append_instruction_code_new(
                 context.cursor_mut(),
                 InstructionCode::GET_LOCAL_SHARED_REF,

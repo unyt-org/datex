@@ -265,7 +265,7 @@ fn get_local_pointer_value(
     runtime_internal
         .memory
         .borrow()
-        .get_reference(&PointerAddress::owned(address.bytes))
+        .get_reference(&PointerAddress::self_owned(address.bytes))
         .cloned()
 }
 
