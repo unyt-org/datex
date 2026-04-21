@@ -205,7 +205,7 @@ impl Value {
         match self.inner {
             CoreValue::Map(ref mut map) => {
                 // If the value is a map, get the property
-                Ok(map.delete(key)?)
+                Ok(map.try_delete(key)?)
             }
             CoreValue::List(ref mut list) => {
                 if let Some(index) = key.into().try_as_index() {
@@ -238,7 +238,7 @@ impl Value {
         match self.inner {
             CoreValue::Map(ref mut map) => {
                 // If the value is a map, delete the property
-                map.delete(key)?;
+                map.try_delete(key)?;
                 Ok(())
             }
             CoreValue::List(ref mut list) => {
@@ -315,28 +315,45 @@ impl Value {
 }
 
 impl UpdateHandler for Value {
-    fn try_replace(&self, data: ReplaceUpdateData, source_id: TransceiverId) -> Result<ValueContainer, UpdateError> {
-        todo!()
+    fn try_replace(&mut self, data: ReplaceUpdateData, source_id: TransceiverId) -> Result<ValueContainer, UpdateError> {
+        match self.inner {
+            CoreValue::Map(ref mut map) => map.try_replace(data, source_id),
+            _ => todo!()
+        }
     }
 
-    fn try_set_entry(&self, data: SetEntryUpdateData, source_id: TransceiverId) -> Result<(), UpdateError> {
-        todo!()
+    fn try_set_entry(&mut self, data: SetEntryUpdateData, source_id: TransceiverId) -> Result<(), UpdateError> {
+        match self.inner {
+            CoreValue::Map(ref mut map) => map.try_set_entry(data, source_id),
+            _ => todo!()
+        }
     }
 
-    fn try_delete_entry(&self, data: DeleteEntryUpdateData, source_id: TransceiverId) -> Result<ValueContainer, UpdateError> {
-        todo!()
+    fn try_delete_entry(&mut self, data: DeleteEntryUpdateData, source_id: TransceiverId) -> Result<ValueContainer, UpdateError> {
+        match self.inner {
+            CoreValue::Map(ref mut map) => map.try_delete_entry(data, source_id),
+            _ => todo!()
+        }
     }
 
-    fn try_append_entry(&self, data: AppendEntryUpdateData, source_id: TransceiverId) -> Result<(), UpdateError> {
-        todo!()
+    fn try_append_entry(&mut self, data: AppendEntryUpdateData, source_id: TransceiverId) -> Result<(), UpdateError> {
+        match self.inner {
+            CoreValue::Map(ref mut map) => map.try_append_entry(data, source_id),
+            _ => todo!()
+        }
     }
 
-    fn try_clear(&self, source_id: TransceiverId) -> Result<Vec<ValueContainer>, UpdateError> {
-        todo!()
+    fn try_clear(&mut self, source_id: TransceiverId) -> Result<(), UpdateError> {
+        match self.inner {
+            CoreValue::Map(ref mut map) => map.try_clear(source_id),
+            _ => todo!()
+        }
     }
 
-    fn try_list_splice(&self, data: ListSpliceUpdateData, source_id: TransceiverId) -> Result<Vec<ValueContainer>, UpdateError> {
-        todo!()
+    fn try_list_splice(&mut self, data: ListSpliceUpdateData, source_id: TransceiverId) -> Result<Vec<ValueContainer>, UpdateError> {
+        match self.inner {
+            _ => todo!()
+        }
     }
 }
 

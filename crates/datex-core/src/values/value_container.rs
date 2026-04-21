@@ -389,10 +389,11 @@ impl ValueContainer {
         }
     }
 
-    /// Gets a cloned, collapsed inner value. Use [`ValueContainer::with_collapsed_value`] instead whenever possible
-    #[deprecated(note = "use with_collapsed_value")]
-    pub fn to_cloned_value(&self) -> Rc<RefCell<Value>> {
-        unimplemented!("use with_collapsed_value")
+    /// Gets a cloned, collapsed inner value. 
+    /// Use [ValueContainer::with_collapsed_value] instead whenever possible 
+    /// or match the [ValueContainer]
+    pub fn get_cloned_value(&self) -> Value {
+        self.with_collapsed_value(|value| value.clone())
     }
 
     /// Tries to get the current collapsed value as a specific [CoreValue] variant.
@@ -513,28 +514,58 @@ impl ValueContainer {
 }
 
 impl UpdateHandler for ValueContainer {
-    fn try_replace(&self, data: ReplaceUpdateData, source_id: TransceiverId) -> Result<ValueContainer, UpdateError> {
-        todo!()
+    fn try_replace(&mut self, data: ReplaceUpdateData, source_id: TransceiverId) -> Result<ValueContainer, UpdateError> {
+        match self {
+            ValueContainer::Local(value) => value.try_replace(data, source_id),
+            ValueContainer::Shared(reference) => {
+                reference.base_shared_container_mut().try_replace(data, source_id)
+            }
+        }
     }
 
-    fn try_set_entry(&self, data: SetEntryUpdateData, source_id: TransceiverId) -> Result<(), UpdateError> {
-        todo!()
+    fn try_set_entry(&mut self, data: SetEntryUpdateData, source_id: TransceiverId) -> Result<(), UpdateError> {
+        match self {
+            ValueContainer::Local(value) => value.try_set_entry(data, source_id),
+            ValueContainer::Shared(reference) => {
+                reference.base_shared_container_mut().try_set_entry(data, source_id)
+            }
+        }
     }
 
-    fn try_delete_entry(&self, data: DeleteEntryUpdateData, source_id: TransceiverId) -> Result<ValueContainer, UpdateError> {
-        todo!()
+    fn try_delete_entry(&mut self, data: DeleteEntryUpdateData, source_id: TransceiverId) -> Result<ValueContainer, UpdateError> {
+        match self {
+            ValueContainer::Local(value) => value.try_delete_entry(data, source_id),
+            ValueContainer::Shared(reference) => {
+                reference.base_shared_container_mut().try_delete_entry(data, source_id)
+            }
+        }
     }
 
-    fn try_append_entry(&self, data: AppendEntryUpdateData, source_id: TransceiverId) -> Result<(), UpdateError> {
-        todo!()
+    fn try_append_entry(&mut self, data: AppendEntryUpdateData, source_id: TransceiverId) -> Result<(), UpdateError> {
+        match self {
+            ValueContainer::Local(value) => value.try_append_entry(data, source_id),
+            ValueContainer::Shared(reference) => {
+                reference.base_shared_container_mut().try_append_entry(data, source_id)
+            }
+        }
     }
 
-    fn try_clear(&self, source_id: TransceiverId) -> Result<Vec<ValueContainer>, UpdateError> {
-        todo!()
+    fn try_clear(&mut self, source_id: TransceiverId) -> Result<(), UpdateError> {
+        match self {
+            ValueContainer::Local(value) => value.try_clear(source_id),
+            ValueContainer::Shared(reference) => {
+                reference.base_shared_container_mut().try_clear(source_id)
+            }
+        }
     }
 
-    fn try_list_splice(&self, data: ListSpliceUpdateData, source_id: TransceiverId) -> Result<Vec<ValueContainer>, UpdateError> {
-        todo!()
+    fn try_list_splice(&mut self, data: ListSpliceUpdateData, source_id: TransceiverId) -> Result<Vec<ValueContainer>, UpdateError> {
+        match self {
+            ValueContainer::Local(value) => value.try_list_splice(data, source_id),
+            ValueContainer::Shared(reference) => {
+                reference.base_shared_container_mut().try_list_splice(data, source_id)
+            }
+        }
     }
 }
 

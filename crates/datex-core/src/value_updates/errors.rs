@@ -12,9 +12,9 @@ pub enum UpdateError {
 }
 
 
-impl From<AccessError> for UpdateError {
-    fn from(err: AccessError) -> Self {
-        UpdateError::AccessError(err)
+impl<T: Into<AccessError>> From<T> for UpdateError {
+    fn from(err: T) -> Self {
+        UpdateError::AccessError(err.into())
     }
 }
 

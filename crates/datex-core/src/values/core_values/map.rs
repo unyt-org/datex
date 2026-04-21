@@ -17,6 +17,10 @@ use core::{
 };
 use indexmap::IndexMap;
 use crate::shared_values::errors::KeyNotFoundError;
+use crate::shared_values::shared_containers::observers::TransceiverId;
+use crate::value_updates::errors::UpdateError;
+use crate::value_updates::update_data::{AppendEntryUpdateData, DeleteEntryUpdateData, ListSpliceUpdateData, ReplaceUpdateData, SetEntryUpdateData};
+use crate::value_updates::update_handler::UpdateHandler;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Map {
@@ -124,7 +128,7 @@ impl Map {
     }
 
     /// Removes a key from the map, returning the value if it existed.
-    pub fn delete<'a>(
+    pub fn try_delete<'a>(
         &mut self,
         key: impl Into<BorrowedValueKey<'a>>,
     ) -> Result<ValueContainer, MapAccessError> {
@@ -144,7 +148,7 @@ impl Map {
     }
 
     /// Clears all entries in the map, returning an error if the map is not dynamic.
-    pub fn clear(&mut self) -> Result<(), MapAccessError> {
+    pub fn try_clear_inner(&mut self) -> Result<(), MapAccessError> {
         match self {
             Map::Dynamic(map) => {
                 map.clear();
@@ -213,6 +217,35 @@ impl Map {
         }
     }
 }
+
+impl UpdateHandler for Map {
+    fn try_replace(&mut self, data: ReplaceUpdateData, source_id: TransceiverId) -> Result<ValueContainer, UpdateError> {
+        todo!()
+    }
+
+    fn try_set_entry(&mut self, data: SetEntryUpdateData, source_id: TransceiverId) -> Result<(), UpdateError> {
+        let key = BorrowedValueKey::from(data.key);
+        self.try_set(key, data.value).map_err(|err| UpdateError::AccessError(err.into()))
+    }
+
+    fn try_delete_entry(&mut self, data: DeleteEntryUpdateData, source_id: TransceiverId) -> Result<ValueContainer, UpdateError> {
+        let key = BorrowedValueKey::from(data.key);
+        self.try_delete(key).map_err(|err| UpdateError::AccessError(err.into()))
+    }
+
+    fn try_append_entry(&mut self, data: AppendEntryUpdateData, source_id: TransceiverId) -> Result<(), UpdateError> {
+        Err(UpdateError::InvalidUpdate)
+    }
+
+    fn try_clear(&mut self, source_id: TransceiverId) -> Result<(), UpdateError> {
+        self.try_clear_inner().map_err(|err| UpdateError::AccessError(err.into()))
+    }
+
+    fn try_list_splice(&mut self, data: ListSpliceUpdateData, source_id: TransceiverId) -> Result<Vec<ValueContainer>, UpdateError> {
+        Err(UpdateError::InvalidUpdate)
+    }
+}
+
 
 #[derive(Clone)]
 pub enum BorrowedMapKey<'a> {
