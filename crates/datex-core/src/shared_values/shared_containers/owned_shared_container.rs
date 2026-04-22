@@ -24,9 +24,7 @@ use serde::Serialize;
 use crate::libs::core::type_id::CoreLibBaseTypeId;
 use crate::runtime::memory::Memory;
 use crate::runtime::pointer_address_provider::SelfOwnedPointerAddressProvider;
-use crate::serde::Deserialize;
-use crate::shared_values::pointer_address::PointerAddress;
-use crate::types::literal_type_definition::LiteralTypeDefinition;
+use crate::shared_values::shared_containers::errors::{UnexpectedImmutableSharedContainerError, UnexpectedSharedContainerOwnershipError};
 use crate::types::r#type::Type;
 
 /// Wrapper struct for an owned shared value (i.e. `shared X`)
@@ -229,9 +227,9 @@ impl OwnedSharedContainer {
     /// Returns an [Err] if the container itself is not mutable
     pub fn try_derive_mutable_reference(
         &self,
-    ) -> Result<ReferencedSharedContainer, ()> {
+    ) -> Result<ReferencedSharedContainer, UnexpectedImmutableSharedContainerError> {
         if self.container_mutability() != SharedContainerMutability::Mutable {
-            return Err(());
+            return Err(UnexpectedImmutableSharedContainerError)
         }
 
         // new_mutable_unchecked is safe to call here since we checked the container mutability before

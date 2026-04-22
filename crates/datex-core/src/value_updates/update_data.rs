@@ -3,6 +3,7 @@ use crate::serde::Deserialize;
 use crate::shared_values::shared_containers::observers::TransceiverId;
 use crate::values::value_container::{ValueContainer, ValueKey};
 use crate::prelude::*;
+use crate::value_updates::errors::UpdateError;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
@@ -74,3 +75,31 @@ impl Update {
         Update { source_id, data }
     }
 }
+
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub enum UpdateReturn {
+    None,
+    SingleValue(ValueContainer),
+    MultipleValues(Vec<ValueContainer>),
+}
+
+impl From<()> for UpdateReturn {
+    fn from(_: ()) -> Self {
+        UpdateReturn::None
+    }
+}
+
+impl From<ValueContainer> for UpdateReturn {
+    fn from(value: ValueContainer) -> Self {
+        UpdateReturn::SingleValue(value)
+    }
+}
+
+impl From<Vec<ValueContainer>> for UpdateReturn {
+    fn from(items: Vec<ValueContainer>) -> Self {
+        UpdateReturn::MultipleValues(items)
+    }
+}
+
+pub type UpdateResult = Result<UpdateReturn, UpdateError>;

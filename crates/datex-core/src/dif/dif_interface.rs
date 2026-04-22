@@ -10,13 +10,13 @@ use crate::{
 use core::{fmt::Display, result::Result};
 
 use crate::{prelude::*, shared_values::pointer_address::PointerAddress};
+use crate::dif::cache::DIFSharedContainerCache;
 use crate::shared_values::errors::{AccessError, AssignmentError, SharedValueCreationError};
 use crate::shared_values::pointer_address::SelfOwnedPointerAddress;
 use crate::shared_values::shared_containers::SharedContainer;
-use crate::types::error::TypeError;
 use crate::types::r#type::Type;
 use crate::value_updates::errors::UpdateError;
-use crate::value_updates::update_data::UpdateData;
+use crate::value_updates::update_data::{Update, UpdateData, UpdateResult, UpdateReturn};
 use crate::values::value_container::ValueContainer;
 
 #[derive(Debug)]
@@ -100,64 +100,70 @@ impl From<SharedValueCreationError> for DIFCreatePointerError {
     }
 }
 
-pub trait DIFInterface {
-    /// Applies a DIF update to the value at the given pointer address.
-    fn update(
-        &self,
-        source_id: TransceiverId,
-        address: PointerAddress,
-        update: &UpdateData,
-    ) -> Result<(), UpdateError>;
-
-    /// Executes an apply operation, applying the `value` to the `callee`.
-    fn apply(
-        &self,
-        callee: ValueContainer,
-        value: ValueContainer,
-    ) -> Result<ValueContainer, DIFApplyError>;
-
-    /// Creates a new owned local pointer and stores it in memory.
-    /// Returns the address of the newly created pointer.
-    fn create_pointer(
-        &self,
-        value: ValueContainer,
-        allowed_type: Option<Type>,
-        mutability: SharedContainerMutability,
-    ) -> Result<SelfOwnedPointerAddress, DIFCreatePointerError>;
-
-    /// Resolves a pointer address of a pointer that is currently in memory.
-    /// Returns an error if the pointer is not found in memory.
-    fn resolve_pointer_address(
-        &self,
-        address: PointerAddress,
-    ) -> Result<SharedContainer, DIFResolveReferenceError>;
-
-    /// Starts observing changes to the pointer at the given address.
-    /// As long as the pointer is observed, it will not be garbage collected.
-    fn observe_pointer(
-        &self,
-        transceiver_id: TransceiverId,
-        address: PointerAddress,
-        options: ObserveOptions,
-        observer: impl Fn(&UpdateData) + 'static,
-    ) -> Result<u32, DIFObserveError>;
-
-    /// Updates the options for an existing observer on the pointer at the given address.
-    /// If the observer does not exist, an error is returned.
-    fn update_observer_options(
-        &self,
-        address: PointerAddress,
-        observer_id: u32,
-        options: ObserveOptions,
-    ) -> Result<(), DIFObserveError>;
-
-    /// Stops observing changes to the pointer at the given address.
-    /// If no other references to the pointer exist, it may be garbage collected after this call.
-    fn unobserve_pointer(
-        &self,
-        address: PointerAddress,
-        observer_id: u32,
-    ) -> Result<(), DIFObserveError>;
-
-    // TODO: lock/unlock pointers
+pub struct DIFInterface {
+    cache: DIFSharedContainerCache
 }
+
+// impl DIFInterface {
+//     /// Applies a DIF update to the value at the given pointer address.
+//     fn update<T>(
+//         &self,
+//         address: PointerAddress,
+//         update: &Update,
+//     ) -> UpdateResult {
+//         todo!()
+//         //self.cache.try_get_shared_container
+//     }
+//
+//     /// Executes an apply operation, applying the `value` to the `callee`.
+//     fn apply(
+//         &self,
+//         callee: ValueContainer,
+//         value: ValueContainer,
+//     ) -> Result<ValueContainer, DIFApplyError>;
+//
+//     /// Creates a new owned local pointer and stores it in memory.
+//     /// Returns the address of the newly created pointer.
+//     fn create_pointer(
+//         &self,
+//         value: ValueContainer,
+//         allowed_type: Option<Type>,
+//         mutability: SharedContainerMutability,
+//     ) -> Result<SelfOwnedPointerAddress, DIFCreatePointerError>;
+//
+//     /// Resolves a pointer address of a pointer that is currently in memory.
+//     /// Returns an error if the pointer is not found in memory.
+//     fn resolve_pointer_address(
+//         &self,
+//         address: PointerAddress,
+//     ) -> Result<SharedContainer, DIFResolveReferenceError>;
+//
+//     /// Starts observing changes to the pointer at the given address.
+//     /// As long as the pointer is observed, it will not be garbage collected.
+//     fn observe_pointer(
+//         &self,
+//         transceiver_id: TransceiverId,
+//         address: PointerAddress,
+//         options: ObserveOptions,
+//         observer: impl Fn(&UpdateData) + 'static,
+//     ) -> Result<u32, DIFObserveError>;
+//
+//     /// Updates the options for an existing observer on the pointer at the given address.
+//     /// If the observer does not exist, an error is returned.
+//     fn update_observer_options(
+//         &self,
+//         address: PointerAddress,
+//         observer_id: u32,
+//         options: ObserveOptions,
+//     ) -> Result<(), DIFObserveError>;
+//
+//     /// Stops observing changes to the pointer at the given address.
+//     /// If no other references to the pointer exist, it may be garbage collected after this call.
+//     fn unobserve_pointer(
+//         &self,
+//         address: PointerAddress,
+//         observer_id: u32,
+//     ) -> Result<(), DIFObserveError>;
+//
+//     // TODO: lock/unlock pointers
+// }

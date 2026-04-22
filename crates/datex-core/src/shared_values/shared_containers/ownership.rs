@@ -3,6 +3,7 @@ use binrw::{BinRead, BinWrite};
 use core::{cmp::Ordering, fmt::Display};
 use num_enum::TryFromPrimitive;
 use serde::Serialize;
+use crate::shared_values::shared_containers::SharedContainerMutability;
 
 #[derive(
     Debug,
@@ -23,6 +24,22 @@ pub enum ReferenceMutability {
     Immutable = 0,
     Mutable = 1,
 }
+
+impl From<ReferenceMutability> for SharedContainerOwnership {
+    fn from(mutability: ReferenceMutability) -> Self {
+        SharedContainerOwnership::Referenced(mutability)
+    }
+}
+
+impl From<ReferenceMutability> for SharedContainerMutability {
+    fn from(mutability: ReferenceMutability) -> Self {
+        match mutability {
+            ReferenceMutability::Immutable => SharedContainerMutability::Immutable,
+            ReferenceMutability::Mutable => SharedContainerMutability::Mutable,
+        }
+    }
+}
+
 
 
 impl PartialOrd<Self> for ReferenceMutability {

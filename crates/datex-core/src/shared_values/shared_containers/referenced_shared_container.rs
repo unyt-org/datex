@@ -18,6 +18,7 @@ use core::{
 };
 use crate::runtime::memory::Memory;
 use crate::shared_values::errors::SharedValueCreationError;
+use crate::shared_values::shared_containers::errors::UnexpectedImmutableReferenceError;
 use crate::types::r#type::Type;
 use crate::values::value::Value;
 
@@ -213,9 +214,9 @@ impl ReferencedSharedContainer {
     /// Returns an [Err] if the current reference_mutability is [ReferenceMutability::Immutable]
     pub fn try_derive_mutable_reference(
         &self,
-    ) -> Result<ReferencedSharedContainer, ()> {
+    ) -> Result<ReferencedSharedContainer, UnexpectedImmutableReferenceError> {
         match self.reference_mutability {
-            ReferenceMutability::Immutable => Err(()),
+            ReferenceMutability::Immutable => Err(UnexpectedImmutableReferenceError),
             ReferenceMutability::Mutable => Ok(self.clone()),
         }
     }

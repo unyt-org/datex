@@ -58,6 +58,7 @@ pub mod types;
 pub mod utils;
 pub mod values;
 mod value_updates;
+mod dif;
 
 // reexport macros
 pub use datex_macros_internal as macros;

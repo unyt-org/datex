@@ -1,7 +1,7 @@
 use core::fmt;
 use serde::de::{DeserializeSeed, MapAccess, SeqAccess, Visitor};
 use serde::Deserializer;
-use crate::serde::deserialization_context::DeserializationContext;
+use crate::dif::deserialization_context::DeserializationContext;
 use crate::shared_values::pointer_address::PointerAddress;
 use crate::shared_values::shared_containers::{ReferenceMutability, SharedContainer, SharedContainerOwnership};
 use crate::values::core_value::CoreValue;
@@ -43,7 +43,7 @@ impl<'de, 'ctx> Visitor<'de> for DeserializationContext<'ctx, ValueContainer> {
         };
         let reference = self.shared_container_cache
             .try_get_shared_container_with_ownership(&address, ownership)
-            .ok_or_else(|| E::custom(format!("Cannot get {} from DIF cache", v)))?;
+            .map_err(|e| E::custom(format!("Cannot get {} from DIF cache: {}", v, e)))?;
         Ok(ValueContainer::Shared(reference))
     }
 
@@ -122,11 +122,12 @@ impl<'de, 'ctx> Visitor<'de> for DeserializationContext<'ctx, CoreValue> {
 #[cfg(test)]
 mod tests {
     use core::assert_matches;
+    use crate::dif::cache::{CacheValueRetrievalError, DIFSharedContainerCache, ValueNotFoundInCacheError};
     use crate::libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId};
     use crate::runtime::memory::Memory;
     use crate::runtime::pointer_address_provider::SelfOwnedPointerAddressProvider;
-    use crate::serde::deserialization_context::DIFSharedContainerCache;
     use crate::shared_values::shared_containers::{SharedContainerMutability};
+    use crate::shared_values::shared_containers::errors::UnexpectedSharedContainerOwnershipError;
     use crate::values::core_value::CoreValue;
     use crate::values::core_values::list::List;
     use super::*;
@@ -195,8 +196,26 @@ mod tests {
             if PointerAddress::SelfOwned(owned.pointer_address().clone()) == ptr_address
         );
 
+
         // should no longer exist in memory as owned container should have been taken from cache
-        assert!(dif_cache.try_take_owned_shared_container(&ptr_address).is_none());
+
+        assert_matches!(
+            dif_cache.try_take_owned_shared_container(&ptr_address),
+            Err(CacheValueRetrievalError::UnexpectedSharedContainerOwnership(
+                UnexpectedSharedContainerOwnershipError {
+                    actual: SharedContainerOwnership::Referenced(ReferenceMutability::Mutable),
+                    expected: SharedContainerOwnership::Owned
+                }
+            ))
+        );
+
+        // should no longer exist in memory at all after explicitly removing the shared container from cache
+        dif_cache.remove_shared_container(&ptr_address);
+
+        assert_matches!(
+            dif_cache.try_take_owned_shared_container(&ptr_address),
+            Err(CacheValueRetrievalError::ValueNotFoundInCache(ValueNotFoundInCacheError))
+        );
     }
 
     #[test]

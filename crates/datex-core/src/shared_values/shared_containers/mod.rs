@@ -10,6 +10,7 @@ mod shared_container_inner;
 mod shared_container_mutability;
 pub mod shared_type_container;
 pub mod mutations;
+pub mod errors;
 
 use crate::{
     shared_values::{
@@ -46,6 +47,7 @@ use crate::runtime::execution::ExecutionError;
 use crate::runtime::memory::Memory;
 use crate::runtime::pointer_address_provider::SelfOwnedPointerAddressProvider;
 use crate::shared_values::errors::AccessError;
+use crate::shared_values::shared_containers::errors::{UnexpectedImmutableReferenceError, UnexpectedSharedContainerOwnershipError};
 use crate::traits::apply::Apply;
 use crate::types::r#type::Type;
 use crate::values::value_container::BorrowedValueKey;
@@ -251,10 +253,10 @@ impl SharedContainer {
     /// Returns an [Err] if the current reference_mutability is [ReferenceMutability::Immutable] or the container itself is not mutable
     pub fn try_derive_mutable_reference(
         &self,
-    ) -> Result<ReferencedSharedContainer, ()> {
+    ) -> Result<ReferencedSharedContainer, UnexpectedImmutableReferenceError> {
         match self {
             SharedContainer::Owned(owned) => {
-                owned.try_derive_mutable_reference()
+                owned.try_derive_mutable_reference().map_err(|_| UnexpectedImmutableReferenceError)
             }
             SharedContainer::Referenced(referenced) => {
                 referenced.try_derive_mutable_reference()
@@ -263,10 +265,13 @@ impl SharedContainer {
     }
 
     /// Returns the owned shared container if it is owned, otherwise returns an error.
-    pub fn try_get_owned(&self) -> Result<&OwnedSharedContainer, ()> {
+    pub fn try_get_owned(&self) -> Result<&OwnedSharedContainer, UnexpectedSharedContainerOwnershipError> {
         match self {
             SharedContainer::Owned(owned) => Ok(owned),
-            SharedContainer::Referenced(_) => Err(()),
+            SharedContainer::Referenced(reference) => Err(UnexpectedSharedContainerOwnershipError {
+                actual: SharedContainerOwnership::Referenced(reference.reference_mutability()),
+                expected: SharedContainerOwnership::Owned,
+            }),
         }
     }
 
