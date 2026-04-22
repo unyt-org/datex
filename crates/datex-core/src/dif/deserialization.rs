@@ -198,7 +198,6 @@ mod tests {
 
 
         // should no longer exist in memory as owned container should have been taken from cache
-
         assert_matches!(
             dif_cache.try_take_owned_shared_container(&ptr_address),
             Err(CacheValueRetrievalError::UnexpectedSharedContainerOwnership(

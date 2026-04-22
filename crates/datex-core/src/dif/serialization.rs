@@ -8,6 +8,7 @@ use crate::values::core_values::integer::Integer;
 use crate::values::value::Value;
 use crate::values::value_container::ValueContainer;
 
+
 /// Serialization for [ValueContainer].
 impl Serialize for ValueContainer {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -104,7 +105,7 @@ mod tests {
             address_provider,
             memory
         );
-     
+
         let serialized = serde_json::to_string(&owned_container).unwrap();
         println!("{}", serialized);
         assert_eq!(serialized, format!(r#""{}""#, owned_container.pointer_address().to_string()));
