@@ -1,7 +1,7 @@
 use crate::{
     libs::core::{type_id::CoreLibTypeId, value_id::CoreLibValueId},
     prelude::*,
-    shared_values::pointer_address::{ExternalPointerAddress, PointerAddress},
+    shared_values::{ExternalPointerAddress, PointerAddress},
 };
 use core::{fmt::Display, ops::Deref, str::FromStr};
 

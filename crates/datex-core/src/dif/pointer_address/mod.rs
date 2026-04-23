@@ -1,10 +1,7 @@
 pub mod serde_dif;
 use core::fmt::Display;
 
-use crate::shared_values::{
-    pointer_address::PointerAddress,
-    shared_containers::SharedContainerOwnership,
-};
+use crate::shared_values::{PointerAddress, SharedContainerOwnership};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PointerAddressWithOwnership {

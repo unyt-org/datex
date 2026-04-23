@@ -5,14 +5,14 @@ use crate::{
         pointer_address_provider::SelfOwnedPointerAddressProvider,
     },
     shared_values::{
-        ReferencedSharedContainer, SelfOwnedSharedContainer,
+        ExternalPointerAddress, ReferencedSharedContainer,
+        SelfOwnedPointerAddress, SelfOwnedSharedContainer,
         SharedContainerInner, SharedContainerMutability,
         base_shared_value_container::BaseSharedValueContainer,
         errors::{
             SharedValueCreationError, UnexpectedImmutableSharedContainerError,
         },
         internal_traits::_ExposeRcInternal,
-        pointer_address::{ExternalPointerAddress, SelfOwnedPointerAddress},
     },
     types::r#type::Type,
     values::{

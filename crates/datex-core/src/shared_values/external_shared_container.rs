@@ -1,8 +1,8 @@
 use crate::{
     runtime::memory::Memory,
     shared_values::{
+        ExternalPointerAddress, PointerAddress,
         base_shared_value_container::BaseSharedValueContainer,
-        pointer_address::{ExternalPointerAddress, PointerAddress},
     },
 };
 

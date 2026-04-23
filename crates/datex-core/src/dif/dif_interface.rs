@@ -10,9 +10,9 @@ use core::{fmt::Display, result::Result};
 use crate::{
     dif::cache::DIFSharedContainerCache,
     shared_values::{
+        PointerAddress, SelfOwnedPointerAddress,
+        base_shared_value_container::BaseSharedValueContainer,
         errors::SharedValueCreationError,
-        pointer_address::{PointerAddress, SelfOwnedPointerAddress},
-        shared_containers::base_shared_value_container::BaseSharedValueContainer,
     },
     types::r#type::Type,
     value_updates::update_data::{Update, UpdateData, UpdateResult},

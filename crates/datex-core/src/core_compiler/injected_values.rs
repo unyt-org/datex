@@ -250,11 +250,9 @@ mod tests {
             pointer_address_provider::SelfOwnedPointerAddressProvider,
         },
         shared_values::{
-            pointer_address::SelfOwnedPointerAddress,
-            shared_containers::{
-                OwnedSharedContainer, SelfOwnedSharedContainer,
-                SharedContainer, SharedContainerMutability,
-            },
+            OwnedSharedContainer, SelfOwnedPointerAddress,
+            SelfOwnedSharedContainer, SharedContainer,
+            SharedContainerMutability,
         },
         values::borrowed_value_container::BorrowedValueContainer,
     };

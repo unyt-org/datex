@@ -6,7 +6,7 @@ use crate::{
         base_shared_value_container::BaseSharedValueContainer,
         errors::{SharedValueCreationError, UnexpectedImmutableReferenceError},
         internal_traits::_ExposeRcInternal,
-        pointer_address::{ExternalPointerAddress, PointerAddress},
+        {ExternalPointerAddress, PointerAddress},
     },
     types::r#type::Type,
     values::{value::Value, value_container::ValueContainer},

@@ -1585,7 +1585,7 @@ pub mod tests {
         },
         prelude::*,
         runtime::{Runtime, RuntimeConfig, RuntimeRunner},
-        shared_values::pointer_address::PointerAddress,
+        shared_values::PointerAddress,
         values::core_values::integer::{Integer, typed_integer::TypedInteger},
     };
     use alloc::format;

@@ -15,7 +15,7 @@ use crate::{
 };
 
 use crate::{
-    shared_values::pointer_address::PointerAddress, types::r#type::Type,
+    shared_values::PointerAddress, types::r#type::Type,
 };
 use core::ops;
 

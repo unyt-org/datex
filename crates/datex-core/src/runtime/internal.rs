@@ -35,10 +35,8 @@ use crate::{
         request_move::compile_request_move,
     },
     shared_values::{
-        pointer_address::{
-            ExternalPointerAddress, PointerAddress, SelfOwnedPointerAddress,
-        },
-        shared_containers::{OwnedSharedContainer, SharedContainerMutability},
+        ExternalPointerAddress, OwnedSharedContainer, PointerAddress,
+        SelfOwnedPointerAddress, SharedContainerMutability,
     },
     time::Instant,
     utils::task_manager::TaskManager,

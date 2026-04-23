@@ -14,7 +14,7 @@ use datex_core::{
             serializable::Serializable,
         },
     },
-    shared_values::pointer_address::PointerAddress,
+    shared_values::PointerAddress,
     values::core_values::endpoint::{Endpoint, EndpointInstance, EndpointType},
 };
 use serde::Serialize;

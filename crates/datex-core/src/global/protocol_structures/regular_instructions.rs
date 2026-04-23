@@ -22,7 +22,7 @@ use crate::{
         },
     },
     prelude::*,
-    shared_values::pointer_address::PointerAddress,
+    shared_values::PointerAddress,
     values::core_values::{
         decimal::utils::decimal_to_string, endpoint::Endpoint,
     },

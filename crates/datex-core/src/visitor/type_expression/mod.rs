@@ -10,7 +10,7 @@ use crate::{
             TypeExpressionData, TypeVariantAccess, Union,
         },
     },
-    shared_values::pointer_address::PointerAddress,
+    shared_values::PointerAddress,
     values::core_values::{
         decimal::{Decimal, typed_decimal::TypedDecimal},
         endpoint::Endpoint,

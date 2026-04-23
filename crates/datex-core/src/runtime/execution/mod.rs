@@ -19,10 +19,8 @@ use crate::{
     },
     prelude::*,
     shared_values::{
-        pointer_address::{ExternalPointerAddress, PointerAddress},
-        shared_containers::{
-            ReferenceMutability, ReferencedSharedContainer, SharedContainer,
-        },
+        ExternalPointerAddress, PointerAddress, ReferenceMutability,
+        ReferencedSharedContainer, SharedContainer,
     },
     values::core_values::endpoint::Endpoint,
 };

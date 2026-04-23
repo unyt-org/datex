@@ -1,10 +1,7 @@
 use crate::{
     alloc::string::ToString,
     dif::pointer_address::PointerAddressWithOwnership,
-    shared_values::{
-        pointer_address::PointerAddress,
-        shared_containers::SharedContainerOwnership,
-    },
+    shared_values::{PointerAddress, SharedContainerOwnership},
 };
 
 use alloc::{format, string::String};
@@ -46,10 +43,7 @@ mod test {
         dif::pointer_address::PointerAddressWithOwnership,
         runtime::pointer_address_provider::SelfOwnedPointerAddressProvider,
         shared_values::{
-            pointer_address::PointerAddress,
-            shared_containers::{
-                ReferenceMutability, SharedContainerOwnership,
-            },
+            PointerAddress, ReferenceMutability, SharedContainerOwnership,
         },
     };
     use test_case::test_case;

@@ -31,7 +31,7 @@ use crate::{
     prelude::*,
     runtime::memory::Memory,
     shared_values::{
-        pointer_address::{ExternalPointerAddress, PointerAddress},
+        {ExternalPointerAddress, PointerAddress},
         shared_containers::{ReferenceMutability, SharedContainerOwnership},
     },
     type_inference::{

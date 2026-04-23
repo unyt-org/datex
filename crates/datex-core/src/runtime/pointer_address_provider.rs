@@ -1,7 +1,7 @@
 use crate::{
     global::protocol_structures::instruction_data::RawRemotePointerAddress,
     prelude::*,
-    shared_values::pointer_address::{
+    shared_values::{
         ExternalPointerAddress, PointerAddress, SelfOwnedPointerAddress,
     },
     values::core_values::endpoint::Endpoint,

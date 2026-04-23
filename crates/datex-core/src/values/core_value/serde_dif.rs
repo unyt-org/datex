@@ -4,11 +4,12 @@ use crate::{
         ReferenceMutability, SharedContainer, SharedContainerOwnership,
     },
     values::{
-        core_value::CoreValue, core_values::integer::Integer, value::Value,
+        core_value::CoreValue,
+        core_values::{integer::Integer, list::List},
+        value::Value,
         value_container::ValueContainer,
     },
 };
-use alloc::format;
 use serde::{Serialize, Serializer, ser::SerializeStruct};
 
 /// Serialization for [CoreValue].
@@ -21,5 +22,49 @@ impl Serialize for CoreValue {
             CoreValue::Integer(i) => i.serialize(serializer),
             _ => todo!(),
         }
+    }
+}
+
+use crate::{
+    dif::deserialization_context::DeserializationContext, prelude::*,
+    shared_values::PointerAddress,
+};
+use core::fmt;
+use serde::{
+    Deserializer,
+    de::{DeserializeSeed, MapAccess, SeqAccess, Visitor},
+};
+/// Deserialization for [CoreValue] using a [DeserializationContext] to provide access to the memory during deserialization.
+impl<'de, 'ctx> DeserializeSeed<'de>
+    for DeserializationContext<'ctx, CoreValue>
+{
+    type Value = CoreValue;
+
+    fn deserialize<D: Deserializer<'de>>(
+        self,
+        deserializer: D,
+    ) -> Result<CoreValue, D::Error> {
+        deserializer.deserialize_any(self)
+    }
+}
+
+impl<'de, 'ctx> Visitor<'de> for DeserializationContext<'ctx, CoreValue> {
+    type Value = CoreValue;
+
+    fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str("a CoreValue")
+    }
+
+    fn visit_seq<A: SeqAccess<'de>>(
+        mut self,
+        mut seq: A,
+    ) -> Result<CoreValue, A::Error> {
+        let mut items = Vec::new();
+        while let Some(item) =
+            seq.next_element_seed(self.cast::<ValueContainer>())?
+        {
+            items.push(item);
+        }
+        Ok(CoreValue::List(List::from(items)))
     }
 }

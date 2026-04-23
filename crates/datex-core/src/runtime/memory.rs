@@ -1,10 +1,7 @@
 use crate::{
     collections::HashMap,
     libs::{core::CoreLibrary, library::Library},
-    shared_values::{
-        pointer_address::PointerAddress,
-        shared_containers::ReferencedSharedContainer,
-    },
+    shared_values::{PointerAddress, ReferencedSharedContainer},
 };
 
 #[derive(Debug)]

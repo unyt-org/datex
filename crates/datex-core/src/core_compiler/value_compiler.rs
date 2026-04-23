@@ -33,10 +33,8 @@ use crate::{
     prelude::*,
     runtime::execution::ExecutionError,
     shared_values::{
-        pointer_address::{ExternalPointerAddress, PointerAddress},
-        shared_containers::{
-            OwnedSharedContainer, ReferenceMutability, SharedContainer,
-        },
+        ExternalPointerAddress, OwnedSharedContainer, PointerAddress,
+        ReferenceMutability, SharedContainer,
     },
     types::r#type::Type,
 };

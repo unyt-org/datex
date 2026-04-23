@@ -18,7 +18,7 @@ use crate::{
 use crate::{
     runtime::memory::Memory,
     serde::{error::SerializationError, serializer::to_value_container},
-    shared_values::{errors::AccessError, shared_containers::SharedContainer},
+    shared_values::{SharedContainer, errors::AccessError},
     types::{
         r#type::Type,
         type_definition_with_metadata::{

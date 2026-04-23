@@ -15,9 +15,7 @@ use crate::{
 pub mod serde_dif;
 use crate::{
     runtime::memory::Memory,
-    shared_values::{
-        errors::AccessError, shared_containers::observers::TransceiverId,
-    },
+    shared_values::{errors::AccessError, observers::TransceiverId},
     types::r#type::Type,
     value_updates::{
         errors::UpdateError,

@@ -10,7 +10,7 @@ use crate::{
 
 use crate::{
     prelude::*,
-    shared_values::pointer_address::PointerAddress,
+    shared_values::PointerAddress,
 };
 use core::{cell::RefCell, prelude::rust_2024::*};
 use num_enum::{IntoPrimitive, TryFromPrimitive};

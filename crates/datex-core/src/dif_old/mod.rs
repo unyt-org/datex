@@ -37,7 +37,7 @@ mod tests {
             DIFConvertible,
         },
         prelude::*,
-        shared_values::pointer_address::PointerAddress,
+        shared_values::PointerAddress,
         types::type_definition::TypeDefinition,
         values::{
             core_value::CoreValue,

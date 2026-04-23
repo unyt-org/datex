@@ -4,7 +4,7 @@ use crate::{
         TYPE_VARIANT_SPACE_BASE,
     },
     prelude::*,
-    shared_values::pointer_address::ExternalPointerAddress,
+    shared_values::ExternalPointerAddress,
     values::core_values::{
         decimal::typed_decimal::DecimalTypeVariant,
         integer::typed_integer::IntegerTypeVariant,

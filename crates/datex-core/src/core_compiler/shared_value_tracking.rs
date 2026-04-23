@@ -3,8 +3,8 @@ use crate::{
     global::protocol_structures::instruction_data::StackIndex,
     prelude::*,
     shared_values::{
-        pointer_address::{PointerAddress, SelfOwnedPointerAddress},
-        shared_containers::{OwnedSharedContainer, SharedContainer},
+        OwnedSharedContainer, PointerAddress, SelfOwnedPointerAddress,
+        SharedContainer,
     },
 };
 use core::cell::Ref;

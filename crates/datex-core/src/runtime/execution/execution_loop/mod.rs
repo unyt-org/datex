@@ -53,8 +53,8 @@ use crate::{
     },
     shared_values::{
         errors::AssignmentError,
-        pointer_address::{ExternalPointerAddress, PointerAddress},
-        shared_containers::{
+        {ExternalPointerAddress, PointerAddress},
+        {
             OwnedSharedContainer, ReferenceMutability,
             ReferencedSharedContainer, SelfOwnedSharedContainer,
             SharedContainer, SharedContainerMutability,

@@ -11,7 +11,7 @@ use crate::{
         type_instruction_codes::TypeInstructionCode,
     },
     prelude::*,
-    shared_values::pointer_address::PointerAddress,
+    shared_values::PointerAddress,
     types::type_definition_with_metadata::TypeMetadata,
 };
 use binrw::{

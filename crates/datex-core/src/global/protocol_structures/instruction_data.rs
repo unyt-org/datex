@@ -13,10 +13,8 @@ use crate::{
     prelude::*,
     serde::Deserialize,
     shared_values::{
-        pointer_address::{
-            ExternalPointerAddress, PointerAddress, SelfOwnedPointerAddress,
-        },
-        shared_containers::{ReferenceMutability, SharedContainerMutability},
+        ExternalPointerAddress, PointerAddress, ReferenceMutability,
+        SelfOwnedPointerAddress, SharedContainerMutability,
     },
     types::type_definition_with_metadata::TypeMetadata,
     values::core_values::{

@@ -6,9 +6,7 @@ use crate::{
         value_id::CoreLibValueId,
     },
     runtime::memory::Memory,
-    shared_values::{
-        ReferencedSharedContainer, SharedContainerMutability,
-    },
+    shared_values::{ReferencedSharedContainer, SharedContainerMutability},
     types::{
         nominal_type_definition::NominalTypeDefinition,
         type_definition::TypeDefinition,
@@ -32,10 +30,7 @@ pub mod value_id;
 use crate::{
     libs::library::Library,
     prelude::*,
-    shared_values::{
-        pointer_address::{ExternalPointerAddress, PointerAddress},
-        shared_containers::SharedContainer,
-    },
+    shared_values::{ExternalPointerAddress, PointerAddress, SharedContainer},
     types::{
         shared_container_containing_nominal_type::SharedContainerContainingNominalType,
         r#type::Type,
@@ -291,8 +286,7 @@ impl Memory {
 #[cfg(test)]
 mod tests {
     use crate::{
-        shared_values::pointer_address::PointerAddress,
-        values::core_values::endpoint::Endpoint,
+        shared_values::PointerAddress, values::core_values::endpoint::Endpoint,
     };
     use core::str::FromStr;
     use itertools::Itertools;

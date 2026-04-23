@@ -1,15 +1,11 @@
 use crate::{
     collections::HashMap,
     shared_values::{
-        pointer_address::PointerAddress,
-        shared_containers::{
-            OwnedSharedContainer, ReferenceMutability,
-            ReferencedSharedContainer, SharedContainer,
-            SharedContainerOwnership,
-            errors::{
-                UnexpectedImmutableReferenceError,
-                UnexpectedSharedContainerOwnershipError,
-            },
+        OwnedSharedContainer, PointerAddress, ReferenceMutability,
+        ReferencedSharedContainer, SharedContainer, SharedContainerOwnership,
+        errors::{
+            UnexpectedImmutableReferenceError,
+            UnexpectedSharedContainerOwnershipError,
         },
     },
 };
