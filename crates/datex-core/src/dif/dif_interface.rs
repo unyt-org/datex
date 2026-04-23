@@ -105,11 +105,7 @@ pub struct DIFInterface {
 
 impl DIFInterface {
     /// Applies a DIF update to the value at the given pointer address.
-    fn update(
-        &self,
-        _address: PointerAddress,
-        _update: &Update,
-    ) -> UpdateResult {
+    fn update(&self, address: PointerAddress, update: &Update) -> UpdateResult {
         todo!()
         //self.cache.try_get_shared_container
     }

@@ -14,6 +14,9 @@
 #![feature(future_join)]
 #![allow(static_mut_refs)]
 #![feature(variant_count)]
+#![feature(const_cmp)]
+#![feature(const_trait_impl)]
+#![feature(custom_test_frameworks)]
 extern crate alloc;
 extern crate num_integer;
 

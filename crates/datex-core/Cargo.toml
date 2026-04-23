@@ -167,6 +167,8 @@ json-syntax = "0.12.5"
 lazy_static = "1.4.0"
 ntest_timeout = "0.9.3"
 indoc = "2.0.6"
+test-case = "3.3.1"
+
 # enable native crypto for tests
 datex-crypto-native = { path = "../datex-crypto-native" }
 # enable tokio for tests

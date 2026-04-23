@@ -3,7 +3,11 @@ use crate::{
     shared_values::shared_containers::SharedContainerMutability,
 };
 use binrw::{BinRead, BinWrite};
-use core::{cmp::Ordering, fmt::Display};
+use core::{
+    cmp::Ordering,
+    fmt,
+    fmt::{Display, Formatter},
+};
 use num_enum::TryFromPrimitive;
 use serde::Serialize;
 
@@ -25,6 +29,20 @@ use serde::Serialize;
 pub enum ReferenceMutability {
     Immutable = 0,
     Mutable = 1,
+}
+impl ReferenceMutability {
+    pub const fn string(&self) -> &'static str {
+        match self {
+            ReferenceMutability::Immutable => "'",
+            ReferenceMutability::Mutable => "'mut",
+        }
+    }
+}
+
+impl Display for ReferenceMutability {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.string())
+    }
 }
 
 impl From<ReferenceMutability> for SharedContainerOwnership {
@@ -76,17 +94,44 @@ pub enum SharedContainerOwnership {
     Referenced(ReferenceMutability),
 }
 
-impl Display for SharedContainerOwnership {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+impl SharedContainerOwnership {
+    const OWNED: &'static str = SharedContainerOwnership::Owned.string();
+    const REFERENCED_IMMUTABLE: &'static str =
+        SharedContainerOwnership::Referenced(ReferenceMutability::Immutable)
+            .string();
+    const REFERENCED_MUTABLE: &'static str =
+        SharedContainerOwnership::Referenced(ReferenceMutability::Mutable)
+            .string();
+
+    pub const fn string(&self) -> &'static str {
         match self {
-            SharedContainerOwnership::Owned => write!(f, ""),
+            SharedContainerOwnership::Owned => "",
             SharedContainerOwnership::Referenced(mutability) => {
-                match mutability {
-                    ReferenceMutability::Immutable => write!(f, "'"),
-                    ReferenceMutability::Mutable => write!(f, "'mut"),
-                }
+                mutability.string()
             }
         }
+    }
+    pub const fn try_from_string(s: &str) -> Option<Self> {
+        match s {
+            Self::OWNED => Some(SharedContainerOwnership::Owned),
+            Self::REFERENCED_IMMUTABLE => {
+                Some(SharedContainerOwnership::Referenced(
+                    ReferenceMutability::Immutable,
+                ))
+            }
+            Self::REFERENCED_MUTABLE => {
+                Some(SharedContainerOwnership::Referenced(
+                    ReferenceMutability::Mutable,
+                ))
+            }
+            _ => None,
+        }
+    }
+}
+
+impl Display for SharedContainerOwnership {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.string())
     }
 }
 
