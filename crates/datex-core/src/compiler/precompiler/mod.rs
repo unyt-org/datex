@@ -33,10 +33,8 @@ use crate::{
     libs::core::{core_lib_id::CoreLibId, type_id::CoreLibBaseTypeId},
     runtime::Runtime,
     shared_values::{
-        pointer_address::PointerAddress,
-        shared_containers::{
-            ReferenceMutability, SharedContainer, SharedContainerMutability,
-        },
+        PointerAddress, ReferenceMutability, SharedContainer,
+        SharedContainerMutability,
     },
     types::{
         nominal_type_definition::NominalTypeDefinition,
@@ -843,10 +841,7 @@ mod tests {
         },
         parser::Parser,
         runtime::{RuntimeConfig, RuntimeRunner},
-        shared_values::{
-            pointer_address::PointerAddress,
-            shared_containers::SharedContainerMutability,
-        },
+        shared_values::{PointerAddress, SharedContainerMutability},
         types::type_definition_with_metadata::LocalReferenceMutability,
         values::core_values::{
             endpoint::Endpoint,

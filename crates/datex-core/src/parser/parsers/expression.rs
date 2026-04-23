@@ -22,8 +22,7 @@ use crate::{
     },
     prelude::*,
     shared_values::{
-        pointer_address::PointerAddress,
-        shared_containers::{ReferenceMutability, SharedContainerMutability},
+        PointerAddress, ReferenceMutability, SharedContainerMutability,
     },
     types::type_definition_with_metadata::LocalReferenceMutability,
     values::core_values::error::NumberParseError,
@@ -676,10 +675,7 @@ mod tests {
         },
         prelude::*,
         shared_values::{
-            pointer_address::PointerAddress,
-            shared_containers::{
-                ReferenceMutability, SharedContainerMutability,
-            },
+            PointerAddress, ReferenceMutability, SharedContainerMutability,
         },
         types::type_definition_with_metadata::LocalReferenceMutability,
     };

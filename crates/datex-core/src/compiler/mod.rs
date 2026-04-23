@@ -55,10 +55,8 @@ use crate::{
     parser::{Parser, ParserOptions},
     runtime::{Runtime, execution::context::ExecutionMode},
     shared_values::{
-        pointer_address::PointerAddress,
-        shared_containers::{
-            ReferenceMutability, SharedContainer, SharedContainerMutability,
-        },
+        PointerAddress, ReferenceMutability, SharedContainer,
+        SharedContainerMutability,
     },
     time::Instant,
     utils::buffers::{append_u8, append_u16, append_u32},

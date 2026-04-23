@@ -335,10 +335,7 @@ mod tests {
             },
         },
         prelude::*,
-        shared_values::{
-            pointer_address::PointerAddress,
-            shared_containers::ReferenceMutability,
-        },
+        shared_values::{PointerAddress, ReferenceMutability},
         values::core_values::{
             decimal::{Decimal, typed_decimal::TypedDecimal},
             endpoint::{Endpoint, InvalidEndpointError},

@@ -39,8 +39,7 @@ use crate::{
     },
     prelude::*,
     shared_values::{
-        pointer_address::PointerAddress,
-        shared_containers::{ReferenceMutability, SharedContainerMutability},
+        PointerAddress, ReferenceMutability, SharedContainerMutability,
     },
 };
 use alloc::format;

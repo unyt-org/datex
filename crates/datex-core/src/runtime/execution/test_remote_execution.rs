@@ -7,8 +7,7 @@ use crate::{
         test_utils::use_mock_setup_with_two_connected_runtimes,
     },
     shared_values::{
-        pointer_address::PointerAddress,
-        shared_containers::{SharedContainer, SharedContainerMutability},
+        PointerAddress, SharedContainer, SharedContainerMutability,
     },
     values::{
         core_values::{endpoint::Endpoint, integer::Integer, list::List},

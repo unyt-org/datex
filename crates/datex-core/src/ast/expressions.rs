@@ -9,8 +9,7 @@ use crate::{
         UnaryOperator, assignment::AssignmentOperator,
     },
     shared_values::{
-        pointer_address::PointerAddress,
-        shared_containers::{ReferenceMutability, SharedContainerMutability},
+        PointerAddress, ReferenceMutability, SharedContainerMutability,
     },
     types::{
         r#type::Type, type_definition_with_metadata::LocalReferenceMutability,
