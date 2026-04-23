@@ -1364,7 +1364,7 @@ mod tests {
         parser::Parser,
         prelude::*,
         runtime::{Runtime, memory::Memory},
-        shared_values::shared_containers::{
+        shared_values::{
             OwnedSharedContainer, ReferenceMutability, SharedContainer,
             SharedContainerMutability, SharedContainerOwnership,
         },

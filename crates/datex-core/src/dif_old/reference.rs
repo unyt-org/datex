@@ -1,6 +1,6 @@
 use crate::{
     dif::{r#type::DIFTypeDefinition, value::DIFValueContainer},
-    shared_values::shared_containers::{
+    shared_values::{
         ReferencedSharedContainer, SharedContainer, SharedContainerMutability,
         mutability_as_int,
     },

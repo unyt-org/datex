@@ -1,7 +1,7 @@
 use crate::{
     prelude::*,
     serde::Deserialize,
-    shared_values::shared_containers::observers::TransceiverId,
+    shared_values::observers::TransceiverId,
     value_updates::errors::UpdateError,
     values::value_container::{ValueContainer, ValueKey},
 };

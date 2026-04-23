@@ -1,6 +1,6 @@
 // use crate::{
 //     runtime::memory::Memory,
-//     shared_values::shared_containers::{
+//     shared_values::{
 //         SharedContainerMutability,
 //         base_shared_value_container::BaseSharedValueContainer,
 //         observers::TransceiverId,

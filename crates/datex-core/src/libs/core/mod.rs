@@ -6,7 +6,7 @@ use crate::{
         value_id::CoreLibValueId,
     },
     runtime::memory::Memory,
-    shared_values::shared_containers::{
+    shared_values::{
         ReferencedSharedContainer, SharedContainerMutability,
     },
     types::{

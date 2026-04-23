@@ -1,12 +1,10 @@
-use crate::shared_values::shared_containers::ReferenceMutability;
+use crate::shared_values::ReferenceMutability;
 use core::fmt::Display;
 
 use crate::{
     prelude::*,
     serde::Deserialize,
-    shared_values::shared_containers::{
-        SharedContainerMutability, SharedContainerOwnership,
-    },
+    shared_values::{SharedContainerMutability, SharedContainerOwnership},
     types::{type_definition::TypeDefinition, type_match::TypeMatch},
     values::value_container::ValueContainer,
 };

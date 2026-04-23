@@ -1,6 +1,6 @@
 use crate::{
     dif::{DIFConvertible, value::DIFValueContainer},
-    shared_values::shared_containers::observers::TransceiverId,
+    shared_values::observers::TransceiverId,
     values::value_container::BorrowedValueKey,
 };
 use core::prelude::rust_2024::*;

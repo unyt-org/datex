@@ -16,7 +16,7 @@ use core::{fmt::Display, result::Result};
 use crate::{prelude::*, shared_values::pointer_address::PointerAddress};
 use crate::shared_values::errors::{AccessError, AssignmentError, SharedValueCreationError, TypeError};
 use crate::shared_values::pointer_address::SelfOwnedPointerAddress;
-use crate::shared_values::shared_containers::SharedContainer;
+use crate::shared_values::SharedContainer;
 use crate::types::r#type::Type;
 use crate::values::value_container::ValueContainer;
 

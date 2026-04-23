@@ -8,7 +8,7 @@ use crate::{
         RawRemotePointerAddress,
     },
     prelude::*,
-    shared_values::shared_containers::{
+    shared_values::{
         ReferenceMutability, SharedContainerMutability,
     },
 };

@@ -1,6 +1,6 @@
 use crate::{
     prelude::*,
-    shared_values::shared_containers::base_shared_value_container::BaseSharedValueContainer,
+    shared_values::base_shared_value_container::BaseSharedValueContainer,
     value_updates::update_data::Update,
 };
 use core::{fmt::Display, result::Result};
@@ -155,7 +155,7 @@ mod tests {
     use crate::{
         prelude::*,
         runtime::memory::Memory,
-        shared_values::shared_containers::{
+        shared_values::{
             SharedContainerMutability,
             base_shared_value_container::BaseSharedValueContainer,
             observers::{

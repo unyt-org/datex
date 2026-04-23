@@ -12,7 +12,7 @@ use crate::{
         options::{StatementFormatting, VariantFormatting},
     },
     prelude::*,
-    shared_values::shared_containers::ReferenceMutability,
+    shared_values::ReferenceMutability,
     types::type_definition_with_metadata::LocalReferenceMutability,
     values::core_values::{
         decimal::typed_decimal::TypedDecimal,

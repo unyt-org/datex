@@ -17,7 +17,7 @@ use crate::{
     },
     prelude::*,
     runtime::execution::ExecutionError,
-    shared_values::shared_containers::OwnedSharedContainer,
+    shared_values::OwnedSharedContainer,
     utils::buffers::append_u32,
     values::borrowed_value_container::BorrowedValueContainer,
 };

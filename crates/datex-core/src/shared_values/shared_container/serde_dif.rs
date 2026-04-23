@@ -1,38 +1,22 @@
-use crate::{
-    prelude::*,
-    shared_values::shared_containers::{
-        ReferenceMutability, SharedContainer, SharedContainerOwnership,
-    },
-    values::{
-        core_value::CoreValue, core_values::integer::Integer, value::Value,
-        value_container::ValueContainer,
-    },
-};
-use alloc::format;
-use serde::{Serialize, Serializer, ser::SerializeStruct};
-
-impl Serialize for SharedContainer {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        // Only serialize the ownership and pointer address
-        let ownership = match self.ownership() {
-            SharedContainerOwnership::Referenced(
-                ReferenceMutability::Immutable,
-            ) => "'",
-            SharedContainerOwnership::Referenced(
-                ReferenceMutability::Mutable,
-            ) => "'mut ",
-            SharedContainerOwnership::Owned => "",
-        };
-
-        format!("{}{}", ownership, self.pointer_address()).serialize(serializer)
-    }
-}
-
 #[cfg(test)]
 mod tests {
+    use log::info;
+
+    use super::*;
+    use crate::{
+        libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
+        prelude::*,
+        runtime::{
+            memory::Memory,
+            pointer_address_provider::SelfOwnedPointerAddressProvider,
+        },
+        shared_values::{SharedContainer, SharedContainerMutability},
+        values::{
+            core_value::CoreValue, core_values::integer::Integer,
+            value_container::ValueContainer,
+        },
+    };
+
     #[test]
     fn serialize_shared_container_reference() {
         let memory = Memory::new();

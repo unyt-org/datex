@@ -1,7 +1,7 @@
 use crate::{
     dif::{representation::DIFTypeRepresentation, DIFConvertible},
     runtime::memory::Memory,
-    shared_values::shared_containers::SharedContainerMutability,
+    shared_values::SharedContainerMutability,
     types::{
         literal_type_definition::LiteralTypeDefinition,
         type_definition::TypeDefinition,
@@ -17,7 +17,7 @@ use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{
     de::IntoDeserializer, ser::SerializeStruct, Deserialize, Serialize,
 };
-use crate::shared_values::shared_containers::{ReferenceMutability, SharedContainerOwnership};
+use crate::shared_values::{ReferenceMutability, SharedContainerOwnership};
 use crate::types::r#type::Type;
 use crate::types::type_definition_with_metadata::{LocalMutability, LocalReferenceMutability, TypeMetadata};
 

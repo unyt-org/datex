@@ -283,7 +283,7 @@ mod tests {
                 execution_input::{ExecutionCallerMetadata, ExecutionOptions},
             },
         },
-        shared_values::shared_containers::{
+        shared_values::{
             OwnedSharedContainer, ReferencedSharedContainer, SharedContainer,
             SharedContainerInner, SharedContainerMutability,
             base_shared_value_container::BaseSharedValueContainer,

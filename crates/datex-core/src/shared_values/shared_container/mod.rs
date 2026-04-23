@@ -1,34 +1,19 @@
-pub mod base_shared_value_container;
-pub mod errors;
-mod external_shared_container;
-mod internal_traits; // IMPORTANT: don't expose this module, for internal use only
-pub mod mutations;
-pub mod observers;
-mod owned_shared_container;
-mod ownership;
-mod referenced_shared_container;
-mod self_owned_shared_container;
-mod shared_container_inner;
-mod shared_container_mutability;
-pub mod shared_type_container;
-
 use crate::{
     runtime::{
         execution::ExecutionError, memory::Memory,
         pointer_address_provider::SelfOwnedPointerAddressProvider,
     },
     shared_values::{
-        errors::AccessError,
-        pointer_address::{PointerAddress, SelfOwnedPointerAddress},
-        shared_containers::{
-            base_shared_value_container::BaseSharedValueContainer,
-            errors::{
-                UnexpectedImmutableReferenceError,
-                UnexpectedSharedContainerOwnershipError,
-            },
-            internal_traits::_ExposeRcInternal,
-            observers::{Observer, ObserverError},
+        OwnedSharedContainer, PointerAddress, ReferencedSharedContainer,
+        SelfOwnedPointerAddress, SharedContainerInner,
+        SharedContainerMutability, SharedContainerOwnership,
+        base_shared_value_container::BaseSharedValueContainer,
+        errors::{
+            AccessError, UnexpectedImmutableReferenceError,
+            UnexpectedSharedContainerOwnershipError,
         },
+        internal_traits::_ExposeRcInternal,
+        observers::{Observer, ObserverError},
     },
     traits::{
         apply::Apply, identity::Identity, structural_eq::StructuralEq,
@@ -46,14 +31,6 @@ use core::{
     fmt::{Display, Formatter},
     hash::{Hash, Hasher},
 };
-pub use external_shared_container::*;
-pub use owned_shared_container::*;
-pub use ownership::*;
-pub use referenced_shared_container::*;
-pub use self_owned_shared_container::*;
-use serde::{Deserialize, Serialize, Serializer};
-pub use shared_container_inner::*;
-pub use shared_container_mutability::*;
 pub mod serde_dif;
 /// Top-level wrapper for any owned or referenced shared container,
 /// which can either be an owned shared container or a reference to a shared container.

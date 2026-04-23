@@ -18,7 +18,7 @@ use crate::{
             },
         },
     },
-    shared_values::shared_containers::observers::TransceiverId,
+    shared_values::observers::TransceiverId,
     values::{
         borrowed_value_container::BorrowedValueContainer,
         value_container::ValueContainer,

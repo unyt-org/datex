@@ -6,7 +6,7 @@ use crate::{
         memory::Memory,
         pointer_address_provider::SelfOwnedPointerAddressProvider,
     },
-    shared_values::shared_containers::{
+    shared_values::{
         ReferenceMutability, SharedContainerMutability,
         SharedContainerOwnership,
     },

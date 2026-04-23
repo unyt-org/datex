@@ -9,7 +9,7 @@ use crate::{
         deserializer::{DatexDeserializer, from_value_container},
         error::DeserializationError,
     },
-    shared_values::shared_containers::observers::TransceiverId,
+    shared_values::observers::TransceiverId,
     traits::{apply::Apply, value_eq::ValueEq},
     types::type_definition::TypeDefinition,
     values::core_value::CoreValue,

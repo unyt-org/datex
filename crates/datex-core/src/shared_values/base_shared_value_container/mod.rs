@@ -1,5 +1,5 @@
 use crate::{
-    shared_values::shared_containers::observers::Observer,
+    shared_values::observers::Observer,
     traits::value_eq::ValueEq,
     utils::freemap::FreeHashMap,
     values::{value::Value, value_container::ValueContainer},
@@ -9,10 +9,9 @@ use crate::{
     prelude::*,
     runtime::{execution::ExecutionError, memory::Memory},
     shared_values::{
+        SharedContainerMutability,
         errors::{AccessError, SharedValueCreationError},
-        shared_containers::{
-            SharedContainerMutability, observers::TransceiverId,
-        },
+        observers::TransceiverId,
     },
     traits::apply::Apply,
     types::r#type::Type,
@@ -244,12 +243,10 @@ mod tests {
         prelude::*,
         runtime::memory::Memory,
         shared_values::{
+            SharedContainer, SharedContainerMutability,
+            base_shared_value_container::BaseSharedValueContainer,
             errors::{AccessError, IndexOutOfBoundsError},
-            shared_containers::{
-                SharedContainer, SharedContainerMutability,
-                base_shared_value_container::BaseSharedValueContainer,
-                observers::TransceiverId,
-            },
+            observers::TransceiverId,
         },
         value_updates::{
             errors::UpdateError,

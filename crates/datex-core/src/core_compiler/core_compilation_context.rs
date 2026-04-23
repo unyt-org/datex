@@ -1,6 +1,6 @@
 use crate::{
     core_compiler::shared_value_tracking::SharedValueTracking, prelude::*,
-    shared_values::shared_containers::OwnedSharedContainer,
+    shared_values::OwnedSharedContainer,
 };
 use binrw::io::Cursor;
 

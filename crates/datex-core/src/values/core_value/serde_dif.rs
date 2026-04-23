@@ -1,6 +1,6 @@
 use crate::{
     prelude::*,
-    shared_values::shared_containers::{
+    shared_values::{
         ReferenceMutability, SharedContainer, SharedContainerOwnership,
     },
     values::{

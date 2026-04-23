@@ -17,7 +17,7 @@ use crate::{
     ast::expressions::{CallableDeclaration, CreateShared, GetSharedRef},
     libs::core::core_lib_id::CoreLibId,
     prelude::*,
-    shared_values::shared_containers::SharedContainer,
+    shared_values::SharedContainer,
     types::{
         r#type::Type, type_definition::TypeDefinition,
         type_definition_with_metadata::TypeDefinitionWithMetadata,

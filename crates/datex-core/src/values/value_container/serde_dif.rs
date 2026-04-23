@@ -1,6 +1,6 @@
 use crate::{
     prelude::*,
-    shared_values::shared_containers::{
+    shared_values::{
         ReferenceMutability, SharedContainer, SharedContainerOwnership,
     },
     values::{
@@ -34,7 +34,7 @@ mod tests {
             memory::Memory,
             pointer_address_provider::SelfOwnedPointerAddressProvider,
         },
-        shared_values::shared_containers::SharedContainerMutability,
+        shared_values::SharedContainerMutability,
         values::{core_value::CoreValue, core_values::integer::Integer},
     };
 

@@ -19,7 +19,7 @@ use core::fmt::{self};
 use crate::{
     ast::expressions::{UnboxSlotAssignment, ValueAccessType},
     decompiler::{FormattingMode, FormattingOptions, IndentType},
-    shared_values::shared_containers::ReferenceMutability,
+    shared_values::ReferenceMutability,
     types::type_definition_with_metadata::LocalReferenceMutability,
 };
 

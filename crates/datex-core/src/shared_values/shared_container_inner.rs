@@ -1,9 +1,7 @@
 use crate::shared_values::{
+    ExternalSharedContainer, SelfOwnedSharedContainer,
+    base_shared_value_container::BaseSharedValueContainer,
     pointer_address::PointerAddress,
-    shared_containers::{
-        ExternalSharedContainer, SelfOwnedSharedContainer,
-        base_shared_value_container::BaseSharedValueContainer,
-    },
 };
 
 /// Wrapper containing either an [SelfOwnedSharedContainer] or an [ExternalSharedContainer].

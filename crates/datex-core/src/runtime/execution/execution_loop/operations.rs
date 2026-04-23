@@ -18,7 +18,7 @@ use core::cell::RefCell;
 use crate::{
     prelude::*,
     runtime::memory::Memory,
-    shared_values::shared_containers::observers::TransceiverId,
+    shared_values::observers::TransceiverId,
     types::{r#type::Type, type_match::TypeMatch},
     value_updates::{
         update_data::SetEntryUpdateData, update_handler::UpdateHandler,

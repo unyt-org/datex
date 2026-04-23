@@ -1,6 +1,6 @@
 use crate::{
     serde::Deserialize,
-    shared_values::shared_containers::SharedContainerMutability,
+    shared_values::SharedContainerMutability,
 };
 use binrw::{BinRead, BinWrite};
 use core::{

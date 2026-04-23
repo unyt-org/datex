@@ -1,6 +1,6 @@
 use crate::{
     runtime::execution::ExecutionError,
-    shared_values::shared_containers::{
+    shared_values::{
         SharedContainerMutability,
         observers::{ObserveOptions, ObserverError, TransceiverId},
     },

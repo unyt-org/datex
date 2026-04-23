@@ -1,10 +1,10 @@
 use crate::{
-    shared_values::shared_containers::SharedContainerMutability,
+    shared_values::SharedContainerMutability,
     types::type_definition::TypeDefinition,
 };
 
 use crate::{
-    shared_values::shared_containers::{
+    shared_values::{
         ReferenceMutability, SharedContainerOwnership,
     },
     types::type_definition_with_metadata::{

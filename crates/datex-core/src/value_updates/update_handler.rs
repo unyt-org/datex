@@ -1,6 +1,6 @@
 use crate::{
     prelude::*,
-    shared_values::shared_containers::observers::TransceiverId,
+    shared_values::observers::TransceiverId,
     value_updates::{
         errors::UpdateError,
         update_data::{

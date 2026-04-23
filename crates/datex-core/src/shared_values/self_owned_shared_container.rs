@@ -1,11 +1,9 @@
 use crate::{
     runtime::memory::Memory,
     shared_values::{
-        pointer_address::{ExternalPointerAddress, SelfOwnedPointerAddress},
-        shared_containers::{
-            ExternalSharedContainer,
-            base_shared_value_container::BaseSharedValueContainer,
-        },
+        ExternalPointerAddress, ExternalSharedContainer,
+        SelfOwnedPointerAddress,
+        base_shared_value_container::BaseSharedValueContainer,
     },
 };
 

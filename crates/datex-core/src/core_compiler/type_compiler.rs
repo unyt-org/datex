@@ -11,7 +11,7 @@ use crate::{
         type_instruction_codes::TypeInstructionCode,
     },
     prelude::*,
-    shared_values::shared_containers::ReferenceMutability,
+    shared_values::ReferenceMutability,
     types::{
         r#type::Type, type_definition::TypeDefinition,
         type_definition_with_metadata::TypeDefinitionWithMetadata,

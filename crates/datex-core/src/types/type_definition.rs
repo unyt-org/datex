@@ -1,7 +1,7 @@
 use crate::{
     prelude::*,
     runtime::memory::Memory,
-    shared_values::pointer_address::PointerAddress,
+    shared_values::PointerAddress,
     traits::structural_eq::StructuralEq,
     types::{
         collection_type_definition::CollectionTypeDefinition,
