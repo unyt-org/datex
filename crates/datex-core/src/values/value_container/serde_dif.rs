@@ -120,7 +120,7 @@ mod tests {
     }
 
     #[test]
-    fn deserialize_nested_pointer_address_to_shared_container() {
+    fn deserialize_nested_pointer_address() {
         let json = r#"{"value": ["'$030000"]}"#; // [integer]
 
         let memory = Memory::new();

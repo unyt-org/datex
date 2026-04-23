@@ -77,10 +77,7 @@ mod tests {
             PointerAddress, SharedContainer, SharedContainerMutability,
             errors::UnexpectedSharedContainerOwnershipError,
         },
-        values::{
-            core_value::CoreValue, core_values::integer::Integer,
-            value_container::ValueContainer,
-        },
+        values::{core_value::CoreValue, core_values::integer::Integer},
     };
 
     #[test]
