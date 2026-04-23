@@ -7,7 +7,7 @@ use crate::{
 };
 use core::result::Result;
 use datex_macros_internal::FromCoreValue;
-
+pub mod serde_dif;
 use crate::{
     runtime::memory::Memory,
     traits::{structural_eq::StructuralEq, value_eq::ValueEq},

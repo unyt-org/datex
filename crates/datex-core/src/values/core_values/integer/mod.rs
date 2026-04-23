@@ -9,6 +9,7 @@ use crate::{
         error::NumberParseError, integer::typed_integer::TypedInteger,
     },
 };
+pub mod serde_dif;
 use binrw::{
     BinRead, BinReaderExt, BinResult, BinWrite, Endian,
     io::{Read, Seek, Write},

@@ -1,4 +1,4 @@
-pub mod serde;
+pub mod serde_dif;
 use core::fmt::Display;
 
 use crate::shared_values::{

@@ -1,6 +1,6 @@
 use crate::traits::{identity::Identity, structural_eq::StructuralEq};
 use core::result::Result;
-
+pub mod serde_dif;
 use super::value::Value;
 use crate::{
     prelude::*,

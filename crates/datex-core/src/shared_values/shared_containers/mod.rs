@@ -54,7 +54,7 @@ pub use self_owned_shared_container::*;
 use serde::{Deserialize, Serialize, Serializer};
 pub use shared_container_inner::*;
 pub use shared_container_mutability::*;
-
+pub mod serde_dif;
 /// Top-level wrapper for any owned or referenced shared container,
 /// which can either be an owned shared container or a reference to a shared container.
 #[derive(Debug)]
