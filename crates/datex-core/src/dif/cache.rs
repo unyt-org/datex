@@ -115,7 +115,7 @@ impl DIFSharedContainerCache {
     /// If the container for the address is not in the cache, a [ValueNotFoundInCacheError] is returned.
     /// If the container cannot be accessed as a mutable reference, an [UnexpectedImmutableReferenceError] error is returned.
     pub fn try_get_shared_container_mutable_reference(
-        &mut self,
+        &self,
         pointer_address: &PointerAddress,
     ) -> Result<ReferencedSharedContainer, CacheValueRetrievalError> {
         Ok(self
@@ -128,7 +128,7 @@ impl DIFSharedContainerCache {
     /// Tries to get an immutable reference to a shared container from the cache at the given pointer address.
     /// If the container for the address is not in the cache, a [ValueNotFoundInCacheError] is returned.
     pub fn try_get_shared_container_immutable_reference(
-        &mut self,
+        &self,
         pointer_address: &PointerAddress,
     ) -> Result<ReferencedSharedContainer, ValueNotFoundInCacheError> {
         Ok(self

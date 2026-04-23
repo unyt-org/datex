@@ -101,5 +101,3 @@ impl From<Vec<ValueContainer>> for UpdateReturn {
         UpdateReturn::MultipleValues(items)
     }
 }
-
-pub type UpdateResult = Result<UpdateReturn, UpdateError>;

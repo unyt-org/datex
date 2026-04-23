@@ -18,9 +18,14 @@ use crate::{
         errors::SharedValueCreationError,
     },
     types::r#type::Type,
-    value_updates::update_data::{Update, UpdateData, UpdateResult},
+    value_updates::update_data::{Update, UpdateData},
     values::value_container::ValueContainer,
 };
+use crate::dif::cache::CacheValueRetrievalError;
+use crate::shared_values::SharedContainer;
+use crate::value_updates::errors::UpdateError;
+use crate::value_updates::update_data::{UpdateReturn};
+use crate::value_updates::update_handler::UpdateHandler;
 
 #[derive(Debug)]
 pub enum DIFObserveError {
@@ -42,6 +47,34 @@ impl Display for DIFObserveError {
                 core::write!(f, "Observe error: {}", e)
             }
         }
+    }
+}
+
+#[derive(Debug)]
+pub enum DIFUpdateError {
+    UpdateError(UpdateError),
+    CacheValueRetrievalError(CacheValueRetrievalError),
+}
+
+impl From<UpdateError> for DIFUpdateError {
+    fn from(err: UpdateError) -> Self {
+        DIFUpdateError::UpdateError(err)
+    }
+}
+
+impl From<CacheValueRetrievalError> for DIFUpdateError {
+    fn from(err: CacheValueRetrievalError) -> Self {
+        DIFUpdateError::CacheValueRetrievalError(err)
+    }
+}
+
+pub type DIFUpdateResult = Result<UpdateReturn, DIFUpdateError>;
+
+/// Converts a Result with any types that can be converted into UpdateReturn and UpdateError into an UpdateResult.
+pub fn into_update_result<T: Into<UpdateReturn>, E: Into<DIFUpdateError>>(result: Result<T, E>) -> DIFUpdateResult {
+    match result {
+        Ok(value) => Ok(value.into()),
+        Err(err) => Err(err.into()),
     }
 }
 
@@ -111,11 +144,20 @@ impl DIFInterface {
     /// Applies a DIF update to the value at the given pointer address.
     fn update(
         &self,
-        _address: PointerAddress,
-        _update: Update,
-    ) -> UpdateResult {
-        todo!()
-        //self.cache.try_get_shared_container
+        address: PointerAddress,
+        update: Update,
+    ) -> DIFUpdateResult {
+        let container = self.cache.try_get_shared_container_mutable_reference(&address)?;
+        let mut base_container = container.base_shared_container_mut();
+
+        match update.data {
+            UpdateData::AppendEntry(data) => into_update_result(base_container.try_append_entry(data, self.transceiver_id)),
+            UpdateData::Clear => into_update_result( base_container.try_clear(self.transceiver_id)),
+            UpdateData::Replace(data) => into_update_result(base_container.try_replace(data, self.transceiver_id)),
+            UpdateData::SetEntry(data) => into_update_result(base_container.try_set_entry(data, self.transceiver_id)),
+            UpdateData::DeleteEntry(data) => into_update_result(base_container.try_delete_entry(data, self.transceiver_id)),
+            UpdateData::ListSplice(data) => into_update_result(base_container.try_list_splice(data, self.transceiver_id)),
+        }
     }
 
     /// Executes an apply operation, applying the `value` to the `callee`.
