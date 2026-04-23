@@ -1,7 +1,7 @@
+use crate::{
+    prelude::*, shared_values::errors::AccessError, types::error::TypeError,
+};
 use core::fmt::Display;
-use crate::shared_values::errors::{AccessError};
-use crate::types::error::TypeError;
-use crate::prelude::*;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum UpdateError {
@@ -10,7 +10,6 @@ pub enum UpdateError {
     AccessError(AccessError),
     TypeError(Box<TypeError>),
 }
-
 
 impl<T: Into<AccessError>> From<T> for UpdateError {
     fn from(err: T) -> Self {

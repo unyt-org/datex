@@ -1,5 +1,4 @@
 use crate::{
-    libs::core::type_id::CoreLibTypeId,
     prelude::*,
     runtime::execution::ExecutionError,
     traits::{apply::Apply, structural_eq::StructuralEq, value_eq::ValueEq},
@@ -10,23 +9,31 @@ use crate::{
             callable::{Callable, CallableBody, CallableSignature},
             integer::typed_integer::TypedInteger,
         },
-        value_container::{ValueContainer, ValueError, BorrowedValueKey},
+        value_container::{BorrowedValueKey, ValueContainer, ValueError},
     },
 };
 
-use crate::shared_values::errors::AccessError;
+use crate::{
+    runtime::memory::Memory,
+    shared_values::{
+        errors::AccessError, shared_containers::observers::TransceiverId,
+    },
+    types::r#type::Type,
+    value_updates::{
+        errors::UpdateError,
+        update_data::{
+            AppendEntryUpdateData, DeleteEntryUpdateData, ListSpliceUpdateData,
+            ReplaceUpdateData, SetEntryUpdateData,
+        },
+        update_handler::UpdateHandler,
+    },
+};
 use core::{
     fmt::{Display, Formatter},
     ops::{Add, AddAssign, Deref, Neg, Not, Sub},
     result::Result,
 };
 use log::error;
-use crate::runtime::memory::Memory;
-use crate::shared_values::shared_containers::observers::TransceiverId;
-use crate::types::r#type::Type;
-use crate::value_updates::errors::UpdateError;
-use crate::value_updates::update_data::{AppendEntryUpdateData, DeleteEntryUpdateData, ListSpliceUpdateData, ReplaceUpdateData, SetEntryUpdateData};
-use crate::value_updates::update_handler::UpdateHandler;
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub struct Value {
@@ -150,7 +157,7 @@ impl Value {
             None => true,
             Some(Type::Nominal(nominal_type)) => {
                 nominal_type == &self.default_nominal_type(memory)
-            },
+            }
             Some(_) => false,
         }
     }
@@ -159,7 +166,7 @@ impl Value {
     pub fn actual_type(&self, memory: &Memory) -> Type {
         match &self.custom_type {
             Some(actual_type) => actual_type.clone(),
-            None => Type::Nominal(self.default_nominal_type(memory))
+            None => Type::Nominal(self.default_nominal_type(memory)),
         }
     }
 
@@ -315,45 +322,70 @@ impl Value {
 }
 
 impl UpdateHandler for Value {
-    fn try_replace(&mut self, data: ReplaceUpdateData, source_id: TransceiverId) -> Result<ValueContainer, UpdateError> {
+    fn try_replace(
+        &mut self,
+        data: ReplaceUpdateData,
+        source_id: TransceiverId,
+    ) -> Result<ValueContainer, UpdateError> {
         match self.inner {
             CoreValue::Map(ref mut map) => map.try_replace(data, source_id),
-            _ => todo!()
+            _ => todo!(),
         }
     }
 
-    fn try_set_entry(&mut self, data: SetEntryUpdateData, source_id: TransceiverId) -> Result<(), UpdateError> {
+    fn try_set_entry(
+        &mut self,
+        data: SetEntryUpdateData,
+        source_id: TransceiverId,
+    ) -> Result<(), UpdateError> {
         match self.inner {
             CoreValue::Map(ref mut map) => map.try_set_entry(data, source_id),
-            _ => todo!()
+            _ => todo!(),
         }
     }
 
-    fn try_delete_entry(&mut self, data: DeleteEntryUpdateData, source_id: TransceiverId) -> Result<ValueContainer, UpdateError> {
+    fn try_delete_entry(
+        &mut self,
+        data: DeleteEntryUpdateData,
+        source_id: TransceiverId,
+    ) -> Result<ValueContainer, UpdateError> {
         match self.inner {
-            CoreValue::Map(ref mut map) => map.try_delete_entry(data, source_id),
-            _ => todo!()
+            CoreValue::Map(ref mut map) => {
+                map.try_delete_entry(data, source_id)
+            }
+            _ => todo!(),
         }
     }
 
-    fn try_append_entry(&mut self, data: AppendEntryUpdateData, source_id: TransceiverId) -> Result<(), UpdateError> {
+    fn try_append_entry(
+        &mut self,
+        data: AppendEntryUpdateData,
+        source_id: TransceiverId,
+    ) -> Result<(), UpdateError> {
         match self.inner {
-            CoreValue::Map(ref mut map) => map.try_append_entry(data, source_id),
-            _ => todo!()
+            CoreValue::Map(ref mut map) => {
+                map.try_append_entry(data, source_id)
+            }
+            _ => todo!(),
         }
     }
 
-    fn try_clear(&mut self, source_id: TransceiverId) -> Result<(), UpdateError> {
+    fn try_clear(
+        &mut self,
+        source_id: TransceiverId,
+    ) -> Result<(), UpdateError> {
         match self.inner {
             CoreValue::Map(ref mut map) => map.try_clear(source_id),
-            _ => todo!()
+            _ => todo!(),
         }
     }
 
-    fn try_list_splice(&mut self, data: ListSpliceUpdateData, source_id: TransceiverId) -> Result<Vec<ValueContainer>, UpdateError> {
-        match self.inner {
-            _ => todo!()
-        }
+    fn try_list_splice(
+        &mut self,
+        _data: ListSpliceUpdateData,
+        _source_id: TransceiverId,
+    ) -> Result<Vec<ValueContainer>, UpdateError> {
+        todo!()
     }
 }
 
@@ -443,7 +475,7 @@ mod tests {
     use super::*;
     use crate::{
         assert_structural_eq, datex_list,
-        libs::core::{type_id::CoreLibBaseTypeId},
+        libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
         prelude::*,
         values::core_values::{
             endpoint::Endpoint,
@@ -615,19 +647,22 @@ mod tests {
             inner: CoreValue::Integer(Integer::from(42)),
             custom_type: Some(memory.get_core_type(CoreLibTypeId::Base(
                 CoreLibBaseTypeId::Integer,
-            )))
+            ))),
         };
 
         assert!(val.has_default_type(memory));
 
         let val = Value {
             inner: CoreValue::Integer(Integer::from(42)),
-            custom_type: Some(Type::Alias(TypeDefinition::ImplType(
-                Box::new(memory.get_core_type(CoreLibTypeId::Base(
-                    CoreLibBaseTypeId::Integer,
-                ))),
-                vec![]
-            ).into()))
+            custom_type: Some(Type::Alias(
+                TypeDefinition::ImplType(
+                    Box::new(memory.get_core_type(CoreLibTypeId::Base(
+                        CoreLibBaseTypeId::Integer,
+                    ))),
+                    vec![],
+                )
+                .into(),
+            )),
         };
 
         assert!(!val.has_default_type(memory));

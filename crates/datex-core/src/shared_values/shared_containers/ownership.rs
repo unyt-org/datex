@@ -1,9 +1,11 @@
-use crate::serde::Deserialize;
+use crate::{
+    serde::Deserialize,
+    shared_values::shared_containers::SharedContainerMutability,
+};
 use binrw::{BinRead, BinWrite};
 use core::{cmp::Ordering, fmt::Display};
 use num_enum::TryFromPrimitive;
 use serde::Serialize;
-use crate::shared_values::shared_containers::SharedContainerMutability;
 
 #[derive(
     Debug,
@@ -34,13 +36,13 @@ impl From<ReferenceMutability> for SharedContainerOwnership {
 impl From<ReferenceMutability> for SharedContainerMutability {
     fn from(mutability: ReferenceMutability) -> Self {
         match mutability {
-            ReferenceMutability::Immutable => SharedContainerMutability::Immutable,
+            ReferenceMutability::Immutable => {
+                SharedContainerMutability::Immutable
+            }
             ReferenceMutability::Mutable => SharedContainerMutability::Mutable,
         }
     }
 }
-
-
 
 impl PartialOrd<Self> for ReferenceMutability {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {

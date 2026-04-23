@@ -4,7 +4,7 @@ use crate::{
     },
     prelude::*,
     traits::structural_eq::StructuralEq,
-    types::{type_definition::TypeDefinition},
+    types::{type_definition::TypeDefinition, type_match::TypeMatch},
     values::{
         core_values::{
             decimal::{Decimal, typed_decimal::TypedDecimal},
@@ -12,11 +12,10 @@ use crate::{
             integer::{Integer, typed_integer::TypedInteger},
             text::Text,
         },
+        value_container::ValueContainer,
     },
 };
-use core::{fmt::Display, hash::Hash, unimplemented};
-use crate::types::type_match::TypeMatch;
-use crate::values::value_container::ValueContainer;
+use core::{fmt::Display, hash::Hash};
 
 #[derive(Debug, Clone, PartialEq, Hash, Eq)]
 pub enum LiteralTypeDefinition {
@@ -218,7 +217,9 @@ impl Display for LiteralTypeDefinition {
             LiteralTypeDefinition::TypedDecimal(typed_decimal) => {
                 core::write!(f, "{}", typed_decimal)
             }
-            LiteralTypeDefinition::Text(text) => core::write!(f, "{}", Text::from(text.to_string())),
+            LiteralTypeDefinition::Text(text) => {
+                core::write!(f, "{}", Text::from(text.to_string()))
+            }
             LiteralTypeDefinition::Boolean(boolean) => {
                 core::write!(f, "{}", boolean)
             }
@@ -239,7 +240,7 @@ impl TypeMatch for LiteralTypeDefinition {
     fn matches(&self, other: &Self) -> bool {
         self == other
     }
-    fn matched_by_value(&self, value: &ValueContainer) -> bool {
+    fn matched_by_value(&self, _value: &ValueContainer) -> bool {
         todo!()
     }
 }
@@ -248,15 +249,16 @@ impl TypeMatch for LiteralTypeDefinition {
 mod tests {
     use crate::{
         prelude::*,
-        types::{literal_type_definition::LiteralTypeDefinition, r#type::Type},
+        types::{
+            literal_type_definition::LiteralTypeDefinition, r#type::Type,
+            type_definition::TypeDefinition, type_match::TypeMatch,
+        },
         values::{
             core_value::CoreValue,
             core_values::{integer::Integer, text::Text},
             value_container::ValueContainer,
         },
     };
-    use crate::types::type_definition::TypeDefinition;
-    use crate::types::type_match::TypeMatch;
 
     #[test]
     fn test_structural_type_display() {
@@ -267,29 +269,19 @@ mod tests {
         assert_eq!(text_type.to_string(), r#""Hello""#);
 
         let list_type = TypeDefinition::List(vec![
-            Type::from(
-                LiteralTypeDefinition::Integer(Integer::from(1)),
-            )
-            .into(),
-            Type::from(
-                LiteralTypeDefinition::Text("World".to_string()),
-            )
-            .into(),
+            Type::from(LiteralTypeDefinition::Integer(Integer::from(1))).into(),
+            Type::from(LiteralTypeDefinition::Text("World".to_string())).into(),
         ]);
         assert_eq!(list_type.to_string(), r#"[1, "World"]"#);
 
         let struct_type = TypeDefinition::Map(vec![
             (
-                LiteralTypeDefinition::Text("id".to_string())
-                    .into(),
-                int_type
-                    .into(),
+                LiteralTypeDefinition::Text("id".to_string()).into(),
+                int_type.into(),
             ),
             (
-                LiteralTypeDefinition::Text("name".to_string())
-                    .into(),
-                text_type
-                    .into(),
+                LiteralTypeDefinition::Text("name".to_string()).into(),
+                text_type.into(),
             ),
         ]);
         assert_eq!(struct_type.to_string(), r#"{"id": 42, "name": "Hello"}"#);

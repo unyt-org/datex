@@ -1,12 +1,7 @@
 use crate::prelude::*;
-use core::{fmt::Display, ops::Range};
+use core::ops::Range;
 
-use crate::{
-    global::operators::binary::ArithmeticOperator,
-    utils::maybe_action::ErrorCollector,
-};
-use crate::types::error::TypeError;
-use crate::types::r#type::Type;
+use crate::{types::error::TypeError, utils::maybe_action::ErrorCollector};
 
 #[derive(Debug)]
 pub struct SpannedTypeError {

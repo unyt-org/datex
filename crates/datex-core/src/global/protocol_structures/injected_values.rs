@@ -1,7 +1,10 @@
-use binrw::io::{Read, Seek, Write};
-use binrw::{BinRead, BinResult, BinWrite, Endian};
-use crate::global::protocol_structures::instruction_data::StackIndex;
-use crate::prelude::*;
+use crate::{
+    global::protocol_structures::instruction_data::StackIndex, prelude::*,
+};
+use binrw::{
+    BinRead, BinResult, BinWrite, Endian,
+    io::{Read, Seek, Write},
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum SharedInjectedValueType {
@@ -80,8 +83,9 @@ impl BinWrite for InjectedValueType {
         if endian != Endian::Little {
             return Err(binrw::Error::AssertFail {
                 pos: writer.stream_position().unwrap_or(0),
-                message: "Only little-endian is supported for InjectedValueType"
-                    .to_string(),
+                message:
+                    "Only little-endian is supported for InjectedValueType"
+                        .to_string(),
             });
         }
         // write type
@@ -103,17 +107,24 @@ impl BinRead for InjectedValueType {
         if endian != Endian::Little {
             return Err(binrw::Error::AssertFail {
                 pos: reader.stream_position().unwrap_or(0),
-                message: "Only little-endian is supported for InjectedValueType"
-                    .to_string(),
+                message:
+                    "Only little-endian is supported for InjectedValueType"
+                        .to_string(),
             });
         }
         // read type
         let mut type_buf = [0u8; 1];
         reader.read_exact(&mut type_buf)?;
-        let value_type = InjectedValueType::try_from(type_buf[0]).map_err(|_| binrw::Error::AssertFail {
-            pos: reader.stream_position().unwrap_or(0),
-            message: format!("Invalid InjectedValueType value: {}", type_buf[0]),
-        })?;
+        let value_type =
+            InjectedValueType::try_from(type_buf[0]).map_err(|_| {
+                binrw::Error::AssertFail {
+                    pos: reader.stream_position().unwrap_or(0),
+                    message: format!(
+                        "Invalid InjectedValueType value: {}",
+                        type_buf[0]
+                    ),
+                }
+            })?;
         Ok(value_type)
     }
 }

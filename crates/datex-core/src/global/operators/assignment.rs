@@ -1,10 +1,10 @@
-use super::super::instruction_codes::InstructionCode;
-use core::{fmt::Display, prelude::rust_2024::*};
 use binrw::{BinRead, BinWrite};
+use core::{fmt::Display, prelude::rust_2024::*};
 use num_enum::TryFromPrimitive;
-use crate::global::protocol_structures::regular_instructions::RegularInstruction;
 
-#[derive(Clone, Debug, PartialEq, Copy, BinWrite, BinRead, TryFromPrimitive)]
+#[derive(
+    Clone, Debug, PartialEq, Copy, BinWrite, BinRead, TryFromPrimitive,
+)]
 #[brw(little, repr(u8))]
 #[repr(u8)]
 pub enum AssignmentOperator {

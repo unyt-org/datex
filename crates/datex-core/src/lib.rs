@@ -46,6 +46,7 @@ pub mod type_inference;
 pub mod visitor;
 
 pub mod core_compiler;
+mod dif;
 pub mod disassembler;
 pub mod dxb_parser;
 #[cfg(all(feature = "macro_utils", feature = "std", feature = "compiler"))]
@@ -56,9 +57,8 @@ pub mod task;
 pub mod traits;
 pub mod types;
 pub mod utils;
-pub mod values;
 mod value_updates;
-mod dif;
+pub mod values;
 
 // reexport macros
 pub use datex_macros_internal as macros;

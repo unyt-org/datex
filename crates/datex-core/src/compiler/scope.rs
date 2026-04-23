@@ -7,11 +7,13 @@ use crate::{
             precompiled_ast::RichAst, scope_stack::PrecompilerScopeStack,
         },
     },
+    global::protocol_structures::{
+        injected_values::{InjectedValueDeclaration, InjectedValueType},
+        instruction_data::StackIndex,
+    },
     runtime::execution::context::ExecutionMode,
 };
 use core::cell::RefCell;
-use crate::global::protocol_structures::injected_values::{InjectedValueDeclaration, InjectedValueType};
-use crate::global::protocol_structures::instruction_data::StackIndex;
 
 #[derive(Debug, Default, Clone)]
 pub struct PrecompilerData {
@@ -49,19 +51,26 @@ impl ExternalParentScope {
         name: &str,
         value_type: InjectedValueType,
     ) -> Result<Option<(StackIndex, VariableKind)>, ()> {
-        let variable = self.scope.resolve_variable_name(name, Some(value_type))?;
+        let variable =
+            self.scope.resolve_variable_name(name, Some(value_type))?;
         if let Some((variable_parent_index, variable_kind)) = variable {
             // parent variable already registered
-            if let Some(injected_variable) = self.injected_variables_map.get(&variable_parent_index) {
+            if let Some(injected_variable) =
+                self.injected_variables_map.get(&variable_parent_index)
+            {
                 return Ok(Some((*injected_variable, variable_kind)));
             }
             // otherwise, map variable and store mapping
-            let child_stack_index = StackIndex(self.injected_variables_map.len() as u32);
-            self.injected_variables_map.insert(variable_parent_index, child_stack_index);
-            self.injected_values.push(InjectedValueDeclaration {index: variable_parent_index, ty: value_type });
+            let child_stack_index =
+                StackIndex(self.injected_variables_map.len() as u32);
+            self.injected_variables_map
+                .insert(variable_parent_index, child_stack_index);
+            self.injected_values.push(InjectedValueDeclaration {
+                index: variable_parent_index,
+                ty: value_type,
+            });
             Ok(Some((child_stack_index, variable_kind)))
-        }
-        else {
+        } else {
             Ok(None)
         }
     }
@@ -115,7 +124,9 @@ impl CompilationScope {
         initial_stack_index: StackIndex,
     ) -> CompilationScope {
         CompilationScope {
-            external_parent_scope_data: Some(ExternalParentScope::new(parent_context)),
+            external_parent_scope_data: Some(ExternalParentScope::new(
+                parent_context,
+            )),
             next_stack_index: initial_stack_index,
             ..CompilationScope::default()
         }
@@ -161,12 +172,12 @@ impl CompilationScope {
     ) -> Result<Option<(StackIndex, VariableKind)>, ()> {
         if let Some(variable) = self.variables.get(name) {
             Ok(Some((variable.index, variable.kind)))
-        } else if let Some(external_parent) = &mut self.external_parent_scope_data {
+        } else if let Some(external_parent) =
+            &mut self.external_parent_scope_data
+        {
             if let Some(slot_type) = slot_type {
-                external_parent
-                    .resolve_variable_name(name, slot_type)
-            }
-            else {
+                external_parent.resolve_variable_name(name, slot_type)
+            } else {
                 Err(())
             }
         } else if let Some(parent) = &mut self.parent_scope {

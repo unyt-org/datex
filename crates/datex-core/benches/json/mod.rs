@@ -4,8 +4,10 @@ use core::hint::black_box;
 use criterion::{BenchmarkId, Criterion, criterion_group};
 
 use crate::{json, json::utils::*};
-use datex_core::compiler::{CompileOptions, compile_script};
-use datex_core::runtime::Runtime;
+use datex_core::{
+    compiler::{CompileOptions, compile_script},
+    runtime::Runtime,
+};
 
 fn bench_json_file(c: &mut Criterion, file_path: &str) {
     let runtime = Runtime::stub();

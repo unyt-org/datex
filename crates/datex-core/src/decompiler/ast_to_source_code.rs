@@ -16,10 +16,12 @@ use crate::prelude::*;
 use alloc::format;
 use core::fmt::{self};
 
-use crate::decompiler::{FormattingMode, FormattingOptions, IndentType};
-use crate::ast::expressions::{UnboxSlotAssignment, ValueAccessType};
-use crate::shared_values::shared_containers::ReferenceMutability;
-use crate::types::type_definition_with_metadata::LocalReferenceMutability;
+use crate::{
+    ast::expressions::{UnboxSlotAssignment, ValueAccessType},
+    decompiler::{FormattingMode, FormattingOptions, IndentType},
+    shared_values::shared_containers::ReferenceMutability,
+    types::type_definition_with_metadata::LocalReferenceMutability,
+};
 
 #[derive(Clone, Default)]
 pub enum BraceStyle {
@@ -810,17 +812,17 @@ impl AstToSourceCodeConverter {
                 )
             }
             DatexExpressionData::UnboxSlotAssignment(UnboxSlotAssignment {
-                 operator,
-                 slot,
-                 assigned_expression,
-             }) => {
+                operator,
+                slot,
+                assigned_expression,
+            }) => {
                 let unbox_prefix = "*";
                 ast_fmt!(
                     &self,
                     "{}{}%s{}%s{}",
                     unbox_prefix,
                     slot.to_string(),
-                     match operator {
+                    match operator {
                         Some(operator) => operator.to_string(),
                         None => "=".to_string(),
                     },
@@ -882,17 +884,16 @@ mod tests {
             expressions::{
                 Apply, DatexExpression, DatexExpressionData, List, Map,
                 PropertyAccess, RangeDeclaration, Unbox, UnboxAssignment,
-                VariableAccess, VariableDeclaration, VariableKind,
+                ValueAccessType, VariableAccess, VariableDeclaration,
+                VariableKind,
             },
             spanned::Spanned,
             type_expressions::TypeExpressionData,
         },
-        decompiler::options::FormattingOptions
-        ,
+        decompiler::options::FormattingOptions,
         parser::Parser,
         values::core_values::decimal::Decimal,
     };
-    use crate::ast::expressions::ValueAccessType;
 
     fn compact() -> AstToSourceCodeConverter {
         AstToSourceCodeConverter::new(FormattingOptions::compact())
@@ -1282,7 +1283,7 @@ mod tests {
                 DatexExpressionData::VariableAccess(VariableAccess {
                     id: 0,
                     name: "func".to_string(),
-                    access_type: ValueAccessType::MoveOrCopy
+                    access_type: ValueAccessType::MoveOrCopy,
                 })
                 .with_default_span(),
             ),

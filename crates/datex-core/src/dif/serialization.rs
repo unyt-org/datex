@@ -1,6 +1,5 @@
 use crate::{
     prelude::*,
-    serde::Deserialize,
     shared_values::shared_containers::{
         ReferenceMutability, SharedContainer, SharedContainerOwnership,
     },
@@ -10,10 +9,7 @@ use crate::{
     },
 };
 use alloc::format;
-use serde::{
-    Deserializer, Serialize, Serializer, de::DeserializeSeed,
-    ser::SerializeStruct,
-};
+use serde::{Serialize, Serializer, ser::SerializeStruct};
 
 /// Serialization for [ValueContainer].
 impl Serialize for ValueContainer {

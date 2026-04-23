@@ -1,24 +1,21 @@
-use core::ops::Deref;
-use serde::{Deserialize, Serialize};
 use crate::{
-    libs::core::{
-        core_lib_id::CoreLibId,
-        type_id::{CoreLibBaseTypeId, CoreLibTypeId},
+    libs::core::{core_lib_id::CoreLibId, type_id::CoreLibTypeId},
+    runtime::{
+        memory::Memory,
+        pointer_address_provider::SelfOwnedPointerAddressProvider,
     },
-    shared_values::{
-        pointer_address::PointerAddress, shared_containers::SharedContainer,
+    shared_values::shared_containers::{
+        SharedContainer, SharedContainerMutability,
     },
     types::{
         nominal_type_definition::NominalTypeDefinition,
+        shared_container_containing_type::SharedContainerContainingType,
         type_match::TypeMatch,
     },
-    values::core_value::CoreValue,
+    values::{core_value::CoreValue, value_container::ValueContainer},
 };
-use crate::runtime::memory::Memory;
-use crate::runtime::pointer_address_provider::SelfOwnedPointerAddressProvider;
-use crate::shared_values::shared_containers::SharedContainerMutability;
-use crate::types::shared_container_containing_type::SharedContainerContainingType;
-use crate::values::value_container::ValueContainer;
+use core::ops::Deref;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash, Serialize)]
 pub struct SharedContainerContainingNominalType(SharedContainer);
@@ -36,7 +33,9 @@ impl From<SharedContainerContainingNominalType> for SharedContainer {
     }
 }
 
-impl From<SharedContainerContainingNominalType> for SharedContainerContainingType {
+impl From<SharedContainerContainingNominalType>
+    for SharedContainerContainingType
+{
     fn from(value: SharedContainerContainingNominalType) -> Self {
         unsafe { SharedContainerContainingType::new_unchecked(value.0) }
     }
@@ -46,14 +45,16 @@ impl SharedContainerContainingNominalType {
     pub fn new_from_definition(
         definition: NominalTypeDefinition,
         address_provider: &mut SelfOwnedPointerAddressProvider,
-        memory: &Memory
+        memory: &Memory,
     ) -> SharedContainerContainingNominalType {
-        SharedContainerContainingNominalType(SharedContainer::new_owned_with_inferred_allowed_type(
-            CoreValue::NominalTypeDefinition(definition),
-            SharedContainerMutability::Immutable,
-            address_provider,
-            memory
-        ))
+        SharedContainerContainingNominalType(
+            SharedContainer::new_owned_with_inferred_allowed_type(
+                CoreValue::NominalTypeDefinition(definition),
+                SharedContainerMutability::Immutable,
+                address_provider,
+                memory,
+            ),
+        )
     }
 
     /// Creates a new [SharedContainerContainingNominalType] from a [SharedContainer] without checking the constraint.
@@ -88,22 +89,17 @@ impl TryFrom<SharedContainer> for SharedContainerContainingNominalType {
     type Error = ();
     fn try_from(value: SharedContainer) -> Result<Self, Self::Error> {
         // container must be immutable and contain nominal type
-        if value.container_mutability() == SharedContainerMutability::Immutable {
-            if value.with_collapsed_value_mut(|v| {
-                match &v.inner {
-                    CoreValue::NominalTypeDefinition(_) => {
-                        true
-                    },
-                    _ => false
-                }
+        if value.container_mutability() == SharedContainerMutability::Immutable
+        {
+            if value.with_collapsed_value_mut(|v| match &v.inner {
+                CoreValue::NominalTypeDefinition(_) => true,
+                _ => false,
             }) {
                 Ok(SharedContainerContainingNominalType(value))
-            }
-            else {
+            } else {
                 Err(())
             }
-        }
-        else {
+        } else {
             Err(())
         }
     }
@@ -126,7 +122,7 @@ impl TypeMatch for SharedContainerContainingNominalType {
         )
     }
 
-    fn matched_by_value(&self, value: &ValueContainer) -> bool {
+    fn matched_by_value(&self, _value: &ValueContainer) -> bool {
         todo!()
     }
 }

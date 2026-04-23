@@ -1,8 +1,17 @@
 use crate::{
+    global::protocol_structures::{
+        injected_values::{
+            InjectedValueDeclaration, InjectedValueType,
+            SharedInjectedValueType,
+        },
+        instruction_data::StackIndex,
+    },
+    prelude::*,
     runtime::{
-        RuntimeInternal,
+        Runtime,
         execution::{
             ExecutionError,
+            execution_input::ExecutionCallerMetadata,
             execution_loop::{
                 ExternalExecutionInterrupt, execution_loop,
                 interrupts::InterruptProvider,
@@ -10,16 +19,12 @@ use crate::{
         },
     },
     shared_values::shared_containers::observers::TransceiverId,
-    values::value_container::ValueContainer,
+    values::{
+        borrowed_value_container::BorrowedValueContainer,
+        value_container::ValueContainer,
+    },
 };
 use core::{cell::RefCell, fmt::Debug};
-use crate::global::protocol_structures::injected_values::{InjectedValueDeclaration, InjectedValueType, SharedInjectedValueType};
-use crate::global::protocol_structures::instruction_data::StackIndex;
-use crate::prelude::*;
-use crate::runtime::execution::execution_input::ExecutionCallerMetadata;
-use crate::runtime::execution::macros::yield_unwrap;
-use crate::runtime::Runtime;
-use crate::values::borrowed_value_container::BorrowedValueContainer;
 
 pub struct ExecutionLoopState {
     pub iterator: Box<
@@ -70,7 +75,7 @@ pub struct RuntimeExecutionState {
     pub stack: RuntimeExecutionStack,
     pub runtime: Runtime,
     pub source_id: TransceiverId,
-    pub caller_metadata: ExecutionCallerMetadata
+    pub caller_metadata: ExecutionCallerMetadata,
 }
 
 #[derive(Debug, Default)]
@@ -80,19 +85,12 @@ pub struct RuntimeExecutionStack {
 
 impl RuntimeExecutionStack {
     /// Pushes a value to the stack
-    pub(crate) fn push(
-        &mut self,
-        value: ValueContainer,
-    ) {
+    pub(crate) fn push(&mut self, value: ValueContainer) {
         self.values.push(Some(value));
     }
 
-
     /// Pushes multiple values to the stack
-    pub(crate) fn push_multiple(
-        &mut self,
-        values: Vec<ValueContainer>,
-    ) {
+    pub(crate) fn push_multiple(&mut self, values: Vec<ValueContainer>) {
         self.values.extend(values.into_iter().map(Some));
     }
 
@@ -103,9 +101,10 @@ impl RuntimeExecutionStack {
         index: StackIndex,
     ) -> Result<ValueContainer, ExecutionError> {
         if let Some(stack_value) = self.values.get_mut(index.0 as usize) {
-            stack_value.take().ok_or_else(|| ExecutionError::StackValueNotAllocated(index))
-        }
-        else {
+            stack_value
+                .take()
+                .ok_or_else(|| ExecutionError::StackValueNotAllocated(index))
+        } else {
             Err(ExecutionError::StackOutOfBoundsAccess(index))
         }
     }
@@ -119,8 +118,7 @@ impl RuntimeExecutionStack {
     ) -> Result<Option<ValueContainer>, ExecutionError> {
         if let Some(stack_value) = self.values.get_mut(index.0 as usize) {
             Ok(stack_value.replace(value))
-        }
-        else {
+        } else {
             Err(ExecutionError::StackOutOfBoundsAccess(index))
         }
     }
@@ -132,9 +130,10 @@ impl RuntimeExecutionStack {
         index: StackIndex,
     ) -> Result<&ValueContainer, ExecutionError> {
         if let Some(stack_value) = self.values.get(index.0 as usize) {
-            stack_value.as_ref().ok_or_else(|| ExecutionError::StackValueNotAllocated(index))
-        }
-        else {
+            stack_value
+                .as_ref()
+                .ok_or_else(|| ExecutionError::StackValueNotAllocated(index))
+        } else {
             Err(ExecutionError::StackOutOfBoundsAccess(index))
         }
     }
@@ -146,40 +145,57 @@ impl RuntimeExecutionStack {
         index: StackIndex,
     ) -> Result<&mut ValueContainer, ExecutionError> {
         if let Some(stack_value) = self.values.get_mut(index.0 as usize) {
-            stack_value.as_mut().ok_or_else(|| ExecutionError::StackValueNotAllocated(index))
-        }
-        else {
+            stack_value
+                .as_mut()
+                .ok_or_else(|| ExecutionError::StackValueNotAllocated(index))
+        } else {
             Err(ExecutionError::StackOutOfBoundsAccess(index))
         }
     }
 
     /// Resolves a list of injected values to actual values on the stack
-    pub fn resolve_injected_values(&mut self, injected_values: &[InjectedValueDeclaration]) -> Result<Vec<BorrowedValueContainer>, ExecutionError> {
+    pub fn resolve_injected_values(
+        &mut self,
+        injected_values: &[InjectedValueDeclaration],
+    ) -> Result<Vec<BorrowedValueContainer<'_>>, ExecutionError> {
         let mut moved: Vec<Option<_>> = vec![None; injected_values.len()];
 
         // perform all mutable operations (removing moved shared values)
-        for (i, InjectedValueDeclaration {index, ty}) in injected_values.iter().enumerate() {
-            if matches!(ty, InjectedValueType::Shared(SharedInjectedValueType::Move)) {
+        for (i, InjectedValueDeclaration { index, ty }) in
+            injected_values.iter().enumerate()
+        {
+            if matches!(
+                ty,
+                InjectedValueType::Shared(SharedInjectedValueType::Move)
+            ) {
                 moved[i] = Some(self.take_stack_value(*index)?);
             }
         }
 
         // collect all values
         let mut resolved_values = Vec::with_capacity(injected_values.len());
-        for (i, InjectedValueDeclaration {index, ty}) in injected_values.iter().enumerate() {
+        for (i, InjectedValueDeclaration { index, ty }) in
+            injected_values.iter().enumerate()
+        {
             resolved_values.push(match ty {
                 InjectedValueType::Shared(SharedInjectedValueType::Move) => {
                     match moved[i].take().unwrap() {
-                        ValueContainer::Shared(shared) => BorrowedValueContainer::Shared(shared),
-                        ValueContainer::Local(_) => return Err(ExecutionError::ExpectedSharedValue)
+                        ValueContainer::Shared(shared) => {
+                            BorrowedValueContainer::Shared(shared)
+                        }
+                        ValueContainer::Local(_) => {
+                            return Err(ExecutionError::ExpectedSharedValue);
+                        }
                     }
                 }
-                _ => {
-                    match self.get_stack_value(*index)? {
-                        ValueContainer::Shared(shared) => BorrowedValueContainer::Shared(shared.clone()),
-                        ValueContainer::Local(value) => BorrowedValueContainer::Local(value),
+                _ => match self.get_stack_value(*index)? {
+                    ValueContainer::Shared(shared) => {
+                        BorrowedValueContainer::Shared(shared.clone())
                     }
-                }
+                    ValueContainer::Local(value) => {
+                        BorrowedValueContainer::Local(value)
+                    }
+                },
             });
         }
 

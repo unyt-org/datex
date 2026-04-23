@@ -3,8 +3,7 @@ use crate::{
     prelude::*,
     shared_values::pointer_address::{ExternalPointerAddress, PointerAddress},
 };
-use core::{fmt::Display, ops::Deref};
-use core::str::FromStr;
+use core::{fmt::Display, ops::Deref, str::FromStr};
 
 pub const TYPE_SPACE_BASE: u16 = 0;
 pub const TYPE_VARIANT_SPACE_BASE: u16 = 500;
@@ -36,7 +35,9 @@ impl CoreLibId {
     pub fn try_from_str(string: &str) -> Option<Self> {
         CoreLibTypeId::try_from_str(string)
             .map(CoreLibId::Type)
-            .or_else(|| CoreLibValueId::from_str(string).map(CoreLibId::Value).ok())
+            .or_else(|| {
+                CoreLibValueId::from_str(string).map(CoreLibId::Value).ok()
+            })
     }
 }
 
@@ -54,15 +55,15 @@ impl From<CoreLibValueId> for CoreLibId {
 impl Display for CoreLibId {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
-            CoreLibId::Type(type_id) => write!(f, "{}", type_id.to_string()),
-            CoreLibId::Value(value_id) => write!(f, "{}", value_id.to_string()),
+            CoreLibId::Type(type_id) => write!(f, "{}", type_id),
+            CoreLibId::Value(value_id) => write!(f, "{}", value_id),
         }
     }
 }
 
-impl Into<CoreLibIdIndex> for CoreLibId {
-    fn into(self) -> CoreLibIdIndex {
-        match self {
+impl From<CoreLibId> for CoreLibIdIndex {
+    fn from(val: CoreLibId) -> Self {
+        match val {
             CoreLibId::Type(type_id) => type_id.into(),
             CoreLibId::Value(value_id) => value_id.into(),
         }
@@ -98,7 +99,8 @@ impl<T: CoreLibIdTrait> From<T> for PointerAddress {
 }
 impl<T: CoreLibIdTrait> From<T> for ExternalPointerAddress {
     fn from(core_lib_id: T) -> Self {
-        let bytes: [u8; 2] = (core_lib_id).into().to_le_bytes().try_into().unwrap();
+        let bytes: [u8; 2] =
+            (core_lib_id).into().to_le_bytes().try_into().unwrap();
         ExternalPointerAddress::Builtin([bytes[0], bytes[1], 0])
     }
 }
@@ -121,17 +123,17 @@ impl TryFrom<&PointerAddress> for CoreLibIdIndex {
     fn try_from(value: &PointerAddress) -> Result<Self, Self::Error> {
         if let PointerAddress::External(value) = value {
             CoreLibIdIndex::try_from(value)
-        }
-        else {
+        } else {
             Err(())
         }
     }
 }
 
-
 impl TryFrom<&ExternalPointerAddress> for CoreLibId {
     type Error = ();
-    fn try_from(external: &ExternalPointerAddress) -> Result<Self, Self::Error> {
+    fn try_from(
+        external: &ExternalPointerAddress,
+    ) -> Result<Self, Self::Error> {
         CoreLibId::try_from(CoreLibIdIndex::try_from(external)?)
     }
 }

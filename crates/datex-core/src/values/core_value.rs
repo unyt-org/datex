@@ -1,19 +1,20 @@
 use crate::{
-    libs::core::{
-        type_id::{CoreLibBaseTypeId, CoreLibTypeId, CoreLibVariantTypeId},
+    libs::core::type_id::{
+        CoreLibBaseTypeId, CoreLibTypeId, CoreLibVariantTypeId,
     },
     prelude::*,
-    types::{
-        nominal_type_definition::NominalTypeDefinition,
-        shared_container_containing_type::SharedContainerContainingType,
-    },
+    types::nominal_type_definition::NominalTypeDefinition,
 };
 use core::result::Result;
 use datex_macros_internal::FromCoreValue;
 
 use crate::{
+    runtime::memory::Memory,
     traits::{structural_eq::StructuralEq, value_eq::ValueEq},
-    types::{type_definition::TypeDefinition, r#type::Type},
+    types::{
+        shared_container_containing_nominal_type::SharedContainerContainingNominalType,
+        r#type::Type,
+    },
     values::{
         core_values::{
             boolean::Boolean,
@@ -39,8 +40,6 @@ use core::{
     fmt::{Display, Formatter},
     ops::{Add, AddAssign, Neg, Not, Sub},
 };
-use crate::runtime::memory::Memory;
-use crate::types::shared_container_containing_nominal_type::SharedContainerContainingNominalType;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, FromCoreValue)]
 pub enum CoreValue {
@@ -262,8 +261,8 @@ impl From<&CoreValue> for CoreLibTypeId {
             }
             CoreValue::Range(_) => {
                 CoreLibTypeId::Base(CoreLibBaseTypeId::Range)
-            },
-            CoreValue::NominalTypeDefinition(nominal_type) => {
+            }
+            CoreValue::NominalTypeDefinition(_nominal_type) => {
                 CoreLibTypeId::Base(CoreLibBaseTypeId::Never) // TODO: what is the type of nominal type? do we even need to handle this?
             }
         }
@@ -288,13 +287,19 @@ impl CoreValue {
     /// This method uses the CoreLibPointerId to retrieve the corresponding
     /// type reference from the core library.
     /// For example, a CoreValue::TypedInteger(i32) will return the type ref integer/i32
-    pub fn default_nominal_type(&self, memory: &Memory) -> SharedContainerContainingNominalType {
+    pub fn default_nominal_type(
+        &self,
+        memory: &Memory,
+    ) -> SharedContainerContainingNominalType {
         memory.get_core_type_reference(CoreLibTypeId::from(self))
     }
 
     /// Tries to get the current value as the specific [CoreValue] variant.
     /// Does not perform any type conversion.
-    pub fn try_as<T>(self) -> Option<T> where T: TryFrom<CoreValue> {
+    pub fn try_as<T>(self) -> Option<T>
+    where
+        T: TryFrom<CoreValue>,
+    {
         T::try_from(self).ok()
     }
 
@@ -788,7 +793,9 @@ impl Display for CoreValue {
             CoreValue::Decimal(decimal) => write!(f, "{decimal}"),
             CoreValue::List(list) => write!(f, "{list}"),
             CoreValue::Callable(_callable) => write!(f, "[[ callable ]]"),
-            CoreValue::NominalTypeDefinition(container) => write!(f, "{container}"),
+            CoreValue::NominalTypeDefinition(container) => {
+                write!(f, "{container}")
+            }
         }
     }
 }
@@ -805,7 +812,11 @@ mod tests {
     #[test]
     fn type_construct() {
         let a = CoreValue::from(42i32);
-        assert_eq!(a.default_nominal_type(&Memory::new()).with_collapsed_value(|v| v.to_string()), "integer/i32");
+        assert_eq!(
+            a.default_nominal_type(&Memory::new())
+                .with_collapsed_value(|v| v.to_string()),
+            "integer/i32"
+        );
     }
 
     #[test]
@@ -821,7 +832,8 @@ mod tests {
 
     #[test]
     fn endpoint() {
-        let endpoint: Endpoint = CoreValue::from("@test").cast_to_endpoint().unwrap();
+        let endpoint: Endpoint =
+            CoreValue::from("@test").cast_to_endpoint().unwrap();
         debug!("Endpoint: {endpoint}");
         assert_eq!(endpoint.to_string(), "@test");
     }

@@ -1,5 +1,5 @@
-pub mod deserialization;
-pub mod serialization;
-pub mod deserialization_context;
 mod cache;
+pub mod deserialization;
+pub mod deserialization_context;
 pub mod dif_interface;
+pub mod serialization;

@@ -13,11 +13,10 @@ use crate::{
     random::RandomState,
 };
 
-use crate::prelude::*;
+use crate::{disassembler::print_disassembled, prelude::*};
 use core::{cell::RefCell, fmt::Debug, prelude::rust_2024::*};
 use log::info;
 use ringmap::RingMap;
-use crate::disassembler::print_disassembled;
 
 // TODO #170: store scope memory
 #[derive(Debug)]
@@ -159,7 +158,7 @@ impl BlockHandler {
             "Received block (context={context_id}, section={section_index}, block_nr={block_number})"
         );
         print_disassembled(&block.body);
-        
+
         // handle observers if response block
         if is_response {
             self.handle_incoming_response_block(block);

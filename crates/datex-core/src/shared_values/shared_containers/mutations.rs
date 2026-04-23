@@ -35,7 +35,7 @@
 // }
 //
 // impl BaseSharedValueContainer {
-//     
+//
 //     /// Internal function that handles updates
 //     /// - Checks if the reference is mutable
 //     /// - Calls the provided handler to perform the update and get the DIFUpdateData

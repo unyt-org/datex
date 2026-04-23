@@ -3,8 +3,7 @@ use crate::{
         expressions::{
             Apply, BinaryOperation, DatexExpression, DatexExpressionData, List,
             Map, PropertyAssignment, Slot, Statements, UnaryOperation,
-            UnboundedStatement, VariableAssignment, VariableDeclaration,
-            VariableKind,
+            UnboundedStatement, VariableAssignment,
         },
         spanned::Spanned,
         type_expressions::{TypeExpression, TypeExpressionData},
@@ -17,10 +16,8 @@ use crate::{
         },
     },
     global::{
-        operators::{AssignmentOperator, BinaryOperator, UnaryOperator},
-        protocol_structures::instructions::{
-            Instruction,
-        },
+        operators::{BinaryOperator, UnaryOperator},
+        protocol_structures::instructions::Instruction,
         slots::InternalSlot,
     },
     values::core_values::{
@@ -30,23 +27,25 @@ use crate::{
 };
 
 use crate::{
-    ast::expressions::{CreateShared, GetSharedRef, RequestSharedRef},
+    ast::expressions::{
+        CloneExpression, CreateShared, GetSharedRef, RequestSharedRef,
+        SlotAssignment,
+    },
+    global::protocol_structures::{
+        instruction_data::UnboundedStatementsData,
+        instructions::NestedInstructionResolutionStrategy,
+        regular_instructions::RegularInstruction,
+        type_instructions::TypeInstruction,
+    },
     prelude::*,
     shared_values::{
         pointer_address::PointerAddress,
-        shared_containers::SharedContainerMutability,
+        shared_containers::{ReferenceMutability, SharedContainerMutability},
     },
 };
 use alloc::format;
 use core::cell::RefCell;
 use num_enum::TryFromPrimitive;
-use crate::ast::expressions::{CloneExpression, SlotAssignment};
-use crate::global::operators::binary::ArithmeticOperator;
-use crate::global::protocol_structures::instruction_data::UnboundedStatementsData;
-use crate::global::protocol_structures::instructions::NestedInstructionResolutionStrategy;
-use crate::global::protocol_structures::regular_instructions::RegularInstruction;
-use crate::global::protocol_structures::type_instructions::TypeInstruction;
-use crate::shared_values::shared_containers::ReferenceMutability;
 
 #[derive(Debug)]
 enum CollectedAstResult {
@@ -114,8 +113,10 @@ pub fn ast_from_bytecode(
 ) -> Result<DatexExpression, DXBParserError> {
     let mut collector = InstructionCollector::<CollectedAstResult>::default();
 
-    for instruction in iterate_instructions(Rc::new(RefCell::new(dxb.to_vec())), NestedInstructionResolutionStrategy::default())
-    {
+    for instruction in iterate_instructions(
+        Rc::new(RefCell::new(dxb.to_vec())),
+        NestedInstructionResolutionStrategy::default(),
+    ) {
         let instruction = instruction?;
 
         let result = match instruction {
@@ -270,11 +271,11 @@ pub fn ast_from_bytecode(
                                 })
                             }
 
-                            RegularInstruction::SharedRef(shared_ref) => {
+                            RegularInstruction::SharedRef(_shared_ref) => {
                                 DatexExpressionData::NativeImplementationIndicator // TODO: better ast mapping
                             }
 
-                            RegularInstruction::SharedRefWithValue(shared_ref) => {
+                            RegularInstruction::SharedRefWithValue(_shared_ref) => {
                                 DatexExpressionData::NativeImplementationIndicator // TODO: better ast mapping
                             }
 
@@ -637,7 +638,7 @@ pub fn ast_from_bytecode(
                                 .into()
                             }
 
-                            RegularInstruction::PushToStackMultiple(push_multiple) => {
+                            RegularInstruction::PushToStackMultiple(_push_multiple) => {
                                 let expr = collected_results.pop_value_result();
                                 DatexExpressionData::SlotAssignment(
                                     SlotAssignment {

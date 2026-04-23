@@ -1,19 +1,21 @@
 use crate::{
     prelude::*,
+    runtime::memory::Memory,
     shared_values::pointer_address::PointerAddress,
     traits::structural_eq::StructuralEq,
     types::{
         collection_type_definition::CollectionTypeDefinition,
         literal_type_definition::LiteralTypeDefinition,
+        shared_container_containing_nominal_type::SharedContainerContainingNominalType,
         shared_container_containing_type::SharedContainerContainingType,
         r#type::Type,
-        type_definition_with_metadata::{TypeDefinitionWithMetadata, TypeMetadata},
+        type_definition_with_metadata::{
+            TypeDefinitionWithMetadata, TypeMetadata,
+        },
     },
     values::core_values::callable::CallableSignature,
 };
 use core::{fmt::Display, hash::Hash, ops::Deref, prelude::rust_2024::*};
-use crate::runtime::memory::Memory;
-use crate::types::shared_container_containing_nominal_type::SharedContainerContainingNominalType;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TypeDefinition {
@@ -31,7 +33,7 @@ pub enum TypeDefinition {
     /// typealias A = {b: B} // $A
     /// typealias B = {a: $A}
     Shared(SharedContainerContainingType), // integer
-    
+
     /// needed for nested types with multiple reference layers (e.g. 'mut 'mut shared X)
     Nested(Box<Type>),
 
@@ -318,11 +320,13 @@ impl TypeDefinition {
     /// 42u8 -> integer
     /// 42 -> integer
     /// User/variant -> User
-    pub fn base_core_lib_type(&self, memory: &Memory) -> SharedContainerContainingNominalType {
+    pub fn base_core_lib_type(
+        &self,
+        memory: &Memory,
+    ) -> SharedContainerContainingNominalType {
         match &self {
-            TypeDefinition::Literal(value) => {
-                memory.get_core_type_reference(value.get_core_lib_type_pointer_id())
-            }
+            TypeDefinition::Literal(value) => memory
+                .get_core_type_reference(value.get_core_lib_type_pointer_id()),
             TypeDefinition::Union(_) => {
                 core::todo!("#322 handle union base type"); // generic type base type / type
             }

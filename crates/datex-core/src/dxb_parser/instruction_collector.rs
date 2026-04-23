@@ -1,10 +1,11 @@
 use crate::{
-    global::protocol_structures::instructions::Instruction,
+    global::protocol_structures::{
+        instructions::{Instruction, NextExpectedInstructions},
+        regular_instructions::RegularInstruction,
+        type_instructions::TypeInstruction,
+    },
     prelude::*,
 };
-use crate::global::protocol_structures::instructions::NextExpectedInstructions;
-use crate::global::protocol_structures::regular_instructions::RegularInstruction;
-use crate::global::protocol_structures::type_instructions::TypeInstruction;
 
 pub trait CollectionResultsPopper<Result, Val, Key, KeyVal, Type>:
     GetResults<Result> + Sized
@@ -372,13 +373,20 @@ impl<T> InstructionCollector<T> {
         regular_instruction: RegularInstruction,
         statement_result_collection_strategy: StatementResultCollectionStrategy,
     ) -> Option<RegularInstruction> {
-        let next_expected_instructions = regular_instruction.get_next_expected_instructions();
+        let next_expected_instructions =
+            regular_instruction.get_next_expected_instructions();
 
         match next_expected_instructions {
             NextExpectedInstructions::Regular(regular_count) => {
                 // special case: statements if strategy is collect last
-                if matches!(statement_result_collection_strategy, StatementResultCollectionStrategy::Last)
-                    && matches!(regular_instruction, RegularInstruction::Statements(_) | RegularInstruction::ShortStatements(_)) {
+                if matches!(
+                    statement_result_collection_strategy,
+                    StatementResultCollectionStrategy::Last
+                ) && matches!(
+                    regular_instruction,
+                    RegularInstruction::Statements(_)
+                        | RegularInstruction::ShortStatements(_)
+                ) {
                     self.collect_last(
                         Instruction::Regular(regular_instruction),
                         regular_count,
@@ -400,7 +408,10 @@ impl<T> InstructionCollector<T> {
                 );
                 None
             }
-            NextExpectedInstructions::RegularAndType(regular_count, type_count) => {
+            NextExpectedInstructions::RegularAndType(
+                regular_count,
+                type_count,
+            ) => {
                 self.collect_full(
                     Instruction::Regular(regular_instruction),
                     regular_count + type_count,
@@ -410,29 +421,24 @@ impl<T> InstructionCollector<T> {
             NextExpectedInstructions::UnboundedStart => {
                 match statement_result_collection_strategy {
                     StatementResultCollectionStrategy::Full => {
-                        self.collect_full_unbounded(
-                            Instruction::Regular(regular_instruction),
-                        );
+                        self.collect_full_unbounded(Instruction::Regular(
+                            regular_instruction,
+                        ));
                     }
                     StatementResultCollectionStrategy::Last => {
-                        self.collect_last_unbounded(
-                            Instruction::Regular(regular_instruction),
-                        );
+                        self.collect_last_unbounded(Instruction::Regular(
+                            regular_instruction,
+                        ));
                     }
                 }
                 None
             }
             NextExpectedInstructions::UnboundedEnd => {
-                self.collect_full(
-                    Instruction::Regular(regular_instruction),
-                    0,
-                );
+                self.collect_full(Instruction::Regular(regular_instruction), 0);
                 None
             }
 
-            NextExpectedInstructions::None => {
-                Some(regular_instruction)
-            }
+            NextExpectedInstructions::None => Some(regular_instruction),
         }
     }
 
@@ -443,7 +449,8 @@ impl<T> InstructionCollector<T> {
         &mut self,
         type_instruction: TypeInstruction,
     ) -> Option<TypeInstruction> {
-        let next_expected_instructions = type_instruction.get_next_expected_instructions();
+        let next_expected_instructions =
+            type_instruction.get_next_expected_instructions();
 
         match next_expected_instructions {
             NextExpectedInstructions::Type(type_count) => {
@@ -453,16 +460,14 @@ impl<T> InstructionCollector<T> {
                 );
                 None
             }
-            
+
             // currently not used for type instructions
-            NextExpectedInstructions::Regular(_) | 
-            NextExpectedInstructions::RegularAndType(..) |
-            NextExpectedInstructions::UnboundedStart | 
-            NextExpectedInstructions::UnboundedEnd => unreachable!(),
-   
-            NextExpectedInstructions::None => {
-                Some(type_instruction)
-            }
+            NextExpectedInstructions::Regular(_)
+            | NextExpectedInstructions::RegularAndType(..)
+            | NextExpectedInstructions::UnboundedStart
+            | NextExpectedInstructions::UnboundedEnd => unreachable!(),
+
+            NextExpectedInstructions::None => Some(type_instruction),
         }
     }
 }

@@ -14,12 +14,12 @@ use crate::{
     },
     fmt::options::{FormattingOptions, TypeDeclarationFormatting},
     global::operators::{BinaryOperator, ComparisonOperator, UnaryOperator},
+    libs::core::core_lib_id::CoreLibId,
     parser::ParserOptions,
     prelude::*,
+    runtime::Runtime,
 };
 use pretty::{DocAllocator, DocBuilder, RcAllocator, RcDoc};
-use crate::libs::core::core_lib_id::CoreLibId;
-use crate::runtime::{Runtime, RuntimeConfig, RuntimeRunner};
 
 mod bracketing;
 mod formatting;
@@ -68,7 +68,7 @@ impl<'a> Formatter<'a> {
                 ..Default::default()
             },
             // FIXME: stub runtime for now
-            Runtime::stub()
+            Runtime::stub(),
         )
         .expect("Failed to parse Datex script");
         Self {

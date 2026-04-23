@@ -1,26 +1,40 @@
+use crate::{
+    core_compiler::value_compiler::append_instruction,
+    global::{
+        operators::AssignmentOperator,
+        protocol_structures::{
+            injected_values::InjectedValueDeclaration,
+            instructions::Instruction,
+        },
+        type_instruction_codes::{
+            TypeLocalOrShared, TypeMutabilityCode, TypeOwnershipCode,
+        },
+    },
+    prelude::*,
+    serde::Deserialize,
+    shared_values::{
+        pointer_address::{
+            ExternalPointerAddress, PointerAddress, SelfOwnedPointerAddress,
+        },
+        shared_containers::{ReferenceMutability, SharedContainerMutability},
+    },
+    types::type_definition_with_metadata::TypeMetadata,
+    values::core_values::{
+        decimal::Decimal,
+        endpoint::{Endpoint, EndpointParsingError},
+        integer::Integer,
+    },
+};
 use alloc::string::FromUtf8Error;
-use core::fmt::Display;
-use core::ops::AddAssign;
-use binrw::io::{Cursor, Read, Seek, Write};
-use binrw::{BinRead, BinResult, BinWrite, Endian};
-use binrw::meta::{EndianKind, ReadEndian};
+use binrw::{
+    BinRead, BinResult, BinWrite, Endian,
+    io::{Cursor, Read, Seek, Write},
+    meta::{EndianKind, ReadEndian},
+};
 use cfg_if::cfg_if;
-use modular_bitfield::bitfield;
-use modular_bitfield::prelude::B4;
+use core::{fmt::Display, ops::AddAssign};
+use modular_bitfield::{bitfield, prelude::B4};
 use serde::Serialize;
-use crate::core_compiler::value_compiler::append_instruction;
-use crate::global::operators::AssignmentOperator;
-use crate::global::protocol_structures::injected_values::{InjectedValueDeclaration, InjectedValueType};
-use crate::global::protocol_structures::instructions::Instruction;
-use crate::global::type_instruction_codes::{TypeLocalOrShared, TypeMutabilityCode, TypeOwnershipCode};
-use crate::serde::Deserialize;
-use crate::shared_values::pointer_address::{SelfOwnedPointerAddress, PointerAddress, ExternalPointerAddress};
-use crate::shared_values::shared_containers::{ReferenceMutability, SharedContainerMutability};
-use crate::values::core_values::decimal::Decimal;
-use crate::values::core_values::endpoint::{Endpoint, EndpointParsingError};
-use crate::values::core_values::integer::Integer;
-use crate::prelude::*;
-use crate::types::type_definition_with_metadata::TypeMetadata;
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
 #[brw(little)]
@@ -138,17 +152,16 @@ impl BinRead for ShortTextData {
         _: Self::Args<'_>,
     ) -> BinResult<Self> {
         let raw = ShortTextDataRaw::read_options(reader, endian, ())?;
-        Ok(raw.try_into().map_err(|_| binrw::Error::AssertFail {
+        raw.try_into().map_err(|_| binrw::Error::AssertFail {
             pos: reader.stream_position().unwrap_or(0),
-            message: "Invalid UTF-8 string".to_string()
-        })?)
+            message: "Invalid UTF-8 string".to_string(),
+        })
     }
 }
 
 impl ReadEndian for ShortTextData {
     const ENDIAN: EndianKind = EndianKind::Endian(Endian::Little);
 }
-
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
 #[brw(little)]
@@ -203,10 +216,10 @@ impl BinRead for TextData {
         _: Self::Args<'_>,
     ) -> BinResult<Self> {
         let raw = TextDataRaw::read_options(reader, endian, ())?;
-        Ok(raw.try_into().map_err(|_| binrw::Error::AssertFail {
+        raw.try_into().map_err(|_| binrw::Error::AssertFail {
             pos: reader.stream_position().unwrap_or(0),
-            message: "Invalid UTF-8 string".to_string()
-        })?)
+            message: "Invalid UTF-8 string".to_string(),
+        })
     }
 }
 
@@ -270,7 +283,9 @@ pub struct InstructionCloseAndStore {
     pub instruction: Int8Data,
 }
 
-#[derive(BinRead, BinWrite, Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(
+    BinRead, BinWrite, Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord,
+)]
 #[brw(little)]
 pub struct StackIndex(pub u32);
 
@@ -289,7 +304,7 @@ impl AddAssign<u32> for StackIndex {
 #[derive(BinRead, BinWrite, Clone, Copy, Debug, PartialEq)]
 #[brw(little)]
 pub struct PushToStackMultiple {
-    pub count: u32
+    pub count: u32,
 }
 
 #[derive(
@@ -314,9 +329,9 @@ impl TryFrom<PointerAddress> for RawRemotePointerAddress {
     type Error = PointerAddressConversionError;
     fn try_from(ptr: PointerAddress) -> Result<Self, Self::Error> {
         match ptr {
-            PointerAddress::External(ExternalPointerAddress::Remote(
-                                           bytes,
-                                       )) => Ok(RawRemotePointerAddress { id: bytes }),
+            PointerAddress::External(ExternalPointerAddress::Remote(bytes)) => {
+                Ok(RawRemotePointerAddress { id: bytes })
+            }
             _ => Err(PointerAddressConversionError),
         }
     }
@@ -355,7 +370,8 @@ impl RawPointerAddress {
     }
     pub fn to_bytes(&self) -> Vec<u8> {
         let mut writer = Cursor::new(Vec::with_capacity(1 + self.get_size()));
-        self.write_le(&mut writer).expect("Failed to write raw pointer address");
+        self.write_le(&mut writer)
+            .expect("Failed to write raw pointer address");
         writer.into_inner()
     }
 }
@@ -366,16 +382,19 @@ impl From<PointerAddress> for RawPointerAddress {
             PointerAddress::External(ExternalPointerAddress::Remote(bytes)) => {
                 RawPointerAddress::Remote(RawRemotePointerAddress { id: bytes })
             }
-            PointerAddress::External(ExternalPointerAddress::Builtin(bytes)) => {
-                RawPointerAddress::Internal(RawBuiltinPointerAddress { id: bytes })
-            }
-            PointerAddress::SelfOwned(SelfOwnedPointerAddress {address} ) => {
-                RawPointerAddress::Local(RawLocalPointerAddress { bytes: address })
+            PointerAddress::External(ExternalPointerAddress::Builtin(
+                bytes,
+            )) => RawPointerAddress::Internal(RawBuiltinPointerAddress {
+                id: bytes,
+            }),
+            PointerAddress::SelfOwned(SelfOwnedPointerAddress { address }) => {
+                RawPointerAddress::Local(RawLocalPointerAddress {
+                    bytes: address,
+                })
             }
         }
     }
 }
-
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
 #[brw(little)]
@@ -410,7 +429,7 @@ pub struct SharedRefWithValue {
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
 #[brw(little)]
 pub struct SetSharedContainerValue {
-    pub operator: Option<AssignmentOperator>
+    pub operator: Option<AssignmentOperator>,
 }
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
@@ -419,7 +438,6 @@ pub struct ModifyStackValue {
     pub index: StackIndex,
     pub operator: AssignmentOperator,
 }
-
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
 #[brw(little)]
@@ -439,7 +457,6 @@ pub struct InstructionBlockData {
     #[br(count = length)]
     pub body: Vec<u8>,
 }
-
 
 cfg_if! {
     if #[cfg(feature = "disassembler")]{
@@ -516,7 +533,6 @@ cfg_if! {
 
     }
 }
-
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
 #[brw(little)]

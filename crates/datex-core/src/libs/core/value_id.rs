@@ -3,13 +3,10 @@ use crate::{
         CoreLibIdIndex, CoreLibIdTrait, VALUE_SPACE_BASE,
     },
     prelude::*,
-    shared_values::pointer_address::{ExternalPointerAddress, PointerAddress},
 };
-use num_enum::{IntoPrimitive, TryFromPrimitive};
+use num_enum::TryFromPrimitive;
 use strum::EnumIter;
 use strum_macros::{Display, EnumString};
-use crate::libs::core::core_lib_id::CoreLibId;
-use crate::libs::core::type_id::CoreLibTypeId;
 
 #[derive(
     Debug,

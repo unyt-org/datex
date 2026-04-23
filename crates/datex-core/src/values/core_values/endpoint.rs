@@ -1,11 +1,6 @@
 use crate::{
-    prelude::*,
-    traits::structural_eq::StructuralEq,
+    prelude::*, traits::structural_eq::StructuralEq,
     utils::buffers::buffer_to_hex,
-    values::{
-        core_value::CoreValue,
-        value_container::{ValueContainer, ValueError},
-    },
 };
 
 use crate::crypto::CryptoImpl;
@@ -98,7 +93,6 @@ impl TryFrom<String> for Endpoint {
         Endpoint::from_string(&name)
     }
 }
-
 
 #[derive(PartialEq, Debug, Clone, Eq)]
 pub enum InvalidEndpointError {

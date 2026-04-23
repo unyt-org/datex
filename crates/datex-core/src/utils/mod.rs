@@ -1,3 +1,4 @@
+pub mod ansi_colors;
 pub mod async_callback;
 pub mod async_iterators;
 pub mod buffers;
@@ -7,4 +8,3 @@ pub mod maybe_action;
 pub mod maybe_async;
 pub mod task_manager;
 pub mod uuid;
-pub mod ansi_colors;

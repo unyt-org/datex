@@ -1,8 +1,12 @@
+use crate::{
+    global::protocol_structures::{
+        regular_instructions::RegularInstruction,
+        type_instructions::TypeInstruction,
+    },
+    prelude::*,
+};
 use core::{fmt::Display, prelude::rust_2024::*};
 use serde::Serialize;
-use crate::global::protocol_structures::regular_instructions::RegularInstruction;
-use crate::global::protocol_structures::type_instructions::TypeInstruction;
-use crate::prelude::*;
 
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "disassembler", derive(Serialize))]
@@ -17,7 +21,9 @@ pub enum Instruction {
 impl Instruction {
     pub fn get_next_expected_instructions(&self) -> NextExpectedInstructions {
         match self {
-            Instruction::Regular(instr) => instr.get_next_expected_instructions(),
+            Instruction::Regular(instr) => {
+                instr.get_next_expected_instructions()
+            }
             Instruction::Type(instr) => instr.get_next_expected_instructions(),
         }
     }
@@ -42,7 +48,6 @@ impl Display for Instruction {
         }
     }
 }
-
 
 impl From<RegularInstruction> for Instruction {
     fn from(instruction: RegularInstruction) -> Self {
@@ -75,11 +80,22 @@ impl NextExpectedInstructions {
     pub fn total_count(&self) -> Option<CountOrUnbounded> {
         match self {
             NextExpectedInstructions::None => None,
-            NextExpectedInstructions::Regular(count) => Some(CountOrUnbounded::Count(*count)),
-            NextExpectedInstructions::Type(count) => Some(CountOrUnbounded::Count(*count)),
-            NextExpectedInstructions::UnboundedStart => Some(CountOrUnbounded::UnboundedStart),
-            NextExpectedInstructions::UnboundedEnd => Some(CountOrUnbounded::UnboundedEnd),
-            NextExpectedInstructions::RegularAndType(regular_count, type_count) => Some(CountOrUnbounded::Count(regular_count + type_count)),
+            NextExpectedInstructions::Regular(count) => {
+                Some(CountOrUnbounded::Count(*count))
+            }
+            NextExpectedInstructions::Type(count) => {
+                Some(CountOrUnbounded::Count(*count))
+            }
+            NextExpectedInstructions::UnboundedStart => {
+                Some(CountOrUnbounded::UnboundedStart)
+            }
+            NextExpectedInstructions::UnboundedEnd => {
+                Some(CountOrUnbounded::UnboundedEnd)
+            }
+            NextExpectedInstructions::RegularAndType(
+                regular_count,
+                type_count,
+            ) => Some(CountOrUnbounded::Count(regular_count + type_count)),
         }
     }
 }

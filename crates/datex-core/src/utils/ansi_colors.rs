@@ -10,9 +10,9 @@ impl AnsiColor {
     pub fn write_fg(&self, writer: &mut (impl Write + ?Sized)) {
         match self {
             AnsiColor::Rgb(r, g, b) => {
-                writer.write_fmt(format_args!(
-                    "\x1b[38;2;{r};{g};{b}m",
-                )).unwrap();
+                writer
+                    .write_fmt(format_args!("\x1b[38;2;{r};{g};{b}m",))
+                    .unwrap();
             }
         }
     }
@@ -21,9 +21,9 @@ impl AnsiColor {
     pub fn write_bg(&self, writer: &mut (impl Write + ?Sized)) {
         match self {
             AnsiColor::Rgb(r, g, b) => {
-                writer.write_fmt(format_args!(
-                    "\x1b[48;2;{r};{g};{b}m",
-                )).unwrap();
+                writer
+                    .write_fmt(format_args!("\x1b[48;2;{r};{g};{b}m",))
+                    .unwrap();
             }
         }
     }

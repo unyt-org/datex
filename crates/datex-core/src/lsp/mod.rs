@@ -8,8 +8,8 @@ pub mod io;
 
 use crate::{
     ast::expressions::{
-        DatexExpressionData, ValueAccessType, VariableAccess, VariableAssignment,
-        VariableDeclaration,
+        DatexExpressionData, ValueAccessType, VariableAccess,
+        VariableAssignment, VariableDeclaration,
     },
     collections::HashMap,
     compiler::{
@@ -23,17 +23,20 @@ use crate::{
     visitor::expression::ExpressionVisitor,
 };
 use realhydroper_lsp::{
-    jsonrpc::{Error, ErrorCode}, lsp_types::*, Client, LanguageServer,
-    LspService,
-    Server,
+    Client, LanguageServer, LspService, Server,
+    jsonrpc::{Error, ErrorCode},
+    lsp_types::*,
 };
 
-use crate::prelude::*;
+use crate::{
+    libs::core::type_id::CoreLibBaseTypeId,
+    prelude::*,
+    types::{
+        literal_type_definition::LiteralTypeDefinition, r#type::Type,
+        type_definition::TypeDefinition,
+    },
+};
 use futures::io::{AsyncRead, AsyncWrite};
-use crate::libs::core::type_id::CoreLibBaseTypeId;
-use crate::types::literal_type_definition::LiteralTypeDefinition;
-use crate::types::r#type::Type;
-use crate::types::type_definition::TypeDefinition;
 
 pub struct LanguageServerBackend {
     pub client: Client,
@@ -196,7 +199,12 @@ impl LanguageServer for LanguageServerBackend {
                         "{} {}: {}",
                         variable_metadata.shape,
                         name,
-                        variable_metadata.var_type.unwrap_or_else(|| self.compiler_workspace.borrow().memory().get_core_type(CoreLibBaseTypeId::Unknown))
+                        variable_metadata.var_type.unwrap_or_else(|| {
+                            self.compiler_workspace
+                                .borrow()
+                                .memory()
+                                .get_core_type(CoreLibBaseTypeId::Unknown)
+                        })
                     )))
                 }
 
@@ -216,7 +224,12 @@ impl LanguageServer for LanguageServerBackend {
                         },
                         variable_metadata.shape,
                         name,
-                        variable_metadata.var_type.unwrap_or_else(|| self.compiler_workspace.borrow().memory().get_core_type(CoreLibBaseTypeId::Unknown))
+                        variable_metadata.var_type.unwrap_or_else(|| {
+                            self.compiler_workspace
+                                .borrow()
+                                .memory()
+                                .get_core_type(CoreLibBaseTypeId::Unknown)
+                        })
                     )))
                 }
 
@@ -420,29 +433,36 @@ where
 
 #[cfg(test)]
 mod tests {
-    use core::str::FromStr;
-    use futures::channel::mpsc;
-    use futures_util::StreamExt;
     use crate::{
         prelude::*, runtime::RuntimeConfig,
         values::core_values::endpoint::Endpoint,
     };
+    use core::str::FromStr;
+    use futures::channel::mpsc;
+    use futures_util::StreamExt;
 
     use super::*;
-    use crate::runtime::RuntimeRunner;
-    use tokio::time::{timeout, Duration};
-    use tokio::task::LocalSet;
-    use crate::lsp::io::{Reader, Writer};
+    use crate::{
+        lsp::io::{Reader, Writer},
+        runtime::RuntimeRunner,
+    };
+    use tokio::{
+        task::LocalSet,
+        time::{Duration, timeout},
+    };
 
     #[tokio::test(flavor = "current_thread")]
     async fn test_lsp_initialization() {
-        LocalSet::new().run_until(async move {
-            RuntimeRunner::new(RuntimeConfig::new_with_endpoint(
-                Endpoint::from_str("@lspler").unwrap(),
-            ))
+        LocalSet::new()
+            .run_until(async move {
+                RuntimeRunner::new(RuntimeConfig::new_with_endpoint(
+                    Endpoint::from_str("@lspler").unwrap(),
+                ))
                 .run(async |runtime| {
-                    let (tx_to_lsp, rx_from_client) = mpsc::unbounded::<Vec<u8>>();
-                    let (tx_to_client, mut rx_from_lsp) = mpsc::unbounded::<Vec<u8>>();
+                    let (tx_to_lsp, rx_from_client) =
+                        mpsc::unbounded::<Vec<u8>>();
+                    let (tx_to_client, mut rx_from_lsp) =
+                        mpsc::unbounded::<Vec<u8>>();
 
                     let reader = Reader::new(rx_from_client);
                     let writer = Writer::new(tx_to_client);
@@ -484,6 +504,7 @@ mod tests {
                     lsp_handle.abort();
                 })
                 .await;
-        }).await;
+            })
+            .await;
     }
 }

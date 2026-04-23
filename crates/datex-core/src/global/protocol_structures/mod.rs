@@ -1,9 +1,9 @@
 pub mod block_header;
 pub mod encrypted_header;
-pub mod instructions;
-pub mod routing_header;
-pub mod serializable;
 pub mod injected_values;
 pub mod instruction_data;
-pub mod type_instructions;
+pub mod instructions;
 pub mod regular_instructions;
+pub mod routing_header;
+pub mod serializable;
+pub mod type_instructions;

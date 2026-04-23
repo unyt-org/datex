@@ -1,8 +1,7 @@
 use crate::ast::expressions::{DatexExpression, VariableKind};
 
-use crate::prelude::*;
+use crate::{prelude::*, types::r#type::Type};
 use core::{cell::RefCell, fmt::Display};
-use crate::types::r#type::Type;
 
 #[derive(Clone, Debug)]
 pub struct VariableMetadata {

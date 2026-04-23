@@ -1,17 +1,20 @@
-use crate::types::nominal_type_definition::NominalTypeDefinition;
-use crate::types::r#type::Type;
-use crate::values::core_value::CoreValue;
-use crate::values::core_values::boolean::Boolean;
-use crate::values::core_values::callable::Callable;
-use crate::values::core_values::decimal::Decimal;
-use crate::values::core_values::decimal::typed_decimal::TypedDecimal;
-use crate::values::core_values::endpoint::Endpoint;
-use crate::values::core_values::integer::Integer;
-use crate::values::core_values::integer::typed_integer::TypedInteger;
-use crate::values::core_values::list::List;
-use crate::values::core_values::map::Map;
-use crate::values::core_values::range::Range;
-use crate::values::core_values::text::Text;
+use crate::{
+    types::{nominal_type_definition::NominalTypeDefinition, r#type::Type},
+    values::{
+        core_value::CoreValue,
+        core_values::{
+            boolean::Boolean,
+            callable::Callable,
+            decimal::{Decimal, typed_decimal::TypedDecimal},
+            endpoint::Endpoint,
+            integer::{Integer, typed_integer::TypedInteger},
+            list::List,
+            map::Map,
+            range::Range,
+            text::Text,
+        },
+    },
+};
 
 macro_rules! impl_try_from_core_value {
     ($($variant:ident => $type:ty),* $(,)?) => {

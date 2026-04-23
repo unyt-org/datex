@@ -1,5 +1,4 @@
 use crate::{
-    core_compiler::value_compiler::compile_value_container,
     global::{
         dxb_block::{DXBBlock, IncomingSection, OutgoingContextId},
         protocol_structures::{

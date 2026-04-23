@@ -2,28 +2,29 @@
 use crate::ast::expressions::DatexExpressionData;
 use crate::{
     prelude::*,
+    runtime::{
+        memory::Memory,
+        pointer_address_provider::SelfOwnedPointerAddressProvider,
+    },
+    shared_values::shared_containers::{
+        ReferenceMutability, SharedContainerMutability,
+        SharedContainerOwnership,
+    },
     traits::structural_eq::StructuralEq,
     types::{
         literal_type_definition::LiteralTypeDefinition,
         nominal_type_definition::NominalTypeDefinition,
         shared_container_containing_nominal_type::SharedContainerContainingNominalType,
-        shared_container_containing_type::SharedContainerContainingType,
         type_definition::TypeDefinition,
-        type_definition_with_metadata::TypeDefinitionWithMetadata, type_match::TypeMatch,
+        type_definition_with_metadata::{
+            LocalMutability, TypeDefinitionWithMetadata, TypeMetadata,
+        },
+        type_match::TypeMatch,
     },
+    values::{core_value::CoreValue, value_container::ValueContainer},
 };
-use core::{
-    fmt::{Display, write},
-    hash::Hash,
-    ops::Deref,
-};
+use core::{fmt::Display, hash::Hash, ops::Deref};
 use serde::{Deserialize, Serialize};
-use crate::runtime::memory::Memory;
-use crate::runtime::pointer_address_provider::SelfOwnedPointerAddressProvider;
-use crate::shared_values::shared_containers::{ReferenceMutability, SharedContainerMutability, SharedContainerOwnership};
-use crate::types::type_definition_with_metadata::{LocalMutability, TypeMetadata};
-use crate::values::core_value::CoreValue;
-use crate::values::value_container::ValueContainer;
 
 // {x: &integer}
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
@@ -33,13 +34,18 @@ pub enum Type {
 }
 
 impl Type {
-
     pub fn nominal(
         definition: NominalTypeDefinition,
         address_provider: &mut SelfOwnedPointerAddressProvider,
-        memory: &Memory
+        memory: &Memory,
     ) -> Type {
-        Type::Nominal(SharedContainerContainingNominalType::new_from_definition(definition, address_provider, memory))
+        Type::Nominal(
+            SharedContainerContainingNominalType::new_from_definition(
+                definition,
+                address_provider,
+                memory,
+            ),
+        )
     }
 
     /// Collapses nominal type definitions to their underlying type definitions with metadata
@@ -49,11 +55,11 @@ impl Type {
     ) -> R {
         match self {
             Type::Alias(type_def) => f(type_def),
-            Type::Nominal(nominal_def) => {
-                nominal_def.with_collapsed_definition(|def|
-                    def.definition_type().with_collapsed_definition_with_metadata(f)
-                )
-            }
+            Type::Nominal(nominal_def) => nominal_def
+                .with_collapsed_definition(|def| {
+                    def.definition_type()
+                        .with_collapsed_definition_with_metadata(f)
+                }),
         }
     }
 
@@ -67,11 +73,13 @@ impl Type {
 
     pub fn base_core_lib_type(
         &self,
-        memory: &Memory
+        memory: &Memory,
     ) -> SharedContainerContainingNominalType {
         match self {
-            Type::Alias(type_def) => type_def.definition.base_core_lib_type(memory),
-            Type::Nominal(nominal_def) => {
+            Type::Alias(type_def) => {
+                type_def.definition.base_core_lib_type(memory)
+            }
+            Type::Nominal(_nominal_def) => {
                 todo!()
             }
         }
@@ -82,48 +90,73 @@ impl Type {
     pub fn box_with_metadata(self, metadata: TypeMetadata) -> Type {
         match self {
             // if simple transparent with default local metadata, just update metadata without adding another nesting layer
-            Type::Alias(TypeDefinitionWithMetadata {metadata: TypeMetadata::Local { reference_mutability: Option::None, mutability: LocalMutability::Immutable }, definition}) => {
-                Type::Alias(TypeDefinitionWithMetadata {
-                    metadata,
-                    definition
-                })
-            },
+            Type::Alias(TypeDefinitionWithMetadata {
+                metadata:
+                    TypeMetadata::Local {
+                        reference_mutability: Option::None,
+                        mutability: LocalMutability::Immutable,
+                    },
+                definition,
+            }) => Type::Alias(TypeDefinitionWithMetadata {
+                metadata,
+                definition,
+            }),
             // box otherwise
             _ => Type::Alias(TypeDefinitionWithMetadata {
                 metadata,
-                definition: TypeDefinition::Nested(Box::new(self))
-            })
+                definition: TypeDefinition::Nested(Box::new(self)),
+            }),
         }
     }
-    
-    /// Tries to convert the type into a shared reference type with the provided reference mutability. 
-    /// 
+
+    /// Tries to convert the type into a shared reference type with the provided reference mutability.
+    ///
     /// This only succeeds if the type is a already a type with [TypeMetadata::Shared] and the provided reference mutability is compatible with the ownership and mutability of the shared container.
-    pub fn try_convert_to_shared_ref(self, reference_mutability: ReferenceMutability) -> Result<Type, ()> {
+    pub fn try_convert_to_shared_ref(
+        self,
+        reference_mutability: ReferenceMutability,
+    ) -> Result<Type, ()> {
         match self {
             // if simple transparent with default local metadata, just update metadata without adding another nesting layer
-            Type::Alias(TypeDefinitionWithMetadata {metadata: TypeMetadata::Shared { ownership, mutability }, definition}) => {
+            Type::Alias(TypeDefinitionWithMetadata {
+                metadata:
+                    TypeMetadata::Shared {
+                        ownership,
+                        mutability,
+                    },
+                definition,
+            }) => {
                 // max mutability that is allowed for the reference is determined by ownership and mutability of the shared container
                 let max_mutability = match &ownership {
                     SharedContainerOwnership::Owned => match mutability {
-                        SharedContainerMutability::Immutable => ReferenceMutability::Immutable,
-                        SharedContainerMutability::Mutable => ReferenceMutability::Mutable,
+                        SharedContainerMutability::Immutable => {
+                            ReferenceMutability::Immutable
+                        }
+                        SharedContainerMutability::Mutable => {
+                            ReferenceMutability::Mutable
+                        }
                     },
-                    SharedContainerOwnership::Referenced(reference_mutability) => *reference_mutability,
+                    SharedContainerOwnership::Referenced(
+                        reference_mutability,
+                    ) => *reference_mutability,
                 };
-                
+
                 if reference_mutability <= max_mutability {
                     Ok(Type::Alias(TypeDefinitionWithMetadata {
-                        metadata: TypeMetadata::Shared { ownership: SharedContainerOwnership::Referenced(reference_mutability), mutability },
-                        definition
+                        metadata: TypeMetadata::Shared {
+                            ownership: SharedContainerOwnership::Referenced(
+                                reference_mutability,
+                            ),
+                            mutability,
+                        },
+                        definition,
                     }))
-                }
-                else {
+                } else {
                     Err(())
                 }
-            },
+            }
             // box otherwise
-            _ => Err(())
+            _ => Err(()),
         }
     }
 }
@@ -148,7 +181,7 @@ impl TypeMatch for Type {
             Type::Nominal(other_nominal_definition) => {
                 match self {
                     // FIXME is this type alias here allowed?
-                    Type::Alias(self_definition) => false,
+                    Type::Alias(_self_definition) => false,
                     Type::Nominal(self_nominal_definition) => {
                         // compare collapsed definitions of both nominal types
                         self_nominal_definition
@@ -159,7 +192,7 @@ impl TypeMatch for Type {
         }
     }
 
-    fn matched_by_value(&self, value: &ValueContainer) -> bool {
+    fn matched_by_value(&self, _value: &ValueContainer) -> bool {
         todo!()
     }
 }
@@ -394,12 +427,9 @@ impl TryFrom<&DatexExpressionData> for Type {
     type Error = ();
 
     fn try_from(expr: &DatexExpressionData) -> Result<Self, Self::Error> {
-        Ok(Type::from(
-            LiteralTypeDefinition::try_from(expr)?,
-        ))
+        Ok(Type::from(LiteralTypeDefinition::try_from(expr)?))
     }
 }
-
 
 impl TryFrom<ValueContainer> for Type {
     type Error = ();
@@ -410,12 +440,10 @@ impl TryFrom<ValueContainer> for Type {
                 SharedContainerContainingNominalType::try_from(shared)
                     .map(Type::Nominal)
             }
-            ValueContainer::Local(value) => {
-                match value.inner {
-                    CoreValue::Type(ty) => Ok(ty),
-                    _ => Err(())
-                }
-            }
+            ValueContainer::Local(value) => match value.inner {
+                CoreValue::Type(ty) => Ok(ty),
+                _ => Err(()),
+            },
         }
     }
 }
@@ -425,7 +453,12 @@ mod tests {
     use crate::prelude::*;
 
     use crate::{
-        types::r#type::Type,
+        libs::core::type_id::CoreLibBaseTypeId,
+        runtime::memory::Memory,
+        types::{
+            literal_type_definition::LiteralTypeDefinition, r#type::Type,
+            type_definition::TypeDefinition, type_match::TypeMatch,
+        },
         values::{
             core_values::{
                 integer::{Integer, typed_integer::TypedInteger},
@@ -434,11 +467,6 @@ mod tests {
             value_container::ValueContainer,
         },
     };
-    use crate::libs::core::type_id::CoreLibBaseTypeId;
-    use crate::runtime::memory::Memory;
-    use crate::types::literal_type_definition::LiteralTypeDefinition;
-    use crate::types::type_definition::TypeDefinition;
-    use crate::types::type_match::TypeMatch;
 
     #[test]
     fn test_match_equal_values() {
@@ -471,13 +499,12 @@ mod tests {
     fn test_match_union() {
         // 1 matches (1 | 2 | 3)
         assert!(
-            Type::from(TypeDefinition::Union(
-                vec![
-                    LiteralTypeDefinition::Integer(Integer::from(1)).into(),
-                    LiteralTypeDefinition::Integer(Integer::from(2)).into(),
-                    LiteralTypeDefinition::Integer(Integer::from(3)).into()
-                ]
-            )).matched_by_value(&Integer::from(1).into())
+            Type::from(TypeDefinition::Union(vec![
+                LiteralTypeDefinition::Integer(Integer::from(1)).into(),
+                LiteralTypeDefinition::Integer(Integer::from(2)).into(),
+                LiteralTypeDefinition::Integer(Integer::from(3)).into()
+            ]))
+            .matched_by_value(&Integer::from(1).into())
         );
     }
 
@@ -488,24 +515,20 @@ mod tests {
         // 1 matches (1 | 2 | 3)
         assert!(
             Type::from(LiteralTypeDefinition::Integer(Integer::from(1)))
-                .matches(&Type::from(TypeDefinition::Union(
-                    vec![
-                        LiteralTypeDefinition::Integer(Integer::from(1)).into(),
-                        LiteralTypeDefinition::Integer(Integer::from(2)).into(),
-                        LiteralTypeDefinition::Integer(Integer::from(3)).into()
-                    ]
-                )))
+                .matches(&Type::from(TypeDefinition::Union(vec![
+                    LiteralTypeDefinition::Integer(Integer::from(1)).into(),
+                    LiteralTypeDefinition::Integer(Integer::from(2)).into(),
+                    LiteralTypeDefinition::Integer(Integer::from(3)).into()
+                ])))
         );
 
         // 1 matches integer | text
         assert!(
             Type::from(LiteralTypeDefinition::Integer(Integer::from(1)))
-                .matches(&Type::from(TypeDefinition::Union(
-                    vec![
-                        memory.get_core_type(CoreLibBaseTypeId::Integer),
-                        memory.get_core_type(CoreLibBaseTypeId::Text),
-                    ]
-                )))
+                .matches(&Type::from(TypeDefinition::Union(vec![
+                    memory.get_core_type(CoreLibBaseTypeId::Integer),
+                    memory.get_core_type(CoreLibBaseTypeId::Text),
+                ])))
         );
     }
 

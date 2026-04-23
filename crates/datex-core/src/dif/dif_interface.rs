@@ -9,20 +9,13 @@ use core::{fmt::Display, result::Result};
 
 use crate::{
     dif::cache::DIFSharedContainerCache,
-    prelude::*,
     shared_values::{
-        errors::{AccessError, AssignmentError, SharedValueCreationError},
+        errors::SharedValueCreationError,
         pointer_address::{PointerAddress, SelfOwnedPointerAddress},
-        shared_containers::{
-            SharedContainer,
-            base_shared_value_container::BaseSharedValueContainer,
-        },
+        shared_containers::base_shared_value_container::BaseSharedValueContainer,
     },
     types::r#type::Type,
-    value_updates::{
-        errors::UpdateError,
-        update_data::{Update, UpdateData, UpdateResult, UpdateReturn},
-    },
+    value_updates::update_data::{Update, UpdateData, UpdateResult},
     values::value_container::ValueContainer,
 };
 
@@ -112,10 +105,10 @@ pub struct DIFInterface {
 
 impl DIFInterface {
     /// Applies a DIF update to the value at the given pointer address.
-    fn update<T>(
+    fn update(
         &self,
-        address: PointerAddress,
-        update: &Update,
+        _address: PointerAddress,
+        _update: &Update,
     ) -> UpdateResult {
         todo!()
         //self.cache.try_get_shared_container
@@ -124,8 +117,8 @@ impl DIFInterface {
     /// Executes an apply operation, applying the `value` to the `callee`.
     fn apply(
         &self,
-        callee: ValueContainer,
-        value: ValueContainer,
+        _callee: ValueContainer,
+        _value: ValueContainer,
     ) -> Result<ValueContainer, DIFApplyError> {
         todo!()
     }
@@ -134,9 +127,9 @@ impl DIFInterface {
     /// Returns the address of the newly created pointer.
     fn create_pointer(
         &self,
-        value: ValueContainer,
-        allowed_type: Option<Type>,
-        mutability: SharedContainerMutability,
+        _value: ValueContainer,
+        _allowed_type: Option<Type>,
+        _mutability: SharedContainerMutability,
     ) -> Result<SelfOwnedPointerAddress, DIFCreatePointerError> {
         todo!()
     }
@@ -145,7 +138,7 @@ impl DIFInterface {
     /// Returns an error if the pointer is not found in memory.
     fn resolve_pointer_address(
         &self,
-        address: PointerAddress,
+        _address: PointerAddress,
     ) -> Result<BaseSharedValueContainer, DIFResolveReferenceError> {
         todo!()
     }
@@ -154,10 +147,10 @@ impl DIFInterface {
     /// As long as the pointer is observed, it will not be garbage collected.
     fn observe_pointer(
         &self,
-        transceiver_id: TransceiverId,
-        address: PointerAddress,
-        options: ObserveOptions,
-        observer: impl Fn(&UpdateData) + 'static,
+        _transceiver_id: TransceiverId,
+        _address: PointerAddress,
+        _options: ObserveOptions,
+        _observer: impl Fn(&UpdateData) + 'static,
     ) -> Result<u32, DIFObserveError> {
         todo!()
     }
@@ -166,9 +159,9 @@ impl DIFInterface {
     /// If the observer does not exist, an error is returned.
     fn update_observer_options(
         &self,
-        address: PointerAddress,
-        observer_id: u32,
-        options: ObserveOptions,
+        _address: PointerAddress,
+        _observer_id: u32,
+        _options: ObserveOptions,
     ) -> Result<(), DIFObserveError> {
         todo!()
     }
@@ -177,8 +170,8 @@ impl DIFInterface {
     /// If no other references to the pointer exist, it may be garbage collected after this call.
     fn unobserve_pointer(
         &self,
-        address: PointerAddress,
-        observer_id: u32,
+        _address: PointerAddress,
+        _observer_id: u32,
     ) -> Result<(), DIFObserveError> {
         todo!()
     }

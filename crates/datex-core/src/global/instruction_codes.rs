@@ -38,7 +38,7 @@ pub enum InstructionCode {
     SET_PROPERTY_INDEX,   // set property with integer index
     SET_PROPERTY_TEXT,    // set property with text key
 
-    MATCHES,        // matches
+    MATCHES, // matches
 
     STRUCTURAL_EQUAL,     // ==
     NOT_STRUCTURAL_EQUAL, // !=
@@ -46,12 +46,12 @@ pub enum InstructionCode {
     NOT_EQUAL,            // !==
     IS,                   // is
 
-    ADD,       // +
-    SUBTRACT,  // -
-    MULTIPLY,  // *
-    DIVIDE,    // /
-    MODULO,    // %
-    POWER,     // ^
+    ADD,      // +
+    SUBTRACT, // -
+    MULTIPLY, // *
+    DIVIDE,   // /
+    MODULO,   // %
+    POWER,    // ^
 
     AND,
     OR,
@@ -72,28 +72,28 @@ pub enum InstructionCode {
     BORROW_STACK_VALUE, // &#stack[i]
     GET_STACK_VALUE_SHARED_REF, // '#stack[i]
     GET_STACK_VALUE_SHARED_REF_MUT, // 'mut #stack[i]
-    SET_STACK_VALUE, // #stack[i] = ...
+    SET_STACK_VALUE,   // #stack[i] = ...
     MODIFY_STACK_VALUE, // #stack[i] += ..., ...
-    PUSH_TO_STACK, // #stack += ...
+    PUSH_TO_STACK,     // #stack += ...
     PUSH_TO_STACK_MULTIPLE, // #stack ...+= [x]
-    TAKE_STACK_VALUE, // #stack[i]
+    TAKE_STACK_VALUE,  // #stack[i]
 
     GET_INTERNAL_SLOT, // e.g. #endpoint
 
     // Note: fix to sync with RawPointerAddress
-    REQUEST_REMOTE_SHARED_REF,   // '$x
+    REQUEST_REMOTE_SHARED_REF,     // '$x
     REQUEST_REMOTE_SHARED_REF_MUT, // 'mut $x
 
     GET_INTERNAL_SHARED_REF, // '$y, containing globally unique internal id
     GET_LOCAL_SHARED_REF, // '$x, containing only the id, origin id is inferred from sender
 
-    SHARED_REF, // '/'mut $1234
+    SHARED_REF,            // '/'mut $1234
     SHARED_REF_WITH_VALUE, // '/'mut $1234 mut [value]
 
     PERFORM_MOVE, // PERFORM_MOVE(3) $a, $b, $c (indicates two executing endpoint that pointers should be moved from sender to local, triggers MOVE)
     MOVE, // MOVE(3) $a->$a2, $b->$b2, $c->$c2 (indicates that pointers should be moved from local to receiver, triggered by PERFORM_MOVE, includes mapping to new ids)
 
-    GET_SHARED_REF, // dynamic 'x
+    GET_SHARED_REF,     // dynamic 'x
     GET_SHARED_REF_MUT, // dynamic 'mut x
 
     CREATE_SHARED,     // shared x

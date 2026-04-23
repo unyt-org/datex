@@ -1,17 +1,26 @@
-use core::fmt::Write as FmtWrite;
-use core::fmt::Display;
-use binrw::io::{Read, Seek};
-use binrw::{BinRead, BinResult, BinWrite, Endian};
-use binrw::meta::{EndianKind, ReadEndian};
-use serde::{Serialize, Serializer};
-use serde::ser::SerializeTuple;
-use crate::dxb_parser::body::DXBParserError;
-use crate::global::protocol_structures::instruction_data::{ImplTypeData, IntegerData, ListData, ShortTextData, TextData, TypeReferenceData};
-use crate::global::protocol_structures::instructions::NextExpectedInstructions;
-use crate::global::type_instruction_codes::TypeInstructionCode;
-use crate::shared_values::pointer_address::PointerAddress;
-use crate::prelude::*;
-use crate::types::type_definition_with_metadata::TypeMetadata;
+use crate::{
+    dxb_parser::body::DXBParserError,
+    global::{
+        protocol_structures::{
+            instruction_data::{
+                ImplTypeData, IntegerData, ListData, ShortTextData, TextData,
+                TypeReferenceData,
+            },
+            instructions::NextExpectedInstructions,
+        },
+        type_instruction_codes::TypeInstructionCode,
+    },
+    prelude::*,
+    shared_values::pointer_address::PointerAddress,
+    types::type_definition_with_metadata::TypeMetadata,
+};
+use binrw::{
+    BinRead, BinResult, BinWrite, Endian,
+    io::{Read, Seek},
+    meta::{EndianKind, ReadEndian},
+};
+use core::fmt::{Display, Write as FmtWrite};
+use serde::{Serialize, Serializer, ser::SerializeTuple};
 
 #[derive(Clone, Debug, PartialEq, BinWrite)]
 #[brw(little)]
@@ -27,10 +36,18 @@ pub enum TypeInstruction {
 impl From<&TypeInstruction> for TypeInstructionCode {
     fn from(instruction: &TypeInstruction) -> Self {
         match instruction {
-            TypeInstruction::ImplType(_) => TypeInstructionCode::TYPE_WITH_IMPLS,
-            TypeInstruction::SharedTypeReference(_) => TypeInstructionCode::SHARED_TYPE_REFERENCE,
-            TypeInstruction::LiteralText(_) => TypeInstructionCode::TYPE_LITERAL_TEXT,
-            TypeInstruction::LiteralInteger(_) => TypeInstructionCode::TYPE_LITERAL_INTEGER,
+            TypeInstruction::ImplType(_) => {
+                TypeInstructionCode::TYPE_WITH_IMPLS
+            }
+            TypeInstruction::SharedTypeReference(_) => {
+                TypeInstructionCode::SHARED_TYPE_REFERENCE
+            }
+            TypeInstruction::LiteralText(_) => {
+                TypeInstructionCode::TYPE_LITERAL_TEXT
+            }
+            TypeInstruction::LiteralInteger(_) => {
+                TypeInstructionCode::TYPE_LITERAL_INTEGER
+            }
             TypeInstruction::List(_) => TypeInstructionCode::TYPE_LIST,
             TypeInstruction::Range => TypeInstructionCode::TYPE_RANGE,
         }
@@ -41,7 +58,7 @@ impl From<&TypeInstruction> for TypeInstructionCode {
 impl Serialize for TypeInstruction {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
-        S: Serializer
+        S: Serializer,
     {
         let instruction_code = TypeInstructionCode::from(self).to_string();
         let metadata_string = self.metadata_string();
@@ -51,26 +68,23 @@ impl Serialize for TypeInstruction {
             state.serialize_element(&instruction_code)?;
             state.serialize_element(&metadata_string)?;
             state.end()
-        }
-        else {
+        } else {
             serializer.serialize_str(&instruction_code)
         }
     }
 }
 
-
 impl TypeInstruction {
     /// Returns how many (if any) regular or type instructions are expected as child instructions for a given instructions
     pub fn get_next_expected_instructions(&self) -> NextExpectedInstructions {
         match self {
-            TypeInstruction::List(list) =>
-                NextExpectedInstructions::Type(list.element_count), // list elements
+            TypeInstruction::List(list) => {
+                NextExpectedInstructions::Type(list.element_count)
+            } // list elements
 
-            TypeInstruction::ImplType(_) =>
-                NextExpectedInstructions::Type(1), // impl type
+            TypeInstruction::ImplType(_) => NextExpectedInstructions::Type(1), // impl type
 
-            TypeInstruction::Range =>
-                NextExpectedInstructions::Type(2), // range has 2 type instructions
+            TypeInstruction::Range => NextExpectedInstructions::Type(2), // range has 2 type instructions
 
             _ => NextExpectedInstructions::None,
         }
@@ -100,11 +114,10 @@ impl TypeInstruction {
                 ImplTypeData::read(reader).map(TypeInstruction::ImplType)
             }
             TypeInstructionCode::SHARED_TYPE_REFERENCE => {
-                TypeReferenceData::read(reader).map(TypeInstruction::SharedTypeReference)
+                TypeReferenceData::read(reader)
+                    .map(TypeInstruction::SharedTypeReference)
             }
-            TypeInstructionCode::TYPE_RANGE => {
-                Ok(TypeInstruction::Range)
-            }
+            TypeInstructionCode::TYPE_RANGE => Ok(TypeInstruction::Range),
         }
     }
 
@@ -114,8 +127,9 @@ impl TypeInstruction {
         let instruction_code = u8::read(&mut reader)
             .map_err(|_| DXBParserError::FailedToReadInstructionCode)?;
 
-        TypeInstructionCode::try_from(instruction_code)
-            .map_err(|_| DXBParserError::InvalidInstructionCode(instruction_code))
+        TypeInstructionCode::try_from(instruction_code).map_err(|_| {
+            DXBParserError::InvalidInstructionCode(instruction_code)
+        })
     }
 
     pub fn metadata_string(&self) -> Option<String> {
@@ -146,7 +160,8 @@ impl TypeInstruction {
                 // no custom disassembly
                 return None;
             }
-        }.unwrap();
+        }
+        .unwrap();
 
         Some(string)
     }
@@ -160,11 +175,13 @@ impl BinRead for TypeInstruction {
         _endian: Endian,
         _: Self::Args<'_>,
     ) -> BinResult<Self> {
-        let instruction_code = TypeInstruction::read_type_instruction_code(reader)
-            .map_err(|e| binrw::Error::AssertFail {
-                pos: reader.stream_position().unwrap_or(0),
-                message: format!("Failed to read type instruction code: {:?}", e),
-            })?;
+        let instruction_code = TypeInstruction::read_type_instruction_code(
+            reader,
+        )
+        .map_err(|e| binrw::Error::AssertFail {
+            pos: reader.stream_position().unwrap_or(0),
+            message: format!("Failed to read type instruction code: {:?}", e),
+        })?;
         TypeInstruction::read_instruction(reader, instruction_code)
     }
 }

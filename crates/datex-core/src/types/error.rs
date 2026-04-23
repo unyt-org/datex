@@ -1,7 +1,8 @@
+use crate::{
+    global::operators::binary::ArithmeticOperator, prelude::*,
+    types::r#type::Type,
+};
 use core::fmt::Display;
-use crate::global::operators::binary::ArithmeticOperator;
-use crate::prelude::*;
-use crate::types::r#type::Type;
 
 #[derive(Debug)]
 pub enum IllegalTypeError {
@@ -22,7 +23,6 @@ impl Display for IllegalTypeError {
     }
 }
 
-
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum TypeError {
     SubvariantNotFound(String, String),
@@ -37,10 +37,7 @@ pub enum TypeError {
     InvalidSharedReference,
 
     // can not assign value to variable of different type
-    AssignmentTypeMismatch {
-        expected: Type,
-        found: Type,
-    },
+    AssignmentTypeMismatch { expected: Type, found: Type },
 }
 
 impl Display for TypeError {
@@ -90,16 +87,10 @@ impl Display for TypeError {
                 )
             }
             TypeError::ReferenceToNonTypeValue => {
-                write!(
-                    f,
-                    "Invalid reference to non-type value"
-                )
+                write!(f, "Invalid reference to non-type value")
             }
             TypeError::InvalidSharedReference => {
-                write!(
-                    f,
-                    "Invalid shared reference to non-shared value"
-                )
+                write!(f, "Invalid shared reference to non-shared value")
             }
         }
     }

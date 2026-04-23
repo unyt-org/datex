@@ -1,18 +1,17 @@
 use crate::{
     dxb_parser::body::DXBParserError,
+    global::protocol_structures::instruction_data::StackIndex,
     network::com_hub::network_response::ResponseError,
+    prelude::*,
     runtime::execution::execution_loop::state::ExecutionLoopState,
     shared_values::errors::{
         AccessError, AssignmentError, SharedValueCreationError,
     },
     types::error::IllegalTypeError,
+    value_updates::errors::UpdateError,
     values::value_container::{ValueContainer, ValueError},
 };
 use core::fmt::Display;
-use crate::global::protocol_structures::instruction_data::StackIndex;
-use crate::global::slots::InternalSlot;
-use crate::prelude::*;
-use crate::value_updates::errors::UpdateError;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum InvalidProgramError {
@@ -90,7 +89,7 @@ pub enum ExecutionError {
     InvalidApply,
     UnauthorizedMove,
     InvalidMove,
-    MoveToMultipleEndpoints
+    MoveToMultipleEndpoints,
 }
 impl From<SharedValueCreationError> for ExecutionError {
     fn from(error: SharedValueCreationError) -> Self {
@@ -251,10 +250,7 @@ impl Display for ExecutionError {
                 )
             }
             ExecutionError::InternalSlotDoesNotExist(index) => {
-                core::write!(
-                    f,
-                    "Internal slot does not exist at index {index}"
-                )
+                core::write!(f, "Internal slot does not exist at index {index}")
             }
             ExecutionError::UpdateError(err) => {
                 core::write!(f, "Value update error: {err}")

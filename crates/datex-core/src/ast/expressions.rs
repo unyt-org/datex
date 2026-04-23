@@ -5,20 +5,23 @@ use crate::{
         type_expressions::TypeExpression,
     },
     global::operators::{
-        assignment::AssignmentOperator, ArithmeticUnaryOperator, BinaryOperator,
-        ComparisonOperator, UnaryOperator,
+        ArithmeticUnaryOperator, BinaryOperator, ComparisonOperator,
+        UnaryOperator, assignment::AssignmentOperator,
     },
     shared_values::{
         pointer_address::PointerAddress,
-        shared_containers::SharedContainerMutability,
+        shared_containers::{ReferenceMutability, SharedContainerMutability},
+    },
+    types::{
+        r#type::Type, type_definition_with_metadata::LocalReferenceMutability,
     },
     values::{
         core_value::CoreValue,
         core_values,
         core_values::{
-            decimal::{typed_decimal::TypedDecimal, Decimal},
+            decimal::{Decimal, typed_decimal::TypedDecimal},
             endpoint::Endpoint,
-            integer::{typed_integer::TypedInteger, Integer},
+            integer::{Integer, typed_integer::TypedInteger},
         },
         value::Value,
         value_container::ValueContainer,
@@ -26,9 +29,6 @@ use crate::{
 };
 pub use crate::{prelude::*, values::core_values::callable::CallableKind};
 use core::{fmt::Display, ops, ops::Neg};
-use crate::shared_values::shared_containers::ReferenceMutability;
-use crate::types::r#type::Type;
-use crate::types::type_definition_with_metadata::LocalReferenceMutability;
 
 #[derive(Clone, Debug)]
 /// An expression in the AST
@@ -485,7 +485,7 @@ pub struct CompileExpression {
 pub struct VariableAccess {
     pub id: VariableId,
     pub name: String,
-    pub access_type: ValueAccessType
+    pub access_type: ValueAccessType,
 }
 
 #[derive(Clone, Debug, PartialEq)]

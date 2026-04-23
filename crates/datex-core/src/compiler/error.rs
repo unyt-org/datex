@@ -7,13 +7,14 @@ use crate::{
     type_inference::error::{DetailedTypeErrors, SpannedTypeError},
 };
 
-use crate::{prelude::*, utils::maybe_action::ErrorCollector};
+use crate::{
+    prelude::*, types::error::TypeError, utils::maybe_action::ErrorCollector,
+};
 use alloc::format;
 use core::{
     fmt::{Display, Formatter},
     ops::Range,
 };
-use crate::types::error::TypeError;
 
 #[derive(Debug, Clone)]
 pub enum CompilerError {

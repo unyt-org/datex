@@ -28,11 +28,11 @@ use datex_core::{
     ast::{
         expressions::{
             Apply, BinaryOperation, CallableDeclaration, CallableKind,
-            ComparisonOperation, Conditional, CreateMut, GetRef,
-            CreateShared, DatexExpression, DatexExpressionData,
-            GenericInstantiation, RequestSharedRef, List, Map, PropertyAccess,
-            PropertyAssignment, Slot, UnaryOperation, Unbox,
-            VariableAssignment, VariableDeclaration, VariableKind,
+            ComparisonOperation, Conditional, CreateMut, CreateShared,
+            DatexExpression, DatexExpressionData, GenericInstantiation, GetRef,
+            List, Map, PropertyAccess, PropertyAssignment, RequestSharedRef,
+            Slot, UnaryOperation, Unbox, ValueAccessType, VariableAssignment,
+            VariableDeclaration, VariableKind,
         },
         spanned::Spanned,
         type_expressions::{
@@ -49,12 +49,11 @@ use datex_core::{
         },
     },
     shared_values::{
-        shared_containers::ReferenceMutability, pointer_address::PointerAddress,
-        shared_containers::SharedContainerMutability,
+        pointer_address::PointerAddress,
+        shared_containers::{ReferenceMutability, SharedContainerMutability},
     },
     values::core_values::error::NumberParseError,
 };
-use datex_core::ast::expressions::ValueAccessType;
 
 /// Parse the given source code into a DatexExpression AST.
 fn parse_unwrap(src: &str) -> DatexExpression {
@@ -2978,7 +2977,10 @@ fn variable_declaration_and_assignment() {
 fn placeholder() {
     let src = "?";
     let expr = parse_unwrap_data(src);
-    assert_eq!(expr, DatexExpressionData::Placeholder(ValueAccessType::MoveOrCopy));
+    assert_eq!(
+        expr,
+        DatexExpressionData::Placeholder(ValueAccessType::MoveOrCopy)
+    );
 }
 
 #[test]

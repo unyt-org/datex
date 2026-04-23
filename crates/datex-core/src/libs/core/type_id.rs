@@ -1,20 +1,19 @@
-use core::{fmt::Display, mem::variant_count};
-use core::str::FromStr;
 use crate::{
     libs::core::core_lib_id::{
         CoreLibIdIndex, CoreLibIdTrait, TYPE_SPACE_BASE,
         TYPE_VARIANT_SPACE_BASE,
     },
     prelude::*,
+    shared_values::pointer_address::ExternalPointerAddress,
     values::core_values::{
         decimal::typed_decimal::DecimalTypeVariant,
         integer::typed_integer::IntegerTypeVariant,
     },
 };
+use core::{fmt::Display, mem::variant_count, str::FromStr};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use strum::{EnumIter, IntoEnumIterator};
 use strum_macros::{Display, EnumString};
-use crate::shared_values::pointer_address::ExternalPointerAddress;
 
 #[derive(
     Debug,
@@ -27,7 +26,7 @@ use crate::shared_values::pointer_address::ExternalPointerAddress;
     IntoPrimitive,
     TryFromPrimitive,
     EnumString,
-    Display
+    Display,
 )]
 #[repr(u16)]
 #[strum(serialize_all = "snake_case")]
@@ -45,17 +44,17 @@ pub enum CoreLibBaseTypeId {
     Endpoint, // #core.endpoint
     List,     // #core.List
     #[strum(serialize = "Map")]
-    Map,      // #core.Map
+    Map, // #core.Map
     #[strum(serialize = "Callable")]
     Callable, // #core.Callable
     #[strum(serialize = "Unit")]
-    Unit,     // #core.Unit
+    Unit, // #core.Unit
     #[strum(serialize = "Never")]
-    Never,    // #core.never
+    Never, // #core.never
     #[strum(serialize = "Unknown")]
-    Unknown,  // #core.unknown
+    Unknown, // #core.unknown
     #[strum(serialize = "Range")]
-    Range,    // #core.range
+    Range, // #core.range
 }
 
 const INTEGER_VARIANT_COUNT: u16 = variant_count::<IntegerTypeVariant>() as u16;
@@ -69,7 +68,7 @@ pub enum CoreLibVariantTypeId {
 
 impl Display for CoreLibVariantTypeId {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "{}/", CoreLibBaseTypeId::from(self.clone()))?;
+        write!(f, "{}/", CoreLibBaseTypeId::from(*self))?;
         match self {
             CoreLibVariantTypeId::Integer(variant) => {
                 write!(f, "{}", variant)
@@ -103,11 +102,11 @@ impl TryFrom<CoreLibIdIndex> for CoreLibVariantTypeId {
     }
 }
 
-impl Into<CoreLibIdIndex> for CoreLibVariantTypeId {
-    fn into(self) -> CoreLibIdIndex {
+impl From<CoreLibVariantTypeId> for CoreLibIdIndex {
+    fn from(val: CoreLibVariantTypeId) -> Self {
         CoreLibIdIndex(
             TYPE_VARIANT_SPACE_BASE
-                + match self {
+                + match val {
                     CoreLibVariantTypeId::Integer(variant) => variant as u16,
                     CoreLibVariantTypeId::Decimal(variant) => {
                         INTEGER_VARIANT_COUNT + (variant as u16)
@@ -176,7 +175,6 @@ impl From<CoreLibVariantTypeId> for CoreLibTypeId {
     }
 }
 
-
 impl CoreLibTypeId {
     pub fn try_from_str(string: &str) -> Option<Self> {
         CoreLibBaseTypeId::from_str(string)
@@ -207,10 +205,10 @@ impl Display for CoreLibTypeId {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             CoreLibTypeId::Base(base_id) => {
-                write!(f, "{}", base_id.to_string())
+                write!(f, "{}", base_id)
             }
             CoreLibTypeId::Variant(variant_id) => {
-                write!(f, "{}", variant_id.to_string())
+                write!(f, "{}", variant_id)
             }
         }
     }
@@ -257,7 +255,6 @@ impl TryFrom<CoreLibIdIndex> for CoreLibBaseTypeId {
         CoreLibBaseTypeId::try_from(id).map_err(|_| ())
     }
 }
-
 
 impl TryFrom<&ExternalPointerAddress> for CoreLibTypeId {
     type Error = ();

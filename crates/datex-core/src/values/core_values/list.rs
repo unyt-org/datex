@@ -1,17 +1,13 @@
 use crate::{
-    prelude::*,
+    prelude::*, shared_values::errors::IndexOutOfBoundsError,
     traits::structural_eq::StructuralEq,
-    values::{
-        core_value::CoreValue,
-        value_container::{ValueContainer, ValueError},
-    },
+    values::value_container::ValueContainer,
 };
 use core::{
     fmt::Display,
     ops::{Index, Range},
     result::Result,
 };
-use crate::shared_values::errors::IndexOutOfBoundsError;
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct List(Vec<ValueContainer>);
@@ -67,7 +63,7 @@ impl List {
     pub fn as_vec(&self) -> &Vec<ValueContainer> {
         &self.0
     }
-    
+
     pub fn into_vec(self) -> Vec<ValueContainer> {
         self.0
     }

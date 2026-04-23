@@ -1,9 +1,11 @@
+use crate::{
+    prelude::*,
+    serde::Deserialize,
+    shared_values::shared_containers::observers::TransceiverId,
+    value_updates::errors::UpdateError,
+    values::value_container::{ValueContainer, ValueKey},
+};
 use serde::Serialize;
-use crate::serde::Deserialize;
-use crate::shared_values::shared_containers::observers::TransceiverId;
-use crate::values::value_container::{ValueContainer, ValueKey};
-use crate::prelude::*;
-use crate::value_updates::errors::UpdateError;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
@@ -61,7 +63,6 @@ pub struct ListSpliceUpdateData {
     pub items: Vec<ValueContainer>,
 }
 
-
 /// Represents an update to a value from a source [TransceiverId]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Update {
@@ -75,7 +76,6 @@ impl Update {
         Update { source_id, data }
     }
 }
-
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum UpdateReturn {

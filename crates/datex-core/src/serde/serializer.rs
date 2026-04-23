@@ -15,10 +15,11 @@ use serde::ser::{
     SerializeTupleVariant, Serializer,
 };
 
-use crate::{prelude::*, runtime::RuntimeInternal};
-use crate::runtime::execution::execution_input::ExecutionCallerMetadata;
-use crate::runtime::Runtime;
-use crate::values::core_values::endpoint::Endpoint;
+use crate::{
+    prelude::*,
+    runtime::{Runtime, execution::execution_input::ExecutionCallerMetadata},
+    values::core_values::endpoint::Endpoint,
+};
 
 pub struct DatexSerializer {}
 
@@ -39,7 +40,7 @@ where
     T: Serialize,
 {
     let value_container = to_value_container(value)?;
-    Ok(compile_value_container((&value_container).into()).unwrap())
+    Ok(compile_value_container(&value_container).unwrap())
 }
 pub fn to_value_container<T>(
     value: &T,
@@ -489,10 +490,8 @@ impl Serializer for &mut DatexSerializer {
         T: ?Sized + serde::Serialize,
     {
         if name == "datex::endpoint" {
-            let endpoint = value
-                .serialize(&mut *self)?
-                .try_as::<Endpoint>()
-                .unwrap();
+            let endpoint =
+                value.serialize(&mut *self)?.try_as::<Endpoint>().unwrap();
             Ok(ValueContainer::from(endpoint))
         } else if name == "datex::value" {
             let runtime = Runtime::stub();
@@ -502,7 +501,7 @@ impl Serializer for &mut DatexSerializer {
                 bytes,
                 ExecutionCallerMetadata::local_default(),
                 ExecutionOptions::default(),
-                runtime
+                runtime,
             ))
             .unwrap()
             .unwrap())
@@ -843,11 +842,7 @@ mod tests {
         assert!(result.is_ok());
         let result = result.unwrap();
         assert_structural_eq!(
-            result
-                .try_as::<Map>()
-                .unwrap()
-                .get("usize")
-                .unwrap(),
+            result.try_as::<Map>().unwrap().get("usize").unwrap(),
             ValueContainer::from(42)
         );
     }

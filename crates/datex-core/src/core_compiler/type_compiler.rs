@@ -13,7 +13,7 @@ use crate::{
     prelude::*,
     shared_values::shared_containers::ReferenceMutability,
     types::{
-        type_definition::TypeDefinition, r#type::Type,
+        r#type::Type, type_definition::TypeDefinition,
         type_definition_with_metadata::TypeDefinitionWithMetadata,
     },
     utils::buffers::append_u8,
@@ -92,8 +92,8 @@ pub fn append_structural_type_definition(
 
 #[deprecated(note = "use `append_type_instruction` instead")]
 pub fn append_type_space_instruction_code(
-    buffer: &mut Vec<u8>,
-    code: TypeInstructionCode,
+    _buffer: &mut Vec<u8>,
+    _code: TypeInstructionCode,
 ) {
     unimplemented!("use append_type_instruction instead");
 }

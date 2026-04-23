@@ -1,9 +1,13 @@
-use crate::runtime::memory::Memory;
-use crate::shared_values::pointer_address::{SelfOwnedPointerAddress, ExternalPointerAddress};
-use crate::shared_values::shared_containers::base_shared_value_container::BaseSharedValueContainer;
-use crate::shared_values::shared_containers::ExternalSharedContainer;
-use crate::values::value::Value;
-use crate::values::value_container::ValueContainer;
+use crate::{
+    runtime::memory::Memory,
+    shared_values::{
+        pointer_address::{ExternalPointerAddress, SelfOwnedPointerAddress},
+        shared_containers::{
+            ExternalSharedContainer,
+            base_shared_value_container::BaseSharedValueContainer,
+        },
+    },
+};
 
 /// A shared container with a pointer address owned by the local endpoint
 #[derive(Debug)]
@@ -15,15 +19,17 @@ pub struct SelfOwnedSharedContainer {
 }
 
 impl SelfOwnedSharedContainer {
-    
     /// Creates a new [SelfOwnedSharedContainer]
-    pub fn new(shared_value_container: BaseSharedValueContainer, address: SelfOwnedPointerAddress) -> Self {
+    pub fn new(
+        shared_value_container: BaseSharedValueContainer,
+        address: SelfOwnedPointerAddress,
+    ) -> Self {
         SelfOwnedSharedContainer {
             value: shared_value_container,
             address,
         }
     }
-    
+
     pub fn value(&self) -> &BaseSharedValueContainer {
         &self.value
     }
@@ -31,32 +37,31 @@ impl SelfOwnedSharedContainer {
     pub fn take_value(self) -> BaseSharedValueContainer {
         self.value
     }
-    
+
     pub fn value_mut(&mut self) -> &mut BaseSharedValueContainer {
         &mut self.value
     }
-    
+
     pub fn address(&self) -> &SelfOwnedPointerAddress {
         &self.address
     }
-    
-    
+
     /// Converts the [SelfOwnedSharedContainer] into an [ExternalSharedContainer],
     /// setting the provided [ExternalPointerAddress]
     ///
     /// The caller must ensure that the [ExternalPointerAddress] does not yet exist in the [Memory]
-    /// 
+    ///
     /// TODO: handle subscriber transfer somewhere
     pub unsafe fn convert_to_external_container(
         self,
         external_address: ExternalPointerAddress,
-        memory: &Memory
+        memory: &Memory,
     ) -> ExternalSharedContainer {
         unsafe {
             ExternalSharedContainer::create_external_shared_container(
                 self.value,
                 external_address,
-                memory
+                memory,
             )
         }
     }

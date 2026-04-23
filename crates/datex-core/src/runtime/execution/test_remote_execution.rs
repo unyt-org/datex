@@ -1,20 +1,23 @@
-use core::assert_matches;
-use log::info;
-use rstest::rstest;
 use crate::{
     runtime::{
-        execution::context::{ExecutionContext, ExecutionMode},
+        execution::{
+            context::{ExecutionContext, ExecutionMode},
+            execution_input::ExecutionCallerMetadata,
+        },
         test_utils::use_mock_setup_with_two_connected_runtimes,
     },
+    shared_values::{
+        pointer_address::PointerAddress,
+        shared_containers::{SharedContainer, SharedContainerMutability},
+    },
     values::{
-        core_values::{endpoint::Endpoint, integer::Integer},
+        core_values::{endpoint::Endpoint, integer::Integer, list::List},
         value_container::ValueContainer,
     },
 };
-use crate::runtime::execution::execution_input::ExecutionCallerMetadata;
-use crate::shared_values::pointer_address::PointerAddress;
-use crate::shared_values::shared_containers::{SharedContainer, SharedContainerMutability};
-use crate::values::core_values::list::List;
+use core::assert_matches;
+use log::info;
+use rstest::rstest;
 
 #[tokio::test]
 #[cfg(feature = "compiler")]
@@ -183,17 +186,19 @@ pub async fn test_remote_shared_value_inject_ref() {
         async |runtime_a, _runtime_b| {
             // execute script remotely on @test_b
             let result = runtime_a
-                .execute("var x = shared 42; @test_b :: ['x + 1, 'x]", &[], None)
+                .execute(
+                    "var x = shared 42; @test_b :: ['x + 1, 'x]",
+                    &[],
+                    None,
+                )
                 .await
-                .unwrap().unwrap();
+                .unwrap()
+                .unwrap();
             let result_list = result.try_as::<List>().unwrap();
             let result_vec = result_list.as_vec();
 
             // 'x + 1
-            assert_eq!(
-                result_vec[0],
-                ValueContainer::from(Integer::from(43))
-            );
+            assert_eq!(result_vec[0], ValueContainer::from(Integer::from(43)));
 
             // 'x
             if let ValueContainer::Shared(shared_container) = &result_vec[1] {
@@ -213,13 +218,12 @@ pub async fn test_remote_shared_value_inject_ref() {
                     *shared_container.value_container(),
                     ValueContainer::from(Integer::from(42))
                 )
-            }
-            else {
+            } else {
                 panic!("Expected SharedContainer");
             }
         },
     )
-        .await;
+    .await;
 }
 
 #[cfg(feature = "compiler")]
@@ -242,9 +246,12 @@ pub async fn test_remote_shared_value_return(
             let result = runtime_a
                 .execute(&format!("@test_b :: ({shared_string} 42)"), &[], None)
                 .await
-                .unwrap().unwrap();
+                .unwrap()
+                .unwrap();
             if let ValueContainer::Shared(shared_container) = result {
-                shared_container.try_get_owned().expect("shared container should be owned");
+                shared_container
+                    .try_get_owned()
+                    .expect("shared container should be owned");
                 assert_matches!(
                     shared_container.pointer_address(),
                     PointerAddress::SelfOwned(..)
@@ -257,13 +264,12 @@ pub async fn test_remote_shared_value_return(
                     *shared_container.value_container(),
                     ValueContainer::from(Integer::from(42))
                 )
-            }
-            else {
+            } else {
                 panic!("Expected SharedContainer");
             }
         },
     )
-        .await;
+    .await;
 }
 
 #[cfg(feature = "compiler")]

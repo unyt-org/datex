@@ -1,6 +1,8 @@
 use crate::{
     ast::{
-        expressions::{DatexExpression, DatexExpressionData, Slot},
+        expressions::{
+            DatexExpression, DatexExpressionData, Slot, ValueAccessType,
+        },
         spanned::Spanned,
     },
     parser::{
@@ -12,14 +14,13 @@ use crate::{
             parse_integer_with_variant, unescape_text,
         },
     },
+    prelude::*,
     values::core_values::{
         decimal::{Decimal, typed_decimal::TypedDecimal},
         endpoint::Endpoint,
     },
 };
 use core::str::FromStr;
-use crate::ast::expressions::ValueAccessType;
-use crate::prelude::*;
 
 impl Parser {
     pub(crate) fn parse_atom(
@@ -198,7 +199,10 @@ impl Parser {
     pub(crate) fn parse_placeholder(
         &mut self,
     ) -> Result<DatexExpression, SpannedParserError> {
-        Ok(DatexExpressionData::Placeholder(ValueAccessType::MoveOrCopy).with_span(self.advance()?.span))
+        Ok(
+            DatexExpressionData::Placeholder(ValueAccessType::MoveOrCopy)
+                .with_span(self.advance()?.span),
+        )
     }
 
     pub(crate) fn parse_true(
@@ -315,7 +319,10 @@ mod tests {
 
     use crate::{
         ast::{
-            expressions::{DatexExpressionData, Slot, Statements},
+            expressions::{
+                CloneExpression, DatexExpressionData, GetSharedRef, Slot,
+                Statements, ValueAccessType,
+            },
             spanned::Spanned,
             type_expressions::{TypeExpressionData, Union},
         },
@@ -328,7 +335,10 @@ mod tests {
             },
         },
         prelude::*,
-        shared_values::pointer_address::PointerAddress,
+        shared_values::{
+            pointer_address::PointerAddress,
+            shared_containers::ReferenceMutability,
+        },
         values::core_values::{
             decimal::{Decimal, typed_decimal::TypedDecimal},
             endpoint::{Endpoint, InvalidEndpointError},
@@ -336,8 +346,6 @@ mod tests {
         },
     };
     use core::assert_matches;
-    use crate::ast::expressions::{CloneExpression, GetSharedRef, ValueAccessType};
-    use crate::shared_values::shared_containers::ReferenceMutability;
 
     #[test]
     fn parse_boolean_true() {
@@ -455,33 +463,60 @@ mod tests {
     #[test]
     fn parse_placeholder() {
         let expr = parse("?");
-        assert_eq!(expr.data, DatexExpressionData::Placeholder(ValueAccessType::MoveOrCopy));
+        assert_eq!(
+            expr.data,
+            DatexExpressionData::Placeholder(ValueAccessType::MoveOrCopy)
+        );
     }
 
     #[test]
     fn parse_placeholder_shared_ref() {
         let expr = parse("'?");
-        assert_eq!(expr.data, DatexExpressionData::GetSharedRef(GetSharedRef {
-            expression: Box::new(DatexExpressionData::Placeholder(ValueAccessType::MoveOrCopy).with_default_span()),
-            mutability: ReferenceMutability::Immutable,
-        }));
+        assert_eq!(
+            expr.data,
+            DatexExpressionData::GetSharedRef(GetSharedRef {
+                expression: Box::new(
+                    DatexExpressionData::Placeholder(
+                        ValueAccessType::MoveOrCopy
+                    )
+                    .with_default_span()
+                ),
+                mutability: ReferenceMutability::Immutable,
+            })
+        );
     }
 
     #[test]
     fn parse_placeholder_shared_ref_mut() {
         let expr = parse("'mut ?");
-        assert_eq!(expr.data, DatexExpressionData::GetSharedRef(GetSharedRef {
-            expression: Box::new(DatexExpressionData::Placeholder(ValueAccessType::MoveOrCopy).with_default_span()),
-            mutability: ReferenceMutability::Mutable,
-        }));
+        assert_eq!(
+            expr.data,
+            DatexExpressionData::GetSharedRef(GetSharedRef {
+                expression: Box::new(
+                    DatexExpressionData::Placeholder(
+                        ValueAccessType::MoveOrCopy
+                    )
+                    .with_default_span()
+                ),
+                mutability: ReferenceMutability::Mutable,
+            })
+        );
     }
 
     #[test]
     fn parse_clone() {
         let expr = parse("clone ?");
-        assert_eq!(expr.data, DatexExpressionData::Clone(CloneExpression {
-            expression: Box::new(DatexExpressionData::Placeholder(ValueAccessType::MoveOrCopy).with_default_span())
-        }));
+        assert_eq!(
+            expr.data,
+            DatexExpressionData::Clone(CloneExpression {
+                expression: Box::new(
+                    DatexExpressionData::Placeholder(
+                        ValueAccessType::MoveOrCopy
+                    )
+                    .with_default_span()
+                )
+            })
+        );
     }
 
     #[test]

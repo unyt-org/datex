@@ -16,6 +16,12 @@ pub struct SharedValueTracking {
     pub current_stack_index: StackIndex,
 }
 
+impl Default for SharedValueTracking {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SharedValueTracking {
     pub fn new() -> SharedValueTracking {
         SharedValueTracking {
@@ -63,7 +69,7 @@ impl SharedValueTracking {
     /// Get all registered owned shared values
     pub fn get_moved_shared_addresses(
         &self,
-    ) -> Vec<Ref<SelfOwnedPointerAddress>> {
+    ) -> Vec<Ref<'_, SelfOwnedPointerAddress>> {
         self.shared_values
             .iter()
             .filter_map(|(_, (container, _))| match container {

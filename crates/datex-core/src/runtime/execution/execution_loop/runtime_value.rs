@@ -1,4 +1,5 @@
 use crate::{
+    global::protocol_structures::instruction_data::StackIndex,
     runtime::execution::{
         ExecutionError,
         execution_loop::{
@@ -8,7 +9,6 @@ use crate::{
     },
     values::value_container::ValueContainer,
 };
-use crate::global::protocol_structures::instruction_data::StackIndex;
 
 /// Represents a value in the runtime execution context, which can either be a direct
 /// `ValueContainer` or a reference to a slot address where the value is stored.

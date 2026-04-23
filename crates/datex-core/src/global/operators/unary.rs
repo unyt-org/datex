@@ -1,8 +1,8 @@
 use crate::global::{
     instruction_codes::InstructionCode,
+    protocol_structures::regular_instructions::RegularInstruction,
 };
 use core::fmt::{Display, Formatter};
-use crate::global::protocol_structures::regular_instructions::RegularInstruction;
 
 #[derive(Clone, Debug, PartialEq, Copy, Eq)]
 pub enum UnaryOperator {

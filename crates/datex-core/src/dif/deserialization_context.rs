@@ -1,5 +1,5 @@
-use core::marker::PhantomData;
 use crate::dif::cache::DIFSharedContainerCache;
+use core::marker::PhantomData;
 
 pub struct DeserializationContext<'ctx, T> {
     pub shared_container_cache: &'ctx mut DIFSharedContainerCache,
@@ -7,8 +7,13 @@ pub struct DeserializationContext<'ctx, T> {
 }
 
 impl<'ctx, T> DeserializationContext<'ctx, T> {
-    pub fn new(shared_container_cache: &'ctx mut DIFSharedContainerCache) -> Self {
-        Self { shared_container_cache, _marker: PhantomData }
+    pub fn new(
+        shared_container_cache: &'ctx mut DIFSharedContainerCache,
+    ) -> Self {
+        Self {
+            shared_container_cache,
+            _marker: PhantomData,
+        }
     }
 
     // Converts this deserialization context to a deserialization context for another type U
@@ -16,5 +21,3 @@ impl<'ctx, T> DeserializationContext<'ctx, T> {
         DeserializationContext::new(self.shared_container_cache)
     }
 }
-
-

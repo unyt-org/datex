@@ -11,13 +11,13 @@ use crate::{
 };
 
 use crate::prelude::*;
-use core::cell::RefCell;
 use binrw::io::Write;
+use core::cell::RefCell;
 
 /// Compilation functions for type expressions.
 impl CompilationContext {
     pub fn append_type_instruction_code(&mut self, code: TypeInstructionCode) {
-        append_u8( self.cursor(), code as u8);
+        append_u8(self.cursor(), code as u8);
     }
 
     // TODO #452: Handle other types

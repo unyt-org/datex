@@ -29,12 +29,17 @@ impl PrecompilerScopeStack {
     }
 
     pub fn pop_scope(&mut self) -> PrecompilerScope {
-        let scope = self.scopes.pop().expect("Cannot pop scope from an empty scope stack");
+        let scope = self
+            .scopes
+            .pop()
+            .expect("Cannot pop scope from an empty scope stack");
         // inherit child external variables
         if let Some(parent_scope) = self.scopes.last_mut() {
-            parent_scope.external_variables.extend(scope.external_variables.clone());
+            parent_scope
+                .external_variables
+                .extend(scope.external_variables.clone());
         }
-        
+
         scope
     }
 
@@ -81,7 +86,8 @@ impl PrecompilerScopeStack {
             // if the original realm index is not the current realm index, mark it as cross-realm
             if var_metadata.original_realm_index != self.current_realm_index() {
                 var_metadata.is_cross_realm = true;
-                self.get_active_scope_mut().register_external_variable(var_id);
+                self.get_active_scope_mut()
+                    .register_external_variable(var_id);
             }
             Ok(var_id)
         } else {

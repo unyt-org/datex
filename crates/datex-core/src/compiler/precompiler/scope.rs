@@ -17,7 +17,7 @@ impl PrecompilerScope {
             external_variables: HashSet::new(),
         }
     }
-    
+
     /// Registers the use of an external variable in the current scope
     pub fn register_external_variable(&mut self, variable_id: usize) {
         self.external_variables.insert(variable_id);

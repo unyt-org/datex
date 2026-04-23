@@ -1,14 +1,14 @@
 use super::serializable::Serializable;
-use crate::{
-    values::core_values::endpoint::Endpoint,
-};
+use crate::values::core_values::endpoint::Endpoint;
 
-use crate::prelude::*;
+use crate::{
+    global::protocol_structures::instruction_data::RawRemotePointerAddress,
+    prelude::*,
+};
 use binrw::{BinRead, BinWrite};
 use core::{fmt::Display, prelude::rust_2024::*};
 use itertools::Itertools;
 use modular_bitfield::prelude::*;
-use crate::global::protocol_structures::instruction_data::RawRemotePointerAddress;
 
 // 2 bit
 #[derive(
@@ -308,7 +308,11 @@ impl Display for Receivers {
                 core::write!(f, "Pointer ID: {:?}", pid)
             }
             Receivers::Endpoints(endpoints) => {
-                core::write!(f, "{}", endpoints.iter().map(|ep| ep.to_string()).join(", "))
+                core::write!(
+                    f,
+                    "{}",
+                    endpoints.iter().map(|ep| ep.to_string()).join(", ")
+                )
             }
             Receivers::EndpointsWithKeys(endpoints_with_keys) => {
                 core::write!(

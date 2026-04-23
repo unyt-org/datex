@@ -1,5 +1,5 @@
-use serde::{Deserialize, Serialize};
 use crate::global::protocol_structures::instructions::NestedInstructionResolutionStrategy;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
 #[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
@@ -21,11 +21,12 @@ impl DisassemblerOptions {
         }
     }
 
-    pub(crate) fn nested_instructions_resolution_strategy(&self) -> NestedInstructionResolutionStrategy {
+    pub(crate) fn nested_instructions_resolution_strategy(
+        &self,
+    ) -> NestedInstructionResolutionStrategy {
         if self.recursive {
             NestedInstructionResolutionStrategy::ResolveNestedScopesTree // always resolve as tree, collapse later if needed for string display
-        }
-        else {
+        } else {
             NestedInstructionResolutionStrategy::None
         }
     }

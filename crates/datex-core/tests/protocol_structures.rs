@@ -9,6 +9,7 @@ use datex_core::{
         protocol_structures::{
             block_header::{BlockHeader, BlockType},
             encrypted_header::{self, EncryptedHeader},
+            instruction_data::RawRemotePointerAddress,
             routing_header::{EncryptionType, RoutingHeader},
             serializable::Serializable,
         },
@@ -18,7 +19,6 @@ use datex_core::{
 };
 use serde::Serialize;
 use serde_json::ser::PrettyFormatter;
-use datex_core::global::protocol_structures::instruction_data::RawRemotePointerAddress;
 
 #[test]
 pub fn parse_encrypted_header() {

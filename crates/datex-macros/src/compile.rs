@@ -1,6 +1,8 @@
+use crate::utils::expr_to_value_container;
 use datex_core::{
     compiler::{CompileOptions, compile_template},
     prelude::*,
+    runtime::Runtime,
     values::value_container::ValueContainer,
 };
 use proc_macro2::TokenStream;
@@ -11,8 +13,6 @@ use syn::{
     punctuated::Punctuated,
     token::Comma,
 };
-use datex_core::runtime::Runtime;
-use crate::utils::expr_to_value_container;
 
 pub struct PrecompileInput {
     pub script: String,
@@ -41,7 +41,7 @@ pub fn precompile(input: PrecompileInput) -> TokenStream {
         &script,
         &args.iter().cloned().map(Some).collect::<Vec<_>>(),
         CompileOptions::default(),
-        runtime
+        runtime,
     )
     .unwrap()
     .0;

@@ -1,9 +1,9 @@
 use crate::{
     ast::{
         expressions::{
-            Apply, BinaryOperation, ComparisonOperation, CreateMut, CreateShared,
-            DatexExpression, DatexExpressionData, GenericInstantiation,
-            GetRef, GetSharedRef, PropertyAccess,
+            Apply, BinaryOperation, CloneExpression, ComparisonOperation,
+            CreateMut, CreateShared, DatexExpression, DatexExpressionData,
+            GenericInstantiation, GetRef, GetSharedRef, PropertyAccess,
             PropertyAssignment, RangeDeclaration, RemoteExecution,
             RequestSharedRef, SlotAssignment, UnaryOperation, Unbox,
             UnboxAssignment, VariableAssignment,
@@ -11,25 +11,23 @@ use crate::{
         spanned::Spanned,
     },
     global::operators::{
-        binary::{ArithmeticOperator, BitwiseOperator, LogicalOperator}, ArithmeticUnaryOperator, AssignmentOperator,
-        BinaryOperator, ComparisonOperator, LogicalUnaryOperator,
-        UnaryOperator,
+        ArithmeticUnaryOperator, AssignmentOperator, BinaryOperator,
+        ComparisonOperator, LogicalUnaryOperator, UnaryOperator,
+        binary::{ArithmeticOperator, BitwiseOperator, LogicalOperator},
     },
     parser::{
+        Parser,
         errors::{ParserError, SpannedParserError},
         lexer::{SpannedToken, Token},
-        Parser,
     },
     prelude::*,
     shared_values::{
         pointer_address::PointerAddress,
-        shared_containers::SharedContainerMutability,
+        shared_containers::{ReferenceMutability, SharedContainerMutability},
     },
+    types::type_definition_with_metadata::LocalReferenceMutability,
     values::core_values::error::NumberParseError,
 };
-use crate::ast::expressions::CloneExpression;
-use crate::shared_values::shared_containers::ReferenceMutability;
-use crate::types::type_definition_with_metadata::LocalReferenceMutability;
 
 static UNARY_BP: u8 = 29; // weaker than property access / apply, stronger than all other binary operators
 
@@ -480,7 +478,7 @@ impl Parser {
                 Ok(DatexExpressionData::Clone(CloneExpression {
                     expression: Box::new(rhs),
                 })
-                    .with_span(span))
+                .with_span(span))
             }
             // ref (&)
             Token::Ampersand => {
@@ -518,10 +516,12 @@ impl Parser {
                     let span = op.span.start..next.span.end;
                     self.advance()?; // consume pointer address
 
-                    Ok(DatexExpressionData::RequestSharedRef(RequestSharedRef {
-                        mutability: ReferenceMutability::Immutable,
-                        address,
-                    })
+                    Ok(DatexExpressionData::RequestSharedRef(
+                        RequestSharedRef {
+                            mutability: ReferenceMutability::Immutable,
+                            address,
+                        },
+                    )
                     .with_span(span))
                 }
                 // normal shared ref to dynamic expression
@@ -550,10 +550,12 @@ impl Parser {
                     let span = op.span.start..next.span.end;
                     self.advance()?; // consume pointer address
 
-                    Ok(DatexExpressionData::RequestSharedRef(RequestSharedRef {
-                        mutability: ReferenceMutability::Mutable,
-                        address,
-                    })
+                    Ok(DatexExpressionData::RequestSharedRef(
+                        RequestSharedRef {
+                            mutability: ReferenceMutability::Mutable,
+                            address,
+                        },
+                    )
                     .with_span(span))
                 }
                 // normal shared ref to dynamic expression
@@ -654,8 +656,8 @@ mod tests {
         ast::{
             expressions::{
                 Apply, BinaryOperation, ComparisonOperation, CreateMut,
-                CreateShared, DatexExpressionData, GenericInstantiation, GetRef,
-                GetSharedRef, PropertyAccess, PropertyAssignment,
+                CreateShared, DatexExpressionData, GenericInstantiation,
+                GetRef, GetSharedRef, PropertyAccess, PropertyAssignment,
                 RemoteExecution, RequestSharedRef, Slot, SlotAssignment,
                 Statements, UnaryOperation, Unbox, UnboxAssignment,
                 VariableAssignment,
@@ -664,9 +666,9 @@ mod tests {
             type_expressions::TypeExpressionData,
         },
         global::operators::{
-            binary::{ArithmeticOperator, BitwiseOperator, LogicalOperator}, ArithmeticUnaryOperator, AssignmentOperator,
-            BinaryOperator, ComparisonOperator, LogicalUnaryOperator,
-            UnaryOperator,
+            ArithmeticUnaryOperator, AssignmentOperator, BinaryOperator,
+            ComparisonOperator, LogicalUnaryOperator, UnaryOperator,
+            binary::{ArithmeticOperator, BitwiseOperator, LogicalOperator},
         },
         parser::{
             errors::ParserError,
@@ -675,11 +677,12 @@ mod tests {
         prelude::*,
         shared_values::{
             pointer_address::PointerAddress,
-            shared_containers::SharedContainerMutability,
+            shared_containers::{
+                ReferenceMutability, SharedContainerMutability,
+            },
         },
+        types::type_definition_with_metadata::LocalReferenceMutability,
     };
-    use crate::shared_values::shared_containers::ReferenceMutability;
-    use crate::types::type_definition_with_metadata::LocalReferenceMutability;
 
     #[test]
     fn parse_simple_binary_expression() {
@@ -2065,5 +2068,4 @@ mod tests {
             })
         );
     }
-
 }

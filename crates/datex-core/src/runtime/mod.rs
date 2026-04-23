@@ -20,16 +20,16 @@ mod internal;
 pub mod memory;
 mod runner;
 
+pub mod pointer_address_provider;
 mod request_move;
 #[cfg(test)]
 pub mod test_utils;
-pub mod pointer_address_provider;
 
 use self::memory::Memory;
+use crate::runtime::pointer_address_provider::SelfOwnedPointerAddressProvider;
 pub use config::*;
 pub use internal::*;
 pub use runner::*;
-use crate::runtime::pointer_address_provider::SelfOwnedPointerAddressProvider;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -76,7 +76,9 @@ impl Runtime {
         &self.internal.memory
     }
 
-    pub fn pointer_address_provider(&self) -> &RefCell<SelfOwnedPointerAddressProvider> {
+    pub fn pointer_address_provider(
+        &self,
+    ) -> &RefCell<SelfOwnedPointerAddressProvider> {
         &self.internal.pointer_address_provider
     }
 

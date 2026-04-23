@@ -1,10 +1,10 @@
 use crate::{
     prelude::*,
     shared_values::shared_containers::base_shared_value_container::BaseSharedValueContainer,
+    value_updates::update_data::Update,
 };
 use core::{fmt::Display, result::Result};
 use serde::{Deserialize, Serialize};
-use crate::value_updates::update_data::{UpdateData, Update};
 
 #[derive(Debug)]
 pub enum ObserverError {
@@ -29,7 +29,9 @@ pub type ObserverCallback = Rc<dyn Fn(&Update)>;
 
 /// unique identifier for a transceiver (source of updates)
 /// 0-255 are reserved for DIF clients
-#[derive(Debug, Default, Clone, Copy, Deserialize, Serialize, PartialEq, Eq, Hash)]
+#[derive(
+    Debug, Default, Clone, Copy, Deserialize, Serialize, PartialEq, Eq, Hash,
+)]
 pub struct TransceiverId(pub u32);
 
 #[derive(Debug, Clone, Copy, Default, Serialize, Deserialize)]
@@ -48,9 +50,7 @@ pub struct Observer {
 impl Observer {
     /// Creates a new observer with the given callback function,
     /// using default options and a transceiver ID of 0.
-    pub fn new<F: Fn(&Update) + 'static>(
-        callback: F,
-    ) -> Self {
+    pub fn new<F: Fn(&Update) + 'static>(callback: F) -> Self {
         Observer {
             transceiver_id: TransceiverId(0),
             options: ObserveOptions::default(),
@@ -140,7 +140,7 @@ impl BaseSharedValueContainer {
 
         // Call each observer synchronously
         for callback in observer_callbacks {
-            callback(&dif);
+            callback(dif);
         }
     }
 
@@ -154,22 +154,26 @@ impl BaseSharedValueContainer {
 mod tests {
     use crate::{
         prelude::*,
-        shared_values::{
-            shared_containers::{
-                SharedContainerMutability,
-                base_shared_value_container::BaseSharedValueContainer,
-                observers::{
-                    ObserveOptions, Observer, ObserverError, TransceiverId,
-                },
+        runtime::memory::Memory,
+        shared_values::shared_containers::{
+            SharedContainerMutability,
+            base_shared_value_container::BaseSharedValueContainer,
+            observers::{
+                ObserveOptions, Observer, ObserverError, TransceiverId,
             },
         },
-        values::{core_values::map::Map, value_container::ValueContainer},
+        value_updates::{
+            update_data::{
+                ReplaceUpdateData, SetEntryUpdateData, Update, UpdateData,
+            },
+            update_handler::UpdateHandler,
+        },
+        values::{
+            core_values::map::Map,
+            value_container::{ValueContainer, ValueKey},
+        },
     };
     use core::{assert_matches, cell::RefCell};
-    use crate::runtime::memory::Memory;
-    use crate::value_updates::update_data::{ReplaceUpdateData, SetEntryUpdateData, Update, UpdateData};
-    use crate::value_updates::update_handler::UpdateHandler;
-    use crate::values::value_container::ValueKey;
 
     /// Helper function to record DIF updates observed on a reference
     /// Returns a Rc<RefCell<Vec<DIFUpdate>>> that contains all observed updates
@@ -269,8 +273,11 @@ mod tests {
                 SharedContainerMutability::Mutable,
                 memory,
             );
-        let observed_updates =
-            record_dif_updates(&mut int_ref, TransceiverId(0), ObserveOptions::default());
+        let observed_updates = record_dif_updates(
+            &mut int_ref,
+            TransceiverId(0),
+            ObserveOptions::default(),
+        );
 
         // Update the value of the reference
         int_ref
@@ -281,7 +288,7 @@ mod tests {
         let expected_update = Update {
             source_id: TransceiverId(1),
             data: UpdateData::Replace(ReplaceUpdateData {
-                value: ValueContainer::from(43)
+                value: ValueContainer::from(43),
             }),
         };
 
@@ -298,8 +305,11 @@ mod tests {
                 SharedContainerMutability::Mutable,
                 memory,
             );
-        let observed_update =
-            record_dif_updates(&mut int_ref, TransceiverId(0), ObserveOptions::default());
+        let observed_update = record_dif_updates(
+            &mut int_ref,
+            TransceiverId(0),
+            ObserveOptions::default(),
+        );
 
         // Update the value of the reference
         int_ref
@@ -330,16 +340,19 @@ mod tests {
 
         // Update the value of the reference
         int_ref
-            .try_replace(ReplaceUpdateData {
-                value: ValueContainer::from(43),
-            }, TransceiverId(0))
+            .try_replace(
+                ReplaceUpdateData {
+                    value: ValueContainer::from(43),
+                },
+                TransceiverId(0),
+            )
             .expect("Failed to set value");
 
         // update triggered, same transceiver id but relay_own_updates enabled
         let expected_update = Update {
             source_id: TransceiverId(0),
             data: UpdateData::Replace(ReplaceUpdateData {
-                value: ValueContainer::from(43)
+                value: ValueContainer::from(43),
             }),
         };
 
@@ -359,14 +372,20 @@ mod tests {
                 SharedContainerMutability::Mutable,
                 memory,
             );
-        let observed_updates =
-            record_dif_updates(&mut reference, TransceiverId(0), ObserveOptions::default());
+        let observed_updates = record_dif_updates(
+            &mut reference,
+            TransceiverId(0),
+            ObserveOptions::default(),
+        );
         // Update a property
         reference
-            .try_set_entry(SetEntryUpdateData {
-                key: "a".into(),
-                value: ValueContainer::from("val"),
-            }, TransceiverId(1))
+            .try_set_entry(
+                SetEntryUpdateData {
+                    key: "a".into(),
+                    value: ValueContainer::from("val"),
+                },
+                TransceiverId(1),
+            )
             .expect("Failed to set property");
         // Verify the observed update matches the expected change
         let expected_update = Update {

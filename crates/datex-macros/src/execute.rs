@@ -1,7 +1,9 @@
+use crate::utils::expr_to_value_container;
 use datex_core::{
     self,
     compiler::{CompileOptions, compile_template},
     prelude::*,
+    runtime::Runtime,
     values::value_container::ValueContainer,
 };
 use proc_macro2::TokenStream;
@@ -11,8 +13,6 @@ use syn::{
     parse::{Parse, ParseStream},
     punctuated::Punctuated,
 };
-use datex_core::runtime::Runtime;
-use crate::utils::expr_to_value_container;
 
 enum Placeholder {
     ValueContainer(ValueContainer),
@@ -66,15 +66,13 @@ fn prepare_setup(input: ExecuteMacroInput) -> TokenStream {
     let stack_init = input
         .args
         .iter()
-        .map(|placeholder| {
-            match placeholder {
-                Placeholder::ValueContainer(_) => quote! {
-                    stack_values.push(None);
-                },
-                Placeholder::Expression(expr) => quote! {
-                    stack_values.push(Some(ValueContainer::from(#expr)));
-                },
-            }
+        .map(|placeholder| match placeholder {
+            Placeholder::ValueContainer(_) => quote! {
+                stack_values.push(None);
+            },
+            Placeholder::Expression(expr) => quote! {
+                stack_values.push(Some(ValueContainer::from(#expr)));
+            },
         })
         .collect::<Vec<_>>();
 
@@ -87,8 +85,12 @@ fn prepare_setup(input: ExecuteMacroInput) -> TokenStream {
         })
         .collect::<Vec<_>>();
 
-    let dxb =
-        compile_template(&script, &placeholders, CompileOptions::default(), runtime);
+    let dxb = compile_template(
+        &script,
+        &placeholders,
+        CompileOptions::default(),
+        runtime,
+    );
     if let Err(e) = dxb {
         return syn::Error::new_spanned(
             script,

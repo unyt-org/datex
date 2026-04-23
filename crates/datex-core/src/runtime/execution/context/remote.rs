@@ -2,10 +2,12 @@
 use crate::compiler::scope::CompilationScope;
 use crate::{
     global::dxb_block::OutgoingContextId,
-    runtime::execution::context::{ExecutionContext, ExecutionMode},
+    runtime::{
+        Runtime,
+        execution::context::{ExecutionContext, ExecutionMode},
+    },
     values::core_values::endpoint::Endpoint,
 };
-use crate::runtime::Runtime;
 
 #[derive(Debug, Clone)]
 pub struct RemoteExecutionContext {
@@ -44,7 +46,10 @@ impl ExecutionContext {
         ))
     }
 
-    pub fn remote_unbounded(endpoint: impl Into<Endpoint>, runtime: Runtime) -> Self {
+    pub fn remote_unbounded(
+        endpoint: impl Into<Endpoint>,
+        runtime: Runtime,
+    ) -> Self {
         ExecutionContext::Remote(RemoteExecutionContext::new(
             endpoint,
             ExecutionMode::unbounded(),

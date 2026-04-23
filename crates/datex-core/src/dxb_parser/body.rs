@@ -3,21 +3,20 @@ use crate::{
         NextInstructionType, NextInstructionsStack,
         NotInUnboundedRegularScopeError,
     },
-    global::{
-        protocol_structures::instruction_data::{ UInt8Data },
-    },
     runtime::execution::macros::yield_unwrap,
 };
 
-use crate::prelude::*;
+use crate::{
+    global::protocol_structures::{
+        instructions::{Instruction, NestedInstructionResolutionStrategy},
+        regular_instructions::RegularInstruction,
+        type_instructions::TypeInstruction,
+    },
+    prelude::*,
+};
 use alloc::string::FromUtf8Error;
 use binrw::{BinRead, io::Cursor};
-use core::{
-    cell::RefCell, convert::TryFrom, fmt, fmt::Display, result::Result,
-};
-use crate::global::protocol_structures::instructions::{Instruction, NestedInstructionResolutionStrategy};
-use crate::global::protocol_structures::regular_instructions::{RegularInstruction};
-use crate::global::protocol_structures::type_instructions::TypeInstruction;
+use core::{cell::RefCell, fmt, fmt::Display, result::Result};
 
 #[derive(Debug)]
 pub enum DXBParserError {
@@ -39,17 +38,48 @@ pub enum DXBParserError {
 impl PartialEq for DXBParserError {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (DXBParserError::InvalidEndpoint(a), DXBParserError::InvalidEndpoint(b)) => a == b,
-            (DXBParserError::InvalidBinaryCode(a), DXBParserError::InvalidBinaryCode(b)) => a == b,
-            (DXBParserError::FailedToReadInstructionCode, DXBParserError::FailedToReadInstructionCode) => true,
-            (DXBParserError::InvalidInstructionCode(a), DXBParserError::InvalidInstructionCode(b)) => a == b,
-            (DXBParserError::ExpectingMoreInstructions, DXBParserError::ExpectingMoreInstructions) => true,
-            (DXBParserError::UnexpectedBytesAfterEndOfInstructions, DXBParserError::UnexpectedBytesAfterEndOfInstructions) => true,
-            (DXBParserError::FmtError(a), DXBParserError::FmtError(b)) => a.to_string() == b.to_string(),
-            (DXBParserError::BinRwError(a), DXBParserError::BinRwError(b)) => a.to_string() == b.to_string(),
-            (DXBParserError::FromUtf8Error(a), DXBParserError::FromUtf8Error(b)) => a.to_string() == b.to_string(),
-            (DXBParserError::NotInUnboundedRegularScopeError, DXBParserError::NotInUnboundedRegularScopeError) => true,
-            (DXBParserError::InvalidInternalSlotAddress(a), DXBParserError::InvalidInternalSlotAddress(b)) => a == b,
+            (
+                DXBParserError::InvalidEndpoint(a),
+                DXBParserError::InvalidEndpoint(b),
+            ) => a == b,
+            (
+                DXBParserError::InvalidBinaryCode(a),
+                DXBParserError::InvalidBinaryCode(b),
+            ) => a == b,
+            (
+                DXBParserError::FailedToReadInstructionCode,
+                DXBParserError::FailedToReadInstructionCode,
+            ) => true,
+            (
+                DXBParserError::InvalidInstructionCode(a),
+                DXBParserError::InvalidInstructionCode(b),
+            ) => a == b,
+            (
+                DXBParserError::ExpectingMoreInstructions,
+                DXBParserError::ExpectingMoreInstructions,
+            ) => true,
+            (
+                DXBParserError::UnexpectedBytesAfterEndOfInstructions,
+                DXBParserError::UnexpectedBytesAfterEndOfInstructions,
+            ) => true,
+            (DXBParserError::FmtError(a), DXBParserError::FmtError(b)) => {
+                a.to_string() == b.to_string()
+            }
+            (DXBParserError::BinRwError(a), DXBParserError::BinRwError(b)) => {
+                a.to_string() == b.to_string()
+            }
+            (
+                DXBParserError::FromUtf8Error(a),
+                DXBParserError::FromUtf8Error(b),
+            ) => a.to_string() == b.to_string(),
+            (
+                DXBParserError::NotInUnboundedRegularScopeError,
+                DXBParserError::NotInUnboundedRegularScopeError,
+            ) => true,
+            (
+                DXBParserError::InvalidInternalSlotAddress(a),
+                DXBParserError::InvalidInternalSlotAddress(b),
+            ) => a == b,
             _ => false,
         }
     }
@@ -235,14 +265,20 @@ pub fn iterate_instructions(
 
 #[cfg(test)]
 mod tests {
-    use core::assert_matches;
-    use crate::global::instruction_codes::InstructionCode;
     use super::*;
+    use crate::global::{
+        instruction_codes::InstructionCode,
+        protocol_structures::instruction_data::UInt8Data,
+    };
+    use core::assert_matches;
 
     fn iterate_dxb(
         data: Vec<u8>,
     ) -> impl Iterator<Item = Result<Instruction, DXBParserError>> {
-        iterate_instructions(Rc::new(RefCell::new(data)), NestedInstructionResolutionStrategy::default())
+        iterate_instructions(
+            Rc::new(RefCell::new(data)),
+            NestedInstructionResolutionStrategy::default(),
+        )
     }
 
     #[test]
@@ -261,10 +297,7 @@ mod tests {
         let data = vec![]; // Empty data
         let mut iterator = iterate_dxb(data);
         let result = iterator.next().unwrap();
-        assert_matches!(
-            result,
-            Err(DXBParserError::ExpectingMoreInstructions)
-        );
+        assert_matches!(result, Err(DXBParserError::ExpectingMoreInstructions));
     }
 
     #[test]
@@ -273,9 +306,7 @@ mod tests {
         let mut iterator = iterate_dxb(data);
         let result = iterator.next().unwrap();
         match result {
-            Ok(Instruction::Regular(RegularInstruction::UInt8(
-                value,
-            ))) => {
+            Ok(Instruction::Regular(RegularInstruction::UInt8(value))) => {
                 assert_eq!(value.0, 42);
             }
             _ => panic!("Expected UINT_8 instruction"),
@@ -294,9 +325,7 @@ mod tests {
         let mut iterator = iterate_dxb(data);
         let result = iterator.next().unwrap();
         match result {
-            Ok(Instruction::Regular(
-                RegularInstruction::ShortText(value),
-            )) => {
+            Ok(Instruction::Regular(RegularInstruction::ShortText(value))) => {
                 assert_eq!(value.0, "Hello");
             }
             _ => panic!("Expected SHORT_TEXT instruction"),
@@ -325,16 +354,16 @@ mod tests {
         // next instruction should be first UINT_8
         assert!(matches!(
             iterator.next().unwrap(),
-            Ok(Instruction::Regular(RegularInstruction::UInt8(
-                UInt8Data(10)
-            )))
+            Ok(Instruction::Regular(RegularInstruction::UInt8(UInt8Data(
+                10
+            ))))
         ));
         // next instruction should be second UINT_8
         assert!(matches!(
             iterator.next().unwrap(),
-            Ok(Instruction::Regular(RegularInstruction::UInt8(
-                UInt8Data(20)
-            )))
+            Ok(Instruction::Regular(RegularInstruction::UInt8(UInt8Data(
+                20
+            ))))
         ));
         // ensure no more instructions
         assert!(iterator.next().is_none());
@@ -352,7 +381,10 @@ mod tests {
     fn expect_more_instructions_after_partial() {
         let data = vec![InstructionCode::LIST as u8, 0x02, 0x00, 0x00, 0x00]; // LIST with 2 elements but no elements provided
         let data_ref = Rc::new(RefCell::new(data));
-        let mut iterator = iterate_instructions(data_ref.clone(), NestedInstructionResolutionStrategy::default());
+        let mut iterator = iterate_instructions(
+            data_ref.clone(),
+            NestedInstructionResolutionStrategy::default(),
+        );
         // first instruction should be LIST
         let result = iterator.next().unwrap();
         assert!(matches!(
@@ -380,17 +412,13 @@ mod tests {
         let result = iterator.next().unwrap();
         assert!(matches!(
             result,
-            Ok(Instruction::Regular(RegularInstruction::UInt8(
-                _
-            )))
+            Ok(Instruction::Regular(RegularInstruction::UInt8(_)))
         ));
         // next instruction should be second UINT_8
         let result = iterator.next().unwrap();
         assert!(matches!(
             result,
-            Ok(Instruction::Regular(RegularInstruction::UInt8(
-                _
-            )))
+            Ok(Instruction::Regular(RegularInstruction::UInt8(_)))
         ));
         // ensure no more instructions
         assert!(iterator.next().is_none());
@@ -400,7 +428,10 @@ mod tests {
     fn unbounded_expect_more_instructions() {
         let data = vec![InstructionCode::UNBOUNDED_STATEMENTS as u8]; // Start unbounded statements
         let data_ref = Rc::new(RefCell::new(data));
-        let mut iterator = iterate_instructions(data_ref.clone(), NestedInstructionResolutionStrategy::default());
+        let mut iterator = iterate_instructions(
+            data_ref.clone(),
+            NestedInstructionResolutionStrategy::default(),
+        );
         // first instruction should be UNBOUNDED_STATEMENTS
         let result = iterator.next().unwrap();
         assert!(matches!(
@@ -430,9 +461,7 @@ mod tests {
         let result = iterator.next().unwrap();
         assert!(matches!(
             result,
-            Ok(Instruction::Regular(RegularInstruction::UInt8(
-                _
-            )))
+            Ok(Instruction::Regular(RegularInstruction::UInt8(_)))
         ));
         // next instruction should be UNBOUNDED_STATEMENTS_END
         let result = iterator.next().unwrap();

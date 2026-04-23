@@ -34,9 +34,7 @@ impl RuntimeExecutionStack {
     /// Returns a dump of the current stack values.
     pub fn stack_dump(&self) -> MemoryDump {
         MemoryDump {
-            stack: self
-                .values
-                .clone()
+            stack: self.values.clone(),
         }
     }
 }

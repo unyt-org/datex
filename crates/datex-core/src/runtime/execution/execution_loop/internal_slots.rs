@@ -1,12 +1,13 @@
 use crate::{
-    global::slots::InternalSlot,
+    global::{
+        protocol_structures::instruction_data::StackIndex, slots::InternalSlot,
+    },
     runtime::execution::{
         ExecutionError, execution_loop::state::RuntimeExecutionState,
     },
     values::{core_values::map::Map, value_container::ValueContainer},
 };
 use num_enum::TryFromPrimitive;
-use crate::global::protocol_structures::instruction_data::StackIndex;
 
 pub fn get_stack_value(
     runtime_state: &RuntimeExecutionState,
@@ -27,8 +28,12 @@ pub fn get_internal_slot_value(
         InternalSlot::ENDPOINT => {
             ValueContainer::from(runtime.endpoint().clone())
         }
-        InternalSlot::CALLER => ValueContainer::from(runtime_state.caller_metadata.endpoint.clone()),
-        InternalSlot::ENV => ValueContainer::from(Map::from(runtime.internal.get_env())),
+        InternalSlot::CALLER => {
+            ValueContainer::from(runtime_state.caller_metadata.endpoint.clone())
+        }
+        InternalSlot::ENV => {
+            ValueContainer::from(Map::from(runtime.internal.get_env()))
+        }
     };
     Ok(res)
 }

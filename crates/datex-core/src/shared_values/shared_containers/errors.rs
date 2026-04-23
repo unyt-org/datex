@@ -1,5 +1,5 @@
+use crate::shared_values::shared_containers::SharedContainerOwnership;
 use core::fmt::Display;
-use crate::shared_values::shared_containers::{ReferenceMutability, SharedContainerMutability, SharedContainerOwnership};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct UnexpectedSharedContainerOwnershipError {
@@ -15,7 +15,11 @@ pub struct UnexpectedImmutableReferenceError;
 
 impl Display for UnexpectedSharedContainerOwnershipError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "Unexpected shared container ownership: expected {:?}, actual {:?}", self.expected, self.actual)
+        write!(
+            f,
+            "Unexpected shared container ownership: expected {:?}, actual {:?}",
+            self.expected, self.actual
+        )
     }
 }
 

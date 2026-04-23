@@ -6,14 +6,12 @@ use crate::values::{
             utils::{smallest_fitting_signed, smallest_fitting_unsigned},
         },
     },
-    value_container::{ValueContainer, ValueError},
+    value_container::ValueError,
 };
 
-use crate::{
-    prelude::*,
-    traits::structural_eq::StructuralEq,
-};
+use crate::{prelude::*, traits::structural_eq::StructuralEq};
 
+use crate::libs::core::type_id::{CoreLibTypeId, CoreLibVariantTypeId};
 use core::{
     fmt::Display,
     hash::Hash,
@@ -25,7 +23,6 @@ use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{Deserialize, Serialize};
 use strum::Display;
 use strum_macros::{AsRefStr, EnumIter, EnumString};
-use crate::libs::core::type_id::{CoreLibTypeId, CoreLibVariantTypeId};
 
 /// The integer type variants to be used as a inline
 /// definition in DATEX (such as 42u32 or -42i64).

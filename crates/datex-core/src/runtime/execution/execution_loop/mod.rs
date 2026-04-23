@@ -1,10 +1,11 @@
+mod internal_slots;
 pub mod interrupts;
 mod operations;
 mod runtime_value;
-mod internal_slots;
 pub mod state;
 
 use crate::{
+    core_compiler::injected_values::compile_injected_values,
     dxb_parser::{
         body::{DXBParserError, iterate_instructions},
         instruction_collector::{
@@ -12,18 +13,26 @@ use crate::{
             InstructionCollector, LastUnboundedResultCollector,
             ResultCollector, StatementResultCollectionStrategy,
         },
-    }, global::{
-        operators::{
-            BinaryOperator, ComparisonOperator,
-            UnaryOperator,
+    },
+    global::{
+        operators::{BinaryOperator, ComparisonOperator, UnaryOperator},
+        protocol_structures::{
+            instruction_data::{
+                ApplyData, DecimalData, Float32Data, Float64Data,
+                FloatAsInt16Data, FloatAsInt32Data, IntegerData,
+                ModifyStackValue, RawPointerAddress, ShortTextData, StackIndex,
+                TextData, UnboundedStatementsData,
+            },
+            instructions::{Instruction, NestedInstructionResolutionStrategy},
+            regular_instructions::RegularInstruction,
+            type_instructions::TypeInstruction,
         },
-        protocol_structures::instruction_data::{
-            ApplyData, DecimalData, Float32Data, Float64Data, FloatAsInt16Data,
-            FloatAsInt32Data, IntegerData, RawPointerAddress,
-            ShortTextData, StackIndex, TextData,
-        },
-    }, prelude::*, runtime::execution::{
-        ExecutionError, InvalidProgramError, execution_loop::{
+    },
+    libs::core::type_id::CoreLibBaseTypeId,
+    prelude::*,
+    runtime::execution::{
+        ExecutionError, InvalidProgramError,
+        execution_loop::{
             internal_slots::{get_internal_slot_value, get_stack_value},
             interrupts::{
                 ExecutionInterrupt, ExternalExecutionInterrupt,
@@ -36,15 +45,36 @@ use crate::{
             },
             runtime_value::RuntimeValue,
             state::RuntimeExecutionState,
-        }, macros::{
+        },
+        macros::{
             interrupt, interrupt_with_maybe_value, interrupt_with_value,
-            yield_unwrap,
-        }
-    }, shared_values::{
-        errors::AssignmentError, pointer_address::PointerAddress, shared_containers::ReferenceMutability
-    }, types::{
-        literal_type_definition::LiteralTypeDefinition
-    }, values::{
+            interrupt_with_values, yield_unwrap,
+        },
+    },
+    shared_values::{
+        errors::AssignmentError,
+        pointer_address::{ExternalPointerAddress, PointerAddress},
+        shared_containers::{
+            OwnedSharedContainer, ReferenceMutability,
+            ReferencedSharedContainer, SelfOwnedSharedContainer,
+            SharedContainer, SharedContainerMutability,
+            base_shared_value_container::BaseSharedValueContainer,
+            observers::TransceiverId,
+        },
+    },
+    types::{
+        error::TypeError,
+        literal_type_definition::LiteralTypeDefinition,
+        r#type::Type,
+        type_definition::TypeDefinition,
+        type_definition_with_metadata::{
+            TypeDefinitionWithMetadata, TypeMetadata,
+        },
+    },
+    value_updates::{
+        update_data::DeleteEntryUpdateData, update_handler::UpdateHandler,
+    },
+    values::{
         core_value::CoreValue,
         core_values::{
             decimal::{Decimal, typed_decimal::TypedDecimal},
@@ -53,30 +83,11 @@ use crate::{
             map::{Map, MapKey},
         },
         value::Value,
-        value_container::{ValueContainer},
-    }
+        value_container::{ValueContainer, ValueKey},
+    },
 };
 use alloc::rc::Rc;
 use core::cell::RefCell;
-use crate::global::protocol_structures::instruction_data::{ModifyStackValue, UnboundedStatementsData};
-use crate::global::protocol_structures::instructions::{Instruction, NestedInstructionResolutionStrategy};
-use crate::global::protocol_structures::regular_instructions::RegularInstruction;
-use crate::global::protocol_structures::type_instructions::TypeInstruction;
-use crate::core_compiler::injected_values::compile_injected_values;
-use crate::libs::core::type_id::CoreLibBaseTypeId;
-use crate::runtime::execution::macros::interrupt_with_values;
-use crate::shared_values::pointer_address::ExternalPointerAddress;
-use crate::shared_values::shared_containers::{SelfOwnedSharedContainer, SharedContainerInner, SharedContainerMutability};
-use crate::shared_values::shared_containers::{ExternalSharedContainer, OwnedSharedContainer, ReferencedSharedContainer, SharedContainer};
-use crate::shared_values::shared_containers::base_shared_value_container::BaseSharedValueContainer;
-use crate::shared_values::shared_containers::observers::TransceiverId;
-use crate::types::error::TypeError;
-use crate::types::r#type::{Type};
-use crate::types::type_definition::TypeDefinition;
-use crate::types::type_definition_with_metadata::{TypeDefinitionWithMetadata, TypeMetadata};
-use crate::value_updates::update_data::DeleteEntryUpdateData;
-use crate::value_updates::update_handler::UpdateHandler;
-use crate::values::value_container::ValueKey;
 
 #[derive(Debug)]
 enum CollectedExecutionResult {
@@ -255,7 +266,10 @@ pub fn inner_execution_loop(
         let mut collector =
             InstructionCollector::<CollectedExecutionResult>::default();
 
-        for instruction_result in iterate_instructions(dxb_body, NestedInstructionResolutionStrategy::None) {
+        for instruction_result in iterate_instructions(
+            dxb_body,
+            NestedInstructionResolutionStrategy::None,
+        ) {
             let instruction = match instruction_result {
                 Ok(instruction) => instruction,
                 Err(DXBParserError::ExpectingMoreInstructions) => {
@@ -485,7 +499,7 @@ pub fn inner_execution_loop(
                                 Some(RuntimeValue::ValueContainer(ValueContainer::from(moved_values)))
                             }
 
-                            RegularInstruction::SharedRef(shared_ref) => {
+                            RegularInstruction::SharedRef(_shared_ref) => {
                                 // shared ref without value, assumes value already known, otherwise request
                                 todo!()
                             }
@@ -559,14 +573,20 @@ pub fn inner_execution_loop(
                     {
                         Some(match type_instruction {
                             TypeInstruction::LiteralInteger(integer) => {
-                                Type::Alias(LiteralTypeDefinition::Integer(integer.0).into())
+                                Type::Alias(
+                                    LiteralTypeDefinition::Integer(integer.0)
+                                        .into(),
+                                )
                             }
                             TypeInstruction::LiteralText(text_data) => {
-                                Type::Alias(LiteralTypeDefinition::Text(text_data.0).into())
+                                Type::Alias(
+                                    LiteralTypeDefinition::Text(text_data.0)
+                                        .into(),
+                                )
                             }
 
                             TypeInstruction::SharedTypeReference(type_ref) => {
-                                let metadata =
+                                let _metadata =
                                     TypeMetadata::from(&type_ref.metadata);
                                 let val = interrupt_with_maybe_value!(
                                     interrupt_provider,
@@ -779,7 +799,7 @@ pub fn inner_execution_loop(
                                             BaseSharedValueContainer::new_with_inferred_allowed_type(
                                                 value,
                                                 mutability,
-                                                &mut * state.runtime.memory().borrow_mut()
+                                                &state.runtime.memory().borrow_mut()
                                             ),
                                             pointer,
                                         ),
@@ -840,7 +860,7 @@ pub fn inner_execution_loop(
                                                     regular_instruction,
                                                 ),
                                                 target.clone(), // TODO #646: is unary operation supposed to take ownership?
-                                                &state.runtime.memory(),
+                                                state.runtime.memory(),
                                             )
                                         },
                                     );
@@ -944,7 +964,7 @@ pub fn inner_execution_loop(
                                                 reference.try_set_value_container(val).map_err(|val| ExecutionError::AssignmentError(AssignmentError::TypeError(
                                                     Box::new(TypeError::AssignmentTypeMismatch {
                                                         expected: reference.allowed_type().clone(),
-                                                        found: val.actual_type(&mut *state.runtime.memory().borrow_mut())
+                                                        found: val.actual_type(&state.runtime.memory().borrow_mut())
                                                     })
                                                 )))?;
                                                 Ok(RuntimeValue::ValueContainer(
@@ -1270,8 +1290,8 @@ pub fn inner_execution_loop(
                                         )),
                                         pointer_address,
                                         shared_ref.ref_mutability,
-                                        &mut *state.runtime.memory().borrow_mut(),
-                                    )}.map_err(|err| ExecutionError::InvalidSharedValueType));
+                                        &state.runtime.memory().borrow_mut(),
+                                    )}.map_err(|_err| ExecutionError::InvalidSharedValueType));
                                     let container = SharedContainer::Referenced(referenced_container);
                                     CollectedExecutionResult::Value(Some(ValueContainer::Shared(container).into()))
                                 },
@@ -1330,31 +1350,35 @@ pub fn inner_execution_loop(
                         instruction,
                         collected_result,
                     ) => match instruction {
-                        Instruction::Regular(
-                            regular_instruction,
-                        ) => match regular_instruction {
-                            RegularInstruction::ShortStatements(statements_data) |
-                            RegularInstruction::Statements(statements_data) => {
-                                if statements_data.terminated {
-                                    CollectedExecutionResult::Value(None)
-                                } else {
-                                    match collected_result {
-                                        Some(
-                                            CollectedExecutionResult::Value(
-                                                val,
-                                            ),
-                                        ) => val.into(),
-                                        None => {
-                                            CollectedExecutionResult::Value(
-                                                None,
-                                            )
+                        Instruction::Regular(regular_instruction) => {
+                            match regular_instruction {
+                                RegularInstruction::ShortStatements(
+                                    statements_data,
+                                )
+                                | RegularInstruction::Statements(
+                                    statements_data,
+                                ) => {
+                                    if statements_data.terminated {
+                                        CollectedExecutionResult::Value(None)
+                                    } else {
+                                        match collected_result {
+                                            Some(
+                                                CollectedExecutionResult::Value(
+                                                    val,
+                                                ),
+                                            ) => val.into(),
+                                            None => {
+                                                CollectedExecutionResult::Value(
+                                                    None,
+                                                )
+                                            }
+                                            _ => unreachable!(), // statements always resolve to values
                                         }
-                                        _ => unreachable!(), // statements always resolve to values
                                     }
                                 }
+                                _ => unreachable!(),
                             }
-                            _ => unreachable!(),
-                        },
+                        }
 
                         Instruction::Type(_data) => unreachable!(),
                     },

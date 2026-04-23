@@ -1,12 +1,14 @@
-use crate::runtime::{RuntimeInternal, execution::{
-    ExecutionError,
-    execution_loop::{
-        interrupts::{ExternalExecutionInterrupt, InterruptProvider},
-        state::{ExecutionLoopState, RuntimeExecutionStack},
+use crate::runtime::{
+    Runtime,
+    execution::{
+        ExecutionError,
+        execution_loop::{
+            interrupts::{ExternalExecutionInterrupt, InterruptProvider},
+            state::{ExecutionLoopState, RuntimeExecutionStack},
+        },
     },
-}, Runtime};
+};
 
-use crate::prelude::*;
 use crate::values::core_values::endpoint::Endpoint;
 
 #[derive(Debug, Clone, Default)]
@@ -66,8 +68,12 @@ impl<'a> ExecutionInput<'a> {
         runtime: Runtime,
         stack: RuntimeExecutionStack,
     ) -> Self {
-        let state =
-            ExecutionLoopState::new(dxb_body.to_vec(), runtime.clone(), stack, caller_metadata.clone());
+        let state = ExecutionLoopState::new(
+            dxb_body.to_vec(),
+            runtime.clone(),
+            stack,
+            caller_metadata.clone(),
+        );
         Self {
             options,
             caller_metadata,

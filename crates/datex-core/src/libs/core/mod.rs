@@ -1,4 +1,3 @@
-use itertools::Itertools;
 use crate::{
     collections::HashMap,
     libs::core::{
@@ -8,8 +7,7 @@ use crate::{
     },
     runtime::memory::Memory,
     shared_values::shared_containers::{
-        ReferencedSharedContainer,
-        SharedContainerMutability,
+        ReferencedSharedContainer, SharedContainerMutability,
     },
     types::{
         nominal_type_definition::NominalTypeDefinition,
@@ -19,37 +17,32 @@ use crate::{
         core_value::CoreValue,
         core_values::{
             callable::{CallableBody, CallableKind, CallableSignature},
-            decimal::typed_decimal::DecimalTypeVariant,
-            integer::typed_integer::IntegerTypeVariant,
             map::Map,
         },
         value::Value,
         value_container::ValueContainer,
     },
 };
+use itertools::Itertools;
 
 pub mod core_lib_id;
 pub mod type_id;
 pub mod value_id;
 
 use crate::{
+    libs::library::Library,
     prelude::*,
     shared_values::{
-        pointer_address::ExternalPointerAddress,
+        pointer_address::{ExternalPointerAddress, PointerAddress},
         shared_containers::SharedContainer,
     },
     types::{
-        shared_container_containing_type::SharedContainerContainingType,
+        shared_container_containing_nominal_type::SharedContainerContainingNominalType,
         r#type::Type,
     },
 };
 use log::info;
 use strum::IntoEnumIterator;
-use crate::libs::library::Library;
-use crate::runtime::pointer_address_provider::SelfOwnedPointerAddressProvider;
-use crate::shared_values::pointer_address::PointerAddress;
-use crate::types::literal_type_definition::LiteralTypeDefinition;
-use crate::types::shared_container_containing_nominal_type::SharedContainerContainingNominalType;
 
 pub struct CoreLibrary;
 
@@ -57,67 +50,75 @@ type CoreLibTypeDefinition = (CoreLibId, ReferencedSharedContainer);
 type CoreLibMap = HashMap<CoreLibId, ReferencedSharedContainer>;
 
 impl CoreLibrary {
-
     /// Loads the core library into the provided [Memory] instance.
     /// Caller must guarantee that the core library was not already loaded into the [Memory] instance
     pub unsafe fn load_core_lib(memory: &mut Memory) {
-        let type_entries = Self::generate_core_lib_types(memory).collect::<Vec<_>>();
-        for (_, type_entry) in type_entries.iter() {
-            memory.register_referenced_shared_container(type_entry);
-        }
+        unsafe {
+            let type_entries =
+                Self::generate_core_lib_types(memory).collect::<Vec<_>>();
+            for (_, type_entry) in type_entries.iter() {
+                memory.register_referenced_shared_container(type_entry);
+            }
 
-        let value_entries = Self::generate_core_lib_vals(memory).collect::<Vec<_>>();
-        for (_, value_entry) in value_entries.iter() {
-            memory.register_referenced_shared_container(value_entry);
-        }
-        
-        let entries = value_entries.iter().chain(type_entries.iter())
-            .map(|(id, entry)| {
-                (
-                    id.name(),
-                    ValueContainer::Shared(SharedContainer::Referenced(
-                        entry.clone(),
-                    )),
-                )
-            }).collect::<Vec<_>>();
-        
-        let core_struct = SharedContainer::Referenced(
-            unsafe {
+            let value_entries =
+                Self::generate_core_lib_vals(memory).collect::<Vec<_>>();
+            for (_, value_entry) in value_entries.iter() {
+                memory.register_referenced_shared_container(value_entry);
+            }
+
+            let entries = value_entries
+                .iter()
+                .chain(type_entries.iter())
+                .map(|(id, entry)| {
+                    (
+                        id.name(),
+                        ValueContainer::Shared(SharedContainer::Referenced(
+                            entry.clone(),
+                        )),
+                    )
+                })
+                .collect::<Vec<_>>();
+
+            let core_struct = SharedContainer::Referenced(unsafe {
                 ReferencedSharedContainer::new_immutable_external_with_inferred_allowed_type(
                     Map::from(entries).into(),
                     CoreLibValueId::Core.into(),
                     memory
                 )
-            }
-        );
-        memory.register_referenced_shared_container(
-            &core_struct.derive_immutable_reference(),
-        );
+            });
+            memory.register_referenced_shared_container(
+                &core_struct.derive_immutable_reference(),
+            );
+        }
     }
 
-
     /// Returns a map of all core library type values by id
-    fn generate_core_lib_types(memory: &mut Memory) -> impl Iterator<Item = (CoreLibId, ReferencedSharedContainer)> {
+    fn generate_core_lib_types(
+        memory: &mut Memory,
+    ) -> impl Iterator<Item = (CoreLibId, ReferencedSharedContainer)> {
         gen {
             for id in CoreLibBaseTypeId::iter() {
-                let base_type_def = unsafe { Self::create_core_type(id, memory) };
+                let base_type_def =
+                    unsafe { Self::create_core_type(id, memory) };
                 let base_type_def_container =
                     SharedContainer::Referenced(base_type_def.1.clone());
                 for variant_id in CoreLibVariantTypeId::variant_ids(&id) {
-                    let (variant_id, variant_type) = unsafe { Self::create_type(
-                        NominalTypeDefinition::Variant {
-                            definition_type: TypeDefinition::Internal.into(),
-                            // Note: This is safe because we know that the base is a nominal type
-                            base: unsafe {
-                                SharedContainerContainingNominalType::new_unchecked(
+                    let (variant_id, variant_type) = unsafe {
+                        Self::create_type(
+                            NominalTypeDefinition::Variant {
+                                definition_type: TypeDefinition::Internal
+                                    .into(),
+                                // Note: This is safe because we know that the base is a nominal type
+                                base: unsafe {
+                                    SharedContainerContainingNominalType::new_unchecked(
                                     base_type_def_container.clone(),
                                 )
+                                },
+                                variant_name: variant_id.variant_name(),
                             },
-                            variant_name: variant_id.variant_name(),
-                        },
-                        CoreLibTypeId::Variant(variant_id),
-                        memory,
-                    )
+                            CoreLibTypeId::Variant(variant_id),
+                            memory,
+                        )
                     };
                     yield (variant_id, variant_type);
                 }
@@ -128,9 +129,13 @@ impl CoreLibrary {
     }
 
     /// Returns a map of all core library values (excluding type values) by id
-    unsafe fn generate_core_lib_vals(memory: &Memory) -> impl Iterator<Item = (CoreLibId, ReferencedSharedContainer)> {
-        gen {
-            yield Self::print(memory);
+    unsafe fn generate_core_lib_vals(
+        memory: &Memory,
+    ) -> impl Iterator<Item = (CoreLibId, ReferencedSharedContainer)> {
+        unsafe {
+            gen {
+                yield Self::print(memory);
+            }
         }
     }
 
@@ -141,22 +146,23 @@ impl CoreLibrary {
         memory: &Memory,
     ) -> CoreLibTypeDefinition {
         let core_lib_id = CoreLibId::Type(id);
-        (
-            core_lib_id,
-            unsafe {
-                ReferencedSharedContainer::try_new_external(
-                    ValueContainer::from(CoreValue::NominalTypeDefinition(definition)),
-                    id.into(),
-                    SharedContainerMutability::Immutable,
-                    Type::from(TypeDefinition::Type),
-                    memory,
-                ).unwrap()
-            }
-        )
+        (core_lib_id, unsafe {
+            ReferencedSharedContainer::try_new_external(
+                ValueContainer::from(CoreValue::NominalTypeDefinition(
+                    definition,
+                )),
+                id.into(),
+                SharedContainerMutability::Immutable,
+                Type::from(TypeDefinition::Type),
+                memory,
+            )
+            .unwrap()
+        })
     }
 
     unsafe fn print(memory: &Memory) -> (CoreLibId, ReferencedSharedContainer) {
-        (
+        unsafe {
+            (
             CoreLibId::Value(CoreLibValueId::Print),
             ReferencedSharedContainer::new_immutable_external_with_inferred_allowed_type(
                 Value::callable(
@@ -222,10 +228,14 @@ impl CoreLibrary {
                 memory
             ),
         )
+        }
     }
 
     /// Creates a core type with a given pointer id, the nominal name is derived from the id's to_string() method.
-    unsafe fn create_core_type(pointer_id: CoreLibBaseTypeId, memory: &mut Memory) -> CoreLibTypeDefinition {
+    unsafe fn create_core_type(
+        pointer_id: CoreLibBaseTypeId,
+        memory: &mut Memory,
+    ) -> CoreLibTypeDefinition {
         unsafe {
             Self::create_type(
                 NominalTypeDefinition::Base {
@@ -233,7 +243,7 @@ impl CoreLibrary {
                     name: pointer_id.to_string(),
                 },
                 CoreLibTypeId::Base(pointer_id),
-                memory
+                memory,
             )
         }
     }
@@ -252,29 +262,31 @@ impl Memory {
         core_lib_id: impl Into<CoreLibId>,
     ) -> &ReferencedSharedContainer {
         let pointer_address = PointerAddress::from(core_lib_id.into());
-        self.get_reference(&pointer_address)
-            .unwrap_or_else(|| panic!("core reference not found in memory: {}", pointer_address))
+        self.get_reference(&pointer_address).unwrap_or_else(|| {
+            panic!("core reference not found in memory: {}", pointer_address)
+        })
     }
 
     /// Helper function to get a [SharedContainerContainingNominalType] directly from memory
     /// by [CoreLibTypeId]
-    pub fn get_core_type_reference(&self, id: impl Into<CoreLibTypeId>) -> SharedContainerContainingNominalType {
+    pub fn get_core_type_reference(
+        &self,
+        id: impl Into<CoreLibTypeId>,
+    ) -> SharedContainerContainingNominalType {
         unsafe {
             SharedContainerContainingNominalType::new_unchecked(
-                SharedContainer::Referenced(self.get_core_reference(CoreLibId::Type(id.into())).clone())
+                SharedContainer::Referenced(
+                    self.get_core_reference(CoreLibId::Type(id.into())).clone(),
+                ),
             )
         }
     }
 
     /// Helper function to get a [Type::Nominal] directly from memory by [CoreLibTypeId]
     pub fn get_core_type(&self, id: impl Into<CoreLibTypeId>) -> Type {
-        Type::Nominal(
-            self.get_core_type_reference(id.into())
-        )
+        Type::Nominal(self.get_core_type_reference(id.into()))
     }
 }
-
-
 
 #[cfg(test)]
 mod tests {
@@ -305,7 +317,11 @@ mod tests {
         for base_id in CoreLibBaseTypeId::iter() {
             println!("{:?}: {}", base_id, PointerAddress::from(base_id));
             for variant_id in CoreLibVariantTypeId::variant_ids(&base_id) {
-                println!("{:?}: {}", variant_id, PointerAddress::from(variant_id));
+                println!(
+                    "{:?}: {}",
+                    variant_id,
+                    PointerAddress::from(variant_id)
+                );
             }
         }
     }
@@ -321,9 +337,24 @@ mod tests {
         println!("export const CoreTypeAddress = {{");
 
         for base_id in CoreLibBaseTypeId::iter() {
-            println!("{}: \"{}\",", base_id, PointerAddress::from(base_id).to_string().strip_prefix("$").unwrap());
+            println!(
+                "{}: \"{}\",",
+                base_id,
+                PointerAddress::from(base_id)
+                    .to_string()
+                    .strip_prefix("$")
+                    .unwrap()
+            );
             for variant_id in CoreLibVariantTypeId::variant_ids(&base_id) {
-                println!("{}_{}: \"{}\",", base_id, variant_id.variant_name(), PointerAddress::from(variant_id).to_string().strip_prefix("$").unwrap());
+                println!(
+                    "{}_{}: \"{}\",",
+                    base_id,
+                    variant_id.variant_name(),
+                    PointerAddress::from(variant_id)
+                        .to_string()
+                        .strip_prefix("$")
+                        .unwrap()
+                );
             }
         }
 

@@ -1,13 +1,14 @@
 pub mod visitable;
 use crate::{
     ast::expressions::{
-        Apply, BinaryOperation, CallableDeclaration, ComparisonOperation,
-        CompileExpression, Conditional, CreateMut, GetRef, CreateShared,
-        GetSharedRef, DatexExpression, DatexExpressionData,
-        GenericInstantiation, RequestSharedRef, List, Map, PropertyAccess,
-        PropertyAssignment, RemoteExecution, Slot, SlotAssignment, Statements,
-        TypeDeclaration, UnaryOperation, Unbox, UnboxAssignment,
-        VariableAccess, VariableAssignment, VariableDeclaration, VariantAccess,
+        Apply, BinaryOperation, CallableDeclaration, CloneExpression,
+        ComparisonOperation, CompileExpression, Conditional, CreateMut,
+        CreateShared, DatexExpression, DatexExpressionData,
+        GenericInstantiation, GetRef, GetSharedRef, List, Map, PropertyAccess,
+        PropertyAssignment, RemoteExecution, RequestSharedRef, Slot,
+        SlotAssignment, Statements, TypeDeclaration, UnaryOperation, Unbox,
+        UnboxAssignment, UnboxSlotAssignment, ValueAccessType, VariableAccess,
+        VariableAssignment, VariableDeclaration, VariantAccess,
     },
     prelude::*,
     values::core_values::{
@@ -22,7 +23,6 @@ use crate::{
     },
 };
 use core::ops::Range;
-use crate::ast::expressions::{CloneExpression, UnboxSlotAssignment, ValueAccessType};
 
 pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
     /// Handle expression error
@@ -105,9 +105,8 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
                 self.visit_list(list, &expr.span)
             }
             DatexExpressionData::Map(map) => self.visit_map(map, &expr.span),
-            DatexExpressionData::RequestSharedRef(request_shared_ref) => {
-                self.visit_request_shared_reference(request_shared_ref, &expr.span)
-            }
+            DatexExpressionData::RequestSharedRef(request_shared_ref) => self
+                .visit_request_shared_reference(request_shared_ref, &expr.span),
             DatexExpressionData::Conditional(conditional) => {
                 self.visit_conditional(conditional, &expr.span)
             }
@@ -160,7 +159,10 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
                 self.visit_unbox_assignment(unbox_assignment, &expr.span)
             }
             DatexExpressionData::UnboxSlotAssignment(unbox_slot_assignment) => {
-                self.visit_unbox_slot_assignment(unbox_slot_assignment, &expr.span)
+                self.visit_unbox_slot_assignment(
+                    unbox_slot_assignment,
+                    &expr.span,
+                )
             }
             DatexExpressionData::Apply(apply_chain) => {
                 self.visit_apply(apply_chain, &expr.span)

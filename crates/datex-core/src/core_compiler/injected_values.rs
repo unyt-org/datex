@@ -2,9 +2,8 @@ use crate::{
     core_compiler::{
         core_compilation_context::CoreCompilationContext,
         value_compiler::{
-            SharedValueCompilationError, append_instruction_code_new,
-            append_perform_moves, append_regular_instruction,
-            append_shared_container, append_value,
+            SharedValueCompilationError, append_perform_moves,
+            append_regular_instruction, append_shared_container, append_value,
         },
     },
     global::{
@@ -19,7 +18,7 @@ use crate::{
     prelude::*,
     runtime::execution::ExecutionError,
     shared_values::shared_containers::OwnedSharedContainer,
-    utils::buffers::{append_u8, append_u32},
+    utils::buffers::append_u32,
     values::borrowed_value_container::BorrowedValueContainer,
 };
 use binrw::io::Write;
@@ -138,11 +137,11 @@ pub fn compile_shared_value_preamble(
 }
 
 fn compile_preamble(
-    moved_pointers_slot_index: u32,
-    exec_block_data: InstructionBlockData,
-    slot_values: Vec<BorrowedValueContainer>,
+    _moved_pointers_slot_index: u32,
+    _exec_block_data: InstructionBlockData,
+    _slot_values: Vec<BorrowedValueContainer>,
 ) -> Result<(Vec<u8>, Vec<OwnedSharedContainer>), ExecutionError> {
-    let mut context = CoreCompilationContext::new(Vec::new());
+    let _context = CoreCompilationContext::new(Vec::new());
     todo!()
     // let mut moved_pointers: Vec<OwnedSharedContainer> = vec![];
 
@@ -246,6 +245,10 @@ mod tests {
             },
         },
         prelude::*,
+        runtime::{
+            memory::Memory,
+            pointer_address_provider::SelfOwnedPointerAddressProvider,
+        },
         shared_values::{
             pointer_address::SelfOwnedPointerAddress,
             shared_containers::{
@@ -255,8 +258,6 @@ mod tests {
         },
         values::borrowed_value_container::BorrowedValueContainer,
     };
-    use crate::runtime::memory::Memory;
-    use crate::runtime::pointer_address_provider::SelfOwnedPointerAddressProvider;
 
     #[test]
     fn remote_execution_no_injected_values() {
@@ -280,7 +281,7 @@ mod tests {
                 42.into(),
                 SharedContainerMutability::Immutable,
                 address_provider,
-                memory
+                memory,
             ),
         );
         let exec_block_data = InstructionBlockData {
@@ -337,14 +338,14 @@ mod tests {
                 42,
                 SharedContainerMutability::Immutable,
                 address_provider,
-                memory
+                memory,
             );
         let shared_value2 =
             SharedContainer::new_owned_with_inferred_allowed_type(
                 100,
                 SharedContainerMutability::Mutable,
                 address_provider,
-                memory
+                memory,
             );
         let exec_block_data = InstructionBlockData {
             injected_value_count: 2,
@@ -429,7 +430,7 @@ mod tests {
                 42,
                 SharedContainerMutability::Immutable,
                 address_provider,
-                memory
+                memory,
             );
         let exec_block_data = InstructionBlockData {
             injected_value_count: 1,
@@ -505,7 +506,7 @@ mod tests {
                 100,
                 SharedContainerMutability::Immutable,
                 address_provider,
-                memory
+                memory,
             );
         let exec_block_data = InstructionBlockData {
             injected_value_count: 2,

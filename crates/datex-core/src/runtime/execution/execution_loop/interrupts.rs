@@ -1,12 +1,17 @@
 use core::cell::RefCell;
 
-use crate::{
-    values::value_container::ValueContainer,
-};
+use crate::values::value_container::ValueContainer;
 
-use crate::{prelude::*, shared_values::shared_containers::ReferenceMutability};
-use crate::global::protocol_structures::instruction_data::{RawBuiltinPointerAddress, RawLocalPointerAddress, RawRemotePointerAddress};
-use crate::shared_values::shared_containers::SharedContainerMutability;
+use crate::{
+    global::protocol_structures::instruction_data::{
+        RawBuiltinPointerAddress, RawLocalPointerAddress,
+        RawRemotePointerAddress,
+    },
+    prelude::*,
+    shared_values::shared_containers::{
+        ReferenceMutability, SharedContainerMutability,
+    },
+};
 
 #[derive(Debug)]
 pub enum ExecutionInterrupt {
@@ -19,15 +24,12 @@ pub enum ExecutionInterrupt {
 #[derive(Debug)]
 pub enum ExternalExecutionInterrupt {
     Result(Option<ValueContainer>),
-    GetReferenceToRemotePointer(
-        RawRemotePointerAddress,
-        ReferenceMutability,
-    ),
+    GetReferenceToRemotePointer(RawRemotePointerAddress, ReferenceMutability),
     GetReferenceToLocalPointer(RawLocalPointerAddress),
     GetReferenceToBuiltinPointer(RawBuiltinPointerAddress),
     RemoteExecution(ValueContainer, Vec<u8>),
     Apply(ValueContainer, Vec<ValueContainer>),
-    /// Request to move a list of pointers from the current caller endpoint to the local endpoint 
+    /// Request to move a list of pointers from the current caller endpoint to the local endpoint
     RequestMove(Vec<(SharedContainerMutability, RawLocalPointerAddress)>),
     /// Move a list of pointers from the local endpoint to the caller
     Move(Vec<(RawLocalPointerAddress, RawLocalPointerAddress)>),

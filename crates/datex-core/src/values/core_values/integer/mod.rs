@@ -22,7 +22,7 @@ use core::{
 use num::{BigInt, Num};
 use num_integer::Integer as NumInteger;
 use num_traits::ToPrimitive;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 
 #[derive(Debug, Clone, PartialEq, PartialOrd, Hash, Eq)]
 pub struct Integer(pub BigInt);

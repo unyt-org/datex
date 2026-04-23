@@ -11,20 +11,20 @@ use crate::{
     traits::{
         identity::Identity, structural_eq::StructuralEq, value_eq::ValueEq,
     },
-    values::{
-        core_values::range::Range,
-        value_container::{ValueContainer},
-    },
+    values::{core_values::range::Range, value_container::ValueContainer},
 };
 use core::cell::RefCell;
 
-use crate::{prelude::*, runtime::memory::Memory};
-use crate::shared_values::shared_containers::observers::TransceiverId;
-use crate::types::r#type::Type;
-use crate::types::type_match::TypeMatch;
-use crate::value_updates::update_data::SetEntryUpdateData;
-use crate::value_updates::update_handler::UpdateHandler;
-use crate::values::value_container::ValueKey;
+use crate::{
+    prelude::*,
+    runtime::memory::Memory,
+    shared_values::shared_containers::observers::TransceiverId,
+    types::{r#type::Type, type_match::TypeMatch},
+    value_updates::{
+        update_data::SetEntryUpdateData, update_handler::UpdateHandler,
+    },
+    values::value_container::ValueKey,
+};
 
 pub fn set_property(
     target: &mut ValueContainer,
@@ -32,9 +32,7 @@ pub fn set_property(
     value: ValueContainer,
 ) -> Result<(), ExecutionError> {
     target
-        .try_set_entry(SetEntryUpdateData {
-            key, value
-        }, TransceiverId(0)) // TODO #644: set correct source id
+        .try_set_entry(SetEntryUpdateData { key, value }, TransceiverId(0)) // TODO #644: set correct source id
         .map_err(ExecutionError::from)
 }
 
@@ -132,7 +130,8 @@ pub fn handle_comparison_operation(
         }
         ComparisonOperator::Matches => {
             // TODO #407: Fix matches, rhs will always be a type, so actual_type() call is wrong
-            let v_type = Type::try_from(rhs.clone()).map_err(|_| ExecutionError::ExpectedTypeValue)?;
+            let v_type = Type::try_from(rhs.clone())
+                .map_err(|_| ExecutionError::ExpectedTypeValue)?;
             let val = v_type.matched_by_value(lhs);
             Ok(ValueContainer::from(val))
         }

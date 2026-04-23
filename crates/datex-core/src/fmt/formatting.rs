@@ -8,17 +8,17 @@ use crate::{
         VariableAccess, VariableDeclaration,
     },
     fmt::{
-        options::{StatementFormatting, VariantFormatting}, Assoc, Format, Formatter, Operation,
-        ParentContext,
+        Assoc, Format, Formatter, Operation, ParentContext,
+        options::{StatementFormatting, VariantFormatting},
     },
     prelude::*,
+    shared_values::shared_containers::ReferenceMutability,
+    types::type_definition_with_metadata::LocalReferenceMutability,
     values::core_values::{
         decimal::typed_decimal::TypedDecimal,
         integer::typed_integer::TypedInteger,
     },
 };
-use crate::shared_values::shared_containers::ReferenceMutability;
-use crate::types::type_definition_with_metadata::LocalReferenceMutability;
 
 impl<'a> Formatter<'a> {
     pub fn datex_expression_to_source_code(

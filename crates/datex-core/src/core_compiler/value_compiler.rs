@@ -1,12 +1,5 @@
 use crate::{
-    core_compiler::type_compiler::{
-        append_structural_type_definition, append_type_metadata,
-    },
-    global::{
-        instruction_codes::InstructionCode,
-        type_instruction_codes::TypeInstructionCode,
-    },
-    types::type_definition::TypeDefinition,
+    global::instruction_codes::InstructionCode,
     utils::buffers::{append_i16, append_i32, append_u8, append_u32},
     values::{
         core_value::CoreValue,
@@ -24,21 +17,19 @@ use binrw::{BinWrite, io::Write};
 use crate::{
     core_compiler::{
         core_compilation_context::{ByteCursor, CoreCompilationContext},
-        type_compiler::{
-            append_type_instruction, append_type_space_instruction_code_new,
-        },
+        type_compiler::{append_type, append_type_instruction},
     },
     global::protocol_structures::{
         instruction_data::{
             Float32Data, Float64Data, Int8Data, Int16Data, Int32Data,
             Int64Data, Int128Data, IntegerData, ListData, MapData,
-            RawLocalPointerAddress, RawPointerAddress, SharedRef,
-            SharedRefWithValue, TypeMetadataBin, UInt8Data, UInt16Data,
-            UInt32Data, UInt64Data, UInt128Data,
+            RawPointerAddress, UInt8Data, UInt16Data, UInt32Data, UInt64Data,
+            UInt128Data,
         },
         instructions::Instruction,
         regular_instructions::RegularInstruction,
     },
+    libs::core::type_id::CoreLibTypeId,
     prelude::*,
     runtime::execution::ExecutionError,
     shared_values::{
@@ -47,11 +38,8 @@ use crate::{
             OwnedSharedContainer, ReferenceMutability, SharedContainer,
         },
     },
-    types::type_definition_with_metadata::TypeMetadata,
+    types::r#type::Type,
 };
-use crate::core_compiler::type_compiler::append_type;
-use crate::libs::core::type_id::CoreLibTypeId;
-use crate::types::r#type::Type;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum SharedValueCompilationError {
@@ -106,9 +94,9 @@ pub fn append_value_container(
     value_container: &ValueContainer,
 ) -> Result<(), SharedValueCompilationError> {
     match value_container {
-        ValueContainer::Local(value) => append_value(context, &value),
+        ValueContainer::Local(value) => append_value(context, value),
         ValueContainer::Shared(reference) => {
-            append_shared_container(context, &reference, true)
+            append_shared_container(context, reference, true)
         }
     }
 }
@@ -134,9 +122,9 @@ pub fn append_shared_container_as_ref(
 /// the container is transferred as a reference with maximum mutability
 /// TODO: set insert_value only if for remote execution and not already on remote endpoint
 pub fn append_shared_container(
-    context: &mut CoreCompilationContext,
-    shared_container: &SharedContainer,
-    remote_endpoint_has_value: bool,
+    _context: &mut CoreCompilationContext,
+    _shared_container: &SharedContainer,
+    _remote_endpoint_has_value: bool,
 ) -> Result<(), SharedValueCompilationError> {
     todo!()
     // match &shared_container.reference_mutability {
@@ -196,8 +184,8 @@ pub fn append_shared_container(
 /// Appends multiple shared containers as moves to the buffer
 /// TODO: Also handle moves of nested shared values!
 pub fn append_perform_moves(
-    context: &mut CoreCompilationContext,
-    shared_containers: &[&OwnedSharedContainer],
+    _context: &mut CoreCompilationContext,
+    _shared_containers: &[&OwnedSharedContainer],
 ) -> Result<(), SharedValueCompilationError> {
     todo!()
     // append_instruction_code_new(context.cursor_mut(), InstructionCode::PERFORM_MOVE);
@@ -236,7 +224,7 @@ pub fn append_value(
     if let Some(custom_type) = &value.custom_type {
         append_type_cast(context, custom_type)?;
     }
-    Ok(match &value.inner {
+    let _: () = match &value.inner {
         CoreValue::Type(_ty) => {
             core::todo!("#439 Type value not supported in CompilationContext");
         }
@@ -292,10 +280,8 @@ pub fn append_value(
             }
 
             for item in val {
-                append_value_container(context, item.into())?;
+                append_value_container(context, item)?;
             }
-
-            ()
         }
         CoreValue::Map(val) => {
             // if map size < 256, use SHORT_MAP
@@ -329,18 +315,19 @@ pub fn append_value(
                 context.cursor_mut(),
                 RegularInstruction::Range,
             );
-            append_value_container(context, (&*range.start).into())?;
-            append_value_container(context, (&*range.end).into())?;
+            append_value_container(context, &range.start)?;
+            append_value_container(context, &range.end)?;
         }
         CoreValue::NominalTypeDefinition(_) => {
             todo!()
         }
-    })
+    };
+    Ok(())
 }
 
 pub fn append_core_type_cast(
-    context: &mut CoreCompilationContext,
-    core_lib_type_id: CoreLibTypeId,
+    _context: &mut CoreCompilationContext,
+    _core_lib_type_id: CoreLibTypeId,
 ) {
     // TODO: append type cast with only id (no need to access shared container)
     todo!()
@@ -624,7 +611,7 @@ pub fn append_instruction(cursor: &mut ByteCursor, instruction: Instruction) {
 }
 
 #[deprecated(note = "use append_regular_instruction instead")]
-pub fn append_instruction_code(buffer: &mut Vec<u8>, code: InstructionCode) {
+pub fn append_instruction_code(_buffer: &mut Vec<u8>, _code: InstructionCode) {
     unimplemented!("append_instruction_code instead")
 }
 

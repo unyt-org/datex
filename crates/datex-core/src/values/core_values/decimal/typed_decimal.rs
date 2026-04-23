@@ -4,6 +4,7 @@ use crate::{
     values::core_values::{decimal::Decimal, error::NumberParseError},
 };
 
+use crate::libs::core::type_id::{CoreLibTypeId, CoreLibVariantTypeId};
 use core::{
     fmt::Display,
     hash::Hash,
@@ -17,7 +18,6 @@ use ordered_float::OrderedFloat;
 use serde::{Deserialize, Serialize};
 use strum::Display;
 use strum_macros::{AsRefStr, EnumIter, EnumString};
-use crate::libs::core::type_id::{CoreLibTypeId, CoreLibVariantTypeId};
 
 /// The decimal type variants to be used as a inline
 /// definition in DATEX (such as 42.4f32 or -42.4f32).

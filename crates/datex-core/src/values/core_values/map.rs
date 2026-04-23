@@ -6,21 +6,29 @@ use crate::{
     values::{
         core_value::CoreValue,
         value::Value,
-        value_container::{ValueContainer, BorrowedValueKey},
+        value_container::{BorrowedValueKey, ValueContainer},
     },
 };
 
+use crate::{
+    shared_values::{
+        errors::KeyNotFoundError, shared_containers::observers::TransceiverId,
+    },
+    value_updates::{
+        errors::UpdateError,
+        update_data::{
+            AppendEntryUpdateData, DeleteEntryUpdateData, ListSpliceUpdateData,
+            ReplaceUpdateData, SetEntryUpdateData,
+        },
+        update_handler::UpdateHandler,
+    },
+};
 use core::{
     fmt::{self, Display},
     hash::{Hash, Hasher},
     result::Result,
 };
 use indexmap::IndexMap;
-use crate::shared_values::errors::KeyNotFoundError;
-use crate::shared_values::shared_containers::observers::TransceiverId;
-use crate::value_updates::errors::UpdateError;
-use crate::value_updates::update_data::{AppendEntryUpdateData, DeleteEntryUpdateData, ListSpliceUpdateData, ReplaceUpdateData, SetEntryUpdateData};
-use crate::value_updates::update_handler::UpdateHandler;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Map {
@@ -219,33 +227,58 @@ impl Map {
 }
 
 impl UpdateHandler for Map {
-    fn try_replace(&mut self, data: ReplaceUpdateData, source_id: TransceiverId) -> Result<ValueContainer, UpdateError> {
+    fn try_replace(
+        &mut self,
+        _data: ReplaceUpdateData,
+        _source_id: TransceiverId,
+    ) -> Result<ValueContainer, UpdateError> {
         todo!()
     }
 
-    fn try_set_entry(&mut self, data: SetEntryUpdateData, source_id: TransceiverId) -> Result<(), UpdateError> {
+    fn try_set_entry(
+        &mut self,
+        data: SetEntryUpdateData,
+        _source_id: TransceiverId,
+    ) -> Result<(), UpdateError> {
         let key = BorrowedValueKey::from(data.key);
-        self.try_set(key, data.value).map_err(|err| UpdateError::AccessError(err.into()))
+        self.try_set(key, data.value)
+            .map_err(|err| UpdateError::AccessError(err.into()))
     }
 
-    fn try_delete_entry(&mut self, data: DeleteEntryUpdateData, source_id: TransceiverId) -> Result<ValueContainer, UpdateError> {
+    fn try_delete_entry(
+        &mut self,
+        data: DeleteEntryUpdateData,
+        _source_id: TransceiverId,
+    ) -> Result<ValueContainer, UpdateError> {
         let key = BorrowedValueKey::from(data.key);
-        self.try_delete(key).map_err(|err| UpdateError::AccessError(err.into()))
+        self.try_delete(key)
+            .map_err(|err| UpdateError::AccessError(err.into()))
     }
 
-    fn try_append_entry(&mut self, data: AppendEntryUpdateData, source_id: TransceiverId) -> Result<(), UpdateError> {
+    fn try_append_entry(
+        &mut self,
+        _data: AppendEntryUpdateData,
+        _source_id: TransceiverId,
+    ) -> Result<(), UpdateError> {
         Err(UpdateError::InvalidUpdate)
     }
 
-    fn try_clear(&mut self, source_id: TransceiverId) -> Result<(), UpdateError> {
-        self.try_clear_inner().map_err(|err| UpdateError::AccessError(err.into()))
+    fn try_clear(
+        &mut self,
+        _source_id: TransceiverId,
+    ) -> Result<(), UpdateError> {
+        self.try_clear_inner()
+            .map_err(|err| UpdateError::AccessError(err.into()))
     }
 
-    fn try_list_splice(&mut self, data: ListSpliceUpdateData, source_id: TransceiverId) -> Result<Vec<ValueContainer>, UpdateError> {
+    fn try_list_splice(
+        &mut self,
+        _data: ListSpliceUpdateData,
+        _source_id: TransceiverId,
+    ) -> Result<Vec<ValueContainer>, UpdateError> {
         Err(UpdateError::InvalidUpdate)
     }
 }
-
 
 #[derive(Clone)]
 pub enum BorrowedMapKey<'a> {
@@ -334,7 +367,9 @@ impl<'a> From<&'a MapKey> for BorrowedValueKey<'a> {
     fn from(key: &'a MapKey) -> Self {
         match key {
             MapKey::Text(text) => BorrowedValueKey::Text(Cow::Borrowed(text)),
-            MapKey::Value(value) => BorrowedValueKey::Value(Cow::Borrowed(value)),
+            MapKey::Value(value) => {
+                BorrowedValueKey::Value(Cow::Borrowed(value))
+            }
         }
     }
 }
@@ -664,6 +699,18 @@ where
 mod tests {
     use crate::{
         prelude::*,
+        runtime::{
+            memory::Memory,
+            pointer_address_provider::SelfOwnedPointerAddressProvider,
+        },
+        shared_values::{
+            pointer_address::SelfOwnedPointerAddress,
+            shared_containers::{
+                OwnedSharedContainer, SelfOwnedSharedContainer,
+                SharedContainer, SharedContainerMutability,
+                base_shared_value_container::BaseSharedValueContainer,
+            },
+        },
         values::{
             core_values::{
                 decimal::{Decimal, typed_decimal::TypedDecimal},
@@ -672,12 +719,6 @@ mod tests {
             value_container::ValueContainer,
         },
     };
-    use crate::runtime::memory::Memory;
-    use crate::runtime::pointer_address_provider::SelfOwnedPointerAddressProvider;
-    use crate::shared_values::pointer_address::SelfOwnedPointerAddress;
-    use crate::shared_values::shared_containers::SharedContainerMutability;
-    use crate::shared_values::shared_containers::{SelfOwnedSharedContainer, OwnedSharedContainer, SharedContainer};
-    use crate::shared_values::shared_containers::base_shared_value_container::BaseSharedValueContainer;
 
     #[test]
     fn test_map() {
@@ -710,8 +751,8 @@ mod tests {
                 ValueContainer::from(42),
                 SharedContainerMutability::Immutable,
                 address_provider,
-                memory
-            )
+                memory,
+            ),
         );
 
         map.set(key.clone(), "value");
@@ -726,8 +767,8 @@ mod tests {
                 ValueContainer::from(42),
                 SharedContainerMutability::Immutable,
                 address_provider,
-                memory
-            )
+                memory,
+            ),
         );
         assert!(!map.has(&new_key));
         assert!(map.get(&new_key).is_err());

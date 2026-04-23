@@ -1,18 +1,11 @@
 use crate::{
     collections::HashMap,
-    prelude::*,
+    libs::{core::CoreLibrary, library::Library},
     shared_values::{
-        pointer_address::{
-            PointerAddress,
-        },
-        shared_containers::{
-            ReferencedSharedContainer,
-        },
+        pointer_address::PointerAddress,
+        shared_containers::ReferencedSharedContainer,
     },
-    values::core_values::endpoint::Endpoint,
 };
-use crate::libs::core::CoreLibrary;
-use crate::libs::library::Library;
 
 #[derive(Debug)]
 pub struct Memory {
@@ -63,8 +56,10 @@ impl Memory {
     pub fn has_reference(&self, pointer_address: &PointerAddress) -> bool {
         self.values.contains_key(pointer_address)
     }
-    
-    pub fn values(&self) -> &HashMap<PointerAddress, ReferencedSharedContainer> {
+
+    pub fn values(
+        &self,
+    ) -> &HashMap<PointerAddress, ReferencedSharedContainer> {
         &self.values
     }
 }

@@ -11,13 +11,11 @@ use crate::{
     values::value_container::ValueContainer,
 };
 
-use crate::prelude::*;
+use crate::{prelude::*, runtime::Runtime};
 pub use local::*;
 use log::info;
 pub use remote::*;
 pub use script::*;
-use crate::runtime::execution::execution_input::ExecutionCallerMetadata;
-use crate::runtime::Runtime;
 
 mod local;
 mod remote;
@@ -63,8 +61,13 @@ impl ExecutionContext {
 
     fn runtime(&self) -> &Runtime {
         match self {
-            ExecutionContext::Local(LocalExecutionContext { runtime, .. }) => runtime,
-            ExecutionContext::Remote(RemoteExecutionContext { runtime, .. }) => runtime,
+            ExecutionContext::Local(LocalExecutionContext {
+                runtime, ..
+            }) => runtime,
+            ExecutionContext::Remote(RemoteExecutionContext {
+                runtime,
+                ..
+            }) => runtime,
         }
     }
 
@@ -86,7 +89,7 @@ impl ExecutionContext {
                 .collect::<Vec<_>>()
                 .as_slice(),
             CompileOptions::new_with_scope(compile_scope.clone()),
-            self.runtime().clone()
+            self.runtime().clone(),
         );
         match res {
             Ok((bytes, compile_scope)) => {

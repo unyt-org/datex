@@ -1,15 +1,15 @@
-use crate::shared_values::shared_containers::SharedContainer;
-use crate::values::value::Value;
-use crate::values::value_container::ValueContainer;
+use crate::{
+    shared_values::shared_containers::SharedContainer,
+    values::{value::Value, value_container::ValueContainer},
+};
 
 /// A variant of the normal [`ValueContainer`] which holds a borrowed reference to a local value instead
 /// of an owned value
 /// Shared values are still owned.
 pub enum BorrowedValueContainer<'a> {
     Local(&'a Value),
-    Shared(SharedContainer)
+    Shared(SharedContainer),
 }
-
 
 impl<'a> From<&'a Value> for BorrowedValueContainer<'a> {
     fn from(value: &'a Value) -> Self {
@@ -26,10 +26,14 @@ impl From<SharedContainer> for BorrowedValueContainer<'_> {
 impl<'a> From<&'a ValueContainer> for BorrowedValueContainer<'a> {
     fn from(container: &'a ValueContainer) -> Self {
         match container {
-            ValueContainer::Local(value) => BorrowedValueContainer::Local(value),
-            ValueContainer::Shared(shared_container) => BorrowedValueContainer::Shared(
-                SharedContainer::Referenced(shared_container.derive_with_max_mutability())
-            ),
+            ValueContainer::Local(value) => {
+                BorrowedValueContainer::Local(value)
+            }
+            ValueContainer::Shared(shared_container) => {
+                BorrowedValueContainer::Shared(SharedContainer::Referenced(
+                    shared_container.derive_with_max_mutability(),
+                ))
+            }
         }
     }
 }

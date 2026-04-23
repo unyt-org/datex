@@ -29,14 +29,15 @@ use crate::{
     },
 };
 
-use crate::{prelude::*, runtime::RuntimeInternal};
+use crate::{
+    core_compiler::value_compiler::compile_value,
+    prelude::*,
+    runtime::{Runtime, execution::execution_input::ExecutionCallerMetadata},
+    values::core_values::text::Text,
+};
 use log::{error, info};
 use serde::{Deserialize, Serialize};
 use serde_with::{DurationMilliSeconds, serde_as};
-use crate::core_compiler::value_compiler::compile_value;
-use crate::runtime::execution::execution_input::ExecutionCallerMetadata;
-use crate::runtime::Runtime;
-use crate::values::core_values::text::Text;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
@@ -556,12 +557,10 @@ impl ComHub {
                     ..
                 }) = value
                 {
-                    let endpoint = obj
-                        .get("endpoint")
-                        .unwrap()
-                        .try_as()
-                        .unwrap();
-                    let distance: TypedInteger = obj.get("distance").ok().unwrap().try_as().unwrap();
+                    let endpoint =
+                        obj.get("endpoint").unwrap().try_as().unwrap();
+                    let distance: TypedInteger =
+                        obj.get("distance").ok().unwrap().try_as().unwrap();
 
                     let socket = obj.get("socket").unwrap();
                     let (interface_type, interface_name, channel, socket_uuid) =
@@ -614,18 +613,10 @@ impl ComHub {
                         .try_as::<Text>()
                         .unwrap()
                         .0;
-                    let fork_nr = obj
-                        .get("fork_nr")
-                        .unwrap()
-                        .try_as::<Text>()
-                        .unwrap()
-                        .0;
-                    let bounce_back: Boolean = obj
-                        .get("bounce_back")
-                        .ok()
-                        .unwrap()
-                        .try_as()
-                        .unwrap();
+                    let fork_nr =
+                        obj.get("fork_nr").unwrap().try_as::<Text>().unwrap().0;
+                    let bounce_back: Boolean =
+                        obj.get("bounce_back").ok().unwrap().try_as().unwrap();
 
                     hops.push(NetworkTraceHop {
                         endpoint,

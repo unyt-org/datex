@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use crate::{
     compiler::{CompileOptions, compile_template},
-    runtime::RuntimeConfig,
+    runtime::{Runtime, RuntimeConfig, RuntimeRunner},
     serde::{deserializer::from_dx_file, error::DeserializationError},
     values::value_container::ValueContainer,
 };
@@ -13,7 +13,6 @@ use syn::{
     Attribute, FnArg, Ident, ItemFn, LitStr, Pat, PatIdent, Token, Type,
     parse::{Parse, ParseStream},
 };
-use crate::runtime::{Runtime, RuntimeRunner};
 
 #[derive(Debug)]
 pub struct ParsedAttributes {
@@ -253,7 +252,7 @@ fn compile_datex_config(config: &RuntimeConfig) -> Vec<u8> {
         &[Some(ValueContainer::from_serializable(config).unwrap())],
         CompileOptions::default(),
         // FIXME: stub runtime for now
-        Runtime::stub()
+        Runtime::stub(),
     )
     .expect("failed to compile DATEX config file");
     dxb

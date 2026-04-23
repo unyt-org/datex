@@ -1,20 +1,39 @@
-use core::fmt::Write as FmtWrite;
-use core::fmt::Display;
-use binrw::io::{Read, Seek};
-use binrw::{BinRead, BinResult, BinWrite, Endian};
-use binrw::meta::{EndianKind, ReadEndian};
-use serde::{Serialize, Serializer};
-use serde::ser::SerializeTuple;
-use crate::dxb_parser::body::DXBParserError;
-use crate::global::instruction_codes::InstructionCode;
 #[cfg(feature = "disassembler")]
 use crate::disassembler::InnerInstructions;
-use crate::global::protocol_structures::instruction_data::{ApplyData, DecimalData, Float32Data, Float64Data, FloatAsInt16Data, FloatAsInt32Data, InstructionBlockData, Int128Data, Int16Data, Int32Data, Int64Data, Int8Data, IntegerData, ListData, MapData, ModifyStackValue, Move, PerformMove, PushToStackMultiple, RawBuiltinPointerAddress, RawLocalPointerAddress, RawRemotePointerAddress, SetSharedContainerValue, SharedRef, SharedRefWithValue, ShortListData, ShortMapData, ShortStatementsData, ShortTextData, ShortTextDataRaw, StackIndex, StatementsData, TextData, TextDataRaw, UInt128Data, UInt16Data, UInt32Data, UInt64Data, UInt8Data, UnboundedStatementsData};
-use crate::global::protocol_structures::instructions::{NextExpectedInstructions};
-use crate::shared_values::pointer_address::PointerAddress;
-use crate::values::core_values::decimal::utils::decimal_to_string;
-use crate::values::core_values::endpoint::Endpoint;
-use crate::prelude::*;
+use crate::{
+    dxb_parser::body::DXBParserError,
+    global::{
+        instruction_codes::InstructionCode,
+        protocol_structures::{
+            instruction_data::{
+                ApplyData, DecimalData, Float32Data, Float64Data,
+                FloatAsInt16Data, FloatAsInt32Data, InstructionBlockData,
+                Int8Data, Int16Data, Int32Data, Int64Data, Int128Data,
+                IntegerData, ListData, MapData, ModifyStackValue, Move,
+                PerformMove, PushToStackMultiple, RawBuiltinPointerAddress,
+                RawLocalPointerAddress, RawRemotePointerAddress,
+                SetSharedContainerValue, SharedRef, SharedRefWithValue,
+                ShortListData, ShortMapData, ShortStatementsData,
+                ShortTextData, StackIndex, StatementsData, TextData, UInt8Data,
+                UInt16Data, UInt32Data, UInt64Data, UInt128Data,
+                UnboundedStatementsData,
+            },
+            instructions::NextExpectedInstructions,
+        },
+    },
+    prelude::*,
+    shared_values::pointer_address::PointerAddress,
+    values::core_values::{
+        decimal::utils::decimal_to_string, endpoint::Endpoint,
+    },
+};
+use binrw::{
+    BinRead, BinResult, BinWrite, Endian,
+    io::{Read, Seek},
+    meta::{EndianKind, ReadEndian},
+};
+use core::fmt::{Display, Write as FmtWrite};
+use serde::{Serialize, Serializer, ser::SerializeTuple};
 
 #[derive(Clone, Debug, PartialEq, BinWrite)]
 #[brw(little)]
@@ -171,27 +190,43 @@ impl From<&RegularInstruction> for InstructionCode {
             RegularInstruction::Endpoint(_) => InstructionCode::ENDPOINT,
             RegularInstruction::DecimalF32(_) => InstructionCode::DECIMAL_F32,
             RegularInstruction::DecimalF64(_) => InstructionCode::DECIMAL_F64,
-            RegularInstruction::DecimalAsInt16(_) => InstructionCode::DECIMAL_AS_INT_16,
-            RegularInstruction::DecimalAsInt32(_) => InstructionCode::DECIMAL_AS_INT_32,
+            RegularInstruction::DecimalAsInt16(_) => {
+                InstructionCode::DECIMAL_AS_INT_16
+            }
+            RegularInstruction::DecimalAsInt32(_) => {
+                InstructionCode::DECIMAL_AS_INT_32
+            }
             RegularInstruction::BigDecimal(_) => InstructionCode::DECIMAL_BIG,
             RegularInstruction::Decimal(_) => InstructionCode::DECIMAL,
             RegularInstruction::Range => InstructionCode::RANGE,
-            RegularInstruction::RemoteExecution(_) => InstructionCode::REMOTE_EXECUTION,
+            RegularInstruction::RemoteExecution(_) => {
+                InstructionCode::REMOTE_EXECUTION
+            }
             RegularInstruction::ShortText(_) => InstructionCode::SHORT_TEXT,
             RegularInstruction::Text(_) => InstructionCode::TEXT,
             RegularInstruction::True => InstructionCode::TRUE,
             RegularInstruction::False => InstructionCode::FALSE,
             RegularInstruction::Null => InstructionCode::NULL,
             RegularInstruction::Statements(_) => InstructionCode::STATEMENTS,
-            RegularInstruction::ShortStatements(_) => InstructionCode::SHORT_STATEMENTS,
-            RegularInstruction::UnboundedStatements => InstructionCode::UNBOUNDED_STATEMENTS,
-            RegularInstruction::UnboundedStatementsEnd(_) => InstructionCode::UNBOUNDED_STATEMENTS_END,
+            RegularInstruction::ShortStatements(_) => {
+                InstructionCode::SHORT_STATEMENTS
+            }
+            RegularInstruction::UnboundedStatements => {
+                InstructionCode::UNBOUNDED_STATEMENTS
+            }
+            RegularInstruction::UnboundedStatementsEnd(_) => {
+                InstructionCode::UNBOUNDED_STATEMENTS_END
+            }
             RegularInstruction::List(_) => InstructionCode::LIST,
             RegularInstruction::ShortList(_) => InstructionCode::SHORT_LIST,
             RegularInstruction::Map(_) => InstructionCode::MAP,
             RegularInstruction::ShortMap(_) => InstructionCode::SHORT_MAP,
-            RegularInstruction::KeyValueDynamic => InstructionCode::KEY_VALUE_DYNAMIC,
-            RegularInstruction::KeyValueShortText(_) => InstructionCode::KEY_VALUE_SHORT_TEXT,
+            RegularInstruction::KeyValueDynamic => {
+                InstructionCode::KEY_VALUE_DYNAMIC
+            }
+            RegularInstruction::KeyValueShortText(_) => {
+                InstructionCode::KEY_VALUE_SHORT_TEXT
+            }
             RegularInstruction::Add => InstructionCode::ADD,
             RegularInstruction::Subtract => InstructionCode::SUBTRACT,
             RegularInstruction::Multiply => InstructionCode::MULTIPLY,
@@ -200,139 +235,246 @@ impl From<&RegularInstruction> for InstructionCode {
             RegularInstruction::UnaryPlus => InstructionCode::UNARY_PLUS,
             RegularInstruction::BitwiseNot => InstructionCode::BITWISE_NOT,
             RegularInstruction::Apply(_) => InstructionCode::APPLY,
-            RegularInstruction::GetPropertyText(_) => InstructionCode::GET_PROPERTY_TEXT,
-            RegularInstruction::SetPropertyText(_) => InstructionCode::SET_PROPERTY_TEXT,
-            RegularInstruction::TakePropertyText(_) => InstructionCode::TAKE_PROPERTY_TEXT,
-            RegularInstruction::GetPropertyIndex(_) => InstructionCode::GET_PROPERTY_INDEX,
-            RegularInstruction::SetPropertyIndex(_) => InstructionCode::SET_PROPERTY_INDEX,
-            RegularInstruction::TakePropertyIndex(_) => InstructionCode::TAKE_PROPERTY_INDEX,
-            RegularInstruction::GetPropertyDynamic => InstructionCode::GET_PROPERTY_DYNAMIC,
-            RegularInstruction::SetPropertyDynamic => InstructionCode::SET_PROPERTY_DYNAMIC,
-            RegularInstruction::TakePropertyDynamic => InstructionCode::TAKE_PROPERTY_DYNAMIC,
+            RegularInstruction::GetPropertyText(_) => {
+                InstructionCode::GET_PROPERTY_TEXT
+            }
+            RegularInstruction::SetPropertyText(_) => {
+                InstructionCode::SET_PROPERTY_TEXT
+            }
+            RegularInstruction::TakePropertyText(_) => {
+                InstructionCode::TAKE_PROPERTY_TEXT
+            }
+            RegularInstruction::GetPropertyIndex(_) => {
+                InstructionCode::GET_PROPERTY_INDEX
+            }
+            RegularInstruction::SetPropertyIndex(_) => {
+                InstructionCode::SET_PROPERTY_INDEX
+            }
+            RegularInstruction::TakePropertyIndex(_) => {
+                InstructionCode::TAKE_PROPERTY_INDEX
+            }
+            RegularInstruction::GetPropertyDynamic => {
+                InstructionCode::GET_PROPERTY_DYNAMIC
+            }
+            RegularInstruction::SetPropertyDynamic => {
+                InstructionCode::SET_PROPERTY_DYNAMIC
+            }
+            RegularInstruction::TakePropertyDynamic => {
+                InstructionCode::TAKE_PROPERTY_DYNAMIC
+            }
             RegularInstruction::Is => InstructionCode::IS,
             RegularInstruction::Matches => InstructionCode::MATCHES,
-            RegularInstruction::StructuralEqual => InstructionCode::STRUCTURAL_EQUAL,
+            RegularInstruction::StructuralEqual => {
+                InstructionCode::STRUCTURAL_EQUAL
+            }
             RegularInstruction::Equal => InstructionCode::EQUAL,
-            RegularInstruction::NotStructuralEqual => InstructionCode::NOT_STRUCTURAL_EQUAL,
+            RegularInstruction::NotStructuralEqual => {
+                InstructionCode::NOT_STRUCTURAL_EQUAL
+            }
             RegularInstruction::NotEqual => InstructionCode::NOT_EQUAL,
-            RegularInstruction::GetSharedReference => InstructionCode::GET_SHARED_REF,
-            RegularInstruction::GetSharedReferenceMut => InstructionCode::GET_SHARED_REF_MUT,
+            RegularInstruction::GetSharedReference => {
+                InstructionCode::GET_SHARED_REF
+            }
+            RegularInstruction::GetSharedReferenceMut => {
+                InstructionCode::GET_SHARED_REF_MUT
+            }
             RegularInstruction::CreateShared => InstructionCode::CREATE_SHARED,
-            RegularInstruction::CreateSharedMut => InstructionCode::CREATE_SHARED_MUT,
-            RegularInstruction::RequestRemoteSharedRef(_) => InstructionCode::REQUEST_REMOTE_SHARED_REF,
-            RegularInstruction::RequestRemoteSharedRefMut(_) => InstructionCode::REQUEST_REMOTE_SHARED_REF_MUT,
-            RegularInstruction::GetLocalSharedRef(_) => InstructionCode::GET_LOCAL_SHARED_REF,
-            RegularInstruction::GetInternalSharedRef(_) => InstructionCode::GET_INTERNAL_SHARED_REF,
+            RegularInstruction::CreateSharedMut => {
+                InstructionCode::CREATE_SHARED_MUT
+            }
+            RegularInstruction::RequestRemoteSharedRef(_) => {
+                InstructionCode::REQUEST_REMOTE_SHARED_REF
+            }
+            RegularInstruction::RequestRemoteSharedRefMut(_) => {
+                InstructionCode::REQUEST_REMOTE_SHARED_REF_MUT
+            }
+            RegularInstruction::GetLocalSharedRef(_) => {
+                InstructionCode::GET_LOCAL_SHARED_REF
+            }
+            RegularInstruction::GetInternalSharedRef(_) => {
+                InstructionCode::GET_INTERNAL_SHARED_REF
+            }
             RegularInstruction::SharedRef(_) => InstructionCode::SHARED_REF,
-            RegularInstruction::SharedRefWithValue(_) => InstructionCode::SHARED_REF_WITH_VALUE,
+            RegularInstruction::SharedRefWithValue(_) => {
+                InstructionCode::SHARED_REF_WITH_VALUE
+            }
             RegularInstruction::PerformMove(_) => InstructionCode::PERFORM_MOVE,
             RegularInstruction::Move(_) => InstructionCode::MOVE,
             RegularInstruction::PushToStack => InstructionCode::PUSH_TO_STACK,
-            RegularInstruction::PushToStackMultiple(_) => InstructionCode::PUSH_TO_STACK_MULTIPLE,
-            RegularInstruction::CloneStackValue(_) => InstructionCode::CLONE_STACK_VALUE,
-            RegularInstruction::BorrowStackValue(_) => InstructionCode::BORROW_STACK_VALUE,
-            RegularInstruction::GetStackValueSharedRef(_) => InstructionCode::GET_STACK_VALUE_SHARED_REF,
-            RegularInstruction::GetStackValueSharedRefMut(_) => InstructionCode::GET_STACK_VALUE_SHARED_REF_MUT,
-            RegularInstruction::TakeStackValue(_) => InstructionCode::TAKE_STACK_VALUE,
-            RegularInstruction::SetStackValue(_) => InstructionCode::SET_STACK_VALUE,
-            RegularInstruction::ModifyStackValue(_) => InstructionCode::MODIFY_STACK_VALUE,
-            RegularInstruction::GetInternalSlot(_) => InstructionCode::GET_INTERNAL_SLOT,
-            RegularInstruction::SetSharedContainerValue(_) => InstructionCode::SET_SHARED_CONTAINER_VALUE,
+            RegularInstruction::PushToStackMultiple(_) => {
+                InstructionCode::PUSH_TO_STACK_MULTIPLE
+            }
+            RegularInstruction::CloneStackValue(_) => {
+                InstructionCode::CLONE_STACK_VALUE
+            }
+            RegularInstruction::BorrowStackValue(_) => {
+                InstructionCode::BORROW_STACK_VALUE
+            }
+            RegularInstruction::GetStackValueSharedRef(_) => {
+                InstructionCode::GET_STACK_VALUE_SHARED_REF
+            }
+            RegularInstruction::GetStackValueSharedRefMut(_) => {
+                InstructionCode::GET_STACK_VALUE_SHARED_REF_MUT
+            }
+            RegularInstruction::TakeStackValue(_) => {
+                InstructionCode::TAKE_STACK_VALUE
+            }
+            RegularInstruction::SetStackValue(_) => {
+                InstructionCode::SET_STACK_VALUE
+            }
+            RegularInstruction::ModifyStackValue(_) => {
+                InstructionCode::MODIFY_STACK_VALUE
+            }
+            RegularInstruction::GetInternalSlot(_) => {
+                InstructionCode::GET_INTERNAL_SLOT
+            }
+            RegularInstruction::SetSharedContainerValue(_) => {
+                InstructionCode::SET_SHARED_CONTAINER_VALUE
+            }
             RegularInstruction::Unbox => InstructionCode::UNBOX,
             RegularInstruction::TypedValue => InstructionCode::TYPED_VALUE,
-            RegularInstruction::TypeExpression => InstructionCode::TYPE_EXPRESSION,
+            RegularInstruction::TypeExpression => {
+                InstructionCode::TYPE_EXPRESSION
+            }
             #[cfg(feature = "disassembler")]
-            RegularInstruction::_RemoteExecutionDebugFlat(_) | RegularInstruction::_RemoteExecutionDebugTree(_) => InstructionCode::REMOTE_EXECUTION,
+            RegularInstruction::_RemoteExecutionDebugFlat(_)
+            | RegularInstruction::_RemoteExecutionDebugTree(_) => {
+                InstructionCode::REMOTE_EXECUTION
+            }
         }
     }
 }
 
 impl RegularInstruction {
-
     /// Returns how many (if any) regular or type instructions are expected as child instructions for a given instructions
     pub fn get_next_expected_instructions(&self) -> NextExpectedInstructions {
         match self {
-            RegularInstruction::RemoteExecution(_)  => NextExpectedInstructions::Regular(1), // receivers
+            RegularInstruction::RemoteExecution(_) => {
+                NextExpectedInstructions::Regular(1)
+            } // receivers
 
             #[cfg(feature = "disassembler")]
-            RegularInstruction::_RemoteExecutionDebugTree(_) |
-            RegularInstruction::_RemoteExecutionDebugFlat(_) => NextExpectedInstructions::Regular(1), // receivers
+            RegularInstruction::_RemoteExecutionDebugTree(_)
+            | RegularInstruction::_RemoteExecutionDebugFlat(_) => {
+                NextExpectedInstructions::Regular(1)
+            } // receivers
 
-            RegularInstruction::ShortList(list) | RegularInstruction::List(list) =>
-                NextExpectedInstructions::Regular(list.element_count), // list elements
+            RegularInstruction::ShortList(list)
+            | RegularInstruction::List(list) => {
+                NextExpectedInstructions::Regular(list.element_count)
+            } // list elements
 
-            RegularInstruction::ShortMap(map) | RegularInstruction::Map(map) =>
-                NextExpectedInstructions::Regular(map.element_count), // map entries
+            RegularInstruction::ShortMap(map)
+            | RegularInstruction::Map(map) => {
+                NextExpectedInstructions::Regular(map.element_count)
+            } // map entries
 
-            RegularInstruction::ShortStatements(statements) | RegularInstruction::Statements(statements) =>
-                NextExpectedInstructions::Regular(statements.statements_count), // statements in block
+            RegularInstruction::ShortStatements(statements)
+            | RegularInstruction::Statements(statements) => {
+                NextExpectedInstructions::Regular(statements.statements_count)
+            } // statements in block
 
-            RegularInstruction::UnboundedStatements =>
-                NextExpectedInstructions::UnboundedStart,
+            RegularInstruction::UnboundedStatements => {
+                NextExpectedInstructions::UnboundedStart
+            }
 
-            RegularInstruction::UnboundedStatementsEnd(_) =>
-                NextExpectedInstructions::UnboundedEnd,
+            RegularInstruction::UnboundedStatementsEnd(_) => {
+                NextExpectedInstructions::UnboundedEnd
+            }
 
-            RegularInstruction::Apply(apply_data) =>
-                NextExpectedInstructions::Regular(apply_data.arg_count as u32 + 1), // arguments plus base to apply to
+            RegularInstruction::Apply(apply_data) => {
+                NextExpectedInstructions::Regular(
+                    apply_data.arg_count as u32 + 1,
+                )
+            } // arguments plus base to apply to
 
-            RegularInstruction::GetPropertyText(_) |
-            RegularInstruction::GetPropertyIndex(_) |
-            RegularInstruction::TakePropertyText(_) |
-            RegularInstruction::TakePropertyIndex(_) =>
-                NextExpectedInstructions::Regular(1), // value to get property from
+            RegularInstruction::GetPropertyText(_)
+            | RegularInstruction::GetPropertyIndex(_)
+            | RegularInstruction::TakePropertyText(_)
+            | RegularInstruction::TakePropertyIndex(_) => {
+                NextExpectedInstructions::Regular(1)
+            } // value to get property from
 
-            RegularInstruction::GetPropertyDynamic |
-            RegularInstruction::TakePropertyDynamic =>
-                NextExpectedInstructions::Regular(2), // value to get property from + property key
+            RegularInstruction::GetPropertyDynamic
+            | RegularInstruction::TakePropertyDynamic => {
+                NextExpectedInstructions::Regular(2)
+            } // value to get property from + property key
 
-            RegularInstruction::SetPropertyText(_) | RegularInstruction::SetPropertyIndex(_) =>
-                NextExpectedInstructions::Regular(2), // value to set property on and new value
+            RegularInstruction::SetPropertyText(_)
+            | RegularInstruction::SetPropertyIndex(_) => {
+                NextExpectedInstructions::Regular(2)
+            } // value to set property on and new value
 
-            RegularInstruction::SetPropertyDynamic => NextExpectedInstructions::Regular(3),  // value to set property on + property key + new value
+            RegularInstruction::SetPropertyDynamic => {
+                NextExpectedInstructions::Regular(3)
+            } // value to set property on + property key + new value
 
             RegularInstruction::Unbox => NextExpectedInstructions::Regular(1), // value to unbox
 
-            RegularInstruction::SetSharedContainerValue(_) => NextExpectedInstructions::Regular(2), // container to set value on + new value
+            RegularInstruction::SetSharedContainerValue(_) => {
+                NextExpectedInstructions::Regular(2)
+            } // container to set value on + new value
 
-            RegularInstruction::KeyValueDynamic => NextExpectedInstructions::Regular(2), // key + value
+            RegularInstruction::KeyValueDynamic => {
+                NextExpectedInstructions::Regular(2)
+            } // key + value
 
-            RegularInstruction::KeyValueShortText(_) => NextExpectedInstructions::Regular(1), // value
+            RegularInstruction::KeyValueShortText(_) => {
+                NextExpectedInstructions::Regular(1)
+            } // value
 
-            RegularInstruction::Matches => NextExpectedInstructions::RegularAndType(1,1),
+            RegularInstruction::Matches => {
+                NextExpectedInstructions::RegularAndType(1, 1)
+            }
 
-            RegularInstruction::Add |
-            RegularInstruction::Multiply |
-            RegularInstruction::Subtract |
-            RegularInstruction::Divide => NextExpectedInstructions::Regular(2), // left and right operand
+            RegularInstruction::Add
+            | RegularInstruction::Multiply
+            | RegularInstruction::Subtract
+            | RegularInstruction::Divide => {
+                NextExpectedInstructions::Regular(2)
+            } // left and right operand
 
-            RegularInstruction::StructuralEqual |
-            RegularInstruction::NotStructuralEqual |
-            RegularInstruction::Equal |
-            RegularInstruction::NotEqual |
-            RegularInstruction::Is => NextExpectedInstructions::Regular(2), // left and right operand
+            RegularInstruction::StructuralEqual
+            | RegularInstruction::NotStructuralEqual
+            | RegularInstruction::Equal
+            | RegularInstruction::NotEqual
+            | RegularInstruction::Is => NextExpectedInstructions::Regular(2), // left and right operand
 
-            RegularInstruction::UnaryMinus |
-            RegularInstruction::UnaryPlus |
-            RegularInstruction::BitwiseNot => NextExpectedInstructions::Regular(1),
+            RegularInstruction::UnaryMinus
+            | RegularInstruction::UnaryPlus
+            | RegularInstruction::BitwiseNot => {
+                NextExpectedInstructions::Regular(1)
+            }
 
-            RegularInstruction::GetSharedReference |
-            RegularInstruction::GetSharedReferenceMut |
-            RegularInstruction::CreateShared |
-            RegularInstruction::CreateSharedMut => NextExpectedInstructions::Regular(1),
+            RegularInstruction::GetSharedReference
+            | RegularInstruction::GetSharedReferenceMut
+            | RegularInstruction::CreateShared
+            | RegularInstruction::CreateSharedMut => {
+                NextExpectedInstructions::Regular(1)
+            }
 
-            RegularInstruction::PushToStack |
-            RegularInstruction::PushToStackMultiple(_) |
-            RegularInstruction::SetStackValue(_) => NextExpectedInstructions::Regular(1),
-            RegularInstruction::ModifyStackValue(_) => NextExpectedInstructions::Regular(1),
+            RegularInstruction::PushToStack
+            | RegularInstruction::PushToStackMultiple(_)
+            | RegularInstruction::SetStackValue(_) => {
+                NextExpectedInstructions::Regular(1)
+            }
+            RegularInstruction::ModifyStackValue(_) => {
+                NextExpectedInstructions::Regular(1)
+            }
 
-            RegularInstruction::TypedValue => NextExpectedInstructions::RegularAndType(1,1),
+            RegularInstruction::TypedValue => {
+                NextExpectedInstructions::RegularAndType(1, 1)
+            }
 
-            RegularInstruction::TypeExpression => NextExpectedInstructions::Type(1),
+            RegularInstruction::TypeExpression => {
+                NextExpectedInstructions::Type(1)
+            }
 
             RegularInstruction::Range => NextExpectedInstructions::Regular(2),
 
-            RegularInstruction::SharedRefWithValue(_) => NextExpectedInstructions::Regular(1),
+            RegularInstruction::SharedRefWithValue(_) => {
+                NextExpectedInstructions::Regular(1)
+            }
 
             _ => NextExpectedInstructions::None,
         }
@@ -390,16 +532,19 @@ impl RegularInstruction {
                 DecimalData::read(reader).map(RegularInstruction::BigDecimal)
             }
             InstructionCode::DECIMAL_AS_INT_16 => {
-                FloatAsInt16Data::read(reader).map(RegularInstruction::DecimalAsInt16)
+                FloatAsInt16Data::read(reader)
+                    .map(RegularInstruction::DecimalAsInt16)
             }
             InstructionCode::DECIMAL_AS_INT_32 => {
-                FloatAsInt32Data::read(reader).map(RegularInstruction::DecimalAsInt32)
+                FloatAsInt32Data::read(reader)
+                    .map(RegularInstruction::DecimalAsInt32)
             }
             InstructionCode::DECIMAL => {
                 DecimalData::read(reader).map(RegularInstruction::Decimal)
             }
             InstructionCode::REMOTE_EXECUTION => {
-                InstructionBlockData::read(reader).map(RegularInstruction::RemoteExecution)
+                InstructionBlockData::read(reader)
+                    .map(RegularInstruction::RemoteExecution)
             }
             InstructionCode::SHORT_TEXT => {
                 ShortTextData::read(reader).map(RegularInstruction::ShortText)
@@ -418,151 +563,116 @@ impl RegularInstruction {
             InstructionCode::LIST => {
                 ListData::read(reader).map(RegularInstruction::List)
             }
-            InstructionCode::SHORT_LIST => {
-                ShortListData::read(reader)
-                    .map(|list| {
-                        ListData { element_count: list.element_count as u32}
-                    })
-                    .map(RegularInstruction::ShortList)
-            }
+            InstructionCode::SHORT_LIST => ShortListData::read(reader)
+                .map(|list| ListData {
+                    element_count: list.element_count as u32,
+                })
+                .map(RegularInstruction::ShortList),
             InstructionCode::MAP => {
                 MapData::read(reader).map(RegularInstruction::Map)
             }
-            InstructionCode::SHORT_MAP => {
-                ShortMapData::read(reader)
-                    .map(|map| {
-                        MapData { element_count: map.element_count as u32}
-                    })
-                    .map(RegularInstruction::ShortMap)
-            }
+            InstructionCode::SHORT_MAP => ShortMapData::read(reader)
+                .map(|map| MapData {
+                    element_count: map.element_count as u32,
+                })
+                .map(RegularInstruction::ShortMap),
 
             InstructionCode::STATEMENTS => {
                 StatementsData::read(reader).map(RegularInstruction::Statements)
             }
             InstructionCode::SHORT_STATEMENTS => {
                 ShortStatementsData::read(reader)
-                    .map(|data|
-                        StatementsData {
-                            statements_count: data.statements_count as u32,
-                            terminated: data.terminated,
-                        }
-                    )
+                    .map(|data| StatementsData {
+                        statements_count: data.statements_count as u32,
+                        terminated: data.terminated,
+                    })
                     .map(RegularInstruction::ShortStatements)
             }
 
-            InstructionCode::UNBOUNDED_STATEMENTS => Ok(RegularInstruction::UnboundedStatements),
+            InstructionCode::UNBOUNDED_STATEMENTS => {
+                Ok(RegularInstruction::UnboundedStatements)
+            }
 
             InstructionCode::UNBOUNDED_STATEMENTS_END => {
-                UnboundedStatementsData::read(reader).map(RegularInstruction::UnboundedStatementsEnd)
+                UnboundedStatementsData::read(reader)
+                    .map(RegularInstruction::UnboundedStatementsEnd)
             }
 
             InstructionCode::APPLY_ZERO => {
-                Ok(RegularInstruction::Apply(ApplyData {
-                    arg_count: 0,
-                }))
+                Ok(RegularInstruction::Apply(ApplyData { arg_count: 0 }))
             }
             InstructionCode::APPLY_SINGLE => {
-                Ok(RegularInstruction::Apply(ApplyData {
-                    arg_count: 1,
-                }))
+                Ok(RegularInstruction::Apply(ApplyData { arg_count: 1 }))
             }
 
             InstructionCode::APPLY => {
                 ApplyData::read(reader).map(RegularInstruction::Apply)
             }
 
-            InstructionCode::GET_PROPERTY_TEXT => {
-                ShortTextData::read(reader).map(RegularInstruction::GetPropertyText)
-            }
+            InstructionCode::GET_PROPERTY_TEXT => ShortTextData::read(reader)
+                .map(RegularInstruction::GetPropertyText),
 
-            InstructionCode::GET_PROPERTY_INDEX => {
-                UInt32Data::read(reader).map(RegularInstruction::GetPropertyIndex)
-            }
+            InstructionCode::GET_PROPERTY_INDEX => UInt32Data::read(reader)
+                .map(RegularInstruction::GetPropertyIndex),
 
             InstructionCode::GET_PROPERTY_DYNAMIC => {
                 Ok(RegularInstruction::GetPropertyDynamic)
             }
 
-            InstructionCode::TAKE_PROPERTY_TEXT => {
-                ShortTextData::read(reader).map(RegularInstruction::TakePropertyText)
-            }
+            InstructionCode::TAKE_PROPERTY_TEXT => ShortTextData::read(reader)
+                .map(RegularInstruction::TakePropertyText),
 
-            InstructionCode::TAKE_PROPERTY_INDEX => {
-                UInt32Data::read(reader).map(RegularInstruction::TakePropertyIndex)
-            }
+            InstructionCode::TAKE_PROPERTY_INDEX => UInt32Data::read(reader)
+                .map(RegularInstruction::TakePropertyIndex),
 
             InstructionCode::TAKE_PROPERTY_DYNAMIC => {
                 Ok(RegularInstruction::TakePropertyDynamic)
             }
 
-            InstructionCode::SET_PROPERTY_TEXT => {
-                ShortTextData::read(reader).map(RegularInstruction::SetPropertyText)
-            }
+            InstructionCode::SET_PROPERTY_TEXT => ShortTextData::read(reader)
+                .map(RegularInstruction::SetPropertyText),
 
-            InstructionCode::SET_PROPERTY_INDEX => {
-                UInt32Data::read(reader).map(RegularInstruction::SetPropertyIndex)
-            }
+            InstructionCode::SET_PROPERTY_INDEX => UInt32Data::read(reader)
+                .map(RegularInstruction::SetPropertyIndex),
 
             InstructionCode::SET_PROPERTY_DYNAMIC => {
                 Ok(RegularInstruction::SetPropertyDynamic)
             }
 
-            InstructionCode::UNBOX => {
-                Ok(RegularInstruction::Unbox)
-            }
+            InstructionCode::UNBOX => Ok(RegularInstruction::Unbox),
             InstructionCode::SET_SHARED_CONTAINER_VALUE => {
-                SetSharedContainerValue::read(reader).map(RegularInstruction::SetSharedContainerValue)
+                SetSharedContainerValue::read(reader)
+                    .map(RegularInstruction::SetSharedContainerValue)
             }
 
             InstructionCode::KEY_VALUE_SHORT_TEXT => {
-                ShortTextData::read(reader).map(RegularInstruction::KeyValueShortText)
+                ShortTextData::read(reader)
+                    .map(RegularInstruction::KeyValueShortText)
             }
 
             InstructionCode::KEY_VALUE_DYNAMIC => {
                 Ok(RegularInstruction::KeyValueDynamic)
             }
 
-            InstructionCode::ADD => {
-                Ok(RegularInstruction::Add)
-            }
-            InstructionCode::SUBTRACT => {
-                Ok(RegularInstruction::Subtract)
-            }
-            InstructionCode::MULTIPLY => {
-                Ok(RegularInstruction::Multiply)
-            }
-            InstructionCode::DIVIDE => {
-                Ok(RegularInstruction::Divide)
-            }
+            InstructionCode::ADD => Ok(RegularInstruction::Add),
+            InstructionCode::SUBTRACT => Ok(RegularInstruction::Subtract),
+            InstructionCode::MULTIPLY => Ok(RegularInstruction::Multiply),
+            InstructionCode::DIVIDE => Ok(RegularInstruction::Divide),
 
-            InstructionCode::UNARY_MINUS => {
-                Ok(RegularInstruction::UnaryMinus)
-            }
-            InstructionCode::UNARY_PLUS => {
-                Ok(RegularInstruction::UnaryPlus)
-            }
-            InstructionCode::BITWISE_NOT => {
-                Ok(RegularInstruction::BitwiseNot)
-            }
+            InstructionCode::UNARY_MINUS => Ok(RegularInstruction::UnaryMinus),
+            InstructionCode::UNARY_PLUS => Ok(RegularInstruction::UnaryPlus),
+            InstructionCode::BITWISE_NOT => Ok(RegularInstruction::BitwiseNot),
 
             InstructionCode::STRUCTURAL_EQUAL => {
                 Ok(RegularInstruction::StructuralEqual)
             }
-            InstructionCode::EQUAL => {
-                Ok(RegularInstruction::Equal)
-            }
+            InstructionCode::EQUAL => Ok(RegularInstruction::Equal),
             InstructionCode::NOT_STRUCTURAL_EQUAL => {
                 Ok(RegularInstruction::NotStructuralEqual)
             }
-            InstructionCode::NOT_EQUAL => {
-                Ok(RegularInstruction::NotEqual)
-            }
-            InstructionCode::IS => {
-                Ok(RegularInstruction::Is)
-            }
-            InstructionCode::MATCHES => {
-                Ok(RegularInstruction::Matches)
-            }
+            InstructionCode::NOT_EQUAL => Ok(RegularInstruction::NotEqual),
+            InstructionCode::IS => Ok(RegularInstruction::Is),
+            InstructionCode::MATCHES => Ok(RegularInstruction::Matches),
             InstructionCode::GET_SHARED_REF => {
                 Ok(RegularInstruction::GetSharedReference)
             }
@@ -574,7 +684,8 @@ impl RegularInstruction {
                 SharedRef::read(reader).map(RegularInstruction::SharedRef)
             }
             InstructionCode::SHARED_REF_WITH_VALUE => {
-                SharedRefWithValue::read(reader).map(RegularInstruction::SharedRefWithValue)
+                SharedRefWithValue::read(reader)
+                    .map(RegularInstruction::SharedRefWithValue)
             }
 
             InstructionCode::CREATE_SHARED => {
@@ -584,27 +695,27 @@ impl RegularInstruction {
                 Ok(RegularInstruction::CreateSharedMut)
             }
 
-            InstructionCode::GET_INTERNAL_SLOT => {
-                StackIndex::read(reader).map(RegularInstruction::GetInternalSlot)
-            }
+            InstructionCode::GET_INTERNAL_SLOT => StackIndex::read(reader)
+                .map(RegularInstruction::GetInternalSlot),
 
             InstructionCode::PUSH_TO_STACK => {
                 Ok(RegularInstruction::PushToStack)
             }
             InstructionCode::PUSH_TO_STACK_MULTIPLE => {
-                PushToStackMultiple::read(reader).map(RegularInstruction::PushToStackMultiple)
+                PushToStackMultiple::read(reader)
+                    .map(RegularInstruction::PushToStackMultiple)
             }
-            InstructionCode::CLONE_STACK_VALUE => {
-                StackIndex::read(reader).map(RegularInstruction::CloneStackValue)
-            }
-            InstructionCode::BORROW_STACK_VALUE => {
-                StackIndex::read(reader).map(RegularInstruction::BorrowStackValue)
-            }
+            InstructionCode::CLONE_STACK_VALUE => StackIndex::read(reader)
+                .map(RegularInstruction::CloneStackValue),
+            InstructionCode::BORROW_STACK_VALUE => StackIndex::read(reader)
+                .map(RegularInstruction::BorrowStackValue),
             InstructionCode::GET_STACK_VALUE_SHARED_REF => {
-                StackIndex::read(reader).map(RegularInstruction::GetStackValueSharedRef)
+                StackIndex::read(reader)
+                    .map(RegularInstruction::GetStackValueSharedRef)
             }
             InstructionCode::GET_STACK_VALUE_SHARED_REF_MUT => {
-                StackIndex::read(reader).map(RegularInstruction::GetStackValueSharedRefMut)
+                StackIndex::read(reader)
+                    .map(RegularInstruction::GetStackValueSharedRefMut)
             }
             InstructionCode::TAKE_STACK_VALUE => {
                 StackIndex::read(reader).map(RegularInstruction::TakeStackValue)
@@ -614,19 +725,23 @@ impl RegularInstruction {
             }
 
             InstructionCode::REQUEST_REMOTE_SHARED_REF => {
-                RawRemotePointerAddress::read(reader).map(RegularInstruction::RequestRemoteSharedRef)
+                RawRemotePointerAddress::read(reader)
+                    .map(RegularInstruction::RequestRemoteSharedRef)
             }
 
             InstructionCode::REQUEST_REMOTE_SHARED_REF_MUT => {
-                RawRemotePointerAddress::read(reader).map(RegularInstruction::RequestRemoteSharedRefMut)
+                RawRemotePointerAddress::read(reader)
+                    .map(RegularInstruction::RequestRemoteSharedRefMut)
             }
 
             InstructionCode::GET_LOCAL_SHARED_REF => {
-                RawLocalPointerAddress::read(reader).map(RegularInstruction::GetLocalSharedRef)
+                RawLocalPointerAddress::read(reader)
+                    .map(RegularInstruction::GetLocalSharedRef)
             }
 
             InstructionCode::GET_INTERNAL_SHARED_REF => {
-                RawBuiltinPointerAddress::read(reader).map(RegularInstruction::GetInternalSharedRef)
+                RawBuiltinPointerAddress::read(reader)
+                    .map(RegularInstruction::GetInternalSharedRef)
             }
 
             InstructionCode::PERFORM_MOVE => {
@@ -638,19 +753,16 @@ impl RegularInstruction {
             }
 
             InstructionCode::MODIFY_STACK_VALUE => {
-                ModifyStackValue::read(reader).map(RegularInstruction::ModifyStackValue)
+                ModifyStackValue::read(reader)
+                    .map(RegularInstruction::ModifyStackValue)
             }
 
-            InstructionCode::TYPED_VALUE => {
-                Ok(RegularInstruction::TypedValue)
-            }
+            InstructionCode::TYPED_VALUE => Ok(RegularInstruction::TypedValue),
             InstructionCode::TYPE_EXPRESSION => {
                 Ok(RegularInstruction::TypeExpression)
             }
 
-            InstructionCode::RANGE => {
-                Ok(RegularInstruction::Range)
-            }
+            InstructionCode::RANGE => Ok(RegularInstruction::Range),
 
             InstructionCode::MODULO => todo!(),
             InstructionCode::POWER => todo!(),
@@ -668,8 +780,9 @@ impl RegularInstruction {
         let instruction_code = u8::read(&mut reader)
             .map_err(|_| DXBParserError::FailedToReadInstructionCode)?;
 
-        InstructionCode::try_from(instruction_code)
-            .map_err(|_| DXBParserError::InvalidInstructionCode(instruction_code))
+        InstructionCode::try_from(instruction_code).map_err(|_| {
+            DXBParserError::InvalidInstructionCode(instruction_code)
+        })
     }
 
     pub fn metadata_string(&self) -> Option<String> {
@@ -917,11 +1030,15 @@ impl RegularInstruction {
     }
 
     #[cfg(feature = "disassembler")]
-    pub fn inner_instructions(&self) -> InnerInstructions {
+    pub fn inner_instructions(&self) -> InnerInstructions<'_> {
         match self {
-            RegularInstruction::_RemoteExecutionDebugTree(data) => InnerInstructions::Tree(&data.body),
-            RegularInstruction::_RemoteExecutionDebugFlat(data) => InnerInstructions::Flat(&data.body),
-            _ => InnerInstructions::None
+            RegularInstruction::_RemoteExecutionDebugTree(data) => {
+                InnerInstructions::Tree(&data.body)
+            }
+            RegularInstruction::_RemoteExecutionDebugFlat(data) => {
+                InnerInstructions::Flat(&data.body)
+            }
+            _ => InnerInstructions::None,
         }
     }
 }
@@ -931,31 +1048,37 @@ impl RegularInstruction {
 impl Serialize for RegularInstruction {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
-        S: Serializer
+        S: Serializer,
     {
         let instruction_code = InstructionCode::from(self).to_string();
         let metadata_string = self.metadata_string();
 
         if let Some(metadata_string) = metadata_string {
             let inner_instructions = self.inner_instructions();
-            let count = if inner_instructions == InnerInstructions::None { 2 } else { 3 };
+            let count = if inner_instructions == InnerInstructions::None {
+                2
+            } else {
+                3
+            };
 
             let mut state = serializer.serialize_tuple(count)?;
             state.serialize_element(&instruction_code)?;
             state.serialize_element(&metadata_string)?;
             match inner_instructions {
-                InnerInstructions::Tree(data) => state.serialize_element(&data)?,
-                InnerInstructions::Flat(data) => state.serialize_element(&data)?,
+                InnerInstructions::Tree(data) => {
+                    state.serialize_element(&data)?
+                }
+                InnerInstructions::Flat(data) => {
+                    state.serialize_element(&data)?
+                }
                 InnerInstructions::None => {}
             }
             state.end()
-        }
-        else {
+        } else {
             serializer.serialize_str(&instruction_code)
         }
     }
 }
-
 
 impl BinRead for RegularInstruction {
     type Args<'a> = ();
@@ -965,11 +1088,13 @@ impl BinRead for RegularInstruction {
         _endian: Endian,
         _: Self::Args<'_>,
     ) -> BinResult<Self> {
-        let instruction_code = RegularInstruction::read_regular_instruction_code(reader)
-            .map_err(|e| binrw::Error::AssertFail {
-                pos: reader.stream_position().unwrap_or(0),
-                message: e.to_string()
-            })?;
+        let instruction_code =
+            RegularInstruction::read_regular_instruction_code(reader).map_err(
+                |e| binrw::Error::AssertFail {
+                    pos: reader.stream_position().unwrap_or(0),
+                    message: e.to_string(),
+                },
+            )?;
         RegularInstruction::read_instruction(reader, instruction_code)
     }
 }
@@ -977,7 +1102,6 @@ impl BinRead for RegularInstruction {
 impl ReadEndian for RegularInstruction {
     const ENDIAN: EndianKind = EndianKind::Endian(Endian::Little);
 }
-
 
 impl Display for RegularInstruction {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {

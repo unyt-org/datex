@@ -1,16 +1,9 @@
-use core::ops::Deref;
-use serde::Serialize;
 use crate::{
-    libs::core::{
-        core_lib_id::CoreLibId,
-        type_id::{CoreLibBaseTypeId, CoreLibTypeId},
-    },
-    shared_values::{
-        pointer_address::PointerAddress, shared_containers::SharedContainer,
-    },
-    types::{nominal_type_definition::NominalTypeDefinition, r#type::Type},
+    shared_values::shared_containers::SharedContainer, types::r#type::Type,
     values::core_value::CoreValue,
 };
+use core::ops::Deref;
+use serde::Serialize;
 
 /// A wrapper around an [SharedContainer] which guarantees
 /// that the contained value is always a [CoreValue::Type]

@@ -1,8 +1,12 @@
-use crate::global::protocol_structures::instruction_data::RawRemotePointerAddress;
-use crate::shared_values::pointer_address::{ExternalPointerAddress, PointerAddress, SelfOwnedPointerAddress};
-use crate::values::core_values::endpoint::Endpoint;
+use crate::{
+    global::protocol_structures::instruction_data::RawRemotePointerAddress,
+    prelude::*,
+    shared_values::pointer_address::{
+        ExternalPointerAddress, PointerAddress, SelfOwnedPointerAddress,
+    },
+    values::core_values::endpoint::Endpoint,
+};
 use binrw::io::Cursor;
-use crate::prelude::*;
 
 #[derive(Default, Debug)]
 pub struct SelfOwnedPointerAddressProvider {
@@ -14,7 +18,6 @@ pub struct SelfOwnedPointerAddressProvider {
 }
 
 impl SelfOwnedPointerAddressProvider {
-
     /// Creates a new, [SelfOwnedPointerAddressProvider] instance
     pub fn new(endpoint: Endpoint) -> Self {
         Self {

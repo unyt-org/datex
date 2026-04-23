@@ -17,7 +17,6 @@ use crate::{
         RawBuiltinPointerAddress, RawLocalPointerAddress,
         RawRemotePointerAddress,
     },
-    libs::core::core_lib_id::CoreLibId,
     prelude::*,
     shared_values::{
         pointer_address::{ExternalPointerAddress, PointerAddress},
@@ -25,13 +24,12 @@ use crate::{
             ReferenceMutability, ReferencedSharedContainer, SharedContainer,
         },
     },
+    values::core_values::endpoint::Endpoint,
 };
 use core::{result::Result, unreachable};
 pub use errors::*;
 pub use execution_input::{ExecutionInput, ExecutionOptions};
-use log::info;
 pub use stack_dump::*;
-use crate::values::core_values::endpoint::Endpoint;
 
 pub mod context;
 mod errors;
@@ -165,13 +163,11 @@ pub async fn execute_dxb(
             ExternalExecutionInterrupt::RemoteExecution(receivers, body) => {
                 // assert that receivers is a single endpoint
                 // TODO #230: support advanced receivers
-                let receiver_endpoint = receivers
-                    .try_as::<Endpoint>()
-                    .unwrap();
+                let receiver_endpoint = receivers.try_as::<Endpoint>().unwrap();
                 let mut remote_execution_context = RemoteExecutionContext::new(
                     receiver_endpoint,
                     ExecutionMode::Static,
-                    runtime.clone()
+                    runtime.clone(),
                 );
                 let res = RuntimeInternal::execute_remote(
                     runtime.internal.clone(),
@@ -188,7 +184,8 @@ pub async fn execute_dxb(
                     .provide_result(InterruptResult::ResolvedValue(res));
             }
             ExternalExecutionInterrupt::RequestMove(pointers) => {
-                let moved_values = runtime.internal
+                let moved_values = runtime
+                    .internal
                     .clone()
                     .request_pointer_move(&caller_metadata.endpoint, pointers)
                     .await?
@@ -204,7 +201,7 @@ pub async fn execute_dxb(
                     runtime.internal.clone().handle_pointer_move_to_remote(
                         &caller_metadata.endpoint,
                         address_mapping,
-                        &*runtime.memory().borrow(),
+                        &runtime.memory().borrow(),
                     )?;
                 interrupt_provider.provide_result(
                     InterruptResult::ResolvedValues(moved_values),
@@ -278,8 +275,9 @@ mod tests {
         compiler::{CompileOptions, compile_script, scope::CompilationScope},
         datex_list,
         global::instruction_codes::InstructionCode,
+        libs::core::type_id::CoreLibBaseTypeId,
         runtime::{
-            RuntimeConfig, RuntimeRunner,
+            Runtime, RuntimeConfig, RuntimeRunner,
             execution::{
                 context::{ExecutionContext, LocalExecutionContext},
                 execution_input::{ExecutionCallerMetadata, ExecutionOptions},
@@ -303,20 +301,22 @@ mod tests {
     };
     use core::assert_matches;
     use log::{debug, info};
-    use crate::libs::core::type_id::CoreLibBaseTypeId;
-    use crate::runtime::Runtime;
 
     fn execute_datex_script_debug(
         datex_script: &str,
     ) -> Option<ValueContainer> {
         let runtime = Runtime::stub();
-        let (dxb, _) =
-            compile_script(datex_script, CompileOptions::default(), runtime.clone()).unwrap();
+        let (dxb, _) = compile_script(
+            datex_script,
+            CompileOptions::default(),
+            runtime.clone(),
+        )
+        .unwrap();
         let context = ExecutionInput::new(
             &dxb,
             ExecutionCallerMetadata::local_default(),
             ExecutionOptions { verbose: true },
-            runtime
+            runtime,
         );
         execute_dxb_sync(context).unwrap()
     }
@@ -327,7 +327,6 @@ mod tests {
     ) -> impl Iterator<Item = Result<Option<ValueContainer>, ExecutionError>>
     {
         gen move {
-
             let datex_script_parts = datex_script_parts.collect::<Vec<_>>();
             let mut execution_context =
                 ExecutionContext::Local(LocalExecutionContext::new(
@@ -350,7 +349,7 @@ mod tests {
                 let (dxb, new_compilation_scope) = compile_script(
                     script_part,
                     CompileOptions::new_with_scope(compilation_scope),
-                    runtime.clone()
+                    runtime.clone(),
                 )
                 .unwrap();
                 compilation_scope = new_compilation_scope;
@@ -366,9 +365,11 @@ mod tests {
     ) {
         let input = input.into_iter();
         let expected_output = expected_output.into_iter();
-        for (result, expected) in
-            execute_datex_script_debug_unbounded(input.into_iter(), runtime.clone())
-                .zip(expected_output.into_iter())
+        for (result, expected) in execute_datex_script_debug_unbounded(
+            input.into_iter(),
+            runtime.clone(),
+        )
+        .zip(expected_output.into_iter())
         {
             let result = result.unwrap();
             assert_eq!(result, expected);
@@ -379,13 +380,17 @@ mod tests {
         datex_script: &str,
     ) -> Result<Option<ValueContainer>, ExecutionError> {
         let runtime = Runtime::stub();
-        let (dxb, _) =
-            compile_script(datex_script, CompileOptions::default(), runtime.clone()).unwrap();
+        let (dxb, _) = compile_script(
+            datex_script,
+            CompileOptions::default(),
+            runtime.clone(),
+        )
+        .unwrap();
         let context = ExecutionInput::new(
             &dxb,
             ExecutionCallerMetadata::local_default(),
             ExecutionOptions { verbose: true },
-            runtime
+            runtime,
         );
         execute_dxb_sync(context)
     }
@@ -414,9 +419,12 @@ mod tests {
     ) -> Result<Option<ValueContainer>, ExecutionError> {
         RuntimeRunner::new(config)
             .run(async |runtime| {
-                let (dxb, _) =
-                    compile_script(datex_script, CompileOptions::default(), runtime.clone())
-                        .unwrap();
+                let (dxb, _) = compile_script(
+                    datex_script,
+                    CompileOptions::default(),
+                    runtime.clone(),
+                )
+                .unwrap();
                 let context = ExecutionInput::new(
                     &dxb,
                     ExecutionCallerMetadata::local_default(),
@@ -836,10 +844,7 @@ mod tests {
         .await
         .unwrap();
         assert!(res.is_some());
-        let env = res
-            .unwrap()
-            .try_as::<Map>()
-            .unwrap();
+        let env = res.unwrap().try_as::<Map>().unwrap();
         assert_eq!(env.get("TEST_ENV_VAR"), Ok(&"test_value".into()));
     }
 
@@ -883,7 +888,7 @@ mod tests {
         assert_unbounded_input_matches_output(
             vec!["1", "2"],
             vec![Some(Integer::from(1).into()), Some(Integer::from(2).into())],
-            Runtime::stub()
+            Runtime::stub(),
         )
     }
 
@@ -895,8 +900,22 @@ mod tests {
             vec!["1", "integer", "boolean"],
             vec![
                 Some(Integer::from(1).into()),
-                Some(ValueContainer::Shared(runtime.clone().memory().borrow().get_core_type_reference(CoreLibBaseTypeId::Integer).into())),
-                Some(ValueContainer::Shared(runtime.clone().memory().borrow().get_core_type_reference(CoreLibBaseTypeId::Boolean).into())),
+                Some(ValueContainer::Shared(
+                    runtime
+                        .clone()
+                        .memory()
+                        .borrow()
+                        .get_core_type_reference(CoreLibBaseTypeId::Integer)
+                        .into(),
+                )),
+                Some(ValueContainer::Shared(
+                    runtime
+                        .clone()
+                        .memory()
+                        .borrow()
+                        .get_core_type_reference(CoreLibBaseTypeId::Boolean)
+                        .into(),
+                )),
             ],
             runtime,
         )

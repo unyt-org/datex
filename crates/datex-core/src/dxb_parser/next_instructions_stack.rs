@@ -1,6 +1,7 @@
-use crate::global::protocol_structures::instructions::NextExpectedInstructions;
-use crate::prelude::*;
-use crate::runtime::execution::macros::yield_unwrap;
+use crate::{
+    global::protocol_structures::instructions::NextExpectedInstructions,
+    prelude::*,
+};
 
 #[derive(Debug, Clone)]
 pub enum NextScopeInstruction {
@@ -32,8 +33,10 @@ impl Default for NextInstructionsStack {
 }
 
 impl NextInstructionsStack {
-    
-    pub fn handle_next_expected_instructions(&mut self, next_instructions: NextExpectedInstructions) -> Result<(), NotInUnboundedRegularScopeError> {
+    pub fn handle_next_expected_instructions(
+        &mut self,
+        next_instructions: NextExpectedInstructions,
+    ) -> Result<(), NotInUnboundedRegularScopeError> {
         match next_instructions {
             NextExpectedInstructions::Regular(regular_count) => {
                 self.push_next_regular(regular_count);
@@ -47,16 +50,19 @@ impl NextInstructionsStack {
             NextExpectedInstructions::Type(type_count) => {
                 self.push_next_type(type_count);
             }
-            NextExpectedInstructions::RegularAndType(regular_count, type_count) => {
+            NextExpectedInstructions::RegularAndType(
+                regular_count,
+                type_count,
+            ) => {
                 self.push_next_regular(regular_count);
                 self.push_next_type(type_count);
             }
             NextExpectedInstructions::None => {}
         }
-        
+
         Ok(())
     }
-    
+
     /// Indicate that the next `count` instructions are regular instructions.
     pub fn push_next_regular(&mut self, count: u32) {
         // ignore zero counts

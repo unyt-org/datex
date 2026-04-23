@@ -7,15 +7,17 @@ use datex_core::{
     core_compiler::value_compiler::compile_value_container,
     decompiler::{DecompileOptions, decompile_body},
     runtime::{
-        execution::{ExecutionInput, ExecutionOptions, execute_dxb_sync},
+        Runtime,
+        execution::{
+            ExecutionInput, ExecutionOptions, execute_dxb_sync,
+            execution_input::ExecutionCallerMetadata,
+        },
     },
     values::value_container::ValueContainer,
 };
 use json_syntax::Parse;
 use serde_json::Value;
-use std::{io::Read};
-use datex_core::runtime::execution::execution_input::ExecutionCallerMetadata;
-use datex_core::runtime::Runtime;
+use std::io::Read;
 
 pub fn get_json_test_string(file_path: &str) -> String {
     // read json from test file
@@ -43,13 +45,14 @@ pub fn json_to_json_syntax_value(json: &str) -> json_syntax::Value {
 
 pub fn json_to_datex_value(json: &str) -> ValueContainer {
     let runtime = Runtime::stub();
-    let (dxb, _) = compile_script(json, CompileOptions::default(), runtime.clone())
-        .expect("Failed to parse JSON string");
+    let (dxb, _) =
+        compile_script(json, CompileOptions::default(), runtime.clone())
+            .expect("Failed to parse JSON string");
     let exec_input = ExecutionInput::new(
         &dxb,
         ExecutionCallerMetadata::local_default(),
         ExecutionOptions::default(),
-        runtime
+        runtime,
     );
     execute_dxb_sync(exec_input).unwrap().unwrap()
 }
@@ -75,7 +78,7 @@ pub fn json_to_runtime_value_datex<'a>(json: &'a str) {
         CompileOptions {
             ..CompileOptions::default()
         },
-        runtime.clone()
+        runtime.clone(),
     )
     .expect("Failed to parse JSON string");
     let exec_input = ExecutionInput::new(
@@ -85,7 +88,7 @@ pub fn json_to_runtime_value_datex<'a>(json: &'a str) {
         runtime,
     );
     let val = execute_dxb_sync(exec_input).unwrap().unwrap();
-    val.with_collapsed_value(|val | assert!(val.is_map()));
+    val.with_collapsed_value(|val| assert!(val.is_map()));
 }
 
 pub fn json_to_runtime_value_datex_auto_static_detection(
@@ -134,7 +137,7 @@ pub fn dxb_to_runtime_value(dxb: &[u8]) {
         Runtime::stub(),
     );
     let json_value = execute_dxb_sync(exec_input).unwrap().unwrap();
-    json_value.with_collapsed_value(|val | assert!(val.is_map()));
+    json_value.with_collapsed_value(|val| assert!(val.is_map()));
 }
 
 // value -> JSON

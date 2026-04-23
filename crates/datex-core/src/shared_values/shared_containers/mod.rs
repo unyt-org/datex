@@ -1,6 +1,8 @@
 pub mod base_shared_value_container;
-mod internal_traits; // IMPORTANT: don't expose this module, for internal use only
+pub mod errors;
 mod external_shared_container;
+mod internal_traits; // IMPORTANT: don't expose this module, for internal use only
+pub mod mutations;
 pub mod observers;
 mod owned_shared_container;
 mod ownership;
@@ -9,25 +11,34 @@ mod self_owned_shared_container;
 mod shared_container_inner;
 mod shared_container_mutability;
 pub mod shared_type_container;
-pub mod mutations;
-pub mod errors;
 
 use crate::{
+    runtime::{
+        execution::ExecutionError, memory::Memory,
+        pointer_address_provider::SelfOwnedPointerAddressProvider,
+    },
     shared_values::{
-        pointer_address::{
-            PointerAddress, SelfOwnedPointerAddress,
-        },
+        errors::AccessError,
+        pointer_address::{PointerAddress, SelfOwnedPointerAddress},
         shared_containers::{
             base_shared_value_container::BaseSharedValueContainer,
+            errors::{
+                UnexpectedImmutableReferenceError,
+                UnexpectedSharedContainerOwnershipError,
+            },
             internal_traits::_ExposeRcInternal,
             observers::{Observer, ObserverError},
         },
     },
     traits::{
-        identity::Identity, structural_eq::StructuralEq, value_eq::ValueEq,
-    }
-    ,
-    values::{value::Value, value_container::ValueContainer},
+        apply::Apply, identity::Identity, structural_eq::StructuralEq,
+        value_eq::ValueEq,
+    },
+    types::r#type::Type,
+    values::{
+        value::Value,
+        value_container::{BorrowedValueKey, ValueContainer},
+    },
 };
 use alloc::rc::Rc;
 use core::{
@@ -35,22 +46,14 @@ use core::{
     fmt::{Display, Formatter},
     hash::{Hash, Hasher},
 };
-use serde::{Deserialize, Serialize, Serializer};
 pub use external_shared_container::*;
 pub use owned_shared_container::*;
 pub use ownership::*;
 pub use referenced_shared_container::*;
 pub use self_owned_shared_container::*;
+use serde::{Deserialize, Serialize, Serializer};
 pub use shared_container_inner::*;
 pub use shared_container_mutability::*;
-use crate::runtime::execution::ExecutionError;
-use crate::runtime::memory::Memory;
-use crate::runtime::pointer_address_provider::SelfOwnedPointerAddressProvider;
-use crate::shared_values::errors::AccessError;
-use crate::shared_values::shared_containers::errors::{UnexpectedImmutableReferenceError, UnexpectedSharedContainerOwnershipError};
-use crate::traits::apply::Apply;
-use crate::types::r#type::Type;
-use crate::values::value_container::BorrowedValueKey;
 
 /// Top-level wrapper for any owned or referenced shared container,
 /// which can either be an owned shared container or a reference to a shared container.
@@ -90,32 +93,32 @@ impl SharedContainer {
     /// The allowed type is inferred from the value_container's allowed type.
     ///
     /// The caller must ensure that the address is not used anywhere else.
-    pub unsafe fn new_owned_with_inferred_allowed_type_unsafe<T: Into<ValueContainer>>(
+    pub unsafe fn new_owned_with_inferred_allowed_type_unsafe<
+        T: Into<ValueContainer>,
+    >(
         value_container: T,
         mutability: SharedContainerMutability,
         address: SelfOwnedPointerAddress,
         memory: &Memory,
     ) -> Self {
-        SharedContainer::Owned(
-            unsafe {
-                OwnedSharedContainer::new_with_inferred_allowed_type_unsafe(
-                    value_container.into(),
-                    mutability,
-                    address,
-                    memory,
-                )
-            }
-        )
+        SharedContainer::Owned(unsafe {
+            OwnedSharedContainer::new_with_inferred_allowed_type_unsafe(
+                value_container.into(),
+                mutability,
+                address,
+                memory,
+            )
+        })
     }
 
-    pub fn inner(&self) -> Ref<SharedContainerInner> {
+    pub fn inner(&self) -> Ref<'_, SharedContainerInner> {
         match self {
             SharedContainer::Owned(owned) => owned.inner(),
             SharedContainer::Referenced(referenced) => referenced.inner(),
         }
     }
 
-    pub fn inner_mut(&self) -> RefMut<SharedContainerInner> {
+    pub fn inner_mut(&self) -> RefMut<'_, SharedContainerInner> {
         match self {
             SharedContainer::Owned(owned) => owned.inner_mut(),
             SharedContainer::Referenced(referenced) => referenced.inner_mut(),
@@ -123,7 +126,7 @@ impl SharedContainer {
     }
 
     /// Gets a [Ref] to the currently assigned [BaseSharedValueContainer] of the shared container (not resolved recursively)
-    pub fn base_shared_container(&self) -> Ref<BaseSharedValueContainer> {
+    pub fn base_shared_container(&self) -> Ref<'_, BaseSharedValueContainer> {
         match self {
             SharedContainer::Owned(owned) => owned.base_shared_container(),
             SharedContainer::Referenced(referenced) => {
@@ -144,7 +147,7 @@ impl SharedContainer {
     /// Gets a [RefMut] to the currently assigned [BaseSharedValueContainer] of the shared container (not resolved recursively)
     pub fn base_shared_container_mut(
         &self,
-    ) -> RefMut<BaseSharedValueContainer> {
+    ) -> RefMut<'_, BaseSharedValueContainer> {
         match self {
             SharedContainer::Owned(owned) => owned.base_shared_container_mut(),
             SharedContainer::Referenced(referenced) => {
@@ -164,7 +167,7 @@ impl SharedContainer {
     }
 
     /// Gets a [Ref] to the currently assigned [ValueContainer] of the shared container (not resolved recursively)
-    pub fn value_container(&self) -> Ref<ValueContainer> {
+    pub fn value_container(&self) -> Ref<'_, ValueContainer> {
         match self {
             SharedContainer::Owned(owned) => owned.value_container(),
             SharedContainer::Referenced(referenced) => {
@@ -174,7 +177,7 @@ impl SharedContainer {
     }
 
     /// Gets a [Ref] to the currently assigned allowed [Type] of the shared container (not resolved recursively)
-    pub fn allowed_type(&self) -> Ref<Type> {
+    pub fn allowed_type(&self) -> Ref<'_, Type> {
         match self {
             SharedContainer::Owned(owned) => owned.allowed_type(),
             SharedContainer::Referenced(referenced) => {
@@ -189,7 +192,7 @@ impl SharedContainer {
     }
 
     /// Gets a [RefMut] to the currently assigned [ValueContainer] of the shared container (not resolved recursively)
-    pub fn value_container_mut(&self) -> RefMut<ValueContainer> {
+    pub fn value_container_mut(&self) -> RefMut<'_, ValueContainer> {
         match self {
             SharedContainer::Owned(owned) => owned.value_container_mut(),
             SharedContainer::Referenced(referenced) => {
@@ -253,11 +256,12 @@ impl SharedContainer {
     /// Returns an [Err] if the current reference_mutability is [ReferenceMutability::Immutable] or the container itself is not mutable
     pub fn try_derive_mutable_reference(
         &self,
-    ) -> Result<ReferencedSharedContainer, UnexpectedImmutableReferenceError> {
+    ) -> Result<ReferencedSharedContainer, UnexpectedImmutableReferenceError>
+    {
         match self {
-            SharedContainer::Owned(owned) => {
-                owned.try_derive_mutable_reference().map_err(|_| UnexpectedImmutableReferenceError)
-            }
+            SharedContainer::Owned(owned) => owned
+                .try_derive_mutable_reference()
+                .map_err(|_| UnexpectedImmutableReferenceError),
             SharedContainer::Referenced(referenced) => {
                 referenced.try_derive_mutable_reference()
             }
@@ -265,13 +269,20 @@ impl SharedContainer {
     }
 
     /// Returns the owned shared container if it is owned, otherwise returns an error.
-    pub fn try_get_owned(&self) -> Result<&OwnedSharedContainer, UnexpectedSharedContainerOwnershipError> {
+    pub fn try_get_owned(
+        &self,
+    ) -> Result<&OwnedSharedContainer, UnexpectedSharedContainerOwnershipError>
+    {
         match self {
             SharedContainer::Owned(owned) => Ok(owned),
-            SharedContainer::Referenced(reference) => Err(UnexpectedSharedContainerOwnershipError {
-                actual: SharedContainerOwnership::Referenced(reference.reference_mutability()),
-                expected: SharedContainerOwnership::Owned,
-            }),
+            SharedContainer::Referenced(reference) => {
+                Err(UnexpectedSharedContainerOwnershipError {
+                    actual: SharedContainerOwnership::Referenced(
+                        reference.reference_mutability(),
+                    ),
+                    expected: SharedContainerOwnership::Owned,
+                })
+            }
         }
     }
 
@@ -292,7 +303,7 @@ impl SharedContainer {
     /// Returns the [SharedContainerOwnership] of this shared container
     pub fn ownership(&self) -> SharedContainerOwnership {
         match self {
-            SharedContainer::Owned(owned) => SharedContainerOwnership::Owned,
+            SharedContainer::Owned(_owned) => SharedContainerOwnership::Owned,
             SharedContainer::Referenced(referenced) => {
                 SharedContainerOwnership::Referenced(
                     referenced.reference_mutability(),
@@ -334,18 +345,24 @@ impl Display for SharedContainer {
 /// Two references are identical if they point to the same inner value (Rc pointer equality)
 impl Identity for SharedContainer {
     fn identical(&self, other: &Self) -> bool {
-        Rc::ptr_eq(&self.get_rc_internal(), &other.get_rc_internal())
+        Rc::ptr_eq(self.get_rc_internal(), other.get_rc_internal())
     }
 }
 
 impl Eq for SharedContainer {}
 
 impl Apply for SharedContainer {
-    fn apply(&self, args: &[ValueContainer]) -> Result<Option<ValueContainer>, ExecutionError> {
+    fn apply(
+        &self,
+        args: &[ValueContainer],
+    ) -> Result<Option<ValueContainer>, ExecutionError> {
         self.base_shared_container().apply(args)
     }
 
-    fn apply_single(&self, arg: &ValueContainer) -> Result<Option<ValueContainer>, ExecutionError> {
+    fn apply_single(
+        &self,
+        arg: &ValueContainer,
+    ) -> Result<Option<ValueContainer>, ExecutionError> {
         self.base_shared_container().apply_single(arg)
     }
 }
@@ -379,7 +396,7 @@ impl ValueEq for SharedContainer {
 
 impl Hash for SharedContainer {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        let ptr = Rc::as_ptr(&self.get_rc_internal());
+        let ptr = Rc::as_ptr(self.get_rc_internal());
         ptr.hash(state); // hash the address
     }
 }

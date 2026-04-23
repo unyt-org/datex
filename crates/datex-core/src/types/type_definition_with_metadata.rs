@@ -1,5 +1,5 @@
 use crate::shared_values::shared_containers::ReferenceMutability;
-use core::{fmt::Display, ops::Deref};
+use core::fmt::Display;
 
 use crate::{
     prelude::*,
@@ -7,9 +7,7 @@ use crate::{
     shared_values::shared_containers::{
         SharedContainerMutability, SharedContainerOwnership,
     },
-    types::{
-        r#type::Type, type_definition::TypeDefinition, type_match::TypeMatch,
-    },
+    types::{type_definition::TypeDefinition, type_match::TypeMatch},
     values::value_container::ValueContainer,
 };
 use serde::Serialize;
@@ -65,11 +63,11 @@ impl Display for TypeMetadata {
                 ownership,
             } => {
                 write!(f, "{}", ownership)?;
-                match ownership {
-                    SharedContainerOwnership::Referenced(
-                        ReferenceMutability::Mutable,
-                    ) => write!(f, " ")?,
-                    _ => (),
+                if let SharedContainerOwnership::Referenced(
+                    ReferenceMutability::Mutable,
+                ) = ownership
+                {
+                    write!(f, " ")?
                 };
                 write!(f, "{}", mutability)
             }
@@ -148,7 +146,7 @@ impl TypeMatch for TypeMetadata {
         }
     }
 
-    fn matched_by_value(&self, value: &ValueContainer) -> bool {
+    fn matched_by_value(&self, _value: &ValueContainer) -> bool {
         unimplemented!()
     }
 }
@@ -177,7 +175,7 @@ impl TypeMatch for TypeDefinitionWithMetadata {
         false
     }
 
-    fn matched_by_value(&self, value: &ValueContainer) -> bool {
+    fn matched_by_value(&self, _value: &ValueContainer) -> bool {
         todo!()
     }
 }

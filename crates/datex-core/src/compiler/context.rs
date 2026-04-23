@@ -1,14 +1,18 @@
 use crate::{
-    global::instruction_codes::InstructionCode,
+    core_compiler::{
+        core_compilation_context::CoreCompilationContext,
+        value_compiler::append_instruction_code_new,
+    },
+    global::{
+        instruction_codes::InstructionCode,
+        protocol_structures::instruction_data::StackIndex,
+    },
+    prelude::*,
     runtime::execution::context::ExecutionMode,
     utils::buffers::append_u32,
     values::value_container::ValueContainer,
 };
 use binrw::io::Cursor;
-use crate::prelude::*;
-use crate::core_compiler::core_compilation_context::CoreCompilationContext;
-use crate::core_compiler::value_compiler::append_instruction_code_new;
-use crate::global::protocol_structures::instruction_data::StackIndex;
 
 /// compilation context, created for each compiler call, even if compiling a script for the same scope
 pub struct CompilationContext {

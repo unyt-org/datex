@@ -1,20 +1,4 @@
 use crate::{
-    compiler::error::{
-        CompilerError, SimpleOrDetailedCompilerError, SpannedCompilerError,
-    },
-    global::{
-        dxb_block::DXBBlock,
-        operators::assignment::AssignmentOperator,
-        protocol_structures::{
-            block_header::BlockHeader, encrypted_header::EncryptedHeader,
-            routing_header::RoutingHeader,
-        },
-    },
-};
-use core::cell::RefCell;
-use binrw::BinWrite;
-use binrw::io::Write;
-use crate::{
     ast::expressions::{
         BinaryOperation, ComparisonOperation, DatexExpression,
         DatexExpressionData, RemoteExecution, Slot, Statements, UnaryOperation,
@@ -22,32 +6,59 @@ use crate::{
         VariableAssignment, VariableDeclaration, VariableKind,
     },
     compiler::{
-        context::{CompilationContext},
+        context::CompilationContext,
         error::{
-            DetailedCompilerErrorsWithMaybeRichAst,
+            CompilerError, DetailedCompilerErrorsWithMaybeRichAst,
             SimpleCompilerErrorOrDetailedCompilerErrorWithRichAst,
+            SimpleOrDetailedCompilerError, SpannedCompilerError,
         },
         metadata::CompileMetadata,
         scope::CompilationScope,
         type_compiler::compile_type_expression,
     },
-    global::{instruction_codes::InstructionCode, slots::InternalSlot},
+    global::{
+        dxb_block::DXBBlock,
+        instruction_codes::InstructionCode,
+        operators::assignment::AssignmentOperator,
+        protocol_structures::{
+            block_header::BlockHeader, encrypted_header::EncryptedHeader,
+            routing_header::RoutingHeader,
+        },
+        slots::InternalSlot,
+    },
     prelude::*,
 };
+use binrw::io::Write;
+use core::cell::RefCell;
 
 use crate::{
-    ast::resolved_variable::VariableId,
+    ast::{expressions::ValueAccessType, resolved_variable::VariableId},
     core_compiler::value_compiler::{
         append_boolean, append_decimal, append_encoded_integer,
         append_endpoint, append_float_as_i16, append_float_as_i32,
-        append_get_internal_ref, append_get_shared_ref, append_instruction_code,
-        append_integer, append_key_string, append_text, append_typed_decimal,
+        append_get_internal_ref, append_get_shared_ref, append_integer,
+        append_key_string, append_regular_instruction, append_shared_container,
+        append_statements_preamble, append_text, append_typed_decimal,
+        append_value,
     },
+    global::protocol_structures::{
+        injected_values::{
+            InjectedValueType, LocalInjectedValueType, SharedInjectedValueType,
+        },
+        instruction_data::{
+            InstructionBlockData, ModifyStackValue, SetSharedContainerValue,
+            StackIndex,
+        },
+        regular_instructions::RegularInstruction,
+    },
+    libs::core::{core_lib_id::CoreLibId, value_id::CoreLibValueId},
     parser::{Parser, ParserOptions},
-    runtime::execution::context::ExecutionMode,
+    runtime::{Runtime, execution::context::ExecutionMode},
     shared_values::{
         pointer_address::PointerAddress,
-        shared_containers::SharedContainerMutability,
+        shared_containers::{
+            ReferenceMutability, SharedContainer, SharedContainerMutability,
+        },
     },
     time::Instant,
     utils::buffers::{append_u8, append_u16, append_u32},
@@ -59,16 +70,6 @@ use precompiler::{
     precompile_ast,
     precompiled_ast::{AstMetadata, RichAst, VariableMetadata},
 };
-use crate::ast::expressions::ValueAccessType;
-use crate::core_compiler::value_compiler::{append_instruction, append_instruction_code_new, append_regular_instruction, append_shared_container, append_statements_preamble, append_value};
-use crate::global::protocol_structures::injected_values::{InjectedValueType, LocalInjectedValueType, SharedInjectedValueType};
-use crate::global::protocol_structures::instruction_data::{InstructionBlockData, ModifyStackValue, SetSharedContainerValue, StackIndex};
-use crate::global::protocol_structures::regular_instructions::RegularInstruction;
-use crate::libs::core::core_lib_id::CoreLibId;
-use crate::libs::core::value_id::CoreLibValueId;
-use crate::runtime::Runtime;
-use crate::shared_values::shared_containers::SharedContainer;
-use crate::shared_values::shared_containers::ReferenceMutability;
 
 pub mod context;
 pub mod error;
@@ -121,9 +122,7 @@ impl From<VariableRepresentation> for VariableModel {
     fn from(value: VariableRepresentation) -> Self {
         match value {
             VariableRepresentation::Constant => VariableModel::Constant,
-            VariableRepresentation::VariableSlot => {
-                VariableModel::VariableSlot
-            }
+            VariableRepresentation::VariableSlot => VariableModel::VariableSlot,
         }
     }
 }
@@ -132,8 +131,8 @@ impl VariableModel {
     /// Determines the variable model based on the variable kind and metadata.
     pub fn infer(
         variable_kind: VariableKind,
-        variable_metadata: Option<VariableMetadata>,
-        execution_mode: ExecutionMode,
+        _variable_metadata: Option<VariableMetadata>,
+        _execution_mode: ExecutionMode,
     ) -> Self {
         // const variables are always constant
         if variable_kind == VariableKind::Const {
@@ -200,9 +199,10 @@ impl Variable {
 /// This function is used to create a block that can be sent over the network.
 pub fn compile_block(
     datex_script: &str,
-    runtime: Runtime
+    runtime: Runtime,
 ) -> Result<Vec<u8>, SimpleOrDetailedCompilerError> {
-    let (body, _) = compile_script(datex_script, CompileOptions::default(), runtime)?;
+    let (body, _) =
+        compile_script(datex_script, CompileOptions::default(), runtime)?;
 
     let routing_header = RoutingHeader::default();
 
@@ -243,7 +243,7 @@ pub fn extract_static_value_from_script(
 pub fn compile_script_or_return_static_value(
     datex_script: &str,
     mut options: CompileOptions,
-    runtime: Runtime
+    runtime: Runtime,
 ) -> Result<(StaticValueOrDXB, CompilationScope), SpannedCompilerError> {
     let ast = parse_datex_script_to_rich_ast_simple_error(
         datex_script,
@@ -258,7 +258,10 @@ pub fn compile_script_or_return_static_value(
     // FIXME #480: no clone here
     let scope = compile_ast(ast.clone(), &mut compilation_context, options)?;
     if compilation_context.has_non_static_value {
-        Ok((StaticValueOrDXB::DXB(compilation_context.into_buffer()), scope))
+        Ok((
+            StaticValueOrDXB::DXB(compilation_context.into_buffer()),
+            scope,
+        ))
     } else {
         // try to extract static value from AST
         extract_static_value_from_ast(&ast.ast)
@@ -364,7 +367,7 @@ pub fn parse_datex_script_to_rich_ast_simple_error(
 pub fn parse_datex_script_to_rich_ast_detailed_errors(
     datex_script: &str,
     options: &mut CompileOptions,
-    runtime: Runtime
+    runtime: Runtime,
 ) -> Result<RichAst, DetailedCompilerErrorsWithMaybeRichAst> {
     let (ast, parser_errors) =
         Parser::parse_collecting_with_default_options(datex_script)
@@ -396,12 +399,12 @@ pub fn compile_template(
     datex_script: &str,
     inserted_values: &[Option<ValueContainer>],
     mut options: CompileOptions,
-    runtime: Runtime
+    runtime: Runtime,
 ) -> Result<(Vec<u8>, CompilationScope), SpannedCompilerError> {
     let ast = parse_datex_script_to_rich_ast_simple_error(
         datex_script,
         &mut options,
-        runtime
+        runtime,
     )?;
     let mut compilation_context = CompilationContext::new(
         Vec::with_capacity(256),
@@ -448,8 +451,7 @@ fn extract_static_value_from_ast(
 /// behaves like the format! macro.
 /// Example:
 /// ```
-/// use datex_core::runtime::Runtime;
-/// use datex_core::compile;
+/// use datex_core::{compile, runtime::Runtime};
 /// let runtime: Runtime;
 ///
 /// # runtime = Runtime::stub();
@@ -496,7 +498,7 @@ fn precompile_to_rich_ast(
             &mut precompiler_data.precompiler_scope_stack.borrow_mut(),
             precompiler_data.rich_ast.metadata.clone(),
             precompiler_options,
-            runtime
+            runtime,
         )?
     } else {
         // if no precompiler data, just use the AST with default metadata
@@ -640,29 +642,32 @@ fn compile_expression(
                 // TODO: validate in precompiler that the value container is actually a shared value
 
                 match value_container {
-                    ValueContainer::Local(value) => {
-                        match placeholder_type {
-                            ValueAccessType::SharedRef | ValueAccessType::SharedRefMut => return Err(CompilerError::SharedRefToNonSharedValue),
-                            ValueAccessType::MoveOrCopy => {
-                                append_value(
-                                    compilation_context.core_context(),
-                                    &value,
-                                )?;
-                            }
-                            ValueAccessType::Clone => {
-                                append_value(
-                                    compilation_context.core_context(),
-                                    &value,
-                                )?;
-                            }
-                            ValueAccessType::Borrow => {
-                                append_value(
-                                    compilation_context.core_context(),
-                                    &value,
-                                )?;
-                            }
+                    ValueContainer::Local(value) => match placeholder_type {
+                        ValueAccessType::SharedRef
+                        | ValueAccessType::SharedRefMut => {
+                            return Err(
+                                CompilerError::SharedRefToNonSharedValue,
+                            );
                         }
-                    }
+                        ValueAccessType::MoveOrCopy => {
+                            append_value(
+                                compilation_context.core_context(),
+                                &value,
+                            )?;
+                        }
+                        ValueAccessType::Clone => {
+                            append_value(
+                                compilation_context.core_context(),
+                                &value,
+                            )?;
+                        }
+                        ValueAccessType::Borrow => {
+                            append_value(
+                                compilation_context.core_context(),
+                                &value,
+                            )?;
+                        }
+                    },
                     ValueContainer::Shared(shared_container) => {
                         match placeholder_type {
                             ValueAccessType::SharedRefMut => {
@@ -1041,15 +1046,12 @@ fn compile_expression(
 
             // create new variable depending on the model
             let variable = match variable_model {
-                VariableModel::Constant => Variable::new_const(
-                    name.clone(),
-                    stack_index,
-                ),
-                VariableModel::VariableSlot => Variable::new_variable_slot(
-                    name.clone(),
-                    kind,
-                    stack_index,
-                ),
+                VariableModel::Constant => {
+                    Variable::new_const(name.clone(), stack_index)
+                }
+                VariableModel::VariableSlot => {
+                    Variable::new_variable_slot(name.clone(), kind, stack_index)
+                }
             };
 
             scope.register_variable_slot(variable);
@@ -1075,7 +1077,9 @@ fn compile_expression(
             // get variable slot address
             let (stack_index, kind) = scope
                 .resolve_variable_name(&name, None)
-                .map_err(|_| CompilerError::AssignmentToExternalVariable(name.clone()))?
+                .map_err(|_| {
+                    CompilerError::AssignmentToExternalVariable(name.clone())
+                })?
                 .ok_or_else(|| {
                     CompilerError::UndeclaredVariable(name.clone())
                 })?;
@@ -1117,10 +1121,12 @@ fn compile_expression(
 
                     append_regular_instruction(
                         compilation_context.cursor(),
-                        RegularInstruction::ModifyStackValue(ModifyStackValue {
-                            index: stack_index,
-                            operator,
-                        }),
+                        RegularInstruction::ModifyStackValue(
+                            ModifyStackValue {
+                                index: stack_index,
+                                operator,
+                            },
+                        ),
                     );
                 }
                 op => core::todo!("#436 Handle assignment operator: {op:?}"),
@@ -1144,9 +1150,9 @@ fn compile_expression(
 
             append_regular_instruction(
                 compilation_context.cursor(),
-                RegularInstruction::SetSharedContainerValue(SetSharedContainerValue {
-                    operator,
-                }),
+                RegularInstruction::SetSharedContainerValue(
+                    SetSharedContainerValue { operator },
+                ),
             );
 
             // compile unbox expression
@@ -1175,19 +1181,35 @@ fn compile_expression(
             compilation_context.mark_has_non_static_value();
 
             let slot_type = match access_type {
-                ValueAccessType::SharedRefMut => InjectedValueType::Shared(SharedInjectedValueType::RefMut),
-                ValueAccessType::SharedRef => InjectedValueType::Shared(SharedInjectedValueType::Ref),
+                ValueAccessType::SharedRefMut => {
+                    InjectedValueType::Shared(SharedInjectedValueType::RefMut)
+                }
+                ValueAccessType::SharedRef => {
+                    InjectedValueType::Shared(SharedInjectedValueType::Ref)
+                }
                 // TODO: map to local slot types depending on type
-                ValueAccessType::MoveOrCopy => InjectedValueType::Shared(SharedInjectedValueType::Move),
+                ValueAccessType::MoveOrCopy => {
+                    InjectedValueType::Shared(SharedInjectedValueType::Move)
+                }
                 // TODO:
-                ValueAccessType::Clone => InjectedValueType::Local(LocalInjectedValueType::Move),
-                ValueAccessType::Borrow => InjectedValueType::Shared(SharedInjectedValueType::Move),
+                ValueAccessType::Clone => {
+                    InjectedValueType::Local(LocalInjectedValueType::Move)
+                }
+                ValueAccessType::Borrow => {
+                    InjectedValueType::Shared(SharedInjectedValueType::Move)
+                }
             };
 
             let slot_access = match access_type {
-                ValueAccessType::SharedRefMut => InstructionCode::GET_STACK_VALUE_SHARED_REF_MUT,
-                ValueAccessType::SharedRef => InstructionCode::GET_STACK_VALUE_SHARED_REF,
-                ValueAccessType::MoveOrCopy => InstructionCode::TAKE_STACK_VALUE,
+                ValueAccessType::SharedRefMut => {
+                    InstructionCode::GET_STACK_VALUE_SHARED_REF_MUT
+                }
+                ValueAccessType::SharedRef => {
+                    InstructionCode::GET_STACK_VALUE_SHARED_REF
+                }
+                ValueAccessType::MoveOrCopy => {
+                    InstructionCode::TAKE_STACK_VALUE
+                }
                 ValueAccessType::Clone => InstructionCode::CLONE_STACK_VALUE,
                 ValueAccessType::Borrow => InstructionCode::BORROW_STACK_VALUE,
             };
@@ -1199,8 +1221,7 @@ fn compile_expression(
                     CompilerError::UndeclaredVariable(name.clone())
                 })?;
             // append binary code to load variable
-            compilation_context
-                .append_instruction_code(slot_access);
+            compilation_context.append_instruction_code(slot_access);
             compilation_context.insert_stack_index(stack_index);
         }
 
@@ -1208,7 +1229,7 @@ fn compile_expression(
         DatexExpressionData::RemoteExecution(RemoteExecution {
             left: caller,
             right: script,
-            injected_variable_count
+            injected_variable_count,
         }) => {
             compilation_context.mark_has_non_static_value();
 
@@ -1219,12 +1240,16 @@ fn compile_expression(
                 ExecutionMode::Static,
             );
 
-            let stack_index_offset = StackIndex(injected_variable_count.unwrap()); // must be set by precompiler
+            let stack_index_offset =
+                StackIndex(injected_variable_count.unwrap()); // must be set by precompiler
 
             let external_scope = compile_rich_ast(
                 &mut execution_block_ctx,
                 RichAst::new(*script, &metadata),
-                CompilationScope::new_with_external_parent_scope(scope, stack_index_offset),
+                CompilationScope::new_with_external_parent_scope(
+                    scope,
+                    stack_index_offset,
+                ),
             )?;
             // reset to current scope
             let external_parent_scope = external_scope
@@ -1239,10 +1264,12 @@ fn compile_expression(
                 RegularInstruction::RemoteExecution(InstructionBlockData {
                     // block size (len of compilation_context.buffer)
                     length: execution_block_ctx.cursor().get_ref().len() as u32,
-                    injected_value_count: external_parent_scope.injected_values.len() as u32,
+                    injected_value_count: external_parent_scope
+                        .injected_values
+                        .len() as u32,
                     injected_values: external_parent_scope.injected_values,
                     body: execution_block_ctx.into_buffer(),
-                })
+                }),
             );
 
             // insert compiled caller expression
@@ -1286,9 +1313,11 @@ fn compile_expression(
                 }
                 "core" => append_get_internal_ref(
                     compilation_context.cursor(),
-                    PointerAddress::from(CoreLibId::Value(CoreLibValueId::Core))
-                        .internal_bytes()
-                        .unwrap(),
+                    PointerAddress::from(CoreLibId::Value(
+                        CoreLibValueId::Core,
+                    ))
+                    .internal_bytes()
+                    .unwrap(),
                 ),
                 _ => {
                     // invalid slot name
@@ -1313,15 +1342,16 @@ fn compile_expression(
         // shared refs
         DatexExpressionData::GetSharedRef(create_shared_ref) => {
             compilation_context.mark_has_non_static_value();
-            compilation_context
-                .append_instruction_code(match create_shared_ref.mutability {
+            compilation_context.append_instruction_code(
+                match create_shared_ref.mutability {
                     ReferenceMutability::Immutable => {
                         InstructionCode::GET_SHARED_REF
                     }
                     ReferenceMutability::Mutable => {
                         InstructionCode::GET_SHARED_REF_MUT
                     }
-                });
+                },
+            );
             scope = compile_expression(
                 compilation_context,
                 RichAst::new(*create_shared_ref.expression, &metadata),
@@ -1520,36 +1550,54 @@ pub mod tests {
         compile_template, parse_datex_script_to_rich_ast_simple_error,
     };
 
-    use crate::{compiler::scope::CompilationScope, global::{
-        instruction_codes::InstructionCode,
-        type_instruction_codes::TypeInstructionCode,
-    }, runtime::execution::context::ExecutionMode};
+    use crate::{
+        compiler::scope::CompilationScope,
+        global::{
+            instruction_codes::InstructionCode,
+            type_instruction_codes::TypeInstructionCode,
+        },
+        runtime::execution::context::ExecutionMode,
+    };
 
-    #[cfg(feature = "disassembler")]
-    use crate::{assert_instructions_equal, assert_regular_instructions_equal};
     #[cfg(feature = "disassembler")]
     use crate::global::protocol_structures::instruction_data::InstructionBlockDataDebugFlat;
+    #[cfg(feature = "disassembler")]
+    use crate::{assert_instructions_equal, assert_regular_instructions_equal};
 
     use crate::{
-        compiler::error::CompilerError, prelude::*,
+        compiler::error::CompilerError,
+        disassembler::print_disassembled,
+        global::protocol_structures::{
+            injected_values::{
+                InjectedValueDeclaration, InjectedValueType,
+                SharedInjectedValueType,
+            },
+            instruction_data::{
+                InstructionBlockData, IntegerData, StackIndex, StatementsData,
+                UInt8Data,
+            },
+            instructions::Instruction,
+            regular_instructions::RegularInstruction,
+        },
+        libs::core::{
+            core_lib_id::CoreLibId,
+            type_id::{CoreLibBaseTypeId, CoreLibTypeId},
+        },
+        prelude::*,
+        runtime::{Runtime, RuntimeConfig, RuntimeRunner},
         shared_values::pointer_address::PointerAddress,
-        values::core_values::integer::typed_integer::TypedInteger,
+        values::core_values::integer::{Integer, typed_integer::TypedInteger},
     };
     use alloc::format;
     use core::assert_matches;
     use log::*;
-    use crate::disassembler::print_disassembled;
-    use crate::global::protocol_structures::injected_values::{InjectedValueDeclaration, InjectedValueType, SharedInjectedValueType};
-    use crate::global::protocol_structures::instruction_data::{InstructionBlockData, IntegerData, StackIndex, StatementsData, UInt8Data};
-    use crate::global::protocol_structures::instructions::Instruction;
-    use crate::global::protocol_structures::regular_instructions::RegularInstruction;
-    use crate::libs::core::core_lib_id::CoreLibId;
-    use crate::libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId};
-    use crate::runtime::{Runtime, RuntimeConfig, RuntimeRunner};
-    use crate::values::core_values::integer::Integer;
     fn compile_and_log(datex_script: &str) -> Vec<u8> {
-        let (result, _) =
-            compile_script(datex_script, CompileOptions::default(), Runtime::stub()).unwrap();
+        let (result, _) = compile_script(
+            datex_script,
+            CompileOptions::default(),
+            Runtime::stub(),
+        )
+        .unwrap();
         info!(
             "{:?}",
             result
@@ -1563,9 +1611,12 @@ pub mod tests {
 
     fn get_compilation_context(script: &str) -> CompilationContext {
         let mut options = CompileOptions::default();
-        let ast =
-            parse_datex_script_to_rich_ast_simple_error(script, &mut options, Runtime::stub())
-                .unwrap();
+        let ast = parse_datex_script_to_rich_ast_simple_error(
+            script,
+            &mut options,
+            Runtime::stub(),
+        )
+        .unwrap();
 
         let mut compilation_context = CompilationContext::new(
             Vec::with_capacity(256),
@@ -1594,7 +1645,7 @@ pub mod tests {
                 let (dxb, new_compilation_scope) = compile_script(
                     script_part,
                     CompileOptions::new_with_scope(compilation_scope),
-                    Runtime::stub()
+                    Runtime::stub(),
                 )
                 .unwrap();
                 compilation_scope = new_compilation_scope;
@@ -1673,7 +1724,8 @@ pub mod tests {
         );
 
         let datex_script =
-            "const a = shared mut 42u8; const b = 'mut 69u8; a is b".to_string(); // a is b
+            "const a = shared mut 42u8; const b = 'mut 69u8; a is b"
+                .to_string(); // a is b
         let result = compile_and_log(&datex_script);
         assert_eq!(
             result,
@@ -1915,8 +1967,12 @@ pub mod tests {
             &result,
             [
                 Instruction::Regular(RegularInstruction::Range),
-                Instruction::Regular(RegularInstruction::Integer(IntegerData(Integer::new(start)))),
-                Instruction::Regular(RegularInstruction::Integer(IntegerData(Integer::new(end))))
+                Instruction::Regular(RegularInstruction::Integer(IntegerData(
+                    Integer::new(start)
+                ))),
+                Instruction::Regular(RegularInstruction::Integer(IntegerData(
+                    Integer::new(end)
+                )))
             ]
         )
     }
@@ -2346,7 +2402,7 @@ pub mod tests {
                 Some(TypedInteger::from(2u8).into()),
             ],
             CompileOptions::default(),
-            Runtime::stub()
+            Runtime::stub(),
         );
         assert_eq!(
             result.unwrap().0,
@@ -2369,8 +2425,12 @@ pub mod tests {
 
     #[test]
     fn compile_macro_multi() {
-        let result =
-            compile!(Runtime::stub(), "? + ?", TypedInteger::from(1u8), TypedInteger::from(2u8));
+        let result = compile!(
+            Runtime::stub(),
+            "? + ?",
+            TypedInteger::from(1u8),
+            TypedInteger::from(2u8)
+        );
         assert_eq!(
             result.unwrap().0,
             vec![
@@ -2459,7 +2519,7 @@ pub mod tests {
         let (res, _) = compile_script_or_return_static_value(
             script,
             CompileOptions::default(),
-            Runtime::stub()
+            Runtime::stub(),
         )
         .unwrap();
         assert_matches!(
@@ -2471,7 +2531,7 @@ pub mod tests {
         let (res, _) = compile_script_or_return_static_value(
             script,
             CompileOptions::default(),
-            Runtime::stub()
+            Runtime::stub(),
         )
         .unwrap();
         assert_matches!(
@@ -2502,15 +2562,22 @@ pub mod tests {
             z;
         "#;
         let (res, _) =
-            compile_script(script, CompileOptions::default(), Runtime::stub()).unwrap();
+            compile_script(script, CompileOptions::default(), Runtime::stub())
+                .unwrap();
         print_disassembled(&res);
         assert_regular_instructions_equal!(
             &res,
             [
-                RegularInstruction::ShortStatements(StatementsData {statements_count: 5, terminated: true}),
+                RegularInstruction::ShortStatements(StatementsData {
+                    statements_count: 5,
+                    terminated: true
+                }),
                 RegularInstruction::PushToStack,
                 RegularInstruction::UInt8(UInt8Data(1)),
-                RegularInstruction::ShortStatements(StatementsData {statements_count: 3, terminated: true}),
+                RegularInstruction::ShortStatements(StatementsData {
+                    statements_count: 3,
+                    terminated: true
+                }),
                 RegularInstruction::PushToStack,
                 RegularInstruction::UInt8(UInt8Data(2)),
                 RegularInstruction::CloneStackValue(StackIndex(0)),
@@ -2523,12 +2590,12 @@ pub mod tests {
         );
     }
 
-
     #[test]
     fn remote_execution() {
         let script = "42u8 :: 43u8";
         let (res, _) =
-            compile_script(script, CompileOptions::default(), Runtime::stub()).unwrap();
+            compile_script(script, CompileOptions::default(), Runtime::stub())
+                .unwrap();
         assert_eq!(
             res,
             vec![
@@ -2559,7 +2626,8 @@ pub mod tests {
     fn remote_execution_expression() {
         let script = "42u8 :: 1u8 + 2u8";
         let (res, _) =
-            compile_script(script, CompileOptions::default(), Runtime::stub()).unwrap();
+            compile_script(script, CompileOptions::default(), Runtime::stub())
+                .unwrap();
         assert_eq!(
             res,
             vec![
@@ -2589,16 +2657,12 @@ pub mod tests {
         );
     }
 
-
     #[test]
     fn remote_execution_invalid_reassignment_of_external_variable() {
         flexi_logger::init();
         let script = "var x = 42u8; 1u8 :: (x = 43u8)";
-        let result = compile_script(
-            script,
-            CompileOptions::default(),
-            Runtime::stub()
-        );
+        let result =
+            compile_script(script, CompileOptions::default(), Runtime::stub());
         assert!(result.is_err());
         assert_matches!(
             result.err().unwrap().error,
@@ -2611,22 +2675,33 @@ pub mod tests {
     fn remote_execution_injected_const() {
         let script = "const x = 42u8; 1u8 :: x";
         let (res, _) =
-            compile_script(script, CompileOptions::default(), Runtime::stub()).unwrap();
+            compile_script(script, CompileOptions::default(), Runtime::stub())
+                .unwrap();
         assert_regular_instructions_equal!(
             &res,
             [
-                RegularInstruction::ShortStatements(StatementsData {statements_count: 2, terminated: false}),
+                RegularInstruction::ShortStatements(StatementsData {
+                    statements_count: 2,
+                    terminated: false
+                }),
                 RegularInstruction::PushToStack,
                 RegularInstruction::UInt8(UInt8Data(42)),
-                RegularInstruction::_RemoteExecutionDebugFlat(InstructionBlockDataDebugFlat {
-                    length: 5,
-                    injected_variable_count: 1,
-                    // FIXME should be local
-                    injected_values: vec![InjectedValueDeclaration {index: StackIndex(0), ty: InjectedValueType::Shared(SharedInjectedValueType::Move)}],
-                    body: vec![
-                        Instruction::Regular(RegularInstruction::TakeStackValue(StackIndex(0))),
-                    ]
-                }),
+                RegularInstruction::_RemoteExecutionDebugFlat(
+                    InstructionBlockDataDebugFlat {
+                        length: 5,
+                        injected_variable_count: 1,
+                        // FIXME should be local
+                        injected_values: vec![InjectedValueDeclaration {
+                            index: StackIndex(0),
+                            ty: InjectedValueType::Shared(
+                                SharedInjectedValueType::Move
+                            )
+                        }],
+                        body: vec![Instruction::Regular(
+                            RegularInstruction::TakeStackValue(StackIndex(0))
+                        ),]
+                    }
+                ),
                 RegularInstruction::UInt8(UInt8Data(1)),
             ]
         );
@@ -2639,22 +2714,33 @@ pub mod tests {
         // remote context, its state is synced via a ref (VariableReference model)
         let script = "const x = shared 42u8; 1u8 :: x";
         let (res, _) =
-            compile_script(script, CompileOptions::default(), Runtime::stub()).unwrap();
+            compile_script(script, CompileOptions::default(), Runtime::stub())
+                .unwrap();
         assert_regular_instructions_equal!(
             &res,
             [
-                RegularInstruction::ShortStatements(StatementsData {statements_count: 2, terminated: false}),
+                RegularInstruction::ShortStatements(StatementsData {
+                    statements_count: 2,
+                    terminated: false
+                }),
                 RegularInstruction::PushToStack,
                 RegularInstruction::CreateShared,
                 RegularInstruction::UInt8(UInt8Data(42)),
-                RegularInstruction::_RemoteExecutionDebugFlat(InstructionBlockDataDebugFlat {
-                    length: 5,
-                    injected_variable_count: 1,
-                    injected_values: vec![InjectedValueDeclaration {index: StackIndex(0), ty: InjectedValueType::Shared(SharedInjectedValueType::Move)}],
-                    body: vec![
-                        Instruction::Regular(RegularInstruction::TakeStackValue(StackIndex(0))),
-                    ],
-                }),
+                RegularInstruction::_RemoteExecutionDebugFlat(
+                    InstructionBlockDataDebugFlat {
+                        length: 5,
+                        injected_variable_count: 1,
+                        injected_values: vec![InjectedValueDeclaration {
+                            index: StackIndex(0),
+                            ty: InjectedValueType::Shared(
+                                SharedInjectedValueType::Move
+                            )
+                        }],
+                        body: vec![Instruction::Regular(
+                            RegularInstruction::TakeStackValue(StackIndex(0))
+                        ),],
+                    }
+                ),
                 RegularInstruction::UInt8(UInt8Data(1)),
             ]
         )
@@ -2665,22 +2751,35 @@ pub mod tests {
     fn remote_execution_injected_shared_ref() {
         let script = "const x = shared 42u8; 1u8 :: 'x";
         let (res, _) =
-            compile_script(script, CompileOptions::default(), Runtime::stub()).unwrap();
+            compile_script(script, CompileOptions::default(), Runtime::stub())
+                .unwrap();
         assert_regular_instructions_equal!(
             &res,
             [
-                RegularInstruction::ShortStatements(StatementsData {statements_count: 2, terminated: false}),
+                RegularInstruction::ShortStatements(StatementsData {
+                    statements_count: 2,
+                    terminated: false
+                }),
                 RegularInstruction::PushToStack,
                 RegularInstruction::CreateShared,
                 RegularInstruction::UInt8(UInt8Data(42)),
-                RegularInstruction::_RemoteExecutionDebugFlat(InstructionBlockDataDebugFlat {
-                    length: 5,
-                    injected_variable_count: 1,
-                    injected_values: vec![InjectedValueDeclaration {index: StackIndex(0), ty: InjectedValueType::Shared(SharedInjectedValueType::Ref)}],
-                    body: vec![
-                        Instruction::Regular(RegularInstruction::GetStackValueSharedRef(StackIndex(0))),
-                    ],
-                }),
+                RegularInstruction::_RemoteExecutionDebugFlat(
+                    InstructionBlockDataDebugFlat {
+                        length: 5,
+                        injected_variable_count: 1,
+                        injected_values: vec![InjectedValueDeclaration {
+                            index: StackIndex(0),
+                            ty: InjectedValueType::Shared(
+                                SharedInjectedValueType::Ref
+                            )
+                        }],
+                        body: vec![Instruction::Regular(
+                            RegularInstruction::GetStackValueSharedRef(
+                                StackIndex(0)
+                            )
+                        ),],
+                    }
+                ),
                 RegularInstruction::UInt8(UInt8Data(1)),
             ]
         )
@@ -2691,29 +2790,53 @@ pub mod tests {
     fn remote_execution_injected_consts() {
         let script = "const x = 42u8; const y = 69u8; 1u8 :: x + y";
         let (res, _) =
-            compile_script(script, CompileOptions::default(), Runtime::stub()).unwrap();
+            compile_script(script, CompileOptions::default(), Runtime::stub())
+                .unwrap();
         assert_regular_instructions_equal!(
             &res,
             [
-                RegularInstruction::ShortStatements(StatementsData {statements_count: 3, terminated: false}),
+                RegularInstruction::ShortStatements(StatementsData {
+                    statements_count: 3,
+                    terminated: false
+                }),
                 RegularInstruction::PushToStack,
                 RegularInstruction::UInt8(UInt8Data(42)),
                 RegularInstruction::PushToStack,
                 RegularInstruction::UInt8(UInt8Data(69)),
-                RegularInstruction::_RemoteExecutionDebugFlat(InstructionBlockDataDebugFlat {
-                    length: 11,
-                    injected_variable_count: 2,
-                    injected_values: vec![
-                        // FIXME should be local
-                        InjectedValueDeclaration {index: StackIndex(0), ty: InjectedValueType::Shared(SharedInjectedValueType::Move)},
-                        InjectedValueDeclaration {index: StackIndex(1), ty: InjectedValueType::Shared(SharedInjectedValueType::Move)},
-                    ],
-                    body: vec![
-                        Instruction::Regular(RegularInstruction::Add),
-                        Instruction::Regular(RegularInstruction::TakeStackValue(StackIndex(0))),
-                        Instruction::Regular(RegularInstruction::TakeStackValue(StackIndex(1))),
-                    ],
-                }),
+                RegularInstruction::_RemoteExecutionDebugFlat(
+                    InstructionBlockDataDebugFlat {
+                        length: 11,
+                        injected_variable_count: 2,
+                        injected_values: vec![
+                            // FIXME should be local
+                            InjectedValueDeclaration {
+                                index: StackIndex(0),
+                                ty: InjectedValueType::Shared(
+                                    SharedInjectedValueType::Move
+                                )
+                            },
+                            InjectedValueDeclaration {
+                                index: StackIndex(1),
+                                ty: InjectedValueType::Shared(
+                                    SharedInjectedValueType::Move
+                                )
+                            },
+                        ],
+                        body: vec![
+                            Instruction::Regular(RegularInstruction::Add),
+                            Instruction::Regular(
+                                RegularInstruction::TakeStackValue(StackIndex(
+                                    0
+                                ))
+                            ),
+                            Instruction::Regular(
+                                RegularInstruction::TakeStackValue(StackIndex(
+                                    1
+                                ))
+                            ),
+                        ],
+                    }
+                ),
                 RegularInstruction::UInt8(UInt8Data(1)),
             ]
         );
@@ -2724,31 +2847,61 @@ pub mod tests {
         let script =
             "const x = 42u8; const y = 69u8; 1u8 :: (const x = 5u8; x + y)";
         let (res, _) =
-            compile_script(script, CompileOptions::default(), Runtime::stub()).unwrap();
+            compile_script(script, CompileOptions::default(), Runtime::stub())
+                .unwrap();
         assert_regular_instructions_equal!(
             &res,
             [
-                RegularInstruction::ShortStatements(StatementsData {statements_count: 3, terminated: false}),
+                RegularInstruction::ShortStatements(StatementsData {
+                    statements_count: 3,
+                    terminated: false
+                }),
                 RegularInstruction::PushToStack,
                 RegularInstruction::UInt8(UInt8Data(42)),
                 RegularInstruction::PushToStack,
                 RegularInstruction::UInt8(UInt8Data(69)),
-                RegularInstruction::_RemoteExecutionDebugFlat(InstructionBlockDataDebugFlat {
-                    length: 17,
-                    injected_variable_count: 1,
-                    injected_values: vec![
-                        // FIXME should be local
-                        InjectedValueDeclaration {index: StackIndex(1), ty: InjectedValueType::Shared(SharedInjectedValueType::Move)},
-                    ],
-                    body: vec![
-                        Instruction::Regular(RegularInstruction::ShortStatements(StatementsData {statements_count: 2, terminated: false})),
-                        Instruction::Regular(RegularInstruction::PushToStack),
-                        Instruction::Regular(RegularInstruction::UInt8(UInt8Data(5))),
-                        Instruction::Regular(RegularInstruction::Add),
-                        Instruction::Regular(RegularInstruction::TakeStackValue(StackIndex(1))),
-                        Instruction::Regular(RegularInstruction::TakeStackValue(StackIndex(0))),
-                    ],
-                }),
+                RegularInstruction::_RemoteExecutionDebugFlat(
+                    InstructionBlockDataDebugFlat {
+                        length: 17,
+                        injected_variable_count: 1,
+                        injected_values: vec![
+                            // FIXME should be local
+                            InjectedValueDeclaration {
+                                index: StackIndex(1),
+                                ty: InjectedValueType::Shared(
+                                    SharedInjectedValueType::Move
+                                )
+                            },
+                        ],
+                        body: vec![
+                            Instruction::Regular(
+                                RegularInstruction::ShortStatements(
+                                    StatementsData {
+                                        statements_count: 2,
+                                        terminated: false
+                                    }
+                                )
+                            ),
+                            Instruction::Regular(
+                                RegularInstruction::PushToStack
+                            ),
+                            Instruction::Regular(RegularInstruction::UInt8(
+                                UInt8Data(5)
+                            )),
+                            Instruction::Regular(RegularInstruction::Add),
+                            Instruction::Regular(
+                                RegularInstruction::TakeStackValue(StackIndex(
+                                    1
+                                ))
+                            ),
+                            Instruction::Regular(
+                                RegularInstruction::TakeStackValue(StackIndex(
+                                    0
+                                ))
+                            ),
+                        ],
+                    }
+                ),
                 RegularInstruction::UInt8(UInt8Data(1)),
             ]
         );
@@ -2758,7 +2911,8 @@ pub mod tests {
     fn remote_execution_nested() {
         let script = "const x = 42u8; (1u8 :: (2u8 :: x))";
         let (res, _) =
-            compile_script(script, CompileOptions::default(), Runtime::stub()).unwrap();
+            compile_script(script, CompileOptions::default(), Runtime::stub())
+                .unwrap();
 
         assert_eq!(
             res,
@@ -2830,7 +2984,8 @@ pub mod tests {
     fn remote_execution_nested2() {
         let script = "const x = 42u8; const y = 43u8; (1u8 :: (y :: x))";
         let (res, _) =
-            compile_script(script, CompileOptions::default(),Runtime::stub()).unwrap();
+            compile_script(script, CompileOptions::default(), Runtime::stub())
+                .unwrap();
 
         assert_eq!(
             res,
@@ -2914,38 +3069,43 @@ pub mod tests {
     #[test]
     fn assignment_to_const() {
         let script = "const a = 42; a = 43";
-        let result = compile_script(script, CompileOptions::default(), Runtime::stub())
-            .map_err(|e| e.error);
+        let result =
+            compile_script(script, CompileOptions::default(), Runtime::stub())
+                .map_err(|e| e.error);
         assert_matches!(result, Err(CompilerError::AssignmentToConst { .. }));
     }
 
     #[test]
     fn assignment_to_const_mut() {
         let script = "const a = &mut 42; a = 43";
-        let result = compile_script(script, CompileOptions::default(), Runtime::stub())
-            .map_err(|e| e.error);
+        let result =
+            compile_script(script, CompileOptions::default(), Runtime::stub())
+                .map_err(|e| e.error);
         assert_matches!(result, Err(CompilerError::AssignmentToConst { .. }));
     }
 
     #[test]
     fn internal_assignment_to_const_mut() {
         let script = "const a = &mut 42; *a = 43";
-        let result = compile_script(script, CompileOptions::default(), Runtime::stub());
+        let result =
+            compile_script(script, CompileOptions::default(), Runtime::stub());
         assert_matches!(result, Ok(_));
     }
 
     #[test]
     fn addition_to_const_mut_ref() {
         let script = "const a = &mut 42; *a += 1;";
-        let result = compile_script(script, CompileOptions::default(), Runtime::stub());
+        let result =
+            compile_script(script, CompileOptions::default(), Runtime::stub());
         assert_matches!(result, Ok(_));
     }
 
     #[test]
     fn addition_to_const_variable() {
         let script = "const a = 42; a += 1";
-        let result = compile_script(script, CompileOptions::default(), Runtime::stub())
-            .map_err(|e| e.error);
+        let result =
+            compile_script(script, CompileOptions::default(), Runtime::stub())
+                .map_err(|e| e.error);
         assert_matches!(result, Err(CompilerError::AssignmentToConst { .. }));
     }
 
@@ -2953,7 +3113,8 @@ pub mod tests {
     fn internal_slot_endpoint() {
         let script = "#endpoint";
         let (res, _) =
-            compile_script(script, CompileOptions::default(), Runtime::stub()).unwrap();
+            compile_script(script, CompileOptions::default(), Runtime::stub())
+                .unwrap();
         assert_eq!(
             res,
             vec![
@@ -2971,7 +3132,8 @@ pub mod tests {
     fn internal_slot_caller() {
         let script = "#caller";
         let (res, _) =
-            compile_script(script, CompileOptions::default(), Runtime::stub()).unwrap();
+            compile_script(script, CompileOptions::default(), Runtime::stub())
+                .unwrap();
         assert_eq!(
             res,
             vec![
@@ -2990,7 +3152,8 @@ pub mod tests {
     fn unbox() {
         let script = "*10u8";
         let (res, _) =
-            compile_script(script, CompileOptions::default(), Runtime::stub()).unwrap();
+            compile_script(script, CompileOptions::default(), Runtime::stub())
+                .unwrap();
         assert_eq!(
             res,
             vec![
@@ -3006,7 +3169,8 @@ pub mod tests {
     fn unbox_slot() {
         let script = "const x = 10u8; *x";
         let (res, _) =
-            compile_script(script, CompileOptions::default(), Runtime::stub()).unwrap();
+            compile_script(script, CompileOptions::default(), Runtime::stub())
+                .unwrap();
         assert_eq!(
             res,
             vec![
@@ -3031,7 +3195,8 @@ pub mod tests {
     fn type_literal_integer() {
         let script = "type<1>";
         let (res, _) =
-            compile_script(script, CompileOptions::default(), Runtime::stub()).unwrap();
+            compile_script(script, CompileOptions::default(), Runtime::stub())
+                .unwrap();
         assert_eq!(
             res,
             vec![
@@ -3052,14 +3217,17 @@ pub mod tests {
     fn type_core_type_integer() {
         let script = "integer";
         let (res, _) =
-            compile_script(script, CompileOptions::default(), Runtime::stub()).unwrap();
+            compile_script(script, CompileOptions::default(), Runtime::stub())
+                .unwrap();
         let mut instructions: Vec<u8> =
             vec![InstructionCode::GET_INTERNAL_SHARED_REF.into()];
         // pointer id
         instructions.append(
-            &mut PointerAddress::from(CoreLibId::Type(CoreLibTypeId::Base(CoreLibBaseTypeId::Integer)))
-                .bytes()
-                .to_vec(),
+            &mut PointerAddress::from(CoreLibId::Type(CoreLibTypeId::Base(
+                CoreLibBaseTypeId::Integer,
+            )))
+            .bytes()
+            .to_vec(),
         );
         assert_eq!(res, instructions);
     }

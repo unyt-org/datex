@@ -3,11 +3,17 @@ use crate::{
     types::type_definition::TypeDefinition,
 };
 
+use crate::{
+    shared_values::shared_containers::{
+        ReferenceMutability, SharedContainerOwnership,
+    },
+    types::type_definition_with_metadata::{
+        LocalMutability, LocalReferenceMutability,
+    },
+};
 use modular_bitfield::Specifier;
 use num_enum::TryFromPrimitive;
 use strum::Display;
-use crate::shared_values::shared_containers::{ReferenceMutability, SharedContainerOwnership};
-use crate::types::type_definition_with_metadata::{LocalMutability, LocalReferenceMutability};
 
 #[allow(non_camel_case_types)]
 #[derive(
@@ -77,10 +83,14 @@ impl From<&TypeOwnershipCode> for SharedContainerOwnership {
     fn from(value: &TypeOwnershipCode) -> Self {
         match value {
             TypeOwnershipCode::MutableReference => {
-                SharedContainerOwnership::Referenced(ReferenceMutability::Mutable)
+                SharedContainerOwnership::Referenced(
+                    ReferenceMutability::Mutable,
+                )
             }
             TypeOwnershipCode::ImmutableReference => {
-                SharedContainerOwnership::Referenced(ReferenceMutability::Immutable)
+                SharedContainerOwnership::Referenced(
+                    ReferenceMutability::Immutable,
+                )
             }
             TypeOwnershipCode::Value => SharedContainerOwnership::Owned,
         }
@@ -90,13 +100,15 @@ impl From<&TypeOwnershipCode> for SharedContainerOwnership {
 impl From<&SharedContainerOwnership> for TypeOwnershipCode {
     fn from(value: &SharedContainerOwnership) -> Self {
         match value {
-            SharedContainerOwnership::Referenced(ReferenceMutability::Mutable) => {
-                TypeOwnershipCode::MutableReference
-            }
-            SharedContainerOwnership::Referenced(ReferenceMutability::Immutable) => {
+            SharedContainerOwnership::Referenced(
+                ReferenceMutability::Mutable,
+            ) => TypeOwnershipCode::MutableReference,
+            SharedContainerOwnership::Referenced(
+                ReferenceMutability::Immutable,
+            ) => TypeOwnershipCode::ImmutableReference,
+            SharedContainerOwnership::Owned => {
                 TypeOwnershipCode::ImmutableReference
             }
-            SharedContainerOwnership::Owned => TypeOwnershipCode::ImmutableReference,
         }
     }
 }

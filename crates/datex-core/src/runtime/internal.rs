@@ -21,7 +21,7 @@ use crate::{
     },
     prelude::*,
     runtime::{
-        RuntimeConfig, RuntimeConfigInterface,
+        Runtime, RuntimeConfig, RuntimeConfigInterface,
         execution::{
             ExecutionError, InvalidProgramError,
             context::{
@@ -31,13 +31,14 @@ use crate::{
             execution_input::ExecutionCallerMetadata,
         },
         memory::Memory,
+        pointer_address_provider::SelfOwnedPointerAddressProvider,
         request_move::compile_request_move,
     },
     shared_values::{
-        pointer_address::{ExternalPointerAddress, SelfOwnedPointerAddress},
-        shared_containers::{
-            OwnedSharedContainer, SharedContainer, SharedContainerMutability,
+        pointer_address::{
+            ExternalPointerAddress, PointerAddress, SelfOwnedPointerAddress,
         },
+        shared_containers::{OwnedSharedContainer, SharedContainerMutability},
     },
     time::Instant,
     utils::task_manager::TaskManager,
@@ -49,9 +50,6 @@ use crate::{
 use alloc::rc::Rc;
 use core::{cell::RefCell, pin::Pin, slice};
 use log::{debug, error, info};
-use crate::runtime::pointer_address_provider::SelfOwnedPointerAddressProvider;
-use crate::runtime::Runtime;
-use crate::shared_values::pointer_address::PointerAddress;
 
 #[derive(Debug)]
 pub struct RuntimeInternal {
@@ -137,7 +135,9 @@ impl RuntimeInternal {
         RuntimeInternal::new(
             Endpoint::default(),
             RefCell::new(Memory::new()),
-            RefCell::new(SelfOwnedPointerAddressProvider::new(Endpoint::default())),
+            RefCell::new(SelfOwnedPointerAddressProvider::new(
+                Endpoint::default(),
+            )),
             RuntimeConfig::default(),
             ComHub::create(Endpoint::default(), sender).0,
             TaskManager::create().0,
@@ -207,7 +207,10 @@ impl RuntimeInternal {
         inserted_values: &[ValueContainer],
         execution_context: Option<&mut ExecutionContext>,
     ) -> Result<Option<ValueContainer>, ScriptExecutionError> {
-        let execution_context = get_execution_context!(Runtime::from(self.clone()), execution_context);
+        let execution_context = get_execution_context!(
+            Runtime::from(self.clone()),
+            execution_context
+        );
         let compile_start = Instant::now();
         let dxb = execution_context.compile(script, inserted_values)?;
         debug!(
@@ -237,7 +240,10 @@ impl RuntimeInternal {
         inserted_values: &[ValueContainer],
         execution_context: Option<&mut ExecutionContext>,
     ) -> Result<Option<ValueContainer>, ScriptExecutionError> {
-        let execution_context = get_execution_context!(Runtime::from(self.clone()), execution_context);
+        let execution_context = get_execution_context!(
+            Runtime::from(self.clone()),
+            execution_context
+        );
         let compile_start = Instant::now();
         let dxb = execution_context.compile(script, inserted_values)?;
         debug!(
@@ -271,8 +277,10 @@ impl RuntimeInternal {
         >,
     > {
         Box::pin(async move {
-            let execution_context =
-                get_execution_context!(Runtime::from(self.clone()), execution_context);
+            let execution_context = get_execution_context!(
+                Runtime::from(self.clone()),
+                execution_context
+            );
             match execution_context {
                 ExecutionContext::Remote(context) => {
                     RuntimeInternal::execute_remote(self, context, dxb_body)
@@ -291,7 +299,8 @@ impl RuntimeInternal {
         execution_context: Option<&mut ExecutionContext>,
         _end_execution: bool,
     ) -> Result<Option<ValueContainer>, ExecutionError> {
-        let execution_context = get_execution_context!(Runtime::from(self), execution_context);
+        let execution_context =
+            get_execution_context!(Runtime::from(self), execution_context);
         match execution_context {
             ExecutionContext::Remote(_) => {
                 Err(ExecutionError::RequiresAsyncExecution)
@@ -441,7 +450,10 @@ impl RuntimeInternal {
         block: DXBBlock,
         execution_context: Option<&mut ExecutionContext>,
     ) -> Result<Option<ValueContainer>, ExecutionError> {
-        let execution_context = get_execution_context!(Runtime::from(self.clone()), execution_context);
+        let execution_context = get_execution_context!(
+            Runtime::from(self.clone()),
+            execution_context
+        );
         // assert that the execution context is local
         if !core::matches!(execution_context, ExecutionContext::Local(_)) {
             unreachable!(
@@ -514,7 +526,7 @@ impl RuntimeInternal {
                 let pointer_values = list.into_vec();
                 let owned_values = pointer_values.into_iter()
                     .zip(pointer_mapping.into_iter())
-                    .map(|(value, ((mutability, _), new_address))| {
+                    .map(|(_value, ((_mutability, _), _new_address))| {
                         todo!("call move to local on existing ref if exists?! otherwise create new owned container")
                 }).collect::<Vec<_>>();
                 Ok(owned_values)
@@ -540,7 +552,7 @@ impl RuntimeInternal {
         self.moving_pointers
             .borrow_mut()
             .entry(new_owner)
-            .or_insert_with(HashMap::new)
+            .or_default()
             .extend(pointers);
     }
 
@@ -571,10 +583,11 @@ impl RuntimeInternal {
                 let value = shared_container.value_container().clone();
 
                 // make sure external pointer does not already exist in memory
-                if memory.has_reference(&PointerAddress::External(new_address.clone())) {
+                if memory.has_reference(&PointerAddress::External(
+                    new_address.clone(),
+                )) {
                     return Err(ExecutionError::InvalidMove);
-                }
-                else {
+                } else {
                     // Note: safe because we checked before if address is already in memory
                     unsafe {
                         shared_container.move_to_external(new_address, memory);

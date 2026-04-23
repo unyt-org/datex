@@ -1,5 +1,5 @@
 use crate::traits::{identity::Identity, structural_eq::StructuralEq};
-use core::{cell::RefCell, result::Result};
+use core::result::Result;
 
 use super::value::Value;
 use crate::{
@@ -16,21 +16,30 @@ use crate::{
 };
 
 use crate::{
+    runtime::memory::Memory,
     serde::{error::SerializationError, serializer::to_value_container},
     shared_values::{errors::AccessError, shared_containers::SharedContainer},
-    types::{r#type::Type, type_definition_with_metadata::TypeMetadata},
+    types::{
+        r#type::Type,
+        type_definition_with_metadata::{
+            TypeDefinitionWithMetadata, TypeMetadata,
+        },
+    },
+    value_updates::{
+        errors::UpdateError,
+        update_data::{
+            AppendEntryUpdateData, DeleteEntryUpdateData, ListSpliceUpdateData,
+            ReplaceUpdateData, SetEntryUpdateData,
+        },
+        update_handler::UpdateHandler,
+    },
 };
 use core::{
     fmt::Display,
     hash::{Hash, Hasher},
     ops::{Add, FnOnce, Neg, Sub},
 };
-use serde::{Deserialize, de::DeserializeOwned, Serialize};
-use crate::runtime::memory::Memory;
-use crate::types::type_definition_with_metadata::TypeDefinitionWithMetadata;
-use crate::value_updates::errors::UpdateError;
-use crate::value_updates::update_data::{AppendEntryUpdateData, DeleteEntryUpdateData, ListSpliceUpdateData, ReplaceUpdateData, SetEntryUpdateData, Update};
-use crate::value_updates::update_handler::UpdateHandler;
+use serde::{Deserialize, Serialize, de::DeserializeOwned};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum ValueError {
@@ -95,14 +104,15 @@ impl From<BorrowedValueKey<'_>> for ValueKey {
     }
 }
 
-
 impl<'a> BorrowedValueKey<'a> {
     pub fn with_value_container<R>(
         &self,
         callback: impl FnOnce(&ValueContainer) -> R,
     ) -> R {
         match self {
-            BorrowedValueKey::Value(value_container) => callback(value_container),
+            BorrowedValueKey::Value(value_container) => {
+                callback(value_container)
+            }
             BorrowedValueKey::Text(text) => {
                 let value_container =
                     ValueContainer::Local(text.as_ref().into());
@@ -246,8 +256,12 @@ impl<'a> From<BorrowedValueKey<'a>> for ValueContainer {
             BorrowedValueKey::Text(text) => {
                 ValueContainer::Local(text.into_owned().into())
             }
-            BorrowedValueKey::Index(index) => ValueContainer::Local(index.into()),
-            BorrowedValueKey::Value(value_container) => value_container.into_owned(),
+            BorrowedValueKey::Index(index) => {
+                ValueContainer::Local(index.into())
+            }
+            BorrowedValueKey::Value(value_container) => {
+                value_container.into_owned()
+            }
         }
     }
 }
@@ -366,10 +380,7 @@ impl ValueContainer {
     }
 
     /// Calls a fn with a reference to the current inner collapsed value of the  container
-    pub fn with_collapsed_value<R, F: FnOnce(&Value) -> R>(
-        &self,
-        f: F,
-    ) -> R {
+    pub fn with_collapsed_value<R, F: FnOnce(&Value) -> R>(&self, f: F) -> R {
         match self {
             ValueContainer::Local(value) => f(value),
             ValueContainer::Shared(shared) => shared.with_collapsed_value(f),
@@ -389,8 +400,8 @@ impl ValueContainer {
         }
     }
 
-    /// Gets a cloned, collapsed inner value. 
-    /// Use [ValueContainer::with_collapsed_value] instead whenever possible 
+    /// Gets a cloned, collapsed inner value.
+    /// Use [ValueContainer::with_collapsed_value] instead whenever possible
     /// or match the [ValueContainer]
     pub fn get_cloned_value(&self) -> Value {
         self.with_collapsed_value(|value| value.clone())
@@ -399,10 +410,11 @@ impl ValueContainer {
     /// Tries to get the current collapsed value as a specific [CoreValue] variant.
     /// Does not perform any type conversion.
     /// Note: this performs a clone on the collapsed value
-    pub fn try_as<T>(&self) -> Option<T>  where T: TryFrom<CoreValue> {
-        self.with_collapsed_value(|value| {
-            value.inner.clone().try_as()
-        })
+    pub fn try_as<T>(&self) -> Option<T>
+    where
+        T: TryFrom<CoreValue>,
+    {
+        self.with_collapsed_value(|value| value.inner.clone().try_as())
     }
 
     /// Performs a clone used by the "clone" command
@@ -421,16 +433,16 @@ impl ValueContainer {
     pub fn actual_type(&self, memory: &Memory) -> Type {
         match self {
             ValueContainer::Local(local) => local.actual_type(memory).clone(),
-            ValueContainer::Shared(shared) => shared.actual_type(memory).clone(),
+            ValueContainer::Shared(shared) => {
+                shared.actual_type(memory).clone()
+            }
         }
     }
 
     /// Returns the actual type that describes the value container (e.g. integer or 'mut shared mut integer).
     pub fn actual_container_type(&self, memory: &Memory) -> Type {
         match self {
-            ValueContainer::Local(value) => {
-                value.actual_type(memory)
-            }
+            ValueContainer::Local(value) => value.actual_type(memory),
             ValueContainer::Shared(shared) => {
                 let inner_type =
                     shared.value_container().actual_container_type(memory);
@@ -439,7 +451,7 @@ impl ValueContainer {
                     metadata: TypeMetadata::Shared {
                         mutability: shared.container_mutability(),
                         ownership: shared.ownership(),
-                    }
+                    },
                 })
             }
         }
@@ -514,43 +526,68 @@ impl ValueContainer {
 }
 
 impl UpdateHandler for ValueContainer {
-    fn try_replace(&mut self, data: ReplaceUpdateData, source_id: TransceiverId) -> Result<ValueContainer, UpdateError> {
+    fn try_replace(
+        &mut self,
+        data: ReplaceUpdateData,
+        source_id: TransceiverId,
+    ) -> Result<ValueContainer, UpdateError> {
         match self {
             ValueContainer::Local(value) => value.try_replace(data, source_id),
-            ValueContainer::Shared(reference) => {
-                reference.base_shared_container_mut().try_replace(data, source_id)
-            }
+            ValueContainer::Shared(reference) => reference
+                .base_shared_container_mut()
+                .try_replace(data, source_id),
         }
     }
 
-    fn try_set_entry(&mut self, data: SetEntryUpdateData, source_id: TransceiverId) -> Result<(), UpdateError> {
+    fn try_set_entry(
+        &mut self,
+        data: SetEntryUpdateData,
+        source_id: TransceiverId,
+    ) -> Result<(), UpdateError> {
         match self {
-            ValueContainer::Local(value) => value.try_set_entry(data, source_id),
-            ValueContainer::Shared(reference) => {
-                reference.base_shared_container_mut().try_set_entry(data, source_id)
+            ValueContainer::Local(value) => {
+                value.try_set_entry(data, source_id)
             }
+            ValueContainer::Shared(reference) => reference
+                .base_shared_container_mut()
+                .try_set_entry(data, source_id),
         }
     }
 
-    fn try_delete_entry(&mut self, data: DeleteEntryUpdateData, source_id: TransceiverId) -> Result<ValueContainer, UpdateError> {
+    fn try_delete_entry(
+        &mut self,
+        data: DeleteEntryUpdateData,
+        source_id: TransceiverId,
+    ) -> Result<ValueContainer, UpdateError> {
         match self {
-            ValueContainer::Local(value) => value.try_delete_entry(data, source_id),
-            ValueContainer::Shared(reference) => {
-                reference.base_shared_container_mut().try_delete_entry(data, source_id)
+            ValueContainer::Local(value) => {
+                value.try_delete_entry(data, source_id)
             }
+            ValueContainer::Shared(reference) => reference
+                .base_shared_container_mut()
+                .try_delete_entry(data, source_id),
         }
     }
 
-    fn try_append_entry(&mut self, data: AppendEntryUpdateData, source_id: TransceiverId) -> Result<(), UpdateError> {
+    fn try_append_entry(
+        &mut self,
+        data: AppendEntryUpdateData,
+        source_id: TransceiverId,
+    ) -> Result<(), UpdateError> {
         match self {
-            ValueContainer::Local(value) => value.try_append_entry(data, source_id),
-            ValueContainer::Shared(reference) => {
-                reference.base_shared_container_mut().try_append_entry(data, source_id)
+            ValueContainer::Local(value) => {
+                value.try_append_entry(data, source_id)
             }
+            ValueContainer::Shared(reference) => reference
+                .base_shared_container_mut()
+                .try_append_entry(data, source_id),
         }
     }
 
-    fn try_clear(&mut self, source_id: TransceiverId) -> Result<(), UpdateError> {
+    fn try_clear(
+        &mut self,
+        source_id: TransceiverId,
+    ) -> Result<(), UpdateError> {
         match self {
             ValueContainer::Local(value) => value.try_clear(source_id),
             ValueContainer::Shared(reference) => {
@@ -559,12 +596,18 @@ impl UpdateHandler for ValueContainer {
         }
     }
 
-    fn try_list_splice(&mut self, data: ListSpliceUpdateData, source_id: TransceiverId) -> Result<Vec<ValueContainer>, UpdateError> {
+    fn try_list_splice(
+        &mut self,
+        data: ListSpliceUpdateData,
+        source_id: TransceiverId,
+    ) -> Result<Vec<ValueContainer>, UpdateError> {
         match self {
-            ValueContainer::Local(value) => value.try_list_splice(data, source_id),
-            ValueContainer::Shared(reference) => {
-                reference.base_shared_container_mut().try_list_splice(data, source_id)
+            ValueContainer::Local(value) => {
+                value.try_list_splice(data, source_id)
             }
+            ValueContainer::Shared(reference) => reference
+                .base_shared_container_mut()
+                .try_list_splice(data, source_id),
         }
     }
 }
@@ -616,7 +659,9 @@ impl Add<&ValueContainer> for &ValueContainer {
             }
             (ValueContainer::Shared(lhs), ValueContainer::Shared(rhs)) => lhs
                 .with_collapsed_value_mut(|lhs| {
-                    rhs.with_collapsed_value_mut(|rhs| lhs.clone() + rhs.clone())
+                    rhs.with_collapsed_value_mut(|rhs| {
+                        lhs.clone() + rhs.clone()
+                    })
                 }),
             (ValueContainer::Local(lhs), ValueContainer::Shared(rhs)) => {
                 rhs.with_collapsed_value_mut(|rhs| lhs + rhs)
@@ -647,7 +692,9 @@ impl Sub<&ValueContainer> for &ValueContainer {
             }
             (ValueContainer::Shared(lhs), ValueContainer::Shared(rhs)) => lhs
                 .with_collapsed_value_mut(|lhs| {
-                    rhs.with_collapsed_value_mut(|rhs| lhs.clone() - rhs.clone())
+                    rhs.with_collapsed_value_mut(|rhs| {
+                        lhs.clone() - rhs.clone()
+                    })
                 }),
             (ValueContainer::Local(lhs), ValueContainer::Shared(rhs)) => {
                 rhs.with_collapsed_value_mut(|rhs| lhs - rhs)
