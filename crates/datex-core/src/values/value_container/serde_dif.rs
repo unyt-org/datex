@@ -1,18 +1,8 @@
 use crate::{
-    dif::pointer_address::PointerAddressWithOwnership,
-    prelude::*,
-    shared_values::{
-        ReferenceMutability, SharedContainer, SharedContainerOwnership,
-    },
-    values::{
-        core_value::CoreValue, core_values::integer::Integer, value::Value,
-        value_container::ValueContainer,
-    },
+    shared_values::SharedContainer,
+    values::{value::Value, value_container::ValueContainer},
 };
-use serde::{
-    Deserialize, Serialize, Serializer, de::IntoDeserializer,
-    ser::SerializeStruct,
-};
+use serde::{Deserialize, Serialize, Serializer, de::IntoDeserializer};
 
 /// Serialization for [ValueContainer].
 impl Serialize for ValueContainer {
@@ -27,15 +17,11 @@ impl Serialize for ValueContainer {
     }
 }
 
-use crate::{
-    dif::deserialization_context::DeserializationContext, prelude::*,
-    shared_values::PointerAddress,
-};
-use alloc::format;
+use crate::dif::deserialization_context::DeserializationContext;
 use core::fmt;
 use serde::{
     Deserializer,
-    de::{DeserializeSeed, MapAccess, SeqAccess, Visitor},
+    de::{DeserializeSeed, MapAccess, Visitor},
 };
 /// Deserialization for [ValueContainer] using a [DeserializationContext] to provide access to the memory during deserialization.
 impl<'de, 'ctx> DeserializeSeed<'de>
@@ -86,6 +72,7 @@ mod tests {
     use crate::{
         dif::cache::DIFSharedContainerCache,
         libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
+        prelude::*,
         runtime::memory::Memory,
         values::{
             core_value::CoreValue,

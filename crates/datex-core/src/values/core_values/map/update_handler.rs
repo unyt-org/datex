@@ -1,18 +1,13 @@
 use crate::{
-    collections::HashMap,
     prelude::*,
-    random::RandomState,
-    traits::structural_eq::StructuralEq,
     values::{
-        core_value::CoreValue,
         core_values::map::Map,
-        value::Value,
         value_container::{BorrowedValueKey, ValueContainer},
     },
 };
 
 use crate::{
-    shared_values::{errors::KeyNotFoundError, observers::TransceiverId},
+    shared_values::observers::TransceiverId,
     value_updates::{
         errors::UpdateError,
         update_data::{
@@ -22,12 +17,7 @@ use crate::{
         update_handler::UpdateHandler,
     },
 };
-use core::{
-    fmt::{self, Display},
-    hash::{Hash, Hasher},
-    result::Result,
-};
-use indexmap::IndexMap;
+use core::result::Result;
 
 impl UpdateHandler for Map {
     fn try_replace(

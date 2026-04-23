@@ -1,8 +1,11 @@
+use serde::Deserialize;
+
 use crate::{
+    dif::pointer_address::PointerAddressWithOwnership,
     runtime::execution::ExecutionError,
     shared_values::{
         SharedContainerMutability,
-        observers::{ObserveOptions, ObserverError, TransceiverId},
+        observers::{ObserveOptions, ObserverError, ObserverId, TransceiverId},
     },
 };
 use core::{fmt::Display, result::Result};
@@ -101,11 +104,16 @@ impl From<SharedValueCreationError> for DIFCreatePointerError {
 
 pub struct DIFInterface {
     cache: DIFSharedContainerCache,
+    transceiver_id: TransceiverId,
 }
 
 impl DIFInterface {
     /// Applies a DIF update to the value at the given pointer address.
-    fn update(&self, address: PointerAddress, update: &Update) -> UpdateResult {
+    fn update(
+        &self,
+        _address: PointerAddress,
+        _update: Update,
+    ) -> UpdateResult {
         todo!()
         //self.cache.try_get_shared_container
     }
@@ -123,9 +131,7 @@ impl DIFInterface {
     /// Returns the address of the newly created pointer.
     fn create_pointer(
         &self,
-        _value: ValueContainer,
-        _allowed_type: Option<Type>,
-        _mutability: SharedContainerMutability,
+        _value: BaseSharedValueContainer,
     ) -> Result<SelfOwnedPointerAddress, DIFCreatePointerError> {
         todo!()
     }
@@ -134,7 +140,7 @@ impl DIFInterface {
     /// Returns an error if the pointer is not found in memory.
     fn resolve_pointer_address(
         &self,
-        _address: PointerAddress,
+        _address: PointerAddressWithOwnership,
     ) -> Result<BaseSharedValueContainer, DIFResolveReferenceError> {
         todo!()
     }
@@ -143,7 +149,6 @@ impl DIFInterface {
     /// As long as the pointer is observed, it will not be garbage collected.
     fn observe_pointer(
         &self,
-        _transceiver_id: TransceiverId,
         _address: PointerAddress,
         _options: ObserveOptions,
         _observer: impl Fn(&UpdateData) + 'static,
@@ -156,7 +161,7 @@ impl DIFInterface {
     fn update_observer_options(
         &self,
         _address: PointerAddress,
-        _observer_id: u32,
+        _observer_id: ObserverId,
         _options: ObserveOptions,
     ) -> Result<(), DIFObserveError> {
         todo!()
@@ -167,7 +172,7 @@ impl DIFInterface {
     fn unobserve_pointer(
         &self,
         _address: PointerAddress,
-        _observer_id: u32,
+        _observer_id: ObserverId,
     ) -> Result<(), DIFObserveError> {
         todo!()
     }

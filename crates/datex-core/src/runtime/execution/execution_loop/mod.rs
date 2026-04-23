@@ -52,15 +52,11 @@ use crate::{
         },
     },
     shared_values::{
-        errors::AssignmentError,
-        {ExternalPointerAddress, PointerAddress},
-        {
-            OwnedSharedContainer, ReferenceMutability,
-            ReferencedSharedContainer, SelfOwnedSharedContainer,
-            SharedContainer, SharedContainerMutability,
-            base_shared_value_container::BaseSharedValueContainer,
-            observers::TransceiverId,
-        },
+        ExternalPointerAddress, OwnedSharedContainer, PointerAddress,
+        ReferenceMutability, ReferencedSharedContainer,
+        SelfOwnedSharedContainer, SharedContainer, SharedContainerMutability,
+        base_shared_value_container::BaseSharedValueContainer,
+        errors::AssignmentError, observers::TransceiverId,
     },
     types::{
         error::TypeError,

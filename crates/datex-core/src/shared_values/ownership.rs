@@ -1,7 +1,4 @@
-use crate::{
-    serde::Deserialize,
-    shared_values::SharedContainerMutability,
-};
+use crate::{serde::Deserialize, shared_values::SharedContainerMutability};
 use binrw::{BinRead, BinWrite};
 use core::{
     cmp::Ordering,

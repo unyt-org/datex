@@ -3,19 +3,13 @@ use crate::{
         deserialization_context::DeserializationContext,
         pointer_address::PointerAddressWithOwnership,
     },
-    prelude::*,
     shared_values::{
         ReferenceMutability, SharedContainer, SharedContainerOwnership,
-    },
-    values::{
-        core_value::CoreValue, core_values::integer::Integer, value::Value,
-        value_container::ValueContainer,
     },
 };
 use alloc::format;
 use serde::{
     Deserialize, Deserializer, Serialize, Serializer, de::DeserializeSeed,
-    ser::SerializeStruct,
 };
 
 impl Serialize for SharedContainer {
@@ -77,7 +71,10 @@ mod tests {
             PointerAddress, SharedContainer, SharedContainerMutability,
             errors::UnexpectedSharedContainerOwnershipError,
         },
-        values::{core_value::CoreValue, core_values::integer::Integer},
+        values::{
+            core_value::CoreValue, core_values::integer::Integer,
+            value_container::ValueContainer,
+        },
     };
 
     #[test]

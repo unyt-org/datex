@@ -1,16 +1,11 @@
 use crate::{
     prelude::*,
-    shared_values::{
-        ReferenceMutability, SharedContainer, SharedContainerOwnership,
-    },
     values::{
-        core_value::CoreValue,
-        core_values::{integer::Integer, list::List},
-        value::Value,
+        core_value::CoreValue, core_values::list::List,
         value_container::ValueContainer,
     },
 };
-use serde::{Serialize, Serializer, ser::SerializeStruct};
+use serde::{Serialize, Serializer};
 
 /// Serialization for [CoreValue].
 impl Serialize for CoreValue {
@@ -25,14 +20,11 @@ impl Serialize for CoreValue {
     }
 }
 
-use crate::{
-    dif::deserialization_context::DeserializationContext, prelude::*,
-    shared_values::PointerAddress,
-};
+use crate::dif::deserialization_context::DeserializationContext;
 use core::fmt;
 use serde::{
     Deserializer,
-    de::{DeserializeSeed, MapAccess, SeqAccess, Visitor},
+    de::{DeserializeSeed, SeqAccess, Visitor},
 };
 /// Deserialization for [CoreValue] using a [DeserializationContext] to provide access to the memory during deserialization.
 impl<'de, 'ctx> DeserializeSeed<'de>

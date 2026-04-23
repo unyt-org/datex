@@ -4,9 +4,7 @@ use crate::{
 };
 
 use crate::{
-    shared_values::{
-        ReferenceMutability, SharedContainerOwnership,
-    },
+    shared_values::{ReferenceMutability, SharedContainerOwnership},
     types::type_definition_with_metadata::{
         LocalMutability, LocalReferenceMutability,
     },

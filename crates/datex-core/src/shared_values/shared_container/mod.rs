@@ -13,7 +13,7 @@ use crate::{
             UnexpectedSharedContainerOwnershipError,
         },
         internal_traits::_ExposeRcInternal,
-        observers::{Observer, ObserverError},
+        observers::{Observer, ObserverError, ObserverId},
     },
     traits::{
         apply::Apply, identity::Identity, structural_eq::StructuralEq,
@@ -113,11 +113,17 @@ impl SharedContainer {
     }
 
     /// Adds an observer to this shared container that will be notified on value changes.
-    pub fn observe(&self, observer: Observer) -> Result<u32, ObserverError> {
+    pub fn observe(
+        &self,
+        observer: Observer,
+    ) -> Result<ObserverId, ObserverError> {
         self.base_shared_container_mut().observe(observer)
     }
 
-    pub fn unobserve(&self, observer_id: u32) -> Result<(), ObserverError> {
+    pub fn unobserve(
+        &self,
+        observer_id: ObserverId,
+    ) -> Result<(), ObserverError> {
         self.base_shared_container_mut().unobserve(observer_id)
     }
 

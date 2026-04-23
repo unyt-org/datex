@@ -1,12 +1,11 @@
 use crate::{
     runtime::memory::Memory,
     shared_values::{
-        ExternalSharedContainer, ReferenceMutability, SharedContainerInner,
-        SharedContainerMutability,
+        ExternalPointerAddress, ExternalSharedContainer, PointerAddress,
+        ReferenceMutability, SharedContainerInner, SharedContainerMutability,
         base_shared_value_container::BaseSharedValueContainer,
         errors::{SharedValueCreationError, UnexpectedImmutableReferenceError},
         internal_traits::_ExposeRcInternal,
-        {ExternalPointerAddress, PointerAddress},
     },
     types::r#type::Type,
     values::{value::Value, value_container::ValueContainer},

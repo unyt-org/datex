@@ -1,7 +1,7 @@
 use crate::{
-    shared_values::observers::Observer,
+    shared_values::observers::{Observer, ObserverId},
     traits::value_eq::ValueEq,
-    utils::freemap::FreeHashMap,
+    utils::freemap::{FreeHashMap, NextKey},
     values::{value::Value, value_container::ValueContainer},
 };
 
@@ -27,6 +27,7 @@ use crate::{
 };
 use core::{
     fmt::{Debug, Display},
+    ops::Deref,
     prelude::rust_2024::*,
 };
 
@@ -37,7 +38,7 @@ pub struct BaseSharedValueContainer {
     pub allowed_type: Type,
     /// List of observer callbacks
     /// TODO: move observers to ValueContainer?
-    pub observers: FreeHashMap<u32, Observer>,
+    pub observers: FreeHashMap<ObserverId, Observer>,
     pub mutability: SharedContainerMutability,
 }
 

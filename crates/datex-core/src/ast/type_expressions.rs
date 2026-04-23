@@ -14,9 +14,7 @@ use crate::{
     },
 };
 
-use crate::{
-    shared_values::PointerAddress, types::r#type::Type,
-};
+use crate::{shared_values::PointerAddress, types::r#type::Type};
 use core::ops;
 
 #[derive(Clone, Debug, PartialEq)]

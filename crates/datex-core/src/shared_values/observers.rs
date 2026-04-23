@@ -1,7 +1,7 @@
 use crate::{
     prelude::*,
     shared_values::base_shared_value_container::BaseSharedValueContainer,
-    value_updates::update_data::Update,
+    utils::freemap::NextKey, value_updates::update_data::Update,
 };
 use core::{fmt::Display, result::Result};
 use serde::{Deserialize, Serialize};
@@ -40,6 +40,17 @@ pub struct ObserveOptions {
     pub relay_own_updates: bool,
 }
 
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default,
+)]
+pub struct ObserverId(pub u32);
+
+impl NextKey for ObserverId {
+    fn next_key(&mut self) -> Self {
+        ObserverId(self.0.next_key())
+    }
+}
+
 #[derive(Clone)]
 pub struct Observer {
     pub transceiver_id: TransceiverId,
@@ -66,7 +77,7 @@ impl BaseSharedValueContainer {
     pub fn observe(
         &mut self,
         observer: Observer,
-    ) -> Result<u32, ObserverError> {
+    ) -> Result<ObserverId, ObserverError> {
         self.ensure_mutable_container()?;
         // Add the observer to the list of observers
         // TODO #299: also set observers on child references if not yet active, keep track of active observers
@@ -75,7 +86,10 @@ impl BaseSharedValueContainer {
 
     /// Removes an observer by its ID.
     /// Returns an error if the observer ID is not found or the reference is immutable.
-    pub fn unobserve(&mut self, observer_id: u32) -> Result<(), ObserverError> {
+    pub fn unobserve(
+        &mut self,
+        observer_id: ObserverId,
+    ) -> Result<(), ObserverError> {
         self.ensure_mutable_container()?;
         let removed = self.observers.remove(observer_id);
         if removed.is_some() {
@@ -89,7 +103,7 @@ impl BaseSharedValueContainer {
     /// Returns an error if the observer ID is not found or the reference is immutable.
     pub fn update_observer_options(
         &mut self,
-        observer_id: u32,
+        observer_id: ObserverId,
         options: ObserveOptions,
     ) -> Result<(), ObserverError> {
         self.ensure_mutable_container()?;
@@ -103,7 +117,7 @@ impl BaseSharedValueContainer {
 
     /// Returns a list of all observer IDs currently registered to this reference.
     /// A type reference or immutable reference will always return an empty list.
-    pub fn observers_ids(&self) -> Vec<u32> {
+    pub fn observers_ids(&self) -> Vec<ObserverId> {
         self.observers.keys().cloned().collect()
     }
 
@@ -159,7 +173,8 @@ mod tests {
             SharedContainerMutability,
             base_shared_value_container::BaseSharedValueContainer,
             observers::{
-                ObserveOptions, Observer, ObserverError, TransceiverId,
+                ObserveOptions, Observer, ObserverError, ObserverId,
+                TransceiverId,
             },
         },
         value_updates::{
@@ -233,7 +248,7 @@ mod tests {
         );
         assert!(!r.has_observers());
         let observer_id = r.observe(Observer::new(|_| {})).unwrap();
-        assert_eq!(observer_id, 0);
+        assert_eq!(observer_id, ObserverId(0));
         assert!(r.has_observers());
         assert!(r.unobserve(observer_id).is_ok());
         assert!(!r.has_observers());
@@ -254,13 +269,13 @@ mod tests {
         );
         let id1 = r.observe(Observer::new(|_| {})).unwrap();
         let id2 = r.observe(Observer::new(|_| {})).unwrap();
-        assert_eq!(id1, 0);
-        assert_eq!(id2, 1);
+        assert_eq!(id1, ObserverId(0));
+        assert_eq!(id2, ObserverId(1));
         assert!(r.unobserve(id1).is_ok());
         let id3 = r.observe(Observer::new(|_| {})).unwrap();
-        assert_eq!(id3, 0);
+        assert_eq!(id3, ObserverId(0));
         let id4 = r.observe(Observer::new(|_| {})).unwrap();
-        assert_eq!(id4, 2);
+        assert_eq!(id4, ObserverId(2));
     }
 
     #[test]
