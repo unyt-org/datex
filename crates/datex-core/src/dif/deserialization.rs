@@ -1,18 +1,30 @@
+use crate::{
+    dif::deserialization_context::DeserializationContext,
+    prelude::*,
+    shared_values::{
+        pointer_address::PointerAddress,
+        shared_containers::{ReferenceMutability, SharedContainerOwnership},
+    },
+    values::{
+        core_value::CoreValue, core_values::list::List, value::Value,
+        value_container::ValueContainer,
+    },
+};
+use alloc::format;
 use core::fmt;
-use serde::de::{DeserializeSeed, MapAccess, SeqAccess, Visitor};
-use serde::Deserializer;
-use crate::dif::deserialization_context::DeserializationContext;
-use crate::shared_values::pointer_address::PointerAddress;
-use crate::shared_values::shared_containers::{ReferenceMutability, SharedContainer, SharedContainerOwnership};
-use crate::values::core_value::CoreValue;
-use crate::values::core_values::list::List;
-use crate::values::value::Value;
-use crate::values::value_container::ValueContainer;
-
+use serde::{
+    Deserializer,
+    de::{DeserializeSeed, MapAccess, SeqAccess, Visitor},
+};
 /// Deserialization for [ValueContainer] using a [DeserializationContext] to provide access to the memory during deserialization.
-impl<'de, 'ctx> DeserializeSeed<'de> for DeserializationContext<'ctx, ValueContainer> {
+impl<'de, 'ctx> DeserializeSeed<'de>
+    for DeserializationContext<'ctx, ValueContainer>
+{
     type Value = ValueContainer;
-    fn deserialize<D: Deserializer<'de>>(self, d: D) -> Result<ValueContainer, D::Error> {
+    fn deserialize<D: Deserializer<'de>>(
+        self,
+        d: D,
+    ) -> Result<ValueContainer, D::Error> {
         d.deserialize_any(self)
     }
 }
@@ -26,35 +38,58 @@ impl<'de, 'ctx> Visitor<'de> for DeserializationContext<'ctx, ValueContainer> {
 
     /// Visits a pointer address with ownership information encoded as string:
     /// "'$ABCDEF" | "'mut$ABCDEF" | "$ABCDEF"
-    fn visit_str<E: serde::de::Error>(self, v: &str) -> Result<ValueContainer, E> {
+    fn visit_str<E: serde::de::Error>(
+        self,
+        v: &str,
+    ) -> Result<ValueContainer, E> {
         // split str at "$" to check for reference prefix
         let (prefix, address_str) = match v.split_once('$') {
             Some((prefix, address_str)) => (Some(prefix), address_str),
             None => (None, v),
         };
-        let address = PointerAddress::try_from(address_str)
-            .map_err(|_| E::custom(format!("invalid pointer address: {}", v)))?;
+        let address = PointerAddress::try_from(address_str).map_err(|_| {
+            E::custom(format!("invalid pointer address: {}", v))
+        })?;
         let ownership = match prefix {
-            Some("'mut") => SharedContainerOwnership::Referenced(ReferenceMutability::Mutable),
-            Some("'") => SharedContainerOwnership::Referenced(ReferenceMutability::Immutable),
+            Some("'mut") => SharedContainerOwnership::Referenced(
+                ReferenceMutability::Mutable,
+            ),
+            Some("'") => SharedContainerOwnership::Referenced(
+                ReferenceMutability::Immutable,
+            ),
             Some("") => SharedContainerOwnership::Owned,
-            None => return Err(E::custom(format!("invalid pointer address: {}", v))),
-            Some(other) => return Err(E::custom(format!("invalid pointer address prefix '{}': {}", other, v))),
+            None => {
+                return Err(E::custom(format!(
+                    "invalid pointer address: {}",
+                    v
+                )));
+            }
+            Some(other) => {
+                return Err(E::custom(format!(
+                    "invalid pointer address prefix '{}': {}",
+                    other, v
+                )));
+            }
         };
-        let reference = self.shared_container_cache
+        let reference = self
+            .shared_container_cache
             .try_get_shared_container_with_ownership(&address, ownership)
-            .map_err(|e| E::custom(format!("Cannot get {} from DIF cache: {}", v, e)))?;
+            .map_err(|e| {
+                E::custom(format!("Cannot get {} from DIF cache: {}", v, e))
+            })?;
         Ok(ValueContainer::Shared(reference))
     }
 
     // map => local Value
-    fn visit_map<A: MapAccess<'de>>(mut self, map: A) -> Result<ValueContainer, A::Error> {
+    fn visit_map<A: MapAccess<'de>>(
+        mut self,
+        map: A,
+    ) -> Result<ValueContainer, A::Error> {
         // reuse the Value visitor directly
         let value = self.cast::<Value>().visit_map(map)?;
         Ok(ValueContainer::Local(value))
     }
 }
-
 
 /// Deserialization for [Value] using a [DeserializationContext] to provide access to the memory during deserialization.
 impl<'de, 'ctx> DeserializeSeed<'de> for DeserializationContext<'ctx, Value> {
@@ -62,7 +97,7 @@ impl<'de, 'ctx> DeserializeSeed<'de> for DeserializationContext<'ctx, Value> {
 
     fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
     where
-        D: Deserializer<'de>
+        D: Deserializer<'de>,
     {
         // deserialize "value" property as CoreValue
         deserializer.deserialize_map(self)
@@ -76,29 +111,43 @@ impl<'de, 'ctx> Visitor<'de> for DeserializationContext<'ctx, Value> {
         f.write_str("struct Value with a 'value' property")
     }
 
-    fn visit_map<A: MapAccess<'de>>(mut self, mut map: A) -> Result<Value, A::Error> {
+    fn visit_map<A: MapAccess<'de>>(
+        mut self,
+        mut map: A,
+    ) -> Result<Value, A::Error> {
         let mut core_value: Option<CoreValue> = None;
 
         while let Some(key) = map.next_key::<String>()? {
             match key.as_str() {
                 "value" => {
-                    core_value = Some(map.next_value_seed(self.cast::<CoreValue>())?);
+                    core_value =
+                        Some(map.next_value_seed(self.cast::<CoreValue>())?);
                 }
-                _ => { map.next_value::<serde::de::IgnoredAny>()?; }
+                _ => {
+                    map.next_value::<serde::de::IgnoredAny>()?;
+                }
             }
         }
 
-        let core_value = core_value.ok_or_else(|| serde::de::Error::missing_field("value"))?;
-        Ok(Value { inner: core_value, custom_type: None })
+        let core_value = core_value
+            .ok_or_else(|| serde::de::Error::missing_field("value"))?;
+        Ok(Value {
+            inner: core_value,
+            custom_type: None,
+        })
     }
 }
 
-
 /// Deserialization for [CoreValue] using a [DeserializationContext] to provide access to the memory during deserialization.
-impl<'de, 'ctx> DeserializeSeed<'de> for DeserializationContext<'ctx, CoreValue> {
+impl<'de, 'ctx> DeserializeSeed<'de>
+    for DeserializationContext<'ctx, CoreValue>
+{
     type Value = CoreValue;
 
-    fn deserialize<D: Deserializer<'de>>(self, deserializer: D) -> Result<CoreValue, D::Error> {
+    fn deserialize<D: Deserializer<'de>>(
+        self,
+        deserializer: D,
+    ) -> Result<CoreValue, D::Error> {
         deserializer.deserialize_any(self)
     }
 }
@@ -110,9 +159,14 @@ impl<'de, 'ctx> Visitor<'de> for DeserializationContext<'ctx, CoreValue> {
         f.write_str("a CoreValue")
     }
 
-    fn visit_seq<A: SeqAccess<'de>>(mut self, mut seq: A) -> Result<CoreValue, A::Error> {
+    fn visit_seq<A: SeqAccess<'de>>(
+        mut self,
+        mut seq: A,
+    ) -> Result<CoreValue, A::Error> {
         let mut items = Vec::new();
-        while let Some(item) = seq.next_element_seed(self.cast::<ValueContainer>())? {
+        while let Some(item) =
+            seq.next_element_seed(self.cast::<ValueContainer>())?
+        {
             items.push(item);
         }
         Ok(CoreValue::List(List::from(items)))
@@ -121,20 +175,33 @@ impl<'de, 'ctx> Visitor<'de> for DeserializationContext<'ctx, CoreValue> {
 
 #[cfg(test)]
 mod tests {
-    use core::assert_matches;
-    use crate::dif::cache::{CacheValueRetrievalError, DIFSharedContainerCache, ValueNotFoundInCacheError};
-    use crate::libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId};
-    use crate::runtime::memory::Memory;
-    use crate::runtime::pointer_address_provider::SelfOwnedPointerAddressProvider;
-    use crate::shared_values::shared_containers::{SharedContainerMutability};
-    use crate::shared_values::shared_containers::errors::UnexpectedSharedContainerOwnershipError;
-    use crate::values::core_value::CoreValue;
-    use crate::values::core_values::list::List;
     use super::*;
+    use crate::{
+        dif::cache::{
+            CacheValueRetrievalError, DIFSharedContainerCache,
+            ValueNotFoundInCacheError,
+        },
+        libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
+        runtime::{
+            memory::Memory,
+            pointer_address_provider::SelfOwnedPointerAddressProvider,
+        },
+        shared_values::shared_containers::{
+            SharedContainer, SharedContainerMutability,
+            errors::UnexpectedSharedContainerOwnershipError,
+        },
+        values::{core_value::CoreValue, core_values::list::List},
+    };
+    use core::assert_matches;
 
-    fn deserialize_json_string(str: impl Into<String>, dif_cache: &mut DIFSharedContainerCache) -> ValueContainer {
+    fn deserialize_json_string(
+        str: impl Into<String>,
+        dif_cache: &mut DIFSharedContainerCache,
+    ) -> ValueContainer {
         DeserializationContext::<ValueContainer>::new(dif_cache)
-            .deserialize(&mut serde_json::Deserializer::from_str(str.into().as_str()))
+            .deserialize(&mut serde_json::Deserializer::from_str(
+                str.into().as_str(),
+            ))
             .unwrap()
     }
 
@@ -145,15 +212,18 @@ mod tests {
         let memory = Memory::new();
         let dif_cache = &mut DIFSharedContainerCache::default();
 
-        let integer_container = SharedContainer::Referenced(memory.get_core_reference(CoreLibTypeId::Base(CoreLibBaseTypeId::Integer)).clone());
+        let integer_container = SharedContainer::Referenced(
+            memory
+                .get_core_reference(CoreLibTypeId::Base(
+                    CoreLibBaseTypeId::Integer,
+                ))
+                .clone(),
+        );
         dif_cache.store_shared_container(integer_container.clone());
 
         let outer = deserialize_json_string(json, dif_cache);
 
-        assert_eq!(
-            outer,
-            ValueContainer::Shared(integer_container)
-        );
+        assert_eq!(outer, ValueContainer::Shared(integer_container));
     }
 
     #[test]
@@ -162,18 +232,22 @@ mod tests {
         let address_provider = &mut SelfOwnedPointerAddressProvider::default();
         let dif_cache = &mut DIFSharedContainerCache::default();
 
-        let owned_container = SharedContainer::new_owned_with_inferred_allowed_type(
-            ValueContainer::from(42),
-            SharedContainerMutability::Mutable,
-            address_provider,
-            memory
-        );
+        let owned_container =
+            SharedContainer::new_owned_with_inferred_allowed_type(
+                ValueContainer::from(42),
+                SharedContainerMutability::Mutable,
+                address_provider,
+                memory,
+            );
         let ptr_address = owned_container.pointer_address();
         let ptr_address_hex = ptr_address.to_string();
 
         dif_cache.store_shared_container(owned_container);
 
-        let outer_ref = deserialize_json_string(format!(r#""'{}""#, ptr_address_hex), dif_cache);
+        let outer_ref = deserialize_json_string(
+            format!(r#""'{}""#, ptr_address_hex),
+            dif_cache,
+        );
         assert_matches!(
             outer_ref,
             ValueContainer::Shared(SharedContainer::Referenced(reference))
@@ -181,7 +255,10 @@ mod tests {
                 reference.pointer_address() == ptr_address
         );
 
-        let outer_ref_mut = deserialize_json_string(format!(r#""'mut{}""#, ptr_address_hex), dif_cache);
+        let outer_ref_mut = deserialize_json_string(
+            format!(r#""'mut{}""#, ptr_address_hex),
+            dif_cache,
+        );
         assert_matches!(
             outer_ref_mut,
             ValueContainer::Shared(SharedContainer::Referenced(reference))
@@ -189,23 +266,29 @@ mod tests {
                 reference.pointer_address() == ptr_address
         );
 
-        let outer_owned = deserialize_json_string(format!(r#""{}""#, ptr_address_hex), dif_cache);
+        let outer_owned = deserialize_json_string(
+            format!(r#""{}""#, ptr_address_hex),
+            dif_cache,
+        );
         assert_matches!(
             outer_owned,
             ValueContainer::Shared(SharedContainer::Owned(owned))
             if PointerAddress::SelfOwned(owned.pointer_address().clone()) == ptr_address
         );
 
-
         // should no longer exist in memory as owned container should have been taken from cache
         assert_matches!(
             dif_cache.try_take_owned_shared_container(&ptr_address),
-            Err(CacheValueRetrievalError::UnexpectedSharedContainerOwnership(
-                UnexpectedSharedContainerOwnershipError {
-                    actual: SharedContainerOwnership::Referenced(ReferenceMutability::Mutable),
-                    expected: SharedContainerOwnership::Owned
-                }
-            ))
+            Err(
+                CacheValueRetrievalError::UnexpectedSharedContainerOwnership(
+                    UnexpectedSharedContainerOwnershipError {
+                        actual: SharedContainerOwnership::Referenced(
+                            ReferenceMutability::Mutable
+                        ),
+                        expected: SharedContainerOwnership::Owned
+                    }
+                )
+            )
         );
 
         // should no longer exist in memory at all after explicitly removing the shared container from cache
@@ -213,7 +296,9 @@ mod tests {
 
         assert_matches!(
             dif_cache.try_take_owned_shared_container(&ptr_address),
-            Err(CacheValueRetrievalError::ValueNotFoundInCache(ValueNotFoundInCacheError))
+            Err(CacheValueRetrievalError::ValueNotFoundInCache(
+                ValueNotFoundInCacheError
+            ))
         );
     }
 
@@ -224,19 +309,22 @@ mod tests {
         let memory = Memory::new();
         let dif_cache = &mut DIFSharedContainerCache::default();
 
-        let integer_container = SharedContainer::Referenced(memory.get_core_reference(CoreLibTypeId::Base(CoreLibBaseTypeId::Integer)).clone());
+        let integer_container = SharedContainer::Referenced(
+            memory
+                .get_core_reference(CoreLibTypeId::Base(
+                    CoreLibBaseTypeId::Integer,
+                ))
+                .clone(),
+        );
         dif_cache.store_shared_container(integer_container.clone());
-
 
         let outer = deserialize_json_string(json, dif_cache);
 
         assert_eq!(
             outer,
-            ValueContainer::Local(
-                Value::from(CoreValue::List(List::from(vec![
-                    ValueContainer::Shared(integer_container)
-                ])))
-            )
+            ValueContainer::Local(Value::from(CoreValue::List(List::from(
+                vec![ValueContainer::Shared(integer_container)]
+            ))))
         );
     }
 }

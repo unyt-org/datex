@@ -1,24 +1,30 @@
 use crate::{
     runtime::execution::ExecutionError,
-    shared_values::{
-        shared_containers::observers::{ObserveOptions, ObserverError, TransceiverId},
-        shared_containers::{
-            SharedContainerMutability,
-        },
+    shared_values::shared_containers::{
+        SharedContainerMutability,
+        observers::{ObserveOptions, ObserverError, TransceiverId},
     },
 };
 use core::{fmt::Display, result::Result};
 
-use crate::{prelude::*, shared_values::pointer_address::PointerAddress};
-use crate::dif::cache::DIFSharedContainerCache;
-use crate::shared_values::errors::{AccessError, AssignmentError, SharedValueCreationError};
-use crate::shared_values::pointer_address::SelfOwnedPointerAddress;
-use crate::shared_values::shared_containers::base_shared_value_container::BaseSharedValueContainer;
-use crate::shared_values::shared_containers::SharedContainer;
-use crate::types::r#type::Type;
-use crate::value_updates::errors::UpdateError;
-use crate::value_updates::update_data::{Update, UpdateData, UpdateResult, UpdateReturn};
-use crate::values::value_container::ValueContainer;
+use crate::{
+    dif::cache::DIFSharedContainerCache,
+    prelude::*,
+    shared_values::{
+        errors::{AccessError, AssignmentError, SharedValueCreationError},
+        pointer_address::{PointerAddress, SelfOwnedPointerAddress},
+        shared_containers::{
+            SharedContainer,
+            base_shared_value_container::BaseSharedValueContainer,
+        },
+    },
+    types::r#type::Type,
+    value_updates::{
+        errors::UpdateError,
+        update_data::{Update, UpdateData, UpdateResult, UpdateReturn},
+    },
+    values::value_container::ValueContainer,
+};
 
 #[derive(Debug)]
 pub enum DIFObserveError {
@@ -42,7 +48,6 @@ impl Display for DIFObserveError {
         }
     }
 }
-
 
 #[derive(Debug)]
 pub enum DIFApplyError {
@@ -102,7 +107,7 @@ impl From<SharedValueCreationError> for DIFCreatePointerError {
 }
 
 pub struct DIFInterface {
-    cache: DIFSharedContainerCache
+    cache: DIFSharedContainerCache,
 }
 
 impl DIFInterface {
@@ -122,7 +127,7 @@ impl DIFInterface {
         callee: ValueContainer,
         value: ValueContainer,
     ) -> Result<ValueContainer, DIFApplyError> {
-        
+        todo!()
     }
 
     /// Creates a new owned local pointer and stores it in memory.
@@ -133,7 +138,7 @@ impl DIFInterface {
         allowed_type: Option<Type>,
         mutability: SharedContainerMutability,
     ) -> Result<SelfOwnedPointerAddress, DIFCreatePointerError> {
-        
+        todo!()
     }
 
     /// Resolves a pointer address of a pointer that is currently in memory.
@@ -142,7 +147,7 @@ impl DIFInterface {
         &self,
         address: PointerAddress,
     ) -> Result<BaseSharedValueContainer, DIFResolveReferenceError> {
-        
+        todo!()
     }
 
     /// Starts observing changes to the pointer at the given address.
@@ -154,7 +159,7 @@ impl DIFInterface {
         options: ObserveOptions,
         observer: impl Fn(&UpdateData) + 'static,
     ) -> Result<u32, DIFObserveError> {
-        
+        todo!()
     }
 
     /// Updates the options for an existing observer on the pointer at the given address.
@@ -164,7 +169,9 @@ impl DIFInterface {
         address: PointerAddress,
         observer_id: u32,
         options: ObserveOptions,
-    ) -> Result<(), DIFObserveError>;
+    ) -> Result<(), DIFObserveError> {
+        todo!()
+    }
 
     /// Stops observing changes to the pointer at the given address.
     /// If no other references to the pointer exist, it may be garbage collected after this call.
@@ -173,7 +180,7 @@ impl DIFInterface {
         address: PointerAddress,
         observer_id: u32,
     ) -> Result<(), DIFObserveError> {
-        
+        todo!()
     }
 
     // TODO: lock/unlock pointers
