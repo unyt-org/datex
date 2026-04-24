@@ -15,7 +15,9 @@ use crate::{
     },
 };
 pub mod apply;
+pub mod ops;
 pub mod serde_dif;
+pub mod update_handler;
 use crate::{
     runtime::memory::Memory,
     shared_values::{errors::AccessError, observers::TransceiverId},
@@ -56,14 +58,6 @@ impl StructuralEq for Value {
 impl ValueEq for Value {
     fn value_eq(&self, other: &Self) -> bool {
         self == other
-    }
-}
-
-impl Deref for Value {
-    type Target = CoreValue;
-
-    fn deref(&self) -> &Self::Target {
-        &self.inner
     }
 }
 
@@ -298,132 +292,6 @@ impl Value {
         }
 
         Ok(())
-    }
-}
-
-impl UpdateHandler for Value {
-    fn try_replace(
-        &mut self,
-        data: ReplaceUpdateData,
-        source_id: TransceiverId,
-    ) -> Result<ValueContainer, UpdateError> {
-        match self.inner {
-            CoreValue::Map(ref mut map) => map.try_replace(data, source_id),
-            _ => Err(UpdateError::InvalidUpdate),
-        }
-    }
-
-    fn try_set_entry(
-        &mut self,
-        data: SetEntryUpdateData,
-        source_id: TransceiverId,
-    ) -> Result<(), UpdateError> {
-        match self.inner {
-            CoreValue::Map(ref mut map) => map.try_set_entry(data, source_id),
-            CoreValue::List(ref mut list) => {
-                list.try_set_entry(data, source_id)
-            }
-            _ => Err(UpdateError::InvalidUpdate),
-        }
-    }
-
-    fn try_delete_entry(
-        &mut self,
-        data: DeleteEntryUpdateData,
-        source_id: TransceiverId,
-    ) -> Result<ValueContainer, UpdateError> {
-        match self.inner {
-            CoreValue::Map(ref mut map) => {
-                map.try_delete_entry(data, source_id)
-            }
-            CoreValue::List(ref mut list) => {
-                list.try_delete_entry(data, source_id)
-            }
-            _ => Err(UpdateError::InvalidUpdate),
-        }
-    }
-
-    fn try_append_entry(
-        &mut self,
-        data: AppendEntryUpdateData,
-        source_id: TransceiverId,
-    ) -> Result<(), UpdateError> {
-        match self.inner {
-            CoreValue::Map(ref mut map) => {
-                map.try_append_entry(data, source_id)
-            }
-            CoreValue::List(ref mut list) => {
-                list.try_append_entry(data, source_id)
-            }
-            _ => Err(UpdateError::InvalidUpdate),
-        }
-    }
-
-    fn try_clear(
-        &mut self,
-        source_id: TransceiverId,
-    ) -> Result<(), UpdateError> {
-        match self.inner {
-            CoreValue::Map(ref mut map) => map.try_clear(source_id),
-            _ => Err(UpdateError::InvalidUpdate),
-        }
-    }
-
-    fn try_list_splice(
-        &mut self,
-        _data: ListSpliceUpdateData,
-        _source_id: TransceiverId,
-    ) -> Result<Vec<ValueContainer>, UpdateError> {
-        match self.inner {
-            CoreValue::List(ref mut list) => {
-                list.try_list_splice(_data, _source_id)
-            }
-            _ => Err(UpdateError::InvalidUpdate),
-        }
-    }
-}
-
-impl Add for Value {
-    type Output = Result<Value, ValueError>;
-    fn add(self, rhs: Value) -> Self::Output {
-        Ok((&self.inner + &rhs.inner)?.into())
-    }
-}
-
-impl Add for &Value {
-    type Output = Result<Value, ValueError>;
-    fn add(self, rhs: &Value) -> Self::Output {
-        Value::add(self.clone(), rhs.clone())
-    }
-}
-
-impl Sub for Value {
-    type Output = Result<Value, ValueError>;
-    fn sub(self, rhs: Value) -> Self::Output {
-        Ok((&self.inner - &rhs.inner)?.into())
-    }
-}
-
-impl Sub for &Value {
-    type Output = Result<Value, ValueError>;
-    fn sub(self, rhs: &Value) -> Self::Output {
-        Value::sub(self.clone(), rhs.clone())
-    }
-}
-
-impl Neg for Value {
-    type Output = Result<Value, ValueError>;
-
-    fn neg(self) -> Self::Output {
-        (-self.inner).map(Value::from)
-    }
-}
-
-impl Not for Value {
-    type Output = Option<Value>;
-
-    fn not(self) -> Self::Output {
-        (!self.inner).map(Value::from)
     }
 }
 
