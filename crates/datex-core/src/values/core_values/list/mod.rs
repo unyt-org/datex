@@ -8,7 +8,7 @@ use core::{
     ops::{Index, Range},
     result::Result,
 };
-
+pub mod update_handler;
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct List(Vec<ValueContainer>);
 impl List {
@@ -24,7 +24,7 @@ impl List {
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
-    pub fn get(
+    pub fn try_get(
         &self,
         index: i64,
     ) -> Result<&ValueContainer, IndexOutOfBoundsError> {
@@ -38,7 +38,7 @@ impl List {
     /// If the index is equal to the current length of the list, the value is pushed to the end.
     /// If the index is greater than the current length, None is returned.
     /// Returns the previous value at the index if it was replaced.
-    pub fn set(
+    pub fn try_set(
         &mut self,
         index: i64,
         value: ValueContainer,
@@ -46,6 +46,16 @@ impl List {
         let index = self.get_valid_index(index)?;
         // replace
         Ok(core::mem::replace(&mut self.0[index], value))
+    }
+
+    /// Tries to delete the value at the specified index, returning it if successful.
+    /// If the index is out of bounds, an error is returned.
+    pub fn try_delete(
+        &mut self,
+        index: i64,
+    ) -> Result<ValueContainer, IndexOutOfBoundsError> {
+        let index = self.get_valid_index(index)?;
+        Ok(self.0.remove(index))
     }
 
     pub fn push<T: Into<ValueContainer>>(&mut self, value: T) {
@@ -84,12 +94,12 @@ impl List {
         &mut self,
         range: Range<u32>,
         replace_with: impl IntoIterator<Item = ValueContainer>,
-    ) {
+    ) -> Vec<ValueContainer> {
         let range = Range {
             start: range.start as usize,
             end: range.end as usize,
         };
-        let _: Vec<_> = self.0.splice(range, replace_with).collect();
+        self.0.splice(range, replace_with).collect()
     }
 
     /// if index is negative, count from the end

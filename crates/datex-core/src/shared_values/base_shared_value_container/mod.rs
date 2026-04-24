@@ -187,10 +187,11 @@ impl BaseSharedValueContainer {
 impl UpdateHandler for BaseSharedValueContainer {
     fn try_replace(
         &mut self,
-        _data: ReplaceUpdateData,
-        _source_id: TransceiverId,
+        data: ReplaceUpdateData,
+        source_id: TransceiverId,
     ) -> Result<ValueContainer, UpdateError> {
-        todo!()
+        self.assert_can_mutate()?;
+        self.value_container.try_replace(data, source_id)
     }
 
     fn try_set_entry(
@@ -208,33 +209,37 @@ impl UpdateHandler for BaseSharedValueContainer {
 
     fn try_delete_entry(
         &mut self,
-        _data: DeleteEntryUpdateData,
-        _source_id: TransceiverId,
+        data: DeleteEntryUpdateData,
+        source_id: TransceiverId,
     ) -> Result<ValueContainer, UpdateError> {
-        todo!()
+        self.assert_can_mutate()?;
+        self.value_container.try_delete_entry(data, source_id)
     }
 
     fn try_append_entry(
         &mut self,
-        _data: AppendEntryUpdateData,
-        _source_id: TransceiverId,
+        data: AppendEntryUpdateData,
+        source_id: TransceiverId,
     ) -> Result<(), UpdateError> {
-        todo!()
+        self.assert_can_mutate()?;
+        self.value_container.try_append_entry(data, source_id)
     }
 
     fn try_clear(
         &mut self,
-        _source_id: TransceiverId,
+        source_id: TransceiverId,
     ) -> Result<(), UpdateError> {
-        todo!()
+        self.assert_can_mutate()?;
+        self.value_container.try_clear(source_id)
     }
 
     fn try_list_splice(
         &mut self,
-        _data: ListSpliceUpdateData,
-        _source_id: TransceiverId,
+        data: ListSpliceUpdateData,
+        source_id: TransceiverId,
     ) -> Result<Vec<ValueContainer>, UpdateError> {
-        todo!()
+        self.assert_can_mutate()?;
+        self.value_container.try_list_splice(data, source_id)
     }
 }
 
@@ -244,7 +249,7 @@ mod tests {
         prelude::*,
         runtime::memory::Memory,
         shared_values::{
-            SharedContainer, SharedContainerMutability,
+            SharedContainerMutability,
             base_shared_value_container::BaseSharedValueContainer,
             errors::{AccessError, IndexOutOfBoundsError},
             observers::TransceiverId,
@@ -261,7 +266,7 @@ mod tests {
             value_container::ValueContainer,
         },
     };
-    use core::{assert_matches, cell::RefCell};
+    use core::assert_matches;
 
     #[test]
     fn push() {

@@ -180,7 +180,7 @@ impl Value {
             }
             CoreValue::List(ref list) => {
                 if let Some(index) = key.into().try_as_index() {
-                    Ok(list.get(index)?.clone())
+                    Ok(list.try_get(index)?.clone())
                 } else {
                     Err(AccessError::InvalidIndexKey)
                 }
@@ -281,7 +281,7 @@ impl Value {
             }
             CoreValue::List(ref mut list) => {
                 if let Some(index) = key.try_as_index() {
-                    list.set(index, val)
+                    list.try_set(index, val)
                         .map_err(AccessError::IndexOutOfBounds)?;
                 } else {
                     return Err(AccessError::InvalidIndexKey);
@@ -327,7 +327,7 @@ impl UpdateHandler for Value {
     ) -> Result<ValueContainer, UpdateError> {
         match self.inner {
             CoreValue::Map(ref mut map) => map.try_replace(data, source_id),
-            _ => todo!(),
+            _ => Err(UpdateError::InvalidUpdate),
         }
     }
 
@@ -338,7 +338,10 @@ impl UpdateHandler for Value {
     ) -> Result<(), UpdateError> {
         match self.inner {
             CoreValue::Map(ref mut map) => map.try_set_entry(data, source_id),
-            _ => todo!(),
+            CoreValue::List(ref mut list) => {
+                list.try_set_entry(data, source_id)
+            }
+            _ => Err(UpdateError::InvalidUpdate),
         }
     }
 
@@ -351,7 +354,10 @@ impl UpdateHandler for Value {
             CoreValue::Map(ref mut map) => {
                 map.try_delete_entry(data, source_id)
             }
-            _ => todo!(),
+            CoreValue::List(ref mut list) => {
+                list.try_delete_entry(data, source_id)
+            }
+            _ => Err(UpdateError::InvalidUpdate),
         }
     }
 
@@ -364,7 +370,10 @@ impl UpdateHandler for Value {
             CoreValue::Map(ref mut map) => {
                 map.try_append_entry(data, source_id)
             }
-            _ => todo!(),
+            CoreValue::List(ref mut list) => {
+                list.try_append_entry(data, source_id)
+            }
+            _ => Err(UpdateError::InvalidUpdate),
         }
     }
 
@@ -374,7 +383,7 @@ impl UpdateHandler for Value {
     ) -> Result<(), UpdateError> {
         match self.inner {
             CoreValue::Map(ref mut map) => map.try_clear(source_id),
-            _ => todo!(),
+            _ => Err(UpdateError::InvalidUpdate),
         }
     }
 
@@ -383,7 +392,12 @@ impl UpdateHandler for Value {
         _data: ListSpliceUpdateData,
         _source_id: TransceiverId,
     ) -> Result<Vec<ValueContainer>, UpdateError> {
-        todo!()
+        match self.inner {
+            CoreValue::List(ref mut list) => {
+                list.try_list_splice(_data, _source_id)
+            }
+            _ => Err(UpdateError::InvalidUpdate),
+        }
     }
 }
 
