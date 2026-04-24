@@ -297,17 +297,7 @@ impl Type {
     // }
 }
 
-impl StructuralEq for Type {
-    // FIXME is this what we want?
-    fn structural_eq(&self, other: &Self) -> bool {
-        self.with_collapsed_definition_with_metadata(|own| {
-            other.with_collapsed_definition_with_metadata(|other| {
-                own.definition.structural_eq(&other.definition)
-            })
-        })
-    }
-}
-
+pub mod equality;
 impl Display for Type {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
