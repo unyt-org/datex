@@ -1,3 +1,4 @@
+//! This module contains the implementation of the [Text] struct, which represents a string value in the type system.
 use crate::{prelude::*, shared_values::errors::IndexOutOfBoundsError};
 use core::{fmt::Display, result::Result};
 use serde::{Deserialize, Serialize};

@@ -1,3 +1,6 @@
+//! This module contains the implementation of the [TypedInteger] enum, which represents a typed integer value in the DATEX type system.
+//! It supports various integer types, including signed and unsigned integers of different sizes, as well as an arbitrary precision integer type (IBig).
+
 use crate::values::core_values::{
     error::NumberParseError,
     integer::{

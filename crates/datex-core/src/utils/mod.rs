@@ -1,3 +1,4 @@
+//! This module contains various utility functions and types that are used throughout the project.
 pub mod ansi_colors;
 pub mod async_callback;
 pub mod async_iterators;

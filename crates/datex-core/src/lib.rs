@@ -1,3 +1,4 @@
+//! The `datex-core` crate is the core library for the DATEX system.
 #![cfg_attr(not(feature = "std"), no_std)]
 #![feature(assert_matches)]
 #![feature(gen_blocks)]

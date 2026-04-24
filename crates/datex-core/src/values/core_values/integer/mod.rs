@@ -1,3 +1,5 @@
+//! This module contains the implementation of the [Integer] struct, which represents an arbitrary precision integer value in type system.
+
 use core::result::Result;
 pub mod typed_integer;
 pub mod utils;

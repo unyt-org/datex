@@ -1,3 +1,6 @@
+//! This module contains the implementation of the [Endpoint] struct.
+//! An endpoint is a unique identifier for a entity in the DATEX network that can be used to send and receive messages.
+
 use crate::{prelude::*, utils::buffers::buffer_to_hex};
 
 use crate::crypto::CryptoImpl;

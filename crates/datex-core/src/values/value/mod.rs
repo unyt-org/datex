@@ -1,3 +1,5 @@
+//! This module contains the implementation of the [Value] struct, which represents a value in the DATEX type system.
+//! A [Value] consists of a [CoreValue] representation and an optional custom type.
 use crate::{
     prelude::*,
     types::type_definition::TypeDefinition,

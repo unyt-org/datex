@@ -1,3 +1,4 @@
+//! This module contains the implementation of the visitor pattern for traversing and transforming the AST of [DatexExpression]s.
 pub mod visitable;
 use crate::{
     ast::expressions::{

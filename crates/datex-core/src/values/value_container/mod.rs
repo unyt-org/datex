@@ -1,3 +1,5 @@
+//! This module contains the implementation of the [ValueContainer] enum, which represents a container for values in the DATEX type system.
+//! A [ValueContainer] can either be a local value, which directly contains a [Value], or a shared value, which contains a reference to a [SharedContainer].
 use crate::{
     traits::{identity::Identity, structural_eq::StructuralEq},
     values::value_container::value_key::BorrowedValueKey,

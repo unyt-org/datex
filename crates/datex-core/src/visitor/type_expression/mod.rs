@@ -1,3 +1,4 @@
+//! This module contains the implementation of the visitor pattern for traversing and transforming the AST of [TypeExpression]s.
 use crate::{ast::type_expressions::RangeTypeExpr, prelude::*};
 use core::ops::Range;
 

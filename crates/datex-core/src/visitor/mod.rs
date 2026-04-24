@@ -1,3 +1,5 @@
+//! This module contains the implementation of the visitor pattern for traversing and transforming the AST of DATEX expressions and type expressions.
+//! It defines the [VisitAction] enum, which represents the possible actions that can be taken when visiting a node in the AST, such as replacing the node, skipping its children, or setting its type annotation
 use crate::types::r#type::Type;
 
 pub mod expression;

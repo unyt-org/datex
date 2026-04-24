@@ -1,3 +1,6 @@
+//! This module contains the implementation of the [Map] struct, which represents a map of key-value pairs in the type system.
+//! The [Map] struct supports different internal representations for different use cases, such as a dynamic map that allows any keys and values, a structural map with fixed keys and values, and a record-like map with string keys and value containers as values.
+
 pub mod update_handler;
 
 use crate::{

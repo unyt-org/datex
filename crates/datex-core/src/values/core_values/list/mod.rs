@@ -1,3 +1,5 @@
+//! This module contains the implementation of the [List] struct, which represents a list of values in the type system.
+
 use crate::{
     prelude::*, shared_values::errors::IndexOutOfBoundsError,
     values::value_container::ValueContainer,
