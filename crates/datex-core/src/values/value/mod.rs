@@ -15,6 +15,7 @@ use crate::{
     },
 };
 pub mod apply;
+pub mod equality;
 pub mod ops;
 pub mod serde_dif;
 pub mod update_handler;
@@ -43,22 +44,6 @@ pub struct Value {
     pub inner: CoreValue,
     // actual type of the value - if [None], use default type for given value
     pub custom_type: Option<Type>,
-}
-
-/// Two values are structurally equal, if their inner values are structurally equal, regardless
-/// of the actual_type of the values
-impl StructuralEq for Value {
-    fn structural_eq(&self, other: &Self) -> bool {
-        self.inner.structural_eq(&other.inner)
-    }
-}
-
-/// Value equality corresponds to partial equality:
-/// Both type and inner value are the same
-impl ValueEq for Value {
-    fn value_eq(&self, other: &Self) -> bool {
-        self == other
-    }
 }
 
 impl<T: Into<CoreValue>> From<T> for Value {
@@ -292,22 +277,6 @@ impl Value {
         }
 
         Ok(())
-    }
-}
-
-// TODO #119: crate a TryAddAssign trait etc.
-impl<T> AddAssign<T> for Value
-where
-    Value: From<T>,
-{
-    fn add_assign(&mut self, rhs: T) {
-        let rhs: Value = rhs.into();
-        let res = self.inner.clone() + rhs.inner;
-        if let Ok(res) = res {
-            self.inner = res;
-        } else {
-            error!("Failed to add value: {res:?}");
-        }
     }
 }
 

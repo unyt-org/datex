@@ -6,7 +6,9 @@ use crate::{
 
 use core::{fmt::Display, ops::Not, result::Result};
 use serde::{Deserialize, Serialize};
+pub mod equality;
 pub mod ops;
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Boolean(pub bool);
 
@@ -36,12 +38,6 @@ impl Boolean {
 impl Display for Boolean {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         core::write!(f, "{}", self.0)
-    }
-}
-
-impl StructuralEq for Boolean {
-    fn structural_eq(&self, other: &Self) -> bool {
-        self.0 == other.0
     }
 }
 

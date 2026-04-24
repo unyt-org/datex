@@ -10,6 +10,7 @@ use num_bigint::BigInt;
 use num_integer::Integer;
 use num_traits::{Signed, ToPrimitive, Zero};
 use serde::{Deserialize, Serialize};
+pub mod ops;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Rational {
@@ -220,24 +221,8 @@ impl Rational {
     }
 }
 
-impl Add for Rational {
-    type Output = Self;
-
-    fn add(self, rhs: Self) -> Self::Output {
-        Rational::from_big_rational(self.big_rational + rhs.big_rational)
-    }
-}
-
 impl Display for Rational {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         core::write!(f, "{}", self.rational_to_string())
-    }
-}
-
-impl Neg for Rational {
-    type Output = Self;
-
-    fn neg(self) -> Self::Output {
-        Rational::from_big_rational(-self.big_rational)
     }
 }

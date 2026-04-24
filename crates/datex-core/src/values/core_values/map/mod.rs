@@ -11,7 +11,7 @@ use crate::{
         value_container::{ValueContainer, value_key::BorrowedValueKey},
     },
 };
-
+pub mod equality;
 use crate::shared_values::errors::KeyNotFoundError;
 use core::{
     fmt::{self, Display},
@@ -251,29 +251,6 @@ impl Hash for BorrowedMapKey<'_> {
     }
 }
 
-impl StructuralEq for BorrowedMapKey<'_> {
-    fn structural_eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (BorrowedMapKey::Text(a), BorrowedMapKey::Text(b)) => a == b,
-            (BorrowedMapKey::Value(a), BorrowedMapKey::Value(b)) => {
-                a.structural_eq(b)
-            }
-            (BorrowedMapKey::Text(a), BorrowedMapKey::Value(b))
-            | (BorrowedMapKey::Value(b), BorrowedMapKey::Text(a)) => {
-                if let ValueContainer::Local(Value {
-                    inner: CoreValue::Text(text),
-                    ..
-                }) = b
-                {
-                    a == &text.0
-                } else {
-                    false
-                }
-            }
-        }
-    }
-}
-
 impl Display for BorrowedMapKey<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
@@ -461,24 +438,6 @@ impl Iterator for IntoMapIterator {
                 }
             }
         }
-    }
-}
-
-impl StructuralEq for Map {
-    fn structural_eq(&self, other: &Self) -> bool {
-        if self.size() != other.size() {
-            return false;
-        }
-        for ((key, value), (other_key, other_value)) in
-            self.iter().zip(other.iter())
-        {
-            if !key.structural_eq(&other_key)
-                || !value.structural_eq(other_value)
-            {
-                return false;
-            }
-        }
-        true
     }
 }
 

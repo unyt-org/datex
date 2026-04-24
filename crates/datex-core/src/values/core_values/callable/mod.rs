@@ -7,6 +7,7 @@ use crate::{
 };
 use core::fmt::{Display, Formatter};
 pub mod apply;
+pub mod equality;
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum CallableKind {
     // A pure function
@@ -60,11 +61,5 @@ impl Callable {
                 todo!("#606 Calling Datex bytecode is not yet implemented")
             }
         }
-    }
-}
-
-impl StructuralEq for Callable {
-    fn structural_eq(&self, other: &Self) -> bool {
-        self == other
     }
 }

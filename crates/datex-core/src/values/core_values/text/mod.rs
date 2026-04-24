@@ -8,7 +8,7 @@ use core::{
     result::Result,
 };
 use serde::{Deserialize, Serialize};
-
+pub mod equality;
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Text(pub String);
 pub mod ops;
@@ -171,12 +171,6 @@ impl Text {
         chars[index] = c;
         self.0 = chars.iter().collect();
         Ok(())
-    }
-}
-
-impl StructuralEq for Text {
-    fn structural_eq(&self, other: &Self) -> bool {
-        self.0 == other.0
     }
 }
 

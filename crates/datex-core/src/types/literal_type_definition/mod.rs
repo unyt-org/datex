@@ -16,6 +16,7 @@ use crate::{
     },
 };
 use core::{fmt::Display, hash::Hash};
+pub mod equality;
 
 #[derive(Debug, Clone, PartialEq, Hash, Eq)]
 pub enum LiteralTypeDefinition {
@@ -193,12 +194,6 @@ impl LiteralTypeDefinition {
                 CoreLibTypeId::Base(CoreLibBaseTypeId::Endpoint)
             }
         }
-    }
-}
-
-impl StructuralEq for LiteralTypeDefinition {
-    fn structural_eq(&self, other: &Self) -> bool {
-        self == other
     }
 }
 

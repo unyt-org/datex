@@ -22,6 +22,7 @@ use core::{
     ops::{Add, Neg, Sub},
     str::FromStr,
 };
+pub mod equality;
 use num::{BigInt, BigRational};
 use num_enum::TryFromPrimitive;
 use num_traits::{FromPrimitive, Zero};
@@ -227,27 +228,6 @@ impl Decimal {
                 }
             }
         }
-    }
-}
-
-impl StructuralEq for Decimal {
-    fn structural_eq(&self, other: &Self) -> bool {
-        if self.is_zero() && other.is_zero() {
-            return true; // +0.0 == -0.0
-        }
-        match (self, other) {
-            (Decimal::Finite(a), Decimal::Finite(b)) => a == b,
-            (Decimal::Infinity, Decimal::Infinity) => true,
-            (Decimal::NegInfinity, Decimal::NegInfinity) => true,
-            (Decimal::Nan, Decimal::Nan) => false,
-            _ => false,
-        }
-    }
-}
-
-impl ValueEq for Decimal {
-    fn value_eq(&self, other: &Self) -> bool {
-        self.structural_eq(other)
     }
 }
 

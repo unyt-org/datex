@@ -231,28 +231,7 @@ impl Display for TypeDefinition {
     }
 }
 
-impl StructuralEq for TypeDefinition {
-    fn structural_eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (TypeDefinition::Literal(a), TypeDefinition::Literal(b)) => {
-                a.structural_eq(b)
-            }
-            (TypeDefinition::Union(a), TypeDefinition::Union(b)) => {
-                if a.len() != b.len() {
-                    return false;
-                }
-                for (item_a, item_b) in a.iter().zip(b.iter()) {
-                    if !item_a.structural_eq(item_b) {
-                        return false;
-                    }
-                }
-                true
-            }
-            _ => false,
-        }
-    }
-}
-
+pub mod equality;
 impl TypeDefinition {
     /// Calls the provided callback with a reference to the recursively collapsed inner [TypeDefinition] value
     pub fn with_collapsed<R>(&self, f: impl FnOnce(&TypeDefinition) -> R) -> R {

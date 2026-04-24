@@ -12,6 +12,7 @@ use core::{
     str,
     str::FromStr,
 };
+pub mod equality;
 use datex_crypto_facade::crypto::Crypto;
 use hex::decode;
 use serde::{Deserialize, Serialize};
@@ -67,12 +68,6 @@ pub struct Endpoint {
     pub ty: EndpointType,
     pub identifier: [u8; 18],
     pub instance: EndpointInstance,
-}
-
-impl StructuralEq for Endpoint {
-    fn structural_eq(&self, other: &Self) -> bool {
-        self == other
-    }
 }
 
 impl Default for Endpoint {

@@ -9,6 +9,7 @@ use crate::{
         error::NumberParseError, integer::typed_integer::TypedInteger,
     },
 };
+pub mod equality;
 pub mod ops;
 pub mod serde_dif;
 use binrw::{
@@ -265,12 +266,6 @@ impl Integer {
 
         // If no smaller fitting type is found, return BigInt
         TypedInteger::IBig(self.clone())
-    }
-}
-
-impl StructuralEq for Integer {
-    fn structural_eq(&self, other: &Self) -> bool {
-        self.0 == other.0
     }
 }
 

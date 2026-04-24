@@ -25,6 +25,7 @@ use crate::{
         value_container::{ValueContainer, value_key::BorrowedValueKey},
     },
 };
+pub mod identity;
 use alloc::rc::Rc;
 use core::{
     cell::{Ref, RefCell, RefMut},
@@ -326,42 +327,7 @@ impl Display for SharedContainer {
     }
 }
 
-/// Two references are identical if they point to the same inner value (Rc pointer equality)
-impl Identity for SharedContainer {
-    fn identical(&self, other: &Self) -> bool {
-        Rc::ptr_eq(self.get_rc_internal(), other.get_rc_internal())
-    }
-}
-
-impl Eq for SharedContainer {}
-
-/// PartialEq corresponds to pointer equality / identity for `Reference`.
-impl PartialEq for SharedContainer {
-    fn eq(&self, other: &Self) -> bool {
-        self.identical(other)
-    }
-}
-
-impl StructuralEq for SharedContainer {
-    fn structural_eq(&self, other: &Self) -> bool {
-        self.inner()
-            .base_shared_container()
-            .value_container
-            .structural_eq(
-                &other.inner().base_shared_container().value_container,
-            )
-    }
-}
-
-impl ValueEq for SharedContainer {
-    fn value_eq(&self, other: &Self) -> bool {
-        self.inner()
-            .base_shared_container()
-            .value_container
-            .value_eq(&other.inner().base_shared_container().value_container)
-    }
-}
-
+pub mod equality;
 impl Hash for SharedContainer {
     fn hash<H: Hasher>(&self, state: &mut H) {
         let ptr = Rc::as_ptr(self.get_rc_internal());
