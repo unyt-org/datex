@@ -185,7 +185,7 @@ mod tests {
         },
         values::{
             core_values::map::Map,
-            value_container::{ValueContainer, ValueKey},
+            value_container::{ValueContainer, value_key::ValueKey},
         },
     };
     use core::{assert_matches, cell::RefCell};

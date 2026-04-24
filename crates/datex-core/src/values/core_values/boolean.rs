@@ -1,7 +1,7 @@
 use crate::{
     prelude::*,
     traits::structural_eq::StructuralEq,
-    values::value_container::{ValueContainer, ValueError},
+    values::value_container::{ValueContainer, error::ValueError},
 };
 
 use core::{fmt::Display, ops::Not, result::Result};

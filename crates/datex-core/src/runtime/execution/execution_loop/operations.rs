@@ -11,7 +11,10 @@ use crate::{
     traits::{
         identity::Identity, structural_eq::StructuralEq, value_eq::ValueEq,
     },
-    values::{core_values::range::Range, value_container::ValueContainer},
+    values::{
+        core_values::range::Range,
+        value_container::{ValueContainer, value_key::ValueKey},
+    },
 };
 use core::cell::RefCell;
 
@@ -23,7 +26,6 @@ use crate::{
     value_updates::{
         update_data::SetEntryUpdateData, update_handler::UpdateHandler,
     },
-    values::value_container::ValueKey,
 };
 
 pub fn set_property(

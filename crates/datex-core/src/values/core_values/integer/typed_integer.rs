@@ -6,7 +6,7 @@ use crate::values::{
             utils::{smallest_fitting_signed, smallest_fitting_unsigned},
         },
     },
-    value_container::ValueError,
+    value_container::error::ValueError,
 };
 
 use crate::{prelude::*, traits::structural_eq::StructuralEq};

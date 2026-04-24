@@ -8,7 +8,7 @@ use crate::{
     values::{
         core_value::CoreValue,
         value::Value,
-        value_container::{BorrowedValueKey, ValueContainer},
+        value_container::{ValueContainer, value_key::BorrowedValueKey},
     },
 };
 

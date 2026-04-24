@@ -9,7 +9,7 @@ use crate::{
     },
     types::error::IllegalTypeError,
     value_updates::errors::UpdateError,
-    values::value_container::{ValueContainer, ValueError},
+    values::value_container::{ValueContainer, error::ValueError},
 };
 use core::fmt::Display;
 

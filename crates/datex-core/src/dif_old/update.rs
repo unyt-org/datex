@@ -1,14 +1,14 @@
 use crate::{
     dif::{DIFConvertible, value::DIFValueContainer},
     shared_values::observers::TransceiverId,
-    values::value_container::BorrowedValueKey,
 };
 use core::prelude::rust_2024::*;
 use serde::{Deserialize, Serialize};
 
-use crate::prelude::*;
-use crate::values::core_values::map::MapKey;
-use crate::values::value_container::ValueContainer;
+use crate::{
+    prelude::*,
+    values::{core_values::map::MapKey, value_container::ValueContainer},
+};
 
 /// Represents a key in the Datex Interface Format (DIF).
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -71,7 +71,6 @@ impl<'a> DIFUpdate<'a> {
 
 // TODO #386 optimize structural representation by using integer values for enum variants
 // and shrink down keys (kind: 0, 1, 2 instead of "clear", "set", "remove", ...)
-
 
 impl DIFUpdateData {
     /// Creates a new `DIFUpdateData::Replace` variant with the given value.

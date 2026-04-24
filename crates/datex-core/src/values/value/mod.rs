@@ -9,9 +9,12 @@ use crate::{
             callable::{Callable, CallableBody, CallableSignature},
             integer::typed_integer::TypedInteger,
         },
-        value_container::{BorrowedValueKey, ValueContainer, ValueError},
+        value_container::{
+            ValueContainer, error::ValueError, value_key::BorrowedValueKey,
+        },
     },
 };
+pub mod apply;
 pub mod serde_dif;
 use crate::{
     runtime::memory::Memory,
@@ -61,27 +64,6 @@ impl Deref for Value {
 
     fn deref(&self) -> &Self::Target {
         &self.inner
-    }
-}
-
-impl Apply for Value {
-    fn apply(
-        &self,
-        args: &[ValueContainer],
-    ) -> Result<Option<ValueContainer>, ExecutionError> {
-        match self.inner {
-            CoreValue::Callable(ref callable) => callable.apply(args),
-            _ => Err(ExecutionError::InvalidApply),
-        }
-    }
-    fn apply_single(
-        &self,
-        arg: &ValueContainer,
-    ) -> Result<Option<ValueContainer>, ExecutionError> {
-        match self.inner {
-            CoreValue::Callable(ref callable) => callable.apply_single(arg),
-            _ => Err(ExecutionError::InvalidApply),
-        }
     }
 }
 

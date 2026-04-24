@@ -4,6 +4,7 @@ use crate::{
     },
     prelude::*,
     types::nominal_type_definition::NominalTypeDefinition,
+    values::value_container::error::ValueError,
 };
 use core::result::Result;
 use datex_macros_internal::FromCoreValue;
@@ -33,7 +34,7 @@ use crate::{
             range::Range,
             text::Text,
         },
-        value_container::{ValueContainer, ValueError},
+        value_container::ValueContainer,
     },
 };
 use core::{

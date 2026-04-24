@@ -2,7 +2,7 @@ use crate::{
     prelude::*,
     values::{
         core_values::map::Map,
-        value_container::{BorrowedValueKey, ValueContainer},
+        value_container::{ValueContainer, value_key::BorrowedValueKey},
     },
 };
 

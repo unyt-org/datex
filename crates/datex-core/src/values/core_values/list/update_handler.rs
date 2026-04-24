@@ -3,7 +3,7 @@ use crate::{
     shared_values::errors::AccessError,
     values::{
         core_values::list::List,
-        value_container::{BorrowedValueKey, ValueContainer},
+        value_container::{ValueContainer, value_key::BorrowedValueKey},
     },
 };
 

@@ -22,7 +22,7 @@ use crate::{
     types::r#type::Type,
     values::{
         value::Value,
-        value_container::{BorrowedValueKey, ValueContainer},
+        value_container::{ValueContainer, value_key::BorrowedValueKey},
     },
 };
 use alloc::rc::Rc;
@@ -31,6 +31,7 @@ use core::{
     fmt::{Display, Formatter},
     hash::{Hash, Hasher},
 };
+pub mod apply;
 pub mod serde_dif;
 /// Top-level wrapper for any owned or referenced shared container,
 /// which can either be an owned shared container or a reference to a shared container.
@@ -333,22 +334,6 @@ impl Identity for SharedContainer {
 }
 
 impl Eq for SharedContainer {}
-
-impl Apply for SharedContainer {
-    fn apply(
-        &self,
-        args: &[ValueContainer],
-    ) -> Result<Option<ValueContainer>, ExecutionError> {
-        self.base_shared_container().apply(args)
-    }
-
-    fn apply_single(
-        &self,
-        arg: &ValueContainer,
-    ) -> Result<Option<ValueContainer>, ExecutionError> {
-        self.base_shared_container().apply_single(arg)
-    }
-}
 
 /// PartialEq corresponds to pointer equality / identity for `Reference`.
 impl PartialEq for SharedContainer {

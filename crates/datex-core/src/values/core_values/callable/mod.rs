@@ -6,7 +6,7 @@ use crate::{
     values::value_container::ValueContainer,
 };
 use core::fmt::{Display, Formatter};
-
+pub mod apply;
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum CallableKind {
     // A pure function
@@ -60,21 +60,6 @@ impl Callable {
                 todo!("#606 Calling Datex bytecode is not yet implemented")
             }
         }
-    }
-}
-
-impl Apply for Callable {
-    fn apply(
-        &self,
-        args: &[ValueContainer],
-    ) -> Result<Option<ValueContainer>, ExecutionError> {
-        self.call(args)
-    }
-    fn apply_single(
-        &self,
-        arg: &ValueContainer,
-    ) -> Result<Option<ValueContainer>, ExecutionError> {
-        self.call(&[arg.clone()])
     }
 }
 
