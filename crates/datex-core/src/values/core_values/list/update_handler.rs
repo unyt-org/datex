@@ -39,7 +39,7 @@ impl UpdateHandler for List {
         )?;
         self.try_set(key, data.value)
             .map(|_| ())
-            .map_err(|err| UpdateError::access_error(err))
+            .map_err(UpdateError::access_error)
     }
 
     fn try_delete_entry(
@@ -50,8 +50,7 @@ impl UpdateHandler for List {
         let key = BorrowedValueKey::from(data.key).try_as_index().ok_or_else(
             || UpdateError::access_error(AccessError::InvalidIndexKey),
         )?;
-        self.try_delete(key)
-            .map_err(|err| UpdateError::access_error(err))
+        self.try_delete(key).map_err(UpdateError::access_error)
     }
 
     fn try_append_entry(
