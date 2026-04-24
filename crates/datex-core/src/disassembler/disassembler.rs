@@ -430,7 +430,7 @@ mod tests {
         runtime::{Runtime, RuntimeConfig, RuntimeRunner},
     };
     use binrw::io::Cursor;
-    use rstest::rstest;
+    use test_case::test_case;
 
     fn instructions_to_bytes(instructions: Vec<Instruction>) -> Vec<u8> {
         let mut cursor = Cursor::new(Vec::new());
@@ -440,27 +440,20 @@ mod tests {
         cursor.into_inner()
     }
 
-    #[rstest]
-
-    /// empty dxb
-    #[case(
+    #[test_case(
         &[],
         InstructionTree::new(Instruction::Regular(RegularInstruction::UnboundedStatements)),
         Some(DXBParserError::ExpectingMoreInstructions)
-    )]
-
-    /// multiple root nodes
-    #[case(
+         ; "empty dxb")]
+    #[test_case(
         &[
             Instruction::Regular(RegularInstruction::True),
             Instruction::Regular(RegularInstruction::False),
         ],
         InstructionTree::new(Instruction::Regular(RegularInstruction::True)),
         Some(DXBParserError::UnexpectedBytesAfterEndOfInstructions)
-    )]
-
-    /// simple statements
-    #[case(
+         ; "multiple root nodes")]
+    #[test_case(
         &[
             Instruction::Regular(RegularInstruction::Statements(StatementsData {statements_count: 2, terminated: true})),
             Instruction::Regular(RegularInstruction::True),
@@ -474,10 +467,9 @@ mod tests {
             ]
         },
         None
+         ; "simple statements"
     )]
-
-    /// unbounded statements
-    #[case(
+    #[test_case(
         &[
             Instruction::Regular(RegularInstruction::UnboundedStatements),
             Instruction::Regular(RegularInstruction::True),
@@ -493,10 +485,9 @@ mod tests {
             ]
         },
         None
+         ; "unbounded statements"
     )]
-
-    /// normal and unbounded statements
-    #[case(
+    #[test_case(
         &[
             Instruction::Regular(RegularInstruction::Statements(StatementsData {statements_count: 2, terminated: true})),
             Instruction::Regular(RegularInstruction::UnboundedStatements),
@@ -520,19 +511,17 @@ mod tests {
             ]
         },
         None
+        ; "normal and unbounded statements"
     )]
-
-    /// single instruction
-    #[case(
+    #[test_case(
         &[
             Instruction::Regular(RegularInstruction::True),
         ],
         InstructionTree::new(Instruction::Regular(RegularInstruction::True)),
         None
+        ; "single instruction"
     )]
-
-    /// statements with missing instructions
-    #[case(
+    #[test_case(
         &[
             Instruction::Regular(RegularInstruction::Statements(StatementsData {statements_count: 2, terminated: true})),
             Instruction::Regular(RegularInstruction::True),
@@ -544,10 +533,9 @@ mod tests {
             ]
         },
         Some(DXBParserError::ExpectingMoreInstructions)
+        ; "statements with missing instructions"
     )]
-
-    /// remote execution
-    #[case(
+    #[test_case(
         &[
             Instruction::Regular(RegularInstruction::RemoteExecution(InstructionBlockData {
                 length: 2,
@@ -575,12 +563,13 @@ mod tests {
             ]
         },
         None
+        ; "remote execution"
     )]
 
     fn disassemble_statements(
-        #[case] instructions: &[Instruction],
-        #[case] expected_tree: InstructionTree<Instruction>,
-        #[case] expected_err: Option<DXBParserError>,
+        instructions: &[Instruction],
+        expected_tree: InstructionTree<Instruction>,
+        expected_err: Option<DXBParserError>,
     ) {
         let dxb = instructions_to_bytes(instructions.to_vec());
         let (tree, err) = disassemble_body(

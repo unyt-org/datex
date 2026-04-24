@@ -180,7 +180,6 @@ tokio = { version = "1.43.0", features = [
     "time",
 ], default-features = false }
 flexi_logger = { version = "0.31.8" }
-rstest = "0.26.1"
 
 [features]
 # alloc = [] see https://github.com/unyt-org/datex/issues/699

@@ -1,3 +1,5 @@
+use test_case::test_case;
+
 use crate::{
     runtime::{
         execution::{
@@ -16,7 +18,6 @@ use crate::{
 };
 use core::assert_matches;
 use log::info;
-use rstest::rstest;
 
 #[tokio::test]
 #[cfg(feature = "compiler")]
@@ -226,13 +227,12 @@ pub async fn test_remote_shared_value_inject_ref() {
 }
 
 #[cfg(feature = "compiler")]
-#[rstest]
-#[case("shared", SharedContainerMutability::Immutable)]
-#[case("shared mut", SharedContainerMutability::Mutable)]
+#[test_case("shared", SharedContainerMutability::Immutable ; "immutable")]
+#[test_case("shared mut", SharedContainerMutability::Mutable ; "mutable")]
 #[tokio::test]
 pub async fn test_remote_shared_value_return(
-    #[case] shared_string: String,
-    #[case] mutable_value: SharedContainerMutability,
+    shared_string: &'static str,
+    mutable_value: SharedContainerMutability,
 ) {
     let endpoint_a = Endpoint::new("@test_a");
     let endpoint_b = Endpoint::new("@test_b");
@@ -272,13 +272,12 @@ pub async fn test_remote_shared_value_return(
 }
 
 #[cfg(feature = "compiler")]
-#[rstest]
-#[case("shared", SharedContainerMutability::Immutable)]
-#[case("shared mut", SharedContainerMutability::Mutable)]
+#[test_case("shared", SharedContainerMutability::Immutable ; "immutable")]
+#[test_case("shared mut", SharedContainerMutability::Mutable; "mutable")]
 #[tokio::test]
 pub async fn test_remote_shared_roundtrip_move(
-    #[case] shared_string: String,
-    #[case] mutable_value: SharedContainerMutability,
+    shared_string: &'static str,
+    mutable_value: SharedContainerMutability,
 ) {
     flexi_logger::init();
     let endpoint_a = Endpoint::new("@test_a");
