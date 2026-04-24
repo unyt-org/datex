@@ -9,6 +9,7 @@ use crate::{
         error::NumberParseError, integer::typed_integer::TypedInteger,
     },
 };
+pub mod ops;
 pub mod serde_dif;
 use binrw::{
     BinRead, BinReaderExt, BinResult, BinWrite, Endian,
@@ -270,47 +271,6 @@ impl Integer {
 impl StructuralEq for Integer {
     fn structural_eq(&self, other: &Self) -> bool {
         self.0 == other.0
-    }
-}
-
-impl Neg for Integer {
-    type Output = Self;
-
-    fn neg(self) -> Self::Output {
-        Integer(-self.0)
-    }
-}
-
-impl Add for Integer {
-    type Output = Self;
-
-    fn add(self, rhs: Self) -> Self::Output {
-        Integer(self.0 + rhs.0)
-    }
-}
-impl Add for &Integer {
-    type Output = Integer;
-
-    fn add(self, rhs: Self) -> Self::Output {
-        // FIXME #348: Optimize to avoid cloning if possible
-        Integer::add(self.clone(), rhs.clone())
-    }
-}
-
-impl Sub for Integer {
-    type Output = Self;
-
-    fn sub(self, rhs: Self) -> Self::Output {
-        self + (-rhs)
-    }
-}
-
-impl Sub for &Integer {
-    type Output = Integer;
-
-    fn sub(self, rhs: Self) -> Self::Output {
-        // FIXME #349: Optimize to avoid cloning if possible
-        Integer::sub(self.clone(), rhs.clone())
     }
 }
 
