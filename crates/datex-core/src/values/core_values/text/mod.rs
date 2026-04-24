@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Text(pub String);
-
+pub mod ops;
 impl Display for Text {
     // TODO #319: escape string content
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
@@ -191,53 +191,5 @@ impl From<&str> for Text {
 impl From<String> for Text {
     fn from(s: String) -> Self {
         Text(s)
-    }
-}
-
-/// Allow TypedDatexValue<Text> += String and TypedDatexValue<Text> += &str
-/// This can never panic since the Text::from from string will always succeed
-impl AddAssign<Text> for Text {
-    fn add_assign(&mut self, rhs: Text) {
-        self.0 += &rhs.0;
-    }
-}
-
-impl Add for Text {
-    type Output = Self;
-
-    fn add(self, rhs: Self) -> Self::Output {
-        Text(self.0 + &rhs.0)
-    }
-}
-
-impl Add for &Text {
-    type Output = Text;
-
-    fn add(self, rhs: Self) -> Self::Output {
-        Text(self.0.clone() + &rhs.0)
-    }
-}
-
-impl Add<Text> for &Text {
-    type Output = Text;
-
-    fn add(self, rhs: Text) -> Self::Output {
-        Text(self.0.clone() + &rhs.0)
-    }
-}
-
-impl Add<&Text> for Text {
-    type Output = Text;
-
-    fn add(self, rhs: &Text) -> Self::Output {
-        Text(self.0 + &rhs.0)
-    }
-}
-
-impl Add<&str> for Text {
-    type Output = Text;
-
-    fn add(self, rhs: &str) -> Self::Output {
-        Text(self.0 + rhs)
     }
 }

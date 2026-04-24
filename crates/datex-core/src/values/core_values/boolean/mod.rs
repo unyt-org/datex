@@ -6,7 +6,7 @@ use crate::{
 
 use core::{fmt::Display, ops::Not, result::Result};
 use serde::{Deserialize, Serialize};
-
+pub mod ops;
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Boolean(pub bool);
 
@@ -51,13 +51,6 @@ impl From<bool> for Boolean {
     }
 }
 
-impl Not for Boolean {
-    type Output = Boolean;
-
-    fn not(self) -> Self::Output {
-        Boolean(!self.0)
-    }
-}
 // new into
 impl<T: Into<ValueContainer>> TryFrom<Option<T>> for Boolean {
     type Error = ValueError;
