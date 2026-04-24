@@ -1,7 +1,7 @@
 use crate::{
     shared_values::observers::{Observer, ObserverId},
     traits::value_eq::ValueEq,
-    utils::freemap::{FreeHashMap, NextKey},
+    utils::freemap::FreeHashMap,
     values::{
         value::Value,
         value_container::{ValueContainer, value_key::BorrowedValueKey},
@@ -9,28 +9,17 @@ use crate::{
 };
 pub mod update_handler;
 use crate::{
-    prelude::*,
-    runtime::{execution::ExecutionError, memory::Memory},
+    runtime::memory::Memory,
     shared_values::{
         SharedContainerMutability,
         errors::{AccessError, SharedValueCreationError},
-        observers::TransceiverId,
     },
-    traits::apply::Apply,
     types::r#type::Type,
-    value_updates::{
-        errors::UpdateError,
-        update_data::{
-            AppendEntryUpdateData, DeleteEntryUpdateData, ListSpliceUpdateData,
-            ReplaceUpdateData, SetEntryUpdateData,
-        },
-        update_handler::UpdateHandler,
-    },
+    value_updates::errors::UpdateError,
 };
 pub mod apply;
 use core::{
     fmt::{Debug, Display},
-    ops::Deref,
     prelude::rust_2024::*,
 };
 

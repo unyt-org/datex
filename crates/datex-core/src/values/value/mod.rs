@@ -1,7 +1,5 @@
 use crate::{
     prelude::*,
-    runtime::execution::ExecutionError,
-    traits::{apply::Apply, structural_eq::StructuralEq, value_eq::ValueEq},
     types::type_definition::TypeDefinition,
     values::{
         core_value::CoreValue,
@@ -9,9 +7,7 @@ use crate::{
             callable::{Callable, CallableBody, CallableSignature},
             integer::typed_integer::TypedInteger,
         },
-        value_container::{
-            ValueContainer, error::ValueError, value_key::BorrowedValueKey,
-        },
+        value_container::{ValueContainer, value_key::BorrowedValueKey},
     },
 };
 pub mod apply;
@@ -20,24 +16,13 @@ pub mod ops;
 pub mod serde_dif;
 pub mod update_handler;
 use crate::{
-    runtime::memory::Memory,
-    shared_values::{errors::AccessError, observers::TransceiverId},
+    runtime::memory::Memory, shared_values::errors::AccessError,
     types::r#type::Type,
-    value_updates::{
-        errors::UpdateError,
-        update_data::{
-            AppendEntryUpdateData, DeleteEntryUpdateData, ListSpliceUpdateData,
-            ReplaceUpdateData, SetEntryUpdateData,
-        },
-        update_handler::UpdateHandler,
-    },
 };
 use core::{
     fmt::{Display, Formatter},
-    ops::{Add, AddAssign, Deref, Neg, Not, Sub},
     result::Result,
 };
-use log::error;
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub struct Value {

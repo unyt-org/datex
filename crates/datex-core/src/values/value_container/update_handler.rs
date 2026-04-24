@@ -1,16 +1,6 @@
 use crate::{
     prelude::*,
-    runtime::execution::ExecutionError,
-    serde::{
-        deserializer::{DatexDeserializer, from_value_container},
-        error::DeserializationError,
-    },
     shared_values::observers::TransceiverId,
-    traits::{
-        apply::Apply, identity::Identity, structural_eq::StructuralEq,
-        value_eq::ValueEq,
-    },
-    types::type_definition::TypeDefinition,
     value_updates::{
         errors::UpdateError,
         update_data::{
@@ -19,12 +9,7 @@ use crate::{
         },
         update_handler::UpdateHandler,
     },
-    values::{
-        core_value::CoreValue,
-        value_container::{
-            ValueContainer, error::ValueError, value_key::BorrowedValueKey,
-        },
-    },
+    values::value_container::ValueContainer,
 };
 use core::result::Result;
 

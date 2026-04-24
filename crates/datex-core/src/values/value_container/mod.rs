@@ -1,6 +1,6 @@
 use crate::{
     traits::{identity::Identity, structural_eq::StructuralEq},
-    values::value_container::{error::ValueError, value_key::BorrowedValueKey},
+    values::value_container::value_key::BorrowedValueKey,
 };
 pub mod equality;
 pub mod identity;
@@ -9,15 +9,13 @@ pub mod serde_dif;
 use super::value::Value;
 use crate::{
     prelude::*,
-    runtime::{execution::ExecutionError, memory::Memory},
+    runtime::memory::Memory,
     serde::{
         deserializer::{DatexDeserializer, from_value_container},
         error::{DeserializationError, SerializationError},
         serializer::to_value_container,
     },
-    shared_values::{
-        SharedContainer, errors::AccessError, observers::TransceiverId,
-    },
+    shared_values::{SharedContainer, errors::AccessError},
     traits::{apply::Apply, value_eq::ValueEq},
     types::{
         r#type::Type,
@@ -26,14 +24,7 @@ use crate::{
             TypeDefinitionWithMetadata, TypeMetadata,
         },
     },
-    value_updates::{
-        errors::UpdateError,
-        update_data::{
-            AppendEntryUpdateData, DeleteEntryUpdateData, ListSpliceUpdateData,
-            ReplaceUpdateData, SetEntryUpdateData,
-        },
-        update_handler::UpdateHandler,
-    },
+    value_updates::update_handler::UpdateHandler,
     values::core_value::CoreValue,
 };
 

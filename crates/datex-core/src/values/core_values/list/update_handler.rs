@@ -57,7 +57,7 @@ impl UpdateHandler for List {
     fn try_append_entry(
         &mut self,
         data: AppendEntryUpdateData,
-        source_id: TransceiverId,
+        _source_id: TransceiverId,
     ) -> Result<(), UpdateError> {
         self.push(data.value);
         Ok(())

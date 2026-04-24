@@ -1,10 +1,9 @@
 use crate::{
     prelude::*,
-    traits::structural_eq::StructuralEq,
     values::value_container::{ValueContainer, error::ValueError},
 };
 
-use core::{fmt::Display, ops::Not, result::Result};
+use core::{fmt::Display, result::Result};
 use serde::{Deserialize, Serialize};
 pub mod equality;
 pub mod ops;

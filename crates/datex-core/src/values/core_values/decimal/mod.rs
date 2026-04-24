@@ -4,24 +4,15 @@ pub mod typed_decimal;
 pub mod utils;
 use crate::prelude::*;
 
-use crate::{
-    traits::{structural_eq::StructuralEq, value_eq::ValueEq},
-    values::core_values::{
-        decimal::typed_decimal::TypedDecimal, error::NumberParseError,
-    },
+use crate::values::core_values::{
+    decimal::typed_decimal::TypedDecimal, error::NumberParseError,
 };
 use bigdecimal::BigDecimal;
 use binrw::{
     BinRead, BinReaderExt, BinResult, BinWrite, Endian,
     io::{Read, Seek, Write},
 };
-use core::{
-    cmp::Ordering,
-    fmt::Display,
-    hash::Hash,
-    ops::{Add, Neg, Sub},
-    str::FromStr,
-};
+use core::{cmp::Ordering, fmt::Display, hash::Hash, str::FromStr};
 pub mod equality;
 use num::{BigInt, BigRational};
 use num_enum::TryFromPrimitive;
@@ -439,7 +430,12 @@ impl From<f64> for Decimal {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::{
+        prelude::*,
+        traits::{structural_eq::StructuralEq, value_eq::ValueEq},
+        values::core_values::decimal::Decimal,
+    };
+
     use core::assert_matches;
 
     #[test]

@@ -1,7 +1,4 @@
-use crate::{
-    prelude::*, traits::structural_eq::StructuralEq,
-    utils::buffers::buffer_to_hex,
-};
+use crate::{prelude::*, utils::buffers::buffer_to_hex};
 
 use crate::crypto::CryptoImpl;
 use binrw::{BinRead, BinWrite, io::Cursor};

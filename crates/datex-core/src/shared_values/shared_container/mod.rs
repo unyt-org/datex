@@ -1,6 +1,6 @@
 use crate::{
     runtime::{
-        execution::ExecutionError, memory::Memory,
+        memory::Memory,
         pointer_address_provider::SelfOwnedPointerAddressProvider,
     },
     shared_values::{

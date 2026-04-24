@@ -1,13 +1,10 @@
 use crate::{
-    prelude::*,
     runtime::execution::ExecutionError,
-    traits::{apply::Apply, structural_eq::StructuralEq},
-    types::r#type::Type,
+    traits::apply::Apply,
     values::{
         core_values::callable::Callable, value_container::ValueContainer,
     },
 };
-use core::fmt::{Display, Formatter};
 
 impl Apply for Callable {
     fn apply(

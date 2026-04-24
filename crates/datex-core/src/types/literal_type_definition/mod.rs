@@ -3,7 +3,6 @@ use crate::{
         CoreLibBaseTypeId, CoreLibTypeId, CoreLibVariantTypeId,
     },
     prelude::*,
-    traits::structural_eq::StructuralEq,
     types::{type_definition::TypeDefinition, type_match::TypeMatch},
     values::{
         core_values::{

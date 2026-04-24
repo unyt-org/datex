@@ -3,11 +3,8 @@ pub mod typed_integer;
 pub mod utils;
 use crate::prelude::*;
 
-use crate::{
-    traits::structural_eq::StructuralEq,
-    values::core_values::{
-        error::NumberParseError, integer::typed_integer::TypedInteger,
-    },
+use crate::values::core_values::{
+    error::NumberParseError, integer::typed_integer::TypedInteger,
 };
 pub mod equality;
 pub mod ops;
@@ -16,12 +13,7 @@ use binrw::{
     BinRead, BinReaderExt, BinResult, BinWrite, Endian,
     io::{Read, Seek, Write},
 };
-use core::{
-    fmt::Display,
-    hash::Hash,
-    ops::{Add, Neg, Sub},
-    str::FromStr,
-};
+use core::{fmt::Display, hash::Hash, str::FromStr};
 use num::{BigInt, Num};
 use num_integer::Integer as NumInteger;
 use num_traits::ToPrimitive;

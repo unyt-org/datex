@@ -1,6 +1,6 @@
 use core::ops::Not;
 
-use crate::values::{value::Value, value_container::error::ValueError};
+use crate::values::value::Value;
 
 impl Not for Value {
     type Output = Option<Value>;

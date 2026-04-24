@@ -1,8 +1,5 @@
 use crate::{
-    traits::{
-        identity::Identity, structural_eq::StructuralEq, value_eq::ValueEq,
-    },
-    values::value_container::ValueContainer,
+    traits::identity::Identity, values::value_container::ValueContainer,
 };
 
 /// Identity checks only returns true if two references are identical.

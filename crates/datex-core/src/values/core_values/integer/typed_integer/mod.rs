@@ -1,24 +1,15 @@
-use crate::values::{
-    core_values::{
-        error::NumberParseError,
-        integer::{
-            Integer,
-            utils::{smallest_fitting_signed, smallest_fitting_unsigned},
-        },
+use crate::values::core_values::{
+    error::NumberParseError,
+    integer::{
+        Integer,
+        utils::{smallest_fitting_signed, smallest_fitting_unsigned},
     },
-    value_container::error::ValueError,
 };
 pub mod equality;
-use crate::{prelude::*, traits::structural_eq::StructuralEq};
+use crate::prelude::*;
 
 use crate::libs::core::type_id::{CoreLibTypeId, CoreLibVariantTypeId};
-use core::{
-    fmt::Display,
-    hash::Hash,
-    ops::{Add, AddAssign, Neg, Sub},
-    result::Result,
-    unreachable,
-};
+use core::{fmt::Display, hash::Hash, result::Result, unreachable};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{Deserialize, Serialize};
 use strum::Display;

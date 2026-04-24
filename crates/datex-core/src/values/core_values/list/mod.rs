@@ -1,6 +1,5 @@
 use crate::{
     prelude::*, shared_values::errors::IndexOutOfBoundsError,
-    traits::structural_eq::StructuralEq,
     values::value_container::ValueContainer,
 };
 pub mod equality;

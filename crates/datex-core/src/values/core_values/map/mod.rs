@@ -4,7 +4,6 @@ use crate::{
     collections::HashMap,
     prelude::*,
     random::RandomState,
-    traits::structural_eq::StructuralEq,
     values::{
         core_value::CoreValue,
         value::Value,

@@ -1,8 +1,5 @@
 use crate::{
-    prelude::*,
-    runtime::execution::ExecutionError,
-    traits::{apply::Apply, structural_eq::StructuralEq},
-    types::r#type::Type,
+    prelude::*, runtime::execution::ExecutionError, types::r#type::Type,
     values::value_container::ValueContainer,
 };
 use core::fmt::{Display, Formatter};

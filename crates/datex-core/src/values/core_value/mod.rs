@@ -4,14 +4,11 @@ use crate::{
     },
     prelude::*,
     types::nominal_type_definition::NominalTypeDefinition,
-    values::value_container::error::ValueError,
 };
-use core::result::Result;
 use datex_macros_internal::FromCoreValue;
 pub mod serde_dif;
 use crate::{
     runtime::memory::Memory,
-    traits::{structural_eq::StructuralEq, value_eq::ValueEq},
     types::{
         shared_container_containing_nominal_type::SharedContainerContainingNominalType,
         r#type::Type,
@@ -37,10 +34,7 @@ use crate::{
         value_container::ValueContainer,
     },
 };
-use core::{
-    fmt::{Display, Formatter},
-    ops::{Add, AddAssign, Neg, Not, Sub},
-};
+use core::fmt::{Display, Formatter};
 pub mod ops;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, FromCoreValue)]

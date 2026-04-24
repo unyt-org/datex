@@ -1,31 +1,26 @@
-use serde::Deserialize;
-
 use crate::{
     dif::pointer_address::PointerAddressWithOwnership,
     runtime::execution::ExecutionError,
-    shared_values::{
-        SharedContainerMutability,
-        observers::{ObserveOptions, ObserverError, ObserverId, TransceiverId},
+    shared_values::observers::{
+        ObserveOptions, ObserverError, ObserverId, TransceiverId,
     },
 };
 use core::{fmt::Display, result::Result};
 
 use crate::{
-    dif::cache::DIFSharedContainerCache,
+    dif::cache::{CacheValueRetrievalError, DIFSharedContainerCache},
     shared_values::{
         PointerAddress, SelfOwnedPointerAddress,
         base_shared_value_container::BaseSharedValueContainer,
         errors::SharedValueCreationError,
     },
-    types::r#type::Type,
-    value_updates::update_data::{Update, UpdateData},
+    value_updates::{
+        errors::UpdateError,
+        update_data::{Update, UpdateData, UpdateReturn},
+        update_handler::UpdateHandler,
+    },
     values::value_container::ValueContainer,
 };
-use crate::dif::cache::CacheValueRetrievalError;
-use crate::shared_values::SharedContainer;
-use crate::value_updates::errors::UpdateError;
-use crate::value_updates::update_data::{UpdateReturn};
-use crate::value_updates::update_handler::UpdateHandler;
 
 #[derive(Debug)]
 pub enum DIFObserveError {
@@ -71,7 +66,9 @@ impl From<CacheValueRetrievalError> for DIFUpdateError {
 pub type DIFUpdateResult = Result<UpdateReturn, DIFUpdateError>;
 
 /// Converts a Result with any types that can be converted into UpdateReturn and UpdateError into an UpdateResult.
-pub fn into_update_result<T: Into<UpdateReturn>, E: Into<DIFUpdateError>>(result: Result<T, E>) -> DIFUpdateResult {
+pub fn into_update_result<T: Into<UpdateReturn>, E: Into<DIFUpdateError>>(
+    result: Result<T, E>,
+) -> DIFUpdateResult {
     match result {
         Ok(value) => Ok(value.into()),
         Err(err) => Err(err.into()),
@@ -147,16 +144,30 @@ impl DIFInterface {
         address: PointerAddress,
         update: Update,
     ) -> DIFUpdateResult {
-        let container = self.cache.try_get_shared_container_mutable_reference(&address)?;
+        let container = self
+            .cache
+            .try_get_shared_container_mutable_reference(&address)?;
         let mut base_container = container.base_shared_container_mut();
 
         match update.data {
-            UpdateData::AppendEntry(data) => into_update_result(base_container.try_append_entry(data, self.transceiver_id)),
-            UpdateData::Clear => into_update_result( base_container.try_clear(self.transceiver_id)),
-            UpdateData::Replace(data) => into_update_result(base_container.try_replace(data, self.transceiver_id)),
-            UpdateData::SetEntry(data) => into_update_result(base_container.try_set_entry(data, self.transceiver_id)),
-            UpdateData::DeleteEntry(data) => into_update_result(base_container.try_delete_entry(data, self.transceiver_id)),
-            UpdateData::ListSplice(data) => into_update_result(base_container.try_list_splice(data, self.transceiver_id)),
+            UpdateData::AppendEntry(data) => into_update_result(
+                base_container.try_append_entry(data, self.transceiver_id),
+            ),
+            UpdateData::Clear => into_update_result(
+                base_container.try_clear(self.transceiver_id),
+            ),
+            UpdateData::Replace(data) => into_update_result(
+                base_container.try_replace(data, self.transceiver_id),
+            ),
+            UpdateData::SetEntry(data) => into_update_result(
+                base_container.try_set_entry(data, self.transceiver_id),
+            ),
+            UpdateData::DeleteEntry(data) => into_update_result(
+                base_container.try_delete_entry(data, self.transceiver_id),
+            ),
+            UpdateData::ListSplice(data) => into_update_result(
+                base_container.try_list_splice(data, self.transceiver_id),
+            ),
         }
     }
 

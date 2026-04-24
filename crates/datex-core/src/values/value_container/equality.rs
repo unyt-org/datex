@@ -1,7 +1,5 @@
 use crate::{
-    traits::{
-        identity::Identity, structural_eq::StructuralEq, value_eq::ValueEq,
-    },
+    traits::{structural_eq::StructuralEq, value_eq::ValueEq},
     values::value_container::ValueContainer,
 };
 

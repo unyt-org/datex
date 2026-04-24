@@ -1,40 +1,4 @@
-use crate::{
-    prelude::*,
-    runtime::{execution::ExecutionError, memory::Memory},
-    serde::{
-        deserializer::{DatexDeserializer, from_value_container},
-        error::{DeserializationError, SerializationError},
-        serializer::to_value_container,
-    },
-    shared_values::{
-        SharedContainer, errors::AccessError, observers::TransceiverId,
-    },
-    traits::{
-        apply::Apply, identity::Identity, structural_eq::StructuralEq,
-        value_eq::ValueEq,
-    },
-    types::{
-        r#type::Type,
-        type_definition::TypeDefinition,
-        type_definition_with_metadata::{
-            TypeDefinitionWithMetadata, TypeMetadata,
-        },
-    },
-    value_updates::{
-        errors::UpdateError,
-        update_data::{
-            AppendEntryUpdateData, DeleteEntryUpdateData, ListSpliceUpdateData,
-            ReplaceUpdateData, SetEntryUpdateData,
-        },
-        update_handler::UpdateHandler,
-    },
-    values::{
-        core_value::CoreValue,
-        value_container::{
-            ValueContainer, error::ValueError, value_key::BorrowedValueKey,
-        },
-    },
-};
+use crate::values::value_container::{ValueContainer, error::ValueError};
 use core::{ops::Add, result::Result};
 
 impl Add<ValueContainer> for ValueContainer {

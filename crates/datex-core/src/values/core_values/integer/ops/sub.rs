@@ -1,26 +1,7 @@
-use crate::{prelude::*, values::core_values::integer::Integer};
-use core::result::Result;
+use crate::values::core_values::integer::Integer;
 
-use crate::{
-    traits::structural_eq::StructuralEq,
-    values::core_values::{
-        error::NumberParseError, integer::typed_integer::TypedInteger,
-    },
-};
-use binrw::{
-    BinRead, BinReaderExt, BinResult, BinWrite, Endian,
-    io::{Read, Seek, Write},
-};
-use core::{
-    fmt::Display,
-    hash::Hash,
-    ops::{Add, Neg, Sub},
-    str::FromStr,
-};
-use num::{BigInt, Num};
-use num_integer::Integer as NumInteger;
-use num_traits::ToPrimitive;
-use serde::Deserialize;
+use crate::values::core_values::integer::typed_integer::TypedInteger;
+use core::ops::{Add, Neg, Sub};
 
 impl Sub for Integer {
     type Output = Self;

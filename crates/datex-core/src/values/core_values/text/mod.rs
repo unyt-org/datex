@@ -1,12 +1,5 @@
-use crate::{
-    prelude::*, shared_values::errors::IndexOutOfBoundsError,
-    traits::structural_eq::StructuralEq,
-};
-use core::{
-    fmt::Display,
-    ops::{Add, AddAssign},
-    result::Result,
-};
+use crate::{prelude::*, shared_values::errors::IndexOutOfBoundsError};
+use core::{fmt::Display, result::Result};
 use serde::{Deserialize, Serialize};
 pub mod equality;
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
