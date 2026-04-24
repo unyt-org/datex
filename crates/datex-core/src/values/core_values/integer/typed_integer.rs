@@ -37,7 +37,7 @@ use crate::{
 use core::{
     fmt::Display,
     hash::Hash,
-    ops::{Add, AddAssign, Div, Mul, Neg, Sub},
+    ops::{Add, AddAssign, Div, Mul, Neg, Rem, Sub},
     result::Result,
     unreachable,
 };
@@ -1566,6 +1566,77 @@ impl Neg for TypedInteger {
     }
 }
 
+impl TypedInteger {
+    pub fn checked_rem(self, rhs: Self) -> Option<TypedInteger> {
+        use TypedInteger::*;
+
+        if matches!(self, IBig(_)) || matches!(rhs, IBig(_)) {
+            let v1 = Integer::from(self);
+            let v2 = Integer::from(rhs);
+            if v2 == Integer::from(0) {
+                return None;
+            }
+            return Some(TypedInteger::IBig(v1 % v2));
+        }
+
+        let lhs_val = self.as_i128()?;
+        let rhs_val = rhs.as_i128()?;
+
+        if rhs_val == 0 {
+            return None;
+        }
+        let res = lhs_val.checked_rem(rhs_val)?;
+
+        match self {
+            I8(_) => Some(I8(res as i8)),
+            I16(_) => Some(I16(res as i16)),
+            I32(_) => Some(I32(res as i32)),
+            I64(_) => Some(I64(res as i64)),
+            I128(_) => Some(I128(res)),
+            U8(_) => Some(U8(res as u8)),
+            U16(_) => Some(U16(res as u16)),
+            U32(_) => Some(U32(res as u32)),
+            U64(_) => Some(U64(res as u64)),
+            U128(_) => {
+                let v1 = self.as_u128()?;
+                let v2 = rhs.as_u128()?;
+                v1.checked_rem(v2).map(U128)
+            }
+            IBig(_) => unreachable!(),
+        }
+    }
+}
+
+impl Rem<TypedInteger> for TypedInteger {
+    type Output = TypedInteger;
+    fn rem(self, rhs: TypedInteger) -> TypedInteger {
+        self.checked_rem(rhs).expect("Remainder by zero")
+    }
+}
+
+impl Rem<&TypedInteger> for TypedInteger {
+    type Output = TypedInteger;
+    fn rem(self, rhs: &TypedInteger) -> TypedInteger {
+        self.checked_rem(rhs.clone()).expect("Remainder by zero")
+    }
+}
+
+impl Rem<TypedInteger> for &TypedInteger {
+    type Output = TypedInteger;
+    fn rem(self, rhs: TypedInteger) -> TypedInteger {
+        self.clone().checked_rem(rhs).expect("Remainder by zero")
+    }
+}
+
+impl Rem<&TypedInteger> for &TypedInteger {
+    type Output = TypedInteger;
+    fn rem(self, rhs: &TypedInteger) -> TypedInteger {
+        self.clone()
+            .checked_rem(rhs.clone())
+            .expect("Remainder by zero")
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1629,6 +1700,14 @@ mod tests {
         let b = TypedInteger::from(20_i8);
         let result = a + b;
         assert_eq!(result, Some(TypedInteger::I8(30_i8)));
+    }
+
+    #[test]
+    fn integer_rem() {
+        let a = TypedInteger::from(12_i8);
+        let b = TypedInteger::from(5_i8);
+        let result = a % b;
+        assert_eq!(result, TypedInteger::I8(2_i8));
     }
 
     #[test]
