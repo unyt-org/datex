@@ -7,13 +7,18 @@ use core::fmt::Display;
 pub enum UpdateError {
     ImmutableValue,
     InvalidUpdate,
-    AccessError(AccessError),
+    AccessError(Box<AccessError>),
     TypeError(Box<TypeError>),
 }
+impl UpdateError {
+    pub fn access_error<T: Into<AccessError>>(err: T) -> Self {
+        UpdateError::AccessError(Box::new(err.into()))
+    }
+}
 
-impl<T: Into<AccessError>> From<T> for UpdateError {
-    fn from(err: T) -> Self {
-        UpdateError::AccessError(err.into())
+impl From<AccessError> for UpdateError {
+    fn from(err: AccessError) -> Self {
+        UpdateError::AccessError(Box::new(err))
     }
 }
 

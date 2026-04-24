@@ -35,7 +35,7 @@ impl UpdateHandler for Map {
     ) -> Result<(), UpdateError> {
         let key = BorrowedValueKey::from(data.key);
         self.try_set(key, data.value)
-            .map_err(|err| UpdateError::AccessError(err.into()))
+            .map_err(|err| UpdateError::access_error(err))
     }
 
     fn try_delete_entry(
@@ -45,7 +45,7 @@ impl UpdateHandler for Map {
     ) -> Result<ValueContainer, UpdateError> {
         let key = BorrowedValueKey::from(data.key);
         self.try_delete(key)
-            .map_err(|err| UpdateError::AccessError(err.into()))
+            .map_err(|err| UpdateError::access_error(err))
     }
 
     fn try_append_entry(
@@ -61,7 +61,7 @@ impl UpdateHandler for Map {
         _source_id: TransceiverId,
     ) -> Result<(), UpdateError> {
         self.try_clear_inner()
-            .map_err(|err| UpdateError::AccessError(err.into()))
+            .map_err(|err| UpdateError::access_error(err))
     }
 
     fn try_list_splice(

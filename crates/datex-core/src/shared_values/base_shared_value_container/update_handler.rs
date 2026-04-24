@@ -230,9 +230,9 @@ mod tests {
             },
             TransceiverId(0),
         );
-        assert_matches!(
+        assert_eq!(
             result,
-            Err(UpdateError::AccessError(AccessError::IndexOutOfBounds(
+            Err(UpdateError::access_error(AccessError::IndexOutOfBounds(
                 IndexOutOfBoundsError { index: 5 }
             )))
         );

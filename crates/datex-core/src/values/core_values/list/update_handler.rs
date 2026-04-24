@@ -35,11 +35,11 @@ impl UpdateHandler for List {
         _source_id: TransceiverId,
     ) -> Result<(), UpdateError> {
         let key = BorrowedValueKey::from(data.key).try_as_index().ok_or_else(
-            || UpdateError::AccessError(AccessError::InvalidIndexKey),
+            || UpdateError::access_error(AccessError::InvalidIndexKey),
         )?;
         self.try_set(key, data.value)
             .map(|_| ())
-            .map_err(|err| UpdateError::AccessError(err.into()))
+            .map_err(|err| UpdateError::access_error(err))
     }
 
     fn try_delete_entry(
@@ -48,10 +48,10 @@ impl UpdateHandler for List {
         _source_id: TransceiverId,
     ) -> Result<ValueContainer, UpdateError> {
         let key = BorrowedValueKey::from(data.key).try_as_index().ok_or_else(
-            || UpdateError::AccessError(AccessError::InvalidIndexKey),
+            || UpdateError::access_error(AccessError::InvalidIndexKey),
         )?;
         self.try_delete(key)
-            .map_err(|err| UpdateError::AccessError(err.into()))
+            .map_err(|err| UpdateError::access_error(err))
     }
 
     fn try_append_entry(
