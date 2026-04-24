@@ -27,6 +27,7 @@ use num_enum::TryFromPrimitive;
 use num_traits::{FromPrimitive, Zero};
 use rational::Rational;
 use serde::{Deserialize, Serialize};
+pub mod ops;
 
 #[derive(Debug, Clone, Eq, Serialize, Deserialize)]
 pub enum Decimal {
@@ -247,70 +248,6 @@ impl StructuralEq for Decimal {
 impl ValueEq for Decimal {
     fn value_eq(&self, other: &Self) -> bool {
         self.structural_eq(other)
-    }
-}
-
-impl Neg for Decimal {
-    type Output = Self;
-
-    fn neg(self) -> Self::Output {
-        match self {
-            Decimal::Finite(value) => Decimal::Finite(-value),
-            Decimal::Zero => Decimal::NegZero,
-            Decimal::NegZero => Decimal::Zero,
-            Decimal::Infinity => Decimal::NegInfinity,
-            Decimal::NegInfinity => Decimal::Infinity,
-            Decimal::Nan => Decimal::Nan,
-        }
-    }
-}
-
-impl Add for Decimal {
-    type Output = Self;
-
-    fn add(self, rhs: Self) -> Self::Output {
-        match (self, rhs) {
-            (Decimal::Finite(a), Decimal::Finite(b)) => Decimal::from(a + b),
-            (Decimal::NegZero, Decimal::Zero)
-            | (Decimal::Zero, Decimal::NegZero) => Decimal::Zero,
-            (Decimal::Zero, b) | (b, Decimal::Zero) => b,
-            (Decimal::NegZero, b) | (b, Decimal::NegZero) => b,
-            (Decimal::Infinity, Decimal::NegInfinity)
-            | (Decimal::NegInfinity, Decimal::Infinity) => Decimal::Nan,
-            (Decimal::Infinity, _) | (_, Decimal::Infinity) => {
-                Decimal::Infinity
-            }
-            (Decimal::NegInfinity, _) | (_, Decimal::NegInfinity) => {
-                Decimal::NegInfinity
-            }
-            (Decimal::Nan, _) | (_, Decimal::Nan) => Decimal::Nan,
-        }
-    }
-}
-
-impl Add for &Decimal {
-    type Output = Decimal;
-
-    fn add(self, rhs: Self) -> Self::Output {
-        // FIXME #334: Avoid cloning, as add should be applicable for refs only
-        Decimal::add(self.clone(), rhs.clone())
-    }
-}
-
-impl Sub for Decimal {
-    type Output = Self;
-
-    fn sub(self, rhs: Self) -> Self::Output {
-        self + (-rhs)
-    }
-}
-
-impl Sub for &Decimal {
-    type Output = Decimal;
-
-    fn sub(self, rhs: Self) -> Self::Output {
-        // FIXME #335: Avoid cloning, as sub should be applicable for refs only
-        Decimal::sub(self.clone(), rhs.clone())
     }
 }
 
