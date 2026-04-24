@@ -1,3 +1,4 @@
+//! This module contains the implementation of the runtime, which is the backbone of the DATEX system.
 use crate::{
     network::com_hub::ComHub,
     runtime::execution::ExecutionError,

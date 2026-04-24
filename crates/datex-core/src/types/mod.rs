@@ -1,3 +1,4 @@
+//! This module provides a type system implementation.
 pub mod collection_type_definition;
 pub mod error;
 pub mod literal_type_definition;

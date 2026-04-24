@@ -1,3 +1,4 @@
+//! This module contains the implementation of the execution context, which holds the state of an active execution.
 #[cfg(feature = "compiler")]
 use crate::compiler::{
     CompileOptions, compile_template, error::SpannedCompilerError,

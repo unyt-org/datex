@@ -1,3 +1,4 @@
+//! This module contains the core library for DATEX, which provides the fundamental types and values that are essential for the operation of the DATEX language. The core library is loaded into memory at startup and is accessible globally throughout the system.
 use crate::{
     collections::HashMap,
     libs::core::{

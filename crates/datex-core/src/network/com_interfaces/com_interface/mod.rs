@@ -1,3 +1,4 @@
+//! This module contains the implementation of the communication interfaces for DATEX
 use crate::utils::uuid::UUID;
 use core::fmt::{Debug, Display};
 

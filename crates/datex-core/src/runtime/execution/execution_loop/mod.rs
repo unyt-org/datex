@@ -1,3 +1,5 @@
+//! This module contains the implementation of the execution loop that drives the execution of the compiled DATEX bytecode (DXB).
+//! It handles the execution of instructions, manages the runtime state, and processes interrupts that can occur during execution.
 mod internal_slots;
 pub mod interrupts;
 mod operations;

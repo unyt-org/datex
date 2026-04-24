@@ -1,3 +1,6 @@
+//! This module contains the precompiler for DATEX, which performs variable resolution and collects metadata about the AST.
+//! The precompiler traverses the AST, resolves variable references and shared values.
+
 use crate::{
     collections::HashSet, type_inference::infer_expression_type_detailed_errors,
 };

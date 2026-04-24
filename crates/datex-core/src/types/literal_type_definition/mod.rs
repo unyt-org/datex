@@ -1,3 +1,4 @@
+//! This module contains the implementation of the [LiteralTypeDefinition], which represents a type definition for a literal value, such as an integer, decimal, text, boolean, or endpoint.
 use crate::{
     libs::core::type_id::{
         CoreLibBaseTypeId, CoreLibTypeId, CoreLibVariantTypeId,

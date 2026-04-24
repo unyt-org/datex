@@ -1,3 +1,4 @@
+//! This module contains the main compiler logic for DATEX, precompilation, and compilation to DXB bytecode.
 use crate::{
     ast::expressions::{
         BinaryOperation, ComparisonOperation, DatexExpression,

@@ -1,3 +1,4 @@
+//! This module contains the formatter for DATEX, which converts DATEX AST back into a human-readable string representation of the original DATEX source code.
 use core::ops::Range;
 
 use crate::{

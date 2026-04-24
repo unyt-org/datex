@@ -1,3 +1,4 @@
+//! This module contains the implementation of the serialization and deserialization of DATEX values using Serde.
 pub use serde::Deserialize;
 pub mod deserializer;
 pub mod error;

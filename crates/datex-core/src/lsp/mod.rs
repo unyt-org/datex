@@ -1,3 +1,4 @@
+//! This module contains the implementation of the Language Server Protocol (LSP) for DATEX, which provides features such as hover information, code completion, diagnostics, and go-to-definition for DATEX source files in compatible editors.
 mod errors;
 mod type_hint_collector;
 mod utils;

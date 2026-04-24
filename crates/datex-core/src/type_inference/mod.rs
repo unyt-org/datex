@@ -1,3 +1,4 @@
+//! This module contains the implementation of the type inference system based on a [RichAst].
 use crate::{
     ast::resolved_variable::ResolvedVariable,
     global::operators::{BinaryOperator, LogicalUnaryOperator, UnaryOperator},

@@ -1,3 +1,6 @@
+//! This module contains the implementation of the [Type] enum, which represents a type in the DATEX type system.
+//! A [Type] can either be an alias to a [TypeDefinitionWithMetadata] or a nominal type represented by a [SharedContainerContainingNominalType].
+
 #[cfg(feature = "compiler")]
 use crate::ast::expressions::DatexExpressionData;
 use crate::{

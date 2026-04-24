@@ -1,3 +1,5 @@
+//! This module contains the implementation of the shared values system.
+//! It includes the [shared_container::SharedContainer], [shared_container_inner::SharedContainerInner], [SelfOwnedSharedContainer]/[ExternalSharedContainer] and finally [base_shared_value_container::BaseSharedValueContainer] which is the underlying data structure for shared values, as well as various types of shared containers such as owned, referenced, and self-owned shared containers.
 pub mod base_shared_value_container;
 pub mod errors;
 mod external_shared_container;

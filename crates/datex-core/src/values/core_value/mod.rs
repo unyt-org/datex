@@ -1,3 +1,7 @@
+//! This module defines the [CoreValue] enum, which represents the fundamental value types in DATEX.
+//! Each variant of CoreValue holds the underlying value of a specific type, such as [Integer], [Text], or [List].
+//! CoreValues can be converted to and from native Rust types.
+
 use crate::{
     libs::core::type_id::{
         CoreLibBaseTypeId, CoreLibTypeId, CoreLibVariantTypeId,

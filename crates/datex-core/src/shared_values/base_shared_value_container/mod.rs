@@ -1,3 +1,4 @@
+//! This module contains the implementation of the [BaseSharedValueContainer], which is the underlying data structure for shared values in DATEX.
 use crate::{
     shared_values::observers::{Observer, ObserverId},
     traits::value_eq::ValueEq,
