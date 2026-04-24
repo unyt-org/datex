@@ -975,7 +975,6 @@ pub fn inner_execution_loop(
                                             }
                                         },
                                     ).flatten();
-                                    
                                     yield_unwrap!(res).into()
                                 }
 
