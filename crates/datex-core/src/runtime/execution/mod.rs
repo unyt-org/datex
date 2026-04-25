@@ -288,6 +288,7 @@ mod tests {
     };
     use core::assert_matches;
     use log::{debug, info};
+    use std::collections::HashMap;
 
     fn execute_datex_script_debug(
         datex_script: &str,
