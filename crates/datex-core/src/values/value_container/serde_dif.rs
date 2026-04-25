@@ -132,7 +132,6 @@ mod tests {
     }
     #[test]
     fn owned() {
-        flexi_logger::init();
         let memory = Memory::new();
         let mut provider = SelfOwnedPointerAddressProvider::default();
         let mut cache = DIFSharedContainerCache::default();
