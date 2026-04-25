@@ -2,9 +2,10 @@ use crate::{
     dif::pointer_address::PointerAddressWithOwnership,
     runtime::execution::ExecutionError,
     shared_values::observers::{
-        ObserveOptions, ObserverError, ObserverId, TransceiverId,
+        ObserveOptions, Observer, ObserverError, ObserverId, TransceiverId,
     },
 };
+use alloc::rc::Rc;
 use core::{fmt::Display, result::Result};
 
 use crate::{
@@ -139,7 +140,7 @@ pub struct DIFInterface {
 
 impl DIFInterface {
     /// Applies a DIF update to the value at the given pointer address.
-    fn update(
+    pub fn update(
         &self,
         address: PointerAddress,
         update: Update,
@@ -172,7 +173,7 @@ impl DIFInterface {
     }
 
     /// Executes an apply operation, applying the `value` to the `callee`.
-    fn apply(
+    pub fn apply(
         &self,
         _callee: ValueContainer,
         _value: ValueContainer,
@@ -182,7 +183,7 @@ impl DIFInterface {
 
     /// Creates a new owned local pointer and stores it in memory.
     /// Returns the address of the newly created pointer.
-    fn create_pointer(
+    pub fn create_pointer(
         &self,
         _value: BaseSharedValueContainer,
     ) -> Result<SelfOwnedPointerAddress, DIFCreatePointerError> {
@@ -191,43 +192,71 @@ impl DIFInterface {
 
     /// Resolves a pointer address of a pointer that is currently in memory.
     /// Returns an error if the pointer is not found in memory.
-    fn resolve_pointer_address(
+    pub fn resolve_pointer_address(
         &self,
-        _address: PointerAddressWithOwnership,
+        address_with_ownership: PointerAddressWithOwnership,
     ) -> Result<BaseSharedValueContainer, DIFResolveReferenceError> {
+        let container = self
+            .cache
+            .try_get_shared_container(&address_with_ownership.address)
+            .map_err(|_| DIFResolveReferenceError::ReferenceNotFound)?;
         todo!()
     }
 
     /// Starts observing changes to the pointer at the given address.
     /// As long as the pointer is observed, it will not be garbage collected.
-    fn observe_pointer(
+    pub fn observe_pointer(
         &self,
-        _address: PointerAddress,
-        _options: ObserveOptions,
-        _observer: impl Fn(&UpdateData) + 'static,
-    ) -> Result<u32, DIFObserveError> {
-        todo!()
+        address: PointerAddress,
+        options: ObserveOptions,
+        callback: impl Fn(&Update) + 'static,
+    ) -> Result<ObserverId, DIFObserveError> {
+        let shared_container_ref = self
+            .cache
+            .try_get_shared_container(&address)
+            .map_err(|_| DIFObserveError::ReferenceNotFound)?;
+        Ok(shared_container_ref.base_shared_container_mut().observe(
+            Observer {
+                transceiver_id: self.transceiver_id,
+                options,
+                callback: Rc::new(callback),
+            },
+        )?)
     }
 
     /// Updates the options for an existing observer on the pointer at the given address.
     /// If the observer does not exist, an error is returned.
-    fn update_observer_options(
+    pub fn update_observer_options(
         &self,
-        _address: PointerAddress,
-        _observer_id: ObserverId,
-        _options: ObserveOptions,
+        address: PointerAddress,
+        observer_id: ObserverId,
+        options: ObserveOptions,
     ) -> Result<(), DIFObserveError> {
-        todo!()
+        let shared_container_ref = self
+            .cache
+            .try_get_shared_container(&address)
+            .map_err(|_| DIFObserveError::ReferenceNotFound)?;
+        shared_container_ref
+            .base_shared_container_mut()
+            .update_observer_options(observer_id, options)?;
+        Ok(())
     }
 
     /// Stops observing changes to the pointer at the given address.
     /// If no other references to the pointer exist, it may be garbage collected after this call.
-    fn unobserve_pointer(
+    pub fn unobserve_pointer(
         &self,
-        _address: PointerAddress,
-        _observer_id: ObserverId,
+        address: PointerAddress,
+        observer_id: ObserverId,
     ) -> Result<(), DIFObserveError> {
-        todo!()
+        let shared_container_ref = self
+            .cache
+            .try_get_shared_container(&address)
+            .map_err(|_| DIFObserveError::ReferenceNotFound)?;
+        shared_container_ref
+            .base_shared_container_mut()
+            .unobserve(observer_id)?;
+        Ok(())
     }
 
     // TODO: lock/unlock pointers
