@@ -101,10 +101,7 @@ mod tests {
             SharedContainerMutability, SharedContainerOwnership,
             errors::UnexpectedSharedContainerOwnershipError,
         },
-        values::{
-            core_value::CoreValue, core_values::integer::Integer,
-            value_container::ValueContainer,
-        },
+        values::value_container::ValueContainer,
     };
 
     #[test]
