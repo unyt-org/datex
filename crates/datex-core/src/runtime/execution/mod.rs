@@ -1,7 +1,7 @@
 //! This module contains the implementation of the execution engine which is responsible for executing compiled DATEX bytecode (DXB) and handling interrupts that can occur during execution, such as calling functions, loading pointers, and performing pointer updates.
 use crate::{
     runtime::{
-        Runtime, RuntimeInternal,
+        Runtime,
         execution::{
             context::{ExecutionMode, RemoteExecutionContext},
             execution_loop::interrupts::{
@@ -160,12 +160,9 @@ pub async fn execute_dxb(
                     ExecutionMode::Static,
                     runtime.clone(),
                 );
-                let res = RuntimeInternal::execute_remote(
-                    runtime.internal.clone(),
-                    &mut remote_execution_context,
-                    body,
-                )
-                .await?;
+                let res = runtime
+                    .execute_remote(&mut remote_execution_context, body)
+                    .await?;
                 interrupt_provider
                     .provide_result(InterruptResult::ResolvedValue(res));
             }

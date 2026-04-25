@@ -5,7 +5,7 @@ use alloc::rc::Rc;
 use datex_core::compile;
 use datex_core::{
     runtime::{
-        Runtime, RuntimeInternal,
+        Runtime,
         execution::{
             ExecutionInput, ExecutionOptions, execute_dxb_sync,
             execution_input::ExecutionCallerMetadata,

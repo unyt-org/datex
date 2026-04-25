@@ -6,7 +6,7 @@ use datex_core::{
         DecompileOptions, FormattingMode, FormattingOptions, decompile_body,
     },
     runtime::{
-        Runtime, RuntimeInternal,
+        Runtime,
         execution::{
             ExecutionInput, ExecutionOptions, execute_dxb_sync,
             execution_input::ExecutionCallerMetadata,
