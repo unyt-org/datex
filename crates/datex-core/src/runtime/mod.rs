@@ -8,10 +8,11 @@ use crate::{
 };
 
 use crate::prelude::*;
-use core::{cell::RefCell, fmt::Debug, result::Result};
+use core::{cell::RefCell, fmt::Debug, ops::Deref, result::Result};
 use execution::context::{
     ExecutionContext, RemoteExecutionContext, ScriptExecutionError,
 };
+use strum::Display;
 
 mod config;
 // pub mod dif_interface;
@@ -26,25 +27,20 @@ mod request_move;
 #[cfg(test)]
 pub mod test_utils;
 
-use self::memory::Memory;
-use crate::runtime::pointer_address_provider::SelfOwnedPointerAddressProvider;
 pub use config::*;
 pub use internal::*;
 pub use runner::*;
 
-const VERSION: &str = env!("CARGO_PKG_VERSION");
-
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Runtime {
-    pub version: String,
-    pub internal: Rc<RuntimeInternal>,
+    internal: Rc<RuntimeInternal>,
 }
 
-impl Debug for Runtime {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        f.debug_struct("Runtime")
-            .field("version", &self.version)
-            .finish()
+impl Deref for Runtime {
+    type Target = RuntimeInternal;
+
+    fn deref(&self) -> &Self::Target {
+        &self.internal
     }
 }
 
@@ -53,7 +49,6 @@ impl Debug for Runtime {
 impl Runtime {
     pub(crate) fn new(runtime_internal: RuntimeInternal) -> Runtime {
         Runtime {
-            version: VERSION.to_string(),
             internal: Rc::new(runtime_internal),
         }
     }
@@ -62,25 +57,8 @@ impl Runtime {
         Runtime::new(RuntimeInternal::stub())
     }
 
-    pub fn com_hub(&self) -> Rc<ComHub> {
-        self.internal.com_hub.clone()
-    }
-    pub fn endpoint(&self) -> Endpoint {
-        self.internal.endpoint.clone()
-    }
-
-    pub fn internal(&self) -> Rc<RuntimeInternal> {
+    fn internal(&self) -> Rc<RuntimeInternal> {
         Rc::clone(&self.internal)
-    }
-
-    pub fn memory(&self) -> &RefCell<Memory> {
-        &self.internal.memory
-    }
-
-    pub fn pointer_address_provider(
-        &self,
-    ) -> &RefCell<SelfOwnedPointerAddressProvider> {
-        &self.internal.pointer_address_provider
     }
 
     #[cfg(feature = "compiler")]

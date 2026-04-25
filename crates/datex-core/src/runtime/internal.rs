@@ -1,6 +1,7 @@
 use crate::{
     channel::mpsc::{UnboundedReceiver, create_unbounded_channel},
     collections::HashMap,
+    dif::dif_interface::DIFInterface,
     disassembler::print_disassembled,
     global::{
         dxb_block::{
@@ -37,6 +38,7 @@ use crate::{
     shared_values::{
         ExternalPointerAddress, OwnedSharedContainer, PointerAddress,
         SelfOwnedPointerAddress, SharedContainerMutability,
+        observers::TransceiverId,
     },
     time::Instant,
     utils::task_manager::TaskManager,
@@ -46,34 +48,37 @@ use crate::{
     },
 };
 use alloc::rc::Rc;
-use core::{cell::RefCell, pin::Pin, slice};
+use core::{
+    cell::{Ref, RefCell, RefMut},
+    pin::Pin,
+    slice,
+};
 use log::{debug, error, info};
-use crate::dif::dif_interface::DIFInterface;
-use crate::shared_values::observers::TransceiverId;
 
 #[derive(Debug)]
 pub struct RuntimeInternal {
-    pub memory: RefCell<Memory>,
-    pub pointer_address_provider: Rc<RefCell<SelfOwnedPointerAddressProvider>>,
-    pub com_hub: Rc<ComHub>,
-    pub endpoint: Endpoint,
-    pub config: RuntimeConfig,
+    version: String,
+    endpoint: Endpoint,
+
+    memory: RefCell<Memory>,
+    pointer_address_provider: Rc<RefCell<SelfOwnedPointerAddressProvider>>,
+    com_hub: Rc<ComHub>,
+    config: RuntimeConfig,
 
     /// counter to keep track of transceiver ids
-    pub transceiver_counter: RefCell<u32>,
+    transceiver_counter: RefCell<u32>,
 
-    pub task_manager: TaskManager,
+    task_manager: TaskManager,
 
     // receiver for incoming sections from com hub
-    pub(crate) incoming_sections_receiver:
-        RefCell<UnboundedReceiver<IncomingSection>>,
+    incoming_sections_receiver: RefCell<UnboundedReceiver<IncomingSection>>,
 
     /// active execution contexts, stored by context_id
-    pub execution_contexts:
+    execution_contexts:
         RefCell<HashMap<IncomingEndpointContextSectionId, ExecutionContext>>,
 
     /// list of currently owned shared values that are in the approved for moving to another endpoint
-    pub moving_pointers: RefCell<
+    moving_pointers: RefCell<
         HashMap<
             Endpoint,
             HashMap<SelfOwnedPointerAddress, OwnedSharedContainer>,
@@ -101,10 +106,7 @@ macro_rules! get_execution_context {
 
 impl From<Rc<RuntimeInternal>> for Runtime {
     fn from(value: Rc<RuntimeInternal>) -> Self {
-        Runtime {
-            internal: value,
-            version: env!("CARGO_PKG_VERSION").into(), // TODO move version into RuntimeInternal
-        }
+        Runtime { internal: value }
     }
 }
 
@@ -119,6 +121,7 @@ impl RuntimeInternal {
         incoming_sections_receiver: UnboundedReceiver<IncomingSection>,
     ) -> RuntimeInternal {
         RuntimeInternal {
+            version: env!("CARGO_PKG_VERSION").to_string(),
             endpoint,
             memory,
             pointer_address_provider,
@@ -132,6 +135,40 @@ impl RuntimeInternal {
             moving_pointers: RefCell::new(HashMap::new()),
             transceiver_counter: RefCell::new(0),
         }
+    }
+    pub fn version(&self) -> &str {
+        &self.version
+    }
+    pub fn config(&self) -> &RuntimeConfig {
+        &self.config
+    }
+    pub fn com_hub(&self) -> Rc<ComHub> {
+        self.com_hub.clone()
+    }
+    pub fn endpoint(&self) -> &Endpoint {
+        &self.endpoint
+    }
+    pub fn memory(&self) -> &RefCell<Memory> {
+        &self.memory
+    }
+
+    pub fn pointer_address_provider(
+        &self,
+    ) -> &RefCell<SelfOwnedPointerAddressProvider> {
+        &self.pointer_address_provider
+    }
+    pub fn incoming_sections_receiver_mut(
+        &self,
+    ) -> RefMut<UnboundedReceiver<IncomingSection>> {
+        self.incoming_sections_receiver.borrow_mut()
+    }
+    pub fn incoming_sections_receiver(
+        &self,
+    ) -> Ref<UnboundedReceiver<IncomingSection>> {
+        self.incoming_sections_receiver.borrow()
+    }
+    pub fn task_manager(&self) -> &TaskManager {
+        &self.task_manager
     }
 
     pub fn stub() -> RuntimeInternal {

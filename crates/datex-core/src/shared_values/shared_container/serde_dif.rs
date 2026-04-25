@@ -57,9 +57,8 @@ impl<'de, 'ctx> DeserializeSeed<'de>
 
 #[cfg(test)]
 mod tests {
-    use log::info;
+    use serde::de::DeserializeSeed;
 
-    use super::*;
     use crate::{
         libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
         prelude::*,
@@ -68,7 +67,8 @@ mod tests {
             pointer_address_provider::SelfOwnedPointerAddressProvider,
         },
         shared_values::{
-            PointerAddress, SharedContainer, SharedContainerMutability,
+            PointerAddress, ReferenceMutability, SharedContainer,
+            SharedContainerMutability, SharedContainerOwnership,
             errors::UnexpectedSharedContainerOwnershipError,
         },
         values::{

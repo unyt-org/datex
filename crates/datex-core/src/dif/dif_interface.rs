@@ -1,36 +1,37 @@
 use crate::{
-    dif::pointer_address::{self, PointerAddressWithOwnership},
+    dif::{
+        cache::{CacheValueRetrievalError, DIFSharedContainerCache},
+        pointer_address::{self, PointerAddressWithOwnership},
+    },
     runtime::{
-        execution::ExecutionError,
+        Runtime, execution::ExecutionError,
         pointer_address_provider::SelfOwnedPointerAddressProvider,
     },
     shared_values::{
-        OwnedSharedContainer, SelfOwnedSharedContainer, SharedContainer,
+        OwnedSharedContainer, PointerAddress, SelfOwnedPointerAddress,
+        SelfOwnedSharedContainer, SharedContainer,
+        base_shared_value_container::BaseSharedValueContainer,
+        errors::SharedValueCreationError,
         observers::{
             ObserveOptions, Observer, ObserverError, ObserverId, TransceiverId,
         },
     },
     traits::apply::Apply,
-    values::core_values::endpoint::Endpoint,
-};
-use alloc::rc::Rc;
-use core::{fmt::Display, result::Result};
-use core::cell::RefCell;
-use crate::{
-    dif::cache::{CacheValueRetrievalError, DIFSharedContainerCache},
-    shared_values::{
-        PointerAddress, SelfOwnedPointerAddress,
-        base_shared_value_container::BaseSharedValueContainer,
-        errors::SharedValueCreationError,
-    },
     value_updates::{
         errors::UpdateError,
         update_data::{Update, UpdateData, UpdateReturn},
         update_handler::UpdateHandler,
     },
-    values::value_container::ValueContainer,
+    values::{
+        core_values::endpoint::Endpoint, value_container::ValueContainer,
+    },
 };
-use crate::runtime::Runtime;
+use alloc::rc::Rc;
+use core::{
+    cell::{Ref, RefCell},
+    fmt::Display,
+    result::Result,
+};
 
 #[derive(Debug)]
 pub enum DIFObserveError {
@@ -143,13 +144,16 @@ impl From<SharedValueCreationError> for DIFCreatePointerError {
 }
 
 pub struct DIFInterface {
-    cache: DIFSharedContainerCache,
+    pub cache: DIFSharedContainerCache,
     address_provider: Rc<RefCell<SelfOwnedPointerAddressProvider>>,
     transceiver_id: TransceiverId,
 }
 
 impl DIFInterface {
-    pub fn new(transceiver_id: TransceiverId, address_provider: Rc<RefCell<SelfOwnedPointerAddressProvider>>) -> Self {
+    pub fn new(
+        transceiver_id: TransceiverId,
+        address_provider: Rc<RefCell<SelfOwnedPointerAddressProvider>>,
+    ) -> Self {
         DIFInterface {
             cache: DIFSharedContainerCache::default(),
             address_provider,
@@ -201,13 +205,15 @@ impl DIFInterface {
     }
 
     /// Creates a new owned local pointer and stores it in memory.
-    /// Returns the address of the newly created pointer.
+    /// Returns the [SelfOwnedPointerAddress] of the newly created pointer.
     pub fn create_pointer(
         &mut self,
         value: BaseSharedValueContainer,
     ) -> Result<SelfOwnedPointerAddress, DIFCreatePointerError> {
-        let pointer_address =
-            self.address_provider.borrow_mut().get_new_self_owned_address();
+        let pointer_address = self
+            .address_provider
+            .borrow_mut()
+            .get_new_self_owned_address();
         self.cache.store_shared_container(SharedContainer::Owned(
             OwnedSharedContainer::new_from_self_owned_container(
                 SelfOwnedSharedContainer::new(value, pointer_address.clone()),
@@ -216,20 +222,18 @@ impl DIFInterface {
         Ok(pointer_address)
     }
 
-    /// Resolves a pointer address of a pointer that is currently in memory.
+    /// Resolves a pointer address of a pointer that is currently in memory to its [SharedContainer].
     /// Returns an error if the pointer is not found in memory.
     pub fn resolve_pointer_address(
         &mut self,
         address_with_ownership: PointerAddressWithOwnership,
-    ) -> Result<BaseSharedValueContainer, DIFResolveReferenceError> {
-        let container = self
-            .cache
+    ) -> Result<SharedContainer, DIFResolveReferenceError> {
+        self.cache
             .try_get_shared_container_with_ownership(
                 &address_with_ownership.address,
                 address_with_ownership.ownership,
             )
-            .map_err(|_| DIFResolveReferenceError::ReferenceNotFound)?;
-        todo!()
+            .map_err(|_| DIFResolveReferenceError::ReferenceNotFound)
     }
 
     /// Starts observing changes to the pointer at the given address.

@@ -1,7 +1,7 @@
 //! This module contains the implementation of the execution engine which is responsible for executing compiled DATEX bytecode (DXB) and handling interrupts that can occur during execution, such as calling functions, loading pointers, and performing pointer updates.
 use crate::{
     runtime::{
-        RuntimeInternal,
+        Runtime, RuntimeInternal,
         execution::{
             context::{ExecutionMode, RemoteExecutionContext},
             execution_loop::interrupts::{
@@ -55,9 +55,7 @@ pub fn execute_dxb_sync(
             ) => interrupt_provider.provide_result(
                 InterruptResult::ResolvedValue(
                     get_remote_shared_container_reference(
-                        &runtime.internal,
-                        address,
-                        mutability,
+                        &runtime, address, mutability,
                     )?
                     .map(|v| {
                         ValueContainer::Shared(SharedContainer::Referenced(v))
@@ -68,12 +66,11 @@ pub fn execute_dxb_sync(
                 // TODO #401: in the future, local pointer addresses should be relative to the block sender, not the local runtime
                 interrupt_provider.provide_result(
                     InterruptResult::ResolvedValue(
-                        get_local_pointer_value(&runtime.internal, address)
-                            .map(|v| {
-                                ValueContainer::Shared(
-                                    SharedContainer::Referenced(v),
-                                )
-                            }),
+                        get_local_pointer_value(&runtime, address).map(|v| {
+                            ValueContainer::Shared(SharedContainer::Referenced(
+                                v,
+                            ))
+                        }),
                     ),
                 );
             }
@@ -84,8 +81,7 @@ pub fn execute_dxb_sync(
                     InterruptResult::ResolvedValue(Some(
                         ValueContainer::Shared(SharedContainer::Referenced(
                             get_builtin_shared_value_reference(
-                                &runtime.internal,
-                                address,
+                                &runtime, address,
                             )?,
                         )),
                     )),
@@ -120,9 +116,7 @@ pub async fn execute_dxb(
                 interrupt_provider.provide_result(
                     InterruptResult::ResolvedValue(
                         get_remote_shared_container_reference(
-                            &runtime.internal,
-                            address,
-                            mutability,
+                            &runtime, address, mutability,
                         )?
                         .map(|v| {
                             ValueContainer::Shared(SharedContainer::Referenced(
@@ -136,12 +130,11 @@ pub async fn execute_dxb(
                 // TODO #402: in the future, local pointer addresses should be relative to the block sender, not the local runtime
                 interrupt_provider.provide_result(
                     InterruptResult::ResolvedValue(
-                        get_local_pointer_value(&runtime.internal, address)
-                            .map(|v| {
-                                ValueContainer::Shared(
-                                    SharedContainer::Referenced(v),
-                                )
-                            }),
+                        get_local_pointer_value(&runtime, address).map(|v| {
+                            ValueContainer::Shared(SharedContainer::Referenced(
+                                v,
+                            ))
+                        }),
                     ),
                 );
             }
@@ -152,8 +145,7 @@ pub async fn execute_dxb(
                     InterruptResult::ResolvedValue(Some(
                         ValueContainer::Shared(SharedContainer::Referenced(
                             get_builtin_shared_value_reference(
-                                &runtime.internal,
-                                address,
+                                &runtime, address,
                             )?,
                         )),
                     )),
@@ -226,12 +218,12 @@ fn handle_apply(
 }
 
 fn get_remote_shared_container_reference(
-    runtime_internal: &Rc<RuntimeInternal>,
+    runtime: &Runtime,
     address: RawRemotePointerAddress,
     _mutability: ReferenceMutability,
 ) -> Result<Option<ReferencedSharedContainer>, ExecutionError> {
-    let address_provider = runtime_internal.pointer_address_provider.borrow();
-    let memory = runtime_internal.memory.borrow();
+    let address_provider = runtime.pointer_address_provider().borrow();
+    let memory = runtime.memory().borrow();
     let resolved_address =
         address_provider.get_pointer_address_from_raw_full_address(address);
     // convert slot to InternalSlot enum
@@ -240,12 +232,12 @@ fn get_remote_shared_container_reference(
 }
 
 fn get_builtin_shared_value_reference(
-    runtime_internal: &Rc<RuntimeInternal>,
+    runtime: &Runtime,
     address: RawBuiltinPointerAddress,
 ) -> Result<ReferencedSharedContainer, ExecutionError> {
     let pointer_address =
         PointerAddress::External(ExternalPointerAddress::Builtin(address.id));
-    let memory = runtime_internal.memory.borrow();
+    let memory = runtime.memory().borrow();
     if let Some(reference) = memory.get_reference(&pointer_address) {
         Ok(reference.clone())
     } else {
@@ -254,12 +246,12 @@ fn get_builtin_shared_value_reference(
 }
 
 fn get_local_pointer_value(
-    runtime_internal: &Rc<RuntimeInternal>,
+    runtime: &Runtime,
     address: RawLocalPointerAddress,
 ) -> Option<ReferencedSharedContainer> {
     // convert slot to InternalSlot enum
-    runtime_internal
-        .memory
+    runtime
+        .memory()
         .borrow()
         .get_reference(&PointerAddress::self_owned(address.bytes))
         .cloned()

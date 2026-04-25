@@ -24,8 +24,7 @@ impl RuntimeInternal {
     pub(crate) async fn handle_incoming_sections_task(
         self: Rc<RuntimeInternal>,
     ) {
-        let mut sections_receiver =
-            self.incoming_sections_receiver.borrow_mut();
+        let mut sections_receiver = self.incoming_sections_receiver_mut();
 
         while let Some(section) = sections_receiver.next().await {
             let self_clone = self.clone();
@@ -38,7 +37,7 @@ impl RuntimeInternal {
             #[cfg(not(feature = "embassy_runtime"))]
             {
                 // TODO #741: task
-                self.task_manager.register_task(
+                self.task_manager().register_task(
                     self_clone.handle_incoming_section_task(section),
                 );
             }
@@ -54,7 +53,7 @@ impl RuntimeInternal {
         match &result {
             Ok(Some(result)) => info!(
                 "Successful Execution result (on {} from {}): {}",
-                self.endpoint,
+                self.endpoint(),
                 endpoint,
                 {
                     #[cfg(feature = "decompiler")]
@@ -72,11 +71,13 @@ impl RuntimeInternal {
             ),
             Ok(None) => info!(
                 "Successful Execution result (on {} from {}): None",
-                self.endpoint, endpoint
+                self.endpoint(),
+                endpoint
             ),
             Err(e) => info!(
                 "Execution error (on {} from {}): {e}",
-                self.endpoint, endpoint
+                self.endpoint(),
+                endpoint
             ),
         }
 
@@ -98,7 +99,7 @@ impl RuntimeInternal {
         context_id: OutgoingContextId,
     ) -> Result<(), Vec<Endpoint>> {
         let routing_header: RoutingHeader = RoutingHeader::default()
-            .with_sender(self.endpoint.clone())
+            .with_sender(self.endpoint().clone())
             .to_owned();
         let block_header = BlockHeader {
             context_id,
@@ -142,7 +143,7 @@ impl RuntimeInternal {
             );
             block.set_receivers(core::slice::from_ref(&receiver_endpoint));
 
-            self.com_hub.send_own_block_async(block).await
+            self.com_hub().send_own_block_async(block).await
         } else {
             core::todo!("#233 Handle returning error response block");
         }

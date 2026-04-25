@@ -43,6 +43,7 @@ pub struct ObserveOptions {
 #[derive(
     Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default,
 )]
+#[repr(transparent)]
 pub struct ObserverId(pub u32);
 
 impl NextKey for ObserverId {

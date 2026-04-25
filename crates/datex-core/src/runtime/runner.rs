@@ -4,7 +4,7 @@ use crate::{
     network::com_hub::ComHub,
     prelude::*,
     runtime::{
-        Runtime, RuntimeConfig, RuntimeInternal, VERSION, memory::Memory,
+        Runtime, RuntimeConfig, RuntimeInternal, memory::Memory,
         pointer_address_provider::SelfOwnedPointerAddressProvider,
     },
     time::now_ms,
@@ -126,6 +126,8 @@ impl RuntimeRunner {
     {
         let (init_ready_sender, init_ready_receiver) = oneshot::channel();
         let runtime = self.runtime.clone();
+        let version = runtime.version().to_string();
+
         let runtime_future = join(
             // initialize the runtime
             async move {
@@ -140,8 +142,7 @@ impl RuntimeRunner {
         let app_future = async move {
             // wait for runtime initialization to complete before starting app logic
             init_ready_receiver.await.unwrap();
-
-            info!("Runtime initialized - Version {VERSION} Time: {}", now_ms());
+            info!("Runtime initialized - Version {version} Time: {}", now_ms());
 
             app_logic(self.runtime).await
         };
