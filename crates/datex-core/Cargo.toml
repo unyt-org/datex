@@ -158,7 +158,6 @@ proc-macro2 = { version = "1.0", features = [
 
 # webrtc features (optional)
 webrtc = { version = "0.13.0", optional = true }
-serde-serialize-seed = "0.0.10"
 
 
 ### dev dependencies (for benchmarks and tests)

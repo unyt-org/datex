@@ -36,7 +36,6 @@ use core::{
     hash::{Hash, Hasher},
 };
 use serde::Serializer;
-use serde_serialize_seed::SerializeSeed;
 pub mod apply;
 pub mod serde_dif;
 /// Top-level wrapper for any owned or referenced shared container,

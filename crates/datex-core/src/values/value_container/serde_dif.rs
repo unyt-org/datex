@@ -1,9 +1,9 @@
 use crate::{
     shared_values::SharedContainer,
+    utils::serde_serialized_owned::SerializeSeedOwned,
     values::{value::Value, value_container::ValueContainer},
 };
 use serde::{Deserialize, Serialize, Serializer, de::IntoDeserializer};
-use serde_serialize_seed::SerializeSeed;
 
 /// Serialization for [ValueContainer].
 impl Serialize for ValueContainer {
@@ -65,14 +65,17 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, ValueContainer> {
     }
 }
 
-impl<'ctx> SerializeSeed for SerdeContext<'ctx, ValueContainer> {
+impl<'ctx> SerializeSeedOwned for SerdeContext<'ctx, ValueContainer> {
     type Value = ValueContainer;
 
-    fn serialize<S: Serializer>(
-        &self,
-        value: &Self::Value,
+    fn serialize_owned<S>(
+        &mut self,
+        value: Self::Value,
         serializer: S,
-    ) -> Result<S::Ok, S::Error> {
+    ) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
         match value {
             ValueContainer::Shared(shared) => shared.serialize(serializer),
             ValueContainer::Local(local) => local.serialize(serializer),
