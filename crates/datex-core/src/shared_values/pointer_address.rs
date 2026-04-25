@@ -64,6 +64,23 @@ impl SelfOwnedPointerAddress {
     }
 }
 
+impl TryFrom<String> for SelfOwnedPointerAddress {
+    type Error = &'static str;
+    fn try_from(s: String) -> Result<Self, Self::Error> {
+        hex::decode(s)
+            .map_err(|_| "Invalid hex string for SelfOwnedPointerAddress")
+            .and_then(|bytes| {
+                if bytes.len() == 5 {
+                    let mut arr = [0u8; 5];
+                    arr.copy_from_slice(&bytes);
+                    Ok(SelfOwnedPointerAddress::new(arr))
+                } else {
+                    Err("SelfOwnedPointerAddress must be 5 bytes long")
+                }
+            })
+    }
+}
+
 impl Display for SelfOwnedPointerAddress {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         core::write!(f, "${}", self.to_address_string())

@@ -77,7 +77,9 @@ impl<'ctx> SerializeSeedOwned for SerdeContext<'ctx, ValueContainer> {
         S: Serializer,
     {
         match value {
-            ValueContainer::Shared(shared) => shared.serialize(serializer),
+            ValueContainer::Shared(shared) => self
+                .cast::<SharedContainer>()
+                .serialize_owned(shared, serializer),
             ValueContainer::Local(local) => local.serialize(serializer),
         }
     }
@@ -85,17 +87,27 @@ impl<'ctx> SerializeSeedOwned for SerdeContext<'ctx, ValueContainer> {
 
 #[cfg(test)]
 mod tests {
+    use log::{info, logger};
+
     use super::*;
     use crate::{
         dif::cache::DIFSharedContainerCache,
         libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
         prelude::*,
-        runtime::memory::Memory,
+        runtime::{
+            memory::Memory,
+            pointer_address_provider::SelfOwnedPointerAddressProvider,
+        },
+        shared_values::{
+            OwnedSharedContainer, PointerAddress, SelfOwnedPointerAddress,
+            SelfOwnedSharedContainer, SharedContainerMutability,
+        },
         values::{
             core_value::CoreValue,
             core_values::{integer::Integer, list::List},
         },
     };
+    use core::assert_matches;
 
     fn deserialize_json_string(
         str: impl Into<String>,
@@ -108,8 +120,45 @@ mod tests {
             .unwrap()
     }
 
+    fn serialize_json_string(
+        value: ValueContainer,
+        dif_cache: &mut DIFSharedContainerCache,
+    ) -> String {
+        let mut context = SerdeContext::<ValueContainer>::new(dif_cache);
+        let mut serializer = serde_json::Serializer::new(Vec::new());
+        context.serialize_owned(value, &mut serializer).unwrap();
+        let bytes = serializer.into_inner();
+        String::from_utf8(bytes).unwrap()
+    }
     #[test]
-    fn value_container() {
+    fn owned() {
+        flexi_logger::init();
+        let memory = Memory::new();
+        let mut provider = SelfOwnedPointerAddressProvider::default();
+        let mut cache = DIFSharedContainerCache::default();
+        let value = ValueContainer::Shared(SharedContainer::Owned(
+            OwnedSharedContainer::new_with_inferred_allowed_type(
+                42.into(),
+                SharedContainerMutability::Mutable,
+                &mut provider,
+                &memory,
+            ),
+        ));
+        let serialized = serialize_json_string(value, &mut cache);
+        let address_string = serialized
+            .replace('"', "")
+            .strip_prefix('$')
+            .unwrap()
+            .to_string();
+        let addr = PointerAddress::SelfOwned(
+            SelfOwnedPointerAddress::try_from(address_string).unwrap(),
+        );
+        let container = cache.try_take_owned_shared_container(&addr);
+        assert!(container.is_ok());
+    }
+
+    #[test]
+    fn referenced() {
         let memory = Memory::new();
         let integer_container =
             ValueContainer::Shared(SharedContainer::Referenced(
