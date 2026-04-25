@@ -1,13 +1,14 @@
+use serde::de::DeserializeSeed;
 use crate::{
     prelude::*,
     serde::Deserialize,
     shared_values::observers::TransceiverId,
     values::value_container::{ValueContainer, value_key::ValueKey},
 };
-use serde::Serialize;
+use serde::{Deserializer, Serialize};
+use crate::dif::deserialization_context::DeserializationContext;
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[serde(tag = "kind", rename_all = "snake_case")]
+#[derive(Clone, Debug, PartialEq)]
 pub enum UpdateData {
     /// Represents a replacement operation for a value.
     Replace(ReplaceUpdateData),
@@ -29,33 +30,42 @@ pub enum UpdateData {
     ListSplice(ListSpliceUpdateData),
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
+#[derive(Clone, Debug, PartialEq)]
 pub struct ReplaceUpdateData {
     pub value: ValueContainer,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
+/// Deserialization for [ReplaceUpdateData] using a [DeserializationContext] to provide access to the memory during deserialization.
+impl<'de, 'ctx> DeserializeSeed<'de>
+for DeserializationContext<'ctx, ReplaceUpdateData>
+{
+    type Value = ReplaceUpdateData;
+    fn deserialize<D: Deserializer<'de>>(
+        self,
+        d: D,
+    ) -> Result<ReplaceUpdateData, D::Error> {
+        todo!()
+    }
+}
+
+
+#[derive(Clone, Debug, PartialEq)]
 pub struct SetEntryUpdateData {
     pub key: ValueKey,
     pub value: ValueContainer,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
+#[derive(Clone, Debug, PartialEq)]
 pub struct DeleteEntryUpdateData {
     pub key: ValueKey,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
+#[derive(Clone, Debug, PartialEq)]
 pub struct AppendEntryUpdateData {
     pub value: ValueContainer,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
+#[derive(Clone, Debug, PartialEq)]
 pub struct ListSpliceUpdateData {
     pub start: u32,
     pub delete_count: u32,
@@ -63,7 +73,7 @@ pub struct ListSpliceUpdateData {
 }
 
 /// Represents an update to a value from a source [TransceiverId]
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Update {
     pub source_id: TransceiverId,
     pub data: UpdateData,
@@ -76,7 +86,7 @@ impl Update {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum UpdateReturn {
     None,
     SingleValue(ValueContainer),
@@ -100,3 +110,4 @@ impl From<Vec<ValueContainer>> for UpdateReturn {
         UpdateReturn::MultipleValues(items)
     }
 }
+
