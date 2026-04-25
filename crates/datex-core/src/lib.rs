@@ -50,7 +50,7 @@ pub mod type_inference;
 pub mod visitor;
 
 pub mod core_compiler;
-mod dif;
+pub mod dif;
 pub mod disassembler;
 pub mod dxb_parser;
 #[cfg(all(feature = "macro_utils", feature = "std", feature = "compiler"))]
