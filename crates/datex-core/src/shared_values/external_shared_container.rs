@@ -16,6 +16,7 @@ pub struct ExternalSharedContainer {
 
 impl ExternalSharedContainer {
     /// Create a new [ExternalSharedContainer] with a given [ExternalPointerAddress].
+    /// # Safety
     /// The caller must ensure that the [ExternalPointerAddress] does not yet exist in the [Memory]
     pub unsafe fn create_external_shared_container(
         shared_value_container: BaseSharedValueContainer,

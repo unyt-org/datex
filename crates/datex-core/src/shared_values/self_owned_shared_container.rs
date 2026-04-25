@@ -46,9 +46,9 @@ impl SelfOwnedSharedContainer {
 
     /// Converts the [SelfOwnedSharedContainer] into an [ExternalSharedContainer],
     /// setting the provided [ExternalPointerAddress]
-    ///
+    /// # Safety
     /// The caller must ensure that the [ExternalPointerAddress] does not yet exist in the [Memory]
-    ///
+    /// # Safety
     /// TODO: handle subscriber transfer somewhere
     pub unsafe fn convert_to_external_container(
         self,

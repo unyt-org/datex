@@ -1,5 +1,3 @@
-use test_case::test_case;
-
 use crate::{
     runtime::{
         execution::{
@@ -227,8 +225,8 @@ pub async fn test_remote_shared_value_inject_ref() {
 }
 
 #[cfg(feature = "compiler")]
-#[test_case("shared", SharedContainerMutability::Immutable ; "immutable")]
-#[test_case("shared mut", SharedContainerMutability::Mutable ; "mutable")]
+#[test_case::test_case("shared", SharedContainerMutability::Immutable ; "immutable")]
+#[test_case::test_case("shared mut", SharedContainerMutability::Mutable ; "mutable")]
 #[tokio::test]
 pub async fn test_remote_shared_value_return(
     shared_string: &'static str,
@@ -272,8 +270,8 @@ pub async fn test_remote_shared_value_return(
 }
 
 #[cfg(feature = "compiler")]
-#[test_case("shared", SharedContainerMutability::Immutable ; "immutable")]
-#[test_case("shared mut", SharedContainerMutability::Mutable; "mutable")]
+#[test_case::test_case("shared", SharedContainerMutability::Immutable ; "immutable")]
+#[test_case::test_case("shared mut", SharedContainerMutability::Mutable; "mutable")]
 #[tokio::test]
 pub async fn test_remote_shared_roundtrip_move(
     shared_string: &'static str,

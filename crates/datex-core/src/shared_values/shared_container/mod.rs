@@ -72,7 +72,7 @@ impl SharedContainer {
     /// a [SharedContainerMutability], and a [SelfOwnedPointerAddress].
     ///
     /// The allowed type is inferred from the value_container's allowed type.
-    ///
+    /// # Safety
     /// The caller must ensure that the address is not used anywhere else.
     pub unsafe fn new_owned_with_inferred_allowed_type_unsafe<
         T: Into<ValueContainer>,

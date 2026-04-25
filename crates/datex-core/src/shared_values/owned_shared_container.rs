@@ -102,7 +102,7 @@ impl OwnedSharedContainer {
     /// a [SharedContainerMutability], and an [SelfOwnedPointerAddress].
     ///
     /// The allowed type is inferred from the value_container's allowed type.
-    ///
+    /// # Safety
     /// The caller must ensure that the address is not used anywhere else.
     pub unsafe fn new_with_inferred_allowed_type_unsafe(
         value_container: ValueContainer,
@@ -250,7 +250,7 @@ impl OwnedSharedContainer {
 
     /// Moves an owned shared container by converting it to a [ReferencedSharedContainer] with an [ExternalPointer] pointing to the given remote address.
     /// Drops the original owned shared container
-    ///
+    /// # Safety
     /// The caller must ensure that the [ExternalPointerAddress] does not yet exist in the [Memory]
     pub unsafe fn move_to_external(
         self,

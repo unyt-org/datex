@@ -47,6 +47,7 @@ type CoreLibMap = HashMap<CoreLibId, ReferencedSharedContainer>;
 
 impl CoreLibrary {
     /// Loads the core library into the provided [Memory] instance.
+    /// # Safety
     /// Caller must guarantee that the core library was not already loaded into the [Memory] instance
     pub unsafe fn load_core_lib(memory: &mut Memory) {
         unsafe {
