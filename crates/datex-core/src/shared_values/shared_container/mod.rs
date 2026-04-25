@@ -1,6 +1,7 @@
 //! This module contains the implementation of the shared container, which is the holder of [SharedContainerInner]
 //! and the top-level wrapper for any owned or referenced shared container.
 use crate::{
+    dif::deserialization_context::DeserializationContext,
     runtime::{
         memory::Memory,
         pointer_address_provider::SelfOwnedPointerAddressProvider,
@@ -34,6 +35,8 @@ use core::{
     fmt::{Display, Formatter},
     hash::{Hash, Hasher},
 };
+use serde::Serializer;
+use serde_serialize_seed::SerializeSeed;
 pub mod apply;
 pub mod serde_dif;
 /// Top-level wrapper for any owned or referenced shared container,
@@ -90,6 +93,20 @@ impl SharedContainer {
                 memory,
             )
         })
+    }
+
+    /// Creates a new owned [SharedContainer] with the same contents.
+    /// # Safety
+    /// The caller must be sure, that the reference on the original self is not used later.
+    pub unsafe fn clone_unsafe(&self) -> Self {
+        match self {
+            SharedContainer::Owned(owned) => {
+                SharedContainer::Owned(unsafe { owned.clone_unsafe() })
+            }
+            SharedContainer::Referenced(referenced) => {
+                SharedContainer::Referenced(referenced.clone())
+            }
+        }
     }
 
     pub fn inner(&self) -> Ref<'_, SharedContainerInner> {

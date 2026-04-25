@@ -1,12 +1,11 @@
-use serde::de::DeserializeSeed;
 use crate::{
+    dif::deserialization_context::DeserializationContext,
     prelude::*,
     serde::Deserialize,
     shared_values::observers::TransceiverId,
     values::value_container::{ValueContainer, value_key::ValueKey},
 };
-use serde::{Deserializer, Serialize};
-use crate::dif::deserialization_context::DeserializationContext;
+use serde::{Deserializer, Serialize, de::DeserializeSeed};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum UpdateData {
@@ -36,9 +35,7 @@ pub struct ReplaceUpdateData {
 }
 
 /// Deserialization for [ReplaceUpdateData] using a [DeserializationContext] to provide access to the memory during deserialization.
-impl<'de, 'ctx> DeserializeSeed<'de>
-for DeserializationContext<'ctx, ReplaceUpdateData>
-{
+impl<'de, 'ctx> DeserializeSeed<'de> for DeserializationContext<'ctx, ReplaceUpdateData> {
     type Value = ReplaceUpdateData;
     fn deserialize<D: Deserializer<'de>>(
         self,
@@ -47,7 +44,6 @@ for DeserializationContext<'ctx, ReplaceUpdateData>
         todo!()
     }
 }
-
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct SetEntryUpdateData {
@@ -110,4 +106,3 @@ impl From<Vec<ValueContainer>> for UpdateReturn {
         UpdateReturn::MultipleValues(items)
     }
 }
-

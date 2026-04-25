@@ -41,6 +41,19 @@ impl ExternalPointerAddress {
     }
 }
 
+impl Display for ExternalPointerAddress {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            ExternalPointerAddress::Remote(_) => {
+                core::write!(f, "${}", self.to_address_string())
+            }
+            ExternalPointerAddress::Builtin(_) => {
+                core::write!(f, "{}", self.to_address_string())
+            }
+        }
+    }
+}
+
 impl SelfOwnedPointerAddress {
     pub fn new(address: [u8; 5]) -> Self {
         SelfOwnedPointerAddress { address }
@@ -48,6 +61,12 @@ impl SelfOwnedPointerAddress {
 
     pub fn to_address_string(&self) -> String {
         hex::encode(self.address)
+    }
+}
+
+impl Display for SelfOwnedPointerAddress {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        core::write!(f, "${}", self.to_address_string())
     }
 }
 
@@ -197,8 +216,14 @@ impl PointerAddress {
 
 impl Display for PointerAddress {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        core::write!(f, "$")?;
-        core::write!(f, "{}", self.to_address_string())
+        match self {
+            PointerAddress::SelfOwned(local_address) => {
+                core::write!(f, "{}", local_address)
+            }
+            PointerAddress::External(address) => {
+                core::write!(f, "{}", address)
+            }
+        }
     }
 }
 impl Serialize for PointerAddress {

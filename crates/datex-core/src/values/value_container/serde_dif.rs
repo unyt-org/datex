@@ -3,6 +3,7 @@ use crate::{
     values::{value::Value, value_container::ValueContainer},
 };
 use serde::{Deserialize, Serialize, Serializer, de::IntoDeserializer};
+use serde_serialize_seed::SerializeSeed;
 
 /// Serialization for [ValueContainer].
 impl Serialize for ValueContainer {
@@ -63,6 +64,21 @@ impl<'de, 'ctx> Visitor<'de> for DeserializationContext<'ctx, ValueContainer> {
         // reuse the Value visitor directly
         let value = self.cast::<Value>().visit_map(map)?;
         Ok(ValueContainer::Local(value))
+    }
+}
+
+impl<'ctx> SerializeSeed for DeserializationContext<'ctx, ValueContainer> {
+    type Value = ValueContainer;
+
+    fn serialize<S: Serializer>(
+        &self,
+        value: &Self::Value,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error> {
+        match value {
+            ValueContainer::Shared(shared) => shared.serialize(serializer),
+            ValueContainer::Local(local) => local.serialize(serializer),
+        }
     }
 }
 

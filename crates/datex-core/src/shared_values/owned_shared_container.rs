@@ -122,6 +122,15 @@ impl OwnedSharedContainer {
         )
     }
 
+    /// Creates a new [OwnedSharedContainer] with the same inner value as the current one.
+    /// # Safety
+    /// The caller must ensure that the reference on the original self is not used later
+    pub unsafe fn clone_unsafe(&self) -> Self {
+        OwnedSharedContainer {
+            inner: self.inner.clone(),
+        }
+    }
+
     pub fn inner(&self) -> Ref<'_, SharedContainerInner> {
         self.inner.borrow()
     }

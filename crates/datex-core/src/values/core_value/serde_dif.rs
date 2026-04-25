@@ -27,9 +27,7 @@ use serde::{
     de::{DeserializeSeed, SeqAccess, Visitor},
 };
 /// Deserialization for [CoreValue] using a [DeserializationContext] to provide access to the memory during deserialization.
-impl<'de, 'ctx> DeserializeSeed<'de>
-    for DeserializationContext<'ctx, CoreValue>
-{
+impl<'de, 'ctx> DeserializeSeed<'de> for DeserializationContext<'ctx, CoreValue> {
     type Value = CoreValue;
 
     fn deserialize<D: Deserializer<'de>>(

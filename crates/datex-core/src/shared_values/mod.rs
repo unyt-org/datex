@@ -21,6 +21,6 @@ pub use ownership::*;
 pub use pointer_address::*;
 pub use referenced_shared_container::*;
 pub use self_owned_shared_container::*;
-pub use shared_container::SharedContainer;
+pub use shared_container::*;
 pub use shared_container_inner::*;
 pub use shared_container_mutability::*;

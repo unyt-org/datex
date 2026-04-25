@@ -2,15 +2,18 @@ use crate::{
     dif::{
         deserialization_context::DeserializationContext,
         pointer_address::PointerAddressWithOwnership,
+        serialization_context::SerializationContext,
     },
     shared_values::{
         ReferenceMutability, SharedContainer, SharedContainerOwnership,
     },
+    utils::serde_serialized_owned::SerializeSeedOwned,
 };
 use alloc::format;
 use serde::{
     Deserialize, Deserializer, Serialize, Serializer, de::DeserializeSeed,
 };
+use serde_serialize_seed::SerializeSeed;
 
 impl Serialize for SharedContainer {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -54,6 +57,33 @@ impl<'de, 'ctx> DeserializeSeed<'de>
         Ok(reference)
     }
 }
+
+/// Serialization for [SharedContainer] shall only be used with [SerializeSeedOwned]
+/// This is the internal implementation and serialize shall not be used.
+mod internal_serde {
+    use crate::dif::serialization_context::SerializationContext;
+
+    use super::*;
+
+    impl SerializeSeed for SerializationContext<SharedContainer> {
+        type Value = SharedContainer;
+
+        fn serialize<S: Serializer>(
+            &self,
+            value: &Self::Value,
+            serializer: S,
+        ) -> Result<S::Ok, S::Error> {
+            unsafe {
+                self.dif_interface
+                    .borrow_mut()
+                    .cache
+                    .store_shared_container(value.clone_unsafe());
+            }
+            value.pointer_address().serialize(serializer)
+        }
+    }
+}
+impl SerializeSeedOwned for SerializationContext<SharedContainer> {}
 
 #[cfg(test)]
 mod tests {
