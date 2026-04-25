@@ -48,14 +48,19 @@ use crate::{
 use alloc::rc::Rc;
 use core::{cell::RefCell, pin::Pin, slice};
 use log::{debug, error, info};
+use crate::dif::dif_interface::DIFInterface;
+use crate::shared_values::observers::TransceiverId;
 
 #[derive(Debug)]
 pub struct RuntimeInternal {
     pub memory: RefCell<Memory>,
-    pub pointer_address_provider: RefCell<SelfOwnedPointerAddressProvider>,
+    pub pointer_address_provider: Rc<RefCell<SelfOwnedPointerAddressProvider>>,
     pub com_hub: Rc<ComHub>,
     pub endpoint: Endpoint,
     pub config: RuntimeConfig,
+
+    /// counter to keep track of transceiver ids
+    pub transceiver_counter: RefCell<u32>,
 
     pub task_manager: TaskManager,
 
@@ -107,7 +112,7 @@ impl RuntimeInternal {
     pub(crate) fn new(
         endpoint: Endpoint,
         memory: RefCell<Memory>,
-        pointer_address_provider: RefCell<SelfOwnedPointerAddressProvider>,
+        pointer_address_provider: Rc<RefCell<SelfOwnedPointerAddressProvider>>,
         config: RuntimeConfig,
         com_hub: Rc<ComHub>,
         task_manager: TaskManager,
@@ -125,6 +130,7 @@ impl RuntimeInternal {
             ),
             execution_contexts: RefCell::new(HashMap::new()),
             moving_pointers: RefCell::new(HashMap::new()),
+            transceiver_counter: RefCell::new(0),
         }
     }
 
@@ -133,9 +139,9 @@ impl RuntimeInternal {
         RuntimeInternal::new(
             Endpoint::default(),
             RefCell::new(Memory::new()),
-            RefCell::new(SelfOwnedPointerAddressProvider::new(
+            Rc::new(RefCell::new(SelfOwnedPointerAddressProvider::new(
                 Endpoint::default(),
-            )),
+            ))),
             RuntimeConfig::default(),
             ComHub::create(Endpoint::default(), sender).0,
             TaskManager::create().0,
@@ -600,5 +606,12 @@ impl RuntimeInternal {
 
     pub fn get_env(&self) -> HashMap<String, String> {
         self.config.env.clone().unwrap_or_default()
+    }
+
+    /// Creates a new [DIFInterface] with a unique transceiver id and the runtime's pointer address provider
+    pub fn create_dif_interface(&self) -> DIFInterface {
+        let id = TransceiverId(*self.transceiver_counter.borrow());
+        self.transceiver_counter.replace(id.0 + 1);
+        DIFInterface::new(id, self.pointer_address_provider.clone())
     }
 }

@@ -15,7 +15,7 @@ use crate::{
 };
 use alloc::rc::Rc;
 use core::{fmt::Display, result::Result};
-
+use core::cell::RefCell;
 use crate::{
     dif::cache::{CacheValueRetrievalError, DIFSharedContainerCache},
     shared_values::{
@@ -30,6 +30,7 @@ use crate::{
     },
     values::value_container::ValueContainer,
 };
+use crate::runtime::Runtime;
 
 #[derive(Debug)]
 pub enum DIFObserveError {
@@ -143,15 +144,15 @@ impl From<SharedValueCreationError> for DIFCreatePointerError {
 
 pub struct DIFInterface {
     cache: DIFSharedContainerCache,
-    address_provider: SelfOwnedPointerAddressProvider,
+    address_provider: Rc<RefCell<SelfOwnedPointerAddressProvider>>,
     transceiver_id: TransceiverId,
 }
 
 impl DIFInterface {
-    pub fn new(endpoint: Endpoint, transceiver_id: TransceiverId) -> Self {
+    pub fn new(transceiver_id: TransceiverId, address_provider: Rc<RefCell<SelfOwnedPointerAddressProvider>>) -> Self {
         DIFInterface {
             cache: DIFSharedContainerCache::default(),
-            address_provider: SelfOwnedPointerAddressProvider::new(endpoint),
+            address_provider,
             transceiver_id,
         }
     }
@@ -206,7 +207,7 @@ impl DIFInterface {
         value: BaseSharedValueContainer,
     ) -> Result<SelfOwnedPointerAddress, DIFCreatePointerError> {
         let pointer_address =
-            self.address_provider.get_new_self_owned_address();
+            self.address_provider.borrow_mut().get_new_self_owned_address();
         self.cache.store_shared_container(SharedContainer::Owned(
             OwnedSharedContainer::new_from_self_owned_container(
                 SelfOwnedSharedContainer::new(value, pointer_address.clone()),

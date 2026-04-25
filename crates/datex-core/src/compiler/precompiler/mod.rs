@@ -852,7 +852,7 @@ mod tests {
         },
     };
     use core::assert_matches;
-    use std::str::FromStr;
+    use core::str::FromStr;
 
     fn precompile(
         ast: DatexExpression,
