@@ -61,7 +61,7 @@ pub mod task;
 pub mod traits;
 pub mod types;
 pub mod utils;
-mod value_updates;
+pub mod value_updates;
 pub mod values;
 
 // reexport macros
