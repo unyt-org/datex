@@ -851,8 +851,7 @@ mod tests {
             integer::{Integer, typed_integer::IntegerTypeVariant},
         },
     };
-    use core::assert_matches;
-    use core::str::FromStr;
+    use core::{assert_matches, str::FromStr};
 
     fn precompile(
         ast: DatexExpression,

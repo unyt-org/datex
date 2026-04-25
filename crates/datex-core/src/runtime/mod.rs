@@ -1,18 +1,13 @@
 //! This module contains the implementation of the runtime, which is the backbone of the DATEX system.
 use crate::{
-    network::com_hub::ComHub,
-    runtime::execution::ExecutionError,
-    values::{
-        core_values::endpoint::Endpoint, value_container::ValueContainer,
-    },
+    runtime::execution::ExecutionError, values::value_container::ValueContainer,
 };
 
 use crate::prelude::*;
-use core::{cell::RefCell, fmt::Debug, ops::Deref, result::Result};
+use core::{fmt::Debug, ops::Deref, result::Result};
 use execution::context::{
     ExecutionContext, RemoteExecutionContext, ScriptExecutionError,
 };
-use strum::Display;
 
 mod config;
 // pub mod dif_interface;

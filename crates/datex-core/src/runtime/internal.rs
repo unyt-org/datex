@@ -159,12 +159,12 @@ impl RuntimeInternal {
     }
     pub fn incoming_sections_receiver_mut(
         &self,
-    ) -> RefMut<UnboundedReceiver<IncomingSection>> {
+    ) -> RefMut<'_, UnboundedReceiver<IncomingSection>> {
         self.incoming_sections_receiver.borrow_mut()
     }
     pub fn incoming_sections_receiver(
         &self,
-    ) -> Ref<UnboundedReceiver<IncomingSection>> {
+    ) -> Ref<'_, UnboundedReceiver<IncomingSection>> {
         self.incoming_sections_receiver.borrow()
     }
     pub fn task_manager(&self) -> &TaskManager {

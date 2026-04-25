@@ -1,10 +1,10 @@
 use crate::{
     dif::{
         cache::{CacheValueRetrievalError, DIFSharedContainerCache},
-        pointer_address::{self, PointerAddressWithOwnership},
+        pointer_address::PointerAddressWithOwnership,
     },
     runtime::{
-        Runtime, execution::ExecutionError,
+        execution::ExecutionError,
         pointer_address_provider::SelfOwnedPointerAddressProvider,
     },
     shared_values::{
@@ -16,22 +16,15 @@ use crate::{
             ObserveOptions, Observer, ObserverError, ObserverId, TransceiverId,
         },
     },
-    traits::apply::Apply,
     value_updates::{
         errors::UpdateError,
         update_data::{Update, UpdateData, UpdateReturn},
         update_handler::UpdateHandler,
     },
-    values::{
-        core_values::endpoint::Endpoint, value_container::ValueContainer,
-    },
+    values::value_container::ValueContainer,
 };
 use alloc::rc::Rc;
-use core::{
-    cell::{Ref, RefCell},
-    fmt::Display,
-    result::Result,
-};
+use core::{cell::RefCell, fmt::Display, result::Result};
 
 #[derive(Debug)]
 pub enum DIFObserveError {
@@ -198,8 +191,8 @@ impl DIFInterface {
     /// Executes an apply operation, applying the `value` to the `callee`.
     pub fn apply(
         &self,
-        callee: ValueContainer,
-        value: ValueContainer,
+        _callee: ValueContainer,
+        _value: ValueContainer,
     ) -> Result<Option<ValueContainer>, DIFApplyError> {
         todo!()
     }

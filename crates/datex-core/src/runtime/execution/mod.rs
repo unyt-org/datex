@@ -18,7 +18,6 @@ use crate::{
         RawBuiltinPointerAddress, RawLocalPointerAddress,
         RawRemotePointerAddress,
     },
-    prelude::*,
     shared_values::{
         ExternalPointerAddress, PointerAddress, ReferenceMutability,
         ReferencedSharedContainer, SharedContainer,

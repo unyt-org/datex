@@ -1,11 +1,10 @@
 use crate::{
     dif::serde_context::SerdeContext,
     prelude::*,
-    serde::Deserialize,
     shared_values::observers::TransceiverId,
     values::value_container::{ValueContainer, value_key::ValueKey},
 };
-use serde::{Deserializer, Serialize, de::DeserializeSeed};
+use serde::{Deserializer, de::DeserializeSeed};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum UpdateData {
@@ -39,7 +38,7 @@ impl<'de, 'ctx> DeserializeSeed<'de> for SerdeContext<'ctx, ReplaceUpdateData> {
     type Value = ReplaceUpdateData;
     fn deserialize<D: Deserializer<'de>>(
         self,
-        d: D,
+        _d: D,
     ) -> Result<ReplaceUpdateData, D::Error> {
         todo!()
     }
