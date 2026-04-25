@@ -49,9 +49,14 @@ impl From<UnexpectedSharedContainerOwnershipError>
 }
 
 impl DIFSharedContainerCache {
-    /// Stores a shared container in the cache, indexed by its pointer address. If a container already exists at the address,
-    /// the container with the maximum ownership is kept.
+    /// Stores a shared container in the cache, indexed by its pointer address.
+    /// If a container already exists at the address, the container with the maximum ownership is kept.
     pub fn store_shared_container(&mut self, container: SharedContainer) {
+        if let Some(existing) = self.values.get(&container.pointer_address())
+            && existing.ownership() > container.ownership()
+        {
+            return;
+        }
         self.values.insert(container.pointer_address(), container);
     }
 
