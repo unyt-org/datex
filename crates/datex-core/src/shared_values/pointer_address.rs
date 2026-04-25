@@ -48,7 +48,7 @@ impl Display for ExternalPointerAddress {
                 core::write!(f, "${}", self.to_address_string())
             }
             ExternalPointerAddress::Builtin(_) => {
-                core::write!(f, "{}", self.to_address_string())
+                core::write!(f, "${}", self.to_address_string())
             }
         }
     }

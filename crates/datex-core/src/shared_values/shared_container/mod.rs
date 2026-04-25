@@ -1,7 +1,7 @@
 //! This module contains the implementation of the shared container, which is the holder of [SharedContainerInner]
 //! and the top-level wrapper for any owned or referenced shared container.
 use crate::{
-    dif::deserialization_context::DeserializationContext,
+    dif::serde_context::SerdeContext,
     runtime::{
         memory::Memory,
         pointer_address_provider::SelfOwnedPointerAddressProvider,

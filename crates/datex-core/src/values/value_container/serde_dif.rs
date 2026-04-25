@@ -18,16 +18,14 @@ impl Serialize for ValueContainer {
     }
 }
 
-use crate::dif::deserialization_context::DeserializationContext;
+use crate::dif::serde_context::SerdeContext;
 use core::fmt;
 use serde::{
     Deserializer,
     de::{DeserializeSeed, MapAccess, Visitor},
 };
 /// Deserialization for [ValueContainer] using a [DeserializationContext] to provide access to the memory during deserialization.
-impl<'de, 'ctx> DeserializeSeed<'de>
-    for DeserializationContext<'ctx, ValueContainer>
-{
+impl<'de, 'ctx> DeserializeSeed<'de> for SerdeContext<'ctx, ValueContainer> {
     type Value = ValueContainer;
     fn deserialize<D: Deserializer<'de>>(
         self,
@@ -37,7 +35,7 @@ impl<'de, 'ctx> DeserializeSeed<'de>
     }
 }
 
-impl<'de, 'ctx> Visitor<'de> for DeserializationContext<'ctx, ValueContainer> {
+impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, ValueContainer> {
     type Value = ValueContainer;
 
     fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -67,7 +65,7 @@ impl<'de, 'ctx> Visitor<'de> for DeserializationContext<'ctx, ValueContainer> {
     }
 }
 
-impl<'ctx> SerializeSeed for DeserializationContext<'ctx, ValueContainer> {
+impl<'ctx> SerializeSeed for SerdeContext<'ctx, ValueContainer> {
     type Value = ValueContainer;
 
     fn serialize<S: Serializer>(
@@ -100,7 +98,7 @@ mod tests {
         str: impl Into<String>,
         dif_cache: &mut DIFSharedContainerCache,
     ) -> ValueContainer {
-        DeserializationContext::<ValueContainer>::new(dif_cache)
+        SerdeContext::<ValueContainer>::new(dif_cache)
             .deserialize(&mut serde_json::Deserializer::from_str(
                 str.into().as_str(),
             ))

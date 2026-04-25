@@ -1,5 +1,5 @@
 use crate::{
-    dif::deserialization_context::DeserializationContext,
+    dif::serde_context::SerdeContext,
     prelude::*,
     serde::Deserialize,
     shared_values::observers::TransceiverId,
@@ -35,7 +35,7 @@ pub struct ReplaceUpdateData {
 }
 
 /// Deserialization for [ReplaceUpdateData] using a [DeserializationContext] to provide access to the memory during deserialization.
-impl<'de, 'ctx> DeserializeSeed<'de> for DeserializationContext<'ctx, ReplaceUpdateData> {
+impl<'de, 'ctx> DeserializeSeed<'de> for SerdeContext<'ctx, ReplaceUpdateData> {
     type Value = ReplaceUpdateData;
     fn deserialize<D: Deserializer<'de>>(
         self,

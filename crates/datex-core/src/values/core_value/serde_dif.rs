@@ -20,14 +20,14 @@ impl Serialize for CoreValue {
     }
 }
 
-use crate::dif::deserialization_context::DeserializationContext;
+use crate::dif::serde_context::SerdeContext;
 use core::fmt;
 use serde::{
     Deserializer,
     de::{DeserializeSeed, SeqAccess, Visitor},
 };
 /// Deserialization for [CoreValue] using a [DeserializationContext] to provide access to the memory during deserialization.
-impl<'de, 'ctx> DeserializeSeed<'de> for DeserializationContext<'ctx, CoreValue> {
+impl<'de, 'ctx> DeserializeSeed<'de> for SerdeContext<'ctx, CoreValue> {
     type Value = CoreValue;
 
     fn deserialize<D: Deserializer<'de>>(
@@ -38,7 +38,7 @@ impl<'de, 'ctx> DeserializeSeed<'de> for DeserializationContext<'ctx, CoreValue>
     }
 }
 
-impl<'de, 'ctx> Visitor<'de> for DeserializationContext<'ctx, CoreValue> {
+impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, CoreValue> {
     type Value = CoreValue;
 
     fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {

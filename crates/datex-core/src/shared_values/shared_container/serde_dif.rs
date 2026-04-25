@@ -1,8 +1,7 @@
 use crate::{
     dif::{
-        deserialization_context::DeserializationContext,
         pointer_address::PointerAddressWithOwnership,
-        serialization_context::SerializationContext,
+        serde_context::SerdeContext,
     },
     shared_values::{
         ReferenceMutability, SharedContainer, SharedContainerOwnership,
@@ -13,7 +12,6 @@ use alloc::format;
 use serde::{
     Deserialize, Deserializer, Serialize, Serializer, de::DeserializeSeed,
 };
-use serde_serialize_seed::SerializeSeed;
 
 impl Serialize for SharedContainer {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -35,9 +33,7 @@ impl Serialize for SharedContainer {
     }
 }
 
-impl<'de, 'ctx> DeserializeSeed<'de>
-    for DeserializationContext<'ctx, SharedContainer>
-{
+impl<'de, 'ctx> DeserializeSeed<'de> for SerdeContext<'ctx, SharedContainer> {
     type Value = SharedContainer;
     fn deserialize<D: Deserializer<'de>>(
         self,
@@ -58,32 +54,24 @@ impl<'de, 'ctx> DeserializeSeed<'de>
     }
 }
 
-/// Serialization for [SharedContainer] shall only be used with [SerializeSeedOwned]
-/// This is the internal implementation and serialize shall not be used.
-mod internal_serde {
-    use crate::dif::serialization_context::SerializationContext;
+impl<'ctx> SerializeSeedOwned for SerdeContext<'ctx, SharedContainer> {
+    type Value = SharedContainer;
 
-    use super::*;
-
-    impl SerializeSeed for SerializationContext<SharedContainer> {
-        type Value = SharedContainer;
-
-        fn serialize<S: Serializer>(
-            &self,
-            value: &Self::Value,
-            serializer: S,
-        ) -> Result<S::Ok, S::Error> {
-            unsafe {
-                self.dif_interface
-                    .borrow_mut()
-                    .cache
-                    .store_shared_container(value.clone_unsafe());
-            }
-            value.pointer_address().serialize(serializer)
+    fn serialize_owned<S>(
+        &mut self,
+        value: Self::Value,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        unsafe {
+            self.shared_container_cache
+                .store_shared_container(value.clone_unsafe());
         }
+        value.pointer_address().serialize(serializer)
     }
 }
-impl SerializeSeedOwned for SerializationContext<SharedContainer> {}
 
 #[cfg(test)]
 mod tests {
@@ -134,7 +122,7 @@ mod tests {
         let serialized = serde_json::to_string(&owned_container).unwrap();
         assert_eq!(
             serialized,
-            format!(r#""{}""#, owned_container.pointer_address().to_string())
+            format!(r#""{}""#, owned_container.pointer_address())
         );
     }
 
@@ -143,7 +131,7 @@ mod tests {
             CacheValueRetrievalError, DIFSharedContainerCache,
             ValueNotFoundInCacheError,
         },
-        deserialization_context::DeserializationContext,
+        serde_context::SerdeContext,
     };
     use core::assert_matches;
 
@@ -151,7 +139,7 @@ mod tests {
         str: impl Into<String>,
         dif_cache: &mut DIFSharedContainerCache,
     ) -> SharedContainer {
-        DeserializationContext::<SharedContainer>::new(dif_cache)
+        SerdeContext::<SharedContainer>::new(dif_cache)
             .deserialize(&mut serde_json::Deserializer::from_str(
                 str.into().as_str(),
             ))
