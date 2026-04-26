@@ -187,6 +187,9 @@ impl DIFValue {
                     }
                 }
             }
+            CoreValue::Set(set) => {
+                core::todo!("Add this for set")
+            }
             CoreValue::Range(range) => DIFValueRepresentation::Array(vec![
                 DIFValueContainer::from_value_container(&range.start),
                 DIFValueContainer::from_value_container(&range.end),

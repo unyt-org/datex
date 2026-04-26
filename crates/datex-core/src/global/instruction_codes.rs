@@ -240,6 +240,9 @@ pub enum InstructionCode {
     MAP,        // (a:1, b:2)
     SHORT_MAP,  // {a:1, b:2} - optimized short map with up to 255 elements
 
+    // Set
+    SET,
+
     KEY_VALUE_SHORT_TEXT,
     KEY_VALUE_DYNAMIC, // for object elements with dynamic key
     KEY_PERMISSION,    // for object elements with permission prefix

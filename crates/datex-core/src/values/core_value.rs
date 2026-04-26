@@ -13,11 +13,11 @@
 //! | [`Integer`] | Arbitrary-precision integers | `42`, `-1000` |
 //! | [`TypedInteger`] | Fixed-size integers (i8, u32, etc.) | `42u32`, `-128i8` |
 //! | [`Decimal`] | Arbitrary-precision decimals | `3.14159` |
-//! | `Text` | UTF-8 strings | `"Hello"` |
-//! | `List` | Ordered collections | `[1, 2, 3]` |
-//! | `Map` | Key-value stores | `{"key": value}` |
-//! | `Callable` | Functions/closures | `|x| x + 1` |
-//! | `Range` | Inclusive/exclusive ranges | `1..10`, `0..=5` |
+//! | [`Text`] | UTF-8 strings | `"Hello"` |
+//! | [`List`] | Ordered collections | `[1, 2, 3]` |
+// | `Map` | Key-value stores | `{"key": value}` |
+// | `Callable` | Functions/closures | `|x| x + 1` |
+// | `Range` | Inclusive/exclusive ranges | `1..10`, `0..=5` |
 //!
 //! # Operations
 //!
@@ -62,12 +62,16 @@ use crate::{
             list::List,
             map::Map,
             range::Range,
+            set::{FnvHasher, Set},
             text::Text,
             r#type::Type,
         },
         value_container::{ValueContainer, ValueError},
     },
 };
+use core::hash::{Hash, Hasher};
+use hashbrown::HashSet;
+
 use core::{
     fmt::{Display, Formatter},
     ops::{Add, AddAssign, Div, Mul, Neg, Not, Rem, Sub},
@@ -88,6 +92,7 @@ pub enum CoreValue {
     Type(Type),
     Callable(Callable),
     Range(Range),
+    Set(Set),
 }
 
 impl StructuralEq for CoreValue {
@@ -143,6 +148,13 @@ impl StructuralEq for CoreValue {
 
             (CoreValue::Range(a), CoreValue::Range(b)) => {
                 a.start.structural_eq(&b.start) && a.end.structural_eq(&b.end)
+            }
+
+            (CoreValue::Set(a), CoreValue::Set(b)) => {
+                if a.elements.len() != b.elements.len() {
+                    return false;
+                }
+                a.elements.iter().all(|item| b.elements.contains(item))
             }
             _ => false,
         }
@@ -262,6 +274,20 @@ impl From<f64> for CoreValue {
     }
 }
 
+impl<T> From<HashSet<T>> for CoreValue
+where
+    T: Into<CoreValue> + Eq + Hash,
+{
+    fn from(hash_set: HashSet<T>) -> Self {
+        let converted_set: HashSet<CoreValue> =
+            hash_set.into_iter().map(|item| item.into()).collect();
+
+        CoreValue::Set(Set {
+            elements: converted_set,
+        })
+    }
+}
+
 impl From<&CoreValue> for CoreLibPointerId {
     fn from(value: &CoreValue) -> Self {
         match value {
@@ -278,6 +304,7 @@ impl From<&CoreValue> for CoreLibPointerId {
             CoreValue::Type(_) => CoreLibPointerId::Type,
             CoreValue::Callable(_) => CoreLibPointerId::Callable,
             CoreValue::Range(_) => CoreLibPointerId::Range,
+            CoreValue::Set(_) => CoreLibPointerId::Set,
         }
     }
 }
@@ -1266,6 +1293,7 @@ impl Display for CoreValue {
             CoreValue::Decimal(decimal) => core::write!(f, "{decimal}"),
             CoreValue::List(list) => core::write!(f, "{list}"),
             CoreValue::Callable(_callable) => core::write!(f, "[[ callable ]]"), // TODO #605
+            CoreValue::Set(set) => core::write!(f, "[set]"),
         }
     }
 }
@@ -1331,5 +1359,46 @@ mod tests {
         let b = CoreValue::Integer(58.into());
         let sum = (a + b).unwrap();
         assert_eq!(sum, CoreValue::Integer(100.into()));
+    }
+
+    #[test]
+    fn set_test() {
+        let mut set = Set::new();
+
+        let a = CoreValue::from(10i32);
+        let b = CoreValue::from(20i32);
+        let c = CoreValue::from(10i32);
+
+        set.elements.insert(a.clone());
+        set.elements.insert(b.clone());
+        set.elements.insert(c.clone());
+
+        assert_eq!(
+            set.elements.len(),
+            2,
+            "Set should not allow duplicate elements"
+        );
+
+        assert!(set.elements.contains(&a));
+        assert!(set.elements.contains(&b));
+
+        assert!(set.elements.contains(&c));
+
+        let hash1 = {
+            let mut h = FnvHasher::new();
+            set.hash(&mut h);
+            h.finish()
+        };
+
+        let hash2 = {
+            let mut h = FnvHasher::new();
+            set.hash(&mut h);
+            h.finish()
+        };
+
+        assert_eq!(
+            hash1, hash2,
+            "Hash should be deterministic for the same set"
+        );
     }
 }

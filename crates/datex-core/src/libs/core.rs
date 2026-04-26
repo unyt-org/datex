@@ -86,6 +86,7 @@ pub enum CoreLibPointerId {
     Unknown,                             // #core.unknown
     Print, // #core.print (function, might be removed later)
     Range,
+    Set,
 }
 
 impl CoreLibPointerId {
@@ -108,6 +109,7 @@ impl CoreLibPointerId {
             CoreLibPointerId::Unknown => 14,
             CoreLibPointerId::Print => 15,
             CoreLibPointerId::Range => 16,
+            CoreLibPointerId::Set => 17,
             CoreLibPointerId::Integer(None) => Self::INTEGER_BASE,
             CoreLibPointerId::Integer(Some(v)) => {
                 let v: u8 = (*v).into();
