@@ -108,6 +108,8 @@ impl DIFInterface {
         &mut self,
         address_with_ownership: PointerAddressWithOwnership,
     ) -> Result<SharedContainer, DIFResolveReferenceError> {
+        // FIXME Check if ownership is allowed,
+        // do not take from cache?!
         self.cache
             .try_get_shared_container_with_ownership(
                 &address_with_ownership.address,
