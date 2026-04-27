@@ -1,7 +1,7 @@
 use crate::ast::{
     expressions::{
         Apply, BinaryOperation, CallableDeclaration, ComparisonOperation,
-        Conditional, DatexExpression, DatexExpressionData, List, Map,
+        Conditional, DatexExpression, DatexExpressionData, List, Map, Set,
         PropertyAccess, PropertyAssignment, RangeDeclaration, RemoteExecution,
         SlotAssignment, TypeDeclaration, UnboxAssignment, VariableAccess,
         VariableAssignment, VariableDeclaration, VariantAccess,
