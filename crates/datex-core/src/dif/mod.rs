@@ -2,5 +2,6 @@
 //! as interface for communication with outside components or languages.
 pub mod cache;
 pub mod dif_interface;
+pub mod error;
 pub mod pointer_address;
 pub mod serde_context;
