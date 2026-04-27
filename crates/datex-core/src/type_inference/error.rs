@@ -1,83 +1,18 @@
 use crate::prelude::*;
-use core::{fmt::Display, ops::Range};
+use core::ops::Range;
 
-use crate::{
-    global::operators::binary::ArithmeticOperator,
-    utils::maybe_action::ErrorCollector, values::core_values::r#type::Type,
-};
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum TypeError {
-    SubvariantNotFound(String, String),
-    // only for debugging purposes
-    InvaliUnboxType(Type),
-    Unimplemented(String),
-    MismatchedOperands(ArithmeticOperator, Type, Type),
-    AssignmentToImmutableReference(String),
-    AssignmentToImmutableValue(String),
-    AssignmentToConstant(String),
-
-    // can not assign value to variable of different type
-    AssignmentTypeMismatch {
-        annotated_type: Type,
-        assigned_type: Type,
-    },
-}
-
-impl Display for TypeError {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        match self {
-            TypeError::AssignmentToImmutableValue(var_name) => {
-                write!(f, "Cannot assign to immutable variable '{}'", var_name)
-            }
-            TypeError::AssignmentToConstant(var_name) => {
-                write!(f, "Cannot assign to constant variable '{}'", var_name)
-            }
-            TypeError::AssignmentToImmutableReference(var_name) => {
-                write!(
-                    f,
-                    "Cannot assign to immutable reference variable '{}'",
-                    var_name
-                )
-            }
-            TypeError::SubvariantNotFound(ty, variant) => {
-                write!(
-                    f,
-                    "Type {} does not have a subvariant named {}",
-                    ty, variant
-                )
-            }
-            TypeError::InvaliUnboxType(ty) => {
-                write!(f, "Cannot unbox value of type {}", ty)
-            }
-            TypeError::Unimplemented(msg) => {
-                write!(f, "Unimplemented type inference case: {}", msg)
-            }
-            TypeError::MismatchedOperands(op, lhs, rhs) => {
-                write!(
-                    f,
-                    "Cannot perform \"{}\" operation on {} and {}",
-                    op, lhs, rhs
-                )
-            }
-            TypeError::AssignmentTypeMismatch {
-                annotated_type,
-                assigned_type,
-            } => {
-                write!(
-                    f,
-                    "Cannot assign {} to {}",
-                    assigned_type, annotated_type
-                )
-            }
-        }
-    }
-}
+use crate::{types::error::TypeError, utils::maybe_action::ErrorCollector};
 
 #[derive(Debug)]
 pub struct SpannedTypeError {
     pub error: TypeError,
     pub span: Option<Range<usize>>,
+}
+
+impl PartialEq for SpannedTypeError {
+    fn eq(&self, other: &Self) -> bool {
+        self.error == other.error
+    }
 }
 
 impl SpannedTypeError {
@@ -101,7 +36,7 @@ impl From<TypeError> for SpannedTypeError {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct DetailedTypeErrors {
     pub errors: Vec<SpannedTypeError>,
 }
@@ -118,7 +53,7 @@ impl DetailedTypeErrors {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum SimpleOrDetailedTypeError {
     Simple(SpannedTypeError),
     Detailed(DetailedTypeErrors),

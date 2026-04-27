@@ -11,11 +11,11 @@ use crate::{
         LanguageServerBackend, errors::SpannedLSPCompilerError,
         type_hint_collector::TypeHintCollector,
     },
+    types::r#type::Type,
     values::core_values::{
         decimal::{Decimal, typed_decimal::TypedDecimal},
         endpoint::Endpoint,
         integer::{Integer, typed_integer::TypedInteger},
-        r#type::Type,
     },
     visitor::{
         VisitAction, expression::ExpressionVisitor,

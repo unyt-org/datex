@@ -1,3 +1,4 @@
+//! The `datex-core` crate is the core library for the DATEX system.
 #![cfg_attr(not(feature = "std"), no_std)]
 #![feature(assert_matches)]
 #![feature(gen_blocks)]
@@ -13,7 +14,10 @@
 #![feature(thread_local)]
 #![feature(future_join)]
 #![allow(static_mut_refs)]
-
+#![feature(variant_count)]
+#![feature(const_cmp)]
+#![feature(const_trait_impl)]
+#![feature(custom_test_frameworks)]
 extern crate alloc;
 extern crate num_integer;
 
@@ -21,7 +25,6 @@ extern crate num_integer;
 extern crate std;
 
 pub mod channel;
-pub mod dif;
 pub mod prelude;
 
 #[cfg(feature = "ast")]
@@ -47,6 +50,8 @@ pub mod type_inference;
 pub mod visitor;
 
 pub mod core_compiler;
+pub mod dif;
+pub mod disassembler;
 pub mod dxb_parser;
 #[cfg(all(feature = "macro_utils", feature = "std", feature = "compiler"))]
 pub mod macro_utils;
@@ -56,13 +61,14 @@ pub mod task;
 pub mod traits;
 pub mod types;
 pub mod utils;
+pub mod value_updates;
 pub mod values;
 
 // reexport macros
 pub use datex_macros_internal as macros;
 extern crate core;
 
-// HashMap and HashSet that work in both std and no_std environments.
+/// HashMap and HashSet that work in both std and no_std environments.
 pub mod collections {
     #[cfg(feature = "std")]
     pub use std::collections::{HashMap, HashSet, hash_map, hash_set};

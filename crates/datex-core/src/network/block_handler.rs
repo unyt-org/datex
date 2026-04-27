@@ -13,7 +13,7 @@ use crate::{
     random::RandomState,
 };
 
-use crate::prelude::*;
+use crate::{disassembler::print_disassembled, prelude::*};
 use core::{cell::RefCell, fmt::Debug, prelude::rust_2024::*};
 use log::info;
 use ringmap::RingMap;
@@ -157,6 +157,7 @@ impl BlockHandler {
         info!(
             "Received block (context={context_id}, section={section_index}, block_nr={block_number})"
         );
+        print_disassembled(&block.body);
 
         // handle observers if response block
         if is_response {

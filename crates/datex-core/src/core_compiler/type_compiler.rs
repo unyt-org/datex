@@ -1,80 +1,122 @@
 use crate::{
-    core_compiler::value_compiler::append_get_ref,
+    core_compiler::{
+        core_compilation_context::{ByteCursor, CoreCompilationContext},
+        value_compiler::append_get_shared_ref,
+    },
     global::{
-        protocol_structures::instructions::TypeMetadataBin,
+        protocol_structures::{
+            instruction_data::TypeMetadataBin,
+            type_instructions::TypeInstruction,
+        },
         type_instruction_codes::TypeInstructionCode,
     },
     prelude::*,
-    shared_values::pointer::PointerReferenceMutability,
-    types::definition::TypeDefinition,
+    shared_values::ReferenceMutability,
+    types::{
+        r#type::Type, type_definition::TypeDefinition,
+        type_definition_with_metadata::TypeDefinitionWithMetadata,
+    },
     utils::buffers::append_u8,
-    values::core_values::r#type::Type,
 };
+use binrw::{BinWrite, io::Write};
 
 /// Compiles a given type container to a DXB body
 pub fn compile_type(ty: &Type) -> Vec<u8> {
-    let mut buffer = Vec::with_capacity(256);
-    append_type(&mut buffer, ty);
+    let mut context = CoreCompilationContext::new(Vec::new());
+    append_type(&mut context, ty);
 
-    buffer
+    context.into_buffer()
 }
 
-pub fn append_type(buffer: &mut Vec<u8>, ty: &Type) {
-    // append instruction code
-    let instruction_code = TypeInstructionCode::from(&ty.type_definition);
-    append_type_space_instruction_code(buffer, instruction_code);
-
-    // append metadata
-    let metadata = TypeMetadataBin::from(&ty.metadata);
-    append_type_metadata(buffer, metadata);
-
+pub fn append_type(context: &mut CoreCompilationContext, ty: &Type) {
+    // TODO: handle nominal type additional data via separate instruction
     // append type definition
-    append_type_definition(buffer, &ty.type_definition);
+    ty.with_collapsed_definition_with_metadata(|ty| {
+        append_type_definition(context, ty);
+    })
 }
 
 pub fn append_type_definition(
-    buffer: &mut Vec<u8>,
+    context: &mut CoreCompilationContext,
+    ty: &TypeDefinitionWithMetadata,
+) {
+    // append instruction code
+    let instruction_code = TypeInstructionCode::from(&ty.definition);
+    append_type_space_instruction_code_new(
+        context.cursor_mut(),
+        instruction_code,
+    );
+
+    // append metadata
+    let metadata = TypeMetadataBin::from(&ty.metadata);
+    append_type_metadata(context.cursor_mut(), metadata);
+
+    // append structural type definition
+    append_structural_type_definition(context, &ty.definition);
+}
+
+pub fn append_structural_type_definition(
+    context: &mut CoreCompilationContext,
     type_definition: &TypeDefinition,
 ) {
     match type_definition {
         TypeDefinition::ImplType(ty, impls) => {
             // Append the number of impls
             let impl_count = impls.len() as u8;
-            append_u8(buffer, impl_count);
+            append_u8(context.cursor_mut(), impl_count);
 
             // Append each impl address
             for impl_type in impls {
-                append_get_ref(
-                    buffer,
+                append_get_shared_ref(
+                    context,
                     impl_type,
-                    &PointerReferenceMutability::Immutable,
+                    &ReferenceMutability::Immutable,
                 )
             }
 
             // Append the base type
-            append_type(buffer, ty);
+            append_type(context, ty);
         }
-        TypeDefinition::SharedReference(type_ref) => {
+        TypeDefinition::Shared(type_ref) => {
             // TODO #636: ensure pointer_address exists here
-            let type_ref = type_ref.borrow();
-            let pointer_address = type_ref.pointer.address();
-            append_get_ref(
-                buffer,
+            let pointer_address = type_ref.pointer_address();
+            append_get_shared_ref(
+                context,
                 &pointer_address,
-                &PointerReferenceMutability::Immutable,
+                &ReferenceMutability::Immutable,
             )
         }
         _ => todo!("#637 Type definition compilation not implemented yet"),
     };
 }
 
+#[deprecated(note = "use `append_type_instruction` instead")]
 pub fn append_type_space_instruction_code(
-    buffer: &mut Vec<u8>,
-    code: TypeInstructionCode,
+    _buffer: &mut Vec<u8>,
+    _code: TypeInstructionCode,
 ) {
-    append_u8(buffer, code as u8);
+    unimplemented!("use append_type_instruction instead");
 }
 
-pub fn append_type_metadata(buffer: &mut Vec<u8>, code: TypeMetadataBin) {
-    append_u8(buffer, code.into_bytes()[0]);
+pub fn append_type_space_instruction_code_new(
+    cursor: &mut ByteCursor,
+    code: TypeInstructionCode,
+) {
+    cursor.write_all(&[code as u8]).unwrap();
+}
+
+pub fn append_type_instruction(
+    cursor: &mut ByteCursor,
+    instruction: TypeInstruction,
+) {
+    // add instruction code
+    cursor
+        .write_all(&[TypeInstructionCode::from(&instruction) as u8])
+        .unwrap();
+    // add instruction
+    instruction.write(cursor).unwrap();
+}
+
+pub fn append_type_metadata(cursor: &mut ByteCursor, code: TypeMetadataBin) {
+    append_u8(cursor, code.into_bytes()[0]);
 }

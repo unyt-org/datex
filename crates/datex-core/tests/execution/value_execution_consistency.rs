@@ -5,8 +5,11 @@ use alloc::rc::Rc;
 use datex_core::compile;
 use datex_core::{
     runtime::{
-        RuntimeInternal,
-        execution::{ExecutionInput, ExecutionOptions, execute_dxb_sync},
+        Runtime,
+        execution::{
+            ExecutionInput, ExecutionOptions, execute_dxb_sync,
+            execution_input::ExecutionCallerMetadata,
+        },
     },
     values::{
         core_values::{
@@ -20,12 +23,14 @@ use datex_core::{
 };
 
 fn compile_and_execute(input: ValueContainer) -> ValueContainer {
-    let (dxb, _) = compile!("?", input.clone()).unwrap();
+    let runtime = Runtime::stub();
+    let (dxb, _) = compile!(runtime, "?", input.clone()).unwrap();
 
     execute_dxb_sync(ExecutionInput::new(
         &dxb,
+        ExecutionCallerMetadata::local_default(),
         ExecutionOptions { verbose: true },
-        Rc::new(RuntimeInternal::stub()),
+        runtime,
     ))
     .unwrap()
     .unwrap()

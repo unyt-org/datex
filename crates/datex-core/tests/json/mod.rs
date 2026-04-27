@@ -6,8 +6,11 @@ use datex_core::{
         DecompileOptions, FormattingMode, FormattingOptions, decompile_body,
     },
     runtime::{
-        RuntimeInternal,
-        execution::{ExecutionInput, ExecutionOptions, execute_dxb_sync},
+        Runtime,
+        execution::{
+            ExecutionInput, ExecutionOptions, execute_dxb_sync,
+            execution_input::ExecutionCallerMetadata,
+        },
     },
     traits::structural_eq::StructuralEq,
     values::{
@@ -69,39 +72,37 @@ fn json_value_to_datex_value(json: &json_syntax::Value) -> Value {
 }
 
 fn compare_datex_result_with_json(json_string: &str) {
+    let runtime = Runtime::stub();
     println!(" JSON String: {json_string}");
     let json_value = json_syntax::Value::parse_str(json_string).unwrap().0;
     let (dxb, _) =
-        compile_script(json_string, CompileOptions::default()).unwrap();
+        compile_script(json_string, CompileOptions::default(), runtime.clone())
+            .unwrap();
     let exec_input = ExecutionInput::new(
         &dxb,
+        ExecutionCallerMetadata::local_default(),
         ExecutionOptions {
             verbose: false,
             ..ExecutionOptions::default()
         },
-        Rc::new(RuntimeInternal::stub()),
+        runtime,
     );
     let datex_value = execute_dxb_sync(exec_input).unwrap().unwrap();
     let json_value_converted = json_value_to_datex_value(&json_value);
 
     println!(" JSON Value: {json_value}");
-    println!(
-        " DATEX Value: {datex_value} ({})",
-        datex_value.to_value().borrow().actual_type
-    );
-    println!(
-        " Converted JSON Value: {json_value_converted} ({})",
-        json_value_converted.actual_type
-    );
-    assert_structural_eq!(
-        json_value_converted,
-        *datex_value.to_value().borrow()
-    );
+    println!(" DATEX Value: {datex_value}",);
+    println!(" Converted JSON Value: {json_value_converted}",);
+    datex_value.with_collapsed_value(|v| {
+        assert_structural_eq!(json_value_converted, *v);
+    })
 }
 
 fn get_datex_decompiled_from_json(json_string: &str) -> String {
+    let runtime = Runtime::stub();
     let (dxb, _) =
-        compile_script(json_string, CompileOptions::default()).unwrap();
+        compile_script(json_string, CompileOptions::default(), runtime)
+            .unwrap();
     let decompiled = decompile_body(
         &dxb,
         DecompileOptions {

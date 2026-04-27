@@ -1,17 +1,26 @@
 use crate::{
     runtime::{
-        execution::context::{ExecutionContext, ExecutionMode},
+        execution::{
+            context::{ExecutionContext, ExecutionMode},
+            execution_input::ExecutionCallerMetadata,
+        },
         test_utils::use_mock_setup_with_two_connected_runtimes,
     },
+    shared_values::{
+        PointerAddress, SharedContainer, SharedContainerMutability,
+    },
     values::{
-        core_values::{endpoint::Endpoint, integer::Integer},
+        core_values::{endpoint::Endpoint, integer::Integer, list::List},
         value_container::ValueContainer,
     },
 };
+use core::assert_matches;
+use log::info;
 
 #[tokio::test]
 #[cfg(feature = "compiler")]
 pub async fn test_basic_remote_execution() {
+    flexi_logger::init();
     let endpoint_a = Endpoint::new("@test_a");
     let endpoint_b = Endpoint::new("@test_b");
 
@@ -24,7 +33,7 @@ pub async fn test_basic_remote_execution() {
 
             // create an execution context for @test_b
             let mut remote_execution_context =
-                ExecutionContext::remote_unbounded(endpoint_b);
+                ExecutionContext::remote_unbounded(endpoint_b, runtime_b);
 
             // execute script remotely on @test_b
             let result = runtime_a
@@ -56,15 +65,15 @@ pub async fn test_remote_execution_persistent_context() {
     use_mock_setup_with_two_connected_runtimes(
         endpoint_a.clone(),
         endpoint_b.clone(),
-        async |runtime_a, _runtime_b| {
+        async |runtime_a, runtime_b| {
             // create an execution context for @test_b
             let mut remote_execution_context =
-                ExecutionContext::remote_unbounded(endpoint_b);
+                ExecutionContext::remote_unbounded(endpoint_b, runtime_b);
 
             // execute script remotely on @test_b
             let result = runtime_a
                 .execute(
-                    "const x = 10; x",
+                    "const x = 10; clone x", // FIXME: auto copy for integer?
                     &[],
                     Some(&mut remote_execution_context),
                 )
@@ -100,7 +109,8 @@ pub async fn test_remote_inline() {
             // create an execution context for @test_b
             let mut execution_context = ExecutionContext::local(
                 ExecutionMode::unbounded(),
-                runtime_a.internal.clone(),
+                runtime_a.clone(),
+                ExecutionCallerMetadata::local_default(),
             );
 
             // execute script remotely on @test_b
@@ -139,8 +149,7 @@ pub async fn test_remote_inline_implicit_context() {
 
 #[tokio::test]
 #[cfg(feature = "compiler")]
-#[ignore = "This test currently fails because shared values are not yet supported in remote execution contexts."]
-pub async fn test_remote_shared_value() {
+pub async fn test_remote_shared_value_inject_move() {
     flexi_logger::init();
     let endpoint_a = Endpoint::new("@test_a");
     let endpoint_b = Endpoint::new("@test_b");
@@ -151,13 +160,155 @@ pub async fn test_remote_shared_value() {
         async |runtime_a, _runtime_b| {
             // execute script remotely on @test_b
             let result = runtime_a
-                .execute("var x = shared 42u8; @test_b :: x", &[], None)
+                .execute("var x = shared 42; @test_b ::  x + 1", &[], None)
                 .await;
             assert_eq!(
                 result.unwrap().unwrap(),
-                ValueContainer::from(Integer::from(42u8))
+                ValueContainer::from(Integer::from(43))
             );
         },
     )
     .await;
+}
+
+#[tokio::test]
+#[cfg(feature = "compiler")]
+pub async fn test_remote_shared_value_inject_ref() {
+    flexi_logger::init();
+    let endpoint_a = Endpoint::new("@test_a");
+    let endpoint_b = Endpoint::new("@test_b");
+
+    use_mock_setup_with_two_connected_runtimes(
+        endpoint_a.clone(),
+        endpoint_b.clone(),
+        async |runtime_a, _runtime_b| {
+            // execute script remotely on @test_b
+            let result = runtime_a
+                .execute(
+                    "var x = shared 42; @test_b :: ['x + 1, 'x]",
+                    &[],
+                    None,
+                )
+                .await
+                .unwrap()
+                .unwrap();
+            let result_list = result.try_as::<List>().unwrap();
+            let result_vec = result_list.as_vec();
+
+            // 'x + 1
+            assert_eq!(result_vec[0], ValueContainer::from(Integer::from(43)));
+
+            // 'x
+            if let ValueContainer::Shared(shared_container) = &result_vec[1] {
+                assert_matches!(
+                    shared_container,
+                    SharedContainer::Referenced(..)
+                );
+                assert_matches!(
+                    shared_container.pointer_address(),
+                    PointerAddress::SelfOwned(..)
+                );
+                assert_eq!(
+                    shared_container.inner().base_shared_container().mutability,
+                    SharedContainerMutability::Immutable
+                );
+                assert_eq!(
+                    *shared_container.value_container(),
+                    ValueContainer::from(Integer::from(42))
+                )
+            } else {
+                panic!("Expected SharedContainer");
+            }
+        },
+    )
+    .await;
+}
+
+#[cfg(feature = "compiler")]
+#[test_case::test_case("shared", SharedContainerMutability::Immutable ; "immutable")]
+#[test_case::test_case("shared mut", SharedContainerMutability::Mutable ; "mutable")]
+#[tokio::test]
+pub async fn test_remote_shared_value_return(
+    shared_string: &'static str,
+    mutable_value: SharedContainerMutability,
+) {
+    let endpoint_a = Endpoint::new("@test_a");
+    let endpoint_b = Endpoint::new("@test_b");
+
+    use_mock_setup_with_two_connected_runtimes(
+        endpoint_a.clone(),
+        endpoint_b.clone(),
+        async |runtime_a, _runtime_b| {
+            // execute script remotely on @test_b
+            let result = runtime_a
+                .execute(&format!("@test_b :: ({shared_string} 42)"), &[], None)
+                .await
+                .unwrap()
+                .unwrap();
+            if let ValueContainer::Shared(shared_container) = result {
+                shared_container
+                    .try_get_owned()
+                    .expect("shared container should be owned");
+                assert_matches!(
+                    shared_container.pointer_address(),
+                    PointerAddress::SelfOwned(..)
+                );
+                assert_eq!(
+                    shared_container.inner().base_shared_container().mutability,
+                    mutable_value
+                );
+                assert_eq!(
+                    *shared_container.value_container(),
+                    ValueContainer::from(Integer::from(42))
+                )
+            } else {
+                panic!("Expected SharedContainer");
+            }
+        },
+    )
+    .await;
+}
+
+#[cfg(feature = "compiler")]
+#[test_case::test_case("shared", SharedContainerMutability::Immutable ; "immutable")]
+#[test_case::test_case("shared mut", SharedContainerMutability::Mutable; "mutable")]
+#[tokio::test]
+pub async fn test_remote_shared_roundtrip_move(
+    shared_string: &'static str,
+    mutable_value: SharedContainerMutability,
+) {
+    flexi_logger::init();
+    let endpoint_a = Endpoint::new("@test_a");
+    let endpoint_b = Endpoint::new("@test_b");
+
+    use_mock_setup_with_two_connected_runtimes(
+        endpoint_a.clone(),
+        endpoint_b.clone(),
+        async |runtime_a, _runtime_b| {
+            // execute script remotely on @test_b
+            let result = runtime_a
+                .execute(&format!("const x = {shared_string} 42; @test_b :: (print 'x; x);"), &[], None)
+                .await
+                .unwrap().unwrap();
+            if let ValueContainer::Shared(shared_container) = result {
+                shared_container.try_get_owned().expect("shared container should be owned");
+                assert_matches!(
+                    shared_container.pointer_address(),
+                    PointerAddress::SelfOwned(..)
+                );
+                assert_eq!(
+                    shared_container.inner().base_shared_container().mutability,
+                    mutable_value
+                );
+                assert_eq!(
+                    *shared_container.value_container(),
+                    ValueContainer::from(Integer::from(42))
+                )
+            }
+            else {
+                panic!("Expected SharedContainer");
+            }
+        },
+    )
+        .await;
 }

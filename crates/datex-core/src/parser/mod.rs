@@ -1,3 +1,6 @@
+//! This module contains the implementation of the parser for the DATEX language.
+//! The lexer is implemented in the [lexer] submodule, and the main parsing logic is implemented in the [parsers] submodule.
+//! The parser supports both early abort on first error and detailed error collection modes, which can be configured using the [ParserOptions] struct.
 use crate::{
     ast::{
         expressions::{DatexExpression, DatexExpressionData},

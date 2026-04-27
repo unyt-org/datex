@@ -17,4 +17,5 @@ use strum::Display;
 pub enum InternalSlot {
     ENDPOINT = 0xffffff00,
     ENV = 0xffffff01,
+    CALLER = 0xffffff02,
 }

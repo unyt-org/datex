@@ -28,12 +28,19 @@ impl PrecompilerScopeStack {
         ));
     }
 
-    pub fn pop_scope(&mut self) {
-        if !self.scopes.is_empty() {
-            self.scopes.pop();
-        } else {
-            unreachable!("Cannot pop scope from an empty scope stack");
+    pub fn pop_scope(&mut self) -> PrecompilerScope {
+        let scope = self
+            .scopes
+            .pop()
+            .expect("Cannot pop scope from an empty scope stack");
+        // inherit child external variables
+        if let Some(parent_scope) = self.scopes.last_mut() {
+            parent_scope
+                .external_variables
+                .extend(scope.external_variables.clone());
         }
+
+        scope
     }
 
     /// increment the current scope's realm index (e.g. inside a remote execution call or function body)
@@ -69,16 +76,18 @@ impl PrecompilerScopeStack {
     }
 
     pub fn get_variable_and_update_metadata(
-        &self,
+        &mut self,
         name: &str,
         metadata: &mut AstMetadata,
     ) -> Result<usize, CompilerError> {
-        // try to resolve local variable
+        // try to resolve variable
         if let Some(var_id) = self.get_variable(name) {
             let var_metadata = metadata.variable_metadata_mut(var_id).unwrap();
             // if the original realm index is not the current realm index, mark it as cross-realm
             if var_metadata.original_realm_index != self.current_realm_index() {
                 var_metadata.is_cross_realm = true;
+                self.get_active_scope_mut()
+                    .register_external_variable(var_id);
             }
             Ok(var_id)
         } else {

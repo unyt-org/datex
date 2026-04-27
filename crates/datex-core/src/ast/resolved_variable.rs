@@ -1,4 +1,4 @@
-use crate::shared_values::pointer_address::PointerAddress;
+use crate::shared_values::PointerAddress;
 use core::fmt::Display;
 
 pub type VariableId = usize;

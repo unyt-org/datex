@@ -7,14 +7,17 @@ use datex_core::{
     core_compiler::value_compiler::compile_value_container,
     decompiler::{DecompileOptions, decompile_body},
     runtime::{
-        RuntimeInternal,
-        execution::{ExecutionInput, ExecutionOptions, execute_dxb_sync},
+        Runtime,
+        execution::{
+            ExecutionInput, ExecutionOptions, execute_dxb_sync,
+            execution_input::ExecutionCallerMetadata,
+        },
     },
     values::value_container::ValueContainer,
 };
 use json_syntax::Parse;
 use serde_json::Value;
-use std::{io::Read, rc::Rc};
+use std::io::Read;
 
 pub fn get_json_test_string(file_path: &str) -> String {
     // read json from test file
@@ -41,12 +44,15 @@ pub fn json_to_json_syntax_value(json: &str) -> json_syntax::Value {
 }
 
 pub fn json_to_datex_value(json: &str) -> ValueContainer {
-    let (dxb, _) = compile_script(json, CompileOptions::default())
-        .expect("Failed to parse JSON string");
+    let runtime = Runtime::stub();
+    let (dxb, _) =
+        compile_script(json, CompileOptions::default(), runtime.clone())
+            .expect("Failed to parse JSON string");
     let exec_input = ExecutionInput::new(
         &dxb,
+        ExecutionCallerMetadata::local_default(),
         ExecutionOptions::default(),
-        Rc::new(RuntimeInternal::stub()),
+        runtime,
     );
     execute_dxb_sync(exec_input).unwrap().unwrap()
 }
@@ -65,20 +71,24 @@ pub fn json_to_runtime_value_baseline_json_syntax(json: &str) {
 }
 
 pub fn json_to_runtime_value_datex<'a>(json: &'a str) {
+    let runtime = Runtime::stub();
+
     let (dxb, _) = compile_script(
         json,
         CompileOptions {
             ..CompileOptions::default()
         },
+        runtime.clone(),
     )
     .expect("Failed to parse JSON string");
     let exec_input = ExecutionInput::new(
         &dxb,
+        ExecutionCallerMetadata::local_default(),
         ExecutionOptions::default(),
-        Rc::new(RuntimeInternal::stub()),
+        runtime,
     );
     let val = execute_dxb_sync(exec_input).unwrap().unwrap();
-    assert!(val.to_value().borrow().is_map());
+    val.with_collapsed_value(|val| assert!(val.is_map()));
 }
 
 pub fn json_to_runtime_value_datex_auto_static_detection(
@@ -89,6 +99,7 @@ pub fn json_to_runtime_value_datex_auto_static_detection(
         CompileOptions {
             ..CompileOptions::default()
         },
+        Runtime::stub(),
     )
     .unwrap();
     if let StaticValueOrDXB::StaticValue(value) = dxb {
@@ -111,6 +122,7 @@ pub fn json_to_dxb<'a>(json: &'a str) {
         CompileOptions {
             ..CompileOptions::default()
         },
+        Runtime::stub(),
     )
     .expect("Failed to parse JSON string");
     assert!(!dxb.is_empty(), "Expected DXB to be non-empty");
@@ -120,11 +132,12 @@ pub fn json_to_dxb<'a>(json: &'a str) {
 pub fn dxb_to_runtime_value(dxb: &[u8]) {
     let exec_input = ExecutionInput::new(
         dxb,
+        ExecutionCallerMetadata::local_default(),
         ExecutionOptions::default(),
-        Rc::new(RuntimeInternal::stub()),
+        Runtime::stub(),
     );
     let json_value = execute_dxb_sync(exec_input).unwrap().unwrap();
-    assert!(json_value.to_value().borrow().is_map());
+    json_value.with_collapsed_value(|val| assert!(val.is_map()));
 }
 
 // value -> JSON
@@ -143,13 +156,13 @@ pub fn runtime_value_to_json_baseline_json_syntax(value: &json_syntax::Value) {
 }
 
 pub fn runtime_value_to_json_datex(value: &ValueContainer) {
-    let dxb = compile_value_container(value);
+    let dxb = compile_value_container(value).unwrap();
     let string = decompile_body(&dxb, DecompileOptions::json_compat()).unwrap();
     assert!(!string.is_empty(), "Expected DATEX string to be non-empty");
 }
 
 pub fn runtime_value_to_dxb(value: &ValueContainer) {
-    let dxb = compile_value_container(value);
+    let dxb = compile_value_container(value).unwrap();
     assert!(!dxb.is_empty(), "Expected DXB to be non-empty");
 }
 

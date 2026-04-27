@@ -1,9 +1,17 @@
 use crate::{
-    collections::HashMap,
+    global::protocol_structures::{
+        injected_values::{
+            InjectedValueDeclaration, InjectedValueType,
+            SharedInjectedValueType,
+        },
+        instruction_data::StackIndex,
+    },
+    prelude::*,
     runtime::{
-        RuntimeInternal,
+        Runtime,
         execution::{
             ExecutionError,
+            execution_input::ExecutionCallerMetadata,
             execution_loop::{
                 ExternalExecutionInterrupt, execution_loop,
                 interrupts::InterruptProvider,
@@ -11,11 +19,13 @@ use crate::{
         },
     },
     shared_values::observers::TransceiverId,
-    values::value_container::ValueContainer,
+    values::{
+        borrowed_value_container::BorrowedValueContainer,
+        value_container::ValueContainer,
+    },
 };
 use core::{cell::RefCell, fmt::Debug};
 
-use crate::prelude::*;
 pub struct ExecutionLoopState {
     pub iterator: Box<
         dyn Iterator<Item = Result<ExternalExecutionInterrupt, ExecutionError>>,
@@ -26,13 +36,15 @@ pub struct ExecutionLoopState {
 impl ExecutionLoopState {
     pub fn new(
         dxb_body: Vec<u8>,
-        runtime: Rc<RuntimeInternal>,
-        slots: RuntimeExecutionSlots,
+        runtime: Runtime,
+        stack: RuntimeExecutionStack,
+        caller_metadata: ExecutionCallerMetadata,
     ) -> Self {
         let state = RuntimeExecutionState {
-            runtime_internal: runtime.clone(),
-            source_id: 0, // TODO #640: set proper source ID
-            slots,
+            runtime: runtime.clone(),
+            source_id: TransceiverId(0), // TODO #640: set proper source ID
+            stack,
+            caller_metadata,
         };
         // TODO #641: optimize, don't clone the whole DXB body every time here
         let dxb_rc = Rc::new(RefCell::new(dxb_body.to_vec()));
@@ -59,74 +71,134 @@ impl Debug for ExecutionLoopState {
 
 #[derive(Debug)]
 pub struct RuntimeExecutionState {
-    /// Local memory slots for current execution context.
-    /// TODO #643: replace this with a local stack and deprecate local slots?
-    pub slots: RuntimeExecutionSlots,
-    pub runtime_internal: Rc<RuntimeInternal>,
+    /// Local memory stack for current execution context.
+    pub stack: RuntimeExecutionStack,
+    pub runtime: Runtime,
     pub source_id: TransceiverId,
+    pub caller_metadata: ExecutionCallerMetadata,
 }
 
 #[derive(Debug, Default)]
-pub struct RuntimeExecutionSlots {
-    pub slots: HashMap<u32, Option<ValueContainer>>,
+pub struct RuntimeExecutionStack {
+    pub values: Vec<Option<ValueContainer>>,
 }
 
-impl RuntimeExecutionSlots {
-    /// Allocates a new slot with the given slot address.
-    pub(crate) fn allocate_slot(
-        &mut self,
-        address: u32,
-        value: Option<ValueContainer>,
-    ) {
-        self.slots.insert(address, value);
+impl RuntimeExecutionStack {
+    /// Pushes a value to the stack
+    pub(crate) fn push(&mut self, value: ValueContainer) {
+        self.values.push(Some(value));
     }
 
-    /// Drops a slot by its address, returning the value if it existed.
-    /// If the slot is not allocated, it returns an error.
-    pub(crate) fn drop_slot(
-        &mut self,
-        address: u32,
-    ) -> Result<Option<ValueContainer>, ExecutionError> {
-        self.slots
-            .remove(&address)
-            .ok_or(())
-            .map_err(|_| ExecutionError::SlotNotAllocated(address))
+    /// Pushes multiple values to the stack
+    pub(crate) fn push_multiple(&mut self, values: Vec<ValueContainer>) {
+        self.values.extend(values.into_iter().map(Some));
     }
 
-    /// Sets the value of a slot, returning the previous value if it existed.
-    /// If the slot is not allocated, it returns an error.
-    pub(crate) fn set_slot_value(
+    /// Takes a stack value by its index and returns its value.
+    /// If the stack value is not allocated or the index is out of bounds, it returns an error.
+    pub(crate) fn take_stack_value(
         &mut self,
-        address: u32,
+        index: StackIndex,
+    ) -> Result<ValueContainer, ExecutionError> {
+        if let Some(stack_value) = self.values.get_mut(index.0 as usize) {
+            stack_value
+                .take()
+                .ok_or_else(|| ExecutionError::StackValueNotAllocated(index))
+        } else {
+            Err(ExecutionError::StackOutOfBoundsAccess(index))
+        }
+    }
+
+    /// Sets the value of a stack index, returning the previous value if it existed.
+    /// If the stack value is not allocated, it returns an error.
+    pub(crate) fn set_stack_value(
+        &mut self,
+        index: StackIndex,
         value: ValueContainer,
     ) -> Result<Option<ValueContainer>, ExecutionError> {
-        self.slots
-            .insert(address, Some(value))
-            .ok_or(())
-            .map_err(|_| ExecutionError::SlotNotAllocated(address))
+        if let Some(stack_value) = self.values.get_mut(index.0 as usize) {
+            Ok(stack_value.replace(value))
+        } else {
+            Err(ExecutionError::StackOutOfBoundsAccess(index))
+        }
     }
 
-    /// Retrieves a reference to the value of a slot by its address.
-    /// If the slot is not allocated, it returns an error.
-    pub(crate) fn get_slot_value(
+    /// Retrieves a reference to the value of a stack value by its address.
+    /// If the stack value is not allocated, it returns an error.
+    pub(crate) fn get_stack_value(
         &self,
-        address: u32,
+        index: StackIndex,
     ) -> Result<&ValueContainer, ExecutionError> {
-        self.slots
-            .get(&address)
-            .and_then(|inner| inner.as_ref())
-            .ok_or_else(|| ExecutionError::SlotNotAllocated(address))
+        if let Some(stack_value) = self.values.get(index.0 as usize) {
+            stack_value
+                .as_ref()
+                .ok_or_else(|| ExecutionError::StackValueNotAllocated(index))
+        } else {
+            Err(ExecutionError::StackOutOfBoundsAccess(index))
+        }
     }
 
-    /// Retrieves a mutable reference to the value of a slot by its address.
-    /// If the slot is not allocated, it returns an error.
-    pub(crate) fn get_slot_value_mut(
+    /// Retrieves a mutable reference to the stack value by its index.
+    /// If the stack value is not allocated, it returns an error.
+    pub(crate) fn get_stack_value_mut(
         &mut self,
-        address: u32,
+        index: StackIndex,
     ) -> Result<&mut ValueContainer, ExecutionError> {
-        self.slots
-            .get_mut(&address)
-            .and_then(|inner| inner.as_mut())
-            .ok_or_else(|| ExecutionError::SlotNotAllocated(address))
+        if let Some(stack_value) = self.values.get_mut(index.0 as usize) {
+            stack_value
+                .as_mut()
+                .ok_or_else(|| ExecutionError::StackValueNotAllocated(index))
+        } else {
+            Err(ExecutionError::StackOutOfBoundsAccess(index))
+        }
+    }
+
+    /// Resolves a list of injected values to actual values on the stack
+    pub fn resolve_injected_values(
+        &mut self,
+        injected_values: &[InjectedValueDeclaration],
+    ) -> Result<Vec<BorrowedValueContainer<'_>>, ExecutionError> {
+        let mut moved: Vec<Option<_>> = vec![None; injected_values.len()];
+
+        // perform all mutable operations (removing moved shared values)
+        for (i, InjectedValueDeclaration { index, ty }) in
+            injected_values.iter().enumerate()
+        {
+            if matches!(
+                ty,
+                InjectedValueType::Shared(SharedInjectedValueType::Move)
+            ) {
+                moved[i] = Some(self.take_stack_value(*index)?);
+            }
+        }
+
+        // collect all values
+        let mut resolved_values = Vec::with_capacity(injected_values.len());
+        for (i, InjectedValueDeclaration { index, ty }) in
+            injected_values.iter().enumerate()
+        {
+            resolved_values.push(match ty {
+                InjectedValueType::Shared(SharedInjectedValueType::Move) => {
+                    match moved[i].take().unwrap() {
+                        ValueContainer::Shared(shared) => {
+                            BorrowedValueContainer::Shared(shared)
+                        }
+                        ValueContainer::Local(_) => {
+                            return Err(ExecutionError::ExpectedSharedValue);
+                        }
+                    }
+                }
+                _ => match self.get_stack_value(*index)? {
+                    ValueContainer::Shared(shared) => {
+                        BorrowedValueContainer::Shared(shared.clone())
+                    }
+                    ValueContainer::Local(value) => {
+                        BorrowedValueContainer::Local(value)
+                    }
+                },
+            });
+        }
+
+        Ok(resolved_values)
     }
 }

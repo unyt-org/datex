@@ -21,18 +21,22 @@ use serde::{
     forward_to_deserialize_any,
 };
 
-use crate::{prelude::*, runtime::RuntimeInternal};
+use crate::{
+    prelude::*,
+    runtime::{Runtime, execution::execution_input::ExecutionCallerMetadata},
+};
 
 /// Deserialize a value of type T from a byte slice containing DXB data
 pub fn from_bytes<T>(input: &[u8]) -> Result<T, DeserializationError>
 where
     T: DeserializeOwned,
 {
-    let runtime = RuntimeInternal::stub();
+    let runtime = Runtime::stub();
     let context = ExecutionInput::new(
         input,
+        ExecutionCallerMetadata::local_default(),
         ExecutionOptions { verbose: true },
-        Rc::new(runtime),
+        runtime,
     );
     let value = execute_dxb_sync(context)
         .map_err(DeserializationError::ExecutionError)?
@@ -47,9 +51,11 @@ pub fn from_script<T>(script: &str) -> Result<T, DeserializationError>
 where
     T: DeserializeOwned,
 {
+    let runtime = Runtime::stub();
     let (dxb, _) = crate::compiler::compile_script(
         script,
         crate::compiler::CompileOptions::default(),
+        runtime,
     )
     .map_err(|err| DeserializationError::CanNotReadFile(err.to_string()))?;
     from_bytes(&dxb)
@@ -242,7 +248,7 @@ impl<'de> Deserializer<'de> for DatexDeserializer<'de> {
     {
         match self {
             DatexDeserializer::ValueContainer(value)
-                if value.to_value().borrow().is_null() =>
+                if value.get_cloned_value().is_null() =>
             {
                 visitor.visit_none()
             }
@@ -518,7 +524,7 @@ impl<'de> Deserializer<'de> for DatexDeserializer<'de> {
                 Err(DeserializationError::CanNotDeserialize("f32".to_string()))
             }
             DatexDeserializer::ValueContainer(value) => {
-                match &value.to_value().borrow().inner {
+                match &value.get_cloned_value().inner {
                     CoreValue::Decimal(decimal) => {
                         visitor.visit_f32(decimal.into_f32())
                     }
@@ -548,7 +554,7 @@ impl<'de> Deserializer<'de> for DatexDeserializer<'de> {
                 Err(DeserializationError::CanNotDeserialize("f64".to_string()))
             }
             DatexDeserializer::ValueContainer(value) => {
-                match &value.to_value().borrow().inner {
+                match &value.get_cloned_value().inner {
                     CoreValue::Decimal(decimal) => {
                         visitor.visit_f64(decimal.into_f64())
                     }
@@ -578,7 +584,7 @@ impl<'de> Deserializer<'de> for DatexDeserializer<'de> {
                 Err(DeserializationError::CanNotDeserialize("i8".to_string()))
             }
             DatexDeserializer::ValueContainer(value) => {
-                match &value.to_value().borrow().inner {
+                match &value.get_cloned_value().inner {
                     CoreValue::Integer(i) => {
                         visitor.visit_i8(i.as_wrapped_i8())
                     }
@@ -608,7 +614,7 @@ impl<'de> Deserializer<'de> for DatexDeserializer<'de> {
                 Err(DeserializationError::CanNotDeserialize("i16".to_string()))
             }
             DatexDeserializer::ValueContainer(value) => {
-                match &value.to_value().borrow().inner {
+                match &value.get_cloned_value().inner {
                     CoreValue::Integer(i) => {
                         visitor.visit_i16(i.as_wrapped_i16())
                     }
@@ -638,7 +644,7 @@ impl<'de> Deserializer<'de> for DatexDeserializer<'de> {
                 Err(DeserializationError::CanNotDeserialize("i32".to_string()))
             }
             DatexDeserializer::ValueContainer(value) => {
-                match &value.to_value().borrow().inner {
+                match &value.get_cloned_value().inner {
                     CoreValue::Integer(i) => {
                         visitor.visit_i32(i.as_wrapped_i32())
                     }
@@ -668,7 +674,7 @@ impl<'de> Deserializer<'de> for DatexDeserializer<'de> {
                 Err(DeserializationError::CanNotDeserialize("i64".to_string()))
             }
             DatexDeserializer::ValueContainer(value) => {
-                match &value.to_value().borrow().inner {
+                match &value.get_cloned_value().inner {
                     CoreValue::Integer(i) => {
                         visitor.visit_i64(i.as_wrapped_i64())
                     }
@@ -698,7 +704,7 @@ impl<'de> Deserializer<'de> for DatexDeserializer<'de> {
                 Err(DeserializationError::CanNotDeserialize("i128".to_string()))
             }
             DatexDeserializer::ValueContainer(value) => {
-                match &value.to_value().borrow().inner {
+                match &value.get_cloned_value().inner {
                     CoreValue::Integer(i) => {
                         visitor.visit_i128(i.as_wrapped_i128())
                     }
@@ -728,7 +734,7 @@ impl<'de> Deserializer<'de> for DatexDeserializer<'de> {
                 Err(DeserializationError::CanNotDeserialize("u8".to_string()))
             }
             DatexDeserializer::ValueContainer(value) => {
-                match &value.to_value().borrow().inner {
+                match &value.get_cloned_value().inner {
                     CoreValue::Integer(i) => {
                         visitor.visit_u8(i.as_wrapped_u8())
                     }
@@ -758,7 +764,7 @@ impl<'de> Deserializer<'de> for DatexDeserializer<'de> {
                 Err(DeserializationError::CanNotDeserialize("u16".to_string()))
             }
             DatexDeserializer::ValueContainer(value) => {
-                match &value.to_value().borrow().inner {
+                match &value.get_cloned_value().inner {
                     CoreValue::Integer(i) => {
                         visitor.visit_u16(i.as_wrapped_u16())
                     }
@@ -788,7 +794,7 @@ impl<'de> Deserializer<'de> for DatexDeserializer<'de> {
                 Err(DeserializationError::CanNotDeserialize("u32".to_string()))
             }
             DatexDeserializer::ValueContainer(value) => {
-                match &value.to_value().borrow().inner {
+                match &value.get_cloned_value().inner {
                     CoreValue::Integer(i) => {
                         visitor.visit_u32(i.as_wrapped_u32())
                     }
@@ -818,7 +824,7 @@ impl<'de> Deserializer<'de> for DatexDeserializer<'de> {
                 Err(DeserializationError::CanNotDeserialize("u64".to_string()))
             }
             DatexDeserializer::ValueContainer(value) => {
-                match &value.to_value().borrow().inner {
+                match &value.get_cloned_value().inner {
                     CoreValue::Integer(i) => {
                         visitor.visit_u64(i.as_wrapped_u64())
                     }
@@ -848,7 +854,7 @@ impl<'de> Deserializer<'de> for DatexDeserializer<'de> {
                 Err(DeserializationError::CanNotDeserialize("u128".to_string()))
             }
             DatexDeserializer::ValueContainer(value) => {
-                match &value.to_value().borrow().inner {
+                match &value.get_cloned_value().inner {
                     CoreValue::Integer(i) => {
                         visitor.visit_u128(i.as_wrapped_u128())
                     }
@@ -1075,9 +1081,10 @@ mod tests {
     #[test]
     fn enum_1() {
         let script = r#""Variant1""#;
-        let dxb = compile_script(script, CompileOptions::default())
-            .expect("Failed to compile script")
-            .0;
+        let dxb =
+            compile_script(script, CompileOptions::default(), Runtime::stub())
+                .expect("Failed to compile script")
+                .0;
         let result: TestEnum =
             from_bytes(&dxb).expect("Failed to deserialize TestEnum");
         assert!(core::matches!(result, TestEnum::Variant1));
@@ -1086,9 +1093,10 @@ mod tests {
     #[test]
     fn enum_2() {
         let script = r#""Variant2""#;
-        let dxb = compile_script(script, CompileOptions::default())
-            .expect("Failed to compile script")
-            .0;
+        let dxb =
+            compile_script(script, CompileOptions::default(), Runtime::stub())
+                .expect("Failed to compile script")
+                .0;
         let result: TestEnum =
             from_bytes(&dxb).expect("Failed to deserialize TestEnum");
         assert!(core::matches!(result, TestEnum::Variant2));
@@ -1101,9 +1109,10 @@ mod tests {
                 test_enum: "Variant1"
             }
         "#;
-        let dxb = compile_script(script, CompileOptions::default())
-            .expect("Failed to compile script")
-            .0;
+        let dxb =
+            compile_script(script, CompileOptions::default(), Runtime::stub())
+                .expect("Failed to compile script")
+                .0;
         let result: TestStruct2 =
             from_bytes(&dxb).expect("Failed to deserialize TestStruct2");
         assert!(core::matches!(result.test_enum, TestEnum::Variant1));
@@ -1116,9 +1125,10 @@ mod tests {
                 endpoint: @jonas
             }
         "#;
-        let dxb = compile_script(script, CompileOptions::default())
-            .expect("Failed to compile script")
-            .0;
+        let dxb =
+            compile_script(script, CompileOptions::default(), Runtime::stub())
+                .expect("Failed to compile script")
+                .0;
         let result: TestStructWithEndpoint = from_bytes(&dxb)
             .expect("Failed to deserialize TestStructWithEndpoint");
         assert_eq!(result.endpoint.to_string(), "@jonas");
@@ -1131,9 +1141,10 @@ mod tests {
                 optional_field: "Optional Value"
             }
         "#;
-        let dxb = compile_script(script, CompileOptions::default())
-            .expect("Failed to compile script")
-            .0;
+        let dxb =
+            compile_script(script, CompileOptions::default(), Runtime::stub())
+                .expect("Failed to compile script")
+                .0;
         let result: TestWithOptionalField = from_bytes(&dxb)
             .expect("Failed to deserialize TestWithOptionalField");
         assert!(result.optional_field.is_some());
@@ -1147,9 +1158,10 @@ mod tests {
                 optional_field: null
             }
         "#;
-        let dxb = compile_script(script, CompileOptions::default())
-            .expect("Failed to compile script")
-            .0;
+        let dxb =
+            compile_script(script, CompileOptions::default(), Runtime::stub())
+                .expect("Failed to compile script")
+                .0;
         let result: TestWithOptionalField = from_bytes(&dxb)
             .expect("Failed to deserialize TestWithOptionalField");
         assert!(result.optional_field.is_none());
@@ -1162,9 +1174,10 @@ mod tests {
                 endpoint: @jonas
             }
         "#;
-        let dxb = compile_script(script, CompileOptions::default())
-            .expect("Failed to compile script")
-            .0;
+        let dxb =
+            compile_script(script, CompileOptions::default(), Runtime::stub())
+                .expect("Failed to compile script")
+                .0;
         let result: TestStructWithOptionalEndpoint = from_bytes(&dxb)
             .expect("Failed to deserialize TestStructWithOptionalEndpoint");
         assert!(result.endpoint.is_some());
@@ -1180,17 +1193,19 @@ mod tests {
     #[test]
     fn map() {
         let script = "{Variant1: \"Hello\"}";
-        let dxb = compile_script(script, CompileOptions::default())
-            .expect("Failed to compile script")
-            .0;
+        let dxb =
+            compile_script(script, CompileOptions::default(), Runtime::stub())
+                .expect("Failed to compile script")
+                .0;
         let result: ExampleEnum =
             from_bytes(&dxb).expect("Failed to deserialize ExampleEnum");
         assert!(core::matches!(result, ExampleEnum::Variant1(_)));
 
         let script = r#"{"Variant2": 42}"#;
-        let dxb = compile_script(script, CompileOptions::default())
-            .expect("Failed to compile script")
-            .0;
+        let dxb =
+            compile_script(script, CompileOptions::default(), Runtime::stub())
+                .expect("Failed to compile script")
+                .0;
         let result: ExampleEnum =
             from_bytes(&dxb).expect("Failed to deserialize ExampleEnum");
         assert!(core::matches!(result, ExampleEnum::Variant2(_)));

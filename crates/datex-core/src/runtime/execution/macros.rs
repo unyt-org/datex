@@ -37,6 +37,20 @@ macro_rules! interrupt_with_value {
 }
 pub(crate) use interrupt_with_value;
 
+/// Yield an interrupt and get the next resolved values
+/// expecting the next input to be a ResolvedValues variant
+macro_rules! interrupt_with_values {
+    ($input:expr, $arg:expr) => {{
+        use crate::runtime::execution::macros::interrupt;
+        let res = interrupt!($input, $arg).unwrap();
+        match res {
+            crate::runtime::execution::execution_loop::interrupts::InterruptResult::ResolvedValues(values) => values,
+            _ => unreachable!(),
+        }
+    }};
+}
+pub(crate) use interrupt_with_values;
+
 /// Unwrap a Result expression, yielding an error if it is an Err variant
 /// This is similar to the `?` operator but works within generator functions
 /// TODO #642: use "?" operator instead of yield_unwrap once supported in gen blocks

@@ -1,3 +1,4 @@
+use core::cell::Ref;
 use url::Url;
 
 use crate::{
@@ -10,8 +11,8 @@ use crate::{
         parse_datex_script_to_rich_ast_detailed_errors,
         precompiler::precompiled_ast::RichAst,
     },
-    runtime::Runtime,
-    values::core_values::r#type::Type,
+    runtime::{Runtime, memory::Memory},
+    types::r#type::Type,
 };
 
 /// Represents a file in the compiler workspace with its URL, cached content and AST.
@@ -86,7 +87,16 @@ impl CompilerWorkspace {
         let rich_ast = parse_datex_script_to_rich_ast_detailed_errors(
             &content,
             &mut options,
+            self.runtime.clone(),
         )?;
         Ok(rich_ast)
+    }
+
+    pub fn runtime(&self) -> &Runtime {
+        &self.runtime
+    }
+
+    pub fn memory(&self) -> Ref<'_, Memory> {
+        self.runtime.memory().borrow()
     }
 }

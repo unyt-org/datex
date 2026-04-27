@@ -1,3 +1,4 @@
+//! This module contains the implementation of the Communication Hub (ComHub) for DATEX, which is responsible for managing network communication.
 use crate::{
     channel::mpsc::UnboundedSender,
     collections::HashMap,

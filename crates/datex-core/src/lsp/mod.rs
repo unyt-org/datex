@@ -1,13 +1,16 @@
+//! This module contains the implementation of the Language Server Protocol (LSP) for DATEX, which provides features such as hover information, code completion, diagnostics, and go-to-definition for DATEX source files in compatible editors.
 mod errors;
 mod type_hint_collector;
 mod utils;
 mod variable_declaration_finder;
 use core::cell::RefCell;
 
+pub mod io;
+
 use crate::{
     ast::expressions::{
-        DatexExpressionData, VariableAccess, VariableAssignment,
-        VariableDeclaration,
+        DatexExpressionData, ValueAccessType, VariableAccess,
+        VariableAssignment, VariableDeclaration,
     },
     collections::HashMap,
     compiler::{
@@ -18,7 +21,6 @@ use crate::{
         variable_declaration_finder::VariableDeclarationFinder,
     },
     runtime::Runtime,
-    values::core_values::r#type::Type,
     visitor::expression::ExpressionVisitor,
 };
 use realhydroper_lsp::{
@@ -27,12 +29,15 @@ use realhydroper_lsp::{
     lsp_types::*,
 };
 
-use crate::prelude::*;
-
-#[cfg(feature = "lsp_wasm")]
+use crate::{
+    libs::core::type_id::CoreLibBaseTypeId,
+    prelude::*,
+    types::{
+        literal_type_definition::LiteralTypeDefinition, r#type::Type,
+        type_definition::TypeDefinition,
+    },
+};
 use futures::io::{AsyncRead, AsyncWrite};
-#[cfg(not(feature = "lsp_wasm"))]
-use tokio::io::{AsyncRead, AsyncWrite};
 
 pub struct LanguageServerBackend {
     pub client: Client,
@@ -188,18 +193,44 @@ impl LanguageServer for LanguageServerBackend {
                     VariableAssignment {
                         name, id: Some(id), ..
                     },
-                )
-                | DatexExpressionData::VariableAccess(VariableAccess {
-                    id,
-                    name,
-                }) => {
+                ) => {
                     let variable_metadata =
                         self.get_variable_by_id(id).unwrap();
                     Some(self.get_language_string_hover(&format!(
                         "{} {}: {}",
                         variable_metadata.shape,
                         name,
-                        variable_metadata.var_type.unwrap_or(Type::unknown())
+                        variable_metadata.var_type.unwrap_or_else(|| {
+                            self.compiler_workspace
+                                .borrow()
+                                .memory()
+                                .get_core_type(CoreLibBaseTypeId::Unknown)
+                        })
+                    )))
+                }
+
+                DatexExpressionData::VariableAccess(VariableAccess {
+                    id,
+                    name,
+                    access_type,
+                }) => {
+                    let variable_metadata =
+                        self.get_variable_by_id(id).unwrap();
+                    Some(self.get_language_string_hover(&format!(
+                        "{}{} {}: {}",
+                        match access_type {
+                            ValueAccessType::SharedRef => "'",
+                            ValueAccessType::SharedRefMut => "'mut ",
+                            _ => "",
+                        },
+                        variable_metadata.shape,
+                        name,
+                        variable_metadata.var_type.unwrap_or_else(|| {
+                            self.compiler_workspace
+                                .borrow()
+                                .memory()
+                                .get_core_type(CoreLibBaseTypeId::Unknown)
+                        })
                     )))
                 }
 
@@ -281,6 +312,7 @@ impl LanguageServer for LanguageServerBackend {
                 DatexExpressionData::VariableAccess(VariableAccess {
                     id,
                     name: _,
+                    ..
                 }) => {
                     let uri =
                         params.text_document_position_params.text_document.uri;
@@ -288,7 +320,7 @@ impl LanguageServer for LanguageServerBackend {
                     let file = workspace.get_file_mut(&uri).unwrap();
                     if let Some(RichAst { ast, .. }) = &mut file.rich_ast {
                         let mut finder = VariableDeclarationFinder::new(id);
-                        finder.visit_datex_expression(ast);
+                        finder.visit_datex_expression(ast).unwrap();
                         Ok(finder.variable_declaration_position.map(
                             |position| {
                                 GotoDefinitionResponse::Scalar(Location {
@@ -402,67 +434,78 @@ where
 
 #[cfg(test)]
 mod tests {
-    use core::str::FromStr;
-
     use crate::{
         prelude::*, runtime::RuntimeConfig,
         values::core_values::endpoint::Endpoint,
     };
+    use core::str::FromStr;
+    use futures::channel::mpsc;
+    use futures_util::StreamExt;
 
     use super::*;
-    use crate::runtime::RuntimeRunner;
+    use crate::{
+        lsp::io::{Reader, Writer},
+        runtime::RuntimeRunner,
+    };
     use tokio::{
-        io::{AsyncReadExt, AsyncWriteExt, duplex},
+        task::LocalSet,
         time::{Duration, timeout},
     };
 
     #[tokio::test(flavor = "current_thread")]
     async fn test_lsp_initialization() {
-        RuntimeRunner::new(RuntimeConfig::new_with_endpoint(
-            Endpoint::from_str("@lspler").unwrap(),
-        ))
-        .run(async |runtime| {
-            let (mut client_read, server_write) = duplex(1024);
-            let (server_read, mut client_write) = duplex(1024);
+        LocalSet::new()
+            .run_until(async move {
+                RuntimeRunner::new(RuntimeConfig::new_with_endpoint(
+                    Endpoint::from_str("@lspler").unwrap(),
+                ))
+                .run(async |runtime| {
+                    let (tx_to_lsp, rx_from_client) =
+                        mpsc::unbounded::<Vec<u8>>();
+                    let (tx_to_client, mut rx_from_lsp) =
+                        mpsc::unbounded::<Vec<u8>>();
 
-            let lsp_future = create_lsp(runtime, server_read, server_write);
-            let lsp_handle = tokio::task::spawn_local(lsp_future);
+                    let reader = Reader::new(rx_from_client);
+                    let writer = Writer::new(tx_to_client);
 
-            // Send initialize request
-            let init_body = r#"{
-                    "jsonrpc": "2.0",
-                    "id": 1,
-                    "method": "initialize",
-                    "params": {
-                        "capabilities": {},
-                        "rootUri": null,
-                        "workspaceFolders": null
-                    }
-                }"#;
+                    let lsp_future = create_lsp(runtime, reader, writer);
+                    let lsp_handle = tokio::task::spawn_local(lsp_future);
 
-            let init_request = format!(
-                "Content-Length: {}\r\n\r\n{}",
-                init_body.len(),
-                init_body
-            );
+                    // Send initialize request
+                    let init_body = r#"{
+                        "jsonrpc": "2.0",
+                        "id": 1,
+                        "method": "initialize",
+                        "params": {
+                            "capabilities": {},
+                            "rootUri": null,
+                            "workspaceFolders": null
+                        }
+                    }"#;
 
-            client_write
-                .write_all(init_request.as_bytes())
-                .await
-                .unwrap();
+                    let init_request = format!(
+                        "Content-Length: {}\r\n\r\n{}",
+                        init_body.len(),
+                        init_body
+                    );
 
-            // Read response
-            let mut buffer = vec![0; 1024];
-            let n =
-                timeout(Duration::from_secs(2), client_read.read(&mut buffer))
-                    .await
-                    .unwrap()
-                    .unwrap();
+                    tx_to_lsp
+                        .unbounded_send(init_request.as_bytes().to_vec())
+                        .unwrap();
 
-            let response = String::from_utf8_lossy(&buffer[..n]);
-            assert!(response.contains(r#""id":1"#));
-            lsp_handle.abort();
-        })
-        .await;
+                    // Read response
+                    let response =
+                        timeout(Duration::from_secs(2), rx_from_lsp.next())
+                            .await
+                            .unwrap()
+                            .unwrap();
+
+                    let response = String::from_utf8_lossy(&response);
+                    assert!(response.contains(r#""id":1"#));
+                    lsp_handle.abort();
+                })
+                .await;
+            })
+            .await;
     }
 }

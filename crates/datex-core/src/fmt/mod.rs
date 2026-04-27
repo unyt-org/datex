@@ -1,3 +1,4 @@
+//! This module contains the formatter for DATEX, which converts DATEX AST back into a human-readable string representation of the original DATEX source code.
 use core::ops::Range;
 
 use crate::{
@@ -14,9 +15,10 @@ use crate::{
     },
     fmt::options::{FormattingOptions, TypeDeclarationFormatting},
     global::operators::{BinaryOperator, ComparisonOperator, UnaryOperator},
-    libs::core::CoreLibPointerId,
+    libs::core::core_lib_id::CoreLibId,
     parser::ParserOptions,
     prelude::*,
+    runtime::Runtime,
 };
 use pretty::{DocAllocator, DocBuilder, RcAllocator, RcDoc};
 
@@ -66,6 +68,8 @@ impl<'a> Formatter<'a> {
                 },
                 ..Default::default()
             },
+            // FIXME: stub runtime for now
+            Runtime::stub(),
         )
         .expect("Failed to parse Datex script");
         Self {
@@ -165,8 +169,8 @@ impl<'a> Formatter<'a> {
             }) => a.text(name.clone()),
 
             TypeExpressionData::GetReference(ptr) => {
-                if let Ok(core_lib) = CoreLibPointerId::try_from(ptr) {
-                    a.text(core_lib.to_string())
+                if let Ok(core_lib_id) = CoreLibId::try_from(ptr) {
+                    a.text(core_lib_id.to_string())
                 } else {
                     a.text(ptr.to_string())
                 }

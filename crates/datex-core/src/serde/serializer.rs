@@ -15,7 +15,11 @@ use serde::ser::{
     SerializeTupleVariant, Serializer,
 };
 
-use crate::{prelude::*, runtime::RuntimeInternal};
+use crate::{
+    prelude::*,
+    runtime::{Runtime, execution::execution_input::ExecutionCallerMetadata},
+    values::core_values::endpoint::Endpoint,
+};
 
 pub struct DatexSerializer {}
 
@@ -36,7 +40,7 @@ where
     T: Serialize,
 {
     let value_container = to_value_container(value)?;
-    Ok(compile_value_container(&value_container))
+    Ok(compile_value_container(&value_container).unwrap())
 }
 pub fn to_value_container<T>(
     value: &T,
@@ -486,21 +490,18 @@ impl Serializer for &mut DatexSerializer {
         T: ?Sized + serde::Serialize,
     {
         if name == "datex::endpoint" {
-            let endpoint = value
-                .serialize(&mut *self)?
-                .to_value()
-                .borrow()
-                .cast_to_endpoint()
-                .unwrap();
+            let endpoint =
+                value.serialize(&mut *self)?.try_as::<Endpoint>().unwrap();
             Ok(ValueContainer::from(endpoint))
         } else if name == "datex::value" {
-            let runtime = RuntimeInternal::stub();
+            let runtime = Runtime::stub();
             // unsafe cast value to ValueContainer
             let bytes = unsafe { &*(value as *const T as *const Vec<u8>) };
             Ok(execute_dxb_sync(ExecutionInput::new(
                 bytes,
+                ExecutionCallerMetadata::local_default(),
                 ExecutionOptions::default(),
-                Rc::new(runtime),
+                runtime,
             ))
             .unwrap()
             .unwrap())
@@ -841,13 +842,7 @@ mod tests {
         assert!(result.is_ok());
         let result = result.unwrap();
         assert_structural_eq!(
-            result
-                .to_value()
-                .borrow()
-                .cast_to_map()
-                .unwrap()
-                .get("usize")
-                .unwrap(),
+            result.try_as::<Map>().unwrap().get("usize").unwrap(),
             ValueContainer::from(42)
         );
     }

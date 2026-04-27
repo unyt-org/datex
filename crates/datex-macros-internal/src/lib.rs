@@ -2,7 +2,7 @@ use proc_macro::TokenStream;
 use syn::parse_macro_input;
 
 mod bitfield_macros;
-mod lib_types;
+mod core_lib;
 mod value_macros;
 
 #[proc_macro_derive(FromCoreValue)]
@@ -18,8 +18,8 @@ pub fn derive_bitfield_serde(input: TokenStream) -> TokenStream {
     bitfield_macros::derive_bitfield_serde(input).into()
 }
 
-#[proc_macro_derive(LibTypeString)]
-pub fn derive_lib_type_string(input: TokenStream) -> TokenStream {
+#[proc_macro_derive(CoreLibString)]
+pub fn core_lib_string(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as syn::DeriveInput);
-    lib_types::derive_lib_type_string(input).into()
+    core_lib::derive_core_string(input).into()
 }
