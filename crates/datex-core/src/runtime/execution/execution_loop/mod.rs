@@ -66,6 +66,7 @@ use crate::{
             list::List,
             map::{Map, MapKey},
             r#type::{Type, TypeMetadata},
+            set::Set
         },
         value::Value,
         value_container::{OwnedValueKey, ValueContainer},
@@ -428,6 +429,7 @@ pub fn inner_execution_loop(
                             RegularInstruction::UnboundedStatements |
                             RegularInstruction::UnboundedStatementsEnd(_) |
                             RegularInstruction::List(_) |
+                            RegularInstruction::Set(_) |
                             RegularInstruction::Range |
                             RegularInstruction::ShortList(_)  |
                             RegularInstruction::Map(_) |
@@ -592,6 +594,18 @@ pub fn inner_execution_loop(
                                         )),
                                     )
                                     .into()
+                                }
+                                RegularInstruction::Set(_) => {
+                                    let elements = yield_unwrap!(collected_results.collect_value_container_results_assert_existing(&state));
+                                    let mut set = Set::new();
+                                    for element in elements {
+                                        let value = element.to_value();
+                                        let core_value = value.borrow().inner.clone();
+                                        set.elements.insert(core_value);
+                                    }
+                                    RuntimeValue::ValueContainer(
+                                        ValueContainer::from(set),
+                                    ).into()
                                 }
                                 RegularInstruction::Map(_)
                                 | RegularInstruction::ShortMap(_) => {

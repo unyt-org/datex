@@ -1,3 +1,17 @@
+//! Very short
+//! This file is used to convert complex Data like big int, Decimal and etc.
+//! in some easy to share data
+//! # Example
+//! `
+//! TypedInteger::I64(i) => {
+//!
+//!    DIFValueRepresentation::String(i.to_string())
+//!
+//! }
+//! `
+//!
+//! this mean that we convert I64 or bigger numbers to string for easy transfer vie JSON or something else
+
 use crate::{
     dif::{
         DIFConvertible, representation::DIFValueRepresentation,
@@ -187,9 +201,6 @@ impl DIFValue {
                     }
                 }
             }
-            CoreValue::Set(set) => {
-                core::todo!("Add this for set")
-            }
             CoreValue::Range(range) => DIFValueRepresentation::Array(vec![
                 DIFValueContainer::from_value_container(&range.start),
                 DIFValueContainer::from_value_container(&range.end),
@@ -216,6 +227,18 @@ impl DIFValue {
             CoreValue::List(list) => DIFValueRepresentation::Array(
                 list.iter()
                     .map(DIFValueContainer::from_value_container)
+                    .collect(),
+            ),
+            CoreValue::Set(set) => DIFValueRepresentation::Array(
+                set.elements
+                    .iter()
+                    .map(|elem| {
+                        let temp_value = Value::from(elem.clone());
+
+                        DIFValueContainer::Value(DIFValue::from_value(
+                            &temp_value,
+                        ))
+                    })
                     .collect(),
             ),
             CoreValue::Map(map) => match map {

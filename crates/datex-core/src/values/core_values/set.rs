@@ -75,6 +75,11 @@ impl Set {
             elements: HashSet::new(),
         }
     }
+
+    /// Its so obvious this is just a length of this [`Set`]
+    pub fn len(&self) -> usize {
+        self.elements.len()
+    }
 }
 
 impl Hash for Set {

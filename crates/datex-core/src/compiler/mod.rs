@@ -55,11 +55,13 @@ use crate::{
     values::{core_values::decimal::Decimal, value_container::ValueContainer},
 };
 use log::{debug, info};
+use syn::token::In;
 use precompiler::{
     options::PrecompilerOptions,
     precompile_ast,
     precompiled_ast::{AstMetadata, RichAst, VariableMetadata},
 };
+use crate::core_compiler::value_compiler::append_set;
 
 pub mod context;
 pub mod error;
@@ -581,6 +583,9 @@ fn compile_expression(
                     scope,
                 )?;
             }
+        }
+        DatexExpressionData::Set(set) => {
+            compilation_context.append_instruction_code(InstructionCode::SET);
         }
         DatexExpressionData::Map(map) => {
             // TODO #434: Handle string keyed maps (structs)

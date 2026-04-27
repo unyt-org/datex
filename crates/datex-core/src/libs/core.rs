@@ -79,6 +79,7 @@ pub enum CoreLibPointerId {
     Text,                                // #core.text
     Endpoint,                            // #core.endpoint
     List,                                // #core.List
+    Set,                                 // #core.Set
     Map,                                 // #core.Map
     Callable,                            // #core.Callable
     Unit,                                // #core.Unit
@@ -86,7 +87,6 @@ pub enum CoreLibPointerId {
     Unknown,                             // #core.unknown
     Print, // #core.print (function, might be removed later)
     Range,
-    Set,
 }
 
 impl CoreLibPointerId {
@@ -133,6 +133,7 @@ impl CoreLibPointerId {
             7 => Some(CoreLibPointerId::Endpoint),
             8 => Some(CoreLibPointerId::Text),
             9 => Some(CoreLibPointerId::List),
+            10 => Some(CoreLibPointerId::Set),
             11 => Some(CoreLibPointerId::Unit),
             12 => Some(CoreLibPointerId::Map),
             13 => Some(CoreLibPointerId::Never),

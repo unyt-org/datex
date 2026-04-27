@@ -369,6 +369,7 @@ mod tests {
             endpoint::Endpoint,
             integer::{Integer, typed_integer::TypedInteger},
             list::List,
+            set::Set
         },
     };
     use core::str::FromStr;
@@ -419,6 +420,32 @@ mod tests {
         assert_eq!(c[0], 1.into());
         assert_eq!(c[1], "test".into());
         assert_eq!(c[2], 3.into());
+    }
+
+    #[test]
+    fn set() {
+        let mut a = Set::new();
+        a.elements.insert(CoreValue::from(32));
+        a.elements.insert(CoreValue::from(42));
+        a.elements.insert(CoreValue::from(2));
+        a.elements.insert(CoreValue::from(5));
+
+        assert_eq!(a.len(), 4);
+
+        let mut b = Set::new();
+        b.elements.insert(CoreValue::from(2));
+        b.elements.insert(CoreValue::from(5));
+        b.elements.insert(CoreValue::from(32));
+        b.elements.insert(CoreValue::from(42));
+
+        assert_eq!(a, b);
+
+        let mut c = Set::new();
+        b.elements.insert(CoreValue::from(3));
+        b.elements.insert(CoreValue::from(6));
+
+        assert_ne!(c, b);
+        assert_ne!(c.len(), b.len());
     }
 
     #[test]

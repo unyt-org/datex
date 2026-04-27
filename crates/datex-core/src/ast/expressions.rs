@@ -20,6 +20,7 @@ use crate::{
             endpoint::Endpoint,
             integer::{Integer, typed_integer::TypedInteger},
             r#type::{LocalReferenceMutability, Type},
+            // set::{Set}
         },
         value::Value,
         value_container::ValueContainer,
@@ -107,6 +108,8 @@ pub enum DatexExpressionData {
     Endpoint(Endpoint),
     /// List, e.g  `[1, 2, 3, "text"]`
     List(List),
+    /// Set, just a set data structure
+    Set(Set),
     /// Map, e.g {"xy": 2, (3): 4, xy: "xy"}
     Map(Map),
     /// One or more statements, e.g (1; 2; 3)
@@ -263,6 +266,21 @@ impl TryFrom<&DatexExpressionData> for ValueContainer {
                     .map(|e| ValueContainer::try_from(&e.data))
                     .collect::<Result<Vec<ValueContainer>, ()>>()?;
                 ValueContainer::from(core_values::list::List::from(entries))
+            }
+            DatexExpressionData::Set(set) => {
+                let elements = set
+                    .items
+                    .iter()
+                    .map(|e| {
+                        let vc = ValueContainer::try_from(&e.data)?;
+                        if let ValueContainer::Local(value) = vc {
+                            Ok(value.inner)
+                        } else {
+                            Err(())
+                        }
+                    })
+                    .collect::<Result<hashbrown::HashSet<CoreValue>, ()>>()?;
+                ValueContainer::from(core_values::set::Set { elements })
             }
             DatexExpressionData::Map(pairs) => {
                 let entries = pairs
@@ -474,6 +492,16 @@ pub struct List {
 impl List {
     pub fn new(items: Vec<DatexExpression>) -> Self {
         List { items }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct Set {
+    pub items: Vec<DatexExpression>,
+}
+impl Set {
+    pub fn new(items: Vec<DatexExpression>) -> Self { 
+        Set { items }
     }
 }
 

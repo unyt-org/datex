@@ -108,6 +108,7 @@ fn value_to_datex_expression(value: &Value) -> DatexExpressionData {
                 .map(|data| data.with_default_span())
                 .collect(),
         )),
+        CoreValue::Set() => DatexExpressionData::Set(Set::new()),
         CoreValue::Map(map) => DatexExpressionData::Map(Map::new(
             map.iter()
                 .map(|(key, value)| {

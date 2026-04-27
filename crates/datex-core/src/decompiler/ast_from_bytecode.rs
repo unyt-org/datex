@@ -1,7 +1,7 @@
 use crate::{
     ast::{
         expressions::{
-            Apply, BinaryOperation, DatexExpression, DatexExpressionData, List,
+            Apply, BinaryOperation, DatexExpression, DatexExpressionData, List, Set,
             Map, PropertyAssignment, Slot, Statements, UnaryOperation,
             UnboundedStatement, VariableAssignment, VariableDeclaration,
             VariableKind,
@@ -298,6 +298,7 @@ pub fn ast_from_bytecode(
                                 )
                                 | RegularInstruction::List(_)
                                 | RegularInstruction::ShortList(_)
+                                | RegularInstruction::Set(_)
                                 | RegularInstruction::Map(_)
                                 | RegularInstruction::ShortMap(_)
                                 | RegularInstruction::KeyValueDynamic
@@ -406,6 +407,12 @@ pub fn ast_from_bytecode(
                                 let elements =
                                     collected_results.collect_value_results();
                                 DatexExpressionData::List(List::new(elements))
+                                    .with_default_span()
+                                    .into()
+                            }
+                            RegularInstruction::Set(_) => {
+                                let set = collected_results.collect_value_results();
+                                DatexExpressionData::Set(Set::new(elements))
                                     .with_default_span()
                                     .into()
                             }

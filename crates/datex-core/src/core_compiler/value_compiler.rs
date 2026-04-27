@@ -37,6 +37,7 @@ use crate::{
     },
     values::core_values::r#type::TypeMetadata,
 };
+use crate::values::core_values::set::Set;
 
 /// Compiles a given value container to a DXB body
 pub fn compile_value_container(value_container: &ValueContainer) -> Vec<u8> {
@@ -191,6 +192,10 @@ pub fn append_boolean(buffer: &mut Vec<u8>, boolean: bool) {
     } else {
         append_instruction_code(buffer, InstructionCode::FALSE);
     }
+}
+
+pub fn append_set(buffer: &mut Vec<u8>, set: &Set) {
+    append_instruction_code(buffer, InstructionCode::SET);
 }
 
 pub fn append_decimal(buffer: &mut Vec<u8>, decimal: &Decimal) {

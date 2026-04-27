@@ -10,7 +10,7 @@ use crate::{
             ApplyData, DecimalData, Float32Data, Float64Data, FloatAsInt16Data,
             FloatAsInt32Data, ImplTypeData, Instruction, InstructionBlockData,
             Int8Data, Int16Data, Int32Data, Int64Data, Int128Data, IntegerData,
-            ListData, MapData, RawInternalPointerAddress,
+            ListData, SetData, MapData, RawInternalPointerAddress,
             RawLocalPointerAddress, RawRemotePointerAddress,
             RegularInstruction, ShortListData, ShortMapData,
             ShortStatementsData, ShortTextData, ShortTextDataRaw, SlotAddress,
@@ -282,6 +282,12 @@ pub fn iterate_instructions(
                             RegularInstruction::ShortList(ListData {
                                 element_count: list_data.element_count as u32,
                             })
+                        }
+                        InstructionCode::SET => {
+                            let set_data = yield_unwrap!(SetData::read(&mut reader));
+                            next_instructions_stack
+                                .push_next_regular(set_data.element_count);
+                            RegularInstruction::Set(set_data)
                         }
                         InstructionCode::MAP => {
                             let map_data =
