@@ -344,7 +344,7 @@ impl Add<&Decimal> for &Decimal {
     fn add(self, rhs: &Decimal) -> Self::Output {
         use Decimal::*;
         match (self, rhs) {
-            (Finite(a), Finite(b)) => Decimal::from(a.clone() + b.clone()),
+            (Finite(a), Finite(b)) => Decimal::from(a + b),
             (Zero | NegZero, b) => (*b).clone(),
             (a, Zero | NegZero) => (*a).clone(),
             (Infinity, NegInfinity) | (NegInfinity, Infinity) => Nan,

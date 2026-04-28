@@ -271,16 +271,9 @@ impl TryFrom<&DatexExpressionData> for ValueContainer {
                 let elements = set
                     .items
                     .iter()
-                    .map(|e| {
-                        let vc = ValueContainer::try_from(&e.data)?;
-                        if let ValueContainer::Local(value) = vc {
-                            Ok(value.inner)
-                        } else {
-                            Err(())
-                        }
-                    })
-                    .collect::<Result<hashbrown::HashSet<CoreValue>, ()>>()?;
-                ValueContainer::from(core_values::set::Set { elements })
+                    .map(|e| ValueContainer::try_from(&e.data))
+                    .collect::<Result<Vec<ValueContainer>, ()>>()?;
+                ValueContainer::from(core_values::list::List::from(elements))
             }
             DatexExpressionData::Map(pairs) => {
                 let entries = pairs
@@ -500,7 +493,7 @@ pub struct Set {
     pub items: Vec<DatexExpression>,
 }
 impl Set {
-    pub fn new(items: Vec<DatexExpression>) -> Self { 
+    pub fn new(items: Vec<DatexExpression>) -> Self {
         Set { items }
     }
 }

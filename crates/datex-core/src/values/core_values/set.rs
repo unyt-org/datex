@@ -1,6 +1,15 @@
-use crate::values::core_value::CoreValue;
-use core::hash::{Hash, Hasher};
-use hashbrown::HashSet;
+use crate::{
+    prelude::*,
+    values::{
+        value::Value,
+        value_container::{ValueContainer, ValueKey},
+    },
+};
+use core::{
+    fmt::{self, Display},
+    hash::{BuildHasher, Hash, Hasher},
+};
+use indexmap::IndexSet;
 
 // I use this tiny, fast hasher internally because I need 100%
 // deterministic hashes to XOR together. If I would use Rust's default
@@ -22,7 +31,6 @@ impl FnvHasher {
 
 impl Hasher for FnvHasher {
     fn finish(&self) -> u64 {
-        // When its done feeding bytes, just return the final 64-bit number
         self.0
     }
 
@@ -64,21 +72,192 @@ impl Hasher for FnvHasher {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Default)]
+pub struct FnvBuildHasher;
+
+impl BuildHasher for FnvBuildHasher {
+    type Hasher = FnvHasher;
+
+    fn build_hasher(&self) -> Self::Hasher {
+        FnvHasher::new()
+    }
+}
+
+pub type HashSet<T> = IndexSet<T, FnvBuildHasher>;
+
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Set {
-    pub elements: HashSet<CoreValue>,
+    elements: HashSet<ValueContainer>,
 }
 
 impl Set {
-    pub fn new() -> Self {
+    /// Creates a new `Set` from an array or any iterable
+    /// It automatically converts elements into `ValueContainer` under the hood.
+    /// # Example
+    /// ```
+    /// use datex_core::values::{
+    ///     core_values::set::Set, value_container::ValueContainer,
+    /// };
+    /// let set_a = Set::new([
+    ///     ValueContainer::from(1i32),
+    ///     ValueContainer::from(2i32),
+    ///     ValueContainer::from("DATEX is cool"),
+    /// ]);
+    ///
+    /// let set_b = Set::new([1, 5, 10]);
+    /// ```
+    pub fn new<I, T>(items: I) -> Self
+    where
+        I: IntoIterator<Item = T>,
+        ValueContainer: From<T>,
+    {
         Self {
-            elements: HashSet::new(),
+            // Iterates over the array, automatically wraps each item
+            // in a ValueContainer, and collects them directly into our HashSet
+            elements: items.into_iter().map(ValueContainer::from).collect(),
         }
     }
 
-    /// Its so obvious this is just a length of this [`Set`]
+    /// Creates a new empty `Set` with the specified capacity.
+    ///
+    /// The set will be able to hold at least `capacity` elements without
+    /// reallocating its internal storage.
+    ///
+    /// # Example
+    /// ```
+    /// use datex_core::values::{
+    ///     core_values::set::Set, value_container::ValueContainer,
+    /// };
+    /// let mut set = Set::with_capacity(100);
+    /// for i in 0..100 {
+    ///     set.insert(ValueContainer::from(i));
+    /// }
+    /// assert_eq!(set.len(), 100);
+    /// ```
+    pub fn with_capacity(capacity: usize) -> Self {
+        Self {
+            elements: HashSet::with_capacity_and_hasher(
+                capacity,
+                FnvBuildHasher::default(),
+            ),
+        }
+    }
+
+    pub fn capacity(&self) -> usize {
+        self.elements.capacity()
+    }
+
+    /// Converts the Set into a standard Rust dynamic array (Vec).
+    /// Consumes the Set.
+    pub fn into_vec(self) -> Vec<ValueContainer> {
+        self.elements.into_iter().collect()
+    }
+
+    // dont need to describe this, bc its obviously
+
     pub fn len(&self) -> usize {
         self.elements.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.elements.is_empty()
+    }
+
+    pub fn insert(&mut self, value: ValueContainer) -> bool {
+        self.elements.insert(value)
+    }
+
+    pub fn remove(&mut self, value: &ValueContainer) -> bool {
+        self.elements.remove(value)
+    }
+
+    pub fn contains(&self, value: &ValueContainer) -> bool {
+        self.elements.contains(value)
+    }
+
+    pub fn clear(&mut self) {
+        self.elements.clear()
+    }
+
+    pub fn iter(&self) -> indexmap::set::Iter<'_, ValueContainer> {
+        self.elements.iter()
+    }
+}
+
+#[derive(Debug)]
+pub enum SetKey {
+    Text(String),
+    Value(ValueContainer),
+}
+
+impl From<SetKey> for ValueContainer {
+    fn from(key: SetKey) -> Self {
+        match key {
+            SetKey::Text(text) => ValueContainer::Local(Value::from(text)),
+            SetKey::Value(value) => value,
+        }
+    }
+}
+
+impl<'a> From<&'a SetKey> for ValueKey<'a> {
+    fn from(key: &'a SetKey) -> Self {
+        match key {
+            SetKey::Text(text) => ValueKey::Text(Cow::Borrowed(text)),
+            SetKey::Value(value) => ValueKey::Value(Cow::Borrowed(value)),
+        }
+    }
+}
+
+impl Display for SetKey {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            SetKey::Text(text) => core::write!(f, "{text}"),
+            SetKey::Value(value) => core::write!(f, "{value}"),
+        }
+    }
+}
+
+impl<T> From<Vec<T>> for Set
+where
+    ValueContainer: From<T>,
+{
+    fn from(vec: Vec<T>) -> Self {
+        Self::new(vec)
+    }
+}
+
+impl<T, const N: usize> From<[T; N]> for Set
+where
+    ValueContainer: From<T>,
+{
+    fn from(arr: [T; N]) -> Self {
+        Self::new(arr)
+    }
+}
+
+impl<T> From<&[T]> for Set
+where
+    ValueContainer: From<T>,
+    T: Clone,
+{
+    fn from(slice: &[T]) -> Self {
+        Self::new(slice.iter().cloned())
+    }
+}
+
+impl<'a> IntoIterator for &'a Set {
+    type Item = &'a ValueContainer;
+    type IntoIter = indexmap::set::Iter<'a, ValueContainer>;
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter()
+    }
+}
+
+impl IntoIterator for Set {
+    type Item = ValueContainer;
+    type IntoIter = indexmap::set::IntoIter<ValueContainer>;
+    fn into_iter(self) -> Self::IntoIter {
+        self.elements.into_iter()
     }
 }
 
@@ -87,20 +266,12 @@ impl Hash for Set {
         let mut combined_hash: u64 = 0;
 
         for item in &self.elements {
-            // We use our deterministic hasher here
-            // Now, val1 will ALWAYS output the exact same u64,
-            // if we try to use Rust build in, it will be different after every restart,
-            // so any db and etc. will crash
             let mut item_hasher = FnvHasher::new();
             item.hash(&mut item_hasher);
-
             let item_hash = item_hasher.finish();
-
-            // XOR the hashes together
             combined_hash ^= item_hash;
         }
 
-        // write the combined hash into the main hasher provided by the system
         state.write_u64(combined_hash);
     }
 }
@@ -108,34 +279,40 @@ impl Hash for Set {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::values::core_value::CoreValue;
+    use crate::values::value_container::ValueContainer;
 
-    /// Helper function to easily calculate the hash of a value
     fn calculate_hash<T: Hash>(t: &T) -> u64 {
-        // We MUST use our deterministic hasher here too
-        // if we used a HashSet's random hasher, calling this function
-        // twice would use two different random seeds
         let mut s = FnvHasher::new();
         t.hash(&mut s);
         s.finish()
     }
 
     #[test]
+    fn test_set_creation_and_array_conversion() {
+        let empty_set = Set::default();
+        assert!(empty_set.is_empty());
+
+        let set = Set::new([1i32, 2i32, 3i32]);
+        assert_eq!(set.len(), 3);
+
+        let array = set.into_vec();
+        assert_eq!(array.len(), 3);
+        assert_eq!(array[0], ValueContainer::from(1i32));
+    }
+
+    #[test]
     fn test_set_equality_and_hashing() {
-        let mut set_a = Set::new();
-        let mut set_b = Set::new();
+        let set_a = Set::new([
+            ValueContainer::from(1i32),
+            ValueContainer::from(2i32),
+            ValueContainer::from("DATEX is saxy"),
+        ]);
 
-        let val1 = CoreValue::from(1i32);
-        let val2 = CoreValue::from(2i32);
-        let val3 = CoreValue::from("DATEX is saxy");
-
-        set_a.elements.insert(val1.clone());
-        set_a.elements.insert(val2.clone());
-        set_a.elements.insert(val3.clone());
-
-        set_b.elements.insert(val3.clone());
-        set_b.elements.insert(val1.clone());
-        set_b.elements.insert(val2.clone());
+        let set_b = Set::new([
+            ValueContainer::from("DATEX is saxy"),
+            ValueContainer::from(1i32),
+            ValueContainer::from(2i32),
+        ]);
 
         assert_eq!(
             set_a, set_b,
@@ -152,23 +329,27 @@ mod tests {
     }
 
     #[test]
-    fn test_set_inequality() {
-        let mut set_a = Set::new();
-        let mut set_b = Set::new();
+    fn test_various_conversions() {
+        let set_from_arr = Set::from([1, 2, 3]);
+        assert_eq!(set_from_arr.len(), 3);
 
-        set_a.elements.insert(CoreValue::from(1i32));
-        set_b.elements.insert(CoreValue::from(2i32));
+        let set_from_vec = Set::from(crate::prelude::vec![1, 2, 3]);
+        assert_eq!(set_from_arr, set_from_vec);
 
-        assert_ne!(
-            set_a, set_b,
-            "Sets with different elements should not be equal"
-        );
+        let slice = [1, 2, 3];
+        let set_from_slice = Set::from(&slice[..]);
+        assert_eq!(set_from_arr, set_from_slice);
+    }
 
-        let hash_a = calculate_hash(&set_a);
-        let hash_b = calculate_hash(&set_b);
-        assert_ne!(
-            hash_a, hash_b,
-            "Different sets should have different hashes"
-        );
+    #[test]
+    fn test_with_capacity() {
+        let set = Set::with_capacity(100);
+        assert!(set.capacity() >= 100);
+
+        let mut set_with_data = Set::with_capacity(10);
+        for i in 0..10 {
+            set_with_data.insert(ValueContainer::from(i));
+        }
+        assert_eq!(set_with_data.len(), 10);
     }
 }

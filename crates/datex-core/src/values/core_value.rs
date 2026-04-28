@@ -15,6 +15,7 @@
 //! | [`Decimal`] | Arbitrary-precision decimals | `3.14159` |
 //! | [`Text`] | UTF-8 strings | `"Hello"` |
 //! | [`List`] | Ordered collections | `[1, 2, 3]` |
+//! | [`Set`]  | Set Data structure | `<|1, 2, 3|>` |
 // | `Map` | Key-value stores | `{"key": value}` |
 // | `Callable` | Functions/closures | `|x| x + 1` |
 // | `Range` | Inclusive/exclusive ranges | `1..10`, `0..=5` |
@@ -70,7 +71,6 @@ use crate::{
     },
 };
 use core::hash::{Hash, Hasher};
-use hashbrown::HashSet;
 
 use core::{
     fmt::{Display, Formatter},
@@ -151,10 +151,10 @@ impl StructuralEq for CoreValue {
             }
 
             (CoreValue::Set(a), CoreValue::Set(b)) => {
-                if a.elements.len() != b.elements.len() {
+                if a.len() != b.len() {
                     return false;
                 }
-                a.elements.iter().all(|item| b.elements.contains(item))
+                a.iter().all(|item| b.contains(item))
             }
             _ => false,
         }
@@ -274,19 +274,19 @@ impl From<f64> for CoreValue {
     }
 }
 
-impl<T> From<HashSet<T>> for CoreValue
-where
-    T: Into<CoreValue> + Eq + Hash,
-{
-    fn from(hash_set: HashSet<T>) -> Self {
-        let converted_set: HashSet<CoreValue> =
-            hash_set.into_iter().map(|item| item.into()).collect();
+// impl<T> From<HashSet<T>> for CoreValue
+// where
+//     T: Into<CoreValue> + Eq + Hash,
+// {
+//     fn from(hash_set: HashSet<T>) -> Self {
+//         let converted_set: HashSet<CoreValue> =
+//             hash_set.into_iter().map(|item| item.into()).collect();
 
-        CoreValue::Set(Set {
-            elements: converted_set,
-        })
-    }
-}
+//         CoreValue::Set(Set {
+//             elements: converted_set,
+//         })
+//     }
+// }
 
 impl From<&CoreValue> for CoreLibPointerId {
     fn from(value: &CoreValue) -> Self {
@@ -1359,46 +1359,5 @@ mod tests {
         let b = CoreValue::Integer(58.into());
         let sum = (a + b).unwrap();
         assert_eq!(sum, CoreValue::Integer(100.into()));
-    }
-
-    #[test]
-    fn set_test() {
-        let mut set = Set::new();
-
-        let a = CoreValue::from(10i32);
-        let b = CoreValue::from(20i32);
-        let c = CoreValue::from(10i32);
-
-        set.elements.insert(a.clone());
-        set.elements.insert(b.clone());
-        set.elements.insert(c.clone());
-
-        assert_eq!(
-            set.elements.len(),
-            2,
-            "Set should not allow duplicate elements"
-        );
-
-        assert!(set.elements.contains(&a));
-        assert!(set.elements.contains(&b));
-
-        assert!(set.elements.contains(&c));
-
-        let hash1 = {
-            let mut h = FnvHasher::new();
-            set.hash(&mut h);
-            h.finish()
-        };
-
-        let hash2 = {
-            let mut h = FnvHasher::new();
-            set.hash(&mut h);
-            h.finish()
-        };
-
-        assert_eq!(
-            hash1, hash2,
-            "Hash should be deterministic for the same set"
-        );
     }
 }

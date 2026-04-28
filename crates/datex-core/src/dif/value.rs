@@ -230,15 +230,8 @@ impl DIFValue {
                     .collect(),
             ),
             CoreValue::Set(set) => DIFValueRepresentation::Array(
-                set.elements
-                    .iter()
-                    .map(|elem| {
-                        let temp_value = Value::from(elem.clone());
-
-                        DIFValueContainer::Value(DIFValue::from_value(
-                            &temp_value,
-                        ))
-                    })
+                set.iter()
+                    .map(DIFValueContainer::from_value_container)
                     .collect(),
             ),
             CoreValue::Map(map) => match map {

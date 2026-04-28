@@ -2,7 +2,9 @@ use crate::prelude::*;
 
 use core::{
     fmt::Display,
-    ops::{Add, Neg, Div, Mul, Sub, AddAssign, SubAssign, MulAssign, DivAssign},
+    ops::{
+        Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign,
+    },
     result::Result,
 };
 use num::BigRational;
@@ -235,6 +237,14 @@ impl Add for Rational {
     }
 }
 
+impl Add for &Rational {
+    type Output = Rational;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        Rational::from_big_rational(&self.big_rational + &rhs.big_rational)
+    }
+}
+
 impl SubAssign<&Rational> for Rational {
     fn sub_assign(&mut self, rhs: &Rational) {
         self.big_rational -= &rhs.big_rational;
@@ -248,7 +258,6 @@ impl Sub for Rational {
         Rational::from_big_rational(self.big_rational - rhs.big_rational)
     }
 }
-
 
 impl Mul for Rational {
     type Output = Self;
@@ -279,4 +288,3 @@ impl Neg for Rational {
         Rational::from_big_rational(-self.big_rational)
     }
 }
-

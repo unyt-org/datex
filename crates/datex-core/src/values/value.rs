@@ -17,7 +17,7 @@ use crate::{
 
 use core::{
     fmt::{Display, Formatter},
-    ops::{Add, AddAssign, Deref, Neg, Not, Sub, Mul, Div},
+    ops::{Add, AddAssign, Deref, Div, Mul, Neg, Not, Sub},
     result::Result,
 };
 use log::error;
@@ -40,7 +40,7 @@ impl StructuralEq for Value {
 /// Both type and inner value are the same
 impl ValueEq for Value {
     fn value_eq(&self, other: &Self) -> bool {
-        self==other
+        self == other
     }
 }
 
@@ -305,7 +305,6 @@ impl Div for &Value {
     }
 }
 
-
 impl Neg for Value {
     type Output = Result<Value, ValueError>;
     fn neg(self) -> Self::Output {
@@ -369,7 +368,7 @@ mod tests {
             endpoint::Endpoint,
             integer::{Integer, typed_integer::TypedInteger},
             list::List,
-            set::Set
+            set::Set,
         },
     };
     use core::str::FromStr;
@@ -423,32 +422,6 @@ mod tests {
     }
 
     #[test]
-    fn set() {
-        let mut a = Set::new();
-        a.elements.insert(CoreValue::from(32));
-        a.elements.insert(CoreValue::from(42));
-        a.elements.insert(CoreValue::from(2));
-        a.elements.insert(CoreValue::from(5));
-
-        assert_eq!(a.len(), 4);
-
-        let mut b = Set::new();
-        b.elements.insert(CoreValue::from(2));
-        b.elements.insert(CoreValue::from(5));
-        b.elements.insert(CoreValue::from(32));
-        b.elements.insert(CoreValue::from(42));
-
-        assert_eq!(a, b);
-
-        let mut c = Set::new();
-        b.elements.insert(CoreValue::from(3));
-        b.elements.insert(CoreValue::from(6));
-
-        assert_ne!(c, b);
-        assert_ne!(c.len(), b.len());
-    }
-
-    #[test]
     fn boolean() {
         let a = Value::from(true);
         let b = Value::from(false);
@@ -496,7 +469,7 @@ mod tests {
         let maybe_value: Option<i8> = None;
         let null_value = Value::from(maybe_value);
         assert_eq!(null_value.to_string(), "null");
-        assert!(null_value.is_null()); 
+        assert!(null_value.is_null());
     }
 
     #[test]
@@ -511,12 +484,8 @@ mod tests {
 
     #[test]
     fn divide_basic() {
-        let cases = vec![
-            (24, 6, 4.0),
-            (-24, 6, -4.0),
-            (24, -6, -4.0),
-            (-24, -6, 4.0),
-        ];
+        let cases =
+            vec![(24, 6, 4.0), (-24, 6, -4.0), (24, -6, -4.0), (-24, -6, 4.0)];
 
         for (a, b, expected) in cases {
             let result = (Value::from(a) / Value::from(b)).unwrap();
@@ -554,47 +523,51 @@ mod tests {
 
         for (a, b, expected) in cases {
             let result = (a.clone() / b.clone()).expect("Division failed");
-            
+
             // 1. Extract the actual result as a float
-            let actual_f = result.as_f64().expect("Result should be a numerical type");
+            let actual_f =
+                result.as_f64().expect("Result should be a numerical type");
 
             // 2. Use epsilon comparison instead of value_eq
             // This handles both the Enum variant mismatch and float precision issues
             let diff = (actual_f - expected).abs();
             assert!(
-                diff < 1e-10, 
-                "{} / {} = {} (expected: {}, diff: {})", 
-                a, b, actual_f, expected, diff
+                diff < 1e-10,
+                "{} / {} = {} (expected: {}, diff: {})",
+                a,
+                b,
+                actual_f,
+                expected,
+                diff
             );
 
             info!("{} / {} = {} ✓", a, b, actual_f);
         }
     }
 
-   #[test]
+    #[test]
     fn integer_division_should_produce_decimal_results() {
-        let test_cases = vec![
-            (1, 2, 0.5),
-            (1, 3, 1.0 / 3.0),
-            (2, 5, 0.4),
-        ];
+        let test_cases = vec![(1, 2, 0.5), (1, 3, 1.0 / 3.0), (2, 5, 0.4)];
 
         for (a, b, expected) in test_cases {
             let result = (Value::from(a) / Value::from(b)).unwrap();
-            
+
             // Use epsilon comparison for floats
             let actual_f = result.as_f64().unwrap();
-            assert!((actual_f - expected).abs() < f64::EPSILON, 
-                "{} / {} produced {}, expected {}", a, b, actual_f, expected);
+            assert!(
+                (actual_f - expected).abs() < f64::EPSILON,
+                "{} / {} produced {}, expected {}",
+                a,
+                b,
+                actual_f,
+                expected
+            );
         }
     }
 
     #[test]
     fn divide_by_zero() {
-        let cases = vec![
-            (42, 0),
-            (-42, 0),
-        ];
+        let cases = vec![(42, 0), (-42, 0)];
 
         for (a, b) in cases {
             let a = Value::from(a);

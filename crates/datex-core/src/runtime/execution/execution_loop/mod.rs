@@ -65,8 +65,8 @@ use crate::{
             integer::typed_integer::TypedInteger,
             list::List,
             map::{Map, MapKey},
+            set::Set,
             r#type::{Type, TypeMetadata},
-            set::Set
         },
         value::Value,
         value_container::{OwnedValueKey, ValueContainer},
@@ -74,7 +74,6 @@ use crate::{
 };
 use alloc::rc::Rc;
 use core::cell::RefCell;
-use log::info;
 
 #[derive(Debug)]
 enum CollectedExecutionResult {
@@ -597,12 +596,7 @@ pub fn inner_execution_loop(
                                 }
                                 RegularInstruction::Set(_) => {
                                     let elements = yield_unwrap!(collected_results.collect_value_container_results_assert_existing(&state));
-                                    let mut set = Set::new();
-                                    for element in elements {
-                                        let value = element.to_value();
-                                        let core_value = value.borrow().inner.clone();
-                                        set.elements.insert(core_value);
-                                    }
+                                    let set = Set::new(elements);
                                     RuntimeValue::ValueContainer(
                                         ValueContainer::from(set),
                                     ).into()
