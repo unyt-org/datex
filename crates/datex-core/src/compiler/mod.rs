@@ -41,8 +41,8 @@ use crate::{
         append_boolean, append_decimal, append_encoded_integer,
         append_endpoint, append_float_as_i16, append_float_as_i32,
         append_get_internal_ref, append_get_ref, append_instruction_code,
-        append_integer, append_key_string, append_text, append_typed_decimal,
-        append_value_container,
+        append_integer, append_key_string, append_set, append_text,
+        append_typed_decimal, append_value_container,
     },
     parser::{Parser, ParserOptions},
     runtime::execution::context::ExecutionMode,
@@ -55,13 +55,12 @@ use crate::{
     values::{core_values::decimal::Decimal, value_container::ValueContainer},
 };
 use log::{debug, info};
-use syn::token::In;
 use precompiler::{
     options::PrecompilerOptions,
     precompile_ast,
     precompiled_ast::{AstMetadata, RichAst, VariableMetadata},
 };
-use crate::core_compiler::value_compiler::append_set;
+// use syn::token::In;
 
 pub mod context;
 pub mod error;
