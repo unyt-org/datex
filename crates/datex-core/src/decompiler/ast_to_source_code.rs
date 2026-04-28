@@ -1,9 +1,9 @@
 use crate::ast::{
     expressions::{
         Apply, BinaryOperation, CallableDeclaration, ComparisonOperation,
-        Conditional, DatexExpression, DatexExpressionData, List, Map, Set,
+        Conditional, DatexExpression, DatexExpressionData, List, Map,
         PropertyAccess, PropertyAssignment, RangeDeclaration, RemoteExecution,
-        SlotAssignment, TypeDeclaration, UnboxAssignment, VariableAccess,
+        Set, SlotAssignment, TypeDeclaration, UnboxAssignment, VariableAccess,
         VariableAssignment, VariableDeclaration, VariantAccess,
     },
     type_expressions::{
@@ -200,11 +200,8 @@ impl AstToSourceCodeConverter {
     }
 
     fn set_to_source_code(&self, set: &Set) -> String {
-        let elements: Vec<String> = set
-            .items
-            .iter()
-            .map(|v| self.format(v))
-            .collect();
+        let elements: Vec<String> =
+            set.items.iter().map(|v| self.format(v)).collect();
         self.wrap_set_elements(elements)
     }
 
@@ -857,7 +854,7 @@ mod tests {
     use crate::{
         ast::{
             expressions::{
-                Apply, DatexExpression, DatexExpressionData, List, Map,
+                Apply, DatexExpression, DatexExpressionData, List, Map, Set,
                 PropertyAccess, RangeDeclaration, Unbox, UnboxAssignment,
                 VariableAccess, VariableDeclaration, VariableKind,
             },
@@ -867,7 +864,7 @@ mod tests {
         decompiler::options::FormattingOptions,
         global::operators::assignment::AssignmentOperator,
         parser::Parser,
-        values::core_values::decimal::Decimal,
+        values::core_values::{decimal::Decimal},
     };
 
     fn compact() -> AstToSourceCodeConverter {
@@ -1056,14 +1053,22 @@ mod tests {
 
         // Long set should be multi-line in pretty mode
         let long_set_ast = DatexExpressionData::Set(Set::new(vec![
-            DatexExpressionData::Text("First long string for the set".to_string())
-                .with_default_span(),
-            DatexExpressionData::Text("Second long string for the set".to_string())
-                .with_default_span(),
-            DatexExpressionData::Text("Third long string for the set".to_string())
-                .with_default_span(),
-            DatexExpressionData::Text("Fourth long string for the set".to_string())
-                .with_default_span(),
+            DatexExpressionData::Text(
+                "First long string for the set".to_string(),
+            )
+            .with_default_span(),
+            DatexExpressionData::Text(
+                "Second long string for the set".to_string(),
+            )
+            .with_default_span(),
+            DatexExpressionData::Text(
+                "Third long string for the set".to_string(),
+            )
+            .with_default_span(),
+            DatexExpressionData::Text(
+                "Fourth long string for the set".to_string(),
+            )
+            .with_default_span(),
         ]));
 
         assert_eq!(

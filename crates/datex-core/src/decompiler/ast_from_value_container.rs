@@ -1,6 +1,6 @@
 use crate::{
     ast::{
-        expressions::{DatexExpressionData, List, Set, Map, RangeDeclaration},
+        expressions::{DatexExpressionData, List, Map, RangeDeclaration, Set},
         spanned::Spanned,
         type_expressions::{
             Intersection, RangeTypeExpr, TypeExpression, TypeExpressionData,
@@ -108,7 +108,12 @@ fn value_to_datex_expression(value: &Value) -> DatexExpressionData {
                 .map(|data| data.with_default_span())
                 .collect(),
         )),
-        CoreValue::Set() => DatexExpressionData::Set(Set::new()),
+        CoreValue::Set(set) => DatexExpressionData::Set(Set::new(
+            set.iter()
+                .map(DatexExpressionData::from)
+                .map(|data| data.with_default_span())
+                .collect(),
+        )),
         CoreValue::Map(map) => DatexExpressionData::Map(Map::new(
             map.iter()
                 .map(|(key, value)| {
