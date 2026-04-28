@@ -428,6 +428,7 @@ pub fn inner_execution_loop(
                             RegularInstruction::UnboundedStatements |
                             RegularInstruction::UnboundedStatementsEnd(_) |
                             RegularInstruction::List(_) |
+                            RegularInstruction::ShortSet(_) |
                             RegularInstruction::Set(_) |
                             RegularInstruction::Range |
                             RegularInstruction::ShortList(_)  |

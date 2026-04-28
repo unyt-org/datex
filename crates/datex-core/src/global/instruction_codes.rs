@@ -242,6 +242,7 @@ pub enum InstructionCode {
 
     // Set
     SET,
+    SHORT_SET,
 
     KEY_VALUE_SHORT_TEXT,
     KEY_VALUE_DYNAMIC, // for object elements with dynamic key

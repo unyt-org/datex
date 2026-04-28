@@ -102,6 +102,7 @@ pub enum RegularInstruction {
     UnboundedStatementsEnd(bool),
     List(ListData),
     ShortList(ListData),
+    ShortSet(ShortSetData),
     Set(SetData),
     Map(MapData),
     ShortMap(MapData),
@@ -285,6 +286,9 @@ impl Display for RegularInstruction {
             }
             RegularInstruction::ShortList(data) => {
                 core::write!(f, "SHORT_LIST {}", data.element_count)
+            }
+            RegularInstruction::ShortSet(data) => {
+                core::write!(f, "SHORT_SET {}", data.element_count)
             }
             RegularInstruction::Set(data) => {
                 core::write!(f, "SET {}", data.element_count)
@@ -612,6 +616,11 @@ pub struct ListData {
     pub element_count: u32,
 }
 
+#[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
+#[brw(little)]
+pub struct ShortSetData {
+    pub element_count: u8,
+}
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
 #[brw(little)]
 pub struct SetData {
