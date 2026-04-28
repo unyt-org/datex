@@ -102,7 +102,7 @@ pub enum RegularInstruction {
     UnboundedStatementsEnd(bool),
     List(ListData),
     ShortList(ListData),
-    ShortSet(ShortSetData),
+    ShortSet(SetData),
     Set(SetData),
     Map(MapData),
     ShortMap(MapData),
@@ -580,12 +580,6 @@ pub struct TextData(pub String);
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
 #[brw(little)]
-pub struct ShortListData {
-    pub element_count: u8,
-}
-
-#[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
-#[brw(little)]
 pub struct StatementsData {
     pub statements_count: u32,
     #[br(map = |x: u8| x != 0)]
@@ -618,13 +612,20 @@ pub struct ListData {
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
 #[brw(little)]
-pub struct ShortSetData {
+pub struct ShortListData {
     pub element_count: u8,
 }
+
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
 #[brw(little)]
 pub struct SetData {
     pub element_count: u32,
+}
+
+#[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
+#[brw(little)]
+pub struct ShortSetData {
+    pub element_count: u8,
 }
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]

@@ -860,11 +860,14 @@ mod tests {
         // [SET Code] [Length: 2] [UINT8 Code] [Val: 42] [UINT8 Code] [Val: 21]
         let bytecode: Vec<u8> = vec![
             InstructionCode::SET as u8,
-            0x02, // 2 elements
+            0x02,
+            0x00,
+            0x00,
+            0x00,
             InstructionCode::UINT_8 as u8,
-            0x2A, // 42
+            0x2A,
             InstructionCode::UINT_8 as u8,
-            0x15, // 21
+            0x15,
         ];
 
         let ast = ast_from_bytecode(&bytecode)
@@ -883,8 +886,14 @@ mod tests {
 
     #[test]
     fn ast_from_bytecode_empty_set() {
-        // Bytecode layout: [SET Code] [Length: 0]
-        let bytecode: Vec<u8> = vec![InstructionCode::SET as u8, 0x00];
+        // Bytecode layout: [SET Code] [Length: 0 as u32]
+        let bytecode: Vec<u8> = vec![
+            InstructionCode::SET as u8,
+            0x00,
+            0x00,
+            0x00,
+            0x00, // Fixed: needs 4 bytes (u32)
+        ];
 
         let ast =
             ast_from_bytecode(&bytecode).expect("Should decompile empty Set");
@@ -900,9 +909,15 @@ mod tests {
         // Bytecode for: <| <| 1 |> |>
         let bytecode: Vec<u8> = vec![
             InstructionCode::SET as u8,
-            0x01,
+            0x01, // Length is 1
+            0x00,
+            0x00,
+            0x00, // Outer set count (u32)
             InstructionCode::SET as u8,
-            0x01,
+            0x01, // Length is 1
+            0x00,
+            0x00,
+            0x00, // Inner set count (u32)
             InstructionCode::UINT_8 as u8,
             0x01,
         ];
