@@ -338,15 +338,28 @@ impl Add for Decimal {
 }
 */
 
-// &D + &D must allocate, its just a fallback
 impl Add<&Decimal> for &Decimal {
     type Output = Decimal;
     fn add(self, rhs: &Decimal) -> Self::Output {
         use Decimal::*;
         match (self, rhs) {
             (Finite(a), Finite(b)) => Decimal::from(a + b),
-            (Zero | NegZero, b) => (*b).clone(),
-            (a, Zero | NegZero) => (*a).clone(),
+            (Zero, b) => match b {
+                Zero | NegZero => Zero,
+                _ => (*b).clone(),
+            },
+            (NegZero, b) => match b {
+                Zero | NegZero => NegZero,
+                _ => (*b).clone(),
+            },
+            (a, Zero) => match a {
+                Zero | NegZero => Zero,
+                _ => (*a).clone(),
+            },
+            (a, NegZero) => match a {
+                Zero | NegZero => NegZero,
+                _ => (*a).clone(),
+            },
             (Infinity, NegInfinity) | (NegInfinity, Infinity) => Nan,
             (Infinity, _) | (_, Infinity) => Infinity,
             (NegInfinity, _) | (_, NegInfinity) => NegInfinity,
@@ -554,7 +567,24 @@ impl Div<&Decimal> for &Decimal {
     type Output = Decimal;
 
     fn div(self, rhs: &Decimal) -> Self::Output {
-        self.clone().div(rhs.clone())
+        use Decimal::*;
+        match (self, rhs) {
+            (_, Zero) | (_, NegZero) => Nan,
+            (Zero, _) => Zero,
+            (NegZero, _) => NegZero,
+            (Finite(a), Finite(b)) => Finite(Rational::from_big_rational(
+                a.big_rational.clone() / b.big_rational.clone(),
+            )),
+            (Infinity, Infinity)
+            | (NegInfinity, NegInfinity)
+            | (Infinity, NegInfinity)
+            | (NegInfinity, Infinity) => Nan,
+            (Finite(_), Infinity) => Zero,
+            (Finite(_), NegInfinity) => NegZero,
+            (Infinity, Finite(_)) => Infinity,
+            (NegInfinity, Finite(_)) => NegInfinity,
+            (Nan, _) | (_, Nan) => Nan,
+        }
     }
 }
 
@@ -620,7 +650,24 @@ impl Rem<&Decimal> for &Decimal {
     type Output = Decimal;
 
     fn rem(self, rhs: &Decimal) -> Self::Output {
-        self.clone().rem(rhs.clone())
+        use Decimal::*;
+        match (self, rhs) {
+            (_, Zero) | (_, NegZero) => Nan,
+            (Zero, _) => Zero,
+            (NegZero, _) => NegZero,
+            (Finite(a), Finite(b)) => Finite(Rational::from_big_rational(
+                a.big_rational.clone() % b.big_rational.clone(),
+            )),
+            (Infinity, Infinity)
+            | (NegInfinity, NegInfinity)
+            | (Infinity, NegInfinity)
+            | (NegInfinity, Infinity) => Nan,
+            (Finite(_), Infinity) => Nan,
+            (Finite(_), NegInfinity) => Nan,
+            (Infinity, Finite(_)) => Nan,
+            (NegInfinity, Finite(_)) => Nan,
+            (Nan, _) | (_, Nan) => Nan,
+        }
     }
 }
 

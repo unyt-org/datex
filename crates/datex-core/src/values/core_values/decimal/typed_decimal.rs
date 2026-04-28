@@ -563,12 +563,58 @@ impl Add<TypedDecimal> for &TypedDecimal {
     }
 }
 
-// worse variant, both are cloned
+impl TypedDecimal {
+    pub fn add_refs(&self, rhs: &TypedDecimal) -> TypedDecimal {
+        use TypedDecimal::*;
+
+        match (self, rhs) {
+            (Decimal(a), Decimal(b)) => Decimal(a + b),
+
+            (F32(a), F32(b)) => {
+                F32(OrderedFloat(a.into_inner() + b.into_inner()))
+            }
+            (F64(a), F64(b)) => {
+                F64(OrderedFloat(a.into_inner() + b.into_inner()))
+            }
+            (F32(a), F64(b)) => {
+                F64(OrderedFloat(a.into_inner() as f64 + b.into_inner()))
+            }
+            (F64(a), F32(b)) => {
+                F64(OrderedFloat(a.into_inner() + b.into_inner() as f64))
+            }
+
+            (Decimal(a), F32(b)) => Decimal(
+                a.clone()
+                    + crate::values::core_values::decimal::Decimal::from(
+                        b.into_inner(),
+                    ),
+            ),
+            (Decimal(a), F64(b)) => Decimal(
+                a.clone()
+                    + crate::values::core_values::decimal::Decimal::from(
+                        b.into_inner(),
+                    ),
+            ),
+
+            (F32(a), Decimal(b)) => Decimal(
+                crate::values::core_values::decimal::Decimal::from(
+                    a.into_inner(),
+                ) + b.clone(),
+            ),
+            (F64(a), Decimal(b)) => Decimal(
+                crate::values::core_values::decimal::Decimal::from(
+                    a.into_inner(),
+                ) + b.clone(),
+            ),
+        }
+    }
+}
+
 impl Add<&TypedDecimal> for &TypedDecimal {
     type Output = TypedDecimal;
     #[inline]
     fn add(self, rhs: &TypedDecimal) -> Self::Output {
-        self.clone().add_owned(rhs.clone())
+        self.add_refs(rhs)
     }
 }
 
@@ -715,12 +761,58 @@ impl Sub<&TypedDecimal> for TypedDecimal {
     }
 }
 
-// Worse case
+impl TypedDecimal {
+    pub fn sub_refs(&self, rhs: &TypedDecimal) -> TypedDecimal {
+        use TypedDecimal::*;
+
+        match (self, rhs) {
+            (Decimal(a), Decimal(b)) => Decimal(a.clone() - b.clone()),
+
+            (F32(a), F32(b)) => {
+                F32(OrderedFloat(a.into_inner() - b.into_inner()))
+            }
+            (F64(a), F64(b)) => {
+                F64(OrderedFloat(a.into_inner() - b.into_inner()))
+            }
+            (F32(a), F64(b)) => {
+                F64(OrderedFloat(a.into_inner() as f64 - b.into_inner()))
+            }
+            (F64(a), F32(b)) => {
+                F64(OrderedFloat(a.into_inner() - b.into_inner() as f64))
+            }
+
+            (Decimal(a), F32(b)) => Decimal(
+                a.clone()
+                    - crate::values::core_values::decimal::Decimal::from(
+                        b.into_inner(),
+                    ),
+            ),
+            (Decimal(a), F64(b)) => Decimal(
+                a.clone()
+                    - crate::values::core_values::decimal::Decimal::from(
+                        b.into_inner(),
+                    ),
+            ),
+
+            (F32(a), Decimal(b)) => Decimal(
+                crate::values::core_values::decimal::Decimal::from(
+                    a.into_inner(),
+                ) - b.clone(),
+            ),
+            (F64(a), Decimal(b)) => Decimal(
+                crate::values::core_values::decimal::Decimal::from(
+                    a.into_inner(),
+                ) - b.clone(),
+            ),
+        }
+    }
+}
+
 impl Sub<&TypedDecimal> for &TypedDecimal {
     type Output = TypedDecimal;
 
     fn sub(self, rhs: &TypedDecimal) -> Self::Output {
-        self.clone().sub_values(rhs.clone())
+        self.sub_refs(rhs)
     }
 }
 
@@ -787,12 +879,57 @@ impl Mul<&TypedDecimal> for TypedDecimal {
     }
 }
 
-// Worse case
+impl TypedDecimal {
+    pub fn mul_refs(&self, rhs: &TypedDecimal) -> TypedDecimal {
+        use TypedDecimal::*;
+
+        match (self, rhs) {
+            (F32(a), F32(b)) => {
+                F32(OrderedFloat(a.into_inner() * b.into_inner()))
+            }
+            (F32(a), F64(b)) => {
+                F32(OrderedFloat(a.into_inner() * b.into_inner() as f32))
+            }
+            (F64(a), F32(b)) => {
+                F64(OrderedFloat(a.into_inner() * b.into_inner() as f64))
+            }
+            (F64(a), F64(b)) => {
+                F64(OrderedFloat(a.into_inner() * b.into_inner()))
+            }
+            (Decimal(a), Decimal(b)) => Decimal(a.clone() * b.clone()),
+            (Decimal(a), F32(b)) => Decimal(
+                a.clone()
+                    * crate::values::core_values::decimal::Decimal::from(
+                        b.into_inner(),
+                    ),
+            ),
+            (Decimal(a), F64(b)) => Decimal(
+                a.clone()
+                    * crate::values::core_values::decimal::Decimal::from(
+                        b.into_inner(),
+                    ),
+            ),
+            (F32(a), Decimal(b)) => {
+                let result = crate::values::core_values::decimal::Decimal::from(
+                    a.into_inner(),
+                ) * b.clone();
+                F32(result.into_f32().into())
+            }
+            (F64(a), Decimal(b)) => {
+                let result = crate::values::core_values::decimal::Decimal::from(
+                    a.into_inner(),
+                ) * b.clone();
+                F64(result.into_f64().into())
+            }
+        }
+    }
+}
+
 impl Mul<&TypedDecimal> for &TypedDecimal {
     type Output = TypedDecimal;
 
     fn mul(self, rhs: &TypedDecimal) -> Self::Output {
-        self.clone().mul(rhs.clone())
+        self.mul_refs(rhs)
     }
 }
 
@@ -938,12 +1075,106 @@ impl Div<&TypedDecimal> for TypedDecimal {
     }
 }
 
-// Worse case
+impl TypedDecimal {
+    fn div_by_zero_result(&self) -> TypedDecimal {
+        use TypedDecimal::*;
+        match self {
+            F32(a) => {
+                let val = a.into_inner();
+                if val == 0.0 {
+                    F32(OrderedFloat(f32::NAN))
+                } else if val > 0.0 {
+                    F32(OrderedFloat(f32::INFINITY))
+                } else {
+                    F32(OrderedFloat(f32::NEG_INFINITY))
+                }
+            }
+            F64(a) => {
+                let val = a.into_inner();
+                if val == 0.0 {
+                    F64(OrderedFloat(f64::NAN))
+                } else if val > 0.0 {
+                    F64(OrderedFloat(f64::INFINITY))
+                } else {
+                    F64(OrderedFloat(f64::NEG_INFINITY))
+                }
+            }
+            Decimal(a) => {
+                use crate::values::core_values::decimal::Decimal;
+                if *a == Decimal::Zero {
+                    Decimal(Decimal::Nan)
+                } else if *a > Decimal::Zero {
+                    Decimal(Decimal::Infinity)
+                } else {
+                    Decimal(Decimal::NegInfinity)
+                }
+            }
+        }
+    }
+
+    pub fn div_refs(&self, rhs: &TypedDecimal) -> TypedDecimal {
+        use TypedDecimal::*;
+
+        match rhs {
+            F32(b) if b.into_inner() == 0.0 => {
+                return self.div_by_zero_result();
+            }
+            F64(b) if b.into_inner() == 0.0 => {
+                return self.div_by_zero_result();
+            }
+            Decimal(b) if b.into_f64() == 0.0 => {
+                return self.div_by_zero_result();
+            }
+            _ => {}
+        }
+
+        match (self, rhs) {
+            (F32(a), F32(b)) => {
+                F32(OrderedFloat(a.into_inner() / b.into_inner()))
+            }
+            (F32(a), F64(b)) => {
+                F32(OrderedFloat(a.into_inner() / b.into_inner() as f32))
+            }
+            (F64(a), F32(b)) => {
+                F64(OrderedFloat(a.into_inner() / b.into_inner() as f64))
+            }
+            (F64(a), F64(b)) => {
+                F64(OrderedFloat(a.into_inner() / b.into_inner()))
+            }
+            (Decimal(a), Decimal(b)) => Decimal(a.clone() / b.clone()),
+            (Decimal(a), F32(b)) => Decimal(
+                a.clone()
+                    / crate::values::core_values::decimal::Decimal::from(
+                        b.into_inner(),
+                    ),
+            ),
+            (Decimal(a), F64(b)) => Decimal(
+                a.clone()
+                    / crate::values::core_values::decimal::Decimal::from(
+                        b.into_inner(),
+                    ),
+            ),
+            (F32(a), Decimal(b)) => {
+                let result = crate::values::core_values::decimal::Decimal::from(
+                    a.into_inner(),
+                ) / b.clone();
+                F32(result.into_f32().into())
+            }
+            (F64(a), Decimal(b)) => {
+                let result = crate::values::core_values::decimal::Decimal::from(
+                    a.into_inner(),
+                ) / b.clone();
+                F64(result.into_f64().into())
+            }
+        }
+    }
+}
+
 impl Div<&TypedDecimal> for &TypedDecimal {
     type Output = TypedDecimal;
 
     fn div(self, rhs: &TypedDecimal) -> Self::Output {
-        self.clone().div(rhs.clone())
+        self.div_refs(rhs)
     }
 }
 
@@ -1054,11 +1285,70 @@ impl Rem<&TypedDecimal> for TypedDecimal {
     }
 }
 
+impl TypedDecimal {
+    pub fn rem_refs(&self, rhs: &TypedDecimal) -> TypedDecimal {
+        use TypedDecimal::*;
+
+        match rhs {
+            F32(b) if b.into_inner() == 0.0 => {
+                return TypedDecimal::F64(OrderedFloat(f64::NAN));
+            }
+            F64(b) if b.into_inner() == 0.0 => {
+                return TypedDecimal::F64(OrderedFloat(f64::NAN));
+            }
+            Decimal(b) if b.into_f64() == 0.0 => {
+                return TypedDecimal::F64(OrderedFloat(f64::NAN));
+            }
+            _ => {}
+        }
+
+        match (self, rhs) {
+            (F32(a), F32(b)) => {
+                F32(OrderedFloat(a.into_inner() % b.into_inner()))
+            }
+            (F32(a), F64(b)) => {
+                F32(OrderedFloat(a.into_inner() % b.into_inner() as f32))
+            }
+            (F64(a), F32(b)) => {
+                F64(OrderedFloat(a.into_inner() % b.into_inner() as f64))
+            }
+            (F64(a), F64(b)) => {
+                F64(OrderedFloat(a.into_inner() % b.into_inner()))
+            }
+            (Decimal(a), Decimal(b)) => Decimal(a.clone() % b.clone()),
+            (Decimal(a), F32(b)) => Decimal(
+                a.clone()
+                    % crate::values::core_values::decimal::Decimal::from(
+                        b.into_inner(),
+                    ),
+            ),
+            (Decimal(a), F64(b)) => Decimal(
+                a.clone()
+                    % crate::values::core_values::decimal::Decimal::from(
+                        b.into_inner(),
+                    ),
+            ),
+            (F32(a), Decimal(b)) => {
+                let result = crate::values::core_values::decimal::Decimal::from(
+                    a.into_inner(),
+                ) % b.clone();
+                F32(result.into_f32().into())
+            }
+            (F64(a), Decimal(b)) => {
+                let result = crate::values::core_values::decimal::Decimal::from(
+                    a.into_inner(),
+                ) % b.clone();
+                F64(result.into_f64().into())
+            }
+        }
+    }
+}
+
 impl Rem<&TypedDecimal> for &TypedDecimal {
     type Output = TypedDecimal;
 
     fn rem(self, rhs: &TypedDecimal) -> TypedDecimal {
-        self.clone().rem(rhs.clone())
+        self.rem_refs(rhs)
     }
 }
 
