@@ -167,6 +167,9 @@ pub enum Token {
     #[token("<")] LeftAngle,
     #[token(">")] RightAngle,
 
+    #[token("<|")] SetOpen,
+    #[token("|>")] SetClose,
+
     #[token("%")] Percent,
     #[token("+")] Plus,
     #[token("-")] Minus,

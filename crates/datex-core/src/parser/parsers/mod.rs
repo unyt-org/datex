@@ -7,6 +7,7 @@ pub mod if_else;
 pub mod key;
 pub mod list;
 pub mod map;
+pub mod set;
 pub mod statements;
 pub mod type_declaration;
 pub mod type_expressions;
