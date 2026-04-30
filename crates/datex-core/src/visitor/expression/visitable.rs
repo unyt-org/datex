@@ -2,7 +2,7 @@ use crate::{
     ast::expressions::{
         Apply, BinaryOperation, CallableDeclaration, ComparisonOperation,
         Conditional, CreateMut, CreateRef, CreateShared, CreateSharedRef,
-        DatexExpression, DatexExpressionData, GenericInstantiation, List, Map,
+        DatexExpression, DatexExpressionData, GenericInstantiation, List, Set, Map,
         PropertyAccess, PropertyAssignment, RangeDeclaration, RemoteExecution,
         SlotAssignment, Statements, TypeDeclaration, UnaryOperation, Unbox,
         UnboxAssignment, VariableAssignment, VariableDeclaration,
@@ -56,6 +56,17 @@ impl<E> VisitableExpression<E> for Statements {
     }
 }
 impl<E> VisitableExpression<E> for List {
+    fn walk_children(
+        &mut self,
+        visitor: &mut impl ExpressionVisitor<E>,
+    ) -> Result<(), E> {
+        for item in &mut self.items {
+            visitor.visit_datex_expression(item)?;
+        }
+        Ok(())
+    }
+}
+impl<E> VisitableExpression<E> for Set {
     fn walk_children(
         &mut self,
         visitor: &mut impl ExpressionVisitor<E>,
@@ -300,6 +311,7 @@ impl<E> VisitableExpression<E> for DatexExpression {
                 statements.walk_children(visitor)
             }
             DatexExpressionData::List(list) => list.walk_children(visitor),
+            DatexExpressionData::Set(set) => set.walk_children(visitor),
             DatexExpressionData::Map(map) => map.walk_children(visitor),
             DatexExpressionData::Conditional(conditional) => {
                 conditional.walk_children(visitor)

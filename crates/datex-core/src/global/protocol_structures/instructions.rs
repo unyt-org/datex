@@ -102,6 +102,8 @@ pub enum RegularInstruction {
     UnboundedStatementsEnd(bool),
     List(ListData),
     ShortList(ListData),
+    ShortSet(SetData),
+    Set(SetData),
     Map(MapData),
     ShortMap(MapData),
 
@@ -113,6 +115,12 @@ pub enum RegularInstruction {
     Subtract,
     Multiply,
     Divide,
+
+    // logical operations
+    And,
+    Or,
+    Not,
+    // Xor // not implemented yet
 
     // unary operator
     // TODO #432 add missing unary operators
@@ -279,6 +287,12 @@ impl Display for RegularInstruction {
             RegularInstruction::ShortList(data) => {
                 core::write!(f, "SHORT_LIST {}", data.element_count)
             }
+            RegularInstruction::ShortSet(data) => {
+                core::write!(f, "SHORT_SET {}", data.element_count)
+            }
+            RegularInstruction::Set(data) => {
+                core::write!(f, "SET {}", data.element_count)
+            }
             RegularInstruction::Map(data) => {
                 core::write!(f, "MAP {}", data.element_count)
             }
@@ -296,6 +310,12 @@ impl Display for RegularInstruction {
             RegularInstruction::Subtract => core::write!(f, "SUBTRACT"),
             RegularInstruction::Multiply => core::write!(f, "MULTIPLY"),
             RegularInstruction::Divide => core::write!(f, "DIVIDE"),
+
+            // Logical Instructions
+            RegularInstruction::And => core::write!(f, "AND"),
+            RegularInstruction::Or => core::write!(f, "OR"),
+            RegularInstruction::Not => core::write!(f, "NOT"),
+            // RegularInstruction::Xor => core::write!(f, "XOR"), // not implemented yet
 
             // equality checks
             RegularInstruction::StructuralEqual => {
@@ -560,12 +580,6 @@ pub struct TextData(pub String);
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
 #[brw(little)]
-pub struct ShortListData {
-    pub element_count: u8,
-}
-
-#[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
-#[brw(little)]
 pub struct StatementsData {
     pub statements_count: u32,
     #[br(map = |x: u8| x != 0)]
@@ -594,6 +608,24 @@ pub struct ShortStatementsData {
 #[brw(little)]
 pub struct ListData {
     pub element_count: u32,
+}
+
+#[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
+#[brw(little)]
+pub struct ShortListData {
+    pub element_count: u8,
+}
+
+#[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
+#[brw(little)]
+pub struct SetData {
+    pub element_count: u32,
+}
+
+#[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
+#[brw(little)]
+pub struct ShortSetData {
+    pub element_count: u8,
 }
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]

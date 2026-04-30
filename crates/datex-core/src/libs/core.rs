@@ -79,6 +79,7 @@ pub enum CoreLibPointerId {
     Text,                                // #core.text
     Endpoint,                            // #core.endpoint
     List,                                // #core.List
+    Set,                                 // #core.Set
     Map,                                 // #core.Map
     Callable,                            // #core.Callable
     Unit,                                // #core.Unit
@@ -108,6 +109,7 @@ impl CoreLibPointerId {
             CoreLibPointerId::Unknown => 14,
             CoreLibPointerId::Print => 15,
             CoreLibPointerId::Range => 16,
+            CoreLibPointerId::Set => 10,
             CoreLibPointerId::Integer(None) => Self::INTEGER_BASE,
             CoreLibPointerId::Integer(Some(v)) => {
                 let v: u8 = (*v).into();
@@ -131,6 +133,7 @@ impl CoreLibPointerId {
             7 => Some(CoreLibPointerId::Endpoint),
             8 => Some(CoreLibPointerId::Text),
             9 => Some(CoreLibPointerId::List),
+            10 => Some(CoreLibPointerId::Set),
             11 => Some(CoreLibPointerId::Unit),
             12 => Some(CoreLibPointerId::Map),
             13 => Some(CoreLibPointerId::Never),

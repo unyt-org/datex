@@ -437,6 +437,16 @@ impl<T> InstructionCollector<T> {
                 );
                 None
             }
+            RegularInstruction::Set(set_data) => {
+                let count = set_data.element_count;
+                self.collect_full(
+                    Instruction::RegularInstruction(RegularInstruction::Set(
+                        set_data,
+                    )),
+                    count,
+                );
+                None
+            }
             RegularInstruction::Range => {
                 self.collect_full(
                     Instruction::RegularInstruction(RegularInstruction::Range),

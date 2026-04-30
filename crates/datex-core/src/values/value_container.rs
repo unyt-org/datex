@@ -26,16 +26,19 @@ use crate::{
 use core::{
     fmt::Display,
     hash::{Hash, Hasher},
-    ops::{Add, FnOnce, Neg, Sub},
+    ops::{Add, FnOnce, Neg, Sub, Mul, Div}
 };
-use serde::{Deserialize, de::DeserializeOwned};
 
-#[derive(Debug, Clone, PartialEq)]
+use serde::de::DeserializeOwned;
+use serde::Deserialize;
+
+#[derive(Debug)]
 pub enum ValueError {
     IsVoid,
     InvalidOperation,
     IntegerOverflow,
     TypeConversionError,
+    DivisionByZero
 }
 
 impl Display for ValueError {
@@ -50,6 +53,9 @@ impl Display for ValueError {
             }
             ValueError::IntegerOverflow => {
                 core::write!(f, "Integer overflow occurred")
+            }
+            ValueError::DivisionByZero => {
+                core::write!(f, "You cant divide by Zero!")
             }
         }
     }
@@ -568,6 +574,106 @@ impl Sub<&ValueContainer> for &ValueContainer {
             (ValueContainer::Shared(lhs), ValueContainer::Local(rhs)) => {
                 let lhs_value = lhs.collapse_to_value().borrow().clone();
                 (&lhs_value - rhs).map(ValueContainer::Local)
+            }
+        }
+    }
+}
+
+impl Mul<ValueContainer> for ValueContainer {
+    type Output = Result<ValueContainer, ValueError>;
+
+    fn mul(self, rhs: ValueContainer) -> Self::Output {
+        match (self, rhs) {
+            (ValueContainer::Local(lhs), ValueContainer::Local(rhs)) => {
+                (lhs * rhs).map(ValueContainer::Local)
+            }
+            (ValueContainer::Shared(lhs), ValueContainer::Shared(rhs)) => {
+                let lhs_value = lhs.collapse_to_value().borrow().clone();
+                let rhs_value = rhs.collapse_to_value().borrow().clone();
+                (lhs_value * rhs_value).map(ValueContainer::Local)
+            }
+            (ValueContainer::Local(lhs), ValueContainer::Shared(rhs)) => {
+                let rhs_value = rhs.collapse_to_value().borrow().clone();
+                (lhs * rhs_value).map(ValueContainer::Local)
+            }
+            (ValueContainer::Shared(lhs), ValueContainer::Local(rhs)) => {
+                let lhs_value = lhs.collapse_to_value().borrow().clone();
+                (lhs_value * rhs).map(ValueContainer::Local)
+            }
+        }
+    }
+}
+
+impl Mul<&ValueContainer> for &ValueContainer {
+    type Output = Result<ValueContainer, ValueError>;
+
+    fn mul(self, rhs: &ValueContainer) -> Self::Output {
+        match (self, rhs) {
+            (ValueContainer::Local(lhs), ValueContainer::Local(rhs)) => {
+                (lhs * rhs).map(ValueContainer::Local)
+            }
+            (ValueContainer::Shared(lhs), ValueContainer::Shared(rhs)) => {
+                let lhs_value = lhs.collapse_to_value().borrow().clone();
+                let rhs_value = rhs.collapse_to_value().borrow().clone();
+                (lhs_value * rhs_value).map(ValueContainer::Local)
+            }
+            (ValueContainer::Local(lhs), ValueContainer::Shared(rhs)) => {
+                let rhs_value = rhs.collapse_to_value().borrow().clone();
+                (lhs * &rhs_value).map(ValueContainer::Local)
+            }
+            (ValueContainer::Shared(lhs), ValueContainer::Local(rhs)) => {
+                let lhs_value = lhs.collapse_to_value().borrow().clone();
+                (&lhs_value * rhs).map(ValueContainer::Local)
+            }
+        }
+    }
+}
+
+impl Div<ValueContainer> for ValueContainer {
+    type Output = Result<ValueContainer, ValueError>;
+
+    fn div(self, rhs: ValueContainer) -> Self::Output {
+        match (self, rhs) {
+            (ValueContainer::Local(lhs), ValueContainer::Local(rhs)) => {
+                (lhs / rhs).map(ValueContainer::Local)
+            }
+            (ValueContainer::Shared(lhs), ValueContainer::Shared(rhs)) => {
+                let lhs_value = lhs.collapse_to_value().borrow().clone();
+                let rhs_value = rhs.collapse_to_value().borrow().clone();
+                (lhs_value / rhs_value).map(ValueContainer::Local)
+            }
+            (ValueContainer::Local(lhs), ValueContainer::Shared(rhs)) => {
+                let rhs_value = rhs.collapse_to_value().borrow().clone();
+                (lhs / rhs_value).map(ValueContainer::Local)
+            }
+            (ValueContainer::Shared(lhs), ValueContainer::Local(rhs)) => {
+                let lhs_value = lhs.collapse_to_value().borrow().clone();
+                (lhs_value / rhs).map(ValueContainer::Local)
+            }
+        }
+    }
+}
+
+impl Div<&ValueContainer> for &ValueContainer {
+    type Output = Result<ValueContainer, ValueError>;
+
+    fn div(self, rhs: &ValueContainer) -> Self::Output {
+        match (self, rhs) {
+            (ValueContainer::Local(lhs), ValueContainer::Local(rhs)) => {
+                (lhs / rhs).map(ValueContainer::Local)
+            }
+            (ValueContainer::Shared(lhs), ValueContainer::Shared(rhs)) => {
+                let lhs_value = lhs.collapse_to_value().borrow().clone();
+                let rhs_value = rhs.collapse_to_value().borrow().clone();
+                (lhs_value / rhs_value).map(ValueContainer::Local)
+            }
+            (ValueContainer::Local(lhs), ValueContainer::Shared(rhs)) => {
+                let rhs_value = rhs.collapse_to_value().borrow().clone();
+                (lhs / &rhs_value).map(ValueContainer::Local)
+            }
+            (ValueContainer::Shared(lhs), ValueContainer::Local(rhs)) => {
+                let lhs_value = lhs.collapse_to_value().borrow().clone();
+                (&lhs_value / rhs).map(ValueContainer::Local)
             }
         }
     }

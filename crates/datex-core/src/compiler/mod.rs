@@ -11,7 +11,9 @@ use crate::{
         },
     },
 };
+
 use core::cell::RefCell;
+use num_traits::ToPrimitive;
 
 use crate::{
     ast::expressions::{
@@ -41,8 +43,8 @@ use crate::{
         append_boolean, append_decimal, append_encoded_integer,
         append_endpoint, append_float_as_i16, append_float_as_i32,
         append_get_internal_ref, append_get_ref, append_instruction_code,
-        append_integer, append_key_string, append_text, append_typed_decimal,
-        append_value_container,
+        append_integer, append_key_string, append_set, append_text,
+        append_typed_decimal, append_value_container,
     },
     parser::{Parser, ParserOptions},
     runtime::execution::context::ExecutionMode,
@@ -51,7 +53,9 @@ use crate::{
         shared_container::SharedContainerMutability,
     },
     time::Instant,
-    utils::buffers::{append_u8, append_u16, append_u32},
+    utils::buffers::{
+        append_i8, append_i16, append_i32, append_u8, append_u16, append_u32,
+    },
     values::{core_values::decimal::Decimal, value_container::ValueContainer},
 };
 use log::{debug, info};
@@ -580,6 +584,84 @@ fn compile_expression(
                     CompileMetadata::default(),
                     scope,
                 )?;
+            }
+        }
+        DatexExpressionData::Set(set) => {
+            compilation_context.append_instruction_code(InstructionCode::SET);
+            append_u8(&mut compilation_context.buffer, set.items.len() as u8);
+            compilation_context.buffer.extend_from_slice(&[0u8, 0, 0]);
+            for item in set.items {
+                let inner_data = item.data.clone();
+                match inner_data {
+                    DatexExpressionData::Integer(int) => {
+                        if let Some(val) = int.0.to_i64() {
+                            if val >= 0 {
+                                if let Some(v) = int.0.to_u8() {
+                                    compilation_context
+                                        .append_instruction_code(
+                                            InstructionCode::UINT_8,
+                                        );
+                                    append_u8(
+                                        &mut compilation_context.buffer,
+                                        v,
+                                    );
+                                } else if let Some(v) = int.0.to_u16() {
+                                    compilation_context
+                                        .append_instruction_code(
+                                            InstructionCode::UINT_16,
+                                        );
+                                    append_u16(
+                                        &mut compilation_context.buffer,
+                                        v,
+                                    );
+                                } else {
+                                    append_integer(
+                                        &mut compilation_context.buffer,
+                                        &int,
+                                    );
+                                }
+                            } else {
+                                if let Some(v) = int.0.to_i8() {
+                                    compilation_context
+                                        .append_instruction_code(
+                                            InstructionCode::INT_8,
+                                        );
+                                    append_i8(
+                                        &mut compilation_context.buffer,
+                                        v,
+                                    );
+                                } else if let Some(v) = int.0.to_i16() {
+                                    compilation_context
+                                        .append_instruction_code(
+                                            InstructionCode::INT_16,
+                                        );
+                                    append_i16(
+                                        &mut compilation_context.buffer,
+                                        v,
+                                    );
+                                } else {
+                                    append_integer(
+                                        &mut compilation_context.buffer,
+                                        &int,
+                                    );
+                                }
+                            }
+                        } else {
+                            append_integer(
+                                &mut compilation_context.buffer,
+                                &int,
+                            );
+                        }
+                    }
+                    _ => {
+                        scope = compile_expression(
+                            compilation_context,
+                            RichAst::new(item, &metadata),
+                            CompileMetadata::default(),
+                            scope,
+                        )?;
+                    }
+                }
             }
         }
         DatexExpressionData::Map(map) => {
@@ -3367,5 +3449,39 @@ pub mod tests {
             b't',
         ];
         assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn set_test() {
+        let script = "<|1|>";
+        let result = compile_and_log(script);
+        assert_eq!(
+            result,
+            vec![
+                InstructionCode::SET as u8,
+                0x01, // Length is 1
+                0x00,
+                0x00,
+                0x00,
+                InstructionCode::UINT_8 as u8,
+                0x01, // Number 1 in set
+            ]
+        );
+    }
+
+    #[test]
+    fn add_test() {
+        let script = "1u8 + 2u8";
+        let result = compile_and_log(script);
+        assert_eq!(
+            result,
+            vec![
+                InstructionCode::ADD.into(),
+                InstructionCode::UINT_8.into(),
+                1,
+                InstructionCode::UINT_8.into(),
+                2
+            ]
+        );
     }
 }
