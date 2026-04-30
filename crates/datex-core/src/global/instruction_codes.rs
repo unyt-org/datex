@@ -107,7 +107,7 @@ pub enum InstructionCode {
     LESS,                 // <
     GREATER_EQUAL,        // >=
     LESS_EQUAL,           // <=
-    IS,                   // is
+    IS,                   // Checks if two references are identity equal
 
     // logical + algebraic operators 0x90  - 0x9f
     AND,       // &

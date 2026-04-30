@@ -309,6 +309,8 @@ impl Token {
             Token::RightCurly => Some("}"),
             Token::LeftAngle => Some("<"),
             Token::RightAngle => Some(">"),
+            Token::SetOpen => Some("<|"),
+            Token::SetClose => Some("|>"),
             Token::Percent => Some("%"),
             Token::Plus => Some("+"),
             Token::Minus => Some("-"),
@@ -859,6 +861,18 @@ mod tests {
             lexer.next().unwrap(),
             Ok(Token::IntegerLiteral("2".to_string()))
         );
+        assert_eq!(lexer.next(), None);
+    }
+
+    #[test]
+    fn set() {
+        let mut lexer = Token::lexer("<| 1 |>");
+        assert_eq!(lexer.next().unwrap(), Ok(Token::SetOpen));
+        assert_eq!(
+            lexer.next().unwrap(),
+            Ok(Token::IntegerLiteral("1".to_string()))
+        );
+        assert_eq!(lexer.next().unwrap(), Ok(Token::SetClose));
         assert_eq!(lexer.next(), None);
     }
 }

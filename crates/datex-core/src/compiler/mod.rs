@@ -3468,4 +3468,20 @@ pub mod tests {
             ]
         );
     }
+
+    #[test]
+    fn add_test() {
+        let script = "1u8 + 2u8";
+        let result = compile_and_log(script);
+        assert_eq!(
+            result,
+            vec![
+                InstructionCode::ADD.into(),
+                InstructionCode::UINT_8.into(),
+                1,
+                InstructionCode::UINT_8.into(),
+                2
+            ]
+        );
+    }
 }
