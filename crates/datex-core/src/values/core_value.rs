@@ -547,9 +547,7 @@ impl Add for CoreValue {
 
             // same type additions
             (CoreValue::TypedInteger(lhs), CoreValue::TypedInteger(rhs)) => {
-                return Ok(CoreValue::TypedInteger(
-                    (lhs + rhs).ok_or(ValueError::IntegerOverflow)?,
-                ));
+                return Ok(CoreValue::TypedInteger(lhs + rhs));
             }
             (CoreValue::Integer(lhs), CoreValue::Integer(rhs)) => {
                 return Ok(CoreValue::Integer(lhs + rhs));
@@ -597,16 +595,12 @@ impl Add for CoreValue {
                     let integer = rhs
                         ._cast_to_integer_internal()
                         .ok_or(ValueError::InvalidOperation)?;
-                    Ok(CoreValue::TypedInteger(
-                        (lhs + &integer).ok_or(ValueError::IntegerOverflow)?,
-                    ))
+                    Ok(CoreValue::TypedInteger(lhs + &integer))
                 }
                 CoreValue::TypedDecimal(rhs) => {
                     let decimal = rhs.as_f64();
                     let integer = TypedInteger::from(decimal as i128);
-                    Ok(CoreValue::TypedInteger(
-                        (lhs + &integer).ok_or(ValueError::IntegerOverflow)?,
-                    ))
+                    Ok(CoreValue::TypedInteger(lhs + &integer))
                 }
                 _ => Err(ValueError::InvalidOperation),
             },
@@ -673,9 +667,7 @@ impl Sub for CoreValue {
         // same type subtractions
         match (&self, &rhs) {
             (CoreValue::TypedInteger(lhs), CoreValue::TypedInteger(rhs)) => {
-                return Ok(CoreValue::TypedInteger(
-                    (lhs - rhs).ok_or(ValueError::IntegerOverflow)?,
-                ));
+                return Ok(CoreValue::TypedInteger(lhs - rhs));
             }
             (CoreValue::Integer(lhs), CoreValue::Integer(rhs)) => {
                 return Ok(CoreValue::Integer(lhs - rhs));
@@ -723,16 +715,12 @@ impl Sub for CoreValue {
                     let integer = rhs
                         ._cast_to_integer_internal()
                         .ok_or(ValueError::InvalidOperation)?;
-                    Ok(CoreValue::TypedInteger(
-                        (lhs - &integer).ok_or(ValueError::IntegerOverflow)?,
-                    ))
+                    Ok(CoreValue::TypedInteger(lhs - &integer))
                 }
                 CoreValue::TypedDecimal(rhs) => {
                     let decimal = rhs.as_f64();
                     let integer = TypedInteger::from(decimal as i128);
-                    Ok(CoreValue::TypedInteger(
-                        (lhs - &integer).ok_or(ValueError::IntegerOverflow)?,
-                    ))
+                    Ok(CoreValue::TypedInteger(lhs - &integer))
                 }
                 _ => Err(ValueError::InvalidOperation),
             },
