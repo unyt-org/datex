@@ -846,4 +846,35 @@ mod tests {
                 .unwrap();
         assert_eq!(result, ValueContainer::from(true));
     }
+
+    #[test]
+    fn list_method_calls() {
+        // len
+        let result = execute_datex_script_debug_with_result("[1u8, 2u8].len()");
+        assert_eq!(result.to_value().borrow().as_f64().unwrap(), 2.0);
+
+        // needs shared mut for in-place mutation to be visible on the variable
+        let result = execute_datex_script_debug_with_result(
+            "var l = shared mut [3, 1, 2]; l.sort(); l",
+        );
+        let list_val = result.to_value();
+        let list_borrow = list_val.borrow();
+        if let CoreValue::List(ref l) = list_borrow.inner {
+            assert_eq!(l.len(), 3);
+            assert_eq!(
+                l.get(0).unwrap().to_value().borrow().as_f64().unwrap(),
+                1.0
+            );
+            assert_eq!(
+                l.get(1).unwrap().to_value().borrow().as_f64().unwrap(),
+                2.0
+            );
+            assert_eq!(
+                l.get(2).unwrap().to_value().borrow().as_f64().unwrap(),
+                3.0
+            );
+        } else {
+            panic!("Expected list from sort test, got {:?}", list_borrow.inner);
+        }
+    }
 }

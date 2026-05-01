@@ -26,11 +26,10 @@ use crate::{
 use core::{
     fmt::Display,
     hash::{Hash, Hasher},
-    ops::{Add, FnOnce, Neg, Sub, Mul, Div}
+    ops::{Add, Div, FnOnce, Mul, Neg, Sub},
 };
 
-use serde::de::DeserializeOwned;
-use serde::Deserialize;
+use serde::{Deserialize, de::DeserializeOwned};
 
 #[derive(Debug)]
 pub enum ValueError {
@@ -38,7 +37,7 @@ pub enum ValueError {
     InvalidOperation,
     IntegerOverflow,
     TypeConversionError,
-    DivisionByZero
+    DivisionByZero,
 }
 
 impl Display for ValueError {

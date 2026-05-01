@@ -122,6 +122,94 @@ impl List {
         let index = self.get_valid_index(index)?;
         Ok(self.0.remove(index))
     }
+
+    pub fn try_get_method(
+        &self,
+        name: &str,
+    ) -> Option<crate::values::core_values::callable::Callable> {
+        use crate::{
+            runtime::execution::ExecutionError,
+            values::core_values::callable::{
+                Callable, CallableBody, CallableKind, CallableSignature,
+            },
+        };
+
+        match name {
+            "len" => {
+                Some(Callable {
+                    name: Some("len".to_string()),
+                    signature: CallableSignature {
+                        kind: CallableKind::Function,
+                        parameter_types: vec![],
+                        rest_parameter_type: None,
+                        return_type: None, // Now I return None, but later it can be some precise Type
+                        yeet_type: None,
+                    },
+                    body: CallableBody::Native(|args| {
+                        if args.is_empty() {
+                            return Err(ExecutionError::InvalidApply);
+                        }
+
+                        let target = &args[0];
+                        let len = if let Some(shared) = target.maybe_shared() {
+                            shared.with_value_unchecked(|val| {
+                                if let CoreValue::List(l) = &val.inner {
+                                    l.len()
+                                } else {
+                                    0
+                                }
+                            })
+                        } else if let ValueContainer::Local(val) = target {
+                            if let CoreValue::List(l) = &val.inner {
+                                l.len()
+                            } else {
+                                return Err(ExecutionError::InvalidApply);
+                            }
+                        } else {
+                            return Err(ExecutionError::InvalidApply);
+                        };
+
+                        Ok(Some(ValueContainer::from(len)))
+                    }),
+                    bound_this: None,
+                })
+            }
+            "sort" => Some(Callable {
+                name: Some("sort".to_string()),
+                signature: CallableSignature {
+                    kind: CallableKind::Procedure,
+                    parameter_types: vec![],
+                    rest_parameter_type: None,
+                    return_type: None,
+                    yeet_type: None,
+                },
+                body: CallableBody::Native(|args| {
+                    if args.is_empty() {
+                        return Err(ExecutionError::InvalidApply);
+                    }
+
+                    let target = &args[0];
+                    if let Some(shared) = target.maybe_shared() {
+                        shared.with_value_unchecked(|val| {
+                            if let CoreValue::List(l) = &mut val.inner {
+                                l.0.sort_by(|a, b| {
+                                    a.to_string().cmp(&b.to_string())
+                                });
+                            }
+                        });
+                    } else {
+                        todo!(
+                            "Decide what can we possible return when there are some errors, maybe create some new Error type or use TypeError"
+                        )
+                    }
+
+                    Ok(None)
+                }),
+                bound_this: None,
+            }),
+            _ => None,
+        }
+    }
 }
 
 impl StructuralEq for List {

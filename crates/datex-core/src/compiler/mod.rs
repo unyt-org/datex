@@ -3484,4 +3484,27 @@ pub mod tests {
             ]
         );
     }
+
+    #[test]
+    fn list_method_call() {
+        let datex_script = "[1u8, 2u8].len()";
+        let result = compile_and_log(datex_script);
+        assert_eq!(
+            result,
+            vec![
+                InstructionCode::APPLY_ZERO.into(),
+                InstructionCode::GET_PROPERTY_TEXT.into(),
+                3,
+                b'l',
+                b'e',
+                b'n',
+                InstructionCode::SHORT_LIST.into(),
+                2,
+                InstructionCode::UINT_8.into(),
+                1,
+                InstructionCode::UINT_8.into(),
+                2,
+            ]
+        );
+    }
 }

@@ -46,6 +46,7 @@ pub struct Callable {
     pub name: Option<String>,
     pub signature: CallableSignature,
     pub body: CallableBody,
+    pub bound_this: Option<Box<ValueContainer>>,
 }
 
 impl Callable {
@@ -53,8 +54,17 @@ impl Callable {
         &self,
         args: &[ValueContainer],
     ) -> Result<Option<ValueContainer>, ExecutionError> {
+        let actual_args = if let Some(this) = &self.bound_this {
+            let mut new_args = alloc::vec::Vec::with_capacity(args.len() + 1);
+            new_args.push(*this.clone());
+            new_args.extend_from_slice(args);
+            new_args
+        } else {
+            args.to_vec()
+        };
+
         match &self.body {
-            CallableBody::Native(func) => func(args),
+            CallableBody::Native(func) => func(&actual_args),
             CallableBody::DatexBytecode => {
                 todo!("#606 Calling Datex bytecode is not yet implemented")
             }

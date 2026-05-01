@@ -100,6 +100,7 @@ impl Value {
                 name,
                 signature: signature.clone(),
                 body,
+                bound_this: None,
             }),
             actual_type: Box::new(TypeDefinition::callable(signature)),
         }
@@ -173,8 +174,15 @@ impl Value {
                 Ok(map.get(key)?.clone())
             }
             CoreValue::List(ref list) => {
-                if let Some(index) = key.into().try_as_index() {
+                let key = key.into();
+                if let Some(index) = key.try_as_index() {
                     Ok(list.get(index)?.clone())
+                } else if let Some(method_name) = key.try_as_text() {
+                    if let Some(mut method) = list.try_get_method(method_name) {
+                        method.bound_this = Some(Box::new(ValueContainer::from(self.clone())));
+                        return Ok(ValueContainer::from(method));
+                    }
+                    Err(AccessError::KeyNotFound(crate::shared_values::shared_container::KeyNotFoundError { key: ValueContainer::from(key) }))
                 } else {
                     Err(AccessError::InvalidIndexKey)
                 }
@@ -419,6 +427,33 @@ mod tests {
         assert_eq!(c[0], 1.into());
         assert_eq!(c[1], "test".into());
         assert_eq!(c[2], 3.into());
+    }
+
+    #[test]
+    fn list_methods() {
+        let list_val = Value::from(datex_list![2, 4, 1]);
+        
+        // Test len()
+        let len_method = list_val.try_get_property("len").unwrap();
+        let len_res = len_method.apply(&[]).expect("len() failed").expect("len() returned None");
+        assert_eq!(len_res.to_value().borrow().as_f64().unwrap(), 3.0);
+
+        // Test sort() on shared list
+        let list_shared = ValueContainer::Shared(crate::shared_values::shared_container::SharedContainer::boxed_mut(datex_list![2, 4, 1].into(), crate::shared_values::pointer::Pointer::NULL).unwrap());
+        let sort_method = list_shared.try_get_property("sort").unwrap();
+        sort_method.apply(&[]).expect("sort() failed");
+        
+        let val = list_shared.to_value();
+        let val_borrow = val.borrow();
+        if let CoreValue::List(ref l) = val_borrow.inner {
+            assert_eq!(l.len(), 3);
+            // 1, 2, 4
+            assert_eq!(l.get(0).unwrap().to_value().borrow().as_f64().unwrap(), 1.0);
+            assert_eq!(l.get(1).unwrap().to_value().borrow().as_f64().unwrap(), 2.0);
+            assert_eq!(l.get(2).unwrap().to_value().borrow().as_f64().unwrap(), 4.0);
+        } else {
+            panic!("Not a list: {:?}", val_borrow.inner);
+        }
     }
 
     #[test]
