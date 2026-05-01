@@ -877,4 +877,44 @@ mod tests {
             panic!("Expected list from sort test, got {:?}", list_borrow.inner);
         }
     }
+
+    #[test]
+    fn map_method_calls() {
+        // test len()
+        let result = execute_datex_script_debug_with_result(
+            "var m = {a:1, b:2}; m.len()",
+        );
+        assert_eq!(result.to_value().borrow().as_f64().unwrap(), 2.0);
+
+        // test keys()
+        let result = execute_datex_script_debug_with_result(
+            "var m = {a:1, b:2}; m.keys()",
+        );
+        let val = result.to_value();
+        let borrow = val.borrow();
+        if let CoreValue::List(ref l) = borrow.inner {
+            assert_eq!(l.len(), 2);
+            // Keys are "a" and "b"
+            let k0 = l.get(0).unwrap().to_string();
+            let k1 = l.get(1).unwrap().to_string();
+            assert!(k0 == r#""a""# || k1 == r#""b""#);
+        } else {
+            panic!("Expected list of keys");
+        }
+
+        // test values()
+        let result = execute_datex_script_debug_with_result(
+            "var m = {a:1, b:2}; m.values()",
+        );
+        let val = result.to_value();
+        let borrow = val.borrow();
+        if let CoreValue::List(ref l) = borrow.inner {
+            assert_eq!(l.len(), 2);
+            let v0 = l.get(0).unwrap().to_value().borrow().as_f64().unwrap();
+            let v1 = l.get(1).unwrap().to_value().borrow().as_f64().unwrap();
+            assert!((v0 == 1.0 && v1 == 2.0) || (v0 == 2.0 && v1 == 1.0));
+        } else {
+            panic!("Expected list of values");
+        }
+    }
 }

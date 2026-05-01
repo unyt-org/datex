@@ -10,3 +10,4 @@ pub mod range;
 pub mod set;
 pub mod text;
 pub mod r#type;
+pub mod methods;
