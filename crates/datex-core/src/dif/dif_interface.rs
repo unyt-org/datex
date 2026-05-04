@@ -21,6 +21,7 @@ use crate::{
 };
 use alloc::rc::Rc;
 use core::{cell::RefCell, result::Result};
+use crate::dif::cache::ValueNotFoundInCacheError;
 use crate::shared_values::base_shared_value_container::observers::{ObserveOptions, Observer, ObserverId, TransceiverId};
 
 pub struct DIFInterface {
@@ -106,16 +107,11 @@ impl DIFInterface {
     /// Returns an error if the pointer is not found in memory.
     pub fn resolve_pointer_address(
         &mut self,
-        address_with_ownership: PointerAddressWithOwnership,
-    ) -> Result<SharedContainer, DIFResolveReferenceError> {
-        // FIXME Check if ownership is allowed,
-        // do not take from cache?!
+        address: PointerAddress,
+    ) -> Result<SharedContainer, ValueNotFoundInCacheError> {
         self.cache
-            .try_get_shared_container_with_ownership(
-                &address_with_ownership.address,
-                address_with_ownership.ownership,
-            )
-            .map_err(|_| DIFResolveReferenceError::ReferenceNotFound)
+            .try_get_shared_container(&address)
+            .cloned()
     }
 
     /// Starts observing changes to the pointer at the given address.
