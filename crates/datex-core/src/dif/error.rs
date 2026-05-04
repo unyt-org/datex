@@ -5,6 +5,7 @@ use crate::{
     value_updates::{errors::UpdateError, update_data::UpdateReturn},
 };
 use core::{fmt::Display, result::Result};
+use strum_macros::Display;
 use crate::shared_values::base_shared_value_container::observers::ObserverError;
 
 pub type DIFUpdateResult = Result<UpdateReturn, DIFUpdateError>;
@@ -75,7 +76,7 @@ impl Display for DIFObserveError {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Display)]
 pub enum DIFUpdateError {
     UpdateError(UpdateError),
     CacheValueRetrievalError(CacheValueRetrievalError),

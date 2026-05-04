@@ -1,3 +1,4 @@
+use core::fmt::Display;
 use crate::{
     collections::HashMap,
     shared_values::{
@@ -20,6 +21,13 @@ pub struct DIFSharedContainerCache {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ValueNotFoundInCacheError;
+
+impl Display for ValueNotFoundInCacheError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "Value not found in cache")
+    }
+}
+
 
 #[derive(Debug, Clone, PartialEq, Eq, Display)]
 pub enum CacheValueRetrievalError {
