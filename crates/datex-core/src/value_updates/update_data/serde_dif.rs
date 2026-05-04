@@ -84,7 +84,7 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, UpdateData> {
             }
             UpdateData::Clear => {
                 let mut state = serializer.serialize_struct("Clear", 1)?;
-                state.serialize_field("type", "Clear")?;
+                state.serialize_field("kind", "clear")?;
                 state.end()
             }
             UpdateData::AppendEntry(append_entry_data) => {
@@ -123,7 +123,7 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, ReplaceUpdateData> {
 
     fn serialize<S: Serializer>(&mut self, value: &Self::Value, serializer: S) -> Result<S::Ok, S::Error> {
         let mut state = serializer.serialize_struct("ReplaceUpdateData", 2)?;
-        state.serialize_field("type", "Replace")?;
+        state.serialize_field("kind", "replace")?;
         state.serialize_field("value", &ValueWithSeed::new(&value.value, self.cast::<ValueContainer>()))?;
         state.end()
     }
@@ -134,7 +134,7 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, SetEntryUpdateData> {
 
     fn serialize<S: Serializer>(&mut self, value: &Self::Value, serializer: S) -> Result<S::Ok, S::Error> {
         let mut state = serializer.serialize_struct("SetEntryUpdateData", 3)?;
-        state.serialize_field("type", "SetEntry")?;
+        state.serialize_field("kind", "set_entry")?;
         state.serialize_field("key", &ValueWithSeed::new(&value.key, self.cast::<ValueKey>()))?;
         state.serialize_field("value", &ValueWithSeed::new(&value.value, self.cast::<ValueContainer>()))?;
         state.end()
@@ -146,7 +146,7 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, DeleteEntryUpdateData> {
 
     fn serialize<S: Serializer>(&mut self, value: &Self::Value, serializer: S) -> Result<S::Ok, S::Error> {
         let mut state = serializer.serialize_struct("DeleteEntryUpdateData", 2)?;
-        state.serialize_field("type", "DeleteEntry")?;
+        state.serialize_field("kind", "delete_entry")?;
         state.serialize_field("key", &ValueWithSeed::new(&value.key, self.cast::<ValueKey>()))?;
         state.end()
     }
@@ -157,7 +157,7 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, AppendEntryUpdateData> {
 
     fn serialize<S: Serializer>(&mut self, value: &Self::Value, serializer: S) -> Result<S::Ok, S::Error> {
         let mut state = serializer.serialize_struct("AppendEntryUpdateData", 2)?;
-        state.serialize_field("type", "AppendEntry")?;
+        state.serialize_field("kind", "append_entry")?;
         state.serialize_field("value", &ValueWithSeed::new(&value.value, self.cast::<ValueContainer>()))?;
         state.end()
     }
@@ -168,7 +168,7 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, ListSpliceUpdateData> {
 
     fn serialize<S: Serializer>(&mut self, value: &Self::Value, serializer: S) -> Result<S::Ok, S::Error> {
         let mut state = serializer.serialize_struct("ListSpliceUpdateData", 4)?;
-        state.serialize_field("type", "ListSplice")?;
+        state.serialize_field("kind", "list_splice")?;
         state.serialize_field("start", &value.start)?;
         state.serialize_field("delete_count", &value.delete_count)?;
         state.serialize_field("items", &ValueWithSeed::new(&value.items, self.cast::<Vec<ValueContainer>>()))?;
