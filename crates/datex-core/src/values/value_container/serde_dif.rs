@@ -1,6 +1,5 @@
 use crate::{
     shared_values::SharedContainer,
-    utils::serde_serialized_owned::SerializeSeedOwned,
     values::{value::Value, value_container::ValueContainer},
 };
 use serde::{Deserialize, Serialize, Serializer, de::IntoDeserializer};
@@ -24,6 +23,8 @@ use serde::{
     Deserializer,
     de::{DeserializeSeed, MapAccess, Visitor},
 };
+use crate::utils::serde_serialize_seed::SerializeSeed;
+
 /// Deserialization for [ValueContainer] using a [DeserializationContext] to provide access to the memory during deserialization.
 impl<'de, 'ctx> DeserializeSeed<'de> for SerdeContext<'ctx, ValueContainer> {
     type Value = ValueContainer;
@@ -65,12 +66,12 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, ValueContainer> {
     }
 }
 
-impl<'ctx> SerializeSeedOwned for SerdeContext<'ctx, ValueContainer> {
+impl<'ctx> SerializeSeed for SerdeContext<'ctx, ValueContainer> {
     type Value = ValueContainer;
 
-    fn serialize_owned<S>(
+    fn serialize<S>(
         &mut self,
-        value: Self::Value,
+        value: &Self::Value,
         serializer: S,
     ) -> Result<S::Ok, S::Error>
     where
@@ -79,7 +80,7 @@ impl<'ctx> SerializeSeedOwned for SerdeContext<'ctx, ValueContainer> {
         match value {
             ValueContainer::Shared(shared) => self
                 .cast::<SharedContainer>()
-                .serialize_owned(shared, serializer),
+                .serialize(shared, serializer),
             ValueContainer::Local(local) => local.serialize(serializer),
         }
     }
@@ -126,7 +127,7 @@ mod tests {
     ) -> String {
         let mut context = SerdeContext::<ValueContainer>::new(dif_cache);
         let mut serializer = serde_json::Serializer::new(Vec::new());
-        context.serialize_owned(value, &mut serializer).unwrap();
+        context.serialize(&value, &mut serializer).unwrap();
         let bytes = serializer.into_inner();
         String::from_utf8(bytes).unwrap()
     }

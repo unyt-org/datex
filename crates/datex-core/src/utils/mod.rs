@@ -7,6 +7,6 @@ pub mod color;
 pub mod freemap;
 pub mod maybe_action;
 pub mod maybe_async;
-pub mod serde_serialized_owned;
+pub mod serde_serialize_seed;
 pub mod task_manager;
 pub mod uuid;

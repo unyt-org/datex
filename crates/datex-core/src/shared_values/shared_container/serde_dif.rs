@@ -6,12 +6,12 @@ use crate::{
     shared_values::{
         ReferenceMutability, SharedContainer, SharedContainerOwnership,
     },
-    utils::serde_serialized_owned::SerializeSeedOwned,
 };
 use alloc::format;
 use serde::{
     Deserialize, Deserializer, Serialize, Serializer, de::DeserializeSeed,
 };
+use crate::utils::serde_serialize_seed::SerializeSeed;
 
 impl Serialize for SharedContainer {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -54,12 +54,18 @@ impl<'de, 'ctx> DeserializeSeed<'de> for SerdeContext<'ctx, SharedContainer> {
     }
 }
 
-impl<'ctx> SerializeSeedOwned for SerdeContext<'ctx, SharedContainer> {
+impl<'ctx> SerializeSeed for SerdeContext<'ctx, SharedContainer> {
     type Value = SharedContainer;
 
-    fn serialize_owned<S>(
+    /// SAFETY:
+    /// The caller of the `serialize` method must either
+    /// * guarantee that no direct value (accessible without borrow) is an owned shared value 
+    ///   (this can be guaranteed by calling clone on the top level value before passing it to [SerializeSeed])
+    /// * or guarantee that the value is dropped after calling `serialize`, so that the owned shared value 
+    ///   is not leaked after serialization.
+    fn serialize<S>(
         &mut self,
-        value: Self::Value,
+        value: &Self::Value,
         serializer: S,
     ) -> Result<S::Ok, S::Error>
     where
