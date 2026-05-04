@@ -3,22 +3,20 @@ use crate::{
     shared_values::errors::AccessError,
     values::{
         core_values::list::List,
-        value_container::{ValueContainer, value_key::BorrowedValueKey},
+        value_container::{value_key::BorrowedValueKey, ValueContainer},
     },
 };
 
-use crate::{
-    shared_values::observers::TransceiverId,
-    value_updates::{
-        errors::UpdateError,
-        update_data::{
-            AppendEntryUpdateData, DeleteEntryUpdateData, ListSpliceUpdateData,
-            ReplaceUpdateData, SetEntryUpdateData,
-        },
-        update_handler::UpdateHandler,
+use crate::value_updates::{
+    errors::UpdateError,
+    update_data::{
+        AppendEntryUpdateData, DeleteEntryUpdateData, ListSpliceUpdateData,
+        ReplaceUpdateData, SetEntryUpdateData,
     },
+    update_handler::UpdateHandler,
 };
 use core::result::Result;
+use crate::shared_values::base_shared_value_container::observers::TransceiverId;
 
 impl UpdateHandler for List {
     fn try_replace(

@@ -1,12 +1,11 @@
 use crate::{
     dif::cache::CacheValueRetrievalError,
     runtime::execution::ExecutionError,
-    shared_values::{
-        errors::SharedValueCreationError, observers::ObserverError,
-    },
+    shared_values::errors::SharedValueCreationError,
     value_updates::{errors::UpdateError, update_data::UpdateReturn},
 };
 use core::{fmt::Display, result::Result};
+use crate::shared_values::base_shared_value_container::observers::ObserverError;
 
 pub type DIFUpdateResult = Result<UpdateReturn, DIFUpdateError>;
 

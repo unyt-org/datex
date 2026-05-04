@@ -1,6 +1,5 @@
 use crate::{
     prelude::*,
-    shared_values::observers::TransceiverId,
     value_updates::{
         errors::UpdateError,
         update_data::{
@@ -12,6 +11,7 @@ use crate::{
     values::value_container::ValueContainer,
 };
 use core::result::Result;
+use crate::shared_values::base_shared_value_container::observers::TransceiverId;
 
 impl UpdateHandler for ValueContainer {
     fn try_replace(

@@ -2,17 +2,16 @@ use crate::{
     dif::{
         cache::DIFSharedContainerCache,
         error::{
-            DIFApplyError, DIFCreatePointerError, DIFObserveError,
-            DIFResolveReferenceError, DIFUpdateResult, into_update_result,
+            into_update_result, DIFApplyError, DIFCreatePointerError,
+            DIFObserveError, DIFResolveReferenceError, DIFUpdateResult,
         },
         pointer_address::PointerAddressWithOwnership,
     },
     runtime::pointer_address_provider::SelfOwnedPointerAddressProvider,
     shared_values::{
-        OwnedSharedContainer, PointerAddress, SelfOwnedPointerAddress,
-        SelfOwnedSharedContainer, SharedContainer,
-        base_shared_value_container::BaseSharedValueContainer,
-        observers::{ObserveOptions, Observer, ObserverId, TransceiverId},
+        base_shared_value_container::BaseSharedValueContainer, OwnedSharedContainer, PointerAddress,
+        SelfOwnedPointerAddress, SelfOwnedSharedContainer,
+        SharedContainer,
     },
     value_updates::{
         update_data::{Update, UpdateData},
@@ -22,6 +21,7 @@ use crate::{
 };
 use alloc::rc::Rc;
 use core::{cell::RefCell, result::Result};
+use crate::shared_values::base_shared_value_container::observers::{ObserveOptions, Observer, ObserverId, TransceiverId};
 
 pub struct DIFInterface {
     pub cache: DIFSharedContainerCache,

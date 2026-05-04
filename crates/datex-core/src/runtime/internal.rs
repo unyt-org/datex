@@ -1,5 +1,5 @@
 use crate::{
-    channel::mpsc::{UnboundedReceiver, create_unbounded_channel},
+    channel::mpsc::{create_unbounded_channel, UnboundedReceiver},
     collections::HashMap,
     dif::dif_interface::DIFInterface,
     disassembler::print_disassembled,
@@ -16,29 +16,28 @@ use crate::{
     },
     network::{
         com_hub::{
-            ComHub, InterfacePriority, network_response::ResponseOptions,
+            network_response::ResponseOptions, ComHub, InterfacePriority,
         },
         com_interfaces::local_loopback_interface::LocalLoopbackInterfaceSetupData,
     },
     prelude::*,
     runtime::{
-        Runtime, RuntimeConfig, RuntimeConfigInterface,
         execution::{
-            ExecutionError, InvalidProgramError,
             context::{
                 ExecutionContext, ExecutionMode, RemoteExecutionContext,
                 ScriptExecutionError,
-            },
-            execution_input::ExecutionCallerMetadata,
-        },
-        memory::Memory,
-        pointer_address_provider::SelfOwnedPointerAddressProvider,
+            }, execution_input::ExecutionCallerMetadata,
+            ExecutionError,
+            InvalidProgramError,
+        }, memory::Memory, pointer_address_provider::SelfOwnedPointerAddressProvider,
         request_move::compile_request_move,
+        Runtime,
+        RuntimeConfig,
+        RuntimeConfigInterface,
     },
     shared_values::{
         ExternalPointerAddress, OwnedSharedContainer, PointerAddress,
         SelfOwnedPointerAddress, SharedContainerMutability,
-        observers::TransceiverId,
     },
     time::Instant,
     utils::task_manager::TaskManager,
@@ -54,6 +53,7 @@ use core::{
     slice,
 };
 use log::{debug, error, info};
+use crate::shared_values::base_shared_value_container::observers::TransceiverId;
 
 #[derive(Debug)]
 pub struct RuntimeInternal {

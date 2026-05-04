@@ -6,16 +6,15 @@ use crate::{
         pointer_address_provider::SelfOwnedPointerAddressProvider,
     },
     shared_values::{
-        OwnedSharedContainer, PointerAddress, ReferencedSharedContainer,
-        SelfOwnedPointerAddress, SharedContainerInner,
-        SharedContainerMutability, SharedContainerOwnership,
-        base_shared_value_container::BaseSharedValueContainer,
-        errors::{
+        base_shared_value_container::BaseSharedValueContainer, errors::{
             AccessError, UnexpectedImmutableReferenceError,
             UnexpectedSharedContainerOwnershipError,
-        },
-        internal_traits::_ExposeRcInternal,
-        observers::{Observer, ObserverError, ObserverId},
+        }, internal_traits::_ExposeRcInternal,
+        OwnedSharedContainer, PointerAddress,
+        ReferencedSharedContainer, SelfOwnedPointerAddress,
+        SharedContainerInner,
+        SharedContainerMutability,
+        SharedContainerOwnership,
     },
     traits::{
         apply::Apply, identity::Identity, structural_eq::StructuralEq,
@@ -24,7 +23,7 @@ use crate::{
     types::r#type::Type,
     values::{
         value::Value,
-        value_container::{ValueContainer, value_key::BorrowedValueKey},
+        value_container::{value_key::BorrowedValueKey, ValueContainer},
     },
 };
 pub mod identity;
@@ -35,6 +34,8 @@ use core::{
     hash::{Hash, Hasher},
 };
 use serde::Serializer;
+use crate::shared_values::base_shared_value_container::observers::{Observer, ObserverError, ObserverId};
+
 pub mod apply;
 pub mod serde_dif;
 /// Top-level wrapper for any owned or referenced shared container,
@@ -156,16 +157,6 @@ impl SharedContainer {
                 referenced.base_shared_container_mut()
             }
         }
-    }
-
-    /// Sets the currently assigned [ValueContainer] of the shared container to a new value container.
-    /// Returns the [ValueContainer] as an error if it could not be assigned
-    pub fn try_set_value_container(
-        &self,
-        new_value_container: ValueContainer,
-    ) -> Result<(), ValueContainer> {
-        self.base_shared_container_mut()
-            .try_set_value_container(new_value_container)
     }
 
     /// Gets a [Ref] to the currently assigned [ValueContainer] of the shared container (not resolved recursively)

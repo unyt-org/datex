@@ -171,12 +171,8 @@ mod tests {
         prelude::*,
         runtime::memory::Memory,
         shared_values::{
-            SharedContainerMutability,
             base_shared_value_container::BaseSharedValueContainer,
-            observers::{
-                ObserveOptions, Observer, ObserverError, ObserverId,
-                TransceiverId,
-            },
+            SharedContainerMutability,
         },
         value_updates::{
             update_data::{
@@ -186,10 +182,14 @@ mod tests {
         },
         values::{
             core_values::map::Map,
-            value_container::{ValueContainer, value_key::ValueKey},
+            value_container::{value_key::ValueKey, ValueContainer},
         },
     };
     use core::{assert_matches, cell::RefCell};
+    use crate::shared_values::base_shared_value_container::observers::{
+        ObserveOptions, Observer, ObserverError, ObserverId,
+        TransceiverId,
+    };
 
     /// Helper function to record DIF updates observed on a reference
     /// Returns a Rc<RefCell<Vec<DIFUpdate>>> that contains all observed updates
@@ -295,20 +295,22 @@ mod tests {
             ObserveOptions::default(),
         );
 
+        let replace_data = ReplaceUpdateData {
+            value: ValueContainer::from(43),
+        };
+
         // Update the value of the reference
         int_ref
-            .try_set_value_container(ValueContainer::from(43))
+            .try_replace(replace_data.clone(), TransceiverId(1))
             .expect("Failed to set value");
 
         // Verify the observed update matches the expected change
-        let expected_update = Update {
+        let update = Update {
             source_id: TransceiverId(1),
-            data: UpdateData::Replace(ReplaceUpdateData {
-                value: ValueContainer::from(43),
-            }),
+            data: UpdateData::Replace(replace_data),
         };
 
-        assert_eq!(*observed_updates.borrow(), vec![expected_update]);
+        assert_eq!(*observed_updates.borrow(), vec![update]);
     }
 
     #[test]
@@ -326,10 +328,12 @@ mod tests {
             TransceiverId(0),
             ObserveOptions::default(),
         );
-
+        
         // Update the value of the reference
         int_ref
-            .try_set_value_container(ValueContainer::from(43))
+            .try_replace(ReplaceUpdateData {
+                value: ValueContainer::from(43),
+            }, TransceiverId(0))
             .expect("Failed to set value");
 
         // No update triggered, same transceiver id

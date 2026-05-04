@@ -1,11 +1,11 @@
 use crate::{
     global::operators::{
-        ArithmeticUnaryOperator, AssignmentOperator, BinaryOperator,
-        ComparisonOperator, LogicalUnaryOperator, SharedValueUnaryOperator,
-        UnaryOperator,
         binary::{
             ArithmeticOperator, BitwiseOperator, LogicalOperator, RangeOperator,
-        },
+        }, ArithmeticUnaryOperator, AssignmentOperator,
+        BinaryOperator, ComparisonOperator, LogicalUnaryOperator,
+        SharedValueUnaryOperator,
+        UnaryOperator,
     },
     runtime::execution::ExecutionError,
     traits::{
@@ -13,7 +13,7 @@ use crate::{
     },
     values::{
         core_values::range::Range,
-        value_container::{ValueContainer, value_key::ValueKey},
+        value_container::{value_key::ValueKey, ValueContainer},
     },
 };
 use core::cell::RefCell;
@@ -21,12 +21,12 @@ use core::cell::RefCell;
 use crate::{
     prelude::*,
     runtime::memory::Memory,
-    shared_values::observers::TransceiverId,
     types::{r#type::Type, type_match::TypeMatch},
     value_updates::{
         update_data::SetEntryUpdateData, update_handler::UpdateHandler,
     },
 };
+use crate::shared_values::base_shared_value_container::observers::TransceiverId;
 
 pub fn set_property(
     target: &mut ValueContainer,

@@ -1,28 +1,30 @@
 //! This module contains the implementation of the [BaseSharedValueContainer], which is the underlying data structure for shared values in DATEX.
 use crate::{
-    shared_values::observers::{Observer, ObserverId},
     traits::value_eq::ValueEq,
     utils::freemap::FreeHashMap,
     values::{
         value::Value,
-        value_container::{ValueContainer, value_key::BorrowedValueKey},
+        value_container::{value_key::BorrowedValueKey, ValueContainer},
     },
 };
 pub mod update_handler;
 use crate::{
     runtime::memory::Memory,
     shared_values::{
-        SharedContainerMutability,
         errors::{AccessError, SharedValueCreationError},
+        SharedContainerMutability,
     },
     types::r#type::Type,
     value_updates::errors::UpdateError,
 };
 pub mod apply;
+pub mod observers;
+
 use core::{
     fmt::{Debug, Display},
     prelude::rust_2024::*,
 };
+use observers::{Observer, ObserverId};
 
 pub struct BaseSharedValueContainer {
     /// The value of the container
@@ -93,18 +95,7 @@ impl BaseSharedValueContainer {
             ValueContainer::Shared(shared) => shared.with_collapsed_value(f),
         }
     }
-
-    /// Sets the currently assigned [ValueContainer] of the shared container to a new value container.
-    /// Returns the [ValueContainer] as an error if the new value container's allowed type is not compatible with the allowed type of the shared container
-    pub fn try_set_value_container(
-        &mut self,
-        new_value_container: ValueContainer,
-    ) -> Result<(), ValueContainer> {
-        // TODO do type checking to ensure new value container's allowed type is compatible with self.allowed_type
-        self.value_container = new_value_container;
-        Ok(())
-    }
-
+    
     pub fn try_get_property<'a>(
         &self,
         key: impl Into<BorrowedValueKey<'a>>,

@@ -5,7 +5,6 @@ pub mod errors;
 mod external_shared_container;
 mod internal_traits; // IMPORTANT: don't expose this module, for internal use only
 pub mod mutations;
-pub mod observers;
 mod owned_shared_container;
 mod ownership;
 mod pointer_address;

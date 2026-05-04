@@ -1,10 +1,10 @@
 use crate::{
     dif::serde_context::SerdeContext,
     prelude::*,
-    shared_values::observers::TransceiverId,
-    values::value_container::{ValueContainer, value_key::ValueKey},
+    values::value_container::{value_key::ValueKey, ValueContainer},
 };
-use serde::{Deserializer, de::DeserializeSeed};
+use serde::{de::DeserializeSeed, Deserializer};
+use crate::shared_values::base_shared_value_container::observers::TransceiverId;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum UpdateData {
@@ -26,6 +26,16 @@ pub enum UpdateData {
 
     /// Special update operation for list values that allows splicing
     ListSplice(ListSpliceUpdateData),
+}
+
+impl UpdateData {
+    /// Creates a new [Update] struct with the given [TransceiverId] as source id.
+    pub fn with_source(self, source_id: TransceiverId) -> Update {
+        Update {
+            source_id,
+            data: self,
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
