@@ -1,3 +1,5 @@
+mod serde_dif;
+
 use crate::{
     dif::serde_context::SerdeContext,
     prelude::*,
@@ -41,17 +43,6 @@ impl UpdateData {
 #[derive(Clone, Debug, PartialEq)]
 pub struct ReplaceUpdateData {
     pub value: ValueContainer,
-}
-
-/// Deserialization for [ReplaceUpdateData] using a [DeserializationContext] to provide access to the memory during deserialization.
-impl<'de, 'ctx> DeserializeSeed<'de> for SerdeContext<'ctx, ReplaceUpdateData> {
-    type Value = ReplaceUpdateData;
-    fn deserialize<D: Deserializer<'de>>(
-        self,
-        _d: D,
-    ) -> Result<ReplaceUpdateData, D::Error> {
-        todo!()
-    }
 }
 
 #[derive(Clone, Debug, PartialEq)]

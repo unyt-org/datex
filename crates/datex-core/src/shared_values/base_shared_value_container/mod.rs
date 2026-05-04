@@ -19,6 +19,7 @@ use crate::{
 };
 pub mod apply;
 pub mod observers;
+pub mod serde_dif;
 
 use core::{
     fmt::{Debug, Display},
@@ -95,7 +96,7 @@ impl BaseSharedValueContainer {
             ValueContainer::Shared(shared) => shared.with_collapsed_value(f),
         }
     }
-    
+
     pub fn try_get_property<'a>(
         &self,
         key: impl Into<BorrowedValueKey<'a>>,

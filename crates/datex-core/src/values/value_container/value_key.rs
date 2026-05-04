@@ -8,12 +8,33 @@ use crate::{
         core_value::CoreValue, value::Value, value_container::ValueContainer,
     },
 };
+use crate::dif::serde_context::SerdeContext;
+use crate::utils::serde_serialize_seed::SerializeSeed;
+use crate::value_updates::update_data::SetEntryUpdateData;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum ValueKey {
     Text(String),
     Index(i64),
     Value(ValueContainer),
+}
+
+impl<'ctx> SerializeSeed for SerdeContext<'ctx, ValueKey> {
+    type Value = ValueKey;
+
+    fn serialize<S: serde::Serializer>(
+        &mut self,
+        value: &Self::Value,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error> {
+        match value {
+            ValueKey::Text(text) => text.serialize(serializer),
+            ValueKey::Index(index) => index.serialize(serializer),
+            ValueKey::Value(value_container) => {
+                self.cast::<ValueContainer>().serialize(value_container, serializer)
+            }
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
