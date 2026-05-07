@@ -122,6 +122,10 @@ impl List {
         let index = self.get_valid_index(index)?;
         Ok(self.0.remove(index))
     }
+
+    pub fn sort_by_to_string(&mut self) {
+        self.0.sort_by(|a, b| a.to_string().cmp(&b.to_string()));
+    }
 }
 
 impl StructuralEq for List {

@@ -276,7 +276,7 @@ ast = []
 
 parser = ["dep:logos"]
 
-compiler = ["ast", "parser", "dep:ariadne", "dep:pretty"]
+compiler = ["ast", "parser", "dep:ariadne", "dep:pretty", "dep:syn"]
 
 decompiler = ["ast"]
 

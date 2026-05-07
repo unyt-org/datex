@@ -1,3 +1,31 @@
+//! This file is one level above of `Instruction` system
+//! If Instruction is a bytecode, than this is something like AST (Abstract Syntax Tree)
+//! This is the structure that represent program before it become Instruction
+//!
+//! # Example
+//! Lets take `List` as example
+//!
+//! When you write in Datex something like
+//! ```dx
+//! [1, 2, 3]
+//! ```
+//! Compiler will not immediately convert it to
+//! ```sh
+//! LIST 3
+//! INT 1
+//! INT 2
+//! INT 3
+//! ```
+//!
+//! Instead it will first build an AST node like
+//! ```sh
+//! DatexExpression {
+//!    data: DatexExpressionData::List(List { items: [Integer(1), ...] }), // So it is storing some Data
+//!    span: ..., // where is source code it came from (for errors)
+//!    ty: None, // Possible Type
+//! }
+//! ```
+
 use crate::{
     ast::{
         resolved_variable::{ResolvedVariable, VariableId},
@@ -20,6 +48,7 @@ use crate::{
             endpoint::Endpoint,
             integer::{Integer, typed_integer::TypedInteger},
             r#type::{LocalReferenceMutability, Type},
+            // set::{Set}
         },
         value::Value,
         value_container::ValueContainer,
@@ -105,8 +134,11 @@ pub enum DatexExpressionData {
 
     /// Endpoint, e.g. @test_a or @test_b
     Endpoint(Endpoint),
+
     /// List, e.g  `[1, 2, 3, "text"]`
     List(List),
+    /// Set, just a set data structure
+    Set(Set),
     /// Map, e.g {"xy": 2, (3): 4, xy: "xy"}
     Map(Map),
     /// One or more statements, e.g (1; 2; 3)
@@ -263,6 +295,14 @@ impl TryFrom<&DatexExpressionData> for ValueContainer {
                     .map(|e| ValueContainer::try_from(&e.data))
                     .collect::<Result<Vec<ValueContainer>, ()>>()?;
                 ValueContainer::from(core_values::list::List::from(entries))
+            }
+            DatexExpressionData::Set(set) => {
+                let elements = set
+                    .items
+                    .iter()
+                    .map(|e| ValueContainer::try_from(&e.data))
+                    .collect::<Result<Vec<ValueContainer>, ()>>()?;
+                ValueContainer::from(core_values::set::Set::from(elements))
             }
             DatexExpressionData::Map(pairs) => {
                 let entries = pairs
@@ -474,6 +514,16 @@ pub struct List {
 impl List {
     pub fn new(items: Vec<DatexExpression>) -> Self {
         List { items }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct Set {
+    pub items: Vec<DatexExpression>,
+}
+impl Set {
+    pub fn new(items: Vec<DatexExpression>) -> Self {
+        Set { items }
     }
 }
 

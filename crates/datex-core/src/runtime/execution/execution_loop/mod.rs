@@ -1,5 +1,5 @@
 pub mod interrupts;
-mod operations;
+pub mod operations;
 mod runtime_value;
 mod slots;
 pub mod state;
@@ -18,7 +18,7 @@ use crate::{
         instruction_codes::InstructionCode,
         operators::{
             AssignmentOperator, BinaryOperator, ComparisonOperator,
-            UnaryOperator,
+            UnaryOperator, binary::LogicalOperator,
         },
         protocol_structures::instructions::{
             ApplyData, DecimalData, Float32Data, Float64Data, FloatAsInt16Data,
@@ -37,8 +37,8 @@ use crate::{
             },
             operations::{
                 handle_assignment_operation, handle_binary_operation,
-                handle_comparison_operation, handle_unary_operation,
-                set_property,
+                handle_comparison_operation, handle_logical_operation,
+                handle_unary_operation, set_property,
             },
             runtime_value::RuntimeValue,
             slots::{get_internal_slot_value, get_slot_value},
@@ -65,6 +65,7 @@ use crate::{
             integer::typed_integer::TypedInteger,
             list::List,
             map::{Map, MapKey},
+            set::Set,
             r#type::{Type, TypeMetadata},
         },
         value::Value,
@@ -73,7 +74,6 @@ use crate::{
 };
 use alloc::rc::Rc;
 use core::cell::RefCell;
-use log::info;
 
 #[derive(Debug)]
 enum CollectedExecutionResult {
@@ -428,6 +428,8 @@ pub fn inner_execution_loop(
                             RegularInstruction::UnboundedStatements |
                             RegularInstruction::UnboundedStatementsEnd(_) |
                             RegularInstruction::List(_) |
+                            RegularInstruction::ShortSet(_) |
+                            RegularInstruction::Set(_) |
                             RegularInstruction::Range |
                             RegularInstruction::ShortList(_)  |
                             RegularInstruction::Map(_) |
@@ -438,6 +440,9 @@ pub fn inner_execution_loop(
                             RegularInstruction::Subtract |
                             RegularInstruction::Multiply |
                             RegularInstruction::Divide |
+                            RegularInstruction::And |
+                            RegularInstruction::Or |
+                            RegularInstruction::Not |
                             RegularInstruction::UnaryMinus |
                             RegularInstruction::UnaryPlus |
                             RegularInstruction::BitwiseNot |
@@ -590,6 +595,13 @@ pub fn inner_execution_loop(
                                     )
                                     .into()
                                 }
+                                RegularInstruction::Set(_) => {
+                                    let elements = yield_unwrap!(collected_results.collect_value_container_results_assert_existing(&state));
+                                    let set = Set::new(elements);
+                                    RuntimeValue::ValueContainer(
+                                        ValueContainer::from(set),
+                                    ).into()
+                                }
                                 RegularInstruction::Map(_)
                                 | RegularInstruction::ShortMap(_) => {
                                     let entries = yield_unwrap!(collected_results.collect_key_value_pair_results_assert_existing());
@@ -631,7 +643,9 @@ pub fn inner_execution_loop(
                                 | RegularInstruction::Subtract
                                 | RegularInstruction::Multiply
                                 | RegularInstruction::Range
-                                | RegularInstruction::Divide => {
+                                | RegularInstruction::Divide
+                                | RegularInstruction::And
+                                | RegularInstruction::Or => {
                                     let right = yield_unwrap!(
                                         collected_results
                                             .pop_cloned_value_container_result_assert_existing(&state)
@@ -738,7 +752,8 @@ pub fn inner_execution_loop(
                                 RegularInstruction::UnaryMinus
                                 | RegularInstruction::UnaryPlus
                                 | RegularInstruction::BitwiseNot
-                                | RegularInstruction::Unbox => {
+                                | RegularInstruction::Unbox
+                                | RegularInstruction::Not => {
                                     let mut target = yield_unwrap!(
                                         collected_results
                                             .pop_runtime_value_result_assert_existing()

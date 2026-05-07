@@ -2,7 +2,7 @@ use crate::{
     ast::{
         expressions::{
             Apply, BinaryOperation, DatexExpression, DatexExpressionData, List,
-            Map, PropertyAssignment, Slot, Statements, UnaryOperation,
+            Map, PropertyAssignment, Set, Slot, Statements, UnaryOperation,
             UnboundedStatement, VariableAssignment, VariableDeclaration,
             VariableKind,
         },
@@ -298,6 +298,8 @@ pub fn ast_from_bytecode(
                                 )
                                 | RegularInstruction::List(_)
                                 | RegularInstruction::ShortList(_)
+                                | RegularInstruction::ShortSet(_)
+                                | RegularInstruction::Set(_)
                                 | RegularInstruction::Map(_)
                                 | RegularInstruction::ShortMap(_)
                                 | RegularInstruction::KeyValueDynamic
@@ -306,6 +308,9 @@ pub fn ast_from_bytecode(
                                 | RegularInstruction::Subtract
                                 | RegularInstruction::Multiply
                                 | RegularInstruction::Divide
+                                | RegularInstruction::And
+                                | RegularInstruction::Or
+                                | RegularInstruction::Not
                                 | RegularInstruction::UnaryMinus
                                 | RegularInstruction::UnaryPlus
                                 | RegularInstruction::BitwiseNot
@@ -403,6 +408,12 @@ pub fn ast_from_bytecode(
                                 let elements =
                                     collected_results.collect_value_results();
                                 DatexExpressionData::List(List::new(elements))
+                                    .with_default_span()
+                                    .into()
+                            }
+                            RegularInstruction::Set(_) => {
+                                let elements = collected_results.collect_value_results();
+                                DatexExpressionData::Set(Set::new(elements))
                                     .with_default_span()
                                     .into()
                             }
@@ -841,6 +852,88 @@ mod tests {
             ]))
             .with_default_span()
         );
+    }
+
+    #[test]
+    fn ast_from_bytecode_simple_set() {
+        // Bytecode layout:
+        // [SET Code] [Length: 2] [UINT8 Code] [Val: 42] [UINT8 Code] [Val: 21]
+        let bytecode: Vec<u8> = vec![
+            InstructionCode::SET as u8,
+            0x02,
+            0x00,
+            0x00,
+            0x00,
+            InstructionCode::UINT_8 as u8,
+            0x2A,
+            InstructionCode::UINT_8 as u8,
+            0x15,
+        ];
+
+        let ast = ast_from_bytecode(&bytecode)
+            .expect("Should decompile Set bytecode");
+
+        let expected = DatexExpressionData::Set(Set::new(vec![
+            DatexExpressionData::TypedInteger(TypedInteger::from(42u8))
+                .with_default_span(),
+            DatexExpressionData::TypedInteger(TypedInteger::from(21u8))
+                .with_default_span(),
+        ]))
+        .with_default_span();
+
+        assert_eq!(ast, expected);
+    }
+
+    #[test]
+    fn ast_from_bytecode_empty_set() {
+        // Bytecode layout: [SET Code] [Length: 0 as u32]
+        let bytecode: Vec<u8> = vec![
+            InstructionCode::SET as u8,
+            0x00,
+            0x00,
+            0x00,
+            0x00, // Fixed: needs 4 bytes (u32)
+        ];
+
+        let ast =
+            ast_from_bytecode(&bytecode).expect("Should decompile empty Set");
+
+        let expected =
+            DatexExpressionData::Set(Set::new(vec![])).with_default_span();
+
+        assert_eq!(ast, expected);
+    }
+
+    #[test]
+    fn ast_from_bytecode_nested_set() {
+        // Bytecode for: <| <| 1 |> |>
+        let bytecode: Vec<u8> = vec![
+            InstructionCode::SET as u8,
+            0x01, // Length is 1
+            0x00,
+            0x00,
+            0x00, // Outer set count (u32)
+            InstructionCode::SET as u8,
+            0x01, // Length is 1
+            0x00,
+            0x00,
+            0x00, // Inner set count (u32)
+            InstructionCode::UINT_8 as u8,
+            0x01,
+        ];
+
+        let ast = ast_from_bytecode(&bytecode).unwrap();
+
+        let inner_set = DatexExpressionData::Set(Set::new(vec![
+            DatexExpressionData::TypedInteger(TypedInteger::from(1u8))
+                .with_default_span(),
+        ]))
+        .with_default_span();
+
+        let expected = DatexExpressionData::Set(Set::new(vec![inner_set]))
+            .with_default_span();
+
+        assert_eq!(ast, expected);
     }
 
     #[test]
