@@ -836,7 +836,7 @@ checksum = "d7a1e2f27636f116493b8b860f5546edb47c8d8f8ea73e1d2a20be88e28d1fea"
 
 [[package]]
 name = "datex-core"
-version = "0.0.11"
+version = "0.0.12"
 dependencies = [
  "ariadne",
  "async-select",
@@ -895,6 +895,7 @@ dependencies = [
  "strum_macros",
  "syn 2.0.117",
  "syntect",
+ "test-case",
  "thiserror 2.0.18",
  "tokio",
  "tsify",
@@ -945,7 +946,7 @@ dependencies = [
 
 [[package]]
 name = "datex-macros-internal"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -954,7 +955,7 @@ dependencies = [
 
 [[package]]
 name = "datex_macros"
-version = "0.1.7"
+version = "0.1.8"
 dependencies = [
  "datex-core",
  "proc-macro2",
@@ -3195,8 +3196,6 @@ dependencies = [
  "realhydroper-lsp-macros",
  "serde",
  "serde_json",
- "tokio",
- "tokio-util",
  "tower",
  "tracing",
 ]
@@ -3934,6 +3933,39 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "06794f8f6c5c898b3275aebefa6b8a1cb24cd2c6c79397ab15774837a0bc5755"
 dependencies = [
  "winapi-util",
+]
+
+[[package]]
+name = "test-case"
+version = "3.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "eb2550dd13afcd286853192af8601920d959b14c401fcece38071d53bf0768a8"
+dependencies = [
+ "test-case-macros",
+]
+
+[[package]]
+name = "test-case-core"
+version = "3.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "adcb7fd841cd518e279be3d5a3eb0636409487998a4aff22f3de87b81e88384f"
+dependencies = [
+ "cfg-if",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.117",
+]
+
+[[package]]
+name = "test-case-macros"
+version = "3.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5c89e72a01ed4c579669add59014b9a524d609c0c88c6a585ce37485879f6ffb"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.117",
+ "test-case-core",
 ]
 
 [[package]]

@@ -1,14 +1,15 @@
 use core::cell::RefCell;
 
+use crate::values::value_container::ValueContainer;
+
 use crate::{
-    global::protocol_structures::instructions::{
-        RawInternalPointerAddress, RawLocalPointerAddress,
+    global::protocol_structures::instruction_data::{
+        RawBuiltinPointerAddress, RawLocalPointerAddress,
         RawRemotePointerAddress,
     },
-    values::value_container::ValueContainer,
+    prelude::*,
+    shared_values::{ReferenceMutability, SharedContainerMutability},
 };
-
-use crate::{prelude::*, shared_values::pointer::PointerReferenceMutability};
 
 #[derive(Debug)]
 pub enum ExecutionInterrupt {
@@ -21,19 +22,21 @@ pub enum ExecutionInterrupt {
 #[derive(Debug)]
 pub enum ExternalExecutionInterrupt {
     Result(Option<ValueContainer>),
-    GetReferenceToRemotePointer(
-        RawRemotePointerAddress,
-        PointerReferenceMutability,
-    ),
+    GetReferenceToRemotePointer(RawRemotePointerAddress, ReferenceMutability),
     GetReferenceToLocalPointer(RawLocalPointerAddress),
-    GetReferenceInternalPointer(RawInternalPointerAddress),
+    GetReferenceToBuiltinPointer(RawBuiltinPointerAddress),
     RemoteExecution(ValueContainer, Vec<u8>),
     Apply(ValueContainer, Vec<ValueContainer>),
+    /// Request to move a list of pointers from the current caller endpoint to the local endpoint
+    RequestMove(Vec<(SharedContainerMutability, RawLocalPointerAddress)>),
+    /// Move a list of pointers from the local endpoint to the caller
+    Move(Vec<(RawLocalPointerAddress, RawLocalPointerAddress)>),
 }
 
 #[derive(Debug)]
 pub enum InterruptResult {
     ResolvedValue(Option<ValueContainer>),
+    ResolvedValues(Vec<ValueContainer>),
 }
 
 #[derive(Debug, Clone)]

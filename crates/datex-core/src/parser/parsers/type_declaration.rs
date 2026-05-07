@@ -19,7 +19,7 @@ impl Parser {
             Token::TypeDeclaration | Token::TypeAlias => {
                 let kind = match self.advance()?.token {
                     Token::TypeDeclaration => TypeDeclarationKind::Nominal,
-                    Token::TypeAlias => TypeDeclarationKind::Structural,
+                    Token::TypeAlias => TypeDeclarationKind::Alias,
                     _ => unreachable!(),
                 };
 
@@ -111,7 +111,7 @@ mod tests {
             expr.data,
             DatexExpressionData::TypeDeclaration(TypeDeclaration {
                 id: None,
-                kind: TypeDeclarationKind::Structural,
+                kind: TypeDeclarationKind::Alias,
                 name: "myAlias".to_string(),
                 definition: TypeExpressionData::Boolean(false)
                     .with_default_span(),

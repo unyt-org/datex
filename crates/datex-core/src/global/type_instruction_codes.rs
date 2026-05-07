@@ -1,11 +1,13 @@
 use crate::{
-    shared_values::shared_container::SharedContainerMutability,
-    types::definition::TypeDefinition,
+    shared_values::SharedContainerMutability,
+    types::type_definition::TypeDefinition,
 };
 
 use crate::{
-    shared_values::pointer::PointerReferenceMutability,
-    values::core_values::r#type::{LocalMutability, LocalReferenceMutability},
+    shared_values::{ReferenceMutability, SharedContainerOwnership},
+    types::type_definition_with_metadata::{
+        LocalMutability, LocalReferenceMutability,
+    },
 };
 use modular_bitfield::Specifier;
 use num_enum::TryFromPrimitive;
@@ -26,15 +28,6 @@ use strum::Display;
 pub enum TypeInstructionCode {
     SHARED_TYPE_REFERENCE,
     TYPE_WITH_IMPLS,
-    TYPE_UNIT,
-    TYPE_UNKNOWN,
-    TYPE_NEVER,
-    TYPE_STRUCTURAL,
-    TYPE_INTERSECTION,
-    TYPE_UNION,
-    TYPE_FUNCTION,
-    TYPE_COLLECTION,
-    TYPE_TYPE,
 
     TYPE_LIST,
     TYPE_RANGE,
@@ -42,36 +35,6 @@ pub enum TypeInstructionCode {
     TYPE_LITERAL_INTEGER,
     TYPE_LITERAL_TEXT,
     TYPE_LITERAL_SHORT_TEXT,
-    TYPE_STRUCT,
-
-    // TODO #427: Do we need std_type for optimization purpose?
-    // Rename to CORE_ and implement if required
-    // but TYPE TYPE_TEXT is already two bytes which is not a great benefit over the three
-    // bytes for the internal pointer address + GETREF (4 vs 2 bytes)
-    STD_TYPE_TEXT,
-    STD_TYPE_INT,
-    STD_TYPE_FLOAT,
-    STD_TYPE_BOOLEAN,
-    STD_TYPE_NULL,
-    STD_TYPE_VOID,
-    STD_TYPE_BUFFER,
-    STD_TYPE_CODE_BLOCK,
-    STD_TYPE_QUANTITY,
-    STD_TYPE_TIME,
-    STD_TYPE_URL,
-
-    STD_TYPE_ARRAY,
-    STD_TYPE_OBJECT,
-    STD_TYPE_SET,
-    STD_TYPE_MAP,
-    STD_TYPE_TUPLE,
-
-    STD_TYPE_FUNCTION,
-    STD_TYPE_STREAM,
-    STD_TYPE_ANY,
-    STD_TYPE_ASSERTION,
-    STD_TYPE_TASK,
-    STD_TYPE_ITERATOR,
 }
 
 impl From<&TypeDefinition> for TypeInstructionCode {
@@ -80,90 +43,98 @@ impl From<&TypeDefinition> for TypeInstructionCode {
             TypeDefinition::ImplType(_, _) => {
                 TypeInstructionCode::TYPE_WITH_IMPLS
             }
-            TypeDefinition::SharedReference(_) => {
+            TypeDefinition::Shared(_) => {
                 TypeInstructionCode::SHARED_TYPE_REFERENCE
             }
-            TypeDefinition::Unit => TypeInstructionCode::TYPE_UNIT,
-            TypeDefinition::Unknown => TypeInstructionCode::TYPE_UNKNOWN,
-            TypeDefinition::Never => TypeInstructionCode::TYPE_NEVER,
-            TypeDefinition::Structural(_) => {
-                TypeInstructionCode::TYPE_STRUCTURAL
+            TypeDefinition::Literal(_) => {
+                todo!()
             }
             TypeDefinition::Intersection(_) => {
-                TypeInstructionCode::TYPE_INTERSECTION
+                todo!()
             }
-            TypeDefinition::Union(_) => TypeInstructionCode::TYPE_UNION,
+            TypeDefinition::Union(_) => todo!(),
             TypeDefinition::Callable { .. } => {
-                TypeInstructionCode::TYPE_FUNCTION
+                todo!()
             }
             TypeDefinition::Collection(_) => {
-                TypeInstructionCode::TYPE_COLLECTION
+                todo!()
             }
-            TypeDefinition::Type(_) => unreachable!(), // TODO #668: nested types
+            TypeDefinition::List(_) => todo!(),
+            TypeDefinition::Map(_) => todo!(),
+            TypeDefinition::Range(_) => todo!(),
+            TypeDefinition::Nested(_) => todo!(),
+            TypeDefinition::Type => todo!(),
+            TypeDefinition::Internal => todo!(),
         }
     }
 }
 
 #[derive(Clone, Debug, PartialEq, Display, Specifier)]
 #[bits = 2]
-pub enum TypeReferenceMutabilityCode {
+pub enum TypeOwnershipCode {
     MutableReference,   // &mut / 'mut
     ImmutableReference, // & / '
     Value,              // default
 }
 
-impl From<&TypeReferenceMutabilityCode> for Option<PointerReferenceMutability> {
-    fn from(value: &TypeReferenceMutabilityCode) -> Self {
+impl From<&TypeOwnershipCode> for SharedContainerOwnership {
+    fn from(value: &TypeOwnershipCode) -> Self {
         match value {
-            TypeReferenceMutabilityCode::MutableReference => {
-                Some(PointerReferenceMutability::Mutable)
+            TypeOwnershipCode::MutableReference => {
+                SharedContainerOwnership::Referenced(
+                    ReferenceMutability::Mutable,
+                )
             }
-            TypeReferenceMutabilityCode::ImmutableReference => {
-                Some(PointerReferenceMutability::Immutable)
+            TypeOwnershipCode::ImmutableReference => {
+                SharedContainerOwnership::Referenced(
+                    ReferenceMutability::Immutable,
+                )
             }
-            TypeReferenceMutabilityCode::Value => None,
+            TypeOwnershipCode::Value => SharedContainerOwnership::Owned,
         }
     }
 }
 
-impl From<&Option<PointerReferenceMutability>> for TypeReferenceMutabilityCode {
-    fn from(value: &Option<PointerReferenceMutability>) -> Self {
+impl From<&SharedContainerOwnership> for TypeOwnershipCode {
+    fn from(value: &SharedContainerOwnership) -> Self {
         match value {
-            Some(PointerReferenceMutability::Mutable) => {
-                TypeReferenceMutabilityCode::MutableReference
+            SharedContainerOwnership::Referenced(
+                ReferenceMutability::Mutable,
+            ) => TypeOwnershipCode::MutableReference,
+            SharedContainerOwnership::Referenced(
+                ReferenceMutability::Immutable,
+            ) => TypeOwnershipCode::ImmutableReference,
+            SharedContainerOwnership::Owned => {
+                TypeOwnershipCode::ImmutableReference
             }
-            Some(PointerReferenceMutability::Immutable) => {
-                TypeReferenceMutabilityCode::ImmutableReference
-            }
-            None => TypeReferenceMutabilityCode::Value,
         }
     }
 }
 
-impl From<&Option<LocalReferenceMutability>> for TypeReferenceMutabilityCode {
+impl From<&Option<LocalReferenceMutability>> for TypeOwnershipCode {
     fn from(value: &Option<LocalReferenceMutability>) -> Self {
         match value {
             Some(LocalReferenceMutability::Mutable) => {
-                TypeReferenceMutabilityCode::MutableReference
+                TypeOwnershipCode::MutableReference
             }
             Some(LocalReferenceMutability::Immutable) => {
-                TypeReferenceMutabilityCode::ImmutableReference
+                TypeOwnershipCode::ImmutableReference
             }
-            None => TypeReferenceMutabilityCode::Value,
+            None => TypeOwnershipCode::Value,
         }
     }
 }
 
-impl From<&TypeReferenceMutabilityCode> for Option<LocalReferenceMutability> {
-    fn from(value: &TypeReferenceMutabilityCode) -> Self {
+impl From<&TypeOwnershipCode> for Option<LocalReferenceMutability> {
+    fn from(value: &TypeOwnershipCode) -> Self {
         match value {
-            TypeReferenceMutabilityCode::MutableReference => {
+            TypeOwnershipCode::MutableReference => {
                 Some(LocalReferenceMutability::Mutable)
             }
-            TypeReferenceMutabilityCode::ImmutableReference => {
+            TypeOwnershipCode::ImmutableReference => {
                 Some(LocalReferenceMutability::Immutable)
             }
-            TypeReferenceMutabilityCode::Value => None,
+            TypeOwnershipCode::Value => None,
         }
     }
 }

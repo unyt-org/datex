@@ -28,11 +28,11 @@ use datex_core::{
     ast::{
         expressions::{
             Apply, BinaryOperation, CallableDeclaration, CallableKind,
-            ComparisonOperation, Conditional, CreateMut, CreateRef,
-            CreateShared, DatexExpression, DatexExpressionData,
-            GenericInstantiation, GetSharedRef, List, Map, PropertyAccess,
-            PropertyAssignment, Slot, UnaryOperation, Unbox,
-            VariableAssignment, VariableDeclaration, VariableKind,
+            ComparisonOperation, Conditional, CreateMut, CreateShared,
+            DatexExpression, DatexExpressionData, GenericInstantiation, GetRef,
+            List, Map, PropertyAccess, PropertyAssignment, RequestSharedRef,
+            Slot, UnaryOperation, Unbox, ValueAccessType, VariableAssignment,
+            VariableDeclaration, VariableKind,
         },
         spanned::Spanned,
         type_expressions::{
@@ -49,8 +49,7 @@ use datex_core::{
         },
     },
     shared_values::{
-        pointer::PointerReferenceMutability, pointer_address::PointerAddress,
-        shared_container::SharedContainerMutability,
+        PointerAddress, ReferenceMutability, SharedContainerMutability,
     },
     values::core_values::error::NumberParseError,
 };
@@ -452,6 +451,7 @@ fn function_simple() {
                     DatexExpressionData::Integer(Integer::from(42))
                         .with_default_span()
                 ),
+                injected_variable_count: None,
             }
         ))
     );
@@ -483,6 +483,7 @@ fn function_with_params() {
                     DatexExpressionData::Integer(Integer::from(42))
                         .with_default_span()
                 ),
+                injected_variable_count: None,
             }
         ))
     );
@@ -542,6 +543,7 @@ fn function_with_params() {
                     )
                     .with_default_span()
                 ),
+                injected_variable_count: None,
             }
         ))
     );
@@ -581,6 +583,7 @@ fn test_function_with_return_type() {
                     DatexExpressionData::Integer(Integer::from(42))
                         .with_default_span()
                 ),
+                injected_variable_count: None,
             }
         ))
     );
@@ -2382,7 +2385,7 @@ fn property_access_assignment() {
     assert_eq!(
         expr,
         DatexExpressionData::PropertyAssignment(PropertyAssignment {
-            operator: AssignmentOperator::Assign,
+            operator: None,
             base: Box::new(
                 DatexExpressionData::PropertyAccess(PropertyAccess {
                     base: Box::new(
@@ -2737,7 +2740,7 @@ fn variable_assignment() {
         expr,
         DatexExpressionData::VariableAssignment(VariableAssignment {
             id: None,
-            operator: AssignmentOperator::Assign,
+            operator: None,
             name: "x".to_string(),
             expression: Box::new(
                 DatexExpressionData::Integer(Integer::from(42))
@@ -2755,12 +2758,12 @@ fn variable_assignment_expression() {
         expr,
         DatexExpressionData::VariableAssignment(VariableAssignment {
             id: None,
-            operator: AssignmentOperator::Assign,
+            operator: None,
             name: "x".to_string(),
             expression: Box::new(
                 DatexExpressionData::VariableAssignment(VariableAssignment {
                     id: None,
-                    operator: AssignmentOperator::Assign,
+                    operator: None,
                     name: "y".to_string(),
                     expression: Box::new(
                         DatexExpressionData::Integer(Integer::from(1))
@@ -2782,7 +2785,7 @@ fn variable_assignment_expression_in_list() {
         DatexExpressionData::List(List::new(vec![
             DatexExpressionData::VariableAssignment(VariableAssignment {
                 id: None,
-                operator: AssignmentOperator::Assign,
+                operator: None,
                 name: "x".to_string(),
                 expression: Box::new(
                     DatexExpressionData::Integer(Integer::from(1))
@@ -2905,12 +2908,12 @@ fn variable_assignment_multiple() {
         expr,
         DatexExpressionData::VariableAssignment(VariableAssignment {
             id: None,
-            operator: AssignmentOperator::Assign,
+            operator: None,
             name: "x".to_string(),
             expression: Box::new(
                 DatexExpressionData::VariableAssignment(VariableAssignment {
                     id: None,
-                    operator: AssignmentOperator::Assign,
+                    operator: None,
                     name: "y".to_string(),
                     expression: Box::new(
                         DatexExpressionData::Integer(Integer::from(42))
@@ -2944,7 +2947,7 @@ fn variable_declaration_and_assignment() {
             .with_default_span(),
             DatexExpressionData::VariableAssignment(VariableAssignment {
                 id: None,
-                operator: AssignmentOperator::Assign,
+                operator: None,
                 name: "x".to_string(),
                 expression: Box::new(
                     DatexExpressionData::BinaryOperation(BinaryOperation {
@@ -2973,7 +2976,10 @@ fn variable_declaration_and_assignment() {
 fn placeholder() {
     let src = "?";
     let expr = parse_unwrap_data(src);
-    assert_eq!(expr, DatexExpressionData::Placeholder);
+    assert_eq!(
+        expr,
+        DatexExpressionData::Placeholder(ValueAccessType::MoveOrCopy)
+    );
 }
 
 #[test]
@@ -3237,7 +3243,8 @@ fn remote_execution() {
             right: Box::new(
                 DatexExpressionData::Identifier("b".to_string())
                     .with_default_span()
-            )
+            ),
+            injected_variable_count: None,
         })
     );
 }
@@ -3255,7 +3262,8 @@ fn remote_execution_no_space() {
             right: Box::new(
                 DatexExpressionData::Identifier("b".to_string())
                     .with_default_span()
-            )
+            ),
+            injected_variable_count: None,
         })
     );
 }
@@ -3302,7 +3310,8 @@ fn remote_execution_complex() {
                     ty: None
                 })
                 .with_default_span()
-            )
+            ),
+            injected_variable_count: None,
         },)
     );
 }
@@ -3322,7 +3331,8 @@ fn remote_execution_statements() {
                 right: Box::new(
                     DatexExpressionData::Identifier("b".to_string())
                         .with_default_span()
-                )
+                ),
+                injected_variable_count: None,
             })
             .with_default_span(),
             DatexExpressionData::Integer(Integer::from(1)).with_default_span(),
@@ -3364,7 +3374,8 @@ fn remote_execution_inline_statements() {
                     ]
                 ))
                 .with_default_span()
-            )
+            ),
+            injected_variable_count: None,
         },)
     );
 }
@@ -3428,9 +3439,9 @@ fn pointer_address() {
     let expr = parse_unwrap_data(src);
     assert_eq!(
         expr,
-        DatexExpressionData::GetSharedRef(GetSharedRef {
-            address: PointerAddress::internal([0x12, 0x34, 0x56]),
-            mutability: PointerReferenceMutability::Immutable,
+        DatexExpressionData::RequestSharedRef(RequestSharedRef {
+            address: PointerAddress::builtin([0x12, 0x34, 0x56]),
+            mutability: ReferenceMutability::Immutable,
         })
     );
 
@@ -3439,9 +3450,9 @@ fn pointer_address() {
     let expr = parse_unwrap_data(src);
     assert_eq!(
         expr,
-        DatexExpressionData::GetSharedRef(GetSharedRef {
-            address: PointerAddress::owned([0x12, 0x34, 0x56, 0x78, 0x9A]),
-            mutability: PointerReferenceMutability::Immutable,
+        DatexExpressionData::RequestSharedRef(RequestSharedRef {
+            address: PointerAddress::self_owned([0x12, 0x34, 0x56, 0x78, 0x9A]),
+            mutability: ReferenceMutability::Immutable,
         })
     );
 
@@ -3450,13 +3461,13 @@ fn pointer_address() {
     let expr = parse_unwrap_data(src);
     assert_eq!(
         expr,
-        DatexExpressionData::GetSharedRef(GetSharedRef {
+        DatexExpressionData::RequestSharedRef(RequestSharedRef {
             address: PointerAddress::remote([
                 0x12, 0x34, 0x56, 0x78, 0x90, 0xAB, 0xCD, 0xEF, 0x12, 0x34,
                 0x56, 0x78, 0x90, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
                 0x00, 0x00, 0x00, 0x00, 0x00, 0x42
             ]),
-            mutability: PointerReferenceMutability::Immutable,
+            mutability: ReferenceMutability::Immutable,
         })
     );
 
@@ -3474,7 +3485,7 @@ fn variable_add_assignment() {
         expr,
         DatexExpressionData::VariableAssignment(VariableAssignment {
             id: None,
-            operator: AssignmentOperator::AddAssign,
+            operator: Some(AssignmentOperator::AddAssign),
             name: "x".to_string(),
             expression: Box::new(
                 DatexExpressionData::Integer(Integer::from(42))
@@ -3492,7 +3503,7 @@ fn variable_sub_assignment() {
         expr,
         DatexExpressionData::VariableAssignment(VariableAssignment {
             id: None,
-            operator: AssignmentOperator::SubtractAssign,
+            operator: Some(AssignmentOperator::SubtractAssign),
             name: "x".to_string(),
             expression: Box::new(
                 DatexExpressionData::Integer(Integer::from(42))

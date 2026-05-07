@@ -59,6 +59,8 @@ jobs:
             features: default,allow_unsigned_blocks
           - profile: std
             features: target_native
+          - profile: lsp
+            features: target_native,lsp_tokio
     steps:
       - uses: actions/checkout@v5
 

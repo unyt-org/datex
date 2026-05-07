@@ -1,11 +1,12 @@
 use core::fmt::Display;
 
-use crate::global::{
-    instruction_codes::InstructionCode,
-    protocol_structures::instructions::RegularInstruction,
+use crate::{
+    global::{
+        instruction_codes::InstructionCode,
+        protocol_structures::regular_instructions::RegularInstruction,
+    },
+    prelude::*,
 };
-
-use crate::prelude::*;
 #[derive(Clone, Debug, PartialEq, Copy)]
 pub enum BinaryOperator {
     Arithmetic(ArithmeticOperator),
@@ -224,9 +225,6 @@ impl From<&InstructionCode> for BinaryOperator {
                 BinaryOperator::Logical(LogicalOperator::And)
             }
             InstructionCode::OR => BinaryOperator::Logical(LogicalOperator::Or),
-            InstructionCode::UNION => {
-                BinaryOperator::Bitwise(BitwiseOperator::And)
-            }
             InstructionCode::RANGE => {
                 BinaryOperator::Range(RangeOperator::Inclusive)
             }

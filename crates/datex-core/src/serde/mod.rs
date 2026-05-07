@@ -1,26 +1,21 @@
-use crate::{
-    core_compiler::value_compiler::compile_value_container,
-    values::value_container::ValueContainer,
-};
-use core::result::Result;
-use serde::Serialize;
-
+//! This module contains the implementation of the serialization and deserialization of DATEX values using Serde.
 pub use serde::Deserialize;
 pub mod deserializer;
 pub mod error;
 pub mod serializer;
 
-impl Serialize for ValueContainer {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        serializer.serialize_newtype_struct(
-            "datex::value",
-            &compile_value_container(self),
-        )
-    }
-}
+// TODO: move
+// impl Serialize for ValueContainer {
+//     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+//     where
+//         S: serde::Serializer,
+//     {
+//         serializer.serialize_newtype_struct(
+//             "datex::value",
+//             &compile_value_container(self.into()).unwrap(),
+//         )
+//     }
+// }
 
 #[cfg(test)]
 #[cfg(feature = "decompiler")]

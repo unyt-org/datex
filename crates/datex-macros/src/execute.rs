@@ -1,7 +1,9 @@
+use crate::utils::expr_to_value_container;
 use datex_core::{
     self,
     compiler::{CompileOptions, compile_template},
     prelude::*,
+    runtime::Runtime,
     values::value_container::ValueContainer,
 };
 use proc_macro2::TokenStream;
@@ -11,8 +13,6 @@ use syn::{
     parse::{Parse, ParseStream},
     punctuated::Punctuated,
 };
-
-use crate::utils::expr_to_value_container;
 
 enum Placeholder {
     ValueContainer(ValueContainer),
@@ -57,25 +57,22 @@ impl Parse for ExecuteMacroInput {
 }
 
 fn prepare_setup(input: ExecuteMacroInput) -> TokenStream {
+    let runtime = Runtime::stub();
     let script = input.program;
 
     let placeholder_count = script.chars().filter(|&c| c == '?').count();
     let arg_count = input.args.len();
 
-    let slot_inserts = input
+    let stack_init = input
         .args
         .iter()
-        .enumerate()
-        .map(|(i, placeholder)| {
-            let idx = i as u32;
-            match placeholder {
-                Placeholder::ValueContainer(_) => quote! {
-                    slots.insert(#idx, None);
-                },
-                Placeholder::Expression(expr) => quote! {
-                    slots.insert(#idx, Some(ValueContainer::from(#expr)));
-                },
-            }
+        .map(|placeholder| match placeholder {
+            Placeholder::ValueContainer(_) => quote! {
+                stack_values.push(None);
+            },
+            Placeholder::Expression(expr) => quote! {
+                stack_values.push(Some(ValueContainer::from(#expr)));
+            },
         })
         .collect::<Vec<_>>();
 
@@ -88,8 +85,12 @@ fn prepare_setup(input: ExecuteMacroInput) -> TokenStream {
         })
         .collect::<Vec<_>>();
 
-    let dxb =
-        compile_template(&script, &placeholders, CompileOptions::default());
+    let dxb = compile_template(
+        &script,
+        &placeholders,
+        CompileOptions::default(),
+        runtime,
+    );
     if let Err(e) = dxb {
         return syn::Error::new_spanned(
             script,
@@ -110,26 +111,26 @@ fn prepare_setup(input: ExecuteMacroInput) -> TokenStream {
         .to_compile_error();
     }
     quote! {{
-        use datex_core::runtime::execution::execution_loop::state::{
-            RuntimeExecutionState, RuntimeExecutionSlots
-        };
+        use datex_core::runtime::execution::execution_loop::state::RuntimeExecutionStack;
+        use datex_core::runtime::execution::execution_input::ExecutionCallerMetadata;
         use datex_core::values::value_container::ValueContainer;
         use datex_core::collections::HashMap;
         use datex_core::runtime::execution::{ExecutionInput, ExecutionOptions};
-        use datex_core::runtime::RuntimeInternal;
+        use datex_core::runtime::Runtime;
         use datex_core::prelude::*;
 
-        let mut slots: HashMap<u32, Option<ValueContainer>> = HashMap::new();
-        #(#slot_inserts)*
+        let mut stack_values: Vec<Option<ValueContainer>> = Vec::new();
+        #(#stack_init)*
 
-        let runtime_execution_slots = RuntimeExecutionSlots { slots };
+        let runtime_execution_stack = RuntimeExecutionStack { values: stack_values };
         let dxb_body: &'static [u8] = &[#(#dxb),*];
-        let runtime = Rc::new(RuntimeInternal::stub());
-        ExecutionInput::new_with_slots(
+        let runtime = Runtime::stub();
+        ExecutionInput::new_with_stack(
             &dxb_body,
+            ExecutionCallerMetadata::local_default(),
             ExecutionOptions::default(),
             runtime,
-            runtime_execution_slots
+            runtime_execution_stack
         )
     }}
 }

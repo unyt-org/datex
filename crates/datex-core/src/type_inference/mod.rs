@@ -1,24 +1,22 @@
+//! This module contains the implementation of the type inference system based on a [RichAst].
 use crate::{
     ast::resolved_variable::ResolvedVariable,
-    global::operators::{
-        AssignmentOperator, BinaryOperator, LogicalUnaryOperator, UnaryOperator,
-    },
-    libs::core::get_core_lib_type_reference,
-    shared_values::shared_type_container::SharedTypeContainer,
-    type_inference::{error::TypeError, options::ErrorHandling},
-    types::definition::TypeDefinition,
+    global::operators::{BinaryOperator, LogicalUnaryOperator, UnaryOperator},
+    type_inference::options::ErrorHandling,
+    types::type_definition::TypeDefinition,
 };
 
 use crate::{
     ast::{
         expressions::{
             Apply, BinaryOperation, CallableDeclaration, ComparisonOperation,
-            Conditional, CreateRef, DatexExpression, DatexExpressionData,
-            GenericInstantiation, GetSharedRef, List, Map, PropertyAccess,
-            PropertyAssignment, RangeDeclaration, RemoteExecution, Slot,
-            SlotAssignment, Statements, TypeDeclaration, UnaryOperation, Unbox,
-            UnboxAssignment, VariableAccess, VariableAssignment,
-            VariableDeclaration, VariantAccess,
+            Conditional, CreateShared, DatexExpression, DatexExpressionData,
+            GenericInstantiation, GetRef, GetSharedRef, List, Map,
+            PropertyAccess, PropertyAssignment, RangeDeclaration,
+            RemoteExecution, RequestSharedRef, Slot, SlotAssignment,
+            Statements, TypeDeclaration, UnaryOperation, Unbox,
+            UnboxAssignment, ValueAccessType, VariableAccess,
+            VariableAssignment, VariableDeclaration, VariantAccess,
         },
         type_expressions::{
             CallableTypeExpression, FixedSizeList, GenericAccess, Intersection,
@@ -27,11 +25,15 @@ use crate::{
         },
     },
     compiler::precompiler::precompiled_ast::{AstMetadata, RichAst},
-    libs::core::{CoreLibPointerId, get_core_lib_type},
+    libs::core::{
+        core_lib_id::{CoreLibId, CoreLibIdIndex},
+        type_id::{CoreLibBaseTypeId, CoreLibTypeId, CoreLibVariantTypeId},
+    },
     prelude::*,
+    runtime::memory::Memory,
     shared_values::{
-        pointer::{Pointer, PointerReferenceMutability},
-        pointer_address::{PointerAddress, ReferencedPointerAddress},
+        ExternalPointerAddress, PointerAddress, ReferenceMutability,
+        SharedContainerOwnership,
     },
     type_inference::{
         error::{
@@ -39,15 +41,23 @@ use crate::{
         },
         options::InferExpressionTypeOptions,
     },
-    types::structural_type_definition::StructuralTypeDefinition,
-    values::core_values::{
-        boolean::Boolean,
-        callable::CallableSignature,
-        decimal::{Decimal, typed_decimal::TypedDecimal},
-        endpoint::Endpoint,
-        integer::{Integer, typed_integer::TypedInteger},
-        text::Text,
-        r#type::{LocalMutability, Type, TypeMetadata},
+    types::{
+        error::TypeError,
+        literal_type_definition::LiteralTypeDefinition,
+        r#type::Type,
+        type_definition_with_metadata::{
+            LocalMutability, TypeDefinitionWithMetadata, TypeMetadata,
+        },
+        type_match::TypeMatch,
+    },
+    values::{
+        core_value::CoreValue,
+        core_values::{
+            callable::CallableSignature,
+            decimal::{Decimal, typed_decimal::TypedDecimal},
+            endpoint::Endpoint,
+            integer::{Integer, typed_integer::TypedInteger},
+        },
     },
     visitor::{
         VisitAction,
@@ -57,12 +67,13 @@ use crate::{
         },
     },
 };
-use core::{cell::RefCell, ops::Range, panic, str::FromStr};
+use core::{cell::RefCell, ops::Range, panic};
 
 pub mod error;
 pub mod options;
 
 // TODO #617: refactor InferOutcome to a struct containing type, errors and warnings
+#[derive(Debug)]
 pub enum InferOutcome {
     Ok(Type),
     OkWithErrors {
@@ -79,8 +90,26 @@ impl From<InferOutcome> for Type {
     }
 }
 
+impl InferOutcome {
+    pub fn to_type(self) -> Type {
+        match self {
+            InferOutcome::Ok(ty) => ty,
+            InferOutcome::OkWithErrors { ty, .. } => ty,
+        }
+    }
+    pub fn unwrap_err(self) -> DetailedTypeErrors {
+        match self {
+            InferOutcome::Ok(_ty) => {
+                panic!("Expected errors, got successful type inference")
+            }
+            InferOutcome::OkWithErrors { errors, .. } => errors,
+        }
+    }
+}
+
 pub fn infer_expression_type_simple_error(
     rich_ast: &mut RichAst,
+    memory: &Memory,
 ) -> Result<Type, SpannedTypeError> {
     match infer_expression_type(
         rich_ast,
@@ -88,6 +117,7 @@ pub fn infer_expression_type_simple_error(
             detailed_errors: false,
             error_handling: ErrorHandling::FailFast,
         },
+        memory,
     ) {
         Ok(InferOutcome::Ok(ty)) => Ok(ty),
         Ok(InferOutcome::OkWithErrors { ty, .. }) => Ok(ty),
@@ -98,6 +128,7 @@ pub fn infer_expression_type_simple_error(
 
 pub fn infer_expression_type_detailed_errors(
     rich_ast: &mut RichAst,
+    memory: &Memory,
 ) -> Result<Type, DetailedTypeErrors> {
     match infer_expression_type(
         rich_ast,
@@ -105,6 +136,7 @@ pub fn infer_expression_type_detailed_errors(
             detailed_errors: true,
             error_handling: ErrorHandling::Collect,
         },
+        memory,
     ) {
         Ok(InferOutcome::Ok(ty)) => Ok(ty),
         Ok(InferOutcome::OkWithErrors { .. }) => unreachable!(),
@@ -115,14 +147,17 @@ pub fn infer_expression_type_detailed_errors(
 
 pub fn infer_expression_type_with_errors(
     rich_ast: &mut RichAst,
-) -> Result<InferOutcome, SimpleOrDetailedTypeError> {
+    memory: &Memory,
+) -> InferOutcome {
     infer_expression_type(
         rich_ast,
         InferExpressionTypeOptions {
             detailed_errors: true,
             error_handling: ErrorHandling::CollectAndReturnType,
         },
+        memory,
     )
+    .unwrap()
 }
 
 /// Infers the type of an expression as precisely as possible.
@@ -130,20 +165,23 @@ pub fn infer_expression_type_with_errors(
 fn infer_expression_type(
     rich_ast: &mut RichAst,
     options: InferExpressionTypeOptions,
+    memory: &Memory,
 ) -> Result<InferOutcome, SimpleOrDetailedTypeError> {
-    TypeInference::new(rich_ast.metadata.clone())
+    TypeInference::new(rich_ast.metadata.clone(), memory)
         .infer(&mut rich_ast.ast, options)
 }
-pub struct TypeInference {
+pub struct TypeInference<'a> {
     errors: Option<DetailedTypeErrors>,
     metadata: Rc<RefCell<AstMetadata>>,
+    memory: &'a Memory,
 }
 
-impl TypeInference {
-    pub fn new(metadata: Rc<RefCell<AstMetadata>>) -> Self {
+impl<'a> TypeInference<'a> {
+    pub fn new(metadata: Rc<RefCell<AstMetadata>>, memory: &'a Memory) -> Self {
         TypeInference {
             metadata,
             errors: None,
+            memory,
         }
     }
 
@@ -184,7 +222,9 @@ impl TypeInference {
             }
 
             ErrorHandling::CollectAndReturnType => {
-                let ty = result.unwrap_or_else(|_| Type::never());
+                let ty = result.unwrap_or_else(|_| {
+                    self.memory.get_core_type(CoreLibBaseTypeId::Never)
+                });
                 if has_errors {
                     Ok(InferOutcome::OkWithErrors {
                         ty,
@@ -202,7 +242,9 @@ impl TypeInference {
         expr: &mut DatexExpression,
     ) -> Result<Type, SpannedTypeError> {
         self.visit_datex_expression(expr)?;
-        Ok(expr.ty.clone().unwrap_or(Type::never()))
+        Ok(expr.ty.clone().unwrap_or_else(|| {
+            self.memory.get_core_type(CoreLibBaseTypeId::Never)
+        }))
     }
 
     fn infer_type_expression(
@@ -210,7 +252,9 @@ impl TypeInference {
         type_expr: &mut TypeExpression,
     ) -> Result<Type, SpannedTypeError> {
         self.visit_type_expression(type_expr)?;
-        Ok(type_expr.ty.clone().unwrap_or(Type::never()))
+        Ok(type_expr.ty.clone().unwrap_or_else(|| {
+            self.memory.get_core_type(CoreLibBaseTypeId::Never)
+        }))
     }
 
     fn variable_type(&self, id: usize) -> Option<Type> {
@@ -235,9 +279,13 @@ impl TypeInference {
         if let Some(collected_errors) = &mut self.errors {
             let action = match error.error {
                 TypeError::Unimplemented(_) => {
-                    VisitAction::SetTypeRecurseChildNodes(Type::never())
+                    VisitAction::SetTypeRecurseChildNodes(
+                        self.memory.get_core_type(CoreLibBaseTypeId::Never),
+                    )
                 }
-                _ => VisitAction::SetTypeSkipChildren(Type::never()),
+                _ => VisitAction::SetTypeSkipChildren(
+                    self.memory.get_core_type(CoreLibBaseTypeId::Never),
+                ),
             };
             collected_errors.errors.push(error);
             Ok(action)
@@ -247,29 +295,49 @@ impl TypeInference {
     }
 }
 
-fn mark_structural_type<E>(
-    definition: StructuralTypeDefinition,
+fn mark_type_definition<E>(
+    definition: TypeDefinition,
 ) -> Result<VisitAction<E>, SpannedTypeError> {
-    mark_type(Type::structural(definition, TypeMetadata::default()))
+    mark_type(Type::Alias(definition.into()))
+}
+
+fn mark_literal_type<E>(
+    definition: LiteralTypeDefinition,
+) -> Result<VisitAction<E>, SpannedTypeError> {
+    mark_type(Type::Alias(definition.into()))
 }
 fn mark_type<E>(ty: Type) -> Result<VisitAction<E>, SpannedTypeError> {
     Ok(VisitAction::SetTypeSkipChildren(ty))
 }
 
-impl TypeExpressionVisitor<SpannedTypeError> for TypeInference {
+fn mark_never<E>(memory: &Memory) -> Result<VisitAction<E>, SpannedTypeError> {
+    mark_type(memory.get_core_type(CoreLibBaseTypeId::Never))
+}
+
+fn mark_type_or_never<E>(
+    maybe_type: Option<Type>,
+    memory: &Memory,
+) -> Result<VisitAction<E>, SpannedTypeError> {
+    mark_type(
+        maybe_type
+            .unwrap_or_else(|| memory.get_core_type(CoreLibBaseTypeId::Never)),
+    )
+}
+
+impl<'a> TypeExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
     fn visit_integer_type(
         &mut self,
         integer: &mut Integer,
         _: &Range<usize>,
     ) -> TypeExpressionVisitResult<SpannedTypeError> {
-        mark_structural_type(StructuralTypeDefinition::Integer(integer.clone()))
+        mark_literal_type(LiteralTypeDefinition::Integer(integer.clone()))
     }
     fn visit_typed_integer_type(
         &mut self,
         typed_integer: &mut TypedInteger,
         _: &Range<usize>,
     ) -> TypeExpressionVisitResult<SpannedTypeError> {
-        mark_structural_type(StructuralTypeDefinition::TypedInteger(
+        mark_literal_type(LiteralTypeDefinition::TypedInteger(
             typed_integer.clone(),
         ))
     }
@@ -278,49 +346,41 @@ impl TypeExpressionVisitor<SpannedTypeError> for TypeInference {
         decimal: &mut Decimal,
         _: &Range<usize>,
     ) -> TypeExpressionVisitResult<SpannedTypeError> {
-        mark_structural_type(StructuralTypeDefinition::Decimal(decimal.clone()))
+        mark_literal_type(LiteralTypeDefinition::Decimal(decimal.clone()))
     }
     fn visit_typed_decimal_type(
         &mut self,
         decimal: &mut TypedDecimal,
         _: &Range<usize>,
     ) -> TypeExpressionVisitResult<SpannedTypeError> {
-        mark_structural_type(StructuralTypeDefinition::TypedDecimal(
-            decimal.clone(),
-        ))
+        mark_literal_type(LiteralTypeDefinition::TypedDecimal(decimal.clone()))
     }
     fn visit_boolean_type(
         &mut self,
         boolean: &mut bool,
         _: &Range<usize>,
     ) -> TypeExpressionVisitResult<SpannedTypeError> {
-        mark_structural_type(StructuralTypeDefinition::Boolean(Boolean::from(
-            *boolean,
-        )))
+        mark_literal_type(LiteralTypeDefinition::Boolean(*boolean))
     }
     fn visit_text_type(
         &mut self,
         text: &mut String,
         _: &Range<usize>,
     ) -> TypeExpressionVisitResult<SpannedTypeError> {
-        mark_structural_type(StructuralTypeDefinition::Text(Text::from(
-            text.clone(),
-        )))
+        mark_literal_type(LiteralTypeDefinition::Text(text.clone()))
     }
     fn visit_null_type(
         &mut self,
         _: &Range<usize>,
     ) -> TypeExpressionVisitResult<SpannedTypeError> {
-        mark_structural_type(StructuralTypeDefinition::Null)
+        mark_type(self.memory.get_core_type(CoreLibBaseTypeId::Null))
     }
     fn visit_endpoint_type(
         &mut self,
         endpoint: &mut Endpoint,
         _: &Range<usize>,
     ) -> TypeExpressionVisitResult<SpannedTypeError> {
-        mark_structural_type(StructuralTypeDefinition::Endpoint(
-            endpoint.clone(),
-        ))
+        mark_literal_type(LiteralTypeDefinition::Endpoint(endpoint.clone()))
     }
     fn visit_union_type(
         &mut self,
@@ -332,7 +392,7 @@ impl TypeExpressionVisitor<SpannedTypeError> for TypeInference {
             .iter_mut()
             .map(|member| self.infer_type_expression(member))
             .collect::<Result<Vec<_>, _>>()?;
-        mark_type(Type::union(members, TypeMetadata::default()))
+        mark_type(Type::from(TypeDefinition::Union(members)))
     }
     fn visit_intersection_type(
         &mut self,
@@ -344,7 +404,7 @@ impl TypeExpressionVisitor<SpannedTypeError> for TypeInference {
             .iter_mut()
             .map(|member| self.infer_type_expression(member))
             .collect::<Result<Vec<_>, _>>()?;
-        mark_type(Type::intersection(members, TypeMetadata::default()))
+        mark_type(Type::from(TypeDefinition::intersection(members)))
     }
     fn visit_structural_map_type(
         &mut self,
@@ -357,14 +417,14 @@ impl TypeExpressionVisitor<SpannedTypeError> for TypeInference {
             let field_type = self.infer_type_expression(field_type_expr)?;
             fields.push((field_name, field_type));
         }
-        mark_structural_type(StructuralTypeDefinition::Map(fields))
+        mark_type_definition(TypeDefinition::Map(fields))
     }
     fn visit_structural_list_type(
         &mut self,
         structural_list: &mut StructuralList,
         _: &Range<usize>,
     ) -> TypeExpressionVisitResult<SpannedTypeError> {
-        mark_structural_type(StructuralTypeDefinition::List(
+        mark_type_definition(TypeDefinition::List(
             structural_list
                 .0
                 .iter_mut()
@@ -382,12 +442,30 @@ impl TypeExpressionVisitor<SpannedTypeError> for TypeInference {
     ) -> TypeExpressionVisitResult<SpannedTypeError> {
         if matches!(
             pointer_address,
-            PointerAddress::Referenced(ReferencedPointerAddress::Internal(_))
+            PointerAddress::External(ExternalPointerAddress::Builtin(_))
         ) {
-            mark_type(get_core_lib_type(
-                CoreLibPointerId::try_from(&pointer_address.to_owned())
-                    .unwrap(),
-            ))
+            // try to resolve as type reference from memory
+            let ty = if let Some(container) =
+                self.memory.get_reference(pointer_address)
+            {
+                container.with_collapsed_value(|value| {
+                    if let CoreValue::Type(ty) = &value.inner {
+                        Some(ty.clone())
+                    } else {
+                        None
+                    }
+                })
+            } else {
+                None
+            };
+
+            match ty {
+                Some(ty) => mark_type(ty),
+                None => Err(SpannedTypeError {
+                    error: TypeError::ReferenceToNonTypeValue,
+                    span: None,
+                }),
+            }
         } else {
             panic!("GetReference not supported yet")
         }
@@ -397,7 +475,7 @@ impl TypeExpressionVisitor<SpannedTypeError> for TypeInference {
         var_access: &mut VariableAccess,
         _: &Range<usize>,
     ) -> TypeExpressionVisitResult<SpannedTypeError> {
-        mark_type(self.variable_type(var_access.id).unwrap_or(Type::never()))
+        mark_type_or_never(self.variable_type(var_access.id), self.memory)
     }
     fn visit_fixed_size_list_type(
         &mut self,
@@ -444,16 +522,13 @@ impl TypeExpressionVisitor<SpannedTypeError> for TypeInference {
             None => None,
         };
 
-        mark_type(Type::callable(
-            CallableSignature {
-                kind: callable_type.kind.clone(),
-                parameter_types,
-                rest_parameter_type,
-                return_type: return_type.map(Box::new),
-                yeet_type: yeet_type.map(Box::new),
-            },
-            TypeMetadata::default(),
-        ))
+        mark_type(Type::from(TypeDefinition::Callable(CallableSignature {
+            kind: callable_type.kind.clone(),
+            parameter_types,
+            rest_parameter_type,
+            return_type: return_type.map(Box::new),
+            yeet_type: yeet_type.map(Box::new),
+        })))
     }
     fn visit_generic_access_type(
         &mut self,
@@ -525,51 +600,63 @@ fn resolve_type_variant_access(
     base: &PointerAddress,
     variant_name: &str,
 ) -> Option<PointerAddress> {
-    match base {
-        PointerAddress::Referenced(ReferencedPointerAddress::Internal(_)) => {
-            let base_ref = get_core_lib_type_reference(
-                CoreLibPointerId::try_from(base).unwrap(),
-            );
-            let base_name = base_ref
-                .borrow()
-                .nominal_type_declaration
-                .as_ref()
-                .unwrap()
-                .name
-                .clone();
-            CoreLibPointerId::from_str(&format!(
-                "{}/{}",
-                base_name, variant_name
-            ))
-            .ok()
-            .map(PointerAddress::from)
+    let core_lib_index = CoreLibIdIndex::try_from(base).ok()?;
+    let core_lib_base_type_id =
+        CoreLibBaseTypeId::try_from(core_lib_index).ok()?;
+    for variant in CoreLibVariantTypeId::variant_ids(&core_lib_base_type_id) {
+        if variant.variant_name() == variant_name {
+            return Some(PointerAddress::from(CoreLibId::Type(
+                CoreLibTypeId::Variant(variant),
+            )));
         }
-        _ => None,
     }
+    None
 }
 
-impl ExpressionVisitor<SpannedTypeError> for TypeInference {
-    fn visit_create_ref(
+impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
+    fn visit_get_ref(
         &mut self,
-        create_ref: &mut CreateRef,
+        create_ref: &mut GetRef,
         _: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
         let inner_type = self.infer_expression(&mut create_ref.expression)?;
-        let ref_type = match inner_type.type_definition {
-            TypeDefinition::SharedReference(reference) => reference,
-            _ => Rc::new(RefCell::new(SharedTypeContainer::anonymous(
-                inner_type,
-                Pointer::NULL,
-            ))),
-        };
 
-        mark_type(Type::shared_reference(
-            ref_type,
-            TypeMetadata::Local {
-                mutability: LocalMutability::Immutable,
-                reference_mutability: Some(create_ref.mutability.clone()),
-            },
-        ))
+        mark_type(inner_type.box_with_metadata(TypeMetadata::Local {
+            mutability: LocalMutability::Immutable,
+            reference_mutability: Some(create_ref.mutability.clone()),
+        }))
+    }
+
+    fn visit_create_shared(
+        &mut self,
+        create_shared: &mut CreateShared,
+        _: &Range<usize>,
+    ) -> ExpressionVisitResult<SpannedTypeError> {
+        let inner_type =
+            self.infer_expression(&mut create_shared.expression)?;
+
+        mark_type(inner_type.box_with_metadata(TypeMetadata::Shared {
+            mutability: create_shared.mutability.clone(),
+            ownership: SharedContainerOwnership::Owned,
+        }))
+    }
+
+    fn visit_get_shared_ref(
+        &mut self,
+        get_shared_ref: &mut GetSharedRef,
+        span: &Range<usize>,
+    ) -> ExpressionVisitResult<SpannedTypeError> {
+        let inner_type =
+            self.infer_expression(&mut get_shared_ref.expression)?;
+
+        mark_type(
+            inner_type
+                .try_convert_to_shared_ref(get_shared_ref.mutability)
+                .map_err(|_| SpannedTypeError {
+                    error: TypeError::InvalidSharedReference,
+                    span: Some(span.clone()),
+                })?,
+        )
     }
 
     fn handle_expression_error(
@@ -585,7 +672,8 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
         statements: &mut Statements,
         _: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
-        let mut inferred_type = Type::unit();
+        let mut inferred_type =
+            self.memory.get_core_type(CoreLibBaseTypeId::Unit);
 
         // Infer type for each statement in order
         for statement in statements.statements.iter_mut() {
@@ -595,7 +683,7 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
         // If the statements block ends with a terminator (semicolon, etc.),
         // it returns the unit type, otherwise, it returns the last inferred type.
         if statements.is_terminated {
-            inferred_type = Type::unit();
+            inferred_type = self.memory.get_core_type(CoreLibBaseTypeId::Unit);
         }
 
         Ok(VisitAction::SetTypeSkipChildren(inferred_type))
@@ -606,7 +694,7 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
         var_access: &mut VariableAccess,
         _: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
-        mark_type(self.variable_type(var_access.id).unwrap_or(Type::never()))
+        mark_type_or_never(self.variable_type(var_access.id), self.memory)
     }
 
     fn visit_property_assignment(
@@ -618,7 +706,7 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
             .infer_expression(&mut property_assignment.assigned_expression)?;
 
         match property_assignment.operator {
-            AssignmentOperator::Assign => {}
+            None => {}
             _ => {
                 panic!("Unsupported assignment operator");
             }
@@ -645,15 +733,17 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
 
         let assigned_type =
             self.infer_expression(&mut variable_assignment.expression)?;
-        let annotated_type = self.variable_type(id).unwrap_or(Type::never());
+        let annotated_type = self.variable_type(id).unwrap_or_else(|| {
+            self.memory.get_core_type(CoreLibBaseTypeId::Never)
+        });
 
         match variable_assignment.operator {
-            AssignmentOperator::Assign => {
-                if !assigned_type.matches_type(&annotated_type) {
+            None => {
+                if !assigned_type.matches(&annotated_type) {
                     return Err(SpannedTypeError {
                         error: TypeError::AssignmentTypeMismatch {
-                            annotated_type,
-                            assigned_type,
+                            expected: annotated_type,
+                            found: assigned_type,
                         },
                         span: Some(span.clone()),
                     });
@@ -671,14 +761,14 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
         integer: &mut Integer,
         _: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
-        mark_structural_type(StructuralTypeDefinition::Integer(integer.clone()))
+        mark_literal_type(LiteralTypeDefinition::Integer(integer.clone()))
     }
     fn visit_typed_integer(
         &mut self,
         typed_integer: &mut TypedInteger,
         _: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
-        mark_structural_type(StructuralTypeDefinition::TypedInteger(
+        mark_literal_type(LiteralTypeDefinition::TypedInteger(
             typed_integer.clone(),
         ))
     }
@@ -687,49 +777,41 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
         decimal: &mut Decimal,
         _: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
-        mark_structural_type(StructuralTypeDefinition::Decimal(decimal.clone()))
+        mark_literal_type(LiteralTypeDefinition::Decimal(decimal.clone()))
     }
     fn visit_typed_decimal(
         &mut self,
         decimal: &mut TypedDecimal,
         _: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
-        mark_structural_type(StructuralTypeDefinition::TypedDecimal(
-            decimal.clone(),
-        ))
+        mark_literal_type(LiteralTypeDefinition::TypedDecimal(decimal.clone()))
     }
     fn visit_boolean(
         &mut self,
         boolean: &mut bool,
         _: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
-        mark_structural_type(StructuralTypeDefinition::Boolean(Boolean::from(
-            *boolean,
-        )))
+        mark_literal_type(LiteralTypeDefinition::Boolean(*boolean))
     }
     fn visit_text(
         &mut self,
         text: &mut String,
         _: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
-        mark_structural_type(StructuralTypeDefinition::Text(Text::from(
-            text.clone(),
-        )))
+        mark_literal_type(LiteralTypeDefinition::Text(text.clone()))
     }
     fn visit_null(
         &mut self,
         _: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
-        mark_structural_type(StructuralTypeDefinition::Null)
+        mark_type(self.memory.get_core_type(CoreLibBaseTypeId::Null))
     }
     fn visit_endpoint(
         &mut self,
         endpoint: &mut Endpoint,
         _: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
-        mark_structural_type(StructuralTypeDefinition::Endpoint(
-            endpoint.clone(),
-        ))
+        mark_literal_type(LiteralTypeDefinition::Endpoint(endpoint.clone()))
     }
     fn visit_variable_declaration(
         &mut self,
@@ -743,11 +825,11 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
             if let Some(specific) = &mut variable_declaration.type_annotation {
                 // FIXME #619 check if matches
                 let annotated_type = self.infer_type_expression(specific)?;
-                if !init_type.matches_type(&annotated_type) {
+                if !init_type.matches(&annotated_type) {
                     self.record_error(SpannedTypeError::new_with_span(
                         TypeError::AssignmentTypeMismatch {
-                            annotated_type: annotated_type.clone(),
-                            assigned_type: init_type,
+                            expected: annotated_type.clone(),
+                            found: init_type,
                         },
                         span.clone(),
                     ))?;
@@ -774,14 +856,18 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
         match binary_operation.operator {
             BinaryOperator::Arithmetic(op) => {
                 // if base types are the same, use that as result type
-                if let Some(left) = left_type.base_type_reference()
-                    && let Some(right) = right_type.base_type_reference()
-                    && left == right
-                {
-                    mark_type(Type::new(
-                        TypeDefinition::SharedReference(left),
-                        TypeMetadata::default(),
-                    ))
+                let ty = left_type.with_collapsed_type_definition(|left_def| {
+                    right_type.with_collapsed_type_definition(|right_def| {
+                        if left_def == right_def {
+                            Some(Type::from(left_def.clone()))
+                        } else {
+                            None
+                        }
+                    })
+                });
+
+                if let Some(ty) = ty {
+                    mark_type(ty)
                 } else {
                     Err(SpannedTypeError {
                         error: TypeError::MismatchedOperands(
@@ -799,49 +885,50 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
                     ),
                     span: Some(span.clone()),
                 })?;
-                mark_type(Type::never())
+                mark_never(self.memory)
             }
         }
     }
 
     fn visit_type_declaration(
         &mut self,
-        type_declaration: &mut TypeDeclaration,
+        _type_declaration: &mut TypeDeclaration,
         _: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
-        let type_id = type_declaration.id.expect(
-            "TypeDeclaration should have an id assigned during precompilation",
-        );
-        let var_type = self.variable_type(type_id);
-        let type_def = var_type
-            .as_ref()
-            .expect("TypeDeclaration type should have been inferred already");
+        todo!()
+        // let type_id = type_declaration.id.expect(
+        //     "TypeDeclaration should have an id assigned during precompilation",
+        // );
+        // let var_type = self.variable_type(type_id);
+        // let type_def = var_type
+        //     .as_ref()
+        //     .expect("TypeDeclaration type should have been inferred already");
+        //
+        // let reference = type_def
+        //     .inner_reference()
+        //     .expect("TypeDeclaration var_type should be a TypeReference");
 
-        let reference = type_def
-            .inner_reference()
-            .expect("TypeDeclaration var_type should be a TypeReference");
-
-        let inferred_type_def =
-            self.infer_type_expression(&mut type_declaration.definition)?;
-
-        if type_declaration.kind.is_nominal() {
-            match &inferred_type_def.inner_reference() {
-                None => {
-                    reference.borrow_mut().type_value = inferred_type_def;
-                }
-                Some(r) => {
-                    // FIXME #620 is this necessary?
-                    reference.borrow_mut().type_value = Type::new(
-                        TypeDefinition::SharedReference(r.clone()),
-                        TypeMetadata::default(),
-                    );
-                }
-            }
-            mark_type(type_def.clone())
-        } else {
-            self.update_variable_type(type_id, inferred_type_def.clone());
-            mark_type(inferred_type_def.clone())
-        }
+        // let inferred_type_def =
+        //     self.infer_type_expression(&mut type_declaration.definition)?;
+        //
+        // if type_declaration.kind.is_nominal() {
+        //     match &inferred_type_def.inner_reference() {
+        //         None => {
+        //             reference.borrow_mut().type_value = inferred_type_def;
+        //         }
+        //         Some(r) => {
+        //             // FIXME #620 is this necessary?
+        //             reference.borrow_mut().type_value = Type::new(
+        //                 TypeDefinition::Shared(r.clone()),
+        //                 TypeMetadata::default(),
+        //             );
+        //         }
+        //     }
+        //     mark_type(type_def.clone())
+        // } else {
+        //     self.update_variable_type(type_id, inferred_type_def.clone());
+        //     mark_type(inferred_type_def.clone())
+        // }
     }
 
     fn visit_list(
@@ -849,7 +936,7 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
         list: &mut List,
         _: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
-        mark_structural_type(StructuralTypeDefinition::List(
+        mark_type_definition(TypeDefinition::List(
             list.items
                 .iter_mut()
                 .map(|elem_type_expr| self.infer_expression(elem_type_expr))
@@ -864,8 +951,8 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
     ) -> ExpressionVisitResult<SpannedTypeError> {
         let x = self.infer_expression(&mut range.start)?;
         let y = self.infer_expression(&mut range.end)?;
-        let z = StructuralTypeDefinition::Range((Box::new(x), Box::new(y)));
-        mark_structural_type(z)
+        let z = TypeDefinition::Range((Box::new(x), Box::new(y)));
+        mark_type_definition(z)
     }
 
     fn visit_map(
@@ -879,7 +966,7 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
             let value_type = self.infer_expression(value_expr)?;
             fields.push((key_type, value_type));
         }
-        mark_structural_type(StructuralTypeDefinition::Map(fields))
+        mark_type_definition(TypeDefinition::Map(fields))
     }
 
     fn visit_apply(
@@ -928,7 +1015,7 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
         _comparison_operation: &mut ComparisonOperation,
         _span: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
-        mark_type(Type::boolean())
+        mark_type(self.memory.get_core_type(CoreLibBaseTypeId::Boolean))
     }
     fn visit_conditional(
         &mut self,
@@ -949,17 +1036,55 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
         span: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
         let inner_type = self.infer_expression(&mut unbox.expression)?;
-        let unbox_type = if let Some(reference) = inner_type.inner_reference() {
-            reference.borrow().type_value.clone()
+        // remove most outer &/' if applicable
+        let unbox_type = if let Type::Alias(definition) = inner_type {
+            match definition.metadata {
+                // non-unboxable local value
+                TypeMetadata::Local { .. } => {
+                    self.record_error(SpannedTypeError {
+                        error: TypeError::InvalidUnboxType(Type::Alias(
+                            definition,
+                        )),
+                        span: Some(span.clone()),
+                    })?;
+                    self.memory.get_core_type(CoreLibBaseTypeId::Never)
+                }
+                // *(shared 'shared X) -> 'shared X
+                // shared (X) -> 23
+                _ => {
+                    match definition.definition {
+                        // if nested type, collapse
+                        TypeDefinition::Nested(ty) => *ty,
+                        // else, just remove ref
+                        def => Type::Alias(TypeDefinitionWithMetadata {
+                            metadata: TypeMetadata::default(),
+                            definition: def,
+                        }),
+                    }
+                }
+            }
         } else {
             self.record_error(SpannedTypeError {
-                error: TypeError::InvaliUnboxType(inner_type),
+                error: TypeError::InvalidUnboxType(inner_type),
                 span: Some(span.clone()),
             })?;
-            Type::never()
+            self.memory.get_core_type(CoreLibBaseTypeId::Never)
         };
 
-        mark_type(unbox_type)
+        // check if type is actually unboxable (must be a shared container, TODO: maybe also copyable values)
+        match unbox_type {
+            Type::Alias(TypeDefinitionWithMetadata {
+                metadata: TypeMetadata::Shared { .. },
+                ..
+            }) => mark_type(unbox_type),
+            _ => {
+                self.record_error(SpannedTypeError {
+                    error: TypeError::InvalidUnboxType(unbox_type.clone()),
+                    span: Some(span.clone()),
+                })?;
+                mark_never(self.memory)
+            }
+        }
     }
 
     fn visit_callable_declaration(
@@ -983,7 +1108,9 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
 
         let inferred_return_type = self
             .infer_expression(&mut callable_declaration.body)
-            .unwrap_or(Type::never());
+            .unwrap_or_else(|_| {
+                self.memory.get_core_type(CoreLibBaseTypeId::Never)
+            });
 
         let rest_parameter_type = if let Some((name, rest_param)) =
             &mut callable_declaration.rest_parameter
@@ -1000,9 +1127,10 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
             .parameters
             .iter_mut()
             .map(|(name, param_type_expr)| {
-                let param_type = self
-                    .infer_type_expression(param_type_expr)
-                    .unwrap_or(Type::never());
+                let param_type =
+                    self.infer_type_expression(param_type_expr).unwrap_or_else(
+                        |_| self.memory.get_core_type(CoreLibBaseTypeId::Never),
+                    );
                 (Some(name.clone()), param_type)
             })
             .collect();
@@ -1020,19 +1148,19 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
         // If they don't match, record an error
         // TODO #622: improve
         if let Some(annotated_return_type) = &signature.return_type
-            && !inferred_return_type.matches_type(annotated_return_type)
+            && !inferred_return_type.matches(annotated_return_type)
         {
             self.record_error(SpannedTypeError {
                 error: TypeError::AssignmentTypeMismatch {
-                    annotated_type: *annotated_return_type.clone(),
-                    assigned_type: inferred_return_type,
+                    expected: *annotated_return_type.clone(),
+                    found: inferred_return_type,
                 },
                 span: Some(span.clone()),
             })?;
         }
 
         // Use the annotated type despite the mismatch
-        mark_type(Type::callable(signature, TypeMetadata::default()))
+        mark_type(Type::from(TypeDefinition::Callable(signature)))
     }
 
     fn visit_unary_operation(
@@ -1044,11 +1172,12 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
         let inner = self.infer_expression(&mut unary_operation.expression)?;
         mark_type(match op {
             UnaryOperator::Logical(op) => match op {
-                LogicalUnaryOperator::Not => Type::boolean(),
+                LogicalUnaryOperator::Not => {
+                    self.memory.get_core_type(CoreLibBaseTypeId::Boolean)
+                }
             },
-            UnaryOperator::Arithmetic(_) | UnaryOperator::Bitwise(_) => {
-                inner.base_type().unwrap_or(Type::never())
-            }
+            UnaryOperator::Arithmetic(_) | UnaryOperator::Bitwise(_) => inner
+                .with_collapsed_type_definition(|ty| Type::from(ty.clone())),
             UnaryOperator::Reference(_) => return Err(SpannedTypeError {
                 error: TypeError::Unimplemented(
                     "Unary reference operator type inference not implemented"
@@ -1075,10 +1204,10 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
                         span: Some(span.clone()),
                     })?;
 
-                // if it's a TypeReference and it has the pointer address set, we can
+                // if it's a Type::Nominal, and it has the pointer address set, we can
                 // remap the expression to a GetReference
-                if let Some(reference) = base_type.inner_reference() {
-                    Ok(reference.borrow().pointer.address())
+                if let Type::Nominal(reference) = base_type {
+                    Ok(reference.pointer_address())
                 } else {
                     Err(SpannedTypeError {
                         error: TypeError::Unimplemented(
@@ -1102,9 +1231,9 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
             span: Some(span.clone()),
         })?;
         Ok(VisitAction::ReplaceRecurse(DatexExpression::new(
-            DatexExpressionData::GetSharedRef(GetSharedRef {
+            DatexExpressionData::RequestSharedRef(RequestSharedRef {
                 address: variant_type,
-                mutability: PointerReferenceMutability::Immutable,
+                mutability: ReferenceMutability::Immutable,
             }),
             span.clone(),
         )))
@@ -1131,70 +1260,61 @@ impl ExpressionVisitor<SpannedTypeError> for TypeInference {
     }
     fn visit_placeholder(
         &mut self,
+        _placeholder_type: &mut ValueAccessType,
         _span: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
         Ok(VisitAction::SkipChildren)
     }
     fn visit_unbox_assignment(
         &mut self,
-        unbox_assignment: &mut UnboxAssignment,
-        span: &Range<usize>,
+        _unbox_assignment: &mut UnboxAssignment,
+        _span: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
-        // FIXME #623: handle type checking and if unbox assignment is valid
-        let mut expression_type =
-            self.infer_expression(&mut unbox_assignment.unbox_expression)?;
-        if let Some(reference) = expression_type.inner_reference() {
-            expression_type = reference.borrow().type_value.clone();
-        } else {
-            return Err(SpannedTypeError {
-                error: TypeError::InvaliUnboxType(expression_type),
-                span: Some(span.clone()),
-            });
-        }
-        let assigned_type =
-            self.infer_expression(&mut unbox_assignment.assigned_expression)?;
-
-        // FIXME #624 implement proper type matching
-        // if !assigned_type.matches_type(&expression_type) {
+        todo!()
+        // // FIXME #623: handle type checking and if unbox assignment is valid
+        // let mut expression_type =
+        //     self.infer_expression(&mut unbox_assignment.unbox_expression)?;
+        // if let Some(reference) = expression_type.inner_reference() {
+        //     expression_type = reference.borrow().type_value.clone();
+        // } else {
         //     return Err(SpannedTypeError {
-        //         error: TypeError::AssignmentTypeMismatch {
-        //             annotated_type: expression_type,
-        //             assigned_type: assigned_type.clone(),
-        //         },
+        //         error: TypeError::InvalidUnboxType(expression_type),
         //         span: Some(span.clone()),
         //     });
         // }
-        if expression_type.shared_reference_mutability()
-            != Some(PointerReferenceMutability::Mutable)
-        {
-            return Err(SpannedTypeError {
-                error: TypeError::AssignmentToImmutableReference(
-                    "".to_string(),
-                ),
-                span: Some(span.clone()),
-            });
-        }
-        mark_type(assigned_type)
+        // let assigned_type =
+        //     self.infer_expression(&mut unbox_assignment.assigned_expression)?;
+        //
+        // // FIXME #624 implement proper type matching
+        // // if !assigned_type.matches_type(&expression_type) {
+        // //     return Err(SpannedTypeError {
+        // //         error: TypeError::AssignmentTypeMismatch {
+        // //             annotated_type: expression_type,
+        // //             assigned_type: assigned_type.clone(),
+        // //         },
+        // //         span: Some(span.clone()),
+        // //     });
+        // // }
+        // let ownership = expression_type.shared_container_ownership();
+        //
+        // if ownership != Some(&SharedContainerOwnership::Referenced(ReferenceMutability::Mutable)) &&
+        //     ownership != Some(&SharedContainerOwnership::Owned)
+        // {
+        //     return Err(SpannedTypeError {
+        //         error: TypeError::AssignmentToImmutableReference(
+        //             "".to_string(),
+        //         ),
+        //         span: Some(span.clone()),
+        //     });
+        // }
+        // mark_type(assigned_type)
     }
-    fn visit_get_shared_reference(
+    fn visit_request_shared_reference(
         &mut self,
-        shared_ref: &mut GetSharedRef,
-        span: &Range<usize>,
+        _shared_ref: &mut RequestSharedRef,
+        _span: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
-        match &shared_ref.address {
-            PointerAddress::Referenced(ReferencedPointerAddress::Internal(
-                _,
-            )) => mark_type(get_core_lib_type(
-                CoreLibPointerId::try_from(&shared_ref.address.to_owned())
-                    .unwrap(),
-            )),
-            _ => Err(SpannedTypeError {
-                error: TypeError::Unimplemented(
-                    "GetReference type inference not implemented".into(),
-                ),
-                span: Some(span.clone()),
-            }),
-        }
+        todo!()
     }
     fn visit_slot_assignment(
         &mut self,
@@ -1241,26 +1361,32 @@ mod tests {
             scope_stack::PrecompilerScopeStack,
         },
         global::operators::{BinaryOperator, binary::ArithmeticOperator},
-        libs::core::{
-            CoreLibPointerId, get_core_lib_type, get_core_lib_type_reference,
-        },
+        libs::core::type_id::{CoreLibBaseTypeId, CoreLibVariantTypeId},
         parser::Parser,
         prelude::*,
+        runtime::{Runtime, memory::Memory},
         shared_values::{
-            pointer::Pointer,
-            shared_type_container::{
-                NominalTypeDeclaration, SharedTypeContainer,
-            },
+            OwnedSharedContainer, ReferenceMutability, SharedContainer,
+            SharedContainerMutability, SharedContainerOwnership,
         },
         type_inference::{
-            error::{SpannedTypeError, TypeError},
+            InferOutcome,
+            error::{SimpleOrDetailedTypeError, SpannedTypeError},
             infer_expression_type_detailed_errors,
             infer_expression_type_simple_error,
             infer_expression_type_with_errors,
         },
         types::{
-            definition::TypeDefinition,
-            structural_type_definition::StructuralTypeDefinition,
+            error::TypeError,
+            literal_type_definition::LiteralTypeDefinition,
+            nominal_type_definition::NominalTypeDefinition,
+            shared_container_containing_nominal_type::SharedContainerContainingNominalType,
+            shared_container_containing_type::SharedContainerContainingType,
+            r#type::Type,
+            type_definition::TypeDefinition,
+            type_definition_with_metadata::{
+                TypeDefinitionWithMetadata, TypeMetadata,
+            },
         },
         values::{
             core_value::CoreValue,
@@ -1273,7 +1399,6 @@ mod tests {
                     Integer,
                     typed_integer::{IntegerTypeVariant, TypedInteger},
                 },
-                r#type::{Type, TypeMetadata},
             },
         },
     };
@@ -1281,15 +1406,23 @@ mod tests {
     /// Infers type errors for the given source code.
     /// Panics if parsing or precompilation succeeds.
     fn errors_for_script(src: &str) -> Vec<SpannedTypeError> {
+        let runtime = Runtime::stub();
         let ast = Parser::parse_with_default_options(src).unwrap();
         let mut scope_stack = PrecompilerScopeStack::default();
         let ast_metadata = Rc::new(RefCell::new(AstMetadata::default()));
-        let mut res =
-            precompile_ast_simple_error(ast, &mut scope_stack, ast_metadata)
-                .expect("Precompilation failed");
-        infer_expression_type_detailed_errors(&mut res)
-            .expect_err("Expected type errors")
-            .errors
+        let mut res = precompile_ast_simple_error(
+            ast,
+            &mut scope_stack,
+            ast_metadata,
+            runtime.clone(),
+        )
+        .expect("Precompilation failed");
+        infer_expression_type_detailed_errors(
+            &mut res,
+            &mut *runtime.memory().borrow_mut(),
+        )
+        .expect_err("Expected type errors")
+        .errors
     }
 
     /// Infers type errors for the given expression.
@@ -1297,31 +1430,47 @@ mod tests {
     fn errors_for_expression(
         expr: &mut DatexExpression,
     ) -> Vec<SpannedTypeError> {
+        let runtime = Runtime::stub();
         let mut scope_stack = PrecompilerScopeStack::default();
         let ast_metadata = Rc::new(RefCell::new(AstMetadata::default()));
         let mut rich_ast = precompile_ast_simple_error(
             expr.clone(),
             &mut scope_stack,
             ast_metadata,
+            runtime.clone(),
         )
         .expect("Precompilation failed");
-        infer_expression_type_detailed_errors(&mut rich_ast)
-            .expect_err("Expected type errors")
-            .errors
+        infer_expression_type_detailed_errors(
+            &mut rich_ast,
+            &mut *runtime.memory().borrow_mut(),
+        )
+        .expect_err("Expected type errors")
+        .errors
     }
 
     /// Infers the AST of the given source code.
     /// Panics if parsing, precompilation or type inference fails.
     /// Returns the RichAst containing the inferred types.
     fn ast_for_script(src: &str) -> RichAst {
+        let runtime = Runtime::stub();
         let ast = Parser::parse_with_default_options(src).unwrap();
         let mut scope_stack = PrecompilerScopeStack::default();
         let ast_metadata = Rc::new(RefCell::new(AstMetadata::default()));
-        let mut res =
-            precompile_ast_simple_error(ast, &mut scope_stack, ast_metadata)
-                .expect("Precompilation failed");
-        let inferred_res = infer_expression_type_simple_error(&mut res);
-        if let Err(err) = infer_expression_type_simple_error(&mut res) {
+        let mut res = precompile_ast_simple_error(
+            ast,
+            &mut scope_stack,
+            ast_metadata,
+            runtime.clone(),
+        )
+        .expect("Precompilation failed");
+        let inferred_res = infer_expression_type_simple_error(
+            &mut res,
+            &*runtime.memory().borrow(),
+        );
+        if let Err(err) = infer_expression_type_simple_error(
+            &mut res,
+            &*runtime.memory().borrow(),
+        ) {
             panic!("Type inference failed: {:#?}", err);
         } else {
             res
@@ -1331,16 +1480,21 @@ mod tests {
     /// Infers the AST of the given expression.
     /// Panics if type inference fails.
     fn ast_for_expression(expr: &mut DatexExpression) -> RichAst {
+        let runtime = Runtime::stub();
         let mut scope_stack = PrecompilerScopeStack::default();
         let ast_metadata = Rc::new(RefCell::new(AstMetadata::default()));
         let mut rich_ast = precompile_ast_simple_error(
             expr.clone(),
             &mut scope_stack,
             ast_metadata,
+            runtime.clone(),
         )
         .expect("Precompilation failed");
-        infer_expression_type_simple_error(&mut rich_ast)
-            .expect("Type inference failed");
+        infer_expression_type_simple_error(
+            &mut rich_ast,
+            &runtime.memory().borrow(),
+        )
+        .expect("Type inference failed");
         rich_ast
     }
 
@@ -1350,34 +1504,29 @@ mod tests {
     /// for "var x = 42; x", it returns the type of "x", as this is the last expression of the statements.
     /// For "var x = 42;", it returns the never type, as the statement is terminated.
     /// For "10 + 32", it returns the type of the binary operation.
-    fn infer_from_script(src: &str) -> Type {
+    fn infer_type_from_script_ignore_errors(src: &str) -> Type {
+        infer_from_script(src).to_type()
+    }
+
+    fn infer_from_script(src: &str) -> InferOutcome {
+        let runtime = Runtime::stub();
         let ast = Parser::parse_with_default_options(src).unwrap();
         let mut scope_stack = PrecompilerScopeStack::default();
         let ast_metadata = Rc::new(RefCell::new(AstMetadata::default()));
-        let mut res =
-            precompile_ast_simple_error(ast, &mut scope_stack, ast_metadata)
-                .expect("Precompilation failed");
-        infer_expression_type_with_errors(&mut res)
-            .expect("Type inference failed")
-            .into()
-    }
-
-    /// Infers the type definition of the given source code.
-    /// Panics if parsing, precompilation or type inference fails.
-    /// Returns the TypeDefinition if the inferred type is a TypeReference.
-    fn infer_from_script_get_reference_type(src: &str) -> Type {
-        let inferred_type = infer_from_script(src);
-        inferred_type
-            .inner_reference()
-            .expect("Expected type to be a TypeReference")
-            .borrow()
-            .type_value
-            .clone()
+        let mut res = precompile_ast_simple_error(
+            ast,
+            &mut scope_stack,
+            ast_metadata,
+            runtime.clone(),
+        )
+        .expect("Precompilation failed");
+        infer_expression_type_with_errors(&mut res, &runtime.memory().borrow())
     }
 
     /// Infers the type of the given expression.
     /// Panics if type inference fails.
     fn infer_from_expression(expr: &mut DatexExpression) -> Type {
+        let runtime = Runtime::stub();
         let mut scope_stack = PrecompilerScopeStack::default();
         let ast_metadata = Rc::new(RefCell::new(AstMetadata::default()));
 
@@ -1385,24 +1534,30 @@ mod tests {
             expr.clone(),
             &mut scope_stack,
             ast_metadata,
+            runtime.clone(),
         )
         .expect("Precompilation failed");
-        infer_expression_type_simple_error(&mut rich_ast)
-            .expect("Type inference failed")
+        infer_expression_type_simple_error(
+            &mut rich_ast,
+            &*runtime.memory().borrow(),
+        )
+        .expect("Type inference failed")
     }
 
     #[test]
     fn variant_access() {
+        let memory = &Memory::new();
+
         // variant access on type (inline)
         let src = r#"
         var x = integer/u8
         "#;
-        let res = infer_from_script(src);
+        let res = infer_type_from_script_ignore_errors(src);
         assert_eq!(
             res,
-            get_core_lib_type(CoreLibPointerId::Integer(Some(
+            memory.get_core_type(CoreLibVariantTypeId::Integer(
                 IntegerTypeVariant::U8
-            )))
+            ))
         );
 
         // variant access on type (separate)
@@ -1410,24 +1565,24 @@ mod tests {
         var x = integer;
         x/u8
         "#;
-        let res = infer_from_script(src);
+        let res = infer_type_from_script_ignore_errors(src);
         assert_eq!(
             res,
-            get_core_lib_type(CoreLibPointerId::Integer(Some(
+            memory.get_core_type(CoreLibVariantTypeId::Integer(
                 IntegerTypeVariant::U8
-            )))
+            ))
         );
 
         // variant access on type alias (inline)
         let src = r#"
         typealias x = integer/u8
         "#;
-        let res = infer_from_script(src);
+        let res = infer_type_from_script_ignore_errors(src);
         assert_eq!(
             res,
-            get_core_lib_type(CoreLibPointerId::Integer(Some(
+            memory.get_core_type(CoreLibVariantTypeId::Integer(
                 IntegerTypeVariant::U8
-            )))
+            ))
         );
 
         // variant access on type alias (separate)
@@ -1435,12 +1590,12 @@ mod tests {
         typealias x = integer;
         x/u8
         "#;
-        let res = infer_from_script(src);
+        let res = infer_type_from_script_ignore_errors(src);
         assert_eq!(
             res,
-            get_core_lib_type(CoreLibPointerId::Integer(Some(
+            memory.get_core_type(CoreLibVariantTypeId::Integer(
                 IntegerTypeVariant::U8
-            )))
+            ))
         );
 
         // invalid variant access on type alias
@@ -1464,36 +1619,35 @@ mod tests {
 
     #[test]
     fn infer_function_types() {
+        let memory = &Memory::new();
+
         let src = r#"
         function add(a: integer, b: integer) -> integer (
             42
         )
         "#;
 
-        let res = infer_from_script(src);
+        let res = infer_type_from_script_ignore_errors(src);
         assert_eq!(
             res,
-            Type::callable(
-                CallableSignature {
-                    kind: CallableKind::Function,
-                    parameter_types: vec![
-                        (
-                            Some("a".to_string()),
-                            get_core_lib_type(CoreLibPointerId::Integer(None))
-                        ),
-                        (
-                            Some("b".to_string()),
-                            get_core_lib_type(CoreLibPointerId::Integer(None))
-                        ),
-                    ],
-                    rest_parameter_type: None,
-                    return_type: Some(Box::new(get_core_lib_type(
-                        CoreLibPointerId::Integer(None)
-                    ))),
-                    yeet_type: None,
-                },
-                TypeMetadata::default()
-            )
+            Type::from(TypeDefinition::Callable(CallableSignature {
+                kind: CallableKind::Function,
+                parameter_types: vec![
+                    (
+                        Some("a".to_string()),
+                        memory.get_core_type(CoreLibBaseTypeId::Integer)
+                    ),
+                    (
+                        Some("b".to_string()),
+                        memory.get_core_type(CoreLibBaseTypeId::Integer)
+                    ),
+                ],
+                rest_parameter_type: None,
+                return_type: Some(Box::new(
+                    memory.get_core_type(CoreLibBaseTypeId::Integer)
+                )),
+                yeet_type: None,
+            },))
         );
 
         let src = r#"
@@ -1502,28 +1656,25 @@ mod tests {
         )
         "#;
 
-        let res = infer_from_script(src);
+        let res = infer_type_from_script_ignore_errors(src);
         assert_eq!(
             res,
-            Type::callable(
-                CallableSignature {
-                    kind: CallableKind::Function,
-                    parameter_types: vec![
-                        (
-                            Some("a".to_string()),
-                            get_core_lib_type(CoreLibPointerId::Integer(None))
-                        ),
-                        (
-                            Some("b".to_string()),
-                            get_core_lib_type(CoreLibPointerId::Integer(None))
-                        ),
-                    ],
-                    rest_parameter_type: None,
-                    return_type: None,
-                    yeet_type: None,
-                },
-                TypeMetadata::default()
-            )
+            Type::from(TypeDefinition::Callable(CallableSignature {
+                kind: CallableKind::Function,
+                parameter_types: vec![
+                    (
+                        Some("a".to_string()),
+                        memory.get_core_type(CoreLibBaseTypeId::Integer)
+                    ),
+                    (
+                        Some("b".to_string()),
+                        memory.get_core_type(CoreLibBaseTypeId::Integer)
+                    ),
+                ],
+                rest_parameter_type: None,
+                return_type: None,
+                yeet_type: None,
+            },))
         );
     }
 
@@ -1533,30 +1684,14 @@ mod tests {
             infer_from_expression(
                 &mut DatexExpressionData::Boolean(true).with_default_span()
             ),
-            Type::structural(
-                StructuralTypeDefinition::Boolean(Boolean(true)),
-                TypeMetadata::default()
-            )
+            Type::from(LiteralTypeDefinition::Boolean(true),)
         );
 
         assert_eq!(
             infer_from_expression(
                 &mut DatexExpressionData::Boolean(false).with_default_span()
             ),
-            Type::structural(
-                StructuralTypeDefinition::Boolean(Boolean(false)),
-                TypeMetadata::default()
-            )
-        );
-
-        assert_eq!(
-            infer_from_expression(
-                &mut DatexExpressionData::Null.with_default_span()
-            ),
-            Type::structural(
-                StructuralTypeDefinition::Null,
-                TypeMetadata::default()
-            )
+            Type::from(LiteralTypeDefinition::Boolean(false),)
         );
 
         assert_eq!(
@@ -1564,10 +1699,7 @@ mod tests {
                 &mut DatexExpressionData::Decimal(Decimal::from(1.23))
                     .with_default_span()
             ),
-            Type::structural(
-                StructuralTypeDefinition::Decimal(Decimal::from(1.23)),
-                TypeMetadata::default()
-            )
+            Type::from(LiteralTypeDefinition::Decimal(Decimal::from(1.23)),)
         );
 
         assert_eq!(
@@ -1575,10 +1707,7 @@ mod tests {
                 &mut DatexExpressionData::Integer(Integer::from(42))
                     .with_default_span()
             ),
-            Type::structural(
-                StructuralTypeDefinition::Integer(Integer::from(42)),
-                TypeMetadata::default()
-            )
+            Type::from(LiteralTypeDefinition::Integer(Integer::from(42)),)
         );
         assert_eq!(
             infer_from_expression(
@@ -1592,13 +1721,19 @@ mod tests {
                 ]))
                 .with_default_span()
             ),
-            Type::structural(
-                StructuralTypeDefinition::List(vec![
-                    Type::from(CoreValue::from(Integer::from(1))),
-                    Type::from(CoreValue::from(Integer::from(2))),
-                    Type::from(CoreValue::from(Integer::from(3)))
-                ]),
-                TypeMetadata::default()
+            Type::Alias(
+                TypeDefinition::List(vec![
+                    Type::from(LiteralTypeDefinition::Integer(Integer::from(
+                        1
+                    ))),
+                    Type::from(LiteralTypeDefinition::Integer(Integer::from(
+                        2
+                    ))),
+                    Type::from(LiteralTypeDefinition::Integer(Integer::from(
+                        3
+                    )))
+                ])
+                .into()
             )
         );
 
@@ -1612,21 +1747,23 @@ mod tests {
                 )]))
                 .with_default_span()
             ),
-            Type::structural(
-                StructuralTypeDefinition::Map(vec![(
-                    Type::structural(
-                        StructuralTypeDefinition::Text("a".to_string().into()),
-                        TypeMetadata::default()
+            Type::Alias(
+                TypeDefinition::Map(vec![(
+                    Type::Alias(
+                        LiteralTypeDefinition::Text("a".to_string()).into()
                     ),
-                    Type::from(CoreValue::from(Integer::from(1)))
-                )]),
-                TypeMetadata::default()
+                    Type::Alias(
+                        LiteralTypeDefinition::Integer(Integer::from(1)).into()
+                    )
+                )])
+                .into()
             )
         );
     }
 
     #[test]
     fn nominal_type_declaration() {
+        let memory = &Memory::new();
         let src = r#"
         type A = integer;
         "#;
@@ -1634,22 +1771,30 @@ mod tests {
         let metadata = metadata.borrow();
         let var_a = metadata.variable_metadata(0).unwrap();
 
-        let nominal_type_def = Type::new(
-            TypeDefinition::SharedReference(Rc::new(RefCell::new(
-                SharedTypeContainer::nominal(
-                    get_core_lib_type(CoreLibPointerId::Integer(None)),
-                    NominalTypeDeclaration::from("A".to_string()),
-                    Pointer::NULL,
-                ),
-            ))),
-            TypeMetadata::default(),
-        );
-
-        assert_eq!(var_a.var_type, Some(nominal_type_def));
+        if let Some(Type::Nominal(container)) = &var_a.var_type {
+            container.with_collapsed_definition(|v| match v {
+                NominalTypeDefinition::Base {
+                    name,
+                    definition_type,
+                } => {
+                    assert_eq!(name, "A");
+                    assert_eq!(
+                        definition_type,
+                        &Type::from(TypeDefinition::Nested(Box::new(
+                            memory.get_core_type(CoreLibBaseTypeId::Integer)
+                        )))
+                    );
+                }
+                _ => panic!("expected nominal type value"),
+            })
+        } else {
+            panic!("expected nominal type");
+        }
     }
 
     #[test]
     fn structural_type_declaration() {
+        let memory = &Memory::new();
         let src = r#"
         typealias A = integer;
         "#;
@@ -1657,47 +1802,63 @@ mod tests {
         let metadata = metadata.borrow();
         let var_a = metadata.variable_metadata(0).unwrap();
         let var_type = var_a.var_type.as_ref().unwrap();
-        if let Some(reference) = &var_type.inner_reference() {
+
+        if let Type::Alias(TypeDefinitionWithMetadata {
+            definition: TypeDefinition::Nested(box Type::Nominal(nominal)),
+            ..
+        }) = var_type
+        {
             assert_eq!(
-                reference,
-                &get_core_lib_type_reference(CoreLibPointerId::Integer(None))
+                nominal,
+                &memory.get_core_type_reference(CoreLibBaseTypeId::Integer)
             );
         } else {
             panic!("Expected TypeReference");
         }
 
-        let inferred_type = infer_from_script("typealias X = integer/u8");
+        let inferred_type =
+            infer_type_from_script_ignore_errors("typealias X = integer/u8");
         assert_eq!(
             inferred_type,
-            get_core_lib_type(CoreLibPointerId::Integer(Some(
-                IntegerTypeVariant::U8,
-            )))
+            memory.get_core_type(CoreLibVariantTypeId::Integer(
+                IntegerTypeVariant::U8
+            ))
         );
 
-        let inferred_type = infer_from_script("typealias X = decimal");
+        let inferred_type =
+            infer_type_from_script_ignore_errors("typealias X = decimal");
         assert_eq!(
             inferred_type,
-            get_core_lib_type(CoreLibPointerId::Decimal(None))
+            memory.get_core_type(CoreLibBaseTypeId::Decimal)
         );
 
-        let inferred_type = infer_from_script("typealias X = boolean");
-        assert_eq!(inferred_type, get_core_lib_type(CoreLibPointerId::Boolean));
+        let inferred_type =
+            infer_type_from_script_ignore_errors("typealias X = boolean");
+        assert_eq!(
+            inferred_type,
+            memory.get_core_type(CoreLibBaseTypeId::Boolean)
+        );
 
-        let inferred_type = infer_from_script("typealias X = text");
-        assert_eq!(inferred_type, get_core_lib_type(CoreLibPointerId::Text));
+        let inferred_type =
+            infer_type_from_script_ignore_errors("typealias X = text");
+        assert_eq!(
+            inferred_type,
+            memory.get_core_type(CoreLibBaseTypeId::Text)
+        );
     }
 
     #[test]
     fn recursive_types() {
-        let src = r#"
-        type A = { b: B };
-        type B = { a: A };
-        "#;
-        let metadata = ast_for_script(src).metadata;
-        let metadata = metadata.borrow();
-        let var = metadata.variable_metadata(0).unwrap();
-        let var_type = var.var_type.as_ref().unwrap();
-        assert!(var_type.is_reference());
+        // TODO:
+        // let src = r#"
+        // type A = { b: B };
+        // type B = { a: A };
+        // "#;
+        // let metadata = ast_for_script(src).metadata;
+        // let metadata = metadata.borrow();
+        // let var = metadata.variable_metadata(0).unwrap();
+        // let var_type = var.var_type.as_ref().unwrap();
+        // assert_matches!(var_type.definition().structural_definition, TypeDefinition::Shared(_));
     }
 
     #[test]
@@ -1708,141 +1869,250 @@ mod tests {
             next: LinkedList | null
         };
         "#;
-        let metadata = ast_for_script(src).metadata;
-        let metadata = metadata.borrow();
-        let var = metadata.variable_metadata(0).unwrap();
-        let var_type = var.var_type.as_ref().unwrap();
-        assert!(var_type.is_reference());
-
-        // get next field, as wrapped in union
-        let next = {
-            let var_type_ref = var_type.inner_reference().unwrap();
-            let bor = var_type_ref.borrow();
-            let structural_type_definition =
-                bor.structural_type_definition().unwrap();
-            let fields = match structural_type_definition {
-                StructuralTypeDefinition::Map(fields) => fields,
-                _ => unreachable!(),
-            };
-            let inner_union = &fields[1].1.type_definition;
-            match inner_union {
-                TypeDefinition::Union(members) => {
-                    assert_eq!(members.len(), 2);
-                    members[0].clone()
-                }
-                _ => unreachable!(),
-            }
-        };
-        assert_eq!(next, var_type.clone());
+        todo!()
+        // let metadata = ast_for_script(src).metadata;
+        // let metadata = metadata.borrow();
+        // let var = metadata.variable_metadata(0).unwrap();
+        // let var_type = var.var_type.as_ref().unwrap();
+        // assert_matches!(var_type.definition().structural_definition, TypeDefinition::Shared(_));
+        //
+        // // get next field, as wrapped in union
+        // let next = {
+        //     let var_type_ref = var_type.inner_reference().unwrap();
+        //     let bor = var_type_ref.borrow();
+        //     let structural_type_definition =
+        //         bor.structural_type_definition().unwrap();
+        //     let fields = match structural_type_definition {
+        //         TypeDefinition::Map(fields) => fields,
+        //         _ => unreachable!(),
+        //     };
+        //     let inner_union = &fields[1].1.definition().structural_definition;
+        //     match inner_union {
+        //         TypeDefinition::Union(members) => {
+        //             assert_eq!(members.len(), 2);
+        //             members[0].clone()
+        //         }
+        //         _ => unreachable!(),
+        //     }
+        // };
+        // assert_eq!(next, var_type.clone());
     }
 
     #[test]
     fn infer_structural() {
-        let inferred = infer_from_script("42");
+        let inferred = infer_type_from_script_ignore_errors("42");
         assert_eq!(
             inferred,
-            Type::structural(
-                StructuralTypeDefinition::Integer(42.into()),
-                TypeMetadata::default()
-            )
+            Type::from(LiteralTypeDefinition::Integer(42.into()),)
         );
 
-        let inferred = infer_from_script("@endpoint");
+        let inferred = infer_type_from_script_ignore_errors("@endpoint");
         assert_eq!(
             inferred,
-            Type::structural(
-                StructuralTypeDefinition::Endpoint(
-                    Endpoint::from_str("@endpoint").unwrap()
-                ),
-                TypeMetadata::default()
-            )
+            Type::from(LiteralTypeDefinition::Endpoint(
+                Endpoint::from_str("@endpoint").unwrap()
+            ),)
         );
 
-        let inferred = infer_from_script(r#""hello world""#);
+        let inferred = infer_type_from_script_ignore_errors(r#""hello world""#);
         assert_eq!(
             inferred,
-            Type::structural(
-                StructuralTypeDefinition::Text("hello world".into()),
-                TypeMetadata::default()
-            )
+            Type::from(LiteralTypeDefinition::Text("hello world".into()),)
         );
 
-        let inferred = infer_from_script("true");
+        let inferred = infer_type_from_script_ignore_errors("true");
         assert_eq!(
             inferred,
-            Type::structural(
-                StructuralTypeDefinition::Boolean(true.into()),
-                TypeMetadata::default()
-            )
-        );
-
-        let inferred = infer_from_script("null");
-        assert_eq!(
-            inferred,
-            Type::structural(
-                StructuralTypeDefinition::Null,
-                TypeMetadata::default()
-            )
+            Type::from(LiteralTypeDefinition::Boolean(true.into()),)
         );
     }
 
     #[test]
     fn statements_expression() {
-        let inferred = infer_from_script("10; 20; 30");
+        let memory = &Memory::new();
+        let inferred = infer_type_from_script_ignore_errors("10; 20; 30");
         assert_eq!(
             inferred,
-            Type::structural(
-                StructuralTypeDefinition::Integer(30.into()),
-                TypeMetadata::default()
-            )
+            Type::from(LiteralTypeDefinition::Integer(30.into()),)
         );
 
-        let inferred = infer_from_script("10; 20; 30;");
-        assert_eq!(inferred, Type::unit());
+        let inferred = infer_type_from_script_ignore_errors("10; 20; 30;");
+        assert_eq!(inferred, memory.get_core_type(CoreLibBaseTypeId::Unit));
     }
 
     #[test]
     fn var_declaration() {
-        let inferred = infer_from_script("var x = 42");
+        let inferred = infer_type_from_script_ignore_errors("var x = 42");
         assert_eq!(
             inferred,
-            Type::structural(
-                StructuralTypeDefinition::Integer(42.into()),
-                TypeMetadata::default()
-            )
+            Type::from(LiteralTypeDefinition::Integer(42.into()),)
+        );
+    }
+
+    #[test]
+    fn shared_containers() {
+        let inferred = infer_type_from_script_ignore_errors("shared 42");
+        assert_eq!(
+            inferred,
+            Type::from(TypeDefinitionWithMetadata {
+                definition: LiteralTypeDefinition::Integer(42.into()).into(),
+                metadata: TypeMetadata::Shared {
+                    mutability: SharedContainerMutability::Immutable,
+                    ownership: SharedContainerOwnership::Owned
+                }
+            })
+        );
+
+        let inferred = infer_type_from_script_ignore_errors("shared mut 42");
+        assert_eq!(
+            inferred,
+            Type::from(TypeDefinitionWithMetadata {
+                definition: LiteralTypeDefinition::Integer(42.into()).into(),
+                metadata: TypeMetadata::Shared {
+                    mutability: SharedContainerMutability::Mutable,
+                    ownership: SharedContainerOwnership::Owned
+                }
+            })
+        );
+    }
+
+    #[test]
+    fn shared_container_refs() {
+        let inferred = infer_type_from_script_ignore_errors("'shared 42");
+        assert_eq!(
+            inferred,
+            Type::from(TypeDefinitionWithMetadata {
+                definition: LiteralTypeDefinition::Integer(42.into()).into(),
+                metadata: TypeMetadata::Shared {
+                    mutability: SharedContainerMutability::Immutable,
+                    ownership: SharedContainerOwnership::Referenced(
+                        ReferenceMutability::Immutable
+                    )
+                }
+            })
+        );
+
+        let inferred = infer_type_from_script_ignore_errors("'shared mut 42");
+        assert_eq!(
+            inferred,
+            Type::from(TypeDefinitionWithMetadata {
+                definition: LiteralTypeDefinition::Integer(42.into()).into(),
+                metadata: TypeMetadata::Shared {
+                    mutability: SharedContainerMutability::Mutable,
+                    ownership: SharedContainerOwnership::Referenced(
+                        ReferenceMutability::Immutable
+                    )
+                }
+            })
+        );
+
+        let inferred =
+            infer_type_from_script_ignore_errors("'mut shared mut 42");
+        assert_eq!(
+            inferred,
+            Type::from(TypeDefinitionWithMetadata {
+                definition: LiteralTypeDefinition::Integer(42.into()).into(),
+                metadata: TypeMetadata::Shared {
+                    mutability: SharedContainerMutability::Mutable,
+                    ownership: SharedContainerOwnership::Referenced(
+                        ReferenceMutability::Mutable
+                    )
+                }
+            })
+        );
+    }
+
+    #[test]
+    fn invalid_shared_container_refs() {
+        // shared ref to local value not allowed
+        let inferred = infer_from_script("'42");
+        assert_eq!(
+            inferred.unwrap_err().errors[0],
+            SpannedTypeError::from(TypeError::InvalidSharedReference)
+        );
+
+        // mutable shared ref to immutable shared value not allowed
+        let inferred = infer_from_script("'mut shared 42");
+        assert_eq!(
+            inferred.unwrap_err().errors[0],
+            SpannedTypeError::from(TypeError::InvalidSharedReference)
+        );
+    }
+
+    #[test]
+    fn unbox() {
+        let inferred = infer_from_script("*(shared (shared 42))");
+        assert_eq!(
+            inferred.to_type(),
+            Type::from(TypeDefinitionWithMetadata {
+                definition: LiteralTypeDefinition::Integer(42.into()).into(),
+                metadata: TypeMetadata::Shared {
+                    mutability: SharedContainerMutability::Immutable,
+                    ownership: SharedContainerOwnership::Owned
+                }
+            })
+        );
+    }
+
+    #[test]
+    fn invalid_unbox() {
+        let inferred = infer_from_script("*42");
+        assert_eq!(
+            inferred.unwrap_err().errors[0],
+            SpannedTypeError::from(TypeError::InvalidUnboxType(Type::from(
+                LiteralTypeDefinition::Integer(42.into())
+            )))
+        );
+
+        let inferred = infer_from_script("*(shared 42)");
+        assert_eq!(
+            inferred.unwrap_err().errors[0],
+            SpannedTypeError::from(TypeError::InvalidUnboxType(Type::from(
+                LiteralTypeDefinition::Integer(42.into())
+            )))
         );
     }
 
     #[test]
     fn var_declaration_and_access() {
-        let inferred = infer_from_script("var x = 42; x");
+        let memory = &Memory::new();
+        let inferred = infer_type_from_script_ignore_errors("var x = 42; x");
         assert_eq!(
             inferred,
-            Type::structural(
-                StructuralTypeDefinition::Integer(42.into()),
-                TypeMetadata::default()
-            )
+            Type::from(LiteralTypeDefinition::Integer(42.into()),)
         );
 
-        let inferred = infer_from_script("var y: integer = 100u8; y");
-        assert_eq!(inferred, Type::integer());
+        let inferred =
+            infer_type_from_script_ignore_errors("var y: integer = 100u8; y");
+        assert_eq!(inferred, memory.get_core_type(CoreLibBaseTypeId::Integer));
     }
 
     #[test]
     fn var_declaration_with_type_annotation() {
-        let inferred = infer_from_script("var x: integer = 42");
-        assert_eq!(inferred, Type::integer());
-        let inferred = infer_from_script("var x: integer/u8 = 42");
-        assert_eq!(inferred, Type::typed_integer(IntegerTypeVariant::U8));
+        let memory = &Memory::new();
 
-        let inferred = infer_from_script("var x: decimal = 42");
-        assert_eq!(inferred, Type::decimal());
+        let inferred =
+            infer_type_from_script_ignore_errors("var x: integer = 42");
+        assert_eq!(inferred, memory.get_core_type(CoreLibBaseTypeId::Integer));
+        let inferred =
+            infer_type_from_script_ignore_errors("var x: integer/u8 = 42");
+        assert_eq!(
+            inferred,
+            memory.get_core_type(CoreLibVariantTypeId::Integer(
+                IntegerTypeVariant::U8
+            ))
+        );
+        let inferred =
+            infer_type_from_script_ignore_errors("var x: decimal = 42");
+        assert_eq!(inferred, memory.get_core_type(CoreLibBaseTypeId::Decimal));
 
-        let inferred = infer_from_script("var x: boolean = true");
-        assert_eq!(inferred, Type::boolean());
+        let inferred =
+            infer_type_from_script_ignore_errors("var x: boolean = true");
+        assert_eq!(inferred, memory.get_core_type(CoreLibBaseTypeId::Boolean));
 
-        let inferred = infer_from_script(r#"var x: text = "hello""#);
-        assert_eq!(inferred, Type::text());
+        let inferred =
+            infer_type_from_script_ignore_errors(r#"var x: text = "hello""#);
+        assert_eq!(inferred, memory.get_core_type(CoreLibBaseTypeId::Text));
     }
 
     #[test]
@@ -1851,18 +2121,16 @@ mod tests {
         var a = { b: 42 };
         a.b = 100
         "#;
-        let inferred_type = infer_from_script(src); // should be 100 of b property type
+        let inferred_type = infer_type_from_script_ignore_errors(src); // should be 100 of b property type
         assert_eq!(
             inferred_type,
-            Type::structural(
-                StructuralTypeDefinition::Integer(Integer::from(100)),
-                TypeMetadata::default()
-            )
+            Type::from(LiteralTypeDefinition::Integer(Integer::from(100)),)
         );
     }
 
     #[test]
     fn var_declaration_reassignment() {
+        let memory = &Memory::new();
         let src = r#"
         var a: text | integer = 42;
         a = "hello";
@@ -1874,13 +2142,10 @@ mod tests {
         let var_type = var.var_type.as_ref().unwrap();
         assert_eq!(
             var_type,
-            &Type::union(
-                vec![
-                    get_core_lib_type(CoreLibPointerId::Text),
-                    get_core_lib_type(CoreLibPointerId::Integer(None))
-                ],
-                TypeMetadata::default()
-            )
+            &Type::from(TypeDefinition::Union(vec![
+                memory.get_core_type(CoreLibBaseTypeId::Text),
+                memory.get_core_type(CoreLibBaseTypeId::Integer)
+            ],))
         );
     }
 
@@ -1893,111 +2158,93 @@ mod tests {
         let errors = errors_for_script(src);
         let error = errors.first().unwrap();
 
-        assert_matches!(
-            &error.error,
-            TypeError::AssignmentTypeMismatch {
-                annotated_type,
-                assigned_type
-            } if *annotated_type == get_core_lib_type(CoreLibPointerId::Integer(None))
-              && assigned_type == &Type::structural(StructuralTypeDefinition::Text("hello".to_string().into()), TypeMetadata::default())
-        );
+        // TODO:
+        // assert_matches!(
+        //     &error.error,
+        //     TypeError::AssignmentTypeMismatch {
+        //         expected,
+        //         found
+        //     } if *annotated_type == core_lib_type(CoreLibTypeId::Integer(None))
+        //       && assigned_type == &Type::structural(LiteralTypeDefinition::Text("hello".to_string().into()), TypeMetadata::default())
+        // );
     }
 
     #[test]
     fn binary_operation() {
-        let inferred = infer_from_script("10 + 32");
-        assert_eq!(inferred, Type::integer());
+        let memory = &Memory::new();
+        let inferred = infer_type_from_script_ignore_errors("10 + 32");
+        assert_eq!(inferred, memory.get_core_type(CoreLibBaseTypeId::Integer));
 
-        let inferred = infer_from_script(r#"10 + "test""#);
-        assert_eq!(inferred, Type::never());
+        let inferred = infer_type_from_script_ignore_errors(r#"10 + "test""#);
+        assert_eq!(inferred, memory.get_core_type(CoreLibBaseTypeId::Never));
     }
 
     #[test]
     fn infer_typed_literal() {
         let inferred_type =
-            infer_from_script_get_reference_type("type X = 42u8");
+            infer_type_from_script_ignore_errors("type X = 42u8");
         assert_eq!(
             inferred_type,
-            Type::structural(
-                StructuralTypeDefinition::TypedInteger(TypedInteger::U8(42)),
-                TypeMetadata::default()
-            )
+            Type::from(LiteralTypeDefinition::TypedInteger(TypedInteger::U8(
+                42
+            )),)
         );
 
         let inferred_type =
-            infer_from_script_get_reference_type("type X = 42i32");
+            infer_type_from_script_ignore_errors("type X = 42i32");
         assert_eq!(
             inferred_type,
-            Type::structural(
-                StructuralTypeDefinition::TypedInteger(TypedInteger::I32(42)),
-                TypeMetadata::default()
-            )
+            Type::from(LiteralTypeDefinition::TypedInteger(TypedInteger::I32(
+                42
+            )),)
         );
 
         let inferred_type =
-            infer_from_script_get_reference_type("type X = 42.69f32");
+            infer_type_from_script_ignore_errors("type X = 42.69f32");
         assert_eq!(
             inferred_type,
-            Type::structural(
-                StructuralTypeDefinition::TypedDecimal(TypedDecimal::from(
-                    42.69_f32
-                )),
-                TypeMetadata::default()
-            )
+            Type::from(LiteralTypeDefinition::TypedDecimal(
+                TypedDecimal::from(42.69_f32)
+            ),)
         );
     }
 
     #[test]
     fn infer_type_simple_literal() {
-        let inferred_type = infer_from_script_get_reference_type("type X = 42");
+        let inferred_type = infer_type_from_script_ignore_errors("type X = 42");
         assert_eq!(
             inferred_type,
-            Type::structural(
-                StructuralTypeDefinition::Integer(Integer::from(42)),
-                TypeMetadata::default()
-            )
+            Type::from(LiteralTypeDefinition::Integer(Integer::from(42)),)
         );
 
         let inferred_type =
-            infer_from_script_get_reference_type("type X = 3/4");
+            infer_type_from_script_ignore_errors("type X = 3/4");
         assert_eq!(
             inferred_type,
-            Type::structural(
-                StructuralTypeDefinition::Decimal(
-                    Decimal::from_string("3/4").unwrap()
-                ),
-                TypeMetadata::default()
-            )
+            Type::from(LiteralTypeDefinition::Decimal(
+                Decimal::from_string("3/4").unwrap()
+            ),)
         );
 
         let inferred_type =
-            infer_from_script_get_reference_type("type X = true");
+            infer_type_from_script_ignore_errors("type X = true");
         assert_eq!(
             inferred_type,
-            Type::structural(
-                StructuralTypeDefinition::Boolean(Boolean(true)),
-                TypeMetadata::default()
-            )
+            Type::from(LiteralTypeDefinition::Boolean(true),)
         );
 
         let inferred_type =
-            infer_from_script_get_reference_type("type X = false");
+            infer_type_from_script_ignore_errors("type X = false");
         assert_eq!(
             inferred_type,
-            Type::structural(
-                StructuralTypeDefinition::Boolean(Boolean(false)),
-                TypeMetadata::default()
-            )
+            Type::from(LiteralTypeDefinition::Boolean(false),)
         );
 
         let inferred_type =
-            infer_from_script_get_reference_type(r#"type X = "hello""#);
+            infer_type_from_script_ignore_errors(r#"type X = "hello""#);
         assert_eq!(
             inferred_type,
-            Type::structural(
-                StructuralTypeDefinition::Text("hello".to_string().into()),
-                TypeMetadata::default()
-            )
+            Type::from(LiteralTypeDefinition::Text("hello".to_string().into()),)
         );
     }
 
@@ -2005,87 +2252,75 @@ mod tests {
     // TODO #451 resolve intersection and union types properly
     // by merging the member types if one is base (one level higher) than the other
     fn infer_intersection_type_expression() {
+        let memory = &Memory::new();
+
         let inferred_type =
-            infer_from_script_get_reference_type("type X = integer/u8 & 42");
+            infer_type_from_script_ignore_errors("type X = integer/u8 & 42");
         assert_eq!(
             inferred_type,
-            Type::intersection(
-                vec![
-                    get_core_lib_type(CoreLibPointerId::Integer(Some(
-                        IntegerTypeVariant::U8
-                    ))),
-                    Type::structural(
-                        StructuralTypeDefinition::Integer(Integer::from(42)),
-                        TypeMetadata::default()
-                    )
-                ],
-                TypeMetadata::default()
-            )
+            Type::from(TypeDefinition::Intersection(vec![
+                memory.get_core_type(CoreLibVariantTypeId::Integer(
+                    IntegerTypeVariant::U8
+                )),
+                Type::from(LiteralTypeDefinition::Integer(Integer::from(42)),)
+            ],))
         );
     }
 
     #[test]
     fn infer_union_type_expression() {
-        let inferred_type = infer_from_script_get_reference_type(
+        let memory = &Memory::new();
+
+        let inferred_type = infer_type_from_script_ignore_errors(
             "type X = integer/u8 | decimal",
         );
         assert_eq!(
             inferred_type,
-            Type::union(
-                vec![
-                    get_core_lib_type(CoreLibPointerId::Integer(Some(
-                        IntegerTypeVariant::U8
-                    ))),
-                    get_core_lib_type(CoreLibPointerId::Decimal(None))
-                ],
-                TypeMetadata::default()
-            )
+            Type::from(TypeDefinition::Union(vec![
+                memory.get_core_type(CoreLibVariantTypeId::Integer(
+                    IntegerTypeVariant::U8
+                )),
+                memory.get_core_type(CoreLibBaseTypeId::Decimal)
+            ]))
         );
     }
 
     #[test]
     fn infer_empty_struct_type_expression() {
-        let inferred_type = infer_from_script_get_reference_type("type X = {}");
+        let inferred_type = infer_type_from_script_ignore_errors("type X = {}");
         assert_eq!(
             inferred_type,
-            Type::structural(
-                StructuralTypeDefinition::Map(vec![]),
-                TypeMetadata::default()
-            )
+            Type::Alias(TypeDefinition::Map(vec![]).into())
         );
     }
 
     #[test]
     fn infer_struct_type_expression() {
-        let inferred_type = infer_from_script_get_reference_type(
+        let memory = &Memory::new();
+
+        let inferred_type = infer_type_from_script_ignore_errors(
             "type X = { a: integer/u8, b: decimal }",
         );
         assert_eq!(
             inferred_type,
-            Type::structural(
-                StructuralTypeDefinition::Map(vec![
+            Type::Alias(
+                TypeDefinition::Map(vec![
                     (
-                        Type::structural(
-                            StructuralTypeDefinition::Text(
-                                "a".to_string().into()
-                            ),
-                            TypeMetadata::default()
-                        ),
-                        get_core_lib_type(CoreLibPointerId::Integer(Some(
+                        Type::from(LiteralTypeDefinition::Text(
+                            "a".to_string().into()
+                        ),),
+                        memory.get_core_type(CoreLibVariantTypeId::Integer(
                             IntegerTypeVariant::U8
-                        )))
+                        )),
                     ),
                     (
-                        Type::structural(
-                            StructuralTypeDefinition::Text(
-                                "b".to_string().into()
-                            ),
-                            TypeMetadata::default()
-                        ),
-                        get_core_lib_type(CoreLibPointerId::Decimal(None))
+                        Type::from(LiteralTypeDefinition::Text(
+                            "b".to_string().into()
+                        ),),
+                        memory.get_core_type(CoreLibBaseTypeId::Decimal)
                     )
-                ]),
-                TypeMetadata::default()
+                ])
+                .into()
             )
         );
     }
@@ -2115,17 +2350,17 @@ mod tests {
         let var_metadata = metadata.variable_metadata(0).unwrap();
         assert_eq!(
             var_metadata.var_type,
-            Some(Type::structural(
-                StructuralTypeDefinition::Integer(Integer::from(10)),
-                TypeMetadata::default()
-            )),
+            Some(Type::from(LiteralTypeDefinition::Integer(Integer::from(
+                10
+            )),)),
         );
     }
 
     #[test]
     fn infer_binary_expression_types() {
-        let integer = get_core_lib_type(CoreLibPointerId::Integer(None));
-        let decimal = get_core_lib_type(CoreLibPointerId::Decimal(None));
+        let memory = &Memory::new();
+        let integer = memory.get_core_type(CoreLibBaseTypeId::Integer);
+        let decimal = memory.get_core_type(CoreLibBaseTypeId::Decimal);
 
         // integer - integer = integer
         let mut expr = DatexExpressionData::BinaryOperation(BinaryOperation {

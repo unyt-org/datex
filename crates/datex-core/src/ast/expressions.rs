@@ -9,8 +9,10 @@ use crate::{
         UnaryOperator, assignment::AssignmentOperator,
     },
     shared_values::{
-        pointer::PointerReferenceMutability, pointer_address::PointerAddress,
-        shared_container::SharedContainerMutability,
+        PointerAddress, ReferenceMutability, SharedContainerMutability,
+    },
+    types::{
+        r#type::Type, type_definition_with_metadata::LocalReferenceMutability,
     },
     values::{
         core_value::CoreValue,
@@ -19,7 +21,6 @@ use crate::{
             decimal::{Decimal, typed_decimal::TypedDecimal},
             endpoint::Endpoint,
             integer::{Integer, typed_integer::TypedInteger},
-            r#type::{LocalReferenceMutability, Type},
         },
         value::Value,
         value_container::ValueContainer,
@@ -112,7 +113,7 @@ pub enum DatexExpressionData {
     /// One or more statements, e.g (1; 2; 3)
     Statements(Statements),
     /// reference access to shared value, e.g. '$ABC / 'mut $ABC
-    GetSharedRef(GetSharedRef),
+    RequestSharedRef(RequestSharedRef),
 
     /// compile ( ... )
     Compile(CompileExpression),
@@ -143,16 +144,19 @@ pub enum DatexExpressionData {
     /// Create a new shared container
     CreateShared(CreateShared),
     /// Create a new reference
-    CreateRef(CreateRef),
+    GetRef(GetRef),
 
-    /// Create a new shared reference
-    CreateSharedRef(CreateSharedRef),
+    /// Get a new shared reference
+    GetSharedRef(GetSharedRef),
 
     /// Creates a new mutable value
     CreateMut(CreateMut),
 
     /// Unbox
     Unbox(Unbox),
+
+    /// Clone
+    Clone(CloneExpression),
 
     /// Slot, e.g. #1, #endpoint
     Slot(Slot),
@@ -166,8 +170,9 @@ pub enum DatexExpressionData {
     /// Comparison operation, e.g. x < y
     ComparisonOperation(ComparisonOperation),
 
-    /// Unbox assignment, e.g. *x = y, **x += y
+    /// Unbox assignment, e.g. *(...) = y, **(...) += y
     UnboxAssignment(UnboxAssignment),
+    UnboxSlotAssignment(UnboxSlotAssignment),
 
     /// Property assignment, e.g. obj.property = value
     PropertyAssignment(PropertyAssignment),
@@ -185,7 +190,7 @@ pub enum DatexExpressionData {
     GenericInstantiation(GenericInstantiation),
 
     /// The '?' placeholder expression
-    Placeholder,
+    Placeholder(ValueAccessType),
 
     /// Remote execution, e.g. @example :: 41 + 1
     RemoteExecution(RemoteExecution),
@@ -304,14 +309,21 @@ pub struct ComparisonOperation {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct UnboxAssignment {
-    pub operator: AssignmentOperator,
+    pub operator: Option<AssignmentOperator>,
     pub unbox_expression: Box<DatexExpression>,
     pub assigned_expression: Box<DatexExpression>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
+pub struct UnboxSlotAssignment {
+    pub operator: Option<AssignmentOperator>,
+    pub slot: Slot,
+    pub assigned_expression: Box<DatexExpression>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
 pub struct PropertyAssignment {
-    pub operator: AssignmentOperator,
+    pub operator: Option<AssignmentOperator>,
     pub base: Box<DatexExpression>,
     pub property: Box<DatexExpression>,
     pub assigned_expression: Box<DatexExpression>,
@@ -327,13 +339,13 @@ pub struct Conditional {
 #[derive(Clone, Debug, PartialEq)]
 pub enum TypeDeclarationKind {
     Nominal,
-    Structural,
+    Alias,
 }
 impl Display for TypeDeclarationKind {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             TypeDeclarationKind::Nominal => core::write!(f, "type"),
-            TypeDeclarationKind::Structural => core::write!(f, "typealias"),
+            TypeDeclarationKind::Alias => core::write!(f, "typealias"),
         }
     }
 }
@@ -342,7 +354,7 @@ impl TypeDeclarationKind {
         matches!(self, TypeDeclarationKind::Nominal)
     }
     pub fn is_structural(&self) -> bool {
-        matches!(self, TypeDeclarationKind::Structural)
+        matches!(self, TypeDeclarationKind::Alias)
     }
 }
 
@@ -359,6 +371,29 @@ pub struct TypeDeclaration {
 pub struct UnaryOperation {
     pub operator: UnaryOperator,
     pub expression: Box<DatexExpression>,
+}
+
+#[derive(Clone, Debug, PartialEq, Default)]
+pub enum ValueAccessType {
+    /// 'mut x
+    SharedRefMut,
+    /// 'x
+    SharedRef,
+    /// clone x
+    Clone, // TODO: allow clone only for non-shared values, for shared values, do clone *x
+    /// temp borrow for x (used before Unbox)
+    Borrow,
+    #[default]
+    MoveOrCopy,
+}
+
+impl From<&ReferenceMutability> for ValueAccessType {
+    fn from(mutability: &ReferenceMutability) -> Self {
+        match mutability {
+            ReferenceMutability::Mutable => ValueAccessType::SharedRefMut,
+            ReferenceMutability::Immutable => ValueAccessType::SharedRef,
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -383,6 +418,8 @@ pub struct GenericInstantiation {
 pub struct RemoteExecution {
     pub left: Box<DatexExpression>,
     pub right: Box<DatexExpression>,
+    /// internal metadata set by precompiler, indicates how many variables from parent scope are accessed inside the remote execution
+    pub injected_variable_count: Option<u32>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -434,7 +471,7 @@ pub struct VariableDeclaration {
 pub struct VariableAssignment {
     pub id: Option<VariableId>,
     pub name: String,
-    pub operator: AssignmentOperator,
+    pub operator: Option<AssignmentOperator>,
     pub expression: Box<DatexExpression>,
 }
 
@@ -447,11 +484,12 @@ pub struct CompileExpression {
 pub struct VariableAccess {
     pub id: VariableId,
     pub name: String,
+    pub access_type: ValueAccessType,
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct GetSharedRef {
-    pub mutability: PointerReferenceMutability,
+pub struct RequestSharedRef {
+    pub mutability: ReferenceMutability,
     pub address: PointerAddress,
 }
 
@@ -464,6 +502,7 @@ pub struct CallableDeclaration {
     pub return_type: Option<TypeExpression>,
     pub yeet_type: Option<TypeExpression>,
     pub body: Box<DatexExpression>,
+    pub injected_variable_count: Option<u32>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -522,6 +561,8 @@ impl Display for Slot {
 pub struct SlotAssignment {
     pub slot: Slot,
     pub expression: Box<DatexExpression>,
+    // TODO: operator for slot assignment, e.g. #1 += 2
+    // pub operator: Option<AssignmentOperator>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -537,7 +578,12 @@ pub struct Unbox {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct CreateRef {
+pub struct CloneExpression {
+    pub expression: Box<DatexExpression>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct GetRef {
     pub mutability: LocalReferenceMutability,
     pub expression: Box<DatexExpression>,
 }
@@ -549,8 +595,8 @@ pub struct CreateShared {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct CreateSharedRef {
-    pub mutability: PointerReferenceMutability,
+pub struct GetSharedRef {
+    pub mutability: ReferenceMutability,
     pub expression: Box<DatexExpression>,
 }
 

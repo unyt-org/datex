@@ -1,12 +1,15 @@
 use crate::{
     ast::expressions::DatexExpression,
     compiler::precompiler::precompiled_ast::RichAst,
+    core_compiler::value_compiler::SharedValueCompilationError,
     parser::errors::{ParserError, SpannedParserError},
     serde::error::DeserializationError,
-    type_inference::error::{DetailedTypeErrors, SpannedTypeError, TypeError},
+    type_inference::error::{DetailedTypeErrors, SpannedTypeError},
 };
 
-use crate::{prelude::*, utils::maybe_action::ErrorCollector};
+use crate::{
+    prelude::*, types::error::TypeError, utils::maybe_action::ErrorCollector,
+};
 use alloc::format;
 use core::{
     fmt::{Display, Formatter},
@@ -16,24 +19,38 @@ use core::{
 #[derive(Debug, Clone)]
 pub enum CompilerError {
     UnexpectedTerm(Box<DatexExpression>),
-    SerializationError,
-    // TODO #478: SerializationError(binrw::Error),? has no clone
+    SerializationError(String),
     BigDecimalOutOfBoundsError,
     IntegerOutOfBoundsError,
     InvalidPlaceholderCount,
     TooManyApplyArguments, // more than 255 arguments
     NonStaticValue,
+    SharedRefToNonSharedValue,
+    ExpectedOwnedSharedValue,
     UndeclaredVariable(String),
     InvalidRedeclaration(String),
     SubvariantNotFound(String, String),
     ScopePopError,
     InvalidSlotName(String),
     AssignmentToConst(String),
+    AssignmentToExternalVariable(String),
     AssignmentToImmutableReference(String),
     AssignmentToImmutableValue(String),
     OnceScopeUsedMultipleTimes,
     TypeError(TypeError),
     ParserError(ParserError),
+    SharedMutRefToImmutableValue,
+    InvalidConversionFromRefToOwnedValue,
+}
+
+impl From<SharedValueCompilationError> for CompilerError {
+    fn from(error: SharedValueCompilationError) -> CompilerError {
+        match error {
+            SharedValueCompilationError::ExpectedOwnedSharedValue => {
+                CompilerError::ExpectedOwnedSharedValue
+            }
+        }
+    }
 }
 
 /// A compiler error that can be linked to a specific span in the source code
@@ -258,6 +275,12 @@ impl From<TypeError> for CompilerError {
     }
 }
 
+impl From<binrw::Error> for CompilerError {
+    fn from(value: binrw::Error) -> Self {
+        CompilerError::SerializationError(value.to_string())
+    }
+}
+
 impl Display for CompilerError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
@@ -273,8 +296,8 @@ impl Display for CompilerError {
                     "Subvariant {variant} does not exist for {name}"
                 )
             }
-            CompilerError::SerializationError => {
-                core::write!(f, "Serialization error")
+            CompilerError::SerializationError(error) => {
+                core::write!(f, "Serialization error: {error}")
             }
             CompilerError::BigDecimalOutOfBoundsError => {
                 core::write!(f, "BigDecimal out of bounds error")
@@ -300,6 +323,12 @@ impl Display for CompilerError {
             CompilerError::AssignmentToConst(name) => {
                 core::write!(f, "Cannot assign new value to const {name}")
             }
+            CompilerError::AssignmentToExternalVariable(name) => {
+                core::write!(
+                    f,
+                    "Cannot assign new value to external variable {name}"
+                )
+            }
             CompilerError::OnceScopeUsedMultipleTimes => {
                 core::write!(
                     f,
@@ -322,6 +351,30 @@ impl Display for CompilerError {
                 core::write!(
                     f,
                     "Apply has too many arguments (max 255 allowed)"
+                )
+            }
+            CompilerError::SharedRefToNonSharedValue => {
+                core::write!(
+                    f,
+                    "Cannot create shared reference to non-shared value"
+                )
+            }
+            CompilerError::ExpectedOwnedSharedValue => {
+                core::write!(
+                    f,
+                    "Expected owned shared value, but found non-owned value"
+                )
+            }
+            CompilerError::SharedMutRefToImmutableValue => {
+                core::write!(
+                    f,
+                    "Cannot create shared mutable reference to immutable value"
+                )
+            }
+            CompilerError::InvalidConversionFromRefToOwnedValue => {
+                core::write!(
+                    f,
+                    "Cannot convert reference to owned value without cloning or moving"
                 )
             }
         }

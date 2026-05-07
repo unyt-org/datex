@@ -1,3 +1,4 @@
+//! This module contains the implementation of all core value types in the DATEX type system, such as [boolean::Boolean], [integer::Integer], and [text::Text].
 pub mod boolean;
 pub mod callable;
 pub mod decimal;
@@ -8,4 +9,3 @@ pub mod list;
 pub mod map;
 pub mod range;
 pub mod text;
-pub mod r#type;

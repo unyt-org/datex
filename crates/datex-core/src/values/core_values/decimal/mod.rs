@@ -4,29 +4,22 @@ pub mod typed_decimal;
 pub mod utils;
 use crate::prelude::*;
 
-use crate::{
-    traits::{structural_eq::StructuralEq, value_eq::ValueEq},
-    values::core_values::{
-        decimal::typed_decimal::TypedDecimal, error::NumberParseError,
-    },
+use crate::values::core_values::{
+    decimal::typed_decimal::TypedDecimal, error::NumberParseError,
 };
 use bigdecimal::BigDecimal;
 use binrw::{
     BinRead, BinReaderExt, BinResult, BinWrite, Endian,
     io::{Read, Seek, Write},
 };
-use core::{
-    cmp::Ordering,
-    fmt::Display,
-    hash::Hash,
-    ops::{Add, Neg, Sub},
-    str::FromStr,
-};
+use core::{cmp::Ordering, fmt::Display, hash::Hash, str::FromStr};
+pub mod equality;
 use num::{BigInt, BigRational};
 use num_enum::TryFromPrimitive;
 use num_traits::{FromPrimitive, Zero};
 use rational::Rational;
 use serde::{Deserialize, Serialize};
+pub mod ops;
 
 #[derive(Debug, Clone, Eq, Serialize, Deserialize)]
 pub enum Decimal {
@@ -226,91 +219,6 @@ impl Decimal {
                 }
             }
         }
-    }
-}
-
-impl StructuralEq for Decimal {
-    fn structural_eq(&self, other: &Self) -> bool {
-        if self.is_zero() && other.is_zero() {
-            return true; // +0.0 == -0.0
-        }
-        match (self, other) {
-            (Decimal::Finite(a), Decimal::Finite(b)) => a == b,
-            (Decimal::Infinity, Decimal::Infinity) => true,
-            (Decimal::NegInfinity, Decimal::NegInfinity) => true,
-            (Decimal::Nan, Decimal::Nan) => false,
-            _ => false,
-        }
-    }
-}
-
-impl ValueEq for Decimal {
-    fn value_eq(&self, other: &Self) -> bool {
-        self.structural_eq(other)
-    }
-}
-
-impl Neg for Decimal {
-    type Output = Self;
-
-    fn neg(self) -> Self::Output {
-        match self {
-            Decimal::Finite(value) => Decimal::Finite(-value),
-            Decimal::Zero => Decimal::NegZero,
-            Decimal::NegZero => Decimal::Zero,
-            Decimal::Infinity => Decimal::NegInfinity,
-            Decimal::NegInfinity => Decimal::Infinity,
-            Decimal::Nan => Decimal::Nan,
-        }
-    }
-}
-
-impl Add for Decimal {
-    type Output = Self;
-
-    fn add(self, rhs: Self) -> Self::Output {
-        match (self, rhs) {
-            (Decimal::Finite(a), Decimal::Finite(b)) => Decimal::from(a + b),
-            (Decimal::NegZero, Decimal::Zero)
-            | (Decimal::Zero, Decimal::NegZero) => Decimal::Zero,
-            (Decimal::Zero, b) | (b, Decimal::Zero) => b,
-            (Decimal::NegZero, b) | (b, Decimal::NegZero) => b,
-            (Decimal::Infinity, Decimal::NegInfinity)
-            | (Decimal::NegInfinity, Decimal::Infinity) => Decimal::Nan,
-            (Decimal::Infinity, _) | (_, Decimal::Infinity) => {
-                Decimal::Infinity
-            }
-            (Decimal::NegInfinity, _) | (_, Decimal::NegInfinity) => {
-                Decimal::NegInfinity
-            }
-            (Decimal::Nan, _) | (_, Decimal::Nan) => Decimal::Nan,
-        }
-    }
-}
-
-impl Add for &Decimal {
-    type Output = Decimal;
-
-    fn add(self, rhs: Self) -> Self::Output {
-        // FIXME #334: Avoid cloning, as add should be applicable for refs only
-        Decimal::add(self.clone(), rhs.clone())
-    }
-}
-
-impl Sub for Decimal {
-    type Output = Self;
-
-    fn sub(self, rhs: Self) -> Self::Output {
-        self + (-rhs)
-    }
-}
-
-impl Sub for &Decimal {
-    type Output = Decimal;
-
-    fn sub(self, rhs: Self) -> Self::Output {
-        // FIXME #335: Avoid cloning, as sub should be applicable for refs only
-        Decimal::sub(self.clone(), rhs.clone())
     }
 }
 
@@ -522,7 +430,12 @@ impl From<f64> for Decimal {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::{
+        prelude::*,
+        traits::{structural_eq::StructuralEq, value_eq::ValueEq},
+        values::core_values::decimal::Decimal,
+    };
+
     use core::assert_matches;
 
     #[test]

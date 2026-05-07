@@ -9,12 +9,12 @@ use datex_core::{
         protocol_structures::{
             block_header::{BlockHeader, BlockType},
             encrypted_header::{self, EncryptedHeader},
-            instructions::RawRemotePointerAddress,
+            instruction_data::RawRemotePointerAddress,
             routing_header::{EncryptionType, RoutingHeader},
             serializable::Serializable,
         },
     },
-    shared_values::pointer_address::PointerAddress,
+    shared_values::PointerAddress,
     values::core_values::endpoint::{Endpoint, EndpointInstance, EndpointType},
 };
 use serde::Serialize;

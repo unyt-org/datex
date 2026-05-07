@@ -1,7 +1,6 @@
 use core::{fmt::Display, time::Duration};
 
 use crate::{
-    core_compiler::value_compiler::compile_value_container,
     global::{
         dxb_block::{DXBBlock, IncomingSection, OutgoingContextId},
         protocol_structures::{
@@ -30,7 +29,12 @@ use crate::{
     },
 };
 
-use crate::{prelude::*, runtime::RuntimeInternal};
+use crate::{
+    core_compiler::value_compiler::compile_value,
+    prelude::*,
+    runtime::{Runtime, execution::execution_input::ExecutionCallerMetadata},
+    values::core_values::text::Text,
+};
 use log::{error, info};
 use serde::{Deserialize, Serialize};
 use serde_with::{DurationMilliSeconds, serde_as};
@@ -532,9 +536,10 @@ impl ComHub {
     ) -> Option<Vec<NetworkTraceHop>> {
         // convert DATEX to hops
         let dxb = block.body.clone();
-        let runtime_stub = Rc::new(RuntimeInternal::stub());
+        let runtime_stub = Runtime::stub(); // FIXME
         let exec_input = ExecutionInput::new(
             &dxb,
+            ExecutionCallerMetadata::local_default(),
             ExecutionOptions::default(),
             runtime_stub,
         );
@@ -552,21 +557,10 @@ impl ComHub {
                     ..
                 }) = value
                 {
-                    // FIXME #191 what should the access look like?
-                    // let endpoint: Endpoint = obj.get("endpoint").into();
-                    // let endpoint: Option<Endpoint> = obj.get("endpoint").try_into();
-                    // let endpoint: Endpoint = obj.get("endpoint").try_cast_to_endpoint().unwrap();
-                    // let endpoint: Endpoint = obj.get("endpoint").cast_to_endpoint();
-
-                    let endpoint: Endpoint = obj
-                        .get("endpoint")
-                        .unwrap()
-                        .to_value()
-                        .borrow()
-                        .cast_to_endpoint()
-                        .unwrap();
+                    let endpoint =
+                        obj.get("endpoint").unwrap().try_as().unwrap();
                     let distance: TypedInteger =
-                        obj.get("distance").ok().cloned().try_into().unwrap();
+                        obj.get("distance").ok().unwrap().try_as().unwrap();
 
                     let socket = obj.get("socket").unwrap();
                     let (interface_type, interface_name, channel, socket_uuid) =
@@ -578,9 +572,8 @@ impl ComHub {
                             let interface_type = socket_obj
                                 .get("interface_type")
                                 .unwrap()
-                                .to_value()
-                                .borrow()
-                                .cast_to_text()
+                                .try_as::<Text>()
+                                .unwrap()
                                 .0;
                             let interface_name =
                                 if let ValueContainer::Local(Value {
@@ -595,16 +588,14 @@ impl ComHub {
                             let channel = socket_obj
                                 .get("channel")
                                 .unwrap()
-                                .to_value()
-                                .borrow()
-                                .cast_to_text()
+                                .try_as::<Text>()
+                                .unwrap()
                                 .0;
                             let socket_uuid = socket_obj
                                 .get("socket_uuid")
                                 .unwrap()
-                                .to_value()
-                                .borrow()
-                                .cast_to_text()
+                                .try_as::<Text>()
+                                .unwrap()
                                 .0;
                             (
                                 interface_type,
@@ -619,23 +610,13 @@ impl ComHub {
                     let direction = obj
                         .get("direction")
                         .unwrap()
-                        .to_value()
-                        .borrow()
-                        .cast_to_text()
-                        .0;
-                    let fork_nr = obj
-                        .get("fork_nr")
+                        .try_as::<Text>()
                         .unwrap()
-                        .to_value()
-                        .borrow()
-                        .cast_to_text()
                         .0;
-                    let bounce_back: Boolean = obj
-                        .get("bounce_back")
-                        .ok()
-                        .cloned()
-                        .try_into()
-                        .unwrap();
+                    let fork_nr =
+                        obj.get("fork_nr").unwrap().try_as::<Text>().unwrap().0;
+                    let bounce_back: Boolean =
+                        obj.get("bounce_back").ok().unwrap().try_as().unwrap();
 
                     hops.push(NetworkTraceHop {
                         endpoint,
@@ -732,7 +713,7 @@ impl ComHub {
             hops_datex.push(ValueContainer::from(data_map));
         }
 
-        let dxb = compile_value_container(&ValueContainer::from(hops_datex));
+        let dxb = compile_value(&Value::from(hops_datex)).unwrap();
         // info!(
         //     "Trace data: {}",
         //     decompile_body(&dxb, DecompileOptions::default()).unwrap()

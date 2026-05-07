@@ -1,18 +1,35 @@
 use crate::runtime::{
-    RuntimeInternal,
+    Runtime,
     execution::{
         ExecutionError,
         execution_loop::{
             interrupts::{ExternalExecutionInterrupt, InterruptProvider},
-            state::{ExecutionLoopState, RuntimeExecutionSlots},
+            state::{ExecutionLoopState, RuntimeExecutionStack},
         },
     },
 };
 
-use crate::prelude::*;
+use crate::values::core_values::endpoint::Endpoint;
+
 #[derive(Debug, Clone, Default)]
 pub struct ExecutionOptions {
     pub verbose: bool,
+}
+
+#[derive(Debug, Clone)]
+pub struct ExecutionCallerMetadata {
+    pub endpoint: Endpoint,
+}
+
+impl ExecutionCallerMetadata {
+    pub fn local_default() -> Self {
+        Self {
+            endpoint: Endpoint::LOCAL,
+        }
+    }
+    pub fn new(endpoint: Endpoint) -> Self {
+        Self { endpoint }
+    }
 }
 
 /// Input required to execute a DXB program.
@@ -20,36 +37,46 @@ pub struct ExecutionOptions {
 pub struct ExecutionInput<'a> {
     /// Options for execution.
     pub options: ExecutionOptions,
+    /// Metadata about the caller of the execution
+    pub caller_metadata: ExecutionCallerMetadata,
     /// The DXB program body containing raw bytecode.
     pub dxb_body: &'a [u8],
     /// For persisting execution state across multiple executions (e.g., for REPL scenarios).
     pub loop_state: Option<ExecutionLoopState>,
-    pub runtime: Rc<RuntimeInternal>,
+    pub runtime: Runtime,
 }
 
 impl<'a> ExecutionInput<'a> {
     pub fn new(
         dxb_body: &'a [u8],
+        caller_metadata: ExecutionCallerMetadata,
         options: ExecutionOptions,
-        runtime: Rc<RuntimeInternal>,
+        runtime: Runtime,
     ) -> Self {
         Self {
             options,
+            caller_metadata,
             dxb_body,
             loop_state: None,
             runtime,
         }
     }
-    pub fn new_with_slots(
+    pub fn new_with_stack(
         dxb_body: &'a [u8],
+        caller_metadata: ExecutionCallerMetadata,
         options: ExecutionOptions,
-        runtime: Rc<RuntimeInternal>,
-        slots: RuntimeExecutionSlots,
+        runtime: Runtime,
+        stack: RuntimeExecutionStack,
     ) -> Self {
-        let state =
-            ExecutionLoopState::new(dxb_body.to_vec(), runtime.clone(), slots);
+        let state = ExecutionLoopState::new(
+            dxb_body.to_vec(),
+            runtime.clone(),
+            stack,
+            caller_metadata.clone(),
+        );
         Self {
             options,
+            caller_metadata,
             dxb_body,
             loop_state: Some(state),
             runtime,
@@ -76,6 +103,7 @@ impl<'a> ExecutionInput<'a> {
                 self.dxb_body.to_vec(),
                 self.runtime.clone(),
                 Default::default(),
+                self.caller_metadata.clone(),
             )
         };
         let interrupt_provider = loop_state.interrupt_provider.clone();

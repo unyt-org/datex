@@ -1,40 +1,28 @@
+//! This module contains the implementation of the [Integer] struct, which represents an arbitrary precision integer value in type system.
+
 use core::result::Result;
 pub mod typed_integer;
 pub mod utils;
 use crate::prelude::*;
 
-use crate::{
-    traits::structural_eq::StructuralEq,
-    values::core_values::{
-        error::NumberParseError, integer::typed_integer::TypedInteger,
-    },
+use crate::values::core_values::{
+    error::NumberParseError, integer::typed_integer::TypedInteger,
 };
+pub mod equality;
+pub mod ops;
+pub mod serde_dif;
 use binrw::{
     BinRead, BinReaderExt, BinResult, BinWrite, Endian,
     io::{Read, Seek, Write},
 };
-use core::{
-    fmt::Display,
-    hash::Hash,
-    ops::{Add, Neg, Sub},
-    str::FromStr,
-};
+use core::{fmt::Display, hash::Hash, str::FromStr};
 use num::{BigInt, Num};
 use num_integer::Integer as NumInteger;
 use num_traits::ToPrimitive;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 
 #[derive(Debug, Clone, PartialEq, PartialOrd, Hash, Eq)]
 pub struct Integer(pub BigInt);
-
-impl Serialize for Integer {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        serializer.serialize_str(&self.0.to_string())
-    }
-}
 
 impl<'de> Deserialize<'de> for Integer {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
@@ -272,53 +260,6 @@ impl Integer {
 
         // If no smaller fitting type is found, return BigInt
         TypedInteger::IBig(self.clone())
-    }
-}
-
-impl StructuralEq for Integer {
-    fn structural_eq(&self, other: &Self) -> bool {
-        self.0 == other.0
-    }
-}
-
-impl Neg for Integer {
-    type Output = Self;
-
-    fn neg(self) -> Self::Output {
-        Integer(-self.0)
-    }
-}
-
-impl Add for Integer {
-    type Output = Self;
-
-    fn add(self, rhs: Self) -> Self::Output {
-        Integer(self.0 + rhs.0)
-    }
-}
-impl Add for &Integer {
-    type Output = Integer;
-
-    fn add(self, rhs: Self) -> Self::Output {
-        // FIXME #348: Optimize to avoid cloning if possible
-        Integer::add(self.clone(), rhs.clone())
-    }
-}
-
-impl Sub for Integer {
-    type Output = Self;
-
-    fn sub(self, rhs: Self) -> Self::Output {
-        self + (-rhs)
-    }
-}
-
-impl Sub for &Integer {
-    type Output = Integer;
-
-    fn sub(self, rhs: Self) -> Self::Output {
-        // FIXME #349: Optimize to avoid cloning if possible
-        Integer::sub(self.clone(), rhs.clone())
     }
 }
 

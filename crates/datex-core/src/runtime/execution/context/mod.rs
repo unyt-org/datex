@@ -1,3 +1,4 @@
+//! This module contains the implementation of the execution context, which holds the state of an active execution.
 #[cfg(feature = "compiler")]
 use crate::compiler::{
     CompileOptions, compile_template, error::SpannedCompilerError,
@@ -11,7 +12,7 @@ use crate::{
     values::value_container::ValueContainer,
 };
 
-use crate::prelude::*;
+use crate::{prelude::*, runtime::Runtime};
 pub use local::*;
 use log::info;
 pub use remote::*;
@@ -59,6 +60,18 @@ impl ExecutionContext {
         }
     }
 
+    fn runtime(&self) -> &Runtime {
+        match self {
+            ExecutionContext::Local(LocalExecutionContext {
+                runtime, ..
+            }) => runtime,
+            ExecutionContext::Remote(RemoteExecutionContext {
+                runtime,
+                ..
+            }) => runtime,
+        }
+    }
+
     /// Compiles a script using the compile scope of the execution context
     #[cfg(feature = "compiler")]
     pub fn compile(
@@ -77,6 +90,7 @@ impl ExecutionContext {
                 .collect::<Vec<_>>()
                 .as_slice(),
             CompileOptions::new_with_scope(compile_scope.clone()),
+            self.runtime().clone(),
         );
         match res {
             Ok((bytes, compile_scope)) => {
@@ -126,10 +140,12 @@ impl ExecutionContext {
                 loop_state,
                 execution_options,
                 verbose,
+                caller_metadata,
                 ..
             }) => {
                 let input = ExecutionInput {
                     runtime: runtime.clone(),
+                    caller_metadata: caller_metadata.clone(),
                     loop_state: loop_state.take(),
                     options: (*execution_options).clone(),
                     dxb_body: dxb,

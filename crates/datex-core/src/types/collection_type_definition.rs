@@ -1,4 +1,4 @@
-use crate::{prelude::*, values::core_values::r#type::Type};
+use crate::{prelude::*, types::r#type::Type};
 use core::fmt::Display;
 
 // TODO #377: Rename to Generic type definition?

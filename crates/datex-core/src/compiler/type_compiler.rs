@@ -11,11 +11,13 @@ use crate::{
 };
 
 use crate::prelude::*;
+use binrw::io::Write;
 use core::cell::RefCell;
+
 /// Compilation functions for type expressions.
 impl CompilationContext {
     pub fn append_type_instruction_code(&mut self, code: TypeInstructionCode) {
-        append_u8(&mut self.buffer, code as u8);
+        append_u8(self.cursor(), code as u8);
     }
 
     // TODO #452: Handle other types
@@ -24,7 +26,7 @@ impl CompilationContext {
         self.append_type_instruction_code(
             TypeInstructionCode::TYPE_LITERAL_INTEGER,
         );
-        append_big_integer(&mut self.buffer, integer);
+        append_big_integer(self.cursor(), integer);
     }
 
     pub fn insert_type_literal_text(&mut self, text: &str) {
@@ -35,15 +37,15 @@ impl CompilationContext {
             self.append_type_instruction_code(
                 TypeInstructionCode::TYPE_LITERAL_SHORT_TEXT,
             );
-            append_u8(&mut self.buffer, len as u8);
+            append_u8(self.cursor(), len as u8);
         } else {
             self.append_type_instruction_code(
                 TypeInstructionCode::TYPE_LITERAL_TEXT,
             );
-            append_u32(&mut self.buffer, len as u32);
+            append_u32(self.cursor(), len as u32);
         }
 
-        self.buffer.extend_from_slice(bytes);
+        self.cursor().write_all(bytes).unwrap();
     }
 }
 
