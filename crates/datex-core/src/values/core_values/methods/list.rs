@@ -1,42 +1,36 @@
-use crate::prelude::*;
-use crate::runtime::execution::ExecutionError;
-use crate::values::core_value::CoreValue;
-use crate::values::core_values::callable::*;
-use crate::values::value_container::ValueContainer;
-use crate::values::core_values::list::List;
+use crate::{
+    prelude::*,
+    runtime::execution::ExecutionError,
+    values::{
+        core_value::CoreValue,
+        core_values::{callable::*, list::List, r#type::Type},
+        value_container::ValueContainer,
+    },
+};
 
 pub fn get_list_method(name: &str) -> Option<Callable> {
     match name {
-        "len" => Some(Callable {
-            name: Some("len".to_string()),
-            signature: CallableSignature {
-                kind: CallableKind::Function,
-                parameter_types: vec![],
-                rest_parameter_type: None,
-                return_type: None,
-                yeet_type: None,
-            },
-            body: CallableBody::Native(list_len_impl),
-            bound_this: None,
-        }),
-        "sort" => Some(Callable {
-            name: Some("sort".to_string()),
-            signature: CallableSignature {
-                kind: CallableKind::Procedure,
-                parameter_types: vec![],
-                rest_parameter_type: None,
-                return_type: None,
-                yeet_type: None,
-            },
-            body: CallableBody::Native(list_sort_impl),
-            bound_this: None,
-        }),
+        "len" => Some(Callable::method_with_return(
+            "len",
+            CallableKind::Function,
+            list_len_impl,
+            Type::integer(),
+        )),
+        "sort" => Some(Callable::method(
+            "sort",
+            CallableKind::Procedure,
+            list_sort_impl,
+        )),
         _ => None,
     }
 }
 
-fn list_len_impl(args: &[ValueContainer]) -> Result<Option<ValueContainer>, ExecutionError> {
-    if args.is_empty() { return Err(ExecutionError::InvalidApply); }
+fn list_len_impl(
+    args: &[ValueContainer],
+) -> Result<Option<ValueContainer>, ExecutionError> {
+    if args.is_empty() {
+        return Err(ExecutionError::InvalidApply);
+    }
 
     let target = &args[0];
     let len = if let Some(shared) = target.maybe_shared() {
@@ -60,8 +54,12 @@ fn list_len_impl(args: &[ValueContainer]) -> Result<Option<ValueContainer>, Exec
     Ok(Some(ValueContainer::from(len)))
 }
 
-fn list_sort_impl(args: &[ValueContainer]) -> Result<Option<ValueContainer>, ExecutionError> {
-    if args.is_empty() { return Err(ExecutionError::InvalidApply); }
+fn list_sort_impl(
+    args: &[ValueContainer],
+) -> Result<Option<ValueContainer>, ExecutionError> {
+    if args.is_empty() {
+        return Err(ExecutionError::InvalidApply);
+    }
 
     let target = &args[0];
     if let Some(shared) = target.maybe_shared() {

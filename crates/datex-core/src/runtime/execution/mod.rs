@@ -917,4 +917,14 @@ mod tests {
             panic!("Expected list of values");
         }
     }
+
+    // something like this must be possible to compile
+    // now execute_datex_script does not support string compile
+    // #[test]
+    // fn text_method_test() {
+    //     // len
+    //     let script_text = r#""test".len()"#;
+    //     let result = execute_datex_script_debug_with_result(script_text);
+    //     assert_eq!(result.to_value().borrow().unwrap(), "tset");
+    // }
 }

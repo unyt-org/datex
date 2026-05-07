@@ -3507,4 +3507,29 @@ pub mod tests {
             ]
         );
     }
+
+    #[test]
+    fn text_reverse_method() {
+        let datex_script = r#""test".reverse"#;
+        let result = compile_and_log(datex_script);
+        let expected = vec![
+            InstructionCode::GET_PROPERTY_TEXT.into(),
+            7, // length of "reverse"
+            b'r',
+            b'e',
+            b'v',
+            b'e',
+            b'r',
+            b's',
+            b'e',
+            // base value
+            InstructionCode::SHORT_TEXT.into(),
+            4, // length of "test"
+            b't',
+            b'e',
+            b's',
+            b't',
+        ];
+        assert_eq!(result, expected);
+    }
 }

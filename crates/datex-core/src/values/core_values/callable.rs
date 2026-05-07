@@ -70,6 +70,38 @@ impl Callable {
             }
         }
     }
+
+    /// Create method without return type
+    pub fn method(
+        name: &'static str,
+        kind: CallableKind,
+        func: NativeCallable,
+    ) -> Self {
+        Callable {
+            name: Some(name.to_string()),
+            signature: CallableSignature {
+                kind,
+                parameter_types: vec![],
+                rest_parameter_type: None,
+                return_type: None,
+                yeet_type: None,
+            },
+            body: CallableBody::Native(func),
+            bound_this: None,
+        }
+    }
+
+    /// Create a method with return type, I highly recommend this over `fn method`
+    pub fn method_with_return(
+        name: &'static str,
+        kind: CallableKind,
+        func: NativeCallable,
+        return_type: Type,
+    ) -> Self {
+        let mut method = Self::method(name, kind, func);
+        method.signature.return_type = Some(Box::new(return_type));
+        method
+    }
 }
 
 impl Apply for Callable {

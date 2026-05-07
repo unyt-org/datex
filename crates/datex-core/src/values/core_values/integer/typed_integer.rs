@@ -561,300 +561,59 @@ impl PartialEq for TypedInteger {
 }
 
 impl Add for TypedInteger {
-    type Output = TypedInteger;
+    type Output = Result<TypedInteger, ValueError>;
 
     fn add(self, rhs: Self) -> Self::Output {
         match self {
             TypedInteger::IBig(v1) => {
-                TypedInteger::IBig(v1 + Integer::from(rhs))
+                Ok(TypedInteger::IBig(v1 + Integer::from(rhs)))
             }
-            TypedInteger::I8(v1) => TypedInteger::I8(match rhs {
+            TypedInteger::I8(v1) => Ok(TypedInteger::I8(match rhs {
                 TypedInteger::I8(v2) => v1.wrapping_add(v2),
-                TypedInteger::I16(v2) => {
-                    i8::try_from((v1 as i16).wrapping_add(v2)).unwrap()
-                }
-                TypedInteger::I32(v2) => {
-                    i8::try_from((v1 as i32).wrapping_add(v2)).unwrap()
-                }
-                TypedInteger::I64(v2) => {
-                    i8::try_from((v1 as i64).wrapping_add(v2)).unwrap()
-                }
-                TypedInteger::I128(v2) => {
-                    i8::try_from((v1 as i128).wrapping_add(v2)).unwrap()
-                }
-                TypedInteger::U8(v2) => {
-                    i8::try_from((v1 as i16).wrapping_add(v2 as i16)).unwrap()
-                }
-                TypedInteger::U16(v2) => {
-                    i8::try_from((v1 as i32).wrapping_add(v2 as i32)).unwrap()
-                }
-                TypedInteger::U32(v2) => {
-                    i8::try_from((v1 as i64).wrapping_add(v2 as i64)).unwrap()
-                }
-                TypedInteger::U64(v2) => {
-                    i8::try_from((v1 as i128).wrapping_add(v2 as i128)).unwrap()
-                }
-                TypedInteger::U128(v2) => i8::try_from(
-                    (v1 as i128).wrapping_add(v2.try_into().unwrap()),
-                )
-                .unwrap(),
-                TypedInteger::IBig(v2) => {
-                    i8::try_from((v1 as i8).wrapping_add(v2.as_wrapped_i8()))
-                        .unwrap()
-                }
-            }),
-            TypedInteger::I16(v1) => TypedInteger::I16(match rhs {
-                TypedInteger::I8(v2) => v1.wrapping_add(v2 as i16),
+                _ => return Err(ValueError::InvalidOperation),
+            })),
+            TypedInteger::I16(v1) => Ok(TypedInteger::I16(match rhs {
                 TypedInteger::I16(v2) => v1.wrapping_add(v2),
-                TypedInteger::I32(v2) => {
-                    i16::try_from((v1 as i32).wrapping_add(v2)).unwrap()
-                }
-                TypedInteger::I64(v2) => {
-                    i16::try_from((v1 as i64).wrapping_add(v2)).unwrap()
-                }
-                TypedInteger::I128(v2) => {
-                    i16::try_from((v1 as i128).wrapping_add(v2)).unwrap()
-                }
-                TypedInteger::U8(v2) => v1.wrapping_add(v2 as i16),
-                TypedInteger::U16(v2) => {
-                    i16::try_from((v1 as i32).wrapping_add(v2 as i32)).unwrap()
-                }
-                TypedInteger::U32(v2) => {
-                    i16::try_from((v1 as i64).wrapping_add(v2 as i64)).unwrap()
-                }
-                TypedInteger::U64(v2) => {
-                    i16::try_from((v1 as i128).wrapping_add(v2 as i128))
-                        .unwrap()
-                }
-                TypedInteger::U128(v2) => i16::try_from(
-                    (v1 as i128).wrapping_add(v2.try_into().unwrap()),
-                )
-                .unwrap(),
-
-                TypedInteger::IBig(v2) => v1.wrapping_add(v2.as_wrapped_i16()),
-            }),
-            TypedInteger::I32(v1) => TypedInteger::I32(match rhs {
-                TypedInteger::I8(v2) => v1.wrapping_add(v2 as i32),
-                TypedInteger::I16(v2) => v1.wrapping_add(v2 as i32),
+                _ => return Err(ValueError::InvalidOperation),
+            })),
+            TypedInteger::I32(v1) => Ok(TypedInteger::I32(match rhs {
                 TypedInteger::I32(v2) => v1.wrapping_add(v2),
-                TypedInteger::I64(v2) => {
-                    i32::try_from((v1 as i64).wrapping_add(v2)).unwrap()
-                }
-                TypedInteger::I128(v2) => {
-                    i32::try_from((v1 as i128).wrapping_add(v2)).unwrap()
-                }
-                TypedInteger::U8(v2) => v1.wrapping_add(v2 as i32),
-                TypedInteger::U16(v2) => v1.wrapping_add(v2 as i32),
-                TypedInteger::U32(v2) => {
-                    i32::try_from((v1 as i64).wrapping_add(v2 as i64)).unwrap()
-                }
-                TypedInteger::U64(v2) => {
-                    i32::try_from((v1 as i128).wrapping_add(v2 as i128))
-                        .unwrap()
-                }
-                TypedInteger::U128(v2) => i32::try_from(
-                    (v1 as i128).wrapping_add(v2.try_into().unwrap()),
-                )
-                .unwrap(),
-                TypedInteger::IBig(v2) => v1.wrapping_add(v2.as_wrapped_i32()),
-            }),
-            TypedInteger::I64(v1) => TypedInteger::I64(match rhs {
-                TypedInteger::I8(v2) => v1.wrapping_add(v2 as i64),
-                TypedInteger::I16(v2) => v1.wrapping_add(v2 as i64),
-                TypedInteger::I32(v2) => v1.wrapping_add(v2 as i64),
+                _ => return Err(ValueError::InvalidOperation),
+            })),
+            TypedInteger::I64(v1) => Ok(TypedInteger::I64(match rhs {
                 TypedInteger::I64(v2) => v1.wrapping_add(v2),
-                TypedInteger::I128(v2) => {
-                    i64::try_from((v1 as i128).wrapping_add(v2)).unwrap()
-                }
-                TypedInteger::U8(v2) => {
-                    i64::from((v1 as i16).wrapping_add(v2 as i16))
-                }
-                TypedInteger::U16(v2) => {
-                    i64::from((v1 as i32).wrapping_add(v2 as i32))
-                }
-                TypedInteger::U32(v2) => v1.wrapping_add(v2 as i64),
-                TypedInteger::U64(v2) => {
-                    i64::try_from((v1 as i128).wrapping_add(v2 as i128))
-                        .unwrap()
-                }
-                TypedInteger::U128(v2) => i64::try_from(
-                    (v1 as i128).wrapping_add(v2.try_into().unwrap()),
-                )
-                .unwrap(),
-                TypedInteger::IBig(v2) => v1.wrapping_add(v2.as_wrapped_i64()),
-            }),
-            TypedInteger::I128(v1) => TypedInteger::I128(match rhs {
-                TypedInteger::I8(v2) => v1.wrapping_add(v2 as i128),
-                TypedInteger::I16(v2) => v1.wrapping_add(v2 as i128),
-                TypedInteger::I32(v2) => v1.wrapping_add(v2 as i128),
-                TypedInteger::I64(v2) => v1.wrapping_add(v2 as i128),
+                _ => return Err(ValueError::InvalidOperation),
+            })),
+            TypedInteger::I128(v1) => Ok(TypedInteger::I128(match rhs {
                 TypedInteger::I128(v2) => v1.wrapping_add(v2),
-                TypedInteger::U8(v2) => v1.wrapping_add(v2 as i128),
-                TypedInteger::U16(v2) => v1.wrapping_add(v2 as i128),
-                TypedInteger::U32(v2) => v1.wrapping_add(v2 as i128),
-                TypedInteger::U64(v2) => v1.wrapping_add(v2 as i128),
-                TypedInteger::U128(v2) => {
-                    v1.wrapping_add(v2.try_into().unwrap())
-                }
-                TypedInteger::IBig(v2) => v1.wrapping_add(v2.as_wrapped_i128()),
-            }),
-            TypedInteger::U8(v1) => TypedInteger::U8(match rhs {
-                TypedInteger::I8(v2) => {
-                    u8::try_from((v1 as i8).wrapping_add(v2)).unwrap()
-                }
-                TypedInteger::I16(v2) => {
-                    u8::try_from((v1 as i16).wrapping_add(v2)).unwrap()
-                }
-                TypedInteger::I32(v2) => {
-                    u8::try_from((v1 as i32).wrapping_add(v2)).unwrap()
-                }
-                TypedInteger::I64(v2) => {
-                    u8::try_from((v1 as i64).wrapping_add(v2)).unwrap()
-                }
-                TypedInteger::I128(v2) => {
-                    u8::try_from((v1 as i128).wrapping_add(v2)).unwrap()
-                }
+                _ => return Err(ValueError::InvalidOperation),
+            })),
+            TypedInteger::U8(v1) => Ok(TypedInteger::U8(match rhs {
                 TypedInteger::U8(v2) => v1.wrapping_add(v2),
-                TypedInteger::U16(v2) => {
-                    u8::try_from((v1 as u16).wrapping_add(v2)).unwrap()
-                }
-                TypedInteger::U32(v2) => {
-                    u8::try_from((v1 as u32).wrapping_add(v2)).unwrap()
-                }
-                TypedInteger::U64(v2) => {
-                    u8::try_from((v1 as u64).wrapping_add(v2)).unwrap()
-                }
-                TypedInteger::U128(v2) => {
-                    u8::try_from((v1 as u128).wrapping_add(v2)).unwrap()
-                }
-                TypedInteger::IBig(v2) => {
-                    u8::try_from((v1 as u16).wrapping_add(v2.as_wrapped_u16()))
-                        .unwrap()
-                }
-            }),
-            TypedInteger::U16(v1) => TypedInteger::U16(match rhs {
-                TypedInteger::I8(v2) => {
-                    u16::try_from((v1 as i8).wrapping_add(v2)).unwrap()
-                }
-                TypedInteger::I16(v2) => {
-                    u16::try_from((v1 as i16).wrapping_add(v2)).unwrap()
-                }
-                TypedInteger::I32(v2) => {
-                    u16::try_from((v1 as i32).wrapping_add(v2)).unwrap()
-                }
-                TypedInteger::I64(v2) => {
-                    u16::try_from((v1 as i64).wrapping_add(v2)).unwrap()
-                }
-                TypedInteger::I128(v2) => {
-                    u16::try_from((v1 as i128).wrapping_add(v2)).unwrap()
-                }
-                TypedInteger::U8(v2) => v1.wrapping_add(v2 as u16),
+                _ => return Err(ValueError::InvalidOperation),
+            })),
+            TypedInteger::U16(v1) => Ok(TypedInteger::U16(match rhs {
                 TypedInteger::U16(v2) => v1.wrapping_add(v2),
-                TypedInteger::U32(v2) => {
-                    u16::try_from((v1 as u32).wrapping_add(v2)).unwrap()
-                }
-                TypedInteger::U64(v2) => {
-                    u16::try_from((v1 as u64).wrapping_add(v2)).unwrap()
-                }
-                TypedInteger::U128(v2) => {
-                    u16::try_from((v1 as u128).wrapping_add(v2)).unwrap()
-                }
-                TypedInteger::IBig(v2) => {
-                    u16::try_from((v1 as u32).wrapping_add(v2.as_wrapped_u32()))
-                        .unwrap()
-                }
-            }),
-
-            TypedInteger::U32(v1) => TypedInteger::U32(match rhs {
-                TypedInteger::I8(v2) => {
-                    u32::try_from((v1 as i8).wrapping_add(v2)).unwrap()
-                }
-                TypedInteger::I16(v2) => {
-                    u32::try_from((v1 as i16).wrapping_add(v2)).unwrap()
-                }
-                TypedInteger::I32(v2) => {
-                    u32::try_from((v1 as i32).wrapping_add(v2)).unwrap()
-                }
-                TypedInteger::I64(v2) => {
-                    u32::try_from((v1 as i64).wrapping_add(v2)).unwrap()
-                }
-                TypedInteger::I128(v2) => {
-                    u32::try_from((v1 as i128).wrapping_add(v2)).unwrap()
-                }
-                TypedInteger::U8(v2) => v1.wrapping_add(v2 as u32),
-                TypedInteger::U16(v2) => v1.wrapping_add(v2 as u32),
+                _ => return Err(ValueError::InvalidOperation),
+            })),
+            TypedInteger::U32(v1) => Ok(TypedInteger::U32(match rhs {
                 TypedInteger::U32(v2) => v1.wrapping_add(v2),
-                TypedInteger::U64(v2) => {
-                    u32::try_from((v1 as u64).wrapping_add(v2)).unwrap()
-                }
-                TypedInteger::U128(v2) => {
-                    u32::try_from((v1 as u128).wrapping_add(v2)).unwrap()
-                }
-                TypedInteger::IBig(v2) => {
-                    u32::try_from((v1 as u64).wrapping_add(v2.as_wrapped_u64()))
-                        .unwrap()
-                }
-            }),
-            TypedInteger::U64(v1) => TypedInteger::U64(match rhs {
-                TypedInteger::I8(v2) => {
-                    u64::try_from((v1 as i8).wrapping_add(v2)).unwrap()
-                }
-                TypedInteger::I16(v2) => {
-                    u64::try_from((v1 as i16).wrapping_add(v2)).unwrap()
-                }
-                TypedInteger::I32(v2) => {
-                    u64::try_from((v1 as i32).wrapping_add(v2)).unwrap()
-                }
-                TypedInteger::I64(v2) => {
-                    u64::try_from((v1 as i64).wrapping_add(v2)).unwrap()
-                }
-                TypedInteger::I128(v2) => {
-                    u64::try_from((v1 as i128).wrapping_add(v2)).unwrap()
-                }
-                TypedInteger::U8(v2) => v1.wrapping_add(v2 as u64),
-                TypedInteger::U16(v2) => v1.wrapping_add(v2 as u64),
-                TypedInteger::U32(v2) => v1.wrapping_add(v2 as u64),
+                _ => return Err(ValueError::InvalidOperation),
+            })),
+            TypedInteger::U64(v1) => Ok(TypedInteger::U64(match rhs {
                 TypedInteger::U64(v2) => v1.wrapping_add(v2),
-                TypedInteger::U128(v2) => {
-                    u64::try_from((v1 as u128).wrapping_add(v2)).unwrap()
-                }
-                TypedInteger::IBig(v2) => u64::try_from(
-                    (v1 as u128).wrapping_add(v2.as_wrapped_u128()),
-                )
-                .unwrap(),
-            }),
-            TypedInteger::U128(v1) => TypedInteger::U128(match rhs {
-                TypedInteger::I8(v2) => {
-                    u128::try_from((v1 as i8).wrapping_add(v2)).unwrap()
-                }
-                TypedInteger::I16(v2) => {
-                    u128::try_from((v1 as i16).wrapping_add(v2)).unwrap()
-                }
-                TypedInteger::I32(v2) => {
-                    u128::try_from((v1 as i32).wrapping_add(v2)).unwrap()
-                }
-                TypedInteger::I64(v2) => {
-                    u128::try_from((v1 as i64).wrapping_add(v2)).unwrap()
-                }
-                TypedInteger::I128(v2) => {
-                    u128::try_from((v1 as i128).wrapping_add(v2)).unwrap()
-                }
-                TypedInteger::U8(v2) => v1.wrapping_add(v2 as u128),
-                TypedInteger::U16(v2) => v1.wrapping_add(v2 as u128),
-                TypedInteger::U32(v2) => v1.wrapping_add(v2 as u128),
-                TypedInteger::U64(v2) => v1.wrapping_add(v2 as u128),
+                _ => return Err(ValueError::InvalidOperation),
+            })),
+            TypedInteger::U128(v1) => Ok(TypedInteger::U128(match rhs {
                 TypedInteger::U128(v2) => v1.wrapping_add(v2),
-                TypedInteger::IBig(v2) => u128::try_from(
-                    (v1 as i128).wrapping_add(v2.as_wrapped_i128()),
-                )
-                .unwrap(),
-            }),
+                _ => return Err(ValueError::InvalidOperation),
+            })),
         }
     }
 }
 
 impl Add for &TypedInteger {
-    type Output = TypedInteger;
+    type Output = Result<TypedInteger, ValueError>;
 
     fn add(self, rhs: Self) -> Self::Output {
         // FIXME #344 optimize to avoid cloning
@@ -863,292 +622,59 @@ impl Add for &TypedInteger {
 }
 
 impl Mul for TypedInteger {
-    type Output = Option<TypedInteger>;
+    type Output = Result<TypedInteger, ValueError>;
 
     fn mul(self, rhs: Self) -> Self::Output {
-        Some(match self {
+        match self {
             TypedInteger::IBig(v1) => {
-                TypedInteger::IBig(v1 * Integer::from(rhs))
+                Ok(TypedInteger::IBig(v1 * Integer::from(rhs)))
             }
-            TypedInteger::I8(v1) => TypedInteger::I8(match rhs {
-                TypedInteger::I8(v2) => v1.checked_mul(v2)?,
-                TypedInteger::I16(v2) => {
-                    i8::try_from((v1 as i16).checked_mul(v2)?).ok()?
-                }
-                TypedInteger::I32(v2) => {
-                    i8::try_from((v1 as i32).checked_mul(v2)?).ok()?
-                }
-                TypedInteger::I64(v2) => {
-                    i8::try_from((v1 as i64).checked_mul(v2)?).ok()?
-                }
-                TypedInteger::I128(v2) => {
-                    i8::try_from((v1 as i128).checked_mul(v2)?).ok()?
-                }
-                TypedInteger::U8(v2) => {
-                    i8::try_from((v1 as i16).checked_mul(v2 as i16)?).ok()?
-                }
-                TypedInteger::U16(v2) => {
-                    i8::try_from((v1 as i32).checked_mul(v2 as i32)?).ok()?
-                }
-                TypedInteger::U32(v2) => {
-                    i8::try_from((v1 as i64).checked_mul(v2 as i64)?).ok()?
-                }
-                TypedInteger::U64(v2) => {
-                    i8::try_from((v1 as i128).checked_mul(v2 as i128)?).ok()?
-                }
-                TypedInteger::U128(v2) => {
-                    i8::try_from((v1 as i128).checked_mul(v2.try_into().ok()?)?)
-                        .ok()?
-                }
-                TypedInteger::IBig(v2) => (v1).checked_mul(v2.as_i8()?)?,
-            }),
-            TypedInteger::I16(v1) => TypedInteger::I16(match rhs {
-                TypedInteger::I8(v2) => v1.checked_mul(v2 as i16)?,
-                TypedInteger::I16(v2) => v1.checked_mul(v2)?,
-                TypedInteger::I32(v2) => {
-                    i16::try_from((v1 as i32).checked_mul(v2)?).ok()?
-                }
-                TypedInteger::I64(v2) => {
-                    i16::try_from((v1 as i64).checked_mul(v2)?).ok()?
-                }
-                TypedInteger::I128(v2) => {
-                    i16::try_from((v1 as i128).checked_mul(v2)?).ok()?
-                }
-                TypedInteger::U8(v2) => v1.checked_mul(v2 as i16)?,
-                TypedInteger::U16(v2) => {
-                    i16::try_from((v1 as i32).checked_mul(v2 as i32)?).ok()?
-                }
-                TypedInteger::U32(v2) => {
-                    i16::try_from((v1 as i64).checked_mul(v2 as i64)?).ok()?
-                }
-                TypedInteger::U64(v2) => {
-                    i16::try_from((v1 as i128).checked_mul(v2 as i128)?).ok()?
-                }
-                TypedInteger::U128(v2) => i16::try_from(
-                    (v1 as i128).checked_mul(v2.try_into().ok()?)?,
-                )
-                .ok()?,
-                TypedInteger::IBig(v2) => v1.checked_mul(v2.as_i16()?)?,
-            }),
-            TypedInteger::I32(v1) => TypedInteger::I32(match rhs {
-                TypedInteger::I8(v2) => v1.checked_mul(v2 as i32)?,
-                TypedInteger::I16(v2) => v1.checked_mul(v2 as i32)?,
-                TypedInteger::I32(v2) => v1.checked_mul(v2)?,
-                TypedInteger::I64(v2) => {
-                    i32::try_from((v1 as i64).checked_mul(v2)?).ok()?
-                }
-                TypedInteger::I128(v2) => {
-                    i32::try_from((v1 as i128).checked_mul(v2)?).ok()?
-                }
-                TypedInteger::U8(v2) => v1.checked_mul(v2 as i32)?,
-                TypedInteger::U16(v2) => v1.checked_mul(v2 as i32)?,
-                TypedInteger::U32(v2) => {
-                    i32::try_from((v1 as i64).checked_mul(v2 as i64)?).ok()?
-                }
-                TypedInteger::U64(v2) => {
-                    i32::try_from((v1 as i128).checked_mul(v2 as i128)?).ok()?
-                }
-                TypedInteger::U128(v2) => i32::try_from(
-                    (v1 as i128).checked_mul(v2.try_into().ok()?)?,
-                )
-                .ok()?,
-                TypedInteger::IBig(v2) => v1.checked_mul(v2.as_i32()?)?,
-            }),
-            TypedInteger::I64(v1) => TypedInteger::I64(match rhs {
-                TypedInteger::I8(v2) => v1.checked_mul(v2 as i64)?,
-                TypedInteger::I16(v2) => v1.checked_mul(v2 as i64)?,
-                TypedInteger::I32(v2) => v1.checked_mul(v2 as i64)?,
-                TypedInteger::I64(v2) => v1.checked_mul(v2)?,
-                TypedInteger::I128(v2) => {
-                    i64::try_from((v1 as i128).checked_mul(v2)?).ok()?
-                }
-                TypedInteger::U8(v2) => {
-                    i64::from((v1 as i16).checked_mul(v2 as i16)?)
-                }
-                TypedInteger::U16(v2) => {
-                    i64::from((v1 as i32).checked_mul(v2 as i32)?)
-                }
-                TypedInteger::U32(v2) => v1.checked_mul(v2 as i64)?,
-                TypedInteger::U64(v2) => {
-                    i64::try_from((v1 as i128).checked_mul(v2 as i128)?).ok()?
-                }
-                TypedInteger::U128(v2) => i64::try_from(
-                    (v1 as i128).checked_mul(v2.try_into().ok()?)?,
-                )
-                .ok()?,
-                TypedInteger::IBig(v2) => v1.checked_mul(v2.as_i64()?)?,
-            }),
-            TypedInteger::I128(v1) => TypedInteger::I128(match rhs {
-                TypedInteger::I8(v2) => v1.checked_mul(v2 as i128)?,
-                TypedInteger::I16(v2) => v1.checked_mul(v2 as i128)?,
-                TypedInteger::I32(v2) => v1.checked_mul(v2 as i128)?,
-                TypedInteger::I64(v2) => v1.checked_mul(v2 as i128)?,
-                TypedInteger::I128(v2) => v1.checked_mul(v2)?,
-                TypedInteger::U8(v2) => v1.checked_mul(v2 as i128)?,
-                TypedInteger::U16(v2) => v1.checked_mul(v2 as i128)?,
-                TypedInteger::U32(v2) => v1.checked_mul(v2 as i128)?,
-                TypedInteger::U64(v2) => v1.checked_mul(v2 as i128)?,
-                TypedInteger::U128(v2) => {
-                    v1.checked_mul(v2.try_into().ok()?)?
-                }
-                TypedInteger::IBig(v2) => v1.checked_mul(v2.as_i128()?)?,
-            }),
-            TypedInteger::U8(v1) => TypedInteger::U8(match rhs {
-                TypedInteger::I8(v2) => {
-                    u8::try_from((v1 as i8).checked_mul(v2)?).ok()?
-                }
-                TypedInteger::I16(v2) => {
-                    u8::try_from((v1 as i16).checked_mul(v2)?).ok()?
-                }
-                TypedInteger::I32(v2) => {
-                    u8::try_from((v1 as i32).checked_mul(v2)?).ok()?
-                }
-                TypedInteger::I64(v2) => {
-                    u8::try_from((v1 as i64).checked_mul(v2)?).ok()?
-                }
-                TypedInteger::I128(v2) => {
-                    u8::try_from((v1 as i128).checked_mul(v2)?).ok()?
-                }
-                TypedInteger::U8(v2) => v1.checked_mul(v2)?,
-                TypedInteger::U16(v2) => {
-                    u8::try_from((v1 as u16).checked_mul(v2)?).ok()?
-                }
-                TypedInteger::U32(v2) => {
-                    u8::try_from((v1 as u32).checked_mul(v2)?).ok()?
-                }
-                TypedInteger::U64(v2) => {
-                    u8::try_from((v1 as u64).checked_mul(v2)?).ok()?
-                }
-                TypedInteger::U128(v2) => {
-                    u8::try_from((v1 as u128).checked_mul(v2)?).ok()?
-                }
-                TypedInteger::IBig(v2) => {
-                    u8::try_from((v1 as u16).checked_mul(v2.as_u16()?)?).ok()?
-                }
-            }),
-            TypedInteger::U16(v1) => TypedInteger::U16(match rhs {
-                TypedInteger::I8(v2) => {
-                    u16::try_from((v1 as i8).checked_mul(v2)?).ok()?
-                }
-                TypedInteger::I16(v2) => {
-                    u16::try_from((v1 as i16).checked_mul(v2)?).ok()?
-                }
-                TypedInteger::I32(v2) => {
-                    u16::try_from((v1 as i32).checked_mul(v2)?).ok()?
-                }
-                TypedInteger::I64(v2) => {
-                    u16::try_from((v1 as i64).checked_mul(v2)?).ok()?
-                }
-                TypedInteger::I128(v2) => {
-                    u16::try_from((v1 as i128).checked_mul(v2)?).ok()?
-                }
-                TypedInteger::U8(v2) => v1.checked_mul(v2 as u16)?,
-                TypedInteger::U16(v2) => v1.checked_mul(v2)?,
-                TypedInteger::U32(v2) => {
-                    u16::try_from((v1 as u32).checked_mul(v2)?).ok()?
-                }
-                TypedInteger::U64(v2) => {
-                    u16::try_from((v1 as u64).checked_mul(v2)?).ok()?
-                }
-                TypedInteger::U128(v2) => {
-                    u16::try_from((v1 as u128).checked_mul(v2)?).ok()?
-                }
-                TypedInteger::IBig(v2) => {
-                    u16::try_from((v1 as u32).checked_mul(v2.as_u32()?)?)
-                        .ok()?
-                }
-            }),
-
-            TypedInteger::U32(v1) => TypedInteger::U32(match rhs {
-                TypedInteger::I8(v2) => {
-                    u32::try_from((v1 as i8).checked_mul(v2)?).ok()?
-                }
-                TypedInteger::I16(v2) => {
-                    u32::try_from((v1 as i16).checked_mul(v2)?).ok()?
-                }
-                TypedInteger::I32(v2) => {
-                    u32::try_from((v1 as i32).checked_mul(v2)?).ok()?
-                }
-                TypedInteger::I64(v2) => {
-                    u32::try_from((v1 as i64).checked_mul(v2)?).ok()?
-                }
-                TypedInteger::I128(v2) => {
-                    u32::try_from((v1 as i128).checked_mul(v2)?).ok()?
-                }
-                TypedInteger::U8(v2) => v1.checked_mul(v2 as u32)?,
-                TypedInteger::U16(v2) => v1.checked_mul(v2 as u32)?,
-                TypedInteger::U32(v2) => v1.checked_mul(v2)?,
-                TypedInteger::U64(v2) => {
-                    u32::try_from((v1 as u64).checked_mul(v2)?).ok()?
-                }
-                TypedInteger::U128(v2) => {
-                    u32::try_from((v1 as u128).checked_mul(v2)?).ok()?
-                }
-                TypedInteger::IBig(v2) => {
-                    u32::try_from((v1 as u64).checked_mul(v2.as_u64()?)?)
-                        .ok()?
-                }
-            }),
-            TypedInteger::U64(v1) => TypedInteger::U64(match rhs {
-                TypedInteger::I8(v2) => {
-                    u64::try_from((v1 as i8).checked_mul(v2)?).ok()?
-                }
-                TypedInteger::I16(v2) => {
-                    u64::try_from((v1 as i16).checked_mul(v2)?).ok()?
-                }
-                TypedInteger::I32(v2) => {
-                    u64::try_from((v1 as i32).checked_mul(v2)?).ok()?
-                }
-                TypedInteger::I64(v2) => {
-                    u64::try_from((v1 as i64).checked_mul(v2)?).ok()?
-                }
-                TypedInteger::I128(v2) => {
-                    u64::try_from((v1 as i128).checked_mul(v2)?).ok()?
-                }
-                TypedInteger::U8(v2) => v1.checked_mul(v2 as u64)?,
-                TypedInteger::U16(v2) => v1.checked_mul(v2 as u64)?,
-                TypedInteger::U32(v2) => v1.checked_mul(v2 as u64)?,
-                TypedInteger::U64(v2) => v1.checked_mul(v2)?,
-                TypedInteger::U128(v2) => {
-                    u64::try_from((v1 as u128).checked_mul(v2)?).ok()?
-                }
-                TypedInteger::IBig(v2) => {
-                    u64::try_from((v1 as u128).checked_mul(v2.as_u128()?)?)
-                        .ok()?
-                }
-            }),
-            TypedInteger::U128(v1) => TypedInteger::U128(match rhs {
-                TypedInteger::I8(v2) => {
-                    u128::try_from((v1 as i8).checked_mul(v2)?).ok()?
-                }
-                TypedInteger::I16(v2) => {
-                    u128::try_from((v1 as i16).checked_mul(v2)?).ok()?
-                }
-                TypedInteger::I32(v2) => {
-                    u128::try_from((v1 as i32).checked_mul(v2)?).ok()?
-                }
-                TypedInteger::I64(v2) => {
-                    u128::try_from((v1 as i64).checked_mul(v2)?).ok()?
-                }
-                TypedInteger::I128(v2) => {
-                    u128::try_from((v1 as i128).checked_mul(v2)?).ok()?
-                }
-                TypedInteger::U8(v2) => v1.checked_mul(v2 as u128)?,
-                TypedInteger::U16(v2) => v1.checked_mul(v2 as u128)?,
-                TypedInteger::U32(v2) => v1.checked_mul(v2 as u128)?,
-                TypedInteger::U64(v2) => v1.checked_mul(v2 as u128)?,
-                TypedInteger::U128(v2) => v1.checked_mul(v2)?,
-                TypedInteger::IBig(v2) => {
-                    u128::try_from((v1 as i128).checked_mul(v2.as_i128()?)?)
-                        .ok()?
-                }
-            }),
-        })
+            TypedInteger::I8(v1) => Ok(TypedInteger::I8(match rhs {
+                TypedInteger::I8(v2) => v1.wrapping_mul(v2),
+                _ => return Err(ValueError::InvalidOperation),
+            })),
+            TypedInteger::I16(v1) => Ok(TypedInteger::I16(match rhs {
+                TypedInteger::I16(v2) => v1.wrapping_mul(v2),
+                _ => return Err(ValueError::InvalidOperation),
+            })),
+            TypedInteger::I32(v1) => Ok(TypedInteger::I32(match rhs {
+                TypedInteger::I32(v2) => v1.wrapping_mul(v2),
+                _ => return Err(ValueError::InvalidOperation),
+            })),
+            TypedInteger::I64(v1) => Ok(TypedInteger::I64(match rhs {
+                TypedInteger::I64(v2) => v1.wrapping_mul(v2),
+                _ => return Err(ValueError::InvalidOperation),
+            })),
+            TypedInteger::I128(v1) => Ok(TypedInteger::I128(match rhs {
+                TypedInteger::I128(v2) => v1.wrapping_mul(v2),
+                _ => return Err(ValueError::InvalidOperation),
+            })),
+            TypedInteger::U8(v1) => Ok(TypedInteger::U8(match rhs {
+                TypedInteger::U8(v2) => v1.wrapping_mul(v2),
+                _ => return Err(ValueError::InvalidOperation),
+            })),
+            TypedInteger::U16(v1) => Ok(TypedInteger::U16(match rhs {
+                TypedInteger::U16(v2) => v1.wrapping_mul(v2),
+                _ => return Err(ValueError::InvalidOperation),
+            })),
+            TypedInteger::U32(v1) => Ok(TypedInteger::U32(match rhs {
+                TypedInteger::U32(v2) => v1.wrapping_mul(v2),
+                _ => return Err(ValueError::InvalidOperation),
+            })),
+            TypedInteger::U64(v1) => Ok(TypedInteger::U64(match rhs {
+                TypedInteger::U64(v2) => v1.wrapping_mul(v2),
+                _ => return Err(ValueError::InvalidOperation),
+            })),
+            TypedInteger::U128(v1) => Ok(TypedInteger::U128(match rhs {
+                TypedInteger::U128(v2) => v1.wrapping_mul(v2),
+                _ => return Err(ValueError::InvalidOperation),
+            })),
+        }
     }
 }
 
 impl Mul for &TypedInteger {
-    type Output = Option<TypedInteger>;
+    type Output = Result<TypedInteger, ValueError>;
 
     fn mul(self, rhs: Self) -> Self::Output {
         // FIXME #344 optimize to avoid cloning
@@ -1157,292 +683,59 @@ impl Mul for &TypedInteger {
 }
 
 impl Div for TypedInteger {
-    type Output = Option<TypedInteger>;
+    type Output = Result<TypedInteger, ValueError>;
 
     fn div(self, rhs: Self) -> Self::Output {
-        Some(match self {
+        match self {
             TypedInteger::IBig(v1) => {
-                TypedInteger::IBig(v1 / Integer::from(rhs))
+                Ok(TypedInteger::IBig(v1 / Integer::from(rhs)))
             }
-            TypedInteger::I8(v1) => TypedInteger::I8(match rhs {
-                TypedInteger::I8(v2) => v1.checked_div(v2)?,
-                TypedInteger::I16(v2) => {
-                    i8::try_from((v1 as i16).checked_div(v2)?).ok()?
-                }
-                TypedInteger::I32(v2) => {
-                    i8::try_from((v1 as i32).checked_div(v2)?).ok()?
-                }
-                TypedInteger::I64(v2) => {
-                    i8::try_from((v1 as i64).checked_div(v2)?).ok()?
-                }
-                TypedInteger::I128(v2) => {
-                    i8::try_from((v1 as i128).checked_div(v2)?).ok()?
-                }
-                TypedInteger::U8(v2) => {
-                    i8::try_from((v1 as i16).checked_div(v2 as i16)?).ok()?
-                }
-                TypedInteger::U16(v2) => {
-                    i8::try_from((v1 as i32).checked_div(v2 as i32)?).ok()?
-                }
-                TypedInteger::U32(v2) => {
-                    i8::try_from((v1 as i64).checked_div(v2 as i64)?).ok()?
-                }
-                TypedInteger::U64(v2) => {
-                    i8::try_from((v1 as i128).checked_div(v2 as i128)?).ok()?
-                }
-                TypedInteger::U128(v2) => {
-                    i8::try_from((v1 as i128).checked_div(v2.try_into().ok()?)?)
-                        .ok()?
-                }
-                TypedInteger::IBig(v2) => (v1).checked_div(v2.as_i8()?)?,
-            }),
-            TypedInteger::I16(v1) => TypedInteger::I16(match rhs {
-                TypedInteger::I8(v2) => v1.checked_div(v2 as i16)?,
-                TypedInteger::I16(v2) => v1.checked_div(v2)?,
-                TypedInteger::I32(v2) => {
-                    i16::try_from((v1 as i32).checked_div(v2)?).ok()?
-                }
-                TypedInteger::I64(v2) => {
-                    i16::try_from((v1 as i64).checked_div(v2)?).ok()?
-                }
-                TypedInteger::I128(v2) => {
-                    i16::try_from((v1 as i128).checked_div(v2)?).ok()?
-                }
-                TypedInteger::U8(v2) => v1.checked_div(v2 as i16)?,
-                TypedInteger::U16(v2) => {
-                    i16::try_from((v1 as i32).checked_div(v2 as i32)?).ok()?
-                }
-                TypedInteger::U32(v2) => {
-                    i16::try_from((v1 as i64).checked_div(v2 as i64)?).ok()?
-                }
-                TypedInteger::U64(v2) => {
-                    i16::try_from((v1 as i128).checked_div(v2 as i128)?).ok()?
-                }
-                TypedInteger::U128(v2) => i16::try_from(
-                    (v1 as i128).checked_div(v2.try_into().ok()?)?,
-                )
-                .ok()?,
-                TypedInteger::IBig(v2) => v1.checked_div(v2.as_i16()?)?,
-            }),
-            TypedInteger::I32(v1) => TypedInteger::I32(match rhs {
-                TypedInteger::I8(v2) => v1.checked_div(v2 as i32)?,
-                TypedInteger::I16(v2) => v1.checked_div(v2 as i32)?,
-                TypedInteger::I32(v2) => v1.checked_div(v2)?,
-                TypedInteger::I64(v2) => {
-                    i32::try_from((v1 as i64).checked_div(v2)?).ok()?
-                }
-                TypedInteger::I128(v2) => {
-                    i32::try_from((v1 as i128).checked_div(v2)?).ok()?
-                }
-                TypedInteger::U8(v2) => v1.checked_div(v2 as i32)?,
-                TypedInteger::U16(v2) => v1.checked_div(v2 as i32)?,
-                TypedInteger::U32(v2) => {
-                    i32::try_from((v1 as i64).checked_div(v2 as i64)?).ok()?
-                }
-                TypedInteger::U64(v2) => {
-                    i32::try_from((v1 as i128).checked_div(v2 as i128)?).ok()?
-                }
-                TypedInteger::U128(v2) => i32::try_from(
-                    (v1 as i128).checked_div(v2.try_into().ok()?)?,
-                )
-                .ok()?,
-                TypedInteger::IBig(v2) => v1.checked_div(v2.as_i32()?)?,
-            }),
-            TypedInteger::I64(v1) => TypedInteger::I64(match rhs {
-                TypedInteger::I8(v2) => v1.checked_div(v2 as i64)?,
-                TypedInteger::I16(v2) => v1.checked_div(v2 as i64)?,
-                TypedInteger::I32(v2) => v1.checked_div(v2 as i64)?,
-                TypedInteger::I64(v2) => v1.checked_div(v2)?,
-                TypedInteger::I128(v2) => {
-                    i64::try_from((v1 as i128).checked_div(v2)?).ok()?
-                }
-                TypedInteger::U8(v2) => {
-                    i64::from((v1 as i16).checked_div(v2 as i16)?)
-                }
-                TypedInteger::U16(v2) => {
-                    i64::from((v1 as i32).checked_div(v2 as i32)?)
-                }
-                TypedInteger::U32(v2) => v1.checked_div(v2 as i64)?,
-                TypedInteger::U64(v2) => {
-                    i64::try_from((v1 as i128).checked_div(v2 as i128)?).ok()?
-                }
-                TypedInteger::U128(v2) => i64::try_from(
-                    (v1 as i128).checked_div(v2.try_into().ok()?)?,
-                )
-                .ok()?,
-                TypedInteger::IBig(v2) => v1.checked_div(v2.as_i64()?)?,
-            }),
-            TypedInteger::I128(v1) => TypedInteger::I128(match rhs {
-                TypedInteger::I8(v2) => v1.checked_div(v2 as i128)?,
-                TypedInteger::I16(v2) => v1.checked_div(v2 as i128)?,
-                TypedInteger::I32(v2) => v1.checked_div(v2 as i128)?,
-                TypedInteger::I64(v2) => v1.checked_div(v2 as i128)?,
-                TypedInteger::I128(v2) => v1.checked_div(v2)?,
-                TypedInteger::U8(v2) => v1.checked_div(v2 as i128)?,
-                TypedInteger::U16(v2) => v1.checked_div(v2 as i128)?,
-                TypedInteger::U32(v2) => v1.checked_div(v2 as i128)?,
-                TypedInteger::U64(v2) => v1.checked_div(v2 as i128)?,
-                TypedInteger::U128(v2) => {
-                    v1.checked_div(v2.try_into().ok()?)?
-                }
-                TypedInteger::IBig(v2) => v1.checked_div(v2.as_i128()?)?,
-            }),
-            TypedInteger::U8(v1) => TypedInteger::U8(match rhs {
-                TypedInteger::I8(v2) => {
-                    u8::try_from((v1 as i8).checked_div(v2)?).ok()?
-                }
-                TypedInteger::I16(v2) => {
-                    u8::try_from((v1 as i16).checked_div(v2)?).ok()?
-                }
-                TypedInteger::I32(v2) => {
-                    u8::try_from((v1 as i32).checked_div(v2)?).ok()?
-                }
-                TypedInteger::I64(v2) => {
-                    u8::try_from((v1 as i64).checked_div(v2)?).ok()?
-                }
-                TypedInteger::I128(v2) => {
-                    u8::try_from((v1 as i128).checked_div(v2)?).ok()?
-                }
-                TypedInteger::U8(v2) => v1.checked_div(v2)?,
-                TypedInteger::U16(v2) => {
-                    u8::try_from((v1 as u16).checked_div(v2)?).ok()?
-                }
-                TypedInteger::U32(v2) => {
-                    u8::try_from((v1 as u32).checked_div(v2)?).ok()?
-                }
-                TypedInteger::U64(v2) => {
-                    u8::try_from((v1 as u64).checked_div(v2)?).ok()?
-                }
-                TypedInteger::U128(v2) => {
-                    u8::try_from((v1 as u128).checked_div(v2)?).ok()?
-                }
-                TypedInteger::IBig(v2) => {
-                    u8::try_from((v1 as u16).checked_div(v2.as_u16()?)?).ok()?
-                }
-            }),
-            TypedInteger::U16(v1) => TypedInteger::U16(match rhs {
-                TypedInteger::I8(v2) => {
-                    u16::try_from((v1 as i8).checked_div(v2)?).ok()?
-                }
-                TypedInteger::I16(v2) => {
-                    u16::try_from((v1 as i16).checked_div(v2)?).ok()?
-                }
-                TypedInteger::I32(v2) => {
-                    u16::try_from((v1 as i32).checked_div(v2)?).ok()?
-                }
-                TypedInteger::I64(v2) => {
-                    u16::try_from((v1 as i64).checked_div(v2)?).ok()?
-                }
-                TypedInteger::I128(v2) => {
-                    u16::try_from((v1 as i128).checked_div(v2)?).ok()?
-                }
-                TypedInteger::U8(v2) => v1.checked_div(v2 as u16)?,
-                TypedInteger::U16(v2) => v1.checked_div(v2)?,
-                TypedInteger::U32(v2) => {
-                    u16::try_from((v1 as u32).checked_div(v2)?).ok()?
-                }
-                TypedInteger::U64(v2) => {
-                    u16::try_from((v1 as u64).checked_div(v2)?).ok()?
-                }
-                TypedInteger::U128(v2) => {
-                    u16::try_from((v1 as u128).checked_div(v2)?).ok()?
-                }
-                TypedInteger::IBig(v2) => {
-                    u16::try_from((v1 as u32).checked_div(v2.as_u32()?)?)
-                        .ok()?
-                }
-            }),
-
-            TypedInteger::U32(v1) => TypedInteger::U32(match rhs {
-                TypedInteger::I8(v2) => {
-                    u32::try_from((v1 as i8).checked_div(v2)?).ok()?
-                }
-                TypedInteger::I16(v2) => {
-                    u32::try_from((v1 as i16).checked_div(v2)?).ok()?
-                }
-                TypedInteger::I32(v2) => {
-                    u32::try_from((v1 as i32).checked_div(v2)?).ok()?
-                }
-                TypedInteger::I64(v2) => {
-                    u32::try_from((v1 as i64).checked_div(v2)?).ok()?
-                }
-                TypedInteger::I128(v2) => {
-                    u32::try_from((v1 as i128).checked_div(v2)?).ok()?
-                }
-                TypedInteger::U8(v2) => v1.checked_div(v2 as u32)?,
-                TypedInteger::U16(v2) => v1.checked_div(v2 as u32)?,
-                TypedInteger::U32(v2) => v1.checked_div(v2)?,
-                TypedInteger::U64(v2) => {
-                    u32::try_from((v1 as u64).checked_div(v2)?).ok()?
-                }
-                TypedInteger::U128(v2) => {
-                    u32::try_from((v1 as u128).checked_div(v2)?).ok()?
-                }
-                TypedInteger::IBig(v2) => {
-                    u32::try_from((v1 as u64).checked_div(v2.as_u64()?)?)
-                        .ok()?
-                }
-            }),
-            TypedInteger::U64(v1) => TypedInteger::U64(match rhs {
-                TypedInteger::I8(v2) => {
-                    u64::try_from((v1 as i8).checked_div(v2)?).ok()?
-                }
-                TypedInteger::I16(v2) => {
-                    u64::try_from((v1 as i16).checked_div(v2)?).ok()?
-                }
-                TypedInteger::I32(v2) => {
-                    u64::try_from((v1 as i32).checked_div(v2)?).ok()?
-                }
-                TypedInteger::I64(v2) => {
-                    u64::try_from((v1 as i64).checked_div(v2)?).ok()?
-                }
-                TypedInteger::I128(v2) => {
-                    u64::try_from((v1 as i128).checked_div(v2)?).ok()?
-                }
-                TypedInteger::U8(v2) => v1.checked_div(v2 as u64)?,
-                TypedInteger::U16(v2) => v1.checked_div(v2 as u64)?,
-                TypedInteger::U32(v2) => v1.checked_div(v2 as u64)?,
-                TypedInteger::U64(v2) => v1.checked_div(v2)?,
-                TypedInteger::U128(v2) => {
-                    u64::try_from((v1 as u128).checked_div(v2)?).ok()?
-                }
-                TypedInteger::IBig(v2) => {
-                    u64::try_from((v1 as u128).checked_div(v2.as_u128()?)?)
-                        .ok()?
-                }
-            }),
-            TypedInteger::U128(v1) => TypedInteger::U128(match rhs {
-                TypedInteger::I8(v2) => {
-                    u128::try_from((v1 as i8).checked_div(v2)?).ok()?
-                }
-                TypedInteger::I16(v2) => {
-                    u128::try_from((v1 as i16).checked_div(v2)?).ok()?
-                }
-                TypedInteger::I32(v2) => {
-                    u128::try_from((v1 as i32).checked_div(v2)?).ok()?
-                }
-                TypedInteger::I64(v2) => {
-                    u128::try_from((v1 as i64).checked_div(v2)?).ok()?
-                }
-                TypedInteger::I128(v2) => {
-                    u128::try_from((v1 as i128).checked_div(v2)?).ok()?
-                }
-                TypedInteger::U8(v2) => v1.checked_div(v2 as u128)?,
-                TypedInteger::U16(v2) => v1.checked_div(v2 as u128)?,
-                TypedInteger::U32(v2) => v1.checked_div(v2 as u128)?,
-                TypedInteger::U64(v2) => v1.checked_div(v2 as u128)?,
-                TypedInteger::U128(v2) => v1.checked_div(v2)?,
-                TypedInteger::IBig(v2) => {
-                    u128::try_from((v1 as i128).checked_div(v2.as_i128()?)?)
-                        .ok()?
-                }
-            }),
-        })
+            TypedInteger::I8(v1) => Ok(TypedInteger::I8(match rhs {
+                TypedInteger::I8(v2) => v1.wrapping_div(v2),
+                _ => return Err(ValueError::InvalidOperation),
+            })),
+            TypedInteger::I16(v1) => Ok(TypedInteger::I16(match rhs {
+                TypedInteger::I16(v2) => v1.wrapping_div(v2),
+                _ => return Err(ValueError::InvalidOperation),
+            })),
+            TypedInteger::I32(v1) => Ok(TypedInteger::I32(match rhs {
+                TypedInteger::I32(v2) => v1.wrapping_div(v2),
+                _ => return Err(ValueError::InvalidOperation),
+            })),
+            TypedInteger::I64(v1) => Ok(TypedInteger::I64(match rhs {
+                TypedInteger::I64(v2) => v1.wrapping_div(v2),
+                _ => return Err(ValueError::InvalidOperation),
+            })),
+            TypedInteger::I128(v1) => Ok(TypedInteger::I128(match rhs {
+                TypedInteger::I128(v2) => v1.wrapping_div(v2),
+                _ => return Err(ValueError::InvalidOperation),
+            })),
+            TypedInteger::U8(v1) => Ok(TypedInteger::U8(match rhs {
+                TypedInteger::U8(v2) => v1.wrapping_div(v2),
+                _ => return Err(ValueError::InvalidOperation),
+            })),
+            TypedInteger::U16(v1) => Ok(TypedInteger::U16(match rhs {
+                TypedInteger::U16(v2) => v1.wrapping_div(v2),
+                _ => return Err(ValueError::InvalidOperation),
+            })),
+            TypedInteger::U32(v1) => Ok(TypedInteger::U32(match rhs {
+                TypedInteger::U32(v2) => v1.wrapping_div(v2),
+                _ => return Err(ValueError::InvalidOperation),
+            })),
+            TypedInteger::U64(v1) => Ok(TypedInteger::U64(match rhs {
+                TypedInteger::U64(v2) => v1.wrapping_div(v2),
+                _ => return Err(ValueError::InvalidOperation),
+            })),
+            TypedInteger::U128(v1) => Ok(TypedInteger::U128(match rhs {
+                TypedInteger::U128(v2) => v1.wrapping_div(v2),
+                _ => return Err(ValueError::InvalidOperation),
+            })),
+        }
     }
 }
 
 impl Div for &TypedInteger {
-    type Output = Option<TypedInteger>;
+    type Output = Result<TypedInteger, ValueError>;
 
     fn div(self, rhs: Self) -> Self::Output {
         // FIXME #344 optimize to avoid cloning
@@ -1451,307 +744,69 @@ impl Div for &TypedInteger {
 }
 
 impl AddAssign for TypedInteger {
-    // FIXME #345 error handling / wrapping if out of bounds
     fn add_assign(&mut self, rhs: Self) {
-        *self = TypedInteger::add(self.clone(), rhs);
+        let original = self.clone();
+        *self = match TypedInteger::add(self.clone(), rhs) {
+            Ok(v) => v,
+            Err(_) => original,
+        };
     }
 }
 
 impl Sub for TypedInteger {
-    type Output = TypedInteger;
+    type Output = Result<TypedInteger, ValueError>;
 
     fn sub(self, rhs: Self) -> Self::Output {
         match self {
             TypedInteger::IBig(v1) => {
-                TypedInteger::IBig(v1 + Integer::from(rhs))
+                Ok(TypedInteger::IBig(v1 + Integer::from(rhs)))
             }
-            TypedInteger::I8(v1) => TypedInteger::I8(match rhs {
+            TypedInteger::I8(v1) => Ok(TypedInteger::I8(match rhs {
                 TypedInteger::I8(v2) => v1.wrapping_sub(v2),
-                TypedInteger::I16(v2) => {
-                    i8::try_from((v1 as i16).wrapping_sub(v2)).unwrap()
-                }
-                TypedInteger::I32(v2) => {
-                    i8::try_from((v1 as i32).wrapping_sub(v2)).unwrap()
-                }
-                TypedInteger::I64(v2) => {
-                    i8::try_from((v1 as i64).wrapping_sub(v2)).unwrap()
-                }
-                TypedInteger::I128(v2) => {
-                    i8::try_from((v1 as i128).wrapping_sub(v2)).unwrap()
-                }
-                TypedInteger::U8(v2) => {
-                    i8::try_from((v1 as i16).wrapping_sub(v2 as i16)).unwrap()
-                }
-                TypedInteger::U16(v2) => {
-                    i8::try_from((v1 as i32).wrapping_sub(v2 as i32)).unwrap()
-                }
-                TypedInteger::U32(v2) => {
-                    i8::try_from((v1 as i64).wrapping_sub(v2 as i64)).unwrap()
-                }
-                TypedInteger::U64(v2) => {
-                    i8::try_from((v1 as i128).wrapping_sub(v2 as i128)).unwrap()
-                }
-                TypedInteger::U128(v2) => i8::try_from(
-                    (v1 as i128).wrapping_sub(v2.try_into().unwrap()),
-                )
-                .unwrap(),
-                TypedInteger::IBig(v2) => {
-                    i8::try_from((v1 as i8).wrapping_sub(v2.as_wrapped_i8()))
-                        .unwrap()
-                }
-            }),
-            TypedInteger::I16(v1) => TypedInteger::I16(match rhs {
-                TypedInteger::I8(v2) => v1.wrapping_sub(v2 as i16),
+                _ => return Err(ValueError::InvalidOperation),
+            })),
+            TypedInteger::I16(v1) => Ok(TypedInteger::I16(match rhs {
                 TypedInteger::I16(v2) => v1.wrapping_sub(v2),
-                TypedInteger::I32(v2) => {
-                    i16::try_from((v1 as i32).wrapping_sub(v2)).unwrap()
-                }
-                TypedInteger::I64(v2) => {
-                    i16::try_from((v1 as i64).wrapping_sub(v2)).unwrap()
-                }
-                TypedInteger::I128(v2) => {
-                    i16::try_from((v1 as i128).wrapping_sub(v2)).unwrap()
-                }
-                TypedInteger::U8(v2) => v1.wrapping_sub(v2 as i16),
-                TypedInteger::U16(v2) => {
-                    i16::try_from((v1 as i32).wrapping_sub(v2 as i32)).unwrap()
-                }
-                TypedInteger::U32(v2) => {
-                    i16::try_from((v1 as i64).wrapping_sub(v2 as i64)).unwrap()
-                }
-                TypedInteger::U64(v2) => {
-                    i16::try_from((v1 as i128).wrapping_sub(v2 as i128))
-                        .unwrap()
-                }
-                TypedInteger::U128(v2) => i16::try_from(
-                    (v1 as i128).wrapping_sub(v2.try_into().unwrap()),
-                )
-                .unwrap(),
-
-                TypedInteger::IBig(v2) => v1.wrapping_sub(v2.as_wrapped_i16()),
-            }),
-            TypedInteger::I32(v1) => TypedInteger::I32(match rhs {
-                TypedInteger::I8(v2) => v1.wrapping_sub(v2 as i32),
-                TypedInteger::I16(v2) => v1.wrapping_sub(v2 as i32),
+                _ => return Err(ValueError::InvalidOperation),
+            })),
+            TypedInteger::I32(v1) => Ok(TypedInteger::I32(match rhs {
                 TypedInteger::I32(v2) => v1.wrapping_sub(v2),
-                TypedInteger::I64(v2) => {
-                    i32::try_from((v1 as i64).wrapping_sub(v2)).unwrap()
-                }
-                TypedInteger::I128(v2) => {
-                    i32::try_from((v1 as i128).wrapping_sub(v2)).unwrap()
-                }
-                TypedInteger::U8(v2) => v1.wrapping_sub(v2 as i32),
-                TypedInteger::U16(v2) => v1.wrapping_sub(v2 as i32),
-                TypedInteger::U32(v2) => {
-                    i32::try_from((v1 as i64).wrapping_sub(v2 as i64)).unwrap()
-                }
-                TypedInteger::U64(v2) => {
-                    i32::try_from((v1 as i128).wrapping_sub(v2 as i128))
-                        .unwrap()
-                }
-                TypedInteger::U128(v2) => i32::try_from(
-                    (v1 as i128).wrapping_sub(v2.try_into().unwrap()),
-                )
-                .unwrap(),
-                TypedInteger::IBig(v2) => v1.wrapping_sub(v2.as_wrapped_i32()),
-            }),
-            TypedInteger::I64(v1) => TypedInteger::I64(match rhs {
-                TypedInteger::I8(v2) => v1.wrapping_sub(v2 as i64),
-                TypedInteger::I16(v2) => v1.wrapping_sub(v2 as i64),
-                TypedInteger::I32(v2) => v1.wrapping_sub(v2 as i64),
+                _ => return Err(ValueError::InvalidOperation),
+            })),
+            TypedInteger::I64(v1) => Ok(TypedInteger::I64(match rhs {
                 TypedInteger::I64(v2) => v1.wrapping_sub(v2),
-                TypedInteger::I128(v2) => {
-                    i64::try_from((v1 as i128).wrapping_sub(v2)).unwrap()
-                }
-                TypedInteger::U8(v2) => {
-                    i64::from((v1 as i16).wrapping_sub(v2 as i16))
-                }
-                TypedInteger::U16(v2) => {
-                    i64::from((v1 as i32).wrapping_sub(v2 as i32))
-                }
-                TypedInteger::U32(v2) => v1.wrapping_sub(v2 as i64),
-                TypedInteger::U64(v2) => {
-                    i64::try_from((v1 as i128).wrapping_sub(v2 as i128))
-                        .unwrap()
-                }
-                TypedInteger::U128(v2) => i64::try_from(
-                    (v1 as i128).wrapping_sub(v2.try_into().unwrap()),
-                )
-                .unwrap(),
-                TypedInteger::IBig(v2) => v1.wrapping_sub(v2.as_wrapped_i64()),
-            }),
-            TypedInteger::I128(v1) => TypedInteger::I128(match rhs {
-                TypedInteger::I8(v2) => v1.wrapping_sub(v2 as i128),
-                TypedInteger::I16(v2) => v1.wrapping_sub(v2 as i128),
-                TypedInteger::I32(v2) => v1.wrapping_sub(v2 as i128),
-                TypedInteger::I64(v2) => v1.wrapping_sub(v2 as i128),
+                _ => return Err(ValueError::InvalidOperation),
+            })),
+            TypedInteger::I128(v1) => Ok(TypedInteger::I128(match rhs {
                 TypedInteger::I128(v2) => v1.wrapping_sub(v2),
-                TypedInteger::U8(v2) => v1.wrapping_sub(v2 as i128),
-                TypedInteger::U16(v2) => v1.wrapping_sub(v2 as i128),
-                TypedInteger::U32(v2) => v1.wrapping_sub(v2 as i128),
-                TypedInteger::U64(v2) => v1.wrapping_sub(v2 as i128),
-                TypedInteger::U128(v2) => {
-                    v1.wrapping_sub(v2.try_into().unwrap())
-                }
-                TypedInteger::IBig(v2) => v1.wrapping_sub(v2.as_wrapped_i128()),
-            }),
-            TypedInteger::U8(v1) => TypedInteger::U8(match rhs {
-                TypedInteger::I8(v2) => {
-                    u8::try_from((v1 as i8).wrapping_sub(v2)).unwrap()
-                }
-                TypedInteger::I16(v2) => {
-                    u8::try_from((v1 as i16).wrapping_sub(v2)).unwrap()
-                }
-                TypedInteger::I32(v2) => {
-                    u8::try_from((v1 as i32).wrapping_sub(v2)).unwrap()
-                }
-                TypedInteger::I64(v2) => {
-                    u8::try_from((v1 as i64).wrapping_sub(v2)).unwrap()
-                }
-                TypedInteger::I128(v2) => {
-                    u8::try_from((v1 as i128).wrapping_sub(v2)).unwrap()
-                }
+                _ => return Err(ValueError::InvalidOperation),
+            })),
+            TypedInteger::U8(v1) => Ok(TypedInteger::U8(match rhs {
                 TypedInteger::U8(v2) => v1.wrapping_sub(v2),
-                TypedInteger::U16(v2) => {
-                    u8::try_from((v1 as u16).wrapping_sub(v2)).unwrap()
-                }
-                TypedInteger::U32(v2) => {
-                    u8::try_from((v1 as u32).wrapping_sub(v2)).unwrap()
-                }
-                TypedInteger::U64(v2) => {
-                    u8::try_from((v1 as u64).wrapping_sub(v2)).unwrap()
-                }
-                TypedInteger::U128(v2) => {
-                    u8::try_from((v1 as u128).wrapping_sub(v2)).unwrap()
-                }
-                TypedInteger::IBig(v2) => {
-                    u8::try_from((v1 as u16).wrapping_sub(v2.as_wrapped_u16()))
-                        .unwrap()
-                }
-            }),
-            TypedInteger::U16(v1) => TypedInteger::U16(match rhs {
-                TypedInteger::I8(v2) => {
-                    u16::try_from((v1 as i8).wrapping_sub(v2)).unwrap()
-                }
-                TypedInteger::I16(v2) => {
-                    u16::try_from((v1 as i16).wrapping_sub(v2)).unwrap()
-                }
-                TypedInteger::I32(v2) => {
-                    u16::try_from((v1 as i32).wrapping_sub(v2)).unwrap()
-                }
-                TypedInteger::I64(v2) => {
-                    u16::try_from((v1 as i64).wrapping_sub(v2)).unwrap()
-                }
-                TypedInteger::I128(v2) => {
-                    u16::try_from((v1 as i128).wrapping_sub(v2)).unwrap()
-                }
-                TypedInteger::U8(v2) => v1.wrapping_sub(v2 as u16),
+                _ => return Err(ValueError::InvalidOperation),
+            })),
+            TypedInteger::U16(v1) => Ok(TypedInteger::U16(match rhs {
                 TypedInteger::U16(v2) => v1.wrapping_sub(v2),
-                TypedInteger::U32(v2) => {
-                    u16::try_from((v1 as u32).wrapping_sub(v2)).unwrap()
-                }
-                TypedInteger::U64(v2) => {
-                    u16::try_from((v1 as u64).wrapping_sub(v2)).unwrap()
-                }
-                TypedInteger::U128(v2) => {
-                    u16::try_from((v1 as u128).wrapping_sub(v2)).unwrap()
-                }
-                TypedInteger::IBig(v2) => {
-                    u16::try_from((v1 as u32).wrapping_sub(v2.as_wrapped_u32()))
-                        .unwrap()
-                }
-            }),
-
-            TypedInteger::U32(v1) => TypedInteger::U32(match rhs {
-                TypedInteger::I8(v2) => {
-                    u32::try_from((v1 as i8).wrapping_sub(v2)).unwrap()
-                }
-                TypedInteger::I16(v2) => {
-                    u32::try_from((v1 as i16).wrapping_sub(v2)).unwrap()
-                }
-                TypedInteger::I32(v2) => {
-                    u32::try_from((v1 as i32).wrapping_sub(v2)).unwrap()
-                }
-                TypedInteger::I64(v2) => {
-                    u32::try_from((v1 as i64).wrapping_sub(v2)).unwrap()
-                }
-                TypedInteger::I128(v2) => {
-                    u32::try_from((v1 as i128).wrapping_sub(v2)).unwrap()
-                }
-                TypedInteger::U8(v2) => v1.wrapping_sub(v2 as u32),
-                TypedInteger::U16(v2) => v1.wrapping_sub(v2 as u32),
+                _ => return Err(ValueError::InvalidOperation),
+            })),
+            TypedInteger::U32(v1) => Ok(TypedInteger::U32(match rhs {
                 TypedInteger::U32(v2) => v1.wrapping_sub(v2),
-                TypedInteger::U64(v2) => {
-                    u32::try_from((v1 as u64).wrapping_sub(v2)).unwrap()
-                }
-                TypedInteger::U128(v2) => {
-                    u32::try_from((v1 as u128).wrapping_sub(v2)).unwrap()
-                }
-                TypedInteger::IBig(v2) => {
-                    u32::try_from((v1 as u64).wrapping_sub(v2.as_wrapped_u64()))
-                        .unwrap()
-                }
-            }),
-            TypedInteger::U64(v1) => TypedInteger::U64(match rhs {
-                TypedInteger::I8(v2) => {
-                    u64::try_from((v1 as i8).wrapping_sub(v2)).unwrap()
-                }
-                TypedInteger::I16(v2) => {
-                    u64::try_from((v1 as i16).wrapping_sub(v2)).unwrap()
-                }
-                TypedInteger::I32(v2) => {
-                    u64::try_from((v1 as i32).wrapping_sub(v2)).unwrap()
-                }
-                TypedInteger::I64(v2) => {
-                    u64::try_from((v1 as i64).wrapping_sub(v2)).unwrap()
-                }
-                TypedInteger::I128(v2) => {
-                    u64::try_from((v1 as i128).wrapping_sub(v2)).unwrap()
-                }
-                TypedInteger::U8(v2) => v1.wrapping_sub(v2 as u64),
-                TypedInteger::U16(v2) => v1.wrapping_sub(v2 as u64),
-                TypedInteger::U32(v2) => v1.wrapping_sub(v2 as u64),
+                _ => return Err(ValueError::InvalidOperation),
+            })),
+            TypedInteger::U64(v1) => Ok(TypedInteger::U64(match rhs {
                 TypedInteger::U64(v2) => v1.wrapping_sub(v2),
-                TypedInteger::U128(v2) => {
-                    u64::try_from((v1 as u128).wrapping_sub(v2)).unwrap()
-                }
-                TypedInteger::IBig(v2) => u64::try_from(
-                    (v1 as u128).wrapping_sub(v2.as_wrapped_u128()),
-                )
-                .unwrap(),
-            }),
-            TypedInteger::U128(v1) => TypedInteger::U128(match rhs {
-                TypedInteger::I8(v2) => {
-                    u128::try_from((v1 as i8).wrapping_sub(v2)).unwrap()
-                }
-                TypedInteger::I16(v2) => {
-                    u128::try_from((v1 as i16).wrapping_sub(v2)).unwrap()
-                }
-                TypedInteger::I32(v2) => {
-                    u128::try_from((v1 as i32).wrapping_sub(v2)).unwrap()
-                }
-                TypedInteger::I64(v2) => {
-                    u128::try_from((v1 as i64).wrapping_sub(v2)).unwrap()
-                }
-                TypedInteger::I128(v2) => {
-                    u128::try_from((v1 as i128).wrapping_sub(v2)).unwrap()
-                }
-                TypedInteger::U8(v2) => v1.wrapping_sub(v2 as u128),
-                TypedInteger::U16(v2) => v1.wrapping_sub(v2 as u128),
-                TypedInteger::U32(v2) => v1.wrapping_sub(v2 as u128),
-                TypedInteger::U64(v2) => v1.wrapping_sub(v2 as u128),
+                _ => return Err(ValueError::InvalidOperation),
+            })),
+            TypedInteger::U128(v1) => Ok(TypedInteger::U128(match rhs {
                 TypedInteger::U128(v2) => v1.wrapping_sub(v2),
-                TypedInteger::IBig(v2) => u128::try_from(
-                    (v1 as i128).wrapping_sub(v2.as_wrapped_i128()),
-                )
-                .unwrap(),
-            }),
+                _ => return Err(ValueError::InvalidOperation),
+            })),
         }
     }
 }
 
 impl Sub for &TypedInteger {
-    type Output = TypedInteger;
+    type Output = Result<TypedInteger, ValueError>;
 
     fn sub(self, rhs: Self) -> Self::Output {
         // Fixme #346 optimize to avoid cloning
@@ -1925,17 +980,13 @@ mod tests {
         let a = TypedInteger::I8(10);
         let b = TypedInteger::I8(20);
 
-        let result = a.clone() + b;
+        let result = (a.clone() + b).unwrap();
         assert_eq!(result, TypedInteger::I8(30));
-
-        let c = TypedInteger::U8(10);
-        let result = a.clone() + c.clone();
-        assert_eq!(result, TypedInteger::I8(20));
 
         // out of bounds
         let d = TypedInteger::I8(100);
         let e = TypedInteger::I8(50);
-        let result = d + e;
+        let result = (d + e).unwrap();
         assert_eq!(result, TypedInteger::I8(i8::MIN + 22));
     }
 
@@ -1943,38 +994,27 @@ mod tests {
     fn typed_integer_subtraction() {
         let a = TypedInteger::I8(30);
         let b = TypedInteger::I8(20);
-        let result = a - b;
+        let result = (a - b).unwrap();
         assert_eq!(result, TypedInteger::I8(10));
 
         // negative result
         let c = TypedInteger::I8(20);
         let d = TypedInteger::I8(30);
-        let result = c - d;
+        let result = (c - d).unwrap();
         assert_eq!(result, TypedInteger::I8(-10));
 
         // out of bounds
         let e = TypedInteger::I8(-100);
         let f = TypedInteger::I8(50);
-        let result = e - f;
+        let result = (e - f).unwrap();
         assert_eq!(result, TypedInteger::I8(106));
-
-        let g = TypedInteger::U8(30);
-        let h = TypedInteger::I8(30);
-        let result = g - h;
-        assert_eq!(result, TypedInteger::U8(0));
-
-        // let h = TypedInteger::U8(30);
-        // let i = TypedInteger::I8(31);
-
-        // let result = h - i;
-        // assert_eq!(result, TypedInteger::I8(-1));
     }
 
     #[test]
     fn integer_addition() {
         let a = TypedInteger::from(10_i8);
         let b = TypedInteger::from(20_i8);
-        let result = a + b;
+        let result = (a + b).unwrap();
         assert_eq!(result, TypedInteger::I8(30_i8));
     }
 

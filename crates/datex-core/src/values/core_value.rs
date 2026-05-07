@@ -547,7 +547,7 @@ impl Add for CoreValue {
 
             // same type additions
             (CoreValue::TypedInteger(lhs), CoreValue::TypedInteger(rhs)) => {
-                return Ok(CoreValue::TypedInteger(lhs + rhs));
+                return lhs.add(rhs).map(CoreValue::TypedInteger);
             }
             (CoreValue::Integer(lhs), CoreValue::Integer(rhs)) => {
                 return Ok(CoreValue::Integer(lhs + rhs));
@@ -567,18 +567,18 @@ impl Add for CoreValue {
             // integer
             CoreValue::Integer(lhs) => match &rhs {
                 CoreValue::TypedInteger(rhs) => {
-                    Ok(CoreValue::Integer(lhs.clone() + rhs.as_integer()))
+                    Ok(CoreValue::Integer(lhs + &rhs.as_integer()))
                 }
                 CoreValue::Decimal(_) => {
                     let integer = rhs
                         ._cast_to_integer_internal()
                         .ok_or(ValueError::InvalidOperation)?;
-                    Ok(CoreValue::Integer(lhs.clone() + integer.as_integer()))
+                    Ok(CoreValue::Integer(lhs + &integer.as_integer()))
                 }
                 CoreValue::TypedDecimal(rhs) => {
                     let decimal = rhs.as_f64();
                     let integer = TypedInteger::from(decimal as i128);
-                    Ok(CoreValue::Integer(lhs.clone() + integer.as_integer()))
+                    Ok(CoreValue::Integer(lhs + &integer.as_integer()))
                 }
                 _ => Err(ValueError::InvalidOperation),
             },
@@ -595,12 +595,12 @@ impl Add for CoreValue {
                     let integer = rhs
                         ._cast_to_integer_internal()
                         .ok_or(ValueError::InvalidOperation)?;
-                    Ok(CoreValue::TypedInteger(lhs + &integer))
+                    Ok(CoreValue::TypedInteger((lhs + &integer)?))
                 }
                 CoreValue::TypedDecimal(rhs) => {
                     let decimal = rhs.as_f64();
                     let integer = TypedInteger::from(decimal as i128);
-                    Ok(CoreValue::TypedInteger(lhs + &integer))
+                    Ok(CoreValue::TypedInteger((lhs + &integer)?))
                 }
                 _ => Err(ValueError::InvalidOperation),
             },
@@ -667,7 +667,7 @@ impl Sub for CoreValue {
         // same type subtractions
         match (&self, &rhs) {
             (CoreValue::TypedInteger(lhs), CoreValue::TypedInteger(rhs)) => {
-                return Ok(CoreValue::TypedInteger(lhs - rhs));
+                return lhs.sub(rhs).map(CoreValue::TypedInteger);
             }
             (CoreValue::Integer(lhs), CoreValue::Integer(rhs)) => {
                 return Ok(CoreValue::Integer(lhs - rhs));
@@ -715,12 +715,12 @@ impl Sub for CoreValue {
                     let integer = rhs
                         ._cast_to_integer_internal()
                         .ok_or(ValueError::InvalidOperation)?;
-                    Ok(CoreValue::TypedInteger(lhs - &integer))
+                    Ok(CoreValue::TypedInteger((lhs - &integer)?))
                 }
                 CoreValue::TypedDecimal(rhs) => {
                     let decimal = rhs.as_f64();
                     let integer = TypedInteger::from(decimal as i128);
-                    Ok(CoreValue::TypedInteger(lhs - &integer))
+                    Ok(CoreValue::TypedInteger((lhs - &integer)?))
                 }
                 _ => Err(ValueError::InvalidOperation),
             },
@@ -786,9 +786,7 @@ impl Mul for CoreValue {
         match (&self, &rhs) {
             // same type multiplication
             (CoreValue::TypedInteger(lhs), CoreValue::TypedInteger(rhs)) => {
-                return Ok(CoreValue::TypedInteger(
-                    (lhs * rhs).ok_or(ValueError::IntegerOverflow)?,
-                ));
+                return lhs.mul(rhs).map(CoreValue::TypedInteger);
             }
             (CoreValue::Integer(lhs), CoreValue::Integer(rhs)) => {
                 return Ok(CoreValue::Integer(lhs * rhs));
