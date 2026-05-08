@@ -29,32 +29,40 @@ use url::Url;
 
 impl LanguageServerBackend {
     pub async fn update_file_contents(&self, url: Url, content: String) {
-        let mut compiler_workspace = self.compiler_workspace.borrow_mut();
-        let file = compiler_workspace.load_file(url.clone(), content.clone());
-        // Clear previous errors for this file
-        self.clear_compiler_errors(&url);
-        if let Some(errors) = &file.errors {
-            self.client
-                .log_message(
-                    MessageType::ERROR,
-                    format!("Failed to compile file {}: {}", url, errors,),
-                )
-                .await;
-            self.collect_compiler_errors(errors, url, &content)
+        let (error_message, ast_message, ast_metadata_message) = {
+            let mut compiler_workspace = self.compiler_workspace.borrow_mut();
+            let file =
+                compiler_workspace.load_file(url.clone(), content.clone());
+
+            // Clear previous errors for this file
+            self.clear_compiler_errors(&url);
+
+            let error_message = file.errors.as_ref().map(|errors| {
+                self.collect_compiler_errors(errors, url.clone(), &content);
+                format!("Failed to compile file {}: {}", url, errors)
+            });
+
+            let ast_message = file
+                .rich_ast
+                .as_ref()
+                .map(|rich_ast| format!("AST: {:#?}", rich_ast.ast));
+            let ast_metadata_message = file.rich_ast.as_ref().map(|rich_ast| {
+                format!("AST metadata: {:#?}", *rich_ast.metadata.borrow())
+            });
+
+            (error_message, ast_message, ast_metadata_message)
+        };
+
+        if let Some(message) = error_message {
+            self.client.log_message(MessageType::ERROR, message).await;
         }
-        if let Some(rich_ast) = &file.rich_ast {
-            self.client
-                .log_message(
-                    MessageType::INFO,
-                    format!("AST: {:#?}", rich_ast.ast),
-                )
-                .await;
-            self.client
-                .log_message(
-                    MessageType::INFO,
-                    format!("AST metadata: {:#?}", *rich_ast.metadata.borrow()),
-                )
-                .await;
+
+        if let Some(message) = ast_message {
+            self.client.log_message(MessageType::INFO, message).await;
+        }
+
+        if let Some(message) = ast_metadata_message {
+            self.client.log_message(MessageType::INFO, message).await;
         }
     }
 

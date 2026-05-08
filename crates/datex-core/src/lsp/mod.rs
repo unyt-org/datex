@@ -2,6 +2,11 @@ mod errors;
 mod type_hint_collector;
 mod utils;
 mod variable_declaration_finder;
+
+// Architecture:
+//   VS Code <--JSON-RPC--> LSP Server (Rust) <--> Compiler <--> AST
+//
+
 use core::cell::RefCell;
 
 use crate::{
@@ -29,17 +34,101 @@ use realhydroper_lsp::{
 
 use crate::prelude::*;
 
+// The LSP server needs to read/write from stdin/stdout.
 #[cfg(feature = "lsp_wasm")]
 use futures::io::{AsyncRead, AsyncWrite};
 #[cfg(not(feature = "lsp_wasm"))]
 use tokio::io::{AsyncRead, AsyncWrite};
 
+/// The main LSP server backend that handles all language server requests.
+///
+/// # Fields
+/// - `client`: The LSP client connection used to send notifications back to VS Code
+/// - `compiler_workspace`: Manages the compilation state for all open files (holds parsed AST, variable metadata, errors for each file)
+/// - `spanned_compiler_errors`: Cached compiler errors with their source locations (used for showing red underlines in VS Code)
+///
+/// The server uses `RefCell` for interior mutability because LSP methods take
+/// immutable self, but we need to mutate the workspace on each request.
 pub struct LanguageServerBackend {
     pub client: Client,
     pub compiler_workspace: RefCell<CompilerWorkspace>,
     pub spanned_compiler_errors:
         RefCell<HashMap<Url, Vec<SpannedLSPCompilerError>>>,
 }
+
+// This is not how they have to work, it must be parsed from language, not hardcoded, so it will be rewriten in future
+/// DATEX language keywords for autocomplete suggestions
+const DATEX_KEYWORDS: &[&str] = &[
+    "about",
+    "accept",
+    "always",
+    "as",
+    "assert",
+    "await",
+    "base",
+    "catch",
+    "clone",
+    "clone_collapse",
+    "collapse",
+    "const",
+    "constructor",
+    "copy",
+    "count",
+    "creator",
+    "debugger",
+    "default",
+    "defer",
+    "delete",
+    "destructor",
+    "do",
+    "else",
+    "exit",
+    "export",
+    "extends",
+    "false",
+    "freeze",
+    "from",
+    "function",
+    "get",
+    "has",
+    "if",
+    "implements",
+    "iterator",
+    "iterate",
+    "keys",
+    "leave",
+    "loop",
+    "matches",
+    "maybe",
+    "named",
+    "new",
+    "next",
+    "null",
+    "origin",
+    "plugin",
+    "ref",
+    "replicator",
+    "response",
+    "return",
+    "run",
+    "scope",
+    "seal",
+    "skip",
+    "subscribers",
+    "template",
+    "to",
+    "transaction",
+    "true",
+    "try",
+    "type",
+    "typeof",
+    "use",
+    "val",
+    "var",
+    "void",
+    "while",
+    "yeet",
+];
 
 impl LanguageServerBackend {
     pub fn new(client: Client, compiler_workspace: CompilerWorkspace) -> Self {
@@ -51,6 +140,32 @@ impl LanguageServerBackend {
     }
 }
 
+/// Entry point to start the LSP server
+///
+/// This is the main function that starts the LSP server.
+pub fn create_lsp<I, O>(
+    runtime: Runtime,
+    input: I,
+    output: O,
+) -> impl core::future::Future<Output = ()>
+where
+    I: AsyncRead + Unpin,
+    O: AsyncWrite,
+{
+    // Holding compiled files
+    let compiler_workspace = CompilerWorkspace::new(runtime);
+
+    // Create the LSP service with backend
+    // The closure creates a new LanguageServerBackend for each connection
+    let (service, socket) = LspService::new(|client| {
+        LanguageServerBackend::new(client, compiler_workspace)
+    });
+
+    // Create a server using the provided input/output streams
+    // and serve the LSP service
+    Server::new(input, output, socket).serve(service)
+}
+
 #[realhydroper_lsp::async_trait(?Send)]
 impl LanguageServer for LanguageServerBackend {
     async fn initialize(
@@ -60,10 +175,13 @@ impl LanguageServer for LanguageServerBackend {
         Ok(InitializeResult {
             capabilities: ServerCapabilities {
                 hover_provider: Some(HoverProviderCapability::Simple(true)),
+
                 completion_provider: Some(CompletionOptions::default()),
+
                 text_document_sync: Some(TextDocumentSyncCapability::Kind(
                     TextDocumentSyncKind::FULL,
                 )),
+
                 diagnostic_provider: Some(
                     DiagnosticServerCapabilities::Options(DiagnosticOptions {
                         inter_file_dependencies: true,
@@ -74,12 +192,16 @@ impl LanguageServer for LanguageServerBackend {
                         },
                     }),
                 ),
+
                 inlay_hint_provider: Some(OneOf::Left(true)),
+
                 document_link_provider: Some(DocumentLinkOptions {
                     resolve_provider: Some(true),
                     work_done_progress_options: Default::default(),
                 }),
+
                 definition_provider: Some(OneOf::Left(true)),
+
                 ..Default::default()
             },
             ..Default::default()
@@ -88,7 +210,10 @@ impl LanguageServer for LanguageServerBackend {
 
     async fn initialized(&self, _: InitializedParams) {
         self.client
-            .log_message(MessageType::INFO, "server initialized!")
+            .log_message(
+                MessageType::INFO,
+                "DATEX LSP server initialized and ready to accept ",
+            )
             .await;
     }
 
@@ -133,38 +258,35 @@ impl LanguageServer for LanguageServerBackend {
         params: CompletionParams,
     ) -> realhydroper_lsp::jsonrpc::Result<Option<CompletionResponse>> {
         self.client
-            .log_message(MessageType::INFO, "completion!")
+            .log_message(MessageType::INFO, "completion requested")
             .await;
 
         let position = params.text_document_position;
 
-        // For simplicity, we assume the prefix is the last word before the cursor.
-        // In a real implementation, you would extract this from the document content.
         let prefix = self.get_previous_text_at_position(&position);
         self.client
             .log_message(
                 MessageType::INFO,
-                format!("Completion prefix: {}", prefix),
+                format!("Completion prefix: '{}'", prefix),
             )
             .await;
 
         let variables = self.find_variable_starting_with(&prefix);
 
-        let items: Vec<CompletionItem> = variables
-            .iter()
-            .map(|var| CompletionItem {
-                label: var.name.clone(),
-                kind: Some(CompletionItemKind::VARIABLE),
-                detail: Some(format!(
-                    "{} {}: {}",
-                    var.shape,
-                    var.name,
-                    var.var_type.as_ref().unwrap()
-                )),
-                documentation: None,
-                ..Default::default()
-            })
-            .collect();
+        let mut items = self.keyword_completion_items(&prefix);
+
+        items.extend(variables.iter().map(|var| CompletionItem {
+            label: var.name.clone(),
+            kind: Some(CompletionItemKind::VARIABLE),
+            detail: Some(format!(
+                "{} {}: {}",
+                var.shape, // "val", "ref", "const", etc.
+                var.name,
+                var.var_type.clone().unwrap_or(Type::unknown()) // inferred type
+            )),
+            documentation: None,
+            ..Default::default()
+        }));
 
         Ok(Some(CompletionResponse::Array(items)))
     }
@@ -178,63 +300,60 @@ impl LanguageServer for LanguageServerBackend {
 
         if let Some(expression) = expression {
             Ok(match expression.data {
-                // show variable type info on hover
-                DatexExpressionData::VariableDeclaration(
-                    VariableDeclaration {
-                        name, id: Some(id), ..
-                    },
-                )
-                | DatexExpressionData::VariableAssignment(
-                    VariableAssignment {
-                        name, id: Some(id), ..
-                    },
-                )
-                | DatexExpressionData::VariableAccess(VariableAccess {
-                    id,
-                    name,
-                }) => {
-                    let variable_metadata =
-                        self.get_variable_by_id(id).unwrap();
-                    Some(self.get_language_string_hover(&format!(
-                        "{} {}: {}",
-                        variable_metadata.shape,
-                        name,
-                        variable_metadata.var_type.unwrap_or(Type::unknown())
-                    )))
-                }
-
-                // show value info on hover for literals
-                DatexExpressionData::Integer(integer) => Some(
-                    self.get_language_string_hover(&format!("{}", integer)),
-                ),
-                DatexExpressionData::TypedInteger(typed_integer) => {
-                    Some(self.get_language_string_hover(&format!(
-                        "{}",
-                        typed_integer
-                    )))
-                }
-                DatexExpressionData::Decimal(decimal) => Some(
-                    self.get_language_string_hover(&format!("{}", decimal)),
-                ),
-                DatexExpressionData::TypedDecimal(typed_decimal) => {
-                    Some(self.get_language_string_hover(&format!(
-                        "{}",
-                        typed_decimal
-                    )))
-                }
-                DatexExpressionData::Boolean(boolean) => Some(
-                    self.get_language_string_hover(&format!("{}", boolean)),
-                ),
-                DatexExpressionData::Text(text) => Some(
-                    self.get_language_string_hover(&format!("\"{}\"", text)),
-                ),
-                DatexExpressionData::Endpoint(endpoint) => Some(
-                    self.get_language_string_hover(&format!("{}", endpoint)),
-                ),
-                DatexExpressionData::Null => {
-                    Some(self.get_language_string_hover("null"))
-                }
-
+                // DatexExpressionData::VariableDeclaration(
+                //     VariableDeclaration {
+                //         name, id: Some(id), ..
+                //     },
+                // )
+                // | DatexExpressionData::VariableAssignment(
+                //     VariableAssignment {
+                //         name, id: Some(id), ..
+                //     },
+                // )
+                // | DatexExpressionData::VariableAccess(VariableAccess {
+                //     id,
+                //     name,
+                // }) => {
+                //     let variable_metadata =
+                //         self.get_variable_by_id(id).unwrap();
+                //     Some(self.get_language_string_hover(&format!(
+                //         "{} {}: {}",
+                //         variable_metadata.shape, // "val", "ref", "const"
+                //         name,
+                //         variable_metadata.var_type.unwrap_or(Type::unknown()) // type
+                //     )))
+                // }
+                //
+                // DatexExpressionData::Integer(integer) => Some(
+                //     self.get_language_string_hover(&format!("{}", integer)),
+                // ),
+                // DatexExpressionData::TypedInteger(typed_integer) => {
+                //     Some(self.get_language_string_hover(&format!(
+                //         "{}",
+                //         typed_integer
+                //     )))
+                // }
+                // DatexExpressionData::Decimal(decimal) => Some(
+                //     self.get_language_string_hover(&format!("{}", decimal)),
+                // ),
+                // DatexExpressionData::TypedDecimal(typed_decimal) => {
+                //     Some(self.get_language_string_hover(&format!(
+                //         "{}",
+                //         typed_decimal
+                //     )))
+                // }
+                // DatexExpressionData::Boolean(boolean) => Some(
+                //     self.get_language_string_hover(&format!("{}", boolean)),
+                // ),
+                // DatexExpressionData::Text(text) => Some(
+                //     self.get_language_string_hover(&format!("\"{}\"", text)),
+                // ),
+                // DatexExpressionData::Endpoint(endpoint) => Some(
+                //     self.get_language_string_hover(&format!("{}", endpoint)),
+                // ),
+                // DatexExpressionData::Null => {
+                //     Some(self.get_language_string_hover("null"))
+                // }
                 _ => None,
             })
         } else {
@@ -250,7 +369,6 @@ impl LanguageServer for LanguageServerBackend {
         &self,
         params: InlayHintParams,
     ) -> realhydroper_lsp::jsonrpc::Result<Option<Vec<InlayHint>>> {
-        // show type hints for variables
         let type_hints = self
             .get_type_hints(params.text_document.uri)
             .unwrap()
@@ -316,17 +434,16 @@ impl LanguageServer for LanguageServerBackend {
         &self,
         _params: DocumentLinkParams,
     ) -> realhydroper_lsp::jsonrpc::Result<Option<Vec<DocumentLink>>> {
-        // TODO #679
+        // TODO #679: Implement document links for @endpoints or URLs
         Ok(Some(vec![]))
     }
 
-    // get error diagnostics
     async fn diagnostic(
         &self,
         params: DocumentDiagnosticParams,
     ) -> realhydroper_lsp::jsonrpc::Result<DocumentDiagnosticReportResult> {
         self.client
-            .log_message(MessageType::INFO, "diagnostics!")
+            .log_message(MessageType::INFO, "diagnostics requested")
             .await;
 
         let uri = params.text_document.uri;
@@ -348,6 +465,20 @@ impl LanguageServer for LanguageServerBackend {
 }
 
 impl LanguageServerBackend {
+    fn keyword_completion_items(&self, prefix: &str) -> Vec<CompletionItem> {
+        DATEX_KEYWORDS
+            .iter()
+            .filter(|keyword| keyword.starts_with(prefix))
+            .map(|keyword| CompletionItem {
+                label: (*keyword).to_string(),
+                kind: Some(CompletionItemKind::KEYWORD),
+                detail: Some("DATEX keyword".to_string()),
+                sort_text: Some(format!("0_{}", keyword)),
+                ..Default::default()
+            })
+            .collect()
+    }
+
     fn get_language_string_hover(&self, text: &str) -> Hover {
         let contents = HoverContents::Scalar(MarkedString::LanguageString(
             LanguageString {
@@ -384,22 +515,6 @@ impl LanguageServerBackend {
     }
 }
 
-pub fn create_lsp<I, O>(
-    runtime: Runtime,
-    input: I,
-    output: O,
-) -> impl core::future::Future<Output = ()>
-where
-    I: AsyncRead + Unpin,
-    O: AsyncWrite,
-{
-    let compiler_workspace = CompilerWorkspace::new(runtime);
-    let (service, socket) = LspService::new(|client| {
-        LanguageServerBackend::new(client, compiler_workspace)
-    });
-    Server::new(input, output, socket).serve(service)
-}
-
 #[cfg(test)]
 mod tests {
     use core::str::FromStr;
@@ -413,23 +528,27 @@ mod tests {
     use crate::runtime::RuntimeRunner;
     use tokio::{
         io::{AsyncReadExt, AsyncWriteExt, duplex},
+        task::LocalSet,
         time::{Duration, timeout},
     };
 
     #[tokio::test(flavor = "current_thread")]
     async fn test_lsp_initialization() {
-        RuntimeRunner::new(RuntimeConfig::new_with_endpoint(
-            Endpoint::from_str("@lspler").unwrap(),
-        ))
-        .run(async |runtime| {
-            let (mut client_read, server_write) = duplex(1024);
-            let (server_read, mut client_write) = duplex(1024);
+        LocalSet::new()
+            .run_until(async {
+                RuntimeRunner::new(RuntimeConfig::new_with_endpoint(
+                    Endpoint::from_str("@lspler").unwrap(),
+                ))
+                .run(async |runtime| {
+                    let (mut client_read, server_write) = duplex(1024);
+                    let (server_read, mut client_write) = duplex(1024);
 
-            let lsp_future = create_lsp(runtime, server_read, server_write);
-            let lsp_handle = tokio::task::spawn_local(lsp_future);
+                    let lsp_future =
+                        create_lsp(runtime, server_read, server_write);
+                    let lsp_handle = tokio::task::spawn_local(lsp_future);
 
-            // Send initialize request
-            let init_body = r#"{
+                    // Send initialize request
+                    let init_body = r#"{
                     "jsonrpc": "2.0",
                     "id": 1,
                     "method": "initialize",
@@ -440,29 +559,34 @@ mod tests {
                     }
                 }"#;
 
-            let init_request = format!(
-                "Content-Length: {}\r\n\r\n{}",
-                init_body.len(),
-                init_body
-            );
+                    let init_request = format!(
+                        "Content-Length: {}\r\n\r\n{}",
+                        init_body.len(),
+                        init_body
+                    );
 
-            client_write
-                .write_all(init_request.as_bytes())
-                .await
-                .unwrap();
+                    client_write
+                        .write_all(init_request.as_bytes())
+                        .await
+                        .unwrap();
 
-            // Read response
-            let mut buffer = vec![0; 1024];
-            let n =
-                timeout(Duration::from_secs(2), client_read.read(&mut buffer))
+                    // Read response
+                    let mut buffer = vec![0; 1024];
+                    let n = timeout(
+                        Duration::from_secs(2),
+                        client_read.read(&mut buffer),
+                    )
                     .await
                     .unwrap()
                     .unwrap();
 
-            let response = String::from_utf8_lossy(&buffer[..n]);
-            assert!(response.contains(r#""id":1"#));
-            lsp_handle.abort();
-        })
-        .await;
+                    let response = String::from_utf8_lossy(&buffer[..n]);
+                    assert!(response.contains(r#""id":1"#));
+                    assert!(response.contains(r#""completionProvider":{}"#));
+                    lsp_handle.abort();
+                })
+                .await;
+            })
+            .await;
     }
 }

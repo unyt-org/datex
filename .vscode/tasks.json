@@ -2,6 +2,22 @@
     "version": "2.0.0",
     "tasks": [
         {
+            "label": "Build LSP Server",
+            "type": "shell",
+            "command": "cargo build --example lsp_server --package datex-core --features \"lsp_tokio lsp_example\"",
+            "group": {
+                "kind": "build",
+                "isDefault": false
+            },
+            "problemMatcher": ["$rustc"],
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": true,
+                "panel": "shared"
+            }
+        },
+        {
             "label": "Format",
             "type": "shell",
             "command": "./scripts/fmt.sh",
