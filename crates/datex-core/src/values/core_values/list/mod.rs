@@ -5,6 +5,7 @@ use crate::{
     values::value_container::ValueContainer,
 };
 pub mod equality;
+pub mod serde_dif;
 use core::{
     fmt::Display,
     ops::{Index, Range},

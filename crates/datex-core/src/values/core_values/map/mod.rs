@@ -20,6 +20,7 @@ use core::{
     hash::{Hash, Hasher},
     result::Result,
 };
+pub mod serde_dif;
 use indexmap::IndexMap;
 
 #[derive(Clone, Debug, Eq, PartialEq)]

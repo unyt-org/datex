@@ -15,7 +15,22 @@ impl Serialize for CoreValue {
     {
         match self {
             CoreValue::Integer(i) => i.serialize(serializer),
-            _ => todo!(),
+            CoreValue::Boolean(b) => b.serialize(serializer),
+            CoreValue::Text(s) => s.serialize(serializer),
+            CoreValue::Decimal(d) => d.serialize(serializer),
+            CoreValue::Endpoint(e) => e.serialize(serializer),
+            CoreValue::List(l) => l.serialize(serializer),
+            CoreValue::TypedInteger(ti) => ti.serialize(serializer),
+            CoreValue::TypedDecimal(td) => td.serialize(serializer),
+            CoreValue::Map(map) => map.serialize(serializer),
+            CoreValue::Range(r) => r.serialize(serializer),
+            // CoreValue::Type(t) => t.serialize(serializer),
+            // CoreValue::Callable(c) => c.serialize(serializer),
+            // CoreValue::NominalTypeDefinition(ntd) => ntd.serialize(serializer),
+            CoreValue::Null => serializer.serialize_unit(),
+            _ => unimplemented!(
+                "Serialization for this CoreValue variant is not implemented yet."
+            ),
         }
     }
 }
