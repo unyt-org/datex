@@ -1,11 +1,12 @@
 {
     "deno.enable": true,
     "editor.formatOnSave": true,
-    "rust-analyzer.cargo.features": [],
+    "rust-analyzer.cargo.features": [
+        "decompiler"
+    ],
     "rust-analyzer.procMacro.enable": true,
     "rust-analyzer.check.command": "clippy",
     "rust-analyzer.check.workspace": false,
-    "rust-analyzer.imports.preferNoStd": true,
     "rust-analyzer.linkedProjects": [
         "crates/datex-core/Cargo.toml",
         "crates/datex-crypto-facade/Cargo.toml",
