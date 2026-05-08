@@ -10,9 +10,8 @@ use crate::{
 };
 use crate::dif::serde_context::SerdeContext;
 use crate::utils::serde_serialize_seed::SerializeSeed;
-use crate::value_updates::update_data::SetEntryUpdateData;
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum ValueKey {
     Text(String),
     Index(i64),

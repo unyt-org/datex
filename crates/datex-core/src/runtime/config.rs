@@ -15,7 +15,7 @@ pub fn is_priority_none(v: &InterfacePriority) -> bool {
     matches!(v, InterfacePriority::None)
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
 pub struct RuntimeConfigInterface {
     #[serde(rename = "type")]

@@ -4,19 +4,6 @@ use crate::{
 };
 use serde::{Deserialize, Serialize, Serializer, de::IntoDeserializer};
 
-/// Serialization for [ValueContainer].
-impl Serialize for ValueContainer {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        match self {
-            ValueContainer::Shared(shared) => shared.serialize(serializer),
-            ValueContainer::Local(value) => value.serialize(serializer),
-        }
-    }
-}
-
 use crate::dif::serde_context::SerdeContext;
 use core::fmt;
 use serde::{
@@ -110,27 +97,6 @@ mod tests {
     };
     use core::assert_matches;
 
-    fn deserialize_json_string(
-        str: impl Into<String>,
-        dif_cache: &mut DIFSharedContainerCache,
-    ) -> ValueContainer {
-        SerdeContext::<ValueContainer>::new(dif_cache)
-            .deserialize(&mut serde_json::Deserializer::from_str(
-                str.into().as_str(),
-            ))
-            .unwrap()
-    }
-
-    fn serialize_json_string(
-        value: ValueContainer,
-        dif_cache: &mut DIFSharedContainerCache,
-    ) -> String {
-        let mut context = SerdeContext::<ValueContainer>::new(dif_cache);
-        let mut serializer = serde_json::Serializer::new(Vec::new());
-        context.serialize(&value, &mut serializer).unwrap();
-        let bytes = serializer.into_inner();
-        String::from_utf8(bytes).unwrap()
-    }
     #[test]
     fn owned() {
         let memory = Memory::new();
@@ -160,6 +126,8 @@ mod tests {
     #[test]
     fn referenced() {
         let memory = Memory::new();
+        let mut cache = DIFSharedContainerCache::default();
+
         let integer_container =
             ValueContainer::Shared(SharedContainer::Referenced(
                 memory

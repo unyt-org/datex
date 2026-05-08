@@ -13,25 +13,6 @@ use serde::{
 };
 use crate::utils::serde_serialize_seed::SerializeSeed;
 
-impl Serialize for SharedContainer {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        // Only serialize the ownership and pointer address
-        let ownership = match self.ownership() {
-            SharedContainerOwnership::Referenced(
-                ReferenceMutability::Immutable,
-            ) => "'",
-            SharedContainerOwnership::Referenced(
-                ReferenceMutability::Mutable,
-            ) => "'mut ",
-            SharedContainerOwnership::Owned => "",
-        };
-
-        format!("{}{}", ownership, self.pointer_address()).serialize(serializer)
-    }
-}
 
 impl<'de, 'ctx> DeserializeSeed<'de> for SerdeContext<'ctx, SharedContainer> {
     type Value = SharedContainer;
@@ -59,9 +40,9 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, SharedContainer> {
 
     /// SAFETY:
     /// The caller of the `serialize` method must either
-    /// * guarantee that no direct value (accessible without borrow) is an owned shared value 
+    /// * guarantee that no direct value (accessible without borrow) is an owned shared value
     ///   (this can be guaranteed by calling clone on the top level value before passing it to [SerializeSeed])
-    /// * or guarantee that the value is dropped after calling `serialize`, so that the owned shared value 
+    /// * or guarantee that the value is dropped after calling `serialize`, so that the owned shared value
     ///   is not leaked after serialization.
     fn serialize<S>(
         &mut self,
@@ -75,7 +56,19 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, SharedContainer> {
             self.shared_container_cache
                 .store_shared_container(value.clone_unsafe());
         }
-        value.pointer_address().serialize(serializer)
+
+        // Only serialize the ownership and pointer address
+        let ownership = match value.ownership() {
+            SharedContainerOwnership::Referenced(
+                ReferenceMutability::Immutable,
+            ) => "'",
+            SharedContainerOwnership::Referenced(
+                ReferenceMutability::Mutable,
+            ) => "'mut ",
+            SharedContainerOwnership::Owned => "",
+        };
+
+        format!("{}{}", ownership, value.pointer_address()).serialize(serializer)
     }
 }
 
@@ -101,6 +94,7 @@ mod tests {
     #[test]
     fn serialize_shared_container_reference() {
         let memory = Memory::new();
+        let dif_cache = DIFSharedContainerCache::default();
         let integer_container = SharedContainer::Referenced(
             memory
                 .get_core_reference(CoreLibTypeId::Base(
@@ -108,7 +102,9 @@ mod tests {
                 ))
                 .clone(),
         );
-        let serialized = serde_json::to_string(&integer_container).unwrap();
+
+        let serialized = SerdeContext::<SharedContainer>::new(&mut DIFSharedContainerCache::default())
+            .serialize_to_json(&integer_container);
         assert_eq!(serialized, r#""'$030000""#);
     }
 
@@ -125,7 +121,8 @@ mod tests {
                 memory,
             );
 
-        let serialized = serde_json::to_string(&owned_container).unwrap();
+        let serialized = SerdeContext::<SharedContainer>::new(&mut DIFSharedContainerCache::default())
+            .serialize_to_json(&owned_container);
         assert_eq!(
             serialized,
             format!(r#""{}""#, owned_container.pointer_address())
@@ -140,17 +137,8 @@ mod tests {
         serde_context::SerdeContext,
     };
     use core::assert_matches;
+    use crate::utils::serde_serialize_seed::SerializeSeed;
 
-    fn deserialize_json_string(
-        str: impl Into<String>,
-        dif_cache: &mut DIFSharedContainerCache,
-    ) -> SharedContainer {
-        SerdeContext::<SharedContainer>::new(dif_cache)
-            .deserialize(&mut serde_json::Deserializer::from_str(
-                str.into().as_str(),
-            ))
-            .unwrap()
-    }
 
     #[test]
     fn deserialize_core_pointer_address_to_shared_container() {
@@ -168,8 +156,9 @@ mod tests {
         );
         dif_cache.store_shared_container(integer_container.clone());
 
-        let outer = deserialize_json_string(json, dif_cache);
-
+        let outer = SerdeContext::<SharedContainer>::new(&mut DIFSharedContainerCache::default())
+            .try_deserialize_from_json(json).unwrap();
+        
         assert_eq!(outer, integer_container);
     }
 
@@ -190,33 +179,31 @@ mod tests {
         let ptr_address_hex = ptr_address.to_string();
 
         dif_cache.store_shared_container(owned_container);
+        
+        
+        let outer_ref = SerdeContext::<SharedContainer>::new(dif_cache)
+            .try_deserialize_from_json(&format!(r#""'{}""#, ptr_address_hex)).unwrap();
 
-        let outer_ref = deserialize_json_string(
-            format!(r#""'{}""#, ptr_address_hex),
-            dif_cache,
-        );
         assert_matches!(
             outer_ref,
             SharedContainer::Referenced(reference)
             if reference.reference_mutability() == ReferenceMutability::Immutable &&
                 reference.pointer_address() == ptr_address
         );
-
-        let outer_ref_mut = deserialize_json_string(
-            format!(r#""'mut{}""#, ptr_address_hex),
-            dif_cache,
-        );
+        
+        let outer_ref_mut = SerdeContext::<SharedContainer>::new(dif_cache)
+            .try_deserialize_from_json(&format!(r#""'mut{}""#, ptr_address_hex)).unwrap();
+        
         assert_matches!(
             outer_ref_mut,
             SharedContainer::Referenced(reference)
             if reference.reference_mutability() == ReferenceMutability::Mutable &&
                 reference.pointer_address() == ptr_address
         );
-
-        let outer_owned = deserialize_json_string(
-            format!(r#""{}""#, ptr_address_hex),
-            dif_cache,
-        );
+        
+        let outer_owned = SerdeContext::<SharedContainer>::new(dif_cache)
+            .try_deserialize_from_json(&format!(r#""{}""#, ptr_address_hex)).unwrap();
+        
         assert_matches!(
             outer_owned,
             SharedContainer::Owned(owned)

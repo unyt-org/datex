@@ -7,40 +7,32 @@ use crate::{
     },
 };
 use serde::{
-    Serialize, Serializer,
+    Serializer,
     de::{IgnoredAny, MapAccess},
     ser::SerializeMap,
 };
-
-impl<'a> Serialize for BorrowedMapKey<'a> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        match self {
-            BorrowedMapKey::Text(s) => serializer.serialize_str(s),
-            BorrowedMapKey::Value(v) => v.serialize(serializer),
-        }
-    }
-}
-
-impl Serialize for Map {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let mut map = serializer.serialize_map(Some(self.size()))?;
-
-        for (key, value) in self.iter() {
-            map.serialize_entry(&key, value)?;
-        }
-
-        map.end()
-    }
-}
-
+use crate::utils::serde_serialize_seed::{SerializeSeed, ValueWithSeed};
 use core::fmt;
 use serde::de::{DeserializeSeed, Error, SeqAccess, Visitor};
+
+impl<'ctx> SerializeSeed for SerdeContext<'ctx, BorrowedMapKey<'ctx>> {
+    type Value = BorrowedMapKey<'ctx>;
+
+    fn serialize<S>(
+        &mut self,
+        value: &Self::Value,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match value {
+            BorrowedMapKey::Text(s) => serializer.serialize_str(s),
+            BorrowedMapKey::Value(v) => self.cast::<ValueContainer>().serialize(v, serializer),
+        }
+    }
+}
+
 
 struct MapEntrySeed<'ctx> {
     ctx: SerdeContext<'ctx, ValueContainer>,
@@ -159,3 +151,29 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, Map> {
         Ok(Map::from(entries))
     }
 }
+
+
+impl<'ctx> SerializeSeed for SerdeContext<'ctx, Map> {
+    type Value = Map;
+
+    fn serialize<S>(
+        &mut self,
+        value: &Self::Value,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut state = serializer.serialize_map(Some(value.size()))?;
+        for (key, value) in value.iter() {
+            state.serialize_key(
+                &ValueWithSeed::new(&key, self.cast::<BorrowedMapKey>()),
+            )?;
+            state.serialize_value(
+                &ValueWithSeed::new(value, self.cast::<ValueContainer>())
+            )?;
+        }
+        state.end()
+    }
+}
+

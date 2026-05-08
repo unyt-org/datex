@@ -26,7 +26,7 @@ impl Serialize for CoreValue {
 
             CoreValue::Range(range) => {
                 let mut map = serializer.serialize_map(Some(2))?;
-                map.serialize_entry("$type", "range")?;
+                map.serialize_entry("type", "range")?;
                 map.serialize_entry("value", range)?;
                 map.end()
             }

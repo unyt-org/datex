@@ -7,7 +7,7 @@ use serde::Serialize;
 
 /// A wrapper around an [SharedContainer] which guarantees
 /// that the contained value is always a [CoreValue::Type]
-#[derive(Debug, PartialEq, Eq, Clone, Hash, Serialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct SharedContainerContainingType(SharedContainer);
 
 impl Deref for SharedContainerContainingType {

@@ -1,16 +1,28 @@
-use serde::{Serialize, Serializer, ser::SerializeSeq};
-
+use serde::{Serializer, ser::SerializeSeq};
+use serde::ser::SerializeMap;
+use crate::dif::serde_context::SerdeContext;
+use crate::utils::serde_serialize_seed::{SerializeSeed, ValueWithSeed};
 use crate::values::core_values::list::List;
+use crate::values::core_values::map::{BorrowedMapKey};
 
-impl Serialize for List {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+impl<'ctx> SerializeSeed for SerdeContext<'ctx, List> {
+    type Value = List;
+
+    fn serialize<S>(
+        &mut self,
+        value: &Self::Value,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
-        let mut seq = serializer.serialize_seq(Some(self.len() as usize))?;
-        for item in self.iter() {
-            seq.serialize_element(item)?;
+        let mut state = serializer.serialize_seq(Some(value.size()))?;
+        for value in value.iter() {
+            state.serialize_element(
+                &ValueWithSeed::new(&value, self.cast::<BorrowedMapKey>()),
+            )?;
         }
-        seq.end()
+        state.end()
     }
 }
+

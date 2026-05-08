@@ -15,7 +15,7 @@ use crate::{
 use core::ops::Deref;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, PartialEq, Eq, Clone, Hash, Serialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct SharedContainerContainingNominalType(SharedContainer);
 
 impl Deref for SharedContainerContainingNominalType {
