@@ -58,14 +58,12 @@ impl SharedContainer {
         value_container: T,
         mutability: SharedContainerMutability,
         address_provider: &mut SelfOwnedPointerAddressProvider,
-        memory: &Memory,
     ) -> Self {
         SharedContainer::Owned(
             OwnedSharedContainer::new_with_inferred_allowed_type(
                 value_container.into(),
                 mutability,
                 address_provider,
-                memory,
             ),
         )
     }
@@ -82,14 +80,12 @@ impl SharedContainer {
         value_container: T,
         mutability: SharedContainerMutability,
         address: SelfOwnedPointerAddress,
-        memory: &Memory,
     ) -> Self {
         SharedContainer::Owned(unsafe {
             OwnedSharedContainer::new_with_inferred_allowed_type_unsafe(
                 value_container.into(),
                 mutability,
                 address,
-                memory,
             )
         })
     }
@@ -180,8 +176,8 @@ impl SharedContainer {
     }
 
     /// Gets the current actual [Type] of the collapsed inner [Value]
-    pub fn actual_type(&self, memory: &Memory) -> Type {
-        self.with_collapsed_value(|value| value.actual_type(memory))
+    pub fn actual_type(&self) -> Type {
+        self.with_collapsed_value(|value| value.actual_type())
     }
 
     /// Gets a [RefMut] to the currently assigned [ValueContainer] of the shared container (not resolved recursively)

@@ -798,7 +798,6 @@ pub fn inner_execution_loop(
                                             BaseSharedValueContainer::new_with_inferred_allowed_type(
                                                 value,
                                                 mutability,
-                                                &state.runtime.memory().borrow_mut()
                                             ),
                                             pointer,
                                         ),
@@ -1280,7 +1279,7 @@ pub fn inner_execution_loop(
                                     let referenced_container = yield_unwrap!(unsafe {ReferencedSharedContainer::try_new_external_from_base_container(
                                         yield_unwrap!(BaseSharedValueContainer::try_new(
                                             value,
-                                            state.runtime.memory().borrow().get_core_type(CoreLibBaseTypeId::Unknown),
+                                            Type::core(CoreLibBaseTypeId::Unknown),
                                             shared_ref.container_mutability,
                                         )),
                                         pointer_address,

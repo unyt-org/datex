@@ -289,6 +289,8 @@ mod tests {
     use core::assert_matches;
     use log::{debug, info};
     use std::collections::HashMap;
+    use crate::types::r#type::Type;
+    use crate::values::value::Value;
 
     fn execute_datex_script_debug(
         datex_script: &str,
@@ -888,22 +890,8 @@ mod tests {
             vec!["1", "integer", "boolean"],
             vec![
                 Some(Integer::from(1).into()),
-                Some(ValueContainer::Shared(
-                    runtime
-                        .clone()
-                        .memory()
-                        .borrow()
-                        .get_core_type_reference(CoreLibBaseTypeId::Integer)
-                        .into(),
-                )),
-                Some(ValueContainer::Shared(
-                    runtime
-                        .clone()
-                        .memory()
-                        .borrow()
-                        .get_core_type_reference(CoreLibBaseTypeId::Boolean)
-                        .into(),
-                )),
+                Some(ValueContainer::Local(Value::from(Type::core(CoreLibBaseTypeId::Integer)))),
+                Some(ValueContainer::Local(Value::from(Type::core(CoreLibBaseTypeId::Boolean)))),
             ],
             runtime,
         )

@@ -25,6 +25,7 @@ use core::{
     fmt::{Display, Formatter},
     result::Result,
 };
+use crate::types::type_definition_with_metadata::TypeDefinitionWithMetadata;
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub struct Value {
@@ -98,21 +99,21 @@ impl Value {
     /// integer variants (despite bigint) can be distinguished based on the instruction code, but for text variants,
     /// the variant must be included in the compiler output - so we need to handle theses cases as well.
     /// Generally speaking, all variants except the few integer variants should never be considered default types.
-    pub fn has_default_type(&self, memory: &Memory) -> bool {
+    pub fn has_default_type(&self) -> bool {
         match &self.custom_type {
             None => true,
-            Some(Type::Nominal(nominal_type)) => {
-                nominal_type == &self.default_nominal_type(memory)
+            Some(Type::Alias(TypeDefinitionWithMetadata {definition: TypeDefinition::Core(core_type), ..})) => {
+                core_type == &self.default_core_type()
             }
             Some(_) => false,
         }
     }
 
     /// Returns the actual type, generating the default type from the provided memory if no custom typoe is set
-    pub fn actual_type(&self, memory: &Memory) -> Type {
+    pub fn actual_type(&self) -> Type {
         match &self.custom_type {
             Some(actual_type) => actual_type.clone(),
-            None => Type::Nominal(self.default_nominal_type(memory)),
+            None => Type::core(self.default_core_type()),
         }
     }
 
@@ -454,35 +455,30 @@ mod tests {
 
     #[test]
     fn default_types() {
-        let memory = &Memory::new();
         let val = Value::from(Integer::from(42));
-        assert!(val.has_default_type(memory));
+        assert!(val.has_default_type());
 
         let val = Value::from(42i8);
-        assert!(val.has_default_type(memory));
+        assert!(val.has_default_type());
 
         let val = Value {
             inner: CoreValue::Integer(Integer::from(42)),
-            custom_type: Some(memory.get_core_type(CoreLibTypeId::Base(
-                CoreLibBaseTypeId::Integer,
-            ))),
+            custom_type: Some(Type::core(CoreLibBaseTypeId::Integer)),
         };
 
-        assert!(val.has_default_type(memory));
+        assert!(val.has_default_type());
 
         let val = Value {
             inner: CoreValue::Integer(Integer::from(42)),
             custom_type: Some(Type::Alias(
                 TypeDefinition::ImplType(
-                    Box::new(memory.get_core_type(CoreLibTypeId::Base(
-                        CoreLibBaseTypeId::Integer,
-                    ))),
+                    Box::new(Type::core(CoreLibBaseTypeId::Integer)),
                     vec![],
                 )
                 .into(),
             )),
         };
 
-        assert!(!val.has_default_type(memory));
+        assert!(!val.has_default_type());
     }
 }

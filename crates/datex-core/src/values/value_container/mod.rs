@@ -105,22 +105,22 @@ impl ValueContainer {
     }
 
     /// Returns the actual type of the contained value, resolving shared values if necessary.
-    pub fn actual_type(&self, memory: &Memory) -> Type {
+    pub fn actual_type(&self) -> Type {
         match self {
-            ValueContainer::Local(local) => local.actual_type(memory).clone(),
+            ValueContainer::Local(local) => local.actual_type().clone(),
             ValueContainer::Shared(shared) => {
-                shared.actual_type(memory).clone()
+                shared.actual_type().clone()
             }
         }
     }
 
     /// Returns the actual type that describes the value container (e.g. integer or 'mut shared mut integer).
-    pub fn actual_container_type(&self, memory: &Memory) -> Type {
+    pub fn actual_container_type(&self) -> Type {
         match self {
-            ValueContainer::Local(value) => value.actual_type(memory),
+            ValueContainer::Local(value) => value.actual_type(),
             ValueContainer::Shared(shared) => {
                 let inner_type =
-                    shared.value_container().actual_container_type(memory);
+                    shared.value_container().actual_container_type();
                 Type::Alias(TypeDefinitionWithMetadata {
                     definition: TypeDefinition::Nested(Box::new(inner_type)),
                     metadata: TypeMetadata::Shared {
@@ -135,9 +135,9 @@ impl ValueContainer {
     /// Returns the allowed type of the value container
     /// For local values, this is the same as the actual type.
     /// For shared values, this is the defined allowed type
-    pub fn allowed_type(&self, memory: &Memory) -> Type {
+    pub fn allowed_type(&self) -> Type {
         match self {
-            ValueContainer::Local(value) => value.actual_type(memory),
+            ValueContainer::Local(value) => value.actual_type(),
             ValueContainer::Shared(shared) => shared.allowed_type().clone(),
         }
     }

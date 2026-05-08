@@ -99,7 +99,6 @@ mod tests {
 
     #[test]
     fn owned() {
-        let memory = Memory::new();
         let mut provider = SelfOwnedPointerAddressProvider::default();
         let mut cache = DIFSharedContainerCache::default();
         let value = ValueContainer::Shared(SharedContainer::Owned(
@@ -107,10 +106,11 @@ mod tests {
                 42.into(),
                 SharedContainerMutability::Mutable,
                 &mut provider,
-                &memory,
             ),
         ));
-        let serialized = serialize_json_string(value, &mut cache);
+        let serialized = SerdeContext::<ValueContainer>::new(&mut cache)
+            .serialize_to_json(&value);
+        
         let address_string = serialized
             .replace('"', "")
             .strip_prefix('$')
@@ -136,7 +136,9 @@ mod tests {
                     ))
                     .clone(),
             ));
-        let serialized = serde_json::to_string(&integer_container).unwrap();
+        let serialized = SerdeContext::<ValueContainer>::new(&mut cache)
+            .serialize_to_json(&integer_container);
+
         assert_eq!(serialized, r#""'$030000""#);
     }
 
@@ -155,8 +157,9 @@ mod tests {
                 .clone(),
         );
         dif_cache.store_shared_container(integer_container.clone());
-
-        let outer = deserialize_json_string(json, dif_cache);
+        
+        let outer = SerdeContext::<ValueContainer>::new(dif_cache)
+            .try_deserialize_from_json(json).unwrap();
 
         assert_eq!(
             outer,

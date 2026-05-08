@@ -215,11 +215,10 @@ impl CoreValue {
     /// This method uses the CoreLibPointerId to retrieve the corresponding
     /// type reference from the core library.
     /// For example, a CoreValue::TypedInteger(i32) will return the type ref integer/i32
-    pub fn default_nominal_type(
+    pub fn default_core_type(
         &self,
-        memory: &Memory,
-    ) -> SharedContainerContainingNominalType {
-        memory.get_core_type_reference(CoreLibTypeId::from(self))
+    ) -> CoreLibTypeId {
+        CoreLibTypeId::from(self)
     }
 
     /// Tries to get the current value as the specific [CoreValue] variant.
@@ -435,8 +434,7 @@ mod tests {
     fn type_construct() {
         let a = CoreValue::from(42i32);
         assert_eq!(
-            a.default_nominal_type(&Memory::new())
-                .with_collapsed_value(|v| v.to_string()),
+            a.default_core_type().to_string(),
             "integer/i32"
         );
     }

@@ -200,12 +200,7 @@ impl LanguageServer for LanguageServerBackend {
                         "{} {}: {}",
                         variable_metadata.shape,
                         name,
-                        variable_metadata.var_type.unwrap_or_else(|| {
-                            self.compiler_workspace
-                                .borrow()
-                                .memory()
-                                .get_core_type(CoreLibBaseTypeId::Unknown)
-                        })
+                        variable_metadata.var_type.unwrap_or_else(|| Type::core(CoreLibBaseTypeId::Unknown))
                     )))
                 }
 
@@ -225,12 +220,7 @@ impl LanguageServer for LanguageServerBackend {
                         },
                         variable_metadata.shape,
                         name,
-                        variable_metadata.var_type.unwrap_or_else(|| {
-                            self.compiler_workspace
-                                .borrow()
-                                .memory()
-                                .get_core_type(CoreLibBaseTypeId::Unknown)
-                        })
+                        variable_metadata.var_type.unwrap_or_else(|| Type::core(CoreLibBaseTypeId::Unknown))
                     )))
                 }
 

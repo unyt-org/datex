@@ -279,7 +279,6 @@ mod tests {
                 42.into(),
                 SharedContainerMutability::Immutable,
                 address_provider,
-                memory,
             ),
         );
         let exec_block_data = InstructionBlockData {

@@ -64,10 +64,9 @@ impl BaseSharedValueContainer {
     pub fn new_with_inferred_allowed_type<T: Into<ValueContainer>>(
         value_container: T,
         mutability: SharedContainerMutability,
-        memory: &Memory,
     ) -> Self {
         let value_container = value_container.into();
-        let allowed_type = value_container.allowed_type(memory);
+        let allowed_type = value_container.allowed_type();
         BaseSharedValueContainer {
             value_container,
             allowed_type,

@@ -124,7 +124,6 @@ mod tests {
 
     #[test]
     fn push() {
-        let memory = &Memory::new();
         let list = vec![
             ValueContainer::from(1),
             ValueContainer::from(2),
@@ -134,7 +133,6 @@ mod tests {
             BaseSharedValueContainer::new_with_inferred_allowed_type(
                 List::from(list),
                 SharedContainerMutability::Mutable,
-                memory,
             );
         list_ref
             .try_append_entry(
@@ -152,7 +150,6 @@ mod tests {
             BaseSharedValueContainer::new_with_inferred_allowed_type(
                 List::from(vec![ValueContainer::from(42)]),
                 SharedContainerMutability::Immutable,
-                memory,
             );
         let result = int_ref.try_append_entry(
             AppendEntryUpdateData {
@@ -167,7 +164,6 @@ mod tests {
             BaseSharedValueContainer::new_with_inferred_allowed_type(
                 42,
                 SharedContainerMutability::Mutable,
-                memory,
             );
         let result = int_ref.try_append_entry(
             AppendEntryUpdateData {
@@ -180,7 +176,6 @@ mod tests {
 
     #[test]
     fn get_set_property() {
-        let memory = &Memory::new();
         let map = Map::from(vec![
             ("key1".to_string(), ValueContainer::from(1)),
             ("key2".to_string(), ValueContainer::from(2)),
@@ -189,7 +184,6 @@ mod tests {
             BaseSharedValueContainer::new_with_inferred_allowed_type(
                 ValueContainer::from(map),
                 SharedContainerMutability::Mutable,
-                memory,
             );
         // Set existing property
         map_ref
@@ -219,7 +213,6 @@ mod tests {
 
     #[test]
     fn numeric_property() {
-        let memory = &Memory::new();
         let list = vec![
             ValueContainer::from(1),
             ValueContainer::from(2),
@@ -229,7 +222,6 @@ mod tests {
             BaseSharedValueContainer::new_with_inferred_allowed_type(
                 List::from(list),
                 SharedContainerMutability::Mutable,
-                memory,
             );
 
         // Set existing index
@@ -265,7 +257,6 @@ mod tests {
             BaseSharedValueContainer::new_with_inferred_allowed_type(
                 42,
                 SharedContainerMutability::Mutable,
-                memory,
             );
         let result = int_ref.try_set_entry(
             SetEntryUpdateData {
@@ -279,7 +270,6 @@ mod tests {
 
     #[test]
     fn text_property() {
-        let memory = &Memory::new();
         let struct_val = Map::from(vec![
             (ValueContainer::from("name"), ValueContainer::from("Alice")),
             (ValueContainer::from("age"), ValueContainer::from(30)),
@@ -288,7 +278,6 @@ mod tests {
             BaseSharedValueContainer::new_with_inferred_allowed_type(
                 ValueContainer::from(struct_val),
                 SharedContainerMutability::Mutable,
-                memory,
             );
 
         // Set existing property
@@ -319,7 +308,6 @@ mod tests {
             BaseSharedValueContainer::new_with_inferred_allowed_type(
                 42,
                 SharedContainerMutability::Mutable,
-                memory,
             );
         let result = int_ref.try_set_entry(
             SetEntryUpdateData {
@@ -333,11 +321,9 @@ mod tests {
 
     #[test]
     fn immutable_reference_fails() {
-        let memory = &Memory::new();
         let mut r = BaseSharedValueContainer::new_with_inferred_allowed_type(
             42,
             SharedContainerMutability::Immutable,
-            memory,
         );
         assert_matches!(
             r.try_replace(
@@ -352,7 +338,6 @@ mod tests {
         let mut r = BaseSharedValueContainer::new_with_inferred_allowed_type(
             42,
             SharedContainerMutability::Immutable,
-            memory,
         );
         assert_matches!(
             r.try_replace(

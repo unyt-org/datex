@@ -300,7 +300,7 @@ impl<'a> Precompiler<'a> {
                 let memory = self.runtime.memory().borrow();
                 Type::nominal(
                     NominalTypeDefinition::new_base(
-                        memory.get_core_type(CoreLibBaseTypeId::Unknown),
+                        Type::core(CoreLibBaseTypeId::Unknown),
                         data.name.clone(),
                     ),
                     &mut self.runtime.pointer_address_provider().borrow_mut(),
@@ -308,14 +308,11 @@ impl<'a> Precompiler<'a> {
                 )
             }
             TypeDeclarationKind::Alias => {
-                let memory = self.runtime.memory().borrow();
-                let unknown = memory.get_core_type(CoreLibBaseTypeId::Unknown);
                 Type::Alias(TypeDefinition::Shared(unsafe {
                     SharedContainerContainingType::new_unchecked(SharedContainer::new_owned_with_inferred_allowed_type(
-                        CoreValue::Type(unknown),
+                        Type::core(CoreLibBaseTypeId::Unknown),
                         SharedContainerMutability::Mutable,
                         &mut self.runtime.pointer_address_provider().borrow_mut(),
-                        &memory,
                     ))
                 }).into())
             }

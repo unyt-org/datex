@@ -222,9 +222,7 @@ impl<'a> TypeInference<'a> {
             }
 
             ErrorHandling::CollectAndReturnType => {
-                let ty = result.unwrap_or_else(|_| {
-                    self.memory.get_core_type(CoreLibBaseTypeId::Never)
-                });
+                let ty = result.unwrap_or_else(|_| Type::core(CoreLibBaseTypeId::Never));
                 if has_errors {
                     Ok(InferOutcome::OkWithErrors {
                         ty,
@@ -242,9 +240,7 @@ impl<'a> TypeInference<'a> {
         expr: &mut DatexExpression,
     ) -> Result<Type, SpannedTypeError> {
         self.visit_datex_expression(expr)?;
-        Ok(expr.ty.clone().unwrap_or_else(|| {
-            self.memory.get_core_type(CoreLibBaseTypeId::Never)
-        }))
+        Ok(expr.ty.clone().unwrap_or_else(|| Type::core(CoreLibBaseTypeId::Never)))
     }
 
     fn infer_type_expression(
@@ -252,9 +248,7 @@ impl<'a> TypeInference<'a> {
         type_expr: &mut TypeExpression,
     ) -> Result<Type, SpannedTypeError> {
         self.visit_type_expression(type_expr)?;
-        Ok(type_expr.ty.clone().unwrap_or_else(|| {
-            self.memory.get_core_type(CoreLibBaseTypeId::Never)
-        }))
+        Ok(type_expr.ty.clone().unwrap_or_else(|| Type::core(CoreLibBaseTypeId::Never)))
     }
 
     fn variable_type(&self, id: usize) -> Option<Type> {
@@ -279,13 +273,9 @@ impl<'a> TypeInference<'a> {
         if let Some(collected_errors) = &mut self.errors {
             let action = match error.error {
                 TypeError::Unimplemented(_) => {
-                    VisitAction::SetTypeRecurseChildNodes(
-                        self.memory.get_core_type(CoreLibBaseTypeId::Never),
-                    )
+                    VisitAction::SetTypeRecurseChildNodes(Type::core(CoreLibBaseTypeId::Never))
                 }
-                _ => VisitAction::SetTypeSkipChildren(
-                    self.memory.get_core_type(CoreLibBaseTypeId::Never),
-                ),
+                _ => VisitAction::SetTypeSkipChildren(Type::core(CoreLibBaseTypeId::Never)),
             };
             collected_errors.errors.push(error);
             Ok(action)
@@ -310,17 +300,16 @@ fn mark_type<E>(ty: Type) -> Result<VisitAction<E>, SpannedTypeError> {
     Ok(VisitAction::SetTypeSkipChildren(ty))
 }
 
-fn mark_never<E>(memory: &Memory) -> Result<VisitAction<E>, SpannedTypeError> {
-    mark_type(memory.get_core_type(CoreLibBaseTypeId::Never))
+fn mark_never<E>() -> Result<VisitAction<E>, SpannedTypeError> {
+    mark_type(Type::core(CoreLibBaseTypeId::Never))
 }
 
 fn mark_type_or_never<E>(
     maybe_type: Option<Type>,
-    memory: &Memory,
 ) -> Result<VisitAction<E>, SpannedTypeError> {
     mark_type(
         maybe_type
-            .unwrap_or_else(|| memory.get_core_type(CoreLibBaseTypeId::Never)),
+            .unwrap_or_else(|| Type::core(CoreLibBaseTypeId::Never)),
     )
 }
 
@@ -373,7 +362,7 @@ impl<'a> TypeExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
         &mut self,
         _: &Range<usize>,
     ) -> TypeExpressionVisitResult<SpannedTypeError> {
-        mark_type(self.memory.get_core_type(CoreLibBaseTypeId::Null))
+        mark_type(Type::core(CoreLibBaseTypeId::Null))
     }
     fn visit_endpoint_type(
         &mut self,
@@ -475,7 +464,7 @@ impl<'a> TypeExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
         var_access: &mut VariableAccess,
         _: &Range<usize>,
     ) -> TypeExpressionVisitResult<SpannedTypeError> {
-        mark_type_or_never(self.variable_type(var_access.id), self.memory)
+        mark_type_or_never(self.variable_type(var_access.id))
     }
     fn visit_fixed_size_list_type(
         &mut self,
@@ -672,8 +661,7 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
         statements: &mut Statements,
         _: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
-        let mut inferred_type =
-            self.memory.get_core_type(CoreLibBaseTypeId::Unit);
+        let mut inferred_type = Type::core(CoreLibBaseTypeId::Unit);
 
         // Infer type for each statement in order
         for statement in statements.statements.iter_mut() {
@@ -683,7 +671,7 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
         // If the statements block ends with a terminator (semicolon, etc.),
         // it returns the unit type, otherwise, it returns the last inferred type.
         if statements.is_terminated {
-            inferred_type = self.memory.get_core_type(CoreLibBaseTypeId::Unit);
+            inferred_type = Type::core(CoreLibBaseTypeId::Unit);
         }
 
         Ok(VisitAction::SetTypeSkipChildren(inferred_type))
@@ -694,7 +682,7 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
         var_access: &mut VariableAccess,
         _: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
-        mark_type_or_never(self.variable_type(var_access.id), self.memory)
+        mark_type_or_never(self.variable_type(var_access.id))
     }
 
     fn visit_property_assignment(
@@ -733,9 +721,7 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
 
         let assigned_type =
             self.infer_expression(&mut variable_assignment.expression)?;
-        let annotated_type = self.variable_type(id).unwrap_or_else(|| {
-            self.memory.get_core_type(CoreLibBaseTypeId::Never)
-        });
+        let annotated_type = self.variable_type(id).unwrap_or_else(|| Type::core(CoreLibBaseTypeId::Never));
 
         match variable_assignment.operator {
             None => {
@@ -804,7 +790,7 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
         &mut self,
         _: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
-        mark_type(self.memory.get_core_type(CoreLibBaseTypeId::Null))
+        mark_type(Type::core(CoreLibBaseTypeId::Null))
     }
     fn visit_endpoint(
         &mut self,
@@ -885,7 +871,7 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
                     ),
                     span: Some(span.clone()),
                 })?;
-                mark_never(self.memory)
+                mark_never()
             }
         }
     }
@@ -1015,7 +1001,7 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
         _comparison_operation: &mut ComparisonOperation,
         _span: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
-        mark_type(self.memory.get_core_type(CoreLibBaseTypeId::Boolean))
+        mark_type(Type::core(CoreLibBaseTypeId::Boolean))
     }
     fn visit_conditional(
         &mut self,
@@ -1047,7 +1033,7 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
                         )),
                         span: Some(span.clone()),
                     })?;
-                    self.memory.get_core_type(CoreLibBaseTypeId::Never)
+                    Type::core(CoreLibBaseTypeId::Never)
                 }
                 // *(shared 'shared X) -> 'shared X
                 // shared (X) -> 23
@@ -1068,7 +1054,7 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
                 error: TypeError::InvalidUnboxType(inner_type),
                 span: Some(span.clone()),
             })?;
-            self.memory.get_core_type(CoreLibBaseTypeId::Never)
+            Type::core(CoreLibBaseTypeId::Never)
         };
 
         // check if type is actually unboxable (must be a shared container, TODO: maybe also copyable values)
@@ -1082,7 +1068,7 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
                     error: TypeError::InvalidUnboxType(unbox_type.clone()),
                     span: Some(span.clone()),
                 })?;
-                mark_never(self.memory)
+                mark_never()
             }
         }
     }
@@ -1108,9 +1094,7 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
 
         let inferred_return_type = self
             .infer_expression(&mut callable_declaration.body)
-            .unwrap_or_else(|_| {
-                self.memory.get_core_type(CoreLibBaseTypeId::Never)
-            });
+            .unwrap_or_else(|_| Type::core(CoreLibBaseTypeId::Never));
 
         let rest_parameter_type = if let Some((name, rest_param)) =
             &mut callable_declaration.rest_parameter
@@ -1129,7 +1113,7 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
             .map(|(name, param_type_expr)| {
                 let param_type =
                     self.infer_type_expression(param_type_expr).unwrap_or_else(
-                        |_| self.memory.get_core_type(CoreLibBaseTypeId::Never),
+                        |_| Type::core(CoreLibBaseTypeId::Never),
                     );
                 (Some(name.clone()), param_type)
             })
@@ -1173,7 +1157,7 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
         mark_type(match op {
             UnaryOperator::Logical(op) => match op {
                 LogicalUnaryOperator::Not => {
-                    self.memory.get_core_type(CoreLibBaseTypeId::Boolean)
+                    Type::core(CoreLibBaseTypeId::Boolean)
                 }
             },
             UnaryOperator::Arithmetic(_) | UnaryOperator::Bitwise(_) => inner
@@ -1402,6 +1386,7 @@ mod tests {
             },
         },
     };
+    use crate::libs::core::type_id::CoreLibTypeId;
 
     /// Infers type errors for the given source code.
     /// Panics if parsing or precompilation succeeds.
@@ -1555,7 +1540,7 @@ mod tests {
         let res = infer_type_from_script_ignore_errors(src);
         assert_eq!(
             res,
-            memory.get_core_type(CoreLibVariantTypeId::Integer(
+            Type::core(CoreLibVariantTypeId::Integer(
                 IntegerTypeVariant::U8
             ))
         );
@@ -1568,7 +1553,7 @@ mod tests {
         let res = infer_type_from_script_ignore_errors(src);
         assert_eq!(
             res,
-            memory.get_core_type(CoreLibVariantTypeId::Integer(
+            Type::core(CoreLibVariantTypeId::Integer(
                 IntegerTypeVariant::U8
             ))
         );
@@ -1580,7 +1565,7 @@ mod tests {
         let res = infer_type_from_script_ignore_errors(src);
         assert_eq!(
             res,
-            memory.get_core_type(CoreLibVariantTypeId::Integer(
+            Type::core(CoreLibVariantTypeId::Integer(
                 IntegerTypeVariant::U8
             ))
         );
@@ -1593,7 +1578,7 @@ mod tests {
         let res = infer_type_from_script_ignore_errors(src);
         assert_eq!(
             res,
-            memory.get_core_type(CoreLibVariantTypeId::Integer(
+            Type::core(CoreLibVariantTypeId::Integer(
                 IntegerTypeVariant::U8
             ))
         );
@@ -1619,8 +1604,6 @@ mod tests {
 
     #[test]
     fn infer_function_types() {
-        let memory = &Memory::new();
-
         let src = r#"
         function add(a: integer, b: integer) -> integer (
             42
@@ -1635,17 +1618,15 @@ mod tests {
                 parameter_types: vec![
                     (
                         Some("a".to_string()),
-                        memory.get_core_type(CoreLibBaseTypeId::Integer)
+                        Type::core(CoreLibBaseTypeId::Integer),
                     ),
                     (
                         Some("b".to_string()),
-                        memory.get_core_type(CoreLibBaseTypeId::Integer)
+                        Type::core(CoreLibBaseTypeId::Integer)
                     ),
                 ],
                 rest_parameter_type: None,
-                return_type: Some(Box::new(
-                    memory.get_core_type(CoreLibBaseTypeId::Integer)
-                )),
+                return_type: Some(Box::new(Type::core(CoreLibBaseTypeId::Integer))),
                 yeet_type: None,
             },))
         );
@@ -1664,11 +1645,11 @@ mod tests {
                 parameter_types: vec![
                     (
                         Some("a".to_string()),
-                        memory.get_core_type(CoreLibBaseTypeId::Integer)
+                        Type::core(CoreLibBaseTypeId::Integer)
                     ),
                     (
                         Some("b".to_string()),
-                        memory.get_core_type(CoreLibBaseTypeId::Integer)
+                        Type::core(CoreLibBaseTypeId::Integer)
                     ),
                 ],
                 rest_parameter_type: None,
@@ -1781,7 +1762,7 @@ mod tests {
                     assert_eq!(
                         definition_type,
                         &Type::from(TypeDefinition::Nested(Box::new(
-                            memory.get_core_type(CoreLibBaseTypeId::Integer)
+                            Type::core(CoreLibBaseTypeId::Integer)
                         )))
                     );
                 }
@@ -1803,24 +1784,19 @@ mod tests {
         let var_a = metadata.variable_metadata(0).unwrap();
         let var_type = var_a.var_type.as_ref().unwrap();
 
-        if let Type::Alias(TypeDefinitionWithMetadata {
-            definition: TypeDefinition::Nested(box Type::Nominal(nominal)),
-            ..
-        }) = var_type
-        {
-            assert_eq!(
-                nominal,
-                &memory.get_core_type_reference(CoreLibBaseTypeId::Integer)
-            );
-        } else {
-            panic!("Expected TypeReference");
-        }
+        assert_matches!(
+            var_type,
+            Type::Alias(TypeDefinitionWithMetadata {
+                definition: TypeDefinition::Core(CoreLibTypeId::Base(CoreLibBaseTypeId::Integer)), ..
+            })
+        );
+        
 
         let inferred_type =
             infer_type_from_script_ignore_errors("typealias X = integer/u8");
         assert_eq!(
             inferred_type,
-            memory.get_core_type(CoreLibVariantTypeId::Integer(
+            Type::core(CoreLibVariantTypeId::Integer(
                 IntegerTypeVariant::U8
             ))
         );
@@ -1829,21 +1805,21 @@ mod tests {
             infer_type_from_script_ignore_errors("typealias X = decimal");
         assert_eq!(
             inferred_type,
-            memory.get_core_type(CoreLibBaseTypeId::Decimal)
+            Type::core(CoreLibBaseTypeId::Decimal)
         );
 
         let inferred_type =
             infer_type_from_script_ignore_errors("typealias X = boolean");
         assert_eq!(
             inferred_type,
-            memory.get_core_type(CoreLibBaseTypeId::Boolean)
+            Type::core(CoreLibBaseTypeId::Boolean)
         );
 
         let inferred_type =
             infer_type_from_script_ignore_errors("typealias X = text");
         assert_eq!(
             inferred_type,
-            memory.get_core_type(CoreLibBaseTypeId::Text)
+            Type::core(CoreLibBaseTypeId::Text)
         );
     }
 
@@ -1937,7 +1913,7 @@ mod tests {
         );
 
         let inferred = infer_type_from_script_ignore_errors("10; 20; 30;");
-        assert_eq!(inferred, memory.get_core_type(CoreLibBaseTypeId::Unit));
+        assert_eq!(inferred, Type::core(CoreLibBaseTypeId::Unit));
     }
 
     #[test]
@@ -2075,7 +2051,6 @@ mod tests {
 
     #[test]
     fn var_declaration_and_access() {
-        let memory = &Memory::new();
         let inferred = infer_type_from_script_ignore_errors("var x = 42; x");
         assert_eq!(
             inferred,
@@ -2084,35 +2059,34 @@ mod tests {
 
         let inferred =
             infer_type_from_script_ignore_errors("var y: integer = 100u8; y");
-        assert_eq!(inferred, memory.get_core_type(CoreLibBaseTypeId::Integer));
+        assert_eq!(inferred, Type::core(CoreLibBaseTypeId::Integer));
     }
 
     #[test]
     fn var_declaration_with_type_annotation() {
-        let memory = &Memory::new();
 
         let inferred =
             infer_type_from_script_ignore_errors("var x: integer = 42");
-        assert_eq!(inferred, memory.get_core_type(CoreLibBaseTypeId::Integer));
+        assert_eq!(inferred, Type::core(CoreLibBaseTypeId::Integer));
         let inferred =
             infer_type_from_script_ignore_errors("var x: integer/u8 = 42");
         assert_eq!(
             inferred,
-            memory.get_core_type(CoreLibVariantTypeId::Integer(
+            Type::core(CoreLibVariantTypeId::Integer(
                 IntegerTypeVariant::U8
             ))
         );
         let inferred =
             infer_type_from_script_ignore_errors("var x: decimal = 42");
-        assert_eq!(inferred, memory.get_core_type(CoreLibBaseTypeId::Decimal));
+        assert_eq!(inferred, Type::core(CoreLibBaseTypeId::Decimal));
 
         let inferred =
             infer_type_from_script_ignore_errors("var x: boolean = true");
-        assert_eq!(inferred, memory.get_core_type(CoreLibBaseTypeId::Boolean));
+        assert_eq!(inferred, Type::core(CoreLibBaseTypeId::Boolean));
 
         let inferred =
             infer_type_from_script_ignore_errors(r#"var x: text = "hello""#);
-        assert_eq!(inferred, memory.get_core_type(CoreLibBaseTypeId::Text));
+        assert_eq!(inferred, Type::core(CoreLibBaseTypeId::Text));
     }
 
     #[test]
@@ -2130,7 +2104,6 @@ mod tests {
 
     #[test]
     fn var_declaration_reassignment() {
-        let memory = &Memory::new();
         let src = r#"
         var a: text | integer = 42;
         a = "hello";
@@ -2143,8 +2116,8 @@ mod tests {
         assert_eq!(
             var_type,
             &Type::from(TypeDefinition::Union(vec![
-                memory.get_core_type(CoreLibBaseTypeId::Text),
-                memory.get_core_type(CoreLibBaseTypeId::Integer)
+                Type::core(CoreLibBaseTypeId::Text),
+                Type::core(CoreLibBaseTypeId::Integer)
             ],))
         );
     }
@@ -2171,12 +2144,11 @@ mod tests {
 
     #[test]
     fn binary_operation() {
-        let memory = &Memory::new();
         let inferred = infer_type_from_script_ignore_errors("10 + 32");
-        assert_eq!(inferred, memory.get_core_type(CoreLibBaseTypeId::Integer));
+        assert_eq!(inferred, Type::core(CoreLibBaseTypeId::Integer));
 
         let inferred = infer_type_from_script_ignore_errors(r#"10 + "test""#);
-        assert_eq!(inferred, memory.get_core_type(CoreLibBaseTypeId::Never));
+        assert_eq!(inferred, Type::core(CoreLibBaseTypeId::Never));
     }
 
     #[test]
@@ -2259,7 +2231,7 @@ mod tests {
         assert_eq!(
             inferred_type,
             Type::from(TypeDefinition::Intersection(vec![
-                memory.get_core_type(CoreLibVariantTypeId::Integer(
+                Type::core(CoreLibVariantTypeId::Integer(
                     IntegerTypeVariant::U8
                 )),
                 Type::from(LiteralTypeDefinition::Integer(Integer::from(42)),)
@@ -2277,10 +2249,10 @@ mod tests {
         assert_eq!(
             inferred_type,
             Type::from(TypeDefinition::Union(vec![
-                memory.get_core_type(CoreLibVariantTypeId::Integer(
+                Type::core(CoreLibVariantTypeId::Integer(
                     IntegerTypeVariant::U8
                 )),
-                memory.get_core_type(CoreLibBaseTypeId::Decimal)
+                Type::core(CoreLibBaseTypeId::Decimal)
             ]))
         );
     }
@@ -2309,7 +2281,7 @@ mod tests {
                         Type::from(LiteralTypeDefinition::Text(
                             "a".to_string().into()
                         ),),
-                        memory.get_core_type(CoreLibVariantTypeId::Integer(
+                        Type::core(CoreLibVariantTypeId::Integer(
                             IntegerTypeVariant::U8
                         )),
                     ),
@@ -2317,7 +2289,7 @@ mod tests {
                         Type::from(LiteralTypeDefinition::Text(
                             "b".to_string().into()
                         ),),
-                        memory.get_core_type(CoreLibBaseTypeId::Decimal)
+                        Type::core(CoreLibBaseTypeId::Decimal)
                     )
                 ])
                 .into()
@@ -2359,8 +2331,8 @@ mod tests {
     #[test]
     fn infer_binary_expression_types() {
         let memory = &Memory::new();
-        let integer = memory.get_core_type(CoreLibBaseTypeId::Integer);
-        let decimal = memory.get_core_type(CoreLibBaseTypeId::Decimal);
+        let integer = Type::core(CoreLibBaseTypeId::Integer);
+        let decimal = Type::core(CoreLibBaseTypeId::Decimal);
 
         // integer - integer = integer
         let mut expr = DatexExpressionData::BinaryOperation(BinaryOperation {

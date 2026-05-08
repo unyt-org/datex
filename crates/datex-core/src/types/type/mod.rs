@@ -28,6 +28,7 @@ use crate::{
 };
 use core::{fmt::Display, hash::Hash, ops::Deref};
 use serde::{Deserialize, Serialize};
+use crate::libs::core::type_id::CoreLibTypeId;
 
 // {x: &integer}
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
@@ -49,6 +50,11 @@ impl Type {
                 memory,
             ),
         )
+    }
+
+    /// Creates a new core type
+    pub fn core(id: impl Into<CoreLibTypeId>) -> Type {
+        Type::Alias(TypeDefinition::core(id).into())
     }
 
     /// Collapses nominal type definitions to their underlying type definitions with metadata
@@ -76,11 +82,10 @@ impl Type {
 
     pub fn base_core_lib_type(
         &self,
-        memory: &Memory,
-    ) -> SharedContainerContainingNominalType {
+    ) -> CoreLibTypeId {
         match self {
             Type::Alias(type_def) => {
-                type_def.definition.base_core_lib_type(memory)
+                type_def.definition.base_core_lib_type()
             }
             Type::Nominal(_nominal_def) => {
                 todo!()
@@ -519,8 +524,8 @@ mod tests {
         assert!(
             Type::from(LiteralTypeDefinition::Integer(Integer::from(1)))
                 .matches(&Type::from(TypeDefinition::Union(vec![
-                    memory.get_core_type(CoreLibBaseTypeId::Integer),
-                    memory.get_core_type(CoreLibBaseTypeId::Text),
+                    Type::core(CoreLibBaseTypeId::Integer),
+                    Type::core(CoreLibBaseTypeId::Text),
                 ])))
         );
     }

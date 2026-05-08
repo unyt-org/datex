@@ -69,21 +69,21 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, Value> {
             CoreValue::Decimal(d) => serialize_type_and_value(&value.custom_type, d, serializer, self),
             CoreValue::TypedInteger(ti) => serialize_type_and_value(&value.custom_type, ti, serializer, self),
             CoreValue::TypedDecimal(td) => serialize_type_and_value(&value.custom_type, td, serializer, self),
-            CoreValue::Null => serialize_type_and_value(&Some(value.custom_type.unwrap_or_else(|| self.memory.get_core_type(CoreLibBaseTypeId::Null))), &(), serializer, self),
+            CoreValue::Null => serialize_type_and_value(&Some(value.custom_type.unwrap_or_else(|| Type::core(CoreLibBaseTypeId::Null))), &(), serializer, self),
 
             CoreValue::List(l) => serialize_type_and_value_seed(&value.custom_type, l, serializer, self),
 
             CoreValue::Range(range) => serialize_type_and_value_seed(
-                &Some(value.custom_type.unwrap_or_else(|| self.memory.get_core_type(CoreLibBaseTypeId::Range))),
+                &Some(value.custom_type.unwrap_or_else(|| Type::core(CoreLibBaseTypeId::Range))),
                 range, serializer, self
             ),
             CoreValue::Endpoint(endpoint) => serialize_type_and_value_seed(
-                &Some(value.custom_type.unwrap_or_else(|| self.memory.get_core_type(CoreLibBaseTypeId::Endpoint))),
+                &Some(value.custom_type.unwrap_or_else(|| Type::core(CoreLibBaseTypeId::Endpoint))),
                 endpoint, serializer, self
             ),
 
             CoreValue::Map(map_value) => serialize_type_and_value_seed(
-                &Some(value.custom_type.unwrap_or_else(|| self.memory.get_core_type(CoreLibBaseTypeId::Map))),
+                &Some(value.custom_type.unwrap_or_else(|| Type::core(CoreLibBaseTypeId::Map))),
                 map_value, serializer, self
             ),
 

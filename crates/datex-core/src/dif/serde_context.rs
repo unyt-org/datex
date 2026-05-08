@@ -2,31 +2,27 @@ use crate::dif::cache::DIFSharedContainerCache;
 use core::marker::PhantomData;
 use serde::de::DeserializeSeed;
 use serde::{Deserializer, Serializer};
-use crate::runtime::memory::Memory;
 use crate::utils::serde_serialize_seed::SerializeSeed;
 
 #[derive(Debug)]
 pub struct SerdeContext<'ctx, T> {
     pub shared_container_cache: &'ctx mut DIFSharedContainerCache,
-    pub memory: &'ctx mut Memory,
     _marker: PhantomData<T>,
 }
 
 impl<'ctx, T> SerdeContext<'ctx, T> {
     pub fn new(
         shared_container_cache: &'ctx mut DIFSharedContainerCache,
-        memory: &'ctx mut Memory,
     ) -> Self {
         Self {
             shared_container_cache,
-            memory,
             _marker: PhantomData,
         }
     }
 
     /// Converts this deserialization context to a deserialization context for another type U
     pub fn cast<U>(&mut self) -> SerdeContext<'_, U> {
-        SerdeContext::new(self.shared_container_cache, self.memory)
+        SerdeContext::new(self.shared_container_cache)
     }
 
     /// Try to deserialize a JSON string to a DATEX value using the provided context
@@ -61,4 +57,11 @@ impl<'ctx, T> SerdeContext<'ctx, T> {
         String::from_utf8(bytes).unwrap()
     }
 
+}
+
+
+impl<'ctx> From<&'ctx mut DIFSharedContainerCache> for SerdeContext<'ctx, ()> {
+    fn from(cache: &'ctx mut DIFSharedContainerCache) -> Self {
+        SerdeContext::new(cache)
+    }
 }

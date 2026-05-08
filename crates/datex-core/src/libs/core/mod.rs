@@ -169,7 +169,7 @@ impl CoreLibrary {
                         parameter_types: vec![],
                         rest_parameter_type: Some((
                             Some("values".to_string()),
-                            Box::new(memory.get_core_type(CoreLibBaseTypeId::Unknown)),
+                            Box::new(Type::core(CoreLibBaseTypeId::Unknown)),
                         )),
                         return_type: None,
                         yeet_type: None,
@@ -262,26 +262,6 @@ impl Memory {
         self.get_reference(&pointer_address).unwrap_or_else(|| {
             panic!("core reference not found in memory: {}", pointer_address)
         })
-    }
-
-    /// Helper function to get a [SharedContainerContainingNominalType] directly from memory
-    /// by [CoreLibTypeId]
-    pub fn get_core_type_reference(
-        &self,
-        id: impl Into<CoreLibTypeId>,
-    ) -> SharedContainerContainingNominalType {
-        unsafe {
-            SharedContainerContainingNominalType::new_unchecked(
-                SharedContainer::Referenced(
-                    self.get_core_reference(CoreLibId::Type(id.into())).clone(),
-                ),
-            )
-        }
-    }
-
-    /// Helper function to get a [Type::Nominal] directly from memory by [CoreLibTypeId]
-    pub fn get_core_type(&self, id: impl Into<CoreLibTypeId>) -> Type {
-        Type::Nominal(self.get_core_type_reference(id.into()))
     }
 }
 

@@ -218,12 +218,9 @@ mod tests {
 
     #[test]
     fn immutable_reference_observe_fails() {
-        let memory = &Memory::new();
-
         let mut r = BaseSharedValueContainer::new_with_inferred_allowed_type(
             42,
             SharedContainerMutability::Immutable,
-            memory,
         );
         assert_matches!(
             r.observe(Observer::new(|_| {})),
@@ -233,19 +230,15 @@ mod tests {
         let mut r = BaseSharedValueContainer::new_with_inferred_allowed_type(
             42,
             SharedContainerMutability::Mutable,
-            memory,
         );
         assert_matches!(r.observe(Observer::new(|_| {})), Ok(_));
     }
 
     #[test]
     fn observe_and_unobserve() {
-        let memory = &Memory::new();
-
         let mut r = BaseSharedValueContainer::new_with_inferred_allowed_type(
             42,
             SharedContainerMutability::Mutable,
-            memory,
         );
         assert!(!r.has_observers());
         let observer_id = r.observe(Observer::new(|_| {})).unwrap();
@@ -261,12 +254,9 @@ mod tests {
 
     #[test]
     fn observer_ids_incremental() {
-        let memory = &Memory::new();
-
         let mut r = BaseSharedValueContainer::new_with_inferred_allowed_type(
             42,
             SharedContainerMutability::Mutable,
-            memory,
         );
         let id1 = r.observe(Observer::new(|_| {})).unwrap();
         let id2 = r.observe(Observer::new(|_| {})).unwrap();
@@ -281,13 +271,10 @@ mod tests {
 
     #[test]
     fn observe_replace() {
-        let memory = &Memory::new();
-
         let mut int_ref =
             BaseSharedValueContainer::new_with_inferred_allowed_type(
                 42,
                 SharedContainerMutability::Mutable,
-                memory,
             );
         let observed_updates = record_dif_updates(
             &mut int_ref,
@@ -315,13 +302,10 @@ mod tests {
 
     #[test]
     fn observe_replace_same_transceiver() {
-        let memory = &Memory::new();
-
         let mut int_ref =
             BaseSharedValueContainer::new_with_inferred_allowed_type(
                 42,
                 SharedContainerMutability::Mutable,
-                memory,
             );
         let observed_update = record_dif_updates(
             &mut int_ref,
@@ -342,13 +326,10 @@ mod tests {
 
     #[test]
     fn observe_replace_same_transceiver_relay_own_updates() {
-        let memory = &Memory::new();
-
         let mut int_ref =
             BaseSharedValueContainer::new_with_inferred_allowed_type(
                 42,
                 SharedContainerMutability::Mutable,
-                memory,
             );
         let observed_update = record_dif_updates(
             &mut int_ref,
@@ -381,8 +362,6 @@ mod tests {
 
     #[test]
     fn observe_update_property() {
-        let memory = &Memory::new();
-
         let mut reference =
             BaseSharedValueContainer::new_with_inferred_allowed_type(
                 Map::from(vec![
@@ -390,7 +369,6 @@ mod tests {
                     ("b".to_string(), ValueContainer::from(2)),
                 ]),
                 SharedContainerMutability::Mutable,
-                memory,
             );
         let observed_updates = record_dif_updates(
             &mut reference,
