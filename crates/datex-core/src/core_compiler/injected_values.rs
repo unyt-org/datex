@@ -328,21 +328,18 @@ mod tests {
     #[test]
     fn remote_execution_multiple_ref_values() {
         let address_provider = &mut SelfOwnedPointerAddressProvider::default();
-        let memory = &Memory::new();
 
         let shared_value1 =
             SharedContainer::new_owned_with_inferred_allowed_type(
                 42,
                 SharedContainerMutability::Immutable,
                 address_provider,
-                memory,
             );
         let shared_value2 =
             SharedContainer::new_owned_with_inferred_allowed_type(
                 100,
                 SharedContainerMutability::Mutable,
                 address_provider,
-                memory,
             );
         let exec_block_data = InstructionBlockData {
             injected_value_count: 2,
@@ -420,14 +417,12 @@ mod tests {
     #[test]
     fn remote_execution_with_injected_moved_value() {
         let address_provider = &mut SelfOwnedPointerAddressProvider::default();
-        let memory = &Memory::new();
 
         let shared_value =
             SharedContainer::new_owned_with_inferred_allowed_type(
                 42,
                 SharedContainerMutability::Immutable,
                 address_provider,
-                memory,
             );
         let exec_block_data = InstructionBlockData {
             injected_value_count: 1,
@@ -489,21 +484,18 @@ mod tests {
     #[test]
     fn remote_execution_moved_value_and_ref() {
         let address_provider = &mut SelfOwnedPointerAddressProvider::default();
-        let memory = &Memory::new();
 
         let shared_value1 =
             SharedContainer::new_owned_with_inferred_allowed_type(
                 42,
                 SharedContainerMutability::Immutable,
                 address_provider,
-                memory,
             );
         let shared_value2 =
             SharedContainer::new_owned_with_inferred_allowed_type(
                 100,
                 SharedContainerMutability::Immutable,
                 address_provider,
-                memory,
             );
         let exec_block_data = InstructionBlockData {
             injected_value_count: 2,

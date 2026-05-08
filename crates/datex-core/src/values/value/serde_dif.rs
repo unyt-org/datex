@@ -20,30 +20,30 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, Value> {
         S: Serializer,
     {
 
-        fn serialize_type_and_value_seed<'ctx2, Se, T>(
-            ty: &Option<Type>,
+        fn serialize_type_and_value_seed<'ctx2, 'borrow, Se, T>(
+            ty: Cow<Option<Type>>,
             value: &T,
             serializer: Se,
-            ctx: &mut SerdeContext<'ctx2, Value>,
+            ctx: &'borrow mut SerdeContext<'ctx2, Value>,
         ) -> Result<Se::Ok, Se::Error>
-            where
-                T: Sized,
-                Se: Serializer,
-                SerdeContext<'ctx2, T>: SerializeSeed<Value = T>,
+        where
+            T: Sized,
+            Se: Serializer,
+            for<'a> SerdeContext<'a, T>: SerializeSeed<Value = T>,
         {
             let mut state = serializer.serialize_struct(
                 "Value",
                 if ty.is_some() { 2 } else { 1 },
             )?;
-            if let Some(ty) = ty {
-                state.serialize_field("type", &ValueWithSeed::new(&ty, &mut ctx.cast::<Type>()))?;
+            if let Some(ty) = ty.as_ref() {
+                state.serialize_field("type", &ValueWithSeed::new(ty, &mut ctx.cast::<Type>()))?;
             }
             state.serialize_field("value", &ValueWithSeed::new(value, &mut ctx.cast::<T>()))?;
             state.end()
         }
 
         fn serialize_type_and_value<'ctx2, Se, T>(
-            ty: &Option<Type>,
+            ty: Cow<Option<Type>>,
             value: &T,
             serializer: Se,
             ctx: &mut SerdeContext<'ctx2, Value>,
@@ -55,35 +55,49 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, Value> {
                 "Value",
                 if ty.is_some() { 2 } else { 1 },
             )?;
-            if let Some(ty) = ty {
-                state.serialize_field("type", &ValueWithSeed::new(&ty, ctx.cast::<Type>()))?;
+            if let Some(ty) = ty.as_ref() {
+                state.serialize_field("type", &ValueWithSeed::new(ty, ctx.cast::<Type>()))?;
             }
             state.serialize_field("value", value)?;
             state.end()
         }
 
         match &value.inner {
-            CoreValue::Integer(i) => serialize_type_and_value(&value.custom_type, i, serializer, self),
-            CoreValue::Boolean(b) => serialize_type_and_value(&value.custom_type, b, serializer, self),
-            CoreValue::Text(s) => serialize_type_and_value(&value.custom_type, s, serializer, self),
-            CoreValue::Decimal(d) => serialize_type_and_value(&value.custom_type, d, serializer, self),
-            CoreValue::TypedInteger(ti) => serialize_type_and_value(&value.custom_type, ti, serializer, self),
-            CoreValue::TypedDecimal(td) => serialize_type_and_value(&value.custom_type, td, serializer, self),
-            CoreValue::Null => serialize_type_and_value(&Some(value.custom_type.unwrap_or_else(|| Type::core(CoreLibBaseTypeId::Null))), &(), serializer, self),
+            CoreValue::Integer(i) => serialize_type_and_value(Cow::Borrowed(&value.custom_type), i, serializer, self),
+            CoreValue::Boolean(b) => serialize_type_and_value(Cow::Borrowed(&value.custom_type), b, serializer, self),
+            CoreValue::Text(s) => serialize_type_and_value(Cow::Borrowed(&value.custom_type), s, serializer, self),
+            CoreValue::Decimal(d) => serialize_type_and_value(Cow::Borrowed(&value.custom_type), d, serializer, self),
+            CoreValue::TypedInteger(ti) => serialize_type_and_value(Cow::Borrowed(&value.custom_type), ti, serializer, self),
+            CoreValue::TypedDecimal(td) => serialize_type_and_value(Cow::Borrowed(&value.custom_type), td, serializer, self),
+            CoreValue::Null => serialize_type_and_value(
+                match &value.custom_type {
+                    Some(_) => Cow::Borrowed(&value.custom_type),
+                    None => Cow::Owned(Some(Type::core(CoreLibBaseTypeId::Null))),
+                },
+                &(), serializer, self),
 
-            CoreValue::List(l) => serialize_type_and_value_seed(&value.custom_type, l, serializer, self),
+            CoreValue::List(l) => serialize_type_and_value_seed(Cow::Borrowed(&value.custom_type), l, serializer, self),
 
             CoreValue::Range(range) => serialize_type_and_value_seed(
-                &Some(value.custom_type.unwrap_or_else(|| Type::core(CoreLibBaseTypeId::Range))),
+                match &value.custom_type {
+                    Some(_) => Cow::Borrowed(&value.custom_type),
+                    None => Cow::Owned(Some(Type::core(CoreLibBaseTypeId::Range))),
+                },
                 range, serializer, self
             ),
-            CoreValue::Endpoint(endpoint) => serialize_type_and_value_seed(
-                &Some(value.custom_type.unwrap_or_else(|| Type::core(CoreLibBaseTypeId::Endpoint))),
+            CoreValue::Endpoint(endpoint) => serialize_type_and_value(
+                match &value.custom_type {
+                    Some(_) => Cow::Borrowed(&value.custom_type),
+                    None => Cow::Owned(Some(Type::core(CoreLibBaseTypeId::Endpoint))),
+                },
                 endpoint, serializer, self
             ),
 
             CoreValue::Map(map_value) => serialize_type_and_value_seed(
-                &Some(value.custom_type.unwrap_or_else(|| Type::core(CoreLibBaseTypeId::Map))),
+                match &value.custom_type {
+                    Some(_) => Cow::Borrowed(&value.custom_type),
+                    None => Cow::Owned(Some(Type::core(CoreLibBaseTypeId::Map))),
+                },
                 map_value, serializer, self
             ),
 

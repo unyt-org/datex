@@ -43,14 +43,12 @@ impl SharedContainerContainingNominalType {
     pub fn new_from_definition(
         definition: NominalTypeDefinition,
         address_provider: &mut SelfOwnedPointerAddressProvider,
-        memory: &Memory,
     ) -> SharedContainerContainingNominalType {
         SharedContainerContainingNominalType(
             SharedContainer::new_owned_with_inferred_allowed_type(
                 CoreValue::NominalTypeDefinition(definition),
                 SharedContainerMutability::Immutable,
                 address_provider,
-                memory,
             ),
         )
     }

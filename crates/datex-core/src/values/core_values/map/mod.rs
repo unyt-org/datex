@@ -639,7 +639,6 @@ mod tests {
     #[test]
     fn test_ref_keys() {
         let address_provider = &mut SelfOwnedPointerAddressProvider::default();
-        let memory = &Memory::new();
 
         let mut map = Map::default();
         let key = ValueContainer::Shared(
@@ -647,7 +646,6 @@ mod tests {
                 ValueContainer::from(42),
                 SharedContainerMutability::Immutable,
                 address_provider,
-                memory,
             ),
         );
 
@@ -663,7 +661,6 @@ mod tests {
                 ValueContainer::from(42),
                 SharedContainerMutability::Immutable,
                 address_provider,
-                memory,
             ),
         );
         assert!(!map.has(&new_key));

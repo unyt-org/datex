@@ -41,13 +41,11 @@ impl Type {
     pub fn nominal(
         definition: NominalTypeDefinition,
         address_provider: &mut SelfOwnedPointerAddressProvider,
-        memory: &Memory,
     ) -> Type {
         Type::Nominal(
             SharedContainerContainingNominalType::new_from_definition(
                 definition,
                 address_provider,
-                memory,
             ),
         )
     }
@@ -306,6 +304,8 @@ impl Type {
 }
 
 pub mod equality;
+pub mod serde_dif;
+
 impl Display for Type {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {

@@ -10,18 +10,32 @@ use serde::{
     de::{DeserializeSeed, Error, IgnoredAny, MapAccess, Visitor},
     ser::SerializeStruct,
 };
+use serde::ser::{SerializeSeq, SerializeTuple};
+use crate::utils::serde_serialize_seed::{SerializeSeed, ValueWithSeed};
 
-impl Serialize for Range {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+impl<'ctx> SerializeSeed for SerdeContext<'ctx, Range> {
+    type Value = Range;
+
+    fn serialize<S>(
+        &mut self,
+        value: &Self::Value,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
-        let mut state = serializer.serialize_struct("Range", 2)?;
-        state.serialize_field("start", &self.start)?;
-        state.serialize_field("end", &self.end)?;
+        let mut state = serializer.serialize_tuple(2)?;
+        state.serialize_element(
+            &ValueWithSeed::new(&*value.start, self.cast::<ValueContainer>()),
+        )?;
+        state.serialize_element(
+            &ValueWithSeed::new(&*value.end, self.cast::<ValueContainer>()),
+        )?;
         state.end()
     }
 }
+
+
 
 impl<'de, 'ctx> DeserializeSeed<'de> for SerdeContext<'ctx, Range> {
     type Value = Range;

@@ -32,8 +32,7 @@ impl InterfaceDirection {
     }
 }
 
-#[serde_as]
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
 pub struct ComInterfaceProperties {
     /// the type of the interface, by which it is identified
@@ -56,7 +55,7 @@ pub struct ComInterfaceProperties {
 
     /// Estimated mean latency for this interface type in milliseconds (round trip time).
     /// Lower latency interfaces are preferred over higher latency channels
-    #[serde_as(as = "DurationMilliSeconds")]
+    // #[serde_as(as = "DurationMilliSeconds")]
     #[cfg_attr(feature = "wasm_runtime", tsify(type = "number"))]
     pub round_trip_time: Duration,
 

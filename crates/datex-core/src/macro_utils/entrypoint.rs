@@ -13,6 +13,7 @@ use syn::{
     Attribute, FnArg, Ident, ItemFn, LitStr, Pat, PatIdent, Token, Type,
     parse::{Parse, ParseStream},
 };
+use crate::values::core_values::map::Map;
 
 #[derive(Debug)]
 pub struct ParsedAttributes {
@@ -242,14 +243,18 @@ pub fn get_arg_ident_and_type(
 fn get_datex_config(
     path: &PathBuf,
 ) -> Result<RuntimeConfig, DeserializationError> {
-    let config: RuntimeConfig = from_dx_file(path.clone())?;
+    // FIXME
+    let config = RuntimeConfig::default();
+    // let config: RuntimeConfig = from_dx_file(path.clone())?;
     Ok(config)
 }
 
 fn compile_datex_config(config: &RuntimeConfig) -> Vec<u8> {
+    let mock_config = ValueContainer::from(Map::default());
     let (dxb, _) = compile_template(
         "?",
-        &[Some(ValueContainer::from_serializable(config).unwrap())],
+        // &[Some(ValueContainer::from_serializable(config).unwrap())],
+        &[Some(mock_config)],
         CompileOptions::default(),
         // FIXME: stub runtime for now
         Runtime::stub(),

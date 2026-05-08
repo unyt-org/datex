@@ -41,7 +41,7 @@ pub struct ComHubMetadataInterfaceSocketWithoutEndpoint {
     pub direction: InterfaceDirection,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Debug)]
 #[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
 pub struct ComHubMetadataInterface {
     pub uuid: String,
@@ -50,7 +50,7 @@ pub struct ComHubMetadataInterface {
     pub is_waiting_for_socket_connections: bool,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Debug)]
 #[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
 pub struct ComHubMetadata {
     pub endpoint: Endpoint,

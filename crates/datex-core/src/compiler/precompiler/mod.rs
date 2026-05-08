@@ -297,14 +297,12 @@ impl<'a> Precompiler<'a> {
 
         let type_def = match data.kind {
             TypeDeclarationKind::Nominal => {
-                let memory = self.runtime.memory().borrow();
                 Type::nominal(
                     NominalTypeDefinition::new_base(
                         Type::core(CoreLibBaseTypeId::Unknown),
                         data.name.clone(),
                     ),
                     &mut self.runtime.pointer_address_provider().borrow_mut(),
-                    &memory,
                 )
             }
             TypeDeclarationKind::Alias => {

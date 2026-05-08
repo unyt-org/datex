@@ -68,7 +68,7 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, ValueContainer> {
             ValueContainer::Shared(shared) => self
                 .cast::<SharedContainer>()
                 .serialize(shared, serializer),
-            ValueContainer::Local(local) => local.serialize(serializer),
+            ValueContainer::Local(local) => self.cast::<Value>().serialize(local, serializer),
         }
     }
 }

@@ -110,7 +110,6 @@ mod tests {
 
     #[test]
     fn serialize_shared_owned_container() {
-        let memory = &Memory::new();
         let address_provider = &mut SelfOwnedPointerAddressProvider::default();
 
         let owned_container =
@@ -118,7 +117,6 @@ mod tests {
                 ValueContainer::from(42),
                 SharedContainerMutability::Mutable,
                 address_provider,
-                memory,
             );
 
         let serialized = SerdeContext::<SharedContainer>::new(&mut DIFSharedContainerCache::default())
@@ -158,13 +156,12 @@ mod tests {
 
         let outer = SerdeContext::<SharedContainer>::new(&mut DIFSharedContainerCache::default())
             .try_deserialize_from_json(json).unwrap();
-        
+
         assert_eq!(outer, integer_container);
     }
 
     #[test]
     fn deserialize_memory_pointer_address_to_shared_container() {
-        let memory = &mut Memory::new();
         let address_provider = &mut SelfOwnedPointerAddressProvider::default();
         let dif_cache = &mut DIFSharedContainerCache::default();
 
@@ -173,14 +170,13 @@ mod tests {
                 ValueContainer::from(42),
                 SharedContainerMutability::Mutable,
                 address_provider,
-                memory,
             );
         let ptr_address = owned_container.pointer_address();
         let ptr_address_hex = ptr_address.to_string();
 
         dif_cache.store_shared_container(owned_container);
-        
-        
+
+
         let outer_ref = SerdeContext::<SharedContainer>::new(dif_cache)
             .try_deserialize_from_json(&format!(r#""'{}""#, ptr_address_hex)).unwrap();
 
@@ -190,20 +186,20 @@ mod tests {
             if reference.reference_mutability() == ReferenceMutability::Immutable &&
                 reference.pointer_address() == ptr_address
         );
-        
+
         let outer_ref_mut = SerdeContext::<SharedContainer>::new(dif_cache)
             .try_deserialize_from_json(&format!(r#""'mut{}""#, ptr_address_hex)).unwrap();
-        
+
         assert_matches!(
             outer_ref_mut,
             SharedContainer::Referenced(reference)
             if reference.reference_mutability() == ReferenceMutability::Mutable &&
                 reference.pointer_address() == ptr_address
         );
-        
+
         let outer_owned = SerdeContext::<SharedContainer>::new(dif_cache)
             .try_deserialize_from_json(&format!(r#""{}""#, ptr_address_hex)).unwrap();
-        
+
         assert_matches!(
             outer_owned,
             SharedContainer::Owned(owned)

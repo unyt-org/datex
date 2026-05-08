@@ -18,13 +18,13 @@ pub fn is_priority_none(v: &InterfacePriority) -> bool {
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
 pub struct RuntimeConfigInterface {
-    #[serde(rename = "type")]
+    // #[serde(rename = "type")]
     pub interface_type: String,
-    #[serde(rename = "config")]
+    // #[serde(rename = "config")]
     #[cfg_attr(feature = "wasm_runtime", tsify(type = "unknown"))]
     pub setup_data: ValueContainer,
 
-    #[serde(default, skip_serializing_if = "is_priority_none")]
+    // #[serde(default, skip_serializing_if = "is_priority_none")]
     pub priority: InterfacePriority,
 }
 
@@ -52,7 +52,7 @@ impl RuntimeConfigInterface {
     }
 }
 
-#[derive(Debug, Default, Deserialize, Serialize)]
+#[derive(Debug, Default)]
 pub struct RuntimeConfig {
     pub endpoint: Option<Endpoint>,
     pub interfaces: Option<Vec<RuntimeConfigInterface>>,
