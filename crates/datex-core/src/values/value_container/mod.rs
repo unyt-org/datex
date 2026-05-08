@@ -135,7 +135,7 @@ impl ValueContainer {
             ValueContainer::Shared(shared) => shared.allowed_type().clone(),
         }
     }
-    
+
 
     /// Returns the contained SharedContainer if it is a SharedContainer, otherwise returns None.
     pub fn maybe_shared(&self) -> Option<&SharedContainer> {

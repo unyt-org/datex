@@ -4,6 +4,7 @@ use syn::parse_macro_input;
 mod bitfield_macros;
 mod core_lib;
 mod value_macros;
+mod datex_proxy;
 
 #[proc_macro_derive(FromCoreValue)]
 pub fn from_core_value_derive(input: TokenStream) -> TokenStream {
@@ -22,4 +23,10 @@ pub fn derive_bitfield_serde(input: TokenStream) -> TokenStream {
 pub fn core_lib_string(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as syn::DeriveInput);
     core_lib::derive_core_string(input).into()
+}
+
+#[proc_macro_derive(Datex)]
+pub fn datex_derive(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as syn::DeriveInput);
+    datex_proxy::derive(input).into()
 }

@@ -25,3 +25,4 @@ pub mod parser;
 pub mod execution;
 
 pub mod network;
+pub mod datex_structs_derive;
