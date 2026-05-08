@@ -15,8 +15,7 @@ use core::{
 pub mod equality;
 use datex_crypto_facade::crypto::Crypto;
 use hex::decode;
-use serde::{Deserialize, Serialize};
-
+pub mod serde_dif;
 #[derive(
     BinWrite, BinRead, Debug, Clone, Copy, Hash, PartialEq, Eq, Default,
 )]
@@ -562,26 +561,6 @@ impl FromStr for Endpoint {
 
     fn from_str(name: &str) -> Result<Self, Self::Err> {
         Endpoint::from_string(name)
-    }
-}
-
-impl Serialize for Endpoint {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        serializer
-            .serialize_newtype_struct("datex::endpoint", &self.to_string())
-    }
-}
-
-impl<'a> Deserialize<'a> for Endpoint {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'a>,
-    {
-        let s: String = Deserialize::deserialize(deserializer)?;
-        Endpoint::from_string(&s).map_err(serde::de::Error::custom)
     }
 }
 
