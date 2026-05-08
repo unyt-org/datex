@@ -2,9 +2,6 @@ use crate::{
     collections::HashMap,
     network::com_hub::InterfacePriority,
     prelude::*,
-    serde::{
-        Deserialize, error::SerializationError, serializer::to_value_container,
-    },
     values::{
         core_values::endpoint::Endpoint, value_container::ValueContainer,
     },
@@ -32,11 +29,11 @@ impl RuntimeConfigInterface {
     pub fn new<T: Serialize>(
         interface_type: &str,
         setup_data: T,
-    ) -> Result<RuntimeConfigInterface, SerializationError> {
+    ) -> Result<RuntimeConfigInterface, String> {
         Ok(RuntimeConfigInterface {
             interface_type: interface_type.to_string(),
             priority: InterfacePriority::default(),
-            setup_data: to_value_container(&setup_data)?,
+            setup_data: todo!(),// to_value_container(&setup_data)?,
         })
     }
 
@@ -73,20 +70,21 @@ impl RuntimeConfig {
         interface_type: String,
         config: T,
         priority: InterfacePriority,
-    ) -> Result<(), SerializationError> {
-        let config = to_value_container(&config)?;
-        let interface = RuntimeConfigInterface {
-            interface_type,
-            setup_data: config,
-            priority,
-        };
-        if let Some(interfaces) = &mut self.interfaces {
-            interfaces.push(interface);
-        } else {
-            self.interfaces = Some(vec![interface]);
-        }
-
-        Ok(())
+    ) -> Result<(), ()> {
+        todo!();
+        // let config = to_value_container(&config)?;
+        // let interface = RuntimeConfigInterface {
+        //     interface_type,
+        //     setup_data: config,
+        //     priority,
+        // };
+        // if let Some(interfaces) = &mut self.interfaces {
+        //     interfaces.push(interface);
+        // } else {
+        //     self.interfaces = Some(vec![interface]);
+        // }
+        //
+        // Ok(())
     }
 
     /// Adds a single environment variable to the runtime's custom environment variables.

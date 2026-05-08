@@ -2,9 +2,9 @@ use core::fmt::Display;
 
 use crate::{
     network::com_hub::errors::ComInterfaceCreateError, prelude::*,
-    runtime::RuntimeConfigInterface, serde::Deserialize,
+    runtime::RuntimeConfigInterface,
 };
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use url::Url;
 
 #[derive(Debug)]

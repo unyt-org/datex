@@ -11,7 +11,6 @@ use crate::{
         },
     },
     prelude::*,
-    serde::Deserialize,
     shared_values::{
         ExternalPointerAddress, PointerAddress, ReferenceMutability,
         SelfOwnedPointerAddress, SharedContainerMutability,
@@ -32,7 +31,7 @@ use binrw::{
 use cfg_if::cfg_if;
 use core::{fmt::Display, ops::AddAssign};
 use modular_bitfield::{bitfield, prelude::B4};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
 #[brw(little)]

@@ -3,7 +3,6 @@ use std::path::PathBuf;
 use crate::{
     compiler::{CompileOptions, compile_template},
     runtime::{Runtime, RuntimeConfig, RuntimeRunner},
-    serde::{deserializer::from_dx_file, error::DeserializationError},
     values::value_container::ValueContainer,
 };
 use proc_macro2::{Span, TokenStream};
@@ -242,7 +241,7 @@ pub fn get_arg_ident_and_type(
 
 fn get_datex_config(
     path: &PathBuf,
-) -> Result<RuntimeConfig, DeserializationError> {
+) -> Result<RuntimeConfig, ()> {
     // FIXME
     let config = RuntimeConfig::default();
     // let config: RuntimeConfig = from_dx_file(path.clone())?;

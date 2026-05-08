@@ -3,7 +3,6 @@ use crate::{
     compiler::precompiler::precompiled_ast::RichAst,
     core_compiler::value_compiler::SharedValueCompilationError,
     parser::errors::{ParserError, SpannedParserError},
-    serde::error::DeserializationError,
     type_inference::error::{DetailedTypeErrors, SpannedTypeError},
 };
 
@@ -110,12 +109,6 @@ impl From<CompilerError> for SpannedCompilerError {
             error: value,
             span: None,
         }
-    }
-}
-
-impl From<SpannedCompilerError> for DeserializationError {
-    fn from(e: SpannedCompilerError) -> Self {
-        DeserializationError::CompilerError(e)
     }
 }
 

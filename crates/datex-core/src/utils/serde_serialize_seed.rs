@@ -1,11 +1,7 @@
 /// Implementation of https://docs.rs/serde-serialize-seed/latest/serde_serialize_seed/, but with &mut self
-use crate::{prelude::*, serde::Deserialize};
+use crate::{prelude::*};
 use core::{cell::UnsafeCell, fmt, fmt::Formatter, marker::PhantomData};
-use serde::{
-    Deserializer, Serialize, Serializer, de,
-    de::{DeserializeSeed, Error, SeqAccess},
-    ser::{SerializeSeq, SerializeTuple},
-};
+use serde::{Deserializer, Serialize, Serializer, de, de::{DeserializeSeed, Error, SeqAccess}, ser::{SerializeSeq, SerializeTuple}, Deserialize};
 
 pub trait SerializeSeed {
     type Value: ?Sized;

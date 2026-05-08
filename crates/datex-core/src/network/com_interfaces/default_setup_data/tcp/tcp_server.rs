@@ -1,10 +1,10 @@
 use super::tcp_client::TCPClientInterfaceSetupData;
 use crate::{
     network::com_interfaces::com_interface::properties::ComInterfaceProperties,
-    prelude::*, serde::Deserialize,
+    prelude::*,
 };
 use core::time::Duration;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Default)]
 #[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]

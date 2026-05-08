@@ -3,12 +3,11 @@ use core::fmt::Display;
 
 use crate::{
     prelude::*,
-    serde::Deserialize,
     shared_values::{SharedContainerMutability, SharedContainerOwnership},
     types::{type_definition::TypeDefinition, type_match::TypeMatch},
     values::value_container::ValueContainer,
 };
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum LocalReferenceMutability {

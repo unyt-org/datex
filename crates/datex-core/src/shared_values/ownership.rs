@@ -1,4 +1,4 @@
-use crate::{serde::Deserialize, shared_values::SharedContainerMutability};
+use crate::{shared_values::SharedContainerMutability};
 use binrw::{BinRead, BinWrite};
 use core::{
     cmp::Ordering,
@@ -6,7 +6,7 @@ use core::{
     fmt::{Display, Formatter},
 };
 use num_enum::TryFromPrimitive;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 #[derive(
     Debug,

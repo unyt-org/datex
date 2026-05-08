@@ -11,10 +11,9 @@ use crate::{
     },
     prelude::*,
     runtime::RuntimeConfigInterface,
-    serde::Deserialize,
 };
 use core::time::Duration;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
 #[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]

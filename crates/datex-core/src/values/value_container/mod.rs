@@ -11,12 +11,6 @@ pub mod serde_dif;
 use super::value::Value;
 use crate::{
     prelude::*,
-    runtime::memory::Memory,
-    serde::{
-        deserializer::{DatexDeserializer, from_value_container},
-        error::{DeserializationError, SerializationError},
-        serializer::to_value_container,
-    },
     shared_values::{SharedContainer, errors::AccessError},
     traits::{apply::Apply, value_eq::ValueEq},
     types::{
@@ -141,20 +135,7 @@ impl ValueContainer {
             ValueContainer::Shared(shared) => shared.allowed_type().clone(),
         }
     }
-
-    /// Casts the contained Value or Reference to the desired type T using serde deserialization.
-    pub fn cast_to_deserializable<T: DeserializeOwned>(
-        &self,
-    ) -> Result<T, DeserializationError> {
-        from_value_container::<T>(self)
-    }
-
-    /// Creates a ValueContainer from a serializable value T using serde serialization.
-    pub fn from_serializable<T: serde::Serialize>(
-        value: &T,
-    ) -> Result<ValueContainer, SerializationError> {
-        to_value_container(value)
-    }
+    
 
     /// Returns the contained SharedContainer if it is a SharedContainer, otherwise returns None.
     pub fn maybe_shared(&self) -> Option<&SharedContainer> {
@@ -219,20 +200,6 @@ impl<'a> From<BorrowedValueKey<'a>> for ValueContainer {
                 value_container.into_owned()
             }
         }
-    }
-}
-
-impl<'a> Deserialize<'a> for ValueContainer {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'a>,
-    {
-        // IMPORTANT: this only works if deserializer is actually a DatexDeserializer
-        let deserializer: &DatexDeserializer = unsafe {
-            &*(&deserializer as *const D as *const DatexDeserializer)
-        };
-
-        Ok(deserializer.to_value_container().into_owned())
     }
 }
 

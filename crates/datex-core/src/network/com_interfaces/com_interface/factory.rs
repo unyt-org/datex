@@ -11,7 +11,6 @@ use crate::{
         },
     },
     prelude::*,
-    serde::deserializer::from_value_container,
     std_sync::Mutex,
     utils::async_callback::AsyncCallback,
     values::{
@@ -434,6 +433,7 @@ pub type CloseAsyncCallback = Box<dyn FnOnce() -> LocalBoxFuture<'static, ()>>;
 ///         }
 ///     }
 /// }
+///
 pub trait ComInterfaceSyncFactory
 where
     Self: DeserializeOwned,
@@ -444,9 +444,10 @@ where
     fn factory(
         setup_data: ValueContainer,
     ) -> Result<ComInterfaceConfiguration, ComInterfaceCreateError> {
-        let setup_data = from_value_container::<Self>(&setup_data)
-            .map_err(|_| ComInterfaceCreateError::SetupDataParseError)?;
-        Self::create_interface(setup_data)
+        todo!()
+        // let setup_data = from_value_container::<Self>(&setup_data)
+        //     .map_err(|_| ComInterfaceCreateError::SetupDataParseError)?;
+        // Self::create_interface(setup_data)
     }
 
     /// Create a new instance of the interface with the given setup data.
@@ -500,9 +501,10 @@ where
     /// The setup data is passed as a ValueContainer and has to be downcasted
     fn factory(setup_data: ValueContainer) -> ComInterfaceAsyncFactoryResult {
         Box::pin(async move {
-            let setup_data = from_value_container::<Self>(&setup_data)
-                .map_err(|_| ComInterfaceCreateError::SetupDataParseError)?;
-            Self::create_interface(setup_data).await
+            todo!()
+            // let setup_data = from_value_container::<Self>(&setup_data)
+            //     .map_err(|_| ComInterfaceCreateError::SetupDataParseError)?;
+            // Self::create_interface(setup_data).await
         })
     }
 

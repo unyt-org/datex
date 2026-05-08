@@ -1,8 +1,7 @@
-use crate::serde::Deserialize;
 use binrw::{BinRead, BinWrite};
 use core::fmt::Display;
 use num_enum::TryFromPrimitive;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 #[derive(
     Clone,

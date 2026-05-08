@@ -1,4 +1,4 @@
-use crate::serde::Deserialize;
+use serde::Deserialize;
 use serde::Serialize;
 
 #[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
