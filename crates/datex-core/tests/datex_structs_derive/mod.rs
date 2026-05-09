@@ -1,5 +1,5 @@
 use datex_core::{
-    macro_utils::datex_proxy::DatexField,
+    macro_utils::datex_proxy::DatexProxy,
     prelude::*,
     values::{
         core_values::{endpoint::Endpoint, map::Map},
@@ -8,7 +8,8 @@ use datex_core::{
 };
 use datex_macros_internal::Datex;
 use serde::{Deserialize, Serialize};
-#[derive(Datex, Serialize, Deserialize, Debug, Clone, PartialEq)]
+
+#[derive(Datex, Debug, Clone, PartialEq)]
 struct Example {
     a: u8,
     b: String,
@@ -17,11 +18,11 @@ struct Example {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 struct SerdeExample {
-    a: u8,
-    b: String,
+    inner_a: u8,
+    inner_b: String,
 }
 
-#[derive(Datex, Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Datex, Debug, Clone, PartialEq)]
 struct SerdeDatexExample {
     a: u8,
     serde: SerdeExample,
@@ -29,7 +30,7 @@ struct SerdeDatexExample {
 
 fn assert_round_trip<T>(value: T)
 where
-    T: DatexField + PartialEq + std::fmt::Debug + Clone,
+    T: DatexProxy + PartialEq + std::fmt::Debug + Clone,
 {
     let value_container = value.clone().datex_to_value_container().unwrap();
     let deserialized_value =
@@ -45,23 +46,23 @@ use test_case::test_case;
         b: "Test".to_string(),
         c: Endpoint::default(),
     } ; "example struct")]
-#[case(
+#[test_case(
     SerdeDatexExample {
         a: 42u8,
         serde: SerdeExample {
-            a: 1,
-            b: "Inner".to_string(),
+            inner_a: 1,
+            inner_b: "Inner".to_string(),
         },
     } ; "struct with serde field")]
-#[case(vec![1u8, 2, 3] ; "vector of primitives")]
-#[case(vec![Endpoint::try_from("@ben").unwrap(), Endpoint::try_from("@jonas").unwrap()] ; "vector of datex direct types")]
+#[test_case(vec![1u8, 2, 3] ; "vector of primitives")]
+#[test_case(vec![Endpoint::try_from("@ben").unwrap(), Endpoint::try_from("@jonas").unwrap()] ; "vector of datex direct types")]
 // #[case(Map::from(vec![
 //     ("key1".to_string(), ValueContainer::from(42u8)),
 //     ("key2".to_string(), ValueContainer::from("Value".to_string())),
 // ]) ; "map of primitives")]
 fn round_trip_struct<T>(structure: T)
 where
-    T: DatexField + PartialEq + std::fmt::Debug + Clone,
+    T: DatexProxy + PartialEq + std::fmt::Debug + Clone,
 {
     assert_round_trip(structure);
 }
@@ -109,8 +110,8 @@ fn struct_with_serde_to_value_container() {
     let serde_example = SerdeDatexExample {
         a: 42u8,
         serde: SerdeExample {
-            a: 1,
-            b: "Inner".to_string(),
+            inner_a: 1,
+            inner_b: "Inner".to_string(),
         },
     };
 
@@ -119,9 +120,9 @@ fn struct_with_serde_to_value_container() {
     let map: Map = value_container.try_as().unwrap();
     assert_eq!(map.get("a").unwrap(), &ValueContainer::from(42u8));
     let serde_map: Map = map.get("serde").unwrap().try_as().unwrap();
-    assert_eq!(serde_map.get("a").unwrap(), &ValueContainer::from(1u64)); // FIXME lossing type information, u8 becomes u64
+    assert_eq!(serde_map.get("inner_a").unwrap(), &ValueContainer::from(1u8));
     assert_eq!(
-        serde_map.get("b").unwrap(),
+        serde_map.get("inner_b").unwrap(),
         &ValueContainer::from("Inner".to_string())
     );
 }

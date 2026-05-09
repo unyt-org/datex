@@ -81,12 +81,12 @@ macro_rules! derive_try_from_chain {
             }
         }
 
-        impl crate::macro_utils::datex_proxy::DatexDirect for $type {
-            fn datex_direct_to_value_container(self) -> Result<ValueContainer, ()> {
+        impl crate::macro_utils::datex_proxy::DatexProxy for $type {
+            fn datex_to_value_container(self) -> Result<ValueContainer, ()> {
                 Ok(ValueContainer::from(self))
             }
 
-            fn datex_direct_from_value_container(value: ValueContainer) -> Result<Self, ()> {
+            fn datex_from_value_container(value: ValueContainer) -> Result<Self, ()> {
                 value.try_into().map_err(|_| ())
             }
         }
@@ -96,14 +96,14 @@ macro_rules! derive_try_from_chain {
 macro_rules! impl_datex_direct_via_value_container {
     ($($ty:ty),* $(,)?) => {
         $(
-            impl crate::macro_utils::datex_proxy::DatexDirect for $ty {
-                fn datex_direct_to_value_container(
+            impl crate::macro_utils::datex_proxy::DatexProxy for $ty {
+                fn datex_to_value_container(
                     self,
                 ) -> Result<crate::values::value_container::ValueContainer, ()> {
                     Ok(crate::values::value_container::ValueContainer::from(self))
                 }
 
-                fn datex_direct_from_value_container(
+                fn datex_from_value_container(
                     value: crate::values::value_container::ValueContainer,
                 ) -> Result<Self, ()> {
                     value.try_as().ok_or(())

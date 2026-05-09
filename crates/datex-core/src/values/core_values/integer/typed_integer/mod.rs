@@ -300,7 +300,7 @@ impl TypedInteger {
         }
     }
 
-    /// Converts the integer to a i64 if it fits, otherwise returns None.
+    /// Converts the integer to an i64 if it fits, otherwise returns None.
     pub fn as_i64(&self) -> Option<i64> {
         match self {
             TypedInteger::I8(v) => Some(i64::from(*v)),

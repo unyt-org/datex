@@ -21,7 +21,7 @@ pub fn derive_struct(data_struct: DataStruct, ident: Ident) -> TokenStream {
 
     let has_named_fields = matches!(data_struct.fields, syn::Fields::Named(_));
 
-    /// Iterate over the fields of the struct
+    // Iterate over the fields of the struct
     for (index, field) in data_struct.fields.iter().enumerate() {
         match &field.ident {
             // struct with named fields
@@ -31,15 +31,13 @@ pub fn derive_struct(data_struct: DataStruct, ident: Ident) -> TokenStream {
                 into_datex_fields.push(quote! {
                     (
                         #field_name.to_string(),
-                        datex_core::macro_utils::datex_proxy::DatexField
-                            ::datex_to_value_container(value.#field_ident)
+                        DatexProxy::datex_to_value_container(value.#field_ident)
                             .map_err(|_| ())?,
                     ),
                 });
 
                 from_datex_fields.push(quote! {
-                    #field_ident: datex_core::macro_utils::datex_proxy::DatexField
-                        ::datex_from_value_container(
+                    #field_ident: DatexProxy::datex_from_value_container(
                             map.get(#field_name)
                                 .map_err(|_| ())?
                                 .clone()
@@ -53,14 +51,12 @@ pub fn derive_struct(data_struct: DataStruct, ident: Ident) -> TokenStream {
                 let field_index = syn::Index::from(index);
 
                 into_datex_fields.push(quote! {
-                    datex_core::macro_utils::datex_proxy::DatexField
-                        ::datex_to_value_container(value.#field_index)
+                    DatexProxy::datex_to_value_container(value.#field_index)
                         .map_err(|_| ())?,
                 });
 
                 from_datex_fields.push(quote! {
-                    datex_core::macro_utils::datex_proxy::DatexField
-                        ::datex_from_value_container(
+                    DatexProxy::datex_from_value_container(
                             list.get(#index)
                                 .map_err(|_| ())?
                                 .clone()
@@ -108,20 +104,19 @@ pub fn derive_struct(data_struct: DataStruct, ident: Ident) -> TokenStream {
             use super::*;
 
             use datex_core::macro_utils::datex_proxy::{
-                DatexDirect,
-                DatexField,
+                DatexProxy,
             };
 
             use datex_core::values::value_container::ValueContainer;
             use datex_core::values::core_values::map::Map;
             use datex_core::values::core_values::list::List;
 
-            impl DatexDirect for #ident {
-                fn datex_direct_to_value_container(self) -> Result<ValueContainer, ()> {
+            impl DatexProxy for #ident {
+                fn datex_to_value_container(self) -> Result<ValueContainer, ()> {
                     self.try_into()
                 }
 
-                fn datex_direct_from_value_container(value: ValueContainer) -> Result<Self, ()> {
+                fn datex_from_value_container(value: ValueContainer) -> Result<Self, ()> {
                     value.try_into()
                 }
             }

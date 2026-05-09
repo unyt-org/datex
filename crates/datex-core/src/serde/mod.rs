@@ -4,18 +4,6 @@ pub mod deserializer;
 pub mod error;
 pub mod serializer;
 
-// TODO: move
-// impl Serialize for ValueContainer {
-//     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-//     where
-//         S: serde::Serializer,
-//     {
-//         serializer.serialize_newtype_struct(
-//             "datex::value",
-//             &compile_value_container(self.into()).unwrap(),
-//         )
-//     }
-// }
 
 #[cfg(test)]
 #[cfg(feature = "decompiler")]
