@@ -80,9 +80,39 @@ macro_rules! derive_try_from_chain {
                 }
             }
         }
+
+        impl crate::macro_utils::datex_proxy::DatexDirect for $type {
+            fn datex_direct_to_value_container(self) -> Result<ValueContainer, ()> {
+                Ok(ValueContainer::from(self))
+            }
+
+            fn datex_direct_from_value_container(value: ValueContainer) -> Result<Self, ()> {
+                value.try_into().map_err(|_| ())
+            }
+        }
     };
 }
 
+macro_rules! impl_datex_direct_via_value_container {
+    ($($ty:ty),* $(,)?) => {
+        $(
+            impl crate::macro_utils::datex_proxy::DatexDirect for $ty {
+                fn datex_direct_to_value_container(
+                    self,
+                ) -> Result<crate::values::value_container::ValueContainer, ()> {
+                    Ok(crate::values::value_container::ValueContainer::from(self))
+                }
+
+                fn datex_direct_from_value_container(
+                    value: crate::values::value_container::ValueContainer,
+                ) -> Result<Self, ()> {
+                    value.try_as().ok_or(())
+                }
+            }
+        )*
+    };
+}
+impl_datex_direct_via_value_container!(Endpoint,);
 derive_try_from_chain!(
     bool,
     {
@@ -115,12 +145,6 @@ derive_try_from_chain!(
     }
 );
 derive_try_from_chain!(
-    usize,
-    {
-       CoreValue::TypedInteger(TypedInteger::U64(value)) => Ok(value as usize),
-    }
-);
-derive_try_from_chain!(
     i8,
     {
        CoreValue::TypedInteger(TypedInteger::I8(value)) => Ok(value),
@@ -145,12 +169,6 @@ derive_try_from_chain!(
     }
 );
 derive_try_from_chain!(
-    isize,
-    {
-       CoreValue::TypedInteger(TypedInteger::I64(value)) => Ok(value as isize),
-    }
-);
-derive_try_from_chain!(
     f32,
     {
        CoreValue::TypedDecimal(TypedDecimal::F32(value)) => Ok(value.into()),
@@ -163,15 +181,29 @@ derive_try_from_chain!(
     }
 );
 derive_try_from_chain!(
-    char,
-    {
-        CoreValue::Text(Text(value)) if value.len() == 1 => Ok(value.chars().next().unwrap()),
-    }
-);
-
-derive_try_from_chain!(
     String,
     {
         CoreValue::Text(Text(value)) => Ok(value),
     }
 );
+
+// FIXME TBD
+
+// derive_try_from_chain!(
+//     usize,
+//     {
+//        CoreValue::TypedInteger(TypedInteger::U64(value)) => Ok(value as usize),
+//     }
+// );
+// derive_try_from_chain!(
+//     isize,
+//     {
+//        CoreValue::TypedInteger(TypedInteger::I64(value)) => Ok(value as isize),
+//     }
+// );
+// derive_try_from_chain!(
+//     char,
+//     {
+//         CoreValue::Text(Text(value)) if value.len() == 1 => Ok(value.chars().next().unwrap()),
+//     }
+// );
