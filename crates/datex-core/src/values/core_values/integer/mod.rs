@@ -6,7 +6,7 @@ pub mod utils;
 use crate::prelude::*;
 
 use crate::values::core_values::{
-    error::NumberParseError, integer::typed_integer::TypedInteger,
+    error::NumbersError, integer::typed_integer::TypedInteger,
 };
 pub mod equality;
 pub mod ops;
@@ -41,7 +41,7 @@ impl Integer {
     pub fn try_from_string(s: &str) -> Result<Self, NumberParseError> {
         BigInt::from_str(s)
             .map(Integer)
-            .map_err(|_| NumberParseError::InvalidFormat)
+            .map_err(|_| NumbersError::InvalidFormat)
     }
 
     /// Parse an integer from a string in the given radix (base).
@@ -49,10 +49,10 @@ impl Integer {
     pub fn from_string_radix(
         s: &str,
         radix: u32,
-    ) -> Result<Self, NumberParseError> {
+    ) -> Result<Self, NumbersError> {
         BigInt::from_str_radix(s, radix)
             .map(Integer)
-            .map_err(|_| NumberParseError::InvalidFormat)
+            .map_err(|_| NumbersError::InvalidFormat)
     }
 
     /// Returns true if the integer is zero.
