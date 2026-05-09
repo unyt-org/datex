@@ -1,34 +1,51 @@
 pub mod json;
-mod rust_core_values;
 use crate::values::value_container::ValueContainer;
 use serde::{Serialize, de::DeserializeOwned};
-use serde_json::Value;
 
-pub trait DatexValueProxy: TryFrom<ValueContainer> + From<Self>
+/// Native DATEX mapping (Rust primitive types, lists and maps)
+pub trait DatexDirect: Serialize + DeserializeOwned + Sized {
+    fn datex_direct_to_value_container(self) -> Result<ValueContainer, ()>;
+
+    fn datex_direct_from_value_container(
+        value: ValueContainer,
+    ) -> Result<Self, ()>;
+}
+
+pub trait DatexField: Sized {
+    fn datex_to_value_container(self) -> Result<ValueContainer, ()>;
+
+    fn datex_from_value_container(value: ValueContainer) -> Result<Self, ()>;
+}
+
+/// Fallback implementation for all types that implement Serialize and DeserializeOwned
+impl<T> DatexField for T
 where
-    ValueContainer: From<Self>,
+    T: Serialize + DeserializeOwned,
 {
+    default fn datex_to_value_container(self) -> Result<ValueContainer, ()> {
+        serde_to_value_container(self)
+    }
+
+    default fn datex_from_value_container(
+        value: ValueContainer,
+    ) -> Result<Self, ()> {
+        serde_from_value_container(value)
+    }
 }
 
-/// Datex Proxy that supports inner serde Serialize/Deserialize values
-pub trait DatexValueProxyWithSerde:
-    TryFrom<ValueContainer> + TryInto<ValueContainer>
+/// DatexDirect types bypass serde even though they also implement serde.
+impl<T> DatexField for T
+where
+    T: DatexDirect,
 {
+    fn datex_to_value_container(self) -> Result<ValueContainer, ()> {
+        self.datex_direct_to_value_container()
+    }
+
+    fn datex_from_value_container(value: ValueContainer) -> Result<Self, ()> {
+        T::datex_direct_from_value_container(value)
+    }
 }
-
-impl<T: Serialize> DatexValueProxyWithSerde for T where
-    Self: TryFrom<ValueContainer> + TryInto<ValueContainer>
-{
-}
-
-// impl<T: Serialize> TryFrom<T> for ValueContainer {
-//     type Error = ();
-
-//     fn try_from(value: impl Serialize) -> Result<Self, Self::Error> {
-//         let json = serde_json::to_value(value).map_err(|_| ())?;
-//         Ok(ValueContainer::from(json))
-//     }
-// }
 
 /// Convert a serde serializable type to a ValueContainer
 /// This is used for user defined types, not annotated with the DATEX macro
@@ -37,6 +54,7 @@ where
     T: Serialize,
 {
     let json = serde_json::to_value(value).map_err(|_| ())?;
+    println!("Serialized to JSON: {}", json);
     Ok(ValueContainer::from(json))
 }
 
