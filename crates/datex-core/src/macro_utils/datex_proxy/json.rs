@@ -69,10 +69,6 @@ impl TryFrom<ValueContainer> for Value {
             return Ok(Value::Number(Number::from(v)));
         }
 
-        if let Some(v) = value.try_as::<usize>() {
-            return Ok(Value::Number(Number::from(v as u64)));
-        }
-
         if let Some(v) = value.try_as::<i8>() {
             return Ok(Value::Number(Number::from(v)));
         }
@@ -89,10 +85,6 @@ impl TryFrom<ValueContainer> for Value {
             return Ok(Value::Number(Number::from(v)));
         }
 
-        if let Some(v) = value.try_as::<isize>() {
-            return Ok(Value::Number(Number::from(v as i64)));
-        }
-
         if let Some(v) = value.try_as::<f32>() {
             let number = Number::from_f64(v as f64).ok_or(())?;
             return Ok(Value::Number(number));
@@ -101,10 +93,6 @@ impl TryFrom<ValueContainer> for Value {
         if let Some(v) = value.try_as::<f64>() {
             let number = Number::from_f64(v).ok_or(())?;
             return Ok(Value::Number(number));
-        }
-
-        if let Some(v) = value.try_as::<char>() {
-            return Ok(Value::String(v.to_string()));
         }
 
         if let Some(v) = value.try_as::<String>() {
@@ -131,6 +119,17 @@ impl TryFrom<ValueContainer> for Value {
             return Ok(Value::Object(object));
         }
 
+        // FIXME TBD
+
+        // if let Some(v) = value.try_as::<char>() {
+        //     return Ok(Value::String(v.to_string()));
+        // }
+        // if let Some(v) = value.try_as::<usize>() {
+        //     return Ok(Value::Number(Number::from(v as u64)));
+        // }
+        // if let Some(v) = value.try_as::<isize>() {
+        //     return Ok(Value::Number(Number::from(v as i64)));
+        // }
         Err(())
     }
 }
