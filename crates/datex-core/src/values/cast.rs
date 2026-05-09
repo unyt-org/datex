@@ -112,7 +112,17 @@ macro_rules! impl_datex_direct_via_value_container {
         )*
     };
 }
-impl_datex_direct_via_value_container!(Endpoint,);
+
+// FIXME deserialize<de> is still implemented for Endpoint, we should change it to DeserializeSeed and make the proxy compatible
+impl_datex_direct_via_value_container!(
+    Endpoint,
+    // Map,
+    // List,
+    // Range,
+    // Type,
+    // NominalTypeDefinition,
+    // Callable
+);
 derive_try_from_chain!(
     bool,
     {
