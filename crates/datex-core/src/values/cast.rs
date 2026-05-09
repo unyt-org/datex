@@ -30,6 +30,13 @@ macro_rules! impl_try_from_core_value {
                 }
             }
 
+            impl TryFrom<Value> for $type {
+                type Error = ();
+                fn try_from(value: Value) -> Result<Self, Self::Error> {
+                    value.inner.try_into()
+                }
+            }
+
             impl<'a> TryFrom<&'a CoreValue> for &'a $type {
                 type Error = ();
                 fn try_from(value: &'a CoreValue) -> Result<Self, Self::Error> {

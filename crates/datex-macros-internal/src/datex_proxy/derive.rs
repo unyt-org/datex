@@ -119,7 +119,7 @@ fn derive_struct(data_struct: DataStruct, ident: Ident, attrs: Vec<Attribute>) -
 
     let from_datex_fields_inner = if has_named_fields {
         quote! {{
-            let map: Map = value.try_as().ok_or(())?;
+            let map: Map = value.try_into().map_err(|_| ())?;
 
             #ident {
                 #(#from_datex_fields)*
@@ -127,7 +127,7 @@ fn derive_struct(data_struct: DataStruct, ident: Ident, attrs: Vec<Attribute>) -
         }}
     } else {
         quote! {{
-            let list: List = value.try_as().ok_or(())?;
+            let list: List = value.try_into().map_err(|_| ())?;
 
             #ident(
                 #(#from_datex_fields)*
@@ -140,23 +140,23 @@ fn derive_struct(data_struct: DataStruct, ident: Ident, attrs: Vec<Attribute>) -
         SerdeMode::None | SerdeMode::Infallible=> {
             quote! {
                 #[automatically_derived]
-                impl From<#ident> for ValueContainer {
+                impl From<#ident> for Value {
                     fn from(value: #ident) -> Self {
-                        ValueContainer::from(#into_datex_fields_inner)
+                        Value::from(#into_datex_fields_inner)
                     }
                 }
 
                 #[automatically_derived]
                 impl DatexProxyInfallibleSerialize for #ident {
                     fn to_value_container(self) -> ValueContainer {
-                       ValueContainer::from(self)
+                       ValueContainer::Local(self.into())
                     }
                 }
 
                 #[automatically_derived]
                 impl DatexProxySerialize for #ident {
                     fn try_to_value_container(self) -> Result<ValueContainer, ()> {
-                        Ok(ValueContainer::from(self))
+                        Ok(ValueContainer::Local(self.into()))
                     }
                 }
             }
@@ -164,18 +164,27 @@ fn derive_struct(data_struct: DataStruct, ident: Ident, attrs: Vec<Attribute>) -
         SerdeMode::Fallible => {
             quote! {
                 #[automatically_derived]
+                impl TryFrom<#ident> for Value {
+                    type Error = ();
+
+                    fn try_from(value: #ident) -> Result<Self, Self::Error> {
+                        Ok(Value::from(#into_datex_fields_inner))
+                    }
+                }
+
+                #[automatically_derived]
                 impl TryFrom<#ident> for ValueContainer {
                     type Error = ();
 
                     fn try_from(value: #ident) -> Result<Self, Self::Error> {
-                        Ok(ValueContainer::from(#into_datex_fields_inner))
+                        Ok(ValueContainer::Local(Value::from(#into_datex_fields_inner)))
                     }
                 }
 
                 #[automatically_derived]
                 impl DatexProxySerialize for #ident {
                     fn try_to_value_container(self) -> Result<ValueContainer, ()> {
-                        self.try_into()
+                        self.try_into().map(|value| ValueContainer::Local(value))
                     }
                 }
             }
@@ -186,6 +195,7 @@ fn derive_struct(data_struct: DataStruct, ident: Ident, attrs: Vec<Attribute>) -
         const _: () = {
             use datex_core::datex_proxy::{DatexProxy, DatexProxyInfallibleSerialize, DatexProxySerialize, DatexProxyDeserialize};
             use datex_core::values::value_container::ValueContainer;
+            use datex_core::values::value::Value;
             use datex_core::values::core_values::map::Map;
             use datex_core::values::core_values::list::List;
 
@@ -204,11 +214,23 @@ fn derive_struct(data_struct: DataStruct, ident: Ident, attrs: Vec<Attribute>) -
             }
 
             #[automatically_derived]
+            impl TryFrom<Value> for #ident {
+                type Error = ();
+
+                fn try_from(value: Value) -> Result<Self, Self::Error> {
+                    Ok(#from_datex_fields_inner)
+                }
+            }
+
+            #[automatically_derived]
             impl TryFrom<ValueContainer> for #ident {
                 type Error = ();
 
                 fn try_from(value: ValueContainer) -> Result<Self, Self::Error> {
-                    Ok(#from_datex_fields_inner)
+                    match value {
+                        ValueContainer::Local(value) => value.try_into(),
+                        _ => Err(()),
+                    }
                 }
             }
         };

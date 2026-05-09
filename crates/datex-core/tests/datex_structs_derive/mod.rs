@@ -49,6 +49,7 @@ where
 use test_case::test_case;
 use datex_core::runtime::pointer_address_provider::SelfOwnedPointerAddressProvider;
 use datex_core::shared_values::{OwnedSharedContainer, PointerAddress, SharedContainer, SharedContainerMutability};
+use datex_core::values::value::Value;
 
 #[test_case(
     Example {
@@ -99,6 +100,27 @@ fn struct_to_value_container() {
 }
 
 #[test]
+fn struct_to_value() {
+    let value_container: Value = Example {
+        a: 42u8,
+        b: "Test".to_string(),
+        c: Endpoint::default(),
+    }
+        .into();
+
+    let map: Map = value_container.try_into().unwrap();
+    assert_eq!(map.get("a").unwrap(), &ValueContainer::from(42u8));
+    assert_eq!(
+        map.get("b").unwrap(),
+        &ValueContainer::from("Test".to_string())
+    );
+    assert_eq!(
+        map.get("c").unwrap(),
+        &ValueContainer::from(Endpoint::default())
+    );
+}
+
+#[test]
 fn value_container_to_struct() {
     let value_container: ValueContainer =
         ValueContainer::from(Map::from(vec![
@@ -108,6 +130,21 @@ fn value_container_to_struct() {
         ]));
 
     let example: Example = value_container.try_into().unwrap();
+
+    assert_eq!(example.a, 42u8);
+    assert_eq!(example.b, "Test".to_string());
+    assert_eq!(example.c, Endpoint::default());
+}
+
+#[test]
+fn value_to_struct() {
+    let value: Value = Value::from(Map::from(vec![
+        ("a".to_string(), ValueContainer::from(42u8)),
+        ("b".to_string(), ValueContainer::from("Test".to_string())),
+        ("c".to_string(), ValueContainer::from(Endpoint::default())),
+    ]));
+
+    let example: Example = value.try_into().unwrap();
 
     assert_eq!(example.a, 42u8);
     assert_eq!(example.b, "Test".to_string());
@@ -176,8 +213,8 @@ fn struct_with_value_container() {
         val: ValueContainer::from("Test".to_string()),
     };
 
-    let value_container: ValueContainer = example_local.into();
-    let map: Map = value_container.try_as().unwrap();
+    let value: Value = example_local.into();
+    let map: Map = value.try_into().unwrap();
     assert_eq!(map.get("a").unwrap(), &ValueContainer::from(42u8));
     assert_eq!(
         map.get("val").unwrap(),

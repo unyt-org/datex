@@ -2,6 +2,7 @@ pub mod serde_mapping;
 
 use crate::values::value_container::ValueContainer;
 use serde::{Serialize, de::DeserializeOwned};
+use crate::values::value::Value;
 
 /// Base DATEX trait for value proxy. Must implement [DatexProxyDeserialize] and [DatexProxySerialize]
 pub trait DatexProxy: Sized + DatexProxyDeserialize + DatexProxySerialize {
@@ -23,7 +24,6 @@ pub trait DatexProxySerialize {
 pub trait DatexProxyInfallibleSerialize {
     fn to_value_container(self) -> ValueContainer;
 }
-
 
 /// Default [DatexProxy] implementation for all types that implement Serialize and DeserializeOwned
 impl<T> DatexProxySerialize for T
