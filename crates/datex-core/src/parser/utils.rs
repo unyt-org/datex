@@ -5,7 +5,7 @@ use crate::{
             Decimal,
             typed_decimal::{DecimalTypeVariant, TypedDecimal},
         },
-        error::NumberParseError,
+        error::NumbersError,
         integer::{
             Integer,
             typed_integer::{IntegerTypeVariant, TypedInteger},
@@ -34,7 +34,7 @@ pub enum IntegerOrTypedInteger {
 /// Returns either an Integer or a Decimal value.
 pub fn parse_integer_literal(
     lit: String,
-) -> Result<IntegerOrDecimal, NumberParseError> {
+) -> Result<IntegerOrDecimal, NumbersError> {
     // first consume all digits for the integer part, skipping underscores
     let mut chars = lit.chars().peekable();
     let integer_part = consume_digits_with_underscores(&mut chars);
@@ -115,7 +115,7 @@ pub fn parse_integer_literal(
         }
         // otherwise invalid variant for decimal with exponent
         else {
-            Err(NumberParseError::InvalidFormat)
+            Err(NumbersError::InvalidFormat)
         }
     }
 }
@@ -139,7 +139,7 @@ fn consume_digits_with_underscores(chars: &mut Peekable<Chars>) -> String {
 pub fn parse_integer_with_variant(
     integer_with_variant: IntegerWithVariant,
     token: Token,
-) -> Result<IntegerOrTypedInteger, NumberParseError> {
+) -> Result<IntegerOrTypedInteger, NumbersError> {
     let radix = match token {
         Token::BinaryIntegerLiteral(_) => 2,
         Token::OctalIntegerLiteral(_) => 8,

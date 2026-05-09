@@ -4,7 +4,7 @@ pub mod typed_decimal;
 use crate::prelude::*;
 
 use crate::values::core_values::{
-    decimal::typed_decimal::TypedDecimal, error::NumberParseError,
+    decimal::typed_decimal::TypedDecimal, error::NumbersError,
 };
 use bigdecimal::BigDecimal;
 
@@ -196,16 +196,16 @@ impl Decimal {
                     let parts: Vec<&str> = s.split('/').collect();
                     if parts.len() == 2 {
                         let numer = BigInt::from_str(parts[0])
-                            .map_err(|_| NumberParseError::InvalidFormat)?;
+                            .map_err(|_| NumbersError::InvalidFormat)?;
                         let denom = BigInt::from_str(parts[1])
-                            .map_err(|_| NumberParseError::InvalidFormat)?;
+                            .map_err(|_| NumbersError::InvalidFormat)?;
                         if denom.is_zero() {
-                            return Err(NumberParseError::InvalidFormat);
+                            return Err(NumbersError::InvalidFormat);
                         }
                         let rational = BigRational::new(numer, denom);
                         Ok(Decimal::from(Rational::from_big_rational(rational)))
                     } else {
-                        Err(NumberParseError::InvalidFormat)
+                        Err(NumbersError::InvalidFormat)
                     }
                 } else {
                     let big_rational = Decimal::parse_decimal_to_rational(s);
@@ -223,7 +223,7 @@ impl Decimal {
                                 ))
                             }
                         }
-                        None => Err(NumberParseError::InvalidFormat),
+                        None => Err(NumbersError::InvalidFormat),
                     }
                 }
             }
