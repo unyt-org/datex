@@ -2,71 +2,129 @@ use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote};
 use syn::{Data, DataEnum, DataStruct, DeriveInput};
 
+/// Derive implementation for the [Datex] derive macro.
 pub fn derive(input: DeriveInput) -> TokenStream {
     match input.data {
-        Data::Struct(data_struct) => derive_struct(
-            data_struct,
-            input.ident,
-        ),
-        Data::Enum(data_enum)  => derive_enum(data_enum),
+        Data::Struct(data_struct) => derive_struct(data_struct, input.ident),
+        Data::Enum(data_enum) => derive_enum(data_enum),
         _ => unimplemented!(),
     }
 }
 
+/// Derive implementation for structs
 pub fn derive_struct(data_struct: DataStruct, ident: Ident) -> TokenStream {
-    let mod_ident = format_ident!("__{}_datex", ident.to_string().to_ascii_lowercase());
-
+    let mod_ident =
+        format_ident!("__{}_datex", ident.to_string().to_ascii_lowercase());
 
     let mut into_datex_fields: Vec<TokenStream> = vec![];
     let mut from_datex_fields: Vec<TokenStream> = vec![];
 
+    let has_named_fields = matches!(data_struct.fields, syn::Fields::Named(_));
 
-    let mut has_named_fields = false;
-
+    /// Iterate over the fields of the struct
     for (index, field) in data_struct.fields.iter().enumerate() {
-        into_datex_fields.push(match field.ident {
-            Some(ref ident) => {
-                has_named_fields = true;
-                let ident_str = ident.to_string();
-                quote! { (#ident_str.to_string(), value.#ident.try_into().map_err(|_| ())?), }
-            },
-            None => quote! { value.#index.try_into().map_err(|_| ())?, },
-        });
+        match &field.ident {
+            // struct with named fields
+            Some(field_ident) => {
+                let field_name = field_ident.to_string();
 
-        from_datex_fields.push(match field.ident {
-            Some(ref ident) => {
-                let ident_str = ident.to_string();
-                quote! { #ident: map.get(#ident_str).map_err(|_| ())?.try_as().ok_or(())?, }
-            },
-            None => quote! { list.get(#index).map_err(|_| ())?.try_as().ok_or(())?, }
-        });
+                into_datex_fields.push(quote! {
+                    (
+                        #field_name.to_string(),
+                        datex_core::macro_utils::datex_proxy::DatexField
+                            ::datex_to_value_container(value.#field_ident)
+                            .map_err(|_| ())?,
+                    ),
+                });
+
+                from_datex_fields.push(quote! {
+                    #field_ident: datex_core::macro_utils::datex_proxy::DatexField
+                        ::datex_from_value_container(
+                            map.get(#field_name)
+                                .map_err(|_| ())?
+                                .clone()
+                        )
+                        .map_err(|_| ())?,
+                });
+            }
+
+            // tuple struct or unit struct
+            None => {
+                let field_index = syn::Index::from(index);
+
+                into_datex_fields.push(quote! {
+                    datex_core::macro_utils::datex_proxy::DatexField
+                        ::datex_to_value_container(value.#field_index)
+                        .map_err(|_| ())?,
+                });
+
+                from_datex_fields.push(quote! {
+                    datex_core::macro_utils::datex_proxy::DatexField
+                        ::datex_from_value_container(
+                            list.get(#index)
+                                .map_err(|_| ())?
+                                .clone()
+                        )
+                        .map_err(|_| ())?,
+                });
+            }
+        }
     }
 
-    let into_datex_fields_inner = match has_named_fields {
-        true => quote! {Map::from(vec![#(#into_datex_fields)*])},
-        false => quote! {List::from(vec![#(#into_datex_fields)*])}
+    let into_datex_fields_inner = if has_named_fields {
+        quote! {
+            Map::from(vec![
+                #(#into_datex_fields)*
+            ])
+        }
+    } else {
+        quote! {
+            List::from(vec![
+                #(#into_datex_fields)*
+            ])
+        }
     };
 
-    let from_datex_fields_inner = match has_named_fields {
-        true => quote! {{
+    let from_datex_fields_inner = if has_named_fields {
+        quote! {{
             let map: Map = value.try_as().ok_or(())?;
-            #ident { #(#from_datex_fields)* }
-        }},
-        false => quote! {{
+
+            #ident {
+                #(#from_datex_fields)*
+            }
+        }}
+    } else {
+        quote! {{
             let list: List = value.try_as().ok_or(())?;
-            #ident ( #(#from_datex_fields)* )
-        }},
+
+            #ident(
+                #(#from_datex_fields)*
+            )
+        }}
     };
 
     quote! {
         pub mod #mod_ident {
             use super::*;
-            use datex_core::macro_utils::datex_proxy::DatexValueProxyWithSerde;
+
+            use datex_core::macro_utils::datex_proxy::{
+                DatexDirect,
+                DatexField,
+            };
+
             use datex_core::values::value_container::ValueContainer;
             use datex_core::values::core_values::map::Map;
             use datex_core::values::core_values::list::List;
 
-            impl DatexValueProxyWithSerde for #ident {}
+            impl DatexDirect for #ident {
+                fn datex_direct_to_value_container(self) -> Result<ValueContainer, ()> {
+                    self.try_into()
+                }
+
+                fn datex_direct_from_value_container(value: ValueContainer) -> Result<Self, ()> {
+                    value.try_into()
+                }
+            }
 
             impl TryFrom<ValueContainer> for #ident {
                 type Error = ();
