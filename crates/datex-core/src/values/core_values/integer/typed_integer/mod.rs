@@ -2,7 +2,7 @@
 //! It supports various integer types, including signed and unsigned integers of different sizes, as well as an arbitrary precision integer type (IBig).
 
 use crate::values::core_values::{
-    error::NumberParseError,
+    error::NumbersError,
     integer::{
         Integer,
         utils::{smallest_fitting_signed, smallest_fitting_unsigned},
@@ -146,7 +146,7 @@ impl TypedInteger {
         s: &str,
         radix: u32,
         variant: IntegerTypeVariant,
-    ) -> Result<TypedInteger, NumberParseError> {
+    ) -> Result<TypedInteger, NumbersError> {
         if core::matches!(variant, IntegerTypeVariant::IBig) {
             return Ok(TypedInteger::IBig(Integer::from_string_radix(
                 s, radix,
@@ -190,12 +190,10 @@ impl TypedInteger {
             core::num::IntErrorKind::Zero
             | core::num::IntErrorKind::Empty
             | core::num::IntErrorKind::InvalidDigit => {
-                NumberParseError::InvalidFormat
+                NumbersError::InvalidFormat
             }
             core::num::IntErrorKind::PosOverflow
-            | core::num::IntErrorKind::NegOverflow => {
-                NumberParseError::OutOfRange
-            }
+            | core::num::IntErrorKind::NegOverflow => NumbersError::OutOfRange,
             _ => core::panic!("Unhandled integer parse error: {:?}", e.kind()),
         })
     }
