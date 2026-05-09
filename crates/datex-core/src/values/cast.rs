@@ -1,4 +1,5 @@
 use crate::{
+    prelude::*,
     types::{nominal_type_definition::NominalTypeDefinition, r#type::Type},
     values::{
         core_value::CoreValue,
@@ -13,11 +14,10 @@ use crate::{
             range::Range,
             text::Text,
         },
+        value::Value,
+        value_container::ValueContainer,
     },
 };
-use crate::values::value::Value;
-use crate::values::value_container::ValueContainer;
-use crate::prelude::*;
 
 macro_rules! impl_try_from_core_value {
     ($($variant:ident => $type:ty),* $(,)?) => {
@@ -83,7 +83,6 @@ macro_rules! derive_try_from_chain {
     };
 }
 
-
 derive_try_from_chain!(
     bool,
     {
@@ -91,11 +90,82 @@ derive_try_from_chain!(
     }
 );
 
-
 derive_try_from_chain!(
     u8,
     {
        CoreValue::TypedInteger(TypedInteger::U8(value)) => Ok(value),
+    }
+);
+derive_try_from_chain!(
+    u16,
+    {
+       CoreValue::TypedInteger(TypedInteger::U16(value)) => Ok(value),
+    }
+);
+derive_try_from_chain!(
+    u32,
+    {
+       CoreValue::TypedInteger(TypedInteger::U32(value)) => Ok(value),
+    }
+);
+derive_try_from_chain!(
+    u64,
+    {
+       CoreValue::TypedInteger(TypedInteger::U64(value)) => Ok(value),
+    }
+);
+derive_try_from_chain!(
+    usize,
+    {
+       CoreValue::TypedInteger(TypedInteger::U64(value)) => Ok(value as usize),
+    }
+);
+derive_try_from_chain!(
+    i8,
+    {
+       CoreValue::TypedInteger(TypedInteger::I8(value)) => Ok(value),
+    }
+);
+derive_try_from_chain!(
+    i16,
+    {
+       CoreValue::TypedInteger(TypedInteger::I16(value)) => Ok(value),
+    }
+);
+derive_try_from_chain!(
+    i32,
+    {
+       CoreValue::TypedInteger(TypedInteger::I32(value)) => Ok(value),
+    }
+);
+derive_try_from_chain!(
+    i64,
+    {
+       CoreValue::TypedInteger(TypedInteger::I64(value)) => Ok(value),
+    }
+);
+derive_try_from_chain!(
+    isize,
+    {
+       CoreValue::TypedInteger(TypedInteger::I64(value)) => Ok(value as isize),
+    }
+);
+derive_try_from_chain!(
+    f32,
+    {
+       CoreValue::TypedDecimal(TypedDecimal::F32(value)) => Ok(value.into()),
+    }
+);
+derive_try_from_chain!(
+    f64,
+    {
+       CoreValue::TypedDecimal(TypedDecimal::F64(value)) => Ok(value.into()),
+    }
+);
+derive_try_from_chain!(
+    char,
+    {
+        CoreValue::Text(Text(value)) if value.len() == 1 => Ok(value.chars().next().unwrap()),
     }
 );
 
