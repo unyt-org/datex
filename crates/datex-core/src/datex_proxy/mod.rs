@@ -1,4 +1,5 @@
 pub mod serde_mapping;
+pub mod shared;
 
 use crate::values::value_container::ValueContainer;
 use serde::{Serialize, de::DeserializeOwned};
