@@ -103,14 +103,14 @@ mod tests {
         let mut cache = DIFSharedContainerCache::default();
         let value = ValueContainer::Shared(SharedContainer::Owned(
             OwnedSharedContainer::new_with_inferred_allowed_type(
-                42.into(),
+                42,
                 SharedContainerMutability::Mutable,
                 &mut provider,
             ),
         ));
         let serialized = SerdeContext::<ValueContainer>::new(&mut cache)
             .serialize_to_json(&value);
-        
+
         let address_string = serialized
             .replace('"', "")
             .strip_prefix('$')
@@ -157,7 +157,7 @@ mod tests {
                 .clone(),
         );
         dif_cache.store_shared_container(integer_container.clone());
-        
+
         let outer = SerdeContext::<ValueContainer>::new(dif_cache)
             .try_deserialize_from_json(json).unwrap();
 

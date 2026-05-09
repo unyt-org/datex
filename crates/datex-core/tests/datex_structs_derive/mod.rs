@@ -29,6 +29,13 @@ struct SerdeDatexExample {
     serde: SerdeExample,
 }
 
+#[derive(Datex, Debug, Clone, PartialEq)]
+#[datex(allow_serde_infallible)]
+struct SerdeDatexExampleInfallible {
+    a: u8,
+    serde: SerdeExample,
+}
+
 fn assert_round_trip<T>(value: T)
 where
     T: DatexProxy + PartialEq + std::fmt::Debug + Clone,
@@ -117,7 +124,31 @@ fn struct_with_serde_to_value_container() {
         },
     };
 
+    // Note: uses try_into because of datex(allow_serde)
     let value_container: ValueContainer = serde_example.try_into().unwrap();
+
+    let map: Map = value_container.try_as().unwrap();
+    assert_eq!(map.get("a").unwrap(), &ValueContainer::from(42u8));
+    let serde_map: Map = map.get("serde").unwrap().try_as().unwrap();
+    assert_eq!(serde_map.get("inner_a").unwrap(), &ValueContainer::from(1u8));
+    assert_eq!(
+        serde_map.get("inner_b").unwrap(),
+        &ValueContainer::from("Inner".to_string())
+    );
+}
+
+#[test]
+fn struct_with_serde_infallible_to_value_container() {
+    let serde_example = SerdeDatexExampleInfallible {
+        a: 42u8,
+        serde: SerdeExample {
+            inner_a: 1,
+            inner_b: "Inner".to_string(),
+        },
+    };
+
+    // Note: uses into instead of try_into because of datex(allow_serde_infallible)
+    let value_container: ValueContainer = serde_example.into();
 
     let map: Map = value_container.try_as().unwrap();
     assert_eq!(map.get("a").unwrap(), &ValueContainer::from(42u8));
@@ -202,5 +233,5 @@ fn struct_with_owned_shared_value_container() {
         }
     });
 
-    // TODO: datex(allow_serde) function mapping, SharedRef<x>, Shared<x>
+    // TODO: function mapping, SharedRef<x>, Shared<x>
 }

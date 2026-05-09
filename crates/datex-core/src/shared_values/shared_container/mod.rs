@@ -61,7 +61,7 @@ impl SharedContainer {
     ) -> Self {
         SharedContainer::Owned(
             OwnedSharedContainer::new_with_inferred_allowed_type(
-                value_container.into(),
+                value_container,
                 mutability,
                 address_provider,
             ),

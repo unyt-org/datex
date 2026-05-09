@@ -16,9 +16,18 @@ impl Serialize for ValueContainer {
         S: Serializer,
     {
         match self {
-            ValueContainer::Local(value) => value.inner.serialize(serializer),
+            ValueContainer::Local(value) => value.serialize(serializer),
             ValueContainer::Shared(_) => Err(serde::ser::Error::custom("Cannot serialize shared value container")),
         }
+    }
+}
+
+impl Serialize for Value {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer
+    {
+        self.inner.serialize(serializer)
     }
 }
 
@@ -77,8 +86,18 @@ impl<'de> Deserialize<'de> for ValueContainer {
     where
         D: Deserializer<'de>
     {
+        let value = Value::deserialize(deserializer)?;
+        Ok(ValueContainer::Local(value))
+    }
+}
+
+impl<'de> Deserialize<'de> for Value {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>
+    {
         let core_value = CoreValue::deserialize(deserializer)?;
-        Ok(ValueContainer::Local(Value::from(core_value)))
+        Ok(Value::from(core_value))
     }
 }
 

@@ -25,6 +25,63 @@ pub fn core_lib_string(input: TokenStream) -> TokenStream {
     core_lib::derive_core_string(input).into()
 }
 
+/// This derive macro generates implementations of the DatexProxy trait for a struct or enum,
+/// allowing it to be used as a DATEX value and converted from and to a Value
+/// 
+/// Usage:
+/// ```rust
+/// # use datex_macros_internal::Datex;
+/// 
+/// #[derive(Datex)]
+/// struct MyStruct {
+///     field1: String,
+///     field2: u32,
+/// }
+/// ```
+/// 
+/// Structs and Enums that implement `Serialize` and `DeserializeOwned` from the `serde` crate can be used with this derive macro
+/// by adding the `allow_serde` attribute:
+/// ```rust
+/// # use datex_macros_internal::Datex;
+/// # use serde::{Serialize, Deserialize};
+/// 
+/// #[derive(Serialize, Deserialize)]
+/// struct SerdeStruct {
+///     inner_field: String,
+/// }
+/// 
+/// #[derive(Datex)]
+/// #[datex(allow_serde)]
+/// struct MyStruct {
+///     field1: String,
+///     serde_field: SerdeStruct,
+/// 
+/// }
+/// ```
+/// Since the serialization of a struct with serde might fail, the generated code will only provide a try_into method to convert to ValueContainer,
+/// which returns a Result that must be handled by the user.
+/// 
+/// Alternatively, if you can guarantee that the serialization will not fail, you can use the `allow_serde_infallible` attribute,
+/// which will generate an infallible into method to convert to ValueContainer, but will panic if the serialization fails:
+/// 
+/// ```rust
+/// # use datex_macros_internal::Datex;
+/// # use serde::{Serialize, Deserialize};
+/// 
+/// #[derive(Serialize, Deserialize)]
+/// struct SerdeStruct {
+///     inner_field: String,
+/// }
+/// 
+/// #[derive(Datex)]
+/// #[datex(allow_serde_infallible)]
+/// struct MyStruct {
+///     field1: String,
+///     serde_field: SerdeStruct,
+/// 
+/// }
+///```
+/// 
 #[proc_macro_derive(Datex, attributes(datex))]
 pub fn datex_derive(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as syn::DeriveInput);

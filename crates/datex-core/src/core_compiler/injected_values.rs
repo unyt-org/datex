@@ -276,7 +276,7 @@ mod tests {
 
         let shared_value = SharedContainer::Owned(
             OwnedSharedContainer::new_with_inferred_allowed_type(
-                42.into(),
+                42,
                 SharedContainerMutability::Immutable,
                 address_provider,
             ),
