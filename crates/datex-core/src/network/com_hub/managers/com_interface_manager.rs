@@ -390,11 +390,14 @@ mod tests {
     use crate::network::com_interfaces::com_interface::factory::{
         SendCallback, SendSuccess, SocketConfiguration, SocketProperties,
     };
-
+    use crate::datex_proxy::DatexProxyInfallibleSerialize;
     use crate::prelude::*;
     use serde::{Deserialize, Serialize};
+    use datex_macros_internal::Datex;
+    use crate::datex_proxy::DatexProxySerialize;
 
-    #[derive(Deserialize, Serialize)]
+    #[derive(Datex)]
+    #[datex(internal)]
     struct MockSetupData {
         name: String,
     }
@@ -454,127 +457,126 @@ mod tests {
         }
     }
 
-    // #[test]
-    // fn test_create_interface_from_sync_factory() {
-    //     let interface_manager = ComInterfaceManager::default();
-    //
-    //     interface_manager.register_sync_interface_factory::<MockSetupData>();
-    //     let setup_data = MockSetupData {
-    //         name: "test-interface".to_string(),
-    //     };
-    //     let (com_interface_configuration, _) = interface_manager
-    //         .create_and_add_interface_sync(
-    //             "mock",
-    //             ValueContainer::from_serializable(&setup_data).unwrap(),
-    //             InterfacePriority::None,
-    //         )
-    //         .unwrap();
-    //
-    //     assert_eq!(
-    //         com_interface_configuration.properties.channel,
-    //         "mock".to_string()
-    //     );
-    //
-    //     assert_eq!(
-    //         com_interface_configuration.properties.name,
-    //         Some("test-interface".to_string())
-    //     );
-    //
-    //     // Clean up
-    //     interface_manager
-    //         .cleanup_interface(&com_interface_configuration.uuid())
-    //         .unwrap();
-    //
-    //     // Verify removal
-    //     assert!(
-    //         !interface_manager
-    //             .has_interface(&com_interface_configuration.uuid())
-    //     );
-    // }
-    //
-    // #[tokio::test]
-    // async fn test_create_interface_from_async_factory() {
-    //     let interface_manager = ComInterfaceManager::default();
-    //
-    //     interface_manager.register_async_interface_factory::<MockSetupData>();
-    //     let setup_data = MockSetupData {
-    //         name: "test-interface".to_string(),
-    //     };
-    //     let (com_interface_configuration, _) = interface_manager
-    //         .create_and_add_interface(
-    //             "mock",
-    //             ValueContainer::from_serializable(&setup_data).unwrap(),
-    //             InterfacePriority::None,
-    //         )
-    //         .await
-    //         .unwrap();
-    //
-    //     assert_eq!(
-    //         com_interface_configuration.properties.channel,
-    //         "mock".to_string()
-    //     );
-    //
-    //     assert_eq!(
-    //         com_interface_configuration.properties.name,
-    //         Some("test-interface".to_string())
-    //     );
-    //
-    //     // Clean up
-    //     interface_manager
-    //         .cleanup_interface(&com_interface_configuration.uuid())
-    //         .unwrap();
-    //
-    //     // Verify removal
-    //     assert!(
-    //         !interface_manager
-    //             .has_interface(&com_interface_configuration.uuid())
-    //     );
-    // }
-    //
-    // #[tokio::test]
-    // async fn test_create_interface_from_dyn_factory() {
-    //     let interface_manager = ComInterfaceManager::default();
-    //     let dyn_factory: DynInterfaceImplementationFactoryFn =
-    //         Rc::new(|setup_data: ValueContainer| {
-    //             Box::pin(async move {
-    //                 let setup: MockSetupData =
-    //                     setup_data.cast_to_deserializable().unwrap();
-    //                 setup.create_interface()
-    //             })
-    //         });
-    //     interface_manager
-    //         .register_dyn_interface_factory("mock".to_string(), dyn_factory);
-    //     let setup_data = MockSetupData {
-    //         name: "test-interface".to_string(),
-    //     };
-    //     let (com_interface_configuration, _) = interface_manager
-    //         .create_and_add_interface(
-    //             "mock",
-    //             ValueContainer::from_serializable(&setup_data).unwrap(),
-    //             InterfacePriority::None,
-    //         )
-    //         .await
-    //         .unwrap();
-    //
-    //     assert_eq!(
-    //         com_interface_configuration.properties.channel,
-    //         "mock".to_string()
-    //     );
-    //
-    //     assert_eq!(
-    //         com_interface_configuration.properties.name,
-    //         Some("test-interface".to_string())
-    //     );
-    //
-    //     // Clean up
-    //     interface_manager
-    //         .cleanup_interface(&com_interface_configuration.uuid())
-    //         .unwrap();
-    //
-    //     // Verify removal
-    //     assert!(
-    //         !interface_manager
-    //             .has_interface(&com_interface_configuration.uuid())
-    //     );
-    // }
+    #[test]
+    fn test_create_interface_from_sync_factory() {
+        let interface_manager = ComInterfaceManager::default();
+
+        interface_manager.register_sync_interface_factory::<MockSetupData>();
+        let setup_data = MockSetupData {
+            name: "test-interface".to_string(),
+        };
+        let (com_interface_configuration, _) = interface_manager
+            .create_and_add_interface_sync(
+                "mock",
+                setup_data.to_value_container(),
+                InterfacePriority::None,
+            )
+            .unwrap();
+
+        assert_eq!(
+            com_interface_configuration.properties.channel,
+            "mock".to_string()
+        );
+
+        assert_eq!(
+            com_interface_configuration.properties.name,
+            Some("test-interface".to_string())
+        );
+
+        // Clean up
+        interface_manager
+            .cleanup_interface(&com_interface_configuration.uuid())
+            .unwrap();
+
+        // Verify removal
+        assert!(
+            !interface_manager
+                .has_interface(&com_interface_configuration.uuid())
+        );
+    }
+
+    #[tokio::test]
+    async fn test_create_interface_from_async_factory() {
+        let interface_manager = ComInterfaceManager::default();
+
+        interface_manager.register_async_interface_factory::<MockSetupData>();
+        let setup_data = MockSetupData {
+            name: "test-interface".to_string(),
+        };
+        let (com_interface_configuration, _) = interface_manager
+            .create_and_add_interface(
+                "mock",
+                setup_data.to_value_container(),
+                InterfacePriority::None,
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(
+            com_interface_configuration.properties.channel,
+            "mock".to_string()
+        );
+
+        assert_eq!(
+            com_interface_configuration.properties.name,
+            Some("test-interface".to_string())
+        );
+
+        // Clean up
+        interface_manager
+            .cleanup_interface(&com_interface_configuration.uuid())
+            .unwrap();
+
+        // Verify removal
+        assert!(
+            !interface_manager
+                .has_interface(&com_interface_configuration.uuid())
+        );
+    }
+
+    #[tokio::test]
+    async fn test_create_interface_from_dyn_factory() {
+        let interface_manager = ComInterfaceManager::default();
+        let dyn_factory: DynInterfaceImplementationFactoryFn =
+            Rc::new(|setup_data: ValueContainer| {
+                Box::pin(async move {
+                    let setup = MockSetupData::try_from(setup_data).unwrap();
+                    setup.create_interface()
+                })
+            });
+        interface_manager
+            .register_dyn_interface_factory("mock".to_string(), dyn_factory);
+        let setup_data = MockSetupData {
+            name: "test-interface".to_string(),
+        };
+        let (com_interface_configuration, _) = interface_manager
+            .create_and_add_interface(
+                "mock",
+                setup_data.to_value_container(),
+                InterfacePriority::None,
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(
+            com_interface_configuration.properties.channel,
+            "mock".to_string()
+        );
+
+        assert_eq!(
+            com_interface_configuration.properties.name,
+            Some("test-interface".to_string())
+        );
+
+        // Clean up
+        interface_manager
+            .cleanup_interface(&com_interface_configuration.uuid())
+            .unwrap();
+
+        // Verify removal
+        assert!(
+            !interface_manager
+                .has_interface(&com_interface_configuration.uuid())
+        );
+    }
 }

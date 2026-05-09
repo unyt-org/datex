@@ -21,6 +21,7 @@ use core::{async_iter::AsyncIterator, fmt::Debug, pin::Pin};
 use futures::channel::oneshot::Sender;
 use futures_core::future::LocalBoxFuture;
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
+use crate::datex_proxy::DatexProxyDeserialize;
 
 pub type NewSocketsIterator = Pin<
     Box<dyn AsyncIterator<Item = Result<SocketConfiguration, ()>> + 'static>,
@@ -408,13 +409,12 @@ pub type CloseAsyncCallback = Box<dyn FnOnce() -> LocalBoxFuture<'static, ()>>;
 /// The trait should be implemented for the setup data type of the interface.
 /// Example:
 /// ```
-/// use serde::{Deserialize, Serialize};
+/// use datex_macros_internal::Datex;
 /// use datex_core::network::com_hub::errors::ComInterfaceCreateError;
 /// use datex_core::network::com_interfaces::com_interface::factory::{ComInterfaceSyncFactory,ComInterfaceConfiguration};
 /// use datex_core::network::com_interfaces::com_interface::properties::ComInterfaceProperties;
 ///
-///
-/// #[derive(Serialize, Deserialize)]
+/// #[derive(Datex)]
 /// struct ExampleInterfaceSetupData {
 ///    pub example_data: String,
 /// }
@@ -432,11 +432,10 @@ pub type CloseAsyncCallback = Box<dyn FnOnce() -> LocalBoxFuture<'static, ()>>;
 ///             ..Default::default()
 ///         }
 ///     }
-/// }
-///
+/// }///
 pub trait ComInterfaceSyncFactory
 where
-    Self: DeserializeOwned,
+    Self: DatexProxyDeserialize,
 {
     /// The factory method that is called from the ComHub on a registered interface
     /// to create a new instance of the interface.
@@ -444,10 +443,9 @@ where
     fn factory(
         setup_data: ValueContainer,
     ) -> Result<ComInterfaceConfiguration, ComInterfaceCreateError> {
-        todo!()
-        // let setup_data = from_value_container::<Self>(&setup_data)
-        //     .map_err(|_| ComInterfaceCreateError::SetupDataParseError)?;
-        // Self::create_interface(setup_data)
+        let setup_data = Self::try_from_value_container(setup_data)
+            .map_err(|_| ComInterfaceCreateError::SetupDataParseError)?;
+        Self::create_interface(setup_data)
     }
 
     /// Create a new instance of the interface with the given setup data.
@@ -466,16 +464,17 @@ where
 /// The trait should be implemented for the setup data type of the interface.
 /// Example:
 /// ```
-/// use serde::{Deserialize, Serialize};
+/// use datex_macros_internal::Datex;
 /// use datex_core::network::com_hub::errors::ComInterfaceCreateError;
 /// use datex_core::network::com_interfaces::com_interface::factory::ComInterfaceAsyncFactory;
 /// use datex_core::network::com_interfaces::com_interface::properties::ComInterfaceProperties;
-/// use datex_core::network::com_hub::managers::com_interface_manager::ComInterfaceAsyncFactoryResult;
+/// use datex_core::network::com_hub::managers::com_interface_manager::ComInterfaceAsyncFactoryResult;///
 ///
-/// #[derive(Serialize, Deserialize)]
+/// #[derive(Datex)]
 /// struct ExampleInterfaceSetupData {
 ///    pub example_data: String,
 /// }
+///
 /// impl ComInterfaceAsyncFactory for ExampleInterfaceSetupData {
 ///     fn create_interface(
 ///         self
@@ -494,17 +493,16 @@ where
 /// }
 pub trait ComInterfaceAsyncFactory
 where
-    Self: DeserializeOwned,
+    Self: DatexProxyDeserialize,
 {
     /// The factory method that is called from the ComHub on a registered interface
     /// to create a new instance of the interface.
     /// The setup data is passed as a ValueContainer and has to be downcasted
     fn factory(setup_data: ValueContainer) -> ComInterfaceAsyncFactoryResult {
         Box::pin(async move {
-            todo!()
-            // let setup_data = from_value_container::<Self>(&setup_data)
-            //     .map_err(|_| ComInterfaceCreateError::SetupDataParseError)?;
-            // Self::create_interface(setup_data).await
+            let setup_data = Self::try_from_value_container(setup_data)
+                .map_err(|_| ComInterfaceCreateError::SetupDataParseError)?;
+            Self::create_interface(setup_data).await
         })
     }
 

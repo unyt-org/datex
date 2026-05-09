@@ -1,4 +1,5 @@
-use proc_macro2::{Ident, TokenStream};
+use proc_macro2::{Ident, Span, TokenStream};
+use proc_macro_crate::{crate_name, FoundCrate};
 use quote::{format_ident, quote};
 use syn::{Attribute, Data, DataEnum, DataStruct, DeriveInput, Meta, Token};
 use syn::punctuated::Punctuated;
@@ -32,6 +33,8 @@ fn derive_struct(data_struct: DataStruct, ident: Ident, attrs: Vec<Attribute>) -
     let serde_mode = get_serde_mode(&attrs);
     let mut into_datex_fields: Vec<TokenStream> = vec![];
     let mut from_datex_fields: Vec<TokenStream> = vec![];
+
+    let datex_core_crate_name = get_datex_core_crate_name(&attrs);
 
     let has_named_fields = matches!(data_struct.fields, syn::Fields::Named(_));
 
@@ -193,11 +196,13 @@ fn derive_struct(data_struct: DataStruct, ident: Ident, attrs: Vec<Attribute>) -
 
     quote! {
         const _: () = {
-            use datex_core::datex_proxy::{DatexProxy, DatexProxyInfallibleSerialize, DatexProxySerialize, DatexProxyDeserialize};
-            use datex_core::values::value_container::ValueContainer;
-            use datex_core::values::value::Value;
-            use datex_core::values::core_values::map::Map;
-            use datex_core::values::core_values::list::List;
+            use #datex_core_crate_name::{
+                datex_proxy::{DatexProxy, DatexProxyInfallibleSerialize, DatexProxySerialize, DatexProxyDeserialize},
+                values::value_container::ValueContainer,
+                values::value::Value,
+                values::core_values::map::Map,
+                values::core_values::list::List,
+            };
 
             #[automatically_derived]
             impl DatexProxy for #ident {}
@@ -262,6 +267,28 @@ fn get_serde_mode(attrs: &[Attribute]) -> SerdeMode {
     }
 
     serde_mode
+}
+
+fn get_datex_core_crate_name(attrs: &[Attribute]) -> Ident {
+    // find datex(internal) attribute -> use crate:: identifier
+    for attr in attrs {
+        if attr.path().is_ident("datex") && let Meta::List(meta_list) = &attr.meta {
+            for nested in meta_list.parse_args_with(Punctuated::<Meta, Token![,]>::parse_terminated).unwrap() {
+                if let Meta::Path(path) = nested && path.is_ident("internal") {
+                    return format_ident!("crate");
+                }
+            }
+        }
+    }
+
+    // otherwise, find the crate name of datex_core and use it as an identifier
+    let found = crate_name("datex-core").unwrap();
+    match found {
+        FoundCrate::Itself => format_ident!("crate"),
+        FoundCrate::Name(name) => {
+            Ident::new(&name, Span::call_site())
+        }
+    }
 }
 
 
