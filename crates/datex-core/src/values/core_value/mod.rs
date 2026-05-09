@@ -59,6 +59,7 @@ pub enum CoreValue {
     Range(Range),
 }
 pub mod equality;
+pub mod datex_proxy;
 
 impl From<&str> for CoreValue {
     fn from(value: &str) -> Self {
@@ -221,13 +222,13 @@ impl CoreValue {
         CoreLibTypeId::from(self)
     }
 
-    /// Tries to get the current value as the specific [CoreValue] variant.
+    /// Tries to get a borrow of the current value as the specific [CoreValue] variant.
     /// Does not perform any type conversion.
-    pub fn try_as<T>(self) -> Option<T>
+    pub fn try_as<'a, T: 'a>(&'a self) -> Option<&'a T>
     where
-        T: TryFrom<CoreValue>,
+        &'a T: TryFrom<&'a CoreValue>,
     {
-        T::try_from(self).ok()
+        <&T>::try_from(self).ok()
     }
 
     /// Casts the value to a [Text] value

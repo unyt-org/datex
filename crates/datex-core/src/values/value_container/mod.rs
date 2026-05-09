@@ -34,6 +34,8 @@ use core::{
     ops::{Add, FnOnce, Neg, Sub},
 };
 pub mod error;
+pub mod datex_proxy;
+
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 
 #[derive(Debug, Eq, Clone)]
@@ -83,7 +85,20 @@ impl ValueContainer {
     where
         T: TryFrom<CoreValue>,
     {
-        self.with_collapsed_value(|value| value.inner.clone().try_as())
+        self.with_collapsed_value(|value| value.inner.clone().try_into().ok())
+    }
+
+    /// Tries to get the current collapsed value as a specific [CoreValue] variant.
+    /// Does not perform any type conversion.
+    /// Runs the provided closure with a reference to the typed value if the conversion was successful, otherwise returns None.
+    pub fn try_with<T, R, F>(&self, f: F) -> Option<R>
+    where
+        F: for<'a> FnOnce(&'a T) -> R,
+        for<'a> &'a T: TryFrom<&'a CoreValue>,
+    {
+        self.with_collapsed_value(|value| {
+            value.inner.try_as().map(f)
+        })
     }
 
     /// Performs a clone used by the "clone" command

@@ -1,3 +1,5 @@
+pub mod datex_proxy;
+
 use crate::{
     runtime::memory::Memory,
     shared_values::{
@@ -15,6 +17,9 @@ use core::{
     cell::{Ref, RefCell, RefMut},
     fmt::Display,
 };
+use crate::traits::identity::Identity;
+use crate::traits::structural_eq::StructuralEq;
+use crate::traits::value_eq::ValueEq;
 
 /// Wrapper struct for a reference to a shared value (i.e. `'shared X` or `'mut shared X`).
 ///
@@ -252,5 +257,41 @@ impl _ExposeRcInternal for ReferencedSharedContainer {
     type Shared = SharedContainerInner;
     fn get_rc_internal(&self) -> &Rc<RefCell<Self::Shared>> {
         &self.inner
+    }
+}
+
+
+impl Identity for ReferencedSharedContainer {
+    fn identical(&self, other: &Self) -> bool {
+        Rc::ptr_eq(&self.inner, &other.inner)
+    }
+}
+
+impl Eq for ReferencedSharedContainer {}
+
+/// PartialEq corresponds to pointer equality / identity for `Reference`.
+impl PartialEq for ReferencedSharedContainer {
+    fn eq(&self, other: &Self) -> bool {
+        self.identical(other)
+    }
+}
+
+impl StructuralEq for ReferencedSharedContainer {
+    fn structural_eq(&self, other: &Self) -> bool {
+        self.inner()
+            .base_shared_container()
+            .value_container
+            .structural_eq(
+                &other.inner().base_shared_container().value_container,
+            )
+    }
+}
+
+impl ValueEq for ReferencedSharedContainer {
+    fn value_eq(&self, other: &Self) -> bool {
+        self.inner()
+            .base_shared_container()
+            .value_container
+            .value_eq(&other.inner().base_shared_container().value_container)
     }
 }

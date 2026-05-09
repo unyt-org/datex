@@ -5,7 +5,7 @@
         "decompiler",
         "std",
         "macro_utils",
-        "compiler",
+        "compiler"
     ],
     "rust-analyzer.procMacro.enable": true,
     "rust-analyzer.check.command": "clippy",

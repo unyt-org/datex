@@ -1,5 +1,5 @@
 use datex_core::{
-    macro_utils::datex_proxy::DatexProxy,
+    datex_proxy::DatexProxy,
     prelude::*,
     values::{
         core_values::{endpoint::Endpoint, map::Map},
@@ -23,6 +23,7 @@ struct SerdeExample {
 }
 
 #[derive(Datex, Debug, Clone, PartialEq)]
+#[datex(allow_serde)]
 struct SerdeDatexExample {
     a: u8,
     serde: SerdeExample,
@@ -32,13 +33,15 @@ fn assert_round_trip<T>(value: T)
 where
     T: DatexProxy + PartialEq + std::fmt::Debug + Clone,
 {
-    let value_container = value.clone().datex_to_value_container().unwrap();
+    let value_container = value.clone().try_to_value_container().unwrap();
     let deserialized_value =
-        T::datex_from_value_container(value_container).unwrap();
+        T::try_from_value_container(value_container).unwrap();
     assert_eq!(value, deserialized_value);
 }
 
 use test_case::test_case;
+use datex_core::runtime::pointer_address_provider::SelfOwnedPointerAddressProvider;
+use datex_core::shared_values::{OwnedSharedContainer, PointerAddress, SharedContainer, SharedContainerMutability};
 
 #[test_case(
     Example {
@@ -54,9 +57,9 @@ use test_case::test_case;
             inner_b: "Inner".to_string(),
         },
     } ; "struct with serde field")]
-#[test_case(vec![1u8, 2, 3] ; "vector of primitives")]
-#[test_case(vec![Endpoint::try_from("@ben").unwrap(), Endpoint::try_from("@jonas").unwrap()] ; "vector of datex direct types")]
-// #[case(Map::from(vec![
+// #[test_case(vec![1u8, 2, 3] ; "vector of primitives")]
+// #[test_case(vec![Endpoint::try_from("@ben").unwrap(), Endpoint::try_from("@jonas").unwrap()] ; "vector of datex direct types")]
+// #[test_case(Map::from(vec![
 //     ("key1".to_string(), ValueContainer::from(42u8)),
 //     ("key2".to_string(), ValueContainer::from("Value".to_string())),
 // ]) ; "map of primitives")]
@@ -74,8 +77,7 @@ fn struct_to_value_container() {
         b: "Test".to_string(),
         c: Endpoint::default(),
     }
-    .try_into()
-    .unwrap();
+    .into();
 
     let map: Map = value_container.try_as().unwrap();
     assert_eq!(map.get("a").unwrap(), &ValueContainer::from(42u8));
@@ -125,4 +127,80 @@ fn struct_with_serde_to_value_container() {
         serde_map.get("inner_b").unwrap(),
         &ValueContainer::from("Inner".to_string())
     );
+}
+
+#[test]
+fn struct_with_value_container() {
+    let address_provider = &mut SelfOwnedPointerAddressProvider::default();
+
+    #[derive(Datex, Debug, PartialEq)]
+    struct ExampleWithValueContainer {
+        a: u8,
+        val: ValueContainer,
+    }
+
+    // local inner value container
+    let example_local = ExampleWithValueContainer {
+        a: 42u8,
+        val: ValueContainer::from("Test".to_string()),
+    };
+
+    let value_container: ValueContainer = example_local.into();
+    let map: Map = value_container.try_as().unwrap();
+    assert_eq!(map.get("a").unwrap(), &ValueContainer::from(42u8));
+    assert_eq!(
+        map.get("val").unwrap(),
+        &ValueContainer::from("Test".to_string())
+    );
+
+    // shared inner value container
+    let shared_container = ValueContainer::Shared(
+        SharedContainer::new_owned_with_inferred_allowed_type(42, SharedContainerMutability::Mutable, address_provider)
+    );
+    let example_shared = ExampleWithValueContainer {
+        a: 42u8,
+        val: shared_container.clone(),
+    };
+
+    let value_container: ValueContainer = example_shared.into();
+    let map: Map = value_container.try_as().unwrap();
+    assert_eq!(map.get("a").unwrap(), &ValueContainer::from(42u8));
+    assert_eq!(
+        map.get("val").unwrap(),
+        &shared_container
+    );
+
+    let deserialized_example_shared: ExampleWithValueContainer = value_container.try_into().unwrap();
+    assert_eq!(deserialized_example_shared.a, 42u8);
+    assert_eq!(deserialized_example_shared.val, shared_container);
+}
+
+#[test]
+fn struct_with_owned_shared_value_container() {
+    let address_provider = &mut SelfOwnedPointerAddressProvider::default();
+
+    #[derive(Datex, Debug, PartialEq)]
+    struct ExampleWithOwnedContainer {
+        owned: OwnedSharedContainer,
+    }
+
+    let owned_container = OwnedSharedContainer::new_with_inferred_allowed_type(
+        42, SharedContainerMutability::Mutable, address_provider
+    );
+    let address = owned_container.pointer_address().clone();
+    let example = ExampleWithOwnedContainer {
+        owned: owned_container,
+    };
+
+    let value_container: ValueContainer = example.into();
+
+    value_container.try_with(|map: &Map| {
+        if let ValueContainer::Shared(SharedContainer::Owned(shared_container)) = map.get("owned").unwrap() {
+            assert_eq!(*shared_container.pointer_address(), address);
+        } else {
+            panic!("Expected a Shared Owned variant in the ValueContainer");
+        }
+    });
+
+    // TODO: datex(allow_serde) function mapping, SharedRef<x>, Shared<x>
 }

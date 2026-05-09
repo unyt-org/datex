@@ -18,6 +18,7 @@ use crate::{
         value_container::ValueContainer,
     },
 };
+use crate::datex_proxy::{DatexProxy, DatexProxyDeserialize, DatexProxyInfallibleSerialize, DatexProxySerialize};
 
 macro_rules! impl_try_from_core_value {
     ($($variant:ident => $type:ty),* $(,)?) => {
@@ -25,6 +26,13 @@ macro_rules! impl_try_from_core_value {
             impl TryFrom<CoreValue> for $type {
                 type Error = ();
                 fn try_from(value: CoreValue) -> Result<Self, Self::Error> {
+                    match value { CoreValue::$variant(v) => Ok(v), _ => Err(()) }
+                }
+            }
+
+            impl<'a> TryFrom<&'a CoreValue> for &'a $type {
+                type Error = ();
+                fn try_from(value: &'a CoreValue) -> Result<Self, Self::Error> {
                     match value { CoreValue::$variant(v) => Ok(v), _ => Err(()) }
                 }
             }
@@ -81,12 +89,22 @@ macro_rules! derive_try_from_chain {
             }
         }
 
-        impl crate::macro_utils::datex_proxy::DatexProxy for $type {
-            fn datex_to_value_container(self) -> Result<ValueContainer, ()> {
+        impl DatexProxy for $type {}
+
+        impl DatexProxyInfallibleSerialize for $type {
+            fn to_value_container(self) -> ValueContainer {
+               ValueContainer::from(self)
+            }
+        }
+        impl DatexProxySerialize for $type {
+            fn try_to_value_container(self) -> Result<ValueContainer, ()> {
                 Ok(ValueContainer::from(self))
             }
-
-            fn datex_from_value_container(value: ValueContainer) -> Result<Self, ()> {
+        }
+        impl DatexProxyDeserialize for $type {
+            fn try_from_value_container(
+                value: ValueContainer,
+            ) -> Result<Self, ()> {
                 value.try_into().map_err(|_| ())
             }
         }
@@ -96,17 +114,23 @@ macro_rules! derive_try_from_chain {
 macro_rules! impl_datex_direct_via_value_container {
     ($($ty:ty),* $(,)?) => {
         $(
-            impl crate::macro_utils::datex_proxy::DatexProxy for $ty {
-                fn datex_to_value_container(
-                    self,
-                ) -> Result<crate::values::value_container::ValueContainer, ()> {
-                    Ok(crate::values::value_container::ValueContainer::from(self))
-                }
+            impl DatexProxy for $ty {}
 
-                fn datex_from_value_container(
-                    value: crate::values::value_container::ValueContainer,
+            impl DatexProxyInfallibleSerialize for $ty {
+                fn to_value_container(self) -> ValueContainer {
+                   ValueContainer::from(self)
+                }
+            }
+            impl DatexProxySerialize for $ty {
+                fn try_to_value_container(self) -> Result<ValueContainer, ()> {
+                    Ok(ValueContainer::from(self))
+                }
+            }
+            impl DatexProxyDeserialize for $ty {
+                fn try_from_value_container(
+                    value: ValueContainer,
                 ) -> Result<Self, ()> {
-                    value.try_as().ok_or(())
+                   value.try_as().ok_or(())
                 }
             }
         )*

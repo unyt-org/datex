@@ -1,3 +1,5 @@
+pub mod datex_proxy;
+
 use crate::{
     libs::core::type_id::CoreLibBaseTypeId,
     runtime::{
@@ -25,7 +27,9 @@ use core::{
     fmt::Display,
     mem,
 };
-use serde::Serialize;
+use crate::traits::identity::Identity;
+use crate::traits::structural_eq::StructuralEq;
+use crate::traits::value_eq::ValueEq;
 
 /// Wrapper struct for an owned shared value (i.e. `shared X`)
 /// It is guaranteed that the inner value is a [SharedContainerInner::EndpointOwned].
@@ -81,15 +85,15 @@ impl OwnedSharedContainer {
     /// a [SharedContainerMutability], and an [SelfOwnedPointerAddress].
     ///
     /// The allowed type is inferred from the value_container's allowed type.
-    pub fn new_with_inferred_allowed_type(
-        value_container: ValueContainer,
+    pub fn new_with_inferred_allowed_type<T: Into<ValueContainer>>(
+        value_container: T,
         mutability: SharedContainerMutability,
         address_provider: &mut SelfOwnedPointerAddressProvider,
     ) -> Self {
         // Note: address provider guarantees new unique address
         unsafe {
             Self::new_with_inferred_allowed_type_unsafe(
-                value_container,
+                value_container.into(),
                 mutability,
                 address_provider.get_new_self_owned_address(),
             )
@@ -310,5 +314,40 @@ impl _ExposeRcInternal for OwnedSharedContainer {
     type Shared = SharedContainerInner;
     fn get_rc_internal(&self) -> &Rc<RefCell<Self::Shared>> {
         &self.inner
+    }
+}
+
+impl Identity for OwnedSharedContainer {
+    fn identical(&self, other: &Self) -> bool {
+        Rc::ptr_eq(&self.inner, &other.inner)
+    }
+}
+
+impl Eq for OwnedSharedContainer {}
+
+/// PartialEq corresponds to pointer equality / identity for `Reference`.
+impl PartialEq for OwnedSharedContainer {
+    fn eq(&self, other: &Self) -> bool {
+        self.identical(other)
+    }
+}
+
+impl StructuralEq for OwnedSharedContainer {
+    fn structural_eq(&self, other: &Self) -> bool {
+        self.inner()
+            .base_shared_container()
+            .value_container
+            .structural_eq(
+                &other.inner().base_shared_container().value_container,
+            )
+    }
+}
+
+impl ValueEq for OwnedSharedContainer {
+    fn value_eq(&self, other: &Self) -> bool {
+        self.inner()
+            .base_shared_container()
+            .value_container
+            .value_eq(&other.inner().base_shared_container().value_container)
     }
 }

@@ -25,7 +25,7 @@ pub fn core_lib_string(input: TokenStream) -> TokenStream {
     core_lib::derive_core_string(input).into()
 }
 
-#[proc_macro_derive(Datex)]
+#[proc_macro_derive(Datex, attributes(datex))]
 pub fn datex_derive(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as syn::DeriveInput);
     datex_proxy::derive(input).into()

@@ -1,21 +1,35 @@
 use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote};
-use syn::{Data, DataEnum, DataStruct, DeriveInput};
+use syn::{Attribute, Data, DataEnum, DataStruct, DeriveInput, Meta, Token};
+use syn::punctuated::Punctuated;
+
+enum SerdeMode {
+    /// Serde serializable/deserializable fields are not allowed inside the datex proxy value.
+    /// Since the generated code will not attempt to serialize any fields with serde,
+    /// it will only provide an infallible into method to convert to ValueContainer
+    None,
+    /// Serde serializable/deserializable fields are allowed inside the datex proxy value.
+    /// It is assumed that the serialization might fail, so the generated code will only provide a
+    /// try_into method to convert to ValueContainer
+    Fallible,
+    /// Serde serializable/deserializable fields are allowed inside the datex proxy value.
+    /// The user explicitly guarantees that the serialization will not fail, so the generated code will
+    /// provide an infallible into method to convert to ValueContainer
+    Infallible
+}
 
 /// Derive implementation for the [Datex] derive macro.
 pub fn derive(input: DeriveInput) -> TokenStream {
     match input.data {
-        Data::Struct(data_struct) => derive_struct(data_struct, input.ident),
+        Data::Struct(data_struct) => derive_struct(data_struct, input.ident, input.attrs),
         Data::Enum(data_enum) => derive_enum(data_enum),
         _ => unimplemented!(),
     }
 }
 
 /// Derive implementation for structs
-pub fn derive_struct(data_struct: DataStruct, ident: Ident) -> TokenStream {
-    let mod_ident =
-        format_ident!("__{}_datex", ident.to_string().to_ascii_lowercase());
-
+fn derive_struct(data_struct: DataStruct, ident: Ident, attrs: Vec<Attribute>) -> TokenStream {
+    let serde_mode = get_serde_mode(&attrs);
     let mut into_datex_fields: Vec<TokenStream> = vec![];
     let mut from_datex_fields: Vec<TokenStream> = vec![];
 
@@ -28,16 +42,38 @@ pub fn derive_struct(data_struct: DataStruct, ident: Ident) -> TokenStream {
             Some(field_ident) => {
                 let field_name = field_ident.to_string();
 
+                let field_into = match serde_mode {
+                    // no serde or infallible serde, provide/assume DatexProxyInfallibleSerialize
+                    SerdeMode::None => {
+                        quote! {
+                            DatexProxyInfallibleSerialize::to_value_container(value.#field_ident)
+                        }
+                    },
+                    // Allow serde fields that only default implement DatexProxySerialize
+                    // and propagate the error if the serialization fails
+                    SerdeMode::Fallible => {
+                        quote! {
+                            DatexProxySerialize::try_to_value_container(value.#field_ident).map_err(|_| ())?,
+                        }
+                    },
+                    // Allow serde fields that only default implement DatexProxySerialize
+                    // but panic if the serialization fails, since the user explicitly guarantees that it won't fail
+                    SerdeMode::Infallible => {
+                        quote! {
+                            DatexProxySerialize::try_to_value_container(value.#field_ident).expect("Serde serialization for Datex value with datex(serde_infallible)")
+                        }
+                    },
+                };
+
                 into_datex_fields.push(quote! {
                     (
                         #field_name.to_string(),
-                        DatexProxy::datex_to_value_container(value.#field_ident)
-                            .map_err(|_| ())?,
+                        #field_into
                     ),
                 });
 
                 from_datex_fields.push(quote! {
-                    #field_ident: DatexProxy::datex_from_value_container(
+                    #field_ident: DatexProxyDeserialize::try_from_value_container(
                             map.get(#field_name)
                                 .map_err(|_| ())?
                                 .clone()
@@ -51,12 +87,12 @@ pub fn derive_struct(data_struct: DataStruct, ident: Ident) -> TokenStream {
                 let field_index = syn::Index::from(index);
 
                 into_datex_fields.push(quote! {
-                    DatexProxy::datex_to_value_container(value.#field_index)
+                    DatexProxyInfallibleSerialize::to_value_container(value.#field_index)
                         .map_err(|_| ())?,
                 });
 
                 from_datex_fields.push(quote! {
-                    DatexProxy::datex_from_value_container(
+                    DatexProxyDeserialize::try_from_value_container(
                             list.get(#index)
                                 .map_err(|_| ())?
                                 .clone()
@@ -99,28 +135,75 @@ pub fn derive_struct(data_struct: DataStruct, ident: Ident) -> TokenStream {
         }}
     };
 
+    let serialize = match serde_mode {
+        // no serde or infallible serde, provide/assume DatexProxyInfallibleSerialize
+        SerdeMode::None | SerdeMode::Infallible=> {
+            quote! {
+                #[automatically_derived]
+                impl From<#ident> for ValueContainer {
+                    fn from(value: #ident) -> Self {
+                        ValueContainer::from(#into_datex_fields_inner)
+                    }
+                }
+
+                #[automatically_derived]
+                impl DatexProxyInfallibleSerialize for #ident {
+                    fn to_value_container(self) -> ValueContainer {
+                       ValueContainer::from(self)
+                    }
+                }
+
+                #[automatically_derived]
+                impl DatexProxySerialize for #ident {
+                    fn try_to_value_container(self) -> Result<ValueContainer, ()> {
+                        Ok(ValueContainer::from(self))
+                    }
+                }
+            }
+        },
+        SerdeMode::Fallible => {
+            quote! {
+                #[automatically_derived]
+                impl TryFrom<#ident> for ValueContainer {
+                    type Error = ();
+
+                    fn try_from(value: #ident) -> Result<Self, Self::Error> {
+                        Ok(ValueContainer::from(#into_datex_fields_inner))
+                    }
+                }
+
+                #[automatically_derived]
+                impl DatexProxySerialize for #ident {
+                    fn try_to_value_container(self) -> Result<ValueContainer, ()> {
+                        self.try_into()
+                    }
+                }
+            }
+        },
+    };
+
     quote! {
-        pub mod #mod_ident {
-            use super::*;
-
-            use datex_core::macro_utils::datex_proxy::{
-                DatexProxy,
-            };
-
+        const _: () = {
+            use datex_core::datex_proxy::{DatexProxy, DatexProxyInfallibleSerialize, DatexProxySerialize, DatexProxyDeserialize};
             use datex_core::values::value_container::ValueContainer;
             use datex_core::values::core_values::map::Map;
             use datex_core::values::core_values::list::List;
 
-            impl DatexProxy for #ident {
-                fn datex_to_value_container(self) -> Result<ValueContainer, ()> {
-                    self.try_into()
-                }
+            #[automatically_derived]
+            impl DatexProxy for #ident {}
 
-                fn datex_from_value_container(value: ValueContainer) -> Result<Self, ()> {
-                    value.try_into()
+            #serialize
+
+            #[automatically_derived]
+            impl DatexProxyDeserialize for #ident {
+                fn try_from_value_container(
+                    value: ValueContainer,
+                ) -> Result<Self, ()> {
+                   value.try_into()
                 }
             }
 
+            #[automatically_derived]
             impl TryFrom<ValueContainer> for #ident {
                 type Error = ();
 
@@ -128,18 +211,38 @@ pub fn derive_struct(data_struct: DataStruct, ident: Ident) -> TokenStream {
                     Ok(#from_datex_fields_inner)
                 }
             }
+        };
+    }
+}
 
-            impl TryFrom<#ident> for ValueContainer {
-                type Error = ();
+fn get_serde_mode(attrs: &[Attribute]) -> SerdeMode {
+    let mut serde_mode = SerdeMode::None;
 
-                fn try_from(value: #ident) -> Result<Self, Self::Error> {
-                    Ok(ValueContainer::from(#into_datex_fields_inner))
+    // find datex(allow_serde) or datex(allow_serde_infallible) attribute
+    for attr in attrs {
+        if attr.path().is_ident("datex") && let Meta::List(meta_list) = &attr.meta {
+            for nested in meta_list.parse_args_with(Punctuated::<Meta, Token![,]>::parse_terminated).unwrap() {
+                if let Meta::Path(path) = nested {
+                    if path.is_ident("allow_serde") {
+                        if let SerdeMode::Infallible = serde_mode {
+                            panic!("Cannot use both datex(allow_serde) and datex(allow_serde_infallible) on the same struct");
+                        }
+                        serde_mode = SerdeMode::Fallible;
+                    } else if path.is_ident("allow_serde_infallible") {
+                        if let SerdeMode::Fallible = serde_mode {
+                            panic!("Cannot use both datex(allow_serde) and datex(allow_serde_infallible) on the same struct");
+                        }
+                        serde_mode = SerdeMode::Infallible;
+                    }
                 }
             }
         }
     }
+
+    serde_mode
 }
 
-pub fn derive_enum(data_enum: DataEnum) -> TokenStream {
+
+fn derive_enum(data_enum: DataEnum) -> TokenStream {
     todo!()
 }

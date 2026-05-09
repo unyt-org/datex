@@ -17,6 +17,8 @@ pub mod equality;
 pub mod ops;
 pub mod serde_dif;
 pub mod update_handler;
+pub mod datex_proxy;
+
 use crate::{
     runtime::memory::Memory, shared_values::errors::AccessError,
     types::r#type::Type,

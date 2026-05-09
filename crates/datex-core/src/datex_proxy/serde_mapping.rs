@@ -8,6 +8,7 @@ use crate::values::core_values::list::List;
 use crate::values::core_values::map::{BorrowedMapKey, Map};
 use crate::values::value::Value;
 use crate::values::value_container::ValueContainer;
+use crate::prelude::*;
 
 impl Serialize for ValueContainer {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -91,7 +92,7 @@ impl<'de> Deserialize<'de> for CoreValue {
         impl<'de> Visitor<'de> for CoreValueVisitor {
             type Value = CoreValue;
 
-            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            fn expecting(&self, formatter: &mut core::fmt::Formatter) -> core::fmt::Result {
                 formatter.write_str("a valid DATEX core value")
             }
 
