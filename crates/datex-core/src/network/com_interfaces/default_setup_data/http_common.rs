@@ -1,8 +1,8 @@
 use core::fmt::Display;
 
 use crate::{
-    network::com_hub::errors::ComInterfaceCreateError, prelude::*,
-    runtime::RuntimeConfigInterface,
+    datex_proxy::DatexProxy, network::com_hub::errors::ComInterfaceCreateError,
+    prelude::*, runtime::RuntimeConfigInterface,
 };
 use serde::{Deserialize, Serialize};
 use url::Url;
@@ -57,7 +57,7 @@ pub fn parse_url(address: &str) -> Result<Url, URLError> {
 }
 
 /// Generates the setup data for client interfaces based on the server's accept addresses.
-pub fn get_clients_setup_data<T: Serialize>(
+pub fn get_clients_setup_data<T: DatexProxy>(
     accept_addresses: Option<Vec<AcceptAddress>>,
     protocols: (String, String),
     interface_type: String,

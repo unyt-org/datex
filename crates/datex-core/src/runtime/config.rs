@@ -1,18 +1,21 @@
 use crate::{
     collections::HashMap,
+    datex_proxy::DatexProxy,
     network::com_hub::InterfacePriority,
     prelude::*,
     values::{
         core_values::endpoint::Endpoint, value_container::ValueContainer,
     },
 };
+use datex_macros_internal::Datex;
 use serde::Serialize;
 
 pub fn is_priority_none(v: &InterfacePriority) -> bool {
     matches!(v, InterfacePriority::None)
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Datex, Debug, Clone, PartialEq, Eq)]
+#[datex(allow_serde_infallible)]
 #[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
 pub struct RuntimeConfigInterface {
     // #[serde(rename = "type")]
@@ -26,14 +29,19 @@ pub struct RuntimeConfigInterface {
 }
 
 impl RuntimeConfigInterface {
-    pub fn new<T: Serialize>(
+    pub fn new<T: DatexProxy>(
         interface_type: &str,
         setup_data: T,
     ) -> Result<RuntimeConfigInterface, String> {
         Ok(RuntimeConfigInterface {
             interface_type: interface_type.to_string(),
             priority: InterfacePriority::default(),
-            setup_data: todo!(),// to_value_container(&setup_data)?,
+            setup_data: setup_data.try_to_value_container().map_err(|e| {
+                format!(
+                    "Failed to convert setup_data to ValueContainer: {:?}",
+                    e
+                )
+            })?,
         })
     }
 
@@ -123,7 +131,13 @@ impl RuntimeConfig {
 
 #[cfg(test)]
 pub mod tests {
-    use crate::{prelude::*, runtime::RuntimeConfig};
+    use datex_macros_internal::Datex;
+
+    use crate::{
+        prelude::*,
+        runtime::{RuntimeConfig, RuntimeConfigInterface},
+        values::{core_values::map::Map, value_container::ValueContainer},
+    };
 
     #[test]
     fn test_add_env_var() {
@@ -131,5 +145,30 @@ pub mod tests {
         config.add_env_var("KEY1".to_string(), "VALUE1".to_string());
         let env_vars = config.env.unwrap();
         assert_eq!(env_vars.get("KEY1"), Some(&"VALUE1".to_string()));
+    }
+
+    #[test]
+    fn test_serde() {
+        #[derive(Datex)]
+        struct MySetupData {
+            field1: String,
+            field2: i32,
+        }
+        let config: RuntimeConfigInterface = RuntimeConfigInterface::new(
+            "test",
+            MySetupData {
+                field1: "value".to_string(),
+                field2: 42,
+            },
+        )
+        .unwrap();
+        assert_eq!(config.interface_type, "test");
+        let setup_data = config.setup_data;
+        let map = setup_data.try_as::<Map>().unwrap();
+        assert_eq!(
+            map.get("field1").unwrap().try_as::<String>().unwrap(),
+            "value".to_string()
+        );
+        assert_eq!(map.get("field2").unwrap().try_as::<i32>().unwrap(), 42);
     }
 }
