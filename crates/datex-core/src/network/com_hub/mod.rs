@@ -125,7 +125,7 @@ impl Debug for ComHub {
 }
 
 #[derive(
-    Debug, Clone, Copy, Ord, PartialOrd, Eq, PartialEq, Serialize, Deserialize,
+    Debug, Clone, Copy, Ord, PartialOrd, Eq, PartialEq, Serialize, Deserialize
 )]
 #[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
 pub enum InterfacePriority {
@@ -1652,6 +1652,7 @@ pub mod tests {
     use log::info;
     use serde::Deserialize;
     use tokio::task::yield_now;
+    use datex_macros_internal::Datex;
 
     /// Creates a mock ComHub for testing without a connected channel
     async fn run_with_com_hub<AppReturn, AppFuture>(
@@ -1857,7 +1858,7 @@ pub mod tests {
         blocks
     }
 
-    #[derive(Debug, Clone, Deserialize)]
+    #[derive(Datex, Debug, Clone)]
     struct MockupInterfaceSetupData {
         pub name: String,
     }

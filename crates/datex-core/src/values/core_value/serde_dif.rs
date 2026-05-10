@@ -128,7 +128,7 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, CoreValue> {
 
                         "endpoint" => {
                             let value =
-                                map.next_value_seed(self.cast::<Endpoint>())?;
+                                map.next_value()?;
                             CoreValue::Endpoint(value)
                         }
 

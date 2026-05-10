@@ -30,17 +30,6 @@ impl<'a> Deserialize<'a> for Endpoint {
     }
 }
 
-impl<'de, 'ctx> DeserializeSeed<'de> for SerdeContext<'ctx, Endpoint> {
-    type Value = Endpoint;
-
-    fn deserialize<D>(self, deserializer: D) -> Result<Endpoint, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        deserializer.deserialize_str(self)
-    }
-}
-
 impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, Endpoint> {
     type Value = Endpoint;
 

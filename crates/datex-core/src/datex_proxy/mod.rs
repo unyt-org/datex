@@ -1,14 +1,18 @@
-pub mod serde_mapping;
+pub mod serde_compat;
 pub mod shared;
 
+use std::hash::Hash;
 use crate::values::value_container::ValueContainer;
-use serde::{Serialize, de::DeserializeOwned};
+use serde::{Serialize, de::DeserializeOwned, Deserialize};
+#[cfg(feature = "compiler")]
 use crate::compiler::error::SpannedCompilerError;
+#[cfg(feature = "parser")]
 use crate::parser::errors::SpannedParserError;
 use crate::runtime::execution::{ExecutionError};
 use crate::runtime::{Runtime};
 use crate::runtime::execution::context::ScriptExecutionError;
 use crate::values::value::Value;
+use crate::prelude::*;
 
 #[derive(Debug, Clone)]
 pub struct TryFromDatexValueError(pub String);
@@ -156,53 +160,27 @@ pub trait DatexValueProxyInfallibleSerialize {
     fn to_value(self) -> Value;
 }
 
-/// Default [DatexValueContainerProxy] implementation for all types that implement Serialize and DeserializeOwned
-impl<T> DatexValueContainerProxySerialize for T
-where
-    T: Serialize,
-{
-    /// Converts a [Serialize] value into a [ValueContainer] by first converting it to a [serde_value::Value] and then deserializing it into a [ValueContainer].
-    default fn try_to_value_container(self) -> Result<ValueContainer, TryToDatexValueError> {
-        let serde_val = serde_value::to_value(self).map_err(|err| TryToDatexValueError(err.to_string()))?;
-        serde_val.deserialize_into().map_err(|err| TryToDatexValueError(err.to_string()))
+
+// Blanket DatexValueContainerProxy trait impls for types that implement DatexValueProxy traits:
+impl<T: DatexValueProxyDeserialize> DatexValueContainerProxyDeserialize for T {
+    fn try_from_value_container(value: ValueContainer) -> Result<Self, TryFromDatexValueError> {
+        match value {
+            ValueContainer::Local(val) => DatexValueProxyDeserialize::try_from_value(val),
+            _ => Err(TryFromDatexValueError("Cannot cast from ValueContainer::Shared, expected ValueContainer::Local".to_string())),
+        }
     }
 }
 
-impl<T> DatexValueContainerProxyDeserialize for T
-where
-    T: DeserializeOwned,
-{
-    /// Converts a [ValueContainer] into a [DeserializeOwned] type by first converting it to a [serde_value::Value] and then deserializing it into the target type.
-    default fn try_from_value_container(
-        value: ValueContainer,
-    ) -> Result<Self, TryFromDatexValueError> {
-        let serde_val = serde_value::to_value(value).map_err(|err| TryFromDatexValueError(err.to_string()))?;
-        T::deserialize(serde_val).map_err(|err| TryFromDatexValueError(err.to_string()))
+impl<T: DatexValueProxySerialize> DatexValueContainerProxySerialize for T {
+    fn try_to_value_container(self) -> Result<ValueContainer, TryToDatexValueError> {
+        DatexValueProxySerialize::try_to_value(self).map(ValueContainer::from)
     }
 }
 
-
-/// Default [DatexValueProxy] implementation for all types that implement Serialize and DeserializeOwned
-impl<T> DatexValueProxySerialize for T
-where
-    T: Serialize,
-{
-    /// Converts a [Serialize] value into a [Value] by first converting it to a [serde_value::Value] and then deserializing it into a [Value].
-    default fn try_to_value(self) -> Result<Value, TryToDatexValueError> {
-        let serde_val = serde_value::to_value(self).map_err(|err| TryToDatexValueError(err.to_string()))?;
-        serde_val.deserialize_into().map_err(|err| TryToDatexValueError(err.to_string()))
+impl<T: DatexValueProxyInfallibleSerialize> DatexValueContainerProxyInfallibleSerialize for T {
+    fn to_value_container(self) -> ValueContainer {
+        ValueContainer::from(DatexValueProxyInfallibleSerialize::to_value(self))
     }
 }
 
-impl<T> DatexValueProxyDeserialize for T
-where
-    T: DeserializeOwned,
-{
-    /// Converts a [Value] into a [DeserializeOwned] type by first converting it to a [serde_value::Value] and then deserializing it into the target type.
-    default fn try_from_value(
-        value: Value,
-    ) -> Result<Self, TryFromDatexValueError> {
-        let serde_val = serde_value::to_value(value).map_err(|err| TryFromDatexValueError(err.to_string()))?;
-        T::deserialize(serde_val).map_err(|err| TryFromDatexValueError(err.to_string()))
-    }
-}
+impl<T: DatexValueProxy> DatexValueContainerProxy for T {}

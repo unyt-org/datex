@@ -1,13 +1,13 @@
 use core::fmt::Display;
 
 use crate::{
-    datex_proxy::DatexValueContainerProxy, network::com_hub::errors::ComInterfaceCreateError,
+    network::com_hub::errors::ComInterfaceCreateError,
     prelude::*, runtime::RuntimeConfigInterface,
 };
 use serde::{Deserialize, Serialize};
 use url::Url;
 use datex_macros_internal::Datex;
-use crate::datex_proxy::{DatexValueContainerProxyDeserialize, DatexValueContainerProxySerialize, DatexValueProxySerialize};
+use crate::datex_proxy::{DatexValueContainerProxyDeserialize, DatexValueProxySerialize};
 
 #[derive(Debug)]
 pub enum URLError {
@@ -39,10 +39,10 @@ pub enum TLSMode {
 }
 
 #[derive(Datex, Debug, Serialize, Deserialize, Clone)]
-#[datex(allow_serde_infallible)]
 #[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
 pub struct AcceptAddress {
     address: String,
+    #[datex(serde_infallible)]
     tls_mode: Option<TLSMode>,
 }
 

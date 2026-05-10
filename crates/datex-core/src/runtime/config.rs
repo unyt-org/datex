@@ -19,7 +19,6 @@ pub fn is_priority_none(v: &InterfacePriority) -> bool {
 }
 
 #[derive(Datex, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[datex(allow_serde_infallible)]
 #[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
 pub struct RuntimeConfigInterface {
     // #[serde(rename = "type")]
@@ -29,6 +28,7 @@ pub struct RuntimeConfigInterface {
     pub setup_data: Value,
 
     // #[serde(default, skip_serializing_if = "is_priority_none")]
+    #[datex(serde_infallible)]
     pub priority: InterfacePriority,
 }
 
@@ -144,6 +144,15 @@ pub mod tests {
         runtime::{RuntimeConfig, RuntimeConfigInterface},
         values::core_values::map::Map,
     };
+    use crate::datex_proxy::DatexValueContainerProxyInfallibleSerialize;
+    use crate::datex_proxy::DatexValueContainerProxyDeserialize;
+    use crate::values::core_values::endpoint::Endpoint;
+
+    #[derive(Datex)]
+    struct MySetupData {
+        field1: String,
+        field2: i32,
+    }
 
     #[test]
     fn add_env_var() {
@@ -154,13 +163,8 @@ pub mod tests {
     }
 
     #[test]
-    fn serde() {
-        #[derive(Datex)]
-        struct MySetupData {
-            field1: String,
-            field2: i32,
-        }
-        let config: RuntimeConfigInterface = RuntimeConfigInterface::new(
+    fn datex_proxy_runtime_config_interface() {
+        let config_interface = RuntimeConfigInterface::new(
             "test",
             MySetupData {
                 field1: "value".to_string(),
@@ -168,13 +172,25 @@ pub mod tests {
             },
         )
         .unwrap();
-        assert_eq!(config.interface_type, "test");
-        let setup_data = config.setup_data;
+        assert_eq!(config_interface.interface_type, "test");
+        let setup_data = config_interface.setup_data.clone();
         let map = setup_data.try_as::<Map>().unwrap();
         assert_eq!(
             map.get("field1").unwrap().try_as::<String>().unwrap(),
             "value".to_string()
         );
         assert_eq!(map.get("field2").unwrap().try_as::<i32>().unwrap(), 42);
+
+        let value_container = config_interface.to_value_container();
+        let parsed_config_interface: RuntimeConfigInterface = value_container.try_into().unwrap();
+        assert_eq!(parsed_config_interface.interface_type, "test");
+    }
+
+    #[test]
+    fn datex_proxy_runtime_config() {
+        let config = RuntimeConfig::new_with_endpoint(Endpoint::new("@test"));
+        let value_container = config.to_value_container();
+        let parsed_config: RuntimeConfig = RuntimeConfig::try_from_value_container(value_container).unwrap();
+        println!("{:#?}", parsed_config);
     }
 }

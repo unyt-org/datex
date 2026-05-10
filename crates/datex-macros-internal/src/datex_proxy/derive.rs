@@ -154,25 +154,10 @@ fn derive_struct(
                     }
                 }
 
-
-                #[automatically_derived]
-                impl DatexValueContainerProxySerialize for #ident {
-                    fn try_to_value_container(self) -> Result<ValueContainer, TryToDatexValueError> {
-                        Ok(ValueContainer::Local(self.into()))
-                    }
-                }
-
                 #[automatically_derived]
                 impl DatexValueProxySerialize for #ident {
                     fn try_to_value(self) -> Result<Value, TryToDatexValueError> {
                         Ok(self.into())
-                    }
-                }
-
-                #[automatically_derived]
-                impl DatexValueContainerProxyInfallibleSerialize for #ident {
-                    fn to_value_container(self) -> ValueContainer {
-                       ValueContainer::Local(self.into())
                     }
                 }
 
@@ -210,13 +195,6 @@ fn derive_struct(
                         self.try_into()
                     }
                 }
-
-                #[automatically_derived]
-                impl DatexValueContainerProxySerialize for #ident {
-                    fn try_to_value_container(self) -> Result<ValueContainer, TryToDatexValueError> {
-                        self.try_to_value().map(|value| ValueContainer::Local(value))
-                    }
-                }
             }
         }
     };
@@ -244,20 +222,9 @@ fn derive_struct(
             };
 
             #[automatically_derived]
-            impl DatexValueContainerProxy for #ident {}
-            #[automatically_derived]
             impl DatexValueProxy for #ident {}
 
             #serialize
-
-            #[automatically_derived]
-            impl DatexValueContainerProxyDeserialize for #ident {
-                fn try_from_value_container(
-                    value: ValueContainer,
-                ) -> Result<Self, TryFromDatexValueError> {
-                   value.try_into()
-                }
-            }
 
             #[automatically_derived]
             impl DatexValueProxyDeserialize for #ident {

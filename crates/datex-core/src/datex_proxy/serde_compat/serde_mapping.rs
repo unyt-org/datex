@@ -1,3 +1,4 @@
+
 use crate::{
     prelude::*,
     values::{
@@ -96,8 +97,8 @@ impl Serialize for CoreValue {
                 }
                 map_state.end()
             }
-            _ => Err(serde::ser::Error::custom(
-                "Unsupported CoreValue variant for serialization",
+            val => Err(serde::ser::Error::custom(
+                format!("Cannot serialize value: {:?}", val),
             )),
         }
     }
