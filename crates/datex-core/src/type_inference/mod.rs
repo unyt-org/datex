@@ -1262,47 +1262,58 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
     }
     fn visit_unbox_assignment(
         &mut self,
-        _unbox_assignment: &mut UnboxAssignment,
-        _span: &Range<usize>,
+        unbox_assignment: &mut UnboxAssignment,
+        span: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
-        todo!()
-        // // FIXME #623: handle type checking and if unbox assignment is valid
-        // let mut expression_type =
-        //     self.infer_expression(&mut unbox_assignment.unbox_expression)?;
-        // if let Some(reference) = expression_type.inner_reference() {
-        //     expression_type = reference.borrow().type_value.clone();
-        // } else {
+        // FIXME #623: handle type checking and if unbox assignment is valid
+        let expression_type =
+            self.infer_expression(&mut unbox_assignment.unbox_expression)?;
+
+        let inner_type = expression_type
+            .with_collapsed_definition_with_metadata(|e| {
+                let ownership = e.metadata.shared_container_ownership();
+                let mutability = e.metadata.shared_mutability();
+
+                if ownership
+                    != Some(&SharedContainerOwnership::Referenced(
+                        ReferenceMutability::Mutable,
+                    ))
+                    && ownership != Some(&SharedContainerOwnership::Owned)
+                {
+                    return Err(SpannedTypeError {
+                        error: TypeError::AssignmentToImmutableReference(
+                            "".to_string(),
+                        ),
+                        span: Some(span.clone()),
+                    });
+                }
+                match &e.definition {
+                    TypeDefinition::Nested(ty) => Ok(*ty.clone()),
+                    TypeDefinition::Shared(sh) => Ok(sh.actual_type().clone()),
+                    _ => Err(SpannedTypeError {
+                        error: TypeError::InvalidUnboxType(
+                            expression_type.clone(),
+                        ),
+                        span: Some(span.clone()),
+                    }),
+                }
+            })?;
+
+        let assigned_type =
+            self.infer_expression(&mut unbox_assignment.assigned_expression)?;
+
+        // FIXME #624 implement proper type matching
+        // if !assigned_type.matches_type(&expression_type) {
         //     return Err(SpannedTypeError {
-        //         error: TypeError::InvalidUnboxType(expression_type),
+        //         error: TypeError::AssignmentTypeMismatch {
+        //             annotated_type: expression_type,
+        //             assigned_type: assigned_type.clone(),
+        //         },
         //         span: Some(span.clone()),
         //     });
         // }
-        // let assigned_type =
-        //     self.infer_expression(&mut unbox_assignment.assigned_expression)?;
-        //
-        // // FIXME #624 implement proper type matching
-        // // if !assigned_type.matches_type(&expression_type) {
-        // //     return Err(SpannedTypeError {
-        // //         error: TypeError::AssignmentTypeMismatch {
-        // //             annotated_type: expression_type,
-        // //             assigned_type: assigned_type.clone(),
-        // //         },
-        // //         span: Some(span.clone()),
-        // //     });
-        // // }
-        // let ownership = expression_type.shared_container_ownership();
-        //
-        // if ownership != Some(&SharedContainerOwnership::Referenced(ReferenceMutability::Mutable)) &&
-        //     ownership != Some(&SharedContainerOwnership::Owned)
-        // {
-        //     return Err(SpannedTypeError {
-        //         error: TypeError::AssignmentToImmutableReference(
-        //             "".to_string(),
-        //         ),
-        //         span: Some(span.clone()),
-        //     });
-        // }
-        // mark_type(assigned_type)
+
+        mark_type(assigned_type)
     }
     fn visit_request_shared_reference(
         &mut self,
