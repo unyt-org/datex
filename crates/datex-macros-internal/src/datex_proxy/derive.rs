@@ -1,11 +1,12 @@
 use proc_macro_crate::{FoundCrate, crate_name};
 use proc_macro2::{Ident, Span, TokenStream};
-use quote::{format_ident, quote};
+use quote::{format_ident, quote, ToTokens};
 use syn::{
     Attribute, Data, DataEnum, DataStruct, DeriveInput, Meta, Token,
     punctuated::Punctuated,
 };
 
+#[derive(Debug, PartialEq)]
 enum SerdeMode {
     /// Serde serializable/deserializable fields are not allowed inside the datex proxy value.
     /// Since the generated code will not attempt to serialize any fields with serde,
@@ -38,7 +39,9 @@ fn derive_struct(
     ident: Ident,
     attrs: Vec<Attribute>,
 ) -> TokenStream {
-    let serde_mode = get_serde_mode(&attrs);
+    // serialization is only infallible if the struct has no serde fields or only serde fields with datex(serde_infallible)
+    let mut fallible_serialization = false;
+
     let mut into_datex_fields: Vec<TokenStream> = vec![];
     let mut from_datex_fields: Vec<TokenStream> = vec![];
 
@@ -48,33 +51,29 @@ fn derive_struct(
 
     // Iterate over the fields of the struct
     for (index, field) in data_struct.fields.iter().enumerate() {
+        let field_serde_mode = get_serde_mode(&field.attrs);
+        if field_serde_mode == SerdeMode::Fallible {
+            fallible_serialization = true;
+        }
+
+        let from_value_container_function = match field_serde_mode {
+            SerdeMode::None => {
+                quote! {
+                    DatexValueContainerProxyDeserialize::try_from_value_container
+                }
+            }
+            SerdeMode::Fallible | SerdeMode::Infallible => {
+                quote! {
+                    try_serde_from_value_container
+                }
+            }
+        };
+
         match &field.ident {
             // struct with named fields
             Some(field_ident) => {
                 let field_name = field_ident.to_string();
-
-                let field_into = match serde_mode {
-                    // no serde or infallible serde, provide/assume DatexValueContainerProxyInfallibleSerialize
-                    SerdeMode::None => {
-                        quote! {
-                            DatexValueContainerProxyInfallibleSerialize::to_value_container(value.#field_ident)
-                        }
-                    }
-                    // Allow serde fields that only default implement DatexValueContainerProxySerialize
-                    // and propagate the error if the serialization fails
-                    SerdeMode::Fallible => {
-                        quote! {
-                            DatexValueContainerProxySerialize::try_to_value_container(value.#field_ident)?,
-                        }
-                    }
-                    // Allow serde fields that only default implement DatexValueContainerProxySerialize
-                    // but panic if the serialization fails, since the user explicitly guarantees that it won't fail
-                    SerdeMode::Infallible => {
-                        quote! {
-                            DatexValueContainerProxySerialize::try_to_value_container(value.#field_ident).expect("Serde serialization for Datex value with datex(serde_infallible)")
-                        }
-                    }
-                };
+                let field_into = generate_field_conversion_code(field_serde_mode, &field_ident, field_name.clone());
 
                 into_datex_fields.push(quote! {
                     (
@@ -84,7 +83,7 @@ fn derive_struct(
                 });
 
                 from_datex_fields.push(quote! {
-                    #field_ident: DatexValueContainerProxyDeserialize::try_from_value_container(
+                    #field_ident: #from_value_container_function(
                             map.get(#field_name)
                                 .map_err(|err| TryFromDatexValueError(err.to_string()))?
                                 .clone()
@@ -95,13 +94,12 @@ fn derive_struct(
             // tuple struct or unit struct
             None => {
                 let field_index = syn::Index::from(index);
+                let field_into = generate_field_conversion_code(field_serde_mode, &field_index, field_index.index.to_string());
 
-                into_datex_fields.push(quote! {
-                    DatexValueContainerProxyInfallibleSerialize::to_value_container(value.#field_index)?,
-                });
+                into_datex_fields.push(field_into);
 
                 from_datex_fields.push(quote! {
-                    DatexValueContainerProxyDeserialize::try_from_value_container(
+                    #from_value_container_function(
                             list.try_get(#index)
                                 .map_err(|err| TryFromDatexValueError(err.to_string()))?
                                 .clone()
@@ -143,9 +141,9 @@ fn derive_struct(
         }}
     };
 
-    let serialize = match serde_mode {
+    let serialize = match fallible_serialization {
         // no serde or infallible serde, provide/assume DatexValueContainerProxyInfallibleSerialize
-        SerdeMode::None | SerdeMode::Infallible => {
+        false => {
             quote! {
                 #[automatically_derived]
                 impl From<#ident> for Value {
@@ -169,7 +167,7 @@ fn derive_struct(
                 }
             }
         }
-        SerdeMode::Fallible => {
+        true => {
             quote! {
                 #[automatically_derived]
                 impl TryFrom<#ident> for Value {
@@ -212,7 +210,11 @@ fn derive_struct(
                     DatexValueProxySerialize,
                     DatexValueProxyDeserialize,
                     TryToDatexValueError,
-                    TryFromDatexValueError
+                    TryFromDatexValueError,
+                    serde_compat::{
+                        try_serde_to_value_container,
+                        try_serde_from_value_container
+                    }
                 },
                 values::value_container::ValueContainer,
                 values::value::Value,
@@ -262,7 +264,7 @@ fn derive_struct(
 fn get_serde_mode(attrs: &[Attribute]) -> SerdeMode {
     let mut serde_mode = SerdeMode::None;
 
-    // find datex(allow_serde) or datex(allow_serde_infallible) attribute
+    // find datex(serde) or datex(serde_infallible) attribute
     for attr in attrs {
         if attr.path().is_ident("datex")
             && let Meta::List(meta_list) = &attr.meta
@@ -274,17 +276,17 @@ fn get_serde_mode(attrs: &[Attribute]) -> SerdeMode {
                 .unwrap()
             {
                 if let Meta::Path(path) = nested {
-                    if path.is_ident("allow_serde") {
+                    if path.is_ident("serde") {
                         if let SerdeMode::Infallible = serde_mode {
                             panic!(
-                                "Cannot use both datex(allow_serde) and datex(allow_serde_infallible) on the same struct"
+                                "Cannot use both datex(serde) and datex(serde_infallible) on the same field"
                             );
                         }
                         serde_mode = SerdeMode::Fallible;
-                    } else if path.is_ident("allow_serde_infallible") {
+                    } else if path.is_ident("serde_infallible") {
                         if let SerdeMode::Fallible = serde_mode {
                             panic!(
-                                "Cannot use both datex(allow_serde) and datex(allow_serde_infallible) on the same struct"
+                                "Cannot use both datex(serde) and datex(serde_infallible) on the same field"
                             );
                         }
                         serde_mode = SerdeMode::Infallible;
@@ -296,6 +298,36 @@ fn get_serde_mode(attrs: &[Attribute]) -> SerdeMode {
 
     serde_mode
 }
+
+/// Generate the code to convert a field to a ValueContainer, depending on the serde mode of the field
+fn generate_field_conversion_code<T: ToTokens>(
+    serde_mode: SerdeMode,
+    field_identifier: T,
+    field_name: String,
+) -> TokenStream {
+    match serde_mode {
+        // no serde or infallible serde, provide/assume DatexValueContainerProxyInfallibleSerialize
+        SerdeMode::None => {
+            quote! {
+                DatexValueContainerProxyInfallibleSerialize::to_value_container(value.#field_identifier)
+            }
+        }
+        // Map serde fields and propagate the error if the serialization fails
+        SerdeMode::Fallible => {
+            quote! {
+                try_serde_to_value_container(value.#field_identifier)?,
+            }
+        }
+        // Allow serde fields that only default implement DatexValueContainerProxySerialize
+        // but panic if the serialization fails, since the user explicitly guarantees that it won't fail
+        SerdeMode::Infallible => {
+            quote! {
+                try_serde_to_value_container(value.#field_identifier).unwrap_or_else(|err| panic!("Serialization of field '{}' marked with (serde_infallible) failed: {:?}", #field_name, err)),
+            }
+        }
+    }
+}
+
 
 fn get_datex_core_crate_name(attrs: &[Attribute]) -> Ident {
     // otherwise, find the crate name of datex_core and use it as an identifier

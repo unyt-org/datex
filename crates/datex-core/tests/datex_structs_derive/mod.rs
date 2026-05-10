@@ -23,16 +23,16 @@ struct SerdeExample {
 }
 
 #[derive(Datex, Debug, Clone, PartialEq)]
-#[datex(allow_serde)]
 struct SerdeDatexExample {
     a: u8,
+    #[datex(serde)]
     serde: SerdeExample,
 }
 
 #[derive(Datex, Debug, Clone, PartialEq)]
-#[datex(allow_serde_infallible)]
 struct SerdeDatexExampleInfallible {
     a: u8,
+    #[datex(serde_infallible)]
     serde: SerdeExample,
 }
 
@@ -166,7 +166,7 @@ fn struct_with_serde_to_value_container() {
         },
     };
 
-    // Note: uses try_into because of datex(allow_serde)
+    // Note: uses try_into because of datex(serde)
     let value_container: ValueContainer = serde_example.try_into().unwrap();
 
     let map: Map = value_container.try_as().unwrap();
@@ -192,7 +192,7 @@ fn struct_with_serde_infallible_to_value_container() {
         },
     };
 
-    // Note: uses into instead of try_into because of datex(allow_serde_infallible)
+    // Note: uses into instead of try_into because of datex(serde_infallible)
     let value_container: ValueContainer = serde_example.into();
 
     let map: Map = value_container.try_as().unwrap();

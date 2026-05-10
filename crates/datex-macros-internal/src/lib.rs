@@ -40,7 +40,7 @@ pub fn core_lib_string(input: TokenStream) -> TokenStream {
 /// ```
 ///
 /// Structs and Enums that implement `Serialize` and `DeserializeOwned` from the `serde` crate can be used with this derive macro
-/// by adding the `allow_serde` attribute:
+/// by adding the `serde` attribute to the corresponding fields:
 /// ```rust
 /// # use datex_macros_internal::Datex;
 /// # use serde::{Serialize, Deserialize};
@@ -51,16 +51,16 @@ pub fn core_lib_string(input: TokenStream) -> TokenStream {
 /// }
 ///
 /// #[derive(Datex)]
-/// #[datex(allow_serde)]
 /// struct MyStruct {
 ///     field1: String,
+///     #[datex(serde)]
 ///     serde_field: SerdeStruct,
 /// }
 /// ```
 /// Since the serialization of a struct with serde might fail, the generated code will only provide a try_into method to convert to ValueContainer,
 /// which returns a Result that must be handled by the user.
 ///
-/// Alternatively, if you can guarantee that the serialization will not fail, you can use the `allow_serde_infallible` attribute,
+/// Alternatively, if you can guarantee that the serialization will not fail, you can use the `serde_infallible` attribute,
 /// which will generate an infallible into method to convert to ValueContainer, but will panic if the serialization fails:
 ///
 /// ```rust
@@ -73,9 +73,9 @@ pub fn core_lib_string(input: TokenStream) -> TokenStream {
 /// }
 ///
 /// #[derive(Datex)]
-/// #[datex(allow_serde_infallible)]
 /// struct MyStruct {
 ///     field1: String,
+///     #[datex(serde_infallible)]
 ///     serde_field: SerdeStruct,
 /// }
 /// ```

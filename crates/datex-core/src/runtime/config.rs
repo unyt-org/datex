@@ -191,6 +191,6 @@ pub mod tests {
         let config = RuntimeConfig::new_with_endpoint(Endpoint::new("@test"));
         let value_container = config.to_value_container();
         let parsed_config: RuntimeConfig = RuntimeConfig::try_from_value_container(value_container).unwrap();
-        println!("{:#?}", parsed_config);
+        assert_eq!(parsed_config.endpoint, Some(Endpoint::new("@test")));
     }
 }
