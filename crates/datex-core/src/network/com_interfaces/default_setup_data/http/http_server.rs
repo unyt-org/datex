@@ -19,7 +19,6 @@ use datex_macros_internal::Datex;
 use serde::{Deserialize, Serialize};
 
 #[derive(Datex, Serialize, Deserialize)]
-#[datex(allow_serde_infallible)]
 #[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
 pub struct HTTPServerInterfaceSetupData {
     /// The address to bind the HTTP server to (e.g., "0.0.0.0:8080").

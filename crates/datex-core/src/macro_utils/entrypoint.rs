@@ -250,23 +250,10 @@ pub fn get_arg_ident_and_type(
 fn get_datex_config(path: &PathBuf) -> Result<RuntimeConfig, ()> {
     let runtime = Runtime::stub();
     let script = std::fs::read_to_string(path).map_err(|_| ())?;
-    let bytes = crate::compiler::compile_script(
-        &script,
-        crate::compiler::CompileOptions::default(),
-        runtime.clone(),
-    )
-    .map_err(|_| ())?;
-    let context = ExecutionInput::new(
-        &bytes.0,
-        ExecutionCallerMetadata::local_default(),
-        ExecutionOptions { verbose: true },
-        runtime,
-    );
-    let value = execute_dxb_sync(context).map_err(|_| ())?;
+    
+    let value = runtime.execute_sync(&script, &[], None).map_err(|_| ())?;
     if let Some(value) = value {
         let config: RuntimeConfig = value
-            .try_to_value_container()
-            .map_err(|_| ())?
             .try_into()
             .map_err(|_| ())?;
         Ok(config)

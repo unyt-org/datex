@@ -6,6 +6,7 @@ use crate::{
 };
 use serde::{Deserialize, Serialize};
 use url::Url;
+use crate::datex_proxy::{DatexProxyDeserialize, DatexProxySerialize};
 
 #[derive(Debug)]
 pub enum URLError {
@@ -57,7 +58,7 @@ pub fn parse_url(address: &str) -> Result<Url, URLError> {
 }
 
 /// Generates the setup data for client interfaces based on the server's accept addresses.
-pub fn get_clients_setup_data<T: DatexProxy>(
+pub fn get_clients_setup_data<T: DatexProxySerialize>(
     accept_addresses: Option<Vec<AcceptAddress>>,
     protocols: (String, String),
     interface_type: String,

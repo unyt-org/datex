@@ -9,6 +9,7 @@ use crate::{
 };
 use datex_macros_internal::Datex;
 use serde::{Deserialize, Serialize};
+use crate::datex_proxy::{DatexProxyDeserialize, DatexProxySerialize};
 
 pub fn is_priority_none(v: &InterfacePriority) -> bool {
     matches!(v, InterfacePriority::None)
@@ -29,7 +30,7 @@ pub struct RuntimeConfigInterface {
 }
 
 impl RuntimeConfigInterface {
-    pub fn new<T: DatexProxy>(
+    pub fn new<T: DatexProxySerialize>(
         interface_type: &str,
         setup_data: T,
     ) -> Result<RuntimeConfigInterface, String> {
@@ -58,7 +59,6 @@ impl RuntimeConfigInterface {
 }
 
 #[derive(Datex, Debug, Default)]
-#[datex(allow_serde_infallible)]
 pub struct RuntimeConfig {
     pub endpoint: Option<Endpoint>,
     pub interfaces: Option<Vec<RuntimeConfigInterface>>,
@@ -74,7 +74,7 @@ impl RuntimeConfig {
         }
     }
 
-    pub fn add_interface<T: DatexProxy>(
+    pub fn add_interface<T: DatexProxySerialize>(
         &mut self,
         interface_type: String,
         config: T,

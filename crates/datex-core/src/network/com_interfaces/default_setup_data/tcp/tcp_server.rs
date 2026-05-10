@@ -9,7 +9,6 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Datex, Serialize, Deserialize, Default)]
 #[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
-#[datex(allow_serde_infallible)]
 pub struct TCPServerInterfaceSetupData {
     pub port: u16,
     pub host: Option<String>,
