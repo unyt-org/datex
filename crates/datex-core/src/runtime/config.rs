@@ -8,13 +8,13 @@ use crate::{
     },
 };
 use datex_macros_internal::Datex;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 pub fn is_priority_none(v: &InterfacePriority) -> bool {
     matches!(v, InterfacePriority::None)
 }
 
-#[derive(Datex, Debug, Clone, PartialEq, Eq)]
+#[derive(Datex, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[datex(allow_serde_infallible)]
 #[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
 pub struct RuntimeConfigInterface {
@@ -57,7 +57,8 @@ impl RuntimeConfigInterface {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Datex, Debug, Default)]
+#[datex(allow_serde_infallible)]
 pub struct RuntimeConfig {
     pub endpoint: Option<Endpoint>,
     pub interfaces: Option<Vec<RuntimeConfigInterface>>,
@@ -73,26 +74,25 @@ impl RuntimeConfig {
         }
     }
 
-    pub fn add_interface<T: Serialize>(
+    pub fn add_interface<T: DatexProxy>(
         &mut self,
         interface_type: String,
         config: T,
         priority: InterfacePriority,
     ) -> Result<(), ()> {
-        todo!();
-        // let config = to_value_container(&config)?;
-        // let interface = RuntimeConfigInterface {
-        //     interface_type,
-        //     setup_data: config,
-        //     priority,
-        // };
-        // if let Some(interfaces) = &mut self.interfaces {
-        //     interfaces.push(interface);
-        // } else {
-        //     self.interfaces = Some(vec![interface]);
-        // }
-        //
-        // Ok(())
+        let config = config.try_to_value_container()?;
+        let interface = RuntimeConfigInterface {
+            interface_type,
+            setup_data: config,
+            priority,
+        };
+        if let Some(interfaces) = &mut self.interfaces {
+            interfaces.push(interface);
+        } else {
+            self.interfaces = Some(vec![interface]);
+        }
+
+        Ok(())
     }
 
     /// Adds a single environment variable to the runtime's custom environment variables.
@@ -136,7 +136,7 @@ pub mod tests {
     use crate::{
         prelude::*,
         runtime::{RuntimeConfig, RuntimeConfigInterface},
-        values::{core_values::map::Map, value_container::ValueContainer},
+        values::core_values::map::Map,
     };
 
     #[test]

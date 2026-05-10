@@ -1,9 +1,16 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use crate::{
     compiler::{CompileOptions, compile_template},
-    runtime::{Runtime, RuntimeConfig, RuntimeRunner},
-    values::value_container::ValueContainer,
+    datex_proxy::{DatexProxyInfallibleSerialize, DatexProxySerialize},
+    runtime::{
+        Runtime, RuntimeConfig, RuntimeRunner,
+        execution::{
+            ExecutionInput, ExecutionOptions, execute_dxb_sync,
+            execution_input::ExecutionCallerMetadata,
+        },
+    },
+    values::{core_values::map::Map, value, value_container::ValueContainer},
 };
 use proc_macro2::{Span, TokenStream};
 use quote::quote;
@@ -12,7 +19,6 @@ use syn::{
     Attribute, FnArg, Ident, ItemFn, LitStr, Pat, PatIdent, Token, Type,
     parse::{Parse, ParseStream},
 };
-use crate::values::core_values::map::Map;
 
 #[derive(Debug)]
 pub struct ParsedAttributes {
@@ -65,7 +71,7 @@ impl Parse for ParsedAttributes {
 
 fn get_config_path(
     input: &ParseStream,
-    source_file: &PathBuf,
+    source_file: &Path,
 ) -> Result<PathBuf, syn::Error> {
     if input.peek(LitStr) {
         if let syn::Lit::Str(litstr) = input.parse()? {
@@ -208,7 +214,7 @@ pub fn get_config(parsed_attr: &ParsedAttributes) -> Option<RuntimeConfig> {
 pub fn get_config_compiled_token_stream(
     config: Option<RuntimeConfig>,
 ) -> TokenStream {
-    let config_bytes = config.as_ref().map(compile_datex_config);
+    let config_bytes = config.map(compile_datex_config);
 
     config_bytes
         .map(|bytes| {
@@ -239,21 +245,41 @@ pub fn get_arg_ident_and_type(
     }
 }
 
-fn get_datex_config(
-    path: &PathBuf,
-) -> Result<RuntimeConfig, ()> {
-    // FIXME
-    let config = RuntimeConfig::default();
-    // let config: RuntimeConfig = from_dx_file(path.clone())?;
-    Ok(config)
+/// Helper function to read the config file from the given path, execute it as a DATEX script, and parse the resulting value into a RuntimeConfig
+/// The config file is expected to be a DATEX script that returns a RuntimeConfig struct. If the file cannot be read, executed, or parsed, an error is returned.
+fn get_datex_config(path: &PathBuf) -> Result<RuntimeConfig, ()> {
+    let runtime = Runtime::stub();
+    let script = std::fs::read_to_string(path).map_err(|_| ())?;
+    let bytes = crate::compiler::compile_script(
+        &script,
+        crate::compiler::CompileOptions::default(),
+        runtime.clone(),
+    )
+    .map_err(|_| ())?;
+    let context = ExecutionInput::new(
+        &bytes.0,
+        ExecutionCallerMetadata::local_default(),
+        ExecutionOptions { verbose: true },
+        runtime,
+    );
+    let value = execute_dxb_sync(context).map_err(|_| ())?;
+    if let Some(value) = value {
+        let config: RuntimeConfig = value
+            .try_to_value_container()
+            .map_err(|_| ())?
+            .try_into()
+            .map_err(|_| ())?;
+        Ok(config)
+    } else {
+        Err(())
+    }
 }
 
-fn compile_datex_config(config: &RuntimeConfig) -> Vec<u8> {
-    let mock_config = ValueContainer::from(Map::default());
+/// Compiles the given RuntimeConfig into DXB
+fn compile_datex_config(config: RuntimeConfig) -> Vec<u8> {
     let (dxb, _) = compile_template(
         "?",
-        // &[Some(ValueContainer::from_serializable(config).unwrap())],
-        &[Some(mock_config)],
+        &[Some(config.to_value_container())],
         CompileOptions::default(),
         // FIXME: stub runtime for now
         Runtime::stub(),
