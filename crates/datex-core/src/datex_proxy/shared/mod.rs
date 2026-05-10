@@ -1,5 +1,6 @@
 pub mod datex_proxy;
 
+use datex_macros_internal::Datex;
 use crate::{datex_proxy::DatexProxy, shared_values::SharedContainer};
 
 pub struct Shared<T: DatexProxy> {
@@ -18,6 +19,7 @@ impl<T: DatexProxy> TryFrom<SharedContainer> for Shared<T> {
         Ok(Shared { value, container })
     }
 }
+
 
 #[cfg(test)]
 mod test {

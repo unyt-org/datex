@@ -1,3 +1,7 @@
+use std::hash::Hash;
+use indexmap::IndexMap;
+use serde::{Deserialize, Serialize};
+use serde::de::DeserializeOwned;
 use crate::{
     datex_proxy::{
         DatexProxy, DatexProxyDeserialize, DatexProxyInfallibleSerialize,
@@ -230,6 +234,38 @@ derive_try_from_chain!(
         CoreValue::Text(Text(value)) => Ok(value),
     }
 );
+
+
+impl<T: Serialize + DeserializeOwned> DatexProxy for Option<T> {}
+
+impl<T: DatexProxyInfallibleSerialize> DatexProxyInfallibleSerialize for Option<T> {
+    fn to_value_container(self) -> ValueContainer {
+        match self {
+            None => ValueContainer::from(Value::null()),
+            Some(v) => v.to_value_container(),
+        }
+    }
+}
+
+impl<T: Serialize + DeserializeOwned> DatexProxy for Vec<T> {}
+
+impl<T: DatexProxyInfallibleSerialize> DatexProxyInfallibleSerialize for Vec<T> {
+    fn to_value_container(self) -> ValueContainer {
+        ValueContainer::from(self.into_iter().map(|v| v.to_value_container()).collect::<Vec<_>>())
+    }
+}
+
+impl<K: DatexProxy + Serialize + DeserializeOwned + Eq + Hash, V: DatexProxy + Serialize + DeserializeOwned> DatexProxy for HashMap<K, V> {}
+
+impl<K: DatexProxyInfallibleSerialize, V: DatexProxyInfallibleSerialize> DatexProxyInfallibleSerialize for HashMap<K, V> {
+    fn to_value_container(self) -> ValueContainer {
+        ValueContainer::from(
+            self.into_iter().map(|(k, v)| (k.to_value_container(), v.to_value_container())).collect::<Map>()
+        )
+    }
+}
+
+
 
 // FIXME TBD
 

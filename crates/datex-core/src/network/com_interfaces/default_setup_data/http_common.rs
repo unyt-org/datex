@@ -6,6 +6,7 @@ use crate::{
 };
 use serde::{Deserialize, Serialize};
 use url::Url;
+use datex_macros_internal::Datex;
 use crate::datex_proxy::{DatexProxyDeserialize, DatexProxySerialize};
 
 #[derive(Debug)]
@@ -37,7 +38,8 @@ pub enum TLSMode {
     },
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Datex, Debug, Serialize, Deserialize, Clone)]
+#[datex(allow_serde_infallible)]
 #[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
 pub struct AcceptAddress {
     address: String,

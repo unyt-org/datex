@@ -264,7 +264,7 @@ impl Display for BorrowedMapKey<'_> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub enum MapKey {
     Text(String),
     Value(ValueContainer),

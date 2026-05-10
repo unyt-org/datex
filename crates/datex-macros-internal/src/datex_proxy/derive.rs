@@ -289,26 +289,6 @@ fn get_serde_mode(attrs: &[Attribute]) -> SerdeMode {
 }
 
 fn get_datex_core_crate_name(attrs: &[Attribute]) -> Ident {
-    // find datex(internal) attribute -> use crate:: identifier
-    for attr in attrs {
-        if attr.path().is_ident("datex")
-            && let Meta::List(meta_list) = &attr.meta
-        {
-            for nested in meta_list
-                .parse_args_with(
-                    Punctuated::<Meta, Token![,]>::parse_terminated,
-                )
-                .unwrap()
-            {
-                if let Meta::Path(path) = nested
-                    && path.is_ident("internal")
-                {
-                    return format_ident!("crate");
-                }
-            }
-        }
-    }
-
     // otherwise, find the crate name of datex_core and use it as an identifier
     let found = crate_name("datex-core").unwrap();
     match found {

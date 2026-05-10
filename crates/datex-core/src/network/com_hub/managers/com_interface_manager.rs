@@ -398,7 +398,6 @@ mod tests {
     use serde::{Deserialize, Serialize};
 
     #[derive(Datex)]
-    #[datex(internal)]
     struct MockSetupData {
         name: String,
     }
