@@ -5,6 +5,7 @@ use crate::{
     },
     values::value_container::ValueContainer,
 };
+use crate::datex_proxy::{TryFromValueContainerError, TryToValueContainerError};
 
 impl DatexProxyInfallibleSerialize for ValueContainer {
     fn to_value_container(self) -> ValueContainer {
@@ -12,12 +13,12 @@ impl DatexProxyInfallibleSerialize for ValueContainer {
     }
 }
 impl DatexProxySerialize for ValueContainer {
-    fn try_to_value_container(self) -> Result<ValueContainer, ()> {
+    fn try_to_value_container(self) -> Result<ValueContainer, TryToValueContainerError> {
         Ok(self)
     }
 }
 impl DatexProxyDeserialize for ValueContainer {
-    fn try_from_value_container(value: ValueContainer) -> Result<Self, ()> {
+    fn try_from_value_container(value: ValueContainer) -> Result<Self, TryFromValueContainerError> {
         Ok(value)
     }
 }

@@ -64,7 +64,7 @@ fn derive_struct(
                     // and propagate the error if the serialization fails
                     SerdeMode::Fallible => {
                         quote! {
-                            DatexProxySerialize::try_to_value_container(value.#field_ident).map_err(|_| ())?,
+                            DatexProxySerialize::try_to_value_container(value.#field_ident)?,
                         }
                     }
                     // Allow serde fields that only default implement DatexProxySerialize
@@ -86,10 +86,9 @@ fn derive_struct(
                 from_datex_fields.push(quote! {
                     #field_ident: DatexProxyDeserialize::try_from_value_container(
                             map.get(#field_name)
-                                .map_err(|_| ())?
+                                .map_err(|err| TryFromValueContainerError(err.to_string()))?
                                 .clone()
-                        )
-                        .map_err(|_| ())?,
+                        )?,
                 });
             }
 
@@ -98,17 +97,15 @@ fn derive_struct(
                 let field_index = syn::Index::from(index);
 
                 into_datex_fields.push(quote! {
-                    DatexProxyInfallibleSerialize::to_value_container(value.#field_index)
-                        .map_err(|_| ())?,
+                    DatexProxyInfallibleSerialize::to_value_container(value.#field_index)?,
                 });
 
                 from_datex_fields.push(quote! {
                     DatexProxyDeserialize::try_from_value_container(
-                            list.get(#index)
-                                .map_err(|_| ())?
+                            list.try_get(#index)
+                                .map_err(|err| TryFromValueContainerError(err.to_string()))?
                                 .clone()
-                        )
-                        .map_err(|_| ())?,
+                        )?,
                 });
             }
         }
@@ -130,7 +127,7 @@ fn derive_struct(
 
     let from_datex_fields_inner = if has_named_fields {
         quote! {{
-            let map: Map = value.try_into().map_err(|_| ())?;
+            let map: Map = value.try_into()?;
 
             #ident {
                 #(#from_datex_fields)*
@@ -138,7 +135,7 @@ fn derive_struct(
         }}
     } else {
         quote! {{
-            let list: List = value.try_into().map_err(|_| ())?;
+            let list: List = value.try_into()?;
 
             #ident(
                 #(#from_datex_fields)*
@@ -166,7 +163,7 @@ fn derive_struct(
 
                 #[automatically_derived]
                 impl DatexProxySerialize for #ident {
-                    fn try_to_value_container(self) -> Result<ValueContainer, ()> {
+                    fn try_to_value_container(self) -> Result<ValueContainer, TryToValueContainerError> {
                         Ok(ValueContainer::Local(self.into()))
                     }
                 }
@@ -176,7 +173,7 @@ fn derive_struct(
             quote! {
                 #[automatically_derived]
                 impl TryFrom<#ident> for Value {
-                    type Error = ();
+                    type Error = TryToValueContainerError;
 
                     fn try_from(value: #ident) -> Result<Self, Self::Error> {
                         Ok(Value::from(#into_datex_fields_inner))
@@ -185,7 +182,7 @@ fn derive_struct(
 
                 #[automatically_derived]
                 impl TryFrom<#ident> for ValueContainer {
-                    type Error = ();
+                    type Error = TryToValueContainerError;
 
                     fn try_from(value: #ident) -> Result<Self, Self::Error> {
                         Ok(ValueContainer::Local(Value::from(#into_datex_fields_inner)))
@@ -194,7 +191,7 @@ fn derive_struct(
 
                 #[automatically_derived]
                 impl DatexProxySerialize for #ident {
-                    fn try_to_value_container(self) -> Result<ValueContainer, ()> {
+                    fn try_to_value_container(self) -> Result<ValueContainer, TryToValueContainerError> {
                         self.try_into().map(|value| ValueContainer::Local(value))
                     }
                 }
@@ -205,11 +202,12 @@ fn derive_struct(
     quote! {
         const _: () = {
             use #datex_core_crate_name::{
-                datex_proxy::{DatexProxy, DatexProxyInfallibleSerialize, DatexProxySerialize, DatexProxyDeserialize},
+                datex_proxy::{DatexProxy, DatexProxyInfallibleSerialize, DatexProxySerialize, DatexProxyDeserialize, TryToValueContainerError, TryFromValueContainerError},
                 values::value_container::ValueContainer,
                 values::value::Value,
                 values::core_values::map::Map,
                 values::core_values::list::List,
+                prelude::*
             };
 
             #[automatically_derived]
@@ -221,14 +219,14 @@ fn derive_struct(
             impl DatexProxyDeserialize for #ident {
                 fn try_from_value_container(
                     value: ValueContainer,
-                ) -> Result<Self, ()> {
+                ) -> Result<Self, TryFromValueContainerError> {
                    value.try_into()
                 }
             }
 
             #[automatically_derived]
             impl TryFrom<Value> for #ident {
-                type Error = ();
+                type Error = TryFromValueContainerError;
 
                 fn try_from(value: Value) -> Result<Self, Self::Error> {
                     Ok(#from_datex_fields_inner)
@@ -237,12 +235,12 @@ fn derive_struct(
 
             #[automatically_derived]
             impl TryFrom<ValueContainer> for #ident {
-                type Error = ();
+                type Error = TryFromValueContainerError;
 
                 fn try_from(value: ValueContainer) -> Result<Self, Self::Error> {
                     match value {
                         ValueContainer::Local(value) => value.try_into(),
-                        _ => Err(()),
+                        _ => Err(TryFromValueContainerError("Expected ValueContainer::Local".to_string())),
                     }
                 }
             }

@@ -2,6 +2,7 @@ pub mod datex_proxy;
 
 use datex_macros_internal::Datex;
 use crate::{datex_proxy::DatexProxy, shared_values::SharedContainer};
+use crate::datex_proxy::{TryFromValueContainerError, TryToValueContainerError};
 
 pub struct Shared<T: DatexProxy> {
     value: T,
@@ -11,11 +12,10 @@ pub struct Shared<T: DatexProxy> {
 impl<T: DatexProxy> Shared<T> {}
 
 impl<T: DatexProxy> TryFrom<SharedContainer> for Shared<T> {
-    type Error = ();
+    type Error = TryFromValueContainerError;
     fn try_from(container: SharedContainer) -> Result<Self, Self::Error> {
         let value =
-            T::try_from_value_container(container.value_container().clone())
-                .map_err(|_| ())?;
+            T::try_from_value_container(container.value_container().clone())?;
         Ok(Shared { value, container })
     }
 }

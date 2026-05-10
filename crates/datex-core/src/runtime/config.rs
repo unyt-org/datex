@@ -9,7 +9,7 @@ use crate::{
 };
 use datex_macros_internal::Datex;
 use serde::{Deserialize, Serialize};
-use crate::datex_proxy::{DatexProxyDeserialize, DatexProxySerialize};
+use crate::datex_proxy::{DatexProxyDeserialize, DatexProxyInfallibleSerialize, DatexProxySerialize, TryToValueContainerError};
 
 pub fn is_priority_none(v: &InterfacePriority) -> bool {
     matches!(v, InterfacePriority::None)
@@ -74,13 +74,13 @@ impl RuntimeConfig {
         }
     }
 
-    pub fn add_interface<T: DatexProxySerialize>(
+    pub fn add_interface<T: DatexProxyInfallibleSerialize>(
         &mut self,
         interface_type: String,
         config: T,
         priority: InterfacePriority,
-    ) -> Result<(), ()> {
-        let config = config.try_to_value_container()?;
+    ) {
+        let config = config.to_value_container();
         let interface = RuntimeConfigInterface {
             interface_type,
             setup_data: config,
@@ -91,8 +91,6 @@ impl RuntimeConfig {
         } else {
             self.interfaces = Some(vec![interface]);
         }
-
-        Ok(())
     }
 
     /// Adds a single environment variable to the runtime's custom environment variables.

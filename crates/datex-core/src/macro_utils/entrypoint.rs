@@ -19,6 +19,7 @@ use syn::{
     Attribute, FnArg, Ident, ItemFn, LitStr, Pat, PatIdent, Token, Type,
     parse::{Parse, ParseStream},
 };
+use crate::datex_proxy::DatexProxyDeserialize;
 
 #[derive(Debug)]
 pub struct ParsedAttributes {
@@ -206,7 +207,8 @@ pub fn datex_main_impl_with_config(
 pub fn get_config(parsed_attr: &ParsedAttributes) -> Option<RuntimeConfig> {
     // try to get config from config path
     parsed_attr.config.as_ref().map(|path| {
-        get_datex_config(path).expect("failed to parse DATEX config file")
+        RuntimeConfig::try_from_dx_file(path, &Runtime::stub())
+            .unwrap_or_else(|err| panic!("Failed to read config file at {}: {:?}", path.to_str().unwrap_or("<invalid path>"), err))
     })
 }
 
@@ -245,22 +247,6 @@ pub fn get_arg_ident_and_type(
     }
 }
 
-/// Helper function to read the config file from the given path, execute it as a DATEX script, and parse the resulting value into a RuntimeConfig
-/// The config file is expected to be a DATEX script that returns a RuntimeConfig struct. If the file cannot be read, executed, or parsed, an error is returned.
-fn get_datex_config(path: &PathBuf) -> Result<RuntimeConfig, ()> {
-    let runtime = Runtime::stub();
-    let script = std::fs::read_to_string(path).map_err(|_| ())?;
-    
-    let value = runtime.execute_sync(&script, &[], None).map_err(|_| ())?;
-    if let Some(value) = value {
-        let config: RuntimeConfig = value
-            .try_into()
-            .map_err(|_| ())?;
-        Ok(config)
-    } else {
-        Err(())
-    }
-}
 
 /// Compiles the given RuntimeConfig into DXB
 fn compile_datex_config(config: RuntimeConfig) -> Vec<u8> {

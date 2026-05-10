@@ -26,28 +26,35 @@ use crate::{
         value_container::ValueContainer,
     },
 };
+use crate::datex_proxy::{TryFromValueContainerError, TryToValueContainerError};
 
 macro_rules! impl_try_from_core_value {
     ($($variant:ident => $type:ty),* $(,)?) => {
         $(
-            impl TryFrom<CoreValue> for $type {
-                type Error = ();
-                fn try_from(value: CoreValue) -> Result<Self, Self::Error> {
-                    match value { CoreValue::$variant(v) => Ok(v), _ => Err(()) }
-                }
-            }
-
             impl TryFrom<Value> for $type {
-                type Error = ();
+                type Error = TryFromValueContainerError;
                 fn try_from(value: Value) -> Result<Self, Self::Error> {
                     value.inner.try_into()
                 }
             }
 
+            impl TryFrom<CoreValue> for $type {
+                type Error = TryFromValueContainerError;
+                fn try_from(value: CoreValue) -> Result<Self, Self::Error> {
+                    match value {
+                        CoreValue::$variant(v) => Ok(v),
+                        _ => Err(TryFromValueContainerError(format!("Cannot cast CoreValue to {}, expected CoreValue::{}", stringify!($type), stringify!($variant)))),
+                    }
+                }
+            }
+
             impl<'a> TryFrom<&'a CoreValue> for &'a $type {
-                type Error = ();
+                type Error = TryFromValueContainerError;
                 fn try_from(value: &'a CoreValue) -> Result<Self, Self::Error> {
-                    match value { CoreValue::$variant(v) => Ok(v), _ => Err(()) }
+                    match value {
+                        CoreValue::$variant(v) => Ok(v),
+                        _ => Err(TryFromValueContainerError(format!("Cannot cast CoreValue to {}, expected CoreValue::{}", stringify!($type), stringify!($variant)))),
+                    }
                 }
             }
         )*
@@ -74,18 +81,18 @@ impl_try_from_core_value! {
 macro_rules! derive_try_from_chain {
     ($type:ty, { $($core_match:tt)* }) => {
         impl TryFrom<CoreValue> for $type {
-            type Error = ();
+            type Error = TryFromValueContainerError;
 
             fn try_from(value: CoreValue) -> Result<Self, Self::Error> {
                match value {
                     $($core_match)*
-                    _ => Err(()),
+                    _ => Err(TryFromValueContainerError(format!("Cannot cast CoreValue to {}", stringify!($type)))),
                }
             }
         }
 
         impl TryFrom<Value> for $type {
-            type Error = ();
+            type Error = TryFromValueContainerError;
 
             fn try_from(value: Value) -> Result<Self, Self::Error> {
                 value.inner.try_into()
@@ -93,12 +100,12 @@ macro_rules! derive_try_from_chain {
         }
 
         impl TryFrom<ValueContainer> for $type {
-            type Error = ();
+            type Error = TryFromValueContainerError;
 
             fn try_from(value: ValueContainer) -> Result<Self, Self::Error> {
                 match value {
                     ValueContainer::Local(value) => value.try_into(),
-                    _ => Err(()),
+                    _ => Err(TryFromValueContainerError(format!("Cannot cast ValueContainer to {}, expected ValueContainer::Local", stringify!($type)))),
                 }
             }
         }
@@ -111,15 +118,15 @@ macro_rules! derive_try_from_chain {
             }
         }
         impl DatexProxySerialize for $type {
-            fn try_to_value_container(self) -> Result<ValueContainer, ()> {
+            fn try_to_value_container(self) -> Result<ValueContainer, TryToValueContainerError> {
                 Ok(ValueContainer::from(self))
             }
         }
         impl DatexProxyDeserialize for $type {
             fn try_from_value_container(
                 value: ValueContainer,
-            ) -> Result<Self, ()> {
-                value.try_into().map_err(|_| ())
+            ) -> Result<Self, TryFromValueContainerError> {
+                value.try_into()
             }
         }
     };
@@ -136,15 +143,15 @@ macro_rules! impl_datex_direct_via_value_container {
                 }
             }
             impl DatexProxySerialize for $ty {
-                fn try_to_value_container(self) -> Result<ValueContainer, ()> {
+                fn try_to_value_container(self) -> Result<ValueContainer, TryToValueContainerError> {
                     Ok(ValueContainer::from(self))
                 }
             }
             impl DatexProxyDeserialize for $ty {
                 fn try_from_value_container(
                     value: ValueContainer,
-                ) -> Result<Self, ()> {
-                   value.try_as().ok_or(())
+                ) -> Result<Self, TryFromValueContainerError> {
+                   value.try_as().ok_or_else(|| TryFromValueContainerError(format!("Cannot cast ValueContainer to {}, expected ValueContainer::Local with inner type {}", stringify!($ty), stringify!($ty))))
                 }
             }
         )*

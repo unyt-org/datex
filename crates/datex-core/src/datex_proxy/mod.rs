@@ -9,9 +9,17 @@ use crate::runtime::execution::{ExecutionError};
 use crate::runtime::{Runtime};
 use crate::runtime::execution::context::ScriptExecutionError;
 
+#[derive(Debug, Clone)]
+pub struct TryFromValueContainerError(pub String);
+
+#[derive(Debug, Clone)]
+pub struct TryToValueContainerError(pub String);
+
+
 #[derive(Debug)]
 pub enum DeserializationError {
-    InvalidValue(String),
+    NoValue,
+    InvalidValue(TryFromValueContainerError),
     ExecutionError(ExecutionError),
     CanNotReadFile(String),
     #[cfg(feature = "parser")]
@@ -34,6 +42,12 @@ impl From<SpannedParserError> for DeserializationError {
     }
 }
 
+impl From<TryFromValueContainerError> for DeserializationError {
+    fn from(err: TryFromValueContainerError) -> DeserializationError {
+        DeserializationError::InvalidValue(err)
+    }
+}
+
 impl From<ScriptExecutionError> for DeserializationError {
     fn from(err: ScriptExecutionError) -> DeserializationError {
         match err {
@@ -51,47 +65,45 @@ pub trait DatexProxy:
 {
 }
 
-/// Deserialization from a [ValueContainer] to a rust value
+/// Conversion from a [ValueContainer] to a rust value
 pub trait DatexProxyDeserialize: Sized {
-    fn try_from_value_container(value: ValueContainer) -> Result<Self, ()>;
+    fn try_from_value_container(value: ValueContainer) -> Result<Self, TryFromValueContainerError>;
 
     /// Deserialize a value of type T from a byte slice containing DXB data
-    fn from_bytes(
+    fn try_from_bytes(
         input: &[u8],
-        runtime: Runtime
+        runtime: &Runtime
     ) -> Result<Self, DeserializationError> {
         let value = runtime.execute_dxb_sync(&input, None, true)?;
         if let Some(value) = value {
-            let config= Self::try_from_value_container(value)
-                .map_err(|_| DeserializationError::InvalidValue("Invalid value".to_string()))?; // TODO: better error
+            let config= Self::try_from_value_container(value)?;
             Ok(config)
         } else {
-            Err(DeserializationError::InvalidValue("Script did not return a value".to_string()))
+            Err(DeserializationError::NoValue)
         }
     }
 
     #[cfg(feature = "compiler")]
-    fn from_script(
+    fn try_from_script(
         script: &str,
-        runtime: Runtime
+        runtime: &Runtime
     ) -> Result<Self, DeserializationError> {
         let value = runtime.execute_sync(&script, &[], None)?;
         if let Some(value) = value {
-            let config= Self::try_from_value_container(value)
-                .map_err(|_| DeserializationError::InvalidValue("Invalid value".to_string()))?; // TODO: better error
+            let config= Self::try_from_value_container(value)?;
             Ok(config)
         } else {
-            Err(DeserializationError::InvalidValue("Script did not return a value".to_string()))
+            Err(DeserializationError::NoValue)
         }
     }
 
     #[cfg(all(feature = "std", feature = "compiler"))]
-    fn from_dx_file(
-        path: std::path::PathBuf,
-        runtime: Runtime,
+    fn try_from_dx_file(
+        path: &std::path::Path,
+        runtime: &Runtime,
     ) -> Result<Self, DeserializationError> {
         let script = std::fs::read_to_string(path).map_err(|e| DeserializationError::CanNotReadFile(e.to_string()))?;
-        Self::from_script(&script, runtime)
+        Self::try_from_script(&script, runtime)
     }
 
     /// Create a value from a DX script string
@@ -105,19 +117,19 @@ pub trait DatexProxyDeserialize: Sized {
     /// because the latter requires execution to evaluate the expression
     /// and extract the value
     #[cfg(feature = "compiler")]
-    fn from_static_script(script: &str) -> Result<Self, DeserializationError> {
+    fn try_from_static_script(script: &str) -> Result<Self, DeserializationError> {
         let value = crate::compiler::extract_static_value_from_script(script)?
             .ok_or(DeserializationError::NoStaticValueFound)?;
-        Self::try_from_value_container(value).map_err(|_| DeserializationError::InvalidValue("Invalid value".to_string()))
+        Ok(Self::try_from_value_container(value)?)
     }
 }
 
-/// Serialization from a [ValueContainer] to a rust value. Might fail if serde values are serialized.
+/// Conversion from a rust value to a [ValueContainer]. Might fail if serde values are serialized.
 pub trait DatexProxySerialize {
-    fn try_to_value_container(self) -> Result<ValueContainer, ()>;
+    fn try_to_value_container(self) -> Result<ValueContainer, TryToValueContainerError>;
 }
 
-/// Infallible serialization from a [ValueContainer] to a rust value.
+/// Infallible conversion from a rust value to a [ValueContainer].
 /// Only works if no serde values are serialized.
 pub trait DatexProxyInfallibleSerialize {
     fn to_value_container(self) -> ValueContainer;
@@ -129,9 +141,9 @@ where
     T: Serialize,
 {
     /// Converts a [Serialize] value into a [ValueContainer] by first converting it to a [serde_value::Value] and then deserializing it into a [ValueContainer].
-    default fn try_to_value_container(self) -> Result<ValueContainer, ()> {
-        let serde_val = serde_value::to_value(self).map_err(|_| ())?;
-        serde_val.deserialize_into().map_err(|_| ())
+    default fn try_to_value_container(self) -> Result<ValueContainer, TryToValueContainerError> {
+        let serde_val = serde_value::to_value(self).map_err(|err| TryToValueContainerError(err.to_string()))?;
+        serde_val.deserialize_into().map_err(|err| TryToValueContainerError(err.to_string()))
     }
 }
 
@@ -142,8 +154,8 @@ where
     /// Converts a [ValueContainer] into a [DeserializeOwned] type by first converting it to a [serde_value::Value] and then deserializing it into the target type.
     default fn try_from_value_container(
         value: ValueContainer,
-    ) -> Result<Self, ()> {
-        let serde_val = serde_value::to_value(value).map_err(|_| ())?;
-        T::deserialize(serde_val).map_err(|_| ())
+    ) -> Result<Self, TryFromValueContainerError> {
+        let serde_val = serde_value::to_value(value).map_err(|err| TryFromValueContainerError(err.to_string()))?;
+        T::deserialize(serde_val).map_err(|err| TryFromValueContainerError(err.to_string()))
     }
 }
