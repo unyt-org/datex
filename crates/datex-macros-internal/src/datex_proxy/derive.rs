@@ -1,8 +1,10 @@
+use proc_macro_crate::{FoundCrate, crate_name};
 use proc_macro2::{Ident, Span, TokenStream};
-use proc_macro_crate::{crate_name, FoundCrate};
 use quote::{format_ident, quote};
-use syn::{Attribute, Data, DataEnum, DataStruct, DeriveInput, Meta, Token};
-use syn::punctuated::Punctuated;
+use syn::{
+    Attribute, Data, DataEnum, DataStruct, DeriveInput, Meta, Token,
+    punctuated::Punctuated,
+};
 
 enum SerdeMode {
     /// Serde serializable/deserializable fields are not allowed inside the datex proxy value.
@@ -16,20 +18,26 @@ enum SerdeMode {
     /// Serde serializable/deserializable fields are allowed inside the datex proxy value.
     /// The user explicitly guarantees that the serialization will not fail, so the generated code will
     /// provide an infallible into method to convert to ValueContainer
-    Infallible
+    Infallible,
 }
 
 /// Derive implementation for the [Datex] derive macro.
 pub fn derive(input: DeriveInput) -> TokenStream {
     match input.data {
-        Data::Struct(data_struct) => derive_struct(data_struct, input.ident, input.attrs),
+        Data::Struct(data_struct) => {
+            derive_struct(data_struct, input.ident, input.attrs)
+        }
         Data::Enum(data_enum) => derive_enum(data_enum),
         _ => unimplemented!(),
     }
 }
 
 /// Derive implementation for structs
-fn derive_struct(data_struct: DataStruct, ident: Ident, attrs: Vec<Attribute>) -> TokenStream {
+fn derive_struct(
+    data_struct: DataStruct,
+    ident: Ident,
+    attrs: Vec<Attribute>,
+) -> TokenStream {
     let serde_mode = get_serde_mode(&attrs);
     let mut into_datex_fields: Vec<TokenStream> = vec![];
     let mut from_datex_fields: Vec<TokenStream> = vec![];
@@ -51,21 +59,21 @@ fn derive_struct(data_struct: DataStruct, ident: Ident, attrs: Vec<Attribute>) -
                         quote! {
                             DatexProxyInfallibleSerialize::to_value_container(value.#field_ident)
                         }
-                    },
+                    }
                     // Allow serde fields that only default implement DatexProxySerialize
                     // and propagate the error if the serialization fails
                     SerdeMode::Fallible => {
                         quote! {
                             DatexProxySerialize::try_to_value_container(value.#field_ident).map_err(|_| ())?,
                         }
-                    },
+                    }
                     // Allow serde fields that only default implement DatexProxySerialize
                     // but panic if the serialization fails, since the user explicitly guarantees that it won't fail
                     SerdeMode::Infallible => {
                         quote! {
                             DatexProxySerialize::try_to_value_container(value.#field_ident).expect("Serde serialization for Datex value with datex(serde_infallible)")
                         }
-                    },
+                    }
                 };
 
                 into_datex_fields.push(quote! {
@@ -140,7 +148,7 @@ fn derive_struct(data_struct: DataStruct, ident: Ident, attrs: Vec<Attribute>) -
 
     let serialize = match serde_mode {
         // no serde or infallible serde, provide/assume DatexProxyInfallibleSerialize
-        SerdeMode::None | SerdeMode::Infallible=> {
+        SerdeMode::None | SerdeMode::Infallible => {
             quote! {
                 #[automatically_derived]
                 impl From<#ident> for Value {
@@ -163,7 +171,7 @@ fn derive_struct(data_struct: DataStruct, ident: Ident, attrs: Vec<Attribute>) -
                     }
                 }
             }
-        },
+        }
         SerdeMode::Fallible => {
             quote! {
                 #[automatically_derived]
@@ -191,7 +199,7 @@ fn derive_struct(data_struct: DataStruct, ident: Ident, attrs: Vec<Attribute>) -
                     }
                 }
             }
-        },
+        }
     };
 
     quote! {
@@ -247,17 +255,28 @@ fn get_serde_mode(attrs: &[Attribute]) -> SerdeMode {
 
     // find datex(allow_serde) or datex(allow_serde_infallible) attribute
     for attr in attrs {
-        if attr.path().is_ident("datex") && let Meta::List(meta_list) = &attr.meta {
-            for nested in meta_list.parse_args_with(Punctuated::<Meta, Token![,]>::parse_terminated).unwrap() {
+        if attr.path().is_ident("datex")
+            && let Meta::List(meta_list) = &attr.meta
+        {
+            for nested in meta_list
+                .parse_args_with(
+                    Punctuated::<Meta, Token![,]>::parse_terminated,
+                )
+                .unwrap()
+            {
                 if let Meta::Path(path) = nested {
                     if path.is_ident("allow_serde") {
                         if let SerdeMode::Infallible = serde_mode {
-                            panic!("Cannot use both datex(allow_serde) and datex(allow_serde_infallible) on the same struct");
+                            panic!(
+                                "Cannot use both datex(allow_serde) and datex(allow_serde_infallible) on the same struct"
+                            );
                         }
                         serde_mode = SerdeMode::Fallible;
                     } else if path.is_ident("allow_serde_infallible") {
                         if let SerdeMode::Fallible = serde_mode {
-                            panic!("Cannot use both datex(allow_serde) and datex(allow_serde_infallible) on the same struct");
+                            panic!(
+                                "Cannot use both datex(allow_serde) and datex(allow_serde_infallible) on the same struct"
+                            );
                         }
                         serde_mode = SerdeMode::Infallible;
                     }
@@ -272,9 +291,18 @@ fn get_serde_mode(attrs: &[Attribute]) -> SerdeMode {
 fn get_datex_core_crate_name(attrs: &[Attribute]) -> Ident {
     // find datex(internal) attribute -> use crate:: identifier
     for attr in attrs {
-        if attr.path().is_ident("datex") && let Meta::List(meta_list) = &attr.meta {
-            for nested in meta_list.parse_args_with(Punctuated::<Meta, Token![,]>::parse_terminated).unwrap() {
-                if let Meta::Path(path) = nested && path.is_ident("internal") {
+        if attr.path().is_ident("datex")
+            && let Meta::List(meta_list) = &attr.meta
+        {
+            for nested in meta_list
+                .parse_args_with(
+                    Punctuated::<Meta, Token![,]>::parse_terminated,
+                )
+                .unwrap()
+            {
+                if let Meta::Path(path) = nested
+                    && path.is_ident("internal")
+                {
                     return format_ident!("crate");
                 }
             }
@@ -285,13 +313,10 @@ fn get_datex_core_crate_name(attrs: &[Attribute]) -> Ident {
     let found = crate_name("datex-core").unwrap();
     match found {
         FoundCrate::Itself => format_ident!("crate"),
-        FoundCrate::Name(name) => {
-            Ident::new(&name, Span::call_site())
-        }
+        FoundCrate::Name(name) => Ident::new(&name, Span::call_site()),
     }
 }
 
-
-fn derive_enum(data_enum: DataEnum) -> TokenStream {
+fn derive_enum(_data_enum: DataEnum) -> TokenStream {
     todo!()
 }

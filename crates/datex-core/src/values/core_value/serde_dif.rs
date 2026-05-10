@@ -6,7 +6,7 @@ use crate::{
         value_container::ValueContainer,
     },
 };
-use serde::{Serialize, Serializer, de::MapAccess, ser::SerializeMap};
+use serde::de::MapAccess;
 
 use crate::dif::serde_context::SerdeContext;
 use core::fmt;

@@ -45,7 +45,6 @@ use crate::{
         r#type::Type, type_definition::TypeDefinition,
     },
     utils::maybe_action::{ErrorCollector, MaybeAction, collect_or_pass_error},
-    values::core_value::CoreValue,
     visitor::{
         VisitAction,
         expression::{ExpressionVisitor, visitable::ExpressionVisitResult},
@@ -296,24 +295,28 @@ impl<'a> Precompiler<'a> {
             self.add_new_variable(data.name.clone(), VariableShape::Type);
 
         let type_def = match data.kind {
-            TypeDeclarationKind::Nominal => {
-                Type::nominal(
-                    NominalTypeDefinition::new_base(
-                        Type::core(CoreLibBaseTypeId::Unknown),
-                        data.name.clone(),
-                    ),
-                    &mut self.runtime.pointer_address_provider().borrow_mut(),
-                )
-            }
-            TypeDeclarationKind::Alias => {
-                Type::Alias(TypeDefinition::Shared(unsafe {
-                    SharedContainerContainingType::new_unchecked(SharedContainer::new_owned_with_inferred_allowed_type(
-                        Type::core(CoreLibBaseTypeId::Unknown),
-                        SharedContainerMutability::Mutable,
-                        &mut self.runtime.pointer_address_provider().borrow_mut(),
-                    ))
-                }).into())
-            }
+            TypeDeclarationKind::Nominal => Type::nominal(
+                NominalTypeDefinition::new_base(
+                    Type::core(CoreLibBaseTypeId::Unknown),
+                    data.name.clone(),
+                ),
+                &mut self.runtime.pointer_address_provider().borrow_mut(),
+            ),
+            TypeDeclarationKind::Alias => Type::Alias(
+                TypeDefinition::Shared(unsafe {
+                    SharedContainerContainingType::new_unchecked(
+                        SharedContainer::new_owned_with_inferred_allowed_type(
+                            Type::core(CoreLibBaseTypeId::Unknown),
+                            SharedContainerMutability::Mutable,
+                            &mut self
+                                .runtime
+                                .pointer_address_provider()
+                                .borrow_mut(),
+                        ),
+                    )
+                })
+                .into(),
+            ),
         };
 
         {

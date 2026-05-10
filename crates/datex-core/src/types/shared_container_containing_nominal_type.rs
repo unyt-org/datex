@@ -1,9 +1,6 @@
 use crate::{
     libs::core::{core_lib_id::CoreLibId, type_id::CoreLibTypeId},
-    runtime::{
-        memory::Memory,
-        pointer_address_provider::SelfOwnedPointerAddressProvider,
-    },
+    runtime::pointer_address_provider::SelfOwnedPointerAddressProvider,
     shared_values::{SharedContainer, SharedContainerMutability},
     types::{
         nominal_type_definition::NominalTypeDefinition,

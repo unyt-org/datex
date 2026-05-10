@@ -13,21 +13,22 @@ use crate::{
     },
 };
 pub mod apply;
+pub mod datex_proxy;
 pub mod equality;
 pub mod ops;
 pub mod serde_dif;
 pub mod update_handler;
-pub mod datex_proxy;
 
 use crate::{
-    runtime::memory::Memory, shared_values::errors::AccessError,
-    types::r#type::Type,
+    shared_values::errors::AccessError,
+    types::{
+        r#type::Type, type_definition_with_metadata::TypeDefinitionWithMetadata,
+    },
 };
 use core::{
     fmt::{Display, Formatter},
     result::Result,
 };
-use crate::types::type_definition_with_metadata::TypeDefinitionWithMetadata;
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub struct Value {
@@ -45,7 +46,6 @@ impl<T: Into<CoreValue>> From<T> for Value {
         }
     }
 }
-
 
 impl Value {
     pub fn null() -> Self {
@@ -106,9 +106,10 @@ impl Value {
     pub fn has_default_type(&self) -> bool {
         match &self.custom_type {
             None => true,
-            Some(Type::Alias(TypeDefinitionWithMetadata {definition: TypeDefinition::Core(core_type), ..})) => {
-                core_type == &self.default_core_type()
-            }
+            Some(Type::Alias(TypeDefinitionWithMetadata {
+                definition: TypeDefinition::Core(core_type),
+                ..
+            })) => core_type == &self.default_core_type(),
             Some(_) => false,
         }
     }

@@ -52,6 +52,7 @@ pub mod type_inference;
 pub mod visitor;
 
 pub mod core_compiler;
+pub mod datex_proxy;
 pub mod dif;
 pub mod disassembler;
 pub mod dxb_parser;
@@ -64,7 +65,6 @@ pub mod types;
 pub mod utils;
 pub mod value_updates;
 pub mod values;
-pub mod datex_proxy;
 
 // reexport macros
 pub use datex_macros_internal as macros;

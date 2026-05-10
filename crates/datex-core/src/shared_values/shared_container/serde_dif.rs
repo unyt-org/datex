@@ -6,13 +6,12 @@ use crate::{
     shared_values::{
         ReferenceMutability, SharedContainer, SharedContainerOwnership,
     },
+    utils::serde_serialize_seed::SerializeSeed,
 };
 use alloc::format;
 use serde::{
     Deserialize, Deserializer, Serialize, Serializer, de::DeserializeSeed,
 };
-use crate::utils::serde_serialize_seed::SerializeSeed;
-
 
 impl<'de, 'ctx> DeserializeSeed<'de> for SerdeContext<'ctx, SharedContainer> {
     type Value = SharedContainer;
@@ -68,7 +67,8 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, SharedContainer> {
             SharedContainerOwnership::Owned => "",
         };
 
-        format!("{}{}", ownership, value.pointer_address()).serialize(serializer)
+        format!("{}{}", ownership, value.pointer_address())
+            .serialize(serializer)
     }
 }
 
@@ -103,8 +103,10 @@ mod tests {
                 .clone(),
         );
 
-        let serialized = SerdeContext::<SharedContainer>::new(&mut DIFSharedContainerCache::default())
-            .serialize_to_json(&integer_container);
+        let serialized = SerdeContext::<SharedContainer>::new(
+            &mut DIFSharedContainerCache::default(),
+        )
+        .serialize_to_json(&integer_container);
         assert_eq!(serialized, r#""'$030000""#);
     }
 
@@ -119,24 +121,27 @@ mod tests {
                 address_provider,
             );
 
-        let serialized = SerdeContext::<SharedContainer>::new(&mut DIFSharedContainerCache::default())
-            .serialize_to_json(&owned_container);
+        let serialized = SerdeContext::<SharedContainer>::new(
+            &mut DIFSharedContainerCache::default(),
+        )
+        .serialize_to_json(&owned_container);
         assert_eq!(
             serialized,
             format!(r#""{}""#, owned_container.pointer_address())
         );
     }
 
-    use crate::dif::{
-        cache::{
-            CacheValueRetrievalError, DIFSharedContainerCache,
-            ValueNotFoundInCacheError,
+    use crate::{
+        dif::{
+            cache::{
+                CacheValueRetrievalError, DIFSharedContainerCache,
+                ValueNotFoundInCacheError,
+            },
+            serde_context::SerdeContext,
         },
-        serde_context::SerdeContext,
+        utils::serde_serialize_seed::SerializeSeed,
     };
     use core::assert_matches;
-    use crate::utils::serde_serialize_seed::SerializeSeed;
-
 
     #[test]
     fn deserialize_core_pointer_address_to_shared_container() {
@@ -154,8 +159,11 @@ mod tests {
         );
         dif_cache.store_shared_container(integer_container.clone());
 
-        let outer = SerdeContext::<SharedContainer>::new(&mut DIFSharedContainerCache::default())
-            .try_deserialize_from_json(json).unwrap();
+        let outer = SerdeContext::<SharedContainer>::new(
+            &mut DIFSharedContainerCache::default(),
+        )
+        .try_deserialize_from_json(json)
+        .unwrap();
 
         assert_eq!(outer, integer_container);
     }
@@ -176,9 +184,9 @@ mod tests {
 
         dif_cache.store_shared_container(owned_container);
 
-
         let outer_ref = SerdeContext::<SharedContainer>::new(dif_cache)
-            .try_deserialize_from_json(&format!(r#""'{}""#, ptr_address_hex)).unwrap();
+            .try_deserialize_from_json(&format!(r#""'{}""#, ptr_address_hex))
+            .unwrap();
 
         assert_matches!(
             outer_ref,
@@ -188,7 +196,8 @@ mod tests {
         );
 
         let outer_ref_mut = SerdeContext::<SharedContainer>::new(dif_cache)
-            .try_deserialize_from_json(&format!(r#""'mut{}""#, ptr_address_hex)).unwrap();
+            .try_deserialize_from_json(&format!(r#""'mut{}""#, ptr_address_hex))
+            .unwrap();
 
         assert_matches!(
             outer_ref_mut,
@@ -198,7 +207,8 @@ mod tests {
         );
 
         let outer_owned = SerdeContext::<SharedContainer>::new(dif_cache)
-            .try_deserialize_from_json(&format!(r#""{}""#, ptr_address_hex)).unwrap();
+            .try_deserialize_from_json(&format!(r#""{}""#, ptr_address_hex))
+            .unwrap();
 
         assert_matches!(
             outer_owned,

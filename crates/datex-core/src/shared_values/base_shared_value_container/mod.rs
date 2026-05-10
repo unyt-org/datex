@@ -4,15 +4,14 @@ use crate::{
     utils::freemap::FreeHashMap,
     values::{
         value::Value,
-        value_container::{value_key::BorrowedValueKey, ValueContainer},
+        value_container::{ValueContainer, value_key::BorrowedValueKey},
     },
 };
 pub mod update_handler;
 use crate::{
-    runtime::memory::Memory,
     shared_values::{
-        errors::{AccessError, SharedValueCreationError},
         SharedContainerMutability,
+        errors::{AccessError, SharedValueCreationError},
     },
     types::r#type::Type,
     value_updates::errors::UpdateError,

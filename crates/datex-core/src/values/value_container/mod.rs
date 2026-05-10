@@ -33,8 +33,8 @@ use core::{
     hash::{Hash, Hasher},
     ops::{Add, FnOnce, Neg, Sub},
 };
-pub mod error;
 pub mod datex_proxy;
+pub mod error;
 
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 
@@ -96,9 +96,7 @@ impl ValueContainer {
         F: for<'a> FnOnce(&'a T) -> R,
         for<'a> &'a T: TryFrom<&'a CoreValue>,
     {
-        self.with_collapsed_value(|value| {
-            value.inner.try_as().map(f)
-        })
+        self.with_collapsed_value(|value| value.inner.try_as().map(f))
     }
 
     /// Performs a clone used by the "clone" command
@@ -117,9 +115,7 @@ impl ValueContainer {
     pub fn actual_type(&self) -> Type {
         match self {
             ValueContainer::Local(local) => local.actual_type().clone(),
-            ValueContainer::Shared(shared) => {
-                shared.actual_type().clone()
-            }
+            ValueContainer::Shared(shared) => shared.actual_type().clone(),
         }
     }
 
@@ -150,7 +146,6 @@ impl ValueContainer {
             ValueContainer::Shared(shared) => shared.allowed_type().clone(),
         }
     }
-
 
     /// Returns the contained SharedContainer if it is a SharedContainer, otherwise returns None.
     pub fn maybe_shared(&self) -> Option<&SharedContainer> {

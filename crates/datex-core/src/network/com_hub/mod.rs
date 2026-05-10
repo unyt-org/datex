@@ -40,7 +40,6 @@ use core::{
     pin::Pin,
     result::Result,
 };
-use datex_macros_internal::Datex;
 use itertools::Itertools;
 use log::{debug, error, info, warn};
 use serde::{Deserialize, Serialize};

@@ -276,6 +276,7 @@ mod tests {
             base_shared_value_container::BaseSharedValueContainer,
         },
         traits::{structural_eq::StructuralEq, value_eq::ValueEq},
+        types::r#type::Type,
         values::{
             core_value::CoreValue,
             core_values::{
@@ -284,13 +285,12 @@ mod tests {
                 list::List,
                 map::Map,
             },
+            value::Value,
         },
     };
     use core::assert_matches;
     use log::{debug, info};
     use std::collections::HashMap;
-    use crate::types::r#type::Type;
-    use crate::values::value::Value;
 
     fn execute_datex_script_debug(
         datex_script: &str,
@@ -890,8 +890,12 @@ mod tests {
             vec!["1", "integer", "boolean"],
             vec![
                 Some(Integer::from(1).into()),
-                Some(ValueContainer::Local(Value::from(Type::core(CoreLibBaseTypeId::Integer)))),
-                Some(ValueContainer::Local(Value::from(Type::core(CoreLibBaseTypeId::Boolean)))),
+                Some(ValueContainer::Local(Value::from(Type::core(
+                    CoreLibBaseTypeId::Integer,
+                )))),
+                Some(ValueContainer::Local(Value::from(Type::core(
+                    CoreLibBaseTypeId::Boolean,
+                )))),
             ],
             runtime,
         )

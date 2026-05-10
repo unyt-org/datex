@@ -1,4 +1,4 @@
-use crate::{shared_values::SharedContainerMutability};
+use crate::shared_values::SharedContainerMutability;
 use binrw::{BinRead, BinWrite};
 use core::{
     cmp::Ordering,

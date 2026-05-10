@@ -387,14 +387,15 @@ impl ComInterfaceManager {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::network::com_interfaces::com_interface::factory::{
-        SendCallback, SendSuccess, SocketConfiguration, SocketProperties,
+    use crate::{
+        datex_proxy::{DatexProxyInfallibleSerialize, DatexProxySerialize},
+        network::com_interfaces::com_interface::factory::{
+            SendCallback, SendSuccess, SocketConfiguration, SocketProperties,
+        },
+        prelude::*,
     };
-    use crate::datex_proxy::DatexProxyInfallibleSerialize;
-    use crate::prelude::*;
-    use serde::{Deserialize, Serialize};
     use datex_macros_internal::Datex;
-    use crate::datex_proxy::DatexProxySerialize;
+    use serde::{Deserialize, Serialize};
 
     #[derive(Datex)]
     #[datex(internal)]

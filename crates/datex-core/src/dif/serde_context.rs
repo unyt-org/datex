@@ -1,8 +1,5 @@
 use crate::dif::cache::DIFSharedContainerCache;
 use core::marker::PhantomData;
-use serde::de::DeserializeSeed;
-use serde::{Deserializer, Serializer};
-use crate::utils::serde_serialize_seed::SerializeSeed;
 
 #[derive(Debug)]
 pub struct SerdeContext<'ctx, T> {
@@ -29,25 +26,20 @@ impl<'ctx, T> SerdeContext<'ctx, T> {
     #[cfg(test)]
     pub fn try_deserialize_from_json(
         self,
-        json_string: &'ctx str
+        json_string: &'ctx str,
     ) -> Result<T, serde_json::Error>
     where
         SerdeContext<'ctx, T>: DeserializeSeed<'ctx, Value = T>,
     {
         DeserializeSeed::deserialize(
             self,
-            &mut serde_json::Deserializer::from_str(
-                json_string,
-            ),
+            &mut serde_json::Deserializer::from_str(json_string),
         )
     }
 
     /// Convert a serializable DATEX value to a JSON string
     #[cfg(test)]
-    pub fn serialize_to_json(
-        &mut self,
-        value: &T,
-    ) -> String
+    pub fn serialize_to_json(&mut self, value: &T) -> String
     where
         SerdeContext<'ctx, T>: SerializeSeed<Value = T>,
     {
@@ -56,9 +48,7 @@ impl<'ctx, T> SerdeContext<'ctx, T> {
         let bytes = serializer.into_inner();
         String::from_utf8(bytes).unwrap()
     }
-
 }
-
 
 impl<'ctx> From<&'ctx mut DIFSharedContainerCache> for SerdeContext<'ctx, ()> {
     fn from(cache: &'ctx mut DIFSharedContainerCache) -> Self {

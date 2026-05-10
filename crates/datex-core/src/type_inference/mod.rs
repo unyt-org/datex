@@ -222,7 +222,8 @@ impl<'a> TypeInference<'a> {
             }
 
             ErrorHandling::CollectAndReturnType => {
-                let ty = result.unwrap_or_else(|_| Type::core(CoreLibBaseTypeId::Never));
+                let ty = result
+                    .unwrap_or_else(|_| Type::core(CoreLibBaseTypeId::Never));
                 if has_errors {
                     Ok(InferOutcome::OkWithErrors {
                         ty,
@@ -240,7 +241,10 @@ impl<'a> TypeInference<'a> {
         expr: &mut DatexExpression,
     ) -> Result<Type, SpannedTypeError> {
         self.visit_datex_expression(expr)?;
-        Ok(expr.ty.clone().unwrap_or_else(|| Type::core(CoreLibBaseTypeId::Never)))
+        Ok(expr
+            .ty
+            .clone()
+            .unwrap_or_else(|| Type::core(CoreLibBaseTypeId::Never)))
     }
 
     fn infer_type_expression(
@@ -248,7 +252,10 @@ impl<'a> TypeInference<'a> {
         type_expr: &mut TypeExpression,
     ) -> Result<Type, SpannedTypeError> {
         self.visit_type_expression(type_expr)?;
-        Ok(type_expr.ty.clone().unwrap_or_else(|| Type::core(CoreLibBaseTypeId::Never)))
+        Ok(type_expr
+            .ty
+            .clone()
+            .unwrap_or_else(|| Type::core(CoreLibBaseTypeId::Never)))
     }
 
     fn variable_type(&self, id: usize) -> Option<Type> {
@@ -273,9 +280,13 @@ impl<'a> TypeInference<'a> {
         if let Some(collected_errors) = &mut self.errors {
             let action = match error.error {
                 TypeError::Unimplemented(_) => {
-                    VisitAction::SetTypeRecurseChildNodes(Type::core(CoreLibBaseTypeId::Never))
+                    VisitAction::SetTypeRecurseChildNodes(Type::core(
+                        CoreLibBaseTypeId::Never,
+                    ))
                 }
-                _ => VisitAction::SetTypeSkipChildren(Type::core(CoreLibBaseTypeId::Never)),
+                _ => VisitAction::SetTypeSkipChildren(Type::core(
+                    CoreLibBaseTypeId::Never,
+                )),
             };
             collected_errors.errors.push(error);
             Ok(action)
@@ -308,8 +319,7 @@ fn mark_type_or_never<E>(
     maybe_type: Option<Type>,
 ) -> Result<VisitAction<E>, SpannedTypeError> {
     mark_type(
-        maybe_type
-            .unwrap_or_else(|| Type::core(CoreLibBaseTypeId::Never)),
+        maybe_type.unwrap_or_else(|| Type::core(CoreLibBaseTypeId::Never)),
     )
 }
 
@@ -721,7 +731,9 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
 
         let assigned_type =
             self.infer_expression(&mut variable_assignment.expression)?;
-        let annotated_type = self.variable_type(id).unwrap_or_else(|| Type::core(CoreLibBaseTypeId::Never));
+        let annotated_type = self
+            .variable_type(id)
+            .unwrap_or_else(|| Type::core(CoreLibBaseTypeId::Never));
 
         match variable_assignment.operator {
             None => {
@@ -1111,10 +1123,9 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
             .parameters
             .iter_mut()
             .map(|(name, param_type_expr)| {
-                let param_type =
-                    self.infer_type_expression(param_type_expr).unwrap_or_else(
-                        |_| Type::core(CoreLibBaseTypeId::Never),
-                    );
+                let param_type = self
+                    .infer_type_expression(param_type_expr)
+                    .unwrap_or_else(|_| Type::core(CoreLibBaseTypeId::Never));
                 (Some(name.clone()), param_type)
             })
             .collect();
@@ -1345,7 +1356,9 @@ mod tests {
             scope_stack::PrecompilerScopeStack,
         },
         global::operators::{BinaryOperator, binary::ArithmeticOperator},
-        libs::core::type_id::{CoreLibBaseTypeId, CoreLibVariantTypeId},
+        libs::core::type_id::{
+            CoreLibBaseTypeId, CoreLibTypeId, CoreLibVariantTypeId,
+        },
         parser::Parser,
         prelude::*,
         runtime::{Runtime, memory::Memory},
@@ -1386,7 +1399,6 @@ mod tests {
             },
         },
     };
-    use crate::libs::core::type_id::CoreLibTypeId;
 
     /// Infers type errors for the given source code.
     /// Panics if parsing or precompilation succeeds.
@@ -1540,9 +1552,7 @@ mod tests {
         let res = infer_type_from_script_ignore_errors(src);
         assert_eq!(
             res,
-            Type::core(CoreLibVariantTypeId::Integer(
-                IntegerTypeVariant::U8
-            ))
+            Type::core(CoreLibVariantTypeId::Integer(IntegerTypeVariant::U8))
         );
 
         // variant access on type (separate)
@@ -1553,9 +1563,7 @@ mod tests {
         let res = infer_type_from_script_ignore_errors(src);
         assert_eq!(
             res,
-            Type::core(CoreLibVariantTypeId::Integer(
-                IntegerTypeVariant::U8
-            ))
+            Type::core(CoreLibVariantTypeId::Integer(IntegerTypeVariant::U8))
         );
 
         // variant access on type alias (inline)
@@ -1565,9 +1573,7 @@ mod tests {
         let res = infer_type_from_script_ignore_errors(src);
         assert_eq!(
             res,
-            Type::core(CoreLibVariantTypeId::Integer(
-                IntegerTypeVariant::U8
-            ))
+            Type::core(CoreLibVariantTypeId::Integer(IntegerTypeVariant::U8))
         );
 
         // variant access on type alias (separate)
@@ -1578,9 +1584,7 @@ mod tests {
         let res = infer_type_from_script_ignore_errors(src);
         assert_eq!(
             res,
-            Type::core(CoreLibVariantTypeId::Integer(
-                IntegerTypeVariant::U8
-            ))
+            Type::core(CoreLibVariantTypeId::Integer(IntegerTypeVariant::U8))
         );
 
         // invalid variant access on type alias
@@ -1626,7 +1630,9 @@ mod tests {
                     ),
                 ],
                 rest_parameter_type: None,
-                return_type: Some(Box::new(Type::core(CoreLibBaseTypeId::Integer))),
+                return_type: Some(Box::new(Type::core(
+                    CoreLibBaseTypeId::Integer
+                ))),
                 yeet_type: None,
             },))
         );
@@ -1787,40 +1793,31 @@ mod tests {
         assert_matches!(
             var_type,
             Type::Alias(TypeDefinitionWithMetadata {
-                definition: TypeDefinition::Core(CoreLibTypeId::Base(CoreLibBaseTypeId::Integer)), ..
+                definition: TypeDefinition::Core(CoreLibTypeId::Base(
+                    CoreLibBaseTypeId::Integer
+                )),
+                ..
             })
         );
-        
 
         let inferred_type =
             infer_type_from_script_ignore_errors("typealias X = integer/u8");
         assert_eq!(
             inferred_type,
-            Type::core(CoreLibVariantTypeId::Integer(
-                IntegerTypeVariant::U8
-            ))
+            Type::core(CoreLibVariantTypeId::Integer(IntegerTypeVariant::U8))
         );
 
         let inferred_type =
             infer_type_from_script_ignore_errors("typealias X = decimal");
-        assert_eq!(
-            inferred_type,
-            Type::core(CoreLibBaseTypeId::Decimal)
-        );
+        assert_eq!(inferred_type, Type::core(CoreLibBaseTypeId::Decimal));
 
         let inferred_type =
             infer_type_from_script_ignore_errors("typealias X = boolean");
-        assert_eq!(
-            inferred_type,
-            Type::core(CoreLibBaseTypeId::Boolean)
-        );
+        assert_eq!(inferred_type, Type::core(CoreLibBaseTypeId::Boolean));
 
         let inferred_type =
             infer_type_from_script_ignore_errors("typealias X = text");
-        assert_eq!(
-            inferred_type,
-            Type::core(CoreLibBaseTypeId::Text)
-        );
+        assert_eq!(inferred_type, Type::core(CoreLibBaseTypeId::Text));
     }
 
     #[test]
@@ -2064,7 +2061,6 @@ mod tests {
 
     #[test]
     fn var_declaration_with_type_annotation() {
-
         let inferred =
             infer_type_from_script_ignore_errors("var x: integer = 42");
         assert_eq!(inferred, Type::core(CoreLibBaseTypeId::Integer));
@@ -2072,9 +2068,7 @@ mod tests {
             infer_type_from_script_ignore_errors("var x: integer/u8 = 42");
         assert_eq!(
             inferred,
-            Type::core(CoreLibVariantTypeId::Integer(
-                IntegerTypeVariant::U8
-            ))
+            Type::core(CoreLibVariantTypeId::Integer(IntegerTypeVariant::U8))
         );
         let inferred =
             infer_type_from_script_ignore_errors("var x: decimal = 42");

@@ -3,11 +3,11 @@ pub mod shared;
 
 use crate::values::value_container::ValueContainer;
 use serde::{Serialize, de::DeserializeOwned};
-use crate::values::value::Value;
 
 /// Base DATEX trait for value proxy. Must implement [DatexProxyDeserialize] and [DatexProxySerialize]
-pub trait DatexProxy: Sized + DatexProxyDeserialize + DatexProxySerialize {
-
+pub trait DatexProxy:
+    Sized + DatexProxyDeserialize + DatexProxySerialize
+{
 }
 
 /// Deserialization from a [ValueContainer] to a rust value
@@ -20,7 +20,7 @@ pub trait DatexProxySerialize {
     fn try_to_value_container(self) -> Result<ValueContainer, ()>;
 }
 
-/// Infallible serialization from a [ValueContainer] to a rust value. 
+/// Infallible serialization from a [ValueContainer] to a rust value.
 /// Only works if no serde values are serialized.
 pub trait DatexProxyInfallibleSerialize {
     fn to_value_container(self) -> ValueContainer;

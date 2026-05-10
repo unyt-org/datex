@@ -4,13 +4,15 @@ use crate::{
 };
 use serde::{Deserialize, Serialize, Serializer, de::IntoDeserializer};
 
-use crate::dif::serde_context::SerdeContext;
+use crate::{
+    dif::serde_context::SerdeContext,
+    utils::serde_serialize_seed::SerializeSeed,
+};
 use core::fmt;
 use serde::{
     Deserializer,
     de::{DeserializeSeed, MapAccess, Visitor},
 };
-use crate::utils::serde_serialize_seed::SerializeSeed;
 
 /// Deserialization for [ValueContainer] using a [DeserializationContext] to provide access to the memory during deserialization.
 impl<'de, 'ctx> DeserializeSeed<'de> for SerdeContext<'ctx, ValueContainer> {
@@ -65,10 +67,12 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, ValueContainer> {
         S: Serializer,
     {
         match value {
-            ValueContainer::Shared(shared) => self
-                .cast::<SharedContainer>()
-                .serialize(shared, serializer),
-            ValueContainer::Local(local) => self.cast::<Value>().serialize(local, serializer),
+            ValueContainer::Shared(shared) => {
+                self.cast::<SharedContainer>().serialize(shared, serializer)
+            }
+            ValueContainer::Local(local) => {
+                self.cast::<Value>().serialize(local, serializer)
+            }
         }
     }
 }
@@ -159,7 +163,8 @@ mod tests {
         dif_cache.store_shared_container(integer_container.clone());
 
         let outer = SerdeContext::<ValueContainer>::new(dif_cache)
-            .try_deserialize_from_json(json).unwrap();
+            .try_deserialize_from_json(json)
+            .unwrap();
 
         assert_eq!(
             outer,

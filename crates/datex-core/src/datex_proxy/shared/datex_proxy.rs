@@ -1,10 +1,14 @@
-use crate::datex_proxy::{DatexProxy, DatexProxyDeserialize, DatexProxyInfallibleSerialize, DatexProxySerialize};
-use crate::datex_proxy::shared::Shared;
-use crate::values::value_container::ValueContainer;
+use crate::{
+    datex_proxy::{
+        DatexProxy, DatexProxyDeserialize, DatexProxyInfallibleSerialize,
+        DatexProxySerialize, shared::Shared,
+    },
+    values::value_container::ValueContainer,
+};
 
 impl<T: DatexProxy> DatexProxyInfallibleSerialize for Shared<T> {
     fn to_value_container(self) -> ValueContainer {
-       ValueContainer::Shared(self.container)
+        ValueContainer::Shared(self.container)
     }
 }
 impl<T: DatexProxy> DatexProxySerialize for Shared<T> {
@@ -13,14 +17,12 @@ impl<T: DatexProxy> DatexProxySerialize for Shared<T> {
     }
 }
 impl<T: DatexProxy> DatexProxyDeserialize for Shared<T> {
-    fn try_from_value_container(
-        value: ValueContainer,
-    ) -> Result<Self, ()> {
+    fn try_from_value_container(value: ValueContainer) -> Result<Self, ()> {
         match value {
             ValueContainer::Shared(container) => {
                 Shared::try_from(container).map_err(|_| ())
-            },
-            x => Err(()),
+            }
+            _x => Err(()),
         }
     }
 }

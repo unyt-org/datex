@@ -1,4 +1,3 @@
-use core::fmt::Display;
 use crate::{
     collections::HashMap,
     shared_values::{
@@ -10,6 +9,7 @@ use crate::{
         },
     },
 };
+use core::fmt::Display;
 use strum_macros::Display;
 
 /// Cache layer that stores references or owned and referenced shared containers used by the DIF client
@@ -27,7 +27,6 @@ impl Display for ValueNotFoundInCacheError {
         write!(f, "Value not found in cache")
     }
 }
-
 
 #[derive(Debug, Clone, PartialEq, Eq, Display)]
 pub enum CacheValueRetrievalError {

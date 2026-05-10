@@ -1,17 +1,12 @@
 //! This module contains the core library for DATEX, which provides the fundamental types and values that are essential for the operation of the DATEX language. The core library is loaded into memory at startup and is accessible globally throughout the system.
 use crate::{
-    collections::HashMap,
     libs::core::{
         core_lib_id::{CoreLibId, CoreLibIdTrait},
         type_id::{CoreLibBaseTypeId, CoreLibTypeId, CoreLibVariantTypeId},
         value_id::CoreLibValueId,
     },
     runtime::memory::Memory,
-    shared_values::{ReferencedSharedContainer, SharedContainerMutability},
-    types::{
-        nominal_type_definition::NominalTypeDefinition,
-        type_definition::TypeDefinition,
-    },
+    shared_values::ReferencedSharedContainer,
     values::{
         core_value::CoreValue,
         core_values::{
@@ -62,7 +57,7 @@ impl CoreLibrary {
                         )),
                     )
                 })
-                .chain(Self::generate_core_lib_types().into_iter())
+                .chain(Self::generate_core_lib_types())
                 .map(|(id, entry)| (id.name(), entry))
                 .collect::<Vec<_>>();
 
@@ -80,7 +75,8 @@ impl CoreLibrary {
     }
 
     /// Returns a map of all core library type values by id
-    fn generate_core_lib_types() -> impl Iterator<Item = CoreLibTypeDefinition> {
+    fn generate_core_lib_types() -> impl Iterator<Item = CoreLibTypeDefinition>
+    {
         gen {
             for id in CoreLibBaseTypeId::iter() {
                 yield Self::create_type(CoreLibTypeId::Base(id));
@@ -103,10 +99,11 @@ impl CoreLibrary {
     }
 
     /// Creates a new core lib type via definition and id
-    fn create_type(
-        id: CoreLibTypeId,
-    ) -> CoreLibTypeDefinition {
-        (CoreLibId::Type(id), ValueContainer::from(CoreValue::Type(Type::core(id))))
+    fn create_type(id: CoreLibTypeId) -> CoreLibTypeDefinition {
+        (
+            CoreLibId::Type(id),
+            ValueContainer::from(CoreValue::Type(Type::core(id))),
+        )
     }
 
     unsafe fn print(memory: &Memory) -> (CoreLibId, ReferencedSharedContainer) {

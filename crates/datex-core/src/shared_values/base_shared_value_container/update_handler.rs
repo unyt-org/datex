@@ -1,18 +1,18 @@
 use crate::{
     prelude::*,
-    shared_values::base_shared_value_container::BaseSharedValueContainer,
+    shared_values::base_shared_value_container::{
+        BaseSharedValueContainer, observers::TransceiverId,
+    },
     value_updates::{
         errors::UpdateError,
         update_data::{
             AppendEntryUpdateData, DeleteEntryUpdateData, ListSpliceUpdateData,
-            ReplaceUpdateData, SetEntryUpdateData,
+            ReplaceUpdateData, SetEntryUpdateData, UpdateData,
         },
         update_handler::UpdateHandler,
     },
     values::value_container::ValueContainer,
 };
-use crate::shared_values::base_shared_value_container::observers::TransceiverId;
-use crate::value_updates::update_data::UpdateData;
 
 impl UpdateHandler for BaseSharedValueContainer {
     fn try_replace(
@@ -23,7 +23,8 @@ impl UpdateHandler for BaseSharedValueContainer {
         self.assert_can_mutate()?;
         // set new value container
         // TODO: type check?
-        let update_data = UpdateData::Replace(data.clone()).with_source(source_id);
+        let update_data =
+            UpdateData::Replace(data.clone()).with_source(source_id);
         let prev = core::mem::replace(&mut self.value_container, data.value);
 
         self.notify_observers(&update_data);
@@ -37,7 +38,8 @@ impl UpdateHandler for BaseSharedValueContainer {
     ) -> Result<(), UpdateError> {
         self.assert_can_mutate()?;
 
-        let update_data = UpdateData::SetEntry(data.clone()).with_source(source_id);
+        let update_data =
+            UpdateData::SetEntry(data.clone()).with_source(source_id);
         self.value_container.try_set_entry(data, source_id)?;
 
         self.notify_observers(&update_data);
@@ -50,8 +52,10 @@ impl UpdateHandler for BaseSharedValueContainer {
         source_id: TransceiverId,
     ) -> Result<ValueContainer, UpdateError> {
         self.assert_can_mutate()?;
-        let update_data = UpdateData::DeleteEntry(data.clone()).with_source(source_id);
-        let previous = self.value_container.try_delete_entry(data, source_id)?;
+        let update_data =
+            UpdateData::DeleteEntry(data.clone()).with_source(source_id);
+        let previous =
+            self.value_container.try_delete_entry(data, source_id)?;
 
         self.notify_observers(&update_data);
 
@@ -64,7 +68,8 @@ impl UpdateHandler for BaseSharedValueContainer {
         source_id: TransceiverId,
     ) -> Result<(), UpdateError> {
         self.assert_can_mutate()?;
-        let update_data = UpdateData::AppendEntry(data.clone()).with_source(source_id);
+        let update_data =
+            UpdateData::AppendEntry(data.clone()).with_source(source_id);
         self.value_container.try_append_entry(data, source_id)?;
 
         self.notify_observers(&update_data);
@@ -89,7 +94,8 @@ impl UpdateHandler for BaseSharedValueContainer {
     ) -> Result<Vec<ValueContainer>, UpdateError> {
         self.assert_can_mutate()?;
 
-        let update_data = UpdateData::ListSplice(data.clone()).with_source(source_id);
+        let update_data =
+            UpdateData::ListSplice(data.clone()).with_source(source_id);
         let removed = self.value_container.try_list_splice(data, source_id)?;
 
         self.notify_observers(&update_data);
@@ -103,9 +109,11 @@ mod tests {
         prelude::*,
         runtime::memory::Memory,
         shared_values::{
-            base_shared_value_container::BaseSharedValueContainer,
-            errors::{AccessError, IndexOutOfBoundsError},
             SharedContainerMutability,
+            base_shared_value_container::{
+                BaseSharedValueContainer, observers::TransceiverId,
+            },
+            errors::{AccessError, IndexOutOfBoundsError},
         },
         value_updates::{
             errors::UpdateError,
@@ -120,7 +128,6 @@ mod tests {
         },
     };
     use core::assert_matches;
-    use crate::shared_values::base_shared_value_container::observers::TransceiverId;
 
     #[test]
     fn push() {

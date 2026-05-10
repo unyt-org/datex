@@ -46,10 +46,15 @@ where
     assert_eq!(value, deserialized_value);
 }
 
+use datex_core::{
+    runtime::pointer_address_provider::SelfOwnedPointerAddressProvider,
+    shared_values::{
+        OwnedSharedContainer, PointerAddress, SharedContainer,
+        SharedContainerMutability,
+    },
+    values::value::Value,
+};
 use test_case::test_case;
-use datex_core::runtime::pointer_address_provider::SelfOwnedPointerAddressProvider;
-use datex_core::shared_values::{OwnedSharedContainer, PointerAddress, SharedContainer, SharedContainerMutability};
-use datex_core::values::value::Value;
 
 #[test_case(
     Example {
@@ -106,7 +111,7 @@ fn struct_to_value() {
         b: "Test".to_string(),
         c: Endpoint::default(),
     }
-        .into();
+    .into();
 
     let map: Map = value_container.try_into().unwrap();
     assert_eq!(map.get("a").unwrap(), &ValueContainer::from(42u8));
@@ -167,7 +172,10 @@ fn struct_with_serde_to_value_container() {
     let map: Map = value_container.try_as().unwrap();
     assert_eq!(map.get("a").unwrap(), &ValueContainer::from(42u8));
     let serde_map: Map = map.get("serde").unwrap().try_as().unwrap();
-    assert_eq!(serde_map.get("inner_a").unwrap(), &ValueContainer::from(1u8));
+    assert_eq!(
+        serde_map.get("inner_a").unwrap(),
+        &ValueContainer::from(1u8)
+    );
     assert_eq!(
         serde_map.get("inner_b").unwrap(),
         &ValueContainer::from("Inner".to_string())
@@ -190,7 +198,10 @@ fn struct_with_serde_infallible_to_value_container() {
     let map: Map = value_container.try_as().unwrap();
     assert_eq!(map.get("a").unwrap(), &ValueContainer::from(42u8));
     let serde_map: Map = map.get("serde").unwrap().try_as().unwrap();
-    assert_eq!(serde_map.get("inner_a").unwrap(), &ValueContainer::from(1u8));
+    assert_eq!(
+        serde_map.get("inner_a").unwrap(),
+        &ValueContainer::from(1u8)
+    );
     assert_eq!(
         serde_map.get("inner_b").unwrap(),
         &ValueContainer::from("Inner".to_string())
@@ -223,7 +234,11 @@ fn struct_with_value_container() {
 
     // shared inner value container
     let shared_container = ValueContainer::Shared(
-        SharedContainer::new_owned_with_inferred_allowed_type(42, SharedContainerMutability::Mutable, address_provider)
+        SharedContainer::new_owned_with_inferred_allowed_type(
+            42,
+            SharedContainerMutability::Mutable,
+            address_provider,
+        ),
     );
     let example_shared = ExampleWithValueContainer {
         a: 42u8,
@@ -233,12 +248,10 @@ fn struct_with_value_container() {
     let value_container: ValueContainer = example_shared.into();
     let map: Map = value_container.try_as().unwrap();
     assert_eq!(map.get("a").unwrap(), &ValueContainer::from(42u8));
-    assert_eq!(
-        map.get("val").unwrap(),
-        &shared_container
-    );
+    assert_eq!(map.get("val").unwrap(), &shared_container);
 
-    let deserialized_example_shared: ExampleWithValueContainer = value_container.try_into().unwrap();
+    let deserialized_example_shared: ExampleWithValueContainer =
+        value_container.try_into().unwrap();
     assert_eq!(deserialized_example_shared.a, 42u8);
     assert_eq!(deserialized_example_shared.val, shared_container);
 }
@@ -253,7 +266,9 @@ fn struct_with_owned_shared_value_container() {
     }
 
     let owned_container = OwnedSharedContainer::new_with_inferred_allowed_type(
-        42, SharedContainerMutability::Mutable, address_provider
+        42,
+        SharedContainerMutability::Mutable,
+        address_provider,
     );
     let address = owned_container.pointer_address().clone();
     let example = ExampleWithOwnedContainer {
@@ -263,7 +278,10 @@ fn struct_with_owned_shared_value_container() {
     let value_container: ValueContainer = example.into();
 
     value_container.try_with(|map: &Map| {
-        if let ValueContainer::Shared(SharedContainer::Owned(shared_container)) = map.get("owned").unwrap() {
+        if let ValueContainer::Shared(SharedContainer::Owned(
+            shared_container,
+        )) = map.get("owned").unwrap()
+        {
             assert_eq!(*shared_container.pointer_address(), address);
         } else {
             panic!("Expected a Shared Owned variant in the ValueContainer");

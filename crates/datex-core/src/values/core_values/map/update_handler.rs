@@ -2,20 +2,22 @@ use crate::{
     prelude::*,
     values::{
         core_values::map::Map,
-        value_container::{value_key::BorrowedValueKey, ValueContainer},
+        value_container::{ValueContainer, value_key::BorrowedValueKey},
     },
 };
 
-use crate::value_updates::{
-    errors::UpdateError,
-    update_data::{
-        AppendEntryUpdateData, DeleteEntryUpdateData, ListSpliceUpdateData,
-        ReplaceUpdateData, SetEntryUpdateData,
+use crate::{
+    shared_values::base_shared_value_container::observers::TransceiverId,
+    value_updates::{
+        errors::UpdateError,
+        update_data::{
+            AppendEntryUpdateData, DeleteEntryUpdateData, ListSpliceUpdateData,
+            ReplaceUpdateData, SetEntryUpdateData,
+        },
+        update_handler::UpdateHandler,
     },
-    update_handler::UpdateHandler,
 };
 use core::result::Result;
-use crate::shared_values::base_shared_value_container::observers::TransceiverId;
 
 impl UpdateHandler for Map {
     fn try_replace(

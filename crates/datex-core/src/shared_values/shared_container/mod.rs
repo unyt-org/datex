@@ -1,20 +1,17 @@
 //! This module contains the implementation of the shared container, which is the holder of [SharedContainerInner]
 //! and the top-level wrapper for any owned or referenced shared container.
 use crate::{
-    runtime::{
-        memory::Memory,
-        pointer_address_provider::SelfOwnedPointerAddressProvider,
-    },
+    runtime::pointer_address_provider::SelfOwnedPointerAddressProvider,
     shared_values::{
-        base_shared_value_container::BaseSharedValueContainer, errors::{
+        OwnedSharedContainer, PointerAddress, ReferencedSharedContainer,
+        SelfOwnedPointerAddress, SharedContainerInner,
+        SharedContainerMutability, SharedContainerOwnership,
+        base_shared_value_container::BaseSharedValueContainer,
+        errors::{
             AccessError, UnexpectedImmutableReferenceError,
             UnexpectedSharedContainerOwnershipError,
-        }, internal_traits::_ExposeRcInternal,
-        OwnedSharedContainer, PointerAddress,
-        ReferencedSharedContainer, SelfOwnedPointerAddress,
-        SharedContainerInner,
-        SharedContainerMutability,
-        SharedContainerOwnership,
+        },
+        internal_traits::_ExposeRcInternal,
     },
     traits::{
         apply::Apply, identity::Identity, structural_eq::StructuralEq,
@@ -23,10 +20,13 @@ use crate::{
     types::r#type::Type,
     values::{
         value::Value,
-        value_container::{value_key::BorrowedValueKey, ValueContainer},
+        value_container::{ValueContainer, value_key::BorrowedValueKey},
     },
 };
 pub mod identity;
+use crate::shared_values::base_shared_value_container::observers::{
+    Observer, ObserverError, ObserverId,
+};
 use alloc::rc::Rc;
 use core::{
     cell::{Ref, RefCell, RefMut},
@@ -34,7 +34,6 @@ use core::{
     hash::{Hash, Hasher},
 };
 use serde::Serializer;
-use crate::shared_values::base_shared_value_container::observers::{Observer, ObserverError, ObserverId};
 
 pub mod apply;
 pub mod serde_dif;
@@ -331,8 +330,8 @@ impl Display for SharedContainer {
     }
 }
 
-pub mod equality;
 pub mod datex_proxy;
+pub mod equality;
 
 impl Hash for SharedContainer {
     fn hash<H: Hasher>(&self, state: &mut H) {

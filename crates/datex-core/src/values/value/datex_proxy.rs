@@ -1,10 +1,14 @@
-use crate::datex_proxy::{DatexProxy, DatexProxyDeserialize, DatexProxyInfallibleSerialize, DatexProxySerialize};
-use crate::values::value::Value;
-use crate::values::value_container::ValueContainer;
+use crate::{
+    datex_proxy::{
+        DatexProxy, DatexProxyDeserialize, DatexProxyInfallibleSerialize,
+        DatexProxySerialize,
+    },
+    values::{value::Value, value_container::ValueContainer},
+};
 
 impl DatexProxyInfallibleSerialize for Value {
     fn to_value_container(self) -> ValueContainer {
-       ValueContainer::Local(self)
+        ValueContainer::Local(self)
     }
 }
 impl DatexProxySerialize for Value {
@@ -13,12 +17,10 @@ impl DatexProxySerialize for Value {
     }
 }
 impl DatexProxyDeserialize for Value {
-    fn try_from_value_container(
-        value: ValueContainer,
-    ) -> Result<Self, ()> {
+    fn try_from_value_container(value: ValueContainer) -> Result<Self, ()> {
         Ok(match value {
             ValueContainer::Local(v) => v,
-            x => return Err(()),
+            _x => return Err(()),
         })
     }
 }

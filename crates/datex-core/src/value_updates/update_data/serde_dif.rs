@@ -13,7 +13,7 @@ use crate::{
 use core::fmt;
 use serde::{
     Deserializer, Serializer, de,
-    de::{DeserializeSeed, MapAccess, Visitor, value::MapAccessDeserializer},
+    de::{DeserializeSeed, MapAccess, Visitor},
     ser::{SerializeSeq, SerializeStruct},
 };
 
@@ -306,7 +306,7 @@ impl<'de, 'ctx> Visitor<'de> for UpdateDataVisitor<'ctx> {
     }
 
     fn visit_map<A: MapAccess<'de>>(
-        mut self,
+        self,
         mut map: A,
     ) -> Result<Self::Value, A::Error> {
         // Expect `type` as the first key
@@ -321,7 +321,7 @@ impl<'de, 'ctx> Visitor<'de> for UpdateDataVisitor<'ctx> {
             None => return Err(de::Error::missing_field("type")),
         }
 
-        let kind = map.next_value::<String>()?;
+        let _kind = map.next_value::<String>()?;
 
         todo!()
     }

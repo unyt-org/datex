@@ -9,6 +9,9 @@ use crate::{
         errors::{SharedValueCreationError, UnexpectedImmutableReferenceError},
         internal_traits::_ExposeRcInternal,
     },
+    traits::{
+        identity::Identity, structural_eq::StructuralEq, value_eq::ValueEq,
+    },
     types::r#type::Type,
     values::{value::Value, value_container::ValueContainer},
 };
@@ -17,9 +20,6 @@ use core::{
     cell::{Ref, RefCell, RefMut},
     fmt::Display,
 };
-use crate::traits::identity::Identity;
-use crate::traits::structural_eq::StructuralEq;
-use crate::traits::value_eq::ValueEq;
 
 /// Wrapper struct for a reference to a shared value (i.e. `'shared X` or `'mut shared X`).
 ///
@@ -259,7 +259,6 @@ impl _ExposeRcInternal for ReferencedSharedContainer {
         &self.inner
     }
 }
-
 
 impl Identity for ReferencedSharedContainer {
     fn identical(&self, other: &Self) -> bool {

@@ -4,11 +4,9 @@
 #[cfg(feature = "compiler")]
 use crate::ast::expressions::DatexExpressionData;
 use crate::{
+    libs::core::type_id::CoreLibTypeId,
     prelude::*,
-    runtime::{
-        memory::Memory,
-        pointer_address_provider::SelfOwnedPointerAddressProvider,
-    },
+    runtime::pointer_address_provider::SelfOwnedPointerAddressProvider,
     shared_values::{
         ReferenceMutability, SharedContainerMutability,
         SharedContainerOwnership,
@@ -28,7 +26,6 @@ use crate::{
 };
 use core::{fmt::Display, hash::Hash, ops::Deref};
 use serde::{Deserialize, Serialize};
-use crate::libs::core::type_id::CoreLibTypeId;
 
 // {x: &integer}
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
@@ -78,13 +75,9 @@ impl Type {
         self.with_collapsed_definition_with_metadata(|def| f(&def.definition))
     }
 
-    pub fn base_core_lib_type(
-        &self,
-    ) -> CoreLibTypeId {
+    pub fn base_core_lib_type(&self) -> CoreLibTypeId {
         match self {
-            Type::Alias(type_def) => {
-                type_def.definition.base_core_lib_type()
-            }
+            Type::Alias(type_def) => type_def.definition.base_core_lib_type(),
             Type::Nominal(_nominal_def) => {
                 todo!()
             }

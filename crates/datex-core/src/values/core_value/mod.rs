@@ -12,11 +12,7 @@ use crate::{
 use datex_macros_internal::FromCoreValue;
 pub mod serde_dif;
 use crate::{
-    runtime::memory::Memory,
-    types::{
-        shared_container_containing_nominal_type::SharedContainerContainingNominalType,
-        r#type::Type,
-    },
+    types::r#type::Type,
     values::{
         core_values::{
             boolean::Boolean,
@@ -58,8 +54,8 @@ pub enum CoreValue {
     Callable(Callable),
     Range(Range),
 }
-pub mod equality;
 pub mod datex_proxy;
+pub mod equality;
 
 impl From<&str> for CoreValue {
     fn from(value: &str) -> Self {
@@ -216,9 +212,7 @@ impl CoreValue {
     /// This method uses the CoreLibPointerId to retrieve the corresponding
     /// type reference from the core library.
     /// For example, a CoreValue::TypedInteger(i32) will return the type ref integer/i32
-    pub fn default_core_type(
-        &self,
-    ) -> CoreLibTypeId {
+    pub fn default_core_type(&self) -> CoreLibTypeId {
         CoreLibTypeId::from(self)
     }
 
@@ -434,10 +428,7 @@ mod tests {
     #[test]
     fn type_construct() {
         let a = CoreValue::from(42i32);
-        assert_eq!(
-            a.default_core_type().to_string(),
-            "integer/i32"
-        );
+        assert_eq!(a.default_core_type().to_string(), "integer/i32");
     }
 
     #[test]

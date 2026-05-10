@@ -16,6 +16,9 @@ use crate::{
         },
         internal_traits::_ExposeRcInternal,
     },
+    traits::{
+        identity::Identity, structural_eq::StructuralEq, value_eq::ValueEq,
+    },
     types::r#type::Type,
     values::{
         core_value::CoreValue, value::Value, value_container::ValueContainer,
@@ -27,9 +30,6 @@ use core::{
     fmt::Display,
     mem,
 };
-use crate::traits::identity::Identity;
-use crate::traits::structural_eq::StructuralEq;
-use crate::traits::value_eq::ValueEq;
 
 /// Wrapper struct for an owned shared value (i.e. `shared X`)
 /// It is guaranteed that the inner value is a [SharedContainerInner::EndpointOwned].

@@ -171,8 +171,14 @@ mod tests {
         prelude::*,
         runtime::memory::Memory,
         shared_values::{
-            base_shared_value_container::BaseSharedValueContainer,
             SharedContainerMutability,
+            base_shared_value_container::{
+                BaseSharedValueContainer,
+                observers::{
+                    ObserveOptions, Observer, ObserverError, ObserverId,
+                    TransceiverId,
+                },
+            },
         },
         value_updates::{
             update_data::{
@@ -182,14 +188,10 @@ mod tests {
         },
         values::{
             core_values::map::Map,
-            value_container::{value_key::ValueKey, ValueContainer},
+            value_container::{ValueContainer, value_key::ValueKey},
         },
     };
     use core::{assert_matches, cell::RefCell};
-    use crate::shared_values::base_shared_value_container::observers::{
-        ObserveOptions, Observer, ObserverError, ObserverId,
-        TransceiverId,
-    };
 
     /// Helper function to record DIF updates observed on a reference
     /// Returns a Rc<RefCell<Vec<DIFUpdate>>> that contains all observed updates
@@ -312,12 +314,15 @@ mod tests {
             TransceiverId(0),
             ObserveOptions::default(),
         );
-        
+
         // Update the value of the reference
         int_ref
-            .try_replace(ReplaceUpdateData {
-                value: ValueContainer::from(43),
-            }, TransceiverId(0))
+            .try_replace(
+                ReplaceUpdateData {
+                    value: ValueContainer::from(43),
+                },
+                TransceiverId(0),
+            )
             .expect("Failed to set value");
 
         // No update triggered, same transceiver id

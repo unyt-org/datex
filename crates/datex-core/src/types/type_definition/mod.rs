@@ -3,13 +3,12 @@
 //! The [TypeDefinition] is used as the underlying structure for type definitions in the type space and is wrapped by [TypeDefinitionWithMetadata] which holds additional metadata for type checking and inference.
 
 use crate::{
+    libs::core::type_id::CoreLibTypeId,
     prelude::*,
-    runtime::memory::Memory,
     shared_values::PointerAddress,
     types::{
         collection_type_definition::CollectionTypeDefinition,
         literal_type_definition::LiteralTypeDefinition,
-        shared_container_containing_nominal_type::SharedContainerContainingNominalType,
         shared_container_containing_type::SharedContainerContainingType,
         r#type::Type,
         type_definition_with_metadata::{
@@ -19,7 +18,6 @@ use crate::{
     values::core_values::callable::CallableSignature,
 };
 use core::{fmt::Display, hash::Hash, ops::Deref, prelude::rust_2024::*};
-use crate::libs::core::type_id::CoreLibTypeId;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TypeDefinition {
@@ -65,7 +63,7 @@ pub enum TypeDefinition {
     Type,
 
     // core types ("nominal")
-    Core(CoreLibTypeId)
+    Core(CoreLibTypeId),
 }
 
 impl Hash for TypeDefinition {
@@ -307,11 +305,11 @@ impl TypeDefinition {
     /// 42u8 -> integer
     /// 42 -> integer
     /// User/variant -> User
-    pub fn base_core_lib_type(
-        &self,
-    ) -> CoreLibTypeId {
+    pub fn base_core_lib_type(&self) -> CoreLibTypeId {
         match &self {
-            TypeDefinition::Literal(value) => value.get_core_lib_type_pointer_id(),
+            TypeDefinition::Literal(value) => {
+                value.get_core_lib_type_pointer_id()
+            }
             TypeDefinition::Union(_) => {
                 core::todo!("#322 handle union base type"); // generic type base type / type
             }

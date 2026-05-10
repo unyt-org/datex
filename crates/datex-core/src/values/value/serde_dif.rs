@@ -1,11 +1,10 @@
 use crate::{
+    dif::serde_context::SerdeContext,
     prelude::*,
+    utils::serde_serialize_seed::{SerializeSeed, ValueWithSeed},
     values::{core_value::CoreValue, value::Value},
 };
 use serde::{Serialize, Serializer, ser::SerializeStruct};
-use crate::dif::serde_context::SerdeContext;
-use crate::shared_values::base_shared_value_container::BaseSharedValueContainer;
-use crate::utils::serde_serialize_seed::{SerializeSeed, ValueWithSeed};
 
 /// Serialization for [Value].
 impl<'ctx> SerializeSeed for SerdeContext<'ctx, Value> {
@@ -19,7 +18,6 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, Value> {
     where
         S: Serializer,
     {
-
         fn serialize_type_and_value_seed<'ctx2, 'borrow, Se, T>(
             ty: Cow<Option<Type>>,
             value: &T,
@@ -31,14 +29,18 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, Value> {
             Se: Serializer,
             for<'a> SerdeContext<'a, T>: SerializeSeed<Value = T>,
         {
-            let mut state = serializer.serialize_struct(
-                "Value",
-                if ty.is_some() { 2 } else { 1 },
-            )?;
+            let mut state = serializer
+                .serialize_struct("Value", if ty.is_some() { 2 } else { 1 })?;
             if let Some(ty) = ty.as_ref() {
-                state.serialize_field("type", &ValueWithSeed::new(ty, &mut ctx.cast::<Type>()))?;
+                state.serialize_field(
+                    "type",
+                    &ValueWithSeed::new(ty, &mut ctx.cast::<Type>()),
+                )?;
             }
-            state.serialize_field("value", &ValueWithSeed::new(value, &mut ctx.cast::<T>()))?;
+            state.serialize_field(
+                "value",
+                &ValueWithSeed::new(value, &mut ctx.cast::<T>()),
+            )?;
             state.end()
         }
 
@@ -48,57 +50,111 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, Value> {
             serializer: Se,
             ctx: &mut SerdeContext<'ctx2, Value>,
         ) -> Result<Se::Ok, Se::Error>
-            where T: Serialize + Sized,
-                  Se: Serializer,
+        where
+            T: Serialize + Sized,
+            Se: Serializer,
         {
-            let mut state = serializer.serialize_struct(
-                "Value",
-                if ty.is_some() { 2 } else { 1 },
-            )?;
+            let mut state = serializer
+                .serialize_struct("Value", if ty.is_some() { 2 } else { 1 })?;
             if let Some(ty) = ty.as_ref() {
-                state.serialize_field("type", &ValueWithSeed::new(ty, ctx.cast::<Type>()))?;
+                state.serialize_field(
+                    "type",
+                    &ValueWithSeed::new(ty, ctx.cast::<Type>()),
+                )?;
             }
             state.serialize_field("value", value)?;
             state.end()
         }
 
         match &value.inner {
-            CoreValue::Integer(i) => serialize_type_and_value(Cow::Borrowed(&value.custom_type), i, serializer, self),
-            CoreValue::Boolean(b) => serialize_type_and_value(Cow::Borrowed(&value.custom_type), b, serializer, self),
-            CoreValue::Text(s) => serialize_type_and_value(Cow::Borrowed(&value.custom_type), s, serializer, self),
-            CoreValue::Decimal(d) => serialize_type_and_value(Cow::Borrowed(&value.custom_type), d, serializer, self),
-            CoreValue::TypedInteger(ti) => serialize_type_and_value(Cow::Borrowed(&value.custom_type), ti, serializer, self),
-            CoreValue::TypedDecimal(td) => serialize_type_and_value(Cow::Borrowed(&value.custom_type), td, serializer, self),
+            CoreValue::Integer(i) => serialize_type_and_value(
+                Cow::Borrowed(&value.custom_type),
+                i,
+                serializer,
+                self,
+            ),
+            CoreValue::Boolean(b) => serialize_type_and_value(
+                Cow::Borrowed(&value.custom_type),
+                b,
+                serializer,
+                self,
+            ),
+            CoreValue::Text(s) => serialize_type_and_value(
+                Cow::Borrowed(&value.custom_type),
+                s,
+                serializer,
+                self,
+            ),
+            CoreValue::Decimal(d) => serialize_type_and_value(
+                Cow::Borrowed(&value.custom_type),
+                d,
+                serializer,
+                self,
+            ),
+            CoreValue::TypedInteger(ti) => serialize_type_and_value(
+                Cow::Borrowed(&value.custom_type),
+                ti,
+                serializer,
+                self,
+            ),
+            CoreValue::TypedDecimal(td) => serialize_type_and_value(
+                Cow::Borrowed(&value.custom_type),
+                td,
+                serializer,
+                self,
+            ),
             CoreValue::Null => serialize_type_and_value(
                 match &value.custom_type {
                     Some(_) => Cow::Borrowed(&value.custom_type),
-                    None => Cow::Owned(Some(Type::core(CoreLibBaseTypeId::Null))),
+                    None => {
+                        Cow::Owned(Some(Type::core(CoreLibBaseTypeId::Null)))
+                    }
                 },
-                &(), serializer, self),
+                &(),
+                serializer,
+                self,
+            ),
 
-            CoreValue::List(l) => serialize_type_and_value_seed(Cow::Borrowed(&value.custom_type), l, serializer, self),
+            CoreValue::List(l) => serialize_type_and_value_seed(
+                Cow::Borrowed(&value.custom_type),
+                l,
+                serializer,
+                self,
+            ),
 
             CoreValue::Range(range) => serialize_type_and_value_seed(
                 match &value.custom_type {
                     Some(_) => Cow::Borrowed(&value.custom_type),
-                    None => Cow::Owned(Some(Type::core(CoreLibBaseTypeId::Range))),
+                    None => {
+                        Cow::Owned(Some(Type::core(CoreLibBaseTypeId::Range)))
+                    }
                 },
-                range, serializer, self
+                range,
+                serializer,
+                self,
             ),
             CoreValue::Endpoint(endpoint) => serialize_type_and_value(
                 match &value.custom_type {
                     Some(_) => Cow::Borrowed(&value.custom_type),
-                    None => Cow::Owned(Some(Type::core(CoreLibBaseTypeId::Endpoint))),
+                    None => Cow::Owned(Some(Type::core(
+                        CoreLibBaseTypeId::Endpoint,
+                    ))),
                 },
-                endpoint, serializer, self
+                endpoint,
+                serializer,
+                self,
             ),
 
             CoreValue::Map(map_value) => serialize_type_and_value_seed(
                 match &value.custom_type {
                     Some(_) => Cow::Borrowed(&value.custom_type),
-                    None => Cow::Owned(Some(Type::core(CoreLibBaseTypeId::Map))),
+                    None => {
+                        Cow::Owned(Some(Type::core(CoreLibBaseTypeId::Map)))
+                    }
                 },
-                map_value, serializer, self
+                map_value,
+                serializer,
+                self,
             ),
 
             // CoreValue::Type(t) => t.serialize(serializer),
@@ -111,15 +167,13 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, Value> {
     }
 }
 
+use crate::{libs::core::type_id::CoreLibBaseTypeId, types::r#type::Type};
 use core::fmt;
 use serde::{
     Deserializer,
     de::{DeserializeSeed, MapAccess, Visitor},
+    ser::SerializeMap,
 };
-use serde::ser::SerializeMap;
-use crate::libs::core::type_id::CoreLibBaseTypeId;
-use crate::types::r#type::Type;
-use crate::values::value_container::ValueContainer;
 
 /// Deserialization for [Value] using a [DeserializationContext] to provide access to the memory during deserialization.
 impl<'de, 'ctx> DeserializeSeed<'de> for SerdeContext<'ctx, Value> {
@@ -174,15 +228,16 @@ mod tests {
 
     use super::*;
     use crate::{
+        dif::cache::DIFSharedContainerCache,
         values::{core_value::CoreValue, core_values::integer::Integer},
     };
-    use crate::dif::cache::DIFSharedContainerCache;
 
     #[test]
     fn serialize_simple_local_value() {
         let value = Value::from(CoreValue::Integer(Integer::new(42)));
-        let serialized = SerdeContext::<Value>::new(&mut DIFSharedContainerCache::default())
-            .serialize_to_json(&value);
+        let serialized =
+            SerdeContext::<Value>::new(&mut DIFSharedContainerCache::default())
+                .serialize_to_json(&value);
 
         assert_eq!(serialized, r#"{"value":"42"}"#);
     }

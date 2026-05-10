@@ -1,4 +1,8 @@
 use crate::{
+    datex_proxy::{
+        DatexProxy, DatexProxyDeserialize, DatexProxyInfallibleSerialize,
+        DatexProxySerialize,
+    },
     prelude::*,
     types::{nominal_type_definition::NominalTypeDefinition, r#type::Type},
     values::{
@@ -18,7 +22,6 @@ use crate::{
         value_container::ValueContainer,
     },
 };
-use crate::datex_proxy::{DatexProxy, DatexProxyDeserialize, DatexProxyInfallibleSerialize, DatexProxySerialize};
 
 macro_rules! impl_try_from_core_value {
     ($($variant:ident => $type:ty),* $(,)?) => {

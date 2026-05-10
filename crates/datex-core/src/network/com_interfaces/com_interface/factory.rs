@@ -1,6 +1,7 @@
 pub use crate::network::com_hub::managers::com_interface_manager::ComInterfaceAsyncFactoryResult;
 use crate::{
     channel::mpsc::{UnboundedReceiver, create_unbounded_channel},
+    datex_proxy::DatexProxyDeserialize,
     global::dxb_block::DXBBlock,
     network::{
         com_hub::errors::ComInterfaceCreateError,
@@ -20,8 +21,7 @@ use crate::{
 use core::{async_iter::AsyncIterator, fmt::Debug, pin::Pin};
 use futures::channel::oneshot::Sender;
 use futures_core::future::LocalBoxFuture;
-use serde::{Deserialize, Serialize, de::DeserializeOwned};
-use crate::datex_proxy::DatexProxyDeserialize;
+use serde::{Deserialize, Serialize};
 
 pub type NewSocketsIterator = Pin<
     Box<dyn AsyncIterator<Item = Result<SocketConfiguration, ()>> + 'static>,

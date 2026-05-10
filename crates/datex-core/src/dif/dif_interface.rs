@@ -1,17 +1,19 @@
 use crate::{
     dif::{
-        cache::DIFSharedContainerCache,
+        cache::{DIFSharedContainerCache, ValueNotFoundInCacheError},
         error::{
-            into_update_result, DIFApplyError, DIFCreatePointerError,
-            DIFObserveError, DIFResolveReferenceError, DIFUpdateResult,
+            DIFApplyError, DIFCreatePointerError, DIFObserveError,
+            DIFUpdateResult, into_update_result,
         },
-        pointer_address::PointerAddressWithOwnership,
     },
     runtime::pointer_address_provider::SelfOwnedPointerAddressProvider,
     shared_values::{
-        base_shared_value_container::BaseSharedValueContainer, OwnedSharedContainer, PointerAddress,
-        SelfOwnedPointerAddress, SelfOwnedSharedContainer,
-        SharedContainer,
+        OwnedSharedContainer, PointerAddress, SelfOwnedPointerAddress,
+        SelfOwnedSharedContainer, SharedContainer,
+        base_shared_value_container::{
+            BaseSharedValueContainer,
+            observers::{ObserveOptions, Observer, ObserverId, TransceiverId},
+        },
     },
     value_updates::{
         update_data::{Update, UpdateData},
@@ -21,8 +23,6 @@ use crate::{
 };
 use alloc::rc::Rc;
 use core::{cell::RefCell, result::Result};
-use crate::dif::cache::ValueNotFoundInCacheError;
-use crate::shared_values::base_shared_value_container::observers::{ObserveOptions, Observer, ObserverId, TransceiverId};
 
 pub struct DIFInterface {
     pub cache: DIFSharedContainerCache,
@@ -109,9 +109,7 @@ impl DIFInterface {
         &mut self,
         address: PointerAddress,
     ) -> Result<SharedContainer, ValueNotFoundInCacheError> {
-        self.cache
-            .try_get_shared_container(&address)
-            .cloned()
+        self.cache.try_get_shared_container(&address).cloned()
     }
 
     /// Starts observing changes to the pointer at the given address.

@@ -9,7 +9,7 @@ pub mod state;
 use crate::{
     core_compiler::injected_values::compile_injected_values,
     dxb_parser::{
-        body::{iterate_instructions, DXBParserError},
+        body::{DXBParserError, iterate_instructions},
         instruction_collector::{
             CollectedResults, CollectionResultsPopper, FullOrPartialResult,
             InstructionCollector, LastUnboundedResultCollector,
@@ -33,6 +33,7 @@ use crate::{
     libs::core::type_id::CoreLibBaseTypeId,
     prelude::*,
     runtime::execution::{
+        ExecutionError, InvalidProgramError,
         execution_loop::{
             internal_slots::{get_internal_slot_value, get_stack_value},
             interrupts::{
@@ -46,19 +47,19 @@ use crate::{
             },
             runtime_value::RuntimeValue,
             state::RuntimeExecutionState,
-        }, macros::{
+        },
+        macros::{
             interrupt, interrupt_with_maybe_value, interrupt_with_value,
             interrupt_with_values, yield_unwrap,
         },
-        ExecutionError,
-        InvalidProgramError,
     },
     shared_values::{
-        base_shared_value_container::BaseSharedValueContainer, ExternalPointerAddress, OwnedSharedContainer,
-        PointerAddress, ReferenceMutability,
-        ReferencedSharedContainer, SelfOwnedSharedContainer, SharedContainer,
-        SharedContainerMutability
-        ,
+        ExternalPointerAddress, OwnedSharedContainer, PointerAddress,
+        ReferenceMutability, ReferencedSharedContainer,
+        SelfOwnedSharedContainer, SharedContainer, SharedContainerMutability,
+        base_shared_value_container::{
+            BaseSharedValueContainer, observers::TransceiverId,
+        },
     },
     types::{
         literal_type_definition::LiteralTypeDefinition,
@@ -69,24 +70,23 @@ use crate::{
         },
     },
     value_updates::{
-        update_data::DeleteEntryUpdateData, update_handler::UpdateHandler,
+        update_data::{DeleteEntryUpdateData, ReplaceUpdateData},
+        update_handler::UpdateHandler,
     },
     values::{
         core_value::CoreValue,
         core_values::{
-            decimal::{typed_decimal::TypedDecimal, Decimal},
+            decimal::{Decimal, typed_decimal::TypedDecimal},
             integer::typed_integer::TypedInteger,
             list::List,
             map::{Map, MapKey},
         },
         value::Value,
-        value_container::{value_key::ValueKey, ValueContainer},
+        value_container::{ValueContainer, value_key::ValueKey},
     },
 };
 use alloc::rc::Rc;
 use core::cell::RefCell;
-use crate::shared_values::base_shared_value_container::observers::TransceiverId;
-use crate::value_updates::update_data::ReplaceUpdateData;
 
 #[derive(Debug)]
 enum CollectedExecutionResult {
@@ -961,7 +961,7 @@ pub fn inner_execution_loop(
                                                 };
                                                 let update_data = ReplaceUpdateData {value: val};
                                                 // TODO: pass TransceiverId
-                                                reference.base_shared_container_mut().try_replace(update_data, TransceiverId(0)).map_err(|err| ExecutionError::UpdateError(err))?;
+                                                reference.base_shared_container_mut().try_replace(update_data, TransceiverId(0)).map_err(ExecutionError::UpdateError)?;
                                                 Ok(RuntimeValue::ValueContainer(
                                                     ref_value_container.clone(),
                                                 ))

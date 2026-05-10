@@ -1,19 +1,18 @@
 use crate::{
     dif::serde_context::SerdeContext,
     prelude::*,
+    utils::serde_serialize_seed::{SerializeSeed, ValueWithSeed},
     values::{
         core_values::map::{BorrowedMapKey, Map},
         value_container::ValueContainer,
     },
 };
+use core::fmt;
 use serde::{
     Serializer,
-    de::{IgnoredAny, MapAccess},
+    de::{DeserializeSeed, Error, IgnoredAny, MapAccess, SeqAccess, Visitor},
     ser::SerializeMap,
 };
-use crate::utils::serde_serialize_seed::{SerializeSeed, ValueWithSeed};
-use core::fmt;
-use serde::de::{DeserializeSeed, Error, SeqAccess, Visitor};
 
 impl<'ctx> SerializeSeed for SerdeContext<'ctx, BorrowedMapKey<'ctx>> {
     type Value = BorrowedMapKey<'ctx>;
@@ -28,11 +27,12 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, BorrowedMapKey<'ctx>> {
     {
         match value {
             BorrowedMapKey::Text(s) => serializer.serialize_str(s),
-            BorrowedMapKey::Value(v) => self.cast::<ValueContainer>().serialize(v, serializer),
+            BorrowedMapKey::Value(v) => {
+                self.cast::<ValueContainer>().serialize(v, serializer)
+            }
         }
     }
 }
-
 
 struct MapEntrySeed<'ctx> {
     ctx: SerdeContext<'ctx, ValueContainer>,
@@ -152,7 +152,6 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, Map> {
     }
 }
 
-
 impl<'ctx> SerializeSeed for SerdeContext<'ctx, Map> {
     type Value = Map;
 
@@ -166,14 +165,15 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, Map> {
     {
         let mut state = serializer.serialize_map(Some(value.size()))?;
         for (key, value) in value.iter() {
-            state.serialize_key(
-                &ValueWithSeed::new(&key, self.cast::<BorrowedMapKey>()),
-            )?;
-            state.serialize_value(
-                &ValueWithSeed::new(value, self.cast::<ValueContainer>())
-            )?;
+            state.serialize_key(&ValueWithSeed::new(
+                &key,
+                self.cast::<BorrowedMapKey>(),
+            ))?;
+            state.serialize_value(&ValueWithSeed::new(
+                value,
+                self.cast::<ValueContainer>(),
+            ))?;
         }
         state.end()
     }
 }
-

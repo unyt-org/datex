@@ -1,15 +1,15 @@
 use core::fmt::Display;
 
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
 use crate::{
+    dif::serde_context::SerdeContext,
     prelude::*,
+    utils::serde_serialize_seed::SerializeSeed,
     values::{
         core_value::CoreValue, value::Value, value_container::ValueContainer,
     },
 };
-use crate::dif::serde_context::SerdeContext;
-use crate::utils::serde_serialize_seed::SerializeSeed;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum ValueKey {
@@ -29,9 +29,9 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, ValueKey> {
         match value {
             ValueKey::Text(text) => text.serialize(serializer),
             ValueKey::Index(index) => index.serialize(serializer),
-            ValueKey::Value(value_container) => {
-                self.cast::<ValueContainer>().serialize(value_container, serializer)
-            }
+            ValueKey::Value(value_container) => self
+                .cast::<ValueContainer>()
+                .serialize(value_container, serializer),
         }
     }
 }

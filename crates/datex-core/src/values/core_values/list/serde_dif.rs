@@ -1,9 +1,12 @@
-use serde::{Serializer, ser::SerializeSeq};
-use serde::ser::SerializeMap;
-use crate::dif::serde_context::SerdeContext;
-use crate::utils::serde_serialize_seed::{SerializeSeed, ValueWithSeed};
-use crate::values::core_values::list::List;
-use crate::values::value_container::ValueContainer;
+use crate::{
+    dif::serde_context::SerdeContext,
+    utils::serde_serialize_seed::{SerializeSeed, ValueWithSeed},
+    values::{core_values::list::List, value_container::ValueContainer},
+};
+use serde::{
+    Serializer,
+    ser::{SerializeMap, SerializeSeq},
+};
 
 impl<'ctx> SerializeSeed for SerdeContext<'ctx, List> {
     type Value = List;
@@ -18,11 +21,11 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, List> {
     {
         let mut state = serializer.serialize_seq(Some(value.len() as usize))?;
         for value in value.iter() {
-            state.serialize_element(
-                &ValueWithSeed::new(value, self.cast::<ValueContainer>()),
-            )?;
+            state.serialize_element(&ValueWithSeed::new(
+                value,
+                self.cast::<ValueContainer>(),
+            ))?;
         }
         state.end()
     }
 }
-

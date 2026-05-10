@@ -1,12 +1,10 @@
 mod serde_dif;
 
 use crate::{
-    dif::serde_context::SerdeContext,
     prelude::*,
-    values::value_container::{value_key::ValueKey, ValueContainer},
+    shared_values::base_shared_value_container::observers::TransceiverId,
+    values::value_container::{ValueContainer, value_key::ValueKey},
 };
-use serde::{de::DeserializeSeed, Deserializer};
-use crate::shared_values::base_shared_value_container::observers::TransceiverId;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum UpdateData {

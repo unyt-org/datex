@@ -3,15 +3,14 @@ use core::fmt;
 use crate::{
     dif::serde_context::SerdeContext,
     prelude::*,
+    utils::serde_serialize_seed::{SerializeSeed, ValueWithSeed},
     values::{core_values::range::Range, value_container::ValueContainer},
 };
 use serde::{
-    Serialize, Serializer,
+    Serializer,
     de::{DeserializeSeed, Error, IgnoredAny, MapAccess, Visitor},
-    ser::SerializeStruct,
+    ser::{SerializeSeq, SerializeStruct, SerializeTuple},
 };
-use serde::ser::{SerializeSeq, SerializeTuple};
-use crate::utils::serde_serialize_seed::{SerializeSeed, ValueWithSeed};
 
 impl<'ctx> SerializeSeed for SerdeContext<'ctx, Range> {
     type Value = Range;
@@ -25,17 +24,17 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, Range> {
         S: Serializer,
     {
         let mut state = serializer.serialize_tuple(2)?;
-        state.serialize_element(
-            &ValueWithSeed::new(&*value.start, self.cast::<ValueContainer>()),
-        )?;
-        state.serialize_element(
-            &ValueWithSeed::new(&*value.end, self.cast::<ValueContainer>()),
-        )?;
+        state.serialize_element(&ValueWithSeed::new(
+            &*value.start,
+            self.cast::<ValueContainer>(),
+        ))?;
+        state.serialize_element(&ValueWithSeed::new(
+            &*value.end,
+            self.cast::<ValueContainer>(),
+        ))?;
         state.end()
     }
 }
-
-
 
 impl<'de, 'ctx> DeserializeSeed<'de> for SerdeContext<'ctx, Range> {
     type Value = Range;
