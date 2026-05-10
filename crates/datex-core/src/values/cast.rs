@@ -3,10 +3,7 @@ use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 use serde::de::DeserializeOwned;
 use crate::{
-    datex_proxy::{
-        DatexProxy, DatexProxyDeserialize, DatexProxyInfallibleSerialize,
-        DatexProxySerialize,
-    },
+    datex_proxy::*,
     prelude::*,
     types::{nominal_type_definition::NominalTypeDefinition, r#type::Type},
     values::{
@@ -26,34 +23,34 @@ use crate::{
         value_container::ValueContainer,
     },
 };
-use crate::datex_proxy::{TryFromValueContainerError, TryToValueContainerError};
+use crate::datex_proxy::{TryFromDatexValueError, TryToDatexValueError};
 
 macro_rules! impl_try_from_core_value {
     ($($variant:ident => $type:ty),* $(,)?) => {
         $(
             impl TryFrom<Value> for $type {
-                type Error = TryFromValueContainerError;
+                type Error = TryFromDatexValueError;
                 fn try_from(value: Value) -> Result<Self, Self::Error> {
                     value.inner.try_into()
                 }
             }
 
             impl TryFrom<CoreValue> for $type {
-                type Error = TryFromValueContainerError;
+                type Error = TryFromDatexValueError;
                 fn try_from(value: CoreValue) -> Result<Self, Self::Error> {
                     match value {
                         CoreValue::$variant(v) => Ok(v),
-                        _ => Err(TryFromValueContainerError(format!("Cannot cast CoreValue to {}, expected CoreValue::{}", stringify!($type), stringify!($variant)))),
+                        _ => Err(TryFromDatexValueError(format!("Cannot cast CoreValue to {}, expected CoreValue::{}", stringify!($type), stringify!($variant)))),
                     }
                 }
             }
 
             impl<'a> TryFrom<&'a CoreValue> for &'a $type {
-                type Error = TryFromValueContainerError;
+                type Error = TryFromDatexValueError;
                 fn try_from(value: &'a CoreValue) -> Result<Self, Self::Error> {
                     match value {
                         CoreValue::$variant(v) => Ok(v),
-                        _ => Err(TryFromValueContainerError(format!("Cannot cast CoreValue to {}, expected CoreValue::{}", stringify!($type), stringify!($variant)))),
+                        _ => Err(TryFromDatexValueError(format!("Cannot cast CoreValue to {}, expected CoreValue::{}", stringify!($type), stringify!($variant)))),
                     }
                 }
             }
@@ -81,18 +78,18 @@ impl_try_from_core_value! {
 macro_rules! derive_try_from_chain {
     ($type:ty, { $($core_match:tt)* }) => {
         impl TryFrom<CoreValue> for $type {
-            type Error = TryFromValueContainerError;
+            type Error = TryFromDatexValueError;
 
             fn try_from(value: CoreValue) -> Result<Self, Self::Error> {
                match value {
                     $($core_match)*
-                    _ => Err(TryFromValueContainerError(format!("Cannot cast CoreValue to {}", stringify!($type)))),
+                    _ => Err(TryFromDatexValueError(format!("Cannot cast CoreValue to {}", stringify!($type)))),
                }
             }
         }
 
         impl TryFrom<Value> for $type {
-            type Error = TryFromValueContainerError;
+            type Error = TryFromDatexValueError;
 
             fn try_from(value: Value) -> Result<Self, Self::Error> {
                 value.inner.try_into()
@@ -100,32 +97,32 @@ macro_rules! derive_try_from_chain {
         }
 
         impl TryFrom<ValueContainer> for $type {
-            type Error = TryFromValueContainerError;
+            type Error = TryFromDatexValueError;
 
             fn try_from(value: ValueContainer) -> Result<Self, Self::Error> {
                 match value {
                     ValueContainer::Local(value) => value.try_into(),
-                    _ => Err(TryFromValueContainerError(format!("Cannot cast ValueContainer to {}, expected ValueContainer::Local", stringify!($type)))),
+                    _ => Err(TryFromDatexValueError(format!("Cannot cast ValueContainer to {}, expected ValueContainer::Local", stringify!($type)))),
                 }
             }
         }
 
-        impl DatexProxy for $type {}
+        impl DatexValueContainerProxy for $type {}
 
-        impl DatexProxyInfallibleSerialize for $type {
+        impl DatexValueContainerProxyInfallibleSerialize for $type {
             fn to_value_container(self) -> ValueContainer {
                ValueContainer::from(self)
             }
         }
-        impl DatexProxySerialize for $type {
-            fn try_to_value_container(self) -> Result<ValueContainer, TryToValueContainerError> {
+        impl DatexValueContainerProxySerialize for $type {
+            fn try_to_value_container(self) -> Result<ValueContainer, TryToDatexValueError> {
                 Ok(ValueContainer::from(self))
             }
         }
-        impl DatexProxyDeserialize for $type {
+        impl DatexValueContainerProxyDeserialize for $type {
             fn try_from_value_container(
                 value: ValueContainer,
-            ) -> Result<Self, TryFromValueContainerError> {
+            ) -> Result<Self, TryFromDatexValueError> {
                 value.try_into()
             }
         }
@@ -135,38 +132,56 @@ macro_rules! derive_try_from_chain {
 macro_rules! impl_datex_direct_via_value_container {
     ($($ty:ty),* $(,)?) => {
         $(
-            impl DatexProxy for $ty {}
+            impl DatexValueContainerProxy for $ty {}
+            impl DatexValueProxy for $ty {}
 
-            impl DatexProxyInfallibleSerialize for $ty {
+            impl DatexValueProxyInfallibleSerialize for $ty {
+                fn to_value(self) -> Value {
+                   Value::from(self)
+                }
+            }
+            impl DatexValueProxySerialize for $ty {
+                fn try_to_value(self) -> Result<Value, TryToDatexValueError> {
+                    Ok(Value::from(self))
+                }
+            }
+            impl DatexValueProxyDeserialize for $ty {
+                fn try_from_value(
+                    value: Value,
+                ) -> Result<Self, TryFromDatexValueError> {
+                   value.try_into().map_err(|_| TryFromDatexValueError(format!("Cannot cast ValueContainer to {}, expected ValueContainer::Local with inner type {}", stringify!($ty), stringify!($ty))))
+                }
+            }
+
+            impl DatexValueContainerProxyInfallibleSerialize for $ty {
                 fn to_value_container(self) -> ValueContainer {
                    ValueContainer::from(self)
                 }
             }
-            impl DatexProxySerialize for $ty {
-                fn try_to_value_container(self) -> Result<ValueContainer, TryToValueContainerError> {
+            impl DatexValueContainerProxySerialize for $ty {
+                fn try_to_value_container(self) -> Result<ValueContainer, TryToDatexValueError> {
                     Ok(ValueContainer::from(self))
                 }
             }
-            impl DatexProxyDeserialize for $ty {
+            impl DatexValueContainerProxyDeserialize for $ty {
                 fn try_from_value_container(
                     value: ValueContainer,
-                ) -> Result<Self, TryFromValueContainerError> {
-                   value.try_as().ok_or_else(|| TryFromValueContainerError(format!("Cannot cast ValueContainer to {}, expected ValueContainer::Local with inner type {}", stringify!($ty), stringify!($ty))))
+                ) -> Result<Self, TryFromDatexValueError> {
+                   value.try_as().ok_or_else(|| TryFromDatexValueError(format!("Cannot cast ValueContainer to {}, expected ValueContainer::Local with inner type {}", stringify!($ty), stringify!($ty))))
                 }
             }
         )*
     };
 }
 
-// FIXME deserialize<de> is still implemented for Endpoint, we should change it to DeserializeSeed and make the proxy compatible
 impl_datex_direct_via_value_container!(
     Endpoint,
-    // Map,
-    // List,
-    // Range,
-    // Type,
-    // NominalTypeDefinition,
-    // Callable
+    Map,
+    List,
+    Range,
+    Type,
+    NominalTypeDefinition,
+    Callable
 );
 derive_try_from_chain!(
     bool,
@@ -243,9 +258,9 @@ derive_try_from_chain!(
 );
 
 
-impl<T: Serialize + DeserializeOwned> DatexProxy for Option<T> {}
+impl<T: Serialize + DeserializeOwned> DatexValueContainerProxy for Option<T> {}
 
-impl<T: DatexProxyInfallibleSerialize> DatexProxyInfallibleSerialize for Option<T> {
+impl<T: DatexValueContainerProxyInfallibleSerialize> DatexValueContainerProxyInfallibleSerialize for Option<T> {
     fn to_value_container(self) -> ValueContainer {
         match self {
             None => ValueContainer::from(Value::null()),
@@ -254,17 +269,17 @@ impl<T: DatexProxyInfallibleSerialize> DatexProxyInfallibleSerialize for Option<
     }
 }
 
-impl<T: Serialize + DeserializeOwned> DatexProxy for Vec<T> {}
+impl<T: Serialize + DeserializeOwned> DatexValueContainerProxy for Vec<T> {}
 
-impl<T: DatexProxyInfallibleSerialize> DatexProxyInfallibleSerialize for Vec<T> {
+impl<T: DatexValueContainerProxyInfallibleSerialize> DatexValueContainerProxyInfallibleSerialize for Vec<T> {
     fn to_value_container(self) -> ValueContainer {
         ValueContainer::from(self.into_iter().map(|v| v.to_value_container()).collect::<Vec<_>>())
     }
 }
 
-impl<K: DatexProxy + Serialize + DeserializeOwned + Eq + Hash, V: DatexProxy + Serialize + DeserializeOwned> DatexProxy for HashMap<K, V> {}
+impl<K: DatexValueContainerProxy + Serialize + DeserializeOwned + Eq + Hash, V: DatexValueContainerProxy + Serialize + DeserializeOwned> DatexValueContainerProxy for HashMap<K, V> {}
 
-impl<K: DatexProxyInfallibleSerialize, V: DatexProxyInfallibleSerialize> DatexProxyInfallibleSerialize for HashMap<K, V> {
+impl<K: DatexValueContainerProxyInfallibleSerialize, V: DatexValueContainerProxyInfallibleSerialize> DatexValueContainerProxyInfallibleSerialize for HashMap<K, V> {
     fn to_value_container(self) -> ValueContainer {
         ValueContainer::from(
             self.into_iter().map(|(k, v)| (k.to_value_container(), v.to_value_container())).collect::<Map>()

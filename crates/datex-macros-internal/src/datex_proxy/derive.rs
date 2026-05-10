@@ -54,24 +54,24 @@ fn derive_struct(
                 let field_name = field_ident.to_string();
 
                 let field_into = match serde_mode {
-                    // no serde or infallible serde, provide/assume DatexProxyInfallibleSerialize
+                    // no serde or infallible serde, provide/assume DatexValueContainerProxyInfallibleSerialize
                     SerdeMode::None => {
                         quote! {
-                            DatexProxyInfallibleSerialize::to_value_container(value.#field_ident)
+                            DatexValueContainerProxyInfallibleSerialize::to_value_container(value.#field_ident)
                         }
                     }
-                    // Allow serde fields that only default implement DatexProxySerialize
+                    // Allow serde fields that only default implement DatexValueContainerProxySerialize
                     // and propagate the error if the serialization fails
                     SerdeMode::Fallible => {
                         quote! {
-                            DatexProxySerialize::try_to_value_container(value.#field_ident)?,
+                            DatexValueContainerProxySerialize::try_to_value_container(value.#field_ident)?,
                         }
                     }
-                    // Allow serde fields that only default implement DatexProxySerialize
+                    // Allow serde fields that only default implement DatexValueContainerProxySerialize
                     // but panic if the serialization fails, since the user explicitly guarantees that it won't fail
                     SerdeMode::Infallible => {
                         quote! {
-                            DatexProxySerialize::try_to_value_container(value.#field_ident).expect("Serde serialization for Datex value with datex(serde_infallible)")
+                            DatexValueContainerProxySerialize::try_to_value_container(value.#field_ident).expect("Serde serialization for Datex value with datex(serde_infallible)")
                         }
                     }
                 };
@@ -84,9 +84,9 @@ fn derive_struct(
                 });
 
                 from_datex_fields.push(quote! {
-                    #field_ident: DatexProxyDeserialize::try_from_value_container(
+                    #field_ident: DatexValueContainerProxyDeserialize::try_from_value_container(
                             map.get(#field_name)
-                                .map_err(|err| TryFromValueContainerError(err.to_string()))?
+                                .map_err(|err| TryFromDatexValueError(err.to_string()))?
                                 .clone()
                         )?,
                 });
@@ -97,13 +97,13 @@ fn derive_struct(
                 let field_index = syn::Index::from(index);
 
                 into_datex_fields.push(quote! {
-                    DatexProxyInfallibleSerialize::to_value_container(value.#field_index)?,
+                    DatexValueContainerProxyInfallibleSerialize::to_value_container(value.#field_index)?,
                 });
 
                 from_datex_fields.push(quote! {
-                    DatexProxyDeserialize::try_from_value_container(
+                    DatexValueContainerProxyDeserialize::try_from_value_container(
                             list.try_get(#index)
-                                .map_err(|err| TryFromValueContainerError(err.to_string()))?
+                                .map_err(|err| TryFromDatexValueError(err.to_string()))?
                                 .clone()
                         )?,
                 });
@@ -144,7 +144,7 @@ fn derive_struct(
     };
 
     let serialize = match serde_mode {
-        // no serde or infallible serde, provide/assume DatexProxyInfallibleSerialize
+        // no serde or infallible serde, provide/assume DatexValueContainerProxyInfallibleSerialize
         SerdeMode::None | SerdeMode::Infallible => {
             quote! {
                 #[automatically_derived]
@@ -154,17 +154,32 @@ fn derive_struct(
                     }
                 }
 
+
                 #[automatically_derived]
-                impl DatexProxyInfallibleSerialize for #ident {
+                impl DatexValueContainerProxySerialize for #ident {
+                    fn try_to_value_container(self) -> Result<ValueContainer, TryToDatexValueError> {
+                        Ok(ValueContainer::Local(self.into()))
+                    }
+                }
+
+                #[automatically_derived]
+                impl DatexValueProxySerialize for #ident {
+                    fn try_to_value(self) -> Result<Value, TryToDatexValueError> {
+                        Ok(self.into())
+                    }
+                }
+
+                #[automatically_derived]
+                impl DatexValueContainerProxyInfallibleSerialize for #ident {
                     fn to_value_container(self) -> ValueContainer {
                        ValueContainer::Local(self.into())
                     }
                 }
 
                 #[automatically_derived]
-                impl DatexProxySerialize for #ident {
-                    fn try_to_value_container(self) -> Result<ValueContainer, TryToValueContainerError> {
-                        Ok(ValueContainer::Local(self.into()))
+                impl DatexValueProxyInfallibleSerialize for #ident {
+                    fn to_value(self) -> Value {
+                       self.into()
                     }
                 }
             }
@@ -173,7 +188,7 @@ fn derive_struct(
             quote! {
                 #[automatically_derived]
                 impl TryFrom<#ident> for Value {
-                    type Error = TryToValueContainerError;
+                    type Error = TryToDatexValueError;
 
                     fn try_from(value: #ident) -> Result<Self, Self::Error> {
                         Ok(Value::from(#into_datex_fields_inner))
@@ -182,7 +197,7 @@ fn derive_struct(
 
                 #[automatically_derived]
                 impl TryFrom<#ident> for ValueContainer {
-                    type Error = TryToValueContainerError;
+                    type Error = TryToDatexValueError;
 
                     fn try_from(value: #ident) -> Result<Self, Self::Error> {
                         Ok(ValueContainer::Local(Value::from(#into_datex_fields_inner)))
@@ -190,9 +205,16 @@ fn derive_struct(
                 }
 
                 #[automatically_derived]
-                impl DatexProxySerialize for #ident {
-                    fn try_to_value_container(self) -> Result<ValueContainer, TryToValueContainerError> {
-                        self.try_into().map(|value| ValueContainer::Local(value))
+                impl DatexValueProxySerialize for #ident {
+                    fn try_to_value(self) -> Result<Value, TryToDatexValueError> {
+                        self.try_into()
+                    }
+                }
+
+                #[automatically_derived]
+                impl DatexValueContainerProxySerialize for #ident {
+                    fn try_to_value_container(self) -> Result<ValueContainer, TryToDatexValueError> {
+                        self.try_to_value().map(|value| ValueContainer::Local(value))
                     }
                 }
             }
@@ -202,7 +224,18 @@ fn derive_struct(
     quote! {
         const _: () = {
             use #datex_core_crate_name::{
-                datex_proxy::{DatexProxy, DatexProxyInfallibleSerialize, DatexProxySerialize, DatexProxyDeserialize, TryToValueContainerError, TryFromValueContainerError},
+                datex_proxy::{
+                    DatexValueContainerProxy,
+                    DatexValueContainerProxyInfallibleSerialize,
+                    DatexValueContainerProxySerialize,
+                    DatexValueContainerProxyDeserialize,
+                    DatexValueProxy,
+                    DatexValueProxyInfallibleSerialize,
+                    DatexValueProxySerialize,
+                    DatexValueProxyDeserialize,
+                    TryToDatexValueError,
+                    TryFromDatexValueError
+                },
                 values::value_container::ValueContainer,
                 values::value::Value,
                 values::core_values::map::Map,
@@ -211,22 +244,33 @@ fn derive_struct(
             };
 
             #[automatically_derived]
-            impl DatexProxy for #ident {}
+            impl DatexValueContainerProxy for #ident {}
+            #[automatically_derived]
+            impl DatexValueProxy for #ident {}
 
             #serialize
 
             #[automatically_derived]
-            impl DatexProxyDeserialize for #ident {
+            impl DatexValueContainerProxyDeserialize for #ident {
                 fn try_from_value_container(
                     value: ValueContainer,
-                ) -> Result<Self, TryFromValueContainerError> {
+                ) -> Result<Self, TryFromDatexValueError> {
+                   value.try_into()
+                }
+            }
+
+            #[automatically_derived]
+            impl DatexValueProxyDeserialize for #ident {
+                fn try_from_value(
+                    value: Value,
+                ) -> Result<Self, TryFromDatexValueError> {
                    value.try_into()
                 }
             }
 
             #[automatically_derived]
             impl TryFrom<Value> for #ident {
-                type Error = TryFromValueContainerError;
+                type Error = TryFromDatexValueError;
 
                 fn try_from(value: Value) -> Result<Self, Self::Error> {
                     Ok(#from_datex_fields_inner)
@@ -235,12 +279,12 @@ fn derive_struct(
 
             #[automatically_derived]
             impl TryFrom<ValueContainer> for #ident {
-                type Error = TryFromValueContainerError;
+                type Error = TryFromDatexValueError;
 
                 fn try_from(value: ValueContainer) -> Result<Self, Self::Error> {
                     match value {
                         ValueContainer::Local(value) => value.try_into(),
-                        _ => Err(TryFromValueContainerError("Expected ValueContainer::Local".to_string())),
+                        _ => Err(TryFromDatexValueError("Expected ValueContainer::Local".to_string())),
                     }
                 }
             }

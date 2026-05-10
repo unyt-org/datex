@@ -1,5 +1,5 @@
 use datex_core::{
-    datex_proxy::DatexProxy,
+    datex_proxy::DatexValueContainerProxy,
     prelude::*,
     values::{
         core_values::{endpoint::Endpoint, map::Map},
@@ -38,7 +38,7 @@ struct SerdeDatexExampleInfallible {
 
 fn assert_round_trip<T>(value: T)
 where
-    T: DatexProxy + PartialEq + std::fmt::Debug + Clone,
+    T: DatexValueContainerProxy + PartialEq + std::fmt::Debug + Clone,
 {
     let value_container = value.clone().try_to_value_container().unwrap();
     let deserialized_value =
@@ -78,7 +78,7 @@ use test_case::test_case;
 // ]) ; "map of primitives")]
 fn round_trip_struct<T>(structure: T)
 where
-    T: DatexProxy + PartialEq + std::fmt::Debug + Clone,
+    T: DatexValueContainerProxy + PartialEq + std::fmt::Debug + Clone,
 {
     assert_round_trip(structure);
 }

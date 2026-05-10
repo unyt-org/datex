@@ -1,29 +1,29 @@
 use crate::{
     datex_proxy::{
-        DatexProxy, DatexProxyDeserialize, DatexProxyInfallibleSerialize,
-        DatexProxySerialize,
+        DatexValueContainerProxy, DatexValueContainerProxyDeserialize, DatexValueContainerProxyInfallibleSerialize,
+        DatexValueContainerProxySerialize,
     },
     values::{value::Value, value_container::ValueContainer},
 };
-use crate::datex_proxy::{TryFromValueContainerError, TryToValueContainerError};
+use crate::datex_proxy::{TryFromDatexValueError, TryToDatexValueError};
 
-impl DatexProxyInfallibleSerialize for Value {
+impl DatexValueContainerProxyInfallibleSerialize for Value {
     fn to_value_container(self) -> ValueContainer {
         ValueContainer::Local(self)
     }
 }
-impl DatexProxySerialize for Value {
-    fn try_to_value_container(self) -> Result<ValueContainer, TryToValueContainerError> {
+impl DatexValueContainerProxySerialize for Value {
+    fn try_to_value_container(self) -> Result<ValueContainer, TryToDatexValueError> {
         Ok(self.to_value_container())
     }
 }
-impl DatexProxyDeserialize for Value {
-    fn try_from_value_container(value: ValueContainer) -> Result<Self, TryFromValueContainerError> {
+impl DatexValueContainerProxyDeserialize for Value {
+    fn try_from_value_container(value: ValueContainer) -> Result<Self, TryFromDatexValueError> {
         Ok(match value {
             ValueContainer::Local(v) => v,
-            _x => return Err(TryFromValueContainerError("Expected ValueContainer::Local, got ValueContainer::Shared".to_string())),
+            _x => return Err(TryFromDatexValueError("Expected ValueContainer::Local, got ValueContainer::Shared".to_string())),
         })
     }
 }
 
-impl DatexProxy for Value {}
+impl DatexValueContainerProxy for Value {}

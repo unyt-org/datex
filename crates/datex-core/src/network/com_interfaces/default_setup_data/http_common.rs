@@ -1,13 +1,13 @@
 use core::fmt::Display;
 
 use crate::{
-    datex_proxy::DatexProxy, network::com_hub::errors::ComInterfaceCreateError,
+    datex_proxy::DatexValueContainerProxy, network::com_hub::errors::ComInterfaceCreateError,
     prelude::*, runtime::RuntimeConfigInterface,
 };
 use serde::{Deserialize, Serialize};
 use url::Url;
 use datex_macros_internal::Datex;
-use crate::datex_proxy::{DatexProxyDeserialize, DatexProxySerialize};
+use crate::datex_proxy::{DatexValueContainerProxyDeserialize, DatexValueContainerProxySerialize, DatexValueProxySerialize};
 
 #[derive(Debug)]
 pub enum URLError {
@@ -60,7 +60,7 @@ pub fn parse_url(address: &str) -> Result<Url, URLError> {
 }
 
 /// Generates the setup data for client interfaces based on the server's accept addresses.
-pub fn get_clients_setup_data<T: DatexProxySerialize>(
+pub fn get_clients_setup_data<T: DatexValueProxySerialize>(
     accept_addresses: Option<Vec<AcceptAddress>>,
     protocols: (String, String),
     interface_type: String,

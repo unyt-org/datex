@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 
 use crate::{
     compiler::{CompileOptions, compile_template},
-    datex_proxy::{DatexProxyInfallibleSerialize, DatexProxySerialize},
+    datex_proxy::{DatexValueContainerProxyInfallibleSerialize, DatexValueContainerProxySerialize},
     runtime::{
         Runtime, RuntimeConfig, RuntimeRunner,
         execution::{
@@ -19,7 +19,7 @@ use syn::{
     Attribute, FnArg, Ident, ItemFn, LitStr, Pat, PatIdent, Token, Type,
     parse::{Parse, ParseStream},
 };
-use crate::datex_proxy::DatexProxyDeserialize;
+use crate::datex_proxy::DatexValueContainerProxyDeserialize;
 
 #[derive(Debug)]
 pub struct ParsedAttributes {

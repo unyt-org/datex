@@ -25,7 +25,7 @@ pub fn core_lib_string(input: TokenStream) -> TokenStream {
     core_lib::derive_core_string(input).into()
 }
 
-/// This derive macro generates implementations of the DatexProxy trait for a struct or enum,
+/// This derive macro generates implementations of the DatexValueContainerProxy trait for a struct or enum,
 /// allowing it to be used as a DATEX value and converted from and to a Value
 ///
 /// Usage:

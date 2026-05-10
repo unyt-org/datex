@@ -1,18 +1,18 @@
 pub mod datex_proxy;
 
 use datex_macros_internal::Datex;
-use crate::{datex_proxy::DatexProxy, shared_values::SharedContainer};
-use crate::datex_proxy::{TryFromValueContainerError, TryToValueContainerError};
+use crate::{datex_proxy::DatexValueContainerProxy, shared_values::SharedContainer};
+use crate::datex_proxy::{TryFromDatexValueError, TryToDatexValueError};
 
-pub struct Shared<T: DatexProxy> {
+pub struct Shared<T: DatexValueContainerProxy> {
     value: T,
     container: SharedContainer,
 }
 
-impl<T: DatexProxy> Shared<T> {}
+impl<T: DatexValueContainerProxy> Shared<T> {}
 
-impl<T: DatexProxy> TryFrom<SharedContainer> for Shared<T> {
-    type Error = TryFromValueContainerError;
+impl<T: DatexValueContainerProxy> TryFrom<SharedContainer> for Shared<T> {
+    type Error = TryFromDatexValueError;
     fn try_from(container: SharedContainer) -> Result<Self, Self::Error> {
         let value =
             T::try_from_value_container(container.value_container().clone())?;

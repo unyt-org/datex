@@ -18,6 +18,8 @@ use crate::{
     network::com_interfaces::com_interface::factory::ComInterfaceAsyncFactory,
     prelude::*,
 };
+use crate::values::core_values::map::Map;
+use crate::values::value::Value;
 
 /// Interface management methods
 impl ComHub {
@@ -68,7 +70,7 @@ impl ComHub {
     pub async fn create_interface(
         self: Rc<Self>,
         interface_type: &str,
-        setup_data: ValueContainer,
+        setup_data: Value,
         priority: InterfacePriority,
     ) -> Result<
         (
@@ -97,7 +99,7 @@ impl ComHub {
     pub async fn create_interface_sync(
         self: Rc<Self>,
         interface_type: &str,
-        setup_data: ValueContainer,
+        setup_data: Value,
         priority: InterfacePriority,
     ) -> Result<
         (

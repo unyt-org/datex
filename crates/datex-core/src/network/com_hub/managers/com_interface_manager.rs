@@ -20,12 +20,14 @@ use crate::{
 use core::{cell::RefCell, pin::Pin};
 use futures::channel::oneshot;
 use log::info;
+use crate::values::core_values::map::Map;
+use crate::values::value::Value;
 
 type InterfaceMap = HashMap<ComInterfaceUUID, InterfaceInfo>;
 
 pub type SyncComInterfaceImplementationFactoryFn =
     fn(
-        setup_data: ValueContainer,
+        setup_data: Value,
     ) -> Result<ComInterfaceConfiguration, ComInterfaceCreateError>;
 
 pub type ComInterfaceAsyncFactoryResult = Pin<
@@ -40,10 +42,10 @@ pub type ComInterfaceAsyncFactoryResult = Pin<
 >;
 
 pub type AsyncComInterfaceImplementationFactoryFn =
-    fn(setup_data: ValueContainer) -> ComInterfaceAsyncFactoryResult;
+    fn(setup_data: Value) -> ComInterfaceAsyncFactoryResult;
 
 pub type DynInterfaceImplementationFactoryFn =
-    Rc<dyn Fn(ValueContainer) -> ComInterfaceAsyncFactoryResult>;
+    Rc<dyn Fn(Value) -> ComInterfaceAsyncFactoryResult>;
 
 #[derive(Clone)]
 pub enum SyncOrAsyncComInterfaceImplementationFactoryFn {
@@ -118,7 +120,7 @@ impl ComInterfaceManager {
     pub async fn create_and_add_interface(
         &self,
         interface_type: &str,
-        setup_data: ValueContainer,
+        setup_data: Value,
         priority: InterfacePriority,
     ) -> Result<
         (ComInterfaceConfiguration, InterfaceCloseReceiver),
@@ -170,7 +172,7 @@ impl ComInterfaceManager {
     pub fn create_and_add_interface_sync(
         &self,
         interface_type: &str,
-        setup_data: ValueContainer,
+        setup_data: Value,
         priority: InterfacePriority,
     ) -> Result<
         (ComInterfaceConfiguration, InterfaceCloseReceiver),
@@ -207,7 +209,7 @@ impl ComInterfaceManager {
 
     async fn create_interface_from_async_factory_fn(
         factory_fn: &SyncOrAsyncComInterfaceImplementationFactoryFn,
-        setup_data: ValueContainer,
+        setup_data: Value,
     ) -> Result<ComInterfaceConfiguration, ComInterfaceCreateError> {
         // Create the implementation using the factory function
         match factory_fn {
@@ -226,7 +228,7 @@ impl ComInterfaceManager {
     /// Initializes a new ComInterface with a specified implementation as returned by the factory function
     fn create_interface_from_sync_factory_fn(
         factory_fn: &SyncComInterfaceImplementationFactoryFn,
-        setup_data: ValueContainer,
+        setup_data: Value,
     ) -> Result<ComInterfaceConfiguration, ComInterfaceCreateError> {
         // Create the implementation using the factory function
         factory_fn(setup_data)
@@ -388,14 +390,14 @@ impl ComInterfaceManager {
 mod tests {
     use super::*;
     use crate::{
-        datex_proxy::{DatexProxyInfallibleSerialize, DatexProxySerialize},
+        datex_proxy::{DatexValueProxyInfallibleSerialize},
         network::com_interfaces::com_interface::factory::{
             SendCallback, SendSuccess, SocketConfiguration, SocketProperties,
         },
         prelude::*,
     };
     use datex_macros_internal::Datex;
-    use serde::{Deserialize, Serialize};
+    use crate::values::value::Value;
 
     #[derive(Datex)]
     struct MockSetupData {
@@ -468,7 +470,7 @@ mod tests {
         let (com_interface_configuration, _) = interface_manager
             .create_and_add_interface_sync(
                 "mock",
-                setup_data.to_value_container(),
+                setup_data.to_value(),
                 InterfacePriority::None,
             )
             .unwrap();
@@ -506,7 +508,7 @@ mod tests {
         let (com_interface_configuration, _) = interface_manager
             .create_and_add_interface(
                 "mock",
-                setup_data.to_value_container(),
+                setup_data.to_value(),
                 InterfacePriority::None,
             )
             .await
@@ -538,9 +540,9 @@ mod tests {
     async fn create_interface_from_dyn_factory() {
         let interface_manager = ComInterfaceManager::default();
         let dyn_factory: DynInterfaceImplementationFactoryFn =
-            Rc::new(|setup_data: ValueContainer| {
+            Rc::new(|setup_data: Value| {
                 Box::pin(async move {
-                    let setup = MockSetupData::try_from(setup_data).unwrap();
+                    let setup = MockSetupData::try_from(Value::from(setup_data)).unwrap();
                     setup.create_interface()
                 })
             });
@@ -552,7 +554,7 @@ mod tests {
         let (com_interface_configuration, _) = interface_manager
             .create_and_add_interface(
                 "mock",
-                setup_data.to_value_container(),
+                setup_data.to_value(),
                 InterfacePriority::None,
             )
             .await

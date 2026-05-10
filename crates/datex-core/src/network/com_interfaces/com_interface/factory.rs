@@ -1,7 +1,7 @@
 pub use crate::network::com_hub::managers::com_interface_manager::ComInterfaceAsyncFactoryResult;
 use crate::{
     channel::mpsc::{UnboundedReceiver, create_unbounded_channel},
-    datex_proxy::DatexProxyDeserialize,
+    datex_proxy::DatexValueContainerProxyDeserialize,
     global::dxb_block::DXBBlock,
     network::{
         com_hub::errors::ComInterfaceCreateError,
@@ -22,6 +22,9 @@ use core::{async_iter::AsyncIterator, fmt::Debug, pin::Pin};
 use futures::channel::oneshot::Sender;
 use futures_core::future::LocalBoxFuture;
 use serde::{Deserialize, Serialize};
+use crate::datex_proxy::DatexValueProxyDeserialize;
+use crate::values::core_values::map::Map;
+use crate::values::value::Value;
 
 pub type NewSocketsIterator = Pin<
     Box<dyn AsyncIterator<Item = Result<SocketConfiguration, ()>> + 'static>,
@@ -435,15 +438,15 @@ pub type CloseAsyncCallback = Box<dyn FnOnce() -> LocalBoxFuture<'static, ()>>;
 /// }///
 pub trait ComInterfaceSyncFactory
 where
-    Self: DatexProxyDeserialize,
+    Self: DatexValueProxyDeserialize,
 {
     /// The factory method that is called from the ComHub on a registered interface
     /// to create a new instance of the interface.
     /// The setup data is passed as a ValueContainer and has to be downcasted
     fn factory(
-        setup_data: ValueContainer,
+        setup_data: Value,
     ) -> Result<ComInterfaceConfiguration, ComInterfaceCreateError> {
-        let setup_data = Self::try_from_value_container(setup_data)
+        let setup_data = Self::try_from_value(Value::from(setup_data))
             .map_err(|_| ComInterfaceCreateError::SetupDataParseError)?;
         Self::create_interface(setup_data)
     }
@@ -493,14 +496,14 @@ where
 /// }
 pub trait ComInterfaceAsyncFactory
 where
-    Self: DatexProxyDeserialize,
+    Self: DatexValueProxyDeserialize,
 {
     /// The factory method that is called from the ComHub on a registered interface
     /// to create a new instance of the interface.
     /// The setup data is passed as a ValueContainer and has to be downcasted
-    fn factory(setup_data: ValueContainer) -> ComInterfaceAsyncFactoryResult {
+    fn factory(setup_data: Value) -> ComInterfaceAsyncFactoryResult {
         Box::pin(async move {
-            let setup_data = Self::try_from_value_container(setup_data)
+            let setup_data = Self::try_from_value(Value::from(setup_data))
                 .map_err(|_| ComInterfaceCreateError::SetupDataParseError)?;
             Self::create_interface(setup_data).await
         })

@@ -1,6 +1,6 @@
 use crate::{
     collections::HashMap,
-    datex_proxy::DatexProxy,
+    datex_proxy::DatexValueContainerProxy,
     network::com_hub::InterfacePriority,
     prelude::*,
     values::{
@@ -9,7 +9,10 @@ use crate::{
 };
 use datex_macros_internal::Datex;
 use serde::{Deserialize, Serialize};
-use crate::datex_proxy::{DatexProxyDeserialize, DatexProxyInfallibleSerialize, DatexProxySerialize, TryToValueContainerError};
+use crate::datex_proxy::{DatexValueContainerProxyDeserialize, DatexValueContainerProxyInfallibleSerialize, DatexValueContainerProxySerialize, DatexValueProxyInfallibleSerialize, DatexValueProxySerialize, TryToDatexValueError};
+use crate::values::core_values::map::Map;
+use crate::values::value::Value;
+
 
 pub fn is_priority_none(v: &InterfacePriority) -> bool {
     matches!(v, InterfacePriority::None)
@@ -23,32 +26,37 @@ pub struct RuntimeConfigInterface {
     pub interface_type: String,
     // #[serde(rename = "config")]
     #[cfg_attr(feature = "wasm_runtime", tsify(type = "unknown"))]
-    pub setup_data: ValueContainer,
+    pub setup_data: Value,
 
     // #[serde(default, skip_serializing_if = "is_priority_none")]
     pub priority: InterfacePriority,
 }
 
 impl RuntimeConfigInterface {
-    pub fn new<T: DatexProxySerialize>(
+    pub fn new<T: DatexValueProxySerialize>(
         interface_type: &str,
         setup_data: T,
     ) -> Result<RuntimeConfigInterface, String> {
         Ok(RuntimeConfigInterface {
             interface_type: interface_type.to_string(),
             priority: InterfacePriority::default(),
-            setup_data: setup_data.try_to_value_container().map_err(|e| {
+            setup_data: setup_data.try_to_value().map_err(|e| {
                 format!(
                     "Failed to convert setup_data to ValueContainer: {:?}",
                     e
                 )
-            })?,
+            })?.try_into().map_err(|e| {
+                format!(
+                    "Failed to convert ValueContainer to Map: {:?}",
+                    e
+                )
+            })?
         })
     }
 
-    pub fn new_from_value_container(
+    pub fn new_from_map(
         interface_type: &str,
-        config: ValueContainer,
+        config: Value,
     ) -> RuntimeConfigInterface {
         RuntimeConfigInterface {
             priority: InterfacePriority::default(),
@@ -74,13 +82,13 @@ impl RuntimeConfig {
         }
     }
 
-    pub fn add_interface<T: DatexProxyInfallibleSerialize>(
+    pub fn add_interface<T: DatexValueProxyInfallibleSerialize>(
         &mut self,
         interface_type: String,
         config: T,
         priority: InterfacePriority,
     ) {
-        let config = config.to_value_container();
+        let config = config.to_value();
         let interface = RuntimeConfigInterface {
             interface_type,
             setup_data: config,

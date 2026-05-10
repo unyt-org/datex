@@ -1,31 +1,31 @@
 use crate::{
     datex_proxy::{
-        DatexProxy, DatexProxyDeserialize, DatexProxyInfallibleSerialize,
-        DatexProxySerialize, shared::Shared,
+        DatexValueContainerProxy, DatexValueContainerProxyDeserialize, DatexValueContainerProxyInfallibleSerialize,
+        DatexValueContainerProxySerialize, shared::Shared,
     },
     values::value_container::ValueContainer,
 };
-use crate::datex_proxy::{TryFromValueContainerError, TryToValueContainerError};
+use crate::datex_proxy::{TryFromDatexValueError, TryToDatexValueError};
 
-impl<T: DatexProxy> DatexProxyInfallibleSerialize for Shared<T> {
+impl<T: DatexValueContainerProxy> DatexValueContainerProxyInfallibleSerialize for Shared<T> {
     fn to_value_container(self) -> ValueContainer {
         ValueContainer::Shared(self.container)
     }
 }
-impl<T: DatexProxy> DatexProxySerialize for Shared<T> {
-    fn try_to_value_container(self) -> Result<ValueContainer, TryToValueContainerError> {
+impl<T: DatexValueContainerProxy> DatexValueContainerProxySerialize for Shared<T> {
+    fn try_to_value_container(self) -> Result<ValueContainer, TryToDatexValueError> {
         Ok(self.to_value_container())
     }
 }
-impl<T: DatexProxy> DatexProxyDeserialize for Shared<T> {
-    fn try_from_value_container(value: ValueContainer) -> Result<Self, TryFromValueContainerError> {
+impl<T: DatexValueContainerProxy> DatexValueContainerProxyDeserialize for Shared<T> {
+    fn try_from_value_container(value: ValueContainer) -> Result<Self, TryFromDatexValueError> {
         match value {
             ValueContainer::Shared(container) => {
                 Shared::try_from(container)
             }
-            _ => Err(TryFromValueContainerError("Expected ValueContainer::Shared, ValueContainer::Local".to_string())),
+            _ => Err(TryFromDatexValueError("Expected ValueContainer::Shared, ValueContainer::Local".to_string())),
         }
     }
 }
 
-impl<T: DatexProxy> DatexProxy for Shared<T> {}
+impl<T: DatexValueContainerProxy> DatexValueContainerProxy for Shared<T> {}
