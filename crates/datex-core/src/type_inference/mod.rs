@@ -856,8 +856,10 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
                 // if base types are the same, use that as result type
                 let ty = left_type.with_collapsed_type_definition(|left_def| {
                     right_type.with_collapsed_type_definition(|right_def| {
-                        if left_def == right_def {
-                            Some(Type::from(left_def.clone()))
+                        if left_def.base_core_lib_type()
+                            == right_def.base_core_lib_type()
+                        {
+                            Some(Type::core(left_type.base_core_lib_type()))
                         } else {
                             None
                         }
