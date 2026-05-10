@@ -11,7 +11,7 @@ pub mod websocket;
 #[macro_export]
 macro_rules! derive_setup_data {
     ($new_type:ident, $setup_data_type:ty) => {
-        #[derive(serde::Deserialize, serde::Serialize)]
+        #[derive(serde::Deserialize, serde::Serialize, datex_core::macros::Datex)]
         pub struct $new_type(pub $setup_data_type);
         impl core::ops::Deref for $new_type {
             type Target = $setup_data_type;

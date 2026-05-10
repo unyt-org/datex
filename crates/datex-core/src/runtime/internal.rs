@@ -191,7 +191,7 @@ impl RuntimeInternal {
         if let Some(interfaces) = &self.config.interfaces {
             for RuntimeConfigInterface {
                 interface_type,
-                setup_data: config,
+                config: config,
                 priority,
             } in interfaces.iter()
             {

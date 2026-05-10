@@ -21,11 +21,10 @@ pub fn is_priority_none(v: &InterfacePriority) -> bool {
 #[derive(Datex, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
 pub struct RuntimeConfigInterface {
-    // #[serde(rename = "type")]
+    #[datex(rename = "type")]
     pub interface_type: String,
-    // #[serde(rename = "config")]
     #[cfg_attr(feature = "wasm_runtime", tsify(type = "unknown"))]
-    pub setup_data: Value,
+    pub config: Value,
 
     // #[serde(default, skip_serializing_if = "is_priority_none")]
     #[datex(serde_infallible)]
@@ -40,7 +39,7 @@ impl RuntimeConfigInterface {
         Ok(RuntimeConfigInterface {
             interface_type: interface_type.to_string(),
             priority: InterfacePriority::default(),
-            setup_data: setup_data.try_to_value().map_err(|e| {
+            config: setup_data.try_to_value().map_err(|e| {
                 format!(
                     "Failed to convert setup_data to ValueContainer: {:?}",
                     e
@@ -61,7 +60,7 @@ impl RuntimeConfigInterface {
         RuntimeConfigInterface {
             priority: InterfacePriority::default(),
             interface_type: interface_type.to_string(),
-            setup_data: config,
+            config: config,
         }
     }
 }
@@ -91,7 +90,7 @@ impl RuntimeConfig {
         let config = config.to_value();
         let interface = RuntimeConfigInterface {
             interface_type,
-            setup_data: config,
+            config: config,
             priority,
         };
         if let Some(interfaces) = &mut self.interfaces {
@@ -173,7 +172,7 @@ pub mod tests {
         )
         .unwrap();
         assert_eq!(config_interface.interface_type, "test");
-        let setup_data = config_interface.setup_data.clone();
+        let setup_data = config_interface.config.clone();
         let map = setup_data.try_as::<Map>().unwrap();
         assert_eq!(
             map.get("field1").unwrap().try_as::<String>().unwrap(),

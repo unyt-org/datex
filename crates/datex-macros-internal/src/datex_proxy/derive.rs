@@ -22,6 +22,13 @@ enum SerdeMode {
     Infallible,
 }
 
+#[derive(Debug, PartialEq)]
+pub struct FieldAttributes {
+    serde_mode: SerdeMode,
+    datex_rename: Option<String>,
+}
+
+
 /// Derive implementation for the [Datex] derive macro.
 pub fn derive(input: DeriveInput) -> TokenStream {
     match input.data {
@@ -51,12 +58,12 @@ fn derive_struct(
 
     // Iterate over the fields of the struct
     for (index, field) in data_struct.fields.iter().enumerate() {
-        let field_serde_mode = get_serde_mode(&field.attrs);
-        if field_serde_mode == SerdeMode::Fallible {
+        let field_attributes = parse_field_attributes(&field.attrs);
+        if field_attributes.serde_mode == SerdeMode::Fallible {
             fallible_serialization = true;
         }
 
-        let from_value_container_function = match field_serde_mode {
+        let from_value_container_function = match field_attributes.serde_mode {
             SerdeMode::None => {
                 quote! {
                     DatexValueContainerProxyDeserialize::try_from_value_container
@@ -72,8 +79,8 @@ fn derive_struct(
         match &field.ident {
             // struct with named fields
             Some(field_ident) => {
-                let field_name = field_ident.to_string();
-                let field_into = generate_field_conversion_code(field_serde_mode, &field_ident, field_name.clone());
+                let field_name = field_attributes.datex_rename.unwrap_or_else(|| field_ident.to_string());
+                let field_into = generate_field_conversion_code(field_attributes.serde_mode, &field_ident, field_name.clone());
 
                 into_datex_fields.push(quote! {
                     (
@@ -94,13 +101,13 @@ fn derive_struct(
             // tuple struct or unit struct
             None => {
                 let field_index = syn::Index::from(index);
-                let field_into = generate_field_conversion_code(field_serde_mode, &field_index, field_index.index.to_string());
+                let field_into = generate_field_conversion_code(field_attributes.serde_mode, &field_index, field_index.index.to_string());
 
                 into_datex_fields.push(field_into);
 
                 from_datex_fields.push(quote! {
                     #from_value_container_function(
-                            list.try_get(#index)
+                            list.try_get(#index as i64)
                                 .map_err(|err| TryFromDatexValueError(err.to_string()))?
                                 .clone()
                         )?,
@@ -261,8 +268,9 @@ fn derive_struct(
     }
 }
 
-fn get_serde_mode(attrs: &[Attribute]) -> SerdeMode {
+fn parse_field_attributes(attrs: &[Attribute]) -> FieldAttributes {
     let mut serde_mode = SerdeMode::None;
+    let mut datex_rename = None;
 
     // find datex(serde) or datex(serde_infallible) attribute
     for attr in attrs {
@@ -275,28 +283,46 @@ fn get_serde_mode(attrs: &[Attribute]) -> SerdeMode {
                 )
                 .unwrap()
             {
-                if let Meta::Path(path) = nested {
-                    if path.is_ident("serde") {
-                        if let SerdeMode::Infallible = serde_mode {
-                            panic!(
-                                "Cannot use both datex(serde) and datex(serde_infallible) on the same field"
-                            );
+                match nested {
+                    Meta::Path(path) => {
+                        if path.is_ident("serde") {
+                            if matches!(serde_mode, SerdeMode::Infallible) {
+                                panic!("Cannot use both datex(serde) and datex(serde_infallible)");
+                            }
+                            serde_mode = SerdeMode::Fallible;
+                        } else if path.is_ident("serde_infallible") {
+                            if matches!(serde_mode, SerdeMode::Fallible) {
+                                panic!("Cannot use both datex(serde) and datex(serde_infallible)");
+                            }
+                            serde_mode = SerdeMode::Infallible;
                         }
-                        serde_mode = SerdeMode::Fallible;
-                    } else if path.is_ident("serde_infallible") {
-                        if let SerdeMode::Fallible = serde_mode {
-                            panic!(
-                                "Cannot use both datex(serde) and datex(serde_infallible) on the same field"
-                            );
-                        }
-                        serde_mode = SerdeMode::Infallible;
                     }
+
+                    Meta::NameValue(nv) if nv.path.is_ident("rename") => {
+                        let value = match &nv.value {
+                            syn::Expr::Lit(expr_lit) => {
+                                if let syn::Lit::Str(lit_str) = &expr_lit.lit {
+                                    lit_str.value()
+                                } else {
+                                    panic!("datex(rename = ...) must be a string")
+                                }
+                            }
+                            _ => panic!("datex(rename = ...) must be a string literal"),
+                        };
+
+                        datex_rename = Some(value);
+                    }
+
+                    _ => {}
                 }
             }
         }
     }
 
-    serde_mode
+    FieldAttributes {
+        serde_mode,
+        datex_rename,
+    }
 }
 
 /// Generate the code to convert a field to a ValueContainer, depending on the serde mode of the field
