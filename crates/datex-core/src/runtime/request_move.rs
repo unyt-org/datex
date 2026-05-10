@@ -35,7 +35,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_compile_request_empty_move() {
+    fn compile_request_empty_move() {
         assert_eq!(
             compile_request_move(&[]),
             vec![InstructionCode::MOVE as u8, 0, 0, 0, 0]
@@ -43,7 +43,7 @@ mod tests {
     }
 
     #[test]
-    fn test_compile_request_move() {
+    fn compile_request_move_default() {
         let mappings = &[
             (
                 RawLocalPointerAddress {

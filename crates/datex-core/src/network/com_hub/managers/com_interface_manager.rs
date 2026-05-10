@@ -459,7 +459,7 @@ mod tests {
     }
 
     #[test]
-    fn test_create_interface_from_sync_factory() {
+    fn create_interface_from_sync_factory() {
         let interface_manager = ComInterfaceManager::default();
 
         interface_manager.register_sync_interface_factory::<MockSetupData>();
@@ -497,7 +497,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_create_interface_from_async_factory() {
+    async fn create_interface_from_async_factory() {
         let interface_manager = ComInterfaceManager::default();
 
         interface_manager.register_async_interface_factory::<MockSetupData>();
@@ -536,7 +536,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_create_interface_from_dyn_factory() {
+    async fn create_interface_from_dyn_factory() {
         let interface_manager = ComInterfaceManager::default();
         let dyn_factory: DynInterfaceImplementationFactoryFn =
             Rc::new(|setup_data: ValueContainer| {

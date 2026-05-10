@@ -969,7 +969,7 @@ mod tests {
     }
 
     #[test]
-    fn test_primitives() {
+    fn primitives() {
         let int_ast = DatexExpressionData::Integer(42.into());
         assert_eq!(compact().format(&int_ast.with_default_span()), "42");
 
@@ -1030,7 +1030,7 @@ mod tests {
     }
 
     #[test]
-    fn test_list() {
+    fn list() {
         let list_ast = DatexExpressionData::List(List::new(vec![
             DatexExpressionData::Integer(1.into()).with_default_span(),
             DatexExpressionData::Integer(2.into()).with_default_span(),
@@ -1070,7 +1070,7 @@ mod tests {
     }
 
     #[test]
-    fn test_map() {
+    fn map() {
         let map_ast = DatexExpressionData::Map(Map::new(vec![
             (
                 DatexExpressionData::Text("key1".to_string())
@@ -1111,7 +1111,7 @@ mod tests {
     }
 
     #[test]
-    fn test_unbox() {
+    fn unbox() {
         let unbox_ast = DatexExpressionData::Unbox(Unbox {
             expression: Box::new(
                 DatexExpressionData::VariableAccess(VariableAccess {
@@ -1126,7 +1126,7 @@ mod tests {
     }
 
     #[test]
-    fn test_unbox_assignment() {
+    fn unbox_assignment() {
         let unbox_assign_ast =
             DatexExpressionData::UnboxAssignment(UnboxAssignment {
                 operator: None,
@@ -1149,7 +1149,7 @@ mod tests {
     }
 
     #[test]
-    fn test_variable_declaration() {
+    fn variable_declaration() {
         let var_decl_ast =
             DatexExpressionData::VariableDeclaration(VariableDeclaration {
                 id: Some(0),

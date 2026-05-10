@@ -140,7 +140,7 @@ pub mod tests {
     };
 
     #[test]
-    fn test_add_env_var() {
+    fn add_env_var() {
         let mut config = RuntimeConfig::default();
         config.add_env_var("KEY1".to_string(), "VALUE1".to_string());
         let env_vars = config.env.unwrap();
@@ -148,7 +148,7 @@ pub mod tests {
     }
 
     #[test]
-    fn test_serde() {
+    fn serde() {
         #[derive(Datex)]
         struct MySetupData {
             field1: String,

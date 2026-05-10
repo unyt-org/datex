@@ -19,7 +19,7 @@ use log::info;
 
 #[tokio::test]
 #[cfg(feature = "compiler")]
-pub async fn test_basic_remote_execution() {
+pub async fn basic_remote_execution() {
     flexi_logger::init();
     let endpoint_a = Endpoint::new("@test_a");
     let endpoint_b = Endpoint::new("@test_b");
@@ -58,7 +58,7 @@ pub async fn test_basic_remote_execution() {
 
 #[tokio::test]
 #[cfg(feature = "compiler")]
-pub async fn test_remote_execution_persistent_context() {
+pub async fn remote_execution_persistent_context() {
     let endpoint_a = Endpoint::new("@test_a");
     let endpoint_b = Endpoint::new("@test_b");
 
@@ -98,7 +98,7 @@ pub async fn test_remote_execution_persistent_context() {
 
 #[tokio::test]
 #[cfg(feature = "compiler")]
-pub async fn test_remote_inline() {
+pub async fn remote_inline() {
     let endpoint_a = Endpoint::new("@test_a");
     let endpoint_b = Endpoint::new("@test_b");
 
@@ -128,7 +128,7 @@ pub async fn test_remote_inline() {
 
 #[tokio::test]
 #[cfg(feature = "compiler")]
-pub async fn test_remote_inline_implicit_context() {
+pub async fn remote_inline_implicit_context() {
     let endpoint_a = Endpoint::new("@test_a");
     let endpoint_b = Endpoint::new("@test_b");
 
@@ -149,7 +149,7 @@ pub async fn test_remote_inline_implicit_context() {
 
 #[tokio::test]
 #[cfg(feature = "compiler")]
-pub async fn test_remote_shared_value_inject_move() {
+pub async fn remote_shared_value_inject_move() {
     flexi_logger::init();
     let endpoint_a = Endpoint::new("@test_a");
     let endpoint_b = Endpoint::new("@test_b");
@@ -173,7 +173,7 @@ pub async fn test_remote_shared_value_inject_move() {
 
 #[tokio::test]
 #[cfg(feature = "compiler")]
-pub async fn test_remote_shared_value_inject_ref() {
+pub async fn remote_shared_value_inject_ref() {
     flexi_logger::init();
     let endpoint_a = Endpoint::new("@test_a");
     let endpoint_b = Endpoint::new("@test_b");
@@ -228,7 +228,7 @@ pub async fn test_remote_shared_value_inject_ref() {
 #[test_case::test_case("shared", SharedContainerMutability::Immutable ; "immutable")]
 #[test_case::test_case("shared mut", SharedContainerMutability::Mutable ; "mutable")]
 #[tokio::test]
-pub async fn test_remote_shared_value_return(
+pub async fn remote_shared_value_return(
     shared_string: &'static str,
     mutable_value: SharedContainerMutability,
 ) {
@@ -273,7 +273,7 @@ pub async fn test_remote_shared_value_return(
 #[test_case::test_case("shared", SharedContainerMutability::Immutable ; "immutable")]
 #[test_case::test_case("shared mut", SharedContainerMutability::Mutable; "mutable")]
 #[tokio::test]
-pub async fn test_remote_shared_roundtrip_move(
+pub async fn remote_shared_roundtrip_move(
     shared_string: &'static str,
     mutable_value: SharedContainerMutability,
 ) {

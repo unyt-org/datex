@@ -88,7 +88,7 @@ mod tests {
     }
 
     #[test]
-    fn test_nested_struct_serde_value_container() {
+    fn nested_struct_serde_value_container() {
         let original = NestedStruct {
             nested_field: "Nested".to_string(),
             test_struct: TestStruct {

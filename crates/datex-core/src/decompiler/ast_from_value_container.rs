@@ -289,14 +289,14 @@ mod tests {
 
     use crate::prelude::*;
     #[test]
-    fn test_integer_to_ast() {
+    fn integer_to_ast() {
         let value = ValueContainer::from(Integer::from(42));
         let ast = DatexExpressionData::from(&value);
         assert_eq!(ast, DatexExpressionData::Integer(Integer::from(42)));
     }
 
     #[test]
-    fn test_typed_integer_to_ast() {
+    fn typed_integer_to_ast() {
         let value = ValueContainer::from(TypedInteger::from(42i8));
         let ast = DatexExpressionData::from(&value);
         assert_eq!(
@@ -306,14 +306,14 @@ mod tests {
     }
 
     #[test]
-    fn test_decimal_to_ast() {
+    fn decimal_to_ast() {
         let value = ValueContainer::from(Decimal::from(1.23));
         let ast = DatexExpressionData::from(&value);
         assert_eq!(ast, DatexExpressionData::Decimal(Decimal::from(1.23)));
     }
 
     #[test]
-    fn test_typed_decimal_to_ast() {
+    fn typed_decimal_to_ast() {
         let value = ValueContainer::from(TypedDecimal::from(2.71f32));
         let ast = DatexExpressionData::from(&value);
         assert_eq!(
@@ -323,28 +323,28 @@ mod tests {
     }
 
     #[test]
-    fn test_boolean_to_ast() {
+    fn boolean_to_ast() {
         let value = ValueContainer::from(true);
         let ast = DatexExpressionData::from(&value);
         assert_eq!(ast, DatexExpressionData::Boolean(true));
     }
 
     #[test]
-    fn test_text_to_ast() {
+    fn text_to_ast() {
         let value = ValueContainer::from("Hello, World!".to_string());
         let ast = DatexExpressionData::from(&value);
         assert_eq!(ast, DatexExpressionData::Text("Hello, World!".to_string()));
     }
 
     #[test]
-    fn test_null_to_ast() {
+    fn null_to_ast() {
         let value = ValueContainer::Local(Value::null());
         let ast = DatexExpressionData::from(&value);
         assert_eq!(ast, DatexExpressionData::Null);
     }
 
     #[test]
-    fn test_list_to_ast() {
+    fn list_to_ast() {
         let value = ValueContainer::from(vec![
             Integer::from(1),
             Integer::from(2),

@@ -549,7 +549,7 @@ mod tests {
     }
 
     #[test]
-    fn test_zero_equality() {
+    fn zero_equality() {
         let zero_f32 = TypedDecimal::from(0.0f32);
         let neg_zero_f32 = TypedDecimal::from(-0.0f32);
         assert_eq!(zero_f32, neg_zero_f32);
@@ -721,7 +721,7 @@ mod tests {
     }
 
     #[test]
-    fn test_nan_equality() {
+    fn nan_equality() {
         let nan_f32_a = TypedDecimal::from(f32::NAN);
         let nan_f32_b = TypedDecimal::from(f32::NAN);
         let nan_f64_a = TypedDecimal::from(f64::NAN);

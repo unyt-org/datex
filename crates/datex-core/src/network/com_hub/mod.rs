@@ -1975,7 +1975,7 @@ pub mod tests {
     }
 
     #[tokio::test]
-    pub async fn test_send() {
+    pub async fn send() {
         run_with_com_hub_and_proxy_interface(
             async move |com_hub, _, mut outgoing_block_receiver, _| {
                 // send block via com hub to proxy interface
@@ -1996,7 +1996,7 @@ pub mod tests {
     }
 
     #[tokio::test]
-    pub async fn test_send_between_com_hubs() {
+    pub async fn send_between_com_hubs() {
         run_with_coupled_com_hubs(async |a, mut b| {
             // send block via com hub to proxy interface
             let mut block = DXBBlock::new_with_body(b"Hello world!");
@@ -2015,7 +2015,7 @@ pub mod tests {
     }
 
     #[tokio::test]
-    pub async fn test_send_block_to_invalid_receiver() {
+    pub async fn send_block_to_invalid_receiver() {
         run_with_com_hub_and_proxy_interface(async move |com_hub, _, _, _| {
             let mut block = DXBBlock::new_with_body(b"Hello world!");
             // cannot send to endpoint c, since only interface is not a fallback interface and only knows endpoint b
@@ -2069,7 +2069,7 @@ pub mod tests {
     }
 
     #[tokio::test]
-    pub async fn test_receive() {
+    pub async fn receive() {
         flexi_logger::init();
         run_with_com_hub_and_proxy_interface(
             async move |com_hub,
@@ -2106,7 +2106,7 @@ pub mod tests {
     }
 
     #[tokio::test]
-    pub async fn test_receive_multiple_blocks_single_section() {
+    pub async fn receive_multiple_blocks_single_section() {
         run_with_com_hub_and_proxy_interface(
             async move |com_hub,
                         mut incoming_data_sender,
@@ -2182,7 +2182,7 @@ pub mod tests {
     }
 
     #[tokio::test]
-    pub async fn test_receive_multiple_separate_blocks() {
+    pub async fn receive_multiple_separate_blocks() {
         run_with_com_hub_and_proxy_interface(
             async move |com_hub,
                         mut incoming_data_sender,
@@ -2341,7 +2341,7 @@ pub mod tests {
     //
     //
     // #[async_test]
-    // pub async fn test_reconnect() {
+    // pub async fn reconnect() {
     //     let com_hub = create_mock_com_hub();
     //
     //     // TODO #738: refactor using proxy

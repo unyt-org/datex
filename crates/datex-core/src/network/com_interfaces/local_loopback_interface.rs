@@ -83,7 +83,7 @@ mod tests {
     };
 
     #[tokio::test]
-    async fn test_local_loopback_interface() {
+    async fn local_loopback_interface() {
         let mut interface_configuration =
             LocalLoopbackInterfaceSetupData.create_interface().unwrap();
         assert_eq!(interface_configuration.properties.interface_type, "local");

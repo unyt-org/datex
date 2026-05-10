@@ -15,8 +15,7 @@ use crate::{
         pointer_address::{PointerAddress, SelfOwnedPointerAddress},
         shared_containers::{
             OwnedSharedContainer, ReferencedSharedContainer,
-            SelfOwnedSharedContainer,
-            SharedContainerMutability,
+            SelfOwnedSharedContainer, SharedContainerMutability,
             base_shared_value_container::BaseSharedValueContainer,
             observers::{ObserveOptions, Observer, TransceiverId},
         },
@@ -291,7 +290,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_create_and_observe_pointer() {
+    async fn create_and_observe_pointer() {
         RuntimeRunner::new(RuntimeConfig::default())
             .run(async |runtime| {
                 let runtime = runtime.internal;

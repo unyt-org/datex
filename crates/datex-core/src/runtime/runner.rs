@@ -156,7 +156,7 @@ mod tests {
     use super::*;
 
     #[tokio::test]
-    async fn test_runtime_runner() {
+    async fn runtime_runner() {
         let runner = RuntimeRunner::new(RuntimeConfig::default());
         let mut runtime = None;
         runner

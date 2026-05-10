@@ -3303,7 +3303,7 @@ pub mod tests {
     }
 
     #[test]
-    fn test_get_property_text() {
+    fn get_property_text() {
         let datex_script = r#""test".example"#;
         let result = compile_and_log(datex_script);
         let expected = vec![
@@ -3328,7 +3328,7 @@ pub mod tests {
     }
 
     #[test]
-    fn test_get_property_text_quoted() {
+    fn get_property_text_quoted() {
         let datex_script = r#""test"."example""#;
         let result = compile_and_log(datex_script);
         let expected = vec![
@@ -3353,7 +3353,7 @@ pub mod tests {
     }
 
     #[test]
-    fn test_get_property_index() {
+    fn get_property_index() {
         let datex_script = r#""test".42"#;
         let result = compile_and_log(datex_script);
         let expected = vec![
@@ -3375,7 +3375,7 @@ pub mod tests {
     }
 
     #[test]
-    fn test_get_property_dynamic() {
+    fn get_property_dynamic() {
         let datex_script = r#""test".(1u8 + 2u8)"#;
         let result = compile_and_log(datex_script);
         let expected = vec![
@@ -3398,7 +3398,7 @@ pub mod tests {
     }
 
     #[test]
-    fn test_set_property_text() {
+    fn set_property_text() {
         let datex_script = r#""test".example = 42u8"#;
         let result = compile_and_log(datex_script);
         let expected = vec![
@@ -3426,7 +3426,7 @@ pub mod tests {
     }
 
     #[test]
-    fn test_set_property_index() {
+    fn set_property_index() {
         let datex_script = r#""test".42 = 43u8"#;
         let result = compile_and_log(datex_script);
         let expected = vec![
@@ -3451,7 +3451,7 @@ pub mod tests {
     }
 
     #[test]
-    fn test_set_property_dynamic() {
+    fn set_property_dynamic() {
         let datex_script = r#""test".(1u8 + 2u8) = 43u8"#;
         let result = compile_and_log(datex_script);
         let expected = vec![
@@ -3477,7 +3477,7 @@ pub mod tests {
     }
 
     #[test]
-    fn test_apply_no_arguments() {
+    fn apply_no_arguments() {
         let datex_script = r#""test"()"#;
         let result = compile_and_log(datex_script);
         let expected = vec![
@@ -3494,7 +3494,7 @@ pub mod tests {
     }
 
     #[test]
-    fn test_apply_one_argument() {
+    fn apply_one_argument() {
         let datex_script = r#""test" 42u8"#;
         let result = compile_and_log(datex_script);
         let expected = vec![
@@ -3514,7 +3514,7 @@ pub mod tests {
     }
 
     #[test]
-    fn test_apply_multiple_arguments() {
+    fn apply_multiple_arguments() {
         let datex_script = r#""test"(1u8, 2u8, 3u8)"#;
         let result = compile_and_log(datex_script);
         let expected = vec![

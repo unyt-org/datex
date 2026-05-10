@@ -256,7 +256,7 @@ mod tests {
     };
 
     #[test]
-    fn test_structural_type_display() {
+    fn structural_type_display() {
         let int_type = LiteralTypeDefinition::Integer(Integer::from(42));
         assert_eq!(int_type.to_string(), "42");
 
@@ -283,7 +283,7 @@ mod tests {
     }
 
     #[test]
-    fn test_value_matching() {
+    fn value_matching() {
         let int_type = LiteralTypeDefinition::Integer(Integer::from(42));
         let int_value =
             ValueContainer::from(CoreValue::Integer(Integer::from(42)));

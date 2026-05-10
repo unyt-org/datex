@@ -447,7 +447,7 @@ mod tests {
     };
 
     #[tokio::test(flavor = "current_thread")]
-    async fn test_lsp_initialization() {
+    async fn lsp_initialization() {
         LocalSet::new()
             .run_until(async move {
                 RuntimeRunner::new(RuntimeConfig::new_with_endpoint(

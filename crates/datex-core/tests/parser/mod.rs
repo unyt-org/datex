@@ -259,7 +259,7 @@ fn nominal_type_declaration() {
 /// This test is a WIP item, that should allow us to provide context to the grammar error recovery.
 #[test]
 #[ignore = "WIP"]
-fn test_parse_error_unclosed_delimiter() {
+fn parse_error_unclosed_delimiter() {
     let src = r#"[1,,]"#;
     let result = parse_print_error(src);
 
@@ -550,7 +550,7 @@ fn function_with_params() {
 }
 
 #[test]
-fn test_function_with_return_type() {
+fn function_with_return_type() {
     let src = r#"
         function myFunction(x: integer) -> integer | text (
             42

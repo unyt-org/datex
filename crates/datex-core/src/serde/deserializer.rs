@@ -1067,7 +1067,7 @@ mod tests {
     }
 
     #[test]
-    fn test_from_static_script() {
+    fn from_static_script() {
         let script = r#"
             {
                 field1: "Hello",

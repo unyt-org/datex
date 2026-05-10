@@ -617,7 +617,7 @@ mod tests {
     };
 
     #[test]
-    fn test_map() {
+    fn map() {
         let mut map = Map::default();
         map.set("key1", 42);
         map.set("key2", "value2");
@@ -628,7 +628,7 @@ mod tests {
     }
 
     #[test]
-    fn test_duplicate_keys() {
+    fn duplicate_keys() {
         let mut map = Map::default();
         map.set("key1", 42);
         map.set("key1", "new_value");
@@ -637,7 +637,7 @@ mod tests {
     }
 
     #[test]
-    fn test_ref_keys() {
+    fn ref_keys() {
         let address_provider = &mut SelfOwnedPointerAddressProvider::default();
 
         let mut map = Map::default();
@@ -668,7 +668,7 @@ mod tests {
     }
 
     #[test]
-    fn test_decimal_nan_value_key() {
+    fn decimal_nan_value_key() {
         let mut map = Map::default();
         let nan_value = ValueContainer::from(Decimal::Nan);
         map.set(&nan_value, "value");
@@ -686,7 +686,7 @@ mod tests {
     }
 
     #[test]
-    fn test_float_nan_value_key() {
+    fn float_nan_value_key() {
         let mut map = Map::default();
         let nan_value = ValueContainer::from(f64::NAN);
         map.set(&nan_value, "value");
@@ -708,7 +708,7 @@ mod tests {
     }
 
     #[test]
-    fn test_decimal_zero_value_key() {
+    fn decimal_zero_value_key() {
         let mut map = Map::default();
         let zero_value = ValueContainer::from(Decimal::Zero);
         map.set(&zero_value, "value");
@@ -730,7 +730,7 @@ mod tests {
     }
 
     #[test]
-    fn test_float_zero_value_key() {
+    fn float_zero_value_key() {
         let mut map = Map::default();
         let zero_value = ValueContainer::from(0.0f64);
         map.set(&zero_value, "value");
@@ -754,7 +754,7 @@ mod tests {
     }
 
     #[test]
-    fn test_typed_big_decimal_key() {
+    fn typed_big_decimal_key() {
         let mut map = Map::default();
         let zero_big_decimal =
             ValueContainer::from(TypedDecimal::Decimal(Decimal::Zero));

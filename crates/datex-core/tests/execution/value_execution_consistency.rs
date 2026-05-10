@@ -37,21 +37,21 @@ fn compile_and_execute(input: ValueContainer) -> ValueContainer {
 }
 
 #[test]
-fn test_compile_and_execute_integer() {
+fn compile_and_execute_integer() {
     let input = ValueContainer::from(Integer::from(42));
     let result = compile_and_execute(input.clone());
     assert_eq!(result, input);
 }
 
 #[test]
-fn test_compile_and_execute_typed_integer() {
+fn compile_and_execute_typed_integer() {
     let input = ValueContainer::from(TypedInteger::U8(42));
     let result = compile_and_execute(input.clone());
     assert_eq!(result, input);
 }
 
 #[test]
-fn test_compile_and_execute_typed_decimals() {
+fn compile_and_execute_typed_decimals() {
     let input = ValueContainer::from(TypedDecimal::F32(42f32.into()));
     let result = compile_and_execute(input.clone());
     assert_eq!(result, input);
@@ -74,21 +74,21 @@ fn test_compile_and_execute_typed_decimals() {
 }
 
 #[test]
-fn test_compile_and_execute_string() {
+fn compile_and_execute_string() {
     let input = ValueContainer::from("Hello, World!");
     let result = compile_and_execute(input.clone());
     assert_eq!(result, input);
 }
 
 #[test]
-fn test_compile_and_execute_bool() {
+fn compile_and_execute_bool() {
     let input = ValueContainer::from(true);
     let result = compile_and_execute(input.clone());
     assert_eq!(result, input);
 }
 
 #[test]
-fn test_compile_and_execute_list() {
+fn compile_and_execute_list() {
     let input = ValueContainer::from(List::new(vec![
         ValueContainer::from(Integer::from(1)),
         ValueContainer::from(Integer::from(2)),
@@ -99,7 +99,7 @@ fn test_compile_and_execute_list() {
 }
 
 #[test]
-fn test_compile_and_execute_map() {
+fn compile_and_execute_map() {
     let input = ValueContainer::from(Map::StructuralWithStringKeys(vec![
         ("key1".to_string(), ValueContainer::from(Integer::from(1))),
         ("key2".to_string(), ValueContainer::from("value")),

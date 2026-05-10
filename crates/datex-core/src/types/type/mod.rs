@@ -460,7 +460,7 @@ mod tests {
     };
 
     #[test]
-    fn test_match_equal_values() {
+    fn match_equal_values() {
         // 1u8 matches 1u8
         assert!(
             Type::from(LiteralTypeDefinition::TypedInteger(1u8.into()))
@@ -487,7 +487,7 @@ mod tests {
     }
 
     #[test]
-    fn test_match_union() {
+    fn match_union() {
         // 1 matches (1 | 2 | 3)
         assert!(
             Type::from(TypeDefinition::Union(vec![
@@ -525,7 +525,7 @@ mod tests {
 
     // TODO #330
     // #[test]
-    // fn test_match_combined_type() {
+    // fn match_combined_type() {
     //     // [1, 1] matches List<1>
     //     assert!(Type::value_matches_type(
     //         &ValueContainer::from(List::from(vec![1, 1])),
