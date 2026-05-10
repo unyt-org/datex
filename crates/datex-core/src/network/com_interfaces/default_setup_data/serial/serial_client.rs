@@ -3,9 +3,11 @@ use crate::{
     prelude::*,
 };
 use core::time::Duration;
+use datex_macros_internal::Datex;
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize)]
+#[derive(Datex, Serialize, Deserialize)]
+#[datex(allow_serde_infallible)]
 #[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
 pub struct SerialClientInterfaceSetupData {
     pub port_name: Option<String>,
