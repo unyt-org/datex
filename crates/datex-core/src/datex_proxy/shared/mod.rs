@@ -27,6 +27,7 @@ mod test {
         shared_values::SharedContainerMutability,
     };
 
+    use crate::prelude::*;
     #[test]
     fn string_shared() {
         let address_provider = &mut SelfOwnedPointerAddressProvider::default();

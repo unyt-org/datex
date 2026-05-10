@@ -259,10 +259,11 @@ mod tests {
     use super::*;
     use crate::{
         assert_structural_eq, assert_value_eq,
+        collections::HashMap,
         compiler::{CompileOptions, compile_script, scope::CompilationScope},
         datex_list,
-        global::instruction_codes::InstructionCode,
         libs::core::type_id::CoreLibBaseTypeId,
+        prelude::*,
         runtime::{
             Runtime, RuntimeConfig, RuntimeRunner,
             execution::{
@@ -290,7 +291,6 @@ mod tests {
     };
     use core::assert_matches;
     use log::{debug, info};
-    use std::collections::HashMap;
 
     fn execute_datex_script_debug(
         datex_script: &str,

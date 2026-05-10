@@ -41,14 +41,14 @@ impl<'ctx, T> SerdeContext<'ctx, T> {
 
     /// Convert a serializable DATEX value to a JSON string
     #[cfg(test)]
-    pub fn serialize_to_json(&mut self, value: &T) -> String
+    pub fn serialize_to_json(&mut self, value: &T) -> alloc::string::String
     where
         SerdeContext<'ctx, T>:
             crate::utils::serde_serialize_seed::SerializeSeed<Value = T>,
     {
-        use crate::utils::serde_serialize_seed::SerializeSeed;
+        use crate::{prelude::*, utils::serde_serialize_seed::SerializeSeed};
         let mut serializer = serde_json::Serializer::new(Vec::new());
-        self.serialize(&value, &mut serializer).unwrap();
+        self.serialize(value, &mut serializer).unwrap();
         let bytes = serializer.into_inner();
         String::from_utf8(bytes).unwrap()
     }
