@@ -69,6 +69,7 @@ use precompiler::{
     precompile_ast,
     precompiled_ast::{AstMetadata, RichAst, VariableMetadata},
 };
+use crate::parser::errors::SpannedParserError;
 
 pub mod context;
 pub mod error;
@@ -229,11 +230,9 @@ pub fn compile_script(
 /// All JSON-files can be compiled to static values, but not all DATEX scripts.
 pub fn extract_static_value_from_script(
     datex_script: &str,
-) -> Result<Option<ValueContainer>, SpannedCompilerError> {
+) -> Result<Option<ValueContainer>, SpannedParserError> {
     let valid_parse_result = Parser::parse_with_default_options(datex_script)?;
-    extract_static_value_from_ast(&valid_parse_result)
-        .map(Some)
-        .map_err(SpannedCompilerError::from)
+    Ok(extract_static_value_from_ast(&valid_parse_result))
 }
 
 /// Converts a DATEX script template text with inserted values into an AST with metadata
@@ -265,7 +264,7 @@ pub fn compile_script_or_return_static_value(
         // try to extract static value from AST
         extract_static_value_from_ast(&ast.ast)
             .map(|value| (StaticValueOrDXB::StaticValue(Some(value)), scope))
-            .map_err(SpannedCompilerError::from)
+            .ok_or_else(|| SpannedCompilerError::from(CompilerError::NonStaticValue))
     }
 }
 
@@ -438,12 +437,11 @@ fn compile_ast(
 /// it returns an error.
 fn extract_static_value_from_ast(
     ast: &DatexExpression,
-) -> Result<ValueContainer, CompilerError> {
+) -> Option<ValueContainer> {
     if let DatexExpressionData::Placeholder(_) = ast.data {
-        return Err(CompilerError::NonStaticValue);
+        return None
     }
-    ValueContainer::try_from(&ast.data)
-        .map_err(|_| CompilerError::NonStaticValue)
+    ValueContainer::try_from(&ast.data).ok()
 }
 
 /// Macro for compiling a DATEX script template text with inserted values into a DXB body,
