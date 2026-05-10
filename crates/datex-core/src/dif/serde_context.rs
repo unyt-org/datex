@@ -29,8 +29,10 @@ impl<'ctx, T> SerdeContext<'ctx, T> {
         json_string: &'ctx str,
     ) -> Result<T, serde_json::Error>
     where
-        SerdeContext<'ctx, T>: DeserializeSeed<'ctx, Value = T>,
+        SerdeContext<'ctx, T>: serde::de::DeserializeSeed<'ctx, Value = T>,
     {
+        use serde::de::DeserializeSeed;
+
         DeserializeSeed::deserialize(
             self,
             &mut serde_json::Deserializer::from_str(json_string),
@@ -41,8 +43,10 @@ impl<'ctx, T> SerdeContext<'ctx, T> {
     #[cfg(test)]
     pub fn serialize_to_json(&mut self, value: &T) -> String
     where
-        SerdeContext<'ctx, T>: SerializeSeed<Value = T>,
+        SerdeContext<'ctx, T>:
+            crate::utils::serde_serialize_seed::SerializeSeed<Value = T>,
     {
+        use crate::utils::serde_serialize_seed::SerializeSeed;
         let mut serializer = serde_json::Serializer::new(Vec::new());
         self.serialize(&value, &mut serializer).unwrap();
         let bytes = serializer.into_inner();
