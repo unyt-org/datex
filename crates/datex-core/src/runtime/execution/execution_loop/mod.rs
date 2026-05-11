@@ -87,6 +87,7 @@ use crate::{
 };
 use alloc::rc::Rc;
 use core::cell::RefCell;
+use crate::global::protocol_structures::instruction_data::TaggedValue;
 
 #[derive(Debug)]
 enum CollectedExecutionResult {
@@ -712,9 +713,10 @@ pub fn inner_execution_loop(
                                     ))
                                 }
 
-                                RegularInstruction::TaggedValue(
-                                    ShortTextData(tag),
-                                ) => {
+                                RegularInstruction::TaggedValue(TaggedValue {
+                                    tag: ShortTextData(tag),
+                                    is_empty
+                                }) => {
                                     let value_container = yield_unwrap!(
                                         collected_results.pop_cloned_value_container_result_assert_existing(&state)
                                     );

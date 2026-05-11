@@ -45,7 +45,7 @@ use alloc::format;
 use core::cell::RefCell;
 use num_enum::TryFromPrimitive;
 use crate::ast::expressions::{RootPropertyAccess, TagExpression};
-use crate::global::protocol_structures::instruction_data::{ShortTextData, StackIndex};
+use crate::global::protocol_structures::instruction_data::{ShortTextData, StackIndex, TaggedValue};
 
 #[derive(Debug)]
 enum CollectedAstResult {
@@ -324,6 +324,13 @@ pub fn ast_from_bytecode(
                                 })
                             }
 
+                            RegularInstruction::TaggedValue(TaggedValue {is_empty: true, tag: ShortTextData(tag) }) => {
+                                DatexExpressionData::Tag(TagExpression {
+                                    tag,
+                                    expression: None,
+                                })
+                            }
+
                             // NOTE: make sure that get_next_expected_instructions does not return None for these instructions!
                             RegularInstruction::Statements(_)
                             | RegularInstruction::ShortStatements(_)
@@ -344,7 +351,7 @@ pub fn ast_from_bytecode(
                             | RegularInstruction::UnaryMinus
                             | RegularInstruction::UnaryPlus
                             | RegularInstruction::BitwiseNot
-                            | RegularInstruction::TaggedValue(_)
+                            | RegularInstruction::TaggedValue(TaggedValue {is_empty: false, .. })
                             | RegularInstruction::Apply(_)
                             | RegularInstruction::GetPropertyText(_)
                             | RegularInstruction::GetPropertyIndex(_)
@@ -648,11 +655,16 @@ pub fn ast_from_bytecode(
                                 .into()
                             }
 
-                            RegularInstruction::TaggedValue(ShortTextData(tag)) => {
-                                let expression = collected_results.pop_value_result();
+                            RegularInstruction::TaggedValue(TaggedValue {
+                                tag: ShortTextData(tag),
+                                is_empty
+                            }) => {
+                                assert!(!is_empty);
+                                let expression = Some(Box::new(collected_results.pop_value_result()));
+
                                 DatexExpressionData::Tag(TagExpression {
                                     tag,
-                                    expression: Some(Box::new(expression)),
+                                    expression,
                                 })
                                     .with_default_span()
                                     .into()

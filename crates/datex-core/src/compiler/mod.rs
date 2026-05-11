@@ -70,7 +70,7 @@ use precompiler::{
     precompiled_ast::{AstMetadata, RichAst, VariableMetadata},
 };
 use crate::ast::expressions::RootPropertyAccess;
-use crate::global::protocol_structures::instruction_data::ShortTextData;
+use crate::global::protocol_structures::instruction_data::{ShortTextData, TaggedValue};
 use crate::parser::errors::SpannedParserError;
 
 pub mod context;
@@ -1401,7 +1401,10 @@ fn compile_expression(
         }
 
         DatexExpressionData::Tag(tag_expression) => {
-            let tag_instruction = RegularInstruction::TaggedValue(ShortTextData(tag_expression.tag));
+            let tag_instruction = RegularInstruction::TaggedValue(TaggedValue {
+                tag: ShortTextData(tag_expression.tag),
+                is_empty: tag_expression.expression.is_none(),
+            });
             append_regular_instruction(compilation_context.cursor(), tag_instruction);
 
             // append expression
@@ -1595,7 +1598,7 @@ pub mod tests {
     use alloc::format;
     use core::assert_matches;
     use log::*;
-    use crate::global::protocol_structures::instruction_data::{MapData, ShortTextData};
+    use crate::global::protocol_structures::instruction_data::{MapData, ShortTextData, TaggedValue};
     use crate::global::root_properties::RootProperty;
 
     fn compile_and_log(datex_script: &str) -> Vec<u8> {
@@ -2251,8 +2254,10 @@ pub mod tests {
         assert_regular_instructions_equal!(
             &result,
             [
-                RegularInstruction::TaggedValue(ShortTextData("Example".to_string())),
-                RegularInstruction::Null,
+                RegularInstruction::TaggedValue(TaggedValue {
+                    tag: ShortTextData("Example".to_string()),
+                    is_empty: true,
+                }),
             ]
         )
     }
@@ -2264,7 +2269,10 @@ pub mod tests {
         assert_regular_instructions_equal!(
             &result,
             [
-                RegularInstruction::TaggedValue(ShortTextData("Example".to_string())),
+                RegularInstruction::TaggedValue(TaggedValue {
+                    tag: ShortTextData("Example".to_string()),
+                    is_empty: false,
+                }),
                 RegularInstruction::ShortMap(MapData {element_count: 1}),
                 RegularInstruction::KeyValueShortText(ShortTextData("a".to_string())),
                 RegularInstruction::True,
@@ -2279,7 +2287,26 @@ pub mod tests {
         assert_regular_instructions_equal!(
             &result,
             [
-                RegularInstruction::TaggedValue(ShortTextData("Example".to_string())),
+                RegularInstruction::TaggedValue(TaggedValue {
+                    tag: ShortTextData("Example".to_string()),
+                    is_empty: false,
+                }),
+                RegularInstruction::ShortText(ShortTextData("test".to_string())),
+            ]
+        )
+    }
+
+    #[test]
+    fn tag_with_null_value() {
+        let datex_script = "#Example (null)";
+        let result = compile_and_log(datex_script);
+        assert_regular_instructions_equal!(
+            &result,
+            [
+                RegularInstruction::TaggedValue(TaggedValue {
+                    tag: ShortTextData("Example".to_string()),
+                    is_empty: false,
+                }),
                 RegularInstruction::ShortText(ShortTextData("test".to_string())),
             ]
         )

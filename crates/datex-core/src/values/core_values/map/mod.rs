@@ -148,6 +148,45 @@ impl Map {
         }
     }
 
+    /// Removes a key from the map, returning the value if it existed.
+    /// Also works for structural maps, but creates a map that no longer matches the assumed type.
+    /// The map should no longer be used after this operation.
+    pub unsafe fn try_delete_unsafe<'a>(
+        &mut self,
+        key: impl Into<BorrowedValueKey<'a>>,
+    ) -> Result<ValueContainer, KeyNotFoundError> {
+        let key = key.into();
+        match self {
+            Map::Dynamic(map) => key.with_value_container(|key| {
+                map.shift_remove(key).ok_or_else(|| {
+                    KeyNotFoundError {
+                        key: key.clone(),
+                    }
+                })
+            }),
+            Map::Structural(vec) => key.with_value_container(|key| {
+                for (k, v) in vec.iter_mut() {
+                    if k == key {
+                        return Ok(core::mem::replace(v, ValueContainer::from(Value::null())));
+                    }
+                }
+                Err(KeyNotFoundError { key: key.clone() })
+            }),
+            Map::StructuralWithStringKeys(vec) => {
+                if let Some(string) = key.try_as_text() {
+                    for (k, v) in vec.iter_mut() {
+                        if k == string {
+                            return Ok(core::mem::replace(v, ValueContainer::from(Value::null())));
+                        }
+                    }
+                    Err(KeyNotFoundError { key: key.into() })
+                } else {
+                    Err(KeyNotFoundError { key: key.into() })
+                }
+            }
+        }
+    }
+
     /// Clears all entries in the map, returning an error if the map is not dynamic.
     pub fn try_clear_inner(&mut self) -> Result<(), MapAccessError> {
         match self {

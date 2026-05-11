@@ -329,6 +329,9 @@ fn derive_enum(data_enum: DataEnum, ident: &Ident,) -> DeriveData {
             },
             Fields::Unit => quote! {
                 #variant_name => {
+                    if !value.is_null() {
+                        return Err(TryFromDatexValueError(format!("Unexpected value, expected null")));
+                    }
                     #ident::#variant_ident
                 }
             }
@@ -516,8 +519,10 @@ fn derive_fields(fields: &Fields) -> FieldDeriveData {
 
                 from_datex_fields.push(quote! {
                     #field_ident: #from_value_container_function(
-                            map.try_delete(#field_name)
-                                .map_err(|err| TryFromDatexValueError(err.to_string()))?
+                            unsafe {
+                                map.try_delete_unsafe(#field_name)
+                                    .map_err(|err| TryFromDatexValueError(err.to_string()))?
+                            }
                         )?,
                 });
             }

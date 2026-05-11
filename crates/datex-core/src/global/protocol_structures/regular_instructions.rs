@@ -34,6 +34,7 @@ use binrw::{
 };
 use core::fmt::{Display, Write as FmtWrite};
 use serde::{Serialize, Serializer, ser::SerializeTuple};
+use crate::global::protocol_structures::instruction_data::TaggedValue;
 use crate::global::root_properties::RootProperty;
 
 #[derive(Clone, Debug, PartialEq, BinWrite)]
@@ -97,7 +98,7 @@ pub enum RegularInstruction {
     KeyValueDynamic,
     KeyValueShortText(ShortTextData),
 
-    TaggedValue(ShortTextData),
+    TaggedValue(TaggedValue),
 
     // binary operator
     Add,
@@ -475,7 +476,14 @@ impl RegularInstruction {
             }
 
             RegularInstruction::Range => NextExpectedInstructions::Regular(2),
-            RegularInstruction::TaggedValue(_) => NextExpectedInstructions::Regular(1),
+            RegularInstruction::TaggedValue(TaggedValue {is_empty, ..}) => {
+                if *is_empty {
+                    NextExpectedInstructions::None
+                }
+                else {
+                    NextExpectedInstructions::Regular(1)
+                }
+            },
 
             RegularInstruction::SharedRefWithValue(_) => {
                 NextExpectedInstructions::Regular(1)
@@ -603,7 +611,7 @@ impl RegularInstruction {
                     .map(RegularInstruction::UnboundedStatementsEnd)
             }
 
-            InstructionCode::TAGGED_VALUE => ShortTextData::read(reader)
+            InstructionCode::TAGGED_VALUE => TaggedValue::read(reader)
                 .map(RegularInstruction::TaggedValue),
 
             InstructionCode::APPLY_ZERO => {
