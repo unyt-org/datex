@@ -288,7 +288,7 @@ pub struct StackIndex(pub u32);
 
 impl Display for StackIndex {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "{}", self.0)
+        write!(f, "\\{}", self.0)
     }
 }
 

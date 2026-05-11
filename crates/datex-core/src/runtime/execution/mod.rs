@@ -291,6 +291,7 @@ mod tests {
     };
     use core::assert_matches;
     use log::{debug, info};
+    use crate::types::type_definition::TypeDefinition;
 
     fn execute_datex_script_debug(
         datex_script: &str,
@@ -513,6 +514,38 @@ mod tests {
         assert_eq!(list.len(), 0);
         assert_eq!(result, Vec::<ValueContainer>::new().into());
         assert_eq!(result, ValueContainer::from(Vec::<ValueContainer>::new()));
+    }
+
+    #[test]
+    fn empty_tag() {
+        let result = execute_datex_script_debug_with_result("#Example");
+        if let ValueContainer::Local(value) = result {
+            assert_eq!(&value.inner, &CoreValue::Null);
+            assert_eq!(&value.custom_type, &Some(TypeDefinition::TaggedType {
+                tag: "Example".to_string(),
+                ty: Box::new(Type::core(CoreLibBaseTypeId::Null)),
+            }.into()))
+        }
+        else {
+            panic!("Result should be Local value");
+        }
+    }
+
+    #[test]
+    fn empty_with_map() {
+        let result = execute_datex_script_debug_with_result("#Example {a: true}");
+        if let ValueContainer::Local(value) = result {
+            assert_eq!(&value.inner, &CoreValue::Map(Map::StructuralWithStringKeys(vec![
+                ("a".to_string(), ValueContainer::from(true))
+            ])));
+            assert_eq!(&value.custom_type, &Some(TypeDefinition::TaggedType {
+                tag: "Example".to_string(),
+                ty: Box::new(Type::core(CoreLibBaseTypeId::Map)),
+            }.into()))
+        }
+        else {
+            panic!("Result should be Local value");
+        }
     }
 
     #[test]

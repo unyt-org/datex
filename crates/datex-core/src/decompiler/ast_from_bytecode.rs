@@ -623,7 +623,7 @@ pub fn ast_from_bytecode(
                                 let expr = collected_results.pop_value_result();
                                 DatexExpressionData::SlotAssignment(
                                     StackAssignment {
-                                        index: StackIndex(0), // FIXME: push_multiple //#0..#10 = x
+                                        index: StackIndex(0), // FIXME: push_multiple \0..\10 = x
                                         expression: Box::new(expr),
                                     }
                                 )
@@ -647,7 +647,7 @@ pub fn ast_from_bytecode(
                                 .with_default_span()
                                 .into()
                             }
-                            
+
                             RegularInstruction::TaggedValue(ShortTextData(tag)) => {
                                 let expression = collected_results.pop_value_result();
                                 DatexExpressionData::Tag(TagExpression {

@@ -777,7 +777,7 @@ impl AstToSourceCodeConverter {
             }
             DatexExpressionData::StackIndex(slot) => slot.to_string(),
             DatexExpressionData::SlotAssignment(StackAssignment {
-                                                    index: slot,
+                index: slot,
                 expression,
             }) => {
                 format!("{}%s=%s{}", slot, self.format(expression))

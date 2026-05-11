@@ -31,7 +31,7 @@ use crate::{
 };
 use binrw::io::Write;
 use core::cell::RefCell;
-
+use core::str::FromStr;
 use crate::{
     ast::{expressions::ValueAccessType, resolved_variable::VariableId},
     core_compiler::value_compiler::{
@@ -70,6 +70,7 @@ use precompiler::{
     precompiled_ast::{AstMetadata, RichAst, VariableMetadata},
 };
 use crate::ast::expressions::RootPropertyAccess;
+use crate::global::protocol_structures::instruction_data::ShortTextData;
 use crate::parser::errors::SpannedParserError;
 
 pub mod context;
@@ -1279,47 +1280,30 @@ fn compile_expression(
             )?;
         }
 
-        // root property (e.g. $.core)
+        // root property (e.g. $.endpoint)
         DatexExpressionData::RootPropertyAccess(RootPropertyAccess { property_name } ) => {
-            match property_name.as_str() {
-                "endpoint" => {
-                    compilation_context.append_instruction_code(
-                        InstructionCode::GET_ROOT_PROPERTY,
-                    );
-                    append_u32(
-                        compilation_context.cursor(),
-                        RootProperty::ENDPOINT as u32,
-                    );
-                }
-                "caller" => {
-                    compilation_context.append_instruction_code(
-                        InstructionCode::GET_ROOT_PROPERTY,
-                    );
-                    append_u32(
-                        compilation_context.cursor(),
-                        RootProperty::CALLER as u32,
-                    );
-                }
-                "env" => {
-                    compilation_context.append_instruction_code(
-                        InstructionCode::GET_ROOT_PROPERTY,
-                    );
-                    append_u32(
-                        compilation_context.cursor(),
-                        RootProperty::ENV as u32,
-                    );
-                }
-                "core" => append_get_internal_ref(
+            let root_property = RootProperty::from_str(&property_name);
+
+            if let Ok(root_property) = root_property {
+                append_regular_instruction(
                     compilation_context.cursor(),
-                    PointerAddress::from(CoreLibId::Value(
-                        CoreLibValueId::Core,
-                    ))
-                    .internal_bytes()
-                    .unwrap(),
-                ),
-                _ => {
-                    // invalid slot name
-                    return Err(CompilerError::InvalidSlotName(property_name.clone()));
+                    RegularInstruction::GetRootProperty(root_property),
+                );
+            }
+            else {
+                match property_name.as_str() {
+                    "core" => append_get_internal_ref(
+                        compilation_context.cursor(),
+                        PointerAddress::from(CoreLibId::Value(
+                            CoreLibValueId::Core,
+                        ))
+                            .internal_bytes()
+                            .unwrap(),
+                    ),
+                    _ => {
+                        // invalid slot name
+                        return Err(CompilerError::InvalidSlotName(property_name.clone()));
+                    }
                 }
             }
         }
@@ -1415,6 +1399,28 @@ fn compile_expression(
                 scope,
             )?;
         }
+
+        DatexExpressionData::Tag(tag_expression) => {
+            let tag_instruction = RegularInstruction::TaggedValue(ShortTextData(tag_expression.tag));
+            append_regular_instruction(compilation_context.cursor(), tag_instruction);
+
+            // append expression
+            if let Some(inner_expression) = tag_expression.expression {
+                scope = compile_expression(
+                    compilation_context,
+                    RichAst::new(*inner_expression, &metadata),
+                    CompileMetadata::default(),
+                    scope,
+                )?;
+            }
+            // append "null" expression
+            else {
+                append_regular_instruction(
+                    compilation_context.cursor(),
+                    RegularInstruction::Null,
+                );
+            }
+        },
 
         data => {
             log::error!("Unhandled expression in compiler: {:?}", data);
@@ -1589,6 +1595,9 @@ pub mod tests {
     use alloc::format;
     use core::assert_matches;
     use log::*;
+    use crate::global::protocol_structures::instruction_data::{MapData, ShortTextData};
+    use crate::global::root_properties::RootProperty;
+
     fn compile_and_log(datex_script: &str) -> Vec<u8> {
         let (result, _) = compile_script(
             datex_script,
@@ -2236,7 +2245,48 @@ pub mod tests {
     }
 
     #[test]
-    fn allocate_slot() {
+    fn empty_tag() {
+        let datex_script = "#Example";
+        let result = compile_and_log(datex_script);
+        assert_regular_instructions_equal!(
+            &result,
+            [
+                RegularInstruction::TaggedValue(ShortTextData("Example".to_string())),
+                RegularInstruction::Null,
+            ]
+        )
+    }
+
+    #[test]
+    fn tag_with_map() {
+        let datex_script = "#Example {a: true}";
+        let result = compile_and_log(datex_script);
+        assert_regular_instructions_equal!(
+            &result,
+            [
+                RegularInstruction::TaggedValue(ShortTextData("Example".to_string())),
+                RegularInstruction::ShortMap(MapData {element_count: 1}),
+                RegularInstruction::KeyValueShortText(ShortTextData("a".to_string())),
+                RegularInstruction::True,
+            ]
+        )
+    }
+
+    #[test]
+    fn tag_with_single_value() {
+        let datex_script = "#Example (\"test\")";
+        let result = compile_and_log(datex_script);
+        assert_regular_instructions_equal!(
+            &result,
+            [
+                RegularInstruction::TaggedValue(ShortTextData("Example".to_string())),
+                RegularInstruction::ShortText(ShortTextData("test".to_string())),
+            ]
+        )
+    }
+
+    #[test]
+    fn allocate_variable() {
         let script = "const a = 42u8";
         let result = compile_and_log(script);
         assert_eq!(
@@ -2250,7 +2300,7 @@ pub mod tests {
     }
 
     #[test]
-    fn allocate_slot_with_value() {
+    fn allocate_and_access_variable() {
         let script = "const a = 42u8; a + 1u8";
         let result = compile_and_log(script);
         assert_eq!(
@@ -2276,7 +2326,7 @@ pub mod tests {
     }
 
     #[test]
-    fn allocate_scoped_slots() {
+    fn allocate_scoped_variables() {
         let script = "const a = 42u8; (const a = 43u8; a); a";
         let result = compile_and_log(script);
         assert_eq!(
@@ -2310,7 +2360,7 @@ pub mod tests {
     }
 
     #[test]
-    fn allocate_scoped_slots_with_parent_variables() {
+    fn allocate_scoped_variables_with_parent_variables() {
         let script =
             "const a = 42u8; const b = 41u8; (const a = 43u8; a; b); a";
         let result = compile_and_log(script);
@@ -3108,39 +3158,29 @@ pub mod tests {
     }
 
     #[test]
-    fn internal_slot_endpoint() {
-        let script = "#endpoint";
+    fn root_property_endpoint() {
+        let script = "$.endpoint";
         let (res, _) =
             compile_script(script, CompileOptions::default(), Runtime::stub())
                 .unwrap();
-        assert_eq!(
-            res,
-            vec![
-                InstructionCode::GET_ROOT_PROPERTY.into(),
-                // slot index as u32
-                0,
-                0xff,
-                0xff,
-                0xff
+        assert_regular_instructions_equal!(
+            &res,
+            [
+                RegularInstruction::GetRootProperty(RootProperty::ENDPOINT),
             ]
         );
     }
 
     #[test]
-    fn internal_slot_caller() {
-        let script = "#caller";
+    fn root_property_caller() {
+        let script = "$.caller";
         let (res, _) =
             compile_script(script, CompileOptions::default(), Runtime::stub())
                 .unwrap();
-        assert_eq!(
-            res,
-            vec![
-                InstructionCode::GET_ROOT_PROPERTY.into(),
-                // slot index as u32
-                2,
-                0xff,
-                0xff,
-                0xff
+        assert_regular_instructions_equal!(
+            &res,
+            [
+                RegularInstruction::GetRootProperty(RootProperty::CALLER),
             ]
         );
     }

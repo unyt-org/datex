@@ -31,7 +31,7 @@ use datex_core::{
             ComparisonOperation, Conditional, CreateMut, CreateShared,
             DatexExpression, DatexExpressionData, GenericInstantiation, GetRef,
             List, Map, PropertyAccess, PropertyAssignment, RequestSharedRef,
-            StackIndex, UnaryOperation, Unbox, ValueAccessType, VariableAssignment,
+            UnaryOperation, Unbox, ValueAccessType, VariableAssignment,
             VariableDeclaration, VariableKind,
         },
         spanned::Spanned,
@@ -53,6 +53,8 @@ use datex_core::{
     },
     values::core_values::error::NumberParseError,
 };
+use datex_core::ast::expressions::RootPropertyAccess;
+use datex_core::global::protocol_structures::instruction_data::StackIndex;
 
 /// Parse the given source code into a DatexExpression AST.
 fn parse_unwrap(src: &str) -> DatexExpression {
@@ -3381,16 +3383,6 @@ fn remote_execution_inline_statements() {
 }
 
 #[test]
-fn named_slot() {
-    let src = "#endpoint";
-    let expr = parse_unwrap_data(src);
-    assert_eq!(
-        expr,
-        DatexExpressionData::StackIndex(StackIndex::Named("endpoint".to_string()))
-    );
-}
-
-#[test]
 fn unbox() {
     let src = "*x";
     let expr = parse_unwrap_data(src);
@@ -3423,13 +3415,6 @@ fn unbox_multiple() {
             )
         })
     );
-}
-
-#[test]
-fn addressed_slot() {
-    let src = "#123";
-    let expr = parse_unwrap_data(src);
-    assert_eq!(expr, DatexExpressionData::StackIndex(StackIndex::Addressed(123)));
 }
 
 #[test]

@@ -96,7 +96,7 @@ pub enum RegularInstruction {
 
     KeyValueDynamic,
     KeyValueShortText(ShortTextData),
-    
+
     TaggedValue(ShortTextData),
 
     // binary operator

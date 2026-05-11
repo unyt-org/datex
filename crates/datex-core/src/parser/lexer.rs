@@ -200,7 +200,6 @@ pub enum Token {
     #[token("|")] Pipe,
     #[token("!")] Exclamation,
     #[token("`")] Backtick,
-    #[token("$")] Root,
 
     #[token("<=")] LessEqual,
     #[token(">=")] GreaterEqual, // can not use because of generic overlap type X<test>= 4;
@@ -296,6 +295,9 @@ pub enum Token {
 
     // tagged value/type (starting with #, followed by A-Z, a-z, _ and alphanumeric characters)
     #[regex(r"#[_a-zA-Z][_a-zA-Z0-9]*", allocated_string)] Tag(String),
+
+    // root property access (e.g. $.endpoint)
+    #[regex(r"\$\.[_a-zA-Z][_a-zA-Z0-9]*", allocated_string)] RootPropertyAccess(String),
 }
 
 impl Token {
@@ -338,7 +340,6 @@ impl Token {
             Token::Ampersand => Some("&"),
             Token::Pipe => Some("|"),
             Token::Backtick => Some("`"),
-            Token::Root => Some("$"),
             Token::LessEqual => Some("<="),
             Token::GreaterEqual => Some(">="),
             Token::NotStructuralEqual => Some("!="),

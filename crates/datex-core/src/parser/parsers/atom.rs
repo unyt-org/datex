@@ -21,7 +21,7 @@ use crate::{
     },
 };
 use core::str::FromStr;
-use crate::ast::expressions::TagExpression;
+use crate::ast::expressions::{RootPropertyAccess, TagExpression};
 use crate::global::protocol_structures::instruction_data::StackIndex;
 
 impl Parser {
@@ -50,6 +50,9 @@ impl Parser {
             Token::Tag(_) => self.parse_tagged_value()?,
             Token::StackIndex(stack_index) => {
                 self.parse_stack_index(stack_index)?
+            }
+            Token::RootPropertyAccess(root_property_access) => {
+                self.parse_root_property_access(root_property_access)?
             }
             Token::StringLiteral(value) => self.parse_string_literal(value)?,
             Token::Infinity => self.parse_infinity()?,
@@ -81,14 +84,36 @@ impl Parser {
                         expected: vec![
                             Token::LeftCurly,
                             Token::LeftBracket,
+                            Token::TypeExpressionStart,
                             Token::LeftParen,
                             Token::True,
                             Token::False,
                             Token::Null,
                             Token::Identifier("".to_string()),
+                            Token::Placeholder,
+                            Token::Tag("".to_string()),
                             Token::StringLiteral("".to_string()),
                             Token::Infinity,
                             Token::Nan,
+                            Token::Endpoint("".to_string()),
+                            Token::IntegerLiteral("".to_string()),
+                            Token::BinaryIntegerLiteral(IntegerWithVariant {
+                                value: "".to_string(),
+                                variant: None,
+                            }),
+                            Token::HexadecimalIntegerLiteral(IntegerWithVariant {
+                                value: "".to_string(),
+                                variant: None,
+                            }),
+                            Token::OctalIntegerLiteral(IntegerWithVariant {
+                                value: "".to_string(),
+                                variant: None,
+                            }),
+                            Token::DecimalLiteral(DecimalWithVariant {
+                                value: "".to_string(),
+                                variant: None,
+                            }),
+                            Token::FractionLiteral("".to_string()),
                         ],
                         found: self.peek()?.token.clone(),
                     },
@@ -276,6 +301,15 @@ impl Parser {
         .with_span(self.advance()?.span))
     }
 
+    pub(crate) fn parse_root_property_access(
+        &mut self,
+        property_access: String,
+    ) -> Result<DatexExpression, SpannedParserError> {
+        Ok(DatexExpressionData::RootPropertyAccess(RootPropertyAccess {
+            property_name: property_access[2..].to_string(), // remove leading '$.'
+        }).with_span(self.advance()?.span))
+    }
+
     pub(crate) fn parse_string_literal(
         &mut self,
         value: String,
@@ -335,7 +369,7 @@ mod tests {
         },
     };
     use core::assert_matches;
-    use crate::ast::expressions::TagExpression;
+    use crate::ast::expressions::{RootPropertyAccess, TagExpression};
     use crate::global::protocol_structures::instruction_data::StackIndex;
 
     #[test]
@@ -440,6 +474,17 @@ mod tests {
     fn parse_stack_index() {
         let expr = parse("\\42");
         assert_eq!(expr.data, DatexExpressionData::StackIndex(StackIndex(42)));
+    }
+
+    #[test]
+    fn parse_root_property_access() {
+        let expr = parse("$.myProperty");
+        assert_eq!(
+            expr.data,
+            DatexExpressionData::RootPropertyAccess(RootPropertyAccess {
+                property_name: "myProperty".to_string()
+            })
+        );
     }
 
     #[test]
