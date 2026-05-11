@@ -103,6 +103,9 @@ pub enum DatexExpressionData {
     /// Integer, e.g 123456789123456789
     Integer(Integer),
 
+    /// DateTime, e.g. 2026-04-13T18:28:09.415Z (stored as Instant)
+    DateTime(Instant),
+
     Range(RangeDeclaration),
 
     /// Typed Integer, e.g. 123i8

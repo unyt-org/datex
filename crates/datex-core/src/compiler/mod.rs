@@ -59,7 +59,7 @@ use crate::{
     shared_values::{
         ReferenceMutability, SharedContainer, SharedContainerMutability,
     },
-    time::Instant,
+    time::Instant as TimingInstant,
     utils::buffers::{append_u8, append_u16, append_u32},
     values::{
         core_values::{decimal::Decimal, endpoint::Endpoint},
@@ -328,7 +328,7 @@ pub fn parse_datex_script_to_rich_ast_simple_error(
     //         compile_value_container(inserted_values[0]).map(StaticValueOrAst::from)?;
     //     return Ok((result, options.compile_scope));
     // }
-    let parse_start = Instant::now();
+    let parse_start = TimingInstant::now();
     let mut valid_parse_result =
         Parser::parse(datex_script, options.parser_options.clone())?;
 
@@ -353,7 +353,7 @@ pub fn parse_datex_script_to_rich_ast_simple_error(
         )
     };
     debug!(" [parse took {} ms]", parse_start.elapsed().as_millis());
-    let precompile_start = Instant::now();
+    let precompile_start = TimingInstant::now();
     let res = precompile_to_rich_ast(
         valid_parse_result,
         &mut options.compile_scope,
@@ -429,10 +429,11 @@ pub fn compile_template(
         options.compile_scope.execution_mode,
         input,
     );
-    let compile_start = Instant::now();
+    let compile_start = TimingInstant::now();
     let res = compile_ast(ast, &mut compilation_context, options.compile_scope)
         .map(|scope| (compilation_context.into_dxb_with_shared_values(), scope))
         .map_err(SpannedCompilerError::from);
+
     debug!(
         " [compile_ast took {} ms]",
         compile_start.elapsed().as_millis()
@@ -553,6 +554,9 @@ fn compile_expression(
         }
         DatexExpressionData::TypedInteger(typed_int) => {
             append_encoded_integer(compilation_context.cursor(), &typed_int);
+        }
+        DatexExpressionData::DateTime(instant) => {
+            append_instant(compilation_context.cursor(), &instant);
         }
         DatexExpressionData::Decimal(decimal) => match &decimal {
             Decimal::Finite(big_decimal) if big_decimal.is_integer() => {
