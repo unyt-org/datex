@@ -7,6 +7,7 @@ use crate::{
     values::value_container::ValueContainer,
 };
 use crate::datex_proxy::{TryFromDatexValueError, TryToDatexValueError};
+use crate::prelude::*;
 
 impl DatexValueContainerProxyInfallibleSerialize for SharedContainer {
     fn to_value_container(self) -> ValueContainer {

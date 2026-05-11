@@ -28,7 +28,7 @@ use crate::{
     values::core_values::error::NumberParseError,
 };
 
-static UNARY_BP: u8 = 29; // weaker than property access / apply, stronger than all other binary operators
+pub static UNARY_BP: u8 = 29; // weaker than property access / apply, stronger than all other binary operators
 
 impl Parser {
     pub(crate) fn parse_expression(

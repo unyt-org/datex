@@ -1,32 +1,16 @@
-use datex_core::{
-    datex_proxy::DatexValueContainerProxy,
-    prelude::*,
-    values::{
-        core_values::{endpoint::Endpoint, map::Map},
-        value_container::ValueContainer,
-    },
-};
+use datex_core::{assert_structural_eq, datex_proxy::DatexValueContainerProxy, prelude::*, values::{
+    core_values::{endpoint::Endpoint, map::Map},
+    value_container::ValueContainer,
+}};
 use datex_macros_internal::Datex;
 use serde::{Deserialize, Serialize};
 
-// #[derive(Datex)]
-// enum ExampleEnum {
-//     VariantA,
-//     VariantB(u8, u8),
-//     VariantC { x: u8, y: String },
-// }
-/* DATEX
-
-TODO: <...> anstatt type<...>, z.b. const myType = <integer|text>; ?
-
-$.endpoint;
-$.core, etc oder $.integer, $.Map, $.print, ...
-
-let x = #VariantA;
-let x = #VariantB(1, 2);
-let x = #VariantC { x: 42, y: "Test" };
-
- */
+#[derive(Datex)]
+enum ExampleEnum {
+    VariantA,
+    VariantB(u8, u8),
+    VariantC { x: u8, y: String },
+}
 
 #[derive(Datex, Debug, Clone, PartialEq)]
 struct Example {
@@ -74,6 +58,7 @@ use datex_core::{
     values::value::Value,
 };
 use test_case::test_case;
+use datex_core::types::type_definition::TypeDefinition;
 
 #[test_case(
     Example {
@@ -121,6 +106,34 @@ fn struct_to_value_container() {
         map.get("c").unwrap(),
         &ValueContainer::from(Endpoint::default())
     );
+}
+
+#[test]
+fn enum_to_value() {
+    let variant_a: Value = ExampleEnum::VariantA.into();
+    
+    assert_structural_eq!(variant_a, Value::null());
+    assert_eq!(variant_a.custom_type, Some(TypeDefinition::TaggedType {
+        tag: "VariantA".to_string(),
+        ty: None
+    }));
+
+    let variant_b: Value = ExampleEnum::VariantB(1, 2).into();
+    assert_structural_eq!(variant_b, Value::from(vec![Value::from(1), Value::from(2)]));
+    assert_eq!(variant_b.custom_type, Some(TypeDefinition::TaggedType {
+        tag: "VariantB".to_string(),
+        ty: None,
+    }));
+
+    let variant_c: Value = ExampleEnum::VariantC { x: 3, y: "Hello".to_string() }.into();
+    assert_structural_eq!(variant_c, Value::from(Map::from(vec![
+        ("x".to_string(), Value::from(3).into()),
+        ("y".to_string(), Value::from("Hello".to_string()).into()),
+    ])));
+    assert_eq!(variant_c.custom_type, Some(TypeDefinition::TaggedType {
+        tag: "VariantC".to_string(),
+        ty: None,
+    }));
 }
 
 #[test]

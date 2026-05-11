@@ -1,7 +1,6 @@
 pub mod serde_compat;
 pub mod shared;
 
-use std::hash::Hash;
 use crate::values::value_container::ValueContainer;
 use serde::{Serialize, de::DeserializeOwned, Deserialize};
 #[cfg(feature = "compiler")]

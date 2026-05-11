@@ -9,6 +9,7 @@ use crate::{
 };
 use crate::ast::expressions::TagExpression;
 use crate::parser::lexer::SpannedToken;
+use crate::parser::parsers::expression::UNARY_BP;
 use crate::prelude::*;
 impl Parser {
     pub(crate) fn parse_tagged_value(
@@ -28,7 +29,7 @@ impl Parser {
             Ok(match self.peek()?.token.clone() {
                 // if followed by bracket, handle inner expression
                 Token::LeftCurly | Token::LeftBracket | Token::LeftParen => {
-                    let maybe_expression = self.parse_expression(0);
+                    let maybe_expression = self.parse_expression(UNARY_BP);
                     let expression = self.recover_on_error(
                         maybe_expression,
                         &[], // TODO: recover?
@@ -79,8 +80,9 @@ mod tests {
         parser::tests::{parse},
         prelude::*,
     };
-    use crate::ast::expressions::{List, Map, TagExpression};
+    use crate::ast::expressions::{ComparisonOperation, List, Map, TagExpression};
     use crate::ast::spanned::Spanned;
+    use crate::global::operators::ComparisonOperator;
     use crate::values::core_values::integer::typed_integer::TypedInteger;
 
     #[test]
@@ -168,6 +170,22 @@ mod tests {
                         expression: Some(Box::new(DatexExpressionData::TypedInteger(TypedInteger::U8(42)).with_default_span()))
                     }).with_default_span(),
                 ]
+            })
+        );
+    }
+
+    #[test]
+    fn parse_precedence() {
+        let expr = parse("#Test (4u8) == 4u8");
+        assert_eq!(
+            expr.data,
+            DatexExpressionData::ComparisonOperation(ComparisonOperation {
+                operator: ComparisonOperator::StructuralEqual,
+                left: Box::new(DatexExpressionData::Tag(TagExpression {
+                    tag: "Test".to_string(),
+                    expression: Some(Box::new(DatexExpressionData::TypedInteger(TypedInteger::U8(4)).with_default_span()))
+                }).with_default_span()),
+                right: Box::new(DatexExpressionData::TypedInteger(TypedInteger::U8(4)).with_default_span()),
             })
         );
     }
