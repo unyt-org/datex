@@ -1282,35 +1282,36 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
         let expression_type =
             self.infer_expression(&mut unbox_assignment.unbox_expression)?;
 
-        let inner_type = expression_type
-            .with_collapsed_definition_with_metadata(|e| {
-                let ownership = e.metadata.shared_container_ownership();
-                let mutability = e.metadata.shared_mutability();
-
-                if ownership
-                    != Some(&SharedContainerOwnership::Referenced(
-                        ReferenceMutability::Mutable,
-                    ))
-                    && ownership != Some(&SharedContainerOwnership::Owned)
-                {
-                    return Err(SpannedTypeError {
-                        error: TypeError::AssignmentToImmutableReference(
-                            "".to_string(),
-                        ),
-                        span: Some(span.clone()),
-                    });
-                }
-                match &e.definition {
-                    TypeDefinition::Nested(ty) => Ok(*ty.clone()),
-                    TypeDefinition::Shared(sh) => Ok(sh.actual_type().clone()),
-                    _ => Err(SpannedTypeError {
-                        error: TypeError::InvalidUnboxType(
-                            expression_type.clone(),
-                        ),
-                        span: Some(span.clone()),
-                    }),
-                }
-            })?;
+        // TODO
+        // let inner_type = expression_type
+        //     .with_collapsed_definition_with_metadata(|e| {
+        //         let ownership = e.metadata.shared_container_ownership();
+        //         let mutability = e.metadata.shared_mutability();
+        //
+        //         if ownership
+        //             != Some(&SharedContainerOwnership::Referenced(
+        //                 ReferenceMutability::Mutable,
+        //             ))
+        //             && ownership != Some(&SharedContainerOwnership::Owned)
+        //         {
+        //             return Err(SpannedTypeError {
+        //                 error: TypeError::AssignmentToImmutableReference(
+        //                     "".to_string(),
+        //                 ),
+        //                 span: Some(span.clone()),
+        //             });
+        //         }
+        //         match &e.definition {
+        //             TypeDefinition::Nested(ty) => Ok(*ty.clone()),
+        //             TypeDefinition::Shared(sh) => Ok(sh.w().clone()),
+        //             _ => Err(SpannedTypeError {
+        //                 error: TypeError::InvalidUnboxType(
+        //                     expression_type.clone(),
+        //                 ),
+        //                 span: Some(span.clone()),
+        //             }),
+        //         }
+        //     })?;
 
         let assigned_type =
             self.infer_expression(&mut unbox_assignment.assigned_expression)?;

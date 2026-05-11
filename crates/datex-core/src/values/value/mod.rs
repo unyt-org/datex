@@ -34,7 +34,7 @@ use core::{
 pub struct Value {
     pub inner: CoreValue,
     // actual type of the value - if [None], use default type for given value
-    pub custom_type: Option<Type>,
+    pub custom_type: Option<TypeDefinition>,
 }
 
 impl<T: Into<CoreValue>> From<T> for Value {
@@ -65,7 +65,7 @@ impl Value {
                 signature: signature.clone(),
                 body,
             }),
-            custom_type: Some(Type::from(TypeDefinition::callable(signature))),
+            custom_type: Some(TypeDefinition::callable(signature)),
         }
     }
 
@@ -106,19 +106,16 @@ impl Value {
     pub fn has_default_type(&self) -> bool {
         match &self.custom_type {
             None => true,
-            Some(Type::Alias(TypeDefinitionWithMetadata {
-                definition: TypeDefinition::Core(core_type),
-                ..
-            })) => core_type == &self.default_core_type(),
+            Some(TypeDefinition::Core(core_type)) => core_type == &self.default_core_type(),
             Some(_) => false,
         }
     }
 
     /// Returns the actual type, generating the default type from the provided memory if no custom typoe is set
-    pub fn actual_type(&self) -> Type {
+    pub fn actual_type(&self) -> TypeDefinition {
         match &self.custom_type {
             Some(actual_type) => actual_type.clone(),
-            None => Type::core(self.default_core_type()),
+            None => TypeDefinition::Core(self.default_core_type()),
         }
     }
 
@@ -468,19 +465,16 @@ mod tests {
 
         let val = Value {
             inner: CoreValue::Integer(Integer::from(42)),
-            custom_type: Some(Type::core(CoreLibBaseTypeId::Integer)),
+            custom_type: Some(TypeDefinition::Core(CoreLibBaseTypeId::Integer.into())),
         };
 
         assert!(val.has_default_type());
 
         let val = Value {
             inner: CoreValue::Integer(Integer::from(42)),
-            custom_type: Some(Type::Alias(
-                TypeDefinition::ImplType(
-                    Box::new(Type::core(CoreLibBaseTypeId::Integer)),
-                    vec![],
-                )
-                .into(),
+            custom_type: Some(TypeDefinition::ImplType(
+                Box::new(Type::core(CoreLibBaseTypeId::Integer)),
+                vec![],
             )),
         };
 

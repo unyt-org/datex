@@ -19,7 +19,7 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, Value> {
         S: Serializer,
     {
         fn serialize_type_and_value_seed<'ctx2, 'borrow, Se, T>(
-            ty: Cow<Option<Type>>,
+            ty: Cow<Option<TypeDefinition>>,
             value: &T,
             serializer: Se,
             ctx: &'borrow mut SerdeContext<'ctx2, Value>,
@@ -34,7 +34,7 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, Value> {
             if let Some(ty) = ty.as_ref() {
                 state.serialize_field(
                     "type",
-                    &ValueWithSeed::new(ty, &mut ctx.cast::<Type>()),
+                    &ValueWithSeed::new(ty, &mut ctx.cast::<TypeDefinition>()),
                 )?;
             }
             state.serialize_field(
@@ -45,7 +45,7 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, Value> {
         }
 
         fn serialize_type_and_value<'ctx2, Se, T>(
-            ty: Cow<Option<Type>>,
+            ty: Cow<Option<TypeDefinition>>,
             value: &T,
             serializer: Se,
             ctx: &mut SerdeContext<'ctx2, Value>,
@@ -59,7 +59,7 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, Value> {
             if let Some(ty) = ty.as_ref() {
                 state.serialize_field(
                     "type",
-                    &ValueWithSeed::new(ty, ctx.cast::<Type>()),
+                    &ValueWithSeed::new(ty, ctx.cast::<TypeDefinition>()),
                 )?;
             }
             state.serialize_field("value", value)?;
@@ -107,7 +107,7 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, Value> {
                 match &value.custom_type {
                     Some(_) => Cow::Borrowed(&value.custom_type),
                     None => {
-                        Cow::Owned(Some(Type::core(CoreLibBaseTypeId::Null)))
+                        Cow::Owned(Some(TypeDefinition::Core(CoreLibBaseTypeId::Null.into())))
                     }
                 },
                 &(),
@@ -126,7 +126,7 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, Value> {
                 match &value.custom_type {
                     Some(_) => Cow::Borrowed(&value.custom_type),
                     None => {
-                        Cow::Owned(Some(Type::core(CoreLibBaseTypeId::Range)))
+                        Cow::Owned(Some(TypeDefinition::Core(CoreLibBaseTypeId::Range.into())))
                     }
                 },
                 range,
@@ -136,8 +136,8 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, Value> {
             CoreValue::Endpoint(endpoint) => serialize_type_and_value(
                 match &value.custom_type {
                     Some(_) => Cow::Borrowed(&value.custom_type),
-                    None => Cow::Owned(Some(Type::core(
-                        CoreLibBaseTypeId::Endpoint,
+                    None => Cow::Owned(Some(TypeDefinition::Core(
+                        CoreLibBaseTypeId::Endpoint.into(),
                     ))),
                 },
                 endpoint,
@@ -149,7 +149,7 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, Value> {
                 match &value.custom_type {
                     Some(_) => Cow::Borrowed(&value.custom_type),
                     None => {
-                        Cow::Owned(Some(Type::core(CoreLibBaseTypeId::Map)))
+                        Cow::Owned(Some(TypeDefinition::Core(CoreLibBaseTypeId::Map.into())))
                     }
                 },
                 map_value,
@@ -174,6 +174,7 @@ use serde::{
     de::{DeserializeSeed, MapAccess, Visitor},
     ser::SerializeMap,
 };
+use crate::types::type_definition::TypeDefinition;
 
 /// Deserialization for [Value] using a [DeserializationContext] to provide access to the memory during deserialization.
 impl<'de, 'ctx> DeserializeSeed<'de> for SerdeContext<'ctx, Value> {

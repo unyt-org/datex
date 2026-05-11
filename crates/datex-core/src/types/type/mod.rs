@@ -26,9 +26,10 @@ use crate::{
 };
 use core::{fmt::Display, hash::Hash, ops::Deref};
 use serde::{Deserialize, Serialize};
-use crate::libs::core::type_id::CoreLibBaseTypeId;
 
-// {x: &integer}
+/// Base enum for a type
+/// This is normally the base for types at compile time, in contrast to [TypeDefinition], which is the base for types
+/// at runtime.
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub enum Type {
     Alias(TypeDefinitionWithMetadata),
@@ -157,6 +158,21 @@ impl Type {
             }
             // box otherwise
             _ => Err(()),
+        }
+    }
+    
+    /// Converts the given [Type] to an equivalent [TypeDefinition]
+    pub fn convert_to_definition(self) -> TypeDefinition {
+        // just collapse to definition
+        if let Type::Alias(TypeDefinitionWithMetadata { metadata, definition }) = &self && metadata == &TypeMetadata::default() {
+            match self {
+                Type::Alias(TypeDefinitionWithMetadata { metadata, definition }) => definition,
+                _ => unreachable!(),
+            }
+        }
+        // nest type
+        else {
+             TypeDefinition::Nested(Box::new(self))
         }
     }
 }

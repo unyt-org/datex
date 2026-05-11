@@ -92,7 +92,7 @@ use core::cell::RefCell;
 enum CollectedExecutionResult {
     /// contains an optional runtime value that is intercepted by the consumer of a value or passed as the final result at the end of execution
     Value(Option<RuntimeValue>),
-    /// contains a Type that is intercepted by a consumer of a type value
+    /// contains a [Type] that is intercepted by a consumer of a type value
     Type(Type),
     /// contains a key-value pair that is intercepted by a map construction operation
     KeyValuePair((MapKey, ValueContainer)),
@@ -903,7 +903,7 @@ pub fn inner_execution_loop(
 
                                     match &mut value_container {
                                         ValueContainer::Local(value) => {
-                                            value.custom_type = Some(ty);
+                                            value.custom_type = Some(ty.convert_to_definition());
                                         }
                                         _ => panic!(
                                             "Expected ValueContainer::Value for type casting"

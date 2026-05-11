@@ -65,7 +65,7 @@ impl BaseSharedValueContainer {
         mutability: SharedContainerMutability,
     ) -> Self {
         let value_container = value_container.into();
-        let allowed_type = value_container.allowed_type();
+        let allowed_type = value_container.allowed_or_actual_type();
         BaseSharedValueContainer {
             value_container,
             allowed_type,

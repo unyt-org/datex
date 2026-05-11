@@ -67,7 +67,20 @@ impl From<&ValueContainer> for DatexExpressionData {
 }
 
 fn value_to_datex_expression(value: &Value) -> DatexExpressionData {
-    match &value.inner {
+    let core_value_expression = core_value_to_datex_expression(&value.inner);
+    if let Some(custom_type) = &value.custom_type {
+        todo!()
+        // match custom_type {
+        //     
+        // }
+    }
+    else {
+        core_value_expression
+    }
+}
+
+fn core_value_to_datex_expression(core_value: &CoreValue) -> DatexExpressionData {
+    match &core_value {
         CoreValue::Integer(integer) => {
             DatexExpressionData::Integer(integer.clone())
         }
@@ -260,6 +273,10 @@ fn structural_type_definition_to_type_expression(
             } else {
                 todo!("#651 Handle non-core-lib type references in decompiler");
             }
+        }
+        TypeDefinition::Core(core_type) => {
+            TypeExpressionData::Identifier(core_type.to_string())
+                .with_default_span()
         }
         _ => {
             TypeExpressionData::Text(format!("[[TYPE {:?}]]", type_definition))

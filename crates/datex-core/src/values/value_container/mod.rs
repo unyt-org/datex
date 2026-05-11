@@ -112,7 +112,7 @@ impl ValueContainer {
     }
 
     /// Returns the actual type of the contained value, resolving shared values if necessary.
-    pub fn actual_type(&self) -> Type {
+    pub fn actual_type(&self) -> TypeDefinition {
         match self {
             ValueContainer::Local(local) => local.actual_type().clone(),
             ValueContainer::Shared(shared) => shared.actual_type().clone(),
@@ -120,29 +120,31 @@ impl ValueContainer {
     }
 
     /// Returns the actual type that describes the value container (e.g. integer or 'mut shared mut integer).
-    pub fn actual_container_type(&self) -> Type {
+    pub fn actual_container_type(&self) -> TypeDefinitionWithMetadata {
         match self {
-            ValueContainer::Local(value) => value.actual_type(),
+            ValueContainer::Local(value) => TypeDefinitionWithMetadata {
+                definition: value.actual_type(),
+                metadata: TypeMetadata::default(),
+            },
             ValueContainer::Shared(shared) => {
                 let inner_type =
                     shared.value_container().actual_container_type();
-                Type::Alias(TypeDefinitionWithMetadata {
-                    definition: TypeDefinition::Nested(Box::new(inner_type)),
+                TypeDefinitionWithMetadata {
+                    definition: TypeDefinition::Nested(Box::new(Type::from(inner_type))),
                     metadata: TypeMetadata::Shared {
                         mutability: shared.container_mutability(),
                         ownership: shared.ownership(),
                     },
-                })
+                }
             }
         }
     }
 
-    /// Returns the allowed type of the value container
-    /// For local values, this is the same as the actual type.
-    /// For shared values, this is the defined allowed type
-    pub fn allowed_type(&self) -> Type {
+    /// For local values, returns the actual type of the value container
+    /// For shared values, returns the allowed type of the value container
+    pub fn allowed_or_actual_type(&self) -> Type {
         match self {
-            ValueContainer::Local(value) => value.actual_type(),
+            ValueContainer::Local(value) => Type::from(value.actual_type()),
             ValueContainer::Shared(shared) => shared.allowed_type().clone(),
         }
     }

@@ -20,6 +20,9 @@ use crate::{
 use core::{fmt::Display, hash::Hash, ops::Deref, prelude::rust_2024::*};
 use crate::libs::core::type_id::CoreLibBaseTypeId;
 
+/// Base enum for a type definition
+/// This is normally the base for types at runtime, in contrast to [Type], which is the base for types
+/// at compile time.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TypeDefinition {
     /// e.g. 1, "example"
@@ -64,7 +67,7 @@ pub enum TypeDefinition {
     /// #Tagged(null) is equivalent to #Tagged
     TaggedType {
         tag: String,
-        ty: Box<Type>,
+        ty: Box<TypeDefinition>,
     },
 
     /// meta type for a type
@@ -242,7 +245,7 @@ impl Display for TypeDefinition {
             }
             TypeDefinition::TaggedType { tag, ty } => {
                 write!(f, "#{}", tag)?;
-                if **ty != Type::core(CoreLibBaseTypeId::Null) {
+                if **ty != TypeDefinition::Core(CoreLibBaseTypeId::Null.into()) {
                     write!(f, " {}", ty)?;
                 }
                 Ok(())
@@ -252,6 +255,8 @@ impl Display for TypeDefinition {
 }
 
 pub mod equality;
+mod serde_dif;
+
 impl TypeDefinition {
     /// Calls the provided callback with a reference to the recursively collapsed inner [TypeDefinition] value
     pub fn with_collapsed<R>(&self, f: impl FnOnce(&TypeDefinition) -> R) -> R {

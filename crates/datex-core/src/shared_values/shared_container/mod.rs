@@ -34,6 +34,7 @@ use core::{
     hash::{Hash, Hasher},
 };
 use serde::Serializer;
+use crate::types::type_definition::TypeDefinition;
 
 pub mod apply;
 pub mod serde_dif;
@@ -174,8 +175,8 @@ impl SharedContainer {
         }
     }
 
-    /// Gets the current actual [Type] of the collapsed inner [Value]
-    pub fn actual_type(&self) -> Type {
+    /// Gets the current actual [TypeDefinition] of the collapsed inner [Value]
+    pub fn actual_type(&self) -> TypeDefinition {
         self.with_collapsed_value(|value| value.actual_type())
     }
 

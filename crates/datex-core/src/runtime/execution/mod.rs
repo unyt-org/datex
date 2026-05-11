@@ -523,7 +523,7 @@ mod tests {
             assert_eq!(&value.inner, &CoreValue::Null);
             assert_eq!(&value.custom_type, &Some(TypeDefinition::TaggedType {
                 tag: "Example".to_string(),
-                ty: Box::new(Type::core(CoreLibBaseTypeId::Null)),
+                ty: Box::new(TypeDefinition::Core(CoreLibBaseTypeId::Null.into())),
             }.into()))
         }
         else {
@@ -540,7 +540,7 @@ mod tests {
             ])));
             assert_eq!(&value.custom_type, &Some(TypeDefinition::TaggedType {
                 tag: "Example".to_string(),
-                ty: Box::new(Type::core(CoreLibBaseTypeId::Map)),
+                ty: Box::new(TypeDefinition::Core(CoreLibBaseTypeId::Map.into())),
             }.into()))
         }
         else {

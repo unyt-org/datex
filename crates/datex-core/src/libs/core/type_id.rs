@@ -35,26 +35,28 @@ use strum_macros::{Display, EnumString};
 /// the enum variant name in lowercase as the name, and stored in the core library map
 /// with the name as a key.
 pub enum CoreLibBaseTypeId {
-    Type,     // #core.type
     Null,     // #core.null
     Boolean,  // #core.boolean
     Integer,  // #core.integer
     Decimal,  // #core.decimal
     Text,     // #core.text
     Endpoint, // #core.endpoint
+    #[strum(serialize = "Unit")]
+    Unit, // #core.Unit
+    #[strum(serialize = "Never")]
+    Never, // #core.Never
+    #[strum(serialize = "Unknown")]
+    Unknown, // #core.Unknown
+    #[strum(serialize = "List")]
     List,     // #core.List
     #[strum(serialize = "Map")]
     Map, // #core.Map
     #[strum(serialize = "Callable")]
     Callable, // #core.Callable
-    #[strum(serialize = "Unit")]
-    Unit, // #core.Unit
-    #[strum(serialize = "Never")]
-    Never, // #core.never
-    #[strum(serialize = "Unknown")]
-    Unknown, // #core.unknown
     #[strum(serialize = "Range")]
-    Range, // #core.range
+    Range, // #core.Range
+    #[strum(serialize = "Type")]
+    Type,  // #core.Type
 }
 
 const INTEGER_VARIANT_COUNT: u16 = variant_count::<IntegerTypeVariant>() as u16;

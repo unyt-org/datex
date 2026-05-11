@@ -38,6 +38,8 @@ use crate::{
     },
     types::r#type::Type,
 };
+use crate::core_compiler::type_compiler::append_type_definition;
+use crate::types::type_definition::TypeDefinition;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum SharedValueCompilationError {
@@ -333,7 +335,7 @@ pub fn append_core_type_cast(
 
 pub fn append_type_cast(
     context: &mut CoreCompilationContext,
-    ty: &Type,
+    ty: &TypeDefinition,
 ) -> Result<(), SharedValueCompilationError> {
     append_regular_instruction(
         context.cursor_mut(),
@@ -341,7 +343,7 @@ pub fn append_type_cast(
     );
 
     // append type
-    append_type(context, ty);
+    append_type(context, &Type::from(ty.clone()));
 
     Ok(())
 }
