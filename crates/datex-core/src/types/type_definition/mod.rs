@@ -67,7 +67,7 @@ pub enum TypeDefinition {
     /// #Tagged(null) is equivalent to #Tagged
     TaggedType {
         tag: String,
-        ty: Box<TypeDefinition>,
+        ty: Option<Box<TypeDefinition>>,// if none, this uses the default inferred type
     },
 
     /// meta type for a type
@@ -245,7 +245,7 @@ impl Display for TypeDefinition {
             }
             TypeDefinition::TaggedType { tag, ty } => {
                 write!(f, "#{}", tag)?;
-                if **ty != TypeDefinition::Core(CoreLibBaseTypeId::Null.into()) {
+                if let Some(ty) = ty {
                     write!(f, " {}", ty)?;
                 }
                 Ok(())

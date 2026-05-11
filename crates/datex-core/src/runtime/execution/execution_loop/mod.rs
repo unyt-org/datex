@@ -724,7 +724,7 @@ pub fn inner_execution_loop(
                                             // add tag type to the value
                                             value.custom_type = Some(TypeDefinition::TaggedType {
                                                 tag,
-                                                ty: Box::new(value.actual_type()),
+                                                ty: value.custom_type.map(Box::new),
                                             }.into());
                                             RuntimeValue::ValueContainer(ValueContainer::Local(value))
                                                 .into()

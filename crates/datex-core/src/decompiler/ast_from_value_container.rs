@@ -24,6 +24,7 @@ use crate::{
     },
 };
 use alloc::format;
+use crate::ast::expressions::TagExpression;
 
 impl From<&ValueContainer> for DatexExpressionData {
     /// Converts a ValueContainer into a DatexExpression AST.
@@ -69,10 +70,7 @@ impl From<&ValueContainer> for DatexExpressionData {
 fn value_to_datex_expression(value: &Value) -> DatexExpressionData {
     let core_value_expression = core_value_to_datex_expression(&value.inner);
     if let Some(custom_type) = &value.custom_type {
-        todo!()
-        // match custom_type {
-        //     
-        // }
+        type_cast_expression(core_value_expression, custom_type)
     }
     else {
         core_value_expression
@@ -180,6 +178,25 @@ fn core_value_to_datex_expression(core_value: &CoreValue) -> DatexExpressionData
         CoreValue::NominalTypeDefinition(_) => {
             todo!()
         }
+    }
+}
+
+fn type_cast_expression(
+    expression: DatexExpressionData,
+    target_type: &TypeDefinition,
+) -> DatexExpressionData {
+    // special handling for some type casts
+    match target_type {
+        TypeDefinition::TaggedType {
+            tag,
+            ty: None
+        } => {
+            DatexExpressionData::Tag(TagExpression {
+                tag: tag.clone(),
+                expression: Some(Box::new(expression.with_default_span())),
+            })
+        }
+        _ => todo!(),
     }
 }
 

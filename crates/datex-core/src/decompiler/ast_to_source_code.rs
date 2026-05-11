@@ -870,7 +870,19 @@ impl AstToSourceCodeConverter {
                 todo!("#654 Undescribed by author.")
             },
             DatexExpressionData::Tag(tag) => {
-                format!("#{}", tag.tag)
+                match &tag.expression {
+                    Some(tag_expression) => {
+                        match &tag_expression.data {
+                            DatexExpressionData::Map(_) | DatexExpressionData::List(_) | DatexExpressionData::Statements(_) => {
+                                format!("#{} {}", tag.tag, self.format(tag_expression))
+                            }
+                            _ => {
+                                format!("#{} ({})", tag.tag, self.format(tag_expression))
+                            }
+                        }
+                    }
+                    None => format!("#{}", tag.tag)
+                }
             },
             DatexExpressionData::RootPropertyAccess(RootPropertyAccess { property_name }) => {
                 format!("$.{}", property_name)
