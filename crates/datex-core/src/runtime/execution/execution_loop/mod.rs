@@ -88,6 +88,7 @@ use crate::{
 use alloc::rc::Rc;
 use core::cell::RefCell;
 use crate::global::protocol_structures::instruction_data::TaggedValue;
+use crate::libs::core::type_id::CoreLibTypeId;
 
 #[derive(Debug)]
 enum CollectedExecutionResult {
@@ -504,6 +505,16 @@ pub fn inner_execution_loop(
                                 todo!()
                             }
 
+                            RegularInstruction::TaggedValue(TaggedValue {is_empty: true, tag: ShortTextData(tag)}) => {
+                                Some(RuntimeValue::ValueContainer(ValueContainer::Local(Value {
+                                    inner: CoreValue::Null,
+                                    custom_type: Some(TypeDefinition::TaggedType {
+                                        tag,
+                                        ty: Some(Box::new(TypeDefinition::Core(CoreLibBaseTypeId::Unit.into()))),
+                                    })
+                                })))
+                            }
+
                             // NOTE: make sure that get_next_expected_instructions does not return None for these instructions!
                             RegularInstruction::Statements(_) |
                             RegularInstruction::ShortStatements(_) |
@@ -514,7 +525,7 @@ pub fn inner_execution_loop(
                             RegularInstruction::ShortList(_)  |
                             RegularInstruction::Map(_) |
                             RegularInstruction::ShortMap(_) |
-                            RegularInstruction::TaggedValue(_) |
+                            RegularInstruction::TaggedValue(TaggedValue {is_empty: false, ..}) |
                             RegularInstruction::KeyValueDynamic |
                             RegularInstruction::KeyValueShortText(_) |
                             RegularInstruction::Add |
@@ -717,6 +728,8 @@ pub fn inner_execution_loop(
                                     tag: ShortTextData(tag),
                                     is_empty
                                 }) => {
+                                    assert!(!is_empty);
+
                                     let value_container = yield_unwrap!(
                                         collected_results.pop_cloned_value_container_result_assert_existing(&state)
                                     );
@@ -727,7 +740,7 @@ pub fn inner_execution_loop(
                                             value.custom_type = Some(TypeDefinition::TaggedType {
                                                 tag,
                                                 ty: value.custom_type.map(Box::new),
-                                            }.into());
+                                            });
                                             RuntimeValue::ValueContainer(ValueContainer::Local(value))
                                                 .into()
                                         },

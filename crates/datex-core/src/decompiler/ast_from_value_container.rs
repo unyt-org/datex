@@ -25,6 +25,7 @@ use crate::{
 };
 use alloc::format;
 use crate::ast::expressions::TagExpression;
+use crate::libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId};
 
 impl From<&ValueContainer> for DatexExpressionData {
     /// Converts a ValueContainer into a DatexExpression AST.
@@ -187,13 +188,24 @@ fn type_cast_expression(
 ) -> DatexExpressionData {
     // special handling for some type casts
     match target_type {
+        // #SomeTag (...)
         TypeDefinition::TaggedType {
             tag,
-            ty: None
+            ty: Option::None
         } => {
             DatexExpressionData::Tag(TagExpression {
                 tag: tag.clone(),
                 expression: Some(Box::new(expression.with_default_span())),
+            })
+        }
+        // #SomeTag
+        TypeDefinition::TaggedType {
+            tag,
+            ty: Some(box TypeDefinition::Core(CoreLibTypeId::Base(CoreLibBaseTypeId::Unit)))
+        } => {
+            DatexExpressionData::Tag(TagExpression {
+                tag: tag.clone(),
+                expression: None,
             })
         }
         _ => todo!(),

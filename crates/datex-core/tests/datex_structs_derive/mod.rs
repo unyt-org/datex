@@ -11,6 +11,7 @@ enum ExampleEnum {
     VariantA,
     VariantB(u8, u8),
     VariantC { x: u8, y: String },
+    VariantD(u8),
 }
 
 #[derive(Datex, Debug, Clone, PartialEq)]
@@ -39,6 +40,9 @@ struct SerdeDatexExampleInfallible {
     #[datex(serde_infallible)]
     serde: SerdeExample,
 }
+
+#[derive(Datex, Debug, PartialEq)]
+struct ExampleNewType(Example);
 
 fn assert_round_trip<T>(value: T)
 where
@@ -121,7 +125,7 @@ fn enum_to_value() {
     }));
 
     let variant_b: Value = ExampleEnum::VariantB(1, 2).into();
-    assert_structural_eq!(variant_b, Value::from(vec![Value::from(1), Value::from(2)]));
+    assert_structural_eq!(variant_b, Value::from(vec![Value::from(1u8), Value::from(2u8)]));
     assert_eq!(variant_b.custom_type, Some(TypeDefinition::TaggedType {
         tag: "VariantB".to_string(),
         ty: None,
@@ -136,18 +140,48 @@ fn enum_to_value() {
         tag: "VariantC".to_string(),
         ty: None,
     }));
+
+    let variant_d: Value = ExampleEnum::VariantD(1).into();
+    assert_structural_eq!(variant_d, Value::from(1u8));
+    assert_eq!(variant_d.custom_type, Some(TypeDefinition::TaggedType {
+        tag: "VariantD".to_string(),
+        ty: None,
+    }));
+
 }
 
 #[test]
 fn struct_to_value() {
-    let value_container: Value = Example {
+    let value: Value = Example {
         a: 42u8,
         b: "Test".to_string(),
         c: Endpoint::default(),
     }
     .into();
 
-    let map: Map = value_container.try_into().unwrap();
+    let map: Map = value.try_into().unwrap();
+    assert_eq!(map.get("a").unwrap(), &ValueContainer::from(42u8));
+    assert_eq!(
+        map.get("b").unwrap(),
+        &ValueContainer::from("Test".to_string())
+    );
+    assert_eq!(
+        map.get("c").unwrap(),
+        &ValueContainer::from(Endpoint::default())
+    );
+}
+
+#[test]
+fn new_type_struct_to_value() {
+    let value: Value = ExampleNewType(
+        Example {
+            a: 42u8,
+            b: "Test".to_string(),
+            c: Endpoint::default(),
+        }
+    ).into();
+
+    let map: Map = value.try_into().unwrap();
     assert_eq!(map.get("a").unwrap(), &ValueContainer::from(42u8));
     assert_eq!(
         map.get("b").unwrap(),
@@ -191,6 +225,21 @@ fn value_to_struct() {
 }
 
 #[test]
+fn value_to_new_typestruct() {
+    let value: Value = Value::from(Map::from(vec![
+        ("a".to_string(), ValueContainer::from(42u8)),
+        ("b".to_string(), ValueContainer::from("Test".to_string())),
+        ("c".to_string(), ValueContainer::from(Endpoint::default())),
+    ]));
+
+    let example: ExampleNewType = value.try_into().unwrap();
+
+    assert_eq!(example.0.a, 42u8);
+    assert_eq!(example.0.b, "Test".to_string());
+    assert_eq!(example.0.c, Endpoint::default());
+}
+
+#[test]
 fn value_to_enum() {
     let variant_a = Value {
         inner: CoreValue::Null,
@@ -225,6 +274,17 @@ fn value_to_enum() {
     };
     let example: ExampleEnum = variant_c.try_into().unwrap();
     assert_matches!(example, ExampleEnum::VariantC { x: 3, y } if &y == "Hello" );
+    
+    let variant_d = Value {
+        inner: CoreValue::from(42u8),
+        custom_type: Some(TypeDefinition::TaggedType {
+            tag: "VariantD".to_string(),
+            ty: None,
+        })
+    };
+    let example: ExampleEnum = variant_d.try_into().unwrap();
+    assert_matches!(example, ExampleEnum::VariantD(42));
+
 }
 
 #[test]

@@ -27,7 +27,6 @@ pub struct RuntimeConfigInterface {
     pub config: Value,
 
     // #[serde(default, skip_serializing_if = "is_priority_none")]
-    #[datex(serde_infallible)]
     pub priority: InterfacePriority,
 }
 

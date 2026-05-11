@@ -128,272 +128,263 @@ pub fn ast_from_bytecode(
                         StatementResultCollectionStrategy::Full,
                     );
 
-                let expr: Option<DatexExpression> = if let Some(
-                    regular_instruction,
-                ) = regular_instruction
-                {
-                    Some(
-                        match regular_instruction {
-                            // Handle different regular instructions here
-                            RegularInstruction::Int8(integer_data) => {
-                                DatexExpressionData::TypedInteger(
-                                    TypedInteger::from(integer_data.0),
-                                )
-                            }
-                            RegularInstruction::Int16(integer_data) => {
-                                DatexExpressionData::TypedInteger(
-                                    TypedInteger::from(integer_data.0),
-                                )
-                            }
-                            RegularInstruction::Int32(integer_data) => {
-                                DatexExpressionData::TypedInteger(
-                                    TypedInteger::from(integer_data.0),
-                                )
-                            }
-                            RegularInstruction::Int64(integer_data) => {
-                                DatexExpressionData::TypedInteger(
-                                    TypedInteger::from(integer_data.0),
-                                )
-                            }
-                            RegularInstruction::Int128(integer_data) => {
-                                DatexExpressionData::TypedInteger(
-                                    TypedInteger::from(integer_data.0),
-                                )
-                            }
-                            RegularInstruction::UInt8(integer_data) => {
-                                DatexExpressionData::TypedInteger(
-                                    TypedInteger::from(integer_data.0),
-                                )
-                            }
-                            RegularInstruction::UInt16(integer_data) => {
-                                DatexExpressionData::TypedInteger(
-                                    TypedInteger::from(integer_data.0),
-                                )
-                            }
-                            RegularInstruction::UInt32(integer_data) => {
-                                DatexExpressionData::TypedInteger(
-                                    TypedInteger::from(integer_data.0),
-                                )
-                            }
-                            RegularInstruction::UInt64(integer_data) => {
-                                DatexExpressionData::TypedInteger(
-                                    TypedInteger::from(integer_data.0),
-                                )
-                            }
-                            RegularInstruction::UInt128(integer_data) => {
-                                DatexExpressionData::TypedInteger(
-                                    TypedInteger::from(integer_data.0),
-                                )
-                            }
-                            RegularInstruction::BigInteger(integer_data) => {
-                                DatexExpressionData::TypedInteger(
-                                    TypedInteger::IBig(integer_data.0),
-                                )
-                            }
-                            RegularInstruction::Integer(integer_data) => {
-                                DatexExpressionData::Integer(integer_data.0)
-                            }
-                            RegularInstruction::Range => {
-                                unreachable!("decompiler ast from bytcode ranges not implemented");
-                            }
-                            RegularInstruction::Endpoint(endpoint) => {
-                                DatexExpressionData::Endpoint(endpoint)
-                            }
-                            RegularInstruction::DecimalF32(f32_data) => {
-                                DatexExpressionData::TypedDecimal(
-                                    TypedDecimal::from(f32_data.0),
-                                )
-                            }
-                            RegularInstruction::DecimalF64(f64_data) => {
-                                DatexExpressionData::TypedDecimal(
-                                    TypedDecimal::from(f64_data.0),
-                                )
-                            }
-                            RegularInstruction::DecimalAsInt16(
-                                decimal_i16_data,
-                            ) => DatexExpressionData::Decimal(Decimal::from(
-                                decimal_i16_data.0 as f64,
-                            )),
-                            RegularInstruction::DecimalAsInt32(
-                                decimal_i32_data,
-                            ) => DatexExpressionData::Decimal(Decimal::from(
-                                decimal_i32_data.0 as f64,
-                            )),
-                            RegularInstruction::BigDecimal(decimal_data) => {
-                                DatexExpressionData::TypedDecimal(
-                                    TypedDecimal::Decimal(decimal_data.0),
-                                )
-                            }
-                            RegularInstruction::Decimal(decimal_data) => {
-                                DatexExpressionData::Decimal(decimal_data.0)
-                            }
-                            RegularInstruction::ShortText(short_text_data) => {
-                                DatexExpressionData::Text(short_text_data.0)
-                            }
-                            RegularInstruction::Text(text_data) => {
-                                DatexExpressionData::Text(text_data.0)
-                            }
-                            RegularInstruction::True => {
-                                DatexExpressionData::Boolean(true)
-                            }
-                            RegularInstruction::False => {
-                                DatexExpressionData::Boolean(false)
-                            }
-                            RegularInstruction::Null => {
-                                DatexExpressionData::Null
-                            }
-
-                            RegularInstruction::RequestRemoteSharedRef(raw_address) => {
-                                DatexExpressionData::RequestSharedRef(RequestSharedRef {
-                                    address: PointerAddress::from(&raw_address),
-                                    mutability: ReferenceMutability::Immutable
-                                })
-                            }
-
-                            RegularInstruction::RequestRemoteSharedRefMut(raw_address) => {
-                                DatexExpressionData::RequestSharedRef(RequestSharedRef {
-                                    address: PointerAddress::from(&raw_address),
-                                    mutability: ReferenceMutability::Mutable
-                                })
-                            }
-
-                            RegularInstruction::GetLocalSharedRef(raw_address) => {
-                                DatexExpressionData::RequestSharedRef(RequestSharedRef {
-                                    address: PointerAddress::from(&raw_address),
-                                    mutability: ReferenceMutability::Immutable
-                                })
-                            }
-
-                            RegularInstruction::GetInternalSharedRef(raw_address) => {
-                                DatexExpressionData::RequestSharedRef(RequestSharedRef {
-                                    address: PointerAddress::from(&raw_address),
-                                    mutability: ReferenceMutability::Immutable
-                                })
-                            }
-
-                            RegularInstruction::SharedRef(_shared_ref) => {
-                                DatexExpressionData::NativeImplementationIndicator // TODO: better ast mapping
-                            }
-
-                            RegularInstruction::SharedRefWithValue(_shared_ref) => {
-                                DatexExpressionData::NativeImplementationIndicator // TODO: better ast mapping
-                            }
-
-                            RegularInstruction::Move(_move_data) => {
-                                DatexExpressionData::NativeImplementationIndicator // TODO: better ast mapping
-                            }
-
-                            RegularInstruction::PerformMove(_perform_move) => {
-                                DatexExpressionData::NativeImplementationIndicator // TODO: better ast mapping
-                            }
-
-                            RegularInstruction::CloneStackValue(stack_index) => {
-                                DatexExpressionData::Clone(CloneExpression {
-                                    expression: Box::new(DatexExpressionData::StackIndex(stack_index).with_default_span())
-                                })
-                            }
-
-
-                            RegularInstruction::BorrowStackValue(stack_index) => {
-                                DatexExpressionData::StackIndex(stack_index)
-                            }
-
-                            RegularInstruction::GetStackValueSharedRef(stack_index) => {
-                                DatexExpressionData::GetSharedRef(GetSharedRef {
-                                    mutability: ReferenceMutability::Immutable,
-                                    expression: Box::new(DatexExpressionData::StackIndex(stack_index).with_default_span())
-                                })
-                            }
-
-                            RegularInstruction::GetStackValueSharedRefMut(stack_index) => {
-                                DatexExpressionData::GetSharedRef(GetSharedRef {
-                                    mutability: ReferenceMutability::Mutable,
-                                    expression: Box::new(DatexExpressionData::StackIndex(stack_index).with_default_span())
-                                })
-                            }
-
-                            RegularInstruction::TakeStackValue(stack_index) => {
-                                DatexExpressionData::StackIndex(stack_index)
-                            }
-
-                            RegularInstruction::GetRootProperty(
-                                root_property,
-                            ) => {
-                                DatexExpressionData::RootPropertyAccess(RootPropertyAccess {
-                                    property_name: root_property.to_string(),
-                                })
-                            }
-
-                            RegularInstruction::TaggedValue(TaggedValue {is_empty: true, tag: ShortTextData(tag) }) => {
-                                DatexExpressionData::Tag(TagExpression {
-                                    tag,
-                                    expression: None,
-                                })
-                            }
-
-                            // NOTE: make sure that get_next_expected_instructions does not return None for these instructions!
-                            RegularInstruction::Statements(_)
-                            | RegularInstruction::ShortStatements(_)
-                            | RegularInstruction::UnboundedStatements
-                            | RegularInstruction::UnboundedStatementsEnd(
-                                _,
+                let expr: Option<DatexExpression> = regular_instruction.map(|regular_instruction|
+                    match regular_instruction {
+                        // Handle different regular instructions here
+                        RegularInstruction::Int8(integer_data) => {
+                            DatexExpressionData::TypedInteger(
+                                TypedInteger::from(integer_data.0),
                             )
-                            | RegularInstruction::List(_)
-                            | RegularInstruction::ShortList(_)
-                            | RegularInstruction::Map(_)
-                            | RegularInstruction::ShortMap(_)
-                            | RegularInstruction::KeyValueDynamic
-                            | RegularInstruction::KeyValueShortText(_)
-                            | RegularInstruction::Add
-                            | RegularInstruction::Subtract
-                            | RegularInstruction::Multiply
-                            | RegularInstruction::Divide
-                            | RegularInstruction::UnaryMinus
-                            | RegularInstruction::UnaryPlus
-                            | RegularInstruction::BitwiseNot
-                            | RegularInstruction::TaggedValue(TaggedValue {is_empty: false, .. })
-                            | RegularInstruction::Apply(_)
-                            | RegularInstruction::GetPropertyText(_)
-                            | RegularInstruction::GetPropertyIndex(_)
-                            | RegularInstruction::GetPropertyDynamic
-                            | RegularInstruction::TakePropertyText(_)
-                            | RegularInstruction::TakePropertyIndex(_)
-                            | RegularInstruction::TakePropertyDynamic
-                            | RegularInstruction::SetPropertyText(_)
-                            | RegularInstruction::SetPropertyIndex(_)
-                            | RegularInstruction::SetPropertyDynamic
-                            | RegularInstruction::Is
-                            | RegularInstruction::Matches
-                            | RegularInstruction::StructuralEqual
-                            | RegularInstruction::Equal
-                            | RegularInstruction::NotStructuralEqual
-                            | RegularInstruction::NotEqual
-                            | RegularInstruction::GetSharedReference
-                            | RegularInstruction::GetSharedReferenceMut
-                            | RegularInstruction::CreateShared
-                            | RegularInstruction::CreateSharedMut
-                            | RegularInstruction::PushToStack
-                            | RegularInstruction::PushToStackMultiple(_)
-                            | RegularInstruction::SetStackValue(_)
-                            | RegularInstruction::ModifyStackValue(_)
-                            | RegularInstruction::SetSharedContainerValue(_)
-                            | RegularInstruction::Unbox
-                            | RegularInstruction::TypedValue
-                            | RegularInstruction::RemoteExecution(_)
-                            | RegularInstruction::TypeExpression => {
-                                unreachable!()
-                            }
-                            #[cfg(feature = "disassembler")]
-                            RegularInstruction::_RemoteExecutionDebugFlat(_) | RegularInstruction::_RemoteExecutionDebugTree(_) => {
-                                todo!("also map to ast")
-                            },
                         }
-                        .with_default_span(),
-                        )
-                } else {
-                    None
-                };
+                        RegularInstruction::Int16(integer_data) => {
+                            DatexExpressionData::TypedInteger(
+                                TypedInteger::from(integer_data.0),
+                            )
+                        }
+                        RegularInstruction::Int32(integer_data) => {
+                            DatexExpressionData::TypedInteger(
+                                TypedInteger::from(integer_data.0),
+                            )
+                        }
+                        RegularInstruction::Int64(integer_data) => {
+                            DatexExpressionData::TypedInteger(
+                                TypedInteger::from(integer_data.0),
+                            )
+                        }
+                        RegularInstruction::Int128(integer_data) => {
+                            DatexExpressionData::TypedInteger(
+                                TypedInteger::from(integer_data.0),
+                            )
+                        }
+                        RegularInstruction::UInt8(integer_data) => {
+                            DatexExpressionData::TypedInteger(
+                                TypedInteger::from(integer_data.0),
+                            )
+                        }
+                        RegularInstruction::UInt16(integer_data) => {
+                            DatexExpressionData::TypedInteger(
+                                TypedInteger::from(integer_data.0),
+                            )
+                        }
+                        RegularInstruction::UInt32(integer_data) => {
+                            DatexExpressionData::TypedInteger(
+                                TypedInteger::from(integer_data.0),
+                            )
+                        }
+                        RegularInstruction::UInt64(integer_data) => {
+                            DatexExpressionData::TypedInteger(
+                                TypedInteger::from(integer_data.0),
+                            )
+                        }
+                        RegularInstruction::UInt128(integer_data) => {
+                            DatexExpressionData::TypedInteger(
+                                TypedInteger::from(integer_data.0),
+                            )
+                        }
+                        RegularInstruction::BigInteger(integer_data) => {
+                            DatexExpressionData::TypedInteger(
+                                TypedInteger::IBig(integer_data.0),
+                            )
+                        }
+                        RegularInstruction::Integer(integer_data) => {
+                            DatexExpressionData::Integer(integer_data.0)
+                        }
+                        RegularInstruction::Range => {
+                            unreachable!("decompiler ast from bytcode ranges not implemented");
+                        }
+                        RegularInstruction::Endpoint(endpoint) => {
+                            DatexExpressionData::Endpoint(endpoint)
+                        }
+                        RegularInstruction::DecimalF32(f32_data) => {
+                            DatexExpressionData::TypedDecimal(
+                                TypedDecimal::from(f32_data.0),
+                            )
+                        }
+                        RegularInstruction::DecimalF64(f64_data) => {
+                            DatexExpressionData::TypedDecimal(
+                                TypedDecimal::from(f64_data.0),
+                            )
+                        }
+                        RegularInstruction::DecimalAsInt16(
+                            decimal_i16_data,
+                        ) => DatexExpressionData::Decimal(Decimal::from(
+                            decimal_i16_data.0 as f64,
+                        )),
+                        RegularInstruction::DecimalAsInt32(
+                            decimal_i32_data,
+                        ) => DatexExpressionData::Decimal(Decimal::from(
+                            decimal_i32_data.0 as f64,
+                        )),
+                        RegularInstruction::BigDecimal(decimal_data) => {
+                            DatexExpressionData::TypedDecimal(
+                                TypedDecimal::Decimal(decimal_data.0),
+                            )
+                        }
+                        RegularInstruction::Decimal(decimal_data) => {
+                            DatexExpressionData::Decimal(decimal_data.0)
+                        }
+                        RegularInstruction::ShortText(short_text_data) => {
+                            DatexExpressionData::Text(short_text_data.0)
+                        }
+                        RegularInstruction::Text(text_data) => {
+                            DatexExpressionData::Text(text_data.0)
+                        }
+                        RegularInstruction::True => {
+                            DatexExpressionData::Boolean(true)
+                        }
+                        RegularInstruction::False => {
+                            DatexExpressionData::Boolean(false)
+                        }
+                        RegularInstruction::Null => {
+                            DatexExpressionData::Null
+                        }
 
+                        RegularInstruction::RequestRemoteSharedRef(raw_address) => {
+                            DatexExpressionData::RequestSharedRef(RequestSharedRef {
+                                address: PointerAddress::from(&raw_address),
+                                mutability: ReferenceMutability::Immutable
+                            })
+                        }
+
+                        RegularInstruction::RequestRemoteSharedRefMut(raw_address) => {
+                            DatexExpressionData::RequestSharedRef(RequestSharedRef {
+                                address: PointerAddress::from(&raw_address),
+                                mutability: ReferenceMutability::Mutable
+                            })
+                        }
+
+                        RegularInstruction::GetLocalSharedRef(raw_address) => {
+                            DatexExpressionData::RequestSharedRef(RequestSharedRef {
+                                address: PointerAddress::from(&raw_address),
+                                mutability: ReferenceMutability::Immutable
+                            })
+                        }
+
+                        RegularInstruction::GetInternalSharedRef(raw_address) => {
+                            DatexExpressionData::RequestSharedRef(RequestSharedRef {
+                                address: PointerAddress::from(&raw_address),
+                                mutability: ReferenceMutability::Immutable
+                            })
+                        }
+
+                        RegularInstruction::SharedRef(_shared_ref) => {
+                            DatexExpressionData::NativeImplementationIndicator // TODO: better ast mapping
+                        }
+
+                        RegularInstruction::SharedRefWithValue(_shared_ref) => {
+                            DatexExpressionData::NativeImplementationIndicator // TODO: better ast mapping
+                        }
+
+                        RegularInstruction::Move(_move_data) => {
+                            DatexExpressionData::NativeImplementationIndicator // TODO: better ast mapping
+                        }
+
+                        RegularInstruction::PerformMove(_perform_move) => {
+                            DatexExpressionData::NativeImplementationIndicator // TODO: better ast mapping
+                        }
+
+                        RegularInstruction::CloneStackValue(stack_index) => {
+                            DatexExpressionData::Clone(CloneExpression {
+                                expression: Box::new(DatexExpressionData::StackIndex(stack_index).with_default_span())
+                            })
+                        }
+
+
+                        RegularInstruction::BorrowStackValue(stack_index) => {
+                            DatexExpressionData::StackIndex(stack_index)
+                        }
+
+                        RegularInstruction::GetStackValueSharedRef(stack_index) => {
+                            DatexExpressionData::GetSharedRef(GetSharedRef {
+                                mutability: ReferenceMutability::Immutable,
+                                expression: Box::new(DatexExpressionData::StackIndex(stack_index).with_default_span())
+                            })
+                        }
+
+                        RegularInstruction::GetStackValueSharedRefMut(stack_index) => {
+                            DatexExpressionData::GetSharedRef(GetSharedRef {
+                                mutability: ReferenceMutability::Mutable,
+                                expression: Box::new(DatexExpressionData::StackIndex(stack_index).with_default_span())
+                            })
+                        }
+
+                        RegularInstruction::TakeStackValue(stack_index) => {
+                            DatexExpressionData::StackIndex(stack_index)
+                        }
+
+                        RegularInstruction::GetRootProperty(
+                            root_property,
+                        ) => {
+                            DatexExpressionData::RootPropertyAccess(RootPropertyAccess {
+                                property_name: root_property.to_string(),
+                            })
+                        }
+
+                        RegularInstruction::TaggedValue(TaggedValue {is_empty: true, tag: ShortTextData(tag) }) => {
+                            DatexExpressionData::Tag(TagExpression {
+                                tag,
+                                expression: None,
+                            })
+                        }
+
+                        // NOTE: make sure that get_next_expected_instructions does not return None for these instructions!
+                        RegularInstruction::Statements(_)
+                        | RegularInstruction::ShortStatements(_)
+                        | RegularInstruction::UnboundedStatements
+                        | RegularInstruction::UnboundedStatementsEnd(
+                            _,
+                        )
+                        | RegularInstruction::List(_)
+                        | RegularInstruction::ShortList(_)
+                        | RegularInstruction::Map(_)
+                        | RegularInstruction::ShortMap(_)
+                        | RegularInstruction::KeyValueDynamic
+                        | RegularInstruction::KeyValueShortText(_)
+                        | RegularInstruction::Add
+                        | RegularInstruction::Subtract
+                        | RegularInstruction::Multiply
+                        | RegularInstruction::Divide
+                        | RegularInstruction::UnaryMinus
+                        | RegularInstruction::UnaryPlus
+                        | RegularInstruction::BitwiseNot
+                        | RegularInstruction::TaggedValue(TaggedValue {is_empty: false, .. })
+                        | RegularInstruction::Apply(_)
+                        | RegularInstruction::GetPropertyText(_)
+                        | RegularInstruction::GetPropertyIndex(_)
+                        | RegularInstruction::GetPropertyDynamic
+                        | RegularInstruction::TakePropertyText(_)
+                        | RegularInstruction::TakePropertyIndex(_)
+                        | RegularInstruction::TakePropertyDynamic
+                        | RegularInstruction::SetPropertyText(_)
+                        | RegularInstruction::SetPropertyIndex(_)
+                        | RegularInstruction::SetPropertyDynamic
+                        | RegularInstruction::Is
+                        | RegularInstruction::Matches
+                        | RegularInstruction::StructuralEqual
+                        | RegularInstruction::Equal
+                        | RegularInstruction::NotStructuralEqual
+                        | RegularInstruction::NotEqual
+                        | RegularInstruction::GetSharedReference
+                        | RegularInstruction::GetSharedReferenceMut
+                        | RegularInstruction::CreateShared
+                        | RegularInstruction::CreateSharedMut
+                        | RegularInstruction::PushToStack
+                        | RegularInstruction::PushToStackMultiple(_)
+                        | RegularInstruction::SetStackValue(_)
+                        | RegularInstruction::ModifyStackValue(_)
+                        | RegularInstruction::SetSharedContainerValue(_)
+                        | RegularInstruction::Unbox
+                        | RegularInstruction::TypedValue
+                        | RegularInstruction::RemoteExecution(_)
+                        | RegularInstruction::TypeExpression => {
+                            unreachable!()
+                        }
+                        #[cfg(feature = "disassembler")]
+                        RegularInstruction::_RemoteExecutionDebugFlat(_) | RegularInstruction::_RemoteExecutionDebugTree(_) => {
+                            todo!("also map to ast")
+                        },
+                    }
+                .with_default_span());
                 expr.map(CollectedAstResult::from)
             }
             Instruction::Type(type_instruction) => {

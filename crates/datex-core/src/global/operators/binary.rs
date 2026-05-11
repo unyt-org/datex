@@ -260,7 +260,6 @@ impl From<&RegularInstruction> for BinaryOperator {
             RegularInstruction::Range => {
                 BinaryOperator::Range(RangeOperator::Inclusive)
             }
-
             _ => {
                 core::todo!(
                     "#155 Binary operator for instruction {:?} not implemented",

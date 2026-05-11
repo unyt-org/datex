@@ -20,6 +20,23 @@ enum SerdeMode {
 }
 
 #[derive(Debug, PartialEq)]
+enum FieldsType {
+    Named,
+    Unnamed,
+    Unit
+}
+
+impl From<&Fields> for FieldsType {
+    fn from(fields: &Fields) -> Self {
+        match &fields {
+            Fields::Unit => FieldsType::Unit,
+            Fields::Named(_) => FieldsType::Named,
+            Fields::Unnamed(_) => FieldsType::Unnamed,
+        }
+    }
+}
+
+#[derive(Debug, PartialEq)]
 pub struct FieldAttributes {
     serde_mode: SerdeMode,
     datex_rename: Option<String>,
@@ -183,43 +200,70 @@ fn derive_struct(
 ) -> DeriveData {
     let FieldDeriveData {
         is_fallible_serialization,
-        has_named_fields,
+        fields_type,
         into_datex_fields,
         from_datex_fields,
     } = derive_fields(&data_struct.fields);
 
-    let into_datex_fields_inner = if has_named_fields {
-        quote! {
+    let into_datex_fields_inner = match fields_type {
+        FieldsType::Named => quote! {
             Value::from(Map::from(vec![
-                #(#into_datex_fields)*
+                #(#into_datex_fields),*
             ]))
+        },
+        FieldsType::Unnamed => if into_datex_fields.len() == 1 {
+            let into_field = into_datex_fields.first().unwrap();
+            quote! {
+                let container = #into_field;
+                if let ValueContainer::Local(value) = container {
+                    value
+                }
+                else {
+                    unreachable!("Expected ValueContainer::Local");
+                }
+            }
+        } else {
+            quote! {
+                Value::from(List::from(vec![
+                    #(#into_datex_fields),*
+                ]))
+            }
         }
-    } else {
-        quote! {
-            Value::from(List::from(vec![
-                #(#into_datex_fields)*
-            ]))
+        FieldsType::Unit => quote! {
+            Value::null()
         }
     };
 
-    let from_datex_fields_inner = if has_named_fields {
-        quote! {{
+
+    let from_datex_fields_inner = match fields_type {
+        FieldsType::Named => quote! {{
             let mut map: Map = value.try_into()?;
 
             #ident {
-                #(#from_datex_fields)*
+                #(#from_datex_fields),*
             }
-        }}
-    } else {
-        quote! {{
-            let mut list: List = value.try_into()?;
+        }},
+        FieldsType::Unnamed => if from_datex_fields.len() == 1 {
+            let from_field = from_datex_fields.first().unwrap();
+            quote! {{
+                #ident(#from_field)
+            }}
+        } else {
+            quote! {{
+                let mut list: List = value.try_into()?;
 
-            #ident(
-                #(#from_datex_fields)*
-            )
-        }}
+                #ident(
+                    #(#from_datex_fields),*
+                )
+            }}
+        },
+        FieldsType::Unit => quote! {
+            if !value.is_null() {
+                return Err(TryFromDatexValueError(format!("Unexpected value, expected null")));
+            }
+            #ident
+        }
     };
-
 
     DeriveData {
         is_fallible_serialization,
@@ -254,7 +298,7 @@ fn derive_enum(data_enum: DataEnum, ident: &Ident,) -> DeriveData {
 
         let FieldDeriveData {
             is_fallible_serialization: variant_is_fallible_serialization,
-            has_named_fields,
+            fields_type,
             into_datex_fields,
             from_datex_fields,
         } = derive_fields(&variant.fields);
@@ -264,12 +308,12 @@ fn derive_enum(data_enum: DataEnum, ident: &Ident,) -> DeriveData {
             is_fallible_serialization = true;
         }
 
-        let into_datex_fields_inner = match &variant.fields {
-            Fields::Named(_) => quote! {
+        let into_datex_fields_inner = match fields_type {
+            FieldsType::Named => quote! {
                 #ident::#variant_ident {..} => {
                     let value: #helper_struct_ident = value.into();
                     let map = Map::from(vec![
-                        #(#into_datex_fields)*
+                        #(#into_datex_fields),*
                     ]);
                     Value {
                         inner: CoreValue::Map(map),
@@ -280,22 +324,44 @@ fn derive_enum(data_enum: DataEnum, ident: &Ident,) -> DeriveData {
                     }
                 }
             },
-            Fields::Unnamed(_) => quote! {
-                #ident::#variant_ident (..) => {
-                    let value: #helper_struct_ident = value.into();
-                    let list = List::from(vec![
-                        #(#into_datex_fields)*
-                    ]);
-                    Value {
-                        inner: CoreValue::List(list),
-                        custom_type: Some(TypeDefinition::TaggedType {
-                            tag: #variant_name.to_string(),
-                            ty: None,
-                        }),
+            FieldsType::Unnamed => if into_datex_fields.len() == 1 {
+                let into_field = into_datex_fields.first().unwrap();
+                quote! {
+                    #ident::#variant_ident {..} => {
+                        let value: #helper_struct_ident = value.into();
+                        let container = #into_field;
+                        if let ValueContainer::Local(Value {custom_type: None, inner}) = container {
+                            Value {
+                                inner,
+                                custom_type: Some(TypeDefinition::TaggedType {
+                                    tag: #variant_name.to_string(),
+                                    ty: None,
+                                }),
+                            }
+                        }
+                        else {
+                            unreachable!("Expected ValueContainer::Local without custom type");
+                        }
+                    }
+                }
+            } else {
+                quote! {
+                    #ident::#variant_ident (..) => {
+                        let value: #helper_struct_ident = value.into();
+                        let list = List::from(vec![
+                            #(#into_datex_fields),*
+                        ]);
+                        Value {
+                            inner: CoreValue::List(list),
+                            custom_type: Some(TypeDefinition::TaggedType {
+                                tag: #variant_name.to_string(),
+                                ty: None,
+                            }),
+                        }
                     }
                 }
             },
-            Fields::Unit => quote! {
+            FieldsType::Unit => quote! {
                 #ident::#variant_ident => {
                     Value {
                         inner: CoreValue::Null,
@@ -314,17 +380,28 @@ fn derive_enum(data_enum: DataEnum, ident: &Ident,) -> DeriveData {
                     let mut map: Map = value.try_into()?;
 
                     #helper_struct_ident {
-                        #(#from_datex_fields)*
+                        #(#from_datex_fields),*
                     }.into()
                 }
             },
-            Fields::Unnamed(_) => quote! {
-                #variant_name => {
-                    let mut list: List = value.try_into()?;
+            Fields::Unnamed(_) => if from_datex_fields.len() == 1 {
+                let from_field = from_datex_fields.first().unwrap();
+                quote! {
+                    #variant_name => {
+                        #helper_struct_ident (
+                            #from_field
+                        ).into()
+                    }
+                }
+            } else {
+                quote! {
+                    #variant_name => {
+                        let mut list: List = value.try_into()?;
 
-                    #helper_struct_ident(
-                        #(#from_datex_fields)*
-                    ).into()
+                        #helper_struct_ident(
+                            #(#from_datex_fields),*
+                        ).into()
+                    }
                 }
             },
             Fields::Unit => quote! {
@@ -374,7 +451,7 @@ fn derive_enum(data_enum: DataEnum, ident: &Ident,) -> DeriveData {
 
 struct FieldDeriveData {
     is_fallible_serialization: bool,
-    has_named_fields: bool,
+    fields_type: FieldsType,
     into_datex_fields: Vec<TokenStream>,
     from_datex_fields: Vec<TokenStream>,
 }
@@ -482,7 +559,7 @@ fn derive_fields(fields: &Fields) -> FieldDeriveData {
     let mut into_datex_fields: Vec<TokenStream> = vec![];
     let mut from_datex_fields: Vec<TokenStream> = vec![];
 
-    let has_named_fields = matches!(fields, Fields::Named(_));
+    let is_new_type = fields.len() == 1;
 
     // Iterate over the fields of the struct
     for (index, field) in fields.iter().enumerate() {
@@ -508,13 +585,13 @@ fn derive_fields(fields: &Fields) -> FieldDeriveData {
             // struct with named fields
             Some(field_ident) => {
                 let field_name = field_attributes.datex_rename.unwrap_or_else(|| field_ident.to_string());
-                let field_into = generate_field_conversion_code(field_attributes.serde_mode, &field_ident, field_name.clone());
+                let field_into = generate_field_conversion_code(field_attributes.serde_mode, field_ident, field_name.clone());
 
                 into_datex_fields.push(quote! {
                     (
                         #field_name.to_string(),
                         #field_into
-                    ),
+                    )
                 });
 
                 from_datex_fields.push(quote! {
@@ -523,7 +600,7 @@ fn derive_fields(fields: &Fields) -> FieldDeriveData {
                                 map.try_delete_unsafe(#field_name)
                                     .map_err(|err| TryFromDatexValueError(err.to_string()))?
                             }
-                        )?,
+                        )?
                 });
             }
 
@@ -534,19 +611,30 @@ fn derive_fields(fields: &Fields) -> FieldDeriveData {
 
                 into_datex_fields.push(field_into);
 
-                from_datex_fields.push(quote! {
-                    #from_value_container_function(
+                if is_new_type {
+                    from_datex_fields.push(quote! {
+                        #from_value_container_function(
+                            ValueContainer::Local(value)
+                        )?
+                    });
+                }
+                else {
+                    from_datex_fields.push(quote! {
+                        #from_value_container_function(
                             list.try_set(#index as i64, ValueContainer::from(Value::null()))
                                 .map_err(|err| TryFromDatexValueError(err.to_string()))?
-                        )?,
-                });
+                        )?
+                    });
+                }
+
+
             }
         }
     }
 
     FieldDeriveData {
         is_fallible_serialization,
-        has_named_fields,
+        fields_type: FieldsType::from(fields),
         into_datex_fields,
         from_datex_fields,
     }
@@ -620,20 +708,20 @@ fn generate_field_conversion_code<T: ToTokens>(
         // no serde or infallible serde, provide/assume DatexValueContainerProxyInfallibleSerialize
         SerdeMode::None => {
             quote! {
-                DatexValueContainerProxyInfallibleSerialize::to_value_container(value.#field_identifier),
+                DatexValueContainerProxyInfallibleSerialize::to_value_container(value.#field_identifier)
             }
         }
         // Map serde fields and propagate the error if the serialization fails
         SerdeMode::Fallible => {
             quote! {
-                try_serde_to_value_container(value.#field_identifier)?,
+                try_serde_to_value_container(value.#field_identifier)?
             }
         }
         // Allow serde fields that only default implement DatexValueContainerProxySerialize
         // but panic if the serialization fails, since the user explicitly guarantees that it won't fail
         SerdeMode::Infallible => {
             quote! {
-                try_serde_to_value_container(value.#field_identifier).unwrap_or_else(|err| panic!("Serialization of field '{}' marked with (serde_infallible) failed: {:?}", #field_name, err)),
+                try_serde_to_value_container(value.#field_identifier).unwrap_or_else(|err| panic!("Serialization of field '{}' marked with (serde_infallible) failed: {:?}", #field_name, err))
             }
         }
     }

@@ -1416,13 +1416,6 @@ fn compile_expression(
                     scope,
                 )?;
             }
-            // append "null" expression
-            else {
-                append_regular_instruction(
-                    compilation_context.cursor(),
-                    RegularInstruction::Null,
-                );
-            }
         },
 
         data => {

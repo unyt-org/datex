@@ -90,6 +90,7 @@ use async_select::select;
 use datex_crypto_facade::crypto::Crypto;
 use futures::channel::{oneshot, oneshot::Sender};
 use futures_util::FutureExt;
+use datex_macros_internal::Datex;
 
 pub type IncomingBlockInterceptor =
     Box<dyn Fn(&DXBBlock, &ComInterfaceSocketUUID) + 'static>;
@@ -125,7 +126,7 @@ impl Debug for ComHub {
 }
 
 #[derive(
-    Debug, Clone, Copy, Ord, PartialOrd, Eq, PartialEq, Serialize, Deserialize
+    Datex, Debug, Clone, Copy, Ord, PartialOrd, Eq, PartialEq, Serialize, Deserialize
 )]
 #[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
 pub enum InterfacePriority {
