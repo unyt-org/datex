@@ -423,7 +423,8 @@ impl<E> VisitableExpression<E> for DatexExpression {
             | DatexExpressionData::Identifier(_)
             | DatexExpressionData::RootPropertyAccess(_)
             | DatexExpressionData::ResolveCoreLibId(_)
-            | DatexExpressionData::Endpoint(_) => Ok(()),
+            | DatexExpressionData::Endpoint(_)
+            | DatexExpressionData::DateTime(_) => Ok(()),
         }
     }
 }

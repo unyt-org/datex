@@ -85,6 +85,18 @@ pub struct FloatAsInt32Data(pub i32);
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
 #[brw(little)]
+pub struct DecimalData(pub Decimal);
+
+#[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
+#[brw(little)]
+pub struct IntegerData(pub Integer);
+
+#[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
+#[brw(little)]
+pub struct InstantData(pub i128);
+
+#[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
+#[brw(little)]
 pub struct ShortTextDataRaw {
     pub length: u8,
     #[br(count = length)]
