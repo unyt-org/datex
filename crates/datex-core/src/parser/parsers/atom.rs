@@ -47,7 +47,7 @@ impl Parser {
             Token::False => self.parse_false()?,
             Token::Null => self.parse_null()?,
             Token::Identifier(name) => self.parse_identifier(name)?,
-            Token::Tag(tag) => self.parse_tag(tag)?,
+            Token::Tag(_) => self.parse_tagged_value()?,
             Token::StackIndex(stack_index) => {
                 self.parse_stack_index(stack_index)?
             }
@@ -266,16 +266,6 @@ impl Parser {
         }
     }
 
-    pub(crate) fn parse_tag(
-        &mut self,
-        tag_name: String,
-    ) -> Result<DatexExpression, SpannedParserError> {
-        Ok(
-            DatexExpressionData::Tag(TagExpression { tag: tag_name[1..].to_string()})
-                .with_span(self.advance()?.span),
-        )
-    }
-
     pub(crate) fn parse_stack_index(
         &mut self,
         index: String,
@@ -443,15 +433,6 @@ mod tests {
                 name: "@x".to_string(),
                 details: InvalidEndpointError::MinLengthNotMet
             }
-        );
-    }
-
-    #[test]
-    fn parse_empty_tag() {
-        let expr = parse("#MyTag");
-        assert_eq!(
-            expr.data,
-            DatexExpressionData::Tag(TagExpression { tag: "MyTag".to_string() })
         );
     }
 
