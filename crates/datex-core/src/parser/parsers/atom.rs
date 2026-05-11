@@ -1,7 +1,7 @@
 use crate::{
     ast::{
         expressions::{
-            DatexExpression, DatexExpressionData, Slot, ValueAccessType,
+            DatexExpression, DatexExpressionData, ValueAccessType,
         },
         spanned::Spanned,
     },
@@ -21,6 +21,8 @@ use crate::{
     },
 };
 use core::str::FromStr;
+use crate::ast::expressions::TagExpression;
+use crate::global::protocol_structures::instruction_data::StackIndex;
 
 impl Parser {
     pub(crate) fn parse_atom(
@@ -45,9 +47,9 @@ impl Parser {
             Token::False => self.parse_false()?,
             Token::Null => self.parse_null()?,
             Token::Identifier(name) => self.parse_identifier(name)?,
-            Token::NamedSlot(slot_name) => self.parse_named_slot(slot_name)?,
-            Token::Slot(slot_address) => {
-                self.parse_addressed_slot(slot_address)?
+            Token::Tag(tag) => self.parse_tag(tag)?,
+            Token::StackIndex(stack_index) => {
+                self.parse_stack_index(stack_index)?
             }
             Token::StringLiteral(value) => self.parse_string_literal(value)?,
             Token::Infinity => self.parse_infinity()?,
@@ -264,22 +266,22 @@ impl Parser {
         }
     }
 
-    pub(crate) fn parse_named_slot(
+    pub(crate) fn parse_tag(
         &mut self,
-        slot_name: String,
+        tag_name: String,
     ) -> Result<DatexExpression, SpannedParserError> {
         Ok(
-            DatexExpressionData::Slot(Slot::Named(slot_name[1..].to_string()))
+            DatexExpressionData::Tag(TagExpression { tag: tag_name[1..].to_string()})
                 .with_span(self.advance()?.span),
         )
     }
 
-    pub(crate) fn parse_addressed_slot(
+    pub(crate) fn parse_stack_index(
         &mut self,
-        slot_address: String,
+        index: String,
     ) -> Result<DatexExpression, SpannedParserError> {
-        Ok(DatexExpressionData::Slot(Slot::Addressed(
-            slot_address[1..].parse::<u32>().unwrap(),
+        Ok(DatexExpressionData::StackIndex(StackIndex(
+            index[1..].parse::<u32>().unwrap(),
         ))
         .with_span(self.advance()?.span))
     }
@@ -320,7 +322,7 @@ mod tests {
     use crate::{
         ast::{
             expressions::{
-                CloneExpression, DatexExpressionData, GetSharedRef, Slot,
+                CloneExpression, DatexExpressionData, GetSharedRef,
                 Statements, ValueAccessType,
             },
             spanned::Spanned,
@@ -343,6 +345,8 @@ mod tests {
         },
     };
     use core::assert_matches;
+    use crate::ast::expressions::TagExpression;
+    use crate::global::protocol_structures::instruction_data::StackIndex;
 
     #[test]
     fn parse_boolean_true() {
@@ -443,18 +447,18 @@ mod tests {
     }
 
     #[test]
-    fn parse_named_slot() {
-        let expr = parse("#mySlot");
+    fn parse_empty_tag() {
+        let expr = parse("#MyTag");
         assert_eq!(
             expr.data,
-            DatexExpressionData::Slot(Slot::Named("mySlot".to_string()))
+            DatexExpressionData::Tag(TagExpression { tag: "MyTag".to_string() })
         );
     }
 
     #[test]
-    fn parse_addressed_slot() {
-        let expr = parse("#42");
-        assert_eq!(expr.data, DatexExpressionData::Slot(Slot::Addressed(42)));
+    fn parse_stack_index() {
+        let expr = parse("\\42");
+        assert_eq!(expr.data, DatexExpressionData::StackIndex(StackIndex(42)));
     }
 
     #[test]

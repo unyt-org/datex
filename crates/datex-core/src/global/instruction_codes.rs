@@ -78,7 +78,7 @@ pub enum InstructionCode {
     PUSH_TO_STACK_MULTIPLE, // #stack ...+= [x]
     TAKE_STACK_VALUE,  // #stack[i]
 
-    GET_INTERNAL_SLOT, // e.g. #endpoint
+    GET_ROOT_PROPERTY, // e.g. $.endpoint
 
     // Note: fix to sync with RawPointerAddress
     REQUEST_REMOTE_SHARED_REF,     // '$x
@@ -142,6 +142,8 @@ pub enum InstructionCode {
     SHORT_TEXT, // string with max. 255 characters
 
     ENDPOINT,
+
+    TAGGED_VALUE, // e.g. #Example or #Example {example: 42}
 
     // lists and maps 0xe0 - 0xef
     LIST,       // (1,2,3)

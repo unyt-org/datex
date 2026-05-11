@@ -2,7 +2,7 @@ use crate::{
     ast::{
         expressions::{
             Apply, BinaryOperation, DatexExpression, DatexExpressionData, List,
-            Map, PropertyAssignment, Slot, Statements, UnaryOperation,
+            Map, PropertyAssignment, Statements, UnaryOperation,
             UnboundedStatement, VariableAssignment,
         },
         spanned::Spanned,
@@ -18,7 +18,6 @@ use crate::{
     global::{
         operators::{BinaryOperator, UnaryOperator},
         protocol_structures::instructions::Instruction,
-        slots::InternalSlot,
     },
     values::core_values::{
         decimal::{Decimal, typed_decimal::TypedDecimal},
@@ -29,7 +28,7 @@ use crate::{
 use crate::{
     ast::expressions::{
         CloneExpression, CreateShared, GetSharedRef, RequestSharedRef,
-        SlotAssignment,
+        StackAssignment,
     },
     global::protocol_structures::{
         instruction_data::UnboundedStatementsData,
@@ -45,6 +44,8 @@ use crate::{
 use alloc::format;
 use core::cell::RefCell;
 use num_enum::TryFromPrimitive;
+use crate::ast::expressions::{RootPropertyAccess, TagExpression};
+use crate::global::protocol_structures::instruction_data::{ShortTextData, StackIndex};
 
 #[derive(Debug)]
 enum CollectedAstResult {
@@ -286,63 +287,44 @@ pub fn ast_from_bytecode(
                                 DatexExpressionData::NativeImplementationIndicator // TODO: better ast mapping
                             }
 
-                            RegularInstruction::CloneStackValue(slot_address) => {
+                            RegularInstruction::CloneStackValue(stack_index) => {
                                 DatexExpressionData::Clone(CloneExpression {
-                                    expression: Box::new(DatexExpressionData::Slot(Slot::Addressed(
-                                        slot_address.0,
-                                    )).with_default_span())
+                                    expression: Box::new(DatexExpressionData::StackIndex(stack_index).with_default_span())
                                 })
                             }
 
 
-                            RegularInstruction::BorrowStackValue(slot_address) => {
-                                DatexExpressionData::Slot(Slot::Addressed(
-                                    slot_address.0,
-                                ))
+                            RegularInstruction::BorrowStackValue(stack_index) => {
+                                DatexExpressionData::StackIndex(stack_index)
                             }
 
-                            RegularInstruction::GetStackValueSharedRef(slot_address) => {
+                            RegularInstruction::GetStackValueSharedRef(stack_index) => {
                                 DatexExpressionData::GetSharedRef(GetSharedRef {
                                     mutability: ReferenceMutability::Immutable,
-                                    expression: Box::new(DatexExpressionData::Slot(Slot::Addressed(
-                                        slot_address.0,
-                                    )).with_default_span())
+                                    expression: Box::new(DatexExpressionData::StackIndex(stack_index).with_default_span())
                                 })
                             }
 
-                            RegularInstruction::GetStackValueSharedRefMut(slot_address) => {
+                            RegularInstruction::GetStackValueSharedRefMut(stack_index) => {
                                 DatexExpressionData::GetSharedRef(GetSharedRef {
                                     mutability: ReferenceMutability::Mutable,
-                                    expression: Box::new(DatexExpressionData::Slot(Slot::Addressed(
-                                        slot_address.0,
-                                    )).with_default_span())
+                                    expression: Box::new(DatexExpressionData::StackIndex(stack_index).with_default_span())
                                 })
                             }
 
-                            RegularInstruction::TakeStackValue(slot_address) => {
-                                DatexExpressionData::Slot(Slot::Addressed(
-                                    slot_address.0
-                                ))
+                            RegularInstruction::TakeStackValue(stack_index) => {
+                                DatexExpressionData::StackIndex(stack_index)
                             }
 
-                            RegularInstruction::GetInternalSlot(
-                                slot_address,
+                            RegularInstruction::GetRootProperty(
+                                root_property,
                             ) => {
-                                let slot = InternalSlot::try_from_primitive(
-                                    slot_address.0,
-                                )
-                                .map_err(|_| {
-                                    DXBParserError::InvalidInternalSlotAddress(
-                                        slot_address.0,
-                                    )
-                                })?;
-                                DatexExpressionData::Slot(Slot::Named(
-                                    slot.to_string(),
-                                ))
+                                DatexExpressionData::RootPropertyAccess(RootPropertyAccess {
+                                    property_name: root_property.to_string(),
+                                })
                             }
 
-                            // NOTE: make sure that each possible match case is either implemented in the default collection or here
-                            // If an instruction is implemented in the default collection, it should be marked as unreachable!() here
+                            // NOTE: make sure that get_next_expected_instructions does not return None for these instructions!
                             RegularInstruction::Statements(_)
                             | RegularInstruction::ShortStatements(_)
                             | RegularInstruction::UnboundedStatements
@@ -362,6 +344,7 @@ pub fn ast_from_bytecode(
                             | RegularInstruction::UnaryMinus
                             | RegularInstruction::UnaryPlus
                             | RegularInstruction::BitwiseNot
+                            | RegularInstruction::TaggedValue(_)
                             | RegularInstruction::Apply(_)
                             | RegularInstruction::GetPropertyText(_)
                             | RegularInstruction::GetPropertyIndex(_)
@@ -396,7 +379,7 @@ pub fn ast_from_bytecode(
                             #[cfg(feature = "disassembler")]
                             RegularInstruction::_RemoteExecutionDebugFlat(_) | RegularInstruction::_RemoteExecutionDebugTree(_) => {
                                 todo!("also map to ast")
-                            }
+                            },
                         }
                         .with_default_span(),
                         )
@@ -425,8 +408,7 @@ pub fn ast_from_bytecode(
                                     PointerAddress::from(reference.address),
                                 )
                             }
-                            // NOTE: make sure that each possible match case is either implemented in the default collection or here
-                            // If an instruction is implemented in the default collection, it should be marked as unreachable!() here
+                            // NOTE: make sure that get_next_expected_instructions does not return None for these instructions!
                             TypeInstruction::List(_)
                             | TypeInstruction::Range
                             | TypeInstruction::ImplType(_) => {
@@ -628,8 +610,8 @@ pub fn ast_from_bytecode(
                             RegularInstruction::PushToStack => {
                                 let expr = collected_results.pop_value_result();
                                 DatexExpressionData::SlotAssignment(
-                                    SlotAssignment {
-                                        slot: Slot::Addressed(0), // FIXME: count address
+                                    StackAssignment {
+                                        index: StackIndex(0), // FIXME: count address
                                         expression: Box::new(expr),
                                     }
                                 )
@@ -640,8 +622,8 @@ pub fn ast_from_bytecode(
                             RegularInstruction::PushToStackMultiple(_push_multiple) => {
                                 let expr = collected_results.pop_value_result();
                                 DatexExpressionData::SlotAssignment(
-                                    SlotAssignment {
-                                        slot: Slot::Addressed(0), // FIXME: push_multiple //#0..#10 = x
+                                    StackAssignment {
+                                        index: StackIndex(0), // FIXME: push_multiple //#0..#10 = x
                                         expression: Box::new(expr),
                                     }
                                 )
@@ -664,6 +646,16 @@ pub fn ast_from_bytecode(
                                 )
                                 .with_default_span()
                                 .into()
+                            }
+                            
+                            RegularInstruction::TaggedValue(ShortTextData(tag)) => {
+                                let expression = collected_results.pop_value_result();
+                                DatexExpressionData::Tag(TagExpression {
+                                    tag,
+                                    expression: Some(Box::new(expression)),
+                                })
+                                    .with_default_span()
+                                    .into()
                             }
 
                             RegularInstruction::Apply(_) => {

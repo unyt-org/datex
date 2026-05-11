@@ -13,7 +13,7 @@ use crate::{
             Conditional, CreateShared, DatexExpression, DatexExpressionData,
             GenericInstantiation, GetRef, GetSharedRef, List, Map,
             PropertyAccess, PropertyAssignment, RangeDeclaration,
-            RemoteExecution, RequestSharedRef, Slot, SlotAssignment,
+            RemoteExecution, RequestSharedRef, StackAssignment,
             Statements, TypeDeclaration, UnaryOperation, Unbox,
             UnboxAssignment, ValueAccessType, VariableAccess,
             VariableAssignment, VariableDeclaration, VariantAccess,
@@ -68,6 +68,7 @@ use crate::{
     },
 };
 use core::{cell::RefCell, ops::Range, panic};
+use crate::global::protocol_structures::instruction_data::StackIndex;
 
 pub mod error;
 pub mod options;
@@ -1246,14 +1247,14 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
         )))
     }
 
-    fn visit_slot(
+    fn visit_stack_index(
         &mut self,
-        _slot: &Slot,
+        _stack_index: &StackIndex,
         span: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
         Err(SpannedTypeError {
             error: TypeError::Unimplemented(
-                "Slot type inference not implemented".into(),
+                "Stack index inference not implemented".into(),
             ),
             span: Some(span.clone()),
         })
@@ -1336,7 +1337,7 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
     }
     fn visit_slot_assignment(
         &mut self,
-        _slot_assignment: &mut SlotAssignment,
+        _slot_assignment: &mut StackAssignment,
         span: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
         Err(SpannedTypeError {

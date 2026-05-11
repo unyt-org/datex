@@ -200,6 +200,7 @@ pub enum Token {
     #[token("|")] Pipe,
     #[token("!")] Exclamation,
     #[token("`")] Backtick,
+    #[token("$")] Root,
 
     #[token("<=")] LessEqual,
     #[token(">=")] GreaterEqual, // can not use because of generic overlap type X<test>= 4;
@@ -290,11 +291,11 @@ pub enum Token {
     // identifiers
     #[regex(r"[_\p{L}][_\p{L}\p{N}]*", allocated_string, priority=1)] Identifier(String),
 
-    // number slots (starting with #, followed by digits)
-    #[regex(r"#\d+", allocated_string)] Slot(String),
+    // stack index (starting with \, followed by digits)
+    #[regex(r"\\\d+", allocated_string)] StackIndex(String),
 
-    // named slots (starting with #, followed by A-Z, a-z, _ and alphanumeric characters)
-    #[regex(r"#[_a-zA-Z][_a-zA-Z0-9]*", allocated_string)] NamedSlot(String),
+    // tagged value/type (starting with #, followed by A-Z, a-z, _ and alphanumeric characters)
+    #[regex(r"#[_a-zA-Z][_a-zA-Z0-9]*", allocated_string)] Tag(String),
 }
 
 impl Token {
@@ -337,6 +338,7 @@ impl Token {
             Token::Ampersand => Some("&"),
             Token::Pipe => Some("|"),
             Token::Backtick => Some("`"),
+            Token::Root => Some("$"),
             Token::LessEqual => Some("<="),
             Token::GreaterEqual => Some(">="),
             Token::NotStructuralEqual => Some("!="),

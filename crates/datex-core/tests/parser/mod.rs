@@ -31,7 +31,7 @@ use datex_core::{
             ComparisonOperation, Conditional, CreateMut, CreateShared,
             DatexExpression, DatexExpressionData, GenericInstantiation, GetRef,
             List, Map, PropertyAccess, PropertyAssignment, RequestSharedRef,
-            Slot, UnaryOperation, Unbox, ValueAccessType, VariableAssignment,
+            StackIndex, UnaryOperation, Unbox, ValueAccessType, VariableAssignment,
             VariableDeclaration, VariableKind,
         },
         spanned::Spanned,
@@ -3386,7 +3386,7 @@ fn named_slot() {
     let expr = parse_unwrap_data(src);
     assert_eq!(
         expr,
-        DatexExpressionData::Slot(Slot::Named("endpoint".to_string()))
+        DatexExpressionData::StackIndex(StackIndex::Named("endpoint".to_string()))
     );
 }
 
@@ -3429,7 +3429,7 @@ fn unbox_multiple() {
 fn addressed_slot() {
     let src = "#123";
     let expr = parse_unwrap_data(src);
-    assert_eq!(expr, DatexExpressionData::Slot(Slot::Addressed(123)));
+    assert_eq!(expr, DatexExpressionData::StackIndex(StackIndex::Addressed(123)));
 }
 
 #[test]

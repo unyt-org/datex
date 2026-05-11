@@ -78,6 +78,7 @@ pub enum ExecutionError {
     ExpectedTypeValue,
     InvalidSharedValueType,
     ExpectedSharedValue,
+    ExpectedLocalValue,
     ExpectedOwnedSharedValue,
     MutableReferenceToNonMutableValue,
     AssignmentError(AssignmentError),
@@ -222,7 +223,13 @@ impl Display for ExecutionError {
             ExecutionError::ExpectedSharedValue => {
                 core::write!(
                     f,
-                    "Expected a shared value, but got a non-shared value"
+                    "Expected a shared value, but got a local value"
+                )
+            }
+            ExecutionError::ExpectedLocalValue => {
+                core::write!(
+                    f,
+                    "Expected a local value, but got a shared value"
                 )
             }
             ExecutionError::ExpectedOwnedSharedValue => {

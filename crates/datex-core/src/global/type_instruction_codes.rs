@@ -65,6 +65,7 @@ impl From<&TypeDefinition> for TypeInstructionCode {
             TypeDefinition::Nested(_) => todo!(),
             TypeDefinition::Type => todo!(),
             TypeDefinition::Core(_) => todo!(),
+            TypeDefinition::TaggedType { .. } => todo!(),
         }
     }
 }

@@ -3,7 +3,7 @@ use crate::ast::{
         Apply, BinaryOperation, CallableDeclaration, ComparisonOperation,
         Conditional, DatexExpression, DatexExpressionData, List, Map,
         PropertyAccess, PropertyAssignment, RangeDeclaration, RemoteExecution,
-        SlotAssignment, TypeDeclaration, UnboxAssignment, VariableAccess,
+        StackAssignment, TypeDeclaration, UnboxAssignment, VariableAccess,
         VariableAssignment, VariableDeclaration, VariantAccess,
     },
     type_expressions::{
@@ -22,6 +22,7 @@ use crate::{
     shared_values::ReferenceMutability,
     types::type_definition_with_metadata::LocalReferenceMutability,
 };
+use crate::ast::expressions::RootPropertyAccess;
 
 #[derive(Clone, Default)]
 pub enum BraceStyle {
@@ -774,9 +775,9 @@ impl AstToSourceCodeConverter {
             DatexExpressionData::Clone(clone) => {
                 format!("clone {}", self.format(&clone.expression))
             }
-            DatexExpressionData::Slot(slot) => slot.to_string(),
-            DatexExpressionData::SlotAssignment(SlotAssignment {
-                slot,
+            DatexExpressionData::StackIndex(slot) => slot.to_string(),
+            DatexExpressionData::SlotAssignment(StackAssignment {
+                                                    index: slot,
                 expression,
             }) => {
                 format!("{}%s=%s{}", slot, self.format(expression))
@@ -813,7 +814,7 @@ impl AstToSourceCodeConverter {
             }
             DatexExpressionData::UnboxSlotAssignment(UnboxSlotAssignment {
                 operator,
-                slot,
+                                                         stack_index: slot,
                 assigned_expression,
             }) => {
                 let unbox_prefix = "*";
@@ -867,6 +868,12 @@ impl AstToSourceCodeConverter {
             }
             DatexExpressionData::GenericInstantiation(_) => {
                 todo!("#654 Undescribed by author.")
+            },
+            DatexExpressionData::Tag(tag) => {
+                format!("#{}", tag.tag)
+            },
+            DatexExpressionData::RootPropertyAccess(RootPropertyAccess { property_name }) => {
+                format!("$.{}", property_name)
             }
         }
     }

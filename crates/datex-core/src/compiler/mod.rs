@@ -2,7 +2,7 @@
 use crate::{
     ast::expressions::{
         BinaryOperation, ComparisonOperation, DatexExpression,
-        DatexExpressionData, RemoteExecution, Slot, Statements, UnaryOperation,
+        DatexExpressionData, RemoteExecution, Statements, UnaryOperation,
         UnboundedStatement, UnboxAssignment, VariableAccess,
         VariableAssignment, VariableDeclaration, VariableKind,
     },
@@ -25,7 +25,7 @@ use crate::{
             block_header::BlockHeader, encrypted_header::EncryptedHeader,
             routing_header::RoutingHeader,
         },
-        slots::InternalSlot,
+        root_properties::RootProperty,
     },
     prelude::*,
 };
@@ -69,6 +69,7 @@ use precompiler::{
     precompile_ast,
     precompiled_ast::{AstMetadata, RichAst, VariableMetadata},
 };
+use crate::ast::expressions::RootPropertyAccess;
 use crate::parser::errors::SpannedParserError;
 
 pub mod context;
@@ -1278,34 +1279,34 @@ fn compile_expression(
             )?;
         }
 
-        // named slot
-        DatexExpressionData::Slot(Slot::Named(name)) => {
-            match name.as_str() {
+        // root property (e.g. $.core)
+        DatexExpressionData::RootPropertyAccess(RootPropertyAccess { property_name } ) => {
+            match property_name.as_str() {
                 "endpoint" => {
                     compilation_context.append_instruction_code(
-                        InstructionCode::GET_INTERNAL_SLOT,
+                        InstructionCode::GET_ROOT_PROPERTY,
                     );
                     append_u32(
                         compilation_context.cursor(),
-                        InternalSlot::ENDPOINT as u32,
+                        RootProperty::ENDPOINT as u32,
                     );
                 }
                 "caller" => {
                     compilation_context.append_instruction_code(
-                        InstructionCode::GET_INTERNAL_SLOT,
+                        InstructionCode::GET_ROOT_PROPERTY,
                     );
                     append_u32(
                         compilation_context.cursor(),
-                        InternalSlot::CALLER as u32,
+                        RootProperty::CALLER as u32,
                     );
                 }
                 "env" => {
                     compilation_context.append_instruction_code(
-                        InstructionCode::GET_INTERNAL_SLOT,
+                        InstructionCode::GET_ROOT_PROPERTY,
                     );
                     append_u32(
                         compilation_context.cursor(),
-                        InternalSlot::ENV as u32,
+                        RootProperty::ENV as u32,
                     );
                 }
                 "core" => append_get_internal_ref(
@@ -1318,7 +1319,7 @@ fn compile_expression(
                 ),
                 _ => {
                     // invalid slot name
-                    return Err(CompilerError::InvalidSlotName(name.clone()));
+                    return Err(CompilerError::InvalidSlotName(property_name.clone()));
                 }
             }
         }
@@ -3115,7 +3116,7 @@ pub mod tests {
         assert_eq!(
             res,
             vec![
-                InstructionCode::GET_INTERNAL_SLOT.into(),
+                InstructionCode::GET_ROOT_PROPERTY.into(),
                 // slot index as u32
                 0,
                 0xff,
@@ -3134,7 +3135,7 @@ pub mod tests {
         assert_eq!(
             res,
             vec![
-                InstructionCode::GET_INTERNAL_SLOT.into(),
+                InstructionCode::GET_ROOT_PROPERTY.into(),
                 // slot index as u32
                 2,
                 0xff,

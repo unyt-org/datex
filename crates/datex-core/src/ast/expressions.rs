@@ -28,6 +28,7 @@ use crate::{
 };
 pub use crate::{prelude::*, values::core_values::callable::CallableKind};
 use core::{fmt::Display, ops, ops::Neg};
+use crate::global::protocol_structures::instruction_data::StackIndex;
 
 #[derive(Clone, Debug)]
 /// An expression in the AST
@@ -158,11 +159,17 @@ pub enum DatexExpressionData {
     /// Clone
     Clone(CloneExpression),
 
-    /// Slot, e.g. #1, #endpoint
-    Slot(Slot),
+    /// relative StackIndex, e.g. \0, \1, \2, ...
+    StackIndex(StackIndex),
+
+    /// Tag, e.g. #Variant1
+    Tag(TagExpression),
+
+    /// Property access on the root, e.g. $.print
+    RootPropertyAccess(RootPropertyAccess),
 
     /// Slot assignment
-    SlotAssignment(SlotAssignment),
+    SlotAssignment(StackAssignment),
 
     /// Binary operation, e.g. x + y
     BinaryOperation(BinaryOperation),
@@ -317,7 +324,7 @@ pub struct UnboxAssignment {
 #[derive(Clone, Debug, PartialEq)]
 pub struct UnboxSlotAssignment {
     pub operator: Option<AssignmentOperator>,
-    pub slot: Slot,
+    pub stack_index: StackIndex,
     pub assigned_expression: Box<DatexExpression>,
 }
 
@@ -542,26 +549,29 @@ impl Display for VariableKind {
     }
 }
 
+
 #[derive(Clone, Debug, PartialEq)]
-pub enum Slot {
-    Addressed(u32),
-    Named(String),
+pub struct TagExpression {
+    pub tag: String,
+    pub expression: Option<Box<DatexExpression>>,
 }
-impl Display for Slot {
+
+impl Display for TagExpression {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        core::write!(f, "#")?;
-        match self {
-            Slot::Addressed(addr) => core::write!(f, "{}", addr),
-            Slot::Named(name) => core::write!(f, "{}", name),
-        }
+        core::write!(f, "#{}", self.tag)
     }
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct SlotAssignment {
-    pub slot: Slot,
+pub struct RootPropertyAccess {
+    pub property_name: String,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct StackAssignment {
+    pub index: StackIndex,
     pub expression: Box<DatexExpression>,
-    // TODO: operator for slot assignment, e.g. #1 += 2
+    // TODO: operator for stack assignment, e.g. \\1 += 2
     // pub operator: Option<AssignmentOperator>,
 }
 

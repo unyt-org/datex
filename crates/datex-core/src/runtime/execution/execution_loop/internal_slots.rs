@@ -1,6 +1,6 @@
 use crate::{
     global::{
-        protocol_structures::instruction_data::StackIndex, slots::InternalSlot,
+        protocol_structures::instruction_data::StackIndex, root_properties::RootProperty,
     },
     runtime::execution::{
         ExecutionError, execution_loop::state::RuntimeExecutionState,
@@ -16,22 +16,19 @@ pub fn get_stack_value(
     runtime_state.stack.get_stack_value(index)
 }
 
-pub fn get_internal_slot_value(
+pub fn get_root_property(
     runtime_state: &RuntimeExecutionState,
-    slot_id: u32,
+    root_property: RootProperty,
 ) -> Result<ValueContainer, ExecutionError> {
     let runtime = &runtime_state.runtime;
-    // convert slot to InternalSlot enum
-    let slot = InternalSlot::try_from_primitive(slot_id)
-        .map_err(|_| ExecutionError::InternalSlotDoesNotExist(slot_id))?;
-    let res = match slot {
-        InternalSlot::ENDPOINT => {
+    let res = match root_property {
+        RootProperty::ENDPOINT => {
             ValueContainer::from(runtime.endpoint().clone())
         }
-        InternalSlot::CALLER => {
+        RootProperty::CALLER => {
             ValueContainer::from(runtime_state.caller_metadata.endpoint.clone())
         }
-        InternalSlot::ENV => {
+        RootProperty::ENV => {
             ValueContainer::from(Map::from(runtime.internal.get_env()))
         }
     };

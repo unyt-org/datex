@@ -31,7 +31,6 @@ pub enum DXBParserError {
     BinRwError(binrw::Error),
     FromUtf8Error(FromUtf8Error),
     NotInUnboundedRegularScopeError,
-    InvalidInternalSlotAddress(u32),
 }
 
 // custom impl required because binrw::Error does not implement PartialEq
@@ -76,10 +75,6 @@ impl PartialEq for DXBParserError {
                 DXBParserError::NotInUnboundedRegularScopeError,
                 DXBParserError::NotInUnboundedRegularScopeError,
             ) => true,
-            (
-                DXBParserError::InvalidInternalSlotAddress(a),
-                DXBParserError::InvalidInternalSlotAddress(b),
-            ) => a == b,
             _ => false,
         }
     }
@@ -145,9 +140,6 @@ impl Display for DXBParserError {
             }
             DXBParserError::NotInUnboundedRegularScopeError => {
                 core::write!(f, "Not in unbounded regular scope error")
-            }
-            DXBParserError::InvalidInternalSlotAddress(addr) => {
-                core::write!(f, "Invalid internal slot address: {}", addr)
             }
         }
     }

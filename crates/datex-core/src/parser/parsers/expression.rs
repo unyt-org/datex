@@ -5,7 +5,7 @@ use crate::{
             CreateMut, CreateShared, DatexExpression, DatexExpressionData,
             GenericInstantiation, GetRef, GetSharedRef, PropertyAccess,
             PropertyAssignment, RangeDeclaration, RemoteExecution,
-            RequestSharedRef, SlotAssignment, UnaryOperation, Unbox,
+            RequestSharedRef, StackAssignment, UnaryOperation, Unbox,
             UnboxAssignment, VariableAssignment,
         },
         spanned::Spanned,
@@ -247,9 +247,9 @@ impl Parser {
                 })
             }
             // slot assignment
-            DatexExpressionData::Slot(slot) => {
-                DatexExpressionData::SlotAssignment(SlotAssignment {
-                    slot,
+            DatexExpressionData::StackIndex(slot) => {
+                DatexExpressionData::SlotAssignment(StackAssignment {
+                    index: slot,
                     expression: Box::new(rhs),
                 })
             }
@@ -641,7 +641,7 @@ impl Parser {
             | Token::IntegerLiteral(_)
             | Token::DecimalLiteral(_)
             | Token::PointerAddress(_)
-            | Token::Slot(_)
+            | Token::StackIndex(_)
             | Token::Endpoint(_) => Some((30, 31)),
             _ => None,
         }
@@ -657,7 +657,7 @@ mod tests {
                 Apply, BinaryOperation, ComparisonOperation, CreateMut,
                 CreateShared, DatexExpressionData, GenericInstantiation,
                 GetRef, GetSharedRef, PropertyAccess, PropertyAssignment,
-                RemoteExecution, RequestSharedRef, Slot, SlotAssignment,
+                RemoteExecution, RequestSharedRef, StackAssignment,
                 Statements, UnaryOperation, Unbox, UnboxAssignment,
                 VariableAssignment,
             },
@@ -679,6 +679,7 @@ mod tests {
         },
         types::type_definition_with_metadata::LocalReferenceMutability,
     };
+    use crate::global::protocol_structures::instruction_data::StackIndex;
 
     #[test]
     fn parse_simple_binary_expression() {
@@ -1567,12 +1568,12 @@ mod tests {
     }
 
     #[test]
-    fn parse_slot_assignment() {
-        let expr = parse("#slot1 = 100");
+    fn parse_stack_assignment() {
+        let expr = parse("\\2 = 100");
         assert_eq!(
             expr.data,
-            DatexExpressionData::SlotAssignment(SlotAssignment {
-                slot: Slot::Named("slot1".to_string()),
+            DatexExpressionData::SlotAssignment(StackAssignment {
+                index: StackIndex(2),
                 expression: Box::new(
                     DatexExpressionData::Integer(100.into())
                         .with_default_span()

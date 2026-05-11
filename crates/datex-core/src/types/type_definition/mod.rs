@@ -18,6 +18,7 @@ use crate::{
     values::core_values::callable::CallableSignature,
 };
 use core::{fmt::Display, hash::Hash, ops::Deref, prelude::rust_2024::*};
+use crate::libs::core::type_id::CoreLibBaseTypeId;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TypeDefinition {
@@ -58,6 +59,13 @@ pub enum TypeDefinition {
 
     /// A | B | C
     Union(Vec<Type>),
+
+    /// #Tagged or #Tagged {...}
+    /// #Tagged(null) is equivalent to #Tagged
+    TaggedType {
+        tag: String,
+        ty: Box<Type>,
+    },
 
     /// meta type for a type
     Type,
@@ -131,6 +139,10 @@ impl Hash for TypeDefinition {
             TypeDefinition::Core(core) => {
                 core.hash(state);
             }
+            TypeDefinition::TaggedType { tag, ty } => {
+                tag.hash(state);
+                ty.hash(state);
+            }
         }
     }
 }
@@ -139,34 +151,34 @@ impl Display for TypeDefinition {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             TypeDefinition::Collection(value) => {
-                core::write!(f, "{}", value)
+                write!(f, "{}", value)
             }
             TypeDefinition::Map(entries) => {
                 let entries_str: Vec<String> = entries
                     .iter()
                     .map(|(key, value)| format!("{}: {}", key, value))
                     .collect();
-                core::write!(f, "{{{}}}", entries_str.join(", "))
+                write!(f, "{{{}}}", entries_str.join(", "))
             }
             TypeDefinition::List(elements) => {
                 let elements_str: Vec<String> =
                     elements.iter().map(|e| e.to_string()).collect();
-                core::write!(f, "[{}]", elements_str.join(", "))
+                write!(f, "[{}]", elements_str.join(", "))
             }
             TypeDefinition::Range((start, end)) => {
-                core::write!(f, "{}..{}", start, end)
+                write!(f, "{}..{}", start, end)
             }
 
             TypeDefinition::Literal(value) => {
-                core::write!(f, "{}", value)
+                write!(f, "{}", value)
             }
             TypeDefinition::Shared(reference) => {
-                core::write!(f, "{}", reference.deref())
+                write!(f, "{}", reference.deref())
             }
             TypeDefinition::ImplType(ty, impls) => {
-                core::write!(f, "{}", ty)?;
+                write!(f, "{}", ty)?;
                 for marker in impls {
-                    core::write!(f, " + {}", marker)?;
+                    write!(f, " + {}", marker)?;
                 }
                 Ok(())
             }
@@ -174,12 +186,12 @@ impl Display for TypeDefinition {
             TypeDefinition::Union(types) => {
                 let types_str: Vec<String> =
                     types.iter().map(|t| t.to_string()).collect();
-                core::write!(f, "({})", types_str.join(" | "))
+                write!(f, "({})", types_str.join(" | "))
             }
             TypeDefinition::Intersection(types) => {
                 let types_str: Vec<String> =
                     types.iter().map(|t| t.to_string()).collect();
-                core::write!(f, "({})", types_str.join(" & "))
+                write!(f, "({})", types_str.join(" & "))
             }
             TypeDefinition::Callable(callable) => {
                 let mut params_code: Vec<String> = callable
@@ -210,7 +222,7 @@ impl Display for TypeDefinition {
                     None => "".to_string(),
                 };
 
-                core::write!(
+                write!(
                     f,
                     "{} ({}){}{}",
                     callable.kind,
@@ -220,13 +232,20 @@ impl Display for TypeDefinition {
                 )
             }
             TypeDefinition::Nested(ty) => {
-                core::write!(f, "{}", ty)
+                write!(f, "{}", ty)
             }
             TypeDefinition::Type => {
-                core::write!(f, "Type")
+                write!(f, "Type")
             }
             TypeDefinition::Core(core) => {
-                core::write!(f, "{}", core)
+                write!(f, "{}", core)
+            }
+            TypeDefinition::TaggedType { tag, ty } => {
+                write!(f, "#{}", tag)?;
+                if **ty != Type::core(CoreLibBaseTypeId::Null) {
+                    write!(f, " {}", ty)?;
+                }
+                Ok(())
             }
         }
     }

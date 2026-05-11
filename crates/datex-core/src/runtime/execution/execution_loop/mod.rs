@@ -35,7 +35,7 @@ use crate::{
     runtime::execution::{
         ExecutionError, InvalidProgramError,
         execution_loop::{
-            internal_slots::{get_internal_slot_value, get_stack_value},
+            internal_slots::{get_root_property, get_stack_value},
             interrupts::{
                 ExecutionInterrupt, ExternalExecutionInterrupt,
                 InterruptProvider,
@@ -418,11 +418,11 @@ pub fn inner_execution_loop(
                                 ).into())
                             }
 
-                            RegularInstruction::GetInternalSlot(StackIndex(address)) => {
+                            RegularInstruction::GetRootProperty(stack_index) => {
                                 Some(RuntimeValue::ValueContainer(yield_unwrap!(
-                                    get_internal_slot_value(
+                                    get_root_property(
                                         &state,
-                                        address,
+                                        stack_index,
                                     )
                                 )))
                             }
@@ -503,8 +503,7 @@ pub fn inner_execution_loop(
                                 todo!()
                             }
 
-                            // NOTE: make sure that each possible match case is either implemented in the default collection or here
-                            // If an instruction is implemented in the default collection, it should be marked as unreachable!() here
+                            // NOTE: make sure that get_next_expected_instructions does not return None for these instructions!
                             RegularInstruction::Statements(_) |
                             RegularInstruction::ShortStatements(_) |
                             RegularInstruction::UnboundedStatements |
@@ -514,6 +513,7 @@ pub fn inner_execution_loop(
                             RegularInstruction::ShortList(_)  |
                             RegularInstruction::Map(_) |
                             RegularInstruction::ShortMap(_) |
+                            RegularInstruction::TaggedValue(_) |
                             RegularInstruction::KeyValueDynamic |
                             RegularInstruction::KeyValueShortText(_) |
                             RegularInstruction::Add |
@@ -637,8 +637,7 @@ pub fn inner_execution_loop(
                                 }
                             }
 
-                            // NOTE: make sure that each possible match case is either implemented in the default collection or here
-                            // If an instruction is implemented in the default collection, it should be marked as unreachable!() here
+                            // NOTE: make sure that get_next_expected_instructions does not return None for these instructions!
                             TypeInstruction::List(_)
                             | TypeInstruction::Range
                             | TypeInstruction::ImplType(_) => unreachable!(),
@@ -711,6 +710,32 @@ pub fn inner_execution_loop(
                                     CollectedExecutionResult::KeyValuePair((
                                         key, value,
                                     ))
+                                }
+
+                                RegularInstruction::TaggedValue(
+                                    ShortTextData(tag),
+                                ) => {
+                                    let value_container = yield_unwrap!(
+                                        collected_results.pop_cloned_value_container_result_assert_existing(&state)
+                                    );
+                                    // expected value container to be local value
+                                    match value_container {
+                                        ValueContainer::Local(mut value) => {
+                                            // add tag type to the value
+                                            value.custom_type = Some(TypeDefinition::TaggedType {
+                                                tag,
+                                                ty: Box::new(value.actual_type()),
+                                            }.into());
+                                            RuntimeValue::ValueContainer(ValueContainer::Local(value))
+                                                .into()
+                                        },
+                                        _ => {
+                                            return yield Err(
+                                                ExecutionError::ExpectedLocalValue,
+                                            );
+                                        }
+                                    }
+
                                 }
 
                                 RegularInstruction::Add

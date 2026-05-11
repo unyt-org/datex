@@ -4,7 +4,7 @@ use crate::{
         ComparisonOperation, Conditional, CreateMut, CreateShared,
         DatexExpression, DatexExpressionData, GenericInstantiation, GetRef,
         GetSharedRef, List, Map, PropertyAccess, PropertyAssignment,
-        RangeDeclaration, RemoteExecution, SlotAssignment, Statements,
+        RangeDeclaration, RemoteExecution, StackAssignment, Statements,
         TypeDeclaration, UnaryOperation, Unbox, UnboxAssignment,
         UnboxSlotAssignment, VariableAssignment, VariableDeclaration,
     },
@@ -13,6 +13,7 @@ use crate::{
         type_expression::visitable::VisitableTypeExpression,
     },
 };
+use crate::ast::expressions::TagExpression;
 
 pub type ExpressionVisitResult<E> = Result<VisitAction<DatexExpression>, E>;
 
@@ -162,6 +163,18 @@ impl<E> VisitableExpression<E> for UnboxSlotAssignment {
     }
 }
 
+impl<E> VisitableExpression<E> for TagExpression {
+    fn walk_children(
+        &mut self,
+        visitor: &mut impl ExpressionVisitor<E>,
+    ) -> Result<(), E> {
+        if let Some(expression) = &mut self.expression {
+            visitor.visit_datex_expression(expression)?;
+        }
+        Ok(())
+    }
+}
+
 impl<E> VisitableExpression<E> for Apply {
     fn walk_children(
         &mut self,
@@ -209,7 +222,7 @@ impl<E> VisitableExpression<E> for RemoteExecution {
         Ok(())
     }
 }
-impl<E> VisitableExpression<E> for SlotAssignment {
+impl<E> VisitableExpression<E> for StackAssignment {
     fn walk_children(
         &mut self,
         visitor: &mut impl ExpressionVisitor<E>,
@@ -391,13 +404,17 @@ impl<E> VisitableExpression<E> for DatexExpression {
             }
 
             DatexExpressionData::Range(range) => range.walk_children(visitor),
+            
+            DatexExpressionData::Tag(tag) => {
+                tag.walk_children(visitor)
+            }
 
             DatexExpressionData::Noop
             | DatexExpressionData::NativeImplementationIndicator
             | DatexExpressionData::VariantAccess(_)
             | DatexExpressionData::VariableAccess(_)
             | DatexExpressionData::RequestSharedRef(_)
-            | DatexExpressionData::Slot(_)
+            | DatexExpressionData::StackIndex(_)
             | DatexExpressionData::Placeholder(_)
             | DatexExpressionData::Recover
             | DatexExpressionData::Null
@@ -408,6 +425,7 @@ impl<E> VisitableExpression<E> for DatexExpression {
             | DatexExpressionData::Integer(_)
             | DatexExpressionData::TypedInteger(_)
             | DatexExpressionData::Identifier(_)
+            | DatexExpressionData::RootPropertyAccess(_)
             | DatexExpressionData::Endpoint(_) => Ok(()),
         }
     }

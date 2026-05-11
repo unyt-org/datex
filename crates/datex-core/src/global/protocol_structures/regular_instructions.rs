@@ -34,6 +34,7 @@ use binrw::{
 };
 use core::fmt::{Display, Write as FmtWrite};
 use serde::{Serialize, Serializer, ser::SerializeTuple};
+use crate::global::root_properties::RootProperty;
 
 #[derive(Clone, Debug, PartialEq, BinWrite)]
 #[brw(little)]
@@ -95,6 +96,8 @@ pub enum RegularInstruction {
 
     KeyValueDynamic,
     KeyValueShortText(ShortTextData),
+    
+    TaggedValue(ShortTextData),
 
     // binary operator
     Add,
@@ -162,7 +165,7 @@ pub enum RegularInstruction {
     TakeStackValue(StackIndex),
     SetStackValue(StackIndex),
 
-    GetInternalSlot(StackIndex), // FIXME slot address
+    GetRootProperty(RootProperty),
 
     SetSharedContainerValue(SetSharedContainerValue),
     Unbox,
@@ -325,8 +328,8 @@ impl From<&RegularInstruction> for InstructionCode {
             RegularInstruction::ModifyStackValue(_) => {
                 InstructionCode::MODIFY_STACK_VALUE
             }
-            RegularInstruction::GetInternalSlot(_) => {
-                InstructionCode::GET_INTERNAL_SLOT
+            RegularInstruction::GetRootProperty(_) => {
+                InstructionCode::GET_ROOT_PROPERTY
             }
             RegularInstruction::SetSharedContainerValue(_) => {
                 InstructionCode::SET_SHARED_CONTAINER_VALUE
@@ -336,6 +339,7 @@ impl From<&RegularInstruction> for InstructionCode {
             RegularInstruction::TypeExpression => {
                 InstructionCode::TYPE_EXPRESSION
             }
+            RegularInstruction::TaggedValue(_) => InstructionCode::TAGGED_VALUE,
             #[cfg(feature = "disassembler")]
             RegularInstruction::_RemoteExecutionDebugFlat(_)
             | RegularInstruction::_RemoteExecutionDebugTree(_) => {
@@ -471,6 +475,7 @@ impl RegularInstruction {
             }
 
             RegularInstruction::Range => NextExpectedInstructions::Regular(2),
+            RegularInstruction::TaggedValue(_) => NextExpectedInstructions::Regular(1),
 
             RegularInstruction::SharedRefWithValue(_) => {
                 NextExpectedInstructions::Regular(1)
@@ -598,6 +603,9 @@ impl RegularInstruction {
                     .map(RegularInstruction::UnboundedStatementsEnd)
             }
 
+            InstructionCode::TAGGED_VALUE => ShortTextData::read(reader)
+                .map(RegularInstruction::TaggedValue),
+
             InstructionCode::APPLY_ZERO => {
                 Ok(RegularInstruction::Apply(ApplyData { arg_count: 0 }))
             }
@@ -695,8 +703,8 @@ impl RegularInstruction {
                 Ok(RegularInstruction::CreateSharedMut)
             }
 
-            InstructionCode::GET_INTERNAL_SLOT => StackIndex::read(reader)
-                .map(RegularInstruction::GetInternalSlot),
+            InstructionCode::GET_ROOT_PROPERTY => RootProperty::read(reader)
+                .map(RegularInstruction::GetRootProperty),
 
             InstructionCode::PUSH_TO_STACK => {
                 Ok(RegularInstruction::PushToStack)
@@ -892,8 +900,8 @@ impl RegularInstruction {
             RegularInstruction::CloneStackValue(address) => {
                 write!(string, "{}", address.0)
             }
-            RegularInstruction::GetInternalSlot(address) => {
-                write!(string, "{}", address.0)
+            RegularInstruction::GetRootProperty(property) => {
+                write!(string, "$.{}", property)
             }
             RegularInstruction::BorrowStackValue(address) => {
                 write!(string, "{}", address.0)

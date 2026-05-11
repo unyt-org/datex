@@ -6,8 +6,8 @@ use crate::{
         ComparisonOperation, CompileExpression, Conditional, CreateMut,
         CreateShared, DatexExpression, DatexExpressionData,
         GenericInstantiation, GetRef, GetSharedRef, List, Map, PropertyAccess,
-        PropertyAssignment, RemoteExecution, RequestSharedRef, Slot,
-        SlotAssignment, Statements, TypeDeclaration, UnaryOperation, Unbox,
+        PropertyAssignment, RemoteExecution, RequestSharedRef,
+        StackAssignment, Statements, TypeDeclaration, UnaryOperation, Unbox,
         UnboxAssignment, UnboxSlotAssignment, ValueAccessType, VariableAccess,
         VariableAssignment, VariableDeclaration, VariantAccess,
     },
@@ -24,6 +24,8 @@ use crate::{
     },
 };
 use core::ops::Range;
+use crate::ast::expressions::{RootPropertyAccess, TagExpression};
+use crate::global::protocol_structures::instruction_data::StackIndex;
 
 pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
     /// Handle expression error
@@ -141,8 +143,8 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
             DatexExpressionData::Clone(clone) => {
                 self.visit_clone(clone, &expr.span)
             }
-            DatexExpressionData::Slot(slot) => {
-                self.visit_slot(slot, &expr.span)
+            DatexExpressionData::StackIndex(slot) => {
+                self.visit_stack_index(slot, &expr.span)
             }
             DatexExpressionData::SlotAssignment(slot_assignment) => {
                 self.visit_slot_assignment(slot_assignment, &expr.span)
@@ -195,6 +197,12 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
             }
             DatexExpressionData::Compile(compile_expression) => {
                 self.visit_compile_expression(compile_expression, &expr.span)
+            },
+            DatexExpressionData::Tag(tag) => {
+                self.visit_tag_expression(tag, &expr.span)
+            },
+            DatexExpressionData::RootPropertyAccess(root_property_access) => {
+                self.visit_root_property_access(root_property_access, &expr.span)
             }
         };
 
@@ -415,10 +423,30 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
         Ok(VisitAction::VisitChildren)
     }
 
+    fn visit_tag_expression(
+        &mut self,
+        tag: &mut TagExpression,
+        span: &Range<usize>,
+    ) -> ExpressionVisitResult<E> {
+        let _ = span;
+        let _ = tag;
+        Ok(VisitAction::VisitChildren)
+    }
+
+    fn visit_root_property_access(
+        &mut self,
+        root_property_access: &mut RootPropertyAccess,
+        span: &Range<usize>,
+    ) -> ExpressionVisitResult<E> {
+        let _ = span;
+        let _ = root_property_access;
+        Ok(VisitAction::SkipChildren)
+    }
+
     /// Visit slot assignment
     fn visit_slot_assignment(
         &mut self,
-        slot_assignment: &mut SlotAssignment,
+        slot_assignment: &mut StackAssignment,
         span: &Range<usize>,
     ) -> ExpressionVisitResult<E> {
         let _ = span;
@@ -662,14 +690,14 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
         Ok(VisitAction::SkipChildren)
     }
 
-    /// Visit slot expression
-    fn visit_slot(
+    /// Visit stack index expression
+    fn visit_stack_index(
         &mut self,
-        slot: &Slot,
+        stack_index: &StackIndex,
         span: &Range<usize>,
     ) -> ExpressionVisitResult<E> {
         let _ = span;
-        let _ = slot;
+        let _ = stack_index;
         Ok(VisitAction::SkipChildren)
     }
 

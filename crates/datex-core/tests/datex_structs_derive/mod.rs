@@ -9,6 +9,25 @@ use datex_core::{
 use datex_macros_internal::Datex;
 use serde::{Deserialize, Serialize};
 
+// #[derive(Datex)]
+// enum ExampleEnum {
+//     VariantA,
+//     VariantB(u8, u8),
+//     VariantC { x: u8, y: String },
+// }
+/* DATEX
+
+TODO: <...> anstatt type<...>, z.b. const myType = <integer|text>; ?
+
+$.endpoint;
+$.core, etc oder $.integer, $.Map, $.print, ...
+
+let x = #VariantA;
+let x = #VariantB(1, 2);
+let x = #VariantC { x: 42, y: "Test" };
+
+ */
+
 #[derive(Datex, Debug, Clone, PartialEq)]
 struct Example {
     a: u8,
