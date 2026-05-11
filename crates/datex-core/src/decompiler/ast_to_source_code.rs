@@ -27,6 +27,7 @@ use crate::{
     decompiler::{FormattingMode, FormattingOptions, IndentType},
     shared_values::ReferenceMutability,
     types::type_definition_with_metadata::LocalReferenceMutability,
+    values::core_values::time::Instant,
 };
 
 #[derive(Clone, Default)]
@@ -517,6 +518,7 @@ impl AstToSourceCodeConverter {
             }
             DatexExpressionData::Noop => "".to_string(),
             DatexExpressionData::Integer(i) => i.to_string(),
+            DatexExpressionData::DateTime(instant) => instant.to_iso_string(),
             DatexExpressionData::Range(RangeDeclaration { start, end }) => {
                 let left_code = self.format(start);
                 let right_code = self.format(end);
