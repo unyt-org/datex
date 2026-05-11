@@ -24,4 +24,5 @@ pub enum RootProperty {
     ENDPOINT = 0x01,
     ENV = 0x02,
     CALLER = 0x03,
+    CONFIG = 0x04,
 }

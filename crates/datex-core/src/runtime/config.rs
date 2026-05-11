@@ -64,7 +64,7 @@ impl RuntimeConfigInterface {
     }
 }
 
-#[derive(Datex, Debug, Default)]
+#[derive(Datex, Debug, Default, Clone)]
 pub struct RuntimeConfig {
     pub endpoint: Option<Endpoint>,
     pub interfaces: Option<Vec<RuntimeConfigInterface>>,

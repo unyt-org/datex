@@ -851,7 +851,7 @@ impl AstToSourceCodeConverter {
                 right,
                 ..
             }) => {
-                format!("{}%s::%s{}", self.format(left), self.format(right))
+                ast_fmt!(&self, "{}%s::%s{}", self.format(left), self.format(right))
             }
             DatexExpressionData::PropertyAccess(PropertyAccess {
                 base,
@@ -874,10 +874,10 @@ impl AstToSourceCodeConverter {
                     Some(tag_expression) => {
                         match &tag_expression.data {
                             DatexExpressionData::Map(_) | DatexExpressionData::List(_) | DatexExpressionData::Statements(_) => {
-                                format!("#{} {}", tag.tag, self.format(tag_expression))
+                                ast_fmt!(&self, "#{}%s{}", tag.tag, self.format(tag_expression))
                             }
                             _ => {
-                                format!("#{} ({})", tag.tag, self.format(tag_expression))
+                                ast_fmt!(&self, "#{}%s({})", tag.tag, self.format(tag_expression))
                             }
                         }
                     }
