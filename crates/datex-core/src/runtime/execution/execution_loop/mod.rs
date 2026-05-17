@@ -828,8 +828,8 @@ pub fn inner_execution_loop(
                                     );
                                     let pointer = state.runtime.pointer_address_provider().borrow_mut().get_new_self_owned_address();
                                     let mutability = match instruction {
-                                        RegularInstruction::CreateShared => SharedContainerMutability::Mutable,
-                                        RegularInstruction::CreateSharedMut => SharedContainerMutability::Immutable,
+                                        RegularInstruction::CreateShared => SharedContainerMutability::Immutable,
+                                        RegularInstruction::CreateSharedMut => SharedContainerMutability::Mutable,
                                         _ => unreachable!(),
                                     };
 

@@ -105,9 +105,10 @@ impl BaseSharedValueContainer {
 
 impl Debug for BaseSharedValueContainer {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        f.debug_struct("ReferenceData")
+        f.debug_struct("BaseSharedValueContainer")
             .field("value_container", &self.value_container)
             .field("allowed_type", &self.allowed_type)
+            .field("mutability", &self.mutability)
             .field("observers", &self.observers.len())
             .finish()
     }

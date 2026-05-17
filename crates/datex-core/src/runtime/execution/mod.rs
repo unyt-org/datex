@@ -523,8 +523,8 @@ mod tests {
             assert_eq!(&value.inner, &CoreValue::Null);
             assert_eq!(&value.custom_type, &Some(TypeDefinition::TaggedType {
                 tag: "Example".to_string(),
-                ty: None,
-            }.into()))
+                ty: Some(Box::new(TypeDefinition::Core(CoreLibBaseTypeId::Unit.into()))),
+            }))
         }
         else {
             panic!("Result should be Local value");
@@ -862,7 +862,7 @@ mod tests {
                 )])),
                 ..Default::default()
             },
-            "#env",
+            "$.env",
         )
         .await
         .unwrap();

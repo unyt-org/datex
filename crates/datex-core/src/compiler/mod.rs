@@ -1711,6 +1711,32 @@ pub mod tests {
     }
 
     #[test]
+    fn shared_value() {
+        let datex_script = "shared null";
+        let result = compile_and_log(datex_script);
+        assert_regular_instructions_equal!(
+            &result,
+            [
+                RegularInstruction::CreateShared,
+                RegularInstruction::Null,
+            ]
+        );
+    }
+
+    #[test]
+    fn shared_mut_value() {
+        let datex_script = "shared mut null";
+        let result = compile_and_log(datex_script);
+        assert_regular_instructions_equal!(
+            &result,
+            [
+                RegularInstruction::CreateSharedMut,
+                RegularInstruction::Null,
+            ]
+        );
+    }
+
+    #[test]
     fn is_operator() {
         // TODO #151: compare refs
         let datex_script = "1u8 is 2u8".to_string();
@@ -2300,7 +2326,7 @@ pub mod tests {
                     tag: ShortTextData("Example".to_string()),
                     is_empty: false,
                 }),
-                RegularInstruction::ShortText(ShortTextData("test".to_string())),
+                RegularInstruction::Null,
             ]
         )
     }
@@ -3350,7 +3376,7 @@ pub mod tests {
             vec![
                 InstructionCode::GET_INTERNAL_SHARED_REF.into(),
                 // pointer id for integer
-                3,
+                2,
                 0,
                 0,
                 InstructionCode::UNBOUNDED_STATEMENTS_END.into(),
