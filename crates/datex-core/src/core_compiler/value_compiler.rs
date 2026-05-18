@@ -38,7 +38,8 @@ use crate::{
     },
     types::r#type::Type,
 };
-use crate::core_compiler::type_compiler::append_type_definition;
+use crate::global::protocol_structures::instruction_data::{ShortTextData, TaggedValue};
+use crate::libs::core::type_id::CoreLibBaseTypeId;
 use crate::types::type_definition::TypeDefinition;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -222,7 +223,25 @@ pub fn append_value(
 ) -> Result<(), SharedValueCompilationError> {
     // append non-default type information
     if let Some(custom_type) = &value.custom_type {
-        append_type_cast(context, custom_type)?;
+        // special case: tagged value with default type, no type cast needed
+        match custom_type {
+            // unit tagged value (e.g. #Example)
+            TypeDefinition::TaggedType {ty: Some(box TypeDefinition::Core(CoreLibTypeId::Base(CoreLibBaseTypeId::Unit))), tag} => {
+                append_regular_instruction(context.cursor_mut(), RegularInstruction::TaggedValue(TaggedValue {
+                    tag: ShortTextData(tag.clone()),
+                    is_empty: true
+                }));
+                return Ok(()); // early return, don't append null value; TODO: assert that value is actually null?
+            },
+            // tagged value with actual value (e.g. #Example(null))
+            TypeDefinition::TaggedType {ty: Option::None, tag} => {
+                append_regular_instruction(context.cursor_mut(), RegularInstruction::TaggedValue(TaggedValue {
+                    tag: ShortTextData(tag.clone()),
+                    is_empty: false
+                }));
+            },
+            _ => append_type_cast(context, custom_type)?,
+        }
     }
     let _: () = match &value.inner {
         CoreValue::Type(_ty) => {
@@ -646,4 +665,49 @@ pub fn append_statements_preamble(
 
     // append termination flag
     append_u8(cursor, if is_terminated { 1 } else { 0 });
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::assert_regular_instructions_equal;
+    use super::*;
+
+    #[test]
+    fn compile_tagged_empty_value() {
+        let value = Value {
+            inner: CoreValue::Null,
+            custom_type: Some(TypeDefinition::TaggedType {ty: Some(Box::new(TypeDefinition::Core(CoreLibTypeId::Base(CoreLibBaseTypeId::Unit)))), tag: "Example".to_string()}),
+        };
+
+        let compiled = compile_value(&value).unwrap();
+        assert_regular_instructions_equal!(
+            &compiled,
+            [
+                RegularInstruction::TaggedValue(TaggedValue {
+                    tag: ShortTextData("Example".to_string()),
+                    is_empty: true
+                })
+            ]
+        );
+    }
+
+    #[test]
+    fn compile_tagged_value() {
+        let value = Value {
+            inner: CoreValue::Null,
+            custom_type: Some(TypeDefinition::TaggedType {ty: None, tag: "Example".to_string()}),
+        };
+
+        let compiled = compile_value(&value).unwrap();
+        assert_regular_instructions_equal!(
+            &compiled,
+            [
+                 RegularInstruction::TaggedValue(TaggedValue {
+                    tag: ShortTextData("Example".to_string()),
+                    is_empty: false,
+                }),
+                RegularInstruction::Null
+            ]
+        );
+    }
 }
