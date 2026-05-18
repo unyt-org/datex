@@ -118,6 +118,7 @@ impl TypeInstruction {
                     .map(TypeInstruction::SharedTypeReference)
             }
             TypeInstructionCode::TYPE_RANGE => Ok(TypeInstruction::Range),
+            TypeInstructionCode::TAGGED_TYPE => todo!(),
         }
     }
 

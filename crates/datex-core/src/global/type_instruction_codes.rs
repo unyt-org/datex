@@ -28,6 +28,7 @@ use strum::Display;
 pub enum TypeInstructionCode {
     SHARED_TYPE_REFERENCE,
     TYPE_WITH_IMPLS,
+    TAGGED_TYPE,
 
     TYPE_LIST,
     TYPE_RANGE,
@@ -65,7 +66,7 @@ impl From<&TypeDefinition> for TypeInstructionCode {
             TypeDefinition::Nested(_) => todo!(),
             TypeDefinition::Type => todo!(),
             TypeDefinition::Core(_) => todo!(),
-            TypeDefinition::TaggedType { .. } => todo!(),
+            TypeDefinition::TaggedType { .. } => TypeInstructionCode::TAGGED_TYPE,
         }
     }
 }
