@@ -180,12 +180,12 @@ pub fn datex_main_impl_with_config(
         #(#additional_attributes)*
         #(#attrs)*
         #vis #sig {
-            use #core_namespace::{runtime::{RuntimeRunner, RuntimeConfig}, serde::deserializer};
+            use #core_namespace::{runtime::{RuntimeRunner, RuntimeConfig, Runtime}, datex_proxy::DatexValueContainerProxyDeserialize};
 
             #setup
 
             let config = match (#config_bytes) {
-                Some(bytes) => deserializer::from_bytes(bytes).unwrap(),
+                Some(bytes) => DatexValueContainerProxyDeserialize::try_from_bytes(bytes, &Runtime::stub()).unwrap(),
                 None => RuntimeConfig::default(),
             };
 
