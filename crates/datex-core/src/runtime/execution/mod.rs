@@ -949,13 +949,15 @@ mod tests {
 
     #[test]
     fn conditional_true_branch() {
-        let result = execute_datex_script_debug_with_result("if (true) (42) else (43)");
+        let result =
+            execute_datex_script_debug_with_result("if (true) (42) else (43)");
         assert_eq!(result, Integer::from(42).into());
     }
 
     #[test]
     fn conditional_false_branch() {
-        let result = execute_datex_script_debug_with_result("if (false) (42) else (43)");
+        let result =
+            execute_datex_script_debug_with_result("if (false) (42) else (43)");
         assert_eq!(result, Integer::from(43).into());
     }
 
@@ -1011,5 +1013,20 @@ mod tests {
             "if (1 + 1 == 2) (100) else (200)",
         );
         assert_eq!(result, Integer::from(100).into());
+    }
+
+    #[test]
+    fn conditional_complex_var_assign() {
+        let script = "
+        var x = if (false) (
+             42
+        ) else (
+            13
+        );
+        x
+        ";
+        let result = execute_datex_script_debug_with_result(script);
+        println!("conditional_complex_var_assign result: {:?}", result);
+        assert_eq!(result, Integer::from(13).into());
     }
 }
