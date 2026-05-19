@@ -56,8 +56,6 @@ pub mod datex_proxy;
 pub mod dif;
 pub mod disassembler;
 pub mod dxb_parser;
-#[cfg(all(feature = "macro_utils", feature = "std", feature = "compiler"))]
-pub mod macro_utils;
 mod stub;
 pub mod task;
 pub mod traits;

@@ -4,7 +4,6 @@
     "rust-analyzer.cargo.features": [
         "decompiler",
         "std",
-        "macro_utils",
         "compiler"
     ],
     "rust-analyzer.procMacro.enable": true,

@@ -1,16 +1,11 @@
 use std::path::{Path, PathBuf};
 
-use crate::{
+use datex_core::{
     compiler::{CompileOptions, compile_template},
-    datex_proxy::{DatexValueContainerProxyInfallibleSerialize, DatexValueContainerProxySerialize},
+    datex_proxy::{DatexValueContainerProxyInfallibleSerialize},
     runtime::{
-        Runtime, RuntimeConfig, RuntimeRunner,
-        execution::{
-            ExecutionInput, ExecutionOptions, execute_dxb_sync,
-            execution_input::ExecutionCallerMetadata,
-        },
+        Runtime, RuntimeConfig,
     },
-    values::{core_values::map::Map, value, value_container::ValueContainer},
 };
 use proc_macro2::{Span, TokenStream};
 use quote::quote;
@@ -19,7 +14,7 @@ use syn::{
     Attribute, FnArg, Ident, ItemFn, LitStr, Pat, PatIdent, Token, Type,
     parse::{Parse, ParseStream},
 };
-use crate::datex_proxy::DatexValueContainerProxyDeserialize;
+use datex_core::datex_proxy::DatexValueContainerProxyDeserialize;
 
 #[derive(Debug)]
 pub struct ParsedAttributes {

@@ -150,13 +150,6 @@ datex-crypto-esp32 = { path = "../datex-crypto-esp32", version = "0.0.2", option
 datex-crypto-web = { path = "../datex-crypto-web", version = "0.0.2", optional = true }
 
 
-# macro_utils dependencies (optional)
-quote = { version = "1.0", optional = true }
-syn = { version = "2.0", features = ["full"], optional = true }
-proc-macro2 = { version = "1.0", features = [
-    "span-locations",
-], optional = true }
-
 # webrtc features (optional)
 webrtc = { version = "0.13.0", optional = true }
 
@@ -270,7 +263,6 @@ std = [
     "hex/std",
     "bytes/std",
     "ringmap/std",
-    "macro_utils",
 ]
 
 ### compiler-related features #################################################
@@ -291,11 +283,6 @@ disassembler = []
 lsp = ["dep:realhydroper-lsp", "compiler"]
 lsp_tokio = ["lsp"]
 lsp_wasm = ["lsp"]
-
-
-### Utils for creating macros #################################################
-
-macro_utils = ["dep:quote", "dep:syn", "dep:proc-macro2"]
 
 ### interface-related features ################################################
 
