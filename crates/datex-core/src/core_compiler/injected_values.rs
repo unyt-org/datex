@@ -10,7 +10,7 @@ use crate::{
         instruction_codes::InstructionCode,
         protocol_structures::{
             instruction_data::{
-                InstructionBlockData, PerformMove, RawLocalPointerAddress,
+                InstructionBlockData, PerformMove, RawSelfOwnedPointerAddress,
             },
             regular_instructions::RegularInstruction,
         },
@@ -125,7 +125,7 @@ pub fn compile_shared_value_preamble(
                     .map(|shared_container| {
                         (
                             0, // TODO: insert value or not?
-                            RawLocalPointerAddress {
+                            RawSelfOwnedPointerAddress {
                                 bytes: shared_container.address,
                             },
                         )

@@ -97,9 +97,7 @@ mod tests {
         let dif_cache = DIFSharedContainerCache::default();
         let integer_container = SharedContainer::Referenced(
             memory
-                .get_core_reference(CoreLibTypeId::Base(
-                    CoreLibBaseTypeId::Integer,
-                ))
+                .get_core_value_reference(CoreLibValueId::Print)
                 .clone(),
         );
 
@@ -107,7 +105,7 @@ mod tests {
             &mut DIFSharedContainerCache::default(),
         )
         .serialize_to_json(&integer_container);
-        assert_eq!(serialized, r#""'$030000""#);
+        assert_eq!(serialized, r#""'$e90300""#);
     }
 
     #[test]
@@ -139,33 +137,29 @@ mod tests {
             },
             serde_context::SerdeContext,
         },
-        utils::serde_serialize_seed::SerializeSeed,
     };
     use core::assert_matches;
+    use crate::libs::core::value_id::CoreLibValueId;
 
     #[test]
     fn deserialize_core_pointer_address_to_shared_container() {
-        let json = r#""'$030000""#; // integer
+        let json = r#""'$e90300""#; // print
 
         let memory = Memory::new();
         let dif_cache = &mut DIFSharedContainerCache::default();
 
-        let integer_container = SharedContainer::Referenced(
+        let print_container = SharedContainer::Referenced(
             memory
-                .get_core_reference(CoreLibTypeId::Base(
-                    CoreLibBaseTypeId::Integer,
-                ))
+                .get_core_value_reference(CoreLibValueId::Print)
                 .clone(),
         );
-        dif_cache.store_shared_container(integer_container.clone());
+        dif_cache.store_shared_container(print_container.clone());
 
-        let outer = SerdeContext::<SharedContainer>::new(
-            &mut DIFSharedContainerCache::default(),
-        )
+        let outer = SerdeContext::<SharedContainer>::new(dif_cache, )
         .try_deserialize_from_json(json)
         .unwrap();
 
-        assert_eq!(outer, integer_container);
+        assert_eq!(outer, print_container);
     }
 
     #[test]

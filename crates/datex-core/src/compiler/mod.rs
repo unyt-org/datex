@@ -37,7 +37,7 @@ use crate::{
     core_compiler::value_compiler::{
         append_boolean, append_decimal, append_encoded_integer,
         append_endpoint, append_float_as_i16, append_float_as_i32,
-        append_get_internal_ref, append_get_shared_ref, append_integer,
+        append_get_builtin_ref, append_get_shared_ref, append_integer,
         append_key_string, append_regular_instruction, append_shared_container,
         append_statements_preamble, append_text, append_typed_decimal,
         append_value,
@@ -72,6 +72,7 @@ use precompiler::{
 use crate::ast::expressions::RootPropertyAccess;
 use crate::global::protocol_structures::instruction_data::{ShortTextData, TaggedValue};
 use crate::parser::errors::SpannedParserError;
+use crate::shared_values::BuiltinPointerAddress;
 
 pub mod context;
 pub mod error;
@@ -1292,13 +1293,11 @@ fn compile_expression(
             }
             else {
                 match property_name.as_str() {
-                    "core" => append_get_internal_ref(
+                    "core" => append_get_builtin_ref(
                         compilation_context.cursor(),
-                        PointerAddress::from(CoreLibId::Value(
+                        &BuiltinPointerAddress::from(CoreLibId::Value(
                             CoreLibValueId::Core,
-                        ))
-                            .internal_bytes()
-                            .unwrap(),
+                        )),
                     ),
                     _ => {
                         // invalid slot name

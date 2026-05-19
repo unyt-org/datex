@@ -151,7 +151,7 @@ impl TypeInstruction {
                     string,
                     "(mutability: {:?}, address: {})",
                     TypeMetadata::from(&reference_data.metadata),
-                    PointerAddress::from(&reference_data.address)
+                    PointerAddress::from(reference_data.address.clone())
                 )
             }
             TypeInstruction::ImplType(data) => {

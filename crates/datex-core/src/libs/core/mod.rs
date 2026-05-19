@@ -186,34 +186,14 @@ impl Library for CoreLibrary {
 
 impl Memory {
     /// Helper function to get a core value directly from memory
-    pub fn get_core_reference(
+    pub fn get_core_value_reference(
         &self,
-        core_lib_id: impl Into<CoreLibId>,
+        core_lib_value_id: CoreLibValueId,
     ) -> &ReferencedSharedContainer {
-        let pointer_address = PointerAddress::from(core_lib_id.into());
+        let pointer_address = PointerAddress::from(core_lib_value_id);
         self.get_reference(&pointer_address).unwrap_or_else(|| {
             panic!("core reference not found in memory: {}", pointer_address)
         })
-    }
-
-    /// Helper function to get a [SharedContainerContainingNominalType] directly from memory
-    /// by [CoreLibTypeId]
-    pub fn get_core_type_reference(
-        &self,
-        id: impl Into<CoreLibTypeId>,
-    ) -> SharedContainerContainingNominalType {
-        unsafe {
-            SharedContainerContainingNominalType::new_unchecked(
-                SharedContainer::Referenced(
-                    self.get_core_reference(CoreLibId::Type(id.into())).clone(),
-                ),
-            )
-        }
-    }
-
-    /// Helper function to get a [Type::Nominal] directly from memory by [CoreLibTypeId]
-    pub fn get_core_type(&self, id: impl Into<CoreLibTypeId>) -> Type {
-        Type::Nominal(self.get_core_type_reference(id.into()))
     }
 }
 
@@ -233,7 +213,7 @@ mod tests {
         info!(
             "{}",
             memory
-                .get_core_reference(CoreLibValueId::Core)
+                .get_core_value_reference(CoreLibValueId::Core)
                 .value_container()
         );
     }
@@ -251,6 +231,9 @@ mod tests {
                     PointerAddress::from(variant_id)
                 );
             }
+        }
+        for base_id in CoreLibValueId::iter() {
+            println!("{:?}: {}", base_id, PointerAddress::from(base_id));
         }
     }
 

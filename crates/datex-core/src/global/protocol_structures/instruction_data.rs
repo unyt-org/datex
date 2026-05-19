@@ -32,6 +32,7 @@ use cfg_if::cfg_if;
 use core::{fmt::Display, ops::AddAssign};
 use modular_bitfield::{bitfield, prelude::B4};
 use serde::{Deserialize, Serialize};
+use crate::shared_values::{BuiltinPointerAddress, RemotePointerAddress};
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
 #[brw(little)]
@@ -335,8 +336,8 @@ impl TryFrom<PointerAddress> for RawRemotePointerAddress {
     type Error = PointerAddressConversionError;
     fn try_from(ptr: PointerAddress) -> Result<Self, Self::Error> {
         match ptr {
-            PointerAddress::External(ExternalPointerAddress::Remote(bytes)) => {
-                Ok(RawRemotePointerAddress { id: bytes })
+            PointerAddress::External(ExternalPointerAddress::Remote(addr)) => {
+                Ok(RawRemotePointerAddress::from(addr))
             }
             _ => Err(PointerAddressConversionError),
         }
@@ -345,7 +346,7 @@ impl TryFrom<PointerAddress> for RawRemotePointerAddress {
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
 #[brw(little)]
-pub struct RawLocalPointerAddress {
+pub struct RawSelfOwnedPointerAddress {
     pub bytes: [u8; 5],
 }
 
@@ -359,7 +360,7 @@ pub struct RawBuiltinPointerAddress {
 #[brw(little)]
 pub enum RawPointerAddress {
     #[brw(magic = 0u8)]
-    Local(RawLocalPointerAddress),
+    SelfOwned(RawSelfOwnedPointerAddress),
     #[brw(magic = 1u8)]
     Internal(RawBuiltinPointerAddress),
     #[brw(magic = 2u8)]
@@ -371,7 +372,7 @@ impl RawPointerAddress {
         match self {
             RawPointerAddress::Remote(_) => 26,
             RawPointerAddress::Internal(_) => 3,
-            RawPointerAddress::Local(_) => 5,
+            RawPointerAddress::SelfOwned(_) => 5,
         }
     }
     pub fn to_bytes(&self) -> Vec<u8> {
@@ -385,22 +386,59 @@ impl RawPointerAddress {
 impl From<PointerAddress> for RawPointerAddress {
     fn from(ptr: PointerAddress) -> Self {
         match ptr {
-            PointerAddress::External(ExternalPointerAddress::Remote(bytes)) => {
-                RawPointerAddress::Remote(RawRemotePointerAddress { id: bytes })
+            PointerAddress::External(ExternalPointerAddress::Remote(addr)) =>
+                RawPointerAddress::Remote(RawRemotePointerAddress::from(addr)),
+            PointerAddress::External(ExternalPointerAddress::Builtin(addr)) =>
+                RawPointerAddress::Internal(RawBuiltinPointerAddress::from(addr)),
+            PointerAddress::SelfOwned(SelfOwnedPointerAddress { address: addr }) => {
+                RawPointerAddress::SelfOwned(RawSelfOwnedPointerAddress { bytes: addr, })
             }
-            PointerAddress::External(ExternalPointerAddress::Builtin(
-                bytes,
-            )) => RawPointerAddress::Internal(RawBuiltinPointerAddress {
-                id: bytes,
-            }),
-            PointerAddress::SelfOwned(SelfOwnedPointerAddress { address }) => {
-                RawPointerAddress::Local(RawLocalPointerAddress {
-                    bytes: address,
+        }
+    }
+}
+
+impl From<RawPointerAddress> for PointerAddress {
+    fn from(raw: RawPointerAddress) -> Self {
+        match raw {
+            RawPointerAddress::Remote(addr) => PointerAddress::External(
+                ExternalPointerAddress::Remote(RemotePointerAddress::from(addr)),
+            ),
+            RawPointerAddress::Internal(addr) => PointerAddress::External(
+                ExternalPointerAddress::Builtin(BuiltinPointerAddress::from(addr)),
+            ),
+            RawPointerAddress::SelfOwned(local) => {
+                PointerAddress::SelfOwned(SelfOwnedPointerAddress {
+                    address: local.bytes,
                 })
             }
         }
     }
 }
+
+impl From<BuiltinPointerAddress> for RawBuiltinPointerAddress {
+    fn from(addr: BuiltinPointerAddress) -> Self {
+        RawBuiltinPointerAddress { id: addr.0 }
+    }
+}
+
+impl From<RemotePointerAddress> for RawRemotePointerAddress {
+    fn from(addr: RemotePointerAddress) -> Self {
+        RawRemotePointerAddress { id: addr.0 }
+    }
+}
+
+impl From<RawBuiltinPointerAddress> for BuiltinPointerAddress {
+    fn from(addr: RawBuiltinPointerAddress) -> Self {
+        BuiltinPointerAddress(addr.id)
+    }
+}
+
+impl From<RawRemotePointerAddress> for RemotePointerAddress {
+    fn from(addr: RawRemotePointerAddress) -> Self {
+        RemotePointerAddress(addr.id)
+    }
+}
+
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
 #[brw(little)]
@@ -414,7 +452,7 @@ pub struct GetOrCreateRemoteRefData {
 pub struct PerformMove {
     pub pointer_count: u32,
     #[br(count = pointer_count)]
-    pub pointers: Vec<(u8, RawLocalPointerAddress)>, // FIXME: bool instead of u8
+    pub pointers: Vec<(u8, RawSelfOwnedPointerAddress)>, // FIXME: bool instead of u8
 }
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
@@ -427,7 +465,7 @@ pub struct SharedRef {
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
 #[brw(little)]
 pub struct SharedRefWithValue {
-    pub address: RawLocalPointerAddress, // address of the caller
+    pub address: RawSelfOwnedPointerAddress, // address of the caller
     pub ref_mutability: ReferenceMutability,
     pub container_mutability: SharedContainerMutability,
 }
@@ -450,7 +488,7 @@ pub struct ModifyStackValue {
 pub struct Move {
     pub pointer_count: u32,
     #[br(count = pointer_count)]
-    pub address_mappings: Vec<(RawLocalPointerAddress, RawLocalPointerAddress)>,
+    pub address_mappings: Vec<(RawSelfOwnedPointerAddress, RawSelfOwnedPointerAddress)>,
 }
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]

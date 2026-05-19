@@ -241,28 +241,28 @@ pub fn ast_from_bytecode(
 
                         RegularInstruction::RequestRemoteSharedRef(raw_address) => {
                             DatexExpressionData::RequestSharedRef(RequestSharedRef {
-                                address: PointerAddress::from(&raw_address),
+                                address: PointerAddress::from(raw_address),
                                 mutability: ReferenceMutability::Immutable
                             })
                         }
 
                         RegularInstruction::RequestRemoteSharedRefMut(raw_address) => {
                             DatexExpressionData::RequestSharedRef(RequestSharedRef {
-                                address: PointerAddress::from(&raw_address),
+                                address: PointerAddress::from(raw_address),
                                 mutability: ReferenceMutability::Mutable
                             })
                         }
 
                         RegularInstruction::GetLocalSharedRef(raw_address) => {
                             DatexExpressionData::RequestSharedRef(RequestSharedRef {
-                                address: PointerAddress::from(&raw_address),
+                                address: PointerAddress::from(raw_address),
                                 mutability: ReferenceMutability::Immutable
                             })
                         }
 
                         RegularInstruction::GetInternalSharedRef(raw_address) => {
                             DatexExpressionData::RequestSharedRef(RequestSharedRef {
-                                address: PointerAddress::from(&raw_address),
+                                address: PointerAddress::from(raw_address),
                                 mutability: ReferenceMutability::Immutable
                             })
                         }

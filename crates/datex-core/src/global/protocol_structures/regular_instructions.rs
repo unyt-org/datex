@@ -11,7 +11,7 @@ use crate::{
                 Int8Data, Int16Data, Int32Data, Int64Data, Int128Data,
                 IntegerData, ListData, MapData, ModifyStackValue, Move,
                 PerformMove, PushToStackMultiple, RawBuiltinPointerAddress,
-                RawLocalPointerAddress, RawRemotePointerAddress,
+                RawSelfOwnedPointerAddress, RawRemotePointerAddress,
                 SetSharedContainerValue, SharedRef, SharedRefWithValue,
                 ShortListData, ShortMapData, ShortStatementsData,
                 ShortTextData, StackIndex, StatementsData, TextData, UInt8Data,
@@ -148,7 +148,7 @@ pub enum RegularInstruction {
     RequestRemoteSharedRef(RawRemotePointerAddress),
     // 'mut $ABCDE
     RequestRemoteSharedRefMut(RawRemotePointerAddress),
-    GetLocalSharedRef(RawLocalPointerAddress),
+    GetLocalSharedRef(RawSelfOwnedPointerAddress),
     GetInternalSharedRef(RawBuiltinPointerAddress),
 
     SharedRef(SharedRef),
@@ -751,7 +751,7 @@ impl RegularInstruction {
             }
 
             InstructionCode::GET_LOCAL_SHARED_REF => {
-                RawLocalPointerAddress::read(reader)
+                RawSelfOwnedPointerAddress::read(reader)
                     .map(RegularInstruction::GetLocalSharedRef)
             }
 
@@ -963,7 +963,7 @@ impl RegularInstruction {
                 write!(
                     string,
                     "[ref_mutability: {:?}, address: {}]",
-                    shared_ref.ref_mutability, PointerAddress::from(&shared_ref.address)
+                    shared_ref.ref_mutability, PointerAddress::from(shared_ref.address.clone())
                 )
             }
             RegularInstruction::SharedRefWithValue(shared_ref) => {
@@ -971,7 +971,7 @@ impl RegularInstruction {
                     string,
                     "[ref_mutability: {:?}, address: {}, container_mutability: {:?}]",
                     shared_ref.ref_mutability,
-                    PointerAddress::from(&shared_ref.address),
+                    PointerAddress::from(shared_ref.address.clone()),
                     shared_ref.container_mutability
                 )
             }

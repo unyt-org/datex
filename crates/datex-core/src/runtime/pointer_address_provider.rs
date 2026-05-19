@@ -7,6 +7,7 @@ use crate::{
     values::core_values::endpoint::Endpoint,
 };
 use binrw::io::Cursor;
+use crate::shared_values::RemotePointerAddress;
 
 #[derive(Default, Debug)]
 pub struct SelfOwnedPointerAddressProvider {
@@ -45,7 +46,7 @@ impl SelfOwnedPointerAddressProvider {
             let mut bytes = writer.into_inner();
             bytes.extend_from_slice(&raw_address.id);
             PointerAddress::External(ExternalPointerAddress::Remote(
-                <[u8; 26]>::try_from(bytes).unwrap(),
+                RemotePointerAddress(<[u8; 26]>::try_from(bytes).unwrap()),
             ))
         }
     }

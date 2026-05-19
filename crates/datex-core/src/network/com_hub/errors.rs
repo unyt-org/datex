@@ -71,42 +71,42 @@ impl Display for ComInterfaceCreateError {
             ComInterfaceCreateError::InterfaceCreationRequiresAsyncContext => {
                 write!(
                     f,
-                    "ComInterfaceCreateError: Interface creation requires async context"
+                    "Interface creation requires async context"
                 )
             }
             ComInterfaceCreateError::InterfaceTypeNotRegistered(ty) => {
                 write!(
                     f,
-                    "ComInterfaceCreateError: Interface type '{}' is not registered",
+                    "Interface type '{}' is not registered",
                     ty
                 )
             }
-            ComInterfaceCreateError::SetupDataParseError(e) => { 
-                write!(f, "ComInterfaceCreateError: Setup data parse error: {}", e.0)
+            ComInterfaceCreateError::SetupDataParseError(e) => {
+                write!(f, "Could not parse setup data: {}", e.0)
             }
             ComInterfaceCreateError::InvalidSetupData(details) => {
                 write!(
                     f,
-                    "ComInterfaceCreateError: Invalid setup data - {}",
+                    "Invalid setup data: {}",
                     details
                 )
             }
             ComInterfaceCreateError::InterfaceAddError(add_err) => {
                 write!(
                     f,
-                    "InterfaceCreationError: InterfaceAddError - {}",
+                    "Failed to add interface: {}",
                     add_err
                 )
             }
             ComInterfaceCreateError::ConnectionError(Some(details)) => {
                 write!(
                     f,
-                    "ComInterfaceCreateError: Connection error: {}",
+                    "Connection error: {}",
                     details
                 )
             }
             ComInterfaceCreateError::ConnectionError(None) => {
-                write!(f, "ComInterfaceCreateError: Connection error")
+                write!(f, "Connection error")
             }
         }
     }

@@ -602,7 +602,7 @@ pub fn inner_execution_loop(
                                 let val = interrupt_with_maybe_value!(
                                     interrupt_provider,
                                     match type_ref.address {
-                                        RawPointerAddress::Local(address) => {
+                                        RawPointerAddress::SelfOwned(address) => {
                                             ExecutionInterrupt::External(
                                                 ExternalExecutionInterrupt::GetReferenceToLocalPointer(
                                                     address,
@@ -1353,7 +1353,7 @@ pub fn inner_execution_loop(
                                                 Box::new(base_type),
                                                 impl_type_data
                                                     .impls
-                                                    .iter()
+                                                    .into_iter()
                                                     .map(PointerAddress::from)
                                                     .collect(),
                                             ),

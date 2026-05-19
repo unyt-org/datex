@@ -4,6 +4,7 @@ use crate::{
     shared_values::{ExternalPointerAddress, PointerAddress},
 };
 use core::{fmt::Display, ops::Deref, str::FromStr};
+use crate::shared_values::BuiltinPointerAddress;
 
 pub const TYPE_SPACE_BASE: u16 = 0;
 pub const TYPE_VARIANT_SPACE_BASE: u16 = 500;
@@ -99,24 +100,38 @@ impl<T: CoreLibIdTrait> From<T> for PointerAddress {
 }
 impl<T: CoreLibIdTrait> From<T> for ExternalPointerAddress {
     fn from(core_lib_id: T) -> Self {
-        let bytes: [u8; 2] =
-            (core_lib_id).into().to_le_bytes().try_into().unwrap();
-        ExternalPointerAddress::Builtin([bytes[0], bytes[1], 0])
+        ExternalPointerAddress::Builtin(BuiltinPointerAddress::from(core_lib_id))
     }
 }
+
+impl<T: CoreLibIdTrait> From<T> for BuiltinPointerAddress {
+    fn from(core_lib_id: T) -> Self {
+        let bytes: [u8; 2] =
+            core_lib_id.into().to_le_bytes().try_into().unwrap();
+        BuiltinPointerAddress([bytes[0], bytes[1], 0])
+    }
+}
+
 
 impl TryFrom<&ExternalPointerAddress> for CoreLibIdIndex {
     type Error = ();
     fn try_from(value: &ExternalPointerAddress) -> Result<Self, Self::Error> {
-        if let ExternalPointerAddress::Builtin(bytes) = value {
-            Ok(CoreLibIdIndex(u16::from_le_bytes(
-                bytes[0..2].try_into().unwrap(),
-            )))
+        if let ExternalPointerAddress::Builtin(address) = value {
+            Ok(address.into())
         } else {
             Err(())
         }
     }
 }
+
+impl From<&BuiltinPointerAddress> for CoreLibIdIndex {
+    fn from(value: &BuiltinPointerAddress) -> Self {
+        CoreLibIdIndex(u16::from_le_bytes(
+            value.0[0..2].try_into().unwrap(),
+        ))
+    }
+}
+
 
 impl TryFrom<&PointerAddress> for CoreLibIdIndex {
     type Error = ();

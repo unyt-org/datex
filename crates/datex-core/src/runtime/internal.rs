@@ -10,7 +10,7 @@ use crate::{
         },
         protocol_structures::{
             block_header::BlockHeader, encrypted_header::EncryptedHeader,
-            instruction_data::RawLocalPointerAddress,
+            instruction_data::RawSelfOwnedPointerAddress,
             routing_header::RoutingHeader,
         },
     },
@@ -521,14 +521,14 @@ impl RuntimeInternal {
     pub(crate) async fn request_pointer_move(
         self: Rc<RuntimeInternal>,
         from_endpoint: &Endpoint,
-        pointers: Vec<(SharedContainerMutability, RawLocalPointerAddress)>,
+        pointers: Vec<(SharedContainerMutability, RawSelfOwnedPointerAddress)>,
     ) -> Result<Vec<OwnedSharedContainer>, ExecutionError> {
         let pointer_mapping = pointers
             .into_iter()
             .map(|original| {
                 (
                     original,
-                    RawLocalPointerAddress {
+                    RawSelfOwnedPointerAddress {
                         bytes: self
                             .pointer_address_provider
                             .borrow_mut()
@@ -600,7 +600,7 @@ impl RuntimeInternal {
     pub(crate) fn handle_pointer_move_to_remote(
         self: Rc<RuntimeInternal>,
         from_endpoint: &Endpoint,
-        pointer_mapping: Vec<(RawLocalPointerAddress, RawLocalPointerAddress)>,
+        pointer_mapping: Vec<(RawSelfOwnedPointerAddress, RawSelfOwnedPointerAddress)>,
         memory: &Memory,
     ) -> Result<Vec<ValueContainer>, ExecutionError> {
         let mut pointer_borrow = self.moving_pointers.borrow_mut();

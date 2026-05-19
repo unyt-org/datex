@@ -100,6 +100,7 @@ mod tests {
         },
     };
     use core::assert_matches;
+    use crate::libs::core::value_id::CoreLibValueId;
 
     #[test]
     fn owned() {
@@ -135,29 +136,25 @@ mod tests {
         let integer_container =
             ValueContainer::Shared(SharedContainer::Referenced(
                 memory
-                    .get_core_reference(CoreLibTypeId::Base(
-                        CoreLibBaseTypeId::Integer,
-                    ))
+                    .get_core_value_reference(CoreLibValueId::Print)
                     .clone(),
             ));
         let serialized = SerdeContext::<ValueContainer>::new(&mut cache)
             .serialize_to_json(&integer_container);
 
-        assert_eq!(serialized, r#""'$030000""#);
+        assert_eq!(serialized, r#""'$e90300""#);
     }
 
     #[test]
     fn deserialize_nested_pointer_address() {
-        let json = r#"{"value": ["'$030000"]}"#; // [integer]
+        let json = r#"{"value": ["'$e90300"]}"#; // [print]
 
         let memory = Memory::new();
         let dif_cache = &mut DIFSharedContainerCache::default();
 
         let integer_container = SharedContainer::Referenced(
             memory
-                .get_core_reference(CoreLibTypeId::Base(
-                    CoreLibBaseTypeId::Integer,
-                ))
+                .get_core_value_reference(CoreLibValueId::Print)
                 .clone(),
         );
         dif_cache.store_shared_container(integer_container.clone());

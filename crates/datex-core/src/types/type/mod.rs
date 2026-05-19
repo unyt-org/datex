@@ -175,6 +175,16 @@ impl Type {
              TypeDefinition::Nested(Box::new(self))
         }
     }
+    
+    /// Tries to extract the core library type id if the type is a simple alias to a core library type with default local metadata.
+    pub fn try_as_core_lib_type(&self) -> Option<CoreLibTypeId> {
+        match self {
+            Type::Alias(TypeDefinitionWithMetadata {definition: TypeDefinition::Core(core_lib_type_id), metadata}) if metadata == &TypeMetadata::default() => {
+                Some(core_lib_type_id.clone())
+            }
+            _ => None,
+        }
+    }
 }
 
 impl<T: Into<TypeDefinitionWithMetadata>> From<T> for Type {

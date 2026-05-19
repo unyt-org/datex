@@ -4,7 +4,7 @@ use crate::{
     },
     global::{
         instruction_codes::InstructionCode,
-        protocol_structures::instruction_data::RawLocalPointerAddress,
+        protocol_structures::instruction_data::RawSelfOwnedPointerAddress,
     },
     prelude::*,
     utils::buffers::append_u32,
@@ -13,7 +13,7 @@ use binrw::io::Cursor;
 
 /// Compiles a MOVE instruction with a list of pointer mappings
 pub fn compile_request_move(
-    mappings: &[(RawLocalPointerAddress, RawLocalPointerAddress)],
+    mappings: &[(RawSelfOwnedPointerAddress, RawSelfOwnedPointerAddress)],
 ) -> Vec<u8> {
     let mut cursor =
         Cursor::new(Vec::with_capacity(1 + 5 + (mappings.len() * 2 * 5)));
@@ -46,18 +46,18 @@ mod tests {
     fn compile_request_move_default() {
         let mappings = &[
             (
-                RawLocalPointerAddress {
+                RawSelfOwnedPointerAddress {
                     bytes: [1, 1, 1, 1, 1],
                 },
-                RawLocalPointerAddress {
+                RawSelfOwnedPointerAddress {
                     bytes: [1, 2, 3, 4, 5],
                 },
             ),
             (
-                RawLocalPointerAddress {
+                RawSelfOwnedPointerAddress {
                     bytes: [2, 2, 2, 2, 2],
                 },
-                RawLocalPointerAddress {
+                RawSelfOwnedPointerAddress {
                     bytes: [1, 2, 3, 4, 6],
                 },
             ),

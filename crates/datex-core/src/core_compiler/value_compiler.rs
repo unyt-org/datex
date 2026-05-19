@@ -40,7 +40,9 @@ use crate::{
 };
 use crate::global::protocol_structures::instruction_data::{ShortTextData, TaggedValue};
 use crate::libs::core::type_id::CoreLibBaseTypeId;
+use crate::shared_values::BuiltinPointerAddress;
 use crate::types::type_definition::TypeDefinition;
+use crate::types::type_definition_with_metadata::{TypeDefinitionWithMetadata, TypeMetadata};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum SharedValueCompilationError {
@@ -244,8 +246,17 @@ pub fn append_value(
         }
     }
     let _: () = match &value.inner {
-        CoreValue::Type(_ty) => {
-            core::todo!("#439 Type value not supported in CompilationContext");
+        CoreValue::Type(ty) => {
+            match ty.try_as_core_lib_type() {
+                // special core types -> map directly to core pointer addresses
+                Some(core_lib_type_id) => {
+                    append_regular_instruction(
+                        context.cursor_mut(),
+                        RegularInstruction::GetInternalSharedRef(BuiltinPointerAddress::from(core_lib_type_id).into()),
+                    );
+                },
+                None => todo!("Non-core type definitions not yet supported in CompilationContext"),
+            }
         }
         CoreValue::Callable(_callable) => {
             core::todo!(
@@ -526,7 +537,7 @@ pub fn append_get_shared_ref(
 ) {
     match address {
         PointerAddress::External(ExternalPointerAddress::Builtin(id)) => {
-            append_get_internal_ref(context.cursor_mut(), id);
+            append_get_builtin_ref(context.cursor_mut(), id);
         }
         PointerAddress::SelfOwned(local_address) => {
             append_instruction_code_new(
@@ -550,17 +561,17 @@ pub fn append_get_shared_ref(
                     }
                 },
             );
-            context.cursor_mut().write_all(id).unwrap();
+            context.cursor_mut().write_all(&id.0).unwrap();
         }
     }
 }
 
-pub fn append_get_internal_ref(cursor: &mut ByteCursor, id: &[u8; 3]) {
+pub fn append_get_builtin_ref(cursor: &mut ByteCursor, addr: &BuiltinPointerAddress) {
     append_instruction_code_new(
         cursor,
         InstructionCode::GET_INTERNAL_SHARED_REF,
     );
-    cursor.write_all(id).unwrap();
+    cursor.write_all(&addr.0).unwrap();
 }
 
 pub fn append_key_value_pair(
@@ -670,6 +681,7 @@ pub fn append_statements_preamble(
 #[cfg(test)]
 mod tests {
     use crate::assert_regular_instructions_equal;
+    use crate::global::protocol_structures::instruction_data::RawBuiltinPointerAddress;
     use super::*;
 
     #[test]
@@ -708,6 +720,20 @@ mod tests {
                 }),
                 RegularInstruction::Null
             ]
+        );
+    }
+
+    #[test]
+    fn compile_core_type_value_integer() {
+        let value = Value {
+            inner: CoreValue::Type(TypeDefinition::Core(CoreLibTypeId::Base(CoreLibBaseTypeId::Integer)).into()),
+            custom_type: None,
+        };
+
+        let compiled = compile_value(&value).unwrap();
+        assert_regular_instructions_equal!(
+            &compiled,
+            [RegularInstruction::GetInternalSharedRef(RawBuiltinPointerAddress::from(BuiltinPointerAddress::from(CoreLibBaseTypeId::Integer)))]
         );
     }
 }

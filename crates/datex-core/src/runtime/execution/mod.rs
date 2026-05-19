@@ -15,7 +15,7 @@ use crate::{
 
 use crate::{
     global::protocol_structures::instruction_data::{
-        RawBuiltinPointerAddress, RawLocalPointerAddress,
+        RawBuiltinPointerAddress, RawSelfOwnedPointerAddress,
         RawRemotePointerAddress,
     },
     shared_values::{
@@ -232,7 +232,7 @@ fn get_builtin_shared_value_reference(
     address: RawBuiltinPointerAddress,
 ) -> Result<ReferencedSharedContainer, ExecutionError> {
     let pointer_address =
-        PointerAddress::External(ExternalPointerAddress::Builtin(address.id));
+        PointerAddress::External(ExternalPointerAddress::Builtin(address.into()));
     let memory = runtime.memory().borrow();
     if let Some(reference) = memory.get_reference(&pointer_address) {
         Ok(reference.clone())
@@ -243,7 +243,7 @@ fn get_builtin_shared_value_reference(
 
 fn get_local_pointer_value(
     runtime: &Runtime,
-    address: RawLocalPointerAddress,
+    address: RawSelfOwnedPointerAddress,
 ) -> Option<ReferencedSharedContainer> {
     // convert slot to InternalSlot enum
     runtime
