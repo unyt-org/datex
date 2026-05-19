@@ -203,7 +203,7 @@ impl RuntimeInternal {
                 match create_future {
                     Err(err) => {
                         error!(
-                            "Failed to create interface {interface_type}: {err:?}"
+                            "Failed to create interface \"{interface_type}\": {err}"
                         )
                     }
                     Ok((_, ready_receiver)) => {

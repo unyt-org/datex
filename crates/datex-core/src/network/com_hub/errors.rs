@@ -4,6 +4,7 @@ use crate::{
     network::com_interfaces::com_interface::error::ComInterfaceError,
     prelude::*,
 };
+use crate::datex_proxy::TryFromDatexValueError;
 
 #[derive(Debug, PartialEq)]
 pub enum InterfaceAddError {
@@ -31,9 +32,15 @@ pub enum ComInterfaceCreateError {
     ConnectionError(Option<Box<dyn Display>>),
     InterfaceCreationRequiresAsyncContext,
     InterfaceTypeNotRegistered(String),
-    SetupDataParseError,
+    SetupDataParseError(TryFromDatexValueError),
     InvalidSetupData(String),
     InterfaceAddError(InterfaceAddError),
+}
+
+impl Debug for ComInterfaceCreateError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "ComInterfaceCreateError({})", self)
+    }
 }
 
 impl From<InterfaceAddError> for ComInterfaceCreateError {
@@ -57,52 +64,6 @@ impl ComInterfaceCreateError {
     }
 }
 
-impl Debug for ComInterfaceCreateError {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        match self {
-            ComInterfaceCreateError::InterfaceCreationRequiresAsyncContext => {
-                write!(
-                    f,
-                    "ComInterfaceCreateError::InterfaceCreationRequiresAsyncContext"
-                )
-            }
-            ComInterfaceCreateError::InterfaceTypeNotRegistered(ty) => {
-                write!(
-                    f,
-                    "ComInterfaceCreateError::InterfaceTypeNotRegistered({})",
-                    ty
-                )
-            }
-            ComInterfaceCreateError::SetupDataParseError => {
-                write!(f, "ComInterfaceCreateError::SetupDataParseError")
-            }
-            ComInterfaceCreateError::InvalidSetupData(details) => {
-                write!(
-                    f,
-                    "ComInterfaceCreateError::InvalidSetupData({})",
-                    details
-                )
-            }
-            ComInterfaceCreateError::InterfaceAddError(add_err) => {
-                write!(
-                    f,
-                    "ComInterfaceCreateError::InterfaceAddError({:?})",
-                    add_err
-                )
-            }
-            ComInterfaceCreateError::ConnectionError(Some(details)) => {
-                write!(
-                    f,
-                    "ComInterfaceCreateError::ConnectionError({})",
-                    details
-                )
-            }
-            ComInterfaceCreateError::ConnectionError(None) => {
-                write!(f, "ComInterfaceCreateError::ConnectionError(None)")
-            }
-        }
-    }
-}
 
 impl Display for ComInterfaceCreateError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
@@ -120,8 +81,8 @@ impl Display for ComInterfaceCreateError {
                     ty
                 )
             }
-            ComInterfaceCreateError::SetupDataParseError => {
-                write!(f, "ComInterfaceCreateError: Setup data parse error")
+            ComInterfaceCreateError::SetupDataParseError(e) => { 
+                write!(f, "ComInterfaceCreateError: Setup data parse error: {}", e.0)
             }
             ComInterfaceCreateError::InvalidSetupData(details) => {
                 write!(

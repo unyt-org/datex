@@ -447,7 +447,7 @@ where
         setup_data: Value,
     ) -> Result<ComInterfaceConfiguration, ComInterfaceCreateError> {
         let setup_data = Self::try_from_value(Value::from(setup_data))
-            .map_err(|_| ComInterfaceCreateError::SetupDataParseError)?;
+            .map_err(ComInterfaceCreateError::SetupDataParseError)?;
         Self::create_interface(setup_data)
     }
 
@@ -504,7 +504,7 @@ where
     fn factory(setup_data: Value) -> ComInterfaceAsyncFactoryResult {
         Box::pin(async move {
             let setup_data = Self::try_from_value(Value::from(setup_data))
-                .map_err(|_| ComInterfaceCreateError::SetupDataParseError)?;
+                .map_err(ComInterfaceCreateError::SetupDataParseError)?;
             Self::create_interface(setup_data).await
         })
     }
