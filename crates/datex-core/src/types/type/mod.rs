@@ -455,13 +455,17 @@ mod tests {
         runtime::memory::Memory,
         types::{
             literal_type_definition::LiteralTypeDefinition, r#type::Type,
-            type_definition::TypeDefinition, type_match::TypeMatch,
+            type_definition::TypeDefinition,
+            type_definition_with_metadata::TypeDefinitionWithMetadata,
+            type_match::TypeMatch,
         },
         values::{
+            core_value::CoreValue,
             core_values::{
                 integer::{Integer, typed_integer::TypedInteger},
                 text::Text,
             },
+            value::Value,
             value_container::ValueContainer,
         },
     };
@@ -495,6 +499,8 @@ mod tests {
 
     #[test]
     fn match_union() {
+        // 1 matches integer
+
         // 1 matches (1 | 2 | 3)
         assert!(
             Type::from(TypeDefinition::Union(vec![
@@ -508,8 +514,6 @@ mod tests {
 
     #[test]
     fn type_matches_union_type() {
-        let memory = &Memory::new();
-
         // 1 matches (1 | 2 | 3)
         assert!(
             Type::from(LiteralTypeDefinition::Integer(Integer::from(1)))

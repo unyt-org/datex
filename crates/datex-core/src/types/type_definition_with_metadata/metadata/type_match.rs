@@ -45,3 +45,13 @@ impl TypeMatch for TypeMetadata {
         unimplemented!()
     }
 }
+
+// type y = [text, integer];
+// var x = [text, integer];
+// x matches y --> false
+// ['xxx', 3] matches y --> true
+// y matches x --> false
+// integer/u8 matches integer --> true
+// 10u8 matches integer/u8 --> true
+// 10u8 matches integer --> ?
+// 10u8 matches 10u8 --> true

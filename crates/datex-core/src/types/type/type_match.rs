@@ -28,7 +28,10 @@ impl TypeMatch for Type {
         }
     }
 
-    fn matched_by_value(&self, _value: &ValueContainer) -> bool {
-        todo!()
+    fn matched_by_value(&self, value: &ValueContainer) -> bool {
+        match self {
+            Type::Alias(definition) => definition.matched_by_value(value),
+            Type::Nominal(definition) => definition.matched_by_value(value),
+        }
     }
 }

@@ -15,7 +15,7 @@ impl TypeMatch for TypeDefinitionWithMetadata {
         false
     }
 
-    fn matched_by_value(&self, _value: &ValueContainer) -> bool {
-        todo!()
+    fn matched_by_value(&self, value: &ValueContainer) -> bool {
+        self.definition.matched_by_value(value)
     }
 }
