@@ -13,10 +13,10 @@ use crate::{
             Conditional, CreateShared, DatexExpression, DatexExpressionData,
             GenericInstantiation, GetRef, GetSharedRef, List, Map,
             PropertyAccess, PropertyAssignment, RangeDeclaration,
-            RemoteExecution, RequestSharedRef, StackAssignment,
-            Statements, TypeDeclaration, UnaryOperation, Unbox,
-            UnboxAssignment, ValueAccessType, VariableAccess,
-            VariableAssignment, VariableDeclaration, VariantAccess,
+            RemoteExecution, RequestSharedRef, StackAssignment, Statements,
+            TypeDeclaration, UnaryOperation, Unbox, UnboxAssignment,
+            ValueAccessType, VariableAccess, VariableAssignment,
+            VariableDeclaration, VariantAccess,
         },
         type_expressions::{
             CallableTypeExpression, FixedSizeList, GenericAccess, Intersection,
@@ -25,6 +25,7 @@ use crate::{
         },
     },
     compiler::precompiler::precompiled_ast::{AstMetadata, RichAst},
+    global::protocol_structures::instruction_data::StackIndex,
     libs::core::{
         core_lib_id::{CoreLibId, CoreLibIdIndex},
         type_id::{CoreLibBaseTypeId, CoreLibTypeId, CoreLibVariantTypeId},
@@ -68,7 +69,6 @@ use crate::{
     },
 };
 use core::{cell::RefCell, ops::Range, panic};
-use crate::global::protocol_structures::instruction_data::StackIndex;
 
 pub mod error;
 pub mod options;
@@ -1568,7 +1568,7 @@ mod tests {
 
     #[test]
     fn variant_access() {
-        let memory = &Memory::new();
+        let memory = &Memory::default();
 
         // variant access on type (inline)
         let src = r#"
@@ -1775,7 +1775,7 @@ mod tests {
 
     #[test]
     fn nominal_type_declaration() {
-        let memory = &Memory::new();
+        let memory = &Memory::default();
         let src = r#"
         type A = integer;
         "#;
@@ -1806,7 +1806,7 @@ mod tests {
 
     #[test]
     fn structural_type_declaration() {
-        let memory = &Memory::new();
+        let memory = &Memory::default();
         let src = r#"
         typealias A = integer;
         "#;
@@ -1927,7 +1927,7 @@ mod tests {
 
     #[test]
     fn statements_expression() {
-        let memory = &Memory::new();
+        let memory = &Memory::default();
         let inferred = infer_type_from_script_ignore_errors("10; 20; 30");
         assert_eq!(
             inferred,
@@ -2243,7 +2243,7 @@ mod tests {
     // TODO #451 resolve intersection and union types properly
     // by merging the member types if one is base (one level higher) than the other
     fn infer_intersection_type_expression() {
-        let memory = &Memory::new();
+        let memory = &Memory::default();
 
         let inferred_type =
             infer_type_from_script_ignore_errors("type X = integer/u8 & 42");
@@ -2260,7 +2260,7 @@ mod tests {
 
     #[test]
     fn infer_union_type_expression() {
-        let memory = &Memory::new();
+        let memory = &Memory::default();
 
         let inferred_type = infer_type_from_script_ignore_errors(
             "type X = integer/u8 | decimal",
@@ -2287,7 +2287,7 @@ mod tests {
 
     #[test]
     fn infer_struct_type_expression() {
-        let memory = &Memory::new();
+        let memory = &Memory::default();
 
         let inferred_type = infer_type_from_script_ignore_errors(
             "type X = { a: integer/u8, b: decimal }",
@@ -2349,7 +2349,7 @@ mod tests {
 
     #[test]
     fn infer_binary_expression_types() {
-        let memory = &Memory::new();
+        let memory = &Memory::default();
         let integer = Type::core(CoreLibBaseTypeId::Integer);
         let decimal = Type::core(CoreLibBaseTypeId::Decimal);
 

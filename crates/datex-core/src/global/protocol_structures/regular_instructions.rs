@@ -11,15 +11,16 @@ use crate::{
                 Int8Data, Int16Data, Int32Data, Int64Data, Int128Data,
                 IntegerData, ListData, MapData, ModifyStackValue, Move,
                 PerformMove, PushToStackMultiple, RawBuiltinPointerAddress,
-                RawSelfOwnedPointerAddress, RawRemotePointerAddress,
+                RawRemotePointerAddress, RawSelfOwnedPointerAddress,
                 SetSharedContainerValue, SharedRef, SharedRefWithValue,
                 ShortListData, ShortMapData, ShortStatementsData,
-                ShortTextData, StackIndex, StatementsData, TextData, UInt8Data,
-                UInt16Data, UInt32Data, UInt64Data, UInt128Data,
-                UnboundedStatementsData,
+                ShortTextData, StackIndex, StatementsData, TaggedValue,
+                TextData, UInt8Data, UInt16Data, UInt32Data, UInt64Data,
+                UInt128Data, UnboundedStatementsData,
             },
             instructions::NextExpectedInstructions,
         },
+        root_properties::RootProperty,
     },
     prelude::*,
     shared_values::PointerAddress,
@@ -34,8 +35,6 @@ use binrw::{
 };
 use core::fmt::{Display, Write as FmtWrite};
 use serde::{Serialize, Serializer, ser::SerializeTuple};
-use crate::global::protocol_structures::instruction_data::TaggedValue;
-use crate::global::root_properties::RootProperty;
 
 #[derive(Clone, Debug, PartialEq, BinWrite)]
 #[brw(little)]
@@ -149,7 +148,7 @@ pub enum RegularInstruction {
     // 'mut $ABCDE
     RequestRemoteSharedRefMut(RawRemotePointerAddress),
     GetLocalSharedRef(RawSelfOwnedPointerAddress),
-    GetInternalSharedRef(RawBuiltinPointerAddress),
+    GetBuiltinSharedRef(RawBuiltinPointerAddress),
 
     SharedRef(SharedRef),
     SharedRefWithValue(SharedRefWithValue), // shared ref with current value (only if caller owns the pointer)
@@ -295,7 +294,7 @@ impl From<&RegularInstruction> for InstructionCode {
             RegularInstruction::GetLocalSharedRef(_) => {
                 InstructionCode::GET_LOCAL_SHARED_REF
             }
-            RegularInstruction::GetInternalSharedRef(_) => {
+            RegularInstruction::GetBuiltinSharedRef(_) => {
                 InstructionCode::GET_INTERNAL_SHARED_REF
             }
             RegularInstruction::SharedRef(_) => InstructionCode::SHARED_REF,
@@ -476,14 +475,15 @@ impl RegularInstruction {
             }
 
             RegularInstruction::Range => NextExpectedInstructions::Regular(2),
-            RegularInstruction::TaggedValue(TaggedValue {is_empty, ..}) => {
+            RegularInstruction::TaggedValue(TaggedValue {
+                is_empty, ..
+            }) => {
                 if *is_empty {
                     NextExpectedInstructions::None
-                }
-                else {
+                } else {
                     NextExpectedInstructions::Regular(1)
                 }
-            },
+            }
 
             RegularInstruction::SharedRefWithValue(_) => {
                 NextExpectedInstructions::Regular(1)
@@ -611,8 +611,9 @@ impl RegularInstruction {
                     .map(RegularInstruction::UnboundedStatementsEnd)
             }
 
-            InstructionCode::TAGGED_VALUE => TaggedValue::read(reader)
-                .map(RegularInstruction::TaggedValue),
+            InstructionCode::TAGGED_VALUE => {
+                TaggedValue::read(reader).map(RegularInstruction::TaggedValue)
+            }
 
             InstructionCode::APPLY_ZERO => {
                 Ok(RegularInstruction::Apply(ApplyData { arg_count: 0 }))
@@ -757,7 +758,7 @@ impl RegularInstruction {
 
             InstructionCode::GET_INTERNAL_SHARED_REF => {
                 RawBuiltinPointerAddress::read(reader)
-                    .map(RegularInstruction::GetInternalSharedRef)
+                    .map(RegularInstruction::GetBuiltinSharedRef)
             }
 
             InstructionCode::PERFORM_MOVE => {
@@ -952,7 +953,7 @@ impl RegularInstruction {
                     hex::encode(address.bytes)
                 )
             }
-            RegularInstruction::GetInternalSharedRef(address) => {
+            RegularInstruction::GetBuiltinSharedRef(address) => {
                 write!(
                     string,
                     "[internal_id: {}]",

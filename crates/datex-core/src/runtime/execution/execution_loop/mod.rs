@@ -23,14 +23,14 @@ use crate::{
                 ApplyData, DecimalData, Float32Data, Float64Data,
                 FloatAsInt16Data, FloatAsInt32Data, IntegerData,
                 ModifyStackValue, RawPointerAddress, ShortTextData, StackIndex,
-                TextData, UnboundedStatementsData,
+                TaggedValue, TextData, UnboundedStatementsData,
             },
             instructions::{Instruction, NestedInstructionResolutionStrategy},
             regular_instructions::RegularInstruction,
             type_instructions::TypeInstruction,
         },
     },
-    libs::core::type_id::CoreLibBaseTypeId,
+    libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
     prelude::*,
     runtime::execution::{
         ExecutionError, InvalidProgramError,
@@ -87,8 +87,6 @@ use crate::{
 };
 use alloc::rc::Rc;
 use core::cell::RefCell;
-use crate::global::protocol_structures::instruction_data::TaggedValue;
-use crate::libs::core::type_id::CoreLibTypeId;
 
 #[derive(Debug)]
 enum CollectedExecutionResult {
@@ -409,7 +407,7 @@ pub fn inner_execution_loop(
                             }
 
 
-                            RegularInstruction::GetInternalSharedRef(address) => {
+                            RegularInstruction::GetBuiltinSharedRef(address) => {
                                 Some(interrupt_with_value!(
                                     interrupt_provider,
                                     ExecutionInterrupt::External(
@@ -602,7 +600,9 @@ pub fn inner_execution_loop(
                                 let val = interrupt_with_maybe_value!(
                                     interrupt_provider,
                                     match type_ref.address {
-                                        RawPointerAddress::SelfOwned(address) => {
+                                        RawPointerAddress::SelfOwned(
+                                            address,
+                                        ) => {
                                             ExecutionInterrupt::External(
                                                 ExternalExecutionInterrupt::GetReferenceToLocalPointer(
                                                     address,

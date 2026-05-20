@@ -39,7 +39,7 @@ impl RuntimeRunner {
 
         let (com_hub, com_hub_task_future) =
             ComHub::create(endpoint.clone(), incoming_sections_sender);
-        let memory = RefCell::new(Memory::new());
+        let memory = RefCell::new(Memory::default());
         let pointer_address_provider = Rc::new(RefCell::new(
             SelfOwnedPointerAddressProvider::new(endpoint.clone()),
         ));

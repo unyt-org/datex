@@ -260,7 +260,7 @@ pub fn ast_from_bytecode(
                             })
                         }
 
-                        RegularInstruction::GetInternalSharedRef(raw_address) => {
+                        RegularInstruction::GetBuiltinSharedRef(raw_address) => {
                             DatexExpressionData::RequestSharedRef(RequestSharedRef {
                                 address: PointerAddress::from(raw_address),
                                 mutability: ReferenceMutability::Immutable

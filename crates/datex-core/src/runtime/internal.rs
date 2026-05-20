@@ -175,7 +175,7 @@ impl RuntimeInternal {
         let (sender, receiver) = create_unbounded_channel();
         RuntimeInternal::new(
             Endpoint::default(),
-            RefCell::new(Memory::new()),
+            RefCell::new(Memory::default()),
             Rc::new(RefCell::new(SelfOwnedPointerAddressProvider::new(
                 Endpoint::default(),
             ))),

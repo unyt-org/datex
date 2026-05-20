@@ -84,7 +84,10 @@ mod tests {
     use super::*;
     use crate::{
         dif::cache::DIFSharedContainerCache,
-        libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
+        libs::core::{
+            type_id::{CoreLibBaseTypeId, CoreLibTypeId},
+            value_id::CoreLibValueId,
+        },
         prelude::*,
         runtime::{
             memory::Memory,
@@ -100,7 +103,6 @@ mod tests {
         },
     };
     use core::assert_matches;
-    use crate::libs::core::value_id::CoreLibValueId;
 
     #[test]
     fn owned() {
@@ -130,7 +132,7 @@ mod tests {
 
     #[test]
     fn referenced() {
-        let memory = Memory::new();
+        let memory = Memory::default();
         let mut cache = DIFSharedContainerCache::default();
 
         let integer_container =
@@ -149,7 +151,7 @@ mod tests {
     fn deserialize_nested_pointer_address() {
         let json = r#"{"value": ["'$e90300"]}"#; // [print]
 
-        let memory = Memory::new();
+        let memory = Memory::default();
         let dif_cache = &mut DIFSharedContainerCache::default();
 
         let integer_container = SharedContainer::Referenced(

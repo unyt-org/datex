@@ -23,26 +23,27 @@ use crate::{
         instruction_data::{
             Float32Data, Float64Data, Int8Data, Int16Data, Int32Data,
             Int64Data, Int128Data, IntegerData, ListData, MapData,
-            RawPointerAddress, UInt8Data, UInt16Data, UInt32Data, UInt64Data,
-            UInt128Data,
+            RawPointerAddress, ShortTextData, TaggedValue, UInt8Data,
+            UInt16Data, UInt32Data, UInt64Data, UInt128Data,
         },
         instructions::Instruction,
         regular_instructions::RegularInstruction,
     },
-    libs::core::type_id::CoreLibTypeId,
+    libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
     prelude::*,
     runtime::execution::ExecutionError,
     shared_values::{
-        ExternalPointerAddress, OwnedSharedContainer, PointerAddress,
-        ReferenceMutability, SharedContainer,
+        BuiltinPointerAddress, ExternalPointerAddress, OwnedSharedContainer,
+        PointerAddress, ReferenceMutability, SharedContainer,
     },
-    types::r#type::Type,
+    types::{
+        r#type::Type,
+        type_definition::TypeDefinition,
+        type_definition_with_metadata::{
+            TypeDefinitionWithMetadata, TypeMetadata,
+        },
+    },
 };
-use crate::global::protocol_structures::instruction_data::{ShortTextData, TaggedValue};
-use crate::libs::core::type_id::CoreLibBaseTypeId;
-use crate::shared_values::BuiltinPointerAddress;
-use crate::types::type_definition::TypeDefinition;
-use crate::types::type_definition_with_metadata::{TypeDefinitionWithMetadata, TypeMetadata};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum SharedValueCompilationError {
@@ -228,20 +229,35 @@ pub fn append_value(
         // special case: tagged value with default type, no type cast needed
         match custom_type {
             // unit tagged value (e.g. #Example)
-            TypeDefinition::TaggedType {ty: Some(box TypeDefinition::Core(CoreLibTypeId::Base(CoreLibBaseTypeId::Unit))), tag} => {
-                append_regular_instruction(context.cursor_mut(), RegularInstruction::TaggedValue(TaggedValue {
-                    tag: ShortTextData(tag.clone()),
-                    is_empty: true
-                }));
+            TypeDefinition::TaggedType {
+                ty:
+                    Some(box TypeDefinition::Core(CoreLibTypeId::Base(
+                        CoreLibBaseTypeId::Unit,
+                    ))),
+                tag,
+            } => {
+                append_regular_instruction(
+                    context.cursor_mut(),
+                    RegularInstruction::TaggedValue(TaggedValue {
+                        tag: ShortTextData(tag.clone()),
+                        is_empty: true,
+                    }),
+                );
                 return Ok(()); // early return, don't append null value; TODO: assert that value is actually null?
-            },
+            }
             // tagged value with actual value (e.g. #Example(null))
-            TypeDefinition::TaggedType {ty: Option::None, tag} => {
-                append_regular_instruction(context.cursor_mut(), RegularInstruction::TaggedValue(TaggedValue {
-                    tag: ShortTextData(tag.clone()),
-                    is_empty: false
-                }));
-            },
+            TypeDefinition::TaggedType {
+                ty: Option::None,
+                tag,
+            } => {
+                append_regular_instruction(
+                    context.cursor_mut(),
+                    RegularInstruction::TaggedValue(TaggedValue {
+                        tag: ShortTextData(tag.clone()),
+                        is_empty: false,
+                    }),
+                );
+            }
             _ => append_type_cast(context, custom_type)?,
         }
     }
@@ -252,10 +268,15 @@ pub fn append_value(
                 Some(core_lib_type_id) => {
                     append_regular_instruction(
                         context.cursor_mut(),
-                        RegularInstruction::GetInternalSharedRef(BuiltinPointerAddress::from(core_lib_type_id).into()),
+                        RegularInstruction::GetBuiltinSharedRef(
+                            BuiltinPointerAddress::from(core_lib_type_id)
+                                .into(),
+                        ),
                     );
-                },
-                None => todo!("Non-core type definitions not yet supported in CompilationContext"),
+                }
+                None => todo!(
+                    "Non-core type definitions not yet supported in CompilationContext"
+                ),
             }
         }
         CoreValue::Callable(_callable) => {
@@ -566,7 +587,10 @@ pub fn append_get_shared_ref(
     }
 }
 
-pub fn append_get_builtin_ref(cursor: &mut ByteCursor, addr: &BuiltinPointerAddress) {
+pub fn append_get_builtin_ref(
+    cursor: &mut ByteCursor,
+    addr: &BuiltinPointerAddress,
+) {
     append_instruction_code_new(
         cursor,
         InstructionCode::GET_INTERNAL_SHARED_REF,
@@ -680,26 +704,31 @@ pub fn append_statements_preamble(
 
 #[cfg(test)]
 mod tests {
-    use crate::assert_regular_instructions_equal;
-    use crate::global::protocol_structures::instruction_data::RawBuiltinPointerAddress;
     use super::*;
+    use crate::{
+        assert_regular_instructions_equal,
+        global::protocol_structures::instruction_data::RawBuiltinPointerAddress,
+    };
 
     #[test]
     fn compile_tagged_empty_value() {
         let value = Value {
             inner: CoreValue::Null,
-            custom_type: Some(TypeDefinition::TaggedType {ty: Some(Box::new(TypeDefinition::Core(CoreLibTypeId::Base(CoreLibBaseTypeId::Unit)))), tag: "Example".to_string()}),
+            custom_type: Some(TypeDefinition::TaggedType {
+                ty: Some(Box::new(TypeDefinition::Core(CoreLibTypeId::Base(
+                    CoreLibBaseTypeId::Unit,
+                )))),
+                tag: "Example".to_string(),
+            }),
         };
 
         let compiled = compile_value(&value).unwrap();
         assert_regular_instructions_equal!(
             &compiled,
-            [
-                RegularInstruction::TaggedValue(TaggedValue {
-                    tag: ShortTextData("Example".to_string()),
-                    is_empty: true
-                })
-            ]
+            [RegularInstruction::TaggedValue(TaggedValue {
+                tag: ShortTextData("Example".to_string()),
+                is_empty: true
+            })]
         );
     }
 
@@ -707,14 +736,17 @@ mod tests {
     fn compile_tagged_value() {
         let value = Value {
             inner: CoreValue::Null,
-            custom_type: Some(TypeDefinition::TaggedType {ty: None, tag: "Example".to_string()}),
+            custom_type: Some(TypeDefinition::TaggedType {
+                ty: None,
+                tag: "Example".to_string(),
+            }),
         };
 
         let compiled = compile_value(&value).unwrap();
         assert_regular_instructions_equal!(
             &compiled,
             [
-                 RegularInstruction::TaggedValue(TaggedValue {
+                RegularInstruction::TaggedValue(TaggedValue {
                     tag: ShortTextData("Example".to_string()),
                     is_empty: false,
                 }),
@@ -726,14 +758,23 @@ mod tests {
     #[test]
     fn compile_core_type_value_integer() {
         let value = Value {
-            inner: CoreValue::Type(TypeDefinition::Core(CoreLibTypeId::Base(CoreLibBaseTypeId::Integer)).into()),
+            inner: CoreValue::Type(
+                TypeDefinition::Core(CoreLibTypeId::Base(
+                    CoreLibBaseTypeId::Integer,
+                ))
+                .into(),
+            ),
             custom_type: None,
         };
 
         let compiled = compile_value(&value).unwrap();
         assert_regular_instructions_equal!(
             &compiled,
-            [RegularInstruction::GetInternalSharedRef(RawBuiltinPointerAddress::from(BuiltinPointerAddress::from(CoreLibBaseTypeId::Integer)))]
+            [RegularInstruction::GetBuiltinSharedRef(
+                RawBuiltinPointerAddress::from(BuiltinPointerAddress::from(
+                    CoreLibBaseTypeId::Integer
+                ))
+            )]
         );
     }
 }

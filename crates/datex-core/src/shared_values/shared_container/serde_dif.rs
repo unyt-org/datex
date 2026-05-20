@@ -74,7 +74,6 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, SharedContainer> {
 
 #[cfg(test)]
 mod tests {
-    use serde::de::DeserializeSeed;
 
     use crate::{
         libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
@@ -84,7 +83,8 @@ mod tests {
             pointer_address_provider::SelfOwnedPointerAddressProvider,
         },
         shared_values::{
-            PointerAddress, ReferenceMutability, SharedContainer,
+            OwnedSharedContainer, PointerAddress, ReferenceMutability,
+            ReferencedSharedContainer, SharedContainer,
             SharedContainerMutability, SharedContainerOwnership,
             errors::UnexpectedSharedContainerOwnershipError,
         },
@@ -93,19 +93,22 @@ mod tests {
 
     #[test]
     fn serialize_shared_container_reference() {
-        let memory = Memory::new();
-        let dif_cache = DIFSharedContainerCache::default();
-        let integer_container = SharedContainer::Referenced(
-            memory
-                .get_core_value_reference(CoreLibValueId::Print)
-                .clone(),
-        );
+        let owned_shared_container =
+            OwnedSharedContainer::new_with_inferred_allowed_type(
+                ValueContainer::from(42),
+                SharedContainerMutability::Immutable,
+                &mut SelfOwnedPointerAddressProvider::default(),
+            )
+            .derive_immutable_reference();
+        let address = owned_shared_container.pointer_address();
 
         let serialized = SerdeContext::<SharedContainer>::new(
             &mut DIFSharedContainerCache::default(),
         )
-        .serialize_to_json(&integer_container);
-        assert_eq!(serialized, r#""'$e90300""#);
+        .serialize_to_json(&SharedContainer::Referenced(
+            owned_shared_container,
+        ));
+        assert_eq!(serialized, format!(r#""'{}""#, address));
     }
 
     #[test]
@@ -129,37 +132,44 @@ mod tests {
         );
     }
 
-    use crate::{
-        dif::{
-            cache::{
-                CacheValueRetrievalError, DIFSharedContainerCache,
-                ValueNotFoundInCacheError,
-            },
-            serde_context::SerdeContext,
+    use crate::dif::{
+        cache::{
+            CacheValueRetrievalError, DIFSharedContainerCache,
+            ValueNotFoundInCacheError,
         },
+        serde_context::SerdeContext,
     };
     use core::assert_matches;
-    use crate::libs::core::value_id::CoreLibValueId;
 
     #[test]
-    fn deserialize_core_pointer_address_to_shared_container() {
-        let json = r#""'$e90300""#; // print
-
-        let memory = Memory::new();
+    fn deserialize_pointer_address_to_shared_container() {
         let dif_cache = &mut DIFSharedContainerCache::default();
 
-        let print_container = SharedContainer::Referenced(
-            memory
-                .get_core_value_reference(CoreLibValueId::Print)
-                .clone(),
-        );
-        dif_cache.store_shared_container(print_container.clone());
+        let owned_shared_container =
+            OwnedSharedContainer::new_with_inferred_allowed_type(
+                ValueContainer::from(42),
+                SharedContainerMutability::Immutable,
+                &mut SelfOwnedPointerAddressProvider::default(),
+            );
 
-        let outer = SerdeContext::<SharedContainer>::new(dif_cache, )
-        .try_deserialize_from_json(json)
-        .unwrap();
+        dif_cache.store_shared_container(SharedContainer::Referenced(
+            owned_shared_container.derive_immutable_reference(),
+        ));
 
-        assert_eq!(outer, print_container);
+        let outer = SerdeContext::<SharedContainer>::new(dif_cache)
+            .try_deserialize_from_json(
+                format!(r#""'{}""#, *owned_shared_container.pointer_address())
+                    .as_str(),
+            )
+            .unwrap();
+        if let SharedContainer::Owned(owned) = &outer {
+            assert_eq!(
+                *owned.pointer_address(),
+                *owned_shared_container.pointer_address()
+            );
+        } else {
+            panic!("Expected owned shared container");
+        }
     }
 
     #[test]

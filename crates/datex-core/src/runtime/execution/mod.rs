@@ -15,8 +15,8 @@ use crate::{
 
 use crate::{
     global::protocol_structures::instruction_data::{
-        RawBuiltinPointerAddress, RawSelfOwnedPointerAddress,
-        RawRemotePointerAddress,
+        RawBuiltinPointerAddress, RawRemotePointerAddress,
+        RawSelfOwnedPointerAddress,
     },
     shared_values::{
         ExternalPointerAddress, PointerAddress, ReferenceMutability,
@@ -231,8 +231,9 @@ fn get_builtin_shared_value_reference(
     runtime: &Runtime,
     address: RawBuiltinPointerAddress,
 ) -> Result<ReferencedSharedContainer, ExecutionError> {
-    let pointer_address =
-        PointerAddress::External(ExternalPointerAddress::Builtin(address.into()));
+    let pointer_address = PointerAddress::External(
+        ExternalPointerAddress::Builtin(address.into()),
+    );
     let memory = runtime.memory().borrow();
     if let Some(reference) = memory.get_reference(&pointer_address) {
         Ok(reference.clone())
@@ -277,7 +278,7 @@ mod tests {
             base_shared_value_container::BaseSharedValueContainer,
         },
         traits::{structural_eq::StructuralEq, value_eq::ValueEq},
-        types::r#type::Type,
+        types::{r#type::Type, type_definition::TypeDefinition},
         values::{
             core_value::CoreValue,
             core_values::{
@@ -291,7 +292,6 @@ mod tests {
     };
     use core::assert_matches;
     use log::{debug, info};
-    use crate::types::type_definition::TypeDefinition;
 
     fn execute_datex_script_debug(
         datex_script: &str,
@@ -521,29 +521,43 @@ mod tests {
         let result = execute_datex_script_debug_with_result("#Example");
         if let ValueContainer::Local(value) = result {
             assert_eq!(&value.inner, &CoreValue::Null);
-            assert_eq!(&value.custom_type, &Some(TypeDefinition::TaggedType {
-                tag: "Example".to_string(),
-                ty: Some(Box::new(TypeDefinition::Core(CoreLibBaseTypeId::Unit.into()))),
-            }))
-        }
-        else {
+            assert_eq!(
+                &value.custom_type,
+                &Some(TypeDefinition::TaggedType {
+                    tag: "Example".to_string(),
+                    ty: Some(Box::new(TypeDefinition::Core(
+                        CoreLibBaseTypeId::Unit.into()
+                    ))),
+                })
+            )
+        } else {
             panic!("Result should be Local value");
         }
     }
 
     #[test]
     fn empty_with_map() {
-        let result = execute_datex_script_debug_with_result("#Example {a: true}");
+        let result =
+            execute_datex_script_debug_with_result("#Example {a: true}");
         if let ValueContainer::Local(value) = result {
-            assert_eq!(&value.inner, &CoreValue::Map(Map::StructuralWithStringKeys(vec![
-                ("a".to_string(), ValueContainer::from(true))
-            ])));
-            assert_eq!(&value.custom_type, &Some(TypeDefinition::TaggedType {
-                tag: "Example".to_string(),
-                ty: None,
-            }.into()))
-        }
-        else {
+            assert_eq!(
+                &value.inner,
+                &CoreValue::Map(Map::StructuralWithStringKeys(vec![(
+                    "a".to_string(),
+                    ValueContainer::from(true)
+                )]))
+            );
+            assert_eq!(
+                &value.custom_type,
+                &Some(
+                    TypeDefinition::TaggedType {
+                        tag: "Example".to_string(),
+                        ty: None,
+                    }
+                    .into()
+                )
+            )
+        } else {
             panic!("Result should be Local value");
         }
     }
@@ -913,6 +927,17 @@ mod tests {
             vec![Some(Integer::from(1).into()), Some(Integer::from(2).into())],
             Runtime::stub(),
         )
+    }
+
+    #[test]
+    fn resolve_core_lib_type_reference() {
+        let result = execute_datex_script_debug_with_result("integer");
+        assert_eq!(
+            result,
+            ValueContainer::Local(Value::from(Type::core(
+                CoreLibBaseTypeId::Integer,
+            )))
+        );
     }
 
     #[test]

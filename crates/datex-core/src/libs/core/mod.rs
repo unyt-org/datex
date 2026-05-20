@@ -5,7 +5,7 @@ use crate::{
         type_id::{CoreLibBaseTypeId, CoreLibTypeId, CoreLibVariantTypeId},
         value_id::CoreLibValueId,
     },
-    runtime::memory::Memory,
+    runtime::{execution::ExecutionError, memory::Memory},
     shared_values::ReferencedSharedContainer,
     values::{
         core_value::CoreValue,
@@ -17,7 +17,6 @@ use crate::{
         value_container::ValueContainer,
     },
 };
-use itertools::Itertools;
 
 pub mod core_lib_id;
 pub mod type_id;
@@ -26,57 +25,143 @@ pub mod value_id;
 use crate::{
     libs::library::Library,
     prelude::*,
-    shared_values::{ExternalPointerAddress, PointerAddress, SharedContainer},
-    types::{
-        shared_container_containing_nominal_type::SharedContainerContainingNominalType,
-        r#type::Type,
-    },
+    shared_values::{PointerAddress, SharedContainer},
+    types::r#type::Type,
 };
 use log::info;
 use strum::IntoEnumIterator;
 
-pub struct CoreLibrary;
+pub struct CoreLibraryValues {
+    print: Value,
+}
 
-type CoreLibTypeDefinition = (CoreLibId, ValueContainer);
+impl Default for CoreLibraryValues {
+    fn default() -> Self {
+        CoreLibraryValues {
+            print: Value::callable(
+                Some("print".to_string()),
+                CallableSignature {
+                    kind: CallableKind::Function,
+                    parameter_types: vec![],
+                    rest_parameter_type: Some((
+                        Some("values".to_string()),
+                        Box::new(Type::core(CoreLibBaseTypeId::Unknown)),
+                    )),
+                    return_type: None,
+                    yeet_type: None,
+                },
+                CallableBody::Native(Self::print_impl),
+            ),
+        }
+    }
+}
 
-impl CoreLibrary {
-    /// Loads the core library into the provided [Memory] instance.
-    /// # Safety
-    /// Caller must guarantee that the core library was not already loaded into the [Memory] instance
-    pub unsafe fn load_core_lib(memory: &mut Memory) {
-        unsafe {
-            let entries = Self::generate_core_lib_vals(memory)
-                .collect::<Vec<_>>()
-                .into_iter()
-                .map(|(id, reference)| {
-                    memory.register_referenced_shared_container(&reference);
-                    (
-                        id,
-                        ValueContainer::Shared(SharedContainer::Referenced(
-                            reference.clone(),
-                        )),
-                    )
-                })
-                .chain(Self::generate_core_lib_types())
-                .map(|(id, entry)| (id.name(), entry))
-                .collect::<Vec<_>>();
-
-            let core_struct = SharedContainer::Referenced(unsafe {
-                ReferencedSharedContainer::new_immutable_external_with_inferred_allowed_type(
-                    Map::from(entries).into(),
-                    CoreLibValueId::Core.into(),
-                    memory
-                )
-            });
-            memory.register_referenced_shared_container(
-                &core_struct.derive_immutable_reference(),
-            );
+impl CoreLibraryValues {
+    /// Resolve a core library value by its id.
+    pub fn get_value_by_id(&self, id: &CoreLibValueId) -> &Value {
+        match id {
+            CoreLibValueId::Print => &self.print,
         }
     }
 
+    gen fn iterate(&self) -> (CoreLibValueId, &Value) {
+        for id in CoreLibValueId::iter() {
+            yield (id, self.get_value_by_id(&id));
+        }
+    }
+
+    fn print_impl(
+        mut args: &[ValueContainer],
+    ) -> Result<Option<ValueContainer>, ExecutionError> {
+        // TODO #680: add I/O abstraction layer / interface
+
+        let mut output = String::new();
+
+        // if first argument is a string value, print it directly
+        if let Some(ValueContainer::Local(Value {
+            inner: CoreValue::Text(text),
+            ..
+        })) = args.first()
+        {
+            output.push_str(&text.0);
+            // remove first argument from args
+            args = &args[1..];
+            // if there are still arguments, add a space
+            if !args.is_empty() {
+                output.push(' ');
+            }
+        }
+
+        #[cfg(feature = "decompiler")]
+        let args_string = args
+            .iter()
+            .map(|v| {
+                crate::decompiler::decompile_value(
+                    v,
+                    crate::decompiler::DecompileOptions::colorized(),
+                )
+            })
+            .collect::<Vec<_>>()
+            .join(" ");
+        #[cfg(not(feature = "decompiler"))]
+        let args_string = args
+            .iter()
+            .map(|v| v.to_string())
+            .collect::<Vec<_>>()
+            .join(" ");
+        output.push_str(&args_string);
+
+        #[cfg(feature = "std")]
+        println!("[PRINT] {}", output);
+        info!("[PRINT] {}", output);
+        Ok(None)
+    }
+}
+
+pub struct CoreLibrary {
+    values: CoreLibraryValues,
+    map: Map,
+}
+
+impl Default for CoreLibrary {
+    fn default() -> Self {
+        let values = CoreLibraryValues::default();
+        CoreLibrary {
+            map: Self::generate_core_lib_map(&values),
+            values,
+        }
+    }
+}
+
+type CoreLibTypeDefinition = (CoreLibId, Value);
+
+impl CoreLibrary {
+    pub fn map(&self) -> &Map {
+        &self.map
+    }
+
+    pub fn value_by_id(&self, id: &CoreLibValueId) -> &Value {
+        self.values.get_value_by_id(id)
+    }
+
+    pub fn values(&self) -> &CoreLibraryValues {
+        &self.values
+    }
+
+    /// Get's the core lib map object, containing all values and types of the core library, mapped by their id.
+    fn generate_core_lib_map(values: &CoreLibraryValues) -> Map {
+        let entries = values
+            .iterate()
+            .map(|(id, value)| (CoreLibId::Value(id), value.clone()))
+            .chain(Self::core_lib_types())
+            .map(|(id, value)| (id.name(), ValueContainer::from(value)))
+            .collect::<Vec<_>>();
+
+        Map::from(entries)
+    }
+
     /// Returns a map of all core library type values by id
-    fn generate_core_lib_types() -> impl Iterator<Item = CoreLibTypeDefinition>
-    {
+    fn core_lib_types() -> impl Iterator<Item = CoreLibTypeDefinition> {
         gen {
             for id in CoreLibBaseTypeId::iter() {
                 yield Self::create_type(CoreLibTypeId::Base(id));
@@ -87,135 +172,24 @@ impl CoreLibrary {
         }
     }
 
-    /// Returns a map of all core library values (excluding type values) by id
-    unsafe fn generate_core_lib_vals(
-        memory: &Memory,
-    ) -> impl Iterator<Item = (CoreLibId, ReferencedSharedContainer)> {
-        unsafe {
-            gen {
-                yield Self::print(memory);
-            }
-        }
-    }
-
     /// Creates a new core lib type via definition and id
     fn create_type(id: CoreLibTypeId) -> CoreLibTypeDefinition {
         (
             CoreLibId::Type(id),
-            ValueContainer::from(CoreValue::Type(Type::core(id))),
+            Value::from(CoreValue::Type(Type::core(id))),
         )
-    }
-
-    unsafe fn print(memory: &Memory) -> (CoreLibId, ReferencedSharedContainer) {
-        unsafe {
-            (
-            CoreLibId::Value(CoreLibValueId::Print),
-            ReferencedSharedContainer::new_immutable_external_with_inferred_allowed_type(
-                Value::callable(
-                    Some("print".to_string()),
-                    CallableSignature {
-                        kind: CallableKind::Function,
-                        parameter_types: vec![],
-                        rest_parameter_type: Some((
-                            Some("values".to_string()),
-                            Box::new(Type::core(CoreLibBaseTypeId::Unknown)),
-                        )),
-                        return_type: None,
-                        yeet_type: None,
-                    },
-                    CallableBody::Native(|mut args: &[ValueContainer]| {
-                        // TODO #680: add I/O abstraction layer / interface
-
-                        let mut output = String::new();
-
-                        // if first argument is a string value, print it directly
-                        if let Some(ValueContainer::Local(Value {
-                                                              inner: CoreValue::Text(text),
-                                                              ..
-                                                          })) = args.first()
-                        {
-                            output.push_str(&text.0);
-                            // remove first argument from args
-                            args = &args[1..];
-                            // if there are still arguments, add a space
-                            if !args.is_empty() {
-                                output.push(' ');
-                            }
-                        }
-
-                        #[cfg(feature = "decompiler")]
-                        let args_string = args
-                            .iter()
-                            .map(|v| {
-                                crate::decompiler::decompile_value(
-                                    v,
-                                    crate::decompiler::DecompileOptions::colorized(
-                                    ),
-                                )
-                            })
-                            .collect::<Vec<_>>()
-                            .join(" ");
-                        #[cfg(not(feature = "decompiler"))]
-                        let args_string = args
-                            .iter()
-                            .map(|v| v.to_string())
-                            .collect::<Vec<_>>()
-                            .join(" ");
-                        output.push_str(&args_string);
-
-                        #[cfg(feature = "std")]
-                        println!("[PRINT] {}", output);
-                        info!("[PRINT] {}", output);
-                        Ok(None)
-                    }),
-                )
-                    .into(),
-                ExternalPointerAddress::from(CoreLibValueId::Print),
-                memory
-            ),
-        )
-        }
-    }
-}
-
-impl Library for CoreLibrary {
-    unsafe fn load(memory: &mut Memory) {
-        unsafe { Self::load_core_lib(memory) }
-    }
-}
-
-impl Memory {
-    /// Helper function to get a core value directly from memory
-    pub fn get_core_value_reference(
-        &self,
-        core_lib_value_id: CoreLibValueId,
-    ) -> &ReferencedSharedContainer {
-        let pointer_address = PointerAddress::from(core_lib_value_id);
-        self.get_reference(&pointer_address).unwrap_or_else(|| {
-            panic!("core reference not found in memory: {}", pointer_address)
-        })
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        shared_values::PointerAddress, values::core_values::endpoint::Endpoint,
-    };
-    use core::str::FromStr;
-    use itertools::Itertools;
+    use crate::shared_values::PointerAddress;
 
     use super::*;
 
     #[test]
     fn debug() {
-        let memory = Memory::new();
-        info!(
-            "{}",
-            memory
-                .get_core_value_reference(CoreLibValueId::Core)
-                .value_container()
-        );
+        info!("{}", CoreLibrary::default().map());
     }
 
     #[ignore]
