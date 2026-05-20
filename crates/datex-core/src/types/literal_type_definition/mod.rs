@@ -185,8 +185,8 @@ mod tests {
         assert_eq!(text_type.to_string(), r#""Hello""#);
 
         let list_type = TypeDefinition::List(vec![
-            Type::from(LiteralTypeDefinition::Integer(Integer::from(1))).into(),
-            Type::from(LiteralTypeDefinition::Text("World".to_string())).into(),
+            Type::from(LiteralTypeDefinition::Integer(Integer::from(1))),
+            Type::from(LiteralTypeDefinition::Text("World".to_string())),
         ]);
         assert_eq!(list_type.to_string(), r#"[1, "World"]"#);
 
