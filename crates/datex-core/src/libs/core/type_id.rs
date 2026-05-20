@@ -48,7 +48,7 @@ pub enum CoreLibBaseTypeId {
     #[strum(serialize = "Unknown")]
     Unknown, // #core.Unknown
     #[strum(serialize = "List")]
-    List,     // #core.List
+    List, // #core.List
     #[strum(serialize = "Map")]
     Map, // #core.Map
     #[strum(serialize = "Callable")]
@@ -56,7 +56,7 @@ pub enum CoreLibBaseTypeId {
     #[strum(serialize = "Range")]
     Range, // #core.Range
     #[strum(serialize = "Type")]
-    Type,  // #core.Type
+    Type, // #core.Type
 }
 
 const INTEGER_VARIANT_COUNT: u16 = variant_count::<IntegerTypeVariant>() as u16;
@@ -78,6 +78,28 @@ impl Display for CoreLibVariantTypeId {
             CoreLibVariantTypeId::Decimal(variant) => {
                 write!(f, "{}", variant)
             }
+        }
+    }
+}
+
+impl FromStr for CoreLibVariantTypeId {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let (base_str, variant_str) = s.split_once('/').ok_or(())?;
+        let base_id = CoreLibBaseTypeId::from_str(base_str).map_err(|_| ())?;
+        match base_id {
+            CoreLibBaseTypeId::Integer => {
+                IntegerTypeVariant::from_str(variant_str)
+                    .map(CoreLibVariantTypeId::Integer)
+                    .map_err(|_| ())
+            }
+            CoreLibBaseTypeId::Decimal => {
+                DecimalTypeVariant::from_str(variant_str)
+                    .map(CoreLibVariantTypeId::Decimal)
+                    .map_err(|_| ())
+            }
+            _ => Err(()),
         }
     }
 }
@@ -179,9 +201,14 @@ impl From<CoreLibVariantTypeId> for CoreLibTypeId {
 
 impl CoreLibTypeId {
     pub fn try_from_str(string: &str) -> Option<Self> {
-        CoreLibBaseTypeId::from_str(string)
-            .map(CoreLibTypeId::Base)
+        CoreLibVariantTypeId::from_str(string)
+            .map(CoreLibTypeId::Variant)
             .ok()
+            .or_else(|| {
+                CoreLibBaseTypeId::from_str(string)
+                    .map(CoreLibTypeId::Base)
+                    .ok()
+            })
     }
 }
 
