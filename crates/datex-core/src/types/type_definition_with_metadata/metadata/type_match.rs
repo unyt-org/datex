@@ -55,3 +55,9 @@ impl TypeMatch for TypeMetadata {
 // 10u8 matches integer/u8 --> true
 // 10u8 matches integer --> ?
 // 10u8 matches 10u8 --> true
+
+// var y: integer[] = [4]
+// procedure(x: 4 | 5) { ... }
+
+// prodedure(y[0]) // <--- y[0] : integer !!!! Incorrect function agrs for 4 | 5, can not pass integer
+// if y[0] matches 4 | 5 then prodedure(y[0]) // <--- y[0] : 4 | 5 | 7, can pass 4 | 5
