@@ -11,7 +11,6 @@ use crate::{
         ReferenceMutability, SharedContainerMutability,
         SharedContainerOwnership,
     },
-    traits::structural_eq::StructuralEq,
     types::{
         literal_type_definition::LiteralTypeDefinition,
         nominal_type_definition::NominalTypeDefinition,
@@ -20,12 +19,12 @@ use crate::{
         type_definition_with_metadata::{
             LocalMutability, TypeDefinitionWithMetadata, TypeMetadata,
         },
-        type_match::TypeMatch,
     },
     values::{core_value::CoreValue, value_container::ValueContainer},
 };
 use core::{fmt::Display, hash::Hash, ops::Deref};
-use serde::{Deserialize, Serialize};
+
+pub mod type_match;
 
 /// Base enum for a type
 /// This is normally the base for types at compile time, in contrast to [TypeDefinition], which is the base for types
@@ -160,26 +159,37 @@ impl Type {
             _ => Err(()),
         }
     }
-    
+
     /// Converts the given [Type] to an equivalent [TypeDefinition]
     pub fn convert_to_definition(self) -> TypeDefinition {
         // just collapse to definition
-        if let Type::Alias(TypeDefinitionWithMetadata { metadata, definition }) = &self && metadata == &TypeMetadata::default() {
+        if let Type::Alias(TypeDefinitionWithMetadata {
+            metadata,
+            definition,
+        }) = &self
+            && metadata == &TypeMetadata::default()
+        {
             match self {
-                Type::Alias(TypeDefinitionWithMetadata { metadata, definition }) => definition,
+                Type::Alias(TypeDefinitionWithMetadata {
+                    metadata,
+                    definition,
+                }) => definition,
                 _ => unreachable!(),
             }
         }
         // nest type
         else {
-             TypeDefinition::Nested(Box::new(self))
+            TypeDefinition::Nested(Box::new(self))
         }
     }
-    
+
     /// Tries to extract the core library type id if the type is a simple alias to a core library type with default local metadata.
     pub fn try_as_core_lib_type(&self) -> Option<CoreLibTypeId> {
         match self {
-            Type::Alias(TypeDefinitionWithMetadata {definition: TypeDefinition::Core(core_lib_type_id), metadata}) if metadata == &TypeMetadata::default() => {
+            Type::Alias(TypeDefinitionWithMetadata {
+                definition: TypeDefinition::Core(core_lib_type_id),
+                metadata,
+            }) if metadata == &TypeMetadata::default() => {
                 Some(core_lib_type_id.clone())
             }
             _ => None,
@@ -190,36 +200,6 @@ impl Type {
 impl<T: Into<TypeDefinitionWithMetadata>> From<T> for Type {
     fn from(definition: T) -> Self {
         Type::Alias(definition.into())
-    }
-}
-
-impl TypeMatch for Type {
-    /// 1 matches integer -> true
-    /// integer matches 1 -> false
-    /// integer matches integer -> true
-    /// 1 matches integer | text -> true
-    fn matches(&self, other_definition: &Type) -> bool {
-        match &other_definition {
-            Type::Alias(inner_other_definition) => self
-                .with_collapsed_definition_with_metadata(|self_definition| {
-                    self_definition.matches(inner_other_definition)
-                }),
-            Type::Nominal(other_nominal_definition) => {
-                match self {
-                    // FIXME is this type alias here allowed?
-                    Type::Alias(_self_definition) => false,
-                    Type::Nominal(self_nominal_definition) => {
-                        // compare collapsed definitions of both nominal types
-                        self_nominal_definition
-                            .matches(other_nominal_definition)
-                    }
-                }
-            }
-        }
-    }
-
-    fn matched_by_value(&self, _value: &ValueContainer) -> bool {
-        todo!()
     }
 }
 
@@ -334,7 +314,6 @@ impl Display for Type {
         }
     }
 }
-
 
 // impl From<&CoreValue> for Type {
 //     fn from(value: &CoreValue) -> Self {

@@ -8,7 +8,7 @@ use crate::{
     values::value_container::ValueContainer,
 };
 use serde::{Deserialize, Serialize};
-
+pub mod type_match;
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum LocalReferenceMutability {
     Mutable,
@@ -113,76 +113,11 @@ impl TypeMetadata {
     }
 }
 
-impl TypeMatch for TypeMetadata {
-    fn matches(&self, other: &Self) -> bool {
-        match (self, other) {
-            (
-                TypeMetadata::Local {
-                    mutability: mutability1,
-                    reference_mutability: reference_mutability1,
-                },
-                TypeMetadata::Local {
-                    mutability: mutability2,
-                    reference_mutability: reference_mutability2,
-                },
-            ) => {
-                mutability1 == mutability2
-                    && reference_mutability1 == reference_mutability2
-            }
-            (
-                TypeMetadata::Shared {
-                    mutability: mutability1,
-                    ownership: ownership1,
-                },
-                TypeMetadata::Shared {
-                    mutability: mutability2,
-                    ownership: ownership2,
-                },
-            ) => mutability1 == mutability2 && ownership1 == ownership2,
-            _ => false,
-        }
-    }
-
-    fn matched_by_value(&self, _value: &ValueContainer) -> bool {
-        unimplemented!()
-    }
-}
-
 impl Default for TypeMetadata {
     fn default() -> Self {
         TypeMetadata::Local {
             mutability: LocalMutability::Immutable,
             reference_mutability: None,
         }
-    }
-}
-
-#[derive(Debug, PartialEq, Eq, Clone, Hash)]
-pub struct TypeDefinitionWithMetadata {
-    pub definition: TypeDefinition,
-    pub metadata: TypeMetadata,
-}
-
-impl TypeMatch for TypeDefinitionWithMetadata {
-    fn matches(&self, definition: &Self) -> bool {
-        if !self.metadata.matches(&definition.metadata) {
-            return false;
-        }
-        // FIXME
-        false
-    }
-
-    fn matched_by_value(&self, _value: &ValueContainer) -> bool {
-        todo!()
-    }
-}
-
-impl Display for TypeDefinitionWithMetadata {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        let metadata_str = self.metadata.to_string();
-        if !metadata_str.is_empty() {
-            write!(f, "{} ", metadata_str)?;
-        }
-        write!(f, "{}", self.definition)
     }
 }
