@@ -3,7 +3,7 @@
 //! The [TypeDefinition] is used as the underlying structure for type definitions in the type space and is wrapped by [TypeDefinitionWithMetadata] which holds additional metadata for type checking and inference.
 
 use crate::{
-    libs::core::type_id::CoreLibTypeId,
+    libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
     prelude::*,
     shared_values::PointerAddress,
     types::{
@@ -18,7 +18,6 @@ use crate::{
     values::core_values::callable::CallableSignature,
 };
 use core::{fmt::Display, hash::Hash, ops::Deref, prelude::rust_2024::*};
-use crate::libs::core::type_id::CoreLibBaseTypeId;
 
 /// Base enum for a type definition
 /// This is normally the base for types at runtime, in contrast to [Type], which is the base for types
@@ -67,7 +66,7 @@ pub enum TypeDefinition {
     /// #Tagged(null) is equivalent to #Tagged
     TaggedType {
         tag: String,
-        ty: Option<Box<TypeDefinition>>,// if none, this uses the default inferred type
+        ty: Option<Box<TypeDefinition>>, // if none, this uses the default inferred type
     },
 
     /// meta type for a type
@@ -331,9 +330,7 @@ impl TypeDefinition {
     /// User/variant -> User
     pub fn base_core_lib_type(&self) -> CoreLibTypeId {
         match &self {
-            TypeDefinition::Literal(value) => {
-                value.get_core_lib_type_pointer_id()
-            }
+            TypeDefinition::Literal(value) => value.core_lib_type_id(),
             TypeDefinition::Union(_) => {
                 core::todo!("#322 handle union base type"); // generic type base type / type
             }

@@ -95,79 +95,8 @@ impl From<Endpoint> for LiteralTypeDefinition {
 }
 
 impl LiteralTypeDefinition {
-    /// Matches a value against self
-    /// Returns true if all possible realizations of the value match the type
-    /// Examples:
-    /// 1 matches 1 -> true
-    /// 1 matches 2 -> false
-    /// 1 matches 1 | 2 -> true
-    /// 1 | 2 matches integer -> true
-    /// integer matches 1 | 2 -> false
-    // pub fn value_matches(&self, value: &ValueContainer) -> bool {
-    //     match (self, &value.to_cloned_value().borrow().inner) {
-    //         (LiteralTypeDefinition::Integer(a), CoreValue::Integer(b)) => {
-    //             a == b
-    //         }
-    //         (
-    //             LiteralTypeDefinition::TypedInteger(a),
-    //             CoreValue::TypedInteger(b),
-    //         ) => a == b,
-    //         (LiteralTypeDefinition::Decimal(a), CoreValue::Decimal(b)) => {
-    //             a == b
-    //         }
-    //         (
-    //             LiteralTypeDefinition::TypedDecimal(a),
-    //             CoreValue::TypedDecimal(b),
-    //         ) => a == b,
-    //         (LiteralTypeDefinition::Text(a), CoreValue::Text(b)) => a == b,
-    //         (LiteralTypeDefinition::Boolean(a), CoreValue::Boolean(b)) => {
-    //             a == b
-    //         }
-    //         (LiteralTypeDefinition::Endpoint(a), CoreValue::Endpoint(b)) => {
-    //             a == b
-    //         }
-    //         (LiteralTypeDefinition::Null, CoreValue::Null) => true,
-
-    //         // // Check that all elements in the list match the element type
-    //         // (
-    //         //     StructuralTypeDefinition::List(box elem_type),
-    //         //     CoreValue::List(list),
-    //         // ) => list.into_iter().all(|item| elem_type.value_matches(item)),
-    //         //
-    //         // // Check that all keys and values in the map match their types
-    //         // (
-    //         //     StructuralTypeDefinition::Map(box (key_type, value_type)),
-    //         //     CoreValue::Map(map),
-    //         // ) => map.iter().all(|(k, v)| {
-    //         //     key_type.value_matches(k) && value_type.value_matches(v)
-    //         // }),
-
-    //         // Check that all fields in the map are present and match their types
-    //         (LiteralTypeDefinition::Map(field_types), CoreValue::Map(_map)) => {
-    //             field_types.iter().all(|(_field_name, _field_type)| {
-    //                 core::todo!("#375 handle key matching")
-    //                 // map.get(&field_name_value).is_some_and(|field_value| {
-    //                 //     field_type.value_matches(field_value)
-    //                 // })
-    //             })
-    //         }
-
-    //         // list
-    //         (LiteralTypeDefinition::List(type_list), CoreValue::List(list)) => {
-    //             if type_list.len() != list.len() as usize {
-    //                 return false;
-    //             }
-    //             type_list
-    //                 .iter()
-    //                 .zip(list.iter())
-    //                 .all(|(t, v)| t.value_matches(v))
-    //         }
-    //         _ => unimplemented!("handle complex structural type matching"),
-    //     }
-    // }
-
     /// Get the core lib type pointer id for this structural type definition
-    pub fn get_core_lib_type_pointer_id(&self) -> CoreLibTypeId {
+    pub fn core_lib_type_id(&self) -> CoreLibTypeId {
         match self {
             LiteralTypeDefinition::Integer(_) => {
                 CoreLibTypeId::Base(CoreLibBaseTypeId::Integer)
