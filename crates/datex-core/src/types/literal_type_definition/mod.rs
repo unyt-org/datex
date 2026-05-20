@@ -17,6 +17,7 @@ use crate::{
 };
 use core::{fmt::Display, hash::Hash};
 pub mod equality;
+pub mod type_match;
 
 #[derive(Debug, Clone, PartialEq, Hash, Eq)]
 pub enum LiteralTypeDefinition {
@@ -228,15 +229,6 @@ impl Display for LiteralTypeDefinition {
 impl From<LiteralTypeDefinition> for TypeDefinition {
     fn from(value: LiteralTypeDefinition) -> Self {
         TypeDefinition::Literal(value)
-    }
-}
-
-impl TypeMatch for LiteralTypeDefinition {
-    fn matches(&self, other: &Self) -> bool {
-        self == other
-    }
-    fn matched_by_value(&self, _value: &ValueContainer) -> bool {
-        todo!()
     }
 }
 
