@@ -5,6 +5,7 @@ use crate::{
         type_id::{CoreLibBaseTypeId, CoreLibTypeId, CoreLibVariantTypeId},
         value_id::CoreLibValueId,
     },
+    random::RandomState,
     runtime::{execution::ExecutionError, memory::Memory},
     shared_values::{
         BuiltinPointerAddress, ExternalPointerAddress,
@@ -120,7 +121,7 @@ impl CoreLibraryValues {
 }
 
 #[derive(Debug)]
-pub struct CoreLibraryTypes(IndexMap<CoreLibTypeId, Value>);
+pub struct CoreLibraryTypes(IndexMap<CoreLibTypeId, Value, RandomState>);
 
 impl Default for CoreLibraryTypes {
     fn default() -> Self {
