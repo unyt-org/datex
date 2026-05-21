@@ -1,7 +1,7 @@
 //! This module contains the core library for DATEX, which provides the fundamental types and values that are essential for the operation of the DATEX language. The core library is loaded into memory at startup and is accessible globally throughout the system.
 use crate::{
     libs::core::{
-        core_lib_id::{CoreLibId, CoreLibIdTrait},
+        core_lib_id::CoreLibId,
         type_id::{CoreLibBaseTypeId, CoreLibTypeId, CoreLibVariantTypeId},
         value_id::CoreLibValueId,
     },
@@ -25,12 +25,8 @@ pub mod core_lib_id;
 pub mod type_id;
 pub mod value_id;
 
-use crate::{
-    libs::library::Library,
-    prelude::*,
-    shared_values::{PointerAddress, SharedContainer},
-    types::r#type::Type,
-};
+use crate::{prelude::*, types::r#type::Type};
+use indexmap::IndexMap;
 use log::info;
 use strum::IntoEnumIterator;
 
@@ -62,15 +58,16 @@ impl Default for CoreLibraryValues {
 
 impl CoreLibraryValues {
     /// Resolve a core library value by its id.
-    pub fn get_value_by_id(&self, id: &CoreLibValueId) -> &Value {
+    pub fn get_by_id(&self, id: &CoreLibValueId) -> &Value {
         match id {
             CoreLibValueId::Print => &self.print,
         }
     }
 
+    /// Iterate over all core library values, yielding their id and value.
     gen fn iterate(&self) -> (CoreLibValueId, &Value) {
         for id in CoreLibValueId::iter() {
-            yield (id, self.get_value_by_id(&id));
+            yield (id, self.get_by_id(&id));
         }
     }
 
@@ -123,63 +120,22 @@ impl CoreLibraryValues {
 }
 
 #[derive(Debug)]
-pub struct CoreLibrary {
-    values: CoreLibraryValues,
-    types: HashMap<CoreLibTypeId, Value>,
-    map: Value,
-}
+pub struct CoreLibraryTypes(IndexMap<CoreLibTypeId, Value>);
 
-impl Default for CoreLibrary {
+impl Default for CoreLibraryTypes {
     fn default() -> Self {
-        let values = CoreLibraryValues::default();
-        let types = Self::core_lib_types().collect::<HashMap<_, _>>();
-        let entries = values
-            .iterate()
-            .map(|(id, value)| (CoreLibId::Value(id), value.clone()))
-            .chain(
-                types
-                    .iter()
-                    .map(|(id, value)| (CoreLibId::Type(*id), value.clone())),
-            )
-            .map(|(id, value)| (id.name(), ValueContainer::from(value)))
-            .collect::<Vec<_>>();
-
-        CoreLibrary {
-            map: Value::from(Map::from(entries)),
-            types,
-            values,
-        }
+        Self(Self::core_lib_types().collect())
     }
 }
 
-type CoreLibTypeDefinition = (CoreLibTypeId, Value);
-
-impl CoreLibrary {
-    pub fn by_buitin_pointer_address(
-        &self,
-        address: &ExternalPointerAddress,
-    ) -> Result<&Value, ()> {
-        match CoreLibId::try_from(address)? {
-            CoreLibId::Value(id) => Ok(self.values.get_value_by_id(&id)),
-            CoreLibId::Type(id) => self.types.get(&id).ok_or(()),
-            CoreLibId::Map => Ok(&self.map),
-        }
-    }
-
-    pub fn map(&self) -> &Map {
-        self.map.try_as().unwrap()
-    }
-
-    pub fn value_by_id(&self, id: &CoreLibValueId) -> &Value {
-        self.values.get_value_by_id(id)
-    }
-
-    pub fn type_by_id(&self, id: &CoreLibTypeId) -> Option<&Value> {
-        self.types.get(id)
+impl CoreLibraryTypes {
+    /// Resolve a core library type by its id and return it as a value.
+    pub fn get_by_id(&self, id: &CoreLibTypeId) -> &Value {
+        self.0.get(id).expect("Core library type not found")
     }
 
     /// Returns a map of all core library type values by id
-    fn core_lib_types() -> impl Iterator<Item = CoreLibTypeDefinition> {
+    fn core_lib_types() -> impl Iterator<Item = (CoreLibTypeId, Value)> {
         gen {
             for id in CoreLibBaseTypeId::iter() {
                 yield Self::create_type(CoreLibTypeId::Base(id));
@@ -190,9 +146,72 @@ impl CoreLibrary {
         }
     }
 
+    /// Iterate over all core library types, yielding their id and value.
+    gen fn iterate(&self) -> (CoreLibTypeId, &Value) {
+        for (id, value) in &self.0 {
+            yield (*id, value);
+        }
+    }
+
     /// Creates a new core lib type via definition and id
-    fn create_type(id: CoreLibTypeId) -> CoreLibTypeDefinition {
+    fn create_type(id: CoreLibTypeId) -> (CoreLibTypeId, Value) {
         (id, Value::from(CoreValue::Type(Type::core(id))))
+    }
+}
+
+#[derive(Debug)]
+pub struct CoreLibrary {
+    values: CoreLibraryValues,
+    types: CoreLibraryTypes,
+    map: Value,
+}
+
+impl Default for CoreLibrary {
+    fn default() -> Self {
+        let values = CoreLibraryValues::default();
+        let types = CoreLibraryTypes::default();
+        let entries = values
+            .iterate()
+            .map(|(id, value)| (CoreLibId::Value(id), value.clone()))
+            .chain(
+                types
+                    .iterate()
+                    .map(|(id, value)| (CoreLibId::Type(id), value.clone())),
+            )
+            .map(|(id, value)| (id.to_string(), ValueContainer::from(value)))
+            .collect::<Vec<_>>();
+
+        CoreLibrary {
+            map: Value::from(Map::from(entries)),
+            types,
+            values,
+        }
+    }
+}
+
+impl CoreLibrary {
+    /// Resolves a pointer address to a core library value if it exists, otherwise returns an error.
+    pub fn by_buitin_pointer_address(
+        &self,
+        address: &ExternalPointerAddress,
+    ) -> Result<&Value, ()> {
+        Ok(match CoreLibId::try_from(address)? {
+            CoreLibId::Value(id) => self.values.get_by_id(&id),
+            CoreLibId::Type(id) => self.types.get_by_id(&id),
+            CoreLibId::Map => &self.map,
+        })
+    }
+
+    pub fn map(&self) -> &Map {
+        self.map.try_as().unwrap()
+    }
+
+    pub fn value_by_id(&self, id: &CoreLibValueId) -> &Value {
+        self.values.get_by_id(id)
+    }
+
+    pub fn type_by_id(&self, id: &CoreLibTypeId) -> &Value {
+        self.types.get_by_id(id)
     }
 }
 
@@ -204,6 +223,7 @@ mod tests {
 
     #[test]
     fn debug() {
+        flexi_logger::init();
         info!("{}", CoreLibrary::default().map());
     }
 
@@ -238,7 +258,7 @@ mod tests {
 
         for base_id in CoreLibBaseTypeId::iter() {
             println!(
-                "{}: \"{}\",",
+                "    {}: \"{}\",",
                 base_id,
                 PointerAddress::from(base_id)
                     .to_string()
@@ -247,7 +267,7 @@ mod tests {
             );
             for variant_id in CoreLibVariantTypeId::variant_ids(&base_id) {
                 println!(
-                    "{}_{}: \"{}\",",
+                    "    {}_{}: \"{}\",",
                     base_id,
                     variant_id.variant_name(),
                     PointerAddress::from(variant_id)
