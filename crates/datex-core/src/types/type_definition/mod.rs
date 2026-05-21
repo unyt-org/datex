@@ -18,6 +18,10 @@ use crate::{
     values::core_values::callable::CallableSignature,
 };
 use core::{fmt::Display, hash::Hash, ops::Deref, prelude::rust_2024::*};
+use crate::libs::core::type_id::CoreLibBaseTypeId;
+use crate::types::type_definition::intersection::TypeIntersection;
+use crate::types::type_definition::union::TypeUnion;
+
 pub mod type_match;
 /// Base enum for a type definition
 /// This is normally the base for types at runtime, in contrast to [Type], which is the base for types
@@ -57,10 +61,10 @@ pub enum TypeDefinition {
     /// relevant for type space definitions and type checking.
 
     /// A & B & C
-    Intersection(Vec<Type>),
+    Intersection(TypeIntersection),
 
     /// A | B | C
-    Union(Vec<Type>),
+    Union(TypeUnion),
 
     /// #Tagged or #Tagged {...}
     /// #Tagged(null) is equivalent to #Tagged
@@ -105,12 +109,12 @@ impl Hash for TypeDefinition {
             }
 
             TypeDefinition::Union(types) => {
-                for ty in types {
+                for ty in types.iter() {
                     ty.hash(state);
                 }
             }
             TypeDefinition::Intersection(types) => {
-                for ty in types {
+                for ty in types.iter() {
                     ty.hash(state);
                 }
             }
@@ -255,6 +259,8 @@ impl Display for TypeDefinition {
 
 pub mod equality;
 mod serde_dif;
+pub mod union;
+pub mod intersection;
 
 impl TypeDefinition {
     /// Calls the provided callback with a reference to the recursively collapsed inner [TypeDefinition] value
@@ -318,6 +324,19 @@ impl TypeDefinition {
     /// Creates a new type with impls.
     pub fn impl_type(ty: impl Into<Type>, impls: Vec<PointerAddress>) -> Self {
         TypeDefinition::ImplType(Box::new(ty.into()), impls)
+    }
+
+    /// Get the core lib type pointer id for this structural type definition
+    pub fn core_lib_type_id(&self) -> Option<CoreLibTypeId> {
+        match self {
+            TypeDefinition::Literal(literal_definition) => Some(literal_definition.core_lib_type_id()),
+            TypeDefinition::List(_) => Some(CoreLibTypeId::Base(CoreLibBaseTypeId::List)),
+            TypeDefinition::Map(_) => Some(CoreLibTypeId::Base(CoreLibBaseTypeId::Map)),
+            TypeDefinition::Range(_) => Some(CoreLibTypeId::Base(CoreLibBaseTypeId::Range)),
+            TypeDefinition::Callable(_) => Some(CoreLibTypeId::Base(CoreLibBaseTypeId::Callable)),
+            TypeDefinition::Type => Some(CoreLibTypeId::Base(CoreLibBaseTypeId::Type)),
+            _ => None,
+        }
     }
 }
 

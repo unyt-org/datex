@@ -5,12 +5,13 @@ use crate::{
     types::{
         nominal_type_definition::NominalTypeDefinition,
         shared_container_containing_type::SharedContainerContainingType,
-        type_match::TypeMatch,
+        type_match::TypeSatisfiesValueContainer,
     },
     values::{core_value::CoreValue, value_container::ValueContainer},
 };
 use core::ops::Deref;
 use serde::{Deserialize, Serialize};
+use crate::types::type_match::TypeSuperset;
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct SharedContainerContainingNominalType(SharedContainer);
@@ -99,24 +100,26 @@ impl TryFrom<SharedContainer> for SharedContainerContainingNominalType {
     }
 }
 
-impl TypeMatch for SharedContainerContainingNominalType {
-    fn matches(&self, definition: &Self) -> bool {
+impl TypeSuperset<SharedContainerContainingNominalType> for SharedContainerContainingNominalType {
+    fn is_superset_of(&self, other: &SharedContainerContainingNominalType) -> bool {
         // if it is directly the same nominal type definition
-        if self.pointer_address() == definition.pointer_address() {
+        if self.pointer_address() == other.pointer_address() {
             return true;
         }
-        // if we are a subvariant of the nominal type definition, no recursion
-        self.with_collapsed_definition(
+        // if other is a subvariant of the nominal type definition, no recursion
+        other.with_collapsed_definition(
             |inner_definition| match inner_definition {
                 NominalTypeDefinition::Variant { base, .. } => {
-                    base.pointer_address() == definition.pointer_address()
+                    base.pointer_address() == self.pointer_address()
                 }
                 _ => false,
             },
         )
     }
+}
 
-    fn matched_by_value(&self, _value: &ValueContainer) -> bool {
+impl TypeSatisfiesValueContainer for SharedContainerContainingNominalType {
+    fn satisfies_value_container(&self, _value: &ValueContainer) -> bool {
         todo!()
     }
 }

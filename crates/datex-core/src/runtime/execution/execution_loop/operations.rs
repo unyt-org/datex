@@ -22,7 +22,7 @@ use crate::{
     prelude::*,
     runtime::memory::Memory,
     shared_values::base_shared_value_container::observers::TransceiverId,
-    types::{r#type::Type, type_match::TypeMatch},
+    types::{r#type::Type, type_match::TypeSatisfiesValueContainer},
     value_updates::{
         update_data::SetEntryUpdateData, update_handler::UpdateHandler,
     },
@@ -134,7 +134,7 @@ pub fn handle_comparison_operation(
             // TODO #407: Fix matches, rhs will always be a type, so actual_type() call is wrong
             let v_type = Type::try_from(rhs.clone())
                 .map_err(|_| ExecutionError::ExpectedTypeValue)?;
-            let val = v_type.matched_by_value(lhs);
+            let val = v_type.satisfies_value_container(lhs);
             Ok(ValueContainer::from(val))
         }
         _ => {

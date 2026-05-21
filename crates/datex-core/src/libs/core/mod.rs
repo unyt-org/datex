@@ -22,6 +22,7 @@ use crate::{
 pub mod core_lib_id;
 pub mod type_id;
 pub mod value_id;
+mod type_match;
 
 use crate::{prelude::*, types::r#type::Type};
 use indexmap::IndexMap;

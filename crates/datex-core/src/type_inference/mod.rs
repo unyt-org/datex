@@ -55,7 +55,7 @@ use crate::{
         type_definition_with_metadata::{
             LocalMutability, TypeDefinitionWithMetadata, TypeMetadata,
         },
-        type_match::TypeMatch,
+        type_match::TypeSatisfiesValueContainer,
     },
     values::{
         core_value::CoreValue,
@@ -75,6 +75,8 @@ use crate::{
     },
 };
 use core::{cell::RefCell, ops::Range, panic};
+use crate::types::type_definition::union::TypeUnion;
+use crate::types::type_match::{TypeSubset, TypeSuperset};
 
 pub mod error;
 pub mod options;
@@ -398,7 +400,7 @@ impl<'a> TypeExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
             .iter_mut()
             .map(|member| self.infer_type_expression(member))
             .collect::<Result<Vec<_>, _>>()?;
-        mark_type(Type::from(TypeDefinition::Union(members)))
+        mark_type(Type::from(TypeDefinition::Union(TypeUnion(members))))
     }
     fn visit_intersection_type(
         &mut self,
@@ -744,7 +746,7 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
 
         match variable_assignment.operator {
             None => {
-                if !assigned_type.matches(&annotated_type) {
+                if !assigned_type.is_superset_of(&annotated_type) {
                     return Err(SpannedTypeError {
                         error: TypeError::AssignmentTypeMismatch {
                             expected: annotated_type,
@@ -830,7 +832,7 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
             if let Some(specific) = &mut variable_declaration.type_annotation {
                 // FIXME #619 check if matches
                 let annotated_type = self.infer_type_expression(specific)?;
-                if !init_type.matches(&annotated_type) {
+                if !init_type.is_subset_of(&annotated_type) {
                     self.record_error(SpannedTypeError::new_with_span(
                         TypeError::AssignmentTypeMismatch {
                             expected: annotated_type.clone(),
@@ -1170,7 +1172,7 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
         // If they don't match, record an error
         // TODO #622: improve
         if let Some(annotated_return_type) = &signature.return_type
-            && !inferred_return_type.matches(annotated_return_type)
+            && !inferred_return_type.is_subset_of(annotated_return_type.as_ref())
         {
             self.record_error(SpannedTypeError {
                 error: TypeError::AssignmentTypeMismatch {
@@ -1443,6 +1445,8 @@ mod tests {
             },
         },
     };
+    use crate::types::type_definition::intersection::TypeIntersection;
+    use crate::types::type_definition::union::TypeUnion;
 
     /// Infers type errors for the given source code.
     /// Panics if parsing or precompilation succeeds.
@@ -2151,10 +2155,10 @@ mod tests {
         let var_type = var.var_type.as_ref().unwrap();
         assert_eq!(
             var_type,
-            &Type::from(TypeDefinition::Union(vec![
+            &Type::from(TypeDefinition::Union(TypeUnion(vec![
                 Type::core(CoreLibBaseTypeId::Text),
                 Type::core(CoreLibBaseTypeId::Integer)
-            ],))
+            ])))
         );
     }
 
@@ -2310,12 +2314,12 @@ mod tests {
             infer_type_from_script_ignore_errors("type X = integer/u8 & 42");
         assert_eq!(
             inferred_type,
-            Type::from(TypeDefinition::Intersection(vec![
+            Type::from(TypeDefinition::Intersection(TypeIntersection(vec![
                 Type::core(CoreLibVariantTypeId::Integer(
                     IntegerTypeVariant::U8
                 )),
                 Type::from(LiteralTypeDefinition::Integer(Integer::from(42)),)
-            ],))
+            ])))
         );
     }
 
@@ -2328,12 +2332,12 @@ mod tests {
         );
         assert_eq!(
             inferred_type,
-            Type::from(TypeDefinition::Union(vec![
+            Type::from(TypeDefinition::Union(TypeUnion(vec![
                 Type::core(CoreLibVariantTypeId::Integer(
                     IntegerTypeVariant::U8
                 )),
                 Type::core(CoreLibBaseTypeId::Decimal)
-            ]))
+            ])))
         );
     }
 

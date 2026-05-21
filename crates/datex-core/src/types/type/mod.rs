@@ -457,7 +457,7 @@ mod tests {
             literal_type_definition::LiteralTypeDefinition, r#type::Type,
             type_definition::TypeDefinition,
             type_definition_with_metadata::TypeDefinitionWithMetadata,
-            type_match::TypeMatch,
+            type_match::TypeSatisfiesValueContainer,
         },
         values::{
             core_value::CoreValue,
@@ -469,31 +469,33 @@ mod tests {
             value_container::ValueContainer,
         },
     };
+    use crate::types::type_definition::union::TypeUnion;
+    use crate::types::type_match::{TypeSubset, TypeSuperset};
 
     #[test]
     fn match_equal_values() {
         // 1u8 matches 1u8
         assert!(
             Type::from(LiteralTypeDefinition::TypedInteger(1u8.into()))
-                .matched_by_value(&TypedInteger::from(1u8).into())
+                .satisfies_value_container(&TypedInteger::from(1u8).into())
         );
 
         // 1u16 matches 1u16
         assert!(
             Type::from(LiteralTypeDefinition::TypedInteger(1u16.into()))
-                .matched_by_value(&TypedInteger::from(1u16).into())
+                .satisfies_value_container(&TypedInteger::from(1u16).into())
         );
 
         // 1 matches 1
         assert!(
             Type::from(LiteralTypeDefinition::Integer(1.into()))
-                .matched_by_value(&Integer::from(1).into())
+                .satisfies_value_container(&Integer::from(1).into())
         );
 
         // "test" matches "test"
         assert!(
             Type::from(LiteralTypeDefinition::Text("test".into()))
-                .matched_by_value(&Text::from("test").into())
+                .satisfies_value_container(&Text::from("test").into())
         );
     }
 
@@ -503,34 +505,34 @@ mod tests {
 
         // 1 matches (1 | 2 | 3)
         assert!(
-            Type::from(TypeDefinition::Union(vec![
+            Type::from(TypeDefinition::Union(TypeUnion(vec![
                 LiteralTypeDefinition::Integer(Integer::from(1)).into(),
                 LiteralTypeDefinition::Integer(Integer::from(2)).into(),
                 LiteralTypeDefinition::Integer(Integer::from(3)).into()
-            ]))
-            .matched_by_value(&Integer::from(1).into())
+            ])))
+            .satisfies_value_container(&Integer::from(1).into())
         );
     }
 
     #[test]
     fn type_matches_union_type() {
-        // 1 matches (1 | 2 | 3)
+        // 1 <= (1 | 2 | 3)
         assert!(
             Type::from(LiteralTypeDefinition::Integer(Integer::from(1)))
-                .matches(&Type::from(TypeDefinition::Union(vec![
+                .is_subset_of(&Type::from(TypeDefinition::Union(TypeUnion(vec![
                     LiteralTypeDefinition::Integer(Integer::from(1)).into(),
                     LiteralTypeDefinition::Integer(Integer::from(2)).into(),
                     LiteralTypeDefinition::Integer(Integer::from(3)).into()
-                ])))
+                ]))))
         );
 
-        // 1 matches integer | text
+        // 1 <= integer | text
         assert!(
             Type::from(LiteralTypeDefinition::Integer(Integer::from(1)))
-                .matches(&Type::from(TypeDefinition::Union(vec![
+                .is_subset_of(&Type::from(TypeDefinition::Union(TypeUnion(vec![
                     Type::core(CoreLibBaseTypeId::Integer),
                     Type::core(CoreLibBaseTypeId::Text),
-                ])))
+                ]))))
         );
     }
 

@@ -1,11 +1,12 @@
 use crate::types::type_definition_with_metadata::metadata::TypeMetadata;
 
 use crate::{
-    types::type_match::TypeMatch, values::value_container::ValueContainer,
+    types::type_match::TypeSatisfiesValueContainer, values::value_container::ValueContainer,
 };
+use crate::types::type_match::TypeSuperset;
 
-impl TypeMatch for TypeMetadata {
-    fn matches(&self, other: &Self) -> bool {
+impl TypeSuperset<TypeMetadata> for TypeMetadata {
+    fn is_superset_of(&self, other: &Self) -> bool {
         match (self, other) {
             (
                 TypeMetadata::Local {
@@ -33,8 +34,10 @@ impl TypeMatch for TypeMetadata {
             _ => false,
         }
     }
+}
 
-    fn matched_by_value(&self, _value: &ValueContainer) -> bool {
+impl TypeSatisfiesValueContainer for TypeMetadata {
+    fn satisfies_value_container(&self, _value: &ValueContainer) -> bool {
         unimplemented!()
     }
 }

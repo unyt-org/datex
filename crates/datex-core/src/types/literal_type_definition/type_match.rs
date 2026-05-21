@@ -1,6 +1,6 @@
 use crate::{
     types::{
-        literal_type_definition::LiteralTypeDefinition, type_match::TypeMatch,
+        literal_type_definition::LiteralTypeDefinition, type_match::TypeSatisfiesValueContainer,
     },
     values::{
         core_values::{
@@ -12,11 +12,17 @@ use crate::{
         value_container::ValueContainer,
     },
 };
-impl TypeMatch for LiteralTypeDefinition {
-    fn matches(&self, other: &Self) -> bool {
+use crate::types::type_match::TypeSuperset;
+
+
+impl TypeSuperset<LiteralTypeDefinition> for LiteralTypeDefinition {
+    fn is_superset_of(&self, other: &LiteralTypeDefinition) -> bool {
         self == other
     }
-    fn matched_by_value(&self, value: &ValueContainer) -> bool {
+}
+
+impl TypeSatisfiesValueContainer for LiteralTypeDefinition {
+    fn satisfies_value_container(&self, value: &ValueContainer) -> bool {
         match self {
             LiteralTypeDefinition::Integer(expected) => {
                 value.try_as().map(|v: Integer| v == *expected)
@@ -49,7 +55,7 @@ mod tests {
     use crate::{
         types::{
             literal_type_definition::LiteralTypeDefinition,
-            type_match::TypeMatch,
+            type_match::TypeSatisfiesValueContainer,
         },
         values::core_values::integer::Integer,
     };
@@ -57,12 +63,12 @@ mod tests {
     #[test]
     fn integer() {
         let integer = LiteralTypeDefinition::Integer(Integer::new(42));
-        assert!(integer.matched_by_value(&Integer::new(42).into()));
+        assert!(integer.satisfies_value_container(&Integer::new(42).into()));
 
         let integer_u8 = LiteralTypeDefinition::TypedInteger(42u8.into());
-        assert!(integer_u8.matched_by_value(&42u8.into()));
+        assert!(integer_u8.satisfies_value_container(&42u8.into()));
 
         let integer_wrong = LiteralTypeDefinition::Integer(Integer::new(43));
-        assert!(!integer_wrong.matched_by_value(&Integer::new(42).into()));
+        assert!(!integer_wrong.satisfies_value_container(&Integer::new(42).into()));
     }
 }

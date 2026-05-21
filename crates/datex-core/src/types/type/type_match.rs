@@ -1,37 +1,44 @@
 use crate::{
-    types::{r#type::Type, type_match::TypeMatch},
+    types::{r#type::Type, type_match::TypeSatisfiesValueContainer},
     values::value_container::ValueContainer,
 };
+use crate::types::type_definition::TypeDefinition;
+use crate::types::type_match::TypeSuperset;
 
-impl TypeMatch for Type {
-    /// 1 matches integer -> true
-    /// integer matches 1 -> false
-    /// integer matches integer -> true
-    /// 1 matches integer | text -> true
-    fn matches(&self, other_definition: &Type) -> bool {
-        match &other_definition {
-            Type::Alias(inner_other_definition) => self
-                .with_collapsed_definition_with_metadata(|self_definition| {
-                    self_definition.matches(inner_other_definition)
-                }),
-            Type::Nominal(other_nominal_definition) => {
-                match self {
-                    // FIXME is this type alias here allowed?
-                    Type::Alias(_self_definition) => false,
-                    Type::Nominal(self_nominal_definition) => {
-                        // compare collapsed definitions of both nominal types
-                        self_nominal_definition
-                            .matches(other_nominal_definition)
-                    }
-                }
+impl TypeSuperset<Type> for Type {
+    /// Checks if this type is a superset of the other type, i.e. if all values that match the other type also match this type.
+    ///
+    /// Examples:
+    /// integer >= 1 -> true
+    /// 1 >= integer -> false
+    /// integer >= integer -> true
+    /// integer | text >= 1 -> true
+    fn is_superset_of(&self, other: &Type) -> bool {
+        match self {
+            Type::Alias(self_definition) => self_definition.is_superset_of(other),
+            Type::Nominal(self_nominal_definition) => {
+                todo!()
             }
         }
     }
+}
 
-    fn matched_by_value(&self, value: &ValueContainer) -> bool {
+impl TypeSuperset<TypeDefinition> for Type {
+    fn is_superset_of(&self, other: &TypeDefinition) -> bool {
         match self {
-            Type::Alias(definition) => definition.matched_by_value(value),
-            Type::Nominal(definition) => definition.matched_by_value(value),
+            Type::Alias(self_definition) => self_definition.is_superset_of(other),
+            Type::Nominal(self_nominal_definition) => {
+                todo!()
+            }
+        }
+    }
+}
+
+impl TypeSatisfiesValueContainer for Type {
+    fn satisfies_value_container(&self, value: &ValueContainer) -> bool {
+        match self {
+            Type::Alias(definition) => definition.satisfies_value_container(value),
+            Type::Nominal(definition) => definition.satisfies_value_container(value),
         }
     }
 }

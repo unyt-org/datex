@@ -164,7 +164,7 @@ mod tests {
         prelude::*,
         types::{
             literal_type_definition::LiteralTypeDefinition, r#type::Type,
-            type_definition::TypeDefinition, type_match::TypeMatch,
+            type_definition::TypeDefinition, type_match::TypeSatisfiesValueContainer,
         },
         values::{
             core_value::CoreValue,
@@ -205,11 +205,11 @@ mod tests {
         let int_type = LiteralTypeDefinition::Integer(Integer::from(42));
         let int_value =
             ValueContainer::from(CoreValue::Integer(Integer::from(42)));
-        assert!(int_type.matched_by_value(&int_value));
+        assert!(int_type.satisfies_value_container(&int_value));
 
         let text_type = LiteralTypeDefinition::Text("Hello".to_string());
         let text_value =
             ValueContainer::from(CoreValue::Text(Text::from("Hello")));
-        assert!(text_type.matched_by_value(&text_value));
+        assert!(text_type.satisfies_value_container(&text_value));
     }
 }
