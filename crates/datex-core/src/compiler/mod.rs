@@ -3375,7 +3375,7 @@ pub mod tests {
             vec![
                 InstructionCode::GET_INTERNAL_SHARED_REF.into(),
                 // pointer id for integer
-                2,
+                3,
                 0,
                 0,
                 InstructionCode::UNBOUNDED_STATEMENTS_END.into(),
