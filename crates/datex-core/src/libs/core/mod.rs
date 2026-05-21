@@ -202,14 +202,17 @@ impl CoreLibrary {
         })
     }
 
+    /// Gets the core library map, which contains all core library values and types indexed by their id as strings.
     pub fn map(&self) -> &Map {
         self.map.try_as().unwrap()
     }
 
+    /// Resolve a core library value by its id.
     pub fn value_by_id(&self, id: &CoreLibValueId) -> &Value {
         self.values.get_by_id(id)
     }
 
+    /// Resolve a core library type by its id and return it as a value.
     pub fn type_by_id(&self, id: &CoreLibTypeId) -> &Value {
         self.types.get_by_id(id)
     }
