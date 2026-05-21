@@ -6,7 +6,10 @@ use crate::{
         value_id::CoreLibValueId,
     },
     runtime::{execution::ExecutionError, memory::Memory},
-    shared_values::ReferencedSharedContainer,
+    shared_values::{
+        BuiltinPointerAddress, ExternalPointerAddress,
+        ReferencedSharedContainer,
+    },
     values::{
         core_value::CoreValue,
         core_values::{
@@ -31,6 +34,7 @@ use crate::{
 use log::info;
 use strum::IntoEnumIterator;
 
+#[derive(Debug)]
 pub struct CoreLibraryValues {
     print: Value,
 }
@@ -118,46 +122,60 @@ impl CoreLibraryValues {
     }
 }
 
+#[derive(Debug)]
 pub struct CoreLibrary {
     values: CoreLibraryValues,
-    map: Map,
+    types: HashMap<CoreLibTypeId, Value>,
+    map: Value,
 }
 
 impl Default for CoreLibrary {
     fn default() -> Self {
         let values = CoreLibraryValues::default();
+        let types = Self::core_lib_types().collect::<HashMap<_, _>>();
+        let entries = values
+            .iterate()
+            .map(|(id, value)| (CoreLibId::Value(id), value.clone()))
+            .chain(
+                types
+                    .iter()
+                    .map(|(id, value)| (CoreLibId::Type(*id), value.clone())),
+            )
+            .map(|(id, value)| (id.name(), ValueContainer::from(value)))
+            .collect::<Vec<_>>();
+
         CoreLibrary {
-            map: Self::generate_core_lib_map(&values),
+            map: Value::from(Map::from(entries)),
+            types,
             values,
         }
     }
 }
 
-type CoreLibTypeDefinition = (CoreLibId, Value);
+type CoreLibTypeDefinition = (CoreLibTypeId, Value);
 
 impl CoreLibrary {
+    pub fn by_buitin_pointer_address(
+        &self,
+        address: &ExternalPointerAddress,
+    ) -> Result<&Value, ()> {
+        match CoreLibId::try_from(address)? {
+            CoreLibId::Value(id) => Ok(self.values.get_value_by_id(&id)),
+            CoreLibId::Type(id) => self.types.get(&id).ok_or(()),
+            CoreLibId::Map => Ok(&self.map),
+        }
+    }
+
     pub fn map(&self) -> &Map {
-        &self.map
+        self.map.try_as().unwrap()
     }
 
     pub fn value_by_id(&self, id: &CoreLibValueId) -> &Value {
         self.values.get_value_by_id(id)
     }
 
-    pub fn values(&self) -> &CoreLibraryValues {
-        &self.values
-    }
-
-    /// Get's the core lib map object, containing all values and types of the core library, mapped by their id.
-    fn generate_core_lib_map(values: &CoreLibraryValues) -> Map {
-        let entries = values
-            .iterate()
-            .map(|(id, value)| (CoreLibId::Value(id), value.clone()))
-            .chain(Self::core_lib_types())
-            .map(|(id, value)| (id.name(), ValueContainer::from(value)))
-            .collect::<Vec<_>>();
-
-        Map::from(entries)
+    pub fn type_by_id(&self, id: &CoreLibTypeId) -> Option<&Value> {
+        self.types.get(id)
     }
 
     /// Returns a map of all core library type values by id
@@ -174,10 +192,7 @@ impl CoreLibrary {
 
     /// Creates a new core lib type via definition and id
     fn create_type(id: CoreLibTypeId) -> CoreLibTypeDefinition {
-        (
-            CoreLibId::Type(id),
-            Value::from(CoreValue::Type(Type::core(id))),
-        )
+        (id, Value::from(CoreValue::Type(Type::core(id))))
     }
 }
 

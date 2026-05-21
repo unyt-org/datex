@@ -77,13 +77,9 @@ pub fn execute_dxb_sync(
                 address,
             ) => {
                 interrupt_provider.provide_result(
-                    InterruptResult::ResolvedValue(Some(
-                        ValueContainer::Shared(SharedContainer::Referenced(
-                            get_builtin_shared_value_reference(
-                                &runtime, address,
-                            )?,
-                        )),
-                    )),
+                    InterruptResult::ResolvedValue(Some(get_builtin(
+                        &runtime, address,
+                    )?)),
                 );
             }
             ExternalExecutionInterrupt::Apply(callee, args) => {
@@ -141,13 +137,9 @@ pub async fn execute_dxb(
                 address,
             ) => {
                 interrupt_provider.provide_result(
-                    InterruptResult::ResolvedValue(Some(
-                        ValueContainer::Shared(SharedContainer::Referenced(
-                            get_builtin_shared_value_reference(
-                                &runtime, address,
-                            )?,
-                        )),
-                    )),
+                    InterruptResult::ResolvedValue(Some(get_builtin(
+                        &runtime, address,
+                    )?)),
                 );
             }
             ExternalExecutionInterrupt::RemoteExecution(receivers, body) => {
@@ -227,19 +219,17 @@ fn get_remote_shared_container_reference(
     Ok(memory.get_reference(&resolved_address).cloned())
 }
 
-fn get_builtin_shared_value_reference(
+fn get_builtin(
     runtime: &Runtime,
     address: RawBuiltinPointerAddress,
-) -> Result<ReferencedSharedContainer, ExecutionError> {
-    let pointer_address = PointerAddress::External(
-        ExternalPointerAddress::Builtin(address.into()),
-    );
-    let memory = runtime.memory().borrow();
-    if let Some(reference) = memory.get_reference(&pointer_address) {
-        Ok(reference.clone())
-    } else {
-        Err(ExecutionError::ReferenceNotFound)
-    }
+) -> Result<ValueContainer, ExecutionError> {
+    let value = runtime
+        .core_library()
+        .by_buitin_pointer_address(&ExternalPointerAddress::Builtin(
+            address.into(),
+        ))
+        .map_err(|_| ExecutionError::BuiltinNotFound)?;
+    Ok(ValueContainer::Local(value.clone()))
 }
 
 fn get_local_pointer_value(

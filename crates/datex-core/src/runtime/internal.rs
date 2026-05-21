@@ -14,6 +14,7 @@ use crate::{
             routing_header::RoutingHeader,
         },
     },
+    libs::core::CoreLibrary,
     network::{
         com_hub::{
             ComHub, InterfacePriority, network_response::ResponseOptions,
@@ -59,6 +60,8 @@ use log::{debug, error, info};
 pub struct RuntimeInternal {
     version: String,
     endpoint: Endpoint,
+
+    core_library: CoreLibrary,
 
     memory: RefCell<Memory>,
     pointer_address_provider: Rc<RefCell<SelfOwnedPointerAddressProvider>>,
@@ -128,6 +131,7 @@ impl RuntimeInternal {
             config,
             com_hub,
             task_manager,
+            core_library: CoreLibrary::default(),
             incoming_sections_receiver: RefCell::new(
                 incoming_sections_receiver,
             ),
@@ -150,6 +154,9 @@ impl RuntimeInternal {
     }
     pub fn memory(&self) -> &RefCell<Memory> {
         &self.memory
+    }
+    pub fn core_library(&self) -> &CoreLibrary {
+        &self.core_library
     }
 
     pub fn pointer_address_provider(
@@ -600,7 +607,10 @@ impl RuntimeInternal {
     pub(crate) fn handle_pointer_move_to_remote(
         self: Rc<RuntimeInternal>,
         from_endpoint: &Endpoint,
-        pointer_mapping: Vec<(RawSelfOwnedPointerAddress, RawSelfOwnedPointerAddress)>,
+        pointer_mapping: Vec<(
+            RawSelfOwnedPointerAddress,
+            RawSelfOwnedPointerAddress,
+        )>,
         memory: &Memory,
     ) -> Result<Vec<ValueContainer>, ExecutionError> {
         let mut pointer_borrow = self.moving_pointers.borrow_mut();
