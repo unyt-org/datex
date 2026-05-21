@@ -390,15 +390,9 @@ impl From<PointerAddress> for RawPointerAddress {
                 RawPointerAddress::Remote(RawRemotePointerAddress::from(addr))
             }
             PointerAddress::External(ExternalPointerAddress::Builtin(addr)) => {
-                RawPointerAddress::Internal(RawBuiltinPointerAddress::from(
-                    addr,
-                ))
+                RawPointerAddress::Internal(RawBuiltinPointerAddress::from(addr))
             }
-            PointerAddress::SelfOwned(SelfOwnedPointerAddress {
-                address: addr,
-            }) => RawPointerAddress::SelfOwned(RawSelfOwnedPointerAddress {
-                bytes: addr,
-            }),
+            PointerAddress::SelfOwned(addr) => RawPointerAddress::SelfOwned(RawSelfOwnedPointerAddress::from(addr))
         }
     }
 }
@@ -417,11 +411,15 @@ impl From<RawPointerAddress> for PointerAddress {
                 ))
             }
             RawPointerAddress::SelfOwned(local) => {
-                PointerAddress::SelfOwned(SelfOwnedPointerAddress {
-                    address: local.bytes,
-                })
+                PointerAddress::SelfOwned(SelfOwnedPointerAddress::from(local))
             }
         }
+    }
+}
+
+impl From<SelfOwnedPointerAddress> for RawSelfOwnedPointerAddress {
+    fn from(ptr: SelfOwnedPointerAddress) -> Self {
+        RawSelfOwnedPointerAddress { bytes: ptr.address }
     }
 }
 
@@ -446,6 +444,12 @@ impl From<RawBuiltinPointerAddress> for BuiltinPointerAddress {
 impl From<RawRemotePointerAddress> for RemotePointerAddress {
     fn from(addr: RawRemotePointerAddress) -> Self {
         RemotePointerAddress(addr.id)
+    }
+}
+
+impl From<RawSelfOwnedPointerAddress> for SelfOwnedPointerAddress {
+    fn from(ptr: RawSelfOwnedPointerAddress) -> Self {
+        SelfOwnedPointerAddress { address: ptr.bytes }
     }
 }
 

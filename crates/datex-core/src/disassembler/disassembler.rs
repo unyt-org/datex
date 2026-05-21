@@ -400,7 +400,7 @@ macro_rules! assert_instructions_equal {
 #[macro_export]
 macro_rules! assert_regular_instructions_equal {
     ($dxb:expr, $expected:expr) => {{
-        use $crate::global::protocol_structures::instructions::NestedInstructionResolutionStrategy;
+        use $crate::global::protocol_structures::instructions::{NestedInstructionResolutionStrategy, Instruction};
         use $crate::disassembler::disassemble_body;
 
         let (instructions, err) = disassemble_body($dxb, NestedInstructionResolutionStrategy::ResolveNestedScopesFlat);
