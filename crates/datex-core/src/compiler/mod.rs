@@ -1,10 +1,14 @@
 //! This module contains the main compiler logic for DATEX, precompilation, and compilation to DXB bytecode.
 use crate::{
-    ast::expressions::{
-        BinaryOperation, ComparisonOperation, DatexExpression,
-        DatexExpressionData, RemoteExecution, Statements, UnaryOperation,
-        UnboundedStatement, UnboxAssignment, VariableAccess,
-        VariableAssignment, VariableDeclaration, VariableKind,
+    ast::{
+        expressions::{
+            BinaryOperation, ComparisonOperation, DatexExpression,
+            DatexExpressionData, RemoteExecution, RootPropertyAccess,
+            Statements, UnaryOperation, UnboundedStatement, UnboxAssignment,
+            ValueAccessType, VariableAccess, VariableAssignment,
+            VariableDeclaration, VariableKind,
+        },
+        resolved_variable::VariableId,
     },
     compiler::{
         context::CompilationContext,
@@ -17,23 +21,6 @@ use crate::{
         scope::CompilationScope,
         type_compiler::compile_type_expression,
     },
-    global::{
-        dxb_block::DXBBlock,
-        instruction_codes::InstructionCode,
-        operators::assignment::AssignmentOperator,
-        protocol_structures::{
-            block_header::BlockHeader, encrypted_header::EncryptedHeader,
-            routing_header::RoutingHeader,
-        },
-        root_properties::RootProperty,
-    },
-    prelude::*,
-};
-use binrw::io::Write;
-use core::cell::RefCell;
-use core::str::FromStr;
-use crate::{
-    ast::{expressions::ValueAccessType, resolved_variable::VariableId},
     core_compiler::value_compiler::{
         append_boolean, append_decimal, append_encoded_integer,
         append_endpoint, append_float_as_i16, append_float_as_i32,
@@ -42,37 +29,47 @@ use crate::{
         append_statements_preamble, append_text, append_typed_decimal,
         append_value,
     },
-    global::protocol_structures::{
-        injected_values::{
-            InjectedValueType, LocalInjectedValueType, SharedInjectedValueType,
+    global::{
+        dxb_block::DXBBlock,
+        instruction_codes::InstructionCode,
+        operators::assignment::AssignmentOperator,
+        protocol_structures::{
+            block_header::BlockHeader,
+            encrypted_header::EncryptedHeader,
+            injected_values::{
+                InjectedValueType, LocalInjectedValueType,
+                SharedInjectedValueType,
+            },
+            instruction_data::{
+                InstructionBlockData, ModifyStackValue,
+                SetSharedContainerValue, ShortTextData, StackIndex,
+                TaggedValue,
+            },
+            regular_instructions::RegularInstruction,
+            routing_header::RoutingHeader,
         },
-        instruction_data::{
-            InstructionBlockData, ModifyStackValue, SetSharedContainerValue,
-            StackIndex,
-        },
-        regular_instructions::RegularInstruction,
+        root_properties::RootProperty,
     },
     libs::core::{core_lib_id::CoreLibId, value_id::CoreLibValueId},
-    parser::{Parser, ParserOptions},
+    parser::{Parser, ParserOptions, errors::SpannedParserError},
+    prelude::*,
     runtime::{Runtime, execution::context::ExecutionMode},
     shared_values::{
-        PointerAddress, ReferenceMutability, SharedContainer,
-        SharedContainerMutability,
+        BuiltinPointerAddress, PointerAddress, ReferenceMutability,
+        SharedContainer, SharedContainerMutability,
     },
     time::Instant,
     utils::buffers::{append_u8, append_u16, append_u32},
     values::{core_values::decimal::Decimal, value_container::ValueContainer},
 };
+use binrw::io::Write;
+use core::{cell::RefCell, str::FromStr};
 use log::{debug, info};
 use precompiler::{
     options::PrecompilerOptions,
     precompile_ast,
     precompiled_ast::{AstMetadata, RichAst, VariableMetadata},
 };
-use crate::ast::expressions::RootPropertyAccess;
-use crate::global::protocol_structures::instruction_data::{ShortTextData, TaggedValue};
-use crate::parser::errors::SpannedParserError;
-use crate::shared_values::BuiltinPointerAddress;
 
 pub mod context;
 pub mod error;
@@ -267,7 +264,9 @@ pub fn compile_script_or_return_static_value(
         // try to extract static value from AST
         extract_static_value_from_ast(&ast.ast)
             .map(|value| (StaticValueOrDXB::StaticValue(Some(value)), scope))
-            .ok_or_else(|| SpannedCompilerError::from(CompilerError::NonStaticValue))
+            .ok_or_else(|| {
+                SpannedCompilerError::from(CompilerError::NonStaticValue)
+            })
     }
 }
 
@@ -442,7 +441,7 @@ fn extract_static_value_from_ast(
     ast: &DatexExpression,
 ) -> Option<ValueContainer> {
     if let DatexExpressionData::Placeholder(_) = ast.data {
-        return None
+        return None;
     }
     ValueContainer::try_from(&ast.data).ok()
 }
@@ -1282,7 +1281,9 @@ fn compile_expression(
         }
 
         // root property (e.g. $.endpoint)
-        DatexExpressionData::RootPropertyAccess(RootPropertyAccess { property_name } ) => {
+        DatexExpressionData::RootPropertyAccess(RootPropertyAccess {
+            property_name,
+        }) => {
             let root_property = RootProperty::from_str(&property_name);
 
             if let Ok(root_property) = root_property {
@@ -1290,18 +1291,17 @@ fn compile_expression(
                     compilation_context.cursor(),
                     RegularInstruction::GetRootProperty(root_property),
                 );
-            }
-            else {
+            } else {
                 match property_name.as_str() {
                     "core" => append_get_builtin_ref(
                         compilation_context.cursor(),
-                        &BuiltinPointerAddress::from(CoreLibId::Value(
-                            CoreLibValueId::Core,
-                        )),
+                        &BuiltinPointerAddress::from(CoreLibId::Map),
                     ),
                     _ => {
                         // invalid slot name
-                        return Err(CompilerError::InvalidSlotName(property_name.clone()));
+                        return Err(CompilerError::InvalidSlotName(
+                            property_name.clone(),
+                        ));
                     }
                 }
             }
@@ -1400,11 +1400,15 @@ fn compile_expression(
         }
 
         DatexExpressionData::Tag(tag_expression) => {
-            let tag_instruction = RegularInstruction::TaggedValue(TaggedValue {
-                tag: ShortTextData(tag_expression.tag),
-                is_empty: tag_expression.expression.is_none(),
-            });
-            append_regular_instruction(compilation_context.cursor(), tag_instruction);
+            let tag_instruction =
+                RegularInstruction::TaggedValue(TaggedValue {
+                    tag: ShortTextData(tag_expression.tag),
+                    is_empty: tag_expression.expression.is_none(),
+                });
+            append_regular_instruction(
+                compilation_context.cursor(),
+                tag_instruction,
+            );
 
             // append expression
             if let Some(inner_expression) = tag_expression.expression {
@@ -1415,7 +1419,7 @@ fn compile_expression(
                     scope,
                 )?;
             }
-        },
+        }
 
         data => {
             log::error!("Unhandled expression in compiler: {:?}", data);
@@ -1566,17 +1570,20 @@ pub mod tests {
     use crate::{
         compiler::error::CompilerError,
         disassembler::print_disassembled,
-        global::protocol_structures::{
-            injected_values::{
-                InjectedValueDeclaration, InjectedValueType,
-                SharedInjectedValueType,
+        global::{
+            protocol_structures::{
+                injected_values::{
+                    InjectedValueDeclaration, InjectedValueType,
+                    SharedInjectedValueType,
+                },
+                instruction_data::{
+                    InstructionBlockData, IntegerData, MapData, ShortTextData,
+                    StackIndex, StatementsData, TaggedValue, UInt8Data,
+                },
+                instructions::Instruction,
+                regular_instructions::RegularInstruction,
             },
-            instruction_data::{
-                InstructionBlockData, IntegerData, StackIndex, StatementsData,
-                UInt8Data,
-            },
-            instructions::Instruction,
-            regular_instructions::RegularInstruction,
+            root_properties::RootProperty,
         },
         libs::core::{
             core_lib_id::CoreLibId,
@@ -1590,8 +1597,6 @@ pub mod tests {
     use alloc::format;
     use core::assert_matches;
     use log::*;
-    use crate::global::protocol_structures::instruction_data::{MapData, ShortTextData, TaggedValue};
-    use crate::global::root_properties::RootProperty;
 
     fn compile_and_log(datex_script: &str) -> Vec<u8> {
         let (result, _) = compile_script(
@@ -1715,10 +1720,7 @@ pub mod tests {
         let result = compile_and_log(datex_script);
         assert_regular_instructions_equal!(
             &result,
-            [
-                RegularInstruction::CreateShared,
-                RegularInstruction::Null,
-            ]
+            [RegularInstruction::CreateShared, RegularInstruction::Null,]
         );
     }
 
@@ -2271,12 +2273,10 @@ pub mod tests {
         let result = compile_and_log(datex_script);
         assert_regular_instructions_equal!(
             &result,
-            [
-                RegularInstruction::TaggedValue(TaggedValue {
-                    tag: ShortTextData("Example".to_string()),
-                    is_empty: true,
-                }),
-            ]
+            [RegularInstruction::TaggedValue(TaggedValue {
+                tag: ShortTextData("Example".to_string()),
+                is_empty: true,
+            }),]
         )
     }
 
@@ -2291,8 +2291,10 @@ pub mod tests {
                     tag: ShortTextData("Example".to_string()),
                     is_empty: false,
                 }),
-                RegularInstruction::ShortMap(MapData {element_count: 1}),
-                RegularInstruction::KeyValueShortText(ShortTextData("a".to_string())),
+                RegularInstruction::ShortMap(MapData { element_count: 1 }),
+                RegularInstruction::KeyValueShortText(ShortTextData(
+                    "a".to_string()
+                )),
                 RegularInstruction::True,
             ]
         )
@@ -2309,7 +2311,9 @@ pub mod tests {
                     tag: ShortTextData("Example".to_string()),
                     is_empty: false,
                 }),
-                RegularInstruction::ShortText(ShortTextData("test".to_string())),
+                RegularInstruction::ShortText(ShortTextData(
+                    "test".to_string()
+                )),
             ]
         )
     }
@@ -3210,9 +3214,7 @@ pub mod tests {
                 .unwrap();
         assert_regular_instructions_equal!(
             &res,
-            [
-                RegularInstruction::GetRootProperty(RootProperty::ENDPOINT),
-            ]
+            [RegularInstruction::GetRootProperty(RootProperty::ENDPOINT),]
         );
     }
 
@@ -3224,9 +3226,7 @@ pub mod tests {
                 .unwrap();
         assert_regular_instructions_equal!(
             &res,
-            [
-                RegularInstruction::GetRootProperty(RootProperty::CALLER),
-            ]
+            [RegularInstruction::GetRootProperty(RootProperty::CALLER),]
         );
     }
 

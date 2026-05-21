@@ -1,12 +1,13 @@
 use crate::{
     libs::core::{type_id::CoreLibTypeId, value_id::CoreLibValueId},
     prelude::*,
-    shared_values::{ExternalPointerAddress, PointerAddress},
+    shared_values::{
+        BuiltinPointerAddress, ExternalPointerAddress, PointerAddress,
+    },
 };
 use core::{fmt::Display, ops::Deref, str::FromStr};
-use crate::shared_values::BuiltinPointerAddress;
 
-pub const TYPE_SPACE_BASE: u16 = 0;
+pub const TYPE_SPACE_BASE: u16 = 1;
 pub const TYPE_VARIANT_SPACE_BASE: u16 = 500;
 pub const VALUE_SPACE_BASE: u16 = 1000;
 
@@ -28,6 +29,7 @@ pub trait CoreLibIdTrait:
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum CoreLibId {
+    Map,
     Type(CoreLibTypeId),
     Value(CoreLibValueId),
 }
@@ -58,6 +60,7 @@ impl Display for CoreLibId {
         match self {
             CoreLibId::Type(type_id) => write!(f, "{}", type_id),
             CoreLibId::Value(value_id) => write!(f, "{}", value_id),
+            CoreLibId::Map => write!(f, "Map"),
         }
     }
 }
@@ -65,6 +68,7 @@ impl Display for CoreLibId {
 impl From<CoreLibId> for CoreLibIdIndex {
     fn from(val: CoreLibId) -> Self {
         match val {
+            CoreLibId::Map => CoreLibIdIndex(0),
             CoreLibId::Type(type_id) => type_id.into(),
             CoreLibId::Value(value_id) => value_id.into(),
         }
@@ -89,6 +93,7 @@ impl CoreLibIdTrait for CoreLibId {
         match self {
             CoreLibId::Type(type_id) => type_id.name(),
             CoreLibId::Value(value_id) => value_id.name(),
+            CoreLibId::Map => "Map".to_string(),
         }
     }
 }
@@ -100,7 +105,9 @@ impl<T: CoreLibIdTrait> From<T> for PointerAddress {
 }
 impl<T: CoreLibIdTrait> From<T> for ExternalPointerAddress {
     fn from(core_lib_id: T) -> Self {
-        ExternalPointerAddress::Builtin(BuiltinPointerAddress::from(core_lib_id))
+        ExternalPointerAddress::Builtin(BuiltinPointerAddress::from(
+            core_lib_id,
+        ))
     }
 }
 
@@ -111,7 +118,6 @@ impl<T: CoreLibIdTrait> From<T> for BuiltinPointerAddress {
         BuiltinPointerAddress([bytes[0], bytes[1], 0])
     }
 }
-
 
 impl TryFrom<&ExternalPointerAddress> for CoreLibIdIndex {
     type Error = ();
@@ -126,12 +132,9 @@ impl TryFrom<&ExternalPointerAddress> for CoreLibIdIndex {
 
 impl From<&BuiltinPointerAddress> for CoreLibIdIndex {
     fn from(value: &BuiltinPointerAddress) -> Self {
-        CoreLibIdIndex(u16::from_le_bytes(
-            value.0[0..2].try_into().unwrap(),
-        ))
+        CoreLibIdIndex(u16::from_le_bytes(value.0[0..2].try_into().unwrap()))
     }
 }
-
 
 impl TryFrom<&PointerAddress> for CoreLibIdIndex {
     type Error = ();
