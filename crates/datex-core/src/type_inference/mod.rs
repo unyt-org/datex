@@ -2,8 +2,14 @@
 use crate::{
     ast::resolved_variable::ResolvedVariable,
     global::operators::{BinaryOperator, LogicalUnaryOperator, UnaryOperator},
+    shared_values::SharedContainer,
     type_inference::options::ErrorHandling,
-    types::type_definition::TypeDefinition,
+    types::{
+        nominal_type_definition::NominalTypeDefinition,
+        shared_container_containing_type::SharedContainerContainingType,
+        type_definition::TypeDefinition,
+    },
+    values::value_container::ValueContainer,
 };
 
 use crate::{
@@ -903,43 +909,51 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
 
     fn visit_type_declaration(
         &mut self,
-        _type_declaration: &mut TypeDeclaration,
+        type_declaration: &mut TypeDeclaration,
         _: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
-        todo!()
-        // let type_id = type_declaration.id.expect(
-        //     "TypeDeclaration should have an id assigned during precompilation",
-        // );
-        // let var_type = self.variable_type(type_id);
-        // let type_def = var_type
-        //     .as_ref()
-        //     .expect("TypeDeclaration type should have been inferred already");
-        //
-        // let reference = type_def
-        //     .inner_reference()
-        //     .expect("TypeDeclaration var_type should be a TypeReference");
+        let type_id = type_declaration.id.expect(
+            "TypeDeclaration should have an id assigned during precompilation",
+        );
+        let var_type = self.variable_type(type_id);
+        let type_def = var_type
+            .as_ref()
+            .expect("TypeDeclaration type should have been inferred already");
+        let inferred_type_def =
+            self.infer_type_expression(&mut type_declaration.definition)?;
 
-        // let inferred_type_def =
-        //     self.infer_type_expression(&mut type_declaration.definition)?;
-        //
-        // if type_declaration.kind.is_nominal() {
-        //     match &inferred_type_def.inner_reference() {
-        //         None => {
-        //             reference.borrow_mut().type_value = inferred_type_def;
-        //         }
-        //         Some(r) => {
-        //             // FIXME #620 is this necessary?
-        //             reference.borrow_mut().type_value = Type::new(
-        //                 TypeDefinition::Shared(r.clone()),
-        //                 TypeMetadata::default(),
-        //             );
-        //         }
-        //     }
-        //     mark_type(type_def.clone())
-        // } else {
-        //     self.update_variable_type(type_id, inferred_type_def.clone());
-        //     mark_type(inferred_type_def.clone())
-        // }
+        if type_declaration.kind.is_nominal() {
+            match &type_def {
+                Type::Nominal(definition) => definition
+                    .with_collapsed_value_mut(|val| {
+                        match &mut val.inner {
+                            CoreValue::NominalTypeDefinition(nominal_def) => {
+                                nominal_def.replace_definition_type(inferred_type_def);
+                            }
+                            _ => {
+                                panic!("Expected nominal type to be an alias during type declaration inference")
+                            }
+                        }
+                    }),
+                Type::Alias(r) => {
+                    // FIXME #620 is this necessary?
+                    // reference.borrow_mut().type_value = Type::new(
+                    //     TypeDefinition::Shared(r.clone()),
+                    //     TypeMetadata::default(),
+                    // );
+                    unreachable!(
+                        "Type aliases should have been resolved during precompilation"
+                    );
+                    // r.definition = TypeDefinition::Shared(SharedContainerContainingType::new_unchecked(
+                    //     SharedContainer::
+                    // ));
+                }
+            }
+            mark_type(type_def.clone())
+        } else {
+            self.update_variable_type(type_id, inferred_type_def.clone());
+            mark_type(inferred_type_def.clone())
+        }
     }
 
     fn visit_list(
@@ -1329,13 +1343,15 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
 
         mark_type(assigned_type)
     }
+
     fn visit_request_shared_reference(
         &mut self,
-        _shared_ref: &mut RequestSharedRef,
-        _span: &Range<usize>,
+        shared_ref: &mut RequestSharedRef,
+        span: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
-        todo!()
+        Ok(VisitAction::SkipChildren)
     }
+
     fn visit_slot_assignment(
         &mut self,
         _slot_assignment: &mut StackAssignment,
@@ -1386,7 +1402,10 @@ mod tests {
         },
         parser::Parser,
         prelude::*,
-        runtime::{Runtime, memory::Memory},
+        runtime::{
+            Runtime, memory::Memory,
+            pointer_address_provider::SelfOwnedPointerAddressProvider,
+        },
         shared_values::{
             OwnedSharedContainer, ReferenceMutability, SharedContainer,
             SharedContainerMutability, SharedContainerOwnership,
@@ -1561,15 +1580,13 @@ mod tests {
         .expect("Precompilation failed");
         infer_expression_type_simple_error(
             &mut rich_ast,
-            &*runtime.memory().borrow(),
+            &runtime.memory().borrow(),
         )
         .expect("Type inference failed")
     }
 
     #[test]
     fn variant_access() {
-        let memory = &Memory::default();
-
         // variant access on type (inline)
         let src = r#"
         var x = integer/u8
@@ -2200,12 +2217,56 @@ mod tests {
         );
     }
 
+    fn has_nominal_type_definition(
+        ty: &Type,
+        expected_definition: NominalTypeDefinition,
+    ) -> bool {
+        if let Type::Nominal(container) = ty {
+            container.with_collapsed_definition(|v| v == &expected_definition)
+        } else {
+            false
+        }
+    }
+
     #[test]
     fn infer_type_simple_literal() {
         let inferred_type = infer_type_from_script_ignore_errors("type X = 42");
+
+        assert!(
+            has_nominal_type_definition(
+                &inferred_type,
+                NominalTypeDefinition::new_base(
+                    Type::from(LiteralTypeDefinition::Integer(Integer::from(
+                        42
+                    ))),
+                    "X".to_string()
+                )
+            ),
+            "Expected nominal type definition with integer literal, got {:?}",
+            inferred_type
+        );
+
         assert_eq!(
             inferred_type,
-            Type::from(LiteralTypeDefinition::Integer(Integer::from(42)),)
+            Type::Nominal(unsafe {
+                SharedContainerContainingNominalType::new_unchecked(
+                    SharedContainer::Referenced(
+                        SharedContainer::new_owned_with_inferred_allowed_type(
+                            CoreValue::NominalTypeDefinition(
+                                NominalTypeDefinition::new_base(
+                                    Type::from(LiteralTypeDefinition::Integer(
+                                        Integer::from(42),
+                                    )),
+                                    "X".to_string(),
+                                ),
+                            ),
+                            SharedContainerMutability::Immutable,
+                            &mut SelfOwnedPointerAddressProvider::default(),
+                        )
+                        .derive_immutable_reference(),
+                    ),
+                )
+            })
         );
 
         let inferred_type =

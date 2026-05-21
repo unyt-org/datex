@@ -2,7 +2,10 @@
 //! The precompiler traverses the AST, resolves variable references and shared values.
 
 use crate::{
-    collections::HashSet, type_inference::infer_expression_type_detailed_errors,
+    collections::HashSet,
+    type_inference::infer_expression_type_detailed_errors,
+    types::shared_container_containing_nominal_type::SharedContainerContainingNominalType,
+    values::core_value::CoreValue,
 };
 
 use crate::prelude::*;
@@ -295,13 +298,26 @@ impl<'a> Precompiler<'a> {
             self.add_new_variable(data.name.clone(), VariableShape::Type);
 
         let type_def = match data.kind {
-            TypeDeclarationKind::Nominal => Type::nominal(
-                NominalTypeDefinition::new_base(
-                    Type::core(CoreLibBaseTypeId::Unknown),
-                    data.name.clone(),
-                ),
-                &mut self.runtime.pointer_address_provider().borrow_mut(),
-            ),
+            // creating a nominal type containing an endpoint owned shared container type here
+            // the inner value will be replaced, once the type declaration is fully visited in
+            // during the type inference (visit_type_declaration in type_inference::type_inference_visitor)
+            TypeDeclarationKind::Nominal => Type::Nominal(unsafe {
+                SharedContainerContainingNominalType::new_unchecked(
+                    SharedContainer::new_owned_with_inferred_allowed_type(
+                        CoreValue::NominalTypeDefinition(
+                            NominalTypeDefinition::new_base(
+                                Type::core(CoreLibBaseTypeId::Unknown),
+                                data.name.clone(),
+                            ),
+                        ),
+                        SharedContainerMutability::Immutable,
+                        &mut self
+                            .runtime
+                            .pointer_address_provider()
+                            .borrow_mut(),
+                    ),
+                )
+            }),
             TypeDeclarationKind::Alias => Type::Alias(
                 TypeDefinition::Shared(unsafe {
                     SharedContainerContainingType::new_unchecked(

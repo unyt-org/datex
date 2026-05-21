@@ -70,6 +70,20 @@ impl NominalTypeDefinition {
         }
     }
 
+    /// Replace the inner [Type] with a new one and return the old one
+    pub fn replace_definition_type(&mut self, new_definition: Type) {
+        match self {
+            NominalTypeDefinition::Base {
+                definition_type: definition,
+                ..
+            } => *definition = new_definition,
+            NominalTypeDefinition::Variant {
+                definition_type: definition,
+                ..
+            } => *definition = new_definition,
+        }
+    }
+
     /// Convert to the inner [Type]
     pub fn into_definition_type(self) -> Type {
         match self {
