@@ -295,6 +295,7 @@ mod tests {
         assert_structural_eq, datex_list,
         libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
         prelude::*,
+        types::r#type::Type,
         values::core_values::{
             endpoint::Endpoint,
             integer::{Integer, typed_integer::TypedInteger},
