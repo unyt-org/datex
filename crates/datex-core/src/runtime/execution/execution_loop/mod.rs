@@ -987,24 +987,22 @@ pub fn inner_execution_loop(
                                         &mut state.stack,
                                         |ref_value_container| {
                                             // assignment value must be a reference
-                                            if let Some(reference) =
-                                                ref_value_container.maybe_shared()
-                                            {
-                                                let lhs = reference.value_container();
-                                                let val = match set_shared_container_value.operator {
-                                                    Some(operator) => handle_assignment_operation(
-                                                        operator,
-                                                        &lhs,
-                                                        value_container,
-                                                    )?,
-                                                    None => todo!()
+                                            if let Some(reference) = ref_value_container.maybe_shared() {
+                                                let update_data = {
+                                                    let lhs = reference.value_container();
+                                                    let val = match set_shared_container_value.operator {
+                                                        Some(operator) => handle_assignment_operation(
+                                                            operator,
+                                                            &lhs,
+                                                            value_container,
+                                                        )?,
+                                                        None => todo!()
+                                                    };
+                                                    ReplaceUpdateData {value: val}
                                                 };
-                                                let update_data = ReplaceUpdateData {value: val};
                                                 // TODO: pass TransceiverId
                                                 reference.base_shared_container_mut().try_replace(update_data, TransceiverId(0)).map_err(ExecutionError::UpdateError)?;
-                                                Ok(RuntimeValue::ValueContainer(
-                                                    ref_value_container.clone(),
-                                                ))
+                                                Ok(())
                                             } else {
                                                 Err(
                                                     ExecutionError::ExpectedSharedValue,
@@ -1012,7 +1010,8 @@ pub fn inner_execution_loop(
                                             }
                                         },
                                     ).flatten();
-                                    yield_unwrap!(res).into()
+                                    yield_unwrap!(res);
+                                    None.into()
                                 }
 
                                 RegularInstruction::SetStackValue(index) => {

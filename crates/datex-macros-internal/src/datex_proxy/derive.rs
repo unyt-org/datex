@@ -39,10 +39,19 @@ impl From<&Fields> for FieldsType {
     }
 }
 
+/// Per-field attributes for the Datex derive macro
 #[derive(Debug, PartialEq)]
 pub struct FieldAttributes {
     serde_mode: SerdeMode,
     datex_rename: Option<String>,
+}
+
+/// Top-level attributes for the Datex derive macro
+#[derive(Debug, PartialEq)]
+pub struct TopLevelAttributes {
+    /// Internally used attribute to indicate that the macro should use the `datex_core` namespace
+    /// instead of inferring it. This is required for doctests to work.
+    force_datex_core_namespace: bool,
 }
 
 pub struct DeriveData {
@@ -54,7 +63,15 @@ pub struct DeriveData {
 
 /// Derive implementation for the [Datex] derive macro.
 pub fn derive(input: DeriveInput) -> TokenStream {
-    let datex_core_crate_name = get_datex_core_crate_name(&input.attrs);
+
+    let top_level_attributes = parse_top_level_attributes(&input.attrs);
+
+    let datex_core_crate_name = if top_level_attributes.force_datex_core_namespace {
+        Ident::new("datex_core", Span::call_site())
+    }
+    else {
+        get_datex_core_crate_name()
+    };
 
     let DeriveData {
         into_datex_fields_inner,
@@ -717,6 +734,35 @@ fn parse_field_attributes(attrs: &[Attribute]) -> FieldAttributes {
     }
 }
 
+fn parse_top_level_attributes(attrs: &[Attribute]) -> TopLevelAttributes {
+    let mut force_datex_core_namespace = false;
+
+    for attr in attrs {
+        if attr.path().is_ident("datex") {
+            if let Meta::List(meta_list) = &attr.meta {
+                let nested =
+                    meta_list.parse_args_with(
+                        Punctuated::<Meta, Token![,]>::parse_terminated,
+                    );
+
+                if let Ok(nested) = nested {
+                    for meta in nested {
+                        if let Meta::Path(path) = meta {
+                            if path.is_ident("_force_datex_core_namespace") {
+                                force_datex_core_namespace = true;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    TopLevelAttributes {
+        force_datex_core_namespace: force_datex_core_namespace,
+    }
+}
+
 /// Generate the code to convert a field to a ValueContainer, depending on the serde mode of the field
 fn generate_field_conversion_code<T: ToTokens>(
     serde_mode: SerdeMode,
@@ -746,7 +792,7 @@ fn generate_field_conversion_code<T: ToTokens>(
     }
 }
 
-fn get_datex_core_crate_name(_attrs: &[Attribute]) -> Ident {
+fn get_datex_core_crate_name() -> Ident {
     // otherwise, find the crate name of datex_core and use it as an identifier
     let found = crate_name("datex-core").unwrap();
     match found {

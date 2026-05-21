@@ -842,7 +842,7 @@ mod tests {
     #[test]
     fn shared_value_sub_assignment() {
         let result = execute_datex_script_debug_with_result(
-            "const x = 'mut shared mut 42; *x -= 1",
+            "const x = 'mut shared mut 42; *x -= 1; x",
         );
         assert_value_eq!(result, ValueContainer::from(Integer::from(41)));
 
@@ -850,9 +850,7 @@ mod tests {
             "const x = 'mut shared mut 42; *x -= 1; x",
         );
 
-        // FIXME #414 due to addition the resulting value container of the slot
-        // is no longer a reference but a value what is incorrect.
-        // assert_matches!(result, ValueContainer::Reference(..));
+        assert_matches!(result, ValueContainer::Shared(..));
         assert_value_eq!(result, ValueContainer::from(Integer::from(41)));
     }
 
