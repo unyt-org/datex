@@ -1,16 +1,16 @@
 use crate::{
     ast::{
-        expressions::{
-            DatexExpression, DatexExpressionData,
-        },
+        expressions::{DatexExpression, DatexExpressionData, TagExpression},
         spanned::Spanned,
     },
-    parser::{Parser, SpannedParserError, errors::ParserError, lexer::Token},
+    parser::{
+        Parser, SpannedParserError,
+        errors::ParserError,
+        lexer::{SpannedToken, Token},
+        parsers::expression::UNARY_BP,
+    },
+    prelude::*,
 };
-use crate::ast::expressions::TagExpression;
-use crate::parser::lexer::SpannedToken;
-use crate::parser::parsers::expression::UNARY_BP;
-use crate::prelude::*;
 impl Parser {
     pub(crate) fn parse_tagged_value(
         &mut self,
@@ -23,9 +23,9 @@ impl Parser {
             Ok(DatexExpressionData::Tag(TagExpression {
                 tag,
                 expression: None,
-            }).with_default_span())
-        }
-        else {
+            })
+            .with_default_span())
+        } else {
             Ok(match self.peek()?.token.clone() {
                 // if followed by bracket, handle inner expression
                 Token::LeftCurly | Token::LeftBracket | Token::LeftParen => {
@@ -37,25 +37,25 @@ impl Parser {
                     DatexExpressionData::Tag(TagExpression {
                         tag,
                         expression: Some(Box::new(expression)),
-                    }).with_default_span()
+                    })
+                    .with_default_span()
                 }
                 // else, return empty tag
                 _ => DatexExpressionData::Tag(TagExpression {
                     tag,
                     expression: None,
-                }).with_default_span()
+                })
+                .with_default_span(),
             })
         }
     }
 
     /// Consumes the next token and expects it to be a tag, returning the tag string if successful.
-    fn expect_tag(
-        &mut self,
-    ) -> Result<String, SpannedParserError> {
+    fn expect_tag(&mut self) -> Result<String, SpannedParserError> {
         match self.advance()? {
             SpannedToken {
                 token: Token::Tag(tag),
-                span,
+                span: _,
             } => Ok(tag[1..].to_string()), // remove leading '#' from tag
             token => Err(SpannedParserError {
                 error: ParserError::UnexpectedToken {
@@ -74,23 +74,26 @@ mod tests {
     use crate::{
         ast::{
             expressions::{
-                DatexExpressionData,
+                ComparisonOperation, DatexExpressionData, List, Map,
+                TagExpression,
             },
+            spanned::Spanned,
         },
-        parser::tests::{parse},
+        global::operators::ComparisonOperator,
+        parser::tests::parse,
         prelude::*,
+        values::core_values::integer::typed_integer::TypedInteger,
     };
-    use crate::ast::expressions::{ComparisonOperation, List, Map, TagExpression};
-    use crate::ast::spanned::Spanned;
-    use crate::global::operators::ComparisonOperator;
-    use crate::values::core_values::integer::typed_integer::TypedInteger;
 
     #[test]
     fn parse_empty_tag() {
         let expr = parse("#MyTag");
         assert_eq!(
             expr.data,
-            DatexExpressionData::Tag(TagExpression { tag: "MyTag".to_string(), expression: None })
+            DatexExpressionData::Tag(TagExpression {
+                tag: "MyTag".to_string(),
+                expression: None
+            })
         );
     }
 
@@ -101,14 +104,19 @@ mod tests {
             expr.data,
             DatexExpressionData::Tag(TagExpression {
                 tag: "MyTag".to_string(),
-                expression: Some(Box::new(DatexExpressionData::Map(Map {
-                    entries: vec![
-                        (
-                            DatexExpressionData::Text("a".to_string()).with_default_span(),
-                            DatexExpressionData::TypedInteger(TypedInteger::U8(42)).with_default_span(),
-                        )
-                    ]
-                }).with_default_span()))
+                expression: Some(Box::new(
+                    DatexExpressionData::Map(Map {
+                        entries: vec![(
+                            DatexExpressionData::Text("a".to_string())
+                                .with_default_span(),
+                            DatexExpressionData::TypedInteger(
+                                TypedInteger::U8(42)
+                            )
+                            .with_default_span(),
+                        )]
+                    })
+                    .with_default_span()
+                ))
             })
         );
     }
@@ -120,12 +128,17 @@ mod tests {
             expr.data,
             DatexExpressionData::Tag(TagExpression {
                 tag: "MyTag".to_string(),
-                expression: Some(Box::new(DatexExpressionData::List(List {
-                    items: vec![
-                        DatexExpressionData::Boolean(true).with_default_span(),
-                        DatexExpressionData::Boolean(false).with_default_span(),
-                    ]
-                }).with_default_span()))
+                expression: Some(Box::new(
+                    DatexExpressionData::List(List {
+                        items: vec![
+                            DatexExpressionData::Boolean(true)
+                                .with_default_span(),
+                            DatexExpressionData::Boolean(false)
+                                .with_default_span(),
+                        ]
+                    })
+                    .with_default_span()
+                ))
             })
         );
     }
@@ -137,7 +150,10 @@ mod tests {
             expr.data,
             DatexExpressionData::Tag(TagExpression {
                 tag: "MyTag".to_string(),
-                expression: Some(Box::new(DatexExpressionData::TypedInteger(TypedInteger::U8(42)).with_default_span()))
+                expression: Some(Box::new(
+                    DatexExpressionData::TypedInteger(TypedInteger::U8(42))
+                        .with_default_span()
+                ))
             })
         );
     }
@@ -152,23 +168,36 @@ mod tests {
                 items: vec![
                     DatexExpressionData::Tag(TagExpression {
                         tag: "Tag1".to_string(),
-                        expression: Some(Box::new(DatexExpressionData::Map(Map {
-                            entries: vec![
-                                (
-                                    DatexExpressionData::Text("a".to_string()).with_default_span(),
-                                    DatexExpressionData::TypedInteger(TypedInteger::U8(1)).with_default_span(),
-                                )
-                            ]
-                        }).with_default_span()))
-                    }).with_default_span(),
+                        expression: Some(Box::new(
+                            DatexExpressionData::Map(Map {
+                                entries: vec![(
+                                    DatexExpressionData::Text("a".to_string())
+                                        .with_default_span(),
+                                    DatexExpressionData::TypedInteger(
+                                        TypedInteger::U8(1)
+                                    )
+                                    .with_default_span(),
+                                )]
+                            })
+                            .with_default_span()
+                        ))
+                    })
+                    .with_default_span(),
                     DatexExpressionData::Tag(TagExpression {
                         tag: "Tag2".to_string(),
                         expression: None
-                    }).with_default_span(),
+                    })
+                    .with_default_span(),
                     DatexExpressionData::Tag(TagExpression {
                         tag: "Tag3".to_string(),
-                        expression: Some(Box::new(DatexExpressionData::TypedInteger(TypedInteger::U8(42)).with_default_span()))
-                    }).with_default_span(),
+                        expression: Some(Box::new(
+                            DatexExpressionData::TypedInteger(
+                                TypedInteger::U8(42)
+                            )
+                            .with_default_span()
+                        ))
+                    })
+                    .with_default_span(),
                 ]
             })
         );
@@ -181,11 +210,22 @@ mod tests {
             expr.data,
             DatexExpressionData::ComparisonOperation(ComparisonOperation {
                 operator: ComparisonOperator::StructuralEqual,
-                left: Box::new(DatexExpressionData::Tag(TagExpression {
-                    tag: "Test".to_string(),
-                    expression: Some(Box::new(DatexExpressionData::TypedInteger(TypedInteger::U8(4)).with_default_span()))
-                }).with_default_span()),
-                right: Box::new(DatexExpressionData::TypedInteger(TypedInteger::U8(4)).with_default_span()),
+                left: Box::new(
+                    DatexExpressionData::Tag(TagExpression {
+                        tag: "Test".to_string(),
+                        expression: Some(Box::new(
+                            DatexExpressionData::TypedInteger(
+                                TypedInteger::U8(4)
+                            )
+                            .with_default_span()
+                        ))
+                    })
+                    .with_default_span()
+                ),
+                right: Box::new(
+                    DatexExpressionData::TypedInteger(TypedInteger::U8(4))
+                        .with_default_span()
+                ),
             })
         );
     }

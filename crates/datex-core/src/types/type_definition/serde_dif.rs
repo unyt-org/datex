@@ -1,9 +1,8 @@
 use crate::{
-    dif::serde_context::SerdeContext,
+    dif::serde_context::SerdeContext, types::type_definition::TypeDefinition,
     utils::serde_serialize_seed::SerializeSeed,
 };
 use serde::Serializer;
-use crate::types::type_definition::TypeDefinition;
 
 impl<'ctx> SerializeSeed for SerdeContext<'ctx, TypeDefinition> {
     type Value = TypeDefinition;

@@ -14,8 +14,13 @@ use crate::{
 };
 
 use crate::{
-    ast::expressions::{CallableDeclaration, CreateShared, GetSharedRef},
-    libs::core::core_lib_id::CoreLibId,
+    ast::expressions::{
+        CallableDeclaration, CreateShared, GetSharedRef, TagExpression,
+    },
+    libs::core::{
+        core_lib_id::CoreLibId,
+        type_id::{CoreLibBaseTypeId, CoreLibTypeId},
+    },
     prelude::*,
     shared_values::SharedContainer,
     types::{
@@ -24,8 +29,6 @@ use crate::{
     },
 };
 use alloc::format;
-use crate::ast::expressions::TagExpression;
-use crate::libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId};
 
 impl From<&ValueContainer> for DatexExpressionData {
     /// Converts a ValueContainer into a DatexExpression AST.
@@ -72,13 +75,14 @@ fn value_to_datex_expression(value: &Value) -> DatexExpressionData {
     let core_value_expression = core_value_to_datex_expression(&value.inner);
     if let Some(custom_type) = &value.custom_type {
         type_cast_expression(core_value_expression, custom_type)
-    }
-    else {
+    } else {
         core_value_expression
     }
 }
 
-fn core_value_to_datex_expression(core_value: &CoreValue) -> DatexExpressionData {
+fn core_value_to_datex_expression(
+    core_value: &CoreValue,
+) -> DatexExpressionData {
     match &core_value {
         CoreValue::Integer(integer) => {
             DatexExpressionData::Integer(integer.clone())
@@ -191,23 +195,22 @@ fn type_cast_expression(
         // #SomeTag (...)
         TypeDefinition::TaggedType {
             tag,
-            ty: Option::None
-        } => {
-            DatexExpressionData::Tag(TagExpression {
-                tag: tag.clone(),
-                expression: Some(Box::new(expression.with_default_span())),
-            })
-        }
+            ty: Option::None,
+        } => DatexExpressionData::Tag(TagExpression {
+            tag: tag.clone(),
+            expression: Some(Box::new(expression.with_default_span())),
+        }),
         // #SomeTag
         TypeDefinition::TaggedType {
             tag,
-            ty: Some(box TypeDefinition::Core(CoreLibTypeId::Base(CoreLibBaseTypeId::Unit)))
-        } => {
-            DatexExpressionData::Tag(TagExpression {
-                tag: tag.clone(),
-                expression: None,
-            })
-        }
+            ty:
+                Some(box TypeDefinition::Core(CoreLibTypeId::Base(
+                    CoreLibBaseTypeId::Unit,
+                ))),
+        } => DatexExpressionData::Tag(TagExpression {
+            tag: tag.clone(),
+            expression: None,
+        }),
         _ => todo!(),
     }
 }

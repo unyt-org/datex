@@ -2,12 +2,12 @@ use crate::{
     global::protocol_structures::instruction_data::RawRemotePointerAddress,
     prelude::*,
     shared_values::{
-        ExternalPointerAddress, PointerAddress, SelfOwnedPointerAddress,
+        ExternalPointerAddress, PointerAddress, RemotePointerAddress,
+        SelfOwnedPointerAddress,
     },
     values::core_values::endpoint::Endpoint,
 };
 use binrw::io::Cursor;
-use crate::shared_values::RemotePointerAddress;
 
 #[derive(Default, Debug)]
 pub struct SelfOwnedPointerAddressProvider {

@@ -4,9 +4,12 @@ use crate::{
         spanned::Spanned,
         type_expressions::TypeExpression,
     },
-    global::operators::{
-        ArithmeticUnaryOperator, BinaryOperator, ComparisonOperator,
-        UnaryOperator, assignment::AssignmentOperator,
+    global::{
+        operators::{
+            ArithmeticUnaryOperator, BinaryOperator, ComparisonOperator,
+            UnaryOperator, assignment::AssignmentOperator,
+        },
+        protocol_structures::instruction_data::StackIndex,
     },
     shared_values::{
         PointerAddress, ReferenceMutability, SharedContainerMutability,
@@ -28,7 +31,6 @@ use crate::{
 };
 pub use crate::{prelude::*, values::core_values::callable::CallableKind};
 use core::{fmt::Display, ops, ops::Neg};
-use crate::global::protocol_structures::instruction_data::StackIndex;
 
 #[derive(Clone, Debug)]
 /// An expression in the AST
@@ -548,7 +550,6 @@ impl Display for VariableKind {
         }
     }
 }
-
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct TagExpression {

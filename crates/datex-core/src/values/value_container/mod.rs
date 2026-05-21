@@ -130,7 +130,9 @@ impl ValueContainer {
                 let inner_type =
                     shared.value_container().actual_container_type();
                 TypeDefinitionWithMetadata {
-                    definition: TypeDefinition::Nested(Box::new(Type::from(inner_type))),
+                    definition: TypeDefinition::Nested(Box::new(Type::from(
+                        inner_type,
+                    ))),
                     metadata: TypeMetadata::Shared {
                         mutability: shared.container_mutability(),
                         ownership: shared.ownership(),

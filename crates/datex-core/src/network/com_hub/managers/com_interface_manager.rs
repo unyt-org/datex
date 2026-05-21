@@ -15,13 +15,11 @@ use crate::{
         },
     },
     prelude::*,
-    values::value_container::ValueContainer,
+    values::value::Value,
 };
 use core::{cell::RefCell, pin::Pin};
 use futures::channel::oneshot;
 use log::info;
-use crate::values::core_values::map::Map;
-use crate::values::value::Value;
 
 type InterfaceMap = HashMap<ComInterfaceUUID, InterfaceInfo>;
 
@@ -390,14 +388,14 @@ impl ComInterfaceManager {
 mod tests {
     use super::*;
     use crate::{
-        datex_proxy::{DatexValueProxyInfallibleSerialize},
+        datex_proxy::DatexValueProxyInfallibleSerialize,
         network::com_interfaces::com_interface::factory::{
             SendCallback, SendSuccess, SocketConfiguration, SocketProperties,
         },
         prelude::*,
+        values::value::Value,
     };
     use datex_macros_internal::Datex;
-    use crate::values::value::Value;
 
     #[derive(Datex)]
     struct MockSetupData {
@@ -542,7 +540,9 @@ mod tests {
         let dyn_factory: DynInterfaceImplementationFactoryFn =
             Rc::new(|setup_data: Value| {
                 Box::pin(async move {
-                    let setup = MockSetupData::try_from(Value::from(setup_data)).unwrap();
+                    let setup =
+                        MockSetupData::try_from(Value::from(setup_data))
+                            .unwrap();
                     setup.create_interface()
                 })
             });

@@ -1,13 +1,14 @@
 use crate::{
     datex_proxy::{
-        DatexValueContainerProxy, DatexValueContainerProxyDeserialize, DatexValueContainerProxyInfallibleSerialize,
-        DatexValueContainerProxySerialize,
+        DatexValueContainerProxy, DatexValueContainerProxyDeserialize,
+        DatexValueContainerProxyInfallibleSerialize,
+        DatexValueContainerProxySerialize, TryFromDatexValueError,
+        TryToDatexValueError,
     },
+    prelude::*,
     shared_values::{ReferencedSharedContainer, SharedContainer},
     values::value_container::ValueContainer,
 };
-use crate::datex_proxy::{TryFromDatexValueError, TryToDatexValueError};
-use crate::prelude::*;
 
 impl DatexValueContainerProxyInfallibleSerialize for ReferencedSharedContainer {
     fn to_value_container(self) -> ValueContainer {
@@ -15,12 +16,16 @@ impl DatexValueContainerProxyInfallibleSerialize for ReferencedSharedContainer {
     }
 }
 impl DatexValueContainerProxySerialize for ReferencedSharedContainer {
-    fn try_to_value_container(self) -> Result<ValueContainer, TryToDatexValueError> {
+    fn try_to_value_container(
+        self,
+    ) -> Result<ValueContainer, TryToDatexValueError> {
         Ok(self.to_value_container())
     }
 }
 impl DatexValueContainerProxyDeserialize for ReferencedSharedContainer {
-    fn try_from_value_container(value: ValueContainer) -> Result<Self, TryFromDatexValueError> {
+    fn try_from_value_container(
+        value: ValueContainer,
+    ) -> Result<Self, TryFromDatexValueError> {
         Ok(match value {
             ValueContainer::Shared(SharedContainer::Referenced(reference)) => {
                 reference

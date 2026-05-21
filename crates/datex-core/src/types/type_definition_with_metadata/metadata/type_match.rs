@@ -1,14 +1,7 @@
-use crate::{
-    shared_values::ReferenceMutability,
-    types::type_definition_with_metadata::metadata::TypeMetadata,
-};
-use core::fmt::Display;
+use crate::types::type_definition_with_metadata::metadata::TypeMetadata;
 
 use crate::{
-    prelude::*,
-    shared_values::{SharedContainerMutability, SharedContainerOwnership},
-    types::{type_definition::TypeDefinition, type_match::TypeMatch},
-    values::value_container::ValueContainer,
+    types::type_match::TypeMatch, values::value_container::ValueContainer,
 };
 
 impl TypeMatch for TypeMetadata {

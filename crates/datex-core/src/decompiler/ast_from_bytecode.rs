@@ -28,10 +28,12 @@ use crate::{
 use crate::{
     ast::expressions::{
         CloneExpression, CreateShared, GetSharedRef, RequestSharedRef,
-        StackAssignment,
+        RootPropertyAccess, StackAssignment, TagExpression,
     },
     global::protocol_structures::{
-        instruction_data::UnboundedStatementsData,
+        instruction_data::{
+            ShortTextData, StackIndex, TaggedValue, UnboundedStatementsData,
+        },
         instructions::NestedInstructionResolutionStrategy,
         regular_instructions::RegularInstruction,
         type_instructions::TypeInstruction,
@@ -43,9 +45,6 @@ use crate::{
 };
 use alloc::format;
 use core::cell::RefCell;
-use num_enum::TryFromPrimitive;
-use crate::ast::expressions::{RootPropertyAccess, TagExpression};
-use crate::global::protocol_structures::instruction_data::{ShortTextData, StackIndex, TaggedValue};
 
 #[derive(Debug)]
 enum CollectedAstResult {

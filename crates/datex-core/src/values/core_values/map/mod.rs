@@ -158,16 +158,16 @@ impl Map {
         let key = key.into();
         match self {
             Map::Dynamic(map) => key.with_value_container(|key| {
-                map.shift_remove(key).ok_or_else(|| {
-                    KeyNotFoundError {
-                        key: key.clone(),
-                    }
-                })
+                map.shift_remove(key)
+                    .ok_or_else(|| KeyNotFoundError { key: key.clone() })
             }),
             Map::Structural(vec) => key.with_value_container(|key| {
                 for (k, v) in vec.iter_mut() {
                     if k == key {
-                        return Ok(core::mem::replace(v, ValueContainer::from(Value::null())));
+                        return Ok(core::mem::replace(
+                            v,
+                            ValueContainer::from(Value::null()),
+                        ));
                     }
                 }
                 Err(KeyNotFoundError { key: key.clone() })
@@ -176,7 +176,10 @@ impl Map {
                 if let Some(string) = key.try_as_text() {
                     for (k, v) in vec.iter_mut() {
                         if k == string {
-                            return Ok(core::mem::replace(v, ValueContainer::from(Value::null())));
+                            return Ok(core::mem::replace(
+                                v,
+                                ValueContainer::from(Value::null()),
+                            ));
                         }
                     }
                     Err(KeyNotFoundError { key: key.into() })

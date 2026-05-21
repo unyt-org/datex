@@ -1,10 +1,10 @@
 use core::fmt::{Debug, Display};
 
 use crate::{
+    datex_proxy::TryFromDatexValueError,
     network::com_interfaces::com_interface::error::ComInterfaceError,
     prelude::*,
 };
-use crate::datex_proxy::TryFromDatexValueError;
 
 #[derive(Debug, PartialEq)]
 pub enum InterfaceAddError {
@@ -64,46 +64,26 @@ impl ComInterfaceCreateError {
     }
 }
 
-
 impl Display for ComInterfaceCreateError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             ComInterfaceCreateError::InterfaceCreationRequiresAsyncContext => {
-                write!(
-                    f,
-                    "Interface creation requires async context"
-                )
+                write!(f, "Interface creation requires async context")
             }
             ComInterfaceCreateError::InterfaceTypeNotRegistered(ty) => {
-                write!(
-                    f,
-                    "Interface type '{}' is not registered",
-                    ty
-                )
+                write!(f, "Interface type '{}' is not registered", ty)
             }
             ComInterfaceCreateError::SetupDataParseError(e) => {
                 write!(f, "Could not parse setup data: {}", e.0)
             }
             ComInterfaceCreateError::InvalidSetupData(details) => {
-                write!(
-                    f,
-                    "Invalid setup data: {}",
-                    details
-                )
+                write!(f, "Invalid setup data: {}", details)
             }
             ComInterfaceCreateError::InterfaceAddError(add_err) => {
-                write!(
-                    f,
-                    "Failed to add interface: {}",
-                    add_err
-                )
+                write!(f, "Failed to add interface: {}", add_err)
             }
             ComInterfaceCreateError::ConnectionError(Some(details)) => {
-                write!(
-                    f,
-                    "Connection error: {}",
-                    details
-                )
+                write!(f, "Connection error: {}", details)
             }
             ComInterfaceCreateError::ConnectionError(None) => {
                 write!(f, "Connection error")

@@ -6,11 +6,8 @@ use crate::{
         value_id::CoreLibValueId,
     },
     random::RandomState,
-    runtime::{execution::ExecutionError, memory::Memory},
-    shared_values::{
-        BuiltinPointerAddress, ExternalPointerAddress,
-        ReferencedSharedContainer,
-    },
+    runtime::execution::ExecutionError,
+    shared_values::ExternalPointerAddress,
     values::{
         core_value::CoreValue,
         core_values::{

@@ -31,8 +31,8 @@ use datex_core::{
             ComparisonOperation, Conditional, CreateMut, CreateShared,
             DatexExpression, DatexExpressionData, GenericInstantiation, GetRef,
             List, Map, PropertyAccess, PropertyAssignment, RequestSharedRef,
-            UnaryOperation, Unbox, ValueAccessType, VariableAssignment,
-            VariableDeclaration, VariableKind,
+            RootPropertyAccess, UnaryOperation, Unbox, ValueAccessType,
+            VariableAssignment, VariableDeclaration, VariableKind,
         },
         spanned::Spanned,
         type_expressions::{
@@ -40,6 +40,7 @@ use datex_core::{
             TypeVariantAccess, Union,
         },
     },
+    global::protocol_structures::instruction_data::StackIndex,
     parser::{
         Parser,
         errors::{ParserError, SpannedParserError},
@@ -53,8 +54,6 @@ use datex_core::{
     },
     values::core_values::error::NumberParseError,
 };
-use datex_core::ast::expressions::RootPropertyAccess;
-use datex_core::global::protocol_structures::instruction_data::StackIndex;
 
 /// Parse the given source code into a DatexExpression AST.
 fn parse_unwrap(src: &str) -> DatexExpression {

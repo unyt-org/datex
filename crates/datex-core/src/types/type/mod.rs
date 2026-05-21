@@ -165,13 +165,13 @@ impl Type {
         // just collapse to definition
         if let Type::Alias(TypeDefinitionWithMetadata {
             metadata,
-            definition,
+            definition: _,
         }) = &self
             && metadata == &TypeMetadata::default()
         {
             match self {
                 Type::Alias(TypeDefinitionWithMetadata {
-                    metadata,
+                    metadata: _,
                     definition,
                 }) => definition,
                 _ => unreachable!(),
@@ -190,7 +190,7 @@ impl Type {
                 definition: TypeDefinition::Core(core_lib_type_id),
                 metadata,
             }) if metadata == &TypeMetadata::default() => {
-                Some(core_lib_type_id.clone())
+                Some(*core_lib_type_id)
             }
             _ => None,
         }

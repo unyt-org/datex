@@ -1,9 +1,11 @@
 use crate::{
-    values::{core_value::CoreValue},
+    datex_proxy::{
+        DatexValueProxy, DatexValueProxyDeserialize,
+        DatexValueProxyInfallibleSerialize, DatexValueProxySerialize,
+        TryFromDatexValueError, TryToDatexValueError,
+    },
+    values::{core_value::CoreValue, value::Value},
 };
-use crate::datex_proxy::{DatexValueProxy, DatexValueProxyDeserialize, DatexValueProxyInfallibleSerialize, DatexValueProxySerialize, TryFromDatexValueError, TryToDatexValueError};
-use crate::values::value::Value;
-
 
 impl DatexValueProxyInfallibleSerialize for CoreValue {
     fn to_value(self) -> Value {

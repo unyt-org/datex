@@ -36,13 +36,7 @@ use crate::{
         BuiltinPointerAddress, ExternalPointerAddress, OwnedSharedContainer,
         PointerAddress, ReferenceMutability, SharedContainer,
     },
-    types::{
-        r#type::Type,
-        type_definition::TypeDefinition,
-        type_definition_with_metadata::{
-            TypeDefinitionWithMetadata, TypeMetadata,
-        },
-    },
+    types::{r#type::Type, type_definition::TypeDefinition},
 };
 
 #[derive(Clone, Debug, PartialEq)]

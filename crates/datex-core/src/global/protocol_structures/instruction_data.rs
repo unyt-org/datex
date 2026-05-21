@@ -12,8 +12,9 @@ use crate::{
     },
     prelude::*,
     shared_values::{
-        ExternalPointerAddress, PointerAddress, ReferenceMutability,
-        SelfOwnedPointerAddress, SharedContainerMutability,
+        BuiltinPointerAddress, ExternalPointerAddress, PointerAddress,
+        ReferenceMutability, RemotePointerAddress, SelfOwnedPointerAddress,
+        SharedContainerMutability,
     },
     types::type_definition_with_metadata::TypeMetadata,
     values::core_values::{
@@ -32,7 +33,6 @@ use cfg_if::cfg_if;
 use core::{fmt::Display, ops::AddAssign};
 use modular_bitfield::{bitfield, prelude::B4};
 use serde::{Deserialize, Serialize};
-use crate::shared_values::{BuiltinPointerAddress, RemotePointerAddress};
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
 #[brw(little)]
@@ -167,7 +167,7 @@ pub struct TaggedValue {
     pub(crate) tag: ShortTextData,
     #[br(map = |x: u8| x != 0)]
     #[bw(map = |b: &bool| if *b { 1u8 } else { 0u8 })]
-    pub(crate) is_empty: bool
+    pub(crate) is_empty: bool,
 }
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
@@ -386,13 +386,19 @@ impl RawPointerAddress {
 impl From<PointerAddress> for RawPointerAddress {
     fn from(ptr: PointerAddress) -> Self {
         match ptr {
-            PointerAddress::External(ExternalPointerAddress::Remote(addr)) =>
-                RawPointerAddress::Remote(RawRemotePointerAddress::from(addr)),
-            PointerAddress::External(ExternalPointerAddress::Builtin(addr)) =>
-                RawPointerAddress::Internal(RawBuiltinPointerAddress::from(addr)),
-            PointerAddress::SelfOwned(SelfOwnedPointerAddress { address: addr }) => {
-                RawPointerAddress::SelfOwned(RawSelfOwnedPointerAddress { bytes: addr, })
+            PointerAddress::External(ExternalPointerAddress::Remote(addr)) => {
+                RawPointerAddress::Remote(RawRemotePointerAddress::from(addr))
             }
+            PointerAddress::External(ExternalPointerAddress::Builtin(addr)) => {
+                RawPointerAddress::Internal(RawBuiltinPointerAddress::from(
+                    addr,
+                ))
+            }
+            PointerAddress::SelfOwned(SelfOwnedPointerAddress {
+                address: addr,
+            }) => RawPointerAddress::SelfOwned(RawSelfOwnedPointerAddress {
+                bytes: addr,
+            }),
         }
     }
 }
@@ -400,12 +406,16 @@ impl From<PointerAddress> for RawPointerAddress {
 impl From<RawPointerAddress> for PointerAddress {
     fn from(raw: RawPointerAddress) -> Self {
         match raw {
-            RawPointerAddress::Remote(addr) => PointerAddress::External(
-                ExternalPointerAddress::Remote(RemotePointerAddress::from(addr)),
-            ),
-            RawPointerAddress::Internal(addr) => PointerAddress::External(
-                ExternalPointerAddress::Builtin(BuiltinPointerAddress::from(addr)),
-            ),
+            RawPointerAddress::Remote(addr) => {
+                PointerAddress::External(ExternalPointerAddress::Remote(
+                    RemotePointerAddress::from(addr),
+                ))
+            }
+            RawPointerAddress::Internal(addr) => {
+                PointerAddress::External(ExternalPointerAddress::Builtin(
+                    BuiltinPointerAddress::from(addr),
+                ))
+            }
             RawPointerAddress::SelfOwned(local) => {
                 PointerAddress::SelfOwned(SelfOwnedPointerAddress {
                     address: local.bytes,
@@ -438,7 +448,6 @@ impl From<RawRemotePointerAddress> for RemotePointerAddress {
         RemotePointerAddress(addr.id)
     }
 }
-
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
 #[brw(little)]
@@ -488,7 +497,8 @@ pub struct ModifyStackValue {
 pub struct Move {
     pub pointer_count: u32,
     #[br(count = pointer_count)]
-    pub address_mappings: Vec<(RawSelfOwnedPointerAddress, RawSelfOwnedPointerAddress)>,
+    pub address_mappings:
+        Vec<(RawSelfOwnedPointerAddress, RawSelfOwnedPointerAddress)>,
 }
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]

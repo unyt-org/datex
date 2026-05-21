@@ -19,12 +19,7 @@ pub mod ops;
 pub mod serde_dif;
 pub mod update_handler;
 
-use crate::{
-    shared_values::errors::AccessError,
-    types::{
-        r#type::Type, type_definition_with_metadata::TypeDefinitionWithMetadata,
-    },
-};
+use crate::shared_values::errors::AccessError;
 use core::{
     fmt::{Display, Formatter},
     result::Result,
@@ -106,7 +101,9 @@ impl Value {
     pub fn has_default_type(&self) -> bool {
         match &self.custom_type {
             None => true,
-            Some(TypeDefinition::Core(core_type)) => core_type == &self.default_core_type(),
+            Some(TypeDefinition::Core(core_type)) => {
+                core_type == &self.default_core_type()
+            }
             Some(_) => false,
         }
     }
@@ -465,7 +462,9 @@ mod tests {
 
         let val = Value {
             inner: CoreValue::Integer(Integer::from(42)),
-            custom_type: Some(TypeDefinition::Core(CoreLibBaseTypeId::Integer.into())),
+            custom_type: Some(TypeDefinition::Core(
+                CoreLibBaseTypeId::Integer.into(),
+            )),
         };
 
         assert!(val.has_default_type());

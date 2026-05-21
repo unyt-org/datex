@@ -33,7 +33,8 @@ pub trait CollectionResultsPopper<Result, Val, Key, KeyVal, Type>:
         self.try_pop_value_result().expect("Expected value result")
     }
     fn pop_type_result(&mut self) -> Type {
-        self.try_pop_type_result().expect("Expected type definition result")
+        self.try_pop_type_result()
+            .expect("Expected type definition result")
     }
     fn pop_key_value_pair_result(&mut self) -> (Key, KeyVal) {
         self.try_pop_key_value_pair_result()

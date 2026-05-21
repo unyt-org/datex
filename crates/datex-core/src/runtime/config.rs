@@ -1,18 +1,14 @@
 use crate::{
     collections::HashMap,
-    datex_proxy::DatexValueContainerProxy,
+    datex_proxy::{
+        DatexValueProxyInfallibleSerialize, DatexValueProxySerialize,
+    },
     network::com_hub::InterfacePriority,
     prelude::*,
-    values::{
-        core_values::endpoint::Endpoint, value_container::ValueContainer,
-    },
+    values::{core_values::endpoint::Endpoint, value::Value},
 };
 use datex_macros_internal::Datex;
 use serde::{Deserialize, Serialize};
-use crate::datex_proxy::{DatexValueContainerProxyDeserialize, DatexValueContainerProxyInfallibleSerialize, DatexValueContainerProxySerialize, DatexValueProxyInfallibleSerialize, DatexValueProxySerialize, TryToDatexValueError};
-use crate::values::core_values::map::Map;
-use crate::values::value::Value;
-
 
 pub fn is_priority_none(v: &InterfacePriority) -> bool {
     matches!(v, InterfacePriority::None)
@@ -38,17 +34,18 @@ impl RuntimeConfigInterface {
         Ok(RuntimeConfigInterface {
             interface_type: interface_type.to_string(),
             priority: InterfacePriority::default(),
-            config: setup_data.try_to_value().map_err(|e| {
-                format!(
-                    "Failed to convert setup_data to ValueContainer: {:?}",
-                    e
-                )
-            })?.try_into().map_err(|e| {
-                format!(
-                    "Failed to convert ValueContainer to Map: {:?}",
-                    e
-                )
-            })?
+            config: setup_data
+                .try_to_value()
+                .map_err(|e| {
+                    format!(
+                        "Failed to convert setup_data to ValueContainer: {:?}",
+                        e
+                    )
+                })?
+                .try_into()
+                .map_err(|e| {
+                    format!("Failed to convert ValueContainer to Map: {:?}", e)
+                })?,
         })
     }
 
@@ -59,7 +56,7 @@ impl RuntimeConfigInterface {
         RuntimeConfigInterface {
             priority: InterfacePriority::default(),
             interface_type: interface_type.to_string(),
-            config: config,
+            config,
         }
     }
 }
@@ -89,7 +86,7 @@ impl RuntimeConfig {
         let config = config.to_value();
         let interface = RuntimeConfigInterface {
             interface_type,
-            config: config,
+            config,
             priority,
         };
         if let Some(interfaces) = &mut self.interfaces {
@@ -138,13 +135,14 @@ pub mod tests {
     use datex_macros_internal::Datex;
 
     use crate::{
+        datex_proxy::{
+            DatexValueContainerProxyDeserialize,
+            DatexValueContainerProxyInfallibleSerialize,
+        },
         prelude::*,
         runtime::{RuntimeConfig, RuntimeConfigInterface},
-        values::core_values::map::Map,
+        values::core_values::{endpoint::Endpoint, map::Map},
     };
-    use crate::datex_proxy::DatexValueContainerProxyInfallibleSerialize;
-    use crate::datex_proxy::DatexValueContainerProxyDeserialize;
-    use crate::values::core_values::endpoint::Endpoint;
 
     #[derive(Datex)]
     struct MySetupData {
@@ -180,7 +178,8 @@ pub mod tests {
         assert_eq!(map.get("field2").unwrap().try_as::<i32>().unwrap(), 42);
 
         let value_container = config_interface.to_value_container();
-        let parsed_config_interface: RuntimeConfigInterface = value_container.try_into().unwrap();
+        let parsed_config_interface: RuntimeConfigInterface =
+            value_container.try_into().unwrap();
         assert_eq!(parsed_config_interface.interface_type, "test");
     }
 
@@ -188,7 +187,8 @@ pub mod tests {
     fn datex_proxy_runtime_config() {
         let config = RuntimeConfig::new_with_endpoint(Endpoint::new("@test"));
         let value_container = config.to_value_container();
-        let parsed_config: RuntimeConfig = RuntimeConfig::try_from_value_container(value_container).unwrap();
+        let parsed_config: RuntimeConfig =
+            RuntimeConfig::try_from_value_container(value_container).unwrap();
         assert_eq!(parsed_config.endpoint, Some(Endpoint::new("@test")));
     }
 }

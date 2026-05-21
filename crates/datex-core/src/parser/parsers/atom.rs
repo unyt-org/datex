@@ -1,10 +1,12 @@
 use crate::{
     ast::{
         expressions::{
-            DatexExpression, DatexExpressionData, ValueAccessType,
+            DatexExpression, DatexExpressionData, RootPropertyAccess,
+            ValueAccessType,
         },
         spanned::Spanned,
     },
+    global::protocol_structures::instruction_data::StackIndex,
     parser::{
         Parser, SpannedParserError,
         errors::ParserError,
@@ -21,8 +23,6 @@ use crate::{
     },
 };
 use core::str::FromStr;
-use crate::ast::expressions::{RootPropertyAccess, TagExpression};
-use crate::global::protocol_structures::instruction_data::StackIndex;
 
 impl Parser {
     pub(crate) fn parse_atom(
@@ -101,10 +101,12 @@ impl Parser {
                                 value: "".to_string(),
                                 variant: None,
                             }),
-                            Token::HexadecimalIntegerLiteral(IntegerWithVariant {
-                                value: "".to_string(),
-                                variant: None,
-                            }),
+                            Token::HexadecimalIntegerLiteral(
+                                IntegerWithVariant {
+                                    value: "".to_string(),
+                                    variant: None,
+                                },
+                            ),
                             Token::OctalIntegerLiteral(IntegerWithVariant {
                                 value: "".to_string(),
                                 variant: None,
@@ -307,7 +309,8 @@ impl Parser {
     ) -> Result<DatexExpression, SpannedParserError> {
         Ok(DatexExpressionData::RootPropertyAccess(RootPropertyAccess {
             property_name: property_access[2..].to_string(), // remove leading '$.'
-        }).with_span(self.advance()?.span))
+        })
+        .with_span(self.advance()?.span))
     }
 
     pub(crate) fn parse_string_literal(
@@ -347,11 +350,12 @@ mod tests {
         ast::{
             expressions::{
                 CloneExpression, DatexExpressionData, GetSharedRef,
-                Statements, ValueAccessType,
+                RootPropertyAccess, Statements, TagExpression, ValueAccessType,
             },
             spanned::Spanned,
             type_expressions::{TypeExpressionData, Union},
         },
+        global::protocol_structures::instruction_data::StackIndex,
         parser::{
             errors::ParserError,
             parser_result::ParserResult,
@@ -369,8 +373,6 @@ mod tests {
         },
     };
     use core::assert_matches;
-    use crate::ast::expressions::{RootPropertyAccess, TagExpression};
-    use crate::global::protocol_structures::instruction_data::StackIndex;
 
     #[test]
     fn parse_boolean_true() {

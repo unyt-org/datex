@@ -1,10 +1,15 @@
-use datex_core::{assert_structural_eq, datex_proxy::DatexValueContainerProxy, prelude::*, values::{
-    core_values::{endpoint::Endpoint, map::Map},
-    value_container::ValueContainer,
-}};
+use core::assert_matches;
+use datex_core::{
+    assert_structural_eq,
+    datex_proxy::DatexValueContainerProxy,
+    prelude::*,
+    values::{
+        core_values::{endpoint::Endpoint, map::Map},
+        value_container::ValueContainer,
+    },
+};
 use datex_macros_internal::Datex;
 use serde::{Deserialize, Serialize};
-use core::assert_matches;
 
 #[derive(Datex, Debug)]
 enum ExampleEnum {
@@ -60,11 +65,10 @@ use datex_core::{
         OwnedSharedContainer, PointerAddress, SharedContainer,
         SharedContainerMutability,
     },
-    values::value::Value,
+    types::type_definition::TypeDefinition,
+    values::{core_value::CoreValue, value::Value},
 };
 use test_case::test_case;
-use datex_core::types::type_definition::TypeDefinition;
-use datex_core::values::core_value::CoreValue;
 
 #[test_case(
     Example {
@@ -119,35 +123,56 @@ fn enum_to_value() {
     let variant_a: Value = ExampleEnum::VariantA.into();
 
     assert_structural_eq!(variant_a, Value::null());
-    assert_eq!(variant_a.custom_type, Some(TypeDefinition::TaggedType {
-        tag: "VariantA".to_string(),
-        ty: None
-    }));
+    assert_eq!(
+        variant_a.custom_type,
+        Some(TypeDefinition::TaggedType {
+            tag: "VariantA".to_string(),
+            ty: None
+        })
+    );
 
     let variant_b: Value = ExampleEnum::VariantB(1, 2).into();
-    assert_structural_eq!(variant_b, Value::from(vec![Value::from(1u8), Value::from(2u8)]));
-    assert_eq!(variant_b.custom_type, Some(TypeDefinition::TaggedType {
-        tag: "VariantB".to_string(),
-        ty: None,
-    }));
+    assert_structural_eq!(
+        variant_b,
+        Value::from(vec![Value::from(1u8), Value::from(2u8)])
+    );
+    assert_eq!(
+        variant_b.custom_type,
+        Some(TypeDefinition::TaggedType {
+            tag: "VariantB".to_string(),
+            ty: None,
+        })
+    );
 
-    let variant_c: Value = ExampleEnum::VariantC { x: 3, y: "Hello".to_string() }.into();
-    assert_structural_eq!(variant_c, Value::from(Map::from(vec![
-        ("x".to_string(), Value::from(3).into()),
-        ("y".to_string(), Value::from("Hello".to_string()).into()),
-    ])));
-    assert_eq!(variant_c.custom_type, Some(TypeDefinition::TaggedType {
-        tag: "VariantC".to_string(),
-        ty: None,
-    }));
+    let variant_c: Value = ExampleEnum::VariantC {
+        x: 3,
+        y: "Hello".to_string(),
+    }
+    .into();
+    assert_structural_eq!(
+        variant_c,
+        Value::from(Map::from(vec![
+            ("x".to_string(), Value::from(3).into()),
+            ("y".to_string(), Value::from("Hello".to_string()).into()),
+        ]))
+    );
+    assert_eq!(
+        variant_c.custom_type,
+        Some(TypeDefinition::TaggedType {
+            tag: "VariantC".to_string(),
+            ty: None,
+        })
+    );
 
     let variant_d: Value = ExampleEnum::VariantD(1).into();
     assert_structural_eq!(variant_d, Value::from(1u8));
-    assert_eq!(variant_d.custom_type, Some(TypeDefinition::TaggedType {
-        tag: "VariantD".to_string(),
-        ty: None,
-    }));
-
+    assert_eq!(
+        variant_d.custom_type,
+        Some(TypeDefinition::TaggedType {
+            tag: "VariantD".to_string(),
+            ty: None,
+        })
+    );
 }
 
 #[test]
@@ -173,13 +198,12 @@ fn struct_to_value() {
 
 #[test]
 fn new_type_struct_to_value() {
-    let value: Value = ExampleNewType(
-        Example {
-            a: 42u8,
-            b: "Test".to_string(),
-            c: Endpoint::default(),
-        }
-    ).into();
+    let value: Value = ExampleNewType(Example {
+        a: 42u8,
+        b: "Test".to_string(),
+        c: Endpoint::default(),
+    })
+    .into();
 
     let map: Map = value.try_into().unwrap();
     assert_eq!(map.get("a").unwrap(), &ValueContainer::from(42u8));
@@ -246,18 +270,21 @@ fn value_to_enum() {
         custom_type: Some(TypeDefinition::TaggedType {
             tag: "VariantA".to_string(),
             ty: None,
-        })
+        }),
     };
 
     let example: ExampleEnum = variant_a.try_into().unwrap();
     assert_matches!(example, ExampleEnum::VariantA);
 
     let variant_b = Value {
-        inner: CoreValue::from(vec![ValueContainer::from(1u8), ValueContainer::from(2u8)]),
+        inner: CoreValue::from(vec![
+            ValueContainer::from(1u8),
+            ValueContainer::from(2u8),
+        ]),
         custom_type: Some(TypeDefinition::TaggedType {
             tag: "VariantB".to_string(),
             ty: None,
-        })
+        }),
     };
     let example: ExampleEnum = variant_b.try_into().unwrap();
     assert_matches!(example, ExampleEnum::VariantB(1, 2));
@@ -270,31 +297,33 @@ fn value_to_enum() {
         custom_type: Some(TypeDefinition::TaggedType {
             tag: "VariantC".to_string(),
             ty: None,
-        })
+        }),
     };
     let example: ExampleEnum = variant_c.try_into().unwrap();
     assert_matches!(example, ExampleEnum::VariantC { x: 3, y } if &y == "Hello" );
-    
+
     let variant_d = Value {
         inner: CoreValue::from(42u8),
         custom_type: Some(TypeDefinition::TaggedType {
             tag: "VariantD".to_string(),
             ty: None,
-        })
+        }),
     };
     let example: ExampleEnum = variant_d.try_into().unwrap();
     assert_matches!(example, ExampleEnum::VariantD(42));
-
 }
 
 #[test]
 fn value_to_enum_failure() {
     let invalid_variant = Value {
-        inner: CoreValue::from(vec![ValueContainer::from(1u8), ValueContainer::from(2u8)]),
+        inner: CoreValue::from(vec![
+            ValueContainer::from(1u8),
+            ValueContainer::from(2u8),
+        ]),
         custom_type: Some(TypeDefinition::TaggedType {
             tag: "VariantX".to_string(),
             ty: None,
-        })
+        }),
     };
     assert!(ExampleEnum::try_from(invalid_variant).is_err());
 
@@ -303,7 +332,7 @@ fn value_to_enum_failure() {
         custom_type: Some(TypeDefinition::TaggedType {
             tag: "VariantA".to_string(),
             ty: None,
-        })
+        }),
     };
     assert!(ExampleEnum::try_from(invalid_variant).is_err());
 }

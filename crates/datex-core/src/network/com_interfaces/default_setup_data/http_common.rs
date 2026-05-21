@@ -1,13 +1,13 @@
 use core::fmt::Display;
 
 use crate::{
-    network::com_hub::errors::ComInterfaceCreateError,
-    prelude::*, runtime::RuntimeConfigInterface,
+    datex_proxy::DatexValueProxySerialize,
+    network::com_hub::errors::ComInterfaceCreateError, prelude::*,
+    runtime::RuntimeConfigInterface,
 };
+use datex_macros_internal::Datex;
 use serde::{Deserialize, Serialize};
 use url::Url;
-use datex_macros_internal::Datex;
-use crate::datex_proxy::{DatexValueContainerProxyDeserialize, DatexValueProxySerialize};
 
 #[derive(Debug)]
 pub enum URLError {

@@ -1,14 +1,14 @@
 use crate::{
+    datex_proxy::DatexValueContainerProxyInfallibleSerialize,
     global::{
-        protocol_structures::instruction_data::StackIndex, root_properties::RootProperty,
+        protocol_structures::instruction_data::StackIndex,
+        root_properties::RootProperty,
     },
     runtime::execution::{
         ExecutionError, execution_loop::state::RuntimeExecutionState,
     },
     values::{core_values::map::Map, value_container::ValueContainer},
 };
-use num_enum::TryFromPrimitive;
-use crate::datex_proxy::DatexValueContainerProxyInfallibleSerialize;
 
 pub fn get_stack_value(
     runtime_state: &RuntimeExecutionState,

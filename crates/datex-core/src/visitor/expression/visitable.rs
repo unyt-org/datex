@@ -5,7 +5,7 @@ use crate::{
         DatexExpression, DatexExpressionData, GenericInstantiation, GetRef,
         GetSharedRef, List, Map, PropertyAccess, PropertyAssignment,
         RangeDeclaration, RemoteExecution, StackAssignment, Statements,
-        TypeDeclaration, UnaryOperation, Unbox, UnboxAssignment,
+        TagExpression, TypeDeclaration, UnaryOperation, Unbox, UnboxAssignment,
         UnboxSlotAssignment, VariableAssignment, VariableDeclaration,
     },
     visitor::{
@@ -13,7 +13,6 @@ use crate::{
         type_expression::visitable::VisitableTypeExpression,
     },
 };
-use crate::ast::expressions::TagExpression;
 
 pub type ExpressionVisitResult<E> = Result<VisitAction<DatexExpression>, E>;
 
@@ -404,10 +403,8 @@ impl<E> VisitableExpression<E> for DatexExpression {
             }
 
             DatexExpressionData::Range(range) => range.walk_children(visitor),
-            
-            DatexExpressionData::Tag(tag) => {
-                tag.walk_children(visitor)
-            }
+
+            DatexExpressionData::Tag(tag) => tag.walk_children(visitor),
 
             DatexExpressionData::Noop
             | DatexExpressionData::NativeImplementationIndicator

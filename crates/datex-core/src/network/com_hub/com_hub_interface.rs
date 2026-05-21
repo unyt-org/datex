@@ -1,25 +1,20 @@
-use crate::{
-    network::{
-        com_hub::{
-            ComHub, InterfacePriority,
-            errors::{ComInterfaceCreateError, InterfaceAddError},
-            managers::com_interface_manager::DynInterfaceImplementationFactoryFn,
-        },
-        com_interfaces::com_interface::{
-            ComInterfaceUUID,
-            factory::{ComInterfaceConfiguration, ComInterfaceSyncFactory},
-        },
+use crate::network::{
+    com_hub::{
+        ComHub, InterfacePriority,
+        errors::{ComInterfaceCreateError, InterfaceAddError},
+        managers::com_interface_manager::DynInterfaceImplementationFactoryFn,
     },
-    values::value_container::ValueContainer,
+    com_interfaces::com_interface::{
+        ComInterfaceUUID,
+        factory::{ComInterfaceConfiguration, ComInterfaceSyncFactory},
+    },
 };
 use log::info;
 
 use crate::{
     network::com_interfaces::com_interface::factory::ComInterfaceAsyncFactory,
-    prelude::*,
+    prelude::*, values::value::Value,
 };
-use crate::values::core_values::map::Map;
-use crate::values::value::Value;
 
 /// Interface management methods
 impl ComHub {

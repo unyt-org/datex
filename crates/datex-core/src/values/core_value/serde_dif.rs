@@ -2,7 +2,7 @@ use crate::{
     prelude::*,
     values::{
         core_value::CoreValue,
-        core_values::{endpoint::Endpoint, list::List, map::Map, range::Range},
+        core_values::{list::List, map::Map, range::Range},
         value_container::ValueContainer,
     },
 };
@@ -127,8 +127,7 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, CoreValue> {
                         }
 
                         "endpoint" => {
-                            let value =
-                                map.next_value()?;
+                            let value = map.next_value()?;
                             CoreValue::Endpoint(value)
                         }
 

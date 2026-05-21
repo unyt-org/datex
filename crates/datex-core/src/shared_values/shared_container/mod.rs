@@ -24,8 +24,11 @@ use crate::{
     },
 };
 pub mod identity;
-use crate::shared_values::base_shared_value_container::observers::{
-    Observer, ObserverError, ObserverId,
+use crate::{
+    shared_values::base_shared_value_container::observers::{
+        Observer, ObserverError, ObserverId,
+    },
+    types::type_definition::TypeDefinition,
 };
 use alloc::rc::Rc;
 use core::{
@@ -34,7 +37,6 @@ use core::{
     hash::{Hash, Hasher},
 };
 use serde::Serializer;
-use crate::types::type_definition::TypeDefinition;
 
 pub mod apply;
 pub mod serde_dif;

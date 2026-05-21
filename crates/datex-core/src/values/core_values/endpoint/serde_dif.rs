@@ -6,7 +6,7 @@ use alloc::string::String;
 use core::fmt;
 use serde::{
     Deserialize, Serialize,
-    de::{DeserializeSeed, Error, Visitor},
+    de::{Error, Visitor},
 };
 
 impl Serialize for Endpoint {

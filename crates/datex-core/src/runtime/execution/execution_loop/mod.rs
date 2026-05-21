@@ -22,7 +22,7 @@ use crate::{
             instruction_data::{
                 ApplyData, DecimalData, Float32Data, Float64Data,
                 FloatAsInt16Data, FloatAsInt32Data, IntegerData,
-                ModifyStackValue, RawPointerAddress, ShortTextData, StackIndex,
+                ModifyStackValue, RawPointerAddress, ShortTextData,
                 TaggedValue, TextData, UnboundedStatementsData,
             },
             instructions::{Instruction, NestedInstructionResolutionStrategy},
@@ -30,7 +30,7 @@ use crate::{
             type_instructions::TypeInstruction,
         },
     },
-    libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
+    libs::core::type_id::CoreLibBaseTypeId,
     prelude::*,
     runtime::execution::{
         ExecutionError, InvalidProgramError,

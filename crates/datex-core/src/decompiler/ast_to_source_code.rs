@@ -17,12 +17,13 @@ use alloc::format;
 use core::fmt::{self};
 
 use crate::{
-    ast::expressions::{UnboxSlotAssignment, ValueAccessType},
+    ast::expressions::{
+        RootPropertyAccess, UnboxSlotAssignment, ValueAccessType,
+    },
     decompiler::{FormattingMode, FormattingOptions, IndentType},
     shared_values::ReferenceMutability,
     types::type_definition_with_metadata::LocalReferenceMutability,
 };
-use crate::ast::expressions::RootPropertyAccess;
 
 #[derive(Clone, Default)]
 pub enum BraceStyle {
@@ -814,7 +815,7 @@ impl AstToSourceCodeConverter {
             }
             DatexExpressionData::UnboxSlotAssignment(UnboxSlotAssignment {
                 operator,
-                                                         stack_index: slot,
+                stack_index: slot,
                 assigned_expression,
             }) => {
                 let unbox_prefix = "*";
@@ -851,7 +852,12 @@ impl AstToSourceCodeConverter {
                 right,
                 ..
             }) => {
-                ast_fmt!(&self, "{}%s::%s{}", self.format(left), self.format(right))
+                ast_fmt!(
+                    &self,
+                    "{}%s::%s{}",
+                    self.format(left),
+                    self.format(right)
+                )
             }
             DatexExpressionData::PropertyAccess(PropertyAccess {
                 base,
@@ -868,23 +874,33 @@ impl AstToSourceCodeConverter {
             }
             DatexExpressionData::GenericInstantiation(_) => {
                 todo!("#654 Undescribed by author.")
-            },
-            DatexExpressionData::Tag(tag) => {
-                match &tag.expression {
-                    Some(tag_expression) => {
-                        match &tag_expression.data {
-                            DatexExpressionData::Map(_) | DatexExpressionData::List(_) | DatexExpressionData::Statements(_) => {
-                                ast_fmt!(&self, "#{}%s{}", tag.tag, self.format(tag_expression))
-                            }
-                            _ => {
-                                ast_fmt!(&self, "#{}%s({})", tag.tag, self.format(tag_expression))
-                            }
-                        }
+            }
+            DatexExpressionData::Tag(tag) => match &tag.expression {
+                Some(tag_expression) => match &tag_expression.data {
+                    DatexExpressionData::Map(_)
+                    | DatexExpressionData::List(_)
+                    | DatexExpressionData::Statements(_) => {
+                        ast_fmt!(
+                            &self,
+                            "#{}%s{}",
+                            tag.tag,
+                            self.format(tag_expression)
+                        )
                     }
-                    None => format!("#{}", tag.tag)
-                }
+                    _ => {
+                        ast_fmt!(
+                            &self,
+                            "#{}%s({})",
+                            tag.tag,
+                            self.format(tag_expression)
+                        )
+                    }
+                },
+                None => format!("#{}", tag.tag),
             },
-            DatexExpressionData::RootPropertyAccess(RootPropertyAccess { property_name }) => {
+            DatexExpressionData::RootPropertyAccess(RootPropertyAccess {
+                property_name,
+            }) => {
                 format!("$.{}", property_name)
             }
         }

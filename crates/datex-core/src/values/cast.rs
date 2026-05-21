@@ -1,8 +1,5 @@
-use core::hash::Hash;
-use serde::{Deserialize, Serialize};
-use serde::de::DeserializeOwned;
 use crate::{
-    datex_proxy::*,
+    datex_proxy::{TryFromDatexValueError, TryToDatexValueError, *},
     prelude::*,
     types::{nominal_type_definition::NominalTypeDefinition, r#type::Type},
     values::{
@@ -22,8 +19,7 @@ use crate::{
         value_container::ValueContainer,
     },
 };
-use crate::datex_proxy::{TryFromDatexValueError, TryToDatexValueError};
-use crate::disassembler::print_disassembled;
+use core::hash::Hash;
 
 macro_rules! impl_try_from_core_value {
     ($($variant:ident => $type:ty),* $(,)?) => {
@@ -238,11 +234,12 @@ derive_try_from_chain!(
     }
 );
 
-
 // -------- Option<T> -------
 impl<T: DatexValueProxy> DatexValueProxy for Option<T> {}
 
-impl<T: DatexValueProxyInfallibleSerialize> DatexValueProxyInfallibleSerialize for Option<T> {
+impl<T: DatexValueProxyInfallibleSerialize> DatexValueProxyInfallibleSerialize
+    for Option<T>
+{
     fn to_value(self) -> Value {
         match self {
             None => Value::null(),
@@ -276,7 +273,10 @@ impl<T: DatexValueContainerProxy> DatexValueProxy for Vec<T> {}
 impl<T: DatexValueContainerProxy> DatexValueProxyDeserialize for Vec<T> {
     fn try_from_value(value: Value) -> Result<Self, TryFromDatexValueError> {
         match List::try_from(value) {
-            Ok(val) => val.into_iter().map(|v| T::try_from_value_container(v)).collect::<Result<Vec<T>, _>>(),
+            Ok(val) => val
+                .into_iter()
+                .map(|v| T::try_from_value_container(v))
+                .collect::<Result<Vec<T>, _>>(),
             Err(e) => Err(e),
         }
     }
@@ -284,53 +284,81 @@ impl<T: DatexValueContainerProxy> DatexValueProxyDeserialize for Vec<T> {
 
 impl<T: DatexValueContainerProxy> DatexValueProxySerialize for Vec<T> {
     fn try_to_value(self) -> Result<Value, TryToDatexValueError> {
-        let list = self.into_iter().map(|v| v.try_to_value_container()).collect::<Result<List, _>>()?;
+        let list = self
+            .into_iter()
+            .map(|v| v.try_to_value_container())
+            .collect::<Result<List, _>>()?;
         Ok(Value::from(list))
     }
 }
 
-impl<T: DatexValueContainerProxyInfallibleSerialize> DatexValueProxyInfallibleSerialize for Vec<T> {
+impl<T: DatexValueContainerProxyInfallibleSerialize>
+    DatexValueProxyInfallibleSerialize for Vec<T>
+{
     fn to_value(self) -> Value {
-        Value::from(self.into_iter().map(|v| v.to_value_container()).collect::<Vec<_>>())
+        Value::from(
+            self.into_iter()
+                .map(|v| v.to_value_container())
+                .collect::<Vec<_>>(),
+        )
     }
 }
 
 // -------- HashMap<K, V> -------
 
-impl<K: DatexValueContainerProxy + Eq + Hash, V: DatexValueContainerProxy> DatexValueProxy for HashMap<K, V> {}
+impl<K: DatexValueContainerProxy + Eq + Hash, V: DatexValueContainerProxy>
+    DatexValueProxy for HashMap<K, V>
+{
+}
 
-
-impl<K: DatexValueContainerProxy + Eq + Hash, V: DatexValueContainerProxy> DatexValueProxyDeserialize for HashMap<K, V> {
+impl<K: DatexValueContainerProxy + Eq + Hash, V: DatexValueContainerProxy>
+    DatexValueProxyDeserialize for HashMap<K, V>
+{
     fn try_from_value(value: Value) -> Result<Self, TryFromDatexValueError> {
         match Map::try_from(value) {
-            Ok(map) => map.into_iter().map(|(k, v)| {
-                let key = K::try_from_value_container(k.into())?;
-                let value = V::try_from_value_container(v)?;
-                Ok((key, value))
-            }).collect::<Result<HashMap<K, V>, _>>(),
+            Ok(map) => map
+                .into_iter()
+                .map(|(k, v)| {
+                    let key = K::try_from_value_container(k.into())?;
+                    let value = V::try_from_value_container(v)?;
+                    Ok((key, value))
+                })
+                .collect::<Result<HashMap<K, V>, _>>(),
             Err(e) => Err(e),
         }
     }
 }
 
-impl<K: DatexValueContainerProxy + Eq + Hash, V: DatexValueContainerProxy> DatexValueProxySerialize for HashMap<K, V> {
+impl<K: DatexValueContainerProxy + Eq + Hash, V: DatexValueContainerProxy>
+    DatexValueProxySerialize for HashMap<K, V>
+{
     fn try_to_value(self) -> Result<Value, TryToDatexValueError> {
-        let map = self.into_iter().map(|(k, v)| {
-            let key = k.try_to_value_container()?;
-            let value = v.try_to_value_container()?;
-            Ok((key, value))
-        }).collect::<Result<Map, _>>()?;
+        let map = self
+            .into_iter()
+            .map(|(k, v)| {
+                let key = k.try_to_value_container()?;
+                let value = v.try_to_value_container()?;
+                Ok((key, value))
+            })
+            .collect::<Result<Map, _>>()?;
         Ok(Value::from(map))
     }
 }
 
-impl<K: DatexValueContainerProxyInfallibleSerialize + Eq + Hash, V: DatexValueContainerProxyInfallibleSerialize> DatexValueProxyInfallibleSerialize for HashMap<K, V> {
+impl<
+    K: DatexValueContainerProxyInfallibleSerialize + Eq + Hash,
+    V: DatexValueContainerProxyInfallibleSerialize,
+> DatexValueProxyInfallibleSerialize for HashMap<K, V>
+{
     fn to_value(self) -> Value {
-        let map = self.into_iter().map(|(k, v)| {
-            let key = k.to_value_container();
-            let value = v.to_value_container();
-            (key, value)
-        }).collect::<Map>();
+        let map = self
+            .into_iter()
+            .map(|(k, v)| {
+                let key = k.to_value_container();
+                let value = v.to_value_container();
+                (key, value)
+            })
+            .collect::<Map>();
         Value::from(map)
     }
 }

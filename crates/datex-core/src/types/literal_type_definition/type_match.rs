@@ -1,7 +1,4 @@
 use crate::{
-    libs::core::type_id::{
-        CoreLibBaseTypeId, CoreLibTypeId, CoreLibVariantTypeId,
-    },
     types::{
         literal_type_definition::LiteralTypeDefinition, type_match::TypeMatch,
     },

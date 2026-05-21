@@ -1276,10 +1276,10 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
     fn visit_unbox_assignment(
         &mut self,
         unbox_assignment: &mut UnboxAssignment,
-        span: &Range<usize>,
+        _span: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
         // FIXME #623: handle type checking and if unbox assignment is valid
-        let expression_type =
+        let _expression_type =
             self.infer_expression(&mut unbox_assignment.unbox_expression)?;
 
         // TODO

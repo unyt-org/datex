@@ -106,9 +106,9 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, Value> {
             CoreValue::Null => serialize_type_and_value(
                 match &value.custom_type {
                     Some(_) => Cow::Borrowed(&value.custom_type),
-                    None => {
-                        Cow::Owned(Some(TypeDefinition::Core(CoreLibBaseTypeId::Null.into())))
-                    }
+                    None => Cow::Owned(Some(TypeDefinition::Core(
+                        CoreLibBaseTypeId::Null.into(),
+                    ))),
                 },
                 &(),
                 serializer,
@@ -125,9 +125,9 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, Value> {
             CoreValue::Range(range) => serialize_type_and_value_seed(
                 match &value.custom_type {
                     Some(_) => Cow::Borrowed(&value.custom_type),
-                    None => {
-                        Cow::Owned(Some(TypeDefinition::Core(CoreLibBaseTypeId::Range.into())))
-                    }
+                    None => Cow::Owned(Some(TypeDefinition::Core(
+                        CoreLibBaseTypeId::Range.into(),
+                    ))),
                 },
                 range,
                 serializer,
@@ -148,9 +148,9 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, Value> {
             CoreValue::Map(map_value) => serialize_type_and_value_seed(
                 match &value.custom_type {
                     Some(_) => Cow::Borrowed(&value.custom_type),
-                    None => {
-                        Cow::Owned(Some(TypeDefinition::Core(CoreLibBaseTypeId::Map.into())))
-                    }
+                    None => Cow::Owned(Some(TypeDefinition::Core(
+                        CoreLibBaseTypeId::Map.into(),
+                    ))),
                 },
                 map_value,
                 serializer,
@@ -167,14 +167,16 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, Value> {
     }
 }
 
-use crate::{libs::core::type_id::CoreLibBaseTypeId, types::r#type::Type};
+use crate::{
+    libs::core::type_id::CoreLibBaseTypeId,
+    types::type_definition::TypeDefinition,
+};
 use core::fmt;
 use serde::{
     Deserializer,
     de::{DeserializeSeed, MapAccess, Visitor},
     ser::SerializeMap,
 };
-use crate::types::type_definition::TypeDefinition;
 
 /// Deserialization for [Value] using a [DeserializationContext] to provide access to the memory during deserialization.
 impl<'de, 'ctx> DeserializeSeed<'de> for SerdeContext<'ctx, Value> {

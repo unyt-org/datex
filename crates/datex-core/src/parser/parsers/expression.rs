@@ -657,17 +657,21 @@ mod tests {
                 Apply, BinaryOperation, ComparisonOperation, CreateMut,
                 CreateShared, DatexExpressionData, GenericInstantiation,
                 GetRef, GetSharedRef, PropertyAccess, PropertyAssignment,
-                RemoteExecution, RequestSharedRef, StackAssignment,
-                Statements, UnaryOperation, Unbox, UnboxAssignment,
-                VariableAssignment,
+                RemoteExecution, RequestSharedRef, StackAssignment, Statements,
+                UnaryOperation, Unbox, UnboxAssignment, VariableAssignment,
             },
             spanned::Spanned,
             type_expressions::TypeExpressionData,
         },
-        global::operators::{
-            ArithmeticUnaryOperator, AssignmentOperator, BinaryOperator,
-            ComparisonOperator, LogicalUnaryOperator, UnaryOperator,
-            binary::{ArithmeticOperator, BitwiseOperator, LogicalOperator},
+        global::{
+            operators::{
+                ArithmeticUnaryOperator, AssignmentOperator, BinaryOperator,
+                ComparisonOperator, LogicalUnaryOperator, UnaryOperator,
+                binary::{
+                    ArithmeticOperator, BitwiseOperator, LogicalOperator,
+                },
+            },
+            protocol_structures::instruction_data::StackIndex,
         },
         parser::{
             errors::ParserError,
@@ -679,7 +683,6 @@ mod tests {
         },
         types::type_definition_with_metadata::LocalReferenceMutability,
     };
-    use crate::global::protocol_structures::instruction_data::StackIndex;
 
     #[test]
     fn parse_simple_binary_expression() {

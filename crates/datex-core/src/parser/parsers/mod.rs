@@ -9,7 +9,7 @@ pub mod key;
 pub mod list;
 pub mod map;
 pub mod statements;
+pub mod tagged_value;
 pub mod type_declaration;
 pub mod type_expressions;
 pub mod variable_declaration;
-pub mod tagged_value;

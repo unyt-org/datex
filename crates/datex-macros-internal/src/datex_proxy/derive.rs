@@ -1,7 +1,10 @@
 use proc_macro_crate::{FoundCrate, crate_name};
 use proc_macro2::{Ident, Span, TokenStream};
-use quote::{format_ident, quote, ToTokens};
-use syn::{Attribute, Data, DataEnum, DataStruct, DeriveInput, Meta, Token, punctuated::Punctuated, Field, Fields, Variant};
+use quote::{ToTokens, format_ident, quote};
+use syn::{
+    Attribute, Data, DataEnum, DataStruct, DeriveInput, Fields, Meta, Token,
+    punctuated::Punctuated,
+};
 
 #[derive(Debug, PartialEq)]
 enum SerdeMode {
@@ -23,7 +26,7 @@ enum SerdeMode {
 enum FieldsType {
     Named,
     Unnamed,
-    Unit
+    Unit,
 }
 
 impl From<&Fields> for FieldsType {
@@ -49,7 +52,6 @@ pub struct DeriveData {
     helpers: Option<TokenStream>,
 }
 
-
 /// Derive implementation for the [Datex] derive macro.
 pub fn derive(input: DeriveInput) -> TokenStream {
     let datex_core_crate_name = get_datex_core_crate_name(&input.attrs);
@@ -58,11 +60,9 @@ pub fn derive(input: DeriveInput) -> TokenStream {
         into_datex_fields_inner,
         from_datex_fields_inner,
         is_fallible_serialization,
-        helpers
+        helpers,
     } = match input.data {
-        Data::Struct(data_struct) => {
-            derive_struct(data_struct, &input.ident)
-        }
+        Data::Struct(data_struct) => derive_struct(data_struct, &input.ident),
         Data::Enum(data_enum) => derive_enum(data_enum, &input.ident),
         _ => unimplemented!(),
     };
@@ -194,10 +194,7 @@ pub fn derive(input: DeriveInput) -> TokenStream {
 }
 
 /// Derive implementation for structs
-fn derive_struct(
-    data_struct: DataStruct,
-    ident: &Ident,
-) -> DeriveData {
+fn derive_struct(data_struct: DataStruct, ident: &Ident) -> DeriveData {
     let FieldDeriveData {
         is_fallible_serialization,
         fields_type,
@@ -211,29 +208,30 @@ fn derive_struct(
                 #(#into_datex_fields),*
             ]))
         },
-        FieldsType::Unnamed => if into_datex_fields.len() == 1 {
-            let into_field = into_datex_fields.first().unwrap();
-            quote! {
-                let container = #into_field;
-                if let ValueContainer::Local(value) = container {
-                    value
+        FieldsType::Unnamed => {
+            if into_datex_fields.len() == 1 {
+                let into_field = into_datex_fields.first().unwrap();
+                quote! {
+                    let container = #into_field;
+                    if let ValueContainer::Local(value) = container {
+                        value
+                    }
+                    else {
+                        unreachable!("Expected ValueContainer::Local");
+                    }
                 }
-                else {
-                    unreachable!("Expected ValueContainer::Local");
+            } else {
+                quote! {
+                    Value::from(List::from(vec![
+                        #(#into_datex_fields),*
+                    ]))
                 }
-            }
-        } else {
-            quote! {
-                Value::from(List::from(vec![
-                    #(#into_datex_fields),*
-                ]))
             }
         }
         FieldsType::Unit => quote! {
             Value::null()
-        }
+        },
     };
-
 
     let from_datex_fields_inner = match fields_type {
         FieldsType::Named => quote! {{
@@ -243,26 +241,28 @@ fn derive_struct(
                 #(#from_datex_fields),*
             }
         }},
-        FieldsType::Unnamed => if from_datex_fields.len() == 1 {
-            let from_field = from_datex_fields.first().unwrap();
-            quote! {{
-                #ident(#from_field)
-            }}
-        } else {
-            quote! {{
-                let mut list: List = value.try_into()?;
+        FieldsType::Unnamed => {
+            if from_datex_fields.len() == 1 {
+                let from_field = from_datex_fields.first().unwrap();
+                quote! {{
+                    #ident(#from_field)
+                }}
+            } else {
+                quote! {{
+                    let mut list: List = value.try_into()?;
 
-                #ident(
-                    #(#from_datex_fields),*
-                )
-            }}
-        },
+                    #ident(
+                        #(#from_datex_fields),*
+                    )
+                }}
+            }
+        }
         FieldsType::Unit => quote! {
             if !value.is_null() {
                 return Err(TryFromDatexValueError(format!("Unexpected value, expected null")));
             }
             #ident
-        }
+        },
     };
 
     DeriveData {
@@ -273,8 +273,7 @@ fn derive_struct(
     }
 }
 
-
-fn derive_enum(data_enum: DataEnum, ident: &Ident,) -> DeriveData {
+fn derive_enum(data_enum: DataEnum, ident: &Ident) -> DeriveData {
     // serialization is only infallible if the enum has no serde fields or only serde fields with datex(serde_infallible)
     let mut is_fallible_serialization = false;
 
@@ -324,43 +323,45 @@ fn derive_enum(data_enum: DataEnum, ident: &Ident,) -> DeriveData {
                     }
                 }
             },
-            FieldsType::Unnamed => if into_datex_fields.len() == 1 {
-                let into_field = into_datex_fields.first().unwrap();
-                quote! {
-                    #ident::#variant_ident {..} => {
-                        let value: #helper_struct_ident = value.into();
-                        let container = #into_field;
-                        if let ValueContainer::Local(Value {custom_type: None, inner}) = container {
+            FieldsType::Unnamed => {
+                if into_datex_fields.len() == 1 {
+                    let into_field = into_datex_fields.first().unwrap();
+                    quote! {
+                        #ident::#variant_ident {..} => {
+                            let value: #helper_struct_ident = value.into();
+                            let container = #into_field;
+                            if let ValueContainer::Local(Value {custom_type: None, inner}) = container {
+                                Value {
+                                    inner,
+                                    custom_type: Some(TypeDefinition::TaggedType {
+                                        tag: #variant_name.to_string(),
+                                        ty: None,
+                                    }),
+                                }
+                            }
+                            else {
+                                unreachable!("Expected ValueContainer::Local without custom type");
+                            }
+                        }
+                    }
+                } else {
+                    quote! {
+                        #ident::#variant_ident (..) => {
+                            let value: #helper_struct_ident = value.into();
+                            let list = List::from(vec![
+                                #(#into_datex_fields),*
+                            ]);
                             Value {
-                                inner,
+                                inner: CoreValue::List(list),
                                 custom_type: Some(TypeDefinition::TaggedType {
                                     tag: #variant_name.to_string(),
                                     ty: None,
                                 }),
                             }
                         }
-                        else {
-                            unreachable!("Expected ValueContainer::Local without custom type");
-                        }
                     }
                 }
-            } else {
-                quote! {
-                    #ident::#variant_ident (..) => {
-                        let value: #helper_struct_ident = value.into();
-                        let list = List::from(vec![
-                            #(#into_datex_fields),*
-                        ]);
-                        Value {
-                            inner: CoreValue::List(list),
-                            custom_type: Some(TypeDefinition::TaggedType {
-                                tag: #variant_name.to_string(),
-                                ty: None,
-                            }),
-                        }
-                    }
-                }
-            },
+            }
             FieldsType::Unit => quote! {
                 #ident::#variant_ident => {
                     Value {
@@ -371,7 +372,7 @@ fn derive_enum(data_enum: DataEnum, ident: &Ident,) -> DeriveData {
                         }),
                     }
                 }
-            }
+            },
         };
 
         let from_datex_fields_inner = match &variant.fields {
@@ -384,26 +385,28 @@ fn derive_enum(data_enum: DataEnum, ident: &Ident,) -> DeriveData {
                     }.into()
                 }
             },
-            Fields::Unnamed(_) => if from_datex_fields.len() == 1 {
-                let from_field = from_datex_fields.first().unwrap();
-                quote! {
-                    #variant_name => {
-                        #helper_struct_ident (
-                            #from_field
-                        ).into()
+            Fields::Unnamed(_) => {
+                if from_datex_fields.len() == 1 {
+                    let from_field = from_datex_fields.first().unwrap();
+                    quote! {
+                        #variant_name => {
+                            #helper_struct_ident (
+                                #from_field
+                            ).into()
+                        }
                     }
-                }
-            } else {
-                quote! {
-                    #variant_name => {
-                        let mut list: List = value.try_into()?;
+                } else {
+                    quote! {
+                        #variant_name => {
+                            let mut list: List = value.try_into()?;
 
-                        #helper_struct_ident(
-                            #(#from_datex_fields),*
-                        ).into()
+                            #helper_struct_ident(
+                                #(#from_datex_fields),*
+                            ).into()
+                        }
                     }
                 }
-            },
+            }
             Fields::Unit => quote! {
                 #variant_name => {
                     if !value.is_null() {
@@ -411,15 +414,14 @@ fn derive_enum(data_enum: DataEnum, ident: &Ident,) -> DeriveData {
                     }
                     #ident::#variant_ident
                 }
-            }
+            },
         };
 
         into_datex_fields_inners.push(into_datex_fields_inner);
         from_datex_fields_inners.push(from_datex_fields_inner);
     }
 
-
-    let into_datex_fields_inner = quote!{
+    let into_datex_fields_inner = quote! {
         match &value {
             #(#into_datex_fields_inners),*
         }
@@ -429,7 +431,7 @@ fn derive_enum(data_enum: DataEnum, ident: &Ident,) -> DeriveData {
         #(#helper_structs)*
     };
 
-    let from_datex_fields_inner = quote!{
+    let from_datex_fields_inner = quote! {
         match &value.custom_type {
             Some(TypeDefinition::TaggedType {tag, ..}) => {
                 match tag.as_str() {
@@ -456,101 +458,104 @@ struct FieldDeriveData {
     from_datex_fields: Vec<TokenStream>,
 }
 
-fn generate_enum_helper_structs(fields: &Fields, ident: &Ident, variant_ident: &Ident, helper_struct_ident: &Ident) -> TokenStream {
-
+fn generate_enum_helper_structs(
+    fields: &Fields,
+    ident: &Ident,
+    variant_ident: &Ident,
+    helper_struct_ident: &Ident,
+) -> TokenStream {
     match fields {
         Fields::Named(fields_named) => {
             let fields = &fields_named.named;
 
-            let field_idents = fields.iter().map(|f| {
-                f.ident.as_ref().unwrap()
-            });
+            let field_idents = fields.iter().map(|f| f.ident.as_ref().unwrap());
             let field_idents2 = field_idents.clone();
             let field_idents3 = field_idents.clone();
 
             quote! {
-                    pub struct #helper_struct_ident {
-                        #fields
-                    }
+                pub struct #helper_struct_ident {
+                    #fields
+                }
 
-                    impl From<#ident> for #helper_struct_ident {
-                        fn from(value: #ident) -> Self {
-                            match value {
-                                #ident::#variant_ident {
-                                    #(#field_idents),*
-                                } => Self {
-                                    #(
-                                        #field_idents2
-                                    ),*
-                                },
-
-                                _ => unreachable!(),
-                            }
-                        }
-                    }
-
-                    impl From<#helper_struct_ident> for #ident {
-                        fn from(value: #helper_struct_ident) -> Self {
+                impl From<#ident> for #helper_struct_ident {
+                    fn from(value: #ident) -> Self {
+                        match value {
                             #ident::#variant_ident {
+                                #(#field_idents),*
+                            } => Self {
                                 #(
-                                    #field_idents3: value.#field_idents3
+                                    #field_idents2
                                 ),*
-                            }
+                            },
+
+                            _ => unreachable!(),
                         }
                     }
                 }
+
+                impl From<#helper_struct_ident> for #ident {
+                    fn from(value: #helper_struct_ident) -> Self {
+                        #ident::#variant_ident {
+                            #(
+                                #field_idents3: value.#field_idents3
+                            ),*
+                        }
+                    }
+                }
+            }
         }
 
         Fields::Unnamed(fields_unnamed) => {
             let fields = &fields_unnamed.unnamed;
 
-            let field_idents = fields.iter().enumerate().map(|(i, _)| {
-                format_ident!("v{i}")
-            });
+            let field_idents = fields
+                .iter()
+                .enumerate()
+                .map(|(i, _)| format_ident!("v{i}"));
 
-            let field_idents2 = fields.iter().enumerate().map(|(i, _)| {
-                format_ident!("v{i}")
-            });
+            let field_idents2 = fields
+                .iter()
+                .enumerate()
+                .map(|(i, _)| format_ident!("v{i}"));
 
             let field_indexes = (0..fields.len()).map(syn::Index::from);
 
             quote! {
-                    pub struct #helper_struct_ident(
-                        #fields
-                    );
+                pub struct #helper_struct_ident(
+                    #fields
+                );
 
-                    impl From<#ident> for #helper_struct_ident {
-                        fn from(value: #ident) -> Self {
-                            match value {
-                                #ident::#variant_ident(
-                                    #(#field_idents),*
-                                ) => Self(
-                                    #(#field_idents2),*
-                                ),
-
-                                _ => unreachable!()
-                            }
-                        }
-                    }
-
-                    impl From<#helper_struct_ident> for #ident {
-                        fn from(value: #helper_struct_ident) -> Self {
+                impl From<#ident> for #helper_struct_ident {
+                    fn from(value: #ident) -> Self {
+                        match value {
                             #ident::#variant_ident(
-                                #(
-                                    value.#field_indexes
-                                ),*
-                            )
+                                #(#field_idents),*
+                            ) => Self(
+                                #(#field_idents2),*
+                            ),
+
+                            _ => unreachable!()
                         }
                     }
                 }
+
+                impl From<#helper_struct_ident> for #ident {
+                    fn from(value: #helper_struct_ident) -> Self {
+                        #ident::#variant_ident(
+                            #(
+                                value.#field_indexes
+                            ),*
+                        )
+                    }
+                }
+            }
         }
 
         Fields::Unit => {
-            quote! { }
+            quote! {}
         }
     }
 }
-
 
 fn derive_fields(fields: &Fields) -> FieldDeriveData {
     // serialization is only infallible if no serde fields or only serde fields with datex(serde_infallible)
@@ -584,8 +589,14 @@ fn derive_fields(fields: &Fields) -> FieldDeriveData {
         match &field.ident {
             // struct with named fields
             Some(field_ident) => {
-                let field_name = field_attributes.datex_rename.unwrap_or_else(|| field_ident.to_string());
-                let field_into = generate_field_conversion_code(field_attributes.serde_mode, field_ident, field_name.clone());
+                let field_name = field_attributes
+                    .datex_rename
+                    .unwrap_or_else(|| field_ident.to_string());
+                let field_into = generate_field_conversion_code(
+                    field_attributes.serde_mode,
+                    field_ident,
+                    field_name.clone(),
+                );
 
                 into_datex_fields.push(quote! {
                     (
@@ -607,7 +618,11 @@ fn derive_fields(fields: &Fields) -> FieldDeriveData {
             // tuple struct or unit struct
             None => {
                 let field_index = syn::Index::from(index);
-                let field_into = generate_field_conversion_code(field_attributes.serde_mode, &field_index, field_index.index.to_string());
+                let field_into = generate_field_conversion_code(
+                    field_attributes.serde_mode,
+                    &field_index,
+                    field_index.index.to_string(),
+                );
 
                 into_datex_fields.push(field_into);
 
@@ -617,8 +632,7 @@ fn derive_fields(fields: &Fields) -> FieldDeriveData {
                             ValueContainer::Local(value)
                         )?
                     });
-                }
-                else {
+                } else {
                     from_datex_fields.push(quote! {
                         #from_value_container_function(
                             list.try_set(#index as i64, ValueContainer::from(Value::null()))
@@ -626,8 +640,6 @@ fn derive_fields(fields: &Fields) -> FieldDeriveData {
                         )?
                     });
                 }
-
-
             }
         }
     }
@@ -639,7 +651,6 @@ fn derive_fields(fields: &Fields) -> FieldDeriveData {
         from_datex_fields,
     }
 }
-
 
 fn parse_field_attributes(attrs: &[Attribute]) -> FieldAttributes {
     let mut serde_mode = SerdeMode::None;
@@ -660,12 +671,16 @@ fn parse_field_attributes(attrs: &[Attribute]) -> FieldAttributes {
                     Meta::Path(path) => {
                         if path.is_ident("serde") {
                             if matches!(serde_mode, SerdeMode::Infallible) {
-                                panic!("Cannot use both datex(serde) and datex(serde_infallible)");
+                                panic!(
+                                    "Cannot use both datex(serde) and datex(serde_infallible)"
+                                );
                             }
                             serde_mode = SerdeMode::Fallible;
                         } else if path.is_ident("serde_infallible") {
                             if matches!(serde_mode, SerdeMode::Fallible) {
-                                panic!("Cannot use both datex(serde) and datex(serde_infallible)");
+                                panic!(
+                                    "Cannot use both datex(serde) and datex(serde_infallible)"
+                                );
                             }
                             serde_mode = SerdeMode::Infallible;
                         }
@@ -677,10 +692,14 @@ fn parse_field_attributes(attrs: &[Attribute]) -> FieldAttributes {
                                 if let syn::Lit::Str(lit_str) = &expr_lit.lit {
                                     lit_str.value()
                                 } else {
-                                    panic!("datex(rename = ...) must be a string")
+                                    panic!(
+                                        "datex(rename = ...) must be a string"
+                                    )
                                 }
                             }
-                            _ => panic!("datex(rename = ...) must be a string literal"),
+                            _ => panic!(
+                                "datex(rename = ...) must be a string literal"
+                            ),
                         };
 
                         datex_rename = Some(value);
@@ -727,8 +746,7 @@ fn generate_field_conversion_code<T: ToTokens>(
     }
 }
 
-
-fn get_datex_core_crate_name(attrs: &[Attribute]) -> Ident {
+fn get_datex_core_crate_name(_attrs: &[Attribute]) -> Ident {
     // otherwise, find the crate name of datex_core and use it as an identifier
     let found = crate_name("datex-core").unwrap();
     match found {

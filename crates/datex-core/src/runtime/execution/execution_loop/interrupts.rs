@@ -4,8 +4,8 @@ use crate::values::value_container::ValueContainer;
 
 use crate::{
     global::protocol_structures::instruction_data::{
-        RawBuiltinPointerAddress, RawSelfOwnedPointerAddress,
-        RawRemotePointerAddress,
+        RawBuiltinPointerAddress, RawRemotePointerAddress,
+        RawSelfOwnedPointerAddress,
     },
     prelude::*,
     shared_values::{ReferenceMutability, SharedContainerMutability},

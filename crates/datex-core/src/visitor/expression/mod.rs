@@ -7,10 +7,12 @@ use crate::{
         CreateShared, DatexExpression, DatexExpressionData,
         GenericInstantiation, GetRef, GetSharedRef, List, Map, PropertyAccess,
         PropertyAssignment, RemoteExecution, RequestSharedRef,
-        StackAssignment, Statements, TypeDeclaration, UnaryOperation, Unbox,
-        UnboxAssignment, UnboxSlotAssignment, ValueAccessType, VariableAccess,
+        RootPropertyAccess, StackAssignment, Statements, TagExpression,
+        TypeDeclaration, UnaryOperation, Unbox, UnboxAssignment,
+        UnboxSlotAssignment, ValueAccessType, VariableAccess,
         VariableAssignment, VariableDeclaration, VariantAccess,
     },
+    global::protocol_structures::instruction_data::StackIndex,
     prelude::*,
     values::core_values::{
         decimal::{Decimal, typed_decimal::TypedDecimal},
@@ -24,8 +26,6 @@ use crate::{
     },
 };
 use core::ops::Range;
-use crate::ast::expressions::{RootPropertyAccess, TagExpression};
-use crate::global::protocol_structures::instruction_data::StackIndex;
 
 pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
     /// Handle expression error
@@ -197,12 +197,15 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
             }
             DatexExpressionData::Compile(compile_expression) => {
                 self.visit_compile_expression(compile_expression, &expr.span)
-            },
+            }
             DatexExpressionData::Tag(tag) => {
                 self.visit_tag_expression(tag, &expr.span)
-            },
+            }
             DatexExpressionData::RootPropertyAccess(root_property_access) => {
-                self.visit_root_property_access(root_property_access, &expr.span)
+                self.visit_root_property_access(
+                    root_property_access,
+                    &expr.span,
+                )
             }
         };
 

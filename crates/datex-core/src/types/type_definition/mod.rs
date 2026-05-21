@@ -3,7 +3,7 @@
 //! The [TypeDefinition] is used as the underlying structure for type definitions in the type space and is wrapped by [TypeDefinitionWithMetadata] which holds additional metadata for type checking and inference.
 
 use crate::{
-    libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
+    libs::core::type_id::CoreLibTypeId,
     prelude::*,
     shared_values::PointerAddress,
     types::{

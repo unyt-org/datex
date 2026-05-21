@@ -4,15 +4,12 @@ use crate::{
         CoreLibBaseTypeId, CoreLibTypeId, CoreLibVariantTypeId,
     },
     prelude::*,
-    types::{type_definition::TypeDefinition, type_match::TypeMatch},
-    values::{
-        core_values::{
-            decimal::{Decimal, typed_decimal::TypedDecimal},
-            endpoint::Endpoint,
-            integer::{Integer, typed_integer::TypedInteger},
-            text::Text,
-        },
-        value_container::ValueContainer,
+    types::type_definition::TypeDefinition,
+    values::core_values::{
+        decimal::{Decimal, typed_decimal::TypedDecimal},
+        endpoint::Endpoint,
+        integer::{Integer, typed_integer::TypedInteger},
+        text::Text,
     },
 };
 use core::{fmt::Display, hash::Hash};
