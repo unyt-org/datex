@@ -439,47 +439,12 @@ impl<'a> TypeExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
     fn visit_get_reference_type(
         &mut self,
         pointer_address: &mut PointerAddress,
-        _: &Range<usize>,
+        span: &Range<usize>,
     ) -> TypeExpressionVisitResult<SpannedTypeError> {
-        match pointer_address {
-            PointerAddress::External(
-                external @ ExternalPointerAddress::Builtin(_),
-            ) => {
-                let core_lib_type_id = CoreLibTypeId::try_from(
-                    external as &ExternalPointerAddress,
-                )
-                .map_err(|_| SpannedTypeError {
-                    error: TypeError::ReferenceToNonTypeValue,
-                    span: None,
-                })?;
-
-                mark_type(Type::core(core_lib_type_id))
-            }
-            _ => {
-                // try to resolve as type reference from memory
-                let ty = if let Some(container) =
-                    self.memory.get_reference(pointer_address)
-                {
-                    container.with_collapsed_value(|value| {
-                        if let CoreValue::Type(ty) = &value.inner {
-                            Some(ty.clone())
-                        } else {
-                            None
-                        }
-                    })
-                } else {
-                    None
-                };
-
-                match ty {
-                    Some(ty) => mark_type(ty),
-                    None => Err(SpannedTypeError {
-                        error: TypeError::ReferenceToNonTypeValue,
-                        span: None,
-                    }),
-                }
-            }
-        }
+        mark_type(self.infer_type_from_pointer_address(
+            pointer_address,
+            Some(span.clone()),
+        )?)
     }
     fn visit_variable_access_type(
         &mut self,
@@ -579,6 +544,14 @@ impl<'a> TypeExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
         let inner_type = self.infer_type_expression(type_ref)?;
         mark_type(inner_type)
     }
+    fn visit_shared_type(
+        &mut self,
+        type_shared: &mut TypeExpression,
+        _span: &Range<usize>,
+    ) -> TypeExpressionVisitResult<SpannedTypeError> {
+        let inner_type = self.infer_type_expression(type_shared)?;
+        mark_type(inner_type)
+    }
     fn visit_slice_list_type(
         &mut self,
         _slice_list: &mut SliceList,
@@ -602,6 +575,50 @@ impl<'a> TypeExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
             ),
             span: Some(span.clone()),
         })
+    }
+}
+
+impl<'a> TypeInference<'a> {
+    fn infer_type_from_pointer_address(
+        &mut self,
+        pointer_address: &PointerAddress,
+        span: Option<Range<usize>>,
+    ) -> Result<Type, SpannedTypeError> {
+        match pointer_address {
+            PointerAddress::External(
+                external @ ExternalPointerAddress::Builtin(_),
+            ) => {
+                let core_lib_type_id = CoreLibTypeId::try_from(
+                    external as &ExternalPointerAddress,
+                )
+                .map_err(|_| SpannedTypeError {
+                    error: TypeError::ReferenceToNonTypeValue,
+                    span,
+                })?;
+                Ok(Type::core(core_lib_type_id))
+            }
+
+            _ => {
+                let ty = if let Some(container) =
+                    self.memory.get_reference(pointer_address)
+                {
+                    container.with_collapsed_value(|value| {
+                        if let CoreValue::Type(ty) = &value.inner {
+                            Some(ty.clone())
+                        } else {
+                            None
+                        }
+                    })
+                } else {
+                    None
+                };
+
+                ty.ok_or(SpannedTypeError {
+                    error: TypeError::ReferenceToNonTypeValue,
+                    span,
+                })
+            }
+        }
     }
 }
 
@@ -737,10 +754,6 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
         };
 
         let _var = self.variable_type(id).expect("Variable must be present");
-        // println!(
-        //     "Inferring type for Variable Assignment of variable {:?} with annotated type {:?}",
-        //     variable_assignment.name, var
-        // );
 
         let assigned_type =
             self.infer_expression(&mut variable_assignment.expression)?;
@@ -831,7 +844,6 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
     ) -> ExpressionVisitResult<SpannedTypeError> {
         let init_type =
             self.infer_expression(&mut variable_declaration.init_expression)?;
-
         let actual_type =
             if let Some(specific) = &mut variable_declaration.type_annotation {
                 // FIXME #619 check if matches
@@ -1284,20 +1296,31 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
 
                 // if it's a Type::Nominal, and it has the pointer address set, we can
                 // remap the expression to a GetReference
-                if let Type::Nominal(reference) = base_type {
-                    Ok(reference.pointer_address())
-                } else {
-                    Err(SpannedTypeError {
-                        error: TypeError::Unimplemented(
-                            "VariantAccess on Type not implemented".into(),
-                        ),
-                        span: Some(span.clone()),
-                    })
+                match base_type {
+                    Type::Nominal(reference) => Ok(reference.pointer_address()),
+                    Type::Alias(alias) => {
+                        if let TypeDefinition::Core(reference) =
+                            alias.definition
+                        {
+                            Ok(PointerAddress::External(
+                                ExternalPointerAddress::Builtin(
+                                    reference.into(),
+                                ),
+                            ))
+                        } else {
+                            Err(SpannedTypeError {
+                                    error: TypeError::Unimplemented(
+                                        "VariantAccess on non-nominal type alias not implemented".into(),
+                                    ),
+                                    span: Some(span.clone()),
+                                })
+                        }
+                    }
                 }
             }
             ResolvedVariable::PointerAddress(ref addr) => Ok(addr.clone()),
         }?;
-        let variant_type = resolve_type_variant_access(
+        let address = resolve_type_variant_access(
             &pointer_address,
             &variant_access.variant,
         )
@@ -1308,9 +1331,11 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
             ),
             span: Some(span.clone()),
         })?;
+        let core_lib_id = CoreLibId::try_from(&address);
+
         Ok(VisitAction::ReplaceRecurse(DatexExpression::new(
             DatexExpressionData::RequestSharedRef(RequestSharedRef {
-                address: variant_type,
+                address,
                 mutability: ReferenceMutability::Immutable,
             }),
             span.clone(),
@@ -1346,56 +1371,57 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
     fn visit_unbox_assignment(
         &mut self,
         unbox_assignment: &mut UnboxAssignment,
-        _span: &Range<usize>,
+        span: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
         // FIXME #623: handle type checking and if unbox assignment is valid
-        let _expression_type =
+        let expression_type =
             self.infer_expression(&mut unbox_assignment.unbox_expression)?;
 
-        // TODO
-        // let inner_type = expression_type
-        //     .with_collapsed_definition_with_metadata(|e| {
-        //         let ownership = e.metadata.shared_container_ownership();
-        //         let mutability = e.metadata.shared_mutability();
-        //
-        //         if ownership
-        //             != Some(&SharedContainerOwnership::Referenced(
-        //                 ReferenceMutability::Mutable,
-        //             ))
-        //             && ownership != Some(&SharedContainerOwnership::Owned)
-        //         {
-        //             return Err(SpannedTypeError {
-        //                 error: TypeError::AssignmentToImmutableReference(
-        //                     "".to_string(),
-        //                 ),
-        //                 span: Some(span.clone()),
-        //             });
-        //         }
-        //         match &e.definition {
-        //             TypeDefinition::Nested(ty) => Ok(*ty.clone()),
-        //             TypeDefinition::Shared(sh) => Ok(sh.w().clone()),
-        //             _ => Err(SpannedTypeError {
-        //                 error: TypeError::InvalidUnboxType(
-        //                     expression_type.clone(),
-        //                 ),
-        //                 span: Some(span.clone()),
-        //             }),
-        //         }
-        //     })?;
+        let inner_type = expression_type
+            .with_collapsed_definition_with_metadata(|e| {
+                let ownership = e.metadata.shared_container_ownership();
+                let mutability = e.metadata.shared_mutability();
+
+                if ownership
+                    != Some(&SharedContainerOwnership::Referenced(
+                        ReferenceMutability::Mutable,
+                    ))
+                    && ownership != Some(&SharedContainerOwnership::Owned)
+                {
+                    return Err(SpannedTypeError {
+                        error: TypeError::AssignmentToImmutableReference(
+                            "".to_string(),
+                        ),
+                        span: Some(span.clone()),
+                    });
+                }
+                match &e.definition {
+                    TypeDefinition::Nested(ty) => Ok(*ty.clone()),
+                    TypeDefinition::Shared(sh) => {
+                        Ok(sh.with_collapsed_type_value(|ty| ty.clone()))
+                    }
+                    _ => Err(SpannedTypeError {
+                        error: TypeError::InvalidUnboxType(
+                            expression_type.clone(),
+                        ),
+                        span: Some(span.clone()),
+                    }),
+                }
+            })?;
 
         let assigned_type =
             self.infer_expression(&mut unbox_assignment.assigned_expression)?;
 
         // FIXME #624 implement proper type matching
-        // if !assigned_type.matches_type(&expression_type) {
-        //     return Err(SpannedTypeError {
-        //         error: TypeError::AssignmentTypeMismatch {
-        //             annotated_type: expression_type,
-        //             assigned_type: assigned_type.clone(),
-        //         },
-        //         span: Some(span.clone()),
-        //     });
-        // }
+        if !assigned_type.is_subset_of(&inner_type) {
+            return Err(SpannedTypeError {
+                error: TypeError::AssignmentTypeMismatch {
+                    expected: inner_type.clone(),
+                    found: assigned_type.clone(),
+                },
+                span: Some(span.clone()),
+            });
+        }
 
         mark_type(assigned_type)
     }
@@ -1405,7 +1431,11 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
         shared_ref: &mut RequestSharedRef,
         span: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
-        Ok(VisitAction::SkipChildren)
+        // FIXME handle mutability
+        mark_type(self.infer_type_from_pointer_address(
+            &shared_ref.address,
+            Some(span.clone()),
+        )?)
     }
 
     fn visit_slot_assignment(
@@ -2382,18 +2412,27 @@ mod tests {
     // TODO #451 resolve intersection and union types properly
     // by merging the member types if one is base (one level higher) than the other
     fn infer_intersection_type_expression() {
-        let memory = &Memory::default();
-
         let inferred_type =
             infer_type_from_script_ignore_errors("type X = integer/u8 & 42");
-        assert_eq!(
-            inferred_type,
-            Type::from(TypeDefinition::Intersection(TypeIntersection(vec![
-                Type::core(CoreLibVariantTypeId::Integer(
-                    IntegerTypeVariant::U8
-                )),
-                Type::from(LiteralTypeDefinition::Integer(Integer::from(42)),)
-            ])))
+        assert!(
+            has_nominal_type_definition(
+                &inferred_type,
+                NominalTypeDefinition::new_base(
+                    Type::from(TypeDefinition::Intersection(TypeIntersection(
+                        vec![
+                            Type::core(CoreLibVariantTypeId::Integer(
+                                IntegerTypeVariant::U8
+                            )),
+                            Type::from(LiteralTypeDefinition::Integer(
+                                Integer::from(42)
+                            ),)
+                        ]
+                    ))),
+                    "X".to_string()
+                )
+            ),
+            "Expected nominal type definition with intersection of integer/u8 and integer literal, got {:?}",
+            inferred_type
         );
     }
 
