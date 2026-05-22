@@ -4,6 +4,7 @@ use crate::values::{
     core_values::callable::error::CallableError,
     value_container::ValueContainer,
 };
+use alloc::boxed::Box;
 
 #[derive(Debug)]
 pub enum ApplyError {
