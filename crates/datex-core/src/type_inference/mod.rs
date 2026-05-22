@@ -1943,33 +1943,28 @@ mod tests {
             next: LinkedList | null
         };
         "#;
-        todo!()
-        // let metadata = ast_for_script(src).metadata;
-        // let metadata = metadata.borrow();
-        // let var = metadata.variable_metadata(0).unwrap();
-        // let var_type = var.var_type.as_ref().unwrap();
-        // assert_matches!(var_type.definition().structural_definition, TypeDefinition::Shared(_));
-        //
-        // // get next field, as wrapped in union
-        // let next = {
-        //     let var_type_ref = var_type.inner_reference().unwrap();
-        //     let bor = var_type_ref.borrow();
-        //     let structural_type_definition =
-        //         bor.structural_type_definition().unwrap();
-        //     let fields = match structural_type_definition {
-        //         TypeDefinition::Map(fields) => fields,
-        //         _ => unreachable!(),
-        //     };
-        //     let inner_union = &fields[1].1.definition().structural_definition;
-        //     match inner_union {
-        //         TypeDefinition::Union(members) => {
-        //             assert_eq!(members.len(), 2);
-        //             members[0].clone()
-        //         }
-        //         _ => unreachable!(),
-        //     }
-        // };
-        // assert_eq!(next, var_type.clone());
+        let metadata = ast_for_script(src).metadata;
+        let metadata = metadata.borrow();
+        let var = metadata.variable_metadata(0).unwrap();
+        let var_type = var.var_type.as_ref().unwrap();
+        assert_matches!(var_type, Type::Nominal(_));
+
+        // get next field, as wrapped in union
+        assert_eq!(
+            var_type.with_collapsed_type_definition(|d| match d {
+                TypeDefinition::Map(fields) => fields[1]
+                    .1
+                    .with_collapsed_type_definition(|inner| match inner {
+                        TypeDefinition::Union(members) => {
+                            assert_eq!(members.len(), 2);
+                            members[0].clone()
+                        }
+                        _ => unreachable!(),
+                    }),
+                _ => unreachable!(),
+            }),
+            *var_type
+        );
     }
 
     #[test]
@@ -2247,32 +2242,53 @@ mod tests {
     }
 
     #[test]
-    fn infer_typed_literal() {
+    fn infer_suffix_typed_literal() {
         let inferred_type =
             infer_type_from_script_ignore_errors("type X = 42u8");
-        assert_eq!(
-            inferred_type,
-            Type::from(LiteralTypeDefinition::TypedInteger(TypedInteger::U8(
-                42
-            )),)
+        assert!(
+            has_nominal_type_definition(
+                &inferred_type,
+                NominalTypeDefinition::new_base(
+                    Type::from(LiteralTypeDefinition::TypedInteger(
+                        TypedInteger::U8(42)
+                    ),),
+                    "X".to_string()
+                )
+            ),
+            "Expected nominal type definition with typed integer literal, got {:?}",
+            inferred_type
         );
 
         let inferred_type =
             infer_type_from_script_ignore_errors("type X = 42i32");
-        assert_eq!(
-            inferred_type,
-            Type::from(LiteralTypeDefinition::TypedInteger(TypedInteger::I32(
-                42
-            )),)
+        assert!(
+            has_nominal_type_definition(
+                &inferred_type,
+                NominalTypeDefinition::new_base(
+                    Type::from(LiteralTypeDefinition::TypedInteger(
+                        TypedInteger::I32(42)
+                    ),),
+                    "X".to_string()
+                )
+            ),
+            "Expected nominal type definition with typed integer literal, got {:?}",
+            inferred_type
         );
 
         let inferred_type =
             infer_type_from_script_ignore_errors("type X = 42.69f32");
-        assert_eq!(
-            inferred_type,
-            Type::from(LiteralTypeDefinition::TypedDecimal(
-                TypedDecimal::from(42.69_f32)
-            ),)
+        assert!(
+            has_nominal_type_definition(
+                &inferred_type,
+                NominalTypeDefinition::new_base(
+                    Type::from(LiteralTypeDefinition::TypedDecimal(
+                        TypedDecimal::from(42.69_f32)
+                    ),),
+                    "X".to_string()
+                )
+            ),
+            "Expected nominal type definition with typed decimal literal, got {:?}",
+            inferred_type
         );
     }
 
@@ -2305,57 +2321,64 @@ mod tests {
             inferred_type
         );
 
-        assert_eq!(
-            inferred_type,
-            Type::Nominal(unsafe {
-                SharedContainerContainingNominalType::new_unchecked(
-                    SharedContainer::Referenced(
-                        SharedContainer::new_owned_with_inferred_allowed_type(
-                            CoreValue::NominalTypeDefinition(
-                                NominalTypeDefinition::new_base(
-                                    Type::from(LiteralTypeDefinition::Integer(
-                                        Integer::from(42),
-                                    )),
-                                    "X".to_string(),
-                                ),
-                            ),
-                            SharedContainerMutability::Immutable,
-                            &mut SelfOwnedPointerAddressProvider::default(),
-                        )
-                        .derive_immutable_reference(),
-                    ),
-                )
-            })
-        );
-
         let inferred_type =
             infer_type_from_script_ignore_errors("type X = 3/4");
-        assert_eq!(
-            inferred_type,
-            Type::from(LiteralTypeDefinition::Decimal(
-                Decimal::from_string("3/4").unwrap()
-            ),)
+        assert!(
+            has_nominal_type_definition(
+                &inferred_type,
+                NominalTypeDefinition::new_base(
+                    Type::from(LiteralTypeDefinition::Decimal(
+                        Decimal::from_string("3/4").unwrap()
+                    ),),
+                    "X".to_string()
+                )
+            ),
+            "Expected nominal type definition with decimal literal, got {:?}",
+            inferred_type
         );
 
         let inferred_type =
             infer_type_from_script_ignore_errors("type X = true");
-        assert_eq!(
-            inferred_type,
-            Type::from(LiteralTypeDefinition::Boolean(true),)
+        assert!(
+            has_nominal_type_definition(
+                &inferred_type,
+                NominalTypeDefinition::new_base(
+                    Type::from(LiteralTypeDefinition::Boolean(true),),
+                    "X".to_string()
+                )
+            ),
+            "Expected nominal type definition with boolean literal, got {:?}",
+            inferred_type
         );
 
         let inferred_type =
             infer_type_from_script_ignore_errors("type X = false");
-        assert_eq!(
+        assert!(
+            has_nominal_type_definition(
+                &inferred_type,
+                NominalTypeDefinition::new_base(
+                    Type::from(LiteralTypeDefinition::Boolean(false)),
+                    "X".to_string(),
+                ),
+            ),
+            "Expected nominal type definition with boolean literal, got {:?}",
             inferred_type,
-            Type::from(LiteralTypeDefinition::Boolean(false),)
         );
 
         let inferred_type =
             infer_type_from_script_ignore_errors(r#"type X = "hello""#);
-        assert_eq!(
-            inferred_type,
-            Type::from(LiteralTypeDefinition::Text("hello".to_string().into()),)
+        assert!(
+            has_nominal_type_definition(
+                &inferred_type,
+                NominalTypeDefinition::new_base(
+                    Type::from(LiteralTypeDefinition::Text(
+                        "hello".to_string().into()
+                    ),),
+                    "X".to_string()
+                )
+            ),
+            "Expected nominal type definition with text literal, got {:?}",
+            inferred_type
         );
     }
 
@@ -2380,45 +2403,47 @@ mod tests {
 
     #[test]
     fn infer_union_type_expression() {
-        let memory = &Memory::default();
-
         let inferred_type = infer_type_from_script_ignore_errors(
             "type X = integer/u8 | decimal",
         );
-        assert_eq!(
-            inferred_type,
-            Type::from(TypeDefinition::Union(TypeUnion(vec![
-                Type::core(CoreLibVariantTypeId::Integer(
-                    IntegerTypeVariant::U8
-                )),
-                Type::core(CoreLibBaseTypeId::Decimal)
-            ])))
-        );
+        assert!(has_nominal_type_definition(
+            &inferred_type,
+            NominalTypeDefinition::new_base(
+                Type::from(TypeDefinition::Union(TypeUnion(vec![
+                    Type::core(CoreLibVariantTypeId::Integer(
+                        IntegerTypeVariant::U8
+                    )),
+                    Type::core(CoreLibBaseTypeId::Decimal)
+                ]))),
+                "X".to_string()
+            )
+        ));
     }
 
     #[test]
     fn infer_empty_struct_type_expression() {
         let inferred_type = infer_type_from_script_ignore_errors("type X = {}");
-        assert_eq!(
-            inferred_type,
-            Type::Alias(TypeDefinition::Map(vec![]).into())
-        );
+        assert!(has_nominal_type_definition(
+            &inferred_type,
+            NominalTypeDefinition::new_base(
+                Type::from(TypeDefinition::Map(vec![])),
+                "X".to_string(),
+            ),
+        ));
     }
 
     #[test]
     fn infer_struct_type_expression() {
-        let memory = &Memory::default();
-
         let inferred_type = infer_type_from_script_ignore_errors(
             "type X = { a: integer/u8, b: decimal }",
         );
-        assert_eq!(
-            inferred_type,
-            Type::Alias(
-                TypeDefinition::Map(vec![
+        assert!(has_nominal_type_definition(
+            &inferred_type,
+            NominalTypeDefinition::new_base(
+                Type::from(TypeDefinition::Map(vec![
                     (
                         Type::from(LiteralTypeDefinition::Text(
-                            "a".to_string().into()
+                            "a".to_string()
                         ),),
                         Type::core(CoreLibVariantTypeId::Integer(
                             IntegerTypeVariant::U8
@@ -2426,14 +2451,14 @@ mod tests {
                     ),
                     (
                         Type::from(LiteralTypeDefinition::Text(
-                            "b".to_string().into()
+                            "b".to_string()
                         ),),
                         Type::core(CoreLibBaseTypeId::Decimal)
                     )
-                ])
-                .into()
+                ])),
+                "X".to_string()
             )
-        );
+        ));
     }
 
     #[test]
@@ -2469,7 +2494,6 @@ mod tests {
 
     #[test]
     fn infer_binary_expression_types() {
-        let memory = &Memory::default();
         let integer = Type::core(CoreLibBaseTypeId::Integer);
         let decimal = Type::core(CoreLibBaseTypeId::Decimal);
 
