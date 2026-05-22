@@ -84,12 +84,12 @@ use test_case::test_case;
             inner_b: "Inner".to_string(),
         },
     } ; "struct with serde field")]
-// #[test_case(vec![1u8, 2, 3] ; "vector of primitives")]
-// #[test_case(vec![Endpoint::try_from("@ben").unwrap(), Endpoint::try_from("@jonas").unwrap()] ; "vector of datex direct types")]
-// #[test_case(Map::from(vec![
-//     ("key1".to_string(), ValueContainer::from(42u8)),
-//     ("key2".to_string(), ValueContainer::from("Value".to_string())),
-// ]) ; "map of primitives")]
+#[test_case(vec![1u8, 2, 3] ; "vector of primitives")]
+#[test_case(vec![Endpoint::try_from("@ben").unwrap(), Endpoint::try_from("@jonas").unwrap()] ; "vector of datex direct types")]
+#[test_case(Map::from(vec![
+    ("key1".to_string(), ValueContainer::from(42u8)),
+    ("key2".to_string(), ValueContainer::from("Value".to_string())),
+]) ; "map of primitives")]
 fn round_trip_struct<T>(structure: T)
 where
     T: DatexValueContainerProxy + PartialEq + std::fmt::Debug + Clone,
