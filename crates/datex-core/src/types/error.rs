@@ -36,7 +36,7 @@ pub enum TypeError {
     ReferenceToNonTypeValue,
     InvalidSharedReference,
     UnsupportedApply(Type),
-
+    UnsupportedPropertyAccess { base: Type, property: Type },
     // can not assign value to variable of different type
     AssignmentTypeMismatch { expected: Type, found: Type },
 }
@@ -46,6 +46,13 @@ impl Display for TypeError {
         match self {
             TypeError::UnsupportedApply(ty) => {
                 write!(f, "Cannot apply non-callable type {}", ty)
+            }
+            TypeError::UnsupportedPropertyAccess { base, property } => {
+                write!(
+                    f,
+                    "Type {} does not support property access with property {}",
+                    base, property
+                )
             }
             TypeError::AssignmentToImmutableValue(var_name) => {
                 write!(f, "Cannot assign to immutable variable '{}'", var_name)

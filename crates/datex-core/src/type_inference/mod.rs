@@ -2,14 +2,8 @@
 use crate::{
     ast::resolved_variable::ResolvedVariable,
     global::operators::{BinaryOperator, LogicalUnaryOperator, UnaryOperator},
-    shared_values::SharedContainer,
     type_inference::options::ErrorHandling,
-    types::{
-        nominal_type_definition::NominalTypeDefinition,
-        shared_container_containing_type::SharedContainerContainingType,
-        type_definition::TypeDefinition,
-    },
-    values::{core_values::callable, value_container::ValueContainer},
+    types::type_definition::TypeDefinition,
 };
 
 use crate::{
@@ -447,34 +441,44 @@ impl<'a> TypeExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
         pointer_address: &mut PointerAddress,
         _: &Range<usize>,
     ) -> TypeExpressionVisitResult<SpannedTypeError> {
-        if matches!(
-            pointer_address,
-            PointerAddress::External(ExternalPointerAddress::Builtin(_))
-        ) {
-            // try to resolve as type reference from memory
-            let ty = if let Some(container) =
-                self.memory.get_reference(pointer_address)
-            {
-                container.with_collapsed_value(|value| {
-                    if let CoreValue::Type(ty) = &value.inner {
-                        Some(ty.clone())
-                    } else {
-                        None
-                    }
-                })
-            } else {
-                None
-            };
-
-            match ty {
-                Some(ty) => mark_type(ty),
-                None => Err(SpannedTypeError {
+        match pointer_address {
+            PointerAddress::External(
+                external @ ExternalPointerAddress::Builtin(_),
+            ) => {
+                let core_lib_type_id = CoreLibTypeId::try_from(
+                    external as &ExternalPointerAddress,
+                )
+                .map_err(|_| SpannedTypeError {
                     error: TypeError::ReferenceToNonTypeValue,
                     span: None,
-                }),
+                })?;
+
+                mark_type(Type::core(core_lib_type_id))
             }
-        } else {
-            panic!("GetReference not supported yet")
+            _ => {
+                // try to resolve as type reference from memory
+                let ty = if let Some(container) =
+                    self.memory.get_reference(pointer_address)
+                {
+                    container.with_collapsed_value(|value| {
+                        if let CoreValue::Type(ty) = &value.inner {
+                            Some(ty.clone())
+                        } else {
+                            None
+                        }
+                    })
+                } else {
+                    None
+                };
+
+                match ty {
+                    Some(ty) => mark_type(ty),
+                    None => Err(SpannedTypeError {
+                        error: TypeError::ReferenceToNonTypeValue,
+                        span: None,
+                    }),
+                }
+            }
         }
     }
     fn visit_variable_access_type(
@@ -496,6 +500,7 @@ impl<'a> TypeExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
             span: Some(span.clone()),
         })
     }
+
     fn visit_callable_type(
         &mut self,
         callable_type: &mut CallableTypeExpression,
@@ -1022,18 +1027,53 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
         })
     }
 
-    // FIXME #621 for property access we need to implement
-    // apply chain access on type container level for structural types
     fn visit_property_access(
         &mut self,
         _property_access: &mut PropertyAccess,
         span: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
-        Err(SpannedTypeError {
-            error: TypeError::Unimplemented(
-                "PropertyAccess type inference not implemented".into(),
-            ),
-            span: Some(span.clone()),
+        let base = self.infer_expression(&mut _property_access.base)?;
+        let property = self.infer_expression(&mut _property_access.property)?;
+        base.with_collapsed_type_definition(|d| match d {
+            // TODO handle structural access, add null to union for dynamic maps
+            TypeDefinition::Map(map) => mark_type(Type::Alias(
+                TypeDefinition::union(
+                    map.iter().map(|(_, v)| v.clone()).collect::<Vec<_>>(),
+                )
+                .into(),
+            )),
+            TypeDefinition::List(members) => {
+                if !property.with_collapsed_type_definition(|d| {
+                    matches!(
+                        d,
+                        TypeDefinition::Literal(
+                            LiteralTypeDefinition::Integer(_)
+                        ) | TypeDefinition::Literal(
+                            LiteralTypeDefinition::TypedInteger(_)
+                        )
+                    )
+                }) {
+                    return Err(SpannedTypeError {
+                        error: TypeError::UnsupportedPropertyAccess {
+                            base: base.clone(),
+                            property: property.clone(),
+                        },
+                        span: Some(span.clone()),
+                    });
+                }
+                // FIXME handle out of bounds access for structural lists and infer correct type at index
+                // handle union null case for non-structural lists
+                mark_type(Type::Alias(
+                    TypeDefinition::union(members.to_vec()).into(),
+                ))
+            }
+            _ => Err(SpannedTypeError {
+                error: TypeError::UnsupportedPropertyAccess {
+                    base: base.clone(),
+                    property: property.clone(),
+                },
+                span: Some(span.clone()),
+            }),
         })
     }
 
