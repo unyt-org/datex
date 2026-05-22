@@ -1,9 +1,7 @@
 use crate::{
     dif::{
         cache::{DIFSharedContainerCache, ValueNotFoundInCacheError},
-        error::{
-            DIFApplyError, DIFObserveError, DIFUpdateResult, into_update_result,
-        },
+        error::{DIFObserveError, DIFUpdateResult, into_update_result},
     },
     runtime::pointer_address_provider::SelfOwnedPointerAddressProvider,
     shared_values::{
