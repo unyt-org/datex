@@ -16,6 +16,6 @@ impl Apply for Callable {
         &self,
         arg: &ValueContainer,
     ) -> Result<Option<ValueContainer>, ApplyError> {
-        Ok(self.call(&[arg.clone()])?)
+        Ok(self.call(core::slice::from_ref(arg))?)
     }
 }
