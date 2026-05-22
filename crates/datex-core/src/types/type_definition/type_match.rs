@@ -1,9 +1,11 @@
 use crate::{
-    types::{type_definition::TypeDefinition, type_match::TypeSatisfiesValueContainer},
+    types::{
+        r#type::Type,
+        type_definition::TypeDefinition,
+        type_match::{TypeSatisfiesValueContainer, TypeSuperset},
+    },
     values::value_container::ValueContainer,
 };
-use crate::types::r#type::Type;
-use crate::types::type_match::TypeSuperset;
 
 impl TypeSuperset<Type> for TypeDefinition {
     fn is_superset_of(&self, other: &Type) -> bool {
@@ -21,30 +23,44 @@ impl TypeSuperset<TypeDefinition> for TypeDefinition {
     fn is_superset_of(&self, other: &TypeDefinition) -> bool {
         match (self, other) {
             // literal supersets, e.g. 10 >= 10
-            (TypeDefinition::Literal(self_literal), TypeDefinition::Literal(other_literal)) => {
-                self_literal.is_superset_of(other_literal)
-            }
-            
+            (
+                TypeDefinition::Literal(self_literal),
+                TypeDefinition::Literal(other_literal),
+            ) => self_literal.is_superset_of(other_literal),
+
             // union supersets, e.g. 1|2|3 >= 1|2
-            (TypeDefinition::Union(self_union), TypeDefinition::Union(other_union)) => {
-                self_union.is_superset_of(other_union)
-            }
-            
+            (
+                TypeDefinition::Union(self_union),
+                TypeDefinition::Union(other_union),
+            ) => self_union.is_superset_of(other_union),
+
             // core supersets, e.g. integer >= integer/u8
-            (TypeDefinition::Core(self_core), TypeDefinition::Core(other_core)) => {
-                self_core.is_superset_of(other_core)
-            }
+            (
+                TypeDefinition::Core(self_core),
+                TypeDefinition::Core(other_core),
+            ) => self_core.is_superset_of(other_core),
 
             // union superset with any TypeDefinition, e.g. 1|2 >= 1
-            (TypeDefinition::Union(self_union), other) => self_union.is_superset_of(other),
-            
+            (TypeDefinition::Union(self_union), other) => {
+                self_union.is_superset_of(other)
+            }
+
             // core superset with any TypeDefinition, e.g. integer >= 1
             (TypeDefinition::Core(self_core), other) => {
                 self_core.is_superset_of(other)
             }
 
+            // core is not a superset of literal, e.g. integer >= 10 --> false
+            (TypeDefinition::Literal(_), TypeDefinition::Core(_)) => false,
+
+            (self_, TypeDefinition::Union(other_union)) => other_union
+                .iter()
+                .all(|other_member| self_.is_superset_of(other_member)),
+
             // other cross-variant matching - todo
-            (x,y) => unimplemented!("is_superset_of not implemented for {x:?} >= {y:?}"),
+            (x, y) => unimplemented!(
+                "is_superset_of not implemented for {x:?} >= {y:?}"
+            ),
         }
     }
 }

@@ -750,7 +750,7 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
 
         match variable_assignment.operator {
             None => {
-                if !assigned_type.is_superset_of(&annotated_type) {
+                if !annotated_type.is_superset_of(&assigned_type) {
                     return Err(SpannedTypeError {
                         error: TypeError::AssignmentTypeMismatch {
                             expected: annotated_type,
@@ -1851,7 +1851,6 @@ mod tests {
 
     #[test]
     fn nominal_type_declaration() {
-        let memory = &Memory::default();
         let src = r#"
         type A = integer;
         "#;
@@ -1868,9 +1867,7 @@ mod tests {
                     assert_eq!(name, "A");
                     assert_eq!(
                         definition_type,
-                        &Type::from(TypeDefinition::Nested(Box::new(
-                            Type::core(CoreLibBaseTypeId::Integer)
-                        )))
+                        &Type::core(CoreLibBaseTypeId::Integer)
                     );
                 }
                 _ => panic!("expected nominal type value"),
@@ -1882,7 +1879,6 @@ mod tests {
 
     #[test]
     fn structural_type_declaration() {
-        let memory = &Memory::default();
         let src = r#"
         typealias A = integer;
         "#;
