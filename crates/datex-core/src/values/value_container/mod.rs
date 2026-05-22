@@ -1,9 +1,6 @@
 //! This module contains the implementation of the [ValueContainer] enum, which represents a container for values in the DATEX type system.
 //! A [ValueContainer] can either be a local value, which directly contains a [Value], or a shared value, which contains a reference to a [SharedContainer].
-use crate::{
-    traits::{identity::Identity, structural_eq::StructuralEq},
-    values::value_container::value_key::BorrowedValueKey,
-};
+use crate::values::value_container::value_key::BorrowedValueKey;
 pub mod equality;
 pub mod identity;
 use core::result::Result;
@@ -12,7 +9,6 @@ use super::value::Value;
 use crate::{
     prelude::*,
     shared_values::{SharedContainer, errors::AccessError},
-    traits::{apply::Apply, value_eq::ValueEq},
     types::{
         r#type::Type,
         type_definition::TypeDefinition,
@@ -20,7 +16,6 @@ use crate::{
             TypeDefinitionWithMetadata, TypeMetadata,
         },
     },
-    value_updates::update_handler::UpdateHandler,
     values::core_value::CoreValue,
 };
 
@@ -31,12 +26,10 @@ pub mod value_key;
 use core::{
     fmt::Display,
     hash::{Hash, Hasher},
-    ops::{Add, FnOnce, Neg, Sub},
+    ops::FnOnce,
 };
 pub mod datex_proxy;
 pub mod error;
-
-use serde::{Deserialize, Serialize, de::DeserializeOwned};
 
 #[derive(Debug, Eq, Clone)]
 pub enum ValueContainer {
