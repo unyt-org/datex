@@ -110,7 +110,7 @@ impl TypeMetadata {
     }
 }
 
-impl Default for TypeMetadata {
+impl const Default for TypeMetadata {
     fn default() -> Self {
         TypeMetadata::Local {
             mutability: LocalMutability::Immutable,

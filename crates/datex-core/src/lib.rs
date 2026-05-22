@@ -19,7 +19,7 @@
 #![feature(const_trait_impl)]
 #![feature(custom_test_frameworks)]
 #![feature(specialization)]
-
+#![feature(const_default)]
 extern crate alloc;
 extern crate num_integer;
 

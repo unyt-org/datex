@@ -209,7 +209,10 @@ pub async fn remote_shared_value_inject_ref() {
                     PointerAddress::SelfOwned(..)
                 );
                 assert_eq!(
-                    shared_container.inner().base_shared_container().mutability,
+                    *shared_container
+                        .inner()
+                        .base_shared_container()
+                        .mutability(),
                     SharedContainerMutability::Immutable
                 );
                 assert_eq!(
@@ -254,7 +257,10 @@ pub async fn remote_shared_value_return(
                     PointerAddress::SelfOwned(..)
                 );
                 assert_eq!(
-                    shared_container.inner().base_shared_container().mutability,
+                    *shared_container
+                        .inner()
+                        .base_shared_container()
+                        .mutability(),
                     mutable_value
                 );
                 assert_eq!(
@@ -297,7 +303,7 @@ pub async fn remote_shared_roundtrip_move(
                     PointerAddress::SelfOwned(..)
                 );
                 assert_eq!(
-                    shared_container.inner().base_shared_container().mutability,
+                    *shared_container.inner().base_shared_container().mutability(),
                     mutable_value
                 );
                 assert_eq!(

@@ -699,7 +699,7 @@ fn compile_expression(
                                 }
                             },
                             ValueAccessType::Clone => {
-                                let cloned = shared_container.inner().base_shared_container().value_container.clone();
+                                let cloned = shared_container.inner().base_shared_container().value_container().clone();
                                 match cloned {
                                     ValueContainer::Local(value) => {
                                         append_value(

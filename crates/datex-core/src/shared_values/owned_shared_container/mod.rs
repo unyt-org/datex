@@ -153,21 +153,21 @@ impl OwnedSharedContainer {
     /// Gets a [Ref] to the currently assigned [ValueContainer] of the shared container (not resolved recursively)
     pub fn value_container(&self) -> Ref<'_, ValueContainer> {
         Ref::map(self.base_shared_container(), |base_shared_container| {
-            &base_shared_container.value_container
+            base_shared_container.value_container()
         })
     }
 
     /// Gets a [Ref] to the currently assigned allowed [Type] of the shared container (not resolved recursively)
     pub fn allowed_type(&self) -> Ref<'_, Type> {
         Ref::map(self.base_shared_container(), |base_shared_container| {
-            &base_shared_container.allowed_type
+            base_shared_container.allowed_type()
         })
     }
 
     /// Gets a [RefMut] to the currently assigned [ValueContainer] of the shared container (not resolved recursively)
     pub fn value_container_mut(&self) -> RefMut<'_, ValueContainer> {
         RefMut::map(self.base_shared_container_mut(), |base_shared_container| {
-            &mut base_shared_container.value_container
+            base_shared_container.value_container_mut()
         })
     }
 
@@ -224,7 +224,7 @@ impl OwnedSharedContainer {
     pub fn container_mutability(&self) -> SharedContainerMutability {
         self.as_self_owned_shared_container()
             .value()
-            .mutability
+            .mutability()
             .clone()
     }
 
@@ -272,15 +272,7 @@ impl OwnedSharedContainer {
         let previous = mem::replace(
             &mut *inner,
             SharedContainerInner::EndpointOwned(SelfOwnedSharedContainer::new(
-                BaseSharedValueContainer {
-                    value_container: ValueContainer::Local(Value {
-                        inner: CoreValue::Null,
-                        custom_type: None,
-                    }),
-                    allowed_type: Type::core(CoreLibBaseTypeId::Unit),
-                    observers: Default::default(),
-                    mutability: SharedContainerMutability::Immutable,
-                },
+                BaseSharedValueContainer::null(),
                 SelfOwnedPointerAddress { address: [0; 5] },
             )),
         );
@@ -336,9 +328,9 @@ impl StructuralEq for OwnedSharedContainer {
     fn structural_eq(&self, other: &Self) -> bool {
         self.inner()
             .base_shared_container()
-            .value_container
+            .value_container()
             .structural_eq(
-                &other.inner().base_shared_container().value_container,
+                &other.inner().base_shared_container().value_container(),
             )
     }
 }
@@ -347,7 +339,7 @@ impl ValueEq for OwnedSharedContainer {
     fn value_eq(&self, other: &Self) -> bool {
         self.inner()
             .base_shared_container()
-            .value_container
-            .value_eq(&other.inner().base_shared_container().value_container)
+            .value_container()
+            .value_eq(&other.inner().base_shared_container().value_container())
     }
 }

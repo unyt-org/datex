@@ -3,7 +3,7 @@
 //! The [TypeDefinition] is used as the underlying structure for type definitions in the type space and is wrapped by [TypeDefinitionWithMetadata] which holds additional metadata for type checking and inference.
 
 use crate::{
-    libs::core::type_id::CoreLibTypeId,
+    libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
     prelude::*,
     shared_values::PointerAddress,
     types::{
@@ -11,6 +11,7 @@ use crate::{
         literal_type_definition::LiteralTypeDefinition,
         shared_container_containing_type::SharedContainerContainingType,
         r#type::Type,
+        type_definition::{intersection::TypeIntersection, union::TypeUnion},
         type_definition_with_metadata::{
             TypeDefinitionWithMetadata, TypeMetadata,
         },
@@ -18,9 +19,6 @@ use crate::{
     values::core_values::callable::CallableSignature,
 };
 use core::{fmt::Display, hash::Hash, ops::Deref, prelude::rust_2024::*};
-use crate::libs::core::type_id::CoreLibBaseTypeId;
-use crate::types::type_definition::intersection::TypeIntersection;
-use crate::types::type_definition::union::TypeUnion;
 
 pub mod type_match;
 /// Base enum for a type definition
@@ -258,11 +256,14 @@ impl Display for TypeDefinition {
 }
 
 pub mod equality;
+pub mod intersection;
 mod serde_dif;
 pub mod union;
-pub mod intersection;
 
 impl TypeDefinition {
+    pub const UNIT: TypeDefinition =
+        TypeDefinition::Core(CoreLibTypeId::Base(CoreLibBaseTypeId::Unit));
+
     /// Calls the provided callback with a reference to the recursively collapsed inner [TypeDefinition] value
     pub fn with_collapsed<R>(&self, f: impl FnOnce(&TypeDefinition) -> R) -> R {
         match self {
@@ -329,12 +330,24 @@ impl TypeDefinition {
     /// Get the core lib type pointer id for this structural type definition
     pub fn core_lib_type_id(&self) -> Option<CoreLibTypeId> {
         match self {
-            TypeDefinition::Literal(literal_definition) => Some(literal_definition.core_lib_type_id()),
-            TypeDefinition::List(_) => Some(CoreLibTypeId::Base(CoreLibBaseTypeId::List)),
-            TypeDefinition::Map(_) => Some(CoreLibTypeId::Base(CoreLibBaseTypeId::Map)),
-            TypeDefinition::Range(_) => Some(CoreLibTypeId::Base(CoreLibBaseTypeId::Range)),
-            TypeDefinition::Callable(_) => Some(CoreLibTypeId::Base(CoreLibBaseTypeId::Callable)),
-            TypeDefinition::Type => Some(CoreLibTypeId::Base(CoreLibBaseTypeId::Type)),
+            TypeDefinition::Literal(literal_definition) => {
+                Some(literal_definition.core_lib_type_id())
+            }
+            TypeDefinition::List(_) => {
+                Some(CoreLibTypeId::Base(CoreLibBaseTypeId::List))
+            }
+            TypeDefinition::Map(_) => {
+                Some(CoreLibTypeId::Base(CoreLibBaseTypeId::Map))
+            }
+            TypeDefinition::Range(_) => {
+                Some(CoreLibTypeId::Base(CoreLibBaseTypeId::Range))
+            }
+            TypeDefinition::Callable(_) => {
+                Some(CoreLibTypeId::Base(CoreLibBaseTypeId::Callable))
+            }
+            TypeDefinition::Type => {
+                Some(CoreLibTypeId::Base(CoreLibBaseTypeId::Type))
+            }
             _ => None,
         }
     }

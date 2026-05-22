@@ -3,6 +3,7 @@ use crate::{
     traits::value_eq::ValueEq,
     utils::freemap::FreeHashMap,
     values::{
+        core_value::CoreValue,
         value::Value,
         value_container::{ValueContainer, value_key::BorrowedValueKey},
     },
@@ -28,16 +29,29 @@ use observers::{Observer, ObserverId};
 
 pub struct BaseSharedValueContainer {
     /// The value of the container
-    pub value_container: ValueContainer,
+    value_container: ValueContainer,
     /// The [Type] that is allowed to be assigned to the shared container. This is used for type checking when assigning a new value container to the shared container.
-    pub allowed_type: Type,
+    allowed_type: Type,
     /// List of observer callbacks
     /// TODO: move observers to ValueContainer?
-    pub observers: FreeHashMap<ObserverId, Observer>,
-    pub mutability: SharedContainerMutability,
+    observers: FreeHashMap<ObserverId, Observer>,
+    mutability: SharedContainerMutability,
 }
 
 impl BaseSharedValueContainer {
+    /// Returns a new [BaseSharedValueContainer] with a [ValueContainer] containing a [CoreValue::Null], an allowed type of [Type::UNIT] and a mutability of [SharedContainerMutability::Immutable].
+    pub fn null() -> Self {
+        BaseSharedValueContainer {
+            value_container: ValueContainer::Local(Value {
+                inner: CoreValue::Null,
+                custom_type: None,
+            }),
+            allowed_type: Type::UNIT,
+            observers: FreeHashMap::new(),
+            mutability: SharedContainerMutability::Immutable,
+        }
+    }
+
     /// Tries to create a new [BaseSharedValueContainer] with an initial [ValueContainer],
     /// an allowed type and a [SharedContainerMutability].
     /// If the allowed [TypeDefinition] is not a superset of the [ValueContainer]'s allowed type,
@@ -100,6 +114,19 @@ impl BaseSharedValueContainer {
         key: impl Into<BorrowedValueKey<'a>>,
     ) -> Result<ValueContainer, AccessError> {
         self.with_collapsed_value(|value| value.try_get_property(key))
+    }
+
+    pub fn value_container(&self) -> &ValueContainer {
+        &self.value_container
+    }
+    pub(crate) fn value_container_mut(&mut self) -> &mut ValueContainer {
+        &mut self.value_container
+    }
+    pub fn allowed_type(&self) -> &Type {
+        &self.allowed_type
+    }
+    pub fn mutability(&self) -> &SharedContainerMutability {
+        &self.mutability
     }
 }
 

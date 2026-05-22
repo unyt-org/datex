@@ -70,7 +70,7 @@ impl ReferencedSharedContainer {
     ) -> Result<Self, ()> {
         // invalid reference mutability
         if reference_mutability == ReferenceMutability::Mutable
-            && container.mutability == SharedContainerMutability::Immutable
+            && *container.mutability() == SharedContainerMutability::Immutable
         {
             return Err(());
         }
@@ -163,14 +163,14 @@ impl ReferencedSharedContainer {
     /// Gets a [Ref] to the currently assigned [ValueContainer] of the shared container (not resolved recursively)
     pub fn value_container(&self) -> Ref<'_, ValueContainer> {
         Ref::map(self.base_shared_container(), |base_shared_container| {
-            &base_shared_container.value_container
+            base_shared_container.value_container()
         })
     }
 
     /// Gets a [RefMut] to the currently assigned [ValueContainer] of the shared container (not resolved recursively)
     pub fn value_container_mut(&self) -> RefMut<'_, ValueContainer> {
         RefMut::map(self.base_shared_container_mut(), |base_shared_container| {
-            &mut base_shared_container.value_container
+            base_shared_container.value_container_mut()
         })
     }
 
@@ -192,7 +192,7 @@ impl ReferencedSharedContainer {
     /// Gets a [Ref] to the currently assigned allowed [TypeDefinition] of the shared container (not resolved recursively)
     pub fn allowed_type(&self) -> Ref<'_, Type> {
         Ref::map(self.base_shared_container(), |base_shared_container| {
-            &base_shared_container.allowed_type
+            base_shared_container.allowed_type()
         })
     }
 
@@ -203,7 +203,7 @@ impl ReferencedSharedContainer {
 
     /// Get the [SharedContainerMutability] of the inner [SelfOwnedSharedContainer].
     pub fn container_mutability(&self) -> SharedContainerMutability {
-        self.inner().base_shared_container().mutability.clone()
+        self.inner().base_shared_container().mutability().clone()
     }
 
     /// Creates a new immutable [ReferencedSharedContainer] pointing to the same inner value as self.
@@ -279,9 +279,9 @@ impl StructuralEq for ReferencedSharedContainer {
     fn structural_eq(&self, other: &Self) -> bool {
         self.inner()
             .base_shared_container()
-            .value_container
+            .value_container()
             .structural_eq(
-                &other.inner().base_shared_container().value_container,
+                other.inner().base_shared_container().value_container(),
             )
     }
 }
@@ -290,7 +290,7 @@ impl ValueEq for ReferencedSharedContainer {
     fn value_eq(&self, other: &Self) -> bool {
         self.inner()
             .base_shared_container()
-            .value_container
-            .value_eq(&other.inner().base_shared_container().value_container)
+            .value_container()
+            .value_eq(other.inner().base_shared_container().value_container())
     }
 }

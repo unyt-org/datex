@@ -831,7 +831,7 @@ mod tests {
         assert_matches!(result, ValueContainer::Shared(..));
         if let ValueContainer::Shared(shared) = &result {
             assert_eq!(
-                shared.inner().base_shared_container().mutability,
+                *shared.inner().base_shared_container().mutability(),
                 SharedContainerMutability::Mutable
             );
         } else {

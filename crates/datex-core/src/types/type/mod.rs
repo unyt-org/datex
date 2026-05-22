@@ -4,7 +4,7 @@
 #[cfg(feature = "compiler")]
 use crate::ast::expressions::DatexExpressionData;
 use crate::{
-    libs::core::type_id::CoreLibTypeId,
+    libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
     prelude::*,
     runtime::pointer_address_provider::SelfOwnedPointerAddressProvider,
     shared_values::{
@@ -36,6 +36,11 @@ pub enum Type {
 }
 
 impl Type {
+    pub const UNIT: Type = Type::Alias(TypeDefinitionWithMetadata {
+        definition: TypeDefinition::UNIT,
+        metadata: TypeMetadata::default(),
+    });
+
     pub fn nominal(
         definition: NominalTypeDefinition,
         address_provider: &mut SelfOwnedPointerAddressProvider,
@@ -454,10 +459,13 @@ mod tests {
         libs::core::type_id::CoreLibBaseTypeId,
         runtime::memory::Memory,
         types::{
-            literal_type_definition::LiteralTypeDefinition, r#type::Type,
-            type_definition::TypeDefinition,
+            literal_type_definition::LiteralTypeDefinition,
+            r#type::Type,
+            type_definition::{TypeDefinition, union::TypeUnion},
             type_definition_with_metadata::TypeDefinitionWithMetadata,
-            type_match::TypeSatisfiesValueContainer,
+            type_match::{
+                TypeSatisfiesValueContainer, TypeSubset, TypeSuperset,
+            },
         },
         values::{
             core_value::CoreValue,
@@ -469,8 +477,6 @@ mod tests {
             value_container::ValueContainer,
         },
     };
-    use crate::types::type_definition::union::TypeUnion;
-    use crate::types::type_match::{TypeSubset, TypeSuperset};
 
     #[test]
     fn match_equal_values() {
@@ -519,20 +525,24 @@ mod tests {
         // 1 <= (1 | 2 | 3)
         assert!(
             Type::from(LiteralTypeDefinition::Integer(Integer::from(1)))
-                .is_subset_of(&Type::from(TypeDefinition::Union(TypeUnion(vec![
-                    LiteralTypeDefinition::Integer(Integer::from(1)).into(),
-                    LiteralTypeDefinition::Integer(Integer::from(2)).into(),
-                    LiteralTypeDefinition::Integer(Integer::from(3)).into()
-                ]))))
+                .is_subset_of(&Type::from(TypeDefinition::Union(TypeUnion(
+                    vec![
+                        LiteralTypeDefinition::Integer(Integer::from(1)).into(),
+                        LiteralTypeDefinition::Integer(Integer::from(2)).into(),
+                        LiteralTypeDefinition::Integer(Integer::from(3)).into()
+                    ]
+                ))))
         );
 
         // 1 <= integer | text
         assert!(
             Type::from(LiteralTypeDefinition::Integer(Integer::from(1)))
-                .is_subset_of(&Type::from(TypeDefinition::Union(TypeUnion(vec![
-                    Type::core(CoreLibBaseTypeId::Integer),
-                    Type::core(CoreLibBaseTypeId::Text),
-                ]))))
+                .is_subset_of(&Type::from(TypeDefinition::Union(TypeUnion(
+                    vec![
+                        Type::core(CoreLibBaseTypeId::Integer),
+                        Type::core(CoreLibBaseTypeId::Text),
+                    ]
+                ))))
         );
     }
 

@@ -15,6 +15,7 @@ use crate::{
             observers::{ObserveOptions, Observer, ObserverId, TransceiverId},
         },
     },
+    traits::apply::{Apply, ApplyError},
     value_updates::{
         update_data::{Update, UpdateData},
         update_handler::UpdateHandler,
@@ -79,10 +80,10 @@ impl DIFInterface {
     /// Executes an apply operation, applying the `value` to the `callee`.
     pub fn apply(
         &self,
-        _callee: ValueContainer,
-        _value: ValueContainer,
-    ) -> Result<Option<ValueContainer>, DIFApplyError> {
-        todo!()
+        callee: ValueContainer,
+        value: ValueContainer,
+    ) -> Result<Option<ValueContainer>, ApplyError> {
+        callee.apply_single(&value)
     }
 
     /// Creates a new owned local pointer and stores it in memory.
