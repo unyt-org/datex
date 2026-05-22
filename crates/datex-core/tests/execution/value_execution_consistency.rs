@@ -1,4 +1,3 @@
-use alloc::rc::Rc;
 /// Runtime execution tests that validate that values are consistent through
 /// the compile and execution process.
 /// Any value passed as input should be returned exactly as it was passed in after compilation and execution.
