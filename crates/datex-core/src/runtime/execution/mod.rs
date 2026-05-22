@@ -199,9 +199,9 @@ fn handle_apply(
     // callee is guaranteed to be Some here
     // apply_single if one arg, apply otherwise
     Ok(if args.len() == 1 {
-        callee.apply_single(&args[0])?
+        callee.try_apply_single(&args[0])?
     } else {
-        callee.apply(args)?
+        callee.try_apply(args)?
     })
 }
 

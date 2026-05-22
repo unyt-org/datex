@@ -1,10 +1,7 @@
 use crate::{
     dif::cache::CacheValueRetrievalError,
     runtime::execution::ExecutionError,
-    shared_values::{
-        base_shared_value_container::observers::ObserverError,
-        errors::SharedValueCreationError,
-    },
+    shared_values::base_shared_value_container::observers::ObserverError,
     value_updates::{errors::UpdateError, update_data::UpdateReturn},
 };
 use core::{fmt::Display, result::Result};
@@ -22,19 +19,6 @@ pub fn into_update_result<T: Into<UpdateReturn>, E: Into<DIFUpdateError>>(
     }
 }
 
-impl Display for DIFCreatePointerError {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        match self {
-            DIFCreatePointerError::ReferenceNotFound => {
-                core::write!(f, "Reference not found")
-            }
-            DIFCreatePointerError::ReferenceCreationError(e) => {
-                core::write!(f, "Reference from value container error: {}", e)
-            }
-        }
-    }
-}
-
 #[derive(Debug)]
 pub enum DIFResolveReferenceError {
     ReferenceNotFound,
@@ -46,12 +30,6 @@ impl Display for DIFResolveReferenceError {
                 core::write!(f, "Reference not found")
             }
         }
-    }
-}
-
-impl From<SharedValueCreationError> for DIFCreatePointerError {
-    fn from(err: SharedValueCreationError) -> Self {
-        DIFCreatePointerError::ReferenceCreationError(err)
     }
 }
 
@@ -112,10 +90,4 @@ impl Display for DIFApplyError {
             }
         }
     }
-}
-
-#[derive(Debug)]
-pub enum DIFCreatePointerError {
-    ReferenceNotFound,
-    ReferenceCreationError(SharedValueCreationError),
 }

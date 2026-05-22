@@ -31,12 +31,12 @@ impl From<CallableError> for ApplyError {
 // TODO #351: return ApplyErrors including call stack information (or store call stack directly in ExecutionError)
 pub trait Apply {
     /// Applies multiple ValueContainer arguments to self
-    fn apply(
+    fn try_apply(
         &self,
         args: &[ValueContainer],
     ) -> Result<Option<ValueContainer>, ApplyError>;
     /// Applies a single ValueContainer argument to self
-    fn apply_single(
+    fn try_apply_single(
         &self,
         arg: &ValueContainer,
     ) -> Result<Option<ValueContainer>, ApplyError>;

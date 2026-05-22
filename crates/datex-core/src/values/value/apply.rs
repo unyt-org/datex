@@ -6,21 +6,21 @@ use crate::{
 };
 
 impl Apply for Value {
-    fn apply(
+    fn try_apply(
         &self,
         args: &[ValueContainer],
     ) -> Result<Option<ValueContainer>, ApplyError> {
         match self.inner {
-            CoreValue::Callable(ref callable) => callable.apply(args),
+            CoreValue::Callable(ref callable) => callable.try_apply(args),
             _ => Err(ApplyError::UnsupportedApply),
         }
     }
-    fn apply_single(
+    fn try_apply_single(
         &self,
         arg: &ValueContainer,
     ) -> Result<Option<ValueContainer>, ApplyError> {
         match self.inner {
-            CoreValue::Callable(ref callable) => callable.apply_single(arg),
+            CoreValue::Callable(ref callable) => callable.try_apply_single(arg),
             _ => Err(ApplyError::UnsupportedApply),
         }
     }

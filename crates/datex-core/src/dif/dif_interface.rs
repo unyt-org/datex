@@ -2,8 +2,7 @@ use crate::{
     dif::{
         cache::{DIFSharedContainerCache, ValueNotFoundInCacheError},
         error::{
-            DIFApplyError, DIFCreatePointerError, DIFObserveError,
-            DIFUpdateResult, into_update_result,
+            DIFApplyError, DIFObserveError, DIFUpdateResult, into_update_result,
         },
     },
     runtime::pointer_address_provider::SelfOwnedPointerAddressProvider,
@@ -83,7 +82,7 @@ impl DIFInterface {
         callee: ValueContainer,
         value: ValueContainer,
     ) -> Result<Option<ValueContainer>, ApplyError> {
-        callee.apply_single(&value)
+        callee.try_apply_single(&value)
     }
 
     /// Creates a new owned local pointer and stores it in memory.
@@ -91,7 +90,7 @@ impl DIFInterface {
     pub fn create_pointer(
         &mut self,
         value: BaseSharedValueContainer,
-    ) -> Result<SelfOwnedPointerAddress, DIFCreatePointerError> {
+    ) -> SelfOwnedPointerAddress {
         let pointer_address = self
             .address_provider
             .borrow_mut()
@@ -101,7 +100,7 @@ impl DIFInterface {
                 SelfOwnedSharedContainer::new(value, pointer_address.clone()),
             ),
         ));
-        Ok(pointer_address)
+        pointer_address
     }
 
     /// Resolves a pointer address of a pointer that is currently in memory to its [SharedContainer].

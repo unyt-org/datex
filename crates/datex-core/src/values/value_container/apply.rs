@@ -3,23 +3,25 @@ use crate::{
     values::value_container::ValueContainer,
 };
 impl Apply for ValueContainer {
-    fn apply(
+    fn try_apply(
         &self,
         args: &[ValueContainer],
     ) -> Result<Option<ValueContainer>, ApplyError> {
         match self {
-            ValueContainer::Local(value) => value.apply(args),
-            ValueContainer::Shared(reference) => reference.apply(args),
+            ValueContainer::Local(value) => value.try_apply(args),
+            ValueContainer::Shared(reference) => reference.try_apply(args),
         }
     }
 
-    fn apply_single(
+    fn try_apply_single(
         &self,
         arg: &ValueContainer,
     ) -> Result<Option<ValueContainer>, ApplyError> {
         match self {
-            ValueContainer::Local(value) => value.apply_single(arg),
-            ValueContainer::Shared(reference) => reference.apply_single(arg),
+            ValueContainer::Local(value) => value.try_apply_single(arg),
+            ValueContainer::Shared(reference) => {
+                reference.try_apply_single(arg)
+            }
         }
     }
 }

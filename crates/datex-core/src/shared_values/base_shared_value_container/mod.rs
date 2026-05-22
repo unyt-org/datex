@@ -27,6 +27,9 @@ use core::{
 };
 use observers::{Observer, ObserverId};
 
+/// For the internal implementation of shared containers.
+/// A BaseSharedValueContainer can only exists, when it's inner value matches the allowed type.
+/// For internal modification of the value, we must ensure that the allowed type is not violated.
 pub struct BaseSharedValueContainer {
     /// The value of the container
     value_container: ValueContainer,

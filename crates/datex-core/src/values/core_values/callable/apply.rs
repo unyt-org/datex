@@ -6,13 +6,13 @@ use crate::{
 };
 
 impl Apply for Callable {
-    fn apply(
+    fn try_apply(
         &self,
         args: &[ValueContainer],
     ) -> Result<Option<ValueContainer>, ApplyError> {
         Ok(self.call(args)?)
     }
-    fn apply_single(
+    fn try_apply_single(
         &self,
         arg: &ValueContainer,
     ) -> Result<Option<ValueContainer>, ApplyError> {
