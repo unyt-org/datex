@@ -22,6 +22,7 @@ collaboration and development.
   implementation of the DATEX Crypto trait
   - [datex-crypto-web/](./crates/datex-crypto-web) - A web implementation of the DATEX Crypto trait using WebCrypto API
   - [datex-macros/](./crates/datex-macros) - Procedural macros used in DATEX applications
+  - [datex-macros-utils](./crates/datex-macro-utils) - Shared helpers and utilities for the DATEX macros
   - [datex-macros-internal/](./crates/datex-macros-internal) - Procedural macros used in the internal implementation of the DATEX core crate
 - [docs/](./docs) - Documentation for the DATEX ecosystem
   - [guide/](./docs/guide) - Collection of guides for contributing to the DATEX ecosystem
