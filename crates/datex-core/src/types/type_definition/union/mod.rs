@@ -1,7 +1,7 @@
 mod type_match;
 
+use crate::{prelude::*, types::r#type::Type};
 use core::ops::Deref;
-use crate::types::r#type::Type;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TypeUnion(pub Vec<Type>);
