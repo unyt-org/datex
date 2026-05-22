@@ -23,6 +23,7 @@ mod test {
             SharedContainerOwnership,
         },
     };
+    use alloc::string::ToString;
     use test_case::test_case;
 
     #[test_case(PointerAddressWithOwnership {
