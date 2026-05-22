@@ -9,7 +9,7 @@ use crate::{
         shared_container_containing_type::SharedContainerContainingType,
         type_definition::TypeDefinition,
     },
-    values::value_container::ValueContainer,
+    values::{core_values::callable, value_container::ValueContainer},
 };
 
 use crate::{
@@ -52,10 +52,11 @@ use crate::{
         error::TypeError,
         literal_type_definition::LiteralTypeDefinition,
         r#type::Type,
+        type_definition::union::TypeUnion,
         type_definition_with_metadata::{
             LocalMutability, TypeDefinitionWithMetadata, TypeMetadata,
         },
-        type_match::TypeSatisfiesValueContainer,
+        type_match::{TypeSatisfiesValueContainer, TypeSubset, TypeSuperset},
     },
     values::{
         core_value::CoreValue,
@@ -75,8 +76,6 @@ use crate::{
     },
 };
 use core::{cell::RefCell, ops::Range, panic};
-use crate::types::type_definition::union::TypeUnion;
-use crate::types::type_match::{TypeSubset, TypeSuperset};
 
 pub mod error;
 pub mod options;
@@ -998,14 +997,28 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
 
     fn visit_apply(
         &mut self,
-        _apply_chain: &mut Apply,
+        apply: &mut Apply,
         span: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
-        Err(SpannedTypeError {
-            error: TypeError::Unimplemented(
-                "ApplyChain type inference not implemented".into(),
-            ),
-            span: Some(span.clone()),
+        let caller = self.infer_expression(&mut apply.base)?;
+        caller.with_collapsed_type_definition(|ty| {
+            match ty {
+                TypeDefinition::Callable(callable_signature) => {
+                    // FIXME handle signature mismatch errors
+                    // FIXME handle yeet type and mark error type in returned type
+                    if let Some(return_type) =
+                        callable_signature.return_type.as_ref()
+                    {
+                        mark_type(*return_type.clone())
+                    } else {
+                        mark_type(Type::core(CoreLibBaseTypeId::Never))
+                    }
+                }
+                _ => Err(SpannedTypeError {
+                    error: TypeError::UnsupportedApply(caller.clone()),
+                    span: Some(span.clone()),
+                }),
+            }
         })
     }
 
@@ -1172,7 +1185,8 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
         // If they don't match, record an error
         // TODO #622: improve
         if let Some(annotated_return_type) = &signature.return_type
-            && !inferred_return_type.is_subset_of(annotated_return_type.as_ref())
+            && !inferred_return_type
+                .is_subset_of(annotated_return_type.as_ref())
         {
             self.record_error(SpannedTypeError {
                 error: TypeError::AssignmentTypeMismatch {
@@ -1426,7 +1440,10 @@ mod tests {
             shared_container_containing_nominal_type::SharedContainerContainingNominalType,
             shared_container_containing_type::SharedContainerContainingType,
             r#type::Type,
-            type_definition::TypeDefinition,
+            type_definition::{
+                TypeDefinition, intersection::TypeIntersection,
+                union::TypeUnion,
+            },
             type_definition_with_metadata::{
                 TypeDefinitionWithMetadata, TypeMetadata,
             },
@@ -1445,8 +1462,6 @@ mod tests {
             },
         },
     };
-    use crate::types::type_definition::intersection::TypeIntersection;
-    use crate::types::type_definition::union::TypeUnion;
 
     /// Infers type errors for the given source code.
     /// Panics if parsing or precompilation succeeds.

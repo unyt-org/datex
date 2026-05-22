@@ -35,6 +35,7 @@ pub enum TypeError {
     AssignmentToConstant(String),
     ReferenceToNonTypeValue,
     InvalidSharedReference,
+    UnsupportedApply(Type),
 
     // can not assign value to variable of different type
     AssignmentTypeMismatch { expected: Type, found: Type },
@@ -43,6 +44,9 @@ pub enum TypeError {
 impl Display for TypeError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
+            TypeError::UnsupportedApply(ty) => {
+                write!(f, "Cannot apply non-callable type {}", ty)
+            }
             TypeError::AssignmentToImmutableValue(var_name) => {
                 write!(f, "Cannot assign to immutable variable '{}'", var_name)
             }
