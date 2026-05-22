@@ -1,7 +1,6 @@
 pub mod datex_proxy;
 
 use crate::{
-    libs::core::type_id::CoreLibBaseTypeId,
     runtime::{
         memory::Memory,
         pointer_address_provider::SelfOwnedPointerAddressProvider,
@@ -20,9 +19,7 @@ use crate::{
         identity::Identity, structural_eq::StructuralEq, value_eq::ValueEq,
     },
     types::r#type::Type,
-    values::{
-        core_value::CoreValue, value::Value, value_container::ValueContainer,
-    },
+    values::{value::Value, value_container::ValueContainer},
 };
 use alloc::rc::Rc;
 use core::{
@@ -330,7 +327,7 @@ impl StructuralEq for OwnedSharedContainer {
             .base_shared_container()
             .value_container()
             .structural_eq(
-                &other.inner().base_shared_container().value_container(),
+                other.inner().base_shared_container().value_container(),
             )
     }
 }
@@ -340,6 +337,6 @@ impl ValueEq for OwnedSharedContainer {
         self.inner()
             .base_shared_container()
             .value_container()
-            .value_eq(&other.inner().base_shared_container().value_container())
+            .value_eq(other.inner().base_shared_container().value_container())
     }
 }

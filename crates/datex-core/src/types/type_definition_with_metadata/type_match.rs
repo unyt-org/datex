@@ -1,19 +1,21 @@
 use crate::{
     types::{
-        type_definition_with_metadata::TypeDefinitionWithMetadata,
-        type_match::TypeSatisfiesValueContainer,
+        r#type::Type,
+        type_definition::TypeDefinition,
+        type_definition_with_metadata::{
+            TypeDefinitionWithMetadata, TypeMetadata,
+        },
+        type_match::{TypeSatisfiesValueContainer, TypeSuperset},
     },
     values::value_container::ValueContainer,
 };
-use crate::types::r#type::Type;
-use crate::types::type_definition::TypeDefinition;
-use crate::types::type_definition_with_metadata::TypeMetadata;
-use crate::types::type_match::TypeSuperset;
 
 impl TypeSuperset<Type> for TypeDefinitionWithMetadata {
     fn is_superset_of(&self, other: &Type) -> bool {
         match other {
-            Type::Alias(other_definition) => self.is_superset_of(other_definition),
+            Type::Alias(other_definition) => {
+                self.is_superset_of(other_definition)
+            }
             Type::Nominal(_) => {
                 // direct nominal type, has implicit default metadata
                 if TypeMetadata::default().is_superset_of(&self.metadata) {

@@ -1,9 +1,9 @@
 use crate::types::type_definition_with_metadata::metadata::TypeMetadata;
 
 use crate::{
-    types::type_match::TypeSatisfiesValueContainer, values::value_container::ValueContainer,
+    types::type_match::{TypeSatisfiesValueContainer, TypeSuperset},
+    values::value_container::ValueContainer,
 };
-use crate::types::type_match::TypeSuperset;
 
 impl TypeSuperset<TypeMetadata> for TypeMetadata {
     fn is_superset_of(&self, other: &Self) -> bool {

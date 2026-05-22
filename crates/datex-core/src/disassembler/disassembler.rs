@@ -400,18 +400,28 @@ macro_rules! assert_instructions_equal {
 #[macro_export]
 macro_rules! assert_regular_instructions_equal {
     ($dxb:expr, $expected:expr) => {{
-        use $crate::global::protocol_structures::instructions::{NestedInstructionResolutionStrategy, Instruction};
-        use $crate::disassembler::disassemble_body;
+        use $crate::{
+            disassembler::disassemble_body,
+            global::protocol_structures::instructions::{
+                Instruction, NestedInstructionResolutionStrategy,
+            },
+        };
 
-        let (instructions, err) = disassemble_body($dxb, NestedInstructionResolutionStrategy::ResolveNestedScopesFlat);
+        let (instructions, err) = disassemble_body(
+            $dxb,
+            NestedInstructionResolutionStrategy::ResolveNestedScopesFlat,
+        );
         if let Some(err) = err {
             panic!("Parser error: {}", err);
         }
         assert_eq!(
             &instructions.flatten(),
-            &($expected.into_iter().map(Instruction::Regular).collect::<Vec<_>>())
+            &($expected
+                .into_iter()
+                .map(Instruction::Regular)
+                .collect::<Vec<_>>())
         );
-    }}
+    }};
 }
 
 #[cfg(test)]

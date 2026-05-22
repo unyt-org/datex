@@ -66,7 +66,6 @@ pub fn compile_injected_values(
 ///    ]
 ///
 /// )
-///
 pub fn compile_injected_values_with_context(
     compilation_context: &mut CoreCompilationContext,
     instruction_block_data: &InstructionBlockData,
@@ -230,26 +229,33 @@ fn compile_preform_move_preamble(
 
 #[cfg(test)]
 mod tests {
-    use crate::{assert_regular_instructions_equal, core_compiler::injected_values::compile_injected_values, global::{
-        instruction_codes::InstructionCode,
-        protocol_structures::{
-            injected_values::{
-                InjectedValueDeclaration, InjectedValueType,
-                SharedInjectedValueType,
+    use crate::{
+        assert_regular_instructions_equal,
+        core_compiler::injected_values::compile_injected_values,
+        global::{
+            instruction_codes::InstructionCode,
+            protocol_structures::{
+                injected_values::{
+                    InjectedValueDeclaration, InjectedValueType,
+                    SharedInjectedValueType,
+                },
+                instruction_data::{
+                    InstructionBlockData, Int32Data, SharedRefWithValue,
+                    StackIndex, StatementsData,
+                },
+                regular_instructions::RegularInstruction,
             },
-            instruction_data::{InstructionBlockData, StackIndex},
         },
-    }, prelude::*, runtime::{
-        memory::Memory,
-        pointer_address_provider::SelfOwnedPointerAddressProvider,
-    }, shared_values::{
-        OwnedSharedContainer,
-        SharedContainer,
-        SharedContainerMutability,
-    }};
-    use crate::global::protocol_structures::instruction_data::{Int32Data, SharedRefWithValue, StatementsData};
-    use crate::global::protocol_structures::regular_instructions::RegularInstruction;
-    use crate::shared_values::{PointerAddress, ReferenceMutability};
+        prelude::*,
+        runtime::{
+            memory::Memory,
+            pointer_address_provider::SelfOwnedPointerAddressProvider,
+        },
+        shared_values::{
+            OwnedSharedContainer, PointerAddress, ReferenceMutability,
+            SharedContainer, SharedContainerMutability,
+        },
+    };
 
     #[test]
     fn remote_execution_no_injected_values() {
@@ -260,12 +266,7 @@ mod tests {
             body: vec![InstructionCode::NULL as u8],
         };
         let res = compile_injected_values(exec_block_data, vec![]).unwrap().0;
-        assert_regular_instructions_equal!(
-            &res,
-            [
-                RegularInstruction::Null,
-            ]
-        )
+        assert_regular_instructions_equal!(&res, [RegularInstruction::Null,])
     }
 
     #[test]
@@ -273,11 +274,12 @@ mod tests {
         let address_provider = &mut SelfOwnedPointerAddressProvider::default();
         let memory = &Memory::default();
 
-        let owned_container = OwnedSharedContainer::new_with_inferred_allowed_type(
-            42,
-            SharedContainerMutability::Immutable,
-            address_provider,
-        );
+        let owned_container =
+            OwnedSharedContainer::new_with_inferred_allowed_type(
+                42,
+                SharedContainerMutability::Immutable,
+                address_provider,
+            );
         let owned_address = owned_container.pointer_address().clone();
 
         let exec_block_data = InstructionBlockData {
@@ -289,10 +291,12 @@ mod tests {
             }],
             body: vec![InstructionCode::NULL as u8],
         };
-        let res =
-            compile_injected_values(exec_block_data, vec![SharedContainer::Owned(owned_container).into()])
-                .unwrap()
-                .0;
+        let res = compile_injected_values(
+            exec_block_data,
+            vec![SharedContainer::Owned(owned_container).into()],
+        )
+        .unwrap()
+        .0;
         // should allocate slot and then compile the shared value into the buffer, followed by the body
         assert_regular_instructions_equal!(
             &res,
@@ -301,7 +305,6 @@ mod tests {
                     statements_count: 2,
                     terminated: false
                 }),
-                
                 // ref
                 RegularInstruction::PushToStack,
                 RegularInstruction::SharedRefWithValue(SharedRefWithValue {
@@ -310,9 +313,8 @@ mod tests {
                     container_mutability: SharedContainerMutability::Immutable
                 }),
                 RegularInstruction::Int32(Int32Data(42)),
-                
                 // original body
-                RegularInstruction::Null, 
+                RegularInstruction::Null,
             ]
         )
     }
@@ -373,7 +375,6 @@ mod tests {
                     statements_count: 3,
                     terminated: false
                 }),
-                
                 // first ref
                 RegularInstruction::PushToStack,
                 RegularInstruction::SharedRefWithValue(SharedRefWithValue {
@@ -382,7 +383,6 @@ mod tests {
                     container_mutability: SharedContainerMutability::Immutable
                 }),
                 RegularInstruction::Int32(Int32Data(42)),
-                
                 // second ref
                 RegularInstruction::PushToStack,
                 RegularInstruction::SharedRefWithValue(SharedRefWithValue {
@@ -391,7 +391,6 @@ mod tests {
                     container_mutability: SharedContainerMutability::Mutable
                 }),
                 RegularInstruction::Int32(Int32Data(100)),
-
                 // original body
                 RegularInstruction::Null,
             ]

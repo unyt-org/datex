@@ -390,9 +390,13 @@ impl From<PointerAddress> for RawPointerAddress {
                 RawPointerAddress::Remote(RawRemotePointerAddress::from(addr))
             }
             PointerAddress::External(ExternalPointerAddress::Builtin(addr)) => {
-                RawPointerAddress::Internal(RawBuiltinPointerAddress::from(addr))
+                RawPointerAddress::Internal(RawBuiltinPointerAddress::from(
+                    addr,
+                ))
             }
-            PointerAddress::SelfOwned(addr) => RawPointerAddress::SelfOwned(RawSelfOwnedPointerAddress::from(addr))
+            PointerAddress::SelfOwned(addr) => RawPointerAddress::SelfOwned(
+                RawSelfOwnedPointerAddress::from(addr),
+            ),
         }
     }
 }

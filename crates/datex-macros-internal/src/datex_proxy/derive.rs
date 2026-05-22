@@ -63,15 +63,14 @@ pub struct DeriveData {
 
 /// Derive implementation for the [Datex] derive macro.
 pub fn derive(input: DeriveInput) -> TokenStream {
-
     let top_level_attributes = parse_top_level_attributes(&input.attrs);
 
-    let datex_core_crate_name = if top_level_attributes.force_datex_core_namespace {
-        Ident::new("datex_core", Span::call_site())
-    }
-    else {
-        get_datex_core_crate_name()
-    };
+    let datex_core_crate_name =
+        if top_level_attributes.force_datex_core_namespace {
+            Ident::new("datex_core", Span::call_site())
+        } else {
+            get_datex_core_crate_name()
+        };
 
     let DeriveData {
         into_datex_fields_inner,
@@ -738,20 +737,19 @@ fn parse_top_level_attributes(attrs: &[Attribute]) -> TopLevelAttributes {
     let mut force_datex_core_namespace = false;
 
     for attr in attrs {
-        if attr.path().is_ident("datex") {
-            if let Meta::List(meta_list) = &attr.meta {
-                let nested =
-                    meta_list.parse_args_with(
-                        Punctuated::<Meta, Token![,]>::parse_terminated,
-                    );
+        if attr.path().is_ident("datex")
+            && let Meta::List(meta_list) = &attr.meta
+        {
+            let nested = meta_list.parse_args_with(
+                Punctuated::<Meta, Token![,]>::parse_terminated,
+            );
 
-                if let Ok(nested) = nested {
-                    for meta in nested {
-                        if let Meta::Path(path) = meta {
-                            if path.is_ident("_force_datex_core_namespace") {
-                                force_datex_core_namespace = true;
-                            }
-                        }
+            if let Ok(nested) = nested {
+                for meta in nested {
+                    if let Meta::Path(path) = meta
+                        && path.is_ident("_force_datex_core_namespace")
+                    {
+                        force_datex_core_namespace = true;
                     }
                 }
             }
@@ -759,7 +757,7 @@ fn parse_top_level_attributes(attrs: &[Attribute]) -> TopLevelAttributes {
     }
 
     TopLevelAttributes {
-        force_datex_core_namespace: force_datex_core_namespace,
+        force_datex_core_namespace,
     }
 }
 

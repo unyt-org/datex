@@ -1,6 +1,7 @@
 use crate::{
     types::{
-        literal_type_definition::LiteralTypeDefinition, type_match::TypeSatisfiesValueContainer,
+        literal_type_definition::LiteralTypeDefinition,
+        type_match::{TypeSatisfiesValueContainer, TypeSuperset},
     },
     values::{
         core_values::{
@@ -12,8 +13,6 @@ use crate::{
         value_container::ValueContainer,
     },
 };
-use crate::types::type_match::TypeSuperset;
-
 
 impl TypeSuperset<LiteralTypeDefinition> for LiteralTypeDefinition {
     fn is_superset_of(&self, other: &LiteralTypeDefinition) -> bool {
@@ -69,6 +68,8 @@ mod tests {
         assert!(integer_u8.satisfies_value_container(&42u8.into()));
 
         let integer_wrong = LiteralTypeDefinition::Integer(Integer::new(43));
-        assert!(!integer_wrong.satisfies_value_container(&Integer::new(42).into()));
+        assert!(
+            !integer_wrong.satisfies_value_container(&Integer::new(42).into())
+        );
     }
 }

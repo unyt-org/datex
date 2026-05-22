@@ -4,7 +4,7 @@
 #[cfg(feature = "compiler")]
 use crate::ast::expressions::DatexExpressionData;
 use crate::{
-    libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
+    libs::core::type_id::CoreLibTypeId,
     prelude::*,
     runtime::pointer_address_provider::SelfOwnedPointerAddressProvider,
     shared_values::{

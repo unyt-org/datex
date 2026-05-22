@@ -50,7 +50,7 @@ use crate::{
         type_definition_with_metadata::{
             LocalMutability, TypeDefinitionWithMetadata, TypeMetadata,
         },
-        type_match::{TypeSatisfiesValueContainer, TypeSubset, TypeSuperset},
+        type_match::{TypeSubset, TypeSuperset},
     },
     values::{
         core_value::CoreValue,
@@ -953,7 +953,7 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
                             }
                         }
                     }),
-                Type::Alias(r) => {
+                Type::Alias(_r) => {
                     // FIXME #620 is this necessary?
                     // reference.borrow_mut().type_value = Type::new(
                     //     TypeDefinition::Shared(r.clone()),
@@ -1331,7 +1331,7 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
             ),
             span: Some(span.clone()),
         })?;
-        let core_lib_id = CoreLibId::try_from(&address);
+        let _core_lib_id = CoreLibId::try_from(&address);
 
         Ok(VisitAction::ReplaceRecurse(DatexExpression::new(
             DatexExpressionData::RequestSharedRef(RequestSharedRef {
@@ -1380,7 +1380,7 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
         let inner_type = expression_type
             .with_collapsed_definition_with_metadata(|e| {
                 let ownership = e.metadata.shared_container_ownership();
-                let mutability = e.metadata.shared_mutability();
+                let _mutability = e.metadata.shared_mutability();
 
                 if ownership
                     != Some(&SharedContainerOwnership::Referenced(

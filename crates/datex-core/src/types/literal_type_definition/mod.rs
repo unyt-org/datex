@@ -164,7 +164,8 @@ mod tests {
         prelude::*,
         types::{
             literal_type_definition::LiteralTypeDefinition, r#type::Type,
-            type_definition::TypeDefinition, type_match::TypeSatisfiesValueContainer,
+            type_definition::TypeDefinition,
+            type_match::TypeSatisfiesValueContainer,
         },
         values::{
             core_value::CoreValue,
