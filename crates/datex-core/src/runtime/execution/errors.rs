@@ -7,6 +7,7 @@ use crate::{
     shared_values::errors::{
         AccessError, AssignmentError, SharedValueCreationError,
     },
+    traits::apply::ApplyError,
     types::error::IllegalTypeError,
     value_updates::errors::UpdateError,
     values::value_container::{ValueContainer, error::ValueError},
@@ -88,11 +89,18 @@ pub enum ExecutionError {
         Option<ValueContainer>,
         Option<ExecutionLoopState>,
     ),
-    InvalidApply,
+    ApplyError(ApplyError),
     UnauthorizedMove,
     InvalidMove,
     MoveToMultipleEndpoints,
 }
+
+impl From<ApplyError> for ExecutionError {
+    fn from(error: ApplyError) -> Self {
+        ExecutionError::ApplyError(error)
+    }
+}
+
 impl From<SharedValueCreationError> for ExecutionError {
     fn from(error: SharedValueCreationError) -> Self {
         ExecutionError::ReferenceCreationError(error)
@@ -156,6 +164,9 @@ impl Display for ExecutionError {
             ExecutionError::ReferenceCreationError(err) => {
                 core::write!(f, "Reference from value container error: {err}")
             }
+            ExecutionError::ApplyError(err) => {
+                core::write!(f, "Apply error: {err}")
+            }
             ExecutionError::ReferenceNotFound => {
                 core::write!(f, "Reference not found")
             }
@@ -211,9 +222,6 @@ impl Display for ExecutionError {
                     value_opt,
                     state_opt
                 )
-            }
-            ExecutionError::InvalidApply => {
-                core::write!(f, "Invalid apply operation")
             }
             ExecutionError::UnauthorizedMove => {
                 core::write!(f, "Unauthorized move of shared pointer")

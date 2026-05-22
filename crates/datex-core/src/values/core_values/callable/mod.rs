@@ -1,10 +1,15 @@
 use crate::{
-    prelude::*, runtime::execution::ExecutionError, types::r#type::Type,
-    values::value_container::ValueContainer,
+    prelude::*,
+    types::r#type::Type,
+    values::{
+        core_values::callable::error::CallableError,
+        value_container::ValueContainer,
+    },
 };
 use core::fmt::{Display, Formatter};
 pub mod apply;
 pub mod equality;
+pub mod error;
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum CallableKind {
     // A pure function
@@ -23,7 +28,7 @@ impl Display for CallableKind {
 }
 
 pub type NativeCallable =
-    fn(&[ValueContainer]) -> Result<Option<ValueContainer>, ExecutionError>;
+    fn(&[ValueContainer]) -> Result<Option<ValueContainer>, CallableError>;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum CallableBody {
@@ -51,7 +56,7 @@ impl Callable {
     pub fn call(
         &self,
         args: &[ValueContainer],
-    ) -> Result<Option<ValueContainer>, ExecutionError> {
+    ) -> Result<Option<ValueContainer>, CallableError> {
         match &self.body {
             CallableBody::Native(func) => func(args),
             CallableBody::DatexBytecode => {

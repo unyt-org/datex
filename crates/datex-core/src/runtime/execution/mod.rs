@@ -9,7 +9,7 @@ use crate::{
             },
         },
     },
-    traits::apply::Apply,
+    traits::apply::{Apply, ApplyError},
     values::value_container::ValueContainer,
 };
 
@@ -195,7 +195,7 @@ pub async fn execute_dxb(
 fn handle_apply(
     callee: &ValueContainer,
     args: &[ValueContainer],
-) -> Result<Option<ValueContainer>, ExecutionError> {
+) -> Result<Option<ValueContainer>, ApplyError> {
     // callee is guaranteed to be Some here
     // apply_single if one arg, apply otherwise
     Ok(if args.len() == 1 {

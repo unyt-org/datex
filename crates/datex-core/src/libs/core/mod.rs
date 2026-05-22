@@ -6,12 +6,14 @@ use crate::{
         value_id::CoreLibValueId,
     },
     random::RandomState,
-    runtime::execution::ExecutionError,
     shared_values::ExternalPointerAddress,
     values::{
         core_value::CoreValue,
         core_values::{
-            callable::{CallableBody, CallableKind, CallableSignature},
+            callable::{
+                CallableBody, CallableKind, CallableSignature,
+                error::CallableError,
+            },
             map::Map,
         },
         value::Value,
@@ -21,8 +23,8 @@ use crate::{
 
 pub mod core_lib_id;
 pub mod type_id;
-pub mod value_id;
 mod type_match;
+pub mod value_id;
 
 use crate::{prelude::*, types::r#type::Type};
 use indexmap::IndexMap;
@@ -72,7 +74,7 @@ impl CoreLibraryValues {
 
     fn print_impl(
         mut args: &[ValueContainer],
-    ) -> Result<Option<ValueContainer>, ExecutionError> {
+    ) -> Result<Option<ValueContainer>, CallableError> {
         // TODO #680: add I/O abstraction layer / interface
 
         let mut output = String::new();
