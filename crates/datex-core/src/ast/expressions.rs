@@ -362,7 +362,7 @@ impl TypeDeclarationKind {
     pub fn is_nominal(&self) -> bool {
         matches!(self, TypeDeclarationKind::Nominal)
     }
-    pub fn is_structural(&self) -> bool {
+    pub fn is_alias(&self) -> bool {
         matches!(self, TypeDeclarationKind::Alias)
     }
 }
