@@ -27,6 +27,7 @@ use crate::{
 use core::{result::Result, unreachable};
 pub use errors::*;
 pub use execution_input::{ExecutionInput, ExecutionOptions};
+pub use execution_loop::state::RuntimeExecutionStack;
 pub use stack_dump::*;
 
 pub mod context;
@@ -92,6 +93,75 @@ pub fn execute_dxb_sync(
     }
 
     Err(ExecutionError::RequiresAsyncExecution)
+}
+
+/// Like `execute_dxb_sync`, but also returns the final `RuntimeExecutionStack`
+/// after execution completes. This is useful for capturing stack mutations
+/// that occur during branch execution (e.g. in CONDITIONAL)
+pub fn execute_dxb_sync_returning_stack(
+    input: ExecutionInput,
+) -> Result<(Option<ValueContainer>, RuntimeExecutionStack), ExecutionError> {
+    let stack_capture = input.stack_capture.clone();
+    let runtime = input.runtime.clone();
+    let (interrupt_provider, execution_loop) = input.execution_loop();
+
+    let mut result = None;
+    for output in execution_loop {
+        match output? {
+            ExternalExecutionInterrupt::Result(val) => {
+                result = Some(val);
+                // Continue driving to completion for stack capture
+            }
+            ExternalExecutionInterrupt::GetReferenceToRemotePointer(
+                address,
+                mutability,
+            ) => interrupt_provider.provide_result(
+                InterruptResult::ResolvedValue(
+                    get_remote_shared_container_reference(
+                        &runtime, address, mutability,
+                    )?
+                    .map(|v| {
+                        ValueContainer::Shared(SharedContainer::Referenced(v))
+                    }),
+                ),
+            ),
+            ExternalExecutionInterrupt::GetReferenceToLocalPointer(address) => {
+                interrupt_provider.provide_result(
+                    InterruptResult::ResolvedValue(
+                        get_local_pointer_value(&runtime, address).map(|v| {
+                            ValueContainer::Shared(SharedContainer::Referenced(
+                                v,
+                            ))
+                        }),
+                    ),
+                );
+            }
+            ExternalExecutionInterrupt::GetReferenceToBuiltinPointer(
+                address,
+            ) => {
+                interrupt_provider.provide_result(
+                    InterruptResult::ResolvedValue(Some(
+                        ValueContainer::Shared(SharedContainer::Referenced(
+                            get_builtin_shared_value_reference(
+                                &runtime, address,
+                            )?,
+                        )),
+                    )),
+                );
+            }
+            ExternalExecutionInterrupt::Apply(callee, args) => {
+                let res = handle_apply(&callee, &args)?;
+                interrupt_provider
+                    .provide_result(InterruptResult::ResolvedValue(res));
+            }
+            _ => return Err(ExecutionError::RequiresAsyncExecution),
+        }
+    }
+
+    let final_stack = stack_capture
+        .and_then(|c| c.borrow_mut().take())
+        .unwrap_or_default();
+    Ok((result.unwrap_or(None), final_stack))
 }
 
 pub async fn execute_dxb(
@@ -1028,5 +1098,38 @@ mod tests {
         let result = execute_datex_script_debug_with_result(script);
         println!("conditional_complex_var_assign result: {:?}", result);
         assert_eq!(result, Integer::from(13).into());
+    }
+
+    #[test]
+    fn conditional_mutation_in_branch() {
+        let script = "
+        var x = 1;
+        if (true) (x = 2);
+        x
+        ";
+        let result = execute_datex_script_debug_with_result(script);
+        assert_eq!(result, Integer::from(2).into());
+    }
+
+    #[test]
+    fn conditional_mutation_in_false_branch() {
+        let script = "
+        var x = 1;
+        if (false) (x = 2) else (x = 3);
+        x
+        ";
+        let result = execute_datex_script_debug_with_result(script);
+        assert_eq!(result, Integer::from(3).into());
+    }
+
+    #[test]
+    fn conditional_mutation_in_else_if_branch() {
+        let script = "
+        var x = 0;
+        if (false) (x = 1) else if (true) (x = 2) else (x = 3);
+        x
+        ";
+        let result = execute_datex_script_debug_with_result(script);
+        assert_eq!(result, Integer::from(2).into());
     }
 }

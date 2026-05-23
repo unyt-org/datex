@@ -1,3 +1,6 @@
+use alloc::rc::Rc;
+use core::cell::RefCell;
+
 use crate::runtime::{
     Runtime,
     execution::{
@@ -44,6 +47,8 @@ pub struct ExecutionInput<'a> {
     /// For persisting execution state across multiple executions (e.g., for REPL scenarios).
     pub loop_state: Option<ExecutionLoopState>,
     pub runtime: Runtime,
+    /// Capture for the final stack after execution completes.
+    pub(crate) stack_capture: Option<Rc<RefCell<Option<RuntimeExecutionStack>>>>,
 }
 
 impl<'a> ExecutionInput<'a> {
@@ -59,6 +64,7 @@ impl<'a> ExecutionInput<'a> {
             dxb_body,
             loop_state: None,
             runtime,
+            stack_capture: None,
         }
     }
     pub fn new_with_stack(
@@ -80,6 +86,32 @@ impl<'a> ExecutionInput<'a> {
             dxb_body,
             loop_state: Some(state),
             runtime,
+            stack_capture: None,
+        }
+    }
+
+    pub fn new_with_stack_capture(
+        dxb_body: &'a [u8],
+        caller_metadata: ExecutionCallerMetadata,
+        options: ExecutionOptions,
+        runtime: Runtime,
+        stack: RuntimeExecutionStack,
+        stack_capture: Rc<RefCell<Option<RuntimeExecutionStack>>>,
+    ) -> Self {
+        let state = ExecutionLoopState::new_with_stack_capture(
+            dxb_body.to_vec(),
+            runtime.clone(),
+            stack,
+            caller_metadata.clone(),
+            Some(stack_capture.clone()),
+        );
+        Self {
+            options,
+            caller_metadata,
+            dxb_body,
+            loop_state: Some(state),
+            runtime,
+            stack_capture: Some(stack_capture),
         }
     }
 
@@ -89,6 +121,7 @@ impl<'a> ExecutionInput<'a> {
         InterruptProvider,
         impl Iterator<Item = Result<ExternalExecutionInterrupt, ExecutionError>>,
     ) {
+        let stack_capture = self.stack_capture.take();
         // use execution iterator if one already exists from previous execution
         let mut loop_state = if let Some(existing_loop_state) =
             self.loop_state.take()
@@ -99,11 +132,12 @@ impl<'a> ExecutionInput<'a> {
         }
         // otherwise start a new execution loop
         else {
-            ExecutionLoopState::new(
+            ExecutionLoopState::new_with_stack_capture(
                 self.dxb_body.to_vec(),
                 self.runtime.clone(),
                 Default::default(),
                 self.caller_metadata.clone(),
+                stack_capture,
             )
         };
         let interrupt_provider = loop_state.interrupt_provider.clone();

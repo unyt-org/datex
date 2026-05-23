@@ -46,7 +46,7 @@ use crate::{
                 set_property,
             },
             runtime_value::RuntimeValue,
-            state::RuntimeExecutionState,
+            state::{RuntimeExecutionStack, RuntimeExecutionState},
         },
         macros::{
             interrupt, interrupt_with_maybe_value, interrupt_with_value,
@@ -215,12 +215,13 @@ pub fn execution_loop(
     state: RuntimeExecutionState,
     dxb_body: Rc<RefCell<Vec<u8>>>,
     interrupt_provider: InterruptProvider,
+    stack_capture: Option<Rc<RefCell<Option<RuntimeExecutionStack>>>>,
 ) -> impl Iterator<Item = Result<ExternalExecutionInterrupt, ExecutionError>> {
     gen move {
         let mut active_value: Option<ValueContainer> = None;
 
         for interrupt in
-            inner_execution_loop(dxb_body, interrupt_provider.clone(), state)
+            inner_execution_loop(dxb_body, interrupt_provider.clone(), state, stack_capture)
         {
             match interrupt {
                 Ok(interrupt) => match interrupt {
@@ -260,6 +261,7 @@ pub fn inner_execution_loop(
     dxb_body: Rc<RefCell<Vec<u8>>>,
     interrupt_provider: InterruptProvider,
     mut state: RuntimeExecutionState,
+    stack_capture: Option<Rc<RefCell<Option<RuntimeExecutionStack>>>>,
 ) -> impl Iterator<Item = Result<ExecutionInterrupt, ExecutionError>> {
     gen move {
         let mut collector =
@@ -1248,8 +1250,9 @@ pub fn inner_execution_loop(
                                     if branch_bytes.is_empty() {
                                         CollectedExecutionResult::Value(None)
                                     } else {
+                                        let stack_capture = Rc::new(RefCell::new(None));
                                         let input =
-                                            crate::runtime::execution::ExecutionInput::new_with_stack(
+                                            crate::runtime::execution::ExecutionInput::new_with_stack_capture(
                                                 branch_bytes,
                                                 state.caller_metadata.clone(),
                                                 crate::runtime::execution::ExecutionOptions {
@@ -1257,9 +1260,11 @@ pub fn inner_execution_loop(
                                                 },
                                                 state.runtime.clone(),
                                                 state.stack.clone(),
+                                                stack_capture,
                                             );
-                                        match super::execute_dxb_sync(input) {
-                                            Ok(val) => {
+                                        match super::execute_dxb_sync_returning_stack(input) {
+                                            Ok((val, modified_stack)) => {
+                                                state.stack = modified_stack;
                                                 CollectedExecutionResult::Value(
                                                     val.map(RuntimeValue::ValueContainer),
                                                 )
@@ -1517,6 +1522,10 @@ pub fn inner_execution_loop(
             ));
         } else {
             panic!("Execution finished without root result");
+        }
+
+        if let Some(capture) = stack_capture {
+            *capture.borrow_mut() = Some(state.stack);
         }
     }
 }

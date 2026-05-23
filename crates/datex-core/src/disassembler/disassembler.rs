@@ -28,9 +28,9 @@ pub struct InstructionTree<T>
 where
     T: Debug + Clone,
 {
-    instruction: Box<T>,
+    pub instruction: Box<T>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
-    children: Vec<InstructionTree<T>>,
+    pub children: Vec<InstructionTree<T>>,
 }
 
 impl<T> InstructionTree<T>

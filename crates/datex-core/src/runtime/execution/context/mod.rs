@@ -149,6 +149,7 @@ impl ExecutionContext {
                     loop_state: loop_state.take(),
                     options: (*execution_options).clone(),
                     dxb_body: dxb,
+                    stack_capture: None,
                 };
 
                 // show DXB and decompiled code if verbose is enabled

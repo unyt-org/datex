@@ -479,7 +479,7 @@ impl RegularInstruction {
 
             RegularInstruction::Conditional(_) => {
                 NextExpectedInstructions::Regular(1)
-            } // condition child
+            }
 
             RegularInstruction::Range => NextExpectedInstructions::Regular(2),
             RegularInstruction::TaggedValue(TaggedValue {

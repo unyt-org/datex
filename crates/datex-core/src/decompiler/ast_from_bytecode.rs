@@ -1,9 +1,9 @@
 use crate::{
     ast::{
         expressions::{
-            Apply, BinaryOperation, DatexExpression, DatexExpressionData, List,
-            Map, PropertyAssignment, Statements, UnaryOperation,
-            UnboundedStatement, VariableAssignment,
+            Apply, BinaryOperation, Conditional, DatexExpression,
+            DatexExpressionData, List, Map, PropertyAssignment, Statements,
+            UnaryOperation, UnboundedStatement, VariableAssignment,
         },
         spanned::Spanned,
         type_expressions::{TypeExpression, TypeExpressionData},
@@ -32,7 +32,8 @@ use crate::{
     },
     global::protocol_structures::{
         instruction_data::{
-            ShortTextData, StackIndex, TaggedValue, UnboundedStatementsData,
+            ConditionalData, ShortTextData, StackIndex, TaggedValue,
+            UnboundedStatementsData,
         },
         instructions::NestedInstructionResolutionStrategy,
         regular_instructions::RegularInstruction,
@@ -45,6 +46,7 @@ use crate::{
 };
 use alloc::format;
 use core::cell::RefCell;
+use num_enum::TryFromPrimitive;
 
 #[derive(Debug)]
 enum CollectedAstResult {
@@ -374,11 +376,11 @@ pub fn ast_from_bytecode(
                         | RegularInstruction::SetSharedContainerValue(_)
                         | RegularInstruction::Unbox
                         | RegularInstruction::TypedValue
+                        | RegularInstruction::Conditional(_)
                         | RegularInstruction::RemoteExecution(_)
                         | RegularInstruction::TypeExpression => {
                             unreachable!()
                         }
-                        RegularInstruction::Conditional(_) => todo!(),
                         #[cfg(feature = "disassembler")]
                         RegularInstruction::_RemoteExecutionDebugFlat(_) | RegularInstruction::_RemoteExecutionDebugTree(_) => {
                             todo!("also map to ast")
@@ -462,6 +464,40 @@ pub fn ast_from_bytecode(
                                     is_terminated: statements_data.terminated,
                                     unbounded: None,
                                 })
+                                 .with_default_span()
+                                .into()
+                            }
+
+                            RegularInstruction::Conditional(ConditionalData {
+                                then_branch,
+                                else_branch,
+                            }) => {
+                                let condition =
+                                    collected_results.pop_value_result();
+                                let then_ast = ast_from_bytecode(
+                                    &then_branch.branch,
+                                )
+                                .unwrap_or_else(|_| {
+                                    DatexExpressionData::Null
+                                        .with_default_span()
+                                });
+                                let else_ast =
+                                    if else_branch.branch.is_empty() {
+                                        None
+                                    } else {
+                                        ast_from_bytecode(
+                                            &else_branch.branch,
+                                        )
+                                        .ok()
+                                        .map(Box::new)
+                                    };
+                                DatexExpressionData::Conditional(
+                                    Conditional {
+                                        condition: Box::new(condition),
+                                        then_branch: Box::new(then_ast),
+                                        else_branch: else_ast,
+                                    },
+                                )
                                 .with_default_span()
                                 .into()
                             }

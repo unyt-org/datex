@@ -3752,8 +3752,61 @@ pub mod tests {
 
     #[test]
     fn conditional_if_elseif_else() {
-        let script = "if (true) (0u8) else if (false) (0u8) else (0u8)";
+        let script = "
+            if (true) (
+                122u32
+            )
+            else (
+                123u32
+            )";
+        let expected = vec![
+            InstructionCode::CONDITIONAL.into(),
+            5,
+            0,
+            0,
+            0,
+            InstructionCode::UINT_32.into(),
+            122,
+            0,
+            0,
+            0,
+            5,
+            0,
+            0,
+            0,
+            InstructionCode::UINT_32.into(),
+            123,
+            0,
+            0,
+            0,
+            InstructionCode::TRUE.into(),
+        ];
         let result = compile_and_log(script);
-        println!("conditional_if_elseif_else result: {:?}", result);
+
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn conditional_complex() {
+        let script = "
+            if (true) (
+                0u8;
+                1u8;
+            )
+            else if (false) (
+                0u8
+            )
+            else (
+                0u8
+            )"; // 4, 7, 0, 0, 0, 1, 2, 1, 72, 0, 72, 1, 14, 0, 0, 0, 4, 2, 0, 0, 0, 72, 0, 2, 0, 0, 0, 72, 0, 84, 83
+        let result = compile_and_log(script);
+        let expected = vec![1];
+
+        println!("conditional_complex result: {:?}", result);
+        println!(
+            "conditional_complex tree:\n{}",
+            crate::disassembler::pretty_print_dxb_to_string(&result)
+        );
+        // assert_eq!(result, expected);
     }
 }
