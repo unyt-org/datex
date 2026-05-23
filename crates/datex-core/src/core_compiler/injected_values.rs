@@ -256,6 +256,7 @@ mod tests {
             SharedContainer, SharedContainerMutability,
         },
     };
+    use crate::global::protocol_structures::instruction_data::{PerformMove, UInt32Data};
 
     #[test]
     fn remote_execution_no_injected_values() {
@@ -407,6 +408,12 @@ mod tests {
                 SharedContainerMutability::Immutable,
                 address_provider,
             );
+
+        let owned_address = match shared_value.pointer_address().clone() {
+            PointerAddress::SelfOwned(address) => address,
+            _ => unreachable!(),
+        };
+
         let exec_block_data = InstructionBlockData {
             injected_value_count: 1,
             length: 1,
@@ -421,45 +428,26 @@ mod tests {
                 .unwrap()
                 .0;
         // should allocate slot and then compile the shared value into the buffer, followed by the body
-        assert_eq!(
-            res,
-            vec![
-                InstructionCode::SHORT_STATEMENTS as u8,
-                3,
-                0,
-                InstructionCode::PUSH_TO_STACK as u8,
-                1,
-                0,
-                0,
-                0, // slot address of moved pointers
-                // compiled shared moves
-                InstructionCode::PERFORM_MOVE as u8,
-                1,
-                0,
-                0,
-                0, // number of moves (1)
-                0, // immutable
-                0,
-                0,
-                0,
-                0,
-                0, // pointer address (assuming the shared container is stored at address 1)
-                InstructionCode::PUSH_TO_STACK as u8,
-                0,
-                0,
-                0,
-                0, // slot address
-                InstructionCode::TAKE_PROPERTY_INDEX as u8,
-                0,
-                0,
-                0,
-                0, // index of the moved pointer
-                InstructionCode::CLONE_STACK_VALUE as u8,
-                1,
-                0,
-                0,
-                0, // slot address of the moved pointers
-                InstructionCode::NULL as u8, // body
+        assert_regular_instructions_equal!(
+            &res,
+            [
+                RegularInstruction::ShortStatements(StatementsData {
+                    statements_count: 3,
+                    terminated: false
+                }),
+                // move
+                RegularInstruction::PushToStack,
+                RegularInstruction::PerformMove(PerformMove {
+                    pointer_count: 1,
+                    pointers: vec![(0, owned_address.into())]
+                }),
+                // get first moved value
+                RegularInstruction::PushToStack,
+                RegularInstruction::TakePropertyIndex(UInt32Data(0)),
+                RegularInstruction::BorrowStackValue(StackIndex(0)),
+
+                // original body
+                RegularInstruction::Null,
             ]
         );
     }
