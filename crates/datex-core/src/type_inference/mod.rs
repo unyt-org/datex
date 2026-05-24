@@ -33,7 +33,7 @@ use crate::{
     prelude::*,
     runtime::memory::Memory,
     shared_values::{
-        ExternalPointerAddress, PointerAddress, ReferenceMutability,
+        PointerAddress, ReferenceMutability,
         SharedContainerOwnership,
     },
     type_inference::{
@@ -585,7 +585,7 @@ impl<'a> TypeInference<'a> {
         span: Option<Range<usize>>,
     ) -> Result<Type, SpannedTypeError> {
         match pointer_address {
-            PointerAddress::External(
+            PointerAddress::Remote(
                 external @ ExternalPointerAddress::Builtin(_),
             ) => {
                 let core_lib_type_id = CoreLibTypeId::try_from(
@@ -1302,7 +1302,7 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
                         if let TypeDefinition::Core(reference) =
                             alias.definition
                         {
-                            Ok(PointerAddress::External(
+                            Ok(PointerAddress::Remote(
                                 ExternalPointerAddress::Builtin(
                                     reference.into(),
                                 ),

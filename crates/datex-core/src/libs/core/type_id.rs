@@ -4,7 +4,6 @@ use crate::{
         TYPE_VARIANT_SPACE_BASE,
     },
     prelude::*,
-    shared_values::ExternalPointerAddress,
     values::core_values::{
         decimal::typed_decimal::DecimalTypeVariant,
         integer::typed_integer::IntegerTypeVariant,
@@ -282,13 +281,5 @@ impl TryFrom<CoreLibIdIndex> for CoreLibBaseTypeId {
     fn try_from(id: CoreLibIdIndex) -> Result<Self, Self::Error> {
         let id = id.0.checked_sub(TYPE_SPACE_BASE).ok_or(())?;
         CoreLibBaseTypeId::try_from(id).map_err(|_| ())
-    }
-}
-
-impl TryFrom<&ExternalPointerAddress> for CoreLibTypeId {
-    type Error = ();
-
-    fn try_from(address: &ExternalPointerAddress) -> Result<Self, Self::Error> {
-        CoreLibTypeId::try_from(CoreLibIdIndex::try_from(address)?)
     }
 }

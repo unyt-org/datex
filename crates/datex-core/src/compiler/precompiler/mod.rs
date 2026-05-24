@@ -269,9 +269,7 @@ impl<'a> Precompiler<'a> {
         }
         // try to resolve core variable
         else if let Some(core) = CoreLibId::try_from_str(name) {
-            Ok(ResolvedVariable::PointerAddress(PointerAddress::External(
-                core.into(),
-            )))
+            Ok(ResolvedVariable::CoreLibId(core))
         } else {
             Err(CompilerError::UndeclaredVariable(name.to_string()))
         }
@@ -361,6 +359,15 @@ impl<'a> TypeExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
                 })
                 .with_span(span.clone())
             }
+            ResolvedVariable::CoreLibId(core) => {
+                match core {
+                    CoreLibId::Type(value_id) => {
+                        TypeExpressionData::GetCoreLibType(value_id)
+                            .with_span(span.clone())
+                    }
+                    _ => todo!()
+                }
+            }
             ResolvedVariable::PointerAddress(pointer_address) => {
                 TypeExpressionData::GetReference(pointer_address)
                     .with_span(span.clone())
@@ -387,6 +394,15 @@ impl<'a> TypeExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
                     access_type: ValueAccessType::MoveOrCopy,
                 })
                 .with_span(span.clone())
+            }
+            ResolvedVariable::CoreLibId(core) => {
+                match core {
+                    CoreLibId::Type(value_id) => {
+                        TypeExpressionData::GetCoreLibType(value_id)
+                            .with_span(span.clone())
+                    }
+                    _ => unreachable!()
+                }
             }
             ResolvedVariable::PointerAddress(pointer_address) => {
                 TypeExpressionData::GetReference(pointer_address)
@@ -420,6 +436,15 @@ impl Precompiler<'_> {
                         access_type,
                     })
                     .with_span(span.clone())
+                }
+                ResolvedVariable::CoreLibId(core) => {
+                    match core {
+                        CoreLibId::Type(value_id) => {
+                            DatexExpressionData::ResolveCoreLibId(CoreLibId::Type(value_id))
+                                .with_span(span.clone())
+                        }
+                        _ => unreachable!()
+                    }
                 }
                 ResolvedVariable::PointerAddress(pointer_address) => {
                     DatexExpressionData::RequestSharedRef(RequestSharedRef {
@@ -992,11 +1017,10 @@ mod tests {
                             StructuralMap(vec![(
                                 TypeExpressionData::Text("a".to_string())
                                     .with_default_span(),
-                                TypeExpressionData::GetReference(
+                                TypeExpressionData::GetCoreLibType(
                                     CoreLibTypeId::Base(
                                         CoreLibBaseTypeId::Integer
                                     )
-                                    .into()
                                 )
                                 .with_default_span(),
                             )])
@@ -1039,29 +1063,27 @@ mod tests {
             result,
             Ok(
                 RichAst {
-                    ast: DatexExpression { data: DatexExpressionData::RequestSharedRef(RequestSharedRef{address, mutability}), ..},
+                    ast: DatexExpression { data: DatexExpressionData::ResolveCoreLibId(CoreLibId::Type(CoreLibTypeId::Base(CoreLibBaseTypeId::Boolean))), ..},
                     ..
                 }
-            ) if address == CoreLibTypeId::Base(CoreLibBaseTypeId::Boolean).into() && mutability == ReferenceMutability::Immutable
+            )
         );
         let result = parse_and_precompile("integer");
         assert_matches!(
             result,
             Ok(
                 RichAst {
-                    ast: DatexExpression { data: DatexExpressionData::RequestSharedRef(RequestSharedRef{address, mutability}), ..},
+                    ast: DatexExpression { data: DatexExpressionData::ResolveCoreLibId(CoreLibId::Type(CoreLibTypeId::Base(CoreLibBaseTypeId::Integer))), ..},
                     ..
                 }
-            ) if address == CoreLibTypeId::Base(CoreLibBaseTypeId::Integer).into()  && mutability == ReferenceMutability::Immutable
+            )
         );
 
         let result = parse_and_precompile("integer/u8");
         assert_eq!(
             result.unwrap().ast,
             DatexExpressionData::VariantAccess(VariantAccess {
-                base: ResolvedVariable::PointerAddress(
-                    CoreLibBaseTypeId::Integer.into()
-                ),
+                base: ResolvedVariable::CoreLibId(CoreLibId::Type(CoreLibBaseTypeId::Integer.into())),
                 name: "integer".to_string(),
                 variant: "u8".to_string(),
             })
@@ -1077,9 +1099,7 @@ mod tests {
         assert_eq!(
             result.ast,
             DatexExpressionData::VariantAccess(VariantAccess {
-                base: ResolvedVariable::PointerAddress(
-                    CoreLibTypeId::Base(CoreLibBaseTypeId::Integer).into()
-                ),
+                base: ResolvedVariable::CoreLibId(CoreLibId::Type(CoreLibBaseTypeId::Integer.into())),
                 name: "integer".to_string(),
                 variant: "u8".to_string(),
             })
@@ -1091,9 +1111,7 @@ mod tests {
         assert_eq!(
             result.ast,
             DatexExpressionData::VariantAccess(VariantAccess {
-                base: ResolvedVariable::PointerAddress(
-                    CoreLibTypeId::Base(CoreLibBaseTypeId::Integer).into()
-                ),
+                base: ResolvedVariable::CoreLibId(CoreLibId::Type(CoreLibBaseTypeId::Integer.into())),
                 name: "integer".to_string(),
                 variant: "invalid".to_string(),
             })
@@ -1417,10 +1435,10 @@ mod tests {
             DatexExpressionData::TypeDeclaration(TypeDeclaration {
                 id: Some(0),
                 name: "x".to_string(),
-                definition: TypeExpressionData::GetReference(
-                    PointerAddress::from(CoreLibTypeId::Base(
+                definition: TypeExpressionData::GetCoreLibType(
+                    CoreLibTypeId::Base(
                         CoreLibBaseTypeId::Integer
-                    ))
+                    )
                 )
                 .with_default_span(),
                 hoisted: true,

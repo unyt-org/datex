@@ -1,29 +1,30 @@
 use crate::{
     runtime::memory::Memory,
     shared_values::{
-        ExternalPointerAddress, PointerAddress,
+        PointerAddress,
         base_shared_value_container::BaseSharedValueContainer,
     },
 };
+use crate::shared_values::RemotePointerAddress;
 
 /// A shared container with an external pointer
 #[derive(Debug)]
 pub struct ExternalSharedContainer {
     value: BaseSharedValueContainer,
-    /// Address of the external pointer, can be a remote or builtin pointer address
-    address: ExternalPointerAddress,
+    /// Address of the remote pointer, can be a remote or builtin pointer address
+    address: RemotePointerAddress,
 }
 
 impl ExternalSharedContainer {
-    /// Create a new [ExternalSharedContainer] with a given [ExternalPointerAddress].
+    /// Create a new [ExternalSharedContainer] with a given [RemotePointerAddress].
     /// # Safety
-    /// The caller must ensure that the [ExternalPointerAddress] does not yet exist in the [Memory]
+    /// The caller must ensure that the [RemotePointerAddress] does not yet exist in the [Memory]
     pub unsafe fn create_external_shared_container(
         shared_value_container: BaseSharedValueContainer,
-        address: ExternalPointerAddress,
+        address: RemotePointerAddress,
         memory: &Memory,
     ) -> ExternalSharedContainer {
-        if memory.has_reference(&PointerAddress::External(address.clone())) {
+        if memory.has_reference(&PointerAddress::Remote(address.clone())) {
             panic!(
                 "Cannot create ExternalSharedContainer with address that already exists in memory"
             );
@@ -46,7 +47,7 @@ impl ExternalSharedContainer {
         self.value
     }
 
-    pub fn address(&self) -> &ExternalPointerAddress {
+    pub fn address(&self) -> &RemotePointerAddress {
         &self.address
     }
 }

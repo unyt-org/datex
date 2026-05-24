@@ -61,7 +61,6 @@ impl Display for InvalidProgramError {
 #[derive(Debug)]
 pub enum ExecutionError {
     DXBParserError(DXBParserError),
-    BuiltinNotFound,
     ValueError(ValueError),
     InvalidProgram(InvalidProgramError),
     AccessError(AccessError),
@@ -158,9 +157,6 @@ impl From<AssignmentError> for ExecutionError {
 impl Display for ExecutionError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
-            ExecutionError::BuiltinNotFound => {
-                core::write!(f, "Builtin not found")
-            }
             ExecutionError::ReferenceCreationError(err) => {
                 core::write!(f, "Reference from value container error: {err}")
             }

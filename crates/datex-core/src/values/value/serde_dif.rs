@@ -202,13 +202,10 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, Value> {
         mut self,
         mut map: A,
     ) -> Result<Value, A::Error> {
-        let mut core_value: Option<CoreValue> = None;
-
         while let Some(key) = map.next_key::<String>()? {
             match key.as_str() {
-                "value" => {
-                    core_value =
-                        Some(map.next_value_seed(self.cast::<CoreValue>())?);
+                "custom_type" => {
+                    todo!("custom type")
                 }
                 _ => {
                     map.next_value::<serde::de::IgnoredAny>()?;
@@ -216,8 +213,8 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, Value> {
             }
         }
 
-        let core_value = core_value
-            .ok_or_else(|| serde::de::Error::missing_field("value"))?;
+        let core_value = self.cast::<CoreValue>().visit_map(map)?;
+
         Ok(Value {
             inner: core_value,
             custom_type: None,

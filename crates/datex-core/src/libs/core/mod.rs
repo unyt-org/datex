@@ -6,7 +6,6 @@ use crate::{
         value_id::CoreLibValueId,
     },
     random::RandomState,
-    shared_values::ExternalPointerAddress,
     values::{
         core_value::CoreValue,
         core_values::{
@@ -192,15 +191,15 @@ impl Default for CoreLibrary {
 
 impl CoreLibrary {
     /// Resolves a pointer address to a core library value if it exists, otherwise returns an error.
-    pub fn by_buitin_pointer_address(
+    pub fn value_or_type_by_id(
         &self,
-        address: &ExternalPointerAddress,
-    ) -> Result<&Value, ()> {
-        Ok(match CoreLibId::try_from(address)? {
+        id: CoreLibId,
+    ) -> &Value {
+        match id {
             CoreLibId::Value(id) => self.values.get_by_id(&id),
             CoreLibId::Type(id) => self.types.get_by_id(&id),
-            CoreLibId::Map => &self.map,
-        })
+            CoreLibId::CoreMap => &self.map,
+        }
     }
 
     /// Gets the core library map, which contains all core library values and types indexed by their id as strings.

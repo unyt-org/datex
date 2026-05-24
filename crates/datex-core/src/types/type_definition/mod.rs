@@ -75,7 +75,7 @@ pub enum TypeDefinition {
     Type,
 
     // core types ("nominal")
-    Core(CoreLibTypeId),
+    Core(CoreLibTypeId), // -> $123
 }
 
 impl Hash for TypeDefinition {

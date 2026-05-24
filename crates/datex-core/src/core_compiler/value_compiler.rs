@@ -33,11 +33,12 @@ use crate::{
     prelude::*,
     runtime::execution::ExecutionError,
     shared_values::{
-        BuiltinPointerAddress, ExternalPointerAddress, OwnedSharedContainer,
+        OwnedSharedContainer,
         PointerAddress, ReferenceMutability, SharedContainer,
     },
     types::{r#type::Type, type_definition::TypeDefinition},
 };
+use crate::libs::core::core_lib_id::{CoreLibId, CoreLibIdIndex};
 use crate::shared_values::ReferencedSharedContainer;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -263,13 +264,7 @@ pub fn append_value(
             match ty.try_as_core_lib_type() {
                 // special core types -> map directly to core pointer addresses
                 Some(core_lib_type_id) => {
-                    append_regular_instruction(
-                        context.cursor_mut(),
-                        RegularInstruction::GetBuiltinSharedRef(
-                            BuiltinPointerAddress::from(core_lib_type_id)
-                                .into(),
-                        ),
-                    );
+                    append_get_core_lib_value(context.cursor_mut(), core_lib_type_id.into());
                 }
                 None => todo!(
                     "Non-core type definitions not yet supported in CompilationContext"
@@ -554,9 +549,6 @@ pub fn append_get_shared_ref(
     mutability: &ReferenceMutability,
 ) {
     match address {
-        PointerAddress::External(ExternalPointerAddress::Builtin(id)) => {
-            append_get_builtin_ref(context.cursor_mut(), id);
-        }
         PointerAddress::SelfOwned(local_address) => {
             append_instruction_code_new(
                 context.cursor_mut(),
@@ -567,7 +559,7 @@ pub fn append_get_shared_ref(
                 .write_all(&local_address.address)
                 .unwrap();
         }
-        PointerAddress::External(ExternalPointerAddress::Remote(id)) => {
+        PointerAddress::Remote(address) => {
             append_instruction_code_new(
                 context.cursor_mut(),
                 match mutability {
@@ -579,20 +571,19 @@ pub fn append_get_shared_ref(
                     }
                 },
             );
-            context.cursor_mut().write_all(&id.0).unwrap();
+            context.cursor_mut().write_all(&address.0).unwrap();
         }
     }
 }
 
-pub fn append_get_builtin_ref(
+pub fn append_get_core_lib_value(
     cursor: &mut ByteCursor,
-    addr: &BuiltinPointerAddress,
+    id: CoreLibId,
 ) {
-    append_instruction_code_new(
+    append_regular_instruction(
         cursor,
-        InstructionCode::GET_INTERNAL_SHARED_REF,
+        RegularInstruction::GetCoreLibValue(CoreLibIdIndex::from(id)),
     );
-    cursor.write_all(&addr.0).unwrap();
 }
 
 pub fn append_key_value_pair(
@@ -704,7 +695,6 @@ mod tests {
     use super::*;
     use crate::{
         assert_regular_instructions_equal,
-        global::protocol_structures::instruction_data::RawBuiltinPointerAddress,
     };
 
     #[test]
@@ -767,11 +757,7 @@ mod tests {
         let compiled = compile_value(&value).unwrap();
         assert_regular_instructions_equal!(
             &compiled,
-            [RegularInstruction::GetBuiltinSharedRef(
-                RawBuiltinPointerAddress::from(BuiltinPointerAddress::from(
-                    CoreLibBaseTypeId::Integer
-                ))
-            )]
+            [RegularInstruction::GetCoreLibValue(CoreLibBaseTypeId::Integer.into())]
         );
     }
 }

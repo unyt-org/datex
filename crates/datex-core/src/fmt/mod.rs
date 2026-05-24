@@ -169,13 +169,11 @@ impl<'a> Formatter<'a> {
             }) => a.text(name.clone()),
 
             TypeExpressionData::GetReference(ptr) => {
-                if let Ok(core_lib_id) = CoreLibId::try_from(ptr) {
-                    a.text(core_lib_id.to_string())
-                } else {
-                    a.text(ptr.to_string())
-                }
+                a.text(ptr.to_string())
             }
-
+            TypeExpressionData::GetCoreLibType(core_lib_id) => {
+                a.text(core_lib_id.to_string())
+            }
             TypeExpressionData::TypedInteger(typed_integer) => {
                 a.text(typed_integer.to_string())
                 // TODO #625: handle variant formatting

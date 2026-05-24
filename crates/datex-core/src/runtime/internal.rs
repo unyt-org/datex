@@ -37,7 +37,7 @@ use crate::{
         request_move::compile_request_move,
     },
     shared_values::{
-        ExternalPointerAddress, OwnedSharedContainer, PointerAddress,
+        OwnedSharedContainer, PointerAddress,
         SelfOwnedPointerAddress, SharedContainerMutability,
         base_shared_value_container::observers::TransceiverId,
     },
@@ -55,6 +55,7 @@ use core::{
     slice,
 };
 use log::{debug, error, info};
+use crate::shared_values::RemotePointerAddress;
 
 #[derive(Debug)]
 pub struct RuntimeInternal {
@@ -623,7 +624,7 @@ impl RuntimeInternal {
             .map(|(original, new)| {
                 let original_address =
                     SelfOwnedPointerAddress::new(original.bytes);
-                let new_address = ExternalPointerAddress::remote_for_endpoint(
+                let new_address = RemotePointerAddress::for_endpoint(
                     from_endpoint,
                     new.bytes,
                 );
@@ -634,14 +635,14 @@ impl RuntimeInternal {
                 let value = shared_container.value_container().clone();
 
                 // make sure external pointer does not already exist in memory
-                if memory.has_reference(&PointerAddress::External(
+                if memory.has_reference(&PointerAddress::Remote(
                     new_address.clone(),
                 )) {
                     return Err(ExecutionError::InvalidMove);
                 } else {
                     // Note: safe because we checked before if address is already in memory
                     unsafe {
-                        shared_container.move_to_external(new_address, memory);
+                        shared_container.move_to_remote(new_address, memory);
                     }
                 }
 

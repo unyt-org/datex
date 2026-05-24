@@ -296,15 +296,7 @@ fn structural_type_definition_to_type_expression(
             .with_default_span()
         }
         TypeDefinition::Shared(type_reference) => {
-            // try to resolve to core lib value
-            if let Ok(core_lib_type) =
-                CoreLibId::try_from(&type_reference.pointer_address())
-            {
-                TypeExpressionData::Identifier(core_lib_type.to_string())
-                    .with_default_span()
-            } else {
-                todo!("#651 Handle non-core-lib type references in decompiler");
-            }
+            todo!("#651 Handle type references in decompiler");
         }
         TypeDefinition::Core(core_type) => {
             TypeExpressionData::Identifier(core_type.to_string())

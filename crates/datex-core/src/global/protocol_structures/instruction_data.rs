@@ -12,7 +12,7 @@ use crate::{
     },
     prelude::*,
     shared_values::{
-        BuiltinPointerAddress, ExternalPointerAddress, PointerAddress,
+        PointerAddress,
         ReferenceMutability, RemotePointerAddress, SelfOwnedPointerAddress,
         SharedContainerMutability,
     },
@@ -336,7 +336,7 @@ impl TryFrom<PointerAddress> for RawRemotePointerAddress {
     type Error = PointerAddressConversionError;
     fn try_from(ptr: PointerAddress) -> Result<Self, Self::Error> {
         match ptr {
-            PointerAddress::External(ExternalPointerAddress::Remote(addr)) => {
+            PointerAddress::Remote(addr) => {
                 Ok(RawRemotePointerAddress::from(addr))
             }
             _ => Err(PointerAddressConversionError),
@@ -350,19 +350,12 @@ pub struct RawSelfOwnedPointerAddress {
     pub bytes: [u8; 5],
 }
 
-#[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
-#[brw(little)]
-pub struct RawBuiltinPointerAddress {
-    pub id: [u8; 3],
-}
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
 #[brw(little)]
 pub enum RawPointerAddress {
     #[brw(magic = 0u8)]
     SelfOwned(RawSelfOwnedPointerAddress),
-    #[brw(magic = 1u8)]
-    Internal(RawBuiltinPointerAddress),
     #[brw(magic = 2u8)]
     Remote(RawRemotePointerAddress),
 }
@@ -371,7 +364,6 @@ impl RawPointerAddress {
     fn get_size(&self) -> usize {
         match self {
             RawPointerAddress::Remote(_) => 26,
-            RawPointerAddress::Internal(_) => 3,
             RawPointerAddress::SelfOwned(_) => 5,
         }
     }
@@ -386,13 +378,8 @@ impl RawPointerAddress {
 impl From<PointerAddress> for RawPointerAddress {
     fn from(ptr: PointerAddress) -> Self {
         match ptr {
-            PointerAddress::External(ExternalPointerAddress::Remote(addr)) => {
+            PointerAddress::Remote(addr) => {
                 RawPointerAddress::Remote(RawRemotePointerAddress::from(addr))
-            }
-            PointerAddress::External(ExternalPointerAddress::Builtin(addr)) => {
-                RawPointerAddress::Internal(RawBuiltinPointerAddress::from(
-                    addr,
-                ))
             }
             PointerAddress::SelfOwned(addr) => RawPointerAddress::SelfOwned(
                 RawSelfOwnedPointerAddress::from(addr),
@@ -405,14 +392,7 @@ impl From<RawPointerAddress> for PointerAddress {
     fn from(raw: RawPointerAddress) -> Self {
         match raw {
             RawPointerAddress::Remote(addr) => {
-                PointerAddress::External(ExternalPointerAddress::Remote(
-                    RemotePointerAddress::from(addr),
-                ))
-            }
-            RawPointerAddress::Internal(addr) => {
-                PointerAddress::External(ExternalPointerAddress::Builtin(
-                    BuiltinPointerAddress::from(addr),
-                ))
+                PointerAddress::Remote(RemotePointerAddress::from(addr))
             }
             RawPointerAddress::SelfOwned(local) => {
                 PointerAddress::SelfOwned(SelfOwnedPointerAddress::from(local))
@@ -427,21 +407,9 @@ impl From<SelfOwnedPointerAddress> for RawSelfOwnedPointerAddress {
     }
 }
 
-impl From<BuiltinPointerAddress> for RawBuiltinPointerAddress {
-    fn from(addr: BuiltinPointerAddress) -> Self {
-        RawBuiltinPointerAddress { id: addr.0 }
-    }
-}
-
 impl From<RemotePointerAddress> for RawRemotePointerAddress {
     fn from(addr: RemotePointerAddress) -> Self {
         RawRemotePointerAddress { id: addr.0 }
-    }
-}
-
-impl From<RawBuiltinPointerAddress> for BuiltinPointerAddress {
-    fn from(addr: RawBuiltinPointerAddress) -> Self {
-        BuiltinPointerAddress(addr.id)
     }
 }
 
