@@ -38,10 +38,13 @@ use crate::{
     },
     types::{r#type::Type, type_definition::TypeDefinition},
 };
+use crate::shared_values::ReferencedSharedContainer;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum SharedValueCompilationError {
     ExpectedOwnedSharedValue,
+    ExpectedSharedValue,
+    ExpectedLocalValue,
 }
 
 impl From<SharedValueCompilationError> for ExecutionError {
@@ -49,6 +52,12 @@ impl From<SharedValueCompilationError> for ExecutionError {
         match error {
             SharedValueCompilationError::ExpectedOwnedSharedValue => {
                 ExecutionError::ExpectedOwnedSharedValue
+            }
+            SharedValueCompilationError::ExpectedSharedValue => {
+                ExecutionError::ExpectedSharedValue
+            }
+            SharedValueCompilationError::ExpectedLocalValue => {
+                ExecutionError::ExpectedLocalValue
             }
         }
     }
@@ -100,18 +109,12 @@ pub fn append_value_container(
 }
 
 /// Appends a shared container to the buffer a reference
-pub fn append_shared_container_as_ref(
+pub fn append_referenced_shared_container(
     context: &mut CoreCompilationContext,
-    shared_container: &SharedContainer,
+    shared_container: ReferencedSharedContainer,
     insert_value: bool,
 ) -> Result<(), SharedValueCompilationError> {
-    append_shared_container(
-        context,
-        &SharedContainer::Referenced(
-            shared_container.derive_with_max_mutability(),
-        ),
-        insert_value,
-    )
+    todo!()
 }
 
 /// Appends a shared container to the buffer, with optional mutability information for the shared container

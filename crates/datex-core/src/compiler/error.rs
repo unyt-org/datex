@@ -26,6 +26,8 @@ pub enum CompilerError {
     NonStaticValue,
     SharedRefToNonSharedValue,
     ExpectedOwnedSharedValue,
+    ExpectedReferencedSharedValue,
+    ExpectedLocalValue,
     UndeclaredVariable(String),
     InvalidRedeclaration(String),
     SubvariantNotFound(String, String),
@@ -47,6 +49,10 @@ impl From<SharedValueCompilationError> for CompilerError {
         match error {
             SharedValueCompilationError::ExpectedOwnedSharedValue => {
                 CompilerError::ExpectedOwnedSharedValue
+            }
+            SharedValueCompilationError::ExpectedSharedValue => CompilerError::ExpectedReferencedSharedValue,
+            SharedValueCompilationError::ExpectedLocalValue => {
+                CompilerError::ExpectedLocalValue
             }
         }
     }
@@ -358,6 +364,18 @@ impl Display for CompilerError {
                     "Expected owned shared value, but found non-owned value"
                 )
             }
+            CompilerError::ExpectedReferencedSharedValue => {
+                core::write!(
+                    f,
+                    "Expected referenced shared value, but found non-referenced value"
+                )
+            }
+            CompilerError::ExpectedLocalValue => {
+                core::write!(
+                    f,
+                    "Expected local value, but found shared value"
+                )
+            }
             CompilerError::SharedMutRefToImmutableValue => {
                 core::write!(
                     f,
@@ -369,7 +387,7 @@ impl Display for CompilerError {
                     f,
                     "Cannot convert reference to owned value without cloning or moving"
                 )
-            }
+            },
         }
     }
 }
