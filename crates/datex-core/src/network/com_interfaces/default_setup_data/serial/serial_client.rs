@@ -18,7 +18,7 @@ impl SerialClientInterfaceSetupData {
         ComInterfaceProperties {
             interface_type: "serial".to_string(),
             channel: "serial".to_string(),
-            round_trip_time: Duration::from_millis(40),
+            round_trip_time: 40,
             max_bandwidth: 100,
             ..ComInterfaceProperties::default()
         }

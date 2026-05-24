@@ -4,7 +4,12 @@ use crate::{
     utils::freemap::NextKey, value_updates::update_data::Update,
 };
 use core::{fmt::Display, result::Result};
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use serde::de::DeserializeSeed;
+use datex_macros_internal::Datex;
+use crate::dif::serde_context::SerdeContext;
+use crate::utils::serde_serialize_seed::{SerializeSeed, StatelessSerde};
+use crate::values::core_values::range::Range;
 
 #[derive(Debug)]
 pub enum ObserverError {
@@ -30,15 +35,35 @@ pub type ObserverCallback = Rc<dyn Fn(&Update)>;
 /// unique identifier for a transceiver (source of updates)
 /// 0-255 are reserved for DIF clients
 #[derive(
-    Debug, Default, Clone, Copy, Deserialize, Serialize, PartialEq, Eq, Hash,
+    Serialize, Deserialize, Debug, Default, Clone, Copy, PartialEq, Eq, Hash,
 )]
 pub struct TransceiverId(pub u32);
 
-#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, Default)]
 pub struct ObserveOptions {
     /// If true, the transceiver will be notified of changes that originated from itself
     pub relay_own_updates: bool,
 }
+
+impl<'de> DeserializeSeed<'de> for SerdeContext<'de, ObserveOptions> {
+    type Value = ObserveOptions;
+
+    fn deserialize<D: Deserializer<'de>>(
+        self,
+        deserializer: D,
+    ) -> Result<Self::Value, D::Error> {
+        ObserveOptions::deserialize(deserializer)
+    }
+}
+
+impl<'ctx> SerializeSeed for SerdeContext<'ctx, ObserveOptions> {
+    type Value = ObserveOptions;
+
+    fn serialize<S: Serializer>(&mut self, value: &Self::Value, serializer: S) -> Result<S::Ok, S::Error> {
+        value.serialize(serializer)
+    }
+}
+
 
 #[derive(
     Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default,

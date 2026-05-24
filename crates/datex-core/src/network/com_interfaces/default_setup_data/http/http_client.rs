@@ -18,7 +18,7 @@ impl HTTPClientInterfaceSetupData {
         ComInterfaceProperties {
             interface_type: "http-client".to_string(),
             channel: "http".to_string(),
-            round_trip_time: Duration::from_millis(40),
+            round_trip_time: 40,
             max_bandwidth: 1000,
             ..ComInterfaceProperties::default()
         }
