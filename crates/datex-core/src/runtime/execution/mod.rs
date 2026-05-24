@@ -1132,4 +1132,27 @@ mod tests {
         let result = execute_datex_script_debug_with_result(script);
         assert_eq!(result, Integer::from(2).into());
     }
+
+    #[test]
+    fn conditional_complex_result() {
+        let script = "
+        var c = 0;
+        const b = 5;
+        const x = if (b==3) (
+            250u8
+        ) else (
+            130u8
+        );
+        if (x==250) (
+            c = 0u8;
+        ) else if (x==130) (
+            c = 1u8;
+        ) else (
+            c = 2u8;
+        );
+        c
+        ";
+        let result = execute_datex_script_debug_with_result(script);
+        assert_eq!(result, TypedInteger::from(1u8).into());
+    }
 }

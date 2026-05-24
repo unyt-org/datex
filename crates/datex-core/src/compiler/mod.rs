@@ -1673,7 +1673,7 @@ pub mod tests {
     use core::assert_matches;
     use log::*;
 
-    fn compile_and_log(datex_script: &str) -> Vec<u8> {
+    pub fn compile_and_log(datex_script: &str) -> Vec<u8> {
         let (result, _) = compile_script(
             datex_script,
             CompileOptions::default(),

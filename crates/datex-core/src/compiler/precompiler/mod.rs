@@ -18,7 +18,7 @@ pub mod scope_stack;
 use crate::{
     ast::{
         expressions::{
-            BinaryOperation, CloneExpression, DatexExpression,
+            BinaryOperation, CloneExpression, Conditional, DatexExpression,
             DatexExpressionData, GetSharedRef, RemoteExecution,
             RequestSharedRef, Statements, TypeDeclaration, TypeDeclarationKind,
             Unbox, UnboxAssignment, ValueAccessType, VariableAccess,
@@ -66,6 +66,7 @@ pub struct Precompiler<'a> {
     scope_stack: &'a mut PrecompilerScopeStack,
     collected_errors: Option<DetailedCompilerErrors>,
     is_first_level_expression: bool,
+    in_conditional_condition: bool,
     runtime: Runtime,
 }
 
@@ -146,6 +147,7 @@ impl<'a> Precompiler<'a> {
             scope_stack,
             collected_errors: None,
             is_first_level_expression: true,
+            in_conditional_condition: false,
             runtime,
         }
     }
@@ -829,16 +831,33 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
         }
     }
 
+    fn visit_conditional(
+        &mut self,
+        conditional: &mut Conditional,
+        span: &Range<usize>,
+    ) -> ExpressionVisitResult<SpannedCompilerError> {
+        let _ = span;
+        self.in_conditional_condition = true;
+        self.visit_datex_expression(&mut conditional.condition)?;
+        self.in_conditional_condition = false;
+        self.visit_datex_expression(&mut conditional.then_branch)?;
+        if let Some(else_branch) = &mut conditional.else_branch {
+            self.visit_datex_expression(else_branch)?;
+        }
+        Ok(VisitAction::SkipChildren)
+    }
+
     fn visit_identifier(
         &mut self,
         identifier: &mut String,
         span: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedCompilerError> {
-        self.visit_identifier_with_access_type(
-            identifier,
-            span,
-            ValueAccessType::MoveOrCopy,
-        )
+        let access_type = if self.in_conditional_condition {
+            ValueAccessType::Clone
+        } else {
+            ValueAccessType::MoveOrCopy
+        };
+        self.visit_identifier_with_access_type(identifier, span, access_type)
     }
 }
 
