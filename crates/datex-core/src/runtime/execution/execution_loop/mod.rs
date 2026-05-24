@@ -560,6 +560,7 @@ pub fn inner_execution_loop(
                             RegularInstruction::SetSharedContainerValue(_) |
                             RegularInstruction::Unbox |
                             RegularInstruction::TypedValue |
+                            RegularInstruction::Conditional(_) |
                             RegularInstruction::RemoteExecution(_) |
                             RegularInstruction::SharedRefWithValue(_) |
                             RegularInstruction::TypeExpression => unreachable!(),
@@ -1212,6 +1213,62 @@ pub fn inner_execution_loop(
                                     );
                                     yield_unwrap!(yield_unwrap!(res));
                                     None.into()
+                                }
+
+                                RegularInstruction::Conditional(
+                                    data,
+                                ) => {
+                                    let condition_value = yield_unwrap!(
+                                        collected_results.pop_runtime_value_result_assert_existing()
+                                    );
+                                    let is_truthy = condition_value
+                                        .into_cloned_value_container(&state)
+                                        .map(|v| {
+                                            match &v {
+                                                ValueContainer::Local(val) => {
+                                                    use crate::values::core_value::CoreValue;
+                                                    use crate::values::core_values::boolean::Boolean;
+                                                    !matches!(
+                                                        val.inner,
+                                                        CoreValue::Boolean(Boolean(false))
+                                                            | CoreValue::Null
+                                                    )
+                                                }
+                                                _ => true,
+                                            }
+                                        })
+                                        .unwrap_or(false);
+
+                                    let branch_bytes = if is_truthy {
+                                        &data.then_branch.branch
+                                    } else {
+                                        &data.else_branch.branch
+                                    };
+
+                                    if branch_bytes.is_empty() {
+                                        CollectedExecutionResult::Value(None)
+                                    } else {
+                                        let input =
+                                            crate::runtime::execution::ExecutionInput::new_with_stack(
+                                                branch_bytes,
+                                                state.caller_metadata.clone(),
+                                                crate::runtime::execution::ExecutionOptions {
+                                                    verbose: false,
+                                                },
+                                                state.runtime.clone(),
+                                                state.stack.clone(),
+                                            );
+                                        match super::execute_dxb_sync(input) {
+                                            Ok(val) => {
+                                                CollectedExecutionResult::Value(
+                                                    val.map(RuntimeValue::ValueContainer),
+                                                )
+                                            }
+                                            Err(e) => {
+                                                return yield Err(e);
+                                            }
+                                        }
+                                    }
                                 }
 
                                 RegularInstruction::RemoteExecution(

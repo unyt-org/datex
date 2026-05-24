@@ -946,4 +946,70 @@ mod tests {
             runtime,
         )
     }
+
+    #[test]
+    fn conditional_true_branch() {
+        let result = execute_datex_script_debug_with_result("if (true) (42) else (43)");
+        assert_eq!(result, Integer::from(42).into());
+    }
+
+    #[test]
+    fn conditional_false_branch() {
+        let result = execute_datex_script_debug_with_result("if (false) (42) else (43)");
+        assert_eq!(result, Integer::from(43).into());
+    }
+
+    #[test]
+    fn conditional_no_else() {
+        let result = execute_datex_script_debug("if (false) (42)");
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn conditional_nested_if_else() {
+        let result = execute_datex_script_debug_with_result(
+            "if (true) (1) else if (false) (2) else (3)",
+        );
+        assert_eq!(result, Integer::from(1).into());
+    }
+
+    #[test]
+    fn conditional_nested_else_if() {
+        let result = execute_datex_script_debug_with_result(
+            "if (false) (1) else if (true) (2) else (3)",
+        );
+        assert_eq!(result, Integer::from(2).into());
+    }
+
+    #[test]
+    fn conditional_nested_else_fallback() {
+        let result = execute_datex_script_debug_with_result(
+            "if (false) (1) else if (false) (2) else (3)",
+        );
+        assert_eq!(result, Integer::from(3).into());
+    }
+
+    #[test]
+    fn conditional_with_variable() {
+        let result = execute_datex_script_debug_with_result(
+            "const x = 42; if (true) (x) else (0)",
+        );
+        assert_eq!(result, Integer::from(42).into());
+    }
+
+    #[test]
+    fn conditional_with_variable_else_branch() {
+        let result = execute_datex_script_debug_with_result(
+            "const x = 99; if (false) (0) else (x)",
+        );
+        assert_eq!(result, Integer::from(99).into());
+    }
+
+    #[test]
+    fn conditional_complex_condition() {
+        let result = execute_datex_script_debug_with_result(
+            "if (1 + 1 == 2) (100) else (200)",
+        );
+        assert_eq!(result, Integer::from(100).into());
+    }
 }

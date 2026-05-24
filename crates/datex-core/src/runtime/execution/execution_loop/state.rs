@@ -69,7 +69,7 @@ impl Debug for ExecutionLoopState {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct RuntimeExecutionState {
     /// Local memory stack for current execution context.
     pub stack: RuntimeExecutionStack,
@@ -78,7 +78,7 @@ pub struct RuntimeExecutionState {
     pub caller_metadata: ExecutionCallerMetadata,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct RuntimeExecutionStack {
     pub values: Vec<Option<ValueContainer>>,
 }

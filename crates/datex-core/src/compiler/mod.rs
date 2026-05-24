@@ -2,7 +2,7 @@
 use crate::{
     ast::{
         expressions::{
-            BinaryOperation, ComparisonOperation, DatexExpression,
+            BinaryOperation, ComparisonOperation, Conditional, DatexExpression,
             DatexExpressionData, RemoteExecution, RootPropertyAccess,
             Statements, UnaryOperation, UnboundedStatement, UnboxAssignment,
             ValueAccessType, VariableAccess, VariableAssignment,
@@ -24,7 +24,7 @@ use crate::{
     core_compiler::value_compiler::{
         append_boolean, append_decimal, append_encoded_integer,
         append_endpoint, append_float_as_i16, append_float_as_i32,
-        append_get_builtin_ref, append_get_shared_ref, append_integer,
+        append_get_internal_ref, append_get_shared_ref, append_integer,
         append_key_string, append_regular_instruction, append_shared_container,
         append_statements_preamble, append_text, append_typed_decimal,
         append_value,
@@ -41,16 +41,16 @@ use crate::{
                 SharedInjectedValueType,
             },
             instruction_data::{
-                InstructionBlockData, ModifyStackValue,
-                SetSharedContainerValue, ShortTextData, StackIndex,
-                TaggedValue,
+                ConditionalBranchData, ConditionalData, InstructionBlockData,
+                ModifyStackValue, SetSharedContainerValue, ShortTextData,
+                StackIndex, TaggedValue,
             },
             regular_instructions::RegularInstruction,
             routing_header::RoutingHeader,
         },
         root_properties::RootProperty,
     },
-    libs::core::core_lib_id::CoreLibId,
+    libs::core::{core_lib_id::CoreLibId, value_id::CoreLibValueId},
     parser::{Parser, ParserOptions, errors::SpannedParserError},
     prelude::*,
     runtime::{Runtime, execution::context::ExecutionMode},
@@ -1397,6 +1397,81 @@ fn compile_expression(
                 CompileMetadata::default(),
                 scope,
             )?;
+        }
+
+        DatexExpressionData::Conditional(Conditional {
+            condition,
+            then_branch,
+            else_branch,
+        }) => {
+            compilation_context.mark_has_non_static_value();
+
+            let condition_bytes = {
+                let mut ctx = CompilationContext::new(
+                    Vec::with_capacity(64),
+                    compilation_context.inserted_values.clone(),
+                    compilation_context.execution_mode,
+                );
+                compile_expression(
+                    &mut ctx,
+                    RichAst::new(*condition, &metadata),
+                    CompileMetadata::default(),
+                    scope.clone(),
+                )?;
+                ctx.into_buffer()
+            };
+
+            let then_bytes = {
+                let mut ctx = CompilationContext::new(
+                    Vec::with_capacity(64),
+                    compilation_context.inserted_values.clone(),
+                    compilation_context.execution_mode,
+                );
+                compile_expression(
+                    &mut ctx,
+                    RichAst::new(*then_branch, &metadata),
+                    CompileMetadata::default(),
+                    scope.clone(),
+                )?;
+                ctx.into_buffer()
+            };
+
+            let else_bytes = match else_branch {
+                Some(else_expr) => {
+                    let mut ctx = CompilationContext::new(
+                        Vec::with_capacity(64),
+                        compilation_context.inserted_values.clone(),
+                        compilation_context.execution_mode,
+                    );
+                    compile_expression(
+                        &mut ctx,
+                        RichAst::new(*else_expr, &metadata),
+                        CompileMetadata::default(),
+                        scope.clone(),
+                    )?;
+                    ctx.into_buffer()
+                }
+                None => Vec::new(),
+            };
+
+            append_regular_instruction(
+                compilation_context.cursor(),
+                RegularInstruction::Conditional(ConditionalData {
+                    then_branch: ConditionalBranchData {
+                        branch_length: then_bytes.len() as u32,
+                        branch: then_bytes,
+                    },
+                    else_branch: ConditionalBranchData {
+                        branch_length: else_bytes.len() as u32,
+                        branch: else_bytes,
+                    },
+                }),
+            );
+
+            compilation_context
+                .cursor()
+                .write_all(&condition_bytes)
+                .unwrap();
         }
 
         DatexExpressionData::Tag(tag_expression) => {
@@ -3651,5 +3726,34 @@ pub mod tests {
             0,
         ];
         assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn conditional_if_only() {
+        let script = "if (true) (42u8)";
+        let result = compile_and_log(script);
+        assert_eq!(result[0], InstructionCode::CONDITIONAL as u8);
+    }
+
+    #[test]
+    fn conditional_if_else() {
+        let script = "if (true) (42u8) else (43u8)";
+        let result = compile_and_log(script);
+        assert_eq!(result[0], InstructionCode::CONDITIONAL as u8);
+    }
+
+    #[test]
+    fn conditional_with_variable() {
+        let script = "const x = 10u8; if (true) (x) else (0u8)";
+        let result = compile_and_log(script);
+        assert_eq!(result[0], InstructionCode::SHORT_STATEMENTS as u8);
+        assert_eq!(result[6], InstructionCode::CONDITIONAL as u8);
+    }
+
+    #[test]
+    fn conditional_if_elseif_else() {
+        let script = "if (true) (0u8) else if (false) (0u8) else (0u8)";
+        let result = compile_and_log(script);
+        println!("conditional_if_elseif_else result: {:?}", result);
     }
 }

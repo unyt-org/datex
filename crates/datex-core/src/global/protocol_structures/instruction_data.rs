@@ -598,6 +598,21 @@ cfg_if! {
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
 #[brw(little)]
+pub struct ConditionalBranchData {
+    pub branch_length: u32,
+    #[br(count = branch_length)]
+    pub branch: Vec<u8>,
+}
+
+#[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
+#[brw(little)]
+pub struct ConditionalData {
+    pub then_branch: ConditionalBranchData,
+    pub else_branch: ConditionalBranchData,
+}
+
+#[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
+#[brw(little)]
 pub struct ApplyData {
     pub arg_count: u16,
 }

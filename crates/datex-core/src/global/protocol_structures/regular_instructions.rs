@@ -6,17 +6,17 @@ use crate::{
         instruction_codes::InstructionCode,
         protocol_structures::{
             instruction_data::{
-                ApplyData, DecimalData, Float32Data, Float64Data,
-                FloatAsInt16Data, FloatAsInt32Data, InstructionBlockData,
-                Int8Data, Int16Data, Int32Data, Int64Data, Int128Data,
-                IntegerData, ListData, MapData, ModifyStackValue, Move,
-                PerformMove, PushToStackMultiple, RawBuiltinPointerAddress,
-                RawRemotePointerAddress, RawSelfOwnedPointerAddress,
-                SetSharedContainerValue, SharedRef, SharedRefWithValue,
-                ShortListData, ShortMapData, ShortStatementsData,
-                ShortTextData, StackIndex, StatementsData, TaggedValue,
-                TextData, UInt8Data, UInt16Data, UInt32Data, UInt64Data,
-                UInt128Data, UnboundedStatementsData,
+                ApplyData, ConditionalData, DecimalData, Float32Data,
+                Float64Data, FloatAsInt16Data, FloatAsInt32Data,
+                InstructionBlockData, Int8Data, Int16Data, Int32Data,
+                Int64Data, Int128Data, IntegerData, ListData, MapData,
+                ModifyStackValue, Move, PerformMove, PushToStackMultiple,
+                RawBuiltinPointerAddress, RawLocalPointerAddress,
+                RawRemotePointerAddress, SetSharedContainerValue, SharedRef,
+                SharedRefWithValue, ShortListData, ShortMapData,
+                ShortStatementsData, ShortTextData, StackIndex, StatementsData,
+                TaggedValue, TextData, UInt8Data, UInt16Data, UInt32Data,
+                UInt64Data, UInt128Data, UnboundedStatementsData,
             },
             instructions::NextExpectedInstructions,
         },
@@ -172,6 +172,8 @@ pub enum RegularInstruction {
 
     TypedValue,
     TypeExpression,
+
+    Conditional(ConditionalData),
 }
 
 /// Maps each regular instruction to its corresponding instruction code
@@ -339,6 +341,7 @@ impl From<&RegularInstruction> for InstructionCode {
             RegularInstruction::TypeExpression => {
                 InstructionCode::TYPE_EXPRESSION
             }
+            RegularInstruction::Conditional(_) => InstructionCode::CONDITIONAL,
             RegularInstruction::TaggedValue(_) => InstructionCode::TAGGED_VALUE,
             #[cfg(feature = "disassembler")]
             RegularInstruction::_RemoteExecutionDebugFlat(_)
@@ -473,6 +476,10 @@ impl RegularInstruction {
             RegularInstruction::TypeExpression => {
                 NextExpectedInstructions::Type(1)
             }
+
+            RegularInstruction::Conditional(_) => {
+                NextExpectedInstructions::Regular(1)
+            } // condition child
 
             RegularInstruction::Range => NextExpectedInstructions::Regular(2),
             RegularInstruction::TaggedValue(TaggedValue {
@@ -779,6 +786,9 @@ impl RegularInstruction {
                 Ok(RegularInstruction::TypeExpression)
             }
 
+            InstructionCode::CONDITIONAL => ConditionalData::read(reader)
+                .map(RegularInstruction::Conditional),
+
             InstructionCode::RANGE => Ok(RegularInstruction::Range),
 
             InstructionCode::MODULO => todo!(),
@@ -1016,6 +1026,15 @@ impl RegularInstruction {
                     data.injected_values
                 )
             }
+            RegularInstruction::Conditional(data) => {
+                write!(
+                    string,
+                    "[then_len: {}, else_len: {}]",
+                    data.then_branch.branch_length,
+                    data.else_branch.branch_length,
+                )
+            }
+
             RegularInstruction::ModifyStackValue(modify_slot) => {
                 write!(string, "[index: {:?}, operator: {}]", modify_slot.index, modify_slot.operator)
             }

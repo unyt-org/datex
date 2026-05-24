@@ -22,6 +22,8 @@ pub enum InstructionCode {
     UNBOUNDED_STATEMENTS,
     UNBOUNDED_STATEMENTS_END, // end of statements block (only needed for unbounded blocks)
 
+    CONDITIONAL, // if/else conditional
+
     APPLY_ZERO,
     APPLY_SINGLE,
     APPLY,
