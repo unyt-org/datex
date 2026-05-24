@@ -2047,11 +2047,11 @@ mod tests {
 
     #[test]
     fn parse_pointer_address_ref() {
-        let expr = parse("'$ABCDEF");
+        let expr = parse("'$ABCDEFABCE");
         assert_eq!(
             expr.data,
             DatexExpressionData::RequestSharedRef(RequestSharedRef {
-                address: PointerAddress::try_from("ABCDEF").unwrap(),
+                address: PointerAddress::try_from("ABCDEFABCE").unwrap(),
                 mutability: ReferenceMutability::Immutable,
             })
         );
@@ -2059,11 +2059,11 @@ mod tests {
 
     #[test]
     fn parse_mutable_pointer_address_ref() {
-        let expr = parse("'mut $ABCDEF");
+        let expr = parse("'mut $ABCDEFABCE");
         assert_eq!(
             expr.data,
             DatexExpressionData::RequestSharedRef(RequestSharedRef {
-                address: PointerAddress::try_from("ABCDEF").unwrap(),
+                address: PointerAddress::try_from("ABCDEFABCE").unwrap(),
                 mutability: ReferenceMutability::Mutable,
             })
         );

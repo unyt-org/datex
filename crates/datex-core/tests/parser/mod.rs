@@ -3418,17 +3418,6 @@ fn unbox_multiple() {
 
 #[test]
 fn pointer_address() {
-    // 3 bytes (internal)
-    let src = "'$123456";
-    let expr = parse_unwrap_data(src);
-    assert_eq!(
-        expr,
-        DatexExpressionData::RequestSharedRef(RequestSharedRef {
-            address: PointerAddress::builtin([0x12, 0x34, 0x56]),
-            mutability: ReferenceMutability::Immutable,
-        })
-    );
-
     // 5 bytes (local)
     let src = "'$123456789A";
     let expr = parse_unwrap_data(src);

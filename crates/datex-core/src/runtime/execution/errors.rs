@@ -13,6 +13,7 @@ use crate::{
     values::value_container::{ValueContainer, error::ValueError},
 };
 use core::fmt::Display;
+use crate::libs::core::core_lib_id::CoreLibIdIndex;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum InvalidProgramError {
@@ -25,6 +26,7 @@ pub enum InvalidProgramError {
     ExpectedInstruction,
     ExpectedRegularInstruction,
     ExpectedTypeInstruction,
+    InvalidCoreLibId(CoreLibIdIndex)
 }
 
 impl Display for InvalidProgramError {
@@ -53,6 +55,9 @@ impl Display for InvalidProgramError {
             }
             InvalidProgramError::ExpectedList => {
                 core::write!(f, "Expected a list")
+            }
+            InvalidProgramError::InvalidCoreLibId(core_lib_id) => {
+                core::write!(f, "Invalid core library id: {core_lib_id}")
             }
         }
     }

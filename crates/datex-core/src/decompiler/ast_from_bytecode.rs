@@ -127,8 +127,8 @@ pub fn ast_from_bytecode(
                         StatementResultCollectionStrategy::Full,
                     );
 
-                let expr: Option<DatexExpression> = regular_instruction.map(|regular_instruction|
-                    match regular_instruction {
+                let expr = regular_instruction.map(|regular_instruction|
+                    Result::<DatexExpression, DXBParserError>::Ok(match regular_instruction {
                         // Handle different regular instructions here
                         RegularInstruction::Int8(integer_data) => {
                             DatexExpressionData::TypedInteger(
@@ -260,7 +260,9 @@ pub fn ast_from_bytecode(
                         }
 
                         RegularInstruction::GetCoreLibValue(id) => {
-                            DatexExpressionData::ResolveCoreLibId(id.into())
+                            DatexExpressionData::ResolveCoreLibId(
+                                id.try_into().map_err(|_| DXBParserError::InvalidCoreLibId(id))?,
+                            )
                         }
 
                         RegularInstruction::SharedRef(_shared_ref) => {
@@ -380,7 +382,8 @@ pub fn ast_from_bytecode(
                             todo!("also map to ast")
                         },
                     }
-                .with_default_span());
+                .with_default_span()))
+                .transpose()?;
                 expr.map(CollectedAstResult::from)
             }
             Instruction::Type(type_instruction) => {

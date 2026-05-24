@@ -220,6 +220,7 @@ impl CoreLibrary {
 
 #[cfg(test)]
 mod tests {
+    use crate::libs::core::core_lib_id::CoreLibIdIndex;
     use crate::shared_values::PointerAddress;
 
     use super::*;
@@ -229,30 +230,11 @@ mod tests {
         flexi_logger::init();
         info!("{}", CoreLibrary::default().map());
     }
-
-    #[ignore]
-    #[test]
-    #[cfg(feature = "std")]
-    fn print_core_lib_addresses_as_hex() {
-        for base_id in CoreLibBaseTypeId::iter() {
-            println!("{:?}: {}", base_id, PointerAddress::from(base_id));
-            for variant_id in CoreLibVariantTypeId::variant_ids(&base_id) {
-                println!(
-                    "{:?}: {}",
-                    variant_id,
-                    PointerAddress::from(variant_id)
-                );
-            }
-        }
-        for base_id in CoreLibValueId::iter() {
-            println!("{:?}: {}", base_id, PointerAddress::from(base_id));
-        }
-    }
-
+    
     #[test]
     #[ignore]
     #[cfg(feature = "std")]
-    /// Generates a TypeScript mapping of core type addresses to their names.
+    /// Generates a TypeScript mapping of core type names to their ids
     /// Run this test and copy the output into `src/dif/definitions.ts`.
     ///
     /// `cargo test create_core_type_ts_mapping -- --show-output --ignored`
@@ -263,20 +245,14 @@ mod tests {
             println!(
                 "    {}: \"{}\",",
                 base_id,
-                PointerAddress::from(base_id)
-                    .to_string()
-                    .strip_prefix("$")
-                    .unwrap()
+                CoreLibIdIndex::from(CoreLibId::Type(base_id.into())).0
             );
             for variant_id in CoreLibVariantTypeId::variant_ids(&base_id) {
                 println!(
                     "    {}_{}: \"{}\",",
                     base_id,
                     variant_id.variant_name(),
-                    PointerAddress::from(variant_id)
-                        .to_string()
-                        .strip_prefix("$")
-                        .unwrap()
+                    CoreLibIdIndex::from(CoreLibId::Type(base_id.into())).0
                 );
             }
         }

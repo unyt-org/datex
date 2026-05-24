@@ -408,11 +408,15 @@ pub fn inner_execution_loop(
                             }
 
 
-                            RegularInstruction::GetCoreLibValue(address) => {
+                            RegularInstruction::GetCoreLibValue(id) => {
                                 Some(interrupt_with_value!(
                                     interrupt_provider,
                                     ExecutionInterrupt::External(
-                                        ExternalExecutionInterrupt::GetCoreLibValue(address)
+                                        ExternalExecutionInterrupt::GetCoreLibValue(
+                                            yield_unwrap!(
+                                                id.try_into().map_err(|_| ExecutionError::InvalidProgram(InvalidProgramError::InvalidCoreLibId(id)))
+                                            )
+                                        )
                                     )
                                 ).into())
                             }

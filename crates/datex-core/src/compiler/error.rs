@@ -32,7 +32,7 @@ pub enum CompilerError {
     InvalidRedeclaration(String),
     SubvariantNotFound(String, String),
     ScopePopError,
-    InvalidSlotName(String),
+    InvalidRootPropertyName(String),
     AssignmentToConst(String),
     AssignmentToExternalVariable(String),
     AssignmentToImmutableReference(String),
@@ -316,7 +316,7 @@ impl Display for CompilerError {
             CompilerError::ScopePopError => {
                 core::write!(f, "Could not pop scope, stack is empty")
             }
-            CompilerError::InvalidSlotName(name) => {
+            CompilerError::InvalidRootPropertyName(name) => {
                 core::write!(f, "Slot #{name} does not exist")
             }
             CompilerError::AssignmentToConst(name) => {

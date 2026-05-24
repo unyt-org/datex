@@ -124,7 +124,7 @@ impl TryFrom<&str> for PointerAddress {
                 arr.copy_from_slice(&bytes);
                 Ok(PointerAddress::Remote(RemotePointerAddress(arr)))
             }
-            _ => Err("PointerAddress must be 5, 26 or 3 bytes long"),
+            _ => Err("PointerAddress must be 5 or 26 bytes long"),
         }
     }
 }

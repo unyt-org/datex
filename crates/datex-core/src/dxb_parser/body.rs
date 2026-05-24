@@ -17,6 +17,7 @@ use crate::{
 use alloc::string::FromUtf8Error;
 use binrw::{BinRead, io::Cursor};
 use core::{cell::RefCell, fmt, fmt::Display, result::Result};
+use crate::libs::core::core_lib_id::CoreLibIdIndex;
 
 #[derive(Debug)]
 pub enum DXBParserError {
@@ -31,6 +32,7 @@ pub enum DXBParserError {
     BinRwError(binrw::Error),
     FromUtf8Error(FromUtf8Error),
     NotInUnboundedRegularScopeError,
+    InvalidCoreLibId(CoreLibIdIndex),
 }
 
 // custom impl required because binrw::Error does not implement PartialEq
@@ -140,6 +142,9 @@ impl Display for DXBParserError {
             }
             DXBParserError::NotInUnboundedRegularScopeError => {
                 core::write!(f, "Not in unbounded regular scope error")
+            }
+            DXBParserError::InvalidCoreLibId(id) => {
+                core::write!(f, "Invalid Core Lib Id: {}", id.0)
             }
         }
     }

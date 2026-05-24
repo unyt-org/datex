@@ -423,6 +423,7 @@ impl<E> VisitableExpression<E> for DatexExpression {
             | DatexExpressionData::TypedInteger(_)
             | DatexExpressionData::Identifier(_)
             | DatexExpressionData::RootPropertyAccess(_)
+            | DatexExpressionData::ResolveCoreLibId(_)
             | DatexExpressionData::Endpoint(_) => Ok(()),
         }
     }

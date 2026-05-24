@@ -24,6 +24,7 @@ use crate::{
         },
     },
 };
+use crate::libs::core::type_id::CoreLibTypeId;
 
 pub mod visitable;
 
@@ -134,6 +135,9 @@ pub trait TypeExpressionVisitor<E>: Sized {
             }
             TypeExpressionData::Recover => {
                 unreachable!("Recover expression should not be visited")
+            }
+            TypeExpressionData::GetCoreLibType(core_lib_type_id) => {
+                self.visit_get_core_lib_type(core_lib_type_id, &expr.span)
             }
         };
         let action = match visit_result {
@@ -453,5 +457,15 @@ pub trait TypeExpressionVisitor<E>: Sized {
         let _ = span;
         let _ = range;
         Ok(VisitAction::VisitChildren)
+    }
+
+    fn visit_get_core_lib_type(
+        &mut self,
+        core_lib_type_id: &mut CoreLibTypeId,
+        span: &Range<usize>,
+    ) -> TypeExpressionVisitResult<E> {
+        let _ = span;
+        let _ = core_lib_type_id;
+        Ok(VisitAction::SkipChildren)
     }
 }

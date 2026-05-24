@@ -1292,18 +1292,9 @@ fn compile_expression(
                     RegularInstruction::GetRootProperty(root_property),
                 );
             } else {
-                match property_name.as_str() {
-                    "core" => append_get_core_lib_value(
-                        compilation_context.cursor(),
-                        CoreLibId::CoreMap,
-                    ),
-                    _ => {
-                        // invalid slot name
-                        return Err(CompilerError::InvalidSlotName(
-                            property_name.clone(),
-                        ));
-                    }
-                }
+                return Err(CompilerError::InvalidRootPropertyName(
+                   property_name.clone(),
+               ));
             }
         }
 
@@ -1419,6 +1410,13 @@ fn compile_expression(
                     scope,
                 )?;
             }
+        }
+        
+        DatexExpressionData::ResolveCoreLibId(core_lib_id) => {
+            append_regular_instruction(
+                compilation_context.cursor(),
+                RegularInstruction::GetCoreLibValue(core_lib_id.into()),
+            );
         }
 
         data => {
@@ -3376,7 +3374,6 @@ pub mod tests {
                 InstructionCode::GET_CORE_LIB_VALUE.into(),
                 // pointer id for integer
                 3,
-                0,
                 0,
                 InstructionCode::UNBOUNDED_STATEMENTS_END.into(),
                 0, // unterminated

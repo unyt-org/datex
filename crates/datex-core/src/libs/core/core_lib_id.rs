@@ -14,6 +14,12 @@ pub const VALUE_SPACE_BASE: u16 = 1000;
 #[brw(little)]
 pub struct CoreLibIdIndex(pub u16);
 
+impl Display for CoreLibIdIndex {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
 impl Deref for CoreLibIdIndex {
     type Target = u16;
 
@@ -36,6 +42,9 @@ pub enum CoreLibId {
 
 impl CoreLibId {
     pub fn try_from_str(string: &str) -> Option<Self> {
+        if string == "core" {
+            return Some(CoreLibId::CoreMap);
+        }
         CoreLibTypeId::try_from_str(string)
             .map(CoreLibId::Type)
             .or_else(|| {

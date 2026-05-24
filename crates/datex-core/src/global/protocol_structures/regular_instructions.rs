@@ -759,7 +759,7 @@ impl RegularInstruction {
             }
 
             InstructionCode::GET_CORE_LIB_VALUE => {
-                RawBuiltinPointerAddress::read(reader)
+                CoreLibIdIndex::read(reader)
                     .map(RegularInstruction::GetCoreLibValue)
             }
 
@@ -958,8 +958,8 @@ impl RegularInstruction {
             RegularInstruction::GetCoreLibValue(address) => {
                 write!(
                     string,
-                    "[id: {}]",
-                    hex::encode(address.0)
+                    "[id: {:4x}]",
+                    &address.0
                 )
             }
             RegularInstruction::SharedRef(shared_ref) => {

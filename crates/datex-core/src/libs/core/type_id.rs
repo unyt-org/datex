@@ -58,6 +58,24 @@ pub enum CoreLibBaseTypeId {
     Type, // #core.Type
 }
 
+impl CoreLibBaseTypeId {
+    pub fn variant(&self, variant_name: &str) -> Result<CoreLibVariantTypeId, ()> {
+        match self {
+            CoreLibBaseTypeId::Integer => {
+                IntegerTypeVariant::from_str(variant_name)
+                    .map(CoreLibVariantTypeId::Integer)
+                    .map_err(|_| ())
+            }
+            CoreLibBaseTypeId::Decimal => {
+                DecimalTypeVariant::from_str(variant_name)
+                    .map(CoreLibVariantTypeId::Decimal)
+                    .map_err(|_| ())
+            }
+            _ => Err(()),
+        }
+    }
+}
+
 const INTEGER_VARIANT_COUNT: u16 = variant_count::<IntegerTypeVariant>() as u16;
 const DECIMAL_VARIANT_COUNT: u16 = variant_count::<DecimalTypeVariant>() as u16;
 
@@ -87,19 +105,7 @@ impl FromStr for CoreLibVariantTypeId {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let (base_str, variant_str) = s.split_once('/').ok_or(())?;
         let base_id = CoreLibBaseTypeId::from_str(base_str).map_err(|_| ())?;
-        match base_id {
-            CoreLibBaseTypeId::Integer => {
-                IntegerTypeVariant::from_str(variant_str)
-                    .map(CoreLibVariantTypeId::Integer)
-                    .map_err(|_| ())
-            }
-            CoreLibBaseTypeId::Decimal => {
-                DecimalTypeVariant::from_str(variant_str)
-                    .map(CoreLibVariantTypeId::Decimal)
-                    .map_err(|_| ())
-            }
-            _ => Err(()),
-        }
+        base_id.variant(variant_str)
     }
 }
 
