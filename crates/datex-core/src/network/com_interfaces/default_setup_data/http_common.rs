@@ -25,9 +25,7 @@ impl Display for URLError {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
-#[serde(tag = "type", content = "data")]
-#[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
+#[derive(Datex, Debug, Serialize, Deserialize, Clone)]
 pub enum TLSMode {
     /// The TLS certificate is handled externally (e.g., by a reverse proxy or load balancer).
     HandledExternally,
@@ -39,10 +37,8 @@ pub enum TLSMode {
 }
 
 #[derive(Datex, Debug, Serialize, Deserialize, Clone)]
-#[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
 pub struct AcceptAddress {
     address: String,
-    #[datex(serde_infallible)]
     tls_mode: Option<TLSMode>,
 }
 

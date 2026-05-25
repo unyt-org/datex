@@ -268,7 +268,7 @@ impl TypeDefinition {
             // collapse shared container to inner Type
             {
                 reference.with_collapsed_type_value(|ty| {
-                    // collapse Type definition to inner StructuralTypeDefinition
+                    // collapse Type definition to inner type definition
                     ty.with_collapsed_type_definition(f)
                 })
             }

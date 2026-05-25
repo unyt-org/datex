@@ -317,7 +317,7 @@ impl<T: DatexValueProxy> DatexValueProxyDeserialize for Option<T> {
 }
 
 
-impl<T: DatexValueProxy> DatexProxyTypes for Option<T> {
+impl<T: DatexValueContainerProxy> DatexProxyTypes for Option<T> {
     fn datex_type(memory: &mut Memory) -> Type {
         // null | T
         Type::Alias(TypeDefinition::Union(TypeUnion(vec![

@@ -1,15 +1,11 @@
 use core::assert_matches;
-use datex_core::{
-    assert_structural_eq,
-    datex_proxy::DatexValueContainerProxy,
-    prelude::*,
-    values::{
-        core_values::{endpoint::Endpoint, map::Map},
-        value_container::ValueContainer,
-    },
-};
+use datex_core::{assert_structural_eq, datex_proxy::DatexValueContainerProxy, prelude::*, values::{
+    core_values::{endpoint::Endpoint, map::Map},
+    value_container::ValueContainer,
+}};
 use datex_macros_internal::Datex;
 use serde::{Deserialize, Serialize};
+use datex_core::datex_proxy::DatexProxyTypes;
 
 #[derive(Datex, Debug)]
 enum ExampleEnum {
@@ -69,7 +65,13 @@ use datex_core::{
     values::{core_value::CoreValue, value::Value},
 };
 use test_case::test_case;
+use datex_core::libs::core::type_id::{CoreLibBaseTypeId, CoreLibVariantTypeId};
+use datex_core::runtime::memory::Memory;
+use datex_core::types::literal_type_definition::LiteralTypeDefinition;
+use datex_core::types::r#type::Type;
+use datex_core::types::type_definition::map::MapTypeDefinition;
 use datex_core::types::type_definition::tagged_type::TaggedTypeDefinition;
+use datex_core::values::core_values::integer::typed_integer::IntegerTypeVariant;
 
 #[test_case(
     Example {
@@ -471,4 +473,31 @@ fn struct_with_owned_shared_value_container() {
     });
 
     // TODO: function mapping, SharedRef<x>, Shared<x>
+}
+
+
+#[test]
+fn get_datex_type_from_struct() {
+    let dx_type = Example::datex_type(&mut Memory::default());
+    println!("{}", dx_type);
+    
+    assert_eq!(
+        dx_type,
+        Type::Alias(TypeDefinition::Map(MapTypeDefinition(
+            vec![
+                (
+                    Type::Alias(TypeDefinition::Literal(LiteralTypeDefinition::Text("a".to_string())).into()),
+                    Type::Alias(TypeDefinition::Core(CoreLibVariantTypeId::Integer(IntegerTypeVariant::U8).into()).into())
+                ),
+                (
+                    Type::Alias(TypeDefinition::Literal(LiteralTypeDefinition::Text("b".to_string())).into()),
+                    Type::Alias(TypeDefinition::Core(CoreLibBaseTypeId::Text.into()).into())
+                ),
+                (
+                    Type::Alias(TypeDefinition::Literal(LiteralTypeDefinition::Text("c".to_string())).into()),
+                    Type::Alias(TypeDefinition::Core(CoreLibBaseTypeId::Endpoint.into()).into())
+                )
+            ]
+        )).into())
+    )
 }

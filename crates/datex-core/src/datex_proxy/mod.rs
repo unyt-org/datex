@@ -15,7 +15,6 @@ use crate::{
 };
 use crate::runtime::memory::Memory;
 use crate::types::r#type::Type;
-use crate::types::type_definition::TypeDefinition;
 
 #[derive(Debug, Clone)]
 pub struct TryFromDatexValueError(pub String);
