@@ -58,6 +58,7 @@ pub struct DeriveData {
     is_fallible_serialization: bool,
     from_datex_fields_inner: TokenStream,
     into_datex_fields_inner: TokenStream,
+    type_definition: TokenStream,
     helpers: Option<TokenStream>,
 }
 
@@ -75,6 +76,7 @@ pub fn derive(input: DeriveInput) -> TokenStream {
     let DeriveData {
         into_datex_fields_inner,
         from_datex_fields_inner,
+        type_definition,
         is_fallible_serialization,
         helpers,
     } = match input.data {
@@ -155,11 +157,15 @@ pub fn derive(input: DeriveInput) -> TokenStream {
                     DatexValueProxyDeserialize,
                     TryToDatexValueError,
                     TryFromDatexValueError,
+                    DatexProxyTypes,
                     serde_compat::{
                         try_serde_to_value_container,
                         try_serde_from_value_container
                     }
                 },
+                types::r#type::Type,
+                runtime::memory::Memory,
+                libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
                 values::value_container::ValueContainer,
                 values::value::Value,
                 values::core_value::CoreValue,
@@ -204,6 +210,13 @@ pub fn derive(input: DeriveInput) -> TokenStream {
                         ValueContainer::Local(value) => value.try_into(),
                         _ => Err(TryFromDatexValueError("Expected ValueContainer::Local".to_string())),
                     }
+                }
+            }
+
+            #[automatically_derived]
+            impl DatexProxyTypes for #ident {
+                fn datex_type(memory: &mut Memory) -> Type {
+                    #type_definition
                 }
             }
         };
@@ -282,10 +295,18 @@ fn derive_struct(data_struct: DataStruct, ident: &Ident) -> DeriveData {
         },
     };
 
+    // TODO:
+    let type_definition = quote! {
+        Type::Alias(
+            TypeDefinition::Map(vec![].into_iter().collect()).into()
+        )
+    };
+
     DeriveData {
         is_fallible_serialization,
         into_datex_fields_inner,
         from_datex_fields_inner,
+        type_definition,
         helpers: None,
     }
 }
@@ -460,10 +481,17 @@ fn derive_enum(data_enum: DataEnum, ident: &Ident) -> DeriveData {
         }
     };
 
+    let type_definition = quote! {
+        Type::Alias(
+            TypeDefinition::Core(CoreLibTypeId::Base(CoreLibBaseTypeId::Unknown)).into()
+        )
+    };
+
     DeriveData {
         is_fallible_serialization,
         into_datex_fields_inner,
         from_datex_fields_inner,
+        type_definition,
         helpers: Some(helpers),
     }
 }

@@ -9,6 +9,13 @@ use crate::{
     shared_values::{OwnedSharedContainer, SharedContainer},
     values::value_container::ValueContainer,
 };
+use crate::datex_proxy::DatexProxyTypes;
+use crate::libs::core::type_id::CoreLibBaseTypeId;
+use crate::runtime::memory::Memory;
+use crate::shared_values::{ReferenceMutability, SharedContainerMutability, SharedContainerOwnership};
+use crate::types::r#type::Type;
+use crate::types::type_definition::TypeDefinition;
+use crate::types::type_definition_with_metadata::{TypeDefinitionWithMetadata, TypeMetadata};
 
 impl DatexValueContainerProxyInfallibleSerialize for OwnedSharedContainer {
     fn to_value_container(self) -> ValueContainer {
@@ -29,6 +36,19 @@ impl DatexValueContainerProxyDeserialize for OwnedSharedContainer {
         Ok(match value {
             ValueContainer::Shared(SharedContainer::Owned(owned)) => owned,
             _ => return Err(TryFromDatexValueError("Expected ValueContainer::Shared(SharedContainer::Owned), got something else".to_string())),
+        })
+    }
+}
+
+impl DatexProxyTypes for OwnedSharedContainer {
+    fn datex_type(memory: &mut Memory) -> Type {
+        Type::Alias(TypeDefinitionWithMetadata {
+            definition: TypeDefinition::Core(CoreLibBaseTypeId::Unknown.into()),
+            // TODO
+            metadata: TypeMetadata::Shared {
+                mutability: SharedContainerMutability::Mutable,
+                ownership: SharedContainerOwnership::Owned,
+            }
         })
     }
 }
