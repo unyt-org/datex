@@ -2,7 +2,7 @@ use crate::{
     shared_values::SharedContainer,
     values::{value::Value, value_container::ValueContainer},
 };
-use serde::{Serializer, de::IntoDeserializer};
+use serde::{Serialize, Serializer};
 
 use crate::{
     dif::serde_context::SerdeContext,
@@ -13,6 +13,7 @@ use serde::{
     Deserializer,
     de::{DeserializeSeed, MapAccess, Visitor},
 };
+const SHARED_CONTAINER_KEY: &str = "$";
 
 /// Deserialization for [ValueContainer] using a [DeserializationContext] to provide access to the memory during deserialization.
 impl<'de, 'ctx> DeserializeSeed<'de> for SerdeContext<'ctx, ValueContainer> {
@@ -29,29 +30,119 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, ValueContainer> {
     type Value = ValueContainer;
 
     fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str("a pointer address string or a Value map")
+        f.write_str("a map for a shared container of any DIF value representation for local values")
     }
 
-    /// Visits a pointer address with ownership information encoded as string:
-    /// "'$ABCDEF" | "'mut$ABCDEF" | "$ABCDEF"
-    fn visit_str<E: serde::de::Error>(
-        mut self,
-        v: &str,
-    ) -> Result<ValueContainer, E> {
-        Ok(ValueContainer::Shared(
-            self.cast::<SharedContainer>()
-                .deserialize(v.into_deserializer())?,
-        ))
+    fn visit_bool<E>(mut self, v: bool) -> Result<ValueContainer, E>
+    where
+        E: serde::de::Error,
+    {
+        Ok(ValueContainer::Local(self.cast::<Value>().visit_bool(v)?))
     }
 
-    // map => local Value
+    fn visit_i64<E>(mut self, v: i64) -> Result<ValueContainer, E>
+    where
+        E: serde::de::Error,
+    {
+        Ok(ValueContainer::Local(self.cast::<Value>().visit_i64(v)?))
+    }
+
+    fn visit_u64<E>(mut self, v: u64) -> Result<ValueContainer, E>
+    where
+        E: serde::de::Error,
+    {
+        Ok(ValueContainer::Local(self.cast::<Value>().visit_u64(v)?))
+    }
+
+    fn visit_f64<E>(mut self, v: f64) -> Result<ValueContainer, E>
+    where
+        E: serde::de::Error,
+    {
+        Ok(ValueContainer::Local(self.cast::<Value>().visit_f64(v)?))
+    }
+
+    fn visit_str<E>(mut self, v: &str) -> Result<ValueContainer, E>
+    where
+        E: serde::de::Error,
+    {
+        Ok(ValueContainer::Local(self.cast::<Value>().visit_str(v)?))
+    }
+
+    fn visit_string<E>(mut self, v: String) -> Result<ValueContainer, E>
+    where
+        E: serde::de::Error,
+    {
+        Ok(ValueContainer::Local(self.cast::<Value>().visit_string(v)?))
+    }
+
+    fn visit_none<E>(mut self) -> Result<ValueContainer, E>
+    where
+        E: serde::de::Error,
+    {
+        Ok(ValueContainer::Local(self.cast::<Value>().visit_none()?))
+    }
+
+    fn visit_unit<E>(mut self) -> Result<ValueContainer, E>
+    where
+        E: serde::de::Error,
+    {
+        Ok(ValueContainer::Local(self.cast::<Value>().visit_unit()?))
+    }
+
+    fn visit_some<D>(mut self, d: D) -> Result<ValueContainer, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        Ok(ValueContainer::Local(self.cast::<Value>().visit_some(d)?))
+    }
+
+    fn visit_seq<A>(mut self, seq: A) -> Result<ValueContainer, A::Error>
+    where
+        A: serde::de::SeqAccess<'de>,
+    {
+        Ok(ValueContainer::Local(self.cast::<Value>().visit_seq(seq)?))
+    }
+
+    fn visit_i128<E>(mut self, v: i128) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        Ok(ValueContainer::Local(self.cast::<Value>().visit_i128(v)?))
+    }
+
+    fn visit_f32<E>(mut self, v: f32) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        Ok(ValueContainer::Local(self.cast::<Value>().visit_f32(v)?))
+    }
+
+    // map => shared container { $: pointer address }
     fn visit_map<A: MapAccess<'de>>(
         mut self,
-        map: A,
+        mut map: A,
     ) -> Result<ValueContainer, A::Error> {
-        // reuse the Value visitor directly
-        let value = self.cast::<Value>().visit_map(map)?;
-        Ok(ValueContainer::Local(value))
+        let Some(key) = map.next_key::<String>()? else {
+            return Err(serde::de::Error::custom(
+                "expected shared container map with '$' as key",
+            ));
+        };
+
+        if key != SHARED_CONTAINER_KEY {
+            return Err(serde::de::Error::custom(format!(
+                "unexpected key {key:?} in shared container map, expected '{SHARED_CONTAINER_KEY}'"
+            )));
+        }
+
+        let shared = map.next_value_seed(self.cast::<SharedContainer>())?;
+
+        if let Some(extra_key) = map.next_key::<String>()? {
+            return Err(serde::de::Error::custom(format!(
+                "unexpected extra key {extra_key:?} in shared container map, expected only '{SHARED_CONTAINER_KEY}'"
+            )));
+        }
+
+        Ok(ValueContainer::Shared(shared))
     }
 }
 
@@ -68,7 +159,13 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, ValueContainer> {
     {
         match value {
             ValueContainer::Shared(shared) => {
-                self.cast::<SharedContainer>().serialize(shared, serializer)
+                use serde::ser::SerializeMap;
+                let pointer =
+                    self.cast::<SharedContainer>().pointer_string(shared);
+
+                let mut map = serializer.serialize_map(Some(1))?;
+                map.serialize_entry(SHARED_CONTAINER_KEY, &pointer)?;
+                map.end()
             }
             ValueContainer::Local(local) => {
                 self.cast::<Value>().serialize(local, serializer)
@@ -93,6 +190,32 @@ mod tests {
     };
 
     #[test]
+    fn pointer_address() {
+        let mut provider = SelfOwnedPointerAddressProvider::default();
+        let mut cache = DIFSharedContainerCache::default();
+        let value = ValueContainer::Shared(SharedContainer::Owned(
+            OwnedSharedContainer::new_with_inferred_allowed_type(
+                42,
+                SharedContainerMutability::Mutable,
+                &mut provider,
+            ),
+        ));
+        let serialized = SerdeContext::<ValueContainer>::new(&mut cache)
+            .serialize_to_json(&value);
+
+        // we expect the JSON to be of the form { "$": "<address>" }
+        assert!(
+            serialized.starts_with(r#"{"$":""#)
+                && serialized.ends_with(r#""}"#)
+        );
+
+        let deserialized = SerdeContext::<ValueContainer>::new(&mut cache)
+            .try_deserialize_from_json(&serialized)
+            .unwrap();
+        assert_eq!(value, deserialized);
+    }
+
+    #[test]
     fn owned() {
         let mut provider = SelfOwnedPointerAddressProvider::default();
         let mut cache = DIFSharedContainerCache::default();
@@ -106,11 +229,14 @@ mod tests {
         let serialized = SerdeContext::<ValueContainer>::new(&mut cache)
             .serialize_to_json(&value);
 
-        let address_string = serialized
-            .replace('"', "")
-            .strip_prefix('$')
-            .unwrap()
-            .to_string();
+        let address_string =
+            serde_json::from_str::<serde_json::Value>(&serialized)
+                .unwrap()
+                .get(SHARED_CONTAINER_KEY)
+                .unwrap()
+                .as_str()
+                .unwrap()
+                .to_string();
         let addr = PointerAddress::SelfOwned(
             SelfOwnedPointerAddress::try_from(address_string).unwrap(),
         );
@@ -137,7 +263,10 @@ mod tests {
         let value = ValueContainer::Shared(referenced_container);
         let serialized = SerdeContext::<ValueContainer>::new(&mut cache)
             .serialize_to_json(&value);
-        assert_eq!(serialized, format!(r#""'{}""#, pointer_address)); // '$address
+        assert_eq!(
+            serialized,
+            format!(r#"{{"$":"'{}"}}"#, pointer_address.to_address_string())
+        );
     }
 
     #[test]
@@ -155,7 +284,7 @@ mod tests {
         );
         let pointer_address = referenced_container.pointer_address();
         cache.store_shared_container(referenced_container);
-        let json = format!(r#"{{"value": ["'{}"]}}"#, pointer_address);
+        let json = format!(r#"["'{}"]"#, pointer_address);
         let outer = SerdeContext::<ValueContainer>::new(cache)
             .try_deserialize_from_json(&json)
             .unwrap();

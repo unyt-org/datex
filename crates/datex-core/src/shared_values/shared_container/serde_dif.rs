@@ -33,7 +33,32 @@ impl<'de, 'ctx> DeserializeSeed<'de> for SerdeContext<'ctx, SharedContainer> {
         Ok(reference)
     }
 }
+impl<'ctx> SerdeContext<'ctx, SharedContainer> {
+    pub fn pointer_string(&mut self, value: &SharedContainer) -> String {
+        unsafe {
+            self.shared_container_cache
+                .store_shared_container(value.clone_unsafe());
+        }
 
+        let ownership = match value.ownership() {
+            SharedContainerOwnership::Referenced(
+                ReferenceMutability::Immutable,
+            ) => "'",
+
+            SharedContainerOwnership::Referenced(
+                ReferenceMutability::Mutable,
+            ) => "'mut ",
+
+            SharedContainerOwnership::Owned => "",
+        };
+
+        format!(
+            "{}{}",
+            ownership,
+            value.pointer_address().to_address_string()
+        )
+    }
+}
 impl<'ctx> SerializeSeed for SerdeContext<'ctx, SharedContainer> {
     type Value = SharedContainer;
 
@@ -51,24 +76,7 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, SharedContainer> {
     where
         S: Serializer,
     {
-        unsafe {
-            self.shared_container_cache
-                .store_shared_container(value.clone_unsafe());
-        }
-
-        // Only serialize the ownership and pointer address
-        let ownership = match value.ownership() {
-            SharedContainerOwnership::Referenced(
-                ReferenceMutability::Immutable,
-            ) => "'",
-            SharedContainerOwnership::Referenced(
-                ReferenceMutability::Mutable,
-            ) => "'mut ",
-            SharedContainerOwnership::Owned => "",
-        };
-
-        format!("{}{}", ownership, value.pointer_address())
-            .serialize(serializer)
+        self.pointer_string(value).serialize(serializer)
     }
 }
 

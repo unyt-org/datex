@@ -233,6 +233,15 @@ mod tests {
     };
 
     #[test]
+    fn serialize_map() {
+        /*
+        { type: "map", value: [
+           [{type: "text", value: "endpoint"}, {type: "endpoint", value: "@jonas"}]
+        ], custom_type: "sdf"})
+        */
+    }
+
+    #[test]
     fn serialize_simple_local_value() {
         let value = Value::from(CoreValue::Integer(Integer::new(42)));
         let serialized =
