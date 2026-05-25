@@ -13,6 +13,8 @@ use serde::{
     Deserializer,
     de::{DeserializeSeed, MapAccess, Visitor},
 };
+use crate::prelude::*;
+
 const SHARED_CONTAINER_KEY: &str = "$";
 
 /// Deserialization for [ValueContainer] using a [DeserializationContext] to provide access to the memory during deserialization.

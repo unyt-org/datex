@@ -2,6 +2,7 @@ use core::ops::Deref;
 pub mod equality;
 mod serde_dif;
 
+use crate::prelude::*;
 use crate::types::r#type::Type;
 
 #[derive(Debug, Clone, PartialEq, Eq)]

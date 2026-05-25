@@ -1,6 +1,7 @@
 use core::ops::Deref;
 pub mod serde_dif;
 use crate::types::r#type::Type;
+use crate::prelude::*;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ListTypeDefinition(pub Vec<Type>);

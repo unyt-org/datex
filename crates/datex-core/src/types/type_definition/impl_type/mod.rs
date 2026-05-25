@@ -1,5 +1,5 @@
 use core::fmt::Display;
-
+use crate::prelude::*;
 use crate::{shared_values::PointerAddress, types::r#type::Type};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -18,7 +18,7 @@ impl ImplTypeDefinition {
 }
 
 impl Display for ImplTypeDefinition {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{}", self.inner_type)?;
         for marker in &self.impl_markers {
             write!(f, " + {}", marker)?;
