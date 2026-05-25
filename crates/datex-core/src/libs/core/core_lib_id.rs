@@ -1,10 +1,9 @@
 use crate::{
     libs::core::{type_id::CoreLibTypeId, value_id::CoreLibValueId},
     prelude::*,
-    shared_values::{PointerAddress},
 };
-use core::{fmt::Display, ops::Deref, str::FromStr};
 use binrw::{BinRead, BinWrite};
+use core::{fmt::Display, ops::Deref, str::FromStr};
 
 pub const TYPE_SPACE_BASE: u16 = 1;
 pub const TYPE_VARIANT_SPACE_BASE: u16 = 500;
@@ -15,7 +14,7 @@ pub const VALUE_SPACE_BASE: u16 = 1000;
 pub struct CoreLibIdIndex(pub u16);
 
 impl Display for CoreLibIdIndex {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{}", self.0)
     }
 }
