@@ -25,7 +25,7 @@ use crate::{
         append_boolean, append_decimal, append_encoded_integer,
         append_endpoint, append_float_as_i16, append_float_as_i32,
         append_get_core_lib_value, append_get_shared_ref, append_integer,
-        append_key_string, append_regular_instruction, append_shared_container,
+        append_key_string, append_regular_instruction,
         append_statements_preamble, append_text, append_typed_decimal,
         append_value,
     },
@@ -70,6 +70,7 @@ use precompiler::{
     precompile_ast,
     precompiled_ast::{AstMetadata, RichAst, VariableMetadata},
 };
+use crate::core_compiler::value_compiler::append_inline_shared_container;
 
 pub mod context;
 pub mod error;
@@ -651,19 +652,19 @@ fn compile_expression(
                         ValueAccessType::MoveOrCopy => {
                             append_value(
                                 compilation_context.core_context(),
-                                &value,
+                                value,
                             )?;
                         }
                         ValueAccessType::Clone => {
                             append_value(
                                 compilation_context.core_context(),
-                                &value,
+                                value,
                             )?;
                         }
                         ValueAccessType::Borrow => {
                             append_value(
                                 compilation_context.core_context(),
-                                &value,
+                                value,
                             )?;
                         }
                     },
@@ -673,27 +674,24 @@ fn compile_expression(
                                 let shared_container_mut_ref = shared_container
                                     .try_derive_mutable_reference()
                                     .map_err(|_| CompilerError::SharedMutRefToImmutableValue)?;
-                                append_shared_container(
+                                append_inline_shared_container(
                                     compilation_context.core_context(),
-                                    &shared_container_mut_ref.into(),
-                                    true,
-                                )?;
+                                    shared_container_mut_ref.into(),
+                                );
                             }
                             ValueAccessType::SharedRef => {
-                                append_shared_container(
+                                append_inline_shared_container(
                                     compilation_context.core_context(),
-                                    &shared_container.derive_immutable_reference().into(),
-                                    true,
-                                )?;
+                                    shared_container.derive_immutable_reference().into(),
+                                )
                             },
                             ValueAccessType::MoveOrCopy => {
                                 match shared_container {
                                     SharedContainer::Owned(shared_container) => {
-                                        append_shared_container(
+                                        append_inline_shared_container(
                                             compilation_context.core_context(),
-                                            &shared_container.into(),
-                                            true,
-                                        )?;
+                                            shared_container.into(),
+                                        );
                                     }
                                     _ => return Err(CompilerError::InvalidConversionFromRefToOwnedValue),
                                 }
@@ -704,24 +702,22 @@ fn compile_expression(
                                     ValueContainer::Local(value) => {
                                         append_value(
                                             compilation_context.core_context(),
-                                            &value,
+                                            value,
                                         )?;
                                     }
                                     ValueContainer::Shared(shared_container) => {
-                                        append_shared_container(
+                                        append_inline_shared_container(
                                             compilation_context.core_context(),
-                                            &shared_container,
-                                            true,
-                                        )?;
+                                            shared_container,
+                                        )
                                     }
                                 }
                             },
                             ValueAccessType::Borrow => {
-                                append_shared_container(
+                                append_inline_shared_container(
                                     compilation_context.core_context(),
-                                    &shared_container.derive_with_max_mutability().into(),
-                                    true,
-                                )?;
+                                    shared_container.derive_with_max_mutability().into(),
+                                );
                             }
                         };
                     }

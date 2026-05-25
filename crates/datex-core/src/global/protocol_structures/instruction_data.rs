@@ -445,6 +445,7 @@ pub struct PerformMove {
 pub struct SharedRef {
     pub address: RawPointerAddress,
     pub ref_mutability: ReferenceMutability,
+    pub container_mutability: SharedContainerMutability,
 }
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]

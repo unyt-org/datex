@@ -14,11 +14,14 @@ use crate::{
 };
 
 use crate::{
-    core_compiler::value_compiler::{compile_shared_container, compile_value},
+    core_compiler::value_compiler::{compile_value},
     prelude::*,
 };
 use core::result::Result;
 use log::info;
+use crate::core_compiler::core_compilation_context::CoreCompilationContext;
+use crate::core_compiler::injected_values::compile_injected_values_with_context;
+use crate::core_compiler::value_compiler::{append_value, append_value_container};
 
 impl RuntimeInternal {
     pub(crate) async fn handle_incoming_sections_task(
@@ -117,20 +120,10 @@ impl RuntimeInternal {
 
         if let Ok(value) = result {
             let dxb = if let Some(value) = value {
-                match value {
-                    ValueContainer::Shared(shared_container) => {
-                        let compiled =
-                            compile_shared_container(&shared_container, true);
-                        // FIXME
-                        // if shared_container.is_owned() {
-                        //     self.add_moving_pointers(receiver_endpoint.clone(), vec![shared_container]);
-                        // }
-                        compiled.unwrap()
-                    }
-                    ValueContainer::Local(value) => {
-                        compile_value(&value).unwrap()
-                    }
-                }
+                let mut compilation_context = CoreCompilationContext::new(vec![]);
+                append_value_container(&mut compilation_context, value)
+                    .expect("Failed to compile response value container");
+                todo!()
             } else {
                 vec![]
             };

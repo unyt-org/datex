@@ -39,7 +39,7 @@ use crate::{
     types::{r#type::Type, type_definition::TypeDefinition},
 };
 use crate::libs::core::core_lib_id::{CoreLibId, CoreLibIdIndex};
-use crate::shared_values::ReferencedSharedContainer;
+use crate::shared_values::{ReferencedSharedContainer, SharedContainerOwnership};
 use crate::types::type_definition::tagged_type::TaggedTypeDefinition;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -69,7 +69,7 @@ impl From<SharedValueCompilationError> for ExecutionError {
 /// For local values, the value is just serialized
 /// For shared values, a reference with maximum mutability is serialized (no move)
 pub fn compile_value_container(
-    value_container: &ValueContainer,
+    value_container: ValueContainer,
 ) -> Result<Vec<u8>, SharedValueCompilationError> {
     let mut context = CoreCompilationContext::new(Vec::with_capacity(256));
     append_value_container(&mut context, value_container)?;
@@ -78,7 +78,7 @@ pub fn compile_value_container(
 }
 
 pub fn compile_value(
-    value_container: &Value,
+    value_container: Value,
 ) -> Result<Vec<u8>, SharedValueCompilationError> {
     let mut context = CoreCompilationContext::new(Vec::with_capacity(256));
     append_value(&mut context, value_container)?;
@@ -86,123 +86,36 @@ pub fn compile_value(
     Ok(context.into_buffer())
 }
 
-pub fn compile_shared_container(
-    shared_container: &SharedContainer,
-    insert_value: bool,
-) -> Result<Vec<u8>, SharedValueCompilationError> {
-    let mut context = CoreCompilationContext::new(Vec::with_capacity(256));
-    append_shared_container(&mut context, shared_container, insert_value)?;
-    Ok(context.into_buffer())
-}
-
 /// Appends a value container.
 /// For local values, the value is just serialized
-/// For shared values, a reference with maximum mutability is serialized (no move)
+/// For shared values, the container is registered in the context shared value tracking
 pub fn append_value_container(
     context: &mut CoreCompilationContext,
-    value_container: &ValueContainer,
+    value_container: ValueContainer,
 ) -> Result<(), SharedValueCompilationError> {
     match value_container {
         ValueContainer::Local(value) => append_value(context, value),
         ValueContainer::Shared(reference) => {
-            append_shared_container(context, reference, true)
+            Ok(append_inline_shared_container(context, reference))
         }
     }
 }
 
-/// Appends a shared container to the buffer a reference
-pub fn append_referenced_shared_container(
+/// Appends a shared container to the buffer by registering it in the shared value tracking and appending the stack index
+pub fn append_inline_shared_container(
     context: &mut CoreCompilationContext,
-    shared_container: ReferencedSharedContainer,
-    insert_value: bool,
-) -> Result<(), SharedValueCompilationError> {
-    todo!()
-}
-
-/// Appends a shared container to the buffer, with optional mutability information for the shared container
-/// If shared_container_mutability is None, a move is performed
-/// If force_reference is set to true, no move is performed, even if the shared_container is owned - instead
-/// the container is transferred as a reference with maximum mutability
-/// TODO: set insert_value only if for remote execution and not already on remote endpoint
-pub fn append_shared_container(
-    _context: &mut CoreCompilationContext,
-    _shared_container: &SharedContainer,
-    _remote_endpoint_has_value: bool,
-) -> Result<(), SharedValueCompilationError> {
-    todo!()
-    // match &shared_container.reference_mutability {
-    //     // ref
-    //     Some(mutability) => {
-    //         match shared_container.pointer_address() {
-    //             PointerAddress::EndpointOwned(owned_address) => {
-    //                 // owned ref + value
-    //                 if !remote_endpoint_has_value {
-    //                     append_regular_instruction(
-    //                         context.cursor_mut(),
-    //                         RegularInstruction::SharedRefWithValue(SharedRefWithValue {
-    //                             address: RawLocalPointerAddress { bytes: owned_address.address},
-    //                             container_mutability: shared_container.mutability(),
-    //                             ref_mutability: *mutability,
-    //                         })
-    //                     );
-    //
-    //                     // insert value with container mutability
-    //                     shared_container.with_collapsed_value_mut(|value| {
-    //                         append_value(context, value)
-    //                     })?
-    //                 }
-    //                 // owned ref without value
-    //                 else {
-    //                     append_regular_instruction(
-    //                         context.cursor_mut(),
-    //                         RegularInstruction::SharedRef(SharedRef {
-    //                             address: RawPointerAddress::Local(RawLocalPointerAddress { bytes: owned_address.address}),
-    //                             ref_mutability: *mutability,
-    //                         })
-    //                     );
-    //                 }
-    //             }
-    //             address => {
-    //                 append_regular_instruction(
-    //                     context.cursor_mut(),
-    //                     RegularInstruction::SharedRef(SharedRef {
-    //                         address: RawPointerAddress::from(address),
-    //                         ref_mutability: *mutability,
-    //                     })
-    //                 );
-    //             }
-    //         };
-    //     },
-    //     None => {
-    //         // FIXME
-    //         append_instruction_code_new(context.cursor_mut(), InstructionCode::TAKE_PROPERTY_INDEX);
-    //         append_u32(context.cursor_mut(), 0); // list index 0 (only moving a single pointer)
-    //         append_perform_moves(context, &[shared_container])?;
-    //     },
-    // }
-    //
-    // Ok(())
-}
-
-/// Appends multiple shared containers as moves to the buffer
-/// TODO: Also handle moves of nested shared values!
-pub fn append_perform_moves(
-    _context: &mut CoreCompilationContext,
-    _shared_containers: &[&OwnedSharedContainer],
-) -> Result<(), SharedValueCompilationError> {
-    todo!()
-    // append_instruction_code_new(context.cursor_mut(), InstructionCode::PERFORM_MOVE);
-    // append_u32(context.cursor_mut(), shared_containers.len() as u32); // number of moved values
-    // for shared_container in shared_containers {
-    //     if let Some(local_address) = shared_container.try_get_owned_local_address() {
-    //         append_u8(context.cursor_mut(), if shared_container.is_mutable() {1} else {0});
-    //         append_local_pointer_address(context.cursor_mut(), local_address);
-    //     }
-    //     else {
-    //         return Err(SharedValueCompilationError::ExpectedOwnedSharedValue);
-    //     }
-    // }
-    // Ok(())
+    shared_container: SharedContainer,
+)  {
+    let ownership = shared_container.ownership();
+    let index = context.shared_value_tracking.register_shared_value(shared_container);
+    append_regular_instruction(
+        context.cursor_mut(),
+        match ownership {
+            SharedContainerOwnership::Owned => RegularInstruction::TakeStackValue(index),
+            SharedContainerOwnership::Referenced(ReferenceMutability::Immutable) => RegularInstruction::GetStackValueSharedRef(index),
+            SharedContainerOwnership::Referenced(ReferenceMutability::Mutable) => RegularInstruction::GetStackValueSharedRefMut(index),
+        }
+    );
 }
 
 pub fn append_raw_pointer_address(
@@ -221,7 +134,7 @@ pub fn append_local_pointer_address(
 
 pub fn append_value(
     context: &mut CoreCompilationContext,
-    value: &Value,
+    value: Value,
 ) -> Result<(), SharedValueCompilationError> {
     // append non-default type information
     if let Some(custom_type) = &value.custom_type {
@@ -260,7 +173,7 @@ pub fn append_value(
             _ => append_type_cast(context, custom_type)?,
         }
     }
-    let _: () = match &value.inner {
+    let _: () = match value.inner {
         CoreValue::Type(ty) => {
             match ty.try_as_core_lib_type() {
                 // special core types -> map directly to core pointer addresses
@@ -282,20 +195,20 @@ pub fn append_value(
             // for all integers for now
             // let integer = integer.to_smallest_fitting();
             // append_encoded_integer(buffer, &integer);
-            append_integer(context.cursor_mut(), integer)
+            append_integer(context.cursor_mut(), &integer)
         }
         CoreValue::TypedInteger(integer) => {
-            append_encoded_integer(context.cursor_mut(), integer)
+            append_encoded_integer(context.cursor_mut(), &integer)
         }
 
         CoreValue::Endpoint(endpoint) => {
-            append_endpoint(context.cursor_mut(), endpoint)
+            append_endpoint(context.cursor_mut(), &endpoint)
         }
         CoreValue::Decimal(decimal) => {
-            append_decimal(context.cursor_mut(), decimal)
+            append_decimal(context.cursor_mut(), &decimal)
         }
         CoreValue::TypedDecimal(val) => {
-            append_encoded_decimal(context.cursor_mut(), val)
+            append_encoded_decimal(context.cursor_mut(), &val)
         }
         CoreValue::Boolean(val) => append_boolean(context.cursor_mut(), val.0),
         CoreValue::Null => append_regular_instruction(
@@ -346,10 +259,10 @@ pub fn append_value(
                     );
                 }
             }
-            for (key, value) in val.iter() {
+            for (key, value) in val.into_iter() {
                 append_key_value_pair(
                     context,
-                    &ValueContainer::from(key),
+                    ValueContainer::from(key),
                     value,
                 )?;
             }
@@ -359,8 +272,8 @@ pub fn append_value(
                 context.cursor_mut(),
                 RegularInstruction::Range,
             );
-            append_value_container(context, &range.start)?;
-            append_value_container(context, &range.end)?;
+            append_value_container(context, *range.start)?;
+            append_value_container(context, *range.end)?;
         }
         CoreValue::NominalTypeDefinition(_) => {
             todo!()
@@ -589,8 +502,8 @@ pub fn append_get_core_lib_value(
 
 pub fn append_key_value_pair(
     context: &mut CoreCompilationContext,
-    key: &ValueContainer,
-    value: &ValueContainer,
+    key: ValueContainer,
+    value: ValueContainer,
 ) -> Result<(), SharedValueCompilationError> {
     // insert key
     match key {
@@ -710,7 +623,7 @@ mod tests {
             })),
         };
 
-        let compiled = compile_value(&value).unwrap();
+        let compiled = compile_value(value).unwrap();
         assert_regular_instructions_equal!(
             &compiled,
             [RegularInstruction::TaggedValue(TaggedValue {
@@ -730,7 +643,7 @@ mod tests {
             })),
         };
 
-        let compiled = compile_value(&value).unwrap();
+        let compiled = compile_value(value).unwrap();
         assert_regular_instructions_equal!(
             &compiled,
             [
@@ -755,7 +668,7 @@ mod tests {
             custom_type: None,
         };
 
-        let compiled = compile_value(&value).unwrap();
+        let compiled = compile_value(value).unwrap();
         assert_regular_instructions_equal!(
             &compiled,
             [RegularInstruction::GetCoreLibValue(CoreLibBaseTypeId::Integer.into())]

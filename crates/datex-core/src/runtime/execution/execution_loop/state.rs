@@ -157,7 +157,7 @@ impl RuntimeExecutionStack {
     pub fn resolve_injected_values(
         &mut self,
         injected_values: &[InjectedValueDeclaration],
-    ) -> Result<Vec<BorrowedValueContainer<'_>>, ExecutionError> {
+    ) -> Result<Vec<ValueContainer>, ExecutionError> {
         let mut moved: Vec<Option<_>> = vec![None; injected_values.len()];
 
         // perform all mutable operations (removing moved shared values)
@@ -180,22 +180,15 @@ impl RuntimeExecutionStack {
             resolved_values.push(match ty {
                 InjectedValueType::Shared(SharedInjectedValueType::Move) => {
                     match moved[i].take().unwrap() {
-                        ValueContainer::Shared(shared) => {
-                            BorrowedValueContainer::Shared(shared)
+                        shared @ ValueContainer::Shared(_) => {
+                            shared
                         }
                         ValueContainer::Local(_) => {
                             return Err(ExecutionError::ExpectedSharedValue);
                         }
                     }
                 }
-                _ => match self.get_stack_value(*index)? {
-                    ValueContainer::Shared(shared) => {
-                        BorrowedValueContainer::Shared(shared.clone())
-                    }
-                    ValueContainer::Local(value) => {
-                        BorrowedValueContainer::Local(value)
-                    }
-                },
+                _ => self.get_stack_value(*index)?.clone(), // TODO: avoid clone?
             });
         }
 
