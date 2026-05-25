@@ -91,14 +91,6 @@ pub fn append_structural_type_definition(
     };
 }
 
-#[deprecated(note = "use `append_type_instruction` instead")]
-pub fn append_type_space_instruction_code(
-    _buffer: &mut Vec<u8>,
-    _code: TypeInstructionCode,
-) {
-    unimplemented!("use append_type_instruction instead");
-}
-
 pub fn append_type_space_instruction_code_new(
     cursor: &mut ByteCursor,
     code: TypeInstructionCode,
