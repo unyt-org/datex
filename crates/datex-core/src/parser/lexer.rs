@@ -864,4 +864,50 @@ mod tests {
         );
         assert_eq!(lexer.next(), None);
     }
+
+    #[test]
+    fn if_elseif_else() {
+        let mut lexer = Token::lexer(
+            "
+            if (true) (
+                1u8
+            )
+            else if (false) (
+                2u8
+            )
+            else (
+                3u8
+            )
+            ",
+        );
+        assert_eq!(lexer.next().unwrap(), Ok(Token::If));
+        assert_eq!(lexer.next().unwrap(), Ok(Token::LeftParen));
+        assert_eq!(lexer.next().unwrap(), Ok(Token::True));
+        assert_eq!(lexer.next().unwrap(), Ok(Token::RightParen));
+        assert_eq!(lexer.next().unwrap(), Ok(Token::LeftParen));
+        assert_eq!(
+            lexer.next().unwrap(),
+            Ok(Token::IntegerLiteral("1u8".to_string()))
+        );
+        assert_eq!(lexer.next().unwrap(), Ok(Token::RightParen));
+        assert_eq!(lexer.next().unwrap(), Ok(Token::Else));
+        assert_eq!(lexer.next().unwrap(), Ok(Token::If));
+        assert_eq!(lexer.next().unwrap(), Ok(Token::LeftParen));
+        assert_eq!(lexer.next().unwrap(), Ok(Token::False));
+        assert_eq!(lexer.next().unwrap(), Ok(Token::RightParen));
+        assert_eq!(lexer.next().unwrap(), Ok(Token::LeftParen));
+        assert_eq!(
+            lexer.next().unwrap(),
+            Ok(Token::IntegerLiteral("2u8".to_string()))
+        );
+        assert_eq!(lexer.next().unwrap(), Ok(Token::RightParen));
+        assert_eq!(lexer.next().unwrap(), Ok(Token::Else));
+        assert_eq!(lexer.next().unwrap(), Ok(Token::LeftParen));
+        assert_eq!(
+            lexer.next().unwrap(),
+            Ok(Token::IntegerLiteral("3u8".to_string()))
+        );
+        assert_eq!(lexer.next().unwrap(), Ok(Token::RightParen));
+        assert_eq!(lexer.next(), None);
+    }
 }

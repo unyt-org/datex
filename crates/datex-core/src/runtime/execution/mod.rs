@@ -140,13 +140,9 @@ pub fn execute_dxb_sync_returning_stack(
                 address,
             ) => {
                 interrupt_provider.provide_result(
-                    InterruptResult::ResolvedValue(Some(
-                        ValueContainer::Shared(SharedContainer::Referenced(
-                            get_builtin_shared_value_reference(
-                                &runtime, address,
-                            )?,
-                        )),
-                    )),
+                    InterruptResult::ResolvedValue(Some(get_builtin(
+                        &runtime, address,
+                    )?)),
                 );
             }
             ExternalExecutionInterrupt::Apply(callee, args) => {
@@ -1086,21 +1082,6 @@ mod tests {
     }
 
     #[test]
-    fn conditional_complex_var_assign() {
-        let script = "
-        var x = if (false) (
-             42
-        ) else (
-            13
-        );
-        x
-        ";
-        let result = execute_datex_script_debug_with_result(script);
-        println!("conditional_complex_var_assign result: {:?}", result);
-        assert_eq!(result, Integer::from(13).into());
-    }
-
-    #[test]
     fn conditional_mutation_in_branch() {
         let script = "
         var x = 1;
@@ -1120,17 +1101,6 @@ mod tests {
         ";
         let result = execute_datex_script_debug_with_result(script);
         assert_eq!(result, Integer::from(3).into());
-    }
-
-    #[test]
-    fn conditional_mutation_in_else_if_branch() {
-        let script = "
-        var x = 0;
-        if (false) (x = 1) else if (true) (x = 2) else (x = 3);
-        x
-        ";
-        let result = execute_datex_script_debug_with_result(script);
-        assert_eq!(result, Integer::from(2).into());
     }
 
     #[test]

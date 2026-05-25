@@ -24,7 +24,7 @@ use crate::{
     core_compiler::value_compiler::{
         append_boolean, append_decimal, append_encoded_integer,
         append_endpoint, append_float_as_i16, append_float_as_i32,
-        append_get_internal_ref, append_get_shared_ref, append_integer,
+        append_get_builtin_ref, append_get_shared_ref, append_integer,
         append_key_string, append_regular_instruction, append_shared_container,
         append_statements_preamble, append_text, append_typed_decimal,
         append_value,
@@ -1632,6 +1632,7 @@ pub mod tests {
         compiler::scope::CompilationScope,
         global::{
             instruction_codes::InstructionCode,
+            protocol_structures::instruction_data::InstructionBlockDataDebugTree,
             type_instruction_codes::TypeInstructionCode,
         },
         runtime::execution::context::ExecutionMode,
@@ -3732,26 +3733,57 @@ pub mod tests {
     fn conditional_if_only() {
         let script = "if (true) (42u8)";
         let result = compile_and_log(script);
-        assert_eq!(result[0], InstructionCode::CONDITIONAL as u8);
-    }
-
-    #[test]
-    fn conditional_if_else() {
-        let script = "if (true) (42u8) else (43u8)";
-        let result = compile_and_log(script);
-        assert_eq!(result[0], InstructionCode::CONDITIONAL as u8);
+        let expected = vec![
+            InstructionCode::CONDITIONAL.into(),
+            2,
+            0,
+            0,
+            0,
+            InstructionCode::UINT_8.into(),
+            42,
+            0,
+            0,
+            0,
+            0,
+            InstructionCode::TRUE.into(),
+        ];
+        assert_eq!(result, expected);
     }
 
     #[test]
     fn conditional_with_variable() {
         let script = "const x = 10u8; if (true) (x) else (0u8)";
         let result = compile_and_log(script);
-        assert_eq!(result[0], InstructionCode::SHORT_STATEMENTS as u8);
-        assert_eq!(result[6], InstructionCode::CONDITIONAL as u8);
+        let expected = vec![
+            InstructionCode::SHORT_STATEMENTS.into(),
+            2,
+            0,
+            InstructionCode::PUSH_TO_STACK.into(),
+            InstructionCode::UINT_8.into(),
+            10,
+            InstructionCode::CONDITIONAL.into(),
+            5,
+            0,
+            0,
+            0,
+            InstructionCode::TAKE_STACK_VALUE.into(),
+            0,
+            0,
+            0,
+            0,
+            2,
+            0,
+            0,
+            0,
+            InstructionCode::UINT_8.into(),
+            0,
+            InstructionCode::TRUE.into(),
+        ];
+        assert_eq!(result, expected);
     }
 
     #[test]
-    fn conditional_if_elseif_else() {
+    fn conditional_if_else() {
         let script = "
             if (true) (
                 122u32
@@ -3798,15 +3830,41 @@ pub mod tests {
             )
             else (
                 0u8
-            )"; // 4, 7, 0, 0, 0, 1, 2, 1, 72, 0, 72, 1, 14, 0, 0, 0, 4, 2, 0, 0, 0, 72, 0, 2, 0, 0, 0, 72, 0, 84, 83
+            )";
         let result = compile_and_log(script);
-        let expected = vec![1];
-
-        println!("conditional_complex result: {:?}", result);
-        println!(
-            "conditional_complex tree:\n{}",
-            crate::disassembler::pretty_print_dxb_to_string(&result)
-        );
-        // assert_eq!(result, expected);
+        let expected = vec![
+            InstructionCode::CONDITIONAL.into(),
+            7,
+            0,
+            0,
+            0,
+            InstructionCode::SHORT_STATEMENTS.into(),
+            2,
+            1,
+            InstructionCode::UINT_8.into(),
+            0,
+            InstructionCode::UINT_8.into(),
+            1,
+            14,
+            0,
+            0,
+            0,
+            InstructionCode::CONDITIONAL.into(),
+            2,
+            0,
+            0,
+            0,
+            InstructionCode::UINT_8.into(),
+            0,
+            2,
+            0,
+            0,
+            0,
+            InstructionCode::UINT_8.into(),
+            0,
+            InstructionCode::FALSE.into(),
+            InstructionCode::TRUE.into(),
+        ];
+        assert_eq!(result, expected);
     }
 }
