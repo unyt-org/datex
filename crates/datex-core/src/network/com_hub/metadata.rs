@@ -24,6 +24,7 @@ use crate::{
 use core::fmt::Display;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
+use datex_macros_internal::Datex;
 
 #[derive(Serialize, Deserialize, Debug)]
 #[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
@@ -41,17 +42,16 @@ pub struct ComHubMetadataInterfaceSocketWithoutEndpoint {
     pub direction: InterfaceDirection,
 }
 
-#[derive(Debug)]
-#[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
+#[derive(Debug, Datex)]
 pub struct ComHubMetadataInterface {
     pub uuid: String,
     pub properties: ComInterfaceProperties,
+    #[datex(serde_infallible)]
     pub sockets: Vec<ComHubMetadataInterfaceSocket>,
     pub is_waiting_for_socket_connections: bool,
 }
 
-#[derive(Debug)]
-#[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
+#[derive(Debug, Datex)]
 pub struct ComHubMetadata {
     pub endpoint: Endpoint,
     pub interfaces: Vec<ComHubMetadataInterface>,

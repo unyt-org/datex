@@ -33,8 +33,7 @@ use crate::{
     prelude::*,
     runtime::memory::Memory,
     shared_values::{
-        ExternalPointerAddress, PointerAddress, ReferenceMutability,
-        SharedContainerOwnership,
+        PointerAddress, ReferenceMutability, SharedContainerOwnership,
     },
     type_inference::{
         error::{
@@ -576,6 +575,14 @@ impl<'a> TypeExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
             span: Some(span.clone()),
         })
     }
+
+    fn visit_get_core_lib_type(
+        &mut self,
+        core_lib_type_id: &mut CoreLibTypeId,
+        span: &Range<usize>,
+    ) -> TypeExpressionVisitResult<SpannedTypeError> {
+        mark_type(TypeDefinition::Core(core_lib_type_id.clone()).into())
+    }
 }
 
 impl<'a> TypeInference<'a> {
@@ -584,62 +591,25 @@ impl<'a> TypeInference<'a> {
         pointer_address: &PointerAddress,
         span: Option<Range<usize>>,
     ) -> Result<Type, SpannedTypeError> {
-        match pointer_address {
-            PointerAddress::External(
-                external @ ExternalPointerAddress::Builtin(_),
-            ) => {
-                let core_lib_type_id = CoreLibTypeId::try_from(
-                    external as &ExternalPointerAddress,
-                )
-                .map_err(|_| SpannedTypeError {
-                    error: TypeError::ReferenceToNonTypeValue,
-                    span,
-                })?;
-                Ok(Type::core(core_lib_type_id))
-            }
-
-            _ => {
-                let ty = if let Some(container) =
-                    self.memory.get_reference(pointer_address)
-                {
-                    container.with_collapsed_value(|value| {
-                        if let CoreValue::Type(ty) = &value.inner {
-                            Some(ty.clone())
-                        } else {
-                            None
-                        }
-                    })
+        let ty = if let Some(container) =
+            self.memory.get_reference(pointer_address)
+        {
+            container.with_collapsed_value(|value| {
+                if let CoreValue::Type(ty) = &value.inner {
+                    Some(ty.clone())
                 } else {
                     None
-                };
+                }
+            })
+        } else {
+            None
+        };
 
-                ty.ok_or(SpannedTypeError {
-                    error: TypeError::ReferenceToNonTypeValue,
-                    span,
-                })
-            }
-        }
+        ty.ok_or(SpannedTypeError {
+            error: TypeError::ReferenceToNonTypeValue,
+            span,
+        })
     }
-}
-
-// FIXME #618 proper implementation of variant access resolution
-// currently only works for core lib types, and is hacky.
-// We need a good registration system for types and their variants.
-fn resolve_type_variant_access(
-    base: &PointerAddress,
-    variant_name: &str,
-) -> Option<PointerAddress> {
-    let core_lib_index = CoreLibIdIndex::try_from(base).ok()?;
-    let core_lib_base_type_id =
-        CoreLibBaseTypeId::try_from(core_lib_index).ok()?;
-    for variant in CoreLibVariantTypeId::variant_ids(&core_lib_base_type_id) {
-        if variant.variant_name() == variant_name {
-            return Some(PointerAddress::from(CoreLibId::Type(
-                CoreLibTypeId::Variant(variant),
-            )));
-        }
-    }
-    None
 }
 
 impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
@@ -1282,12 +1252,68 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
         variant_access: &mut VariantAccess,
         span: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
-        let pointer_address = match variant_access.base {
+        fn variant_type_id_from_pointer_address(
+            pointer_address: &PointerAddress,
+            variant_access: &VariantAccess,
+            span: &Range<usize>,
+        ) -> ExpressionVisitResult<SpannedTypeError> {
+            // TODO implement variant access
+            // Ok(VisitAction::ReplaceRecurse(DatexExpression::new(
+            //         DatexExpressionData::RequestSharedRef(RequestSharedRef {
+            //             address,
+            //             mutability: ReferenceMutability::Immutable,
+            //         }),
+            //         span.clone(),
+            //     )))
+
+            Err(SpannedTypeError {
+                error: TypeError::Unimplemented(
+                    "VariantAccess is not implemented yet".into(),
+                ),
+                span: Some(span.clone()),
+            })
+        }
+
+        fn variant_type_id(
+            core_lib_id: CoreLibId,
+            variant_access: &VariantAccess,
+            span: &Range<usize>,
+        ) -> ExpressionVisitResult<SpannedTypeError> {
+            let variant_id = match core_lib_id {
+                CoreLibId::Type(CoreLibTypeId::Base(base_id)) => {
+                    base_id.variant(&variant_access.variant)
+                }
+                _ => {
+                    return Err(SpannedTypeError {
+                        error: TypeError::Unimplemented(
+                            "Invalid core base type".into(),
+                        ),
+                        span: Some(span.clone()),
+                    });
+                }
+            }
+            .map_err(|_| SpannedTypeError {
+                error: TypeError::SubvariantNotFound(
+                    variant_access.name.clone(),
+                    variant_access.variant.clone(),
+                ),
+                span: Some(span.clone()),
+            })?;
+
+            Ok(VisitAction::ReplaceRecurse(DatexExpression::new(
+                DatexExpressionData::ResolveCoreLibId(CoreLibId::Type(
+                    variant_id.into(),
+                )),
+                span.clone(),
+            )))
+        }
+
+        match &variant_access.base {
             // Handle variant access on a variable
             ResolvedVariable::VariableId(id) => {
                 // we expect the variable to be of TypeReference type
                 let base_type =
-                    self.variable_type(id).ok_or(SpannedTypeError {
+                    self.variable_type(*id).ok_or(SpannedTypeError {
                         error: TypeError::Unimplemented(
                             "VariantAccess base variable type not found".into(),
                         ),
@@ -1297,49 +1323,49 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
                 // if it's a Type::Nominal, and it has the pointer address set, we can
                 // remap the expression to a GetReference
                 match base_type {
-                    Type::Nominal(reference) => Ok(reference.pointer_address()),
+                    Type::Nominal(reference) => variant_type_id_from_pointer_address(&reference.pointer_address(), variant_access, span),
                     Type::Alias(alias) => {
-                        if let TypeDefinition::Core(reference) =
-                            alias.definition
-                        {
-                            Ok(PointerAddress::External(
-                                ExternalPointerAddress::Builtin(
-                                    reference.into(),
+                        match &alias.definition {
+                            TypeDefinition::Core(core_lib_id) => {
+                                variant_type_id(CoreLibId::Type(core_lib_id.clone()), variant_access, span)
+                            }
+                            _ => Err(SpannedTypeError {
+                                error: TypeError::Unimplemented(
+                                    "VariantAccess on non-nominal type alias not implemented".into(),
                                 ),
-                            ))
-                        } else {
-                            Err(SpannedTypeError {
-                                    error: TypeError::Unimplemented(
-                                        "VariantAccess on non-nominal type alias not implemented".into(),
-                                    ),
-                                    span: Some(span.clone()),
-                                })
+                                span: Some(span.clone()),
+                            })
                         }
                     }
                 }
             }
-            ResolvedVariable::PointerAddress(ref addr) => Ok(addr.clone()),
-        }?;
-        let address = resolve_type_variant_access(
-            &pointer_address,
-            &variant_access.variant,
-        )
-        .ok_or(SpannedTypeError {
-            error: TypeError::SubvariantNotFound(
-                variant_access.name.clone(),
-                variant_access.variant.clone(),
-            ),
-            span: Some(span.clone()),
-        })?;
-        let _core_lib_id = CoreLibId::try_from(&address);
 
-        Ok(VisitAction::ReplaceRecurse(DatexExpression::new(
-            DatexExpressionData::RequestSharedRef(RequestSharedRef {
-                address,
-                mutability: ReferenceMutability::Immutable,
+            ResolvedVariable::PointerAddress(addr) => {
+                variant_type_id_from_pointer_address(addr, variant_access, span)
+            }
+            ResolvedVariable::CoreLibId(core_lib_id) => {
+                variant_type_id(core_lib_id.clone(), variant_access, span)
+            }
+        }
+    }
+
+    fn visit_get_core_lib_id(
+        &mut self,
+        core_lib_id: &mut CoreLibId,
+        span: &Range<usize>,
+    ) -> ExpressionVisitResult<SpannedTypeError> {
+        match core_lib_id {
+            CoreLibId::Type(type_id) => mark_type(TypeDefinition::Core(
+                *type_id
+            )
+            .into()),
+            _ => Err(SpannedTypeError {
+                error: TypeError::Unimplemented(
+                    "Only CoreLibId::Type is supported in get_core_lib_id expressions for now".into(),
+                ),
+                span: Some(span.clone()),
             }),
-            span.clone(),
-        )))
+        }
     }
 
     fn visit_stack_index(

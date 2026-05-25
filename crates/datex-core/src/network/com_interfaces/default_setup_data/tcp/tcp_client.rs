@@ -17,7 +17,7 @@ impl TCPClientInterfaceSetupData {
         ComInterfaceProperties {
             interface_type: "tcp-client".to_string(),
             channel: "tcp".to_string(),
-            round_trip_time: Duration::from_millis(20),
+            round_trip_time: 20,
             max_bandwidth: 1000,
             ..ComInterfaceProperties::default()
         }

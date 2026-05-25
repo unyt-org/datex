@@ -33,7 +33,7 @@ impl WebSocketServerInterfaceSetupData {
         ComInterfaceProperties {
             interface_type: "websocket-server".to_string(),
             channel: "websocket".to_string(),
-            round_trip_time: Duration::from_millis(40),
+            round_trip_time: 40,
             max_bandwidth: 1000,
             ..ComInterfaceProperties::default()
         }

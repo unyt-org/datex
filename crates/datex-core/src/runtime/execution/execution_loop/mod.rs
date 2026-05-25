@@ -54,7 +54,7 @@ use crate::{
         },
     },
     shared_values::{
-        ExternalPointerAddress, OwnedSharedContainer, PointerAddress,
+        OwnedSharedContainer, PointerAddress,
         ReferenceMutability, ReferencedSharedContainer,
         SelfOwnedSharedContainer, SharedContainer, SharedContainerMutability,
         base_shared_value_container::{
@@ -87,6 +87,7 @@ use crate::{
 };
 use alloc::rc::Rc;
 use core::cell::RefCell;
+use crate::shared_values::RemotePointerAddress;
 
 #[derive(Debug)]
 enum CollectedExecutionResult {
@@ -409,12 +410,14 @@ pub fn inner_execution_loop(
                             }
 
 
-                            RegularInstruction::GetBuiltinSharedRef(address) => {
+                            RegularInstruction::GetCoreLibValue(id) => {
                                 Some(interrupt_with_value!(
                                     interrupt_provider,
                                     ExecutionInterrupt::External(
-                                        ExternalExecutionInterrupt::GetReferenceToBuiltinPointer(
-                                            address
+                                        ExternalExecutionInterrupt::GetCoreLibValue(
+                                            yield_unwrap!(
+                                                id.try_into().map_err(|_| ExecutionError::InvalidProgram(InvalidProgramError::InvalidCoreLibId(id)))
+                                            )
                                         )
                                     )
                                 ).into())
@@ -611,11 +614,6 @@ pub fn inner_execution_loop(
                                                     address,
                                                 ),
                                             )
-                                        }
-                                        RawPointerAddress::Internal(
-                                            address,
-                                        ) => {
-                                            ExecutionInterrupt::External(ExternalExecutionInterrupt::GetReferenceToBuiltinPointer(address))
                                         }
                                         RawPointerAddress::Remote(address) => {
                                             ExecutionInterrupt::External(
@@ -1370,9 +1368,9 @@ pub fn inner_execution_loop(
                                             .pop_cloned_value_container_result_assert_existing(&state)
                                     );
                                     // get referenced pointer from address
-                                    let pointer_address = ExternalPointerAddress::remote_for_endpoint(&state.caller_metadata.endpoint, shared_ref.address.bytes);
+                                    let pointer_address = RemotePointerAddress::for_endpoint(&state.caller_metadata.endpoint, shared_ref.address.bytes);
 
-                                    if state.runtime.memory().borrow().has_reference(&PointerAddress::External(pointer_address.clone())) {
+                                    if state.runtime.memory().borrow().has_reference(&PointerAddress::Remote(pointer_address.clone())) {
                                         return yield Err(ExecutionError::Unknown); // TODO: error
                                     }
 

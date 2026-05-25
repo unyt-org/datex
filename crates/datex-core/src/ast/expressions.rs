@@ -31,6 +31,9 @@ use crate::{
 };
 pub use crate::{prelude::*, values::core_values::callable::CallableKind};
 use core::{fmt::Display, ops, ops::Neg};
+use crate::libs::core::core_lib_id::CoreLibId;
+use crate::libs::core::type_id::CoreLibTypeId;
+use crate::libs::core::value_id::CoreLibValueId;
 
 #[derive(Clone, Debug)]
 /// An expression in the AST
@@ -117,6 +120,8 @@ pub enum DatexExpressionData {
     Statements(Statements),
     /// reference access to shared value, e.g. '$ABC / 'mut $ABC
     RequestSharedRef(RequestSharedRef),
+
+    ResolveCoreLibId(CoreLibId),
 
     /// compile ( ... )
     Compile(CompileExpression),

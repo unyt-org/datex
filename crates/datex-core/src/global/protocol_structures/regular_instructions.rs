@@ -35,6 +35,7 @@ use binrw::{
 };
 use core::fmt::{Display, Write as FmtWrite};
 use serde::{Serialize, Serializer, ser::SerializeTuple};
+use crate::libs::core::core_lib_id::{CoreLibId, CoreLibIdIndex};
 
 #[derive(Clone, Debug, PartialEq, BinWrite)]
 #[brw(little)]
@@ -148,7 +149,8 @@ pub enum RegularInstruction {
     // 'mut $ABCDE
     RequestRemoteSharedRefMut(RawRemotePointerAddress),
     GetLocalSharedRef(RawSelfOwnedPointerAddress),
-    GetBuiltinSharedRef(RawBuiltinPointerAddress),
+    // get a core lib value, e.g. integer or print by id
+    GetCoreLibValue(CoreLibIdIndex),
 
     SharedRef(SharedRef),
     SharedRefWithValue(SharedRefWithValue), // shared ref with current value (only if caller owns the pointer)
@@ -296,8 +298,8 @@ impl From<&RegularInstruction> for InstructionCode {
             RegularInstruction::GetLocalSharedRef(_) => {
                 InstructionCode::GET_LOCAL_SHARED_REF
             }
-            RegularInstruction::GetBuiltinSharedRef(_) => {
-                InstructionCode::GET_INTERNAL_SHARED_REF
+            RegularInstruction::GetCoreLibValue(_) => {
+                InstructionCode::GET_CORE_LIB_VALUE
             }
             RegularInstruction::SharedRef(_) => InstructionCode::SHARED_REF,
             RegularInstruction::SharedRefWithValue(_) => {
@@ -763,9 +765,9 @@ impl RegularInstruction {
                     .map(RegularInstruction::GetLocalSharedRef)
             }
 
-            InstructionCode::GET_INTERNAL_SHARED_REF => {
-                RawBuiltinPointerAddress::read(reader)
-                    .map(RegularInstruction::GetBuiltinSharedRef)
+            InstructionCode::GET_CORE_LIB_VALUE => {
+                CoreLibIdIndex::read(reader)
+                    .map(RegularInstruction::GetCoreLibValue)
             }
 
             InstructionCode::PERFORM_MOVE => {
@@ -963,11 +965,11 @@ impl RegularInstruction {
                     hex::encode(address.bytes)
                 )
             }
-            RegularInstruction::GetBuiltinSharedRef(address) => {
+            RegularInstruction::GetCoreLibValue(address) => {
                 write!(
                     string,
-                    "[internal_id: {}]",
-                    hex::encode(address.id)
+                    "[id: {:4x}]",
+                    &address.0
                 )
             }
             RegularInstruction::SharedRef(shared_ref) => {

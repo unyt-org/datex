@@ -3,7 +3,7 @@ pub mod datex_proxy;
 use crate::{
     runtime::memory::Memory,
     shared_values::{
-        ExternalPointerAddress, ExternalSharedContainer, PointerAddress,
+        ExternalSharedContainer, PointerAddress,
         ReferenceMutability, SharedContainerInner, SharedContainerMutability,
         base_shared_value_container::BaseSharedValueContainer,
         errors::{SharedValueCreationError, UnexpectedImmutableReferenceError},
@@ -20,6 +20,7 @@ use core::{
     cell::{Ref, RefCell, RefMut},
     fmt::Display,
 };
+use crate::shared_values::RemotePointerAddress;
 
 /// Wrapper struct for a reference to a shared value (i.e. `'shared X` or `'mut shared X`).
 ///
@@ -61,10 +62,10 @@ impl ReferencedSharedContainer {
     /// Returns an [Err] if the provided [ReferenceMutability] is [ReferenceMutability::Mutable] while
     /// the [SharedContainerMutability] of the container is [SharedContainerMutability::Immutable]
     /// # Safety
-    /// The caller must ensure that the [ExternalPointerAddress] does not yet exist in the [Memory]
+    /// The caller must ensure that the [RemotePointerAddress] does not yet exist in the [Memory]
     pub(crate) unsafe fn try_new_external_from_base_container(
         container: BaseSharedValueContainer,
-        address: ExternalPointerAddress,
+        address: RemotePointerAddress,
         reference_mutability: ReferenceMutability,
         memory: &Memory,
     ) -> Result<Self, ()> {
@@ -88,13 +89,13 @@ impl ReferencedSharedContainer {
     }
 
     /// Creates a new immutable [ReferencedSharedContainer] containing a [SharedContainerInner::External]
-    /// with the provided [ValueContainer] and [ExternalPointerAddress].
+    /// with the provided [ValueContainer] and [RemotePointerAddress].
     /// Automatically infers the allowed type of the shared container from the provided [ValueContainer].
     /// # Safety
-    /// The caller must ensure that the [ExternalPointerAddress] does not yet exist in the [Memory]
+    /// The caller must ensure that the [RemotePointerAddress] does not yet exist in the [Memory]
     pub(crate) unsafe fn new_immutable_external_with_inferred_allowed_type(
         value_container: ValueContainer,
-        address: ExternalPointerAddress,
+        address: RemotePointerAddress,
         memory: &Memory,
     ) -> Self {
         unsafe {
@@ -112,16 +113,16 @@ impl ReferencedSharedContainer {
     }
 
     /// Tries to create a new immutable [ReferencedSharedContainer] containing a [SharedContainerInner::External]
-    /// with the provided [ValueContainer] and [ExternalPointerAddress].
+    /// with the provided [ValueContainer] and [RemotePointerAddress].
     ///
     /// Sets the provided [SharedContainerMutability] and allowed [Type].
     /// If the allowed [TypeDefinition] is not a superset of the [ValueContainer]'s allowed type,
     /// an error is returned
     /// # Safety
-    /// The caller must ensure that the [ExternalPointerAddress] does not yet exist in the [Memory]
+    /// The caller must ensure that the [RemotePointerAddress] does not yet exist in the [Memory]
     pub(crate) unsafe fn try_new_external(
         value_container: ValueContainer,
-        address: ExternalPointerAddress,
+        address: RemotePointerAddress,
         mutability: SharedContainerMutability,
         allowed_type: Type,
         memory: &Memory,

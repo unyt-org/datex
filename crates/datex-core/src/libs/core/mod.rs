@@ -6,7 +6,6 @@ use crate::{
         value_id::CoreLibValueId,
     },
     random::RandomState,
-    shared_values::ExternalPointerAddress,
     values::{
         core_value::CoreValue,
         core_values::{
@@ -192,15 +191,15 @@ impl Default for CoreLibrary {
 
 impl CoreLibrary {
     /// Resolves a pointer address to a core library value if it exists, otherwise returns an error.
-    pub fn by_buitin_pointer_address(
+    pub fn value_or_type_by_id(
         &self,
-        address: &ExternalPointerAddress,
-    ) -> Result<&Value, ()> {
-        Ok(match CoreLibId::try_from(address)? {
+        id: CoreLibId,
+    ) -> &Value {
+        match id {
             CoreLibId::Value(id) => self.values.get_by_id(&id),
             CoreLibId::Type(id) => self.types.get_by_id(&id),
-            CoreLibId::Map => &self.map,
-        })
+            CoreLibId::CoreMap => &self.map,
+        }
     }
 
     /// Gets the core library map, which contains all core library values and types indexed by their id as strings.
@@ -221,6 +220,7 @@ impl CoreLibrary {
 
 #[cfg(test)]
 mod tests {
+    use crate::libs::core::core_lib_id::CoreLibIdIndex;
     use crate::shared_values::PointerAddress;
 
     use super::*;
@@ -230,30 +230,11 @@ mod tests {
         flexi_logger::init();
         info!("{}", CoreLibrary::default().map());
     }
-
-    #[ignore]
-    #[test]
-    #[cfg(feature = "std")]
-    fn print_core_lib_addresses_as_hex() {
-        for base_id in CoreLibBaseTypeId::iter() {
-            println!("{:?}: {}", base_id, PointerAddress::from(base_id));
-            for variant_id in CoreLibVariantTypeId::variant_ids(&base_id) {
-                println!(
-                    "{:?}: {}",
-                    variant_id,
-                    PointerAddress::from(variant_id)
-                );
-            }
-        }
-        for base_id in CoreLibValueId::iter() {
-            println!("{:?}: {}", base_id, PointerAddress::from(base_id));
-        }
-    }
-
+    
     #[test]
     #[ignore]
     #[cfg(feature = "std")]
-    /// Generates a TypeScript mapping of core type addresses to their names.
+    /// Generates a TypeScript mapping of core type names to their ids
     /// Run this test and copy the output into `src/dif/definitions.ts`.
     ///
     /// `cargo test create_core_type_ts_mapping -- --show-output --ignored`
@@ -264,20 +245,14 @@ mod tests {
             println!(
                 "    {}: \"{}\",",
                 base_id,
-                PointerAddress::from(base_id)
-                    .to_string()
-                    .strip_prefix("$")
-                    .unwrap()
+                CoreLibIdIndex::from(CoreLibId::Type(base_id.into())).0
             );
             for variant_id in CoreLibVariantTypeId::variant_ids(&base_id) {
                 println!(
                     "    {}_{}: \"{}\",",
                     base_id,
                     variant_id.variant_name(),
-                    PointerAddress::from(variant_id)
-                        .to_string()
-                        .strip_prefix("$")
-                        .unwrap()
+                    CoreLibIdIndex::from(CoreLibId::Type(base_id.into())).0
                 );
             }
         }

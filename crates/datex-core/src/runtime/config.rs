@@ -14,15 +14,12 @@ pub fn is_priority_none(v: &InterfacePriority) -> bool {
     matches!(v, InterfacePriority::None)
 }
 
-#[derive(Datex, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
+#[derive(Datex, Debug, Clone, PartialEq, Eq)]
 pub struct RuntimeConfigInterface {
     #[datex(rename = "type")]
     pub interface_type: String,
-    #[cfg_attr(feature = "wasm_runtime", tsify(type = "unknown"))]
     pub config: Value,
 
-    // #[serde(default, skip_serializing_if = "is_priority_none")]
     pub priority: InterfacePriority,
 }
 

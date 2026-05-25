@@ -86,7 +86,7 @@ pub enum InstructionCode {
     REQUEST_REMOTE_SHARED_REF,     // '$x
     REQUEST_REMOTE_SHARED_REF_MUT, // 'mut $x
 
-    GET_INTERNAL_SHARED_REF, // '$y, containing globally unique internal id
+    GET_CORE_LIB_VALUE, // e.g. integer, print
     GET_LOCAL_SHARED_REF, // '$x, containing only the id, origin id is inferred from sender
 
     SHARED_REF,            // '/'mut $1234

@@ -68,14 +68,6 @@ impl SharedContainerContainingNominalType {
             _ => unreachable!("The constraint for SharedContainerContainingNominalType guarantees that the inner value is always a CoreValue::NominalType")
         })
     }
-
-    /// Tries to get the [CoreLibTypeId] of the inner type of the shared container, if it is a core library type
-    pub fn try_get_core_lib_type_id(&self) -> Option<CoreLibTypeId> {
-        match CoreLibId::try_from(&self.0.pointer_address()).ok()? {
-            CoreLibId::Type(ty) => Some(ty),
-            _ => None,
-        }
-    }
 }
 
 impl TryFrom<SharedContainer> for SharedContainerContainingNominalType {

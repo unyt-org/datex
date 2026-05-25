@@ -51,7 +51,7 @@ impl SharedContainerInner {
                 PointerAddress::SelfOwned(endpoint_owned.address().clone())
             }
             SharedContainerInner::External(external) => {
-                PointerAddress::External(external.address().clone())
+                PointerAddress::Remote(external.address().clone())
             }
         }
     }

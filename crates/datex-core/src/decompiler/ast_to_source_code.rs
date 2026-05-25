@@ -370,7 +370,8 @@ impl AstToSourceCodeConverter {
             TypeExpressionData::Recover => {
                 // TODO #653
                 "/*Recovered Type Expression*/".to_string()
-            }
+            },
+            TypeExpressionData::GetCoreLibType(core_id) => core_id.to_string(),
         }
     }
 
@@ -914,6 +915,9 @@ impl AstToSourceCodeConverter {
                 property_name,
             }) => {
                 format!("$.{}", property_name)
+            }
+            DatexExpressionData::ResolveCoreLibId(core_lib_id) => {
+                format!("{}", core_lib_id)
             }
         }
     }

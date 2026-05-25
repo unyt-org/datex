@@ -24,7 +24,7 @@ use crate::{
     core_compiler::value_compiler::{
         append_boolean, append_decimal, append_encoded_integer,
         append_endpoint, append_float_as_i16, append_float_as_i32,
-        append_get_builtin_ref, append_get_shared_ref, append_integer,
+        append_get_core_lib_value, append_get_shared_ref, append_integer,
         append_key_string, append_regular_instruction, append_shared_container,
         append_statements_preamble, append_text, append_typed_decimal,
         append_value,
@@ -55,7 +55,7 @@ use crate::{
     prelude::*,
     runtime::{Runtime, execution::context::ExecutionMode},
     shared_values::{
-        BuiltinPointerAddress, ReferenceMutability, SharedContainer,
+        ReferenceMutability, SharedContainer,
         SharedContainerMutability,
     },
     time::Instant,
@@ -1292,18 +1292,9 @@ fn compile_expression(
                     RegularInstruction::GetRootProperty(root_property),
                 );
             } else {
-                match property_name.as_str() {
-                    "core" => append_get_builtin_ref(
-                        compilation_context.cursor(),
-                        &BuiltinPointerAddress::from(CoreLibId::Map),
-                    ),
-                    _ => {
-                        // invalid slot name
-                        return Err(CompilerError::InvalidSlotName(
-                            property_name.clone(),
-                        ));
-                    }
-                }
+                return Err(CompilerError::InvalidRootPropertyName(
+                   property_name.clone(),
+               ));
             }
         }
 
@@ -1494,6 +1485,13 @@ fn compile_expression(
                     scope,
                 )?;
             }
+        }
+        
+        DatexExpressionData::ResolveCoreLibId(core_lib_id) => {
+            append_regular_instruction(
+                compilation_context.cursor(),
+                RegularInstruction::GetCoreLibValue(core_lib_id.into()),
+            );
         }
 
         data => {
@@ -3378,17 +3376,17 @@ pub mod tests {
         let (res, _) =
             compile_script(script, CompileOptions::default(), Runtime::stub())
                 .unwrap();
-        let mut instructions: Vec<u8> =
-            vec![InstructionCode::GET_INTERNAL_SHARED_REF.into()];
-        // pointer id
-        instructions.append(
-            &mut PointerAddress::from(CoreLibId::Type(CoreLibTypeId::Base(
-                CoreLibBaseTypeId::Integer,
-            )))
-            .bytes()
-            .to_vec(),
-        );
-        assert_eq!(res, instructions);
+        
+        assert_regular_instructions_equal!(
+            &res,
+            [
+                RegularInstruction::GetCoreLibValue(
+                    CoreLibId::Type(CoreLibTypeId::Base(
+                        CoreLibBaseTypeId::Integer
+                    )).into()
+                ),
+            ]
+        )
     }
 
     #[test]
@@ -3449,10 +3447,9 @@ pub mod tests {
                 1,
             ],
             vec![
-                InstructionCode::GET_INTERNAL_SHARED_REF.into(),
+                InstructionCode::GET_CORE_LIB_VALUE.into(),
                 // pointer id for integer
                 3,
-                0,
                 0,
                 InstructionCode::UNBOUNDED_STATEMENTS_END.into(),
                 0, // unterminated

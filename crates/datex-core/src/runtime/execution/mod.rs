@@ -15,11 +15,11 @@ use crate::{
 
 use crate::{
     global::protocol_structures::instruction_data::{
-        RawBuiltinPointerAddress, RawRemotePointerAddress,
+        RawRemotePointerAddress,
         RawSelfOwnedPointerAddress,
     },
     shared_values::{
-        ExternalPointerAddress, PointerAddress, ReferenceMutability,
+        PointerAddress, ReferenceMutability,
         ReferencedSharedContainer, SharedContainer,
     },
     values::core_values::endpoint::Endpoint,
@@ -29,6 +29,7 @@ pub use errors::*;
 pub use execution_input::{ExecutionInput, ExecutionOptions};
 pub use execution_loop::state::RuntimeExecutionStack;
 pub use stack_dump::*;
+use crate::libs::core::core_lib_id::CoreLibId;
 
 pub mod context;
 mod errors;
@@ -74,12 +75,12 @@ pub fn execute_dxb_sync(
                     ),
                 );
             }
-            ExternalExecutionInterrupt::GetReferenceToBuiltinPointer(
-                address,
+            ExternalExecutionInterrupt::GetCoreLibValue(
+                id,
             ) => {
                 interrupt_provider.provide_result(
-                    InterruptResult::ResolvedValue(Some(get_builtin(
-                        &runtime, address,
+                    InterruptResult::ResolvedValue(Some(get_core_lib_value_container(
+                        &runtime, id,
                     )?)),
                 );
             }
@@ -199,12 +200,12 @@ pub async fn execute_dxb(
                     ),
                 );
             }
-            ExternalExecutionInterrupt::GetReferenceToBuiltinPointer(
-                address,
+            ExternalExecutionInterrupt::GetCoreLibValue(
+                id,
             ) => {
                 interrupt_provider.provide_result(
-                    InterruptResult::ResolvedValue(Some(get_builtin(
-                        &runtime, address,
+                    InterruptResult::ResolvedValue(Some(get_core_lib_value_container(
+                        &runtime, id,
                     )?)),
                 );
             }
@@ -285,16 +286,13 @@ fn get_remote_shared_container_reference(
     Ok(memory.get_reference(&resolved_address).cloned())
 }
 
-fn get_builtin(
+fn get_core_lib_value_container(
     runtime: &Runtime,
-    address: RawBuiltinPointerAddress,
+    id: CoreLibId,
 ) -> Result<ValueContainer, ExecutionError> {
     let value = runtime
         .core_library()
-        .by_buitin_pointer_address(&ExternalPointerAddress::Builtin(
-            address.into(),
-        ))
-        .map_err(|_| ExecutionError::BuiltinNotFound)?;
+        .value_or_type_by_id(id);
     Ok(ValueContainer::Local(value.clone()))
 }
 

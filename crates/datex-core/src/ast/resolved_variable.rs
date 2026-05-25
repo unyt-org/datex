@@ -1,5 +1,6 @@
 use crate::shared_values::PointerAddress;
 use core::fmt::Display;
+use crate::libs::core::core_lib_id::CoreLibId;
 
 pub type VariableId = usize;
 
@@ -7,6 +8,7 @@ pub type VariableId = usize;
 pub enum ResolvedVariable {
     VariableId(usize),
     PointerAddress(PointerAddress),
+    CoreLibId(CoreLibId),
 }
 
 impl Display for ResolvedVariable {
@@ -15,6 +17,9 @@ impl Display for ResolvedVariable {
             ResolvedVariable::VariableId(id) => core::write!(f, "#{}", id),
             ResolvedVariable::PointerAddress(addr) => {
                 core::write!(f, "{}", addr)
+            }
+            ResolvedVariable::CoreLibId(id) => {
+                core::write!(f, "{}", id)
             }
         }
     }

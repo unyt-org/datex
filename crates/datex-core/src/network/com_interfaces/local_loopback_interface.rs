@@ -64,7 +64,7 @@ impl LocalLoopbackInterfaceSetupData {
             interface_type: "local".to_string(),
             channel: "local".to_string(),
             auto_identify: false,
-            round_trip_time: Duration::from_millis(0),
+            round_trip_time: 0,
             max_bandwidth: u32::MAX,
             ..ComInterfaceProperties::default()
         }

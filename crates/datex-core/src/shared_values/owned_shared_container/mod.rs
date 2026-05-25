@@ -6,7 +6,7 @@ use crate::{
         pointer_address_provider::SelfOwnedPointerAddressProvider,
     },
     shared_values::{
-        ExternalPointerAddress, ReferencedSharedContainer,
+        ReferencedSharedContainer,
         SelfOwnedPointerAddress, SelfOwnedSharedContainer,
         SharedContainerInner, SharedContainerMutability,
         base_shared_value_container::BaseSharedValueContainer,
@@ -27,6 +27,7 @@ use core::{
     fmt::Display,
     mem,
 };
+use crate::shared_values::RemotePointerAddress;
 
 /// Wrapper struct for an owned shared value (i.e. `shared X`)
 /// It is guaranteed that the inner value is a [SharedContainerInner::EndpointOwned].
@@ -254,13 +255,13 @@ impl OwnedSharedContainer {
             .unwrap_or_else(|_| self.derive_immutable_reference())
     }
 
-    /// Moves an owned shared container by converting it to a [ReferencedSharedContainer] with an [ExternalPointer] pointing to the given remote address.
+    /// Moves an owned shared container by converting it to a [ReferencedSharedContainer] with a [RemotePointerAddress] pointing to the given remote address.
     /// Drops the original owned shared container
     /// # Safety
-    /// The caller must ensure that the [ExternalPointerAddress] does not yet exist in the [Memory]
-    pub unsafe fn move_to_external(
+    /// The caller must ensure that the [RemotePointerAddress] does not yet exist in the [Memory]
+    pub unsafe fn move_to_remote(
         self,
-        external_address: ExternalPointerAddress,
+        remote_address: RemotePointerAddress,
         memory: &Memory,
     ) {
         let mut inner = self.inner_mut();
@@ -278,7 +279,7 @@ impl OwnedSharedContainer {
             SharedContainerInner::EndpointOwned(owned) => {
                 SharedContainerInner::External(unsafe {
                     owned
-                        .convert_to_external_container(external_address, memory)
+                        .convert_to_external_container(remote_address, memory)
                 })
             }
             _ => unreachable!(

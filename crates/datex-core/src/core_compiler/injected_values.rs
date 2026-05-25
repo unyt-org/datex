@@ -3,12 +3,14 @@ use crate::{
         core_compilation_context::CoreCompilationContext,
         value_compiler::{
             SharedValueCompilationError, append_perform_moves,
-            append_regular_instruction, append_shared_container, append_value,
+            append_referenced_shared_container, append_regular_instruction,
+            append_shared_container, append_value,
         },
     },
     global::{
         instruction_codes::InstructionCode,
         protocol_structures::{
+            injected_values::{InjectedValueType, SharedInjectedValueType},
             instruction_data::{
                 InstructionBlockData, PerformMove, RawSelfOwnedPointerAddress,
             },
@@ -17,14 +19,11 @@ use crate::{
     },
     prelude::*,
     runtime::execution::ExecutionError,
-    shared_values::OwnedSharedContainer,
+    shared_values::{OwnedSharedContainer, SharedContainer},
     utils::buffers::append_u32,
     values::borrowed_value_container::BorrowedValueContainer,
 };
 use binrw::io::Write;
-use crate::core_compiler::value_compiler::append_referenced_shared_container;
-use crate::global::protocol_structures::injected_values::{InjectedValueType, SharedInjectedValueType};
-use crate::shared_values::SharedContainer;
 
 pub fn compile_injected_values(
     instruction_block_data: InstructionBlockData,
@@ -78,41 +77,57 @@ pub fn compile_injected_values_with_context(
         unreachable!(); // length must always match
     }
 
-    for (injected_value_declaration, value_container) in 
-        instruction_block_data.injected_values.iter().zip(injected_values.into_iter()) {
+    for (injected_value_declaration, value_container) in instruction_block_data
+        .injected_values
+        .iter()
+        .zip(injected_values.into_iter())
+    {
         match injected_value_declaration.ty {
-            InjectedValueType::Local(_ty) => {
-                match value_container {
-                    BorrowedValueContainer::Local(local_value) => {
-                        append_value(compilation_context, local_value)?;
-                    },
-                    BorrowedValueContainer::Shared(_) => return Err(SharedValueCompilationError::ExpectedLocalValue)
+            InjectedValueType::Local(_ty) => match value_container {
+                BorrowedValueContainer::Local(local_value) => {
+                    append_value(compilation_context, local_value)?;
                 }
-            }
-            InjectedValueType::Shared(ty) => {
-                match ty {
-                    SharedInjectedValueType::Move => {
-                        match value_container {
-                            BorrowedValueContainer::Shared(SharedContainer::Owned(owned_container)) => {
-                                todo!()
+                BorrowedValueContainer::Shared(_) => {
+                    return Err(
+                        SharedValueCompilationError::ExpectedLocalValue,
+                    );
+                }
+            },
+            InjectedValueType::Shared(ty) => match ty {
+                SharedInjectedValueType::Move => match value_container {
+                    BorrowedValueContainer::Shared(
+                        container @ SharedContainer::Owned(_),
+                    ) => append_shared_container(
+                        compilation_context,
+                        &container,
+                        false,
+                    )?,
+                    _ => return Err(
+                        SharedValueCompilationError::ExpectedOwnedSharedValue,
+                    ),
+                },
+                SharedInjectedValueType::Ref
+                | SharedInjectedValueType::RefMut => match value_container {
+                    BorrowedValueContainer::Shared(container) => {
+                        let referenced_container = match container {
+                            SharedContainer::Owned(owned_container) => {
+                                owned_container.derive_with_max_mutability()
                             }
-                            _ => return Err(SharedValueCompilationError::ExpectedOwnedSharedValue)
-                        }
-                    },
-                    SharedInjectedValueType::Ref | SharedInjectedValueType::RefMut => {
-                        match value_container {
-                            BorrowedValueContainer::Shared(container) => {
-                                let referenced_container = match container {
-                                    SharedContainer::Owned(owned_container) => owned_container.derive_with_max_mutability(),
-                                    SharedContainer::Referenced(referenced_container) => referenced_container,
-                                };
-                                append_referenced_shared_container(compilation_context, referenced_container, true)?;
-                            }
-                            _ => return Err(SharedValueCompilationError::ExpectedOwnedSharedValue)
-                        }
+                            SharedContainer::Referenced(
+                                referenced_container,
+                            ) => referenced_container,
+                        };
+                        append_referenced_shared_container(
+                            compilation_context,
+                            referenced_container,
+                            true,
+                        )?;
                     }
-                }
-            }
+                    _ => return Err(
+                        SharedValueCompilationError::ExpectedOwnedSharedValue,
+                    ),
+                },
+            },
         }
     }
 
@@ -266,8 +281,8 @@ mod tests {
                     SharedInjectedValueType,
                 },
                 instruction_data::{
-                    InstructionBlockData, Int32Data, SharedRefWithValue,
-                    StackIndex, StatementsData,
+                    InstructionBlockData, Int32Data, PerformMove,
+                    SharedRefWithValue, StackIndex, StatementsData, UInt32Data,
                 },
                 regular_instructions::RegularInstruction,
             },
@@ -282,7 +297,6 @@ mod tests {
             SharedContainer, SharedContainerMutability,
         },
     };
-    use crate::global::protocol_structures::instruction_data::{PerformMove, UInt32Data};
 
     #[test]
     fn remote_execution_no_injected_values() {
@@ -471,7 +485,6 @@ mod tests {
                 RegularInstruction::PushToStack,
                 RegularInstruction::TakePropertyIndex(UInt32Data(0)),
                 RegularInstruction::BorrowStackValue(StackIndex(0)),
-
                 // original body
                 RegularInstruction::Null,
             ]

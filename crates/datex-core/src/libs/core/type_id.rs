@@ -4,7 +4,6 @@ use crate::{
         TYPE_VARIANT_SPACE_BASE,
     },
     prelude::*,
-    shared_values::ExternalPointerAddress,
     values::core_values::{
         decimal::typed_decimal::DecimalTypeVariant,
         integer::typed_integer::IntegerTypeVariant,
@@ -59,6 +58,24 @@ pub enum CoreLibBaseTypeId {
     Type, // #core.Type
 }
 
+impl CoreLibBaseTypeId {
+    pub fn variant(&self, variant_name: &str) -> Result<CoreLibVariantTypeId, ()> {
+        match self {
+            CoreLibBaseTypeId::Integer => {
+                IntegerTypeVariant::from_str(variant_name)
+                    .map(CoreLibVariantTypeId::Integer)
+                    .map_err(|_| ())
+            }
+            CoreLibBaseTypeId::Decimal => {
+                DecimalTypeVariant::from_str(variant_name)
+                    .map(CoreLibVariantTypeId::Decimal)
+                    .map_err(|_| ())
+            }
+            _ => Err(()),
+        }
+    }
+}
+
 const INTEGER_VARIANT_COUNT: u16 = variant_count::<IntegerTypeVariant>() as u16;
 const DECIMAL_VARIANT_COUNT: u16 = variant_count::<DecimalTypeVariant>() as u16;
 
@@ -88,19 +105,7 @@ impl FromStr for CoreLibVariantTypeId {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let (base_str, variant_str) = s.split_once('/').ok_or(())?;
         let base_id = CoreLibBaseTypeId::from_str(base_str).map_err(|_| ())?;
-        match base_id {
-            CoreLibBaseTypeId::Integer => {
-                IntegerTypeVariant::from_str(variant_str)
-                    .map(CoreLibVariantTypeId::Integer)
-                    .map_err(|_| ())
-            }
-            CoreLibBaseTypeId::Decimal => {
-                DecimalTypeVariant::from_str(variant_str)
-                    .map(CoreLibVariantTypeId::Decimal)
-                    .map_err(|_| ())
-            }
-            _ => Err(()),
-        }
+        base_id.variant(variant_str)
     }
 }
 
@@ -282,13 +287,5 @@ impl TryFrom<CoreLibIdIndex> for CoreLibBaseTypeId {
     fn try_from(id: CoreLibIdIndex) -> Result<Self, Self::Error> {
         let id = id.0.checked_sub(TYPE_SPACE_BASE).ok_or(())?;
         CoreLibBaseTypeId::try_from(id).map_err(|_| ())
-    }
-}
-
-impl TryFrom<&ExternalPointerAddress> for CoreLibTypeId {
-    type Error = ();
-
-    fn try_from(address: &ExternalPointerAddress) -> Result<Self, Self::Error> {
-        CoreLibTypeId::try_from(CoreLibIdIndex::try_from(address)?)
     }
 }

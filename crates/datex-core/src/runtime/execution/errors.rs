@@ -13,6 +13,7 @@ use crate::{
     values::value_container::{ValueContainer, error::ValueError},
 };
 use core::fmt::Display;
+use crate::libs::core::core_lib_id::CoreLibIdIndex;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum InvalidProgramError {
@@ -25,6 +26,7 @@ pub enum InvalidProgramError {
     ExpectedInstruction,
     ExpectedRegularInstruction,
     ExpectedTypeInstruction,
+    InvalidCoreLibId(CoreLibIdIndex)
 }
 
 impl Display for InvalidProgramError {
@@ -54,6 +56,9 @@ impl Display for InvalidProgramError {
             InvalidProgramError::ExpectedList => {
                 core::write!(f, "Expected a list")
             }
+            InvalidProgramError::InvalidCoreLibId(core_lib_id) => {
+                core::write!(f, "Invalid core library id: {core_lib_id}")
+            }
         }
     }
 }
@@ -61,7 +66,6 @@ impl Display for InvalidProgramError {
 #[derive(Debug)]
 pub enum ExecutionError {
     DXBParserError(DXBParserError),
-    BuiltinNotFound,
     ValueError(ValueError),
     InvalidProgram(InvalidProgramError),
     AccessError(AccessError),
@@ -158,9 +162,6 @@ impl From<AssignmentError> for ExecutionError {
 impl Display for ExecutionError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
-            ExecutionError::BuiltinNotFound => {
-                core::write!(f, "Builtin not found")
-            }
             ExecutionError::ReferenceCreationError(err) => {
                 core::write!(f, "Reference from value container error: {err}")
             }

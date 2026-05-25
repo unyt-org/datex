@@ -2,7 +2,7 @@ use crate::prelude::*;
 
 use crate::{
     global::protocol_structures::instruction_data::{
-        RawBuiltinPointerAddress, RawRemotePointerAddress,
+        RawRemotePointerAddress,
         RawSelfOwnedPointerAddress,
     },
     values::core_values::endpoint::Endpoint,
@@ -16,47 +16,27 @@ pub struct SelfOwnedPointerAddress {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct BuiltinPointerAddress(pub [u8; 3]); // TODO #312 shrink down to 2 bytes?
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RemotePointerAddress(pub [u8; 26]);
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum ExternalPointerAddress {
-    // pointer with a remote endpoint as origin, contains the full pointers address
-    Remote(RemotePointerAddress),
-    // globally unique builtin pointer, e.g. for #core, #std
-    Builtin(BuiltinPointerAddress),
-}
 
-impl ExternalPointerAddress {
-    pub fn remote_for_endpoint(endpoint: &Endpoint, id: [u8; 5]) -> Self {
+impl RemotePointerAddress {
+    pub fn for_endpoint(endpoint: &Endpoint, id: [u8; 5]) -> Self {
         let endpoint_slice = endpoint.to_slice();
         let mut address = [0u8; 26];
         address[..endpoint_slice.len()].copy_from_slice(&endpoint_slice);
         address[endpoint_slice.len()..endpoint_slice.len() + id.len()]
             .copy_from_slice(&id);
-        ExternalPointerAddress::Remote(RemotePointerAddress(address))
+        RemotePointerAddress(address)
     }
 
     pub fn to_address_string(&self) -> String {
-        match self {
-            ExternalPointerAddress::Remote(addr) => hex::encode(addr.0),
-            ExternalPointerAddress::Builtin(addr) => hex::encode(addr.0),
-        }
+        hex::encode(self.0)
     }
 }
 
-impl Display for ExternalPointerAddress {
+impl Display for RemotePointerAddress {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        match self {
-            ExternalPointerAddress::Remote(_) => {
-                core::write!(f, "${}", self.to_address_string())
-            }
-            ExternalPointerAddress::Builtin(_) => {
-                core::write!(f, "${}", self.to_address_string())
-            }
-        }
+        core::write!(f, "${}", self.to_address_string())
     }
 }
 
@@ -99,7 +79,7 @@ pub enum PointerAddress {
     // the full pointer id consists of the local endpoint id + this local id
     SelfOwned(SelfOwnedPointerAddress),
     // pointer with a remote endpoint as origin, contains the full pointers address
-    External(ExternalPointerAddress),
+    Remote(RemotePointerAddress),
 }
 
 impl PointerAddress {
@@ -107,20 +87,12 @@ impl PointerAddress {
         PointerAddress::SelfOwned(SelfOwnedPointerAddress::new(address))
     }
 
-    pub fn builtin(address: [u8; 3]) -> Self {
-        PointerAddress::External(ExternalPointerAddress::Builtin(
-            BuiltinPointerAddress(address),
-        ))
-    }
-
     pub fn remote(address: [u8; 26]) -> Self {
-        PointerAddress::External(ExternalPointerAddress::Remote(
-            RemotePointerAddress(address),
-        ))
+        PointerAddress::Remote(RemotePointerAddress(address))
     }
 
     pub fn remote_for_endpoint(endpoint: &Endpoint, id: [u8; 5]) -> Self {
-        PointerAddress::External(ExternalPointerAddress::remote_for_endpoint(
+        PointerAddress::Remote(RemotePointerAddress::for_endpoint(
             endpoint, id,
         ))
     }
@@ -150,18 +122,9 @@ impl TryFrom<&str> for PointerAddress {
             26 => {
                 let mut arr = [0u8; 26];
                 arr.copy_from_slice(&bytes);
-                Ok(PointerAddress::External(ExternalPointerAddress::Remote(
-                    RemotePointerAddress(arr),
-                )))
+                Ok(PointerAddress::Remote(RemotePointerAddress(arr)))
             }
-            3 => {
-                let mut arr = [0u8; 3];
-                arr.copy_from_slice(&bytes);
-                Ok(PointerAddress::External(ExternalPointerAddress::Builtin(
-                    BuiltinPointerAddress(arr),
-                )))
-            }
-            _ => Err("PointerAddress must be 5, 26 or 3 bytes long"),
+            _ => Err("PointerAddress must be 5 or 26 bytes long"),
         }
     }
 }
@@ -172,31 +135,16 @@ impl From<SelfOwnedPointerAddress> for PointerAddress {
     }
 }
 
-impl From<ExternalPointerAddress> for PointerAddress {
-    fn from(referenced: ExternalPointerAddress) -> Self {
-        PointerAddress::External(referenced)
-    }
-}
-
 impl From<RawSelfOwnedPointerAddress> for PointerAddress {
     fn from(raw: RawSelfOwnedPointerAddress) -> Self {
         PointerAddress::SelfOwned(SelfOwnedPointerAddress::new(raw.bytes))
     }
 }
 
-impl From<RawBuiltinPointerAddress> for PointerAddress {
-    fn from(raw: RawBuiltinPointerAddress) -> Self {
-        PointerAddress::External(ExternalPointerAddress::Builtin(
-            BuiltinPointerAddress(raw.id),
-        ))
-    }
-}
 
 impl From<RawRemotePointerAddress> for PointerAddress {
     fn from(raw: RawRemotePointerAddress) -> Self {
-        PointerAddress::External(ExternalPointerAddress::Remote(
-            RemotePointerAddress(raw.id),
-        ))
+        PointerAddress::Remote(RemotePointerAddress(raw.id))
     }
 }
 
@@ -206,7 +154,7 @@ impl PointerAddress {
             PointerAddress::SelfOwned(local_address) => {
                 local_address.to_address_string()
             }
-            PointerAddress::External(address) => address.to_address_string(),
+            PointerAddress::Remote(address) => address.to_address_string(),
         }
     }
 }
@@ -217,7 +165,7 @@ impl Display for PointerAddress {
             PointerAddress::SelfOwned(local_address) => {
                 core::write!(f, "{}", local_address)
             }
-            PointerAddress::External(address) => {
+            PointerAddress::Remote(address) => {
                 core::write!(f, "{}", address)
             }
         }
@@ -251,22 +199,9 @@ impl PointerAddress {
     pub fn bytes(&self) -> &[u8] {
         match self {
             PointerAddress::SelfOwned(local_address) => &local_address.address,
-            PointerAddress::External(ExternalPointerAddress::Remote(addr)) => {
+            PointerAddress::Remote(addr) => {
                 &addr.0
             }
-            PointerAddress::External(ExternalPointerAddress::Builtin(addr)) => {
-                &addr.0
-            }
-        }
-    }
-
-    pub fn builtin_bytes(&self) -> Option<&[u8; 3]> {
-        if let PointerAddress::External(ExternalPointerAddress::Builtin(addr)) =
-            self
-        {
-            Some(&addr.0)
-        } else {
-            None
         }
     }
 }

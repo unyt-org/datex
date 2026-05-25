@@ -26,6 +26,7 @@ use crate::{
     },
 };
 use core::ops::Range;
+use crate::libs::core::core_lib_id::CoreLibId;
 
 pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
     /// Handle expression error
@@ -206,6 +207,9 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
                     root_property_access,
                     &expr.span,
                 )
+            }
+            DatexExpressionData::ResolveCoreLibId(core_lib_id) => {
+                self.visit_get_core_lib_id(core_lib_id, &expr.span)
             }
         };
 
@@ -640,6 +644,16 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
     ) -> ExpressionVisitResult<E> {
         let _ = span;
         let _ = placeholder_type;
+        Ok(VisitAction::SkipChildren)
+    }
+
+    fn visit_get_core_lib_id(
+        &mut self,
+        core_lib_id: &mut CoreLibId,
+        span: &Range<usize>,
+    ) -> ExpressionVisitResult<E> {
+        let _ = span;
+        let _ = core_lib_id;
         Ok(VisitAction::SkipChildren)
     }
 

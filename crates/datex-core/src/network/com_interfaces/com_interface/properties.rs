@@ -3,11 +3,10 @@ use crate::runtime::RuntimeConfigInterface;
 use crate::{prelude::*, time::now_ms};
 use core::time::Duration;
 use serde::{Deserialize, Serialize};
-use serde_with::{DurationMilliSeconds, serde_as};
 use strum::EnumString;
+use datex_macros_internal::Datex;
 
-#[derive(PartialEq, Eq, Debug, Clone, EnumString, Serialize, Deserialize)]
-#[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
+#[derive(Datex, PartialEq, Eq, Debug, Clone, EnumString, Serialize, Deserialize)]
 pub enum InterfaceDirection {
     In,
     Out,
@@ -32,8 +31,7 @@ impl InterfaceDirection {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-#[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
+#[derive(Datex, Debug, Clone, PartialEq, Eq)]
 pub struct ComInterfaceProperties {
     /// the type of the interface, by which it is identified
     /// e.g. "tcp-client", "websocket-server",
@@ -55,9 +53,9 @@ pub struct ComInterfaceProperties {
 
     /// Estimated mean latency for this interface type in milliseconds (round trip time).
     /// Lower latency interfaces are preferred over higher latency channels
-    // #[serde_as(as = "DurationMilliSeconds")]
-    #[cfg_attr(feature = "wasm_runtime", tsify(type = "number"))]
-    pub round_trip_time: Duration,
+    // FIXME: use Duration once supported by DATEX
+    // pub round_trip_time: Duration,
+    pub round_trip_time: u64, // duration in milliseconds
 
     /// Bandwidth in bytes per second
     pub max_bandwidth: u32,
@@ -88,20 +86,16 @@ pub struct ComInterfaceProperties {
     pub connectable_interfaces: Option<Vec<RuntimeConfigInterface>>,
 }
 
-#[serde_as]
-#[derive(Debug, PartialEq, Clone, Default, Serialize, Deserialize, Eq)]
-#[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
+#[derive(Datex, Debug, PartialEq, Clone, Default, Eq)]
 pub enum ReconnectionConfig {
     #[default]
     NoReconnect,
     InstantReconnect,
     ReconnectWithTimeout {
-        #[serde_as(as = "DurationMilliSeconds")]
-        timeout: Duration,
+        timeout: u64, // duration in milliseconds
     },
     ReconnectWithTimeoutAndAttempts {
-        #[serde_as(as = "DurationMilliSeconds")]
-        timeout: Duration,
+        timeout: u64, // duration in milliseconds
         attempts: u8,
     },
 }
@@ -128,12 +122,12 @@ impl ReconnectionConfig {
             ReconnectionConfig::NoReconnect => None,
             ReconnectionConfig::InstantReconnect => None,
             ReconnectionConfig::ReconnectWithTimeout { timeout } => {
-                Some(*timeout)
+                Some(Duration::from_millis(*timeout))
             }
             ReconnectionConfig::ReconnectWithTimeoutAndAttempts {
                 timeout,
                 ..
-            } => Some(*timeout),
+            } => Some(Duration::from_millis(*timeout)),
         }
     }
 
@@ -183,7 +177,7 @@ impl Default for ComInterfaceProperties {
             channel: "unknown".to_string(),
             name: None,
             direction: InterfaceDirection::InOut,
-            round_trip_time: Duration::from_millis(0),
+            round_trip_time: 0,
             max_bandwidth: u32::MAX,
             continuous_connection: false,
             allow_redirects: true,
