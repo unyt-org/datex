@@ -2,18 +2,18 @@ mod type_match;
 
 use crate::{prelude::*, types::r#type::Type};
 use core::ops::Deref;
-
+pub mod equality;
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct TypeIntersection(pub Vec<Type>);
+pub struct IntersectionTypeDefinition(pub Vec<Type>);
 
-impl Deref for TypeIntersection {
+impl Deref for IntersectionTypeDefinition {
     type Target = [Type];
     fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
 
-impl FromIterator<Type> for TypeIntersection {
+impl FromIterator<Type> for IntersectionTypeDefinition {
     fn from_iter<I: IntoIterator<Item = Type>>(iter: I) -> Self {
         Self(iter.into_iter().collect())
     }

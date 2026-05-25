@@ -2,6 +2,8 @@
 //! A [TypeDefinition] can hold e.g. a [LiteralTypeDefinition], or a [CollectionTypeDefinition], or a [SharedContainerContainingType] wand impl types.
 //! The [TypeDefinition] is used as the underlying structure for type definitions in the type space and is wrapped by [TypeDefinitionWithMetadata] which holds additional metadata for type checking and inference.
 
+use strum::AsRefStr;
+
 use crate::{
     libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
     prelude::*,
@@ -11,7 +13,12 @@ use crate::{
         literal_type_definition::LiteralTypeDefinition,
         shared_container_containing_type::SharedContainerContainingType,
         r#type::Type,
-        type_definition::{intersection::TypeIntersection, union::TypeUnion},
+        type_definition::{
+            impl_type::ImplTypeDefinition,
+            intersection::IntersectionTypeDefinition, list::ListTypeDefinition,
+            map::MapTypeDefinition, range::RangeTypeDefinition,
+            tagged_type::TaggedTypeDefinition, union::TypeUnion,
+        },
         type_definition_with_metadata::{
             TypeDefinitionWithMetadata, TypeMetadata,
         },
@@ -19,19 +26,23 @@ use crate::{
     values::core_values::callable::CallableSignature,
 };
 use core::{fmt::Display, hash::Hash, ops::Deref, prelude::rust_2024::*};
-
+pub mod impl_type;
+pub mod list;
+pub mod map;
+pub mod range;
+pub mod tagged_type;
 pub mod type_match;
 /// Base enum for a type definition
 /// This is normally the base for types at runtime, in contrast to [Type], which is the base for types
 /// at compile time.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, AsRefStr)]
 pub enum TypeDefinition {
     /// e.g. 1, "example"
     Literal(LiteralTypeDefinition),
 
-    List(Vec<Type>), // e.g. [&mut integer, text, boolean]
-    Map(Vec<(Type, Type)>),
-    Range((Box<Type>, Box<Type>)),
+    List(ListTypeDefinition), // e.g. [&mut integer, text, boolean]
+    Map(MapTypeDefinition),
+    Range(RangeTypeDefinition),
 
     // TODO #371: Rename to generic?
     /// e.g. [integer], [integer; 5], Map<string, integer>
@@ -53,23 +64,20 @@ pub enum TypeDefinition {
     /// The type is treated as equivalent to `innerType` for most operations,
     /// but the impl markers can be used to enforce additional constraints during
     /// type checking or runtime behavior.
-    ImplType(Box<Type>, Vec<PointerAddress>),
+    ImplType(ImplTypeDefinition),
 
     /// NOTE: all the types below can never exist as actual types of a runtime value - they are only
     /// relevant for type space definitions and type checking.
 
     /// A & B & C
-    Intersection(TypeIntersection),
+    Intersection(IntersectionTypeDefinition),
 
     /// A | B | C
     Union(TypeUnion),
 
     /// #Tagged or #Tagged {...}
     /// #Tagged(null) is equivalent to #Tagged
-    TaggedType {
-        tag: String,
-        ty: Option<Box<TypeDefinition>>, // if none, this uses the default inferred type
-    },
+    TaggedType(TaggedTypeDefinition),
 
     /// meta type for a type
     Type,
@@ -87,20 +95,19 @@ impl Hash for TypeDefinition {
             TypeDefinition::Literal(value) => {
                 value.hash(state);
             }
-            TypeDefinition::Map(entries) => {
-                for (key, value) in entries {
+            TypeDefinition::Map(map) => {
+                for (key, value) in map.iter() {
                     key.hash(state);
                     value.hash(state);
                 }
             }
-            TypeDefinition::List(elements) => {
-                for element in elements {
+            TypeDefinition::List(list) => {
+                for element in list.iter() {
                     element.hash(state);
                 }
             }
-            TypeDefinition::Range((start, end)) => {
-                start.hash(state);
-                end.hash(state);
+            TypeDefinition::Range(ty) => {
+                ty.hash(state);
             }
             TypeDefinition::Shared(reference) => {
                 reference.hash(state);
@@ -126,11 +133,8 @@ impl Hash for TypeDefinition {
                 callable.return_type.hash(state);
                 callable.yeet_type.hash(state);
             }
-            TypeDefinition::ImplType(ty, impls) => {
-                ty.hash(state);
-                for marker in impls {
-                    marker.hash(state);
-                }
+            TypeDefinition::ImplType(definition) => {
+                definition.hash(state);
             }
             TypeDefinition::Nested(ty) => {
                 ty.hash(state);
@@ -143,9 +147,8 @@ impl Hash for TypeDefinition {
             TypeDefinition::Core(core) => {
                 core.hash(state);
             }
-            TypeDefinition::TaggedType { tag, ty } => {
-                tag.hash(state);
-                ty.hash(state);
+            TypeDefinition::TaggedType(tagged_type) => {
+                tagged_type.hash(state);
             }
         }
     }
@@ -159,6 +162,7 @@ impl Display for TypeDefinition {
             }
             TypeDefinition::Map(entries) => {
                 let entries_str: Vec<String> = entries
+                    .0
                     .iter()
                     .map(|(key, value)| format!("{}: {}", key, value))
                     .collect();
@@ -169,8 +173,8 @@ impl Display for TypeDefinition {
                     elements.iter().map(|e| e.to_string()).collect();
                 write!(f, "[{}]", elements_str.join(", "))
             }
-            TypeDefinition::Range((start, end)) => {
-                write!(f, "{}..{}", start, end)
+            TypeDefinition::Range(range) => {
+                write!(f, "{}", range)
             }
 
             TypeDefinition::Literal(value) => {
@@ -179,11 +183,8 @@ impl Display for TypeDefinition {
             TypeDefinition::Shared(reference) => {
                 write!(f, "{}", reference.deref())
             }
-            TypeDefinition::ImplType(ty, impls) => {
-                write!(f, "{}", ty)?;
-                for marker in impls {
-                    write!(f, " + {}", marker)?;
-                }
+            TypeDefinition::ImplType(definition) => {
+                write!(f, "{}", definition)?;
                 Ok(())
             }
 
@@ -244,12 +245,8 @@ impl Display for TypeDefinition {
             TypeDefinition::Core(core) => {
                 write!(f, "{}", core)
             }
-            TypeDefinition::TaggedType { tag, ty } => {
-                write!(f, "#{}", tag)?;
-                if let Some(ty) = ty {
-                    write!(f, " {}", ty)?;
-                }
-                Ok(())
+            TypeDefinition::TaggedType(tagged_type) => {
+                write!(f, "{}", tagged_type)
             }
         }
     }
@@ -291,7 +288,7 @@ impl TypeDefinition {
 
     /// Creates a new list type.
     pub fn list(element_types: Vec<Type>) -> Self {
-        TypeDefinition::List(element_types)
+        TypeDefinition::List(ListTypeDefinition(element_types))
     }
 
     /// Creates a new union type.
@@ -324,7 +321,7 @@ impl TypeDefinition {
 
     /// Creates a new type with impls.
     pub fn impl_type(ty: impl Into<Type>, impls: Vec<PointerAddress>) -> Self {
-        TypeDefinition::ImplType(Box::new(ty.into()), impls)
+        TypeDefinition::ImplType(ImplTypeDefinition::new(ty.into(), impls))
     }
 
     /// Get the core lib type pointer id for this structural type definition

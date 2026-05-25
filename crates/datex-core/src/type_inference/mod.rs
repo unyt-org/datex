@@ -3,7 +3,7 @@ use crate::{
     ast::resolved_variable::ResolvedVariable,
     global::operators::{BinaryOperator, LogicalUnaryOperator, UnaryOperator},
     type_inference::options::ErrorHandling,
-    types::type_definition::TypeDefinition,
+    types::type_definition::{TypeDefinition, list::ListTypeDefinition},
 };
 
 use crate::{
@@ -431,7 +431,7 @@ impl<'a> TypeExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
                 .map(|elem_type_expr| {
                     self.infer_type_expression(elem_type_expr)
                 })
-                .collect::<Result<Vec<_>, _>>()?,
+                .collect::<Result<ListTypeDefinition, SpannedTypeError>>()?,
         ))
     }
 
@@ -1537,7 +1537,7 @@ mod tests {
             shared_container_containing_type::SharedContainerContainingType,
             r#type::Type,
             type_definition::{
-                TypeDefinition, intersection::TypeIntersection,
+                TypeDefinition, intersection::IntersectionTypeDefinition,
                 union::TypeUnion,
             },
             type_definition_with_metadata::{
@@ -2444,16 +2444,16 @@ mod tests {
             has_nominal_type_definition(
                 &inferred_type,
                 NominalTypeDefinition::new_base(
-                    Type::from(TypeDefinition::Intersection(TypeIntersection(
-                        vec![
+                    Type::from(TypeDefinition::Intersection(
+                        IntersectionTypeDefinition(vec![
                             Type::core(CoreLibVariantTypeId::Integer(
                                 IntegerTypeVariant::U8
                             )),
                             Type::from(LiteralTypeDefinition::Integer(
                                 Integer::from(42)
                             ),)
-                        ]
-                    ))),
+                        ])
+                    )),
                     "X".to_string()
                 )
             ),

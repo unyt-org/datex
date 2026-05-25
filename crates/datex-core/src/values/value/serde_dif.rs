@@ -460,9 +460,16 @@ mod tests {
             SerdeContext::<Value>::new(&mut DIFSharedContainerCache::default())
                 .serialize_to_json(&value);
         println!("Serialized value: {serialized}");
+        
+        // 1 --> f32
+        // 1 -> f32 -> [1, <nominal>]
+        // 42 -> f32 -> [42, <nominal>]
+        // 42 -> u8 [5, 42, <nominmal>]
+        // ["integer/u8", 1] -> u8
+        // [1, integer/u8]
         assert_eq!(
             serialized,
-            r#"[["core::decimal::f64"],5.14,["core::decimal::f64"]]"#
+            r#"[["integer/u8"],5.14]"#
         );
     }
 

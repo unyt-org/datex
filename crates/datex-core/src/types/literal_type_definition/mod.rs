@@ -14,6 +14,7 @@ use crate::{
 };
 use core::{fmt::Display, hash::Hash};
 pub mod equality;
+pub mod serde_dif;
 pub mod type_match;
 
 #[derive(Debug, Clone, PartialEq, Hash, Eq)]
@@ -163,8 +164,9 @@ mod tests {
     use crate::{
         prelude::*,
         types::{
-            literal_type_definition::LiteralTypeDefinition, r#type::Type,
-            type_definition::TypeDefinition,
+            literal_type_definition::LiteralTypeDefinition,
+            r#type::Type,
+            type_definition::{TypeDefinition, map::MapTypeDefinition},
             type_match::TypeSatisfiesValueContainer,
         },
         values::{
@@ -182,22 +184,26 @@ mod tests {
         let text_type = LiteralTypeDefinition::Text("Hello".to_string());
         assert_eq!(text_type.to_string(), r#""Hello""#);
 
-        let list_type = TypeDefinition::List(vec![
+        let list_type = TypeDefinition::list(vec![
             Type::from(LiteralTypeDefinition::Integer(Integer::from(1))),
             Type::from(LiteralTypeDefinition::Text("World".to_string())),
         ]);
         assert_eq!(list_type.to_string(), r#"[1, "World"]"#);
 
-        let struct_type = TypeDefinition::Map(vec![
-            (
-                LiteralTypeDefinition::Text("id".to_string()).into(),
-                int_type.into(),
-            ),
-            (
-                LiteralTypeDefinition::Text("name".to_string()).into(),
-                text_type.into(),
-            ),
-        ]);
+        let struct_type = TypeDefinition::Map(
+            vec![
+                (
+                    LiteralTypeDefinition::Text("id".to_string()).into(),
+                    int_type.into(),
+                ),
+                (
+                    LiteralTypeDefinition::Text("name".to_string()).into(),
+                    text_type.into(),
+                ),
+            ]
+            .into_iter()
+            .collect(),
+        );
         assert_eq!(struct_type.to_string(), r#"{"id": 42, "name": "Hello"}"#);
     }
 
