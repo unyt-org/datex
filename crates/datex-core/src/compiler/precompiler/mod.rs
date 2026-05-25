@@ -359,15 +359,13 @@ impl<'a> TypeExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
                 })
                 .with_span(span.clone())
             }
-            ResolvedVariable::CoreLibId(core) => {
-                match core {
-                    CoreLibId::Type(value_id) => {
-                        TypeExpressionData::GetCoreLibType(value_id)
-                            .with_span(span.clone())
-                    }
-                    _ => todo!()
+            ResolvedVariable::CoreLibId(core) => match core {
+                CoreLibId::Type(value_id) => {
+                    TypeExpressionData::GetCoreLibType(value_id)
+                        .with_span(span.clone())
                 }
-            }
+                _ => todo!(),
+            },
             ResolvedVariable::PointerAddress(pointer_address) => {
                 TypeExpressionData::GetReference(pointer_address)
                     .with_span(span.clone())
@@ -395,15 +393,13 @@ impl<'a> TypeExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
                 })
                 .with_span(span.clone())
             }
-            ResolvedVariable::CoreLibId(core) => {
-                match core {
-                    CoreLibId::Type(value_id) => {
-                        TypeExpressionData::GetCoreLibType(value_id)
-                            .with_span(span.clone())
-                    }
-                    _ => unreachable!()
+            ResolvedVariable::CoreLibId(core) => match core {
+                CoreLibId::Type(value_id) => {
+                    TypeExpressionData::GetCoreLibType(value_id)
+                        .with_span(span.clone())
                 }
-            }
+                _ => unreachable!(),
+            },
             ResolvedVariable::PointerAddress(pointer_address) => {
                 TypeExpressionData::GetReference(pointer_address)
                     .with_span(span.clone())
@@ -437,15 +433,15 @@ impl Precompiler<'_> {
                     })
                     .with_span(span.clone())
                 }
-                ResolvedVariable::CoreLibId(core) => {
-                    match core {
-                        CoreLibId::Type(value_id) => {
-                            DatexExpressionData::ResolveCoreLibId(CoreLibId::Type(value_id))
-                                .with_span(span.clone())
-                        }
-                        _ => unreachable!()
+                ResolvedVariable::CoreLibId(core) => match core {
+                    CoreLibId::Type(value_id) => {
+                        DatexExpressionData::ResolveCoreLibId(CoreLibId::Type(
+                            value_id,
+                        ))
+                        .with_span(span.clone())
                     }
-                }
+                    _ => unreachable!(),
+                },
                 ResolvedVariable::PointerAddress(pointer_address) => {
                     DatexExpressionData::RequestSharedRef(RequestSharedRef {
                         address: pointer_address,
@@ -1061,29 +1057,41 @@ mod tests {
         let result = parse_and_precompile("boolean");
         assert_matches!(
             result,
-            Ok(
-                RichAst {
-                    ast: DatexExpression { data: DatexExpressionData::ResolveCoreLibId(CoreLibId::Type(CoreLibTypeId::Base(CoreLibBaseTypeId::Boolean))), ..},
+            Ok(RichAst {
+                ast: DatexExpression {
+                    data: DatexExpressionData::ResolveCoreLibId(
+                        CoreLibId::Type(CoreLibTypeId::Base(
+                            CoreLibBaseTypeId::Boolean
+                        ))
+                    ),
                     ..
-                }
-            )
+                },
+                ..
+            })
         );
         let result = parse_and_precompile("integer");
         assert_matches!(
             result,
-            Ok(
-                RichAst {
-                    ast: DatexExpression { data: DatexExpressionData::ResolveCoreLibId(CoreLibId::Type(CoreLibTypeId::Base(CoreLibBaseTypeId::Integer))), ..},
+            Ok(RichAst {
+                ast: DatexExpression {
+                    data: DatexExpressionData::ResolveCoreLibId(
+                        CoreLibId::Type(CoreLibTypeId::Base(
+                            CoreLibBaseTypeId::Integer
+                        ))
+                    ),
                     ..
-                }
-            )
+                },
+                ..
+            })
         );
 
         let result = parse_and_precompile("integer/u8");
         assert_eq!(
             result.unwrap().ast,
             DatexExpressionData::VariantAccess(VariantAccess {
-                base: ResolvedVariable::CoreLibId(CoreLibId::Type(CoreLibBaseTypeId::Integer.into())),
+                base: ResolvedVariable::CoreLibId(CoreLibId::Type(
+                    CoreLibBaseTypeId::Integer.into()
+                )),
                 name: "integer".to_string(),
                 variant: "u8".to_string(),
             })
@@ -1099,7 +1107,9 @@ mod tests {
         assert_eq!(
             result.ast,
             DatexExpressionData::VariantAccess(VariantAccess {
-                base: ResolvedVariable::CoreLibId(CoreLibId::Type(CoreLibBaseTypeId::Integer.into())),
+                base: ResolvedVariable::CoreLibId(CoreLibId::Type(
+                    CoreLibBaseTypeId::Integer.into()
+                )),
                 name: "integer".to_string(),
                 variant: "u8".to_string(),
             })
@@ -1111,7 +1121,9 @@ mod tests {
         assert_eq!(
             result.ast,
             DatexExpressionData::VariantAccess(VariantAccess {
-                base: ResolvedVariable::CoreLibId(CoreLibId::Type(CoreLibBaseTypeId::Integer.into())),
+                base: ResolvedVariable::CoreLibId(CoreLibId::Type(
+                    CoreLibBaseTypeId::Integer.into()
+                )),
                 name: "integer".to_string(),
                 variant: "invalid".to_string(),
             })
@@ -1436,9 +1448,7 @@ mod tests {
                 id: Some(0),
                 name: "x".to_string(),
                 definition: TypeExpressionData::GetCoreLibType(
-                    CoreLibTypeId::Base(
-                        CoreLibBaseTypeId::Integer
-                    )
+                    CoreLibTypeId::Base(CoreLibBaseTypeId::Integer)
                 )
                 .with_default_span(),
                 hoisted: true,
