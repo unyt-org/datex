@@ -166,6 +166,7 @@ pub fn derive(input: DeriveInput) -> TokenStream {
                 values::core_values::map::Map,
                 values::core_values::list::List,
                 types::type_definition::TypeDefinition,
+                types::type_definition::tagged_type::TaggedTypeDefinition,
                 prelude::*
             };
 
@@ -332,10 +333,10 @@ fn derive_enum(data_enum: DataEnum, ident: &Ident) -> DeriveData {
                     ]);
                     Value {
                         inner: CoreValue::Map(map),
-                        custom_type: Some(TypeDefinition::TaggedType {
+                        custom_type: Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
                             tag: #variant_name.to_string(),
                             ty: None,
-                        }),
+                        })),
                     }
                 }
             },
@@ -349,10 +350,10 @@ fn derive_enum(data_enum: DataEnum, ident: &Ident) -> DeriveData {
                             if let ValueContainer::Local(Value {custom_type: None, inner}) = container {
                                 Value {
                                     inner,
-                                    custom_type: Some(TypeDefinition::TaggedType {
+                                    custom_type: Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
                                         tag: #variant_name.to_string(),
                                         ty: None,
-                                    }),
+                                    })),
                                 }
                             }
                             else {
@@ -369,10 +370,10 @@ fn derive_enum(data_enum: DataEnum, ident: &Ident) -> DeriveData {
                             ]);
                             Value {
                                 inner: CoreValue::List(list),
-                                custom_type: Some(TypeDefinition::TaggedType {
+                                custom_type: Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
                                     tag: #variant_name.to_string(),
                                     ty: None,
-                                }),
+                                })),
                             }
                         }
                     }
@@ -382,10 +383,10 @@ fn derive_enum(data_enum: DataEnum, ident: &Ident) -> DeriveData {
                 #ident::#variant_ident => {
                     Value {
                         inner: CoreValue::Null,
-                        custom_type: Some(TypeDefinition::TaggedType {
+                        custom_type: Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
                             tag: #variant_name.to_string(),
                             ty: None,
-                        }),
+                        })),
                     }
                 }
             },
@@ -449,7 +450,7 @@ fn derive_enum(data_enum: DataEnum, ident: &Ident) -> DeriveData {
 
     let from_datex_fields_inner = quote! {
         match &value.custom_type {
-            Some(TypeDefinition::TaggedType {tag, ..}) => {
+            Some(TypeDefinition::TaggedType(TaggedTypeDefinition {tag, ..})) => {
                 match tag.as_str() {
                     #(#from_datex_fields_inners),*
                     tag => return Err(TryFromDatexValueError(format!("Unexpected tag: {}", tag)))

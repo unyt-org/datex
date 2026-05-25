@@ -88,6 +88,9 @@ use crate::{
 use alloc::rc::Rc;
 use core::cell::RefCell;
 use crate::shared_values::RemotePointerAddress;
+use crate::types::type_definition::impl_type::ImplTypeDefinition;
+use crate::types::type_definition::range::RangeTypeDefinition;
+use crate::types::type_definition::tagged_type::TaggedTypeDefinition;
 
 #[derive(Debug)]
 enum CollectedExecutionResult {
@@ -509,10 +512,10 @@ pub fn inner_execution_loop(
                             RegularInstruction::TaggedValue(TaggedValue {is_empty: true, tag: ShortTextData(tag)}) => {
                                 Some(RuntimeValue::ValueContainer(ValueContainer::Local(Value {
                                     inner: CoreValue::Null,
-                                    custom_type: Some(TypeDefinition::TaggedType {
+                                    custom_type: Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
                                         tag,
                                         ty: Some(Box::new(TypeDefinition::Core(CoreLibBaseTypeId::Unit.into()))),
-                                    })
+                                    }))
                                 })))
                             }
 
@@ -735,10 +738,10 @@ pub fn inner_execution_loop(
                                     match value_container {
                                         ValueContainer::Local(mut value) => {
                                             // add tag type to the value
-                                            value.custom_type = Some(TypeDefinition::TaggedType {
+                                            value.custom_type = Some(TypeDefinition::TaggedType(TaggedTypeDefinition{
                                                 tag,
                                                 ty: value.custom_type.map(Box::new),
-                                            });
+                                            }));
                                             RuntimeValue::ValueContainer(ValueContainer::Local(value))
                                                 .into()
                                         },
@@ -1346,14 +1349,14 @@ pub fn inner_execution_loop(
                                         let base_type =
                                             collected_results.pop_type_result();
                                         Type::Alias(TypeDefinitionWithMetadata {
-                                            definition: TypeDefinition::ImplType(
-                                                Box::new(base_type),
+                                            definition: TypeDefinition::ImplType(ImplTypeDefinition::new(
+                                                base_type,
                                                 impl_type_data
                                                     .impls
                                                     .into_iter()
                                                     .map(PointerAddress::from)
                                                     .collect(),
-                                            ),
+                                            )),
                                             metadata,
                                         })
                                         .into()
@@ -1365,10 +1368,10 @@ pub fn inner_execution_loop(
                                         let type_end =
                                             collected_results.pop_type_result();
                                         let x = Type::Alias(
-                                            TypeDefinition::Range((
-                                                Box::new(type_start),
-                                                Box::new(type_end),
-                                            )).into(),
+                                            TypeDefinition::Range(RangeTypeDefinition {
+                                                start: Box::new(type_start),
+                                                end: Box::new(type_end),
+                                            }).into(),
                                         );
                                         x.into()
                                     }

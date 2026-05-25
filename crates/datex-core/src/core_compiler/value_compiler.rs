@@ -40,6 +40,7 @@ use crate::{
 };
 use crate::libs::core::core_lib_id::{CoreLibId, CoreLibIdIndex};
 use crate::shared_values::ReferencedSharedContainer;
+use crate::types::type_definition::tagged_type::TaggedTypeDefinition;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum SharedValueCompilationError {
@@ -227,13 +228,13 @@ pub fn append_value(
         // special case: tagged value with default type, no type cast needed
         match custom_type {
             // unit tagged value (e.g. #Example)
-            TypeDefinition::TaggedType {
-                ty:
-                    Some(box TypeDefinition::Core(CoreLibTypeId::Base(
-                        CoreLibBaseTypeId::Unit,
-                    ))),
-                tag,
-            } => {
+            TypeDefinition::TaggedType(TaggedTypeDefinition  {
+               ty:
+               Some(box TypeDefinition::Core(CoreLibTypeId::Base(
+                                                 CoreLibBaseTypeId::Unit,
+                                             ))),
+               tag,
+            }) => {
                 append_regular_instruction(
                     context.cursor_mut(),
                     RegularInstruction::TaggedValue(TaggedValue {
@@ -244,10 +245,10 @@ pub fn append_value(
                 return Ok(()); // early return, don't append null value; TODO: assert that value is actually null?
             }
             // tagged value with actual value (e.g. #Example(null))
-            TypeDefinition::TaggedType {
-                ty: Option::None,
-                tag,
-            } => {
+            TypeDefinition::TaggedType(TaggedTypeDefinition {
+               ty: Option::None,
+               tag,
+            }) => {
                 append_regular_instruction(
                     context.cursor_mut(),
                     RegularInstruction::TaggedValue(TaggedValue {
@@ -701,12 +702,12 @@ mod tests {
     fn compile_tagged_empty_value() {
         let value = Value {
             inner: CoreValue::Null,
-            custom_type: Some(TypeDefinition::TaggedType {
+            custom_type: Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
                 ty: Some(Box::new(TypeDefinition::Core(CoreLibTypeId::Base(
                     CoreLibBaseTypeId::Unit,
                 )))),
                 tag: "Example".to_string(),
-            }),
+            })),
         };
 
         let compiled = compile_value(&value).unwrap();
@@ -723,10 +724,10 @@ mod tests {
     fn compile_tagged_value() {
         let value = Value {
             inner: CoreValue::Null,
-            custom_type: Some(TypeDefinition::TaggedType {
+            custom_type: Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
                 ty: None,
                 tag: "Example".to_string(),
-            }),
+            })),
         };
 
         let compiled = compile_value(&value).unwrap();

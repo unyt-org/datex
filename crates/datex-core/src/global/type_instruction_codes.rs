@@ -41,7 +41,7 @@ pub enum TypeInstructionCode {
 impl From<&TypeDefinition> for TypeInstructionCode {
     fn from(value: &TypeDefinition) -> Self {
         match value {
-            TypeDefinition::ImplType(_, _) => {
+            TypeDefinition::ImplType(_) => {
                 TypeInstructionCode::TYPE_WITH_IMPLS
             }
             TypeDefinition::Shared(_) => {
@@ -66,7 +66,7 @@ impl From<&TypeDefinition> for TypeInstructionCode {
             TypeDefinition::Nested(_) => todo!(),
             TypeDefinition::Type => todo!(),
             TypeDefinition::Core(_) => todo!(),
-            TypeDefinition::TaggedType { .. } => {
+            TypeDefinition::TaggedType(_) => {
                 TypeInstructionCode::TAGGED_TYPE
             }
         }

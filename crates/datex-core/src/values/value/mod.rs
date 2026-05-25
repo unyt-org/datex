@@ -304,6 +304,7 @@ mod tests {
     };
     use core::str::FromStr;
     use log::info;
+    use crate::types::type_definition::impl_type::ImplTypeDefinition;
 
     #[test]
     fn endpoint() {
@@ -473,8 +474,9 @@ mod tests {
         let val = Value {
             inner: CoreValue::Integer(Integer::from(42)),
             custom_type: Some(TypeDefinition::ImplType(
-                Box::new(Type::core(CoreLibBaseTypeId::Integer)),
-                vec![],
+                ImplTypeDefinition::new(
+                    Type::core(CoreLibBaseTypeId::Integer), vec![]
+                )
             )),
         };
 

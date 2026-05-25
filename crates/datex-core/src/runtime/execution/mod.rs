@@ -280,6 +280,7 @@ mod tests {
     };
     use core::assert_matches;
     use log::{debug, info};
+    use crate::types::type_definition::tagged_type::TaggedTypeDefinition;
 
     fn execute_datex_script_debug(
         datex_script: &str,
@@ -511,12 +512,12 @@ mod tests {
             assert_eq!(&value.inner, &CoreValue::Null);
             assert_eq!(
                 &value.custom_type,
-                &Some(TypeDefinition::TaggedType {
+                &Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
                     tag: "Example".to_string(),
                     ty: Some(Box::new(TypeDefinition::Core(
                         CoreLibBaseTypeId::Unit.into()
                     ))),
-                })
+                }))
             )
         } else {
             panic!("Result should be Local value");
@@ -538,10 +539,10 @@ mod tests {
             assert_eq!(
                 &value.custom_type,
                 &Some(
-                    TypeDefinition::TaggedType {
+                    TypeDefinition::TaggedType(TaggedTypeDefinition {
                         tag: "Example".to_string(),
                         ty: None,
-                    }
+                    })
                     .into()
                 )
             )

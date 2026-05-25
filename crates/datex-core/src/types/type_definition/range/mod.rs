@@ -2,6 +2,7 @@ use core::fmt::Display;
 
 use crate::types::r#type::Type;
 pub mod equality;
+mod serde_dif;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RangeTypeDefinition {
