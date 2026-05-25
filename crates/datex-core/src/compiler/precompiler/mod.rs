@@ -433,15 +433,8 @@ impl Precompiler<'_> {
                     })
                     .with_span(span.clone())
                 }
-                ResolvedVariable::CoreLibId(core) => match core {
-                    CoreLibId::Type(value_id) => {
-                        DatexExpressionData::ResolveCoreLibId(CoreLibId::Type(
-                            value_id,
-                        ))
-                        .with_span(span.clone())
-                    }
-                    _ => unreachable!(),
-                },
+                ResolvedVariable::CoreLibId(core_lib_id) => DatexExpressionData::ResolveCoreLibId(core_lib_id)
+                    .with_span(span.clone()),
                 ResolvedVariable::PointerAddress(pointer_address) => {
                     DatexExpressionData::RequestSharedRef(RequestSharedRef {
                         address: pointer_address,
