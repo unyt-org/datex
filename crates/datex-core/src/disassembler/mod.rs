@@ -50,6 +50,7 @@ pub fn get_disassembled_with_options(
 /// Pretty-prints DXB bytecode as a tree with nested branch decoding and returns a String
 /// Unlike `get_disassembled_with_options`, this produces a compact tree view
 /// that recursively resolves CONDITIONAL branches inline
+/// This function is created for debug, I recommend to use it for debug, but in prod any calls of this function must be deleted!
 #[cfg(feature = "disassembler")]
 pub fn pretty_print_dxb_to_string(bytes: &[u8]) -> String {
     use crate::global::{
