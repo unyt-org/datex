@@ -103,6 +103,7 @@ pub fn execute_dxb_sync(
 
 /// Execute a batch of DXB bytes synchronously, returning the result and the modified stack.
 /// This is used by CONDITIONAL to execute branch bodies without external stack_capture plumbing.
+/// This function is not CPU havy, it require a bit more then `jump` approach in other languages, but makes language more stable and save
 pub(crate) fn execute_branch_sync(
     branch_bytes: &[u8],
     runtime: Runtime,
