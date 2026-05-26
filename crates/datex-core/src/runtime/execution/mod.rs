@@ -13,28 +13,28 @@ use crate::{
     values::value_container::ValueContainer,
 };
 
+use self::execution_loop::{
+    interrupts::ExecutionInterrupt, state::RuntimeExecutionState,
+};
 use crate::{
     global::protocol_structures::instruction_data::{
-        RawRemotePointerAddress,
-        RawSelfOwnedPointerAddress,
+        RawRemotePointerAddress, RawSelfOwnedPointerAddress,
     },
+    libs::core::core_lib_id::CoreLibId,
     shared_values::{
-        PointerAddress, ReferenceMutability,
-        ReferencedSharedContainer, SharedContainer,
+        PointerAddress, ReferenceMutability, ReferencedSharedContainer,
+        SharedContainer, base_shared_value_container::observers::TransceiverId,
     },
     values::core_values::endpoint::Endpoint,
 };
-use core::{result::Result, unreachable};
+use alloc::rc::Rc;
+use core::{cell::RefCell, result::Result, unreachable};
 pub use errors::*;
-pub use execution_input::{ExecutionInput, ExecutionCallerMetadata, ExecutionOptions};
+pub use execution_input::{
+    ExecutionCallerMetadata, ExecutionInput, ExecutionOptions,
+};
 pub use execution_loop::state::RuntimeExecutionStack;
 pub use stack_dump::*;
-use crate::libs::core::core_lib_id::CoreLibId;
-use crate::shared_values::base_shared_value_container::observers::TransceiverId;
-use alloc::rc::Rc;
-use core::cell::RefCell;
-use self::execution_loop::interrupts::ExecutionInterrupt;
-use self::execution_loop::state::RuntimeExecutionState;
 
 pub mod context;
 mod errors;
@@ -80,13 +80,11 @@ pub fn execute_dxb_sync(
                     ),
                 );
             }
-            ExternalExecutionInterrupt::GetCoreLibValue(
-                id,
-            ) => {
+            ExternalExecutionInterrupt::GetCoreLibValue(id) => {
                 interrupt_provider.provide_result(
-                    InterruptResult::ResolvedValue(Some(get_core_lib_value_container(
-                        &runtime, id,
-                    )?)),
+                    InterruptResult::ResolvedValue(Some(
+                        get_core_lib_value_container(&runtime, id)?,
+                    )),
                 );
             }
             ExternalExecutionInterrupt::Apply(callee, args) => {
@@ -99,85 +97,6 @@ pub fn execute_dxb_sync(
     }
 
     Err(ExecutionError::RequiresAsyncExecution)
-}
-
-/// Execute a batch of DXB bytes synchronously, returning the result and the modified stack.
-/// This is used by CONDITIONAL to execute branch bodies without external stack_capture plumbing.
-/// This function is not CPU havy, it require a bit more then `jump` approach in other languages, but makes language more stable and save
-pub(crate) fn execute_branch_sync(
-    branch_bytes: &[u8],
-    runtime: Runtime,
-    caller_metadata: ExecutionCallerMetadata,
-    stack: RuntimeExecutionStack,
-) -> Result<(Option<ValueContainer>, RuntimeExecutionStack), ExecutionError> {
-    let stack_capture: Option<Rc<RefCell<Option<RuntimeExecutionStack>>>> =
-        Some(Rc::new(RefCell::new(None)));
-    let dxb_rc = Rc::new(RefCell::new(branch_bytes.to_vec()));
-    let interrupt_provider = execution_loop::interrupts::InterruptProvider::new();
-    let state = RuntimeExecutionState {
-        stack,
-        runtime: runtime.clone(),
-        source_id: TransceiverId(0),
-        caller_metadata: caller_metadata.clone(),
-    };
-
-    let mut result = None;
-    for output in execution_loop::inner_execution_loop(
-        dxb_rc,
-        interrupt_provider.clone(),
-        state,
-        stack_capture.clone(),
-    ) {
-        match output? {
-            ExecutionInterrupt::External(ext) => match ext {
-                ExternalExecutionInterrupt::Result(val) => {
-                    result = Some(val);
-                }
-                ExternalExecutionInterrupt::GetReferenceToRemotePointer(
-                    address,
-                    mutability,
-                ) => interrupt_provider.provide_result(
-                    InterruptResult::ResolvedValue(
-                        get_remote_shared_container_reference(
-                            &runtime, address, mutability,
-                        )?
-                        .map(|v| {
-                            ValueContainer::Shared(SharedContainer::Referenced(v))
-                        }),
-                    ),
-                ),
-                ExternalExecutionInterrupt::GetReferenceToLocalPointer(address) => {
-                    interrupt_provider.provide_result(
-                        InterruptResult::ResolvedValue(
-                            get_local_pointer_value(&runtime, address).map(|v| {
-                                ValueContainer::Shared(SharedContainer::Referenced(v))
-                            }),
-                        ),
-                    );
-                }
-                ExternalExecutionInterrupt::Apply(callee, args) => {
-                    let res = handle_apply(&callee, &args)?;
-                    interrupt_provider
-                        .provide_result(InterruptResult::ResolvedValue(res));
-                }
-                ExternalExecutionInterrupt::GetCoreLibValue(id) => {
-                    let runtime_ref = &runtime;
-                    interrupt_provider.provide_result(
-                        InterruptResult::ResolvedValue(Some(
-                            get_core_lib_value_container(runtime_ref, id)?,
-                        )),
-                    );
-                }
-                _ => return Err(ExecutionError::RequiresAsyncExecution),
-            },
-            ExecutionInterrupt::SetActiveValue(_) => {}
-        }
-    }
-
-    let final_stack = stack_capture
-        .and_then(|c| c.borrow_mut().take())
-        .unwrap_or_default();
-    Ok((result.unwrap_or(None), final_stack))
 }
 
 pub async fn execute_dxb(
@@ -219,13 +138,11 @@ pub async fn execute_dxb(
                     ),
                 );
             }
-            ExternalExecutionInterrupt::GetCoreLibValue(
-                id,
-            ) => {
+            ExternalExecutionInterrupt::GetCoreLibValue(id) => {
                 interrupt_provider.provide_result(
-                    InterruptResult::ResolvedValue(Some(get_core_lib_value_container(
-                        &runtime, id,
-                    )?)),
+                    InterruptResult::ResolvedValue(Some(
+                        get_core_lib_value_container(&runtime, id)?,
+                    )),
                 );
             }
             ExternalExecutionInterrupt::RemoteExecution(receivers, body) => {
@@ -309,9 +226,7 @@ fn get_core_lib_value_container(
     runtime: &Runtime,
     id: CoreLibId,
 ) -> Result<ValueContainer, ExecutionError> {
-    let value = runtime
-        .core_library()
-        .value_or_type_by_id(id);
+    let value = runtime.core_library().value_or_type_by_id(id);
     Ok(ValueContainer::Local(value.clone()))
 }
 
@@ -351,7 +266,12 @@ mod tests {
             base_shared_value_container::BaseSharedValueContainer,
         },
         traits::{structural_eq::StructuralEq, value_eq::ValueEq},
-        types::{r#type::Type, type_definition::TypeDefinition},
+        types::{
+            r#type::Type,
+            type_definition::{
+                TypeDefinition, tagged_type::TaggedTypeDefinition,
+            },
+        },
         values::{
             core_value::CoreValue,
             core_values::{
@@ -365,7 +285,6 @@ mod tests {
     };
     use core::assert_matches;
     use log::{debug, info};
-    use crate::types::type_definition::tagged_type::TaggedTypeDefinition;
 
     fn execute_datex_script_debug(
         datex_script: &str,

@@ -1,10 +1,9 @@
 //! This module contains the disassembler for DATEX, which converts DXB bytecode into a human-readable assembly-like string representation e.g.
-//! from `4, 2, 0, 0, 0, 72, 42, 0, 0, 0, 0, 83` to
+//! from `24, 73, 1, 73, 2`(1+2) to
 //! ```asm
-//! CONDITIONAL
-//!     condition: TRUE true
-//!     then:
-//!         UINT_8 42
+//! ADD
+//!   UINT_8 1
+//!   UINT_8 2
 //! ```
 
 #[cfg(feature = "disassembler")]
@@ -48,8 +47,6 @@ pub fn get_disassembled_with_options(
 }
 
 /// Pretty-prints DXB bytecode as a tree with nested branch decoding and returns a String
-/// Unlike `get_disassembled_with_options`, this produces a compact tree view
-/// that recursively resolves CONDITIONAL branches inline
 /// This function is created for debug, I recommend to use it for debug, but in prod any calls of this function must be deleted!
 #[cfg(feature = "disassembler")]
 pub fn pretty_print_dxb_to_string(bytes: &[u8]) -> String {
@@ -70,44 +67,10 @@ pub fn pretty_print_dxb_to_string(bytes: &[u8]) -> String {
         output: &mut String,
     ) {
         let indent = "  ".repeat(depth);
-        let instruction = &*node.instruction;
 
-        match instruction {
-            Instruction::Regular(RegularInstruction::Conditional(data)) => {
-                writeln!(output, "{}CONDITIONAL", indent).unwrap();
-                if let Some(cond_child) = node.children.first() {
-                    write!(output, "{}  condition: ", indent).unwrap();
-                    instr_inline(cond_child, "", output);
-                } else {
-                    writeln!(output, "{}  condition: (none)", indent).unwrap();
-                }
-                if !data.then_branch.branch.is_empty() {
-                    writeln!(output, "{}  then:", indent).unwrap();
-                    let then_bytes = &data.then_branch.branch;
-                    let (then_tree, _) = disassembler::disassemble_body(
-                        then_bytes,
-                        NestedInstructionResolutionStrategy::ResolveNestedScopesFlat,
-                    );
-                    tree_to_string(&then_tree, depth + 2, output);
-                } else {
-                    writeln!(output, "{}  then: (empty)", indent).unwrap();
-                }
-                if !data.else_branch.branch.is_empty() {
-                    writeln!(output, "{}  else:", indent).unwrap();
-                    let else_bytes = &data.else_branch.branch;
-                    let (else_tree, _) = disassembler::disassemble_body(
-                        else_bytes,
-                        NestedInstructionResolutionStrategy::ResolveNestedScopesFlat,
-                    );
-                    tree_to_string(&else_tree, depth + 2, output);
-                }
-            }
-            inst => {
-                instr_inline(node, &indent, output);
-                for child in &node.children {
-                    tree_to_string(child, depth + 1, output);
-                }
-            }
+        instr_inline(node, &indent, output);
+        for child in &node.children {
+            tree_to_string(child, depth + 1, output);
         }
     }
 

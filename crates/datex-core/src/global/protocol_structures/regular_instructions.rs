@@ -6,7 +6,7 @@ use crate::{
         instruction_codes::InstructionCode,
         protocol_structures::{
             instruction_data::{
-                ApplyData, ConditionalData, DecimalData, Float32Data, JumpData,
+                ApplyData, DecimalData, Float32Data, JumpData,
                 Float64Data, FloatAsInt16Data, FloatAsInt32Data,
                 InstructionBlockData, Int8Data, Int16Data, Int32Data,
                 Int64Data, Int128Data, IntegerData, ListData, MapData,
@@ -174,8 +174,6 @@ pub enum RegularInstruction {
 
     TypedValue,
     TypeExpression,
-
-    Conditional(ConditionalData),
 
     Jump(JumpData),
     JumpIfFalse(JumpData),
@@ -346,7 +344,6 @@ impl From<&RegularInstruction> for InstructionCode {
             RegularInstruction::TypeExpression => {
                 InstructionCode::TYPE_EXPRESSION
             }
-            RegularInstruction::Conditional(_) => InstructionCode::CONDITIONAL,
             RegularInstruction::Jump(_) => InstructionCode::JUMP,
             RegularInstruction::JumpIfFalse(_) => InstructionCode::JUMP_IF_FALSE,
             RegularInstruction::TaggedValue(_) => InstructionCode::TAGGED_VALUE,
@@ -482,10 +479,6 @@ impl RegularInstruction {
 
             RegularInstruction::TypeExpression => {
                 NextExpectedInstructions::Type(1)
-            }
-
-            RegularInstruction::Conditional(_) => {
-                NextExpectedInstructions::Regular(1)
             }
 
             RegularInstruction::Jump(_) => {
@@ -800,9 +793,6 @@ impl RegularInstruction {
                 Ok(RegularInstruction::TypeExpression)
             }
 
-            InstructionCode::CONDITIONAL => ConditionalData::read(reader)
-                .map(RegularInstruction::Conditional),
-
             InstructionCode::JUMP => JumpData::read(reader)
                 .map(RegularInstruction::Jump),
             InstructionCode::JUMP_IF_FALSE => JumpData::read(reader)
@@ -1045,15 +1035,6 @@ impl RegularInstruction {
                     data.injected_values
                 )
             }
-            RegularInstruction::Conditional(data) => {
-                write!(
-                    string,
-                    "[then_len: {}, else_len: {}]",
-                    data.then_branch.branch_length,
-                    data.else_branch.branch_length,
-                )
-            }
-
             RegularInstruction::Jump(data) => {
                 write!(string, "{}", data.offset)
             }

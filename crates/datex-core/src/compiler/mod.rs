@@ -24,10 +24,10 @@ use crate::{
     core_compiler::value_compiler::{
         append_boolean, append_decimal, append_encoded_integer,
         append_endpoint, append_float_as_i16, append_float_as_i32,
-        append_get_core_lib_value, append_get_shared_ref, append_integer,
-        append_key_string, append_regular_instruction,
-        append_statements_preamble, append_text, append_typed_decimal,
-        append_value,
+        append_get_core_lib_value, append_get_shared_ref,
+        append_inline_shared_container, append_integer, append_key_string,
+        append_regular_instruction, append_statements_preamble, append_text,
+        append_typed_decimal, append_value,
     },
     global::{
         dxb_block::DXBBlock,
@@ -41,10 +41,9 @@ use crate::{
                 SharedInjectedValueType,
             },
             instruction_data::{
-                ConditionalBranchData, ConditionalData, InstructionBlockData,
-                JumpData, ModifyStackValue, SetSharedContainerValue,
-                ShortTextData, StackIndex, TaggedValue,
-                UnboundedStatementsData,
+                InstructionBlockData, JumpData, ModifyStackValue,
+                SetSharedContainerValue, ShortTextData, StackIndex,
+                TaggedValue, UnboundedStatementsData,
             },
             regular_instructions::RegularInstruction,
             routing_header::RoutingHeader,
@@ -70,7 +69,6 @@ use precompiler::{
     precompile_ast,
     precompiled_ast::{AstMetadata, RichAst, VariableMetadata},
 };
-use crate::core_compiler::value_compiler::append_inline_shared_container;
 
 pub mod context;
 pub mod error;
@@ -1706,7 +1704,7 @@ pub mod tests {
     use core::assert_matches;
     use log::*;
 
-    pub fn compile_and_log(datex_script: &str) -> Vec<u8> {
+    fn compile_and_log(datex_script: &str) -> Vec<u8> {
         let (result, _) = compile_script(
             datex_script,
             CompileOptions::default(),

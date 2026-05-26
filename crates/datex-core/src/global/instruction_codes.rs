@@ -22,8 +22,6 @@ pub enum InstructionCode {
     UNBOUNDED_STATEMENTS,
     UNBOUNDED_STATEMENTS_END, // end of statements block (only needed for unbounded blocks)
 
-    CONDITIONAL, // if/else conditional
-
     JUMP,          // unconditional jump (relative byte offset)
     JUMP_IF_FALSE, // conditional jump, jumps if false
 

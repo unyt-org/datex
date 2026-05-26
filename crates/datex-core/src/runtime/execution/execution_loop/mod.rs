@@ -46,7 +46,7 @@ use crate::{
                 set_property,
             },
             runtime_value::RuntimeValue,
-            state::{RuntimeExecutionStack, RuntimeExecutionState},
+            state::RuntimeExecutionState,
         },
         macros::{
             interrupt, interrupt_with_maybe_value, interrupt_with_value,
@@ -64,7 +64,10 @@ use crate::{
     types::{
         literal_type_definition::LiteralTypeDefinition,
         r#type::Type,
-        type_definition::TypeDefinition,
+        type_definition::{
+            TypeDefinition, impl_type::ImplTypeDefinition,
+            range::RangeTypeDefinition, tagged_type::TaggedTypeDefinition,
+        },
         type_definition_with_metadata::{
             TypeDefinitionWithMetadata, TypeMetadata,
         },
@@ -88,10 +91,6 @@ use crate::{
 };
 use alloc::rc::Rc;
 use core::cell::RefCell;
-use crate::shared_values::RemotePointerAddress;
-use crate::types::type_definition::impl_type::ImplTypeDefinition;
-use crate::types::type_definition::range::RangeTypeDefinition;
-use crate::types::type_definition::tagged_type::TaggedTypeDefinition;
 
 #[derive(Debug)]
 enum CollectedExecutionResult {
@@ -220,7 +219,6 @@ pub fn execution_loop(
     state: RuntimeExecutionState,
     dxb_body: Rc<RefCell<Vec<u8>>>,
     interrupt_provider: InterruptProvider,
-    stack_capture: Option<Rc<RefCell<Option<RuntimeExecutionStack>>>>,
 ) -> impl Iterator<Item = Result<ExternalExecutionInterrupt, ExecutionError>> {
     gen move {
         let mut active_value: Option<ValueContainer> = None;
@@ -229,7 +227,6 @@ pub fn execution_loop(
             dxb_body,
             interrupt_provider.clone(),
             state,
-            stack_capture,
         ) {
             match interrupt {
                 Ok(interrupt) => match interrupt {
@@ -269,7 +266,6 @@ pub fn inner_execution_loop(
     dxb_body: Rc<RefCell<Vec<u8>>>,
     interrupt_provider: InterruptProvider,
     mut state: RuntimeExecutionState,
-    stack_capture: Option<Rc<RefCell<Option<RuntimeExecutionStack>>>>,
 ) -> impl Iterator<Item = Result<ExecutionInterrupt, ExecutionError>> {
     gen move {
         let mut collector =
@@ -587,7 +583,6 @@ pub fn inner_execution_loop(
                             RegularInstruction::SetSharedContainerValue(_) |
                             RegularInstruction::Unbox |
                             RegularInstruction::TypedValue |
-                            RegularInstruction::Conditional(_) |
                             RegularInstruction::Jump(_) |
                             RegularInstruction::JumpIfFalse(_) |
                             RegularInstruction::RemoteExecution(_) |
@@ -1268,58 +1263,6 @@ pub fn inner_execution_loop(
                                     CollectedExecutionResult::Value(None)
                                 }
 
-                                RegularInstruction::Conditional(
-                                    data,
-                                ) => {
-                                    let condition_value = yield_unwrap!(
-                                        collected_results.pop_runtime_value_result_assert_existing()
-                                    );
-                                    let is_truthy = condition_value
-                                        .into_cloned_value_container(&state)
-                                        .map(|v| {
-                                            match &v {
-                                                ValueContainer::Local(val) => {
-                                                    use crate::values::core_value::CoreValue;
-                                                    use crate::values::core_values::boolean::Boolean;
-                                                    !matches!(
-                                                        val.inner,
-                                                        CoreValue::Boolean(Boolean(false))
-                                                            | CoreValue::Null
-                                                    )
-                                                }
-                                                _ => true,
-                                            }
-                                        })
-                                        .unwrap_or(false);
-
-                                    let branch_bytes = if is_truthy {
-                                        &data.then_branch.branch
-                                    } else {
-                                        &data.else_branch.branch
-                                    };
-
-                                    if branch_bytes.is_empty() {
-                                        CollectedExecutionResult::Value(None)
-                                    } else {
-                                        match super::execute_branch_sync(
-                                            branch_bytes,
-                                            state.runtime.clone(),
-                                            state.caller_metadata.clone(),
-                                            core::mem::take(&mut state.stack),
-                                        ) {
-                                            Ok((val, modified_stack)) => {
-                                                state.stack = modified_stack;
-                                                CollectedExecutionResult::Value(
-                                                    val.map(RuntimeValue::ValueContainer),
-                                                )
-                                            }
-                                            Err(e) => {
-                                                return yield Err(e);
-                                            }
-                                        }
-                                    }
-                                }
-
                                 RegularInstruction::RemoteExecution(
                                     exec_block_data,
                                 ) => {
@@ -1566,10 +1509,6 @@ pub fn inner_execution_loop(
             ));
         } else {
             panic!("Execution finished without root result");
-        }
-
-        if let Some(capture) = stack_capture {
-            *capture.borrow_mut() = Some(state.stack);
         }
     }
 }

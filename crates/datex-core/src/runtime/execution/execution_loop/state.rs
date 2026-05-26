@@ -55,7 +55,6 @@ impl ExecutionLoopState {
                 state,
                 dxb_rc,
                 interrupt_provider.clone(),
-                None,
             )),
             interrupt_provider,
         }

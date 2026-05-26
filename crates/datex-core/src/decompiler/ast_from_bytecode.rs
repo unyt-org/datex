@@ -32,7 +32,7 @@ use crate::{
     },
     global::protocol_structures::{
         instruction_data::{
-            ConditionalData, ShortTextData, StackIndex, TaggedValue,
+            ShortTextData, StackIndex, TaggedValue,
             UnboundedStatementsData,
         },
         instructions::NestedInstructionResolutionStrategy,
@@ -467,40 +467,6 @@ pub fn ast_from_bytecode(
                                     unbounded: None,
                                 })
                                  .with_default_span()
-                                .into()
-                            }
-
-                            RegularInstruction::Conditional(ConditionalData {
-                                then_branch,
-                                else_branch,
-                            }) => {
-                                let condition =
-                                    collected_results.pop_value_result();
-                                let then_ast = ast_from_bytecode(
-                                    &then_branch.branch,
-                                )
-                                .unwrap_or_else(|_| {
-                                    DatexExpressionData::Null
-                                        .with_default_span()
-                                });
-                                let else_ast =
-                                    if else_branch.branch.is_empty() {
-                                        None
-                                    } else {
-                                        ast_from_bytecode(
-                                            &else_branch.branch,
-                                        )
-                                        .ok()
-                                        .map(Box::new)
-                                    };
-                                DatexExpressionData::Conditional(
-                                    Conditional {
-                                        condition: Box::new(condition),
-                                        then_branch: Box::new(then_ast),
-                                        else_branch: else_ast,
-                                    },
-                                )
-                                .with_default_span()
                                 .into()
                             }
 
