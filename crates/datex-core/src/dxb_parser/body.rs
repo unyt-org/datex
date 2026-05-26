@@ -179,7 +179,7 @@ pub fn iterate_instructions_with_seek(
         let mut reader = Cursor::new(dxb_body);
 
         loop {
-            // check for pending seek request(can be used in something, but for now is not)
+            // check for pending seek request
             if let Some(seek_request) = &seek_request {
                 if let Some(seek_offset) = seek_request.borrow_mut().take() {
                     let new_pos = reader.position() as i64 + seek_offset as i64;

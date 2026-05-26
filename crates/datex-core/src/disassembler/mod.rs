@@ -173,6 +173,9 @@ pub fn pretty_print_dxb_to_string(bytes: &[u8]) -> String {
             Instruction::Regular(RegularInstruction::Jump(data)) => {
                 format!("{}", data.offset)
             }
+            Instruction::Regular(RegularInstruction::JumpIfFalse(data)) => {
+                format!("{}", data.offset)
+            }
             _ => String::new(),
         };
         if meta.is_empty() {

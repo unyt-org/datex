@@ -42,8 +42,9 @@ use crate::{
             },
             instruction_data::{
                 ConditionalBranchData, ConditionalData, InstructionBlockData,
-                ModifyStackValue, SetSharedContainerValue, ShortTextData,
-                StackIndex, TaggedValue,
+                JumpData, ModifyStackValue, SetSharedContainerValue,
+                ShortTextData, StackIndex, TaggedValue,
+                UnboundedStatementsData,
             },
             regular_instructions::RegularInstruction,
             routing_header::RoutingHeader,
@@ -55,8 +56,7 @@ use crate::{
     prelude::*,
     runtime::{Runtime, execution::context::ExecutionMode},
     shared_values::{
-        ReferenceMutability, SharedContainer,
-        SharedContainerMutability,
+        ReferenceMutability, SharedContainer, SharedContainerMutability,
     },
     time::Instant,
     utils::buffers::{append_u8, append_u16, append_u32},
@@ -1289,8 +1289,8 @@ fn compile_expression(
                 );
             } else {
                 return Err(CompilerError::InvalidRootPropertyName(
-                   property_name.clone(),
-               ));
+                    property_name.clone(),
+                ));
             }
         }
 
@@ -1441,24 +1441,62 @@ fn compile_expression(
                 None => Vec::new(),
             };
 
+            let cursor = compilation_context.cursor();
+
             append_regular_instruction(
-                compilation_context.cursor(),
-                RegularInstruction::Conditional(ConditionalData {
-                    then_branch: ConditionalBranchData {
-                        branch_length: then_bytes.len() as u32,
-                        branch: then_bytes,
-                    },
-                    else_branch: ConditionalBranchData {
-                        branch_length: else_bytes.len() as u32,
-                        branch: else_bytes,
-                    },
-                }),
+                cursor,
+                RegularInstruction::UnboundedStatements,
             );
 
-            compilation_context
-                .cursor()
-                .write_all(&condition_bytes)
-                .unwrap();
+            let jump_if_false_offset_pos = cursor.position() as usize + 1;
+            append_regular_instruction(
+                cursor,
+                RegularInstruction::JumpIfFalse(JumpData { offset: 0 }),
+            );
+
+            cursor.write_all(&condition_bytes).unwrap();
+
+            cursor.write_all(&then_bytes).unwrap();
+
+            if else_bytes.is_empty() {
+                append_regular_instruction(
+                    cursor,
+                    RegularInstruction::UnboundedStatementsEnd(
+                        UnboundedStatementsData { terminated: false },
+                    ),
+                );
+
+                let jump_if_false_offset = then_bytes.len() as u32;
+                compilation_context.set_u32_at_index(
+                    jump_if_false_offset,
+                    jump_if_false_offset_pos,
+                );
+            } else {
+                let jump_offset_pos = cursor.position() as usize + 1;
+                append_regular_instruction(
+                    cursor,
+                    RegularInstruction::Jump(JumpData { offset: 0 }),
+                );
+
+                cursor.write_all(&else_bytes).unwrap();
+
+                append_regular_instruction(
+                    cursor,
+                    RegularInstruction::UnboundedStatementsEnd(
+                        UnboundedStatementsData { terminated: false },
+                    ),
+                );
+
+                let jump_offset = else_bytes.len() as u32;
+                compilation_context
+                    .set_u32_at_index(jump_offset, jump_offset_pos);
+
+                let jump_if_false_offset = (then_bytes.len() + 5) as u32;
+                compilation_context.set_u32_at_index(
+                    jump_if_false_offset,
+                    jump_if_false_offset_pos,
+                );
+            }
         }
 
         DatexExpressionData::Tag(tag_expression) => {
@@ -1482,7 +1520,7 @@ fn compile_expression(
                 )?;
             }
         }
-        
+
         DatexExpressionData::ResolveCoreLibId(core_lib_id) => {
             append_regular_instruction(
                 compilation_context.cursor(),
@@ -3372,16 +3410,15 @@ pub mod tests {
         let (res, _) =
             compile_script(script, CompileOptions::default(), Runtime::stub())
                 .unwrap();
-        
+
         assert_regular_instructions_equal!(
             &res,
-            [
-                RegularInstruction::GetCoreLibValue(
-                    CoreLibId::Type(CoreLibTypeId::Base(
-                        CoreLibBaseTypeId::Integer
-                    )).into()
-                ),
-            ]
+            [RegularInstruction::GetCoreLibValue(
+                CoreLibId::Type(CoreLibTypeId::Base(
+                    CoreLibBaseTypeId::Integer
+                ))
+                .into()
+            ),]
         )
     }
 
@@ -3727,18 +3764,17 @@ pub mod tests {
         let script = "if (true) (42u8)";
         let result = compile_and_log(script);
         let expected = vec![
-            InstructionCode::CONDITIONAL.into(),
+            InstructionCode::UNBOUNDED_STATEMENTS.into(),
+            InstructionCode::JUMP_IF_FALSE.into(),
             2,
             0,
             0,
             0,
+            InstructionCode::TRUE.into(),
             InstructionCode::UINT_8.into(),
             42,
+            InstructionCode::UNBOUNDED_STATEMENTS_END.into(),
             0,
-            0,
-            0,
-            0,
-            InstructionCode::TRUE.into(),
         ];
         assert_eq!(result, expected);
     }
@@ -3754,23 +3790,27 @@ pub mod tests {
             InstructionCode::PUSH_TO_STACK.into(),
             InstructionCode::UINT_8.into(),
             10,
-            InstructionCode::CONDITIONAL.into(),
-            5,
+            InstructionCode::UNBOUNDED_STATEMENTS.into(),
+            InstructionCode::JUMP_IF_FALSE.into(),
+            10,
             0,
             0,
             0,
+            InstructionCode::TRUE.into(),
             InstructionCode::TAKE_STACK_VALUE.into(),
             0,
             0,
             0,
             0,
+            InstructionCode::JUMP.into(),
             2,
             0,
             0,
             0,
             InstructionCode::UINT_8.into(),
             0,
-            InstructionCode::TRUE.into(),
+            InstructionCode::UNBOUNDED_STATEMENTS_END.into(),
+            0,
         ];
         assert_eq!(result, expected);
     }
@@ -3784,17 +3824,21 @@ pub mod tests {
             else (
                 123u32
             )";
+        let result = compile_and_log(script);
         let expected = vec![
-            InstructionCode::CONDITIONAL.into(),
-            5,
+            InstructionCode::UNBOUNDED_STATEMENTS.into(),
+            InstructionCode::JUMP_IF_FALSE.into(),
+            10,
             0,
             0,
             0,
+            InstructionCode::TRUE.into(),
             InstructionCode::UINT_32.into(),
             122,
             0,
             0,
             0,
+            InstructionCode::JUMP.into(),
             5,
             0,
             0,
@@ -3804,10 +3848,9 @@ pub mod tests {
             0,
             0,
             0,
-            InstructionCode::TRUE.into(),
+            InstructionCode::UNBOUNDED_STATEMENTS_END.into(),
+            0,
         ];
-        let result = compile_and_log(script);
-
         assert_eq!(result, expected);
     }
 
@@ -3826,11 +3869,13 @@ pub mod tests {
             )";
         let result = compile_and_log(script);
         let expected = vec![
-            InstructionCode::CONDITIONAL.into(),
-            7,
+            InstructionCode::UNBOUNDED_STATEMENTS.into(),
+            InstructionCode::JUMP_IF_FALSE.into(),
+            12,
             0,
             0,
             0,
+            InstructionCode::TRUE.into(),
             InstructionCode::SHORT_STATEMENTS.into(),
             2,
             1,
@@ -3838,25 +3883,31 @@ pub mod tests {
             0,
             InstructionCode::UINT_8.into(),
             1,
-            14,
+            InstructionCode::JUMP.into(),
+            18,
             0,
             0,
             0,
-            InstructionCode::CONDITIONAL.into(),
-            2,
+            InstructionCode::UNBOUNDED_STATEMENTS.into(),
+            InstructionCode::JUMP_IF_FALSE.into(),
+            7,
             0,
             0,
-            0,
-            InstructionCode::UINT_8.into(),
-            0,
-            2,
-            0,
-            0,
-            0,
-            InstructionCode::UINT_8.into(),
             0,
             InstructionCode::FALSE.into(),
-            InstructionCode::TRUE.into(),
+            InstructionCode::UINT_8.into(),
+            0,
+            InstructionCode::JUMP.into(),
+            2,
+            0,
+            0,
+            0,
+            InstructionCode::UINT_8.into(),
+            0,
+            InstructionCode::UNBOUNDED_STATEMENTS_END.into(),
+            0,
+            InstructionCode::UNBOUNDED_STATEMENTS_END.into(),
+            0,
         ];
         assert_eq!(result, expected);
     }

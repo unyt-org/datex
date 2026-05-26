@@ -24,7 +24,8 @@ pub enum InstructionCode {
 
     CONDITIONAL, // if/else conditional
 
-    JUMP,              // unconditional jump (relative byte offset)
+    JUMP,          // unconditional jump (relative byte offset)
+    JUMP_IF_FALSE, // conditional jump, jumps if false
 
     APPLY_ZERO,
     APPLY_SINGLE,
@@ -88,7 +89,7 @@ pub enum InstructionCode {
     REQUEST_REMOTE_SHARED_REF,     // '$x
     REQUEST_REMOTE_SHARED_REF_MUT, // 'mut $x
 
-    GET_CORE_LIB_VALUE, // e.g. integer, print
+    GET_CORE_LIB_VALUE,   // e.g. integer, print
     GET_LOCAL_SHARED_REF, // '$x, containing only the id, origin id is inferred from sender
 
     SHARED_REF,            // '/'mut $1234

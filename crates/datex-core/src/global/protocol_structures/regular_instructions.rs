@@ -178,6 +178,7 @@ pub enum RegularInstruction {
     Conditional(ConditionalData),
 
     Jump(JumpData),
+    JumpIfFalse(JumpData),
 }
 
 /// Maps each regular instruction to its corresponding instruction code
@@ -347,6 +348,7 @@ impl From<&RegularInstruction> for InstructionCode {
             }
             RegularInstruction::Conditional(_) => InstructionCode::CONDITIONAL,
             RegularInstruction::Jump(_) => InstructionCode::JUMP,
+            RegularInstruction::JumpIfFalse(_) => InstructionCode::JUMP_IF_FALSE,
             RegularInstruction::TaggedValue(_) => InstructionCode::TAGGED_VALUE,
             #[cfg(feature = "disassembler")]
             RegularInstruction::_RemoteExecutionDebugFlat(_)
@@ -488,6 +490,9 @@ impl RegularInstruction {
 
             RegularInstruction::Jump(_) => {
                 NextExpectedInstructions::None
+            }
+            RegularInstruction::JumpIfFalse(_) => {
+                NextExpectedInstructions::Regular(1)
             }
 
             RegularInstruction::Range => NextExpectedInstructions::Regular(2),
@@ -800,7 +805,8 @@ impl RegularInstruction {
 
             InstructionCode::JUMP => JumpData::read(reader)
                 .map(RegularInstruction::Jump),
-
+            InstructionCode::JUMP_IF_FALSE => JumpData::read(reader)
+                .map(RegularInstruction::JumpIfFalse),
 
             InstructionCode::RANGE => Ok(RegularInstruction::Range),
 
@@ -1051,7 +1057,9 @@ impl RegularInstruction {
             RegularInstruction::Jump(data) => {
                 write!(string, "{}", data.offset)
             }
-
+            RegularInstruction::JumpIfFalse(data) => {
+                write!(string, "{}", data.offset)
+            }
 
             RegularInstruction::ModifyStackValue(modify_slot) => {
                 write!(string, "[index: {:?}, operator: {}]", modify_slot.index, modify_slot.operator)

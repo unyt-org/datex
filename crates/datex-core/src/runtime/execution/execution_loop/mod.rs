@@ -76,6 +76,7 @@ use crate::{
     values::{
         core_value::CoreValue,
         core_values::{
+            boolean::Boolean,
             decimal::{Decimal, typed_decimal::TypedDecimal},
             integer::typed_integer::TypedInteger,
             list::List,
@@ -588,6 +589,7 @@ pub fn inner_execution_loop(
                             RegularInstruction::TypedValue |
                             RegularInstruction::Conditional(_) |
                             RegularInstruction::Jump(_) |
+                            RegularInstruction::JumpIfFalse(_) |
                             RegularInstruction::RemoteExecution(_) |
                             RegularInstruction::SharedRefWithValue(_) |
                             RegularInstruction::TypeExpression => unreachable!(),
@@ -1236,6 +1238,34 @@ pub fn inner_execution_loop(
                                     );
                                     yield_unwrap!(yield_unwrap!(res));
                                     None.into()
+                                }
+
+                                RegularInstruction::JumpIfFalse(
+                                    data,
+                                ) => {
+                                    let condition_value = yield_unwrap!(
+                                        collected_results.pop_runtime_value_result_assert_existing()
+                                    );
+                                    let is_truthy = condition_value
+                                        .into_cloned_value_container(&state)
+                                        .map(|v| {
+                                            match &v {
+                                                ValueContainer::Local(val) => {
+                                                    !matches!(
+                                                        val.inner,
+                                                        CoreValue::Boolean(Boolean(false))
+                                                            | CoreValue::Null
+                                                    )
+                                                }
+                                                _ => true,
+                                            }
+                                        })
+                                        .unwrap_or(false);
+
+                                    if !is_truthy {
+                                        seek_request.borrow_mut().replace(data.offset);
+                                    }
+                                    CollectedExecutionResult::Value(None)
                                 }
 
                                 RegularInstruction::Conditional(
