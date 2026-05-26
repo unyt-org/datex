@@ -156,13 +156,13 @@ pub fn runtime_value_to_json_baseline_json_syntax(value: &json_syntax::Value) {
 }
 
 pub fn runtime_value_to_json_datex(value: &ValueContainer) {
-    let dxb = compile_value_container(value).unwrap();
+    let dxb = compile_value_container(value.clone()).unwrap();
     let string = decompile_body(&dxb, DecompileOptions::json_compat()).unwrap();
     assert!(!string.is_empty(), "Expected DATEX string to be non-empty");
 }
 
 pub fn runtime_value_to_dxb(value: &ValueContainer) {
-    let dxb = compile_value_container(value).unwrap();
+    let dxb = compile_value_container(value.clone()).unwrap();
     assert!(!dxb.is_empty(), "Expected DXB to be non-empty");
 }
 

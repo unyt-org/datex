@@ -3,7 +3,7 @@ use crate::{
     ast::resolved_variable::ResolvedVariable,
     global::operators::{BinaryOperator, LogicalUnaryOperator, UnaryOperator},
     type_inference::options::ErrorHandling,
-    types::type_definition::TypeDefinition,
+    types::type_definition::{TypeDefinition, list::ListTypeDefinition},
 };
 
 use crate::{
@@ -69,6 +69,7 @@ use crate::{
     },
 };
 use core::{cell::RefCell, ops::Range, panic};
+use crate::types::type_definition::range::RangeTypeDefinition;
 
 pub mod error;
 pub mod options;
@@ -417,7 +418,7 @@ impl<'a> TypeExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
             let field_type = self.infer_type_expression(field_type_expr)?;
             fields.push((field_name, field_type));
         }
-        mark_type_definition(TypeDefinition::Map(fields))
+        mark_type_definition(TypeDefinition::Map(fields.into_iter().collect()))
     }
     fn visit_structural_list_type(
         &mut self,
@@ -431,7 +432,7 @@ impl<'a> TypeExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
                 .map(|elem_type_expr| {
                     self.infer_type_expression(elem_type_expr)
                 })
-                .collect::<Result<Vec<_>, _>>()?,
+                .collect::<Result<ListTypeDefinition, SpannedTypeError>>()?,
         ))
     }
 
@@ -953,7 +954,7 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
             list.items
                 .iter_mut()
                 .map(|elem_type_expr| self.infer_expression(elem_type_expr))
-                .collect::<Result<Vec<_>, _>>()?,
+                .collect::<Result<ListTypeDefinition, _>>()?,
         ))
     }
 
@@ -964,7 +965,10 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
     ) -> ExpressionVisitResult<SpannedTypeError> {
         let x = self.infer_expression(&mut range.start)?;
         let y = self.infer_expression(&mut range.end)?;
-        let z = TypeDefinition::Range((Box::new(x), Box::new(y)));
+        let z = TypeDefinition::Range(RangeTypeDefinition {
+            start: Box::new(x),
+            end: Box::new(y),
+        });
         mark_type_definition(z)
     }
 
@@ -979,7 +983,7 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
             let value_type = self.infer_expression(value_expr)?;
             fields.push((key_type, value_type));
         }
-        mark_type_definition(TypeDefinition::Map(fields))
+        mark_type_definition(TypeDefinition::Map(fields.into_iter().collect()))
     }
 
     fn visit_apply(
@@ -1537,7 +1541,7 @@ mod tests {
             shared_container_containing_type::SharedContainerContainingType,
             r#type::Type,
             type_definition::{
-                TypeDefinition, intersection::TypeIntersection,
+                TypeDefinition, intersection::IntersectionTypeDefinition,
                 union::TypeUnion,
             },
             type_definition_with_metadata::{
@@ -1876,7 +1880,7 @@ mod tests {
                     Type::from(LiteralTypeDefinition::Integer(Integer::from(
                         3
                     )))
-                ])
+                ].into_iter().collect())
                 .into()
             )
         );
@@ -1899,7 +1903,7 @@ mod tests {
                     Type::Alias(
                         LiteralTypeDefinition::Integer(Integer::from(1)).into()
                     )
-                )])
+                )].into_iter().collect())
                 .into()
             )
         );
@@ -2444,16 +2448,16 @@ mod tests {
             has_nominal_type_definition(
                 &inferred_type,
                 NominalTypeDefinition::new_base(
-                    Type::from(TypeDefinition::Intersection(TypeIntersection(
-                        vec![
+                    Type::from(TypeDefinition::Intersection(
+                        IntersectionTypeDefinition(vec![
                             Type::core(CoreLibVariantTypeId::Integer(
                                 IntegerTypeVariant::U8
                             )),
                             Type::from(LiteralTypeDefinition::Integer(
                                 Integer::from(42)
                             ),)
-                        ]
-                    ))),
+                        ])
+                    )),
                     "X".to_string()
                 )
             ),
@@ -2487,7 +2491,7 @@ mod tests {
         assert!(has_nominal_type_definition(
             &inferred_type,
             NominalTypeDefinition::new_base(
-                Type::from(TypeDefinition::Map(vec![])),
+                Type::from(TypeDefinition::Map(vec![].into_iter().collect())),
                 "X".to_string(),
             ),
         ));
@@ -2516,7 +2520,7 @@ mod tests {
                         ),),
                         Type::core(CoreLibBaseTypeId::Decimal)
                     )
-                ])),
+                ].into_iter().collect())),
                 "X".to_string()
             )
         ));

@@ -1,15 +1,11 @@
 use core::assert_matches;
-use datex_core::{
-    assert_structural_eq,
-    datex_proxy::DatexValueContainerProxy,
-    prelude::*,
-    values::{
-        core_values::{endpoint::Endpoint, map::Map},
-        value_container::ValueContainer,
-    },
-};
+use datex_core::{assert_structural_eq, datex_proxy::DatexValueContainerProxy, prelude::*, values::{
+    core_values::{endpoint::Endpoint, map::Map},
+    value_container::ValueContainer,
+}};
 use datex_macros_internal::Datex;
 use serde::{Deserialize, Serialize};
+use datex_core::datex_proxy::DatexProxyTypes;
 
 #[derive(Datex, Debug)]
 enum ExampleEnum {
@@ -69,6 +65,13 @@ use datex_core::{
     values::{core_value::CoreValue, value::Value},
 };
 use test_case::test_case;
+use datex_core::libs::core::type_id::{CoreLibBaseTypeId, CoreLibVariantTypeId};
+use datex_core::runtime::memory::Memory;
+use datex_core::types::literal_type_definition::LiteralTypeDefinition;
+use datex_core::types::r#type::Type;
+use datex_core::types::type_definition::map::MapTypeDefinition;
+use datex_core::types::type_definition::tagged_type::TaggedTypeDefinition;
+use datex_core::values::core_values::integer::typed_integer::IntegerTypeVariant;
 
 #[test_case(
     Example {
@@ -125,10 +128,10 @@ fn enum_to_value() {
     assert_structural_eq!(variant_a, Value::null());
     assert_eq!(
         variant_a.custom_type,
-        Some(TypeDefinition::TaggedType {
+        Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
             tag: "VariantA".to_string(),
             ty: None
-        })
+        }))
     );
 
     let variant_b: Value = ExampleEnum::VariantB(1, 2).into();
@@ -138,10 +141,10 @@ fn enum_to_value() {
     );
     assert_eq!(
         variant_b.custom_type,
-        Some(TypeDefinition::TaggedType {
+        Some(TypeDefinition::TaggedType(TaggedTypeDefinition  {
             tag: "VariantB".to_string(),
             ty: None,
-        })
+        }))
     );
 
     let variant_c: Value = ExampleEnum::VariantC {
@@ -158,20 +161,20 @@ fn enum_to_value() {
     );
     assert_eq!(
         variant_c.custom_type,
-        Some(TypeDefinition::TaggedType {
+        Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
             tag: "VariantC".to_string(),
             ty: None,
-        })
+        }))
     );
 
     let variant_d: Value = ExampleEnum::VariantD(1).into();
     assert_structural_eq!(variant_d, Value::from(1u8));
     assert_eq!(
         variant_d.custom_type,
-        Some(TypeDefinition::TaggedType {
+        Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
             tag: "VariantD".to_string(),
             ty: None,
-        })
+        }))
     );
 }
 
@@ -267,10 +270,10 @@ fn value_to_new_typestruct() {
 fn value_to_enum() {
     let variant_a = Value {
         inner: CoreValue::Null,
-        custom_type: Some(TypeDefinition::TaggedType {
+        custom_type: Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
             tag: "VariantA".to_string(),
             ty: None,
-        }),
+        })),
     };
 
     let example: ExampleEnum = variant_a.try_into().unwrap();
@@ -281,10 +284,10 @@ fn value_to_enum() {
             ValueContainer::from(1u8),
             ValueContainer::from(2u8),
         ]),
-        custom_type: Some(TypeDefinition::TaggedType {
+        custom_type: Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
             tag: "VariantB".to_string(),
             ty: None,
-        }),
+        })),
     };
     let example: ExampleEnum = variant_b.try_into().unwrap();
     assert_matches!(example, ExampleEnum::VariantB(1, 2));
@@ -294,20 +297,20 @@ fn value_to_enum() {
             ("x".to_string(), ValueContainer::from(3u8)),
             ("y".to_string(), ValueContainer::from("Hello".to_string())),
         ])),
-        custom_type: Some(TypeDefinition::TaggedType {
+        custom_type: Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
             tag: "VariantC".to_string(),
             ty: None,
-        }),
+        })),
     };
     let example: ExampleEnum = variant_c.try_into().unwrap();
     assert_matches!(example, ExampleEnum::VariantC { x: 3, y } if &y == "Hello" );
 
     let variant_d = Value {
         inner: CoreValue::from(42u8),
-        custom_type: Some(TypeDefinition::TaggedType {
+        custom_type: Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
             tag: "VariantD".to_string(),
             ty: None,
-        }),
+        })),
     };
     let example: ExampleEnum = variant_d.try_into().unwrap();
     assert_matches!(example, ExampleEnum::VariantD(42));
@@ -320,19 +323,19 @@ fn value_to_enum_failure() {
             ValueContainer::from(1u8),
             ValueContainer::from(2u8),
         ]),
-        custom_type: Some(TypeDefinition::TaggedType {
+        custom_type: Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
             tag: "VariantX".to_string(),
             ty: None,
-        }),
+        })),
     };
     assert!(ExampleEnum::try_from(invalid_variant).is_err());
 
     let invalid_variant = Value {
         inner: CoreValue::from(42),
-        custom_type: Some(TypeDefinition::TaggedType {
+        custom_type: Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
             tag: "VariantA".to_string(),
             ty: None,
-        }),
+        })),
     };
     assert!(ExampleEnum::try_from(invalid_variant).is_err());
 }
@@ -470,4 +473,31 @@ fn struct_with_owned_shared_value_container() {
     });
 
     // TODO: function mapping, SharedRef<x>, Shared<x>
+}
+
+
+#[test]
+fn get_datex_type_from_struct() {
+    let dx_type = Example::datex_type(&mut Memory::default());
+    println!("{}", dx_type);
+    
+    assert_eq!(
+        dx_type,
+        Type::Alias(TypeDefinition::Map(MapTypeDefinition(
+            vec![
+                (
+                    Type::Alias(TypeDefinition::Literal(LiteralTypeDefinition::Text("a".to_string())).into()),
+                    Type::Alias(TypeDefinition::Core(CoreLibVariantTypeId::Integer(IntegerTypeVariant::U8).into()).into())
+                ),
+                (
+                    Type::Alias(TypeDefinition::Literal(LiteralTypeDefinition::Text("b".to_string())).into()),
+                    Type::Alias(TypeDefinition::Core(CoreLibBaseTypeId::Text.into()).into())
+                ),
+                (
+                    Type::Alias(TypeDefinition::Literal(LiteralTypeDefinition::Text("c".to_string())).into()),
+                    Type::Alias(TypeDefinition::Core(CoreLibBaseTypeId::Endpoint.into()).into())
+                )
+            ]
+        )).into())
+    )
 }

@@ -21,7 +21,7 @@ impl SharedContainerContainingType {
     /// Creates a new [SharedContainerContainingType] from a [SharedContainer] without checking the constraint.
     /// # Safety
     /// The caller must ensure that the constraint for [SharedContainerContainingType] is satisfied
-    /// (i.e. the allowed type of the container is a [StructuralTypeDefinition::Type])
+    /// (i.e. the allowed type of the container is a [TypeDefinition::Type])
     pub unsafe fn new_unchecked(container: SharedContainer) -> Self {
         SharedContainerContainingType(container)
     }

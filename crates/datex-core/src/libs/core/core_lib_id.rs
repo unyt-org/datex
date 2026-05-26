@@ -86,7 +86,10 @@ impl TryFrom<CoreLibIdIndex> for CoreLibId {
     type Error = ();
 
     fn try_from(bytes: CoreLibIdIndex) -> Result<Self, Self::Error> {
-        if let Ok(type_id) = CoreLibTypeId::try_from(bytes) {
+        if bytes.0 == 0 {
+            Ok(CoreLibId::CoreMap)
+        }
+        else if let Ok(type_id) = CoreLibTypeId::try_from(bytes) {
             Ok(CoreLibId::Type(type_id))
         } else if let Ok(value_id) = CoreLibValueId::try_from(bytes) {
             Ok(CoreLibId::Value(value_id))
@@ -101,7 +104,7 @@ impl CoreLibIdTrait for CoreLibId {
         match self {
             CoreLibId::Type(type_id) => type_id.name(),
             CoreLibId::Value(value_id) => value_id.name(),
-            CoreLibId::CoreMap => "Map".to_string(),
+            CoreLibId::CoreMap => "core".to_string(),
         }
     }
 }

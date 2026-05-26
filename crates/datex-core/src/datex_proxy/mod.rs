@@ -13,6 +13,8 @@ use crate::{
     },
     values::{value::Value, value_container::ValueContainer},
 };
+use crate::runtime::memory::Memory;
+use crate::types::r#type::Type;
 
 #[derive(Debug, Clone)]
 pub struct TryFromDatexValueError(pub String);
@@ -69,15 +71,21 @@ impl From<ScriptExecutionError> for DeserializationError {
 /// Base DATEX value Proxy trait - converts to and from [ValueContainer]
 /// Must implement [DatexValueContainerProxyDeserialize] and [DatexValueContainerProxySerialize]
 pub trait DatexValueContainerProxy:
-    Sized + DatexValueContainerProxyDeserialize + DatexValueContainerProxySerialize
+    Sized + DatexValueContainerProxyDeserialize + DatexValueContainerProxySerialize + DatexProxyTypes
 {
 }
 
 /// Base DATEX value Proxy trait - converts to and from [Value]
 pub trait DatexValueProxy:
-    Sized + DatexValueProxyDeserialize + DatexValueProxySerialize
+    Sized + DatexValueProxyDeserialize + DatexValueProxySerialize + DatexProxyTypes
 {
 }
+
+/// Trait for providing DATEX type information for a DatexProxy type
+pub trait DatexProxyTypes {
+    fn datex_type(memory: &mut Memory) -> Type;
+}
+
 
 /// Conversion from a [ValueContainer] to a rust value
 pub trait DatexValueContainerProxyDeserialize: Sized {

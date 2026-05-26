@@ -29,6 +29,8 @@ use crate::{
     },
 };
 use alloc::format;
+use crate::types::type_definition::range::RangeTypeDefinition;
+use crate::types::type_definition::tagged_type::TaggedTypeDefinition;
 
 impl From<&ValueContainer> for DatexExpressionData {
     /// Converts a ValueContainer into a DatexExpression AST.
@@ -193,21 +195,18 @@ fn type_cast_expression(
     // special handling for some type casts
     match target_type {
         // #SomeTag (...)
-        TypeDefinition::TaggedType {
-            tag,
-            ty: Option::None,
-        } => DatexExpressionData::Tag(TagExpression {
+        TypeDefinition::TaggedType(TaggedTypeDefinition {
+           tag,
+           ty: Option::None,
+        }) => DatexExpressionData::Tag(TagExpression {
             tag: tag.clone(),
             expression: Some(Box::new(expression.with_default_span())),
         }),
         // #SomeTag
-        TypeDefinition::TaggedType {
-            tag,
-            ty:
-                Some(box TypeDefinition::Core(CoreLibTypeId::Base(
-                    CoreLibBaseTypeId::Unit,
-                ))),
-        } => DatexExpressionData::Tag(TagExpression {
+        TypeDefinition::TaggedType(TaggedTypeDefinition {
+           tag,
+           ty: Some(box TypeDefinition::Core(CoreLibTypeId::Base(CoreLibBaseTypeId::Unit))),
+        }) => DatexExpressionData::Tag(TagExpression {
             tag: tag.clone(),
             expression: None,
         }),
@@ -270,9 +269,9 @@ fn structural_type_definition_to_type_expression(
             ))
             .with_default_span(),
         },
-        TypeDefinition::Range((start_type, end_type)) => {
-            let x = type_to_type_expression(start_type);
-            let y = type_to_type_expression(end_type);
+        TypeDefinition::Range(RangeTypeDefinition {start, end}) => {
+            let x = type_to_type_expression(start);
+            let y = type_to_type_expression(end);
             TypeExpressionData::Range(RangeTypeExpr {
                 start: Box::new(x),
                 end: Box::new(y),

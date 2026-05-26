@@ -410,8 +410,6 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, Value> {
 
 #[cfg(test)]
 mod tests {
-    use log::info;
-
     use super::*;
     use crate::{
         dif::cache::DIFSharedContainerCache,
@@ -459,9 +457,17 @@ mod tests {
         let serialized =
             SerdeContext::<Value>::new(&mut DIFSharedContainerCache::default())
                 .serialize_to_json(&value);
+        // println!("Serialized value: {serialized}");
+
+        // 1 --> f32
+        // 1 -> f32 -> [1, <nominal>]
+        // 42 -> f32 -> [42, <nominal>]
+        // 42 -> u8 [5, 42, <nominmal>]
+        // ["integer/u8", 1] -> u8
+        // [1, integer/u8]
         assert_eq!(
             serialized,
-            r#"[["core::decimal::f64"],5.14,["core::decimal::f64"]]"#
+            r#"[["integer/u8"],5.14]"#
         );
     }
 
@@ -471,6 +477,7 @@ mod tests {
         let serialized =
             SerdeContext::<Value>::new(&mut DIFSharedContainerCache::default())
                 .serialize_to_json(&value);
+        // println!("Serialized value: {serialized}");
         assert_eq!(serialized, r#"{"value":"42"}"#);
     }
 }

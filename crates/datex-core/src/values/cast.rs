@@ -19,7 +19,14 @@ use crate::{
         value_container::ValueContainer,
     },
 };
+use crate::libs::core::type_id::{CoreLibBaseTypeId, CoreLibVariantTypeId};
+
 use core::hash::Hash;
+use crate::runtime::memory::Memory;
+use crate::types::type_definition::TypeDefinition;
+use crate::types::type_definition::union::TypeUnion;
+use crate::values::core_values::decimal::typed_decimal::DecimalTypeVariant;
+use crate::values::core_values::integer::typed_integer::IntegerTypeVariant;
 
 macro_rules! impl_try_from_core_value {
     ($($variant:ident => $type:ty),* $(,)?) => {
@@ -72,7 +79,7 @@ impl_try_from_core_value! {
 }
 
 macro_rules! derive_try_from_chain {
-    ($type:ty, { $($core_match:tt)* }) => {
+    ($type:ty, $dx_type:expr, {$($core_match:tt)*}) => {
         impl TryFrom<CoreValue> for $type {
             type Error = TryFromDatexValueError;
 
@@ -122,46 +129,77 @@ macro_rules! derive_try_from_chain {
                 value.try_into()
             }
         }
+
+        impl DatexProxyTypes for $type {
+            fn datex_type(_memory: &mut Memory) -> Type {
+                Type::Alias(TypeDefinition::Core($dx_type.into()).into())
+            }
+        }
     };
 }
 
 macro_rules! impl_datex_direct_via_value_container {
-    ($($ty:ty),* $(,)?) => {
-        $(
-            impl DatexValueProxy for $ty {}
+    ($type:ty, $dx_type:expr) => {
+        impl DatexValueProxy for $type {}
 
-            impl DatexValueProxyInfallibleSerialize for $ty {
-                fn to_value(self) -> Value {
-                   Value::from(self)
-                }
+        impl DatexValueProxyInfallibleSerialize for $type {
+            fn to_value(self) -> Value {
+               Value::from(self)
             }
-            impl DatexValueProxySerialize for $ty {
-                fn try_to_value(self) -> Result<Value, TryToDatexValueError> {
-                    Ok(Value::from(self))
-                }
+        }
+        impl DatexValueProxySerialize for $type {
+            fn try_to_value(self) -> Result<Value, TryToDatexValueError> {
+                Ok(Value::from(self))
             }
-            impl DatexValueProxyDeserialize for $ty {
-                fn try_from_value(
-                    value: Value,
-                ) -> Result<Self, TryFromDatexValueError> {
-                   value.try_into().map_err(|_| TryFromDatexValueError(format!("Cannot cast ValueContainer to {}, expected ValueContainer::Local with inner type {}", stringify!($ty), stringify!($ty))))
-                }
+        }
+        impl DatexValueProxyDeserialize for $type {
+            fn try_from_value(
+                value: Value,
+            ) -> Result<Self, TryFromDatexValueError> {
+               value.try_into().map_err(|_| TryFromDatexValueError(format!("Cannot cast ValueContainer to {}, expected ValueContainer::Local with inner type {}", stringify!($type), stringify!($type))))
             }
-        )*
+        }
+
+        impl DatexProxyTypes for $type {
+            fn datex_type(_memory: &mut Memory) -> Type {
+                Type::Alias(TypeDefinition::Core($dx_type.into()).into())
+            }
+        }
     };
 }
 
 impl_datex_direct_via_value_container!(
     Endpoint,
-    Map,
-    List,
-    Range,
-    Type,
-    NominalTypeDefinition,
-    Callable
+    CoreLibBaseTypeId::Endpoint
 );
+impl_datex_direct_via_value_container!(
+    Map,
+    CoreLibBaseTypeId::Map
+);
+impl_datex_direct_via_value_container!(
+    List,
+    CoreLibBaseTypeId::List
+);
+impl_datex_direct_via_value_container!(
+    Range,
+    CoreLibBaseTypeId::Range
+);
+impl_datex_direct_via_value_container!(
+    Type,
+    CoreLibBaseTypeId::Type
+);
+impl_datex_direct_via_value_container!(
+    NominalTypeDefinition,
+    CoreLibBaseTypeId::Unknown
+);
+impl_datex_direct_via_value_container!(
+    Callable,
+    CoreLibBaseTypeId::Callable
+);
+
 derive_try_from_chain!(
     bool,
+    CoreLibBaseTypeId::Boolean,
     {
         CoreValue::Boolean(Boolean(value)) => Ok(value),
     }
@@ -169,66 +207,77 @@ derive_try_from_chain!(
 
 derive_try_from_chain!(
     u8,
+    CoreLibVariantTypeId::Integer(IntegerTypeVariant::U8),
     {
        CoreValue::TypedInteger(TypedInteger::U8(value)) => Ok(value),
     }
 );
 derive_try_from_chain!(
     u16,
+    CoreLibVariantTypeId::Integer(IntegerTypeVariant::U16),
     {
        CoreValue::TypedInteger(TypedInteger::U16(value)) => Ok(value),
     }
 );
 derive_try_from_chain!(
     u32,
+    CoreLibVariantTypeId::Integer(IntegerTypeVariant::U32),
     {
        CoreValue::TypedInteger(TypedInteger::U32(value)) => Ok(value),
     }
 );
 derive_try_from_chain!(
     u64,
+    CoreLibVariantTypeId::Integer(IntegerTypeVariant::U64),
     {
        CoreValue::TypedInteger(TypedInteger::U64(value)) => Ok(value),
     }
 );
 derive_try_from_chain!(
     i8,
+    CoreLibVariantTypeId::Integer(IntegerTypeVariant::I8),
     {
        CoreValue::TypedInteger(TypedInteger::I8(value)) => Ok(value),
     }
 );
 derive_try_from_chain!(
     i16,
+    CoreLibVariantTypeId::Integer(IntegerTypeVariant::I16),
     {
        CoreValue::TypedInteger(TypedInteger::I16(value)) => Ok(value),
     }
 );
 derive_try_from_chain!(
     i32,
+    CoreLibVariantTypeId::Integer(IntegerTypeVariant::I32),
     {
        CoreValue::TypedInteger(TypedInteger::I32(value)) => Ok(value),
     }
 );
 derive_try_from_chain!(
     i64,
+    CoreLibVariantTypeId::Integer(IntegerTypeVariant::I64),
     {
        CoreValue::TypedInteger(TypedInteger::I64(value)) => Ok(value),
     }
 );
 derive_try_from_chain!(
     f32,
+    CoreLibVariantTypeId::Decimal(DecimalTypeVariant::F32),
     {
        CoreValue::TypedDecimal(TypedDecimal::F32(value)) => Ok(value.into()),
     }
 );
 derive_try_from_chain!(
     f64,
+    CoreLibVariantTypeId::Decimal(DecimalTypeVariant::F64),
     {
        CoreValue::TypedDecimal(TypedDecimal::F64(value)) => Ok(value.into()),
     }
 );
 derive_try_from_chain!(
     String,
+    CoreLibBaseTypeId::Text,
     {
         CoreValue::Text(Text(value)) => Ok(value),
     }
@@ -267,6 +316,17 @@ impl<T: DatexValueProxy> DatexValueProxyDeserialize for Option<T> {
     }
 }
 
+
+impl<T: DatexValueContainerProxy> DatexProxyTypes for Option<T> {
+    fn datex_type(memory: &mut Memory) -> Type {
+        // null | T
+        Type::Alias(TypeDefinition::Union(TypeUnion(vec![
+            Type::Alias(TypeDefinition::Core(CoreLibBaseTypeId::Null.into()).into()),
+            T::datex_type(memory),
+        ])).into())
+    }
+}
+
 // -------- Vec<T> -------
 impl<T: DatexValueContainerProxy> DatexValueProxy for Vec<T> {}
 
@@ -301,6 +361,12 @@ impl<T: DatexValueContainerProxyInfallibleSerialize>
                 .map(|v| v.to_value_container())
                 .collect::<Vec<_>>(),
         )
+    }
+}
+
+impl<T: DatexValueContainerProxy> DatexProxyTypes for Vec<T> {
+    fn datex_type(memory: &mut Memory) -> Type {
+        Type::Alias(TypeDefinition::Core(CoreLibBaseTypeId::List.into()).into())
     }
 }
 
@@ -360,5 +426,12 @@ impl<
             })
             .collect::<Map>();
         Value::from(map)
+    }
+}
+
+impl<K: DatexValueContainerProxy + Eq + Hash, V: DatexValueContainerProxy>
+    DatexProxyTypes for HashMap<K, V> {
+    fn datex_type(memory: &mut Memory) -> Type {
+        Type::Alias(TypeDefinition::Core(CoreLibBaseTypeId::Map.into()).into())
     }
 }

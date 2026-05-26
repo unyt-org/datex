@@ -58,6 +58,7 @@ pub struct DeriveData {
     is_fallible_serialization: bool,
     from_datex_fields_inner: TokenStream,
     into_datex_fields_inner: TokenStream,
+    type_definition: TokenStream,
     helpers: Option<TokenStream>,
 }
 
@@ -75,6 +76,7 @@ pub fn derive(input: DeriveInput) -> TokenStream {
     let DeriveData {
         into_datex_fields_inner,
         from_datex_fields_inner,
+        type_definition,
         is_fallible_serialization,
         helpers,
     } = match input.data {
@@ -155,17 +157,23 @@ pub fn derive(input: DeriveInput) -> TokenStream {
                     DatexValueProxyDeserialize,
                     TryToDatexValueError,
                     TryFromDatexValueError,
+                    DatexProxyTypes,
                     serde_compat::{
                         try_serde_to_value_container,
                         try_serde_from_value_container
                     }
                 },
+                types::r#type::Type,
+                types::literal_type_definition::LiteralTypeDefinition,
+                runtime::memory::Memory,
+                libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
                 values::value_container::ValueContainer,
                 values::value::Value,
                 values::core_value::CoreValue,
                 values::core_values::map::Map,
                 values::core_values::list::List,
                 types::type_definition::TypeDefinition,
+                types::type_definition::tagged_type::TaggedTypeDefinition,
                 prelude::*
             };
 
@@ -205,6 +213,13 @@ pub fn derive(input: DeriveInput) -> TokenStream {
                     }
                 }
             }
+
+            #[automatically_derived]
+            impl DatexProxyTypes for #ident {
+                fn datex_type(memory: &mut Memory) -> Type {
+                    #type_definition
+                }
+            }
         };
     }
 }
@@ -216,6 +231,7 @@ fn derive_struct(data_struct: DataStruct, ident: &Ident) -> DeriveData {
         fields_type,
         into_datex_fields,
         from_datex_fields,
+        field_types,
     } = derive_fields(&data_struct.fields);
 
     let into_datex_fields_inner = match fields_type {
@@ -281,10 +297,20 @@ fn derive_struct(data_struct: DataStruct, ident: &Ident) -> DeriveData {
         },
     };
 
+    // TODO:
+    let type_definition = quote! {
+        Type::Alias(
+            TypeDefinition::Map(vec![
+                #(#field_types),*
+            ].into_iter().collect()).into()
+        )
+    };
+
     DeriveData {
         is_fallible_serialization,
         into_datex_fields_inner,
         from_datex_fields_inner,
+        type_definition,
         helpers: None,
     }
 }
@@ -316,6 +342,7 @@ fn derive_enum(data_enum: DataEnum, ident: &Ident) -> DeriveData {
             fields_type,
             into_datex_fields,
             from_datex_fields,
+            field_types,
         } = derive_fields(&variant.fields);
 
         // if any variant is fallible, mark as fallible
@@ -332,10 +359,10 @@ fn derive_enum(data_enum: DataEnum, ident: &Ident) -> DeriveData {
                     ]);
                     Value {
                         inner: CoreValue::Map(map),
-                        custom_type: Some(TypeDefinition::TaggedType {
+                        custom_type: Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
                             tag: #variant_name.to_string(),
                             ty: None,
-                        }),
+                        })),
                     }
                 }
             },
@@ -349,10 +376,10 @@ fn derive_enum(data_enum: DataEnum, ident: &Ident) -> DeriveData {
                             if let ValueContainer::Local(Value {custom_type: None, inner}) = container {
                                 Value {
                                     inner,
-                                    custom_type: Some(TypeDefinition::TaggedType {
+                                    custom_type: Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
                                         tag: #variant_name.to_string(),
                                         ty: None,
-                                    }),
+                                    })),
                                 }
                             }
                             else {
@@ -369,10 +396,10 @@ fn derive_enum(data_enum: DataEnum, ident: &Ident) -> DeriveData {
                             ]);
                             Value {
                                 inner: CoreValue::List(list),
-                                custom_type: Some(TypeDefinition::TaggedType {
+                                custom_type: Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
                                     tag: #variant_name.to_string(),
                                     ty: None,
-                                }),
+                                })),
                             }
                         }
                     }
@@ -382,10 +409,10 @@ fn derive_enum(data_enum: DataEnum, ident: &Ident) -> DeriveData {
                 #ident::#variant_ident => {
                     Value {
                         inner: CoreValue::Null,
-                        custom_type: Some(TypeDefinition::TaggedType {
+                        custom_type: Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
                             tag: #variant_name.to_string(),
                             ty: None,
-                        }),
+                        })),
                     }
                 }
             },
@@ -449,7 +476,7 @@ fn derive_enum(data_enum: DataEnum, ident: &Ident) -> DeriveData {
 
     let from_datex_fields_inner = quote! {
         match &value.custom_type {
-            Some(TypeDefinition::TaggedType {tag, ..}) => {
+            Some(TypeDefinition::TaggedType(TaggedTypeDefinition {tag, ..})) => {
                 match tag.as_str() {
                     #(#from_datex_fields_inners),*
                     tag => return Err(TryFromDatexValueError(format!("Unexpected tag: {}", tag)))
@@ -459,10 +486,17 @@ fn derive_enum(data_enum: DataEnum, ident: &Ident) -> DeriveData {
         }
     };
 
+    let type_definition = quote! {
+        Type::Alias(
+            TypeDefinition::Core(CoreLibTypeId::Base(CoreLibBaseTypeId::Unknown)).into()
+        )
+    };
+
     DeriveData {
         is_fallible_serialization,
         into_datex_fields_inner,
         from_datex_fields_inner,
+        type_definition,
         helpers: Some(helpers),
     }
 }
@@ -472,6 +506,7 @@ struct FieldDeriveData {
     fields_type: FieldsType,
     into_datex_fields: Vec<TokenStream>,
     from_datex_fields: Vec<TokenStream>,
+    field_types: Vec<TokenStream>,
 }
 
 fn generate_enum_helper_structs(
@@ -579,6 +614,7 @@ fn derive_fields(fields: &Fields) -> FieldDeriveData {
 
     let mut into_datex_fields: Vec<TokenStream> = vec![];
     let mut from_datex_fields: Vec<TokenStream> = vec![];
+    let mut field_types: Vec<TokenStream> = vec![];
 
     let is_new_type = fields.len() == 1;
 
@@ -609,10 +645,12 @@ fn derive_fields(fields: &Fields) -> FieldDeriveData {
                     .datex_rename
                     .unwrap_or_else(|| field_ident.to_string());
                 let field_into = generate_field_conversion_code(
-                    field_attributes.serde_mode,
+                    &field_attributes.serde_mode,
                     field_ident,
                     field_name.clone(),
                 );
+
+                let field_type = &field.ty;
 
                 into_datex_fields.push(quote! {
                     (
@@ -629,13 +667,21 @@ fn derive_fields(fields: &Fields) -> FieldDeriveData {
                             }
                         )?
                 });
+
+                field_types.push(
+                    generate_field_type_code(
+                        &field_attributes.serde_mode,
+                        &field_name,
+                        field_type
+                    )
+                );
             }
 
             // tuple struct or unit struct
             None => {
                 let field_index = syn::Index::from(index);
                 let field_into = generate_field_conversion_code(
-                    field_attributes.serde_mode,
+                    &field_attributes.serde_mode,
                     &field_index,
                     field_index.index.to_string(),
                 );
@@ -665,6 +711,7 @@ fn derive_fields(fields: &Fields) -> FieldDeriveData {
         fields_type: FieldsType::from(fields),
         into_datex_fields,
         from_datex_fields,
+        field_types,
     }
 }
 
@@ -763,7 +810,7 @@ fn parse_top_level_attributes(attrs: &[Attribute]) -> TopLevelAttributes {
 
 /// Generate the code to convert a field to a ValueContainer, depending on the serde mode of the field
 fn generate_field_conversion_code<T: ToTokens>(
-    serde_mode: SerdeMode,
+    serde_mode: &SerdeMode,
     field_identifier: T,
     field_name: String,
 ) -> TokenStream {
@@ -785,6 +832,33 @@ fn generate_field_conversion_code<T: ToTokens>(
         SerdeMode::Infallible => {
             quote! {
                 try_serde_to_value_container(value.#field_identifier).unwrap_or_else(|err| panic!("Serialization of field '{}' marked with (serde_infallible) failed: {:?}", #field_name, err))
+            }
+        }
+    }
+}
+
+fn generate_field_type_code(
+    serde_mode: &SerdeMode,
+    field_name: &String,
+    field_type: &syn::Type,
+) -> TokenStream {
+    match serde_mode {
+        // no serde or infallible serde, provide/assume DatexValueContainerProxyInfallibleSerialize
+        SerdeMode::None => {
+            quote! {
+                (
+                    Type::Alias(TypeDefinition::Literal(LiteralTypeDefinition::Text(#field_name.to_string())).into()),
+                    <#field_type as DatexProxyTypes>::datex_type(memory)
+                )
+            }
+        }
+        // Cannot infer type
+        SerdeMode::Fallible | SerdeMode::Infallible => {
+            quote! {
+                (
+                    Type::Alias(TypeDefinition::Literal(LiteralTypeDefinition::Text(#field_name.to_string())).into()),
+                    Type::Alias(TypeDefinition::Core(CoreLibTypeId::Base(CoreLibBaseTypeId::Unknown)).into())
+                )
             }
         }
     }

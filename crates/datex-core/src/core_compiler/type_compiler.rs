@@ -19,6 +19,7 @@ use crate::{
     utils::buffers::append_u8,
 };
 use binrw::{BinWrite, io::Write};
+use crate::types::type_definition::impl_type::ImplTypeDefinition;
 
 /// Compiles a given type container to a DXB body
 pub fn compile_type(ty: &Type) -> Vec<u8> {
@@ -60,13 +61,13 @@ pub fn append_structural_type_definition(
     type_definition: &TypeDefinition,
 ) {
     match type_definition {
-        TypeDefinition::ImplType(ty, impls) => {
+        TypeDefinition::ImplType(ImplTypeDefinition { inner_type, impl_markers }) => {
             // Append the number of impls
-            let impl_count = impls.len() as u8;
+            let impl_count = impl_markers.len() as u8;
             append_u8(context.cursor_mut(), impl_count);
 
             // Append each impl address
-            for impl_type in impls {
+            for impl_type in impl_markers {
                 append_get_shared_ref(
                     context,
                     impl_type,
@@ -75,7 +76,7 @@ pub fn append_structural_type_definition(
             }
 
             // Append the base type
-            append_type(context, ty);
+            append_type(context, inner_type);
         }
         TypeDefinition::Shared(type_ref) => {
             // TODO #636: ensure pointer_address exists here
@@ -88,14 +89,6 @@ pub fn append_structural_type_definition(
         }
         _ => todo!("#637 Type definition compilation not implemented yet"),
     };
-}
-
-#[deprecated(note = "use `append_type_instruction` instead")]
-pub fn append_type_space_instruction_code(
-    _buffer: &mut Vec<u8>,
-    _code: TypeInstructionCode,
-) {
-    unimplemented!("use append_type_instruction instead");
 }
 
 pub fn append_type_space_instruction_code_new(

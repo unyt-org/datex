@@ -41,38 +41,15 @@ impl StructuralEq for TypeDefinition {
             }
             (TypeDefinition::Core(c), TypeDefinition::Core(d)) => c == d,
             (TypeDefinition::Map(a), TypeDefinition::Map(b)) => {
-                if a.len() != b.len() {
-                    return false;
-                }
-                for ((key_a, value_a), (key_b, value_b)) in
-                    a.iter().zip(b.iter())
-                {
-                    if !key_a.structural_eq(key_b)
-                        || !value_a.structural_eq(value_b)
-                    {
-                        return false;
-                    }
-                }
-                true
+                a.structural_eq(b)
             }
-            (
-                TypeDefinition::Range((a_start, a_end)),
-                TypeDefinition::Range((b_start, b_end)),
-            ) => a_start.structural_eq(b_start) && a_end.structural_eq(b_end),
+            (TypeDefinition::Range(a), TypeDefinition::Range(b)) => {
+                a.structural_eq(b)
+            }
             (
                 TypeDefinition::Intersection(a),
                 TypeDefinition::Intersection(b),
-            ) => {
-                if a.len() != b.len() {
-                    return false;
-                }
-                for (item_a, item_b) in a.iter().zip(b.iter()) {
-                    if !item_a.structural_eq(item_b) {
-                        return false;
-                    }
-                }
-                true
-            }
+            ) => a.structural_eq(b),
             _ => false,
         }
     }

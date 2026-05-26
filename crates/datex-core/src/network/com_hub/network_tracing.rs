@@ -38,8 +38,10 @@ use crate::{
 use log::{error, info};
 use serde::{Deserialize, Serialize};
 use serde_with::{DurationMilliSeconds, serde_as};
+use datex_macros_internal::Datex;
+use crate::datex_proxy::{DatexValueContainerProxyDeserialize, DatexValueContainerProxyInfallibleSerialize};
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Datex, Serialize, Deserialize, Debug, Clone)]
 #[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
 pub struct NetworkTraceHopSocket {
     pub interface_type: String,
@@ -63,7 +65,7 @@ impl NetworkTraceHopSocket {
 }
 
 #[derive(
-    Serialize, Deserialize, Debug, PartialEq, Clone, strum_macros::Display,
+    Datex, Serialize, Deserialize, Debug, PartialEq, Clone, strum_macros::Display,
 )]
 #[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
 pub enum NetworkTraceHopDirection {
@@ -72,7 +74,7 @@ pub enum NetworkTraceHopDirection {
 }
 
 #[serde_as]
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Datex, Serialize, Deserialize, Debug, Clone)]
 #[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
 pub struct NetworkTraceHop {
     pub endpoint: Endpoint,
@@ -550,96 +552,10 @@ impl ComHub {
             ..
         })) = hops_datex
         {
-            let mut hops: Vec<NetworkTraceHop> = vec![];
-            for value in list {
-                if let ValueContainer::Local(Value {
-                    inner: CoreValue::Map(obj),
-                    ..
-                }) = value
-                {
-                    let endpoint =
-                        obj.get("endpoint").unwrap().try_as().unwrap();
-                    let distance: TypedInteger =
-                        obj.get("distance").ok().unwrap().try_as().unwrap();
-
-                    let socket = obj.get("socket").unwrap();
-                    let (interface_type, interface_name, channel, socket_uuid) =
-                        if let ValueContainer::Local(Value {
-                            inner: CoreValue::Map(socket_obj),
-                            ..
-                        }) = socket
-                        {
-                            let interface_type = socket_obj
-                                .get("interface_type")
-                                .unwrap()
-                                .try_as::<Text>()
-                                .unwrap()
-                                .0;
-                            let interface_name =
-                                if let ValueContainer::Local(Value {
-                                    inner: CoreValue::Text(name),
-                                    ..
-                                }) = socket_obj.get("interface_name").ok()?
-                                {
-                                    Some(name.clone().0)
-                                } else {
-                                    None
-                                };
-                            let channel = socket_obj
-                                .get("channel")
-                                .unwrap()
-                                .try_as::<Text>()
-                                .unwrap()
-                                .0;
-                            let socket_uuid = socket_obj
-                                .get("socket_uuid")
-                                .unwrap()
-                                .try_as::<Text>()
-                                .unwrap()
-                                .0;
-                            (
-                                interface_type,
-                                interface_name,
-                                channel,
-                                socket_uuid,
-                            )
-                        } else {
-                            error!("Invalid socket data in trace block");
-                            continue;
-                        };
-                    let direction = obj
-                        .get("direction")
-                        .unwrap()
-                        .try_as::<Text>()
-                        .unwrap()
-                        .0;
-                    let fork_nr =
-                        obj.get("fork_nr").unwrap().try_as::<Text>().unwrap().0;
-                    let bounce_back: Boolean =
-                        obj.get("bounce_back").ok().unwrap().try_as().unwrap();
-
-                    hops.push(NetworkTraceHop {
-                        endpoint,
-                        distance: distance.as_i8().unwrap(),
-                        socket: NetworkTraceHopSocket {
-                            interface_type,
-                            interface_name,
-                            channel,
-                            socket_uuid,
-                        },
-                        direction: match direction.as_str() {
-                            "Outgoing" => NetworkTraceHopDirection::Outgoing,
-                            "Incoming" => NetworkTraceHopDirection::Incoming,
-                            _ => unreachable!(),
-                        },
-                        fork_nr,
-                        bounce_back: bounce_back.0,
-                    });
-                } else {
-                    error!("Invalid hop data in trace block");
-                    continue;
-                }
-            }
+            let hops: Vec<NetworkTraceHop> = list.into_iter()
+                .map(|v| NetworkTraceHop::try_from_value_container(v))
+                .collect::<Result<Vec<_>, _>>()
+                .ok()?;
             Some(hops)
         } else {
             None
@@ -692,28 +608,9 @@ impl ComHub {
         hops: Vec<NetworkTraceHop>,
     ) {
         // convert hops to DATEX
-        let mut hops_datex = Vec::<ValueContainer>::new();
+        let hops_datex = hops.into_iter().map(|hop| hop.to_value_container()).collect::<Vec<ValueContainer>>();
 
-        for hop in hops {
-            let mut data_map = Map::default();
-
-            data_map.set("endpoint", hop.endpoint);
-            data_map.set("distance", hop.distance);
-
-            let mut socket_obj = Map::default();
-            socket_obj.set("interface_type", hop.socket.interface_type);
-            socket_obj.set("interface_name", hop.socket.interface_name);
-            socket_obj.set("channel", hop.socket.channel);
-            socket_obj.set("socket_uuid", hop.socket.socket_uuid);
-
-            data_map.set("socket", ValueContainer::from(socket_obj));
-            data_map.set("direction", hop.direction.to_string());
-            data_map.set("fork_nr", hop.fork_nr);
-            data_map.set("bounce_back", hop.bounce_back);
-            hops_datex.push(ValueContainer::from(data_map));
-        }
-
-        let dxb = compile_value(&Value::from(hops_datex)).unwrap();
+        let dxb = compile_value(Value::from(hops_datex)).unwrap();
         // info!(
         //     "Trace data: {}",
         //     decompile_body(&dxb, DecompileOptions::default()).unwrap()

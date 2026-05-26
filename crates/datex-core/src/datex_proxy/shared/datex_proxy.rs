@@ -8,6 +8,12 @@ use crate::{
     prelude::*,
     values::value_container::ValueContainer,
 };
+use crate::datex_proxy::DatexProxyTypes;
+use crate::runtime::memory::Memory;
+use crate::shared_values::{SharedContainerMutability, SharedContainerOwnership};
+use crate::types::r#type::Type;
+use crate::types::type_definition::TypeDefinition;
+use crate::types::type_definition_with_metadata::{TypeDefinitionWithMetadata, TypeMetadata};
 
 impl<T: DatexValueContainerProxy> DatexValueContainerProxyInfallibleSerialize
     for Shared<T>
@@ -38,6 +44,18 @@ impl<T: DatexValueContainerProxy> DatexValueContainerProxyDeserialize
                     .to_string(),
             )),
         }
+    }
+}
+
+impl<T: DatexValueContainerProxy> DatexProxyTypes for Shared<T> {
+    fn datex_type(memory: &mut Memory) -> Type {
+        Type::Alias(TypeDefinitionWithMetadata {
+            definition: TypeDefinition::Nested(Box::new(T::datex_type(memory))),
+            metadata: TypeMetadata::Shared {
+                mutability: SharedContainerMutability::Mutable,
+                ownership: SharedContainerOwnership::Owned,
+            }
+        })
     }
 }
 
