@@ -36,6 +36,7 @@ impl Parser {
             }
             Token::LeftParen => self.parse_parenthesized_statements()?,
             Token::If => self.parse_if_else()?,
+            Token::For => self.parse_for_loop()?,
             Token::Function | Token::Procedure => {
                 self.parse_callable_definition()?
             }

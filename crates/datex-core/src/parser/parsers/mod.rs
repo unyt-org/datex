@@ -3,6 +3,7 @@ pub mod atom;
 pub mod callable;
 pub mod compile;
 pub mod expression;
+pub mod for_loop;
 pub mod generic_parameters;
 pub mod if_else;
 pub mod key;

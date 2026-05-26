@@ -3,7 +3,7 @@ use crate::{
     ast::{
         expressions::{
             BinaryOperation, ComparisonOperation, Conditional, DatexExpression,
-            DatexExpressionData, RemoteExecution, RootPropertyAccess,
+            DatexExpressionData, Loop, RemoteExecution, RootPropertyAccess,
             Statements, UnaryOperation, UnboundedStatement, UnboxAssignment,
             ValueAccessType, VariableAccess, VariableAssignment,
             VariableDeclaration, VariableKind,
@@ -24,10 +24,10 @@ use crate::{
     core_compiler::value_compiler::{
         append_boolean, append_decimal, append_encoded_integer,
         append_endpoint, append_float_as_i16, append_float_as_i32,
-        append_get_core_lib_value, append_get_shared_ref,
-        append_inline_shared_container, append_integer, append_key_string,
-        append_regular_instruction, append_statements_preamble, append_text,
-        append_typed_decimal, append_value,
+        append_get_shared_ref, append_inline_shared_container, append_integer,
+        append_key_string, append_regular_instruction,
+        append_statements_preamble, append_text, append_typed_decimal,
+        append_value,
     },
     global::{
         dxb_block::DXBBlock,
@@ -41,7 +41,7 @@ use crate::{
                 SharedInjectedValueType,
             },
             instruction_data::{
-                InstructionBlockData, JumpData, ModifyStackValue,
+                InstructionBlockData, ModifyStackValue,
                 SetSharedContainerValue, ShortTextData, StackIndex,
                 TaggedValue, UnboundedStatementsData,
             },
@@ -50,7 +50,7 @@ use crate::{
         },
         root_properties::RootProperty,
     },
-    libs::core::{core_lib_id::CoreLibId, value_id::CoreLibValueId},
+    libs::core::core_lib_id::CoreLibId,
     parser::{Parser, ParserOptions, errors::SpannedParserError},
     prelude::*,
     runtime::{Runtime, execution::context::ExecutionMode},
@@ -1384,6 +1384,25 @@ fn compile_expression(
             )?;
         }
 
+        DatexExpressionData::Loop(Loop { condition, body }) => {
+            let condition_bytes = match condition {
+                Some(condition) => {
+                    let mut ctx = CompilationContext::new(
+                        Vec::with_capacity(64),
+                        compilation_context.inserted_values.clone(),
+                        compilation_context.execution_mode,
+                    );
+                    compile_expression(
+                        &mut ctx,
+                        RichAst::new(*condition, &metadata),
+                        CompileMetadata::default(),
+                        scope.clone(),
+                    )?;
+                    ctx.into_buffer()
+                }
+                None => todo!("will think about this"),
+            };
+        }
         DatexExpressionData::Conditional(Conditional {
             condition,
             then_branch,
@@ -1439,62 +1458,54 @@ fn compile_expression(
                 None => Vec::new(),
             };
 
-            let cursor = compilation_context.cursor();
-
             append_regular_instruction(
-                cursor,
+                compilation_context.cursor(),
                 RegularInstruction::UnboundedStatements,
             );
 
-            let jump_if_false_offset_pos = cursor.position() as usize + 1;
-            append_regular_instruction(
-                cursor,
-                RegularInstruction::JumpIfFalse(JumpData { offset: 0 }),
-            );
-
-            cursor.write_all(&condition_bytes).unwrap();
-
-            cursor.write_all(&then_bytes).unwrap();
-
             if else_bytes.is_empty() {
+                let after_then = compilation_context.new_label();
+                compilation_context.emit_jump_if_false_to_label(
+                    after_then,
+                    condition_bytes.len() as u32,
+                );
+                compilation_context
+                    .cursor()
+                    .write_all(&condition_bytes)
+                    .unwrap();
+                compilation_context.cursor().write_all(&then_bytes).unwrap();
+                compilation_context.bind_label(after_then);
                 append_regular_instruction(
-                    cursor,
+                    compilation_context.cursor(),
                     RegularInstruction::UnboundedStatementsEnd(
                         UnboundedStatementsData { terminated: false },
                     ),
-                );
-
-                let jump_if_false_offset = then_bytes.len() as u32;
-                compilation_context.set_u32_at_index(
-                    jump_if_false_offset,
-                    jump_if_false_offset_pos,
                 );
             } else {
-                let jump_offset_pos = cursor.position() as usize + 1;
-                append_regular_instruction(
-                    cursor,
-                    RegularInstruction::Jump(JumpData { offset: 0 }),
+                let else_start = compilation_context.new_label();
+                let after_else = compilation_context.new_label();
+                compilation_context.emit_jump_if_false_to_label(
+                    else_start,
+                    condition_bytes.len() as u32,
                 );
-
-                cursor.write_all(&else_bytes).unwrap();
-
+                compilation_context
+                    .cursor()
+                    .write_all(&condition_bytes)
+                    .unwrap();
+                compilation_context.cursor().write_all(&then_bytes).unwrap();
+                compilation_context.emit_jump_to_label(after_else);
+                compilation_context.bind_label(else_start);
+                compilation_context.cursor().write_all(&else_bytes).unwrap();
+                compilation_context.bind_label(after_else);
                 append_regular_instruction(
-                    cursor,
+                    compilation_context.cursor(),
                     RegularInstruction::UnboundedStatementsEnd(
                         UnboundedStatementsData { terminated: false },
                     ),
                 );
-
-                let jump_offset = else_bytes.len() as u32;
-                compilation_context
-                    .set_u32_at_index(jump_offset, jump_offset_pos);
-
-                let jump_if_false_offset = (then_bytes.len() + 5) as u32;
-                compilation_context.set_u32_at_index(
-                    jump_if_false_offset,
-                    jump_if_false_offset_pos,
-                );
             }
+
+            compilation_context.resolve_pending_jumps();
         }
 
         DatexExpressionData::Tag(tag_expression) => {

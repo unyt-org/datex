@@ -35,6 +35,7 @@ impl Parser {
             | t @ Token::Compile
             | t @ Token::If
             | t @ Token::Else
+            | t @ Token::For
             | t @ Token::Is
             | t @ Token::Matches
             | t @ Token::And

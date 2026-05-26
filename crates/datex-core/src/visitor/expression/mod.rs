@@ -5,14 +5,15 @@ use crate::{
         Apply, BinaryOperation, CallableDeclaration, CloneExpression,
         ComparisonOperation, CompileExpression, Conditional, CreateMut,
         CreateShared, DatexExpression, DatexExpressionData,
-        GenericInstantiation, GetRef, GetSharedRef, List, Map, PropertyAccess,
-        PropertyAssignment, RemoteExecution, RequestSharedRef,
+        GenericInstantiation, GetRef, GetSharedRef, List, Loop, Map,
+        PropertyAccess, PropertyAssignment, RemoteExecution, RequestSharedRef,
         RootPropertyAccess, StackAssignment, Statements, TagExpression,
         TypeDeclaration, UnaryOperation, Unbox, UnboxAssignment,
         UnboxSlotAssignment, ValueAccessType, VariableAccess,
         VariableAssignment, VariableDeclaration, VariantAccess,
     },
     global::protocol_structures::instruction_data::StackIndex,
+    libs::core::core_lib_id::CoreLibId,
     prelude::*,
     values::core_values::{
         decimal::{Decimal, typed_decimal::TypedDecimal},
@@ -26,7 +27,6 @@ use crate::{
     },
 };
 use core::ops::Range;
-use crate::libs::core::core_lib_id::CoreLibId;
 
 pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
     /// Handle expression error
@@ -113,6 +113,9 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
                 .visit_request_shared_reference(request_shared_ref, &expr.span),
             DatexExpressionData::Conditional(conditional) => {
                 self.visit_conditional(conditional, &expr.span)
+            }
+            DatexExpressionData::Loop(loops) => {
+                self.visit_loop(loops, &expr.span)
             }
             DatexExpressionData::TypeDeclaration(type_declaration) => {
                 self.visit_type_declaration(type_declaration, &expr.span)
@@ -307,6 +310,16 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
     ) -> ExpressionVisitResult<E> {
         let _ = span;
         let _ = conditional;
+        Ok(VisitAction::VisitChildren)
+    }
+
+    fn visit_loop(
+        &mut self,
+        loops: &mut Loop,
+        span: &Range<usize>,
+    ) -> ExpressionVisitResult<E> {
+        let _ = span;
+        let _ = loops;
         Ok(VisitAction::VisitChildren)
     }
 

@@ -233,6 +233,7 @@ pub enum Token {
     #[token("procedure")] Procedure,
     #[token("if")] If,
     #[token("else")] Else,
+    #[token("for")] For,
     #[token("compile")] Compile,
 
     #[token("type")] TypeDeclaration,
@@ -374,6 +375,7 @@ impl Token {
             Token::Caret => Some("^"),
             Token::Matches => Some("matches"),
             Token::If => Some("if"),
+            Token::For => Some("for"),
             Token::Else => Some("else"),
             _ => None,
         }

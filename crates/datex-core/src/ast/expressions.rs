@@ -129,6 +129,9 @@ pub enum DatexExpressionData {
     /// Conditional expression, e.g. if (true) { 1 } else { 2 }
     Conditional(Conditional),
 
+    /// Loop expression, e.g. for (a < 10) (body)
+    Loop(Loop),
+
     // TODO #611: Give information on type kind (nominal & structural)
     /// Variable declaration, e.g. const x = 1, const mut x = 1, or var y = 2. VariableId is always set to 0 by the ast parser.
     VariableDeclaration(VariableDeclaration),
@@ -348,6 +351,12 @@ pub struct Conditional {
     pub condition: Box<DatexExpression>,
     pub then_branch: Box<DatexExpression>,
     pub else_branch: Option<Box<DatexExpression>>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct Loop {
+    pub condition: Option<Box<DatexExpression>>,
+    pub body: Box<DatexExpression>,
 }
 
 #[derive(Clone, Debug, PartialEq)]

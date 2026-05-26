@@ -3,7 +3,7 @@ use crate::{
         Apply, BinaryOperation, CallableDeclaration, CloneExpression,
         ComparisonOperation, Conditional, CreateMut, CreateShared,
         DatexExpression, DatexExpressionData, GenericInstantiation, GetRef,
-        GetSharedRef, List, Map, PropertyAccess, PropertyAssignment,
+        GetSharedRef, List, Loop, Map, PropertyAccess, PropertyAssignment,
         RangeDeclaration, RemoteExecution, StackAssignment, Statements,
         TagExpression, TypeDeclaration, UnaryOperation, Unbox, UnboxAssignment,
         UnboxSlotAssignment, VariableAssignment, VariableDeclaration,
@@ -91,6 +91,20 @@ impl<E> VisitableExpression<E> for Conditional {
         Ok(())
     }
 }
+
+impl<E> VisitableExpression<E> for Loop {
+    fn walk_children(
+        &mut self,
+        visitor: &mut impl ExpressionVisitor<E>,
+    ) -> Result<(), E> {
+        if let Some(else_branch) = &mut self.condition {
+            visitor.visit_datex_expression(else_branch)?;
+        }
+        visitor.visit_datex_expression(&mut self.body)?;
+        Ok(())
+    }
+}
+
 impl<E> VisitableExpression<E> for VariableDeclaration {
     fn walk_children(
         &mut self,
@@ -336,6 +350,9 @@ impl<E> VisitableExpression<E> for DatexExpression {
             DatexExpressionData::List(list) => list.walk_children(visitor),
             DatexExpressionData::Map(map) => map.walk_children(visitor),
             DatexExpressionData::Conditional(conditional) => {
+                conditional.walk_children(visitor)
+            }
+            DatexExpressionData::Loop(conditional) => {
                 conditional.walk_children(visitor)
             }
             DatexExpressionData::VariableDeclaration(variable_declaration) => {

@@ -1,11 +1,16 @@
 use crate::{
     core_compiler::{
         core_compilation_context::CoreCompilationContext,
-        value_compiler::append_instruction_code_new,
+        value_compiler::{
+            append_instruction_code_new, append_regular_instruction,
+        },
     },
     global::{
         instruction_codes::InstructionCode,
-        protocol_structures::instruction_data::StackIndex,
+        protocol_structures::{
+            instruction_data::{JumpData, StackIndex},
+            regular_instructions::RegularInstruction,
+        },
     },
     prelude::*,
     runtime::execution::context::ExecutionMode,
@@ -13,6 +18,13 @@ use crate::{
     values::value_container::ValueContainer,
 };
 use binrw::io::Cursor;
+
+#[derive(Clone, Debug)]
+pub struct PendingJump {
+    pub label_id: u32,
+    pub patch_position: usize,
+    pub extra_read_ahead: u32,
+}
 
 /// compilation context, created for each compiler call, even if compiling a script for the same scope
 pub struct CompilationContext {
@@ -22,6 +34,9 @@ pub struct CompilationContext {
     /// this flag is set to true if any non-static value is encountered
     pub has_non_static_value: bool,
     pub execution_mode: ExecutionMode,
+    pub next_label_id: u32,
+    pub labels: HashMap<u32, usize>,
+    pub pending_jumps: Vec<PendingJump>,
 }
 
 impl CompilationContext {
@@ -56,6 +71,9 @@ impl CompilationContext {
             inserted_values,
             has_non_static_value: false,
             execution_mode,
+            next_label_id: 0,
+            labels: HashMap::new(),
+            pending_jumps: Vec::new(),
         }
     }
 
@@ -83,6 +101,61 @@ impl CompilationContext {
         let buf = self.cursor().get_mut();
         buf[index..index + CompilationContext::INT_32_BYTES as usize]
             .copy_from_slice(&u32.to_le_bytes());
+    }
+
+    pub fn new_label(&mut self) -> u32 {
+        let id = self.next_label_id;
+        self.next_label_id += 1;
+        id
+    }
+
+    pub fn bind_label(&mut self, label_id: u32) {
+        let pos = self.cursor().position() as usize;
+        self.labels.insert(label_id, pos);
+    }
+
+    pub fn emit_jump_to_label(&mut self, target_label: u32) {
+        let patch_position = self.cursor().position() as usize + 1;
+        append_regular_instruction(
+            self.cursor(),
+            RegularInstruction::Jump(JumpData { offset: 0 }),
+        );
+        self.pending_jumps.push(PendingJump {
+            label_id: target_label,
+            patch_position,
+            extra_read_ahead: 0,
+        });
+    }
+
+    pub fn emit_jump_if_false_to_label(
+        &mut self,
+        target_label: u32,
+        condition_bytes_len: u32,
+    ) {
+        let patch_position = self.cursor().position() as usize + 1;
+        append_regular_instruction(
+            self.cursor(),
+            RegularInstruction::JumpIfFalse(JumpData { offset: 0 }),
+        );
+        self.pending_jumps.push(PendingJump {
+            label_id: target_label,
+            patch_position,
+            extra_read_ahead: condition_bytes_len,
+        });
+    }
+
+    pub fn resolve_pending_jumps(&mut self) {
+        let jumps: Vec<PendingJump> = self.pending_jumps.drain(..).collect();
+        for jump in &jumps {
+            let label_pos = self.labels[&jump.label_id];
+            let offset = label_pos as i32
+                - (jump.patch_position as i32
+                    + 4
+                    + jump.extra_read_ahead as i32);
+            let buf = self.cursor().get_mut();
+            buf[jump.patch_position..jump.patch_position + 4]
+                .copy_from_slice(&(offset as u32).to_le_bytes());
+        }
     }
 
     pub fn mark_has_non_static_value(&mut self) {
