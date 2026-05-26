@@ -8,6 +8,8 @@ use crate::{
     dif::serde_context::SerdeContext,
     utils::serde_serialize_seed::SerializeSeed,
 };
+use alloc::format;
+use alloc::string::String;
 use core::fmt;
 use serde::{
     Deserializer,

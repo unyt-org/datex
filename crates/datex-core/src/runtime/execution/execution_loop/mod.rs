@@ -9,7 +9,7 @@ pub mod state;
 use crate::{
     core_compiler::injected_values::compile_injected_values,
     dxb_parser::{
-        body::{DXBParserError, iterate_instructions},
+        body::{DXBParserError, SeekRequest, iterate_instructions_with_seek},
         instruction_collector::{
             CollectedResults, CollectionResultsPopper, FullOrPartialResult,
             InstructionCollector, LastUnboundedResultCollector,
@@ -54,8 +54,8 @@ use crate::{
         },
     },
     shared_values::{
-        OwnedSharedContainer, PointerAddress,
-        ReferenceMutability, ReferencedSharedContainer,
+        OwnedSharedContainer, PointerAddress, ReferenceMutability,
+        ReferencedSharedContainer, RemotePointerAddress,
         SelfOwnedSharedContainer, SharedContainer, SharedContainerMutability,
         base_shared_value_container::{
             BaseSharedValueContainer, observers::TransceiverId,
@@ -87,7 +87,6 @@ use crate::{
 };
 use alloc::rc::Rc;
 use core::cell::RefCell;
-use crate::shared_values::RemotePointerAddress;
 
 #[derive(Debug)]
 enum CollectedExecutionResult {
@@ -221,9 +220,12 @@ pub fn execution_loop(
     gen move {
         let mut active_value: Option<ValueContainer> = None;
 
-        for interrupt in
-            inner_execution_loop(dxb_body, interrupt_provider.clone(), state, stack_capture)
-        {
+        for interrupt in inner_execution_loop(
+            dxb_body,
+            interrupt_provider.clone(),
+            state,
+            stack_capture,
+        ) {
             match interrupt {
                 Ok(interrupt) => match interrupt {
                     ExecutionInterrupt::External(external_interrupt) => {
@@ -268,9 +270,12 @@ pub fn inner_execution_loop(
         let mut collector =
             InstructionCollector::<CollectedExecutionResult>::default();
 
-        for instruction_result in iterate_instructions(
+        let seek_request: SeekRequest = Rc::new(RefCell::new(None));
+
+        for instruction_result in iterate_instructions_with_seek(
             dxb_body,
             NestedInstructionResolutionStrategy::None,
+            Some(seek_request.clone()),
         ) {
             let instruction = match instruction_result {
                 Ok(instruction) => instruction,
@@ -299,7 +304,19 @@ pub fn inner_execution_loop(
                     ) =
                         regular_instruction
                     {
-                        Some(match regular_instruction {
+                        // Handle JUMP as meta-instruction (return early, no value produced) "May be used to make O(1) jump in code to skip instructions"
+                        if matches!(
+                            regular_instruction,
+                            RegularInstruction::Jump(_)
+                        ) {
+                            if let RegularInstruction::Jump(data) =
+                                regular_instruction
+                            {
+                                seek_request.borrow_mut().replace(data.offset);
+                            }
+                            None
+                        } else {
+                            Some(match regular_instruction {
                             // boolean
                             RegularInstruction::True => Some(ValueContainer::from(true).into()),
                             RegularInstruction::False => Some(ValueContainer::from(false).into()),
@@ -566,12 +583,14 @@ pub fn inner_execution_loop(
                             RegularInstruction::Unbox |
                             RegularInstruction::TypedValue |
                             RegularInstruction::Conditional(_) |
+                            RegularInstruction::Jump(_) |
                             RegularInstruction::RemoteExecution(_) |
                             RegularInstruction::SharedRefWithValue(_) |
                             RegularInstruction::TypeExpression => unreachable!(),
                             #[cfg(feature = "disassembler")]
                             RegularInstruction::_RemoteExecutionDebugFlat(_) | RegularInstruction::_RemoteExecutionDebugTree(_) => unreachable!(),
                         })
+                        }
                     } else {
                         None
                     };
@@ -1248,19 +1267,12 @@ pub fn inner_execution_loop(
                                     if branch_bytes.is_empty() {
                                         CollectedExecutionResult::Value(None)
                                     } else {
-                                        let stack_capture = Rc::new(RefCell::new(None));
-                                        let input =
-                                            crate::runtime::execution::ExecutionInput::new_with_stack_capture(
-                                                branch_bytes,
-                                                state.caller_metadata.clone(),
-                                                crate::runtime::execution::ExecutionOptions {
-                                                    verbose: false,
-                                                },
-                                                state.runtime.clone(),
-                                                state.stack.clone(),
-                                                stack_capture,
-                                            );
-                                        match super::execute_dxb_sync_returning_stack(input) {
+                                        match super::execute_branch_sync(
+                                            branch_bytes,
+                                            state.runtime.clone(),
+                                            state.caller_metadata.clone(),
+                                            core::mem::take(&mut state.stack),
+                                        ) {
                                             Ok((val, modified_stack)) => {
                                                 state.stack = modified_stack;
                                                 CollectedExecutionResult::Value(

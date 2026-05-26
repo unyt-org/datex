@@ -24,6 +24,8 @@ pub enum InstructionCode {
 
     CONDITIONAL, // if/else conditional
 
+    JUMP,              // unconditional jump (relative byte offset)
+
     APPLY_ZERO,
     APPLY_SINGLE,
     APPLY,

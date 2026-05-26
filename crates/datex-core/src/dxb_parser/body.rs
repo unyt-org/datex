@@ -6,18 +6,20 @@ use crate::{
     runtime::execution::macros::yield_unwrap,
 };
 
+pub type SeekRequest = Rc<RefCell<Option<i32>>>;
+
 use crate::{
     global::protocol_structures::{
         instructions::{Instruction, NestedInstructionResolutionStrategy},
         regular_instructions::RegularInstruction,
         type_instructions::TypeInstruction,
     },
+    libs::core::core_lib_id::CoreLibIdIndex,
     prelude::*,
 };
 use alloc::string::FromUtf8Error;
 use binrw::{BinRead, io::Cursor};
 use core::{cell::RefCell, fmt, fmt::Display, result::Result};
-use crate::libs::core::core_lib_id::CoreLibIdIndex;
 
 #[derive(Debug)]
 pub enum DXBParserError {
@@ -155,6 +157,18 @@ pub fn iterate_instructions(
     dxb_body_ref: Rc<RefCell<Vec<u8>>>,
     nested_instruction_resolution_strategy: NestedInstructionResolutionStrategy,
 ) -> impl Iterator<Item = Result<Instruction, DXBParserError>> {
+    iterate_instructions_with_seek(
+        dxb_body_ref,
+        nested_instruction_resolution_strategy,
+        None,
+    )
+}
+
+pub fn iterate_instructions_with_seek(
+    dxb_body_ref: Rc<RefCell<Vec<u8>>>,
+    nested_instruction_resolution_strategy: NestedInstructionResolutionStrategy,
+    seek_request: Option<Rc<RefCell<Option<i32>>>>,
+) -> impl Iterator<Item = Result<Instruction, DXBParserError>> {
     gen move {
         // create a stack to track next instructions
         let mut next_instructions_stack = NextInstructionsStack::default();
@@ -165,6 +179,15 @@ pub fn iterate_instructions(
         let mut reader = Cursor::new(dxb_body);
 
         loop {
+            // check for pending seek request(can be used in something, but for now is not)
+            if let Some(seek_request) = &seek_request {
+                if let Some(seek_offset) = seek_request.borrow_mut().take() {
+                    let new_pos = reader.position() as i64 + seek_offset as i64;
+                    reader.set_position(core::cmp::max(0, new_pos) as u64);
+                    continue;
+                }
+            }
+
             // if cursor is at the end, check if more instructions are expected, else end iteration
             if reader.position() as usize >= len {
                 // indicates that more instructions need to be read

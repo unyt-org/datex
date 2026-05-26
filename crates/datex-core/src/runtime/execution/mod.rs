@@ -26,10 +26,15 @@ use crate::{
 };
 use core::{result::Result, unreachable};
 pub use errors::*;
-pub use execution_input::{ExecutionInput, ExecutionOptions};
+pub use execution_input::{ExecutionInput, ExecutionCallerMetadata, ExecutionOptions};
 pub use execution_loop::state::RuntimeExecutionStack;
 pub use stack_dump::*;
 use crate::libs::core::core_lib_id::CoreLibId;
+use crate::shared_values::base_shared_value_container::observers::TransceiverId;
+use alloc::rc::Rc;
+use core::cell::RefCell;
+use self::execution_loop::interrupts::ExecutionInterrupt;
+use self::execution_loop::state::RuntimeExecutionState;
 
 pub mod context;
 mod errors;
@@ -96,62 +101,75 @@ pub fn execute_dxb_sync(
     Err(ExecutionError::RequiresAsyncExecution)
 }
 
-/// Like `execute_dxb_sync`, but also returns the final `RuntimeExecutionStack`
-/// after execution completes. This is useful for capturing stack mutations
-/// that occur during branch execution (e.g. in CONDITIONAL)
-pub fn execute_dxb_sync_returning_stack(
-    input: ExecutionInput,
+/// Execute a batch of DXB bytes synchronously, returning the result and the modified stack.
+/// This is used by CONDITIONAL to execute branch bodies without external stack_capture plumbing.
+pub(crate) fn execute_branch_sync(
+    branch_bytes: &[u8],
+    runtime: Runtime,
+    caller_metadata: ExecutionCallerMetadata,
+    stack: RuntimeExecutionStack,
 ) -> Result<(Option<ValueContainer>, RuntimeExecutionStack), ExecutionError> {
-    let stack_capture = input.stack_capture.clone();
-    let runtime = input.runtime.clone();
-    let (interrupt_provider, execution_loop) = input.execution_loop();
+    let stack_capture: Option<Rc<RefCell<Option<RuntimeExecutionStack>>>> =
+        Some(Rc::new(RefCell::new(None)));
+    let dxb_rc = Rc::new(RefCell::new(branch_bytes.to_vec()));
+    let interrupt_provider = execution_loop::interrupts::InterruptProvider::new();
+    let state = RuntimeExecutionState {
+        stack,
+        runtime: runtime.clone(),
+        source_id: TransceiverId(0),
+        caller_metadata: caller_metadata.clone(),
+    };
 
     let mut result = None;
-    for output in execution_loop {
+    for output in execution_loop::inner_execution_loop(
+        dxb_rc,
+        interrupt_provider.clone(),
+        state,
+        stack_capture.clone(),
+    ) {
         match output? {
-            ExternalExecutionInterrupt::Result(val) => {
-                result = Some(val);
-                // Continue driving to completion for stack capture
-            }
-            ExternalExecutionInterrupt::GetReferenceToRemotePointer(
-                address,
-                mutability,
-            ) => interrupt_provider.provide_result(
-                InterruptResult::ResolvedValue(
-                    get_remote_shared_container_reference(
-                        &runtime, address, mutability,
-                    )?
-                    .map(|v| {
-                        ValueContainer::Shared(SharedContainer::Referenced(v))
-                    }),
-                ),
-            ),
-            ExternalExecutionInterrupt::GetReferenceToLocalPointer(address) => {
-                interrupt_provider.provide_result(
+            ExecutionInterrupt::External(ext) => match ext {
+                ExternalExecutionInterrupt::Result(val) => {
+                    result = Some(val);
+                }
+                ExternalExecutionInterrupt::GetReferenceToRemotePointer(
+                    address,
+                    mutability,
+                ) => interrupt_provider.provide_result(
                     InterruptResult::ResolvedValue(
-                        get_local_pointer_value(&runtime, address).map(|v| {
-                            ValueContainer::Shared(SharedContainer::Referenced(
-                                v,
-                            ))
+                        get_remote_shared_container_reference(
+                            &runtime, address, mutability,
+                        )?
+                        .map(|v| {
+                            ValueContainer::Shared(SharedContainer::Referenced(v))
                         }),
                     ),
-                );
-            }
-            ExternalExecutionInterrupt::GetReferenceToBuiltinPointer(
-                address,
-            ) => {
-                interrupt_provider.provide_result(
-                    InterruptResult::ResolvedValue(Some(get_builtin(
-                        &runtime, address,
-                    )?)),
-                );
-            }
-            ExternalExecutionInterrupt::Apply(callee, args) => {
-                let res = handle_apply(&callee, &args)?;
-                interrupt_provider
-                    .provide_result(InterruptResult::ResolvedValue(res));
-            }
-            _ => return Err(ExecutionError::RequiresAsyncExecution),
+                ),
+                ExternalExecutionInterrupt::GetReferenceToLocalPointer(address) => {
+                    interrupt_provider.provide_result(
+                        InterruptResult::ResolvedValue(
+                            get_local_pointer_value(&runtime, address).map(|v| {
+                                ValueContainer::Shared(SharedContainer::Referenced(v))
+                            }),
+                        ),
+                    );
+                }
+                ExternalExecutionInterrupt::Apply(callee, args) => {
+                    let res = handle_apply(&callee, &args)?;
+                    interrupt_provider
+                        .provide_result(InterruptResult::ResolvedValue(res));
+                }
+                ExternalExecutionInterrupt::GetCoreLibValue(id) => {
+                    let runtime_ref = &runtime;
+                    interrupt_provider.provide_result(
+                        InterruptResult::ResolvedValue(Some(
+                            get_core_lib_value_container(runtime_ref, id)?,
+                        )),
+                    );
+                }
+                _ => return Err(ExecutionError::RequiresAsyncExecution),
+            },
+            ExecutionInterrupt::SetActiveValue(_) => {}
         }
     }
 

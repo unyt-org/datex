@@ -375,6 +375,7 @@ pub fn ast_from_bytecode(
                         | RegularInstruction::SetSharedContainerValue(_)
                         | RegularInstruction::Unbox
                         | RegularInstruction::TypedValue
+                        | RegularInstruction::Jump(_)
                         | RegularInstruction::Conditional(_)
                         | RegularInstruction::RemoteExecution(_)
                         | RegularInstruction::TypeExpression => {

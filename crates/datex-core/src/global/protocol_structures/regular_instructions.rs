@@ -6,12 +6,12 @@ use crate::{
         instruction_codes::InstructionCode,
         protocol_structures::{
             instruction_data::{
-                ApplyData, ConditionalData, DecimalData, Float32Data,
+                ApplyData, ConditionalData, DecimalData, Float32Data, JumpData,
                 Float64Data, FloatAsInt16Data, FloatAsInt32Data,
                 InstructionBlockData, Int8Data, Int16Data, Int32Data,
                 Int64Data, Int128Data, IntegerData, ListData, MapData,
                 ModifyStackValue, Move, PerformMove, PushToStackMultiple,
-                RawBuiltinPointerAddress, RawRemotePointerAddress,
+                RawRemotePointerAddress,
                 RawSelfOwnedPointerAddress, SetSharedContainerValue, SharedRef,
                 SharedRefWithValue, ShortListData, ShortMapData,
                 ShortStatementsData, ShortTextData, StackIndex, StatementsData,
@@ -176,6 +176,8 @@ pub enum RegularInstruction {
     TypeExpression,
 
     Conditional(ConditionalData),
+
+    Jump(JumpData),
 }
 
 /// Maps each regular instruction to its corresponding instruction code
@@ -344,6 +346,7 @@ impl From<&RegularInstruction> for InstructionCode {
                 InstructionCode::TYPE_EXPRESSION
             }
             RegularInstruction::Conditional(_) => InstructionCode::CONDITIONAL,
+            RegularInstruction::Jump(_) => InstructionCode::JUMP,
             RegularInstruction::TaggedValue(_) => InstructionCode::TAGGED_VALUE,
             #[cfg(feature = "disassembler")]
             RegularInstruction::_RemoteExecutionDebugFlat(_)
@@ -481,6 +484,10 @@ impl RegularInstruction {
 
             RegularInstruction::Conditional(_) => {
                 NextExpectedInstructions::Regular(1)
+            }
+
+            RegularInstruction::Jump(_) => {
+                NextExpectedInstructions::None
             }
 
             RegularInstruction::Range => NextExpectedInstructions::Regular(2),
@@ -791,6 +798,10 @@ impl RegularInstruction {
             InstructionCode::CONDITIONAL => ConditionalData::read(reader)
                 .map(RegularInstruction::Conditional),
 
+            InstructionCode::JUMP => JumpData::read(reader)
+                .map(RegularInstruction::Jump),
+
+
             InstructionCode::RANGE => Ok(RegularInstruction::Range),
 
             InstructionCode::MODULO => todo!(),
@@ -1036,6 +1047,11 @@ impl RegularInstruction {
                     data.else_branch.branch_length,
                 )
             }
+
+            RegularInstruction::Jump(data) => {
+                write!(string, "{}", data.offset)
+            }
+
 
             RegularInstruction::ModifyStackValue(modify_slot) => {
                 write!(string, "[index: {:?}, operator: {}]", modify_slot.index, modify_slot.operator)

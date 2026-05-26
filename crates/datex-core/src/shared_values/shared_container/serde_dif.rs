@@ -9,6 +9,7 @@ use crate::{
     utils::serde_serialize_seed::SerializeSeed,
 };
 use alloc::format;
+use alloc::string::String;
 use serde::{
     Deserialize, Deserializer, Serialize, Serializer, de::DeserializeSeed,
 };

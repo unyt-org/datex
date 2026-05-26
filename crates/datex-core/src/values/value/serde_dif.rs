@@ -459,7 +459,6 @@ mod tests {
         let serialized =
             SerdeContext::<Value>::new(&mut DIFSharedContainerCache::default())
                 .serialize_to_json(&value);
-        println!("Serialized value: {serialized}");
         assert_eq!(
             serialized,
             r#"[["core::decimal::f64"],5.14,["core::decimal::f64"]]"#
@@ -472,7 +471,6 @@ mod tests {
         let serialized =
             SerdeContext::<Value>::new(&mut DIFSharedContainerCache::default())
                 .serialize_to_json(&value);
-        println!("Serialized value: {serialized}");
         assert_eq!(serialized, r#"{"value":"42"}"#);
     }
 }

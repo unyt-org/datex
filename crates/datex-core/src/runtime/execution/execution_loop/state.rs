@@ -32,7 +32,6 @@ pub struct ExecutionLoopState {
     >,
     pub dxb_body: Rc<RefCell<Vec<u8>>>,
     pub(crate) interrupt_provider: InterruptProvider,
-    pub(crate) stack_capture: Option<Rc<RefCell<Option<RuntimeExecutionStack>>>>,
 }
 impl ExecutionLoopState {
     pub fn new(
@@ -40,22 +39,6 @@ impl ExecutionLoopState {
         runtime: Runtime,
         stack: RuntimeExecutionStack,
         caller_metadata: ExecutionCallerMetadata,
-    ) -> Self {
-        Self::new_with_stack_capture(
-            dxb_body,
-            runtime,
-            stack,
-            caller_metadata,
-            None,
-        )
-    }
-
-    pub fn new_with_stack_capture(
-        dxb_body: Vec<u8>,
-        runtime: Runtime,
-        stack: RuntimeExecutionStack,
-        caller_metadata: ExecutionCallerMetadata,
-        stack_capture: Option<Rc<RefCell<Option<RuntimeExecutionStack>>>>,
     ) -> Self {
         let state = RuntimeExecutionState {
             runtime: runtime.clone(),
@@ -68,12 +51,11 @@ impl ExecutionLoopState {
         let interrupt_provider = InterruptProvider::new();
         ExecutionLoopState {
             dxb_body: dxb_rc.clone(),
-            stack_capture: stack_capture.clone(),
             iterator: Box::new(execution_loop(
                 state,
                 dxb_rc,
                 interrupt_provider.clone(),
-                stack_capture,
+                None,
             )),
             interrupt_provider,
         }
