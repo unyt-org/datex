@@ -191,13 +191,14 @@ impl ComHub {
     pub fn create(
         endpoint: impl Into<Endpoint>,
         incoming_sections_sender: UnboundedSender<IncomingSection>,
+        keys: Option<String>,
     ) -> (Rc<ComHub>, impl Future<Output = ()>) {
         let (task_manager, task_future) = TaskManager::create();
 
         let block_handler = BlockHandler::init(incoming_sections_sender);
         let com_hub = Rc::new(ComHub {
             endpoint: endpoint.into(),
-            options: ComHubOptions::default(),
+            options: ComHubOptions::not_default(keys),
             block_handler,
             socket_manager: ComInterfaceSocketManager::new(),
             interfaces_manager: ComInterfaceManager::default(),
@@ -1006,6 +1007,12 @@ impl ComHub {
             Ok(block)
         }
 
+        if let Some(keys) = &self.options.keys {
+            warn!("Keys for preparing block: {:?}", keys);
+        } else {
+            warn!("No keys to prepare block");
+        }
+
         match block.routing_header.flags.signature_type() {
             // SignatureType::None can be handled synchronously
             SignatureType::None => SyncOrAsync::Sync(
@@ -1676,7 +1683,7 @@ pub mod tests {
     {
         let (sender, receiver) = create_unbounded_channel();
         let (com_hub, com_hub_future) =
-            ComHub::create(TEST_ENDPOINT_A.clone(), sender);
+            ComHub::create(TEST_ENDPOINT_A.clone(), sender, None);
         select! {
             app_result = app_logic(com_hub, receiver).fuse() => app_result,
             _ = com_hub_future.fuse() => panic!("ComHub future should not complete during the test"),

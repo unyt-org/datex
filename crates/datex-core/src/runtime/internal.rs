@@ -187,7 +187,7 @@ impl RuntimeInternal {
                 Endpoint::default(),
             ))),
             RuntimeConfig::default(),
-            ComHub::create(Endpoint::default(), sender).0,
+            ComHub::create(Endpoint::default(), sender, None).0,
             TaskManager::create().0,
             receiver,
         )

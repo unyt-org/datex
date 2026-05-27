@@ -19,7 +19,7 @@ use futures_util::{
     future::{Join, join},
     join,
 };
-use log::info;
+use log::{info, warn};
 
 pub struct RuntimeRunner {
     pub runtime: Runtime,
@@ -37,8 +37,27 @@ impl RuntimeRunner {
         let (incoming_sections_sender, incoming_sections_receiver) =
             create_unbounded_channel::<IncomingSection>();
 
+        // remove unwrap
+        let mut keys: Option<String>  = None;
+        if config.env.clone().unwrap().contains_key("keys") {
+            keys = Some(config.env.clone().unwrap().get("keys").unwrap().to_string());
+        }
+        if keys.is_some() {
+            warn!("Keys from Config: {:?}", keys);
+        } else {
+            warn!("No keys from Config.");
+        }
+
+        /* First attempt...
+        if let Some(x) = config.env.clone().unwrap().get("keys") {
+            warn!("Keys from Config: {:?}", x);
+        } else {
+            warn!("No keys from env.");
+        }
+        */
+        
         let (com_hub, com_hub_task_future) =
-            ComHub::create(endpoint.clone(), incoming_sections_sender);
+            ComHub::create(endpoint.clone(), incoming_sections_sender, keys);
         let memory = RefCell::new(Memory::default());
         let pointer_address_provider = Rc::new(RefCell::new(
             SelfOwnedPointerAddressProvider::new(endpoint.clone()),
