@@ -1115,7 +1115,6 @@ mod tests {
         assert_eq!(result, Integer::from(10).into());
     }
 
-    #[ignore]
     #[test]
     fn double_take_problem() {
         let result = execute_datex_script_debug_with_result(

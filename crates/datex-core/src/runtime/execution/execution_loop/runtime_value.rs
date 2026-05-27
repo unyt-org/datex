@@ -50,6 +50,19 @@ impl RuntimeValue {
         }
     }
 
+    /// Returns a reference to the underlying `ValueContainer` without cloning
+    /// Unlike `into_cloned_value_container`, this does NOT clone the value
+    /// when it is a `StackValue` it reads the slot in place
+    pub fn as_value_container_ref<'a>(
+        &'a self,
+        state: &'a RuntimeExecutionState,
+    ) -> Result<&'a ValueContainer, ExecutionError> {
+        match self {
+            RuntimeValue::ValueContainer(vc) => Ok(vc),
+            RuntimeValue::StackValue(addr) => get_stack_value(state, *addr),
+        }
+    }
+
     /// Creates an owned `ValueContainer` from the `RuntimeValue`.
     /// This possibly involves cloning the value if it is stored in a slot.
     /// Do not use this method if you want to work on the actual value without cloning it.

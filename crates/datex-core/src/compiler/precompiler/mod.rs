@@ -67,6 +67,7 @@ pub struct Precompiler<'a> {
     collected_errors: Option<DetailedCompilerErrors>,
     is_first_level_expression: bool,
     in_conditional_condition: bool,
+    in_assignment_rhs: bool,
     runtime: Runtime,
 }
 
@@ -148,6 +149,7 @@ impl<'a> Precompiler<'a> {
             collected_errors: None,
             is_first_level_expression: true,
             in_conditional_condition: false,
+            in_assignment_rhs: false,
             runtime,
         }
     }
@@ -692,7 +694,14 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
             variable_declaration.name.clone(),
             VariableShape::Value(variable_declaration.kind),
         ));
-        Ok(VisitAction::VisitChildren)
+        self.in_assignment_rhs = true;
+        self.visit_datex_expression(&mut variable_declaration.init_expression)?;
+        self.in_assignment_rhs = false;
+        if let Some(type_annotation) = &mut variable_declaration.type_annotation
+        {
+            self.visit_type_expression(type_annotation)?;
+        }
+        Ok(VisitAction::SkipChildren)
     }
 
     fn visit_variable_assignment(
@@ -725,7 +734,10 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
                 ))?;
             };
         }
-        Ok(VisitAction::VisitChildren)
+        self.in_assignment_rhs = true;
+        self.visit_datex_expression(&mut variable_assignment.expression)?;
+        self.in_assignment_rhs = false;
+        Ok(VisitAction::SkipChildren)
     }
 
     fn visit_get_shared_ref(
@@ -884,7 +896,9 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
         span: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedCompilerError> {
         let access_type = if self.in_conditional_condition {
-            ValueAccessType::Clone
+            ValueAccessType::Borrow
+        } else if self.in_assignment_rhs {
+            ValueAccessType::Borrow
         } else {
             ValueAccessType::MoveOrCopy
         };
@@ -1312,7 +1326,7 @@ mod tests {
                         DatexExpressionData::VariableAccess(VariableAccess {
                             id: 0,
                             name: "MyInt".to_string(),
-                            access_type: ValueAccessType::MoveOrCopy,
+                            access_type: ValueAccessType::Borrow,
                         })
                         .with_default_span()
                     ),
@@ -1341,7 +1355,7 @@ mod tests {
                         DatexExpressionData::VariableAccess(VariableAccess {
                             id: 0,
                             name: "MyInt".to_string(),
-                            access_type: ValueAccessType::MoveOrCopy,
+                            access_type: ValueAccessType::Borrow,
                         })
                         .with_default_span()
                     ),
@@ -2054,6 +2068,75 @@ mod tests {
                     injected_variable_count: Some(2),
                 }).with_default_span(),
             ]))
+        )
+    }
+
+    #[test]
+    fn read_variable_check() {
+        let result = parse_and_precompile("var x = 1; var y = x + 2 + x;");
+        assert!(result.is_ok());
+        let rich_ast = result.unwrap();
+        assert_eq!(
+            rich_ast.ast,
+            DatexExpressionData::Statements(Statements::new_terminated(vec![
+                DatexExpressionData::VariableDeclaration(VariableDeclaration {
+                    id: Some(0),
+                    kind: VariableKind::Var,
+                    name: "x".to_string(),
+                    init_expression: Box::new(
+                        DatexExpressionData::Integer(Integer::from(1))
+                            .with_default_span()
+                    ),
+                    type_annotation: None,
+                })
+                .with_default_span(),
+                DatexExpressionData::VariableDeclaration(VariableDeclaration {
+                    id: Some(1),
+                    kind: VariableKind::Var,
+                    name: "y".to_string(),
+                    init_expression: Box::new(
+                        DatexExpressionData::BinaryOperation(BinaryOperation {
+                            operator: BinaryOperator::Arithmetic(
+                                ArithmeticOperator::Add
+                            ),
+                            left: Box::new(
+                                DatexExpressionData::BinaryOperation(BinaryOperation {
+                                    operator: BinaryOperator::Arithmetic(
+                                        ArithmeticOperator::Add
+                                    ),
+                                    left: Box::new(
+                                        DatexExpressionData::VariableAccess(VariableAccess {
+                                            id: 0,
+                                            name: "x".to_string(),
+                                            access_type: ValueAccessType::Borrow,
+                                        })
+                                        .with_default_span()
+                                    ),
+                                    right: Box::new(
+                                        DatexExpressionData::Integer(Integer::from(2))
+                                            .with_default_span()
+                                    ),
+                                    ty: None,
+                                })
+                                .with_default_span()
+                            ),
+                            right: Box::new(
+                                DatexExpressionData::VariableAccess(VariableAccess {
+                                    id: 0,
+                                    name: "x".to_string(),
+                                    access_type: ValueAccessType::Borrow,
+                                })
+                                .with_default_span()
+                            ),
+                            ty: None,
+                        })
+                        .with_default_span()
+                    ),
+                    type_annotation: None,
+                })
+                .with_default_span(),
+            ]))
+            .with_default_span()
         )
     }
 }

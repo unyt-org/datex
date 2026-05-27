@@ -779,21 +779,28 @@ pub fn inner_execution_loop(
                                 | RegularInstruction::Multiply
                                 | RegularInstruction::Range
                                 | RegularInstruction::Divide => {
-                                    let right = yield_unwrap!(
+                                    let right_rv = yield_unwrap!(
                                         collected_results
-                                            .pop_cloned_value_container_result_assert_existing(&state)
+                                            .pop_runtime_value_result_assert_existing()
+                                    );
+                                    let left_rv = yield_unwrap!(
+                                        collected_results
+                                            .pop_runtime_value_result_assert_existing()
+                                    );
+
+                                    let right = yield_unwrap!(
+                                        right_rv.as_value_container_ref(&state)
                                     );
                                     let left = yield_unwrap!(
-                                        collected_results
-                                            .pop_cloned_value_container_result_assert_existing(&state)
+                                        left_rv.as_value_container_ref(&state)
                                     );
 
                                     let res = handle_binary_operation(
                                         BinaryOperator::from(
                                             regular_instruction,
                                         ),
-                                        &left,
-                                        &right,
+                                        left,
+                                        right,
                                     );
                                     RuntimeValue::ValueContainer(yield_unwrap!(
                                         res
@@ -806,21 +813,28 @@ pub fn inner_execution_loop(
                                 | RegularInstruction::Equal
                                 | RegularInstruction::NotStructuralEqual
                                 | RegularInstruction::NotEqual => {
-                                    let right = yield_unwrap!(
+                                    let right_rv = yield_unwrap!(
                                         collected_results
-                                            .pop_cloned_value_container_result_assert_existing(&state)
+                                            .pop_runtime_value_result_assert_existing()
+                                    );
+                                    let left_rv = yield_unwrap!(
+                                        collected_results
+                                            .pop_runtime_value_result_assert_existing()
+                                    );
+
+                                    let right = yield_unwrap!(
+                                        right_rv.as_value_container_ref(&state)
                                     );
                                     let left = yield_unwrap!(
-                                        collected_results
-                                            .pop_cloned_value_container_result_assert_existing(&state)
+                                        left_rv.as_value_container_ref(&state)
                                     );
 
                                     let res = handle_comparison_operation(
                                         ComparisonOperator::from(
                                             regular_instruction,
                                         ),
-                                        &left,
-                                        &right,
+                                        left,
+                                        right,
                                     );
                                     RuntimeValue::ValueContainer(yield_unwrap!(
                                         res
