@@ -1384,25 +1384,6 @@ fn compile_expression(
             )?;
         }
 
-        DatexExpressionData::Loop(Loop { condition, body }) => {
-            let condition_bytes = match condition {
-                Some(condition) => {
-                    let mut ctx = CompilationContext::new(
-                        Vec::with_capacity(64),
-                        compilation_context.inserted_values.clone(),
-                        compilation_context.execution_mode,
-                    );
-                    compile_expression(
-                        &mut ctx,
-                        RichAst::new(*condition, &metadata),
-                        CompileMetadata::default(),
-                        scope.clone(),
-                    )?;
-                    ctx.into_buffer()
-                }
-                None => todo!("will think about this"),
-            };
-        }
         DatexExpressionData::Conditional(Conditional {
             condition,
             then_branch,
@@ -1528,6 +1509,75 @@ fn compile_expression(
                     scope,
                 )?;
             }
+        }
+
+        DatexExpressionData::Loop(loop_expr) => {
+            compilation_context.mark_has_non_static_value();
+
+            let body_bytes = {
+                let mut ctx = CompilationContext::new(
+                    Vec::with_capacity(64),
+                    compilation_context.inserted_values.clone(),
+                    compilation_context.execution_mode,
+                );
+                compile_expression(
+                    &mut ctx,
+                    RichAst::new(*loop_expr.body, &metadata),
+                    CompileMetadata::default(),
+                    scope.clone(),
+                )?;
+                ctx.into_buffer()
+            };
+
+            append_regular_instruction(
+                compilation_context.cursor(),
+                RegularInstruction::UnboundedStatements,
+            );
+
+            let loop_start = compilation_context.new_label();
+            compilation_context.bind_label(loop_start);
+
+            if let Some(condition) = loop_expr.condition {
+                let condition_bytes = {
+                    let mut ctx = CompilationContext::new(
+                        Vec::with_capacity(64),
+                        compilation_context.inserted_values.clone(),
+                        compilation_context.execution_mode,
+                    );
+                    compile_expression(
+                        &mut ctx,
+                        RichAst::new(*condition, &metadata),
+                        CompileMetadata::default(),
+                        scope.clone(),
+                    )?;
+                    ctx.into_buffer()
+                };
+
+                let exit_label = compilation_context.new_label();
+                compilation_context.emit_jump_if_false_to_label(
+                    exit_label,
+                    condition_bytes.len() as u32,
+                );
+                compilation_context
+                    .cursor()
+                    .write_all(&condition_bytes)
+                    .unwrap();
+                compilation_context.cursor().write_all(&body_bytes).unwrap();
+                compilation_context.emit_jump_to_label(loop_start);
+                compilation_context.bind_label(exit_label);
+            } else {
+                compilation_context.cursor().write_all(&body_bytes).unwrap();
+                compilation_context.emit_jump_to_label(loop_start);
+            }
+
+            append_regular_instruction(
+                compilation_context.cursor(),
+                RegularInstruction::UnboundedStatementsEnd(
+                    UnboundedStatementsData { terminated: false },
+                ),
+            );
+
+            compilation_context.resolve_pending_jumps();
         }
 
         DatexExpressionData::ResolveCoreLibId(core_lib_id) => {
@@ -3915,6 +3965,31 @@ pub mod tests {
             0,
             InstructionCode::UNBOUNDED_STATEMENTS_END.into(),
             0,
+            InstructionCode::UNBOUNDED_STATEMENTS_END.into(),
+            0,
+        ];
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn for_loop_simple() {
+        let script = "for (true) (42u8)";
+        let result = compile_and_log(script);
+        let expected = vec![
+            InstructionCode::UNBOUNDED_STATEMENTS.into(),
+            InstructionCode::JUMP_IF_FALSE.into(),
+            7,
+            0,
+            0,
+            0,
+            InstructionCode::TRUE.into(),
+            InstructionCode::UINT_8.into(),
+            42,
+            InstructionCode::JUMP.into(),
+            0xF3,
+            0xFF,
+            0xFF,
+            0xFF,
             InstructionCode::UNBOUNDED_STATEMENTS_END.into(),
             0,
         ];

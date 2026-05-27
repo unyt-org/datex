@@ -114,6 +114,9 @@ pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
             DatexExpressionData::Conditional(conditional) => {
                 self.visit_conditional(conditional, &expr.span)
             }
+            DatexExpressionData::Loop(loop_expr) => {
+                self.visit_loop(loop_expr, &expr.span)
+            }
             DatexExpressionData::Loop(loops) => {
                 self.visit_loop(loops, &expr.span)
             }

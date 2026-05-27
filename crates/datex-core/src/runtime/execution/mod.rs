@@ -1062,4 +1062,69 @@ mod tests {
         let result = execute_datex_script_debug_with_result(script);
         assert_eq!(result, TypedInteger::from(1u8).into());
     }
+
+    #[test]
+    fn for_loop_false_immediate_exit() {
+        let result = execute_datex_script_debug("for (false) (42)");
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn for_loop_false_then_value() {
+        let result = execute_datex_script_debug_with_result(
+            "var x = 0; for (false) (x = 42); x",
+        );
+        assert_eq!(result, Integer::from(0).into());
+    }
+
+    #[test]
+    #[ignore = "Ordering comparison operators (<, >, <=, >=) not yet implemented for InstructionCode"]
+    fn for_loop_condition_with_less_than() {
+        let result =
+            execute_datex_script_debug("var a = 0; for (a<10) (a = a+1); a");
+        assert_eq!(result, Some(Integer::from(10).into()));
+    }
+
+    #[test]
+    #[ignore = "Ordering comparison operators (<, >, <=, >=) not yet implemented for InstructionCode"]
+    fn test_loop_while() {
+        let script = "
+            var a = 0u8;
+            var b = 0u8;
+            for (a<10u8) (
+                b=b+2u8;
+                a=a+1u8;
+            )
+            b
+            ";
+        let result = execute_datex_script_debug(script);
+        assert_eq!(result, Some(TypedInteger::from(20u8).into()));
+    }
+
+    #[test]
+    fn for_loop_variable_comparison() {
+        let result = execute_datex_script_debug_with_result(
+            "
+            var x = 0;
+            for (x!=10) (
+                x = x + 1
+            );
+            x
+            ",
+        );
+        assert_eq!(result, Integer::from(10).into());
+    }
+
+    #[ignore]
+    #[test]
+    fn double_take_problem() {
+        let result = execute_datex_script_debug_with_result(
+            "
+            var x = 0;
+            x=x+1+x;
+            x
+            ",
+        );
+        assert_eq!(result, Integer::from(1).into());
+    }
 }

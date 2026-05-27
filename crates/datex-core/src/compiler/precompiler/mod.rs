@@ -19,7 +19,7 @@ use crate::{
     ast::{
         expressions::{
             BinaryOperation, CloneExpression, Conditional, DatexExpression,
-            DatexExpressionData, GetSharedRef, RemoteExecution,
+            DatexExpressionData, GetSharedRef, Loop, RemoteExecution,
             RequestSharedRef, Statements, TypeDeclaration, TypeDeclarationKind,
             Unbox, UnboxAssignment, ValueAccessType, VariableAccess,
             VariableAssignment, VariableDeclaration, VariableKind,
@@ -860,6 +860,21 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
         if let Some(else_branch) = &mut conditional.else_branch {
             self.visit_datex_expression(else_branch)?;
         }
+        Ok(VisitAction::SkipChildren)
+    }
+
+    fn visit_loop(
+        &mut self,
+        loop_expr: &mut Loop,
+        span: &Range<usize>,
+    ) -> ExpressionVisitResult<SpannedCompilerError> {
+        let _ = span;
+        if let Some(condition) = &mut loop_expr.condition {
+            self.in_conditional_condition = true;
+            self.visit_datex_expression(condition)?;
+            self.in_conditional_condition = false;
+        }
+        self.visit_datex_expression(&mut loop_expr.body)?;
         Ok(VisitAction::SkipChildren)
     }
 

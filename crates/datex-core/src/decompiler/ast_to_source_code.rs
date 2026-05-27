@@ -1,7 +1,7 @@
 use crate::ast::{
     expressions::{
         Apply, BinaryOperation, CallableDeclaration, ComparisonOperation,
-        Conditional, DatexExpression, DatexExpressionData, List, Map,
+        Conditional, DatexExpression, DatexExpressionData, List, Loop, Map,
         PropertyAccess, PropertyAssignment, RangeDeclaration, RemoteExecution,
         StackAssignment, TypeDeclaration, UnboxAssignment, VariableAccess,
         VariableAssignment, VariableDeclaration, VariantAccess,
@@ -644,6 +644,18 @@ impl AstToSourceCodeConverter {
                     },
                     get_shared_ref.address,
                 )
+            }
+            DatexExpressionData::Loop(Loop { condition, body }) => {
+                let mut code = String::from("for (");
+                if let Some(condition) = condition.as_ref() {
+                    code.push_str(&self.format(condition));
+                } else {
+                    code.push_str("true");
+                }
+                code.push_str(") (");
+                code.push_str(&self.format(body));
+                code.push(')');
+                code
             }
             DatexExpressionData::Conditional(Conditional {
                 condition,

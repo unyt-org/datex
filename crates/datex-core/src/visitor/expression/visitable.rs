@@ -97,8 +97,8 @@ impl<E> VisitableExpression<E> for Loop {
         &mut self,
         visitor: &mut impl ExpressionVisitor<E>,
     ) -> Result<(), E> {
-        if let Some(else_branch) = &mut self.condition {
-            visitor.visit_datex_expression(else_branch)?;
+        if let Some(condition) = &mut self.condition {
+            visitor.visit_datex_expression(condition)?;
         }
         visitor.visit_datex_expression(&mut self.body)?;
         Ok(())
@@ -351,6 +351,9 @@ impl<E> VisitableExpression<E> for DatexExpression {
             DatexExpressionData::Map(map) => map.walk_children(visitor),
             DatexExpressionData::Conditional(conditional) => {
                 conditional.walk_children(visitor)
+            }
+            DatexExpressionData::Loop(loop_expr) => {
+                loop_expr.walk_children(visitor)
             }
             DatexExpressionData::Loop(conditional) => {
                 conditional.walk_children(visitor)
