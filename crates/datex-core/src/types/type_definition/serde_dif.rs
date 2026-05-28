@@ -162,8 +162,7 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, TypeDefinition> {
 
         let value = match key.as_str() {
             "literal" => {
-                let literal =
-                    map.next_value_seed(self.cast::<LiteralTypeDefinition>())?;
+                let literal = map.next_value()?;
                 TypeDefinition::Literal(literal)
             }
 

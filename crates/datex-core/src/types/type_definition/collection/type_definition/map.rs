@@ -2,8 +2,12 @@ use crate::{
     dif::serde_context::SerdeContext,
     utils::serde_serialize_seed::{SerializeSeed, ValueWithSeed},
 };
-use core::fmt::Display;
-use serde::{Serializer, ser::SerializeSeq};
+use core::fmt::{self, Display};
+use serde::{
+    Deserializer, Serializer,
+    de::{self, DeserializeSeed, SeqAccess, Visitor},
+    ser::SerializeSeq,
+};
 
 use crate::types::r#type::Type;
 
@@ -36,5 +40,51 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, MapCollectionTypeDefinition> {
             self.cast::<Type>(),
         ))?;
         seq.end()
+    }
+}
+
+/// Deserialization implementations for [ListCollectionTypeDefinition].
+impl<'de, 'ctx> DeserializeSeed<'de>
+    for SerdeContext<'ctx, MapCollectionTypeDefinition>
+{
+    type Value = MapCollectionTypeDefinition;
+
+    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deserializer.deserialize_tuple(2, self)
+    }
+}
+
+impl<'de, 'ctx> Visitor<'de>
+    for SerdeContext<'ctx, MapCollectionTypeDefinition>
+{
+    type Value = MapCollectionTypeDefinition;
+
+    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        formatter.write_str("a tuple")
+    }
+
+    fn visit_seq<A>(mut self, mut seq: A) -> Result<Self::Value, A::Error>
+    where
+        A: SeqAccess<'de>,
+    {
+        let key_type = seq
+            .next_element_seed(self.cast::<Type>())?
+            .ok_or_else(|| de::Error::custom("expected a key type"))?;
+
+        let value_type = seq
+            .next_element_seed(self.cast::<Type>())?
+            .ok_or_else(|| de::Error::custom("expected a value type"))?;
+
+        if seq.next_element::<de::IgnoredAny>()?.is_some() {
+            return Err(de::Error::custom("expected exactly 2 elements"));
+        }
+
+        Ok(MapCollectionTypeDefinition {
+            key_type: Box::new(key_type),
+            value_type: Box::new(value_type),
+        })
     }
 }

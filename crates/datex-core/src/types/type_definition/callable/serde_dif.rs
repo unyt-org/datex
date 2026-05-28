@@ -1,5 +1,6 @@
 use serde::{
-    Serializer,
+    Deserializer, Serializer,
+    de::DeserializeSeed,
     ser::{SerializeMap, SerializeSeq},
 };
 
@@ -37,5 +38,20 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, CallableTypeDefinition> {
         //     self.cast::<Option<Box<Type>>>(),
         // ))?;
         obj.end()
+    }
+}
+
+impl<'de, 'ctx> DeserializeSeed<'de>
+    for SerdeContext<'ctx, CallableTypeDefinition>
+{
+    type Value = CallableTypeDefinition;
+
+    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        todo!(
+            "deserialization for CallableTypeDefinition is not implemented yet"
+        )
     }
 }

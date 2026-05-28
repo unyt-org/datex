@@ -36,8 +36,8 @@ impl<'de, 'ctx> DeserializeSeed<'de> for SerdeContext<'ctx, Type> {
 impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, Type> {
     fn expecting(
         &self,
-        formatter: &mut std::fmt::Formatter,
-    ) -> std::fmt::Result {
+        formatter: &mut core::fmt::Formatter,
+    ) -> core::fmt::Result {
         formatter.write_str("a type definition")
     }
     type Value = Type;

@@ -26,7 +26,7 @@ pub fn expr_to_value_container(exp: &Expr) -> Result<ValueContainer, Error> {
                     IntegerTypeVariant::from_str(i.suffix()).unwrap()
                 };
                 Ok(ValueContainer::from(
-                    TypedInteger::from_string_with_variant(
+                    TypedInteger::from_string_and_variant(
                         &format!("-{}", i.base10_digits()),
                         variant,
                     )
@@ -69,7 +69,7 @@ pub fn expr_to_value_container(exp: &Expr) -> Result<ValueContainer, Error> {
                     IntegerTypeVariant::from_str(i.suffix()).unwrap()
                 };
                 Ok(ValueContainer::from(
-                    TypedInteger::from_string_with_variant(
+                    TypedInteger::from_string_and_variant(
                         i.base10_digits(),
                         variant,
                     )

@@ -44,8 +44,8 @@ impl<'de, 'ctx> DeserializeSeed<'de>
 impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, ListTypeDefinition> {
     fn expecting(
         &self,
-        formatter: &mut std::fmt::Formatter,
-    ) -> std::fmt::Result {
+        formatter: &mut core::fmt::Formatter,
+    ) -> core::fmt::Result {
         formatter.write_str("a list of type definitions")
     }
     type Value = ListTypeDefinition;

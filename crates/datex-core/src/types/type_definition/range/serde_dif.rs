@@ -49,8 +49,8 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, RangeTypeDefinition> {
 
     fn expecting(
         &self,
-        formatter: &mut std::fmt::Formatter,
-    ) -> std::fmt::Result {
+        formatter: &mut core::fmt::Formatter,
+    ) -> core::fmt::Result {
         formatter
             .write_str("a tuple of two Type definitions representing a range")
     }

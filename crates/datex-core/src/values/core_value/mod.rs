@@ -357,17 +357,14 @@ impl CoreValue {
     ) -> Option<TypedInteger> {
         match self {
             CoreValue::Text(text) => {
-                TypedInteger::from_string_with_variant(text.as_str(), variant)
+                TypedInteger::from_string_and_variant(text.as_str(), variant)
                     .ok()
             }
             CoreValue::TypedInteger(int) => {
-                TypedInteger::from_string_with_variant(
-                    &int.to_string(),
-                    variant,
-                )
-                .ok()
+                TypedInteger::from_string_and_variant(&int.to_string(), variant)
+                    .ok()
             }
-            CoreValue::Integer(int) => TypedInteger::from_string_with_variant(
+            CoreValue::Integer(int) => TypedInteger::from_string_and_variant(
                 int.to_string().as_str(),
                 variant,
             )

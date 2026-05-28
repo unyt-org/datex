@@ -148,7 +148,7 @@ impl TypedInteger {
 
     /// Parses a string into a TypedInteger with the given variant.
     /// If the string is not a valid integer, returns an error.
-    pub fn from_string_with_variant(
+    pub fn from_string_and_variant(
         s: &str,
         variant: IntegerTypeVariant,
     ) -> Result<TypedInteger, NumberParseError> {

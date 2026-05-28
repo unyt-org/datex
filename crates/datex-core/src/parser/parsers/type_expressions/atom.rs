@@ -342,7 +342,7 @@ mod tests {
         assert_eq!(
             expr.data,
             TypeExpressionData::TypedInteger(
-                TypedInteger::from_string_with_variant(
+                TypedInteger::from_string_and_variant(
                     "12345",
                     IntegerTypeVariant::U16
                 )

@@ -3,7 +3,7 @@ use crate::{
     utils::serde_serialize_seed::SerializeSeed,
 };
 use core::fmt::Display;
-use serde::Serializer;
+use serde::{Deserializer, Serializer, de::DeserializeSeed};
 
 use crate::types::r#type::Type;
 
@@ -24,5 +24,23 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, ListCollectionTypeDefinition> {
     ) -> Result<S::Ok, S::Error> {
         let mut seed = self.cast::<Type>();
         seed.serialize(&value.0, serializer)
+    }
+}
+
+/// Deserialization implementations for [ListCollectionTypeDefinition].
+impl<'de, 'ctx> DeserializeSeed<'de>
+    for SerdeContext<'ctx, ListCollectionTypeDefinition>
+{
+    type Value = ListCollectionTypeDefinition;
+
+    fn deserialize<D>(
+        mut self,
+        deserializer: D,
+    ) -> Result<Self::Value, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let item_type = self.cast::<Type>().deserialize(deserializer)?;
+        Ok(ListCollectionTypeDefinition(Box::new(item_type)))
     }
 }

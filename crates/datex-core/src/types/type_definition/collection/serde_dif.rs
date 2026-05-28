@@ -17,7 +17,8 @@ use crate::{
     utils::serde_serialize_seed::{SerializeSeed, ValueWithSeed},
 };
 use serde::{
-    Serializer,
+    Deserializer, Serializer,
+    de::{self, DeserializeSeed, Visitor},
     ser::{SerializeMap, SerializeSeq},
 };
 
@@ -55,5 +56,64 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, CollectionTypeDefinition> {
             )?,
         }
         obj.end()
+    }
+}
+
+/// Deserialization implementations for [CollectionTypeDefinition].
+impl<'de, 'ctx> DeserializeSeed<'de>
+    for SerdeContext<'ctx, CollectionTypeDefinition>
+{
+    type Value = CollectionTypeDefinition;
+
+    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deserializer.deserialize_map(self)
+    }
+}
+
+impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, CollectionTypeDefinition> {
+    type Value = CollectionTypeDefinition;
+
+    fn expecting(
+        &self,
+        formatter: &mut core::fmt::Formatter,
+    ) -> core::fmt::Result {
+        formatter.write_str(
+            "a map with a single key representing the collection type",
+        )
+    }
+
+    fn visit_map<A>(mut self, mut map: A) -> Result<Self::Value, A::Error>
+    where
+        A: serde::de::MapAccess<'de>,
+    {
+        let key = map.next_key::<String>()?.ok_or_else(|| {
+            de::Error::custom(
+                "expected a single key for collection type definition",
+            )
+        })?;
+        match key.as_str() {
+            "List" => Ok(CollectionTypeDefinition::List(map.next_value_seed(
+                self.cast::<ListCollectionTypeDefinition>(),
+            )?)),
+            "ListSlice" => {
+                Ok(CollectionTypeDefinition::ListSlice(map.next_value_seed(
+                    self.cast::<ListSliceCollectionTypeDefinition>(),
+                )?))
+            }
+            "Map" => Ok(CollectionTypeDefinition::Map(map.next_value_seed(
+                self.cast::<MapCollectionTypeDefinition>(),
+            )?)),
+            "Range" => Ok(CollectionTypeDefinition::Range(
+                map.next_value_seed(self.cast::<RangeTypeDefinition>())?,
+            )),
+
+            _ => Err(de::Error::unknown_variant(
+                &key,
+                &["List", "ListSlice", "Map", "Range"],
+            )),
+        }
     }
 }

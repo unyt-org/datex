@@ -4,8 +4,14 @@ use crate::{prelude::*, types::r#type::Type};
 use core::ops::Deref;
 pub mod equality;
 pub mod serde_dif;
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct IntersectionTypeDefinition(pub Vec<Type>);
+
+impl IntersectionTypeDefinition {
+    pub fn new(types: Vec<Type>) -> Self {
+        Self(types)
+    }
+}
 
 impl Deref for IntersectionTypeDefinition {
     type Target = [Type];

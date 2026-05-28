@@ -112,8 +112,8 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, (Type, Type)> {
 impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, MapTypeDefinition> {
     fn expecting(
         &self,
-        formatter: &mut std::fmt::Formatter,
-    ) -> std::fmt::Result {
+        formatter: &mut core::fmt::Formatter,
+    ) -> core::fmt::Result {
         formatter.write_str("a map type definition")
     }
     type Value = MapTypeDefinition;

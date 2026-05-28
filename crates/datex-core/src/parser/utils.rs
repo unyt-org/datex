@@ -73,7 +73,7 @@ pub fn parse_integer_literal(
             if let Ok(integer_variant) =
                 IntegerTypeVariant::from_str(&variant_part)
             {
-                TypedInteger::from_string_with_variant(
+                TypedInteger::from_string_and_variant(
                     &integer_part,
                     integer_variant,
                 )
