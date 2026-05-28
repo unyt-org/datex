@@ -90,6 +90,7 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, TaggedTypeDefinition> {
     }
 }
 
+use crate::prelude::*;
 impl<'de, 'ctx> DeserializeSeed<'de>
     for SerdeContext<'ctx, Option<Box<TypeDefinition>>>
 {

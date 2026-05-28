@@ -9,6 +9,7 @@ use serde::{
     ser::SerializeSeq,
 };
 
+use crate::prelude::*;
 impl<'ctx> SerializeSeed for SerdeContext<'ctx, ListTypeDefinition> {
     type Value = ListTypeDefinition;
 

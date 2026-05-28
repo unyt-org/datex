@@ -11,6 +11,7 @@ use serde::{
 
 use crate::types::r#type::Type;
 
+use crate::prelude::*;
 #[derive(Debug, Clone, PartialEq, Hash, Eq)]
 pub struct MapCollectionTypeDefinition {
     pub key_type: Box<Type>,

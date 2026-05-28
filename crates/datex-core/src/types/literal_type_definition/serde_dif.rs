@@ -3,6 +3,7 @@ use crate::{
         core_lib_id::CoreLibId,
         type_id::{CoreLibBaseTypeId, CoreLibTypeId, CoreLibVariantTypeId},
     },
+    prelude::*,
     types::literal_type_definition::LiteralTypeDefinition,
     values::core_values::{
         decimal::typed_decimal::TypedDecimal,
@@ -214,6 +215,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::prelude::*;
     use serde_json::{self, Value, json};
     use test_case::test_case;
     fn assert_json_string_roundtrip(value: LiteralTypeDefinition) {

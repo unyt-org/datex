@@ -8,6 +8,7 @@ use serde::{Serializer, de::DeserializeSeed, ser::SerializeSeq};
 
 use crate::types::r#type::Type;
 
+use crate::prelude::*;
 #[derive(Debug, Clone, PartialEq, Hash, Eq)]
 pub struct ListSliceCollectionTypeDefinition {
     pub item_type: Box<Type>,

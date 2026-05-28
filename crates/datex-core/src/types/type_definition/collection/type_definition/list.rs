@@ -5,7 +5,7 @@ use crate::{
 use core::fmt::Display;
 use serde::{Deserializer, Serializer, de::DeserializeSeed};
 
-use crate::types::r#type::Type;
+use crate::{prelude::*, types::r#type::Type};
 
 #[derive(Debug, Clone, PartialEq, Hash, Eq)]
 pub struct ListCollectionTypeDefinition(pub Box<Type>);

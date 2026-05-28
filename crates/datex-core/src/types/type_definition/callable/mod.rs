@@ -2,7 +2,7 @@ use core::fmt::Display;
 
 use crate::{ast::expressions::CallableKind, types::r#type::Type};
 pub mod serde_dif;
-
+use crate::prelude::*;
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CallableTypeDefinition {
     pub kind: CallableKind,

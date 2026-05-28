@@ -6,6 +6,7 @@ use crate::{
     utils::serde_serialize_seed::{SerializeSeed, ValueWithSeed},
 };
 
+use crate::prelude::*;
 impl<'ctx> SerializeSeed for SerdeContext<'ctx, ImplTypeDefinition> {
     type Value = ImplTypeDefinition;
 

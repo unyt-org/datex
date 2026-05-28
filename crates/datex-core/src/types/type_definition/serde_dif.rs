@@ -3,6 +3,7 @@ use core::fmt;
 use crate::{
     dif::serde_context::SerdeContext,
     libs::core::core_lib_id::{CoreLibId, CoreLibIdIndex},
+    prelude::*,
     types::{
         literal_type_definition::LiteralTypeDefinition,
         r#type::Type,
@@ -301,6 +302,7 @@ mod tests {
             core_lib_id::CoreLibIdIndex,
             type_id::{CoreLibBaseTypeId, CoreLibTypeId, CoreLibVariantTypeId},
         },
+        prelude::*,
         types::type_definition::TypeDefinition,
         values::core_values::integer::typed_integer::IntegerTypeVariant,
     };
