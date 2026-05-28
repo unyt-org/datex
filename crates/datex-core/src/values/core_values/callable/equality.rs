@@ -1,6 +1,7 @@
 use crate::{
     traits::structural_eq::StructuralEq,
-    values::core_values::callable::{Callable, CallableSignature},
+    types::type_definition::callable::CallableTypeDefinition,
+    values::core_values::callable::Callable,
 };
 
 impl StructuralEq for Callable {
@@ -8,7 +9,7 @@ impl StructuralEq for Callable {
         self == other
     }
 }
-impl StructuralEq for CallableSignature {
+impl StructuralEq for CallableTypeDefinition {
     fn structural_eq(&self, other: &Self) -> bool {
         self == other
     }

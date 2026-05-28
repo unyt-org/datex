@@ -6,13 +6,11 @@ use crate::{
         value_id::CoreLibValueId,
     },
     random::RandomState,
+    types::type_definition::callable::CallableTypeDefinition,
     values::{
         core_value::CoreValue,
         core_values::{
-            callable::{
-                CallableBody, CallableKind, CallableSignature,
-                error::CallableError,
-            },
+            callable::{CallableBody, CallableKind, error::CallableError},
             map::Map,
         },
         value::Value,
@@ -40,7 +38,7 @@ impl Default for CoreLibraryValues {
         CoreLibraryValues {
             print: Value::callable(
                 Some("print".to_string()),
-                CallableSignature {
+                CallableTypeDefinition {
                     kind: CallableKind::Function,
                     parameter_types: vec![],
                     rest_parameter_type: Some((
@@ -191,10 +189,7 @@ impl Default for CoreLibrary {
 
 impl CoreLibrary {
     /// Resolves a pointer address to a core library value if it exists, otherwise returns an error.
-    pub fn value_or_type_by_id(
-        &self,
-        id: CoreLibId,
-    ) -> &Value {
+    pub fn value_or_type_by_id(&self, id: CoreLibId) -> &Value {
         match id {
             CoreLibId::Value(id) => self.values.get_by_id(&id),
             CoreLibId::Type(id) => self.types.get_by_id(&id),
@@ -220,8 +215,9 @@ impl CoreLibrary {
 
 #[cfg(test)]
 mod tests {
-    use crate::libs::core::core_lib_id::CoreLibIdIndex;
-    use crate::shared_values::PointerAddress;
+    use crate::{
+        libs::core::core_lib_id::CoreLibIdIndex, shared_values::PointerAddress,
+    };
 
     use super::*;
 
@@ -230,7 +226,7 @@ mod tests {
         flexi_logger::init();
         info!("{}", CoreLibrary::default().map());
     }
-    
+
     #[test]
     #[ignore]
     #[cfg(feature = "std")]

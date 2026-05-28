@@ -13,6 +13,7 @@ use crate::{
         shared_container_containing_type::SharedContainerContainingType,
         r#type::Type,
         type_definition::{
+            callable::CallableTypeDefinition,
             collection::CollectionTypeDefinition,
             impl_type::ImplTypeDefinition,
             intersection::IntersectionTypeDefinition, list::ListTypeDefinition,
@@ -23,9 +24,9 @@ use crate::{
             TypeDefinitionWithMetadata, TypeMetadata,
         },
     },
-    values::core_values::callable::CallableSignature,
 };
 use core::{fmt::Display, hash::Hash, ops::Deref, prelude::rust_2024::*};
+pub mod callable;
 pub mod collection;
 pub mod impl_type;
 pub mod list;
@@ -33,6 +34,7 @@ pub mod map;
 pub mod range;
 pub mod tagged_type;
 pub mod type_match;
+
 /// Base enum for a type definition
 /// This is normally the base for types at runtime, in contrast to [Type], which is the base for types
 /// at compile time.
@@ -57,7 +59,7 @@ pub enum TypeDefinition {
     Nested(Box<Type>),
 
     /// a callable type definition (signature)
-    Callable(CallableSignature),
+    Callable(CallableTypeDefinition),
 
     /// innerType + Marker1 + Marker2
     /// A special type that behaves like `innerType` but is marked with additional
@@ -311,13 +313,13 @@ impl TypeDefinition {
     }
 
     /// Creates a new shared type.
-    pub fn shared(reference: SharedContainerContainingType) -> Self {
-        TypeDefinition::Shared(reference)
+    pub fn shared(ty: SharedContainerContainingType) -> Self {
+        TypeDefinition::Shared(ty)
     }
 
     /// Creates a new callable type.
-    pub fn callable(signature: CallableSignature) -> Self {
-        TypeDefinition::Callable(signature)
+    pub fn callable(definition: CallableTypeDefinition) -> Self {
+        TypeDefinition::Callable(definition)
     }
 
     /// Creates a new type with impls.

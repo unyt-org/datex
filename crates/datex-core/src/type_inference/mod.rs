@@ -3,7 +3,10 @@ use crate::{
     ast::resolved_variable::ResolvedVariable,
     global::operators::{BinaryOperator, LogicalUnaryOperator, UnaryOperator},
     type_inference::options::ErrorHandling,
-    types::type_definition::{TypeDefinition, list::ListTypeDefinition},
+    types::type_definition::{
+        TypeDefinition, callable::CallableTypeDefinition,
+        list::ListTypeDefinition,
+    },
 };
 
 use crate::{
@@ -56,7 +59,6 @@ use crate::{
     values::{
         core_value::CoreValue,
         core_values::{
-            callable::CallableSignature,
             decimal::{Decimal, typed_decimal::TypedDecimal},
             endpoint::Endpoint,
             integer::{Integer, typed_integer::TypedInteger},
@@ -502,13 +504,15 @@ impl<'a> TypeExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
             None => None,
         };
 
-        mark_type(Type::from(TypeDefinition::Callable(CallableSignature {
-            kind: callable_type.kind.clone(),
-            parameter_types,
-            rest_parameter_type,
-            return_type: return_type.map(Box::new),
-            yeet_type: yeet_type.map(Box::new),
-        })))
+        mark_type(Type::from(TypeDefinition::Callable(
+            CallableTypeDefinition {
+                kind: callable_type.kind.clone(),
+                parameter_types,
+                rest_parameter_type,
+                return_type: return_type.map(Box::new),
+                yeet_type: yeet_type.map(Box::new),
+            },
+        )))
     }
     fn visit_generic_access_type(
         &mut self,
@@ -1201,7 +1205,7 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
             })
             .collect();
 
-        let signature = CallableSignature {
+        let signature = CallableTypeDefinition {
             kind: callable_declaration.kind.clone(),
             parameter_types: parameters,
             rest_parameter_type,
@@ -1544,7 +1548,8 @@ mod tests {
             shared_container_containing_type::SharedContainerContainingType,
             r#type::Type,
             type_definition::{
-                TypeDefinition, intersection::IntersectionTypeDefinition,
+                TypeDefinition, callable::CallableTypeDefinition,
+                intersection::IntersectionTypeDefinition,
                 union::UnionTypeDefinition,
             },
             type_definition_with_metadata::{
@@ -1555,7 +1560,7 @@ mod tests {
             core_value::CoreValue,
             core_values::{
                 boolean::Boolean,
-                callable::{CallableKind, CallableSignature},
+                callable::CallableKind,
                 decimal::{Decimal, typed_decimal::TypedDecimal},
                 endpoint::Endpoint,
                 integer::{
@@ -1781,7 +1786,7 @@ mod tests {
         let res = infer_type_from_script_ignore_errors(src);
         assert_eq!(
             res,
-            Type::from(TypeDefinition::Callable(CallableSignature {
+            Type::from(TypeDefinition::Callable(CallableTypeDefinition {
                 kind: CallableKind::Function,
                 parameter_types: vec![
                     (
@@ -1810,7 +1815,7 @@ mod tests {
         let res = infer_type_from_script_ignore_errors(src);
         assert_eq!(
             res,
-            Type::from(TypeDefinition::Callable(CallableSignature {
+            Type::from(TypeDefinition::Callable(CallableTypeDefinition {
                 kind: CallableKind::Function,
                 parameter_types: vec![
                     (

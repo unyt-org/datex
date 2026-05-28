@@ -1,7 +1,6 @@
+use crate::{prelude::*, types::type_definition::TypeDefinition};
 use core::fmt::Display;
-use crate::prelude::*;
-use crate::types::type_definition::TypeDefinition;
-
+pub mod serde_dif;
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TaggedTypeDefinition {
     pub tag: String,

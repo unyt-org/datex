@@ -3,6 +3,7 @@ mod type_match;
 use crate::{prelude::*, types::r#type::Type};
 use core::ops::Deref;
 pub mod equality;
+pub mod serde_dif;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct IntersectionTypeDefinition(pub Vec<Type>);
 

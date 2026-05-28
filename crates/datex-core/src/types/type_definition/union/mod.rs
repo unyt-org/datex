@@ -2,7 +2,7 @@ mod type_match;
 
 use crate::{prelude::*, types::r#type::Type};
 use core::ops::Deref;
-
+pub mod serde_dif;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct UnionTypeDefinition(pub Vec<Type>);
 

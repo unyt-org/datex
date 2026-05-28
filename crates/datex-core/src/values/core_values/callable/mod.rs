@@ -1,6 +1,8 @@
+use serde::{Deserialize, Serialize};
+
 use crate::{
     prelude::*,
-    types::r#type::Type,
+    types::{r#type::Type, type_definition::callable::CallableTypeDefinition},
     values::{
         core_values::callable::error::CallableError,
         value_container::ValueContainer,
@@ -10,7 +12,7 @@ use core::fmt::{Display, Formatter};
 pub mod apply;
 pub mod equality;
 pub mod error;
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum CallableKind {
     // A pure function
     Function,
@@ -37,18 +39,9 @@ pub enum CallableBody {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct CallableSignature {
-    pub kind: CallableKind,
-    pub parameter_types: Vec<(Option<String>, Type)>,
-    pub rest_parameter_type: Option<(Option<String>, Box<Type>)>,
-    pub return_type: Option<Box<Type>>,
-    pub yeet_type: Option<Box<Type>>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Callable {
     pub name: Option<String>,
-    pub signature: CallableSignature,
+    pub signature: CallableTypeDefinition,
     pub body: CallableBody,
 }
 
