@@ -26,14 +26,14 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, TaggedTypeDefinition> {
         seq.serialize_element(&value.tag)?;
         seq.serialize_element(&ValueWithSeed::new(
             &value.ty,
-            self.cast::<Option<Box<TypeDefinition>>>(),
+            self.cast::<Option<Box<Type>>>(),
         ))?;
         seq.end()
     }
 }
 
-impl<'ctx> SerializeSeed for SerdeContext<'ctx, Option<Box<TypeDefinition>>> {
-    type Value = Option<Box<TypeDefinition>>;
+impl<'ctx> SerializeSeed for SerdeContext<'ctx, Option<Box<Type>>> {
+    type Value = Option<Box<Type>>;
 
     fn serialize<S: Serializer>(
         &mut self,
@@ -42,7 +42,7 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, Option<Box<TypeDefinition>>> {
     ) -> Result<S::Ok, S::Error> {
         match value {
             Some(ty) => {
-                let mut seed = self.cast::<TypeDefinition>();
+                let mut seed = self.cast::<Type>();
                 seed.serialize(ty, serializer)
             }
             None => serializer.serialize_none(),
@@ -79,7 +79,7 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, TaggedTypeDefinition> {
             .ok_or_else(|| de::Error::custom("expected tag"))?;
 
         let ty = seq
-            .next_element_seed(self.cast::<Option<Box<TypeDefinition>>>())?
+            .next_element_seed(self.cast::<Option<Box<Type>>>())?
             .ok_or_else(|| de::Error::custom("expected ty"))?;
 
         if seq.next_element::<de::IgnoredAny>()?.is_some() {
@@ -91,10 +91,12 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, TaggedTypeDefinition> {
 }
 
 use crate::prelude::*;
+use crate::types::r#type::Type;
+
 impl<'de, 'ctx> DeserializeSeed<'de>
-    for SerdeContext<'ctx, Option<Box<TypeDefinition>>>
+    for SerdeContext<'ctx, Option<Box<Type>>>
 {
-    type Value = Option<Box<TypeDefinition>>;
+    type Value = Option<Box<Type>>;
 
     fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
     where
@@ -105,12 +107,12 @@ impl<'de, 'ctx> DeserializeSeed<'de>
 }
 
 impl<'de, 'ctx> Visitor<'de>
-    for SerdeContext<'ctx, Option<Box<TypeDefinition>>>
+    for SerdeContext<'ctx, Option<Box<Type>>>
 {
-    type Value = Option<Box<TypeDefinition>>;
+    type Value = Option<Box<Type>>;
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        formatter.write_str("an optional TypeDefinition")
+        formatter.write_str("an optional Type")
     }
 
     fn visit_none<E>(self) -> Result<Self::Value, E>
@@ -131,7 +133,7 @@ impl<'de, 'ctx> Visitor<'de>
     where
         D: Deserializer<'de>,
     {
-        let ty = self.cast::<TypeDefinition>().deserialize(deserializer)?;
+        let ty = self.cast::<Type>().deserialize(deserializer)?;
 
         Ok(Some(Box::new(ty)))
     }

@@ -571,7 +571,16 @@ fn get_datex_type_from_enum() {
                             )
                                 .into()
                         ),
-                    ]))))
+                        Type::Alias(
+                            TypeDefinition::Core(
+                                CoreLibVariantTypeId::Integer(
+                                    IntegerTypeVariant::U8
+                                )
+                                    .into()
+                            )
+                                .into()
+                        ),
+                    ])).into()))
                 }).into(),
                 TypeDefinition::TaggedType(TaggedTypeDefinition {
                     tag: "VariantC".to_string(),
@@ -605,14 +614,14 @@ fn get_datex_type_from_enum() {
                                     .into()
                             )
                         )
-                    ]))))
+                    ])).into()))
                 }).into(),
                 TypeDefinition::TaggedType(TaggedTypeDefinition {
                     tag: "VariantD".to_string(),
                     ty: Some(Box::new(TypeDefinition::Core(
                         CoreLibVariantTypeId::Integer(IntegerTypeVariant::U8)
                             .into()
-                    )))
+                    ).into()))
                 }).into(),
             ])).into()
         )

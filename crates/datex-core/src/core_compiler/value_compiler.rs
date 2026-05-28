@@ -44,6 +44,7 @@ use crate::{
         type_definition::{TypeDefinition, tagged_type::TaggedTypeDefinition},
     },
 };
+use crate::types::type_definition_with_metadata::TypeDefinitionWithMetadata;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum SharedValueCompilationError {
@@ -154,10 +155,11 @@ pub fn append_value(
         match custom_type {
             // unit tagged value (e.g. #Example)
             TypeDefinition::TaggedType(TaggedTypeDefinition {
-                ty:
-                    Some(box TypeDefinition::Core(CoreLibTypeId::Base(
-                        CoreLibBaseTypeId::Unit,
-                    ))),
+                ty: 
+                     Some(box Type::Alias(TypeDefinitionWithMetadata {
+                           definition: TypeDefinition::Core(CoreLibTypeId::Base(CoreLibBaseTypeId::Unit)),
+                           ..
+                       })),
                 tag,
             }) => {
                 append_regular_instruction(
