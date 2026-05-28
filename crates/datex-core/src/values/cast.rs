@@ -24,7 +24,7 @@ use crate::libs::core::type_id::{CoreLibBaseTypeId, CoreLibVariantTypeId};
 use core::hash::Hash;
 use crate::runtime::memory::Memory;
 use crate::types::type_definition::TypeDefinition;
-use crate::types::type_definition::union::TypeUnion;
+use crate::types::type_definition::union::UnionTypeDefinition;
 use crate::values::core_values::decimal::typed_decimal::DecimalTypeVariant;
 use crate::values::core_values::integer::typed_integer::IntegerTypeVariant;
 
@@ -320,7 +320,7 @@ impl<T: DatexValueProxy> DatexValueProxyDeserialize for Option<T> {
 impl<T: DatexValueContainerProxy> DatexProxyTypes for Option<T> {
     fn datex_type(memory: &mut Memory) -> Type {
         // null | T
-        Type::Alias(TypeDefinition::Union(TypeUnion(vec![
+        Type::Alias(TypeDefinition::Union(UnionTypeDefinition(vec![
             Type::Alias(TypeDefinition::Core(CoreLibBaseTypeId::Null.into()).into()),
             T::datex_type(memory),
         ])).into())

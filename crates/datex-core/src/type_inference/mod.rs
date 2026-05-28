@@ -45,7 +45,9 @@ use crate::{
         error::TypeError,
         literal_type_definition::LiteralTypeDefinition,
         r#type::Type,
-        type_definition::union::TypeUnion,
+        type_definition::{
+            range::RangeTypeDefinition, union::UnionTypeDefinition,
+        },
         type_definition_with_metadata::{
             LocalMutability, TypeDefinitionWithMetadata, TypeMetadata,
         },
@@ -69,7 +71,6 @@ use crate::{
     },
 };
 use core::{cell::RefCell, ops::Range, panic};
-use crate::types::type_definition::range::RangeTypeDefinition;
 
 pub mod error;
 pub mod options;
@@ -393,7 +394,9 @@ impl<'a> TypeExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
             .iter_mut()
             .map(|member| self.infer_type_expression(member))
             .collect::<Result<Vec<_>, _>>()?;
-        mark_type(Type::from(TypeDefinition::Union(TypeUnion(members))))
+        mark_type(Type::from(TypeDefinition::Union(UnionTypeDefinition(
+            members,
+        ))))
     }
     fn visit_intersection_type(
         &mut self,
@@ -1542,7 +1545,7 @@ mod tests {
             r#type::Type,
             type_definition::{
                 TypeDefinition, intersection::IntersectionTypeDefinition,
-                union::TypeUnion,
+                union::UnionTypeDefinition,
             },
             type_definition_with_metadata::{
                 TypeDefinitionWithMetadata, TypeMetadata,
@@ -1870,17 +1873,21 @@ mod tests {
                 .with_default_span()
             ),
             Type::Alias(
-                TypeDefinition::List(vec![
-                    Type::from(LiteralTypeDefinition::Integer(Integer::from(
-                        1
-                    ))),
-                    Type::from(LiteralTypeDefinition::Integer(Integer::from(
-                        2
-                    ))),
-                    Type::from(LiteralTypeDefinition::Integer(Integer::from(
-                        3
-                    )))
-                ].into_iter().collect())
+                TypeDefinition::List(
+                    vec![
+                        Type::from(LiteralTypeDefinition::Integer(
+                            Integer::from(1)
+                        )),
+                        Type::from(LiteralTypeDefinition::Integer(
+                            Integer::from(2)
+                        )),
+                        Type::from(LiteralTypeDefinition::Integer(
+                            Integer::from(3)
+                        ))
+                    ]
+                    .into_iter()
+                    .collect()
+                )
                 .into()
             )
         );
@@ -1896,14 +1903,19 @@ mod tests {
                 .with_default_span()
             ),
             Type::Alias(
-                TypeDefinition::Map(vec![(
-                    Type::Alias(
-                        LiteralTypeDefinition::Text("a".to_string()).into()
-                    ),
-                    Type::Alias(
-                        LiteralTypeDefinition::Integer(Integer::from(1)).into()
-                    )
-                )].into_iter().collect())
+                TypeDefinition::Map(
+                    vec![(
+                        Type::Alias(
+                            LiteralTypeDefinition::Text("a".to_string()).into()
+                        ),
+                        Type::Alias(
+                            LiteralTypeDefinition::Integer(Integer::from(1))
+                                .into()
+                        )
+                    )]
+                    .into_iter()
+                    .collect()
+                )
                 .into()
             )
         );
@@ -2261,7 +2273,7 @@ mod tests {
         let var_type = var.var_type.as_ref().unwrap();
         assert_eq!(
             var_type,
-            &Type::from(TypeDefinition::Union(TypeUnion(vec![
+            &Type::from(TypeDefinition::Union(UnionTypeDefinition(vec![
                 Type::core(CoreLibBaseTypeId::Text),
                 Type::core(CoreLibBaseTypeId::Integer)
             ])))
@@ -2474,7 +2486,7 @@ mod tests {
         assert!(has_nominal_type_definition(
             &inferred_type,
             NominalTypeDefinition::new_base(
-                Type::from(TypeDefinition::Union(TypeUnion(vec![
+                Type::from(TypeDefinition::Union(UnionTypeDefinition(vec![
                     Type::core(CoreLibVariantTypeId::Integer(
                         IntegerTypeVariant::U8
                     )),
@@ -2505,22 +2517,26 @@ mod tests {
         assert!(has_nominal_type_definition(
             &inferred_type,
             NominalTypeDefinition::new_base(
-                Type::from(TypeDefinition::Map(vec![
-                    (
-                        Type::from(LiteralTypeDefinition::Text(
-                            "a".to_string()
-                        ),),
-                        Type::core(CoreLibVariantTypeId::Integer(
-                            IntegerTypeVariant::U8
-                        )),
-                    ),
-                    (
-                        Type::from(LiteralTypeDefinition::Text(
-                            "b".to_string()
-                        ),),
-                        Type::core(CoreLibBaseTypeId::Decimal)
-                    )
-                ].into_iter().collect())),
+                Type::from(TypeDefinition::Map(
+                    vec![
+                        (
+                            Type::from(LiteralTypeDefinition::Text(
+                                "a".to_string()
+                            ),),
+                            Type::core(CoreLibVariantTypeId::Integer(
+                                IntegerTypeVariant::U8
+                            )),
+                        ),
+                        (
+                            Type::from(LiteralTypeDefinition::Text(
+                                "b".to_string()
+                            ),),
+                            Type::core(CoreLibBaseTypeId::Decimal)
+                        )
+                    ]
+                    .into_iter()
+                    .collect()
+                )),
                 "X".to_string()
             )
         ));

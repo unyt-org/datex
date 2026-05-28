@@ -9,15 +9,15 @@ use crate::{
     prelude::*,
     shared_values::PointerAddress,
     types::{
-        collection_type_definition::CollectionTypeDefinition,
         literal_type_definition::LiteralTypeDefinition,
         shared_container_containing_type::SharedContainerContainingType,
         r#type::Type,
         type_definition::{
+            collection::CollectionTypeDefinition,
             impl_type::ImplTypeDefinition,
             intersection::IntersectionTypeDefinition, list::ListTypeDefinition,
             map::MapTypeDefinition, range::RangeTypeDefinition,
-            tagged_type::TaggedTypeDefinition, union::TypeUnion,
+            tagged_type::TaggedTypeDefinition, union::UnionTypeDefinition,
         },
         type_definition_with_metadata::{
             TypeDefinitionWithMetadata, TypeMetadata,
@@ -26,6 +26,7 @@ use crate::{
     values::core_values::callable::CallableSignature,
 };
 use core::{fmt::Display, hash::Hash, ops::Deref, prelude::rust_2024::*};
+pub mod collection;
 pub mod impl_type;
 pub mod list;
 pub mod map;
@@ -73,7 +74,7 @@ pub enum TypeDefinition {
     Intersection(IntersectionTypeDefinition),
 
     /// A | B | C
-    Union(TypeUnion),
+    Union(UnionTypeDefinition),
 
     /// #Tagged or #Tagged {...}
     /// #Tagged(null) is equivalent to #Tagged

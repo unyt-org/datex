@@ -1,16 +1,24 @@
 use crate::{
     dif::serde_context::SerdeContext,
-    libs::core::{
-        core_lib_id::{CoreLibId, CoreLibIdIndex},
+    libs::core::core_lib_id::{CoreLibId, CoreLibIdIndex},
+    types::{
+        collection_type_definition::CollectionTypeDefinition,
+        r#type::Type,
+        type_definition::{
+            TypeDefinition,
+            impl_type::ImplTypeDefinition,
+            intersection::IntersectionTypeDefinition,
+            list::ListTypeDefinition,
+            map::MapTypeDefinition,
+            range::RangeTypeDefinition,
+            tagged_type::{self, TaggedTypeDefinition},
+            union::UnionTypeDefinition,
+        },
     },
-    types::type_definition::{TypeDefinition, tagged_type},
-    utils::serde_serialize_seed::SerializeSeed,
+    utils::serde_serialize_seed::{SerializeSeed, ValueWithSeed},
+    values::core_values::callable::CallableSignature,
 };
 use serde::{Serializer, ser::SerializeMap};
-use crate::types::type_definition::list::ListTypeDefinition;
-use crate::types::type_definition::map::MapTypeDefinition;
-use crate::types::type_definition::range::RangeTypeDefinition;
-use crate::utils::serde_serialize_seed::ValueWithSeed;
 
 impl<'ctx> SerializeSeed for SerdeContext<'ctx, TypeDefinition> {
     type Value = TypeDefinition;
@@ -33,48 +41,87 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, TypeDefinition> {
                     TypeDefinition::Literal(literal) => {
                         outer.serialize_entry(value.as_ref(), &literal)?;
                     }
-                    TypeDefinition::List(list_def) => {
-                        outer.serialize_entry(value.as_ref(), &ValueWithSeed::new(
+                    TypeDefinition::List(list_def) => outer.serialize_entry(
+                        value.as_ref(),
+                        &ValueWithSeed::new(
                             list_def,
                             self.cast::<ListTypeDefinition>(),
-                        ))?
-                    }
-                    TypeDefinition::Map(map_def) => {
-                        outer.serialize_entry(value.as_ref(), &ValueWithSeed::new(
+                        ),
+                    )?,
+                    TypeDefinition::Map(map_def) => outer.serialize_entry(
+                        value.as_ref(),
+                        &ValueWithSeed::new(
                             map_def,
                             self.cast::<MapTypeDefinition>(),
-                        ))?
-                    }
-                    TypeDefinition::Range(range) => {
-                        outer.serialize_entry(value.as_ref(), &ValueWithSeed::new(
+                        ),
+                    )?,
+                    TypeDefinition::Range(range) => outer.serialize_entry(
+                        value.as_ref(),
+                        &ValueWithSeed::new(
                             range,
                             self.cast::<RangeTypeDefinition>(),
-                        ))?
-                    }
+                        ),
+                    )?,
                     TypeDefinition::Collection(collection_type_definition) => {
-                        todo!()
+                        outer.serialize_entry(
+                            value.as_ref(),
+                            &ValueWithSeed::new(
+                                collection_type_definition,
+                                self.cast::<CollectionTypeDefinition>(),
+                            ),
+                        )?
                     }
                     TypeDefinition::Shared(
                         shared_container_containing_type,
                     ) => todo!(),
-                    TypeDefinition::Nested(nested) => {
-                        todo!()
-                    }
-                    TypeDefinition::Callable(callable_signature) => todo!(),
-                    TypeDefinition::ImplType(def) => {
-                        todo!()
-                    }
-                    TypeDefinition::Intersection(type_intersection) => {
-                        todo!()
-                    }
-                    TypeDefinition::Union(type_union) => {
-                        todo!()
-                    }
-                    TypeDefinition::TaggedType(tagged_type) => {
-                        todo!()
-                    }
+                    TypeDefinition::Nested(nested) => outer.serialize_entry(
+                        value.as_ref(),
+                        &ValueWithSeed::new(
+                            nested as &Type,
+                            self.cast::<Type>(),
+                        ),
+                    )?,
+                    TypeDefinition::Callable(callable_signature) => outer
+                        .serialize_entry(
+                            value.as_ref(),
+                            &ValueWithSeed::new(
+                                callable_signature,
+                                self.cast::<CallableSignature>(),
+                            ),
+                        )?,
+                    TypeDefinition::ImplType(def) => outer.serialize_entry(
+                        value.as_ref(),
+                        &ValueWithSeed::new(
+                            def,
+                            self.cast::<ImplTypeDefinition>(),
+                        ),
+                    )?,
+                    TypeDefinition::Intersection(type_intersection) => outer
+                        .serialize_entry(
+                            value.as_ref(),
+                            &ValueWithSeed::new(
+                                type_intersection,
+                                self.cast::<IntersectionTypeDefinition>(),
+                            ),
+                        )?,
+                    TypeDefinition::Union(type_union) => outer
+                        .serialize_entry(
+                            value.as_ref(),
+                            &ValueWithSeed::new(
+                                type_union,
+                                self.cast::<UnionTypeDefinition>(),
+                            ),
+                        )?,
+                    TypeDefinition::TaggedType(tagged_type) => outer
+                        .serialize_entry(
+                            value.as_ref(),
+                            &ValueWithSeed::new(
+                                tagged_type,
+                                self.cast::<TaggedTypeDefinition>(),
+                            ),
+                        )?,
                     TypeDefinition::Type => todo!(),
-                    TypeDefinition::Core(_) => unreachable!(),
+                    TypeDefinition::Core(_) => unreachable!(), // already handled above
                 }
                 outer.end()
             }

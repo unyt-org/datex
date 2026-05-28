@@ -4,16 +4,16 @@ use crate::{prelude::*, types::r#type::Type};
 use core::ops::Deref;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct TypeUnion(pub Vec<Type>);
+pub struct UnionTypeDefinition(pub Vec<Type>);
 
-impl Deref for TypeUnion {
+impl Deref for UnionTypeDefinition {
     type Target = [Type];
     fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
 
-impl FromIterator<Type> for TypeUnion {
+impl FromIterator<Type> for UnionTypeDefinition {
     fn from_iter<I: IntoIterator<Item = Type>>(iter: I) -> Self {
         Self(iter.into_iter().collect())
     }
