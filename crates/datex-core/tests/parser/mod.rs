@@ -1359,7 +1359,7 @@ fn integer() {
     assert_eq!(
         num,
         DatexExpressionData::Integer(
-            Integer::from_string("123456789123456789").unwrap()
+            Integer::try_from_string("123456789123456789").unwrap()
         )
     );
 }
@@ -1371,7 +1371,7 @@ fn negative_integer() {
     assert_eq!(
         num,
         DatexExpressionData::Integer(
-            Integer::from_string("-123456789123456789").unwrap()
+            Integer::try_from_string("-123456789123456789").unwrap()
         )
     );
 }
@@ -1382,7 +1382,7 @@ fn integer_with_underscores() {
     let num = parse_unwrap_data(src);
     assert_eq!(
         num,
-        DatexExpressionData::Integer(Integer::from_string("123456").unwrap())
+        DatexExpressionData::Integer(Integer::try_from_string("123456").unwrap())
     );
 }
 
@@ -2990,7 +2990,7 @@ fn integer_to_value_container() {
     assert_eq!(
         val,
         ValueContainer::from(
-            Integer::from_string("123456789123456789").unwrap()
+            Integer::try_from_string("123456789123456789").unwrap()
         )
     );
 }

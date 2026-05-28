@@ -21,14 +21,16 @@ use crate::{
         value_container::ValueContainer,
     },
 };
-use serde::de::MapAccess;
+use serde::de::{Error, MapAccess};
 
 use crate::dif::serde_context::SerdeContext;
 use core::fmt;
+use core::str::FromStr;
 use serde::{
     Deserializer,
     de::{DeserializeSeed, SeqAccess, Visitor},
 };
+use crate::values::core_values::endpoint::Endpoint;
 
 pub struct CoreValueVisitor {
     pub core_lib_id: CoreLibTypeId,
@@ -51,6 +53,25 @@ impl<'de, 'ctx> Visitor<'de> for CoreValueVisitor {
         f.write_str("a CoreValue")
     }
 
+    fn visit_unit<E>(self) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        match self.core_lib_id {
+            CoreLibTypeId::Base(CoreLibBaseTypeId::Null) => Ok(CoreValue::Null),
+            other => Err(E::custom(format!(
+                "expected CoreValue of type Unit, got {other}"
+            ))),
+        }
+    }
+
+    fn visit_none<E>(self) -> Result<Self::Value, E>
+    where
+        E: Error,
+    {
+        self.visit_unit()
+    }
+    
     fn visit_bool<E>(self, v: bool) -> Result<Self::Value, E>
     where
         E: serde::de::Error,
@@ -65,6 +86,49 @@ impl<'de, 'ctx> Visitor<'de> for CoreValueVisitor {
         }
     }
 
+    fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+    where
+        E: Error,
+    {
+        match self.core_lib_id {
+            CoreLibTypeId::Base(CoreLibBaseTypeId::Text) => {
+                Ok(CoreValue::Text(v.into()))
+            }
+            CoreLibTypeId::Base(CoreLibBaseTypeId::Endpoint) => {
+                Ok(CoreValue::Endpoint(Endpoint::from_str(v).map_err(|e| {
+                    E::custom(format!("failed to parse endpoint: {e}"))
+                })?))
+            }
+            CoreLibTypeId::Base(CoreLibBaseTypeId::Integer) => {
+                Ok(CoreValue::Integer(Integer::try_from_string(v).map_err(|e| {
+                    E::custom(format!("failed to parse integer: {e}"))
+                })?))
+            }
+            CoreLibTypeId::Base(CoreLibBaseTypeId::Decimal) => {
+                Ok(CoreValue::Decimal(Decimal::try_from_string(v).map_err(|e| {
+                    E::custom(format!("failed to parse decimal: {e}"))
+                })?))
+            }
+            CoreLibTypeId::Variant(CoreLibVariantTypeId::Integer(
+                IntegerTypeVariant::IBig,
+            )) => Ok(CoreValue::TypedInteger(TypedInteger::IBig(
+                Integer::try_from_string(v).map_err(|e| {
+                    E::custom(format!("failed to parse integer: {e}"))
+                })?,
+            ))),
+            CoreLibTypeId::Variant(CoreLibVariantTypeId::Decimal(
+                DecimalTypeVariant::DBig,
+            )) => Ok(CoreValue::TypedDecimal(TypedDecimal::Decimal(
+                Decimal::try_from_string(v).map_err(|e| {
+                    E::custom(format!("failed to parse decimal: {e}"))
+                })?,
+            ))),
+            other => Err(E::custom(format!(
+                "expected CoreValue of type Text, got {other}"
+            ))),
+        }
+    }
+
     fn visit_f32<E>(self, v: f32) -> Result<Self::Value, E>
     where
         E: serde::de::Error,
@@ -73,6 +137,17 @@ impl<'de, 'ctx> Visitor<'de> for CoreValueVisitor {
             CoreLibTypeId::Variant(CoreLibVariantTypeId::Decimal(
                 DecimalTypeVariant::F32,
             )) => Ok(CoreValue::TypedDecimal(TypedDecimal::F32(v.into()))),
+            CoreLibTypeId::Variant(CoreLibVariantTypeId::Decimal(
+               DecimalTypeVariant::F64,
+            )) => Ok(CoreValue::TypedDecimal(TypedDecimal::F64((v as f64).into()))),
+            CoreLibTypeId::Variant(CoreLibVariantTypeId::Decimal(
+                DecimalTypeVariant::DBig,
+            )) => Ok(CoreValue::TypedDecimal(TypedDecimal::Decimal(
+                (v as f64).into(),
+            ))),
+            CoreLibTypeId::Base(CoreLibBaseTypeId::Decimal) => {
+                Ok(CoreValue::Decimal(Decimal::from(v)))
+            }
             other => Err(E::custom(format!(
                 "expected CoreValue of type Decimal, got {other}"
             ))),
@@ -87,6 +162,17 @@ impl<'de, 'ctx> Visitor<'de> for CoreValueVisitor {
             CoreLibTypeId::Variant(CoreLibVariantTypeId::Decimal(
                 DecimalTypeVariant::F64,
             )) => Ok(CoreValue::TypedDecimal(TypedDecimal::F64(v.into()))),
+            CoreLibTypeId::Variant(CoreLibVariantTypeId::Decimal(
+               DecimalTypeVariant::F32,
+           )) => Ok(CoreValue::TypedDecimal(TypedDecimal::F32((v as f32).into()))),
+            CoreLibTypeId::Variant(CoreLibVariantTypeId::Decimal(
+               DecimalTypeVariant::DBig,
+           )) => Ok(CoreValue::TypedDecimal(TypedDecimal::Decimal(
+                v.into(),
+            ))),
+            CoreLibTypeId::Base(CoreLibBaseTypeId::Decimal) => {
+                Ok(CoreValue::Decimal(Decimal::from(v)))
+            }
             other => Err(E::custom(format!(
                 "expected CoreValue of type Decimal, got {other}"
             ))),

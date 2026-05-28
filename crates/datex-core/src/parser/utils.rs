@@ -65,7 +65,7 @@ pub fn parse_integer_literal(
     if exponent_part.is_empty() {
         // no variant and no exponent -> plain integer
         if variant_part.is_empty() {
-            Integer::from_string(&integer_part).map(IntegerOrDecimal::Integer)
+            Integer::try_from_string(&integer_part).map(IntegerOrDecimal::Integer)
         }
         // variant -> distinguish between integer and decimal type variants
         else {
