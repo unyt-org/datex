@@ -406,24 +406,48 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, Value> {
 
 #[cfg(test)]
 mod tests {
+    use core::str::FromStr;
+
     use super::*;
     use crate::{
         dif::cache::DIFSharedContainerCache,
+        libs::core::core_lib_id::CoreLibIdIndex,
         values::{
             core_value::CoreValue,
             core_values::{
-                decimal::typed_decimal::TypedDecimal, integer::Integer,
+                decimal::typed_decimal::{DecimalTypeVariant, TypedDecimal},
+                endpoint::Endpoint,
+                integer::{
+                    Integer,
+                    typed_integer::{IntegerTypeVariant, TypedInteger},
+                },
+                map::Map,
             },
         },
     };
 
     #[test]
     fn serialize_map() {
-        /*
-        { type: "map", value: [
-           [{type: "text", value: "endpoint"}, {type: "endpoint", value: "@jonas"}]
-        ], custom_type: "sdf"})
-        */
+        // { endpoint: "@jonas" } -> [<map-idx>, { endpoint: [<endpoint-idx>, "@jonas"] }]
+        let value = Value::from(CoreValue::Map(Map::Structural(vec![(
+            Value::from(CoreValue::Text("endpoint".into())).into(),
+            Value::from(Endpoint::from_str("@jonas").unwrap()).into(),
+        )])));
+        let mut cache = DIFSharedContainerCache::default();
+        let serialized =
+            SerdeContext::<Value>::new(&mut cache).serialize_to_json(&value);
+        assert_eq!(
+            serialized,
+            format!(
+                r#"[{},{{"endpoint":[{},"@jonas"]}}]"#,
+                CoreLibIdIndex::from(CoreLibTypeId::Base(
+                    CoreLibBaseTypeId::Map
+                )),
+                CoreLibIdIndex::from(CoreLibTypeId::Base(
+                    CoreLibBaseTypeId::Endpoint
+                ))
+            )
+        );
     }
 
     #[test]
@@ -443,34 +467,70 @@ mod tests {
             SerdeContext::<Value>::new(&mut DIFSharedContainerCache::default())
                 .serialize_to_json(&value);
         assert_eq!(serialized, r#"5.14"#);
+
+        // boolean
+        let value = Value::from(CoreValue::Boolean(true.into()));
+        let serialized =
+            SerdeContext::<Value>::new(&mut DIFSharedContainerCache::default())
+                .serialize_to_json(&value);
+        assert_eq!(serialized, r#"true"#);
     }
 
     #[test]
     fn non_default_representation() {
-        let value = Value::from(CoreValue::TypedDecimal(TypedDecimal::F64(
-            5.14f64.into(),
-        )));
-        let serialized =
-            SerdeContext::<Value>::new(&mut DIFSharedContainerCache::default())
-                .serialize_to_json(&value);
-        // println!("Serialized value: {serialized}");
-
         // 1 --> f32
         // 1 -> f32 -> [1, <nominal>]
         // 42 -> f32 -> [42, <nominal>]
         // 42 -> u8 [5, 42, <nominmal>]
         // ["integer/u8", 1] -> u8
         // [1, integer/u8]
-        assert_eq!(serialized, r#"[["integer/u8"],5.14]"#);
-    }
 
-    #[test]
-    fn serialize_simple_local_value() {
+        // f64
+        let value = Value::from(CoreValue::TypedDecimal(TypedDecimal::F64(
+            5.14f64.into(),
+        )));
+        let serialized =
+            SerdeContext::<Value>::new(&mut DIFSharedContainerCache::default())
+                .serialize_to_json(&value);
+
+        assert_eq!(
+            serialized,
+            format!(
+                r#"[{},5.14]"#,
+                CoreLibIdIndex::from(CoreLibTypeId::Variant(
+                    CoreLibVariantTypeId::Decimal(DecimalTypeVariant::F64)
+                ))
+            )
+        );
+
+        // integer
         let value = Value::from(CoreValue::Integer(Integer::new(42)));
         let serialized =
             SerdeContext::<Value>::new(&mut DIFSharedContainerCache::default())
                 .serialize_to_json(&value);
-        // println!("Serialized value: {serialized}");
-        assert_eq!(serialized, r#"{"value":"42"}"#);
+        assert_eq!(
+            serialized,
+            format!(
+                r#"[{},"42"]"#,
+                CoreLibIdIndex::from(CoreLibTypeId::Base(
+                    CoreLibBaseTypeId::Integer
+                ))
+            )
+        );
+
+        // typed integer
+        let value = Value::from(CoreValue::TypedInteger(42u8.into()));
+        let serialized =
+            SerdeContext::<Value>::new(&mut DIFSharedContainerCache::default())
+                .serialize_to_json(&value);
+        assert_eq!(
+            serialized,
+            format!(
+                r#"[{},42]"#,
+                CoreLibIdIndex::from(CoreLibTypeId::Variant(
+                    CoreLibVariantTypeId::Integer(IntegerTypeVariant::U8)
+                ))
+            )
+        );
     }
 }
