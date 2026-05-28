@@ -10,7 +10,7 @@ use crate::{
     types::type_definition::TypeDefinition,
     utils::serde_serialize_seed::{SerializeSeed, ValueWithSeed},
     values::{
-        core_value::CoreValue,
+        core_value::{CoreValue, serde_dif::CoreValueVisitor},
         core_values::{
             boolean::Boolean,
             decimal::typed_decimal::{DecimalTypeVariant, TypedDecimal},
@@ -32,7 +32,6 @@ use serde::{
     forward_to_deserialize_any,
     ser::{SerializeMap, SerializeStruct, SerializeTuple},
 };
-use crate::values::core_value::serde_dif::CoreValueVisitor;
 
 impl<'ctx> SerdeContext<'ctx, Value> {
     /// This method is used to serialize a value that can be represented directly depending on the flag set (e.g. a boolean or a text)
@@ -240,7 +239,6 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, Value> {
     }
 }
 
-
 impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, Value> {
     type Value = Value;
 
@@ -311,16 +309,15 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, Value> {
         .map_err(|_| {
             serde::de::Error::custom("invalid core lib id index".to_string())
         })?;
+        println!("Deserializing core value with core lib id: {core_lib_id}");
 
         let visitor = CoreValueVisitor { core_lib_id };
-        // "xxxx" | "@jonas"
         let inner: CoreValue = seq.next_element_seed(visitor)?.ok_or_else(|| {
             serde::de::Error::custom(format!(
                 "expected a sequence with at least two elements for core value deserialization, got only one (core lib id: {core_lib_id})"
             ))
         })?;
 
-        // FIXME Why the option not works??
         let custom_type: Option<TypeDefinition> =
             seq.next_element_seed(self.cast::<TypeDefinition>()).map_err(|err| {
                 serde::de::Error::custom(format!(
@@ -331,135 +328,6 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, Value> {
         Ok(Value { custom_type, inner })
     }
 }
-
-// impl<'ctx> CoreValueVisitor<'ctx> {
-//     fn next_core_value_by_type_id<'de, A>(
-//         &mut self,
-//         seq: &mut A,
-//         core_lib_type_id: CoreLibTypeId,
-//     ) -> Result<CoreValue, A::Error>
-//     where
-//         A: serde::de::SeqAccess<'de>,
-//     {
-//         match core_lib_type_id {
-//             CoreLibTypeId::Base(base) => self.next_base_core_value(seq, base),
-//             CoreLibTypeId::Variant(variant) => {
-//                 self.next_variant_core_value(seq, variant)
-//             }
-//         }
-//     }
-
-//     fn next_base_core_value<'de, A>(
-//         &mut self,
-//         seq: &mut A,
-//         base: CoreLibBaseTypeId,
-//     ) -> Result<CoreValue, A::Error>
-//     where
-//         A: serde::de::SeqAccess<'de>,
-//     {
-//         match base {
-//             CoreLibBaseTypeId::Endpoint => {
-//                 Ok(CoreValue::Endpoint(self.next_required(seq)?))
-//             }
-//             CoreLibBaseTypeId::Decimal => {
-//                 Ok(CoreValue::Decimal(self.next_required(seq)?))
-//             }
-//             CoreLibBaseTypeId::Integer => {
-//                 Ok(CoreValue::Integer(self.next_required(seq)?))
-//             }
-//             CoreLibBaseTypeId::List => {
-//                 let list = seq
-//                     .next_element_seed(self.context.cast::<List>())?
-//                     .ok_or_else(|| {
-//                         serde::de::Error::invalid_length(2, &"list")
-//                     })?;
-
-//                 Ok(CoreValue::List(list))
-//             }
-//             CoreLibBaseTypeId::Range => {
-//                 let range = seq
-//                     .next_element_seed(self.context.cast::<Range>())?
-//                     .ok_or_else(|| {
-//                         serde::de::Error::invalid_length(2, &"range")
-//                     })?;
-//                 Ok(CoreValue::Range(range))
-//             }
-//             CoreLibBaseTypeId::Map => {
-//                 let map = seq
-//                     .next_element_seed(self.context.cast::<Map>())?
-//                     .ok_or_else(|| {
-//                         serde::de::Error::invalid_length(2, &"map")
-//                     })?;
-
-//                 Ok(CoreValue::Map(map))
-//             }
-//             CoreLibBaseTypeId::Type => {
-//                 unimplemented!(
-//                     "deserialization of type values is not implemented yet"
-//                 )
-//             }
-//             CoreLibBaseTypeId::Null => Ok(CoreValue::Null),
-//             CoreLibBaseTypeId::Text => {
-//                 let text: String = self.next_required(seq)?;
-//                 Ok(CoreValue::Text(text.into()))
-//             }
-//             CoreLibBaseTypeId::Boolean => {
-//                 let boolean: bool = self.next_required(seq)?;
-//                 Ok(CoreValue::Boolean(Boolean::new(boolean)))
-//             }
-//             CoreLibBaseTypeId::Unit => Ok(CoreValue::Null),
-//             CoreLibBaseTypeId::Never => unimplemented!(),
-//             CoreLibBaseTypeId::Unknown => todo!(),
-//             CoreLibBaseTypeId::Callable => todo!(),
-//         }
-//     }
-
-//     fn next_variant_core_value<'de, A>(
-//         &mut self,
-//         seq: &mut A,
-//         variant: CoreLibVariantTypeId,
-//     ) -> Result<CoreValue, A::Error>
-//     where
-//         A: serde::de::SeqAccess<'de>,
-//     {
-//         match variant {
-//             CoreLibVariantTypeId::Integer(variant) => {
-//                 let value: String = self.next_required(seq)?;
-
-//                 Ok(CoreValue::TypedInteger(
-//                     TypedInteger::from_string_and_variant(&value, variant)
-//                         .map_err(|err| {
-//                             serde::de::Error::custom(format!(
-//                                 "invalid typed integer value `{value}` for variant `{variant}`: {err}"
-//                             ))
-//                         })?,
-//                 ))
-//             }
-
-//             CoreLibVariantTypeId::Decimal(variant) => {
-//                 let value: String = self.next_required(seq)?;
-
-//                 Ok(CoreValue::TypedDecimal(
-//                     TypedDecimal::from_string_and_variant(&value, variant)
-//                         .map_err(|err| {
-//                             serde::de::Error::custom(format!(
-//                                 "invalid typed decimal value `{value}` for variant `{variant}`: {err}"
-//                             ))
-//                         })?,
-//                 ))
-//             }
-//         }
-//     }
-
-//     fn next_required<'de, A, V>(&mut self, seq: &mut A) -> Result<V, A::Error>
-//     where
-//         A: serde::de::SeqAccess<'de>,
-//         V: serde::Deserialize<'de>,
-//     {
-//         seq.next_element()?
-//             .ok_or_else(|| serde::de::Error::invalid_length(2, &"core value"))
-//     }
-// }
 
 impl<'de, 'ctx> DeserializeSeed<'de> for SerdeContext<'ctx, Value> {
     type Value = Value;

@@ -23,14 +23,14 @@ use crate::{
 };
 use serde::de::{Error, MapAccess};
 
-use crate::dif::serde_context::SerdeContext;
-use core::fmt;
-use core::str::FromStr;
+use crate::{
+    dif::serde_context::SerdeContext, values::core_values::endpoint::Endpoint,
+};
+use core::{fmt, str::FromStr};
 use serde::{
     Deserializer,
     de::{DeserializeSeed, SeqAccess, Visitor},
 };
-use crate::values::core_values::endpoint::Endpoint;
 
 pub struct CoreValueVisitor {
     pub core_lib_id: CoreLibTypeId,
@@ -71,7 +71,7 @@ impl<'de, 'ctx> Visitor<'de> for CoreValueVisitor {
     {
         self.visit_unit()
     }
-    
+
     fn visit_bool<E>(self, v: bool) -> Result<Self::Value, E>
     where
         E: serde::de::Error,
@@ -100,14 +100,14 @@ impl<'de, 'ctx> Visitor<'de> for CoreValueVisitor {
                 })?))
             }
             CoreLibTypeId::Base(CoreLibBaseTypeId::Integer) => {
-                Ok(CoreValue::Integer(Integer::try_from_string(v).map_err(|e| {
-                    E::custom(format!("failed to parse integer: {e}"))
-                })?))
+                Ok(CoreValue::Integer(Integer::try_from_string(v).map_err(
+                    |e| E::custom(format!("failed to parse integer: {e}")),
+                )?))
             }
             CoreLibTypeId::Base(CoreLibBaseTypeId::Decimal) => {
-                Ok(CoreValue::Decimal(Decimal::try_from_string(v).map_err(|e| {
-                    E::custom(format!("failed to parse decimal: {e}"))
-                })?))
+                Ok(CoreValue::Decimal(Decimal::try_from_string(v).map_err(
+                    |e| E::custom(format!("failed to parse decimal: {e}")),
+                )?))
             }
             CoreLibTypeId::Variant(CoreLibVariantTypeId::Integer(
                 IntegerTypeVariant::IBig,
@@ -129,6 +129,19 @@ impl<'de, 'ctx> Visitor<'de> for CoreValueVisitor {
         }
     }
 
+    fn visit_i64<E>(self, v: i64) -> Result<Self::Value, E>
+    where
+        E: Error,
+    {
+        self.visit_i128(v as i128)
+    }
+    fn visit_u128<E>(self, v: u128) -> Result<Self::Value, E>
+    where
+        E: Error,
+    {
+        todo!()
+    }
+
     fn visit_f32<E>(self, v: f32) -> Result<Self::Value, E>
     where
         E: serde::de::Error,
@@ -138,8 +151,10 @@ impl<'de, 'ctx> Visitor<'de> for CoreValueVisitor {
                 DecimalTypeVariant::F32,
             )) => Ok(CoreValue::TypedDecimal(TypedDecimal::F32(v.into()))),
             CoreLibTypeId::Variant(CoreLibVariantTypeId::Decimal(
-               DecimalTypeVariant::F64,
-            )) => Ok(CoreValue::TypedDecimal(TypedDecimal::F64((v as f64).into()))),
+                DecimalTypeVariant::F64,
+            )) => Ok(CoreValue::TypedDecimal(TypedDecimal::F64(
+                (v as f64).into(),
+            ))),
             CoreLibTypeId::Variant(CoreLibVariantTypeId::Decimal(
                 DecimalTypeVariant::DBig,
             )) => Ok(CoreValue::TypedDecimal(TypedDecimal::Decimal(
@@ -163,13 +178,13 @@ impl<'de, 'ctx> Visitor<'de> for CoreValueVisitor {
                 DecimalTypeVariant::F64,
             )) => Ok(CoreValue::TypedDecimal(TypedDecimal::F64(v.into()))),
             CoreLibTypeId::Variant(CoreLibVariantTypeId::Decimal(
-               DecimalTypeVariant::F32,
-           )) => Ok(CoreValue::TypedDecimal(TypedDecimal::F32((v as f32).into()))),
-            CoreLibTypeId::Variant(CoreLibVariantTypeId::Decimal(
-               DecimalTypeVariant::DBig,
-           )) => Ok(CoreValue::TypedDecimal(TypedDecimal::Decimal(
-                v.into(),
+                DecimalTypeVariant::F32,
+            )) => Ok(CoreValue::TypedDecimal(TypedDecimal::F32(
+                (v as f32).into(),
             ))),
+            CoreLibTypeId::Variant(CoreLibVariantTypeId::Decimal(
+                DecimalTypeVariant::DBig,
+            )) => Ok(CoreValue::TypedDecimal(TypedDecimal::Decimal(v.into()))),
             CoreLibTypeId::Base(CoreLibBaseTypeId::Decimal) => {
                 Ok(CoreValue::Decimal(Decimal::from(v)))
             }
@@ -256,144 +271,3 @@ impl<'de, 'ctx> Visitor<'de> for CoreValueVisitor {
         }
     }
 }
-// FIXME -> we can remove this?!
-// / Deserialization for [CoreValue] using a [DeserializationContext] to provide access to the memory during deserialization.
-// impl<'de, 'ctx> DeserializeSeed<'de> for SerdeContext<'ctx, CoreValue> {
-//     type Value = CoreValue;
-
-//     fn deserialize<D: Deserializer<'de>>(
-//         self,
-//         deserializer: D,
-//     ) -> Result<CoreValue, D::Error> {
-//         deserializer.deserialize_any(self)
-//     }
-// }
-
-// impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, CoreValue> {
-//     type Value = CoreValue;
-
-//     fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
-//         f.write_str("a CoreValue")
-//     }
-
-//     fn visit_bool<E>(self, value: bool) -> Result<CoreValue, E> {
-//         Ok(CoreValue::Boolean(value.into()))
-//     }
-
-//     fn visit_i64<E>(self, value: i64) -> Result<CoreValue, E> {
-//         Ok(CoreValue::Integer(value.into()))
-//     }
-
-//     fn visit_u64<E>(self, value: u64) -> Result<CoreValue, E> {
-//         Ok(CoreValue::Integer(value.into()))
-//     }
-
-//     fn visit_f64<E>(self, value: f64) -> Result<CoreValue, E> {
-//         Ok(CoreValue::Decimal(value.into()))
-//     }
-
-//     fn visit_str<E>(self, value: &str) -> Result<CoreValue, E>
-//     where
-//         E: serde::de::Error,
-//     {
-//         Ok(CoreValue::Text(value.into()))
-//     }
-
-//     fn visit_string<E>(self, value: String) -> Result<CoreValue, E> {
-//         Ok(CoreValue::Text(value.into()))
-//     }
-
-//     fn visit_seq<A: SeqAccess<'de>>(
-//         mut self,
-//         mut seq: A,
-//     ) -> Result<CoreValue, A::Error> {
-//         let mut items = Vec::new();
-//         while let Some(item) =
-//             seq.next_element_seed(self.cast::<ValueContainer>())?
-//         {
-//             items.push(item);
-//         }
-//         Ok(CoreValue::List(List::from(items)))
-//     }
-
-//     // fn visit_map<A>(mut self, mut map: A) -> Result<CoreValue, A::Error>
-//     // where
-//     //     A: MapAccess<'de>,
-//     // {
-//     //     let mut items = Vec::new();
-
-//     //     while let Some(key) = {
-//     //         let key_seed = self.cast::<ValueContainer>();
-//     //         map.next_key_seed(key_seed)?
-//     //     } {
-//     //         let value = {
-//     //             let value_seed = self.cast::<ValueContainer>();
-//     //             map.next_value_seed(value_seed)?
-//     //         };
-
-//     //         items.push((key, value));
-//     //     }
-
-//     //     Ok(CoreValue::Map(Map::from(items)))
-//     // }
-//     fn visit_map<A>(mut self, mut map: A) -> Result<CoreValue, A::Error>
-//     where
-//         A: MapAccess<'de>,
-//     {
-//         use serde::de::Error;
-
-//         let mut ty: Option<String> = None;
-//         let mut out: Option<CoreValue> = None;
-
-//         while let Some(field) = map.next_key::<String>()? {
-//             match field.as_str() {
-//                 "$type" => {
-//                     ty = Some(map.next_value()?);
-//                 }
-
-//                 "value" => {
-//                     let ty = ty.as_deref().ok_or_else(|| {
-//                         A::Error::custom("`$type` must come before `value`")
-//                     })?;
-
-//                     let value = match ty {
-//                         "map" => {
-//                             let value =
-//                                 map.next_value_seed(self.cast::<Map>())?;
-//                             CoreValue::Map(value)
-//                         }
-
-//                         "range" => {
-//                             let value =
-//                                 map.next_value_seed(self.cast::<Range>())?;
-//                             CoreValue::Range(value)
-//                         }
-
-//                         "endpoint" => {
-//                             let value = map.next_value()?;
-//                             CoreValue::Endpoint(value)
-//                         }
-
-//                         other => {
-//                             return Err(A::Error::custom(format!(
-//                                 "unknown CoreValue `$type`: {other}"
-//                             )));
-//                         }
-//                     };
-
-//                     out = Some(value);
-//                 }
-
-//                 other => {
-//                     return Err(A::Error::custom(format!(
-//                         "unexpected field `{other}` in CoreValue object"
-//                     )));
-//                 }
-//             }
-//         }
-
-//         out.ok_or_else(|| {
-//             A::Error::custom("missing `value` field in CoreValue object")
-//         })
-//     }
-// }
