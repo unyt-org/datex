@@ -429,10 +429,11 @@ mod tests {
     #[test]
     fn serialize_map() {
         // { endpoint: "@jonas" } -> [<map-idx>, { endpoint: [<endpoint-idx>, "@jonas"] }]
-        let value = Value::from(CoreValue::Map(Map::Structural(vec![(
-            Value::from(CoreValue::Text("endpoint".into())).into(),
-            Value::from(Endpoint::from_str("@jonas").unwrap()).into(),
-        )])));
+        let value =
+            Value::from(CoreValue::Map(Map::StructuralWithStringKeys(vec![(
+                "endpoint".into(),
+                Value::from(Endpoint::from_str("@jonas").unwrap()).into(),
+            )])));
         let mut cache = DIFSharedContainerCache::default();
         let serialized =
             SerdeContext::<Value>::new(&mut cache).serialize_to_json(&value);
@@ -440,6 +441,26 @@ mod tests {
             serialized,
             format!(
                 r#"[{},{{"endpoint":[{},"@jonas"]}}]"#,
+                CoreLibIdIndex::from(CoreLibTypeId::Base(
+                    CoreLibBaseTypeId::Map
+                )),
+                CoreLibIdIndex::from(CoreLibTypeId::Base(
+                    CoreLibBaseTypeId::Endpoint
+                ))
+            )
+        );
+
+        // { "endpoint": "@jonas" } -> [<map-idx>, [[<endpoint-idx>, "@jonas"]]]
+        let value = Value::from(CoreValue::Map(Map::Structural(vec![(
+            "endpoint".into(),
+            Value::from(Endpoint::from_str("@jonas").unwrap()).into(),
+        )])));
+        let serialized =
+            SerdeContext::<Value>::new(&mut cache).serialize_to_json(&value);
+        assert_eq!(
+            serialized,
+            format!(
+                r#"[{},[["endpoint",[{},"@jonas"]]]]"#,
                 CoreLibIdIndex::from(CoreLibTypeId::Base(
                     CoreLibBaseTypeId::Map
                 )),
