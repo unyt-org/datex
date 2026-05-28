@@ -1,7 +1,6 @@
 use core::result::Result;
 pub mod rational;
 pub mod typed_decimal;
-pub mod utils;
 use crate::prelude::*;
 
 use crate::values::core_values::{
@@ -177,9 +176,9 @@ impl Decimal {
     pub fn from_string(s: &str) -> Result<Self, NumberParseError> {
         // TODO #133 represent as Infinity/-Infinity if out of bounds for representable DATEX values
         match s {
-            "Infinity" | "infinity" => Ok(Decimal::Infinity),
-            "-Infinity" | "-infinity" => Ok(Decimal::NegInfinity),
-            "nan" | "NaN" | "-nan" | "-NaN" => Ok(Decimal::Nan),
+            "infinity" => Ok(Decimal::Infinity),
+            "-infinity" => Ok(Decimal::NegInfinity),
+            "nan" => Ok(Decimal::Nan),
             _ => {
                 let s = &s.trim().replace('_', "");
                 if s.contains("/") {
@@ -467,13 +466,13 @@ mod tests {
         let dec3 = Decimal::from_string("-0.001").unwrap();
         assert_eq!(dec3.to_string(), "-0.001");
 
-        let dec4 = Decimal::from_string("Infinity").unwrap();
+        let dec4 = Decimal::from_string("infinity").unwrap();
         assert_eq!(dec4.to_string(), "infinity");
 
-        let dec5 = Decimal::from_string("-Infinity").unwrap();
+        let dec5 = Decimal::from_string("-infinity").unwrap();
         assert_eq!(dec5.to_string(), "-infinity");
 
-        let dec6 = Decimal::from_string("NaN").unwrap();
+        let dec6 = Decimal::from_string("nan").unwrap();
         assert_eq!(dec6.to_string(), "nan");
 
         let dec7 = Decimal::from_string("1234567").unwrap();

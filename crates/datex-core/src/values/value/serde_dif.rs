@@ -775,6 +775,7 @@ mod tests {
         let mut cache = DIFSharedContainerCache::default();
         let serialized =
             SerdeContext::<Value>::new(&mut cache).serialize_to_json(&value);
+        println!("Serialized value: {serialized}");
         let deserialized: Value = SerdeContext::<Value>::new(&mut cache)
             .try_deserialize_from_json(&serialized)
             .unwrap();

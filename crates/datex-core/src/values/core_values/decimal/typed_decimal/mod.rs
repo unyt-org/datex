@@ -8,7 +8,7 @@ use core::{fmt::Display, hash::Hash, num::ParseFloatError, result::Result};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use num_traits::Zero;
 use ordered_float::OrderedFloat;
-use serde::{Deserialize, Serialize, de::Visitor};
+use serde::{Deserialize, Serialize};
 use strum::Display;
 use strum_macros::{AsRefStr, EnumIter, EnumString};
 pub mod equality;
@@ -53,15 +53,13 @@ impl Serialize for TypedDecimal {
         S: serde::Serializer,
     {
         match self {
-            TypedDecimal::F32(value) => {
-                serializer.serialize_str(&value.to_string())
-            }
+            TypedDecimal::F32(_) => serializer.serialize_str(&self.to_string()),
             TypedDecimal::F64(value) => {
                 if value.is_finite() {
                     serializer.serialize_f64(value.into_inner())
                 } else {
                     // Handle special edge cases, such as NaN and Infinity
-                    serializer.serialize_str(&value.to_string())
+                    serializer.serialize_str(&self.to_string())
                 }
             }
             TypedDecimal::Decimal(value) => value.serialize(serializer),
@@ -112,9 +110,9 @@ impl TypedDecimal {
         Ok(TypedDecimal::F32(
             match s {
                 // handle special cases
-                "Infinity" | "infinity" => f32::INFINITY,
-                "-Infinity" | "-infinity" => f32::NEG_INFINITY,
-                "NaN" | "nan" => f32::NAN,
+                "infinity" => f32::INFINITY,
+                "-infinity" => f32::NEG_INFINITY,
+                "nan" => f32::NAN,
                 _ => {
                     let v: f64 = s.parse().map_err(|_: ParseFloatError| {
                         NumberParseError::InvalidFormat
@@ -137,9 +135,9 @@ impl TypedDecimal {
         Ok(TypedDecimal::F64(
             match s {
                 // handle special cases
-                "Infinity" | "infinity" => f64::INFINITY,
-                "-Infinity" | "-infinity" => f64::NEG_INFINITY,
-                "NaN" | "nan" => f64::NAN,
+                "infinity" => f64::INFINITY,
+                "-infinity" => f64::NEG_INFINITY,
+                "nan" => f64::NAN,
                 _ => {
                     let v: Decimal = Decimal::from_string(s)?;
                     let res = v.into_f64();
@@ -332,14 +330,22 @@ impl TypedDecimal {
 
 impl Display for TypedDecimal {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        match self {
-            TypedDecimal::F32(value) => {
-                core::write!(f, "{}", value.into_inner())
+        if self.is_finite() {
+            match self {
+                TypedDecimal::F32(value) => {
+                    core::write!(f, "{}", value.into_inner())
+                }
+                TypedDecimal::F64(value) => {
+                    core::write!(f, "{}", value.into_inner())
+                }
+                TypedDecimal::Decimal(value) => core::write!(f, "{}", value),
             }
-            TypedDecimal::F64(value) => {
-                core::write!(f, "{}", value.into_inner())
-            }
-            TypedDecimal::Decimal(value) => core::write!(f, "{value}"),
+        } else if self.is_nan() {
+            core::write!(f, "nan")
+        } else if self.is_sign_positive() {
+            core::write!(f, "infinity")
+        } else {
+            core::write!(f, "-infinity")
         }
     }
 }

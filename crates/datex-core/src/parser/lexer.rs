@@ -586,19 +586,14 @@ mod tests {
 
     #[test]
     fn nan() {
-        let mut lexer = Token::lexer("NaN");
-        assert_eq!(lexer.next().unwrap(), Ok(Token::Nan));
-
         let mut lexer = Token::lexer("nan");
         assert_eq!(lexer.next().unwrap(), Ok(Token::Nan));
-
-        let lexer = Token::lexer("-NaN");
+        let lexer = Token::lexer("-nan");
         assert_eq!(
             lexer.map(Result::unwrap).collect::<Vec<_>>(),
             vec![Token::Minus, Token::Nan]
         );
-
-        let lexer = Token::lexer("+NaN");
+        let lexer = Token::lexer("+nan");
         assert_eq!(
             lexer.map(Result::unwrap).collect::<Vec<_>>(),
             vec![Token::Plus, Token::Nan]

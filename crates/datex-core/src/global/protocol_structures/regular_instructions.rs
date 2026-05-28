@@ -25,7 +25,7 @@ use crate::{
     prelude::*,
     shared_values::PointerAddress,
     values::core_values::{
-        decimal::utils::decimal_to_string, endpoint::Endpoint,
+        decimal::typed_decimal::TypedDecimal, endpoint::Endpoint,
     },
 };
 use binrw::{
@@ -858,14 +858,14 @@ impl RegularInstruction {
                 write!(
                     string,
                     "{}",
-                    decimal_to_string(data.0, false)
+                    TypedDecimal::F32(data.0.into())
                 )
             }
             RegularInstruction::DecimalF64(data) => {
                 write!(
                     string,
                     "{}",
-                    decimal_to_string(data.0, false)
+                    TypedDecimal::F64(data.0.into())
                 )
             }
             RegularInstruction::BigDecimal(data) => {
