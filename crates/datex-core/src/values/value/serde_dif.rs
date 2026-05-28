@@ -24,7 +24,7 @@ use num::ToPrimitive;
 use ordered_float::OrderedFloat;
 use serde::{
     Deserialize, Deserializer, Serialize, Serializer,
-    de::{DeserializeSeed, Visitor},
+    de::{DeserializeSeed, Error as DeError, Visitor},
     forward_to_deserialize_any,
     ser::{SerializeMap, SerializeStruct, SerializeTuple},
 };
@@ -382,13 +382,21 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, Value> {
     {
         self.visit_unit()
     }
-    fn visit_map<A>(self, _map: A) -> Result<Self::Value, A::Error>
+    fn visit_map<A>(mut self, mut map: A) -> Result<Self::Value, A::Error>
     where
         A: serde::de::MapAccess<'de>,
     {
-        unimplemented!("deserialization of maps is not implemented yet")
-    }
+        let mut entries: Vec<(String, ValueContainer)> = Vec::new();
 
+        while let Some(key) = map.next_key::<String>()? {
+            let value: ValueContainer =
+                map.next_value_seed(self.cast::<ValueContainer>())?;
+
+            entries.push((key, value));
+        }
+
+        Ok(CoreValue::Map(Map::StructuralWithStringKeys(entries)).into())
+    }
     fn visit_seq<A>(mut self, mut seq: A) -> Result<Self::Value, A::Error>
     where
         A: serde::de::SeqAccess<'de>,
