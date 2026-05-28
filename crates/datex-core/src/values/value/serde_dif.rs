@@ -32,6 +32,7 @@ use serde::{
     forward_to_deserialize_any,
     ser::{SerializeMap, SerializeStruct, SerializeTuple},
 };
+use crate::values::core_value::serde_dif::CoreValueVisitor;
 
 impl<'ctx> SerdeContext<'ctx, Value> {
     /// This method is used to serialize a value that can be represented directly depending on the flag set (e.g. a boolean or a text)
@@ -239,27 +240,6 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, Value> {
     }
 }
 
-impl CoreValueVisitor {
-    fn visit_number<E: serde::de::Error, T: ToPrimitive + Display>(
-        self,
-        v: T,
-    ) -> Result<Value, E> {
-        let v: f64 = v.to_f64().ok_or_else(|| {
-            serde::de::Error::custom(format!(
-                "integer value {v} is out of range for f64"
-            ))
-        })?;
-        if !v.is_finite() {
-            return Err(E::custom(format!(
-                "invalid floating point value: {v}"
-            )));
-        }
-        Ok(Value {
-            inner: CoreValue::TypedDecimal(TypedDecimal::F64(OrderedFloat(v))),
-            custom_type: None,
-        })
-    }
-}
 
 impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, Value> {
     type Value = Value;
@@ -268,6 +248,55 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, Value> {
         f.write_str("a value, which can be a direct core value (e.g. boolean, text) or a complex value with a custom type definition")
     }
 
+    /// default mapping for unit: null
+    fn visit_unit<E>(self) -> Result<Self::Value, E>
+    where
+        E: DeError,
+    {
+        Ok(Value::from(CoreValue::Null))
+    }
+
+    /// default mapping for none: null
+    fn visit_none<E>(self) -> Result<Self::Value, E>
+    where
+        E: DeError,
+    {
+        self.visit_unit()
+    }
+
+    /// default mapping for bool: boolean
+    fn visit_bool<E>(self, v: bool) -> Result<Self::Value, E>
+    where
+        E: DeError,
+    {
+        Ok(Value::from(CoreValue::Boolean(Boolean::new(v))))
+    }
+
+    /// default mapping for string: text
+    fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+    where
+        E: DeError,
+    {
+        Ok(Value::from(CoreValue::Text(v.into())))
+    }
+    fn visit_string<E>(self, v: String) -> Result<Self::Value, E>
+    where
+        E: DeError,
+    {
+        self.visit_str(&v)
+    }
+
+    /// default mapping for f64: decimal/f64
+    fn visit_f64<E>(self, v: f64) -> Result<Self::Value, E>
+    where
+        E: DeError,
+    {
+        Ok(Value::from(CoreValue::TypedDecimal(TypedDecimal::F64(
+            v.into(),
+        ))))
+    }
+
+    /// mapping for [core_lib_type_id, value, custom_type?]
     fn visit_seq<A>(mut self, mut seq: A) -> Result<Self::Value, A::Error>
     where
         A: serde::de::SeqAccess<'de>,
