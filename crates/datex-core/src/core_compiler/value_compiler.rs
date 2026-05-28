@@ -42,9 +42,9 @@ use crate::{
     types::{
         r#type::Type,
         type_definition::{TypeDefinition, tagged_type::TaggedTypeDefinition},
+        type_definition_with_metadata::TypeDefinitionWithMetadata,
     },
 };
-use crate::types::type_definition_with_metadata::TypeDefinitionWithMetadata;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum SharedValueCompilationError {
@@ -155,11 +155,14 @@ pub fn append_value(
         match custom_type {
             // unit tagged value (e.g. #Example)
             TypeDefinition::TaggedType(TaggedTypeDefinition {
-                ty: 
-                     Some(box Type::Alias(TypeDefinitionWithMetadata {
-                           definition: TypeDefinition::Core(CoreLibTypeId::Base(CoreLibBaseTypeId::Unit)),
-                           ..
-                       })),
+                ty:
+                    Some(box Type::Alias(TypeDefinitionWithMetadata {
+                        definition:
+                            TypeDefinition::Core(CoreLibTypeId::Base(
+                                CoreLibBaseTypeId::Unit,
+                            )),
+                        ..
+                    })),
                 tag,
             }) => {
                 append_regular_instruction(
@@ -629,8 +632,11 @@ mod tests {
             inner: CoreValue::Null,
             custom_type: Some(TypeDefinition::TaggedType(
                 TaggedTypeDefinition {
-                    ty: Some(Box::new(TypeDefinition::Core(
-                        CoreLibTypeId::Base(CoreLibBaseTypeId::Unit),
+                    ty: Some(Box::new(Type::Alias(
+                        TypeDefinition::Core(CoreLibTypeId::Base(
+                            CoreLibBaseTypeId::Unit,
+                        ))
+                        .into(),
                     ))),
                     tag: "Example".to_string(),
                 },
