@@ -145,15 +145,14 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, Value> {
                 serializer,
                 true,
             ),
-            CoreValue::TypedDecimal(TypedDecimal::F64(OrderedFloat(f64))) => {
-                self.serialize_with_core_type(
-                    f64,
+            CoreValue::TypedDecimal(dec @ TypedDecimal::F64(_)) => self
+                .serialize_with_core_type(
+                    &dec,
                     core_lib_type,
                     &value.custom_type,
                     serializer,
-                    true,
-                )
-            }
+                    dec.is_finite(),
+                ),
             CoreValue::Map(Map::StructuralWithStringKeys(map)) => {
                 let mut map_serializer =
                     serializer.serialize_map(Some(map.len()))?;
@@ -660,9 +659,9 @@ mod tests {
                 .serialize_to_json(&value);
         assert_eq!(serialized, r#""Hello, world!""#);
 
-        // decimal f32
-        let value = Value::from(CoreValue::TypedDecimal(TypedDecimal::F32(
-            5.14f32.into(),
+        // decimal f64
+        let value = Value::from(CoreValue::TypedDecimal(TypedDecimal::F64(
+            5.14f64.into(),
         )));
         let serialized =
             SerdeContext::<Value>::new(&mut DIFSharedContainerCache::default())
@@ -679,16 +678,16 @@ mod tests {
 
     #[test]
     fn non_default_representation() {
-        // 1 --> f32
-        // 1 -> f32 -> [1, <nominal>]
-        // 42 -> f32 -> [42, <nominal>]
+        // 1 --> f64
+        // 1 -> f64 -> [1, <nominal>]
+        // 42 -> f64 -> [42, <nominal>]
         // 42 -> u8 [5, 42, <nominmal>]
         // ["integer/u8", 1] -> u8
         // [1, integer/u8]
 
-        // f64
-        let value = Value::from(CoreValue::TypedDecimal(TypedDecimal::F64(
-            5.14f64.into(),
+        // f32
+        let value = Value::from(CoreValue::TypedDecimal(TypedDecimal::F32(
+            5.14f32.into(),
         )));
         let serialized =
             SerdeContext::<Value>::new(&mut DIFSharedContainerCache::default())
@@ -699,7 +698,7 @@ mod tests {
             format!(
                 r#"[{},5.14]"#,
                 CoreLibIdIndex::from(CoreLibTypeId::Variant(
-                    CoreLibVariantTypeId::Decimal(DecimalTypeVariant::F64)
+                    CoreLibVariantTypeId::Decimal(DecimalTypeVariant::F32)
                 ))
             )
         );
@@ -740,6 +739,18 @@ mod tests {
     )]
     #[test_case(
         CoreValue::TypedDecimal(TypedDecimal::F32(5.14f32.into())) ; "decimal f32"
+    )]
+    #[test_case(
+        CoreValue::TypedDecimal(TypedDecimal::F64(f64::NAN.into())) ; "nan f64"
+    )]
+    #[test_case(
+        CoreValue::TypedDecimal(TypedDecimal::F32(f32::NAN.into())) ; "nan f32"
+    )]
+    #[test_case(
+        CoreValue::TypedDecimal(TypedDecimal::F32(f32::INFINITY.into())) ; "inf f32"
+    )]
+    #[test_case(
+        CoreValue::TypedDecimal(TypedDecimal::F64(f64::INFINITY.into())) ; "inf f64"
     )]
     #[test_case(
         CoreValue::TypedDecimal(TypedDecimal::F64(5.14f64.into())) ; "decimal f64"

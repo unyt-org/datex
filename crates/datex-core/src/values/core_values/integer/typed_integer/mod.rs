@@ -75,53 +75,13 @@ impl Serialize for TypedInteger {
     where
         S: serde::Serializer,
     {
-        match self {
-            TypedInteger::IBig(v) => serializer.serialize_str(&v.to_string()),
-            TypedInteger::I8(v) => serializer.serialize_i8(*v),
-            TypedInteger::I16(v) => serializer.serialize_i16(*v),
-            TypedInteger::I32(v) => serializer.serialize_i32(*v),
-            TypedInteger::I64(v) => serializer.serialize_i64(*v),
-            TypedInteger::I128(v) => serializer.serialize_i128(*v),
-            TypedInteger::U8(v) => serializer.serialize_u8(*v),
-            TypedInteger::U16(v) => serializer.serialize_u16(*v),
-            TypedInteger::U32(v) => serializer.serialize_u32(*v),
-            TypedInteger::U64(v) => serializer.serialize_u64(*v),
-            TypedInteger::U128(v) => serializer.serialize_u128(*v),
-        }
+        serializer.serialize_str(&self.to_string())
     }
 }
 
 impl From<&TypedInteger> for CoreLibTypeId {
     fn from(value: &TypedInteger) -> Self {
         CoreLibTypeId::Variant(CoreLibVariantTypeId::Integer(value.variant()))
-    }
-}
-
-impl<'de> Deserialize<'de> for TypedInteger {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        let s = String::deserialize(deserializer)?;
-        // Try to parse as Integer (big)
-        if let Ok(big_integer) = Integer::from_string(&s) {
-            return Ok(TypedInteger::IBig(big_integer));
-        }
-
-        // Try to parse as i128
-        if let Ok(i128_value) = s.parse::<i128>() {
-            return Ok(smallest_fitting_signed(i128_value));
-        }
-
-        // Try to parse as u128
-        if let Ok(u128_value) = s.parse::<u128>() {
-            return Ok(smallest_fitting_unsigned(u128_value));
-        }
-
-        Err(serde::de::Error::custom(format!(
-            "Failed to parse '{}' as TypedInteger",
-            s
-        )))
     }
 }
 

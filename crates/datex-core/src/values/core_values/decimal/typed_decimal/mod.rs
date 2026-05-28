@@ -8,7 +8,7 @@ use core::{fmt::Display, hash::Hash, num::ParseFloatError, result::Result};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use num_traits::Zero;
 use ordered_float::OrderedFloat;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize, de::Visitor};
 use strum::Display;
 use strum_macros::{AsRefStr, EnumIter, EnumString};
 pub mod equality;
@@ -54,24 +54,18 @@ impl Serialize for TypedDecimal {
     {
         match self {
             TypedDecimal::F32(value) => {
-                serializer.serialize_f32(value.into_inner())
+                serializer.serialize_str(&value.to_string())
             }
             TypedDecimal::F64(value) => {
-                // FIXME #337: Improve serialization, as this can take references instead of copying (maybe :D)
-                serializer.serialize_f64(value.into_inner())
+                if value.is_finite() {
+                    serializer.serialize_f64(value.into_inner())
+                } else {
+                    // Handle special edge cases, such as NaN and Infinity
+                    serializer.serialize_str(&value.to_string())
+                }
             }
             TypedDecimal::Decimal(value) => value.serialize(serializer),
         }
-    }
-}
-
-impl<'de> Deserialize<'de> for TypedDecimal {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        let s = String::deserialize(deserializer)?;
-        TypedDecimal::from_string(&s).map_err(serde::de::Error::custom)
     }
 }
 
@@ -109,71 +103,55 @@ impl From<&TypedDecimal> for CoreLibTypeId {
     }
 }
 
-/// Parses a string into an f32, ensuring the value is finite and within the range of f32.
-/// Returns an error if the value is out of range, NaN, or cannot be parsed.
-fn parse_checked_f32(s: &str) -> Result<f32, NumberParseError> {
-    // handle special cases
-    match s {
-        "inf" => return Ok(f32::INFINITY),
-        "-inf" => return Ok(f32::NEG_INFINITY),
-        "NaN" => return Ok(f32::NAN),
-        _ => {}
-    }
-
-    let v: f64 = s
-        .parse()
-        .map_err(|_: ParseFloatError| NumberParseError::InvalidFormat)?;
-    if v > f32::MAX as f64 || v < f32::MIN as f64 {
-        return Err(NumberParseError::OutOfRange);
-    }
-    Ok(v as f32)
-}
-
-/// Parses a string into an f64, ensuring the value is finite and within the range of f64.
-/// Returns an error if the value is out of range, NaN, or cannot be parsed.
-fn parse_checked_f64(s: &str) -> Result<f64, NumberParseError> {
-    // handle special cases
-    match s {
-        "inf" => return Ok(f64::INFINITY),
-        "-inf" => return Ok(f64::NEG_INFINITY),
-        "NaN" => return Ok(f64::NAN),
-        _ => {}
-    }
-
-    let v: Decimal = Decimal::from_string(s)?;
-    let res = v.into_f64();
-    if res.is_finite() {
-        Ok(res)
-    } else {
-        Err(NumberParseError::OutOfRange)
-    }
-}
-
 impl TypedDecimal {
-    /// Creates a TypedDecimal from a string representation.
-    /// Tries f32, then f64, then Big.
-    pub fn from_string(value: &str) -> Result<Self, NumberParseError> {
-        match value {
-            "Infinity" | "infinity" => Ok(f32::INFINITY.into()),
-            "-Infinity" | "-infinity" => Ok(f32::NEG_INFINITY.into()),
-            "nan" | "NaN" | "-nan" | "-NaN" => Ok(f32::NAN.into()),
-            _ => TypedDecimal::from_string_and_variant(
-                value,
-                DecimalTypeVariant::F32,
-            )
-            .or_else(|_| {
-                TypedDecimal::from_string_and_variant(
-                    value,
-                    DecimalTypeVariant::F64,
-                )
-            })
-            .or_else(|_| {
-                TypedDecimal::from_string_and_variant(
-                    value,
-                    DecimalTypeVariant::DBig,
-                )
-            }),
-        }
+    /// Parses a string into an f32, ensuring the value is finite and within the range of f32.
+    /// Returns an error if the value is out of range, NaN, or cannot be parsed.
+    pub fn parse_checked_f32(
+        s: &str,
+    ) -> Result<TypedDecimal, NumberParseError> {
+        Ok(TypedDecimal::F32(
+            match s {
+                // handle special cases
+                "Infinity" | "infinity" => f32::INFINITY,
+                "-Infinity" | "-infinity" => f32::NEG_INFINITY,
+                "NaN" | "nan" => f32::NAN,
+                _ => {
+                    let v: f64 = s.parse().map_err(|_: ParseFloatError| {
+                        NumberParseError::InvalidFormat
+                    })?;
+                    if v > f32::MAX as f64 || v < f32::MIN as f64 {
+                        return Err(NumberParseError::OutOfRange);
+                    }
+                    v as f32
+                }
+            }
+            .into(),
+        ))
+    }
+
+    /// Parses a string into an f64, ensuring the value is finite and within the range of f64.
+    /// Returns an error if the value is out of range, NaN, or cannot be parsed.
+    pub fn parse_checked_f64(
+        s: &str,
+    ) -> Result<TypedDecimal, NumberParseError> {
+        Ok(TypedDecimal::F64(
+            match s {
+                // handle special cases
+                "Infinity" | "infinity" => f64::INFINITY,
+                "-Infinity" | "-infinity" => f64::NEG_INFINITY,
+                "NaN" | "nan" => f64::NAN,
+                _ => {
+                    let v: Decimal = Decimal::from_string(s)?;
+                    let res = v.into_f64();
+                    if res.is_finite() {
+                        res
+                    } else {
+                        return Err(NumberParseError::OutOfRange);
+                    }
+                }
+            }
+            .into(),
+        ))
     }
 
     /// Creates a TypedDecimal from a string and a variant, ensuring the value is within the valid range.
@@ -185,10 +163,8 @@ impl TypedDecimal {
         variant: DecimalTypeVariant,
     ) -> Result<Self, NumberParseError> {
         match variant {
-            DecimalTypeVariant::F32 => parse_checked_f32(value)
-                .map(|v| TypedDecimal::F32(OrderedFloat(v))),
-            DecimalTypeVariant::F64 => parse_checked_f64(value)
-                .map(|v| TypedDecimal::F64(OrderedFloat(v))),
+            DecimalTypeVariant::F32 => Self::parse_checked_f32(value),
+            DecimalTypeVariant::F64 => Self::parse_checked_f64(value),
             DecimalTypeVariant::DBig => {
                 Decimal::from_string(value).map(TypedDecimal::Decimal)
             }
@@ -579,31 +555,32 @@ mod tests {
     }
 
     #[test]
-    fn from_string() {
-        let a = TypedDecimal::from_string("42.0").unwrap();
+    fn from_string_f64() {
+        let a = TypedDecimal::parse_checked_f64("42.0").unwrap();
         assert_matches!(a, TypedDecimal::F32(OrderedFloat(42.0)));
 
-        let b = TypedDecimal::from_string("42.0").unwrap();
+        let b = TypedDecimal::parse_checked_f64("42.0").unwrap();
         assert_matches!(b, TypedDecimal::F32(OrderedFloat(42.0)));
 
-        let c = TypedDecimal::from_string("12345678901234567890.123456789")
-            .unwrap();
+        let c =
+            TypedDecimal::parse_checked_f64("12345678901234567890.123456789")
+                .unwrap();
         assert_matches!(c, TypedDecimal::F32(_));
         assert_eq!(c.as_f32(), 12345678901234567890.123456789);
 
-        let d = TypedDecimal::from_string("not_a_number");
+        let d = TypedDecimal::parse_checked_f64("not_a_number");
         assert!(d.is_err());
 
-        let e = TypedDecimal::from_string("NaN").unwrap();
+        let e = TypedDecimal::parse_checked_f64("NaN").unwrap();
         assert!(e.is_nan());
 
-        let f = TypedDecimal::from_string("nan").unwrap();
+        let f = TypedDecimal::parse_checked_f64("nan").unwrap();
         assert!(f.is_nan());
 
-        let g = TypedDecimal::from_string("Infinity").unwrap();
+        let g = TypedDecimal::parse_checked_f64("Infinity").unwrap();
         assert!(g.is_infinite() && g.is_sign_positive());
 
-        let h = TypedDecimal::from_string("-infinity").unwrap();
+        let h = TypedDecimal::parse_checked_f64("-infinity").unwrap();
         assert!(h.is_infinite() && h.is_sign_negative());
     }
 
