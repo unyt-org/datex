@@ -35,7 +35,8 @@ impl<'ctx> SerdeContext<'ctx, Value> {
     /// ## For no custom type:
     ///   true -> "true"
     ///   "Hello" -> "Hello"
-    ///   42f32 -> 42
+    ///   42f64 -> 42
+    ///   42f32 -> "42"
     /// ## For custom type:
     /// {custom_type: LiteralTypeDefinition::Integer(42), value: 42} -> [<core_lib_id>, <type_definition>, 42]
     fn serialize_with_core_type<Se, T>(

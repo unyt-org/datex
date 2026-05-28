@@ -61,14 +61,54 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, ValueContainer> {
     {
         Ok(ValueContainer::Local(self.cast::<Value>().visit_f64(v)?))
     }
-
+    fn visit_i16<E>(mut self, v: i16) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        Ok(ValueContainer::Local(self.cast::<Value>().visit_i16(v)?))
+    }
+    fn visit_i32<E>(mut self, v: i32) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        Ok(ValueContainer::Local(self.cast::<Value>().visit_i32(v)?))
+    }
+    fn visit_u128<E>(mut self, v: u128) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        Ok(ValueContainer::Local(self.cast::<Value>().visit_u128(v)?))
+    }
+    fn visit_i8<E>(mut self, v: i8) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        Ok(ValueContainer::Local(self.cast::<Value>().visit_i8(v)?))
+    }
+    fn visit_u16<E>(mut self, v: u16) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        Ok(ValueContainer::Local(self.cast::<Value>().visit_u16(v)?))
+    }
+    fn visit_u32<E>(mut self, v: u32) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        Ok(ValueContainer::Local(self.cast::<Value>().visit_u32(v)?))
+    }
+    fn visit_u8<E>(mut self, v: u8) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        Ok(ValueContainer::Local(self.cast::<Value>().visit_u8(v)?))
+    }
     fn visit_str<E>(mut self, v: &str) -> Result<ValueContainer, E>
     where
         E: serde::de::Error,
     {
         Ok(ValueContainer::Local(self.cast::<Value>().visit_str(v)?))
     }
-
     fn visit_string<E>(mut self, v: String) -> Result<ValueContainer, E>
     where
         E: serde::de::Error,
