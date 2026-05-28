@@ -113,7 +113,10 @@ mod tests {
         .serialize_to_json(&SharedContainer::Referenced(
             owned_shared_container,
         ));
-        assert_eq!(serialized, format!(r#""'{}""#, address));
+        assert_eq!(
+            serialized,
+            format!(r#""'{}""#, address.to_address_string())
+        );
     }
 
     #[test]
@@ -133,7 +136,10 @@ mod tests {
         .serialize_to_json(&owned_container);
         assert_eq!(
             serialized,
-            format!(r#""{}""#, owned_container.pointer_address())
+            format!(
+                r#""{}""#,
+                owned_container.pointer_address().to_address_string()
+            )
         );
     }
 

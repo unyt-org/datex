@@ -181,6 +181,7 @@ mod tests {
     use super::*;
     use crate::{
         dif::cache::DIFSharedContainerCache,
+        libs::core::{core_lib_id::CoreLibIdIndex, type_id::CoreLibBaseTypeId},
         prelude::*,
         runtime::pointer_address_provider::SelfOwnedPointerAddressProvider,
         shared_values::{
@@ -285,7 +286,11 @@ mod tests {
         );
         let pointer_address = referenced_container.pointer_address();
         cache.store_shared_container(referenced_container);
-        let json = format!(r#"["'{}"]"#, pointer_address);
+        let json = format!(
+            r#"[{}, [{{"$": "'{}"}}]]"#,
+            CoreLibIdIndex::from(CoreLibBaseTypeId::List),
+            pointer_address.to_address_string()
+        );
         let outer = SerdeContext::<ValueContainer>::new(cache)
             .try_deserialize_from_json(&json)
             .unwrap();
