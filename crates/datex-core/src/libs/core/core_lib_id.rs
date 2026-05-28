@@ -12,7 +12,11 @@ pub const VALUE_SPACE_BASE: u16 = 1000;
 #[derive(BinWrite, BinRead, Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[brw(little)]
 pub struct CoreLibIdIndex(pub u16);
-
+impl CoreLibIdIndex {
+    pub fn new(index: u16) -> Self {
+        Self(index)
+    }
+}
 impl Display for CoreLibIdIndex {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{}", self.0)
