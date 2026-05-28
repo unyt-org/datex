@@ -12,22 +12,6 @@ use core::fmt::{Display, Formatter};
 pub mod apply;
 pub mod equality;
 pub mod error;
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum CallableKind {
-    // A pure function
-    Function,
-    // A procedure that may have side effects
-    Procedure,
-}
-
-impl Display for CallableKind {
-    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
-        match self {
-            CallableKind::Function => write!(f, "function"),
-            CallableKind::Procedure => write!(f, "procedure"),
-        }
-    }
-}
 
 pub type NativeCallable =
     fn(&[ValueContainer]) -> Result<Option<ValueContainer>, CallableError>;

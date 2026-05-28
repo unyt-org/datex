@@ -7,7 +7,6 @@ use crate::{
     },
     prelude::*,
     values::core_values::{
-        callable::CallableKind,
         decimal::{Decimal, typed_decimal::TypedDecimal},
         endpoint::Endpoint,
         integer::{Integer, typed_integer::TypedInteger},
@@ -19,6 +18,7 @@ use crate::{
     types::r#type::Type,
 };
 use core::ops;
+use crate::types::type_definition::callable::CallableKind;
 
 #[derive(Clone, Debug, PartialEq)]
 /// The different kinds of type expressions in the AST

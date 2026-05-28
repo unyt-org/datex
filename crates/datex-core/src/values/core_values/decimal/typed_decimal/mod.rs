@@ -52,17 +52,20 @@ impl Serialize for TypedDecimal {
     where
         S: serde::Serializer,
     {
-        match self {
-            TypedDecimal::F32(_) => serializer.serialize_str(&self.to_string()),
-            TypedDecimal::F64(value) => {
-                if value.is_finite() {
-                    serializer.serialize_f64(value.into_inner())
-                } else {
-                    // Handle special edge cases, such as NaN and Infinity
-                    serializer.serialize_str(&self.to_string())
+        if !self.is_finite() {
+            // Handle special edge cases, such as NaN and Infinity
+            serializer.serialize_str(&self.to_string())
+        }
+        else {
+            match self {
+                TypedDecimal::F32(value) => {
+                    serializer.serialize_f32(value.into_inner())
                 }
+                TypedDecimal::F64(value) => {
+                    serializer.serialize_f64(value.into_inner())
+                }
+                TypedDecimal::Decimal(value) => value.serialize(serializer),
             }
-            TypedDecimal::Decimal(value) => value.serialize(serializer),
         }
     }
 }
@@ -156,7 +159,7 @@ impl TypedDecimal {
     /// Returns an error if the value is out of range or cannot be parsed.
     /// Note: This function does not support Decimal syntax, as it can represent any valid decimal
     /// value without range limitations.
-    pub fn from_string_and_variant_in_range(
+    pub fn try_from_string_and_variant_in_range(
         value: &str,
         variant: DecimalTypeVariant,
     ) -> Result<Self, NumberParseError> {
@@ -173,7 +176,7 @@ impl TypedDecimal {
     /// Returns an error if the value cannot be parsed.
     /// Note: This function does not check for range limitations, so it may produce
     /// NaN or Infinity for f32 and f64 variants.
-    pub fn from_string_and_variant(
+    pub fn try_from_string_and_variant(
         value: &str,
         variant: DecimalTypeVariant,
     ) -> Result<Self, NumberParseError> {
@@ -589,28 +592,28 @@ mod tests {
 
     #[test]
     fn from_string_and_variant() {
-        let a = TypedDecimal::from_string_and_variant(
+        let a = TypedDecimal::try_from_string_and_variant(
             "42.0",
             DecimalTypeVariant::F32,
         )
         .unwrap();
         assert_matches!(a, TypedDecimal::F32(OrderedFloat(42.0)));
 
-        let b = TypedDecimal::from_string_and_variant(
+        let b = TypedDecimal::try_from_string_and_variant(
             "42.0",
             DecimalTypeVariant::F64,
         )
         .unwrap();
         assert_matches!(b, TypedDecimal::F64(OrderedFloat(42.0)));
 
-        let c = TypedDecimal::from_string_and_variant(
+        let c = TypedDecimal::try_from_string_and_variant(
             "12345678901234567890.123456789",
             DecimalTypeVariant::F64,
         )
         .unwrap();
         assert_matches!(c, TypedDecimal::F64(_));
 
-        let d = TypedDecimal::from_string_and_variant(
+        let d = TypedDecimal::try_from_string_and_variant(
             "12345678901234567890.123456789",
             DecimalTypeVariant::F32,
         )
@@ -620,47 +623,47 @@ mod tests {
             TypedDecimal::F32(OrderedFloat(12345678901234567890.123456789f32))
         );
 
-        let e = TypedDecimal::from_string_and_variant(
+        let e = TypedDecimal::try_from_string_and_variant(
             "not_a_number",
             DecimalTypeVariant::F32,
         );
         assert!(e.is_err());
 
-        let f = TypedDecimal::from_string_and_variant(
+        let f = TypedDecimal::try_from_string_and_variant(
             "not_a_number",
             DecimalTypeVariant::F64,
         );
         assert!(f.is_err());
 
-        let g = TypedDecimal::from_string_and_variant(
+        let g = TypedDecimal::try_from_string_and_variant(
             "NaN",
             DecimalTypeVariant::F32,
         )
         .unwrap();
         assert!(g.is_nan());
 
-        let h = TypedDecimal::from_string_and_variant(
+        let h = TypedDecimal::try_from_string_and_variant(
             "nan",
             DecimalTypeVariant::F64,
         )
         .unwrap();
         assert!(h.is_nan());
 
-        let i = TypedDecimal::from_string_and_variant(
+        let i = TypedDecimal::try_from_string_and_variant(
             "Infinity",
             DecimalTypeVariant::F32,
         )
         .unwrap();
         assert!(i.is_infinite() && i.is_sign_positive());
 
-        let j = TypedDecimal::from_string_and_variant(
+        let j = TypedDecimal::try_from_string_and_variant(
             "-infinity",
             DecimalTypeVariant::F64,
         )
         .unwrap();
         assert!(j.is_infinite() && j.is_sign_negative());
 
-        let k = TypedDecimal::from_string_and_variant(
+        let k = TypedDecimal::try_from_string_and_variant(
             "12345678901234567890.123456789",
             DecimalTypeVariant::DBig,
         )
@@ -671,28 +674,28 @@ mod tests {
 
     #[test]
     fn from_string_and_variant_in_range() {
-        let a = TypedDecimal::from_string_and_variant_in_range(
+        let a = TypedDecimal::try_from_string_and_variant_in_range(
             "1e40",
             DecimalTypeVariant::F32,
         );
         assert!(a.is_err());
         assert_eq!(a.err().unwrap(), NumberParseError::OutOfRange);
 
-        let b = TypedDecimal::from_string_and_variant_in_range(
+        let b = TypedDecimal::try_from_string_and_variant_in_range(
             "-1e40",
             DecimalTypeVariant::F32,
         );
         assert!(b.is_err());
         assert_eq!(b.err().unwrap(), NumberParseError::OutOfRange);
 
-        let c = TypedDecimal::from_string_and_variant_in_range(
+        let c = TypedDecimal::try_from_string_and_variant_in_range(
             "1e1000",
             DecimalTypeVariant::F64,
         );
         assert!(c.is_err());
         assert_eq!(c.err().unwrap(), NumberParseError::OutOfRange);
 
-        let d = TypedDecimal::from_string_and_variant_in_range(
+        let d = TypedDecimal::try_from_string_and_variant_in_range(
             "-1e1000",
             DecimalTypeVariant::F64,
         );

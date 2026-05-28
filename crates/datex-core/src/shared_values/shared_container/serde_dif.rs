@@ -56,7 +56,7 @@ impl<'ctx> SerdeContext<'ctx, SharedContainer> {
         format!(
             "{}{}",
             ownership,
-            value.pointer_address().to_address_string()
+            value.pointer_address().to_string()
         )
     }
 }
@@ -115,7 +115,7 @@ mod tests {
         ));
         assert_eq!(
             serialized,
-            format!(r#""'{}""#, address.to_address_string())
+            format!(r#""'{}""#, address.to_string())
         );
     }
 
@@ -138,7 +138,7 @@ mod tests {
             serialized,
             format!(
                 r#""{}""#,
-                owned_container.pointer_address().to_address_string()
+                owned_container.pointer_address().to_string()
             )
         );
     }

@@ -1,7 +1,7 @@
 use crate::{
     ast::{
         expressions::{
-            CallableDeclaration, CallableKind, DatexExpression,
+            CallableDeclaration, DatexExpression,
             DatexExpressionData,
         },
         spanned::Spanned,
@@ -11,6 +11,8 @@ use crate::{
 };
 
 use crate::prelude::*;
+use crate::types::type_definition::callable::CallableKind;
+
 impl Parser {
     pub(crate) fn parse_callable_definition(
         &mut self,
@@ -91,7 +93,7 @@ mod tests {
     use crate::{
         ast::{
             expressions::{
-                BinaryOperation, CallableDeclaration, CallableKind,
+                BinaryOperation, CallableDeclaration,
                 DatexExpressionData, Statements,
             },
             spanned::Spanned,
@@ -101,6 +103,7 @@ mod tests {
         parser::tests::parse,
         prelude::*,
     };
+    use crate::types::type_definition::callable::CallableKind;
 
     #[test]
     fn parse_empty_function() {

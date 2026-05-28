@@ -1,8 +1,27 @@
-use core::fmt::Display;
-
-use crate::{ast::expressions::CallableKind, types::r#type::Type};
+use core::fmt::{Display, Formatter};
+use serde::{Deserialize, Serialize};
+use crate::{types::r#type::Type};
 pub mod serde_dif;
 use crate::prelude::*;
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum CallableKind {
+    // A pure function
+    Function,
+    // A procedure that may have side effects
+    Procedure,
+}
+
+impl Display for CallableKind {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        match self {
+            CallableKind::Function => write!(f, "function"),
+            CallableKind::Procedure => write!(f, "procedure"),
+        }
+    }
+}
+
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CallableTypeDefinition {
     pub kind: CallableKind,

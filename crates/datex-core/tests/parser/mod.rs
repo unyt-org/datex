@@ -27,7 +27,7 @@ use datex_core::{
 use datex_core::{
     ast::{
         expressions::{
-            Apply, BinaryOperation, CallableDeclaration, CallableKind,
+            Apply, BinaryOperation, CallableDeclaration,
             ComparisonOperation, Conditional, CreateMut, CreateShared,
             DatexExpression, DatexExpressionData, GenericInstantiation, GetRef,
             List, Map, PropertyAccess, PropertyAssignment, RequestSharedRef,
@@ -54,6 +54,7 @@ use datex_core::{
     },
     values::core_values::error::NumberParseError,
 };
+use datex_core::types::type_definition::callable::CallableKind;
 
 /// Parse the given source code into a DatexExpression AST.
 fn parse_unwrap(src: &str) -> DatexExpression {

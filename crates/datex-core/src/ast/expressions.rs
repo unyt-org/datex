@@ -30,8 +30,9 @@ use crate::{
         value_container::ValueContainer,
     },
 };
-pub use crate::{prelude::*, values::core_values::callable::CallableKind};
+pub use crate::{prelude::*};
 use core::{fmt::Display, ops, ops::Neg};
+use crate::types::type_definition::callable::CallableKind;
 
 #[derive(Clone, Debug)]
 /// An expression in the AST

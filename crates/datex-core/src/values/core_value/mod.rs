@@ -269,35 +269,35 @@ impl CoreValue {
     ) -> Option<TypedDecimal> {
         match self {
             CoreValue::Text(text) => {
-                TypedDecimal::from_string_and_variant_in_range(
+                TypedDecimal::try_from_string_and_variant_in_range(
                     text.as_str(),
                     variant,
                 )
                 .ok()
             }
             CoreValue::TypedInteger(int) => Some(
-                TypedDecimal::from_string_and_variant_in_range(
+                TypedDecimal::try_from_string_and_variant_in_range(
                     &int.to_string(),
                     variant,
                 )
                 .ok()?,
             ),
             CoreValue::TypedDecimal(decimal) => Some(
-                TypedDecimal::from_string_and_variant_in_range(
+                TypedDecimal::try_from_string_and_variant_in_range(
                     &decimal.to_string(),
                     variant,
                 )
                 .ok()?,
             ),
             CoreValue::Integer(int) => Some(
-                TypedDecimal::from_string_and_variant_in_range(
+                TypedDecimal::try_from_string_and_variant_in_range(
                     &int.to_string(),
                     variant,
                 )
                 .ok()?,
             ),
             CoreValue::Decimal(decimal) => Some(
-                TypedDecimal::from_string_and_variant_in_range(
+                TypedDecimal::try_from_string_and_variant_in_range(
                     &decimal.to_string(),
                     variant,
                 )
@@ -357,14 +357,14 @@ impl CoreValue {
     ) -> Option<TypedInteger> {
         match self {
             CoreValue::Text(text) => {
-                TypedInteger::from_string_and_variant(text.as_str(), variant)
+                TypedInteger::try_from_string_and_variant(text.as_str(), variant)
                     .ok()
             }
             CoreValue::TypedInteger(int) => {
-                TypedInteger::from_string_and_variant(&int.to_string(), variant)
+                TypedInteger::try_from_string_and_variant(&int.to_string(), variant)
                     .ok()
             }
-            CoreValue::Integer(int) => TypedInteger::from_string_and_variant(
+            CoreValue::Integer(int) => TypedInteger::try_from_string_and_variant(
                 int.to_string().as_str(),
                 variant,
             )

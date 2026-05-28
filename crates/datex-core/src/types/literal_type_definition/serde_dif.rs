@@ -180,7 +180,7 @@ where
         CoreLibTypeId::Variant(CoreLibVariantTypeId::Integer(variant)) => {
             let value: String = map.next_value()?;
 
-            let value = TypedInteger::from_string_and_variant(&value, variant)
+            let value = TypedInteger::try_from_string_and_variant(&value, variant)
                 .map_err(|err| {
                     de::Error::custom(format!(
                         "invalid typed integer literal for variant {:?}: {:?}",
@@ -194,7 +194,7 @@ where
         CoreLibTypeId::Variant(CoreLibVariantTypeId::Decimal(variant)) => {
             let value: String = map.next_value()?;
 
-            let value = TypedDecimal::from_string_and_variant(&value, variant)
+            let value = TypedDecimal::try_from_string_and_variant(&value, variant)
                 .map_err(|err| {
                     de::Error::custom(format!(
                         "invalid typed decimal literal for variant {:?}: {:?}",

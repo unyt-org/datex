@@ -10,7 +10,7 @@ use crate::{
     values::{
         core_value::CoreValue,
         core_values::{
-            callable::{CallableBody, CallableKind, error::CallableError},
+            callable::{CallableBody, error::CallableError},
             map::Map,
         },
         value::Value,
@@ -27,6 +27,7 @@ use crate::{prelude::*, types::r#type::Type};
 use indexmap::IndexMap;
 use log::info;
 use strum::IntoEnumIterator;
+use crate::types::type_definition::callable::CallableKind;
 
 #[derive(Debug)]
 pub struct CoreLibraryValues {

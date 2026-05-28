@@ -218,7 +218,7 @@ impl Parser {
         let span = self.advance()?.span.clone();
         let res = match variant {
             Some(var) => {
-                TypedDecimal::from_string_and_variant_in_range(&value, var)
+                TypedDecimal::try_from_string_and_variant_in_range(&value, var)
                     .map(TypeExpressionData::TypedDecimal)
             }
             None => {
@@ -342,7 +342,7 @@ mod tests {
         assert_eq!(
             expr.data,
             TypeExpressionData::TypedInteger(
-                TypedInteger::from_string_and_variant(
+                TypedInteger::try_from_string_and_variant(
                     "12345",
                     IntegerTypeVariant::U16
                 )
@@ -392,7 +392,7 @@ mod tests {
         assert_eq!(
             expr.data,
             TypeExpressionData::TypedDecimal(
-                TypedDecimal::from_string_and_variant_in_range(
+                TypedDecimal::try_from_string_and_variant_in_range(
                     "123.456",
                     DecimalTypeVariant::F32
                 )

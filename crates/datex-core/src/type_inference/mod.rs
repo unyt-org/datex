@@ -1560,7 +1560,6 @@ mod tests {
             core_value::CoreValue,
             core_values::{
                 boolean::Boolean,
-                callable::CallableKind,
                 decimal::{Decimal, typed_decimal::TypedDecimal},
                 endpoint::Endpoint,
                 integer::{
@@ -1570,6 +1569,7 @@ mod tests {
             },
         },
     };
+    use crate::types::type_definition::callable::CallableKind;
 
     /// Infers type errors for the given source code.
     /// Panics if parsing or precompilation succeeds.

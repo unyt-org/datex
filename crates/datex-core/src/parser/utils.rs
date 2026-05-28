@@ -73,7 +73,7 @@ pub fn parse_integer_literal(
             if let Ok(integer_variant) =
                 IntegerTypeVariant::from_str(&variant_part)
             {
-                TypedInteger::from_string_and_variant(
+                TypedInteger::try_from_string_and_variant(
                     &integer_part,
                     integer_variant,
                 )
@@ -83,7 +83,7 @@ pub fn parse_integer_literal(
             else if let Ok(decimal_variant) =
                 DecimalTypeVariant::from_str(&variant_part)
             {
-                TypedDecimal::from_string_and_variant(
+                TypedDecimal::try_from_string_and_variant(
                     &integer_part,
                     decimal_variant,
                 )
@@ -105,7 +105,7 @@ pub fn parse_integer_literal(
         else if let Ok(decimal_variant) =
             DecimalTypeVariant::from_str(&variant_part)
         {
-            TypedDecimal::from_string_and_variant(&full_number, decimal_variant)
+            TypedDecimal::try_from_string_and_variant(&full_number, decimal_variant)
                 .map(IntegerOrDecimal::TypedDecimal)
         }
         // otherwise invalid variant for decimal with exponent
@@ -142,7 +142,7 @@ pub fn parse_integer_with_variant(
         _ => unreachable!(),
     };
     match integer_with_variant.variant {
-        Some(var) => TypedInteger::from_string_radix_with_variant(
+        Some(var) => TypedInteger::try_from_string_radix_with_variant(
             &integer_with_variant.value[2..],
             radix,
             var,

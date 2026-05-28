@@ -53,7 +53,7 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, Range> {
     fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_str("a range")
     }
-
+    
     fn visit_map<A>(mut self, mut map: A) -> Result<Range, A::Error>
     where
         A: MapAccess<'de>,

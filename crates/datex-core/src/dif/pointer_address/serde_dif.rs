@@ -25,8 +25,8 @@ impl<'de> Deserialize<'de> for PointerAddressWithOwnership {
             Some((prefix, address_str)) => (prefix, address_str),
             None => ("", s.as_str()),
         };
-        let address = PointerAddress::try_from(address_str).map_err(|_| {
-            Error::custom(format!("invalid pointer address: {}", s))
+        let address = PointerAddress::try_from(address_str).map_err(|e| {
+            Error::custom(format!("invalid pointer address: {}", e))
         })?;
         let ownership = SharedContainerOwnership::try_from_string(prefix)
             .ok_or_else(|| {

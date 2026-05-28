@@ -120,16 +120,16 @@ impl TypedInteger {
 
     /// Parses a string into a TypedInteger with the given variant.
     /// If the string is not a valid integer, returns an error.
-    pub fn from_string_and_variant(
+    pub fn try_from_string_and_variant(
         s: &str,
         variant: IntegerTypeVariant,
     ) -> Result<TypedInteger, NumberParseError> {
-        Self::from_string_radix_with_variant(s, 10, variant)
+        Self::try_from_string_radix_with_variant(s, 10, variant)
     }
 
     /// Parses a string into a TypedInteger with the given variant and radix.
     /// If the string is not a valid integer, returns an error.
-    pub fn from_string_radix_with_variant(
+    pub fn try_from_string_radix_with_variant(
         s: &str,
         radix: u32,
         variant: IntegerTypeVariant,

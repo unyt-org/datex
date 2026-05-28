@@ -288,7 +288,7 @@ mod tests {
 
     #[test]
     fn referenced() {
-        let mut cache = DIFSharedContainerCache::default();
+        let mut cache = &mut DIFSharedContainerCache::default();
         let owned_container =
             OwnedSharedContainer::new_with_inferred_allowed_type(
                 42,
@@ -303,11 +303,22 @@ mod tests {
         ));
         let pointer_address = referenced_container.pointer_address();
         let value = ValueContainer::Shared(referenced_container);
-        let serialized = SerdeContext::<ValueContainer>::new(&mut cache)
+        let json = SerdeContext::<ValueContainer>::new(cache)
             .serialize_to_json(&value);
         assert_eq!(
-            serialized,
-            format!(r#"{{"$":"'{}"}}"#, pointer_address.to_address_string())
+            json,
+            format!(r#"{{"$":"'{}"}}"#, pointer_address.to_string())
+        );
+
+        let outer = SerdeContext::<ValueContainer>::new(cache)
+            .try_deserialize_from_json(&json)
+            .unwrap();
+
+        assert_eq!(
+            outer,
+            ValueContainer::Shared(SharedContainer::Referenced(
+                owned_container.derive_immutable_reference(),
+            ))
         );
     }
 
@@ -327,9 +338,9 @@ mod tests {
         let pointer_address = referenced_container.pointer_address();
         cache.store_shared_container(referenced_container);
         let json = format!(
-            r#"[{}, [{{"$": "'{}"}}]]"#,
+            r#"[{},[{{"$":"'{}"}}]]"#,
             CoreLibIdIndex::from(CoreLibBaseTypeId::List),
-            pointer_address.to_address_string()
+            pointer_address.to_string()
         );
         let outer = SerdeContext::<ValueContainer>::new(cache)
             .try_deserialize_from_json(&json)

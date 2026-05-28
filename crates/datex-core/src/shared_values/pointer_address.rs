@@ -51,7 +51,13 @@ impl SelfOwnedPointerAddress {
 impl TryFrom<String> for SelfOwnedPointerAddress {
     type Error = &'static str;
     fn try_from(s: String) -> Result<Self, Self::Error> {
-        hex::decode(s)
+        let hex_str = if let Some(stripped) = s.strip_prefix('$') {
+            stripped
+        } else {
+            &s
+        };
+        
+        hex::decode(hex_str)
             .map_err(|_| "Invalid hex string for SelfOwnedPointerAddress")
             .and_then(|bytes| {
                 if bytes.len() == 5 {
@@ -108,6 +114,7 @@ impl TryFrom<&str> for PointerAddress {
         } else {
             s
         };
+
         let bytes = hex::decode(hex_str).map_err(|_| "Invalid hex string")?;
         match bytes.len() {
             5 => {

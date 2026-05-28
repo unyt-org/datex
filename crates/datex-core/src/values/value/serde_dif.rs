@@ -157,18 +157,6 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, Value> {
                     serializer,
                     dec.is_finite(),
                 ),
-            CoreValue::Map(Map::StructuralWithStringKeys(map)) => {
-                let mut map_serializer =
-                    serializer.serialize_map(Some(map.len()))?;
-                for (key, value) in map {
-                    map_serializer.serialize_key(key)?;
-                    map_serializer.serialize_value(&ValueWithSeed::new(
-                        value,
-                        self.cast::<ValueContainer>(),
-                    ))?;
-                }
-                map_serializer.end()
-            }
 
             // Core values that require a specific core type id to be serialized for non-ambiguous deserialization
             CoreValue::Endpoint(endpoint) => self.serialize_with_core_type(
@@ -309,9 +297,8 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, Value> {
         .map_err(|_| {
             serde::de::Error::custom("invalid core lib id index".to_string())
         })?;
-        println!("Deserializing core value with core lib id: {core_lib_id}");
 
-        let visitor = CoreValueVisitor { core_lib_id };
+        let visitor = CoreValueVisitor { core_lib_id, context: &mut self };
         let inner: CoreValue = seq.next_element_seed(visitor)?.ok_or_else(|| {
             serde::de::Error::custom(format!(
                 "expected a sequence with at least two elements for core value deserialization, got only one (core lib id: {core_lib_id})"
@@ -384,6 +371,8 @@ mod tests {
 
     #[test]
     fn serialize_map() {
+        let mut cache = DIFSharedContainerCache::default();
+
         // { endpoint: "@jonas" } -> [<map-idx>, { endpoint: [<endpoint-idx>, "@jonas"] }]
         let value =
             Value::from(CoreValue::Map(Map::StructuralWithStringKeys(vec![(
@@ -392,13 +381,15 @@ mod tests {
                     Endpoint::from_str("@jonas").unwrap(),
                 )),
             )])));
-        let mut cache = DIFSharedContainerCache::default();
         let serialized =
             SerdeContext::<Value>::new(&mut cache).serialize_to_json(&value);
         assert_eq!(
             serialized,
             format!(
-                r#"{{"endpoint":[{},"@jonas"]}}"#,
+                r#"[{},{{"endpoint":[{},"@jonas"]}}]"#,
+                 CoreLibIdIndex::from(CoreLibTypeId::Base(
+                    CoreLibBaseTypeId::Map
+                )),
                 CoreLibIdIndex::from(CoreLibTypeId::Base(
                     CoreLibBaseTypeId::Endpoint
                 ))
@@ -551,7 +542,6 @@ mod tests {
         let mut cache = DIFSharedContainerCache::default();
         let serialized =
             SerdeContext::<Value>::new(&mut cache).serialize_to_json(&value);
-        println!("Serialized value: {serialized}");
         let deserialized: Value = SerdeContext::<Value>::new(&mut cache)
             .try_deserialize_from_json(&serialized)
             .unwrap();
