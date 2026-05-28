@@ -29,18 +29,21 @@ use crate::{
         instructions::Instruction,
         regular_instructions::RegularInstruction,
     },
-    libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
+    libs::core::{
+        core_lib_id::{CoreLibId, CoreLibIdIndex},
+        type_id::{CoreLibBaseTypeId, CoreLibTypeId},
+    },
     prelude::*,
     runtime::execution::ExecutionError,
     shared_values::{
-        OwnedSharedContainer,
         PointerAddress, ReferenceMutability, SharedContainer,
+        SharedContainerOwnership,
     },
-    types::{r#type::Type, type_definition::TypeDefinition},
+    types::{
+        r#type::Type,
+        type_definition::{TypeDefinition, tagged_type::TaggedTypeDefinition},
+    },
 };
-use crate::libs::core::core_lib_id::{CoreLibId, CoreLibIdIndex};
-use crate::shared_values::{ReferencedSharedContainer, SharedContainerOwnership};
-use crate::types::type_definition::tagged_type::TaggedTypeDefinition;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum SharedValueCompilationError {
@@ -96,7 +99,8 @@ pub fn append_value_container(
     match value_container {
         ValueContainer::Local(value) => append_value(context, value),
         ValueContainer::Shared(reference) => {
-            Ok(append_inline_shared_container(context, reference))
+            append_inline_shared_container(context, reference);
+            Ok(())
         }
     }
 }
@@ -105,16 +109,24 @@ pub fn append_value_container(
 pub fn append_inline_shared_container(
     context: &mut CoreCompilationContext,
     shared_container: SharedContainer,
-)  {
+) {
     let ownership = shared_container.ownership();
-    let index = context.shared_value_tracking.register_shared_value(shared_container);
+    let index = context
+        .shared_value_tracking
+        .register_shared_value(shared_container);
     append_regular_instruction(
         context.cursor_mut(),
         match ownership {
-            SharedContainerOwnership::Owned => RegularInstruction::TakeStackValue(index),
-            SharedContainerOwnership::Referenced(ReferenceMutability::Immutable) => RegularInstruction::GetStackValueSharedRef(index),
-            SharedContainerOwnership::Referenced(ReferenceMutability::Mutable) => RegularInstruction::GetStackValueSharedRefMut(index),
-        }
+            SharedContainerOwnership::Owned => {
+                RegularInstruction::TakeStackValue(index)
+            }
+            SharedContainerOwnership::Referenced(
+                ReferenceMutability::Immutable,
+            ) => RegularInstruction::GetStackValueSharedRef(index),
+            SharedContainerOwnership::Referenced(
+                ReferenceMutability::Mutable,
+            ) => RegularInstruction::GetStackValueSharedRefMut(index),
+        },
     );
 }
 
@@ -141,12 +153,12 @@ pub fn append_value(
         // special case: tagged value with default type, no type cast needed
         match custom_type {
             // unit tagged value (e.g. #Example)
-            TypeDefinition::TaggedType(TaggedTypeDefinition  {
-               ty:
-               Some(box TypeDefinition::Core(CoreLibTypeId::Base(
-                                                 CoreLibBaseTypeId::Unit,
-                                             ))),
-               tag,
+            TypeDefinition::TaggedType(TaggedTypeDefinition {
+                ty:
+                    Some(box TypeDefinition::Core(CoreLibTypeId::Base(
+                        CoreLibBaseTypeId::Unit,
+                    ))),
+                tag,
             }) => {
                 append_regular_instruction(
                     context.cursor_mut(),
@@ -159,8 +171,8 @@ pub fn append_value(
             }
             // tagged value with actual value (e.g. #Example(null))
             TypeDefinition::TaggedType(TaggedTypeDefinition {
-               ty: Option::None,
-               tag,
+                ty: Option::None,
+                tag,
             }) => {
                 append_regular_instruction(
                     context.cursor_mut(),
@@ -178,7 +190,10 @@ pub fn append_value(
             match ty.try_as_core_lib_type() {
                 // special core types -> map directly to core pointer addresses
                 Some(core_lib_type_id) => {
-                    append_get_core_lib_value(context.cursor_mut(), core_lib_type_id.into());
+                    append_get_core_lib_value(
+                        context.cursor_mut(),
+                        core_lib_type_id.into(),
+                    );
                 }
                 None => todo!(
                     "Non-core type definitions not yet supported in CompilationContext"
@@ -490,10 +505,7 @@ pub fn append_get_shared_ref(
     }
 }
 
-pub fn append_get_core_lib_value(
-    cursor: &mut ByteCursor,
-    id: CoreLibId,
-) {
+pub fn append_get_core_lib_value(cursor: &mut ByteCursor, id: CoreLibId) {
     append_regular_instruction(
         cursor,
         RegularInstruction::GetCoreLibValue(CoreLibIdIndex::from(id)),
@@ -607,20 +619,20 @@ pub fn append_statements_preamble(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
-        assert_regular_instructions_equal,
-    };
+    use crate::assert_regular_instructions_equal;
 
     #[test]
     fn compile_tagged_empty_value() {
         let value = Value {
             inner: CoreValue::Null,
-            custom_type: Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
-                ty: Some(Box::new(TypeDefinition::Core(CoreLibTypeId::Base(
-                    CoreLibBaseTypeId::Unit,
-                )))),
-                tag: "Example".to_string(),
-            })),
+            custom_type: Some(TypeDefinition::TaggedType(
+                TaggedTypeDefinition {
+                    ty: Some(Box::new(TypeDefinition::Core(
+                        CoreLibTypeId::Base(CoreLibBaseTypeId::Unit),
+                    ))),
+                    tag: "Example".to_string(),
+                },
+            )),
         };
 
         let compiled = compile_value(value).unwrap();
@@ -637,10 +649,12 @@ mod tests {
     fn compile_tagged_value() {
         let value = Value {
             inner: CoreValue::Null,
-            custom_type: Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
-                ty: None,
-                tag: "Example".to_string(),
-            })),
+            custom_type: Some(TypeDefinition::TaggedType(
+                TaggedTypeDefinition {
+                    ty: None,
+                    tag: "Example".to_string(),
+                },
+            )),
         };
 
         let compiled = compile_value(value).unwrap();
@@ -671,7 +685,9 @@ mod tests {
         let compiled = compile_value(value).unwrap();
         assert_regular_instructions_equal!(
             &compiled,
-            [RegularInstruction::GetCoreLibValue(CoreLibBaseTypeId::Integer.into())]
+            [RegularInstruction::GetCoreLibValue(
+                CoreLibBaseTypeId::Integer.into()
+            )]
         );
     }
 }

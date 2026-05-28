@@ -39,8 +39,7 @@ use crate::{
     libs::core::{core_lib_id::CoreLibId, type_id::CoreLibBaseTypeId},
     runtime::Runtime,
     shared_values::{
-        PointerAddress, ReferenceMutability, SharedContainer,
-        SharedContainerMutability,
+        ReferenceMutability, SharedContainer, SharedContainerMutability,
     },
     types::{
         nominal_type_definition::NominalTypeDefinition,
@@ -433,8 +432,10 @@ impl Precompiler<'_> {
                     })
                     .with_span(span.clone())
                 }
-                ResolvedVariable::CoreLibId(core_lib_id) => DatexExpressionData::ResolveCoreLibId(core_lib_id)
-                    .with_span(span.clone()),
+                ResolvedVariable::CoreLibId(core_lib_id) => {
+                    DatexExpressionData::ResolveCoreLibId(core_lib_id)
+                        .with_span(span.clone())
+                }
                 ResolvedVariable::PointerAddress(pointer_address) => {
                     DatexExpressionData::RequestSharedRef(RequestSharedRef {
                         address: pointer_address,

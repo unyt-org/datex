@@ -1,12 +1,10 @@
 use crate::{
     runtime::memory::Memory,
     shared_values::{
-        ExternalSharedContainer,
-        SelfOwnedPointerAddress,
+        ExternalSharedContainer, RemotePointerAddress, SelfOwnedPointerAddress,
         base_shared_value_container::BaseSharedValueContainer,
     },
 };
-use crate::shared_values::RemotePointerAddress;
 
 /// A shared container with a pointer address owned by the local endpoint
 #[derive(Debug)]

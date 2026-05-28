@@ -15,12 +15,12 @@ use crate::{
 
 use crate::{
     global::protocol_structures::instruction_data::{
-        RawRemotePointerAddress,
-        RawSelfOwnedPointerAddress,
+        RawRemotePointerAddress, RawSelfOwnedPointerAddress,
     },
+    libs::core::core_lib_id::CoreLibId,
     shared_values::{
-        PointerAddress, ReferenceMutability,
-        ReferencedSharedContainer, SharedContainer,
+        PointerAddress, ReferenceMutability, ReferencedSharedContainer,
+        SharedContainer,
     },
     values::core_values::endpoint::Endpoint,
 };
@@ -28,7 +28,6 @@ use core::{result::Result, unreachable};
 pub use errors::*;
 pub use execution_input::{ExecutionInput, ExecutionOptions};
 pub use stack_dump::*;
-use crate::libs::core::core_lib_id::CoreLibId;
 
 pub mod context;
 mod errors;
@@ -74,13 +73,11 @@ pub fn execute_dxb_sync(
                     ),
                 );
             }
-            ExternalExecutionInterrupt::GetCoreLibValue(
-                id,
-            ) => {
+            ExternalExecutionInterrupt::GetCoreLibValue(id) => {
                 interrupt_provider.provide_result(
-                    InterruptResult::ResolvedValue(Some(get_core_lib_value_container(
-                        &runtime, id,
-                    )?)),
+                    InterruptResult::ResolvedValue(Some(
+                        get_core_lib_value_container(&runtime, id)?,
+                    )),
                 );
             }
             ExternalExecutionInterrupt::Apply(callee, args) => {
@@ -134,13 +131,11 @@ pub async fn execute_dxb(
                     ),
                 );
             }
-            ExternalExecutionInterrupt::GetCoreLibValue(
-                id,
-            ) => {
+            ExternalExecutionInterrupt::GetCoreLibValue(id) => {
                 interrupt_provider.provide_result(
-                    InterruptResult::ResolvedValue(Some(get_core_lib_value_container(
-                        &runtime, id,
-                    )?)),
+                    InterruptResult::ResolvedValue(Some(
+                        get_core_lib_value_container(&runtime, id)?,
+                    )),
                 );
             }
             ExternalExecutionInterrupt::RemoteExecution(receivers, body) => {
@@ -224,9 +219,7 @@ fn get_core_lib_value_container(
     runtime: &Runtime,
     id: CoreLibId,
 ) -> Result<ValueContainer, ExecutionError> {
-    let value = runtime
-        .core_library()
-        .value_or_type_by_id(id);
+    let value = runtime.core_library().value_or_type_by_id(id);
     Ok(ValueContainer::Local(value.clone()))
 }
 
@@ -266,7 +259,12 @@ mod tests {
             base_shared_value_container::BaseSharedValueContainer,
         },
         traits::{structural_eq::StructuralEq, value_eq::ValueEq},
-        types::{r#type::Type, type_definition::TypeDefinition},
+        types::{
+            r#type::Type,
+            type_definition::{
+                TypeDefinition, tagged_type::TaggedTypeDefinition,
+            },
+        },
         values::{
             core_value::CoreValue,
             core_values::{
@@ -280,7 +278,6 @@ mod tests {
     };
     use core::assert_matches;
     use log::{debug, info};
-    use crate::types::type_definition::tagged_type::TaggedTypeDefinition;
 
     fn execute_datex_script_debug(
         datex_script: &str,

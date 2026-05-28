@@ -3,8 +3,8 @@ pub mod datex_proxy;
 use crate::{
     runtime::memory::Memory,
     shared_values::{
-        ExternalSharedContainer, PointerAddress,
-        ReferenceMutability, SharedContainerInner, SharedContainerMutability,
+        ExternalSharedContainer, PointerAddress, ReferenceMutability,
+        RemotePointerAddress, SharedContainerInner, SharedContainerMutability,
         base_shared_value_container::BaseSharedValueContainer,
         errors::{SharedValueCreationError, UnexpectedImmutableReferenceError},
         internal_traits::_ExposeRcInternal,
@@ -20,7 +20,6 @@ use core::{
     cell::{Ref, RefCell, RefMut},
     fmt::Display,
 };
-use crate::shared_values::RemotePointerAddress;
 
 /// Wrapper struct for a reference to a shared value (i.e. `'shared X` or `'mut shared X`).
 ///

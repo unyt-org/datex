@@ -13,13 +13,13 @@ use crate::{
     prelude::*,
     shared_values::ReferenceMutability,
     types::{
-        r#type::Type, type_definition::TypeDefinition,
+        r#type::Type,
+        type_definition::{TypeDefinition, impl_type::ImplTypeDefinition},
         type_definition_with_metadata::TypeDefinitionWithMetadata,
     },
     utils::buffers::append_u8,
 };
 use binrw::{BinWrite, io::Write};
-use crate::types::type_definition::impl_type::ImplTypeDefinition;
 
 /// Compiles a given type container to a DXB body
 pub fn compile_type(ty: &Type) -> Vec<u8> {
@@ -61,7 +61,10 @@ pub fn append_structural_type_definition(
     type_definition: &TypeDefinition,
 ) {
     match type_definition {
-        TypeDefinition::ImplType(ImplTypeDefinition { inner_type, impl_markers }) => {
+        TypeDefinition::ImplType(ImplTypeDefinition {
+            inner_type,
+            impl_markers,
+        }) => {
             // Append the number of impls
             let impl_count = impl_markers.len() as u8;
             append_u8(context.cursor_mut(), impl_count);

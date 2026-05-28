@@ -3,6 +3,7 @@ use crate::{
         pointer_address::PointerAddressWithOwnership,
         serde_context::SerdeContext,
     },
+    prelude::*,
     shared_values::{
         ReferenceMutability, SharedContainer, SharedContainerOwnership,
     },
@@ -12,7 +13,6 @@ use alloc::format;
 use serde::{
     Deserialize, Deserializer, Serialize, Serializer, de::DeserializeSeed,
 };
-use crate::prelude::*;
 
 impl<'de, 'ctx> DeserializeSeed<'de> for SerdeContext<'ctx, SharedContainer> {
     type Value = SharedContainer;

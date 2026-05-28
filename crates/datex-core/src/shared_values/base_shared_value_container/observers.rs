@@ -1,15 +1,14 @@
 use crate::{
+    dif::serde_context::SerdeContext,
     prelude::*,
     shared_values::base_shared_value_container::BaseSharedValueContainer,
-    utils::freemap::NextKey, value_updates::update_data::Update,
+    utils::{freemap::NextKey, serde_serialize_seed::SerializeSeed},
+    value_updates::update_data::Update,
 };
 use core::{fmt::Display, result::Result};
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use serde::de::DeserializeSeed;
-use datex_macros_internal::Datex;
-use crate::dif::serde_context::SerdeContext;
-use crate::utils::serde_serialize_seed::{SerializeSeed, StatelessSerde};
-use crate::values::core_values::range::Range;
+use serde::{
+    Deserialize, Deserializer, Serialize, Serializer, de::DeserializeSeed,
+};
 
 #[derive(Debug)]
 pub enum ObserverError {
@@ -59,11 +58,14 @@ impl<'de> DeserializeSeed<'de> for SerdeContext<'de, ObserveOptions> {
 impl<'ctx> SerializeSeed for SerdeContext<'ctx, ObserveOptions> {
     type Value = ObserveOptions;
 
-    fn serialize<S: Serializer>(&mut self, value: &Self::Value, serializer: S) -> Result<S::Ok, S::Error> {
+    fn serialize<S: Serializer>(
+        &mut self,
+        value: &Self::Value,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error> {
         value.serialize(serializer)
     }
 }
-
 
 #[derive(
     Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default,

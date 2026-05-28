@@ -1,6 +1,7 @@
-use crate::shared_values::PointerAddress;
+use crate::{
+    libs::core::core_lib_id::CoreLibId, shared_values::PointerAddress,
+};
 use core::fmt::Display;
-use crate::libs::core::core_lib_id::CoreLibId;
 
 pub type VariableId = usize;
 

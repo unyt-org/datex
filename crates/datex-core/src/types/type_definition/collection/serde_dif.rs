@@ -1,19 +1,16 @@
 use crate::{
     dif::serde_context::SerdeContext,
     prelude::*,
-    types::{
-        r#type::Type,
-        type_definition::{
-            collection::{
-                CollectionTypeDefinition,
-                type_definition::{
-                    list::ListCollectionTypeDefinition,
-                    list_slice::ListSliceCollectionTypeDefinition,
-                    map::MapCollectionTypeDefinition,
-                },
+    types::type_definition::{
+        collection::{
+            CollectionTypeDefinition,
+            type_definition::{
+                list::ListCollectionTypeDefinition,
+                list_slice::ListSliceCollectionTypeDefinition,
+                map::MapCollectionTypeDefinition,
             },
-            range::RangeTypeDefinition,
         },
+        range::RangeTypeDefinition,
     },
     utils::serde_serialize_seed::{SerializeSeed, ValueWithSeed},
 };

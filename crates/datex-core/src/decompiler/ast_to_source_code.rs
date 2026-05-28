@@ -370,7 +370,7 @@ impl AstToSourceCodeConverter {
             TypeExpressionData::Recover => {
                 // TODO #653
                 "/*Recovered Type Expression*/".to_string()
-            },
+            }
             TypeExpressionData::GetCoreLibType(core_id) => core_id.to_string(),
         }
     }

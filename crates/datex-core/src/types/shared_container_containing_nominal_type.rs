@@ -1,5 +1,4 @@
 use crate::{
-    libs::core::{core_lib_id::CoreLibId, type_id::CoreLibTypeId},
     runtime::pointer_address_provider::SelfOwnedPointerAddressProvider,
     shared_values::{SharedContainer, SharedContainerMutability},
     types::{

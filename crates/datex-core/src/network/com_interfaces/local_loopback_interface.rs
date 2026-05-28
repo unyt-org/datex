@@ -18,7 +18,6 @@ use crate::{
     },
     prelude::*,
 };
-use core::time::Duration;
 
 /// A simple local loopback interface that puts outgoing data
 /// back into the incoming queue.

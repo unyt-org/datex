@@ -525,24 +525,24 @@ mod tests {
         // 1 <= (1 | 2 | 3)
         assert!(
             Type::from(LiteralTypeDefinition::Integer(Integer::from(1)))
-                .is_subset_of(&Type::from(TypeDefinition::Union(UnionTypeDefinition(
-                    vec![
+                .is_subset_of(&Type::from(TypeDefinition::Union(
+                    UnionTypeDefinition(vec![
                         LiteralTypeDefinition::Integer(Integer::from(1)).into(),
                         LiteralTypeDefinition::Integer(Integer::from(2)).into(),
                         LiteralTypeDefinition::Integer(Integer::from(3)).into()
-                    ]
-                ))))
+                    ])
+                )))
         );
 
         // 1 <= integer | text
         assert!(
             Type::from(LiteralTypeDefinition::Integer(Integer::from(1)))
-                .is_subset_of(&Type::from(TypeDefinition::Union(UnionTypeDefinition(
-                    vec![
+                .is_subset_of(&Type::from(TypeDefinition::Union(
+                    UnionTypeDefinition(vec![
                         Type::core(CoreLibBaseTypeId::Integer),
                         Type::core(CoreLibBaseTypeId::Text),
-                    ]
-                ))))
+                    ])
+                )))
         );
     }
 

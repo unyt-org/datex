@@ -24,7 +24,7 @@ use crate::{
     core_compiler::value_compiler::{
         append_boolean, append_decimal, append_encoded_integer,
         append_endpoint, append_float_as_i16, append_float_as_i32,
-        append_get_core_lib_value, append_get_shared_ref, append_integer,
+        append_get_shared_ref, append_inline_shared_container, append_integer,
         append_key_string, append_regular_instruction,
         append_statements_preamble, append_text, append_typed_decimal,
         append_value,
@@ -50,13 +50,11 @@ use crate::{
         },
         root_properties::RootProperty,
     },
-    libs::core::core_lib_id::CoreLibId,
     parser::{Parser, ParserOptions, errors::SpannedParserError},
     prelude::*,
     runtime::{Runtime, execution::context::ExecutionMode},
     shared_values::{
-        ReferenceMutability, SharedContainer,
-        SharedContainerMutability,
+        ReferenceMutability, SharedContainer, SharedContainerMutability,
     },
     time::Instant,
     utils::buffers::{append_u8, append_u16, append_u32},
@@ -70,7 +68,6 @@ use precompiler::{
     precompile_ast,
     precompiled_ast::{AstMetadata, RichAst, VariableMetadata},
 };
-use crate::core_compiler::value_compiler::append_inline_shared_container;
 
 pub mod context;
 pub mod error;
@@ -1289,8 +1286,8 @@ fn compile_expression(
                 );
             } else {
                 return Err(CompilerError::InvalidRootPropertyName(
-                   property_name.clone(),
-               ));
+                    property_name.clone(),
+                ));
             }
         }
 
@@ -1407,7 +1404,7 @@ fn compile_expression(
                 )?;
             }
         }
-        
+
         DatexExpressionData::ResolveCoreLibId(core_lib_id) => {
             append_regular_instruction(
                 compilation_context.cursor(),
@@ -3296,16 +3293,15 @@ pub mod tests {
         let (res, _) =
             compile_script(script, CompileOptions::default(), Runtime::stub())
                 .unwrap();
-        
+
         assert_regular_instructions_equal!(
             &res,
-            [
-                RegularInstruction::GetCoreLibValue(
-                    CoreLibId::Type(CoreLibTypeId::Base(
-                        CoreLibBaseTypeId::Integer
-                    )).into()
-                ),
-            ]
+            [RegularInstruction::GetCoreLibValue(
+                CoreLibId::Type(CoreLibTypeId::Base(
+                    CoreLibBaseTypeId::Integer
+                ))
+                .into()
+            ),]
         )
     }
 

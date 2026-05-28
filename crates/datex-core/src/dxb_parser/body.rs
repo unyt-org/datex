@@ -12,12 +12,12 @@ use crate::{
         regular_instructions::RegularInstruction,
         type_instructions::TypeInstruction,
     },
+    libs::core::core_lib_id::CoreLibIdIndex,
     prelude::*,
 };
 use alloc::string::FromUtf8Error;
 use binrw::{BinRead, io::Cursor};
 use core::{cell::RefCell, fmt, fmt::Display, result::Result};
-use crate::libs::core::core_lib_id::CoreLibIdIndex;
 
 #[derive(Debug)]
 pub enum DXBParserError {

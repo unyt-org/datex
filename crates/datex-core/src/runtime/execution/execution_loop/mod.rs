@@ -54,8 +54,8 @@ use crate::{
         },
     },
     shared_values::{
-        OwnedSharedContainer, PointerAddress,
-        ReferenceMutability, ReferencedSharedContainer,
+        OwnedSharedContainer, PointerAddress, ReferenceMutability,
+        ReferencedSharedContainer, RemotePointerAddress,
         SelfOwnedSharedContainer, SharedContainer, SharedContainerMutability,
         base_shared_value_container::{
             BaseSharedValueContainer, observers::TransceiverId,
@@ -64,7 +64,10 @@ use crate::{
     types::{
         literal_type_definition::LiteralTypeDefinition,
         r#type::Type,
-        type_definition::TypeDefinition,
+        type_definition::{
+            TypeDefinition, impl_type::ImplTypeDefinition,
+            range::RangeTypeDefinition, tagged_type::TaggedTypeDefinition,
+        },
         type_definition_with_metadata::{
             TypeDefinitionWithMetadata, TypeMetadata,
         },
@@ -87,10 +90,6 @@ use crate::{
 };
 use alloc::rc::Rc;
 use core::cell::RefCell;
-use crate::shared_values::RemotePointerAddress;
-use crate::types::type_definition::impl_type::ImplTypeDefinition;
-use crate::types::type_definition::range::RangeTypeDefinition;
-use crate::types::type_definition::tagged_type::TaggedTypeDefinition;
 
 #[derive(Debug)]
 enum CollectedExecutionResult {

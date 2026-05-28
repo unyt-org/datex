@@ -50,7 +50,9 @@ impl From<SharedValueCompilationError> for CompilerError {
             SharedValueCompilationError::ExpectedOwnedSharedValue => {
                 CompilerError::ExpectedOwnedSharedValue
             }
-            SharedValueCompilationError::ExpectedSharedValue => CompilerError::ExpectedReferencedSharedValue,
+            SharedValueCompilationError::ExpectedSharedValue => {
+                CompilerError::ExpectedReferencedSharedValue
+            }
             SharedValueCompilationError::ExpectedLocalValue => {
                 CompilerError::ExpectedLocalValue
             }
@@ -371,10 +373,7 @@ impl Display for CompilerError {
                 )
             }
             CompilerError::ExpectedLocalValue => {
-                core::write!(
-                    f,
-                    "Expected local value, but found shared value"
-                )
+                core::write!(f, "Expected local value, but found shared value")
             }
             CompilerError::SharedMutRefToImmutableValue => {
                 core::write!(
@@ -387,7 +386,7 @@ impl Display for CompilerError {
                     f,
                     "Cannot convert reference to owned value without cloning or moving"
                 )
-            },
+            }
         }
     }
 }

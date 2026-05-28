@@ -11,11 +11,7 @@ use crate::{
     utils::serde_serialize_seed::{SerializeSeed, ValueWithSeed},
     values::{
         core_value::CoreValue,
-        core_values::{
-            decimal::typed_decimal::TypedDecimal,
-            integer::typed_integer::TypedInteger,
-        },
-        value::Value,
+        core_values::decimal::typed_decimal::TypedDecimal, value::Value,
     },
 };
 use serde::{Serialize, Serializer, de::Visitor, ser::SerializeStruct};
@@ -343,8 +339,8 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, Value> {
         // or it can be an array with length 2, where the first element is the core value and the second element is the custom type definition
         // for the custom type
 
-        let mut custom_type: Option<TypeDefinition> = None;
-        let mut core_value: Option<CoreValue> = None;
+        let _custom_type: Option<TypeDefinition> = None;
+        let _core_value: Option<CoreValue> = None;
 
         let len = seq.size_hint().ok_or_else(|| {
             serde::de::Error::custom(
@@ -360,7 +356,7 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, Value> {
                         serde::de::Error::invalid_length(0, &self)
                     })?;
 
-                let custom_type_definition =
+                let _custom_type_definition =
                     CoreLibId::try_from_str(raw.as_ref()).ok_or_else(|| {
                         serde::de::Error::custom(format!(
                             "invalid core lib id: {raw:?}"
@@ -465,10 +461,7 @@ mod tests {
         // 42 -> u8 [5, 42, <nominmal>]
         // ["integer/u8", 1] -> u8
         // [1, integer/u8]
-        assert_eq!(
-            serialized,
-            r#"[["integer/u8"],5.14]"#
-        );
+        assert_eq!(serialized, r#"[["integer/u8"],5.14]"#);
     }
 
     #[test]

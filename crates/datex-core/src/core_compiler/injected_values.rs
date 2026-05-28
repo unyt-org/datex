@@ -2,31 +2,29 @@ use crate::{
     core_compiler::{
         core_compilation_context::CoreCompilationContext,
         value_compiler::{
-            SharedValueCompilationError,
-            append_regular_instruction,
-            append_value,
+            SharedValueCompilationError, append_regular_instruction,
+            append_value, append_value_container,
         },
     },
-    global::{
-        instruction_codes::InstructionCode,
-        protocol_structures::{
-            injected_values::{InjectedValueType, SharedInjectedValueType},
-            instruction_data::{
-                InstructionBlockData, PerformMove, RawSelfOwnedPointerAddress,
-            },
-            regular_instructions::RegularInstruction,
+    global::protocol_structures::{
+        injected_values::{
+            InjectedValueDeclaration, InjectedValueType,
+            SharedInjectedValueType,
         },
+        instruction_data::{
+            InstructionBlockData, PerformMove, RawSelfOwnedPointerAddress,
+            SharedRef, SharedRefWithValue,
+        },
+        regular_instructions::RegularInstruction,
     },
     prelude::*,
     runtime::execution::ExecutionError,
-    shared_values::{OwnedSharedContainer, SharedContainer},
+    shared_values::{
+        OwnedSharedContainer, PointerAddress, ReferencedSharedContainer,
+        SharedContainer,
+    },
+    values::value_container::ValueContainer,
 };
-use binrw::io::Write;
-use crate::core_compiler::value_compiler::append_value_container;
-use crate::global::protocol_structures::injected_values::InjectedValueDeclaration;
-use crate::global::protocol_structures::instruction_data::{SharedRef, SharedRefWithValue};
-use crate::shared_values::{PointerAddress, ReferencedSharedContainer};
-use crate::values::value_container::ValueContainer;
 
 pub fn compile_injected_values(
     instruction_block_data: InstructionBlockData,
@@ -80,9 +78,10 @@ pub fn compile_injected_values_with_context(
         unreachable!(); // length must always match
     }
 
-    for (injected_value_declaration, value_container) in injected_value_declarations
-        .into_iter()
-        .zip(injected_values.into_iter())
+    for (injected_value_declaration, value_container) in
+        injected_value_declarations
+            .into_iter()
+            .zip(injected_values.into_iter())
     {
         match injected_value_declaration.ty {
             InjectedValueType::Local(_ty) => match value_container {
@@ -97,7 +96,9 @@ pub fn compile_injected_values_with_context(
             },
             InjectedValueType::Shared(ty) => match ty {
                 SharedInjectedValueType::Move => match value_container {
-                    ValueContainer::Shared(SharedContainer::Owned(owned_container)) => todo!(),
+                    ValueContainer::Shared(SharedContainer::Owned(
+                        _owned_container,
+                    )) => todo!(),
                     _ => return Err(
                         SharedValueCompilationError::ExpectedOwnedSharedValue,
                     ),
@@ -148,28 +149,34 @@ fn append_referenced_shared_container(
             compilation_context.cursor_mut(),
             RegularInstruction::SharedRefWithValue(SharedRefWithValue {
                 address: match referenced_container.pointer_address() {
-                    PointerAddress::SelfOwned(self_owned_address) => self_owned_address.into(),
+                    PointerAddress::SelfOwned(self_owned_address) => {
+                        self_owned_address.into()
+                    }
                     _ => unreachable!(), // referenced containers with insert_value=true should always be self owned
                 },
-                ref_mutability: referenced_container.reference_mutability().into(),
-                container_mutability: referenced_container.container_mutability().into(),
+                ref_mutability: referenced_container.reference_mutability(),
+                container_mutability: referenced_container
+                    .container_mutability(),
             }),
         );
-        append_value_container(compilation_context, referenced_container.value_container().clone())?; // TODO: no clone
+        append_value_container(
+            compilation_context,
+            referenced_container.value_container().clone(),
+        )?; // TODO: no clone
     } else {
         append_regular_instruction(
             compilation_context.cursor_mut(),
             RegularInstruction::SharedRef(SharedRef {
                 address: referenced_container.pointer_address().clone().into(),
-                ref_mutability: referenced_container.reference_mutability().into(),
-                container_mutability: referenced_container.container_mutability().into(),
+                ref_mutability: referenced_container.reference_mutability(),
+                container_mutability: referenced_container
+                    .container_mutability(),
             }),
         );
     }
 
     Ok(())
 }
-
 
 pub fn compile_shared_value_preamble(
     compilation_context: &mut CoreCompilationContext,
@@ -313,8 +320,8 @@ mod tests {
             OwnedSharedContainer, PointerAddress, ReferenceMutability,
             SharedContainer, SharedContainerMutability,
         },
+        values::value_container::ValueContainer,
     };
-    use crate::values::value_container::ValueContainer;
 
     #[test]
     fn remote_execution_no_injected_values() {
@@ -352,7 +359,9 @@ mod tests {
         };
         let res = compile_injected_values(
             exec_block_data,
-            vec![ValueContainer::Shared(SharedContainer::Owned(owned_container))],
+            vec![ValueContainer::Shared(SharedContainer::Owned(
+                owned_container,
+            ))],
         )
         .unwrap()
         .0;
@@ -422,7 +431,10 @@ mod tests {
         };
         let res = compile_injected_values(
             exec_block_data,
-            vec![ValueContainer::Shared(shared_value1), ValueContainer::Shared(shared_value2)],
+            vec![
+                ValueContainer::Shared(shared_value1),
+                ValueContainer::Shared(shared_value2),
+            ],
         )
         .unwrap()
         .0;
@@ -481,10 +493,12 @@ mod tests {
             }],
             body: vec![InstructionCode::NULL as u8],
         };
-        let res =
-            compile_injected_values(exec_block_data, vec![ValueContainer::Shared(shared_value)])
-                .unwrap()
-                .0;
+        let res = compile_injected_values(
+            exec_block_data,
+            vec![ValueContainer::Shared(shared_value)],
+        )
+        .unwrap()
+        .0;
         // should allocate slot and then compile the shared value into the buffer, followed by the body
         assert_regular_instructions_equal!(
             &res,
@@ -544,7 +558,10 @@ mod tests {
         };
         let res = compile_injected_values(
             exec_block_data,
-            vec![ValueContainer::Shared(shared_value1), ValueContainer::Shared(shared_value2)],
+            vec![
+                ValueContainer::Shared(shared_value1),
+                ValueContainer::Shared(shared_value2),
+            ],
         )
         .unwrap()
         .0;

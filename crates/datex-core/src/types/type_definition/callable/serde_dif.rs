@@ -6,8 +6,8 @@ use serde::{
 
 use crate::{
     dif::serde_context::SerdeContext,
-    types::{r#type::Type, type_definition::callable::CallableTypeDefinition},
-    utils::serde_serialize_seed::{SerializeSeed, ValueWithSeed},
+    types::type_definition::callable::CallableTypeDefinition,
+    utils::serde_serialize_seed::SerializeSeed,
 };
 
 impl<'ctx> SerializeSeed for SerdeContext<'ctx, CallableTypeDefinition> {
@@ -46,7 +46,7 @@ impl<'de, 'ctx> DeserializeSeed<'de>
 {
     type Value = CallableTypeDefinition;
 
-    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+    fn deserialize<D>(self, _deserializer: D) -> Result<Self::Value, D::Error>
     where
         D: Deserializer<'de>,
     {

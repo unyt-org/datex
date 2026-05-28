@@ -96,10 +96,7 @@ impl<'de, 'ctx> DeserializeSeed<'de>
 {
     type Value = Option<Box<TypeDefinition>>;
 
-    fn deserialize<D>(
-        mut self,
-        deserializer: D,
-    ) -> Result<Self::Value, D::Error>
+    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
     where
         D: Deserializer<'de>,
     {

@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     prelude::*,
-    types::{r#type::Type, type_definition::callable::CallableTypeDefinition},
+    types::type_definition::callable::CallableTypeDefinition,
     values::{
         core_values::callable::error::CallableError,
         value_container::ValueContainer,

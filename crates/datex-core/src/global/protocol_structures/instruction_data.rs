@@ -12,9 +12,8 @@ use crate::{
     },
     prelude::*,
     shared_values::{
-        PointerAddress,
-        ReferenceMutability, RemotePointerAddress, SelfOwnedPointerAddress,
-        SharedContainerMutability,
+        PointerAddress, ReferenceMutability, RemotePointerAddress,
+        SelfOwnedPointerAddress, SharedContainerMutability,
     },
     types::type_definition_with_metadata::TypeMetadata,
     values::core_values::{
@@ -349,7 +348,6 @@ impl TryFrom<PointerAddress> for RawRemotePointerAddress {
 pub struct RawSelfOwnedPointerAddress {
     pub bytes: [u8; 5],
 }
-
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
 #[brw(little)]

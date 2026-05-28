@@ -1,6 +1,7 @@
 use crate::{
     dxb_parser::body::DXBParserError,
     global::protocol_structures::instruction_data::StackIndex,
+    libs::core::core_lib_id::CoreLibIdIndex,
     network::com_hub::network_response::ResponseError,
     prelude::*,
     runtime::execution::execution_loop::state::ExecutionLoopState,
@@ -13,7 +14,6 @@ use crate::{
     values::value_container::{ValueContainer, error::ValueError},
 };
 use core::fmt::Display;
-use crate::libs::core::core_lib_id::CoreLibIdIndex;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum InvalidProgramError {
@@ -26,7 +26,7 @@ pub enum InvalidProgramError {
     ExpectedInstruction,
     ExpectedRegularInstruction,
     ExpectedTypeInstruction,
-    InvalidCoreLibId(CoreLibIdIndex)
+    InvalidCoreLibId(CoreLibIdIndex),
 }
 
 impl Display for InvalidProgramError {

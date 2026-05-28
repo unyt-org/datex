@@ -27,7 +27,7 @@ impl<'de, 'ctx> DeserializeSeed<'de> for SerdeContext<'ctx, Type> {
 
     fn deserialize<D: serde::de::Deserializer<'de>>(
         self,
-        deserializer: D,
+        _deserializer: D,
     ) -> Result<Self::Value, D::Error> {
         todo!()
     }

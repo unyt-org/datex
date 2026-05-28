@@ -5,7 +5,6 @@ use crate::{
     libs::core::core_lib_id::{CoreLibId, CoreLibIdIndex},
     prelude::*,
     types::{
-        literal_type_definition::LiteralTypeDefinition,
         r#type::Type,
         type_definition::{
             TypeDefinition, callable::CallableTypeDefinition,
@@ -70,7 +69,7 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, TypeDefinition> {
                         ))?
                     }
                     TypeDefinition::Shared(
-                        shared_container_containing_type,
+                        _shared_container_containing_type,
                     ) => todo!(),
                     TypeDefinition::Nested(nested) => {
                         outer.serialize_value(&ValueWithSeed::new(

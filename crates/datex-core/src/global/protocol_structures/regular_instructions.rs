@@ -10,18 +10,18 @@ use crate::{
                 FloatAsInt16Data, FloatAsInt32Data, InstructionBlockData,
                 Int8Data, Int16Data, Int32Data, Int64Data, Int128Data,
                 IntegerData, ListData, MapData, ModifyStackValue, Move,
-                PerformMove, PushToStackMultiple,
-                RawRemotePointerAddress, RawSelfOwnedPointerAddress,
-                SetSharedContainerValue, SharedRef, SharedRefWithValue,
-                ShortListData, ShortMapData, ShortStatementsData,
-                ShortTextData, StackIndex, StatementsData, TaggedValue,
-                TextData, UInt8Data, UInt16Data, UInt32Data, UInt64Data,
-                UInt128Data, UnboundedStatementsData,
+                PerformMove, PushToStackMultiple, RawRemotePointerAddress,
+                RawSelfOwnedPointerAddress, SetSharedContainerValue, SharedRef,
+                SharedRefWithValue, ShortListData, ShortMapData,
+                ShortStatementsData, ShortTextData, StackIndex, StatementsData,
+                TaggedValue, TextData, UInt8Data, UInt16Data, UInt32Data,
+                UInt64Data, UInt128Data, UnboundedStatementsData,
             },
             instructions::NextExpectedInstructions,
         },
         root_properties::RootProperty,
     },
+    libs::core::core_lib_id::CoreLibIdIndex,
     prelude::*,
     shared_values::PointerAddress,
     values::core_values::{
@@ -35,7 +35,6 @@ use binrw::{
 };
 use core::fmt::{Display, Write as FmtWrite};
 use serde::{Serialize, Serializer, ser::SerializeTuple};
-use crate::libs::core::core_lib_id::{CoreLibId, CoreLibIdIndex};
 
 #[derive(Clone, Debug, PartialEq, BinWrite)]
 #[brw(little)]
@@ -758,10 +757,8 @@ impl RegularInstruction {
                     .map(RegularInstruction::GetLocalSharedRef)
             }
 
-            InstructionCode::GET_CORE_LIB_VALUE => {
-                CoreLibIdIndex::read(reader)
-                    .map(RegularInstruction::GetCoreLibValue)
-            }
+            InstructionCode::GET_CORE_LIB_VALUE => CoreLibIdIndex::read(reader)
+                .map(RegularInstruction::GetCoreLibValue),
 
             InstructionCode::PERFORM_MOVE => {
                 PerformMove::read(reader).map(RegularInstruction::PerformMove)

@@ -2,8 +2,7 @@ use crate::prelude::*;
 
 use crate::{
     global::protocol_structures::instruction_data::{
-        RawRemotePointerAddress,
-        RawSelfOwnedPointerAddress,
+        RawRemotePointerAddress, RawSelfOwnedPointerAddress,
     },
     values::core_values::endpoint::Endpoint,
 };
@@ -17,7 +16,6 @@ pub struct SelfOwnedPointerAddress {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RemotePointerAddress(pub [u8; 26]);
-
 
 impl RemotePointerAddress {
     pub fn for_endpoint(endpoint: &Endpoint, id: [u8; 5]) -> Self {
@@ -92,9 +90,7 @@ impl PointerAddress {
     }
 
     pub fn remote_for_endpoint(endpoint: &Endpoint, id: [u8; 5]) -> Self {
-        PointerAddress::Remote(RemotePointerAddress::for_endpoint(
-            endpoint, id,
-        ))
+        PointerAddress::Remote(RemotePointerAddress::for_endpoint(endpoint, id))
     }
 }
 
@@ -140,7 +136,6 @@ impl From<RawSelfOwnedPointerAddress> for PointerAddress {
         PointerAddress::SelfOwned(SelfOwnedPointerAddress::new(raw.bytes))
     }
 }
-
 
 impl From<RawRemotePointerAddress> for PointerAddress {
     fn from(raw: RawRemotePointerAddress) -> Self {
@@ -199,9 +194,7 @@ impl PointerAddress {
     pub fn bytes(&self) -> &[u8] {
         match self {
             PointerAddress::SelfOwned(local_address) => &local_address.address,
-            PointerAddress::Remote(addr) => {
-                &addr.0
-            }
+            PointerAddress::Remote(addr) => &addr.0,
         }
     }
 }

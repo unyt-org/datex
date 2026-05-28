@@ -88,8 +88,7 @@ impl TryFrom<CoreLibIdIndex> for CoreLibId {
     fn try_from(bytes: CoreLibIdIndex) -> Result<Self, Self::Error> {
         if bytes.0 == 0 {
             Ok(CoreLibId::CoreMap)
-        }
-        else if let Ok(type_id) = CoreLibTypeId::try_from(bytes) {
+        } else if let Ok(type_id) = CoreLibTypeId::try_from(bytes) {
             Ok(CoreLibId::Type(type_id))
         } else if let Ok(value_id) = CoreLibValueId::try_from(bytes) {
             Ok(CoreLibId::Value(value_id))

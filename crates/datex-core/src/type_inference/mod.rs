@@ -30,8 +30,8 @@ use crate::{
     compiler::precompiler::precompiled_ast::{AstMetadata, RichAst},
     global::protocol_structures::instruction_data::StackIndex,
     libs::core::{
-        core_lib_id::{CoreLibId, CoreLibIdIndex},
-        type_id::{CoreLibBaseTypeId, CoreLibTypeId, CoreLibVariantTypeId},
+        core_lib_id::CoreLibId,
+        type_id::{CoreLibBaseTypeId, CoreLibTypeId},
     },
     prelude::*,
     runtime::memory::Memory,
@@ -587,9 +587,9 @@ impl<'a> TypeExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
     fn visit_get_core_lib_type(
         &mut self,
         core_lib_type_id: &mut CoreLibTypeId,
-        span: &Range<usize>,
+        _span: &Range<usize>,
     ) -> TypeExpressionVisitResult<SpannedTypeError> {
-        mark_type(TypeDefinition::Core(core_lib_type_id.clone()).into())
+        mark_type(TypeDefinition::Core(*core_lib_type_id).into())
     }
 }
 
@@ -1264,8 +1264,8 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
         span: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
         fn variant_type_id_from_pointer_address(
-            pointer_address: &PointerAddress,
-            variant_access: &VariantAccess,
+            _pointer_address: &PointerAddress,
+            _variant_access: &VariantAccess,
             span: &Range<usize>,
         ) -> ExpressionVisitResult<SpannedTypeError> {
             // TODO implement variant access
@@ -1338,7 +1338,7 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
                     Type::Alias(alias) => {
                         match &alias.definition {
                             TypeDefinition::Core(core_lib_id) => {
-                                variant_type_id(CoreLibId::Type(core_lib_id.clone()), variant_access, span)
+                                variant_type_id(CoreLibId::Type(*core_lib_id), variant_access, span)
                             }
                             _ => Err(SpannedTypeError {
                                 error: TypeError::Unimplemented(

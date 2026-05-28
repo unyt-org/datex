@@ -13,6 +13,7 @@ use crate::{
         VariableAssignment, VariableDeclaration, VariantAccess,
     },
     global::protocol_structures::instruction_data::StackIndex,
+    libs::core::core_lib_id::CoreLibId,
     prelude::*,
     values::core_values::{
         decimal::{Decimal, typed_decimal::TypedDecimal},
@@ -26,7 +27,6 @@ use crate::{
     },
 };
 use core::ops::Range;
-use crate::libs::core::core_lib_id::CoreLibId;
 
 pub trait ExpressionVisitor<E>: TypeExpressionVisitor<E> {
     /// Handle expression error

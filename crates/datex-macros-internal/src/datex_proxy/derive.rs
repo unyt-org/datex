@@ -342,7 +342,7 @@ fn derive_enum(data_enum: DataEnum, ident: &Ident) -> DeriveData {
             fields_type,
             into_datex_fields,
             from_datex_fields,
-            field_types,
+            field_types: _,
         } = derive_fields(&variant.fields);
 
         // if any variant is fallible, mark as fallible
@@ -668,13 +668,11 @@ fn derive_fields(fields: &Fields) -> FieldDeriveData {
                         )?
                 });
 
-                field_types.push(
-                    generate_field_type_code(
-                        &field_attributes.serde_mode,
-                        &field_name,
-                        field_type
-                    )
-                );
+                field_types.push(generate_field_type_code(
+                    &field_attributes.serde_mode,
+                    &field_name,
+                    field_type,
+                ));
             }
 
             // tuple struct or unit struct

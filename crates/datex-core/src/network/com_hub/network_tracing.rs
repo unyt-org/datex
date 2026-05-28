@@ -19,27 +19,24 @@ use crate::{
     },
     runtime::execution::{ExecutionInput, ExecutionOptions, execute_dxb_sync},
     values::{
-        core_value::CoreValue,
-        core_values::{
-            boolean::Boolean, endpoint::Endpoint,
-            integer::typed_integer::TypedInteger, map::Map,
-        },
-        value::Value,
+        core_value::CoreValue, core_values::endpoint::Endpoint, value::Value,
         value_container::ValueContainer,
     },
 };
 
 use crate::{
     core_compiler::value_compiler::compile_value,
+    datex_proxy::{
+        DatexValueContainerProxyDeserialize,
+        DatexValueContainerProxyInfallibleSerialize,
+    },
     prelude::*,
     runtime::{Runtime, execution::execution_input::ExecutionCallerMetadata},
-    values::core_values::text::Text,
 };
+use datex_macros_internal::Datex;
 use log::{error, info};
 use serde::{Deserialize, Serialize};
 use serde_with::{DurationMilliSeconds, serde_as};
-use datex_macros_internal::Datex;
-use crate::datex_proxy::{DatexValueContainerProxyDeserialize, DatexValueContainerProxyInfallibleSerialize};
 
 #[derive(Datex, Serialize, Deserialize, Debug, Clone)]
 #[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
@@ -65,7 +62,13 @@ impl NetworkTraceHopSocket {
 }
 
 #[derive(
-    Datex, Serialize, Deserialize, Debug, PartialEq, Clone, strum_macros::Display,
+    Datex,
+    Serialize,
+    Deserialize,
+    Debug,
+    PartialEq,
+    Clone,
+    strum_macros::Display,
 )]
 #[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
 pub enum NetworkTraceHopDirection {
@@ -552,8 +555,9 @@ impl ComHub {
             ..
         })) = hops_datex
         {
-            let hops: Vec<NetworkTraceHop> = list.into_iter()
-                .map(|v| NetworkTraceHop::try_from_value_container(v))
+            let hops: Vec<NetworkTraceHop> = list
+                .into_iter()
+                .map(NetworkTraceHop::try_from_value_container)
                 .collect::<Result<Vec<_>, _>>()
                 .ok()?;
             Some(hops)
@@ -608,7 +612,10 @@ impl ComHub {
         hops: Vec<NetworkTraceHop>,
     ) {
         // convert hops to DATEX
-        let hops_datex = hops.into_iter().map(|hop| hop.to_value_container()).collect::<Vec<ValueContainer>>();
+        let hops_datex = hops
+            .into_iter()
+            .map(|hop| hop.to_value_container())
+            .collect::<Vec<ValueContainer>>();
 
         let dxb = compile_value(Value::from(hops_datex)).unwrap();
         // info!(

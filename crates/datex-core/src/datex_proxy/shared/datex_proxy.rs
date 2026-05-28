@@ -1,19 +1,23 @@
 use crate::{
     datex_proxy::{
-        DatexValueContainerProxy, DatexValueContainerProxyDeserialize,
+        DatexProxyTypes, DatexValueContainerProxy,
+        DatexValueContainerProxyDeserialize,
         DatexValueContainerProxyInfallibleSerialize,
         DatexValueContainerProxySerialize, TryFromDatexValueError,
         TryToDatexValueError, shared::Shared,
     },
     prelude::*,
+    runtime::memory::Memory,
+    shared_values::{SharedContainerMutability, SharedContainerOwnership},
+    types::{
+        r#type::Type,
+        type_definition::TypeDefinition,
+        type_definition_with_metadata::{
+            TypeDefinitionWithMetadata, TypeMetadata,
+        },
+    },
     values::value_container::ValueContainer,
 };
-use crate::datex_proxy::DatexProxyTypes;
-use crate::runtime::memory::Memory;
-use crate::shared_values::{SharedContainerMutability, SharedContainerOwnership};
-use crate::types::r#type::Type;
-use crate::types::type_definition::TypeDefinition;
-use crate::types::type_definition_with_metadata::{TypeDefinitionWithMetadata, TypeMetadata};
 
 impl<T: DatexValueContainerProxy> DatexValueContainerProxyInfallibleSerialize
     for Shared<T>
@@ -54,7 +58,7 @@ impl<T: DatexValueContainerProxy> DatexProxyTypes for Shared<T> {
             metadata: TypeMetadata::Shared {
                 mutability: SharedContainerMutability::Mutable,
                 ownership: SharedContainerOwnership::Owned,
-            }
+            },
         })
     }
 }
