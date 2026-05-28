@@ -1,4 +1,4 @@
-use core::fmt;
+use core::{fmt, panic};
 
 use crate::{
     dif::serde_context::SerdeContext,
@@ -17,14 +17,15 @@ use crate::{
             list::List, map::Map, range::Range,
         },
         value::Value,
+        value_container::ValueContainer,
     },
 };
 use num::ToPrimitive;
 use ordered_float::OrderedFloat;
 use serde::{
-    Deserialize, Serialize, Serializer,
-    de::Visitor,
-    ser::{SerializeStruct, SerializeTuple},
+    Deserialize, Deserializer, Serialize, Serializer,
+    de::{DeserializeSeed, Visitor},
+    ser::{SerializeMap, SerializeStruct, SerializeTuple},
 };
 
 impl<'ctx> SerdeContext<'ctx, Value> {
@@ -196,7 +197,16 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, Value> {
                 self.serialize_direct(f32, &value.custom_type, serializer)
             }
             CoreValue::Map(Map::StructuralWithStringKeys(map)) => {
-                self.serialize_direct(map, &value.custom_type, serializer)
+                let mut map_serializer =
+                    serializer.serialize_map(Some(map.len()))?;
+                for (key, value) in map {
+                    map_serializer.serialize_key(key)?;
+                    map_serializer.serialize_value(&ValueWithSeed::new(
+                        value,
+                        self.cast::<ValueContainer>(),
+                    ))?;
+                }
+                map_serializer.end()
             }
 
             // Core values that require a specific core type id to be serialized for non-ambiguous deserialization
@@ -270,7 +280,7 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, Value> {
     type Value = Value;
 
     fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str("struct Value with a 'value' property")
+        f.write_str("a value, which can be a direct core value (e.g. boolean, text) or a complex value with a custom type definition")
     }
 
     fn visit_bool<E>(self, v: bool) -> Result<Self::Value, E>
@@ -357,8 +367,12 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, Value> {
                 ))
             })?;
 
+        // FIXME Why the option not works??
         let custom_type: Option<TypeDefinition> =
             seq.next_element_seed(self.cast::<TypeDefinition>())?;
+        // let custom_type: Option<TypeDefinition> = seq
+        //     .next_element_seed(self.cast::<Option<TypeDefinition>>())?
+        //     .ok_or_else(|| serde::de::Error::invalid_length(1, &self))?;
 
         let inner: CoreValue =
             self.next_core_value_by_type_id(&mut seq, core_lib_id)?;
@@ -499,10 +513,19 @@ impl<'ctx, T> SerdeContext<'ctx, T> {
     }
 }
 
+impl<'de, 'ctx> DeserializeSeed<'de> for SerdeContext<'ctx, Value> {
+    type Value = Value;
+
+    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deserializer.deserialize_any(self)
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use core::str::FromStr;
-
     use super::*;
     use crate::{
         dif::cache::DIFSharedContainerCache,
@@ -515,8 +538,33 @@ mod tests {
                 integer::{Integer, typed_integer::IntegerTypeVariant},
                 map::Map,
             },
+            value_container::ValueContainer,
         },
     };
+    use core::str::FromStr;
+    use test_case::test_case;
+
+    #[test]
+    fn endpoint_serialization() {
+        let endpoint = Endpoint::from_str("@jonas").unwrap();
+        let value = Value {
+            inner: CoreValue::Endpoint(endpoint.clone()),
+            custom_type: None,
+        };
+        let mut cache = DIFSharedContainerCache::default();
+        let serialized =
+            SerdeContext::<Value>::new(&mut cache).serialize_to_json(&value);
+        assert_eq!(
+            serialized,
+            format!(
+                r#"[{},null,"{}"]"#,
+                CoreLibIdIndex::from(CoreLibTypeId::Base(
+                    CoreLibBaseTypeId::Endpoint
+                )),
+                endpoint
+            )
+        );
+    }
 
     #[test]
     fn serialize_map() {
@@ -524,7 +572,9 @@ mod tests {
         let value =
             Value::from(CoreValue::Map(Map::StructuralWithStringKeys(vec![(
                 "endpoint".into(),
-                Value::from(Endpoint::from_str("@jonas").unwrap()).into(),
+                ValueContainer::Local(Value::from(
+                    Endpoint::from_str("@jonas").unwrap(),
+                )),
             )])));
         let mut cache = DIFSharedContainerCache::default();
         let serialized =
@@ -532,10 +582,7 @@ mod tests {
         assert_eq!(
             serialized,
             format!(
-                r#"[{},{{"endpoint":[{},"@jonas"]}}]"#,
-                CoreLibIdIndex::from(CoreLibTypeId::Base(
-                    CoreLibBaseTypeId::Map
-                )),
+                r#"{{"endpoint":[{},null,"@jonas"]}}"#,
                 CoreLibIdIndex::from(CoreLibTypeId::Base(
                     CoreLibBaseTypeId::Endpoint
                 ))
@@ -552,7 +599,7 @@ mod tests {
         assert_eq!(
             serialized,
             format!(
-                r#"[{},[["endpoint",[{},"@jonas"]]]]"#,
+                r#"[{},null,[["endpoint",[{},null,"@jonas"]]]]"#,
                 CoreLibIdIndex::from(CoreLibTypeId::Base(
                     CoreLibBaseTypeId::Map
                 )),
@@ -609,7 +656,7 @@ mod tests {
         assert_eq!(
             serialized,
             format!(
-                r#"[{},5.14]"#,
+                r#"[{},null,5.14]"#,
                 CoreLibIdIndex::from(CoreLibTypeId::Variant(
                     CoreLibVariantTypeId::Decimal(DecimalTypeVariant::F64)
                 ))
@@ -624,7 +671,7 @@ mod tests {
         assert_eq!(
             serialized,
             format!(
-                r#"[{},"42"]"#,
+                r#"[{},null,"42"]"#,
                 CoreLibIdIndex::from(CoreLibTypeId::Base(
                     CoreLibBaseTypeId::Integer
                 ))
@@ -639,11 +686,40 @@ mod tests {
         assert_eq!(
             serialized,
             format!(
-                r#"[{},42]"#,
+                r#"[{},null,42]"#,
                 CoreLibIdIndex::from(CoreLibTypeId::Variant(
                     CoreLibVariantTypeId::Integer(IntegerTypeVariant::U8)
                 ))
             )
         );
+    }
+
+    #[test_case(
+        CoreValue::Text("Hello, world!".into()) ; "text"
+    )]
+    #[test_case(
+        CoreValue::TypedDecimal(TypedDecimal::F32(5.14f32.into())) ; "decimal f32"
+    )]
+    #[test_case(
+        CoreValue::Boolean(true.into()) ; "boolean"
+    )]
+    #[test_case(
+        CoreValue::Endpoint(Endpoint::from_str("@jonas").unwrap()) ; "endpoint"
+    )]
+    #[test_case(
+        CoreValue::Map(Map::StructuralWithStringKeys(vec![(
+            "endpoint".into(),
+            ValueContainer::Local(Value::from(Endpoint::from_str("@jonas").unwrap())),
+        )])) ; "map with string keys"
+    )]
+    fn roundtrip_no_custom_type(value: CoreValue) {
+        let value = Value::from(value);
+        let mut cache = DIFSharedContainerCache::default();
+        let serialized =
+            SerdeContext::<Value>::new(&mut cache).serialize_to_json(&value);
+        let deserialized: Value = SerdeContext::<Value>::new(&mut cache)
+            .try_deserialize_from_json(&serialized)
+            .unwrap();
+        assert_eq!(deserialized, value);
     }
 }
