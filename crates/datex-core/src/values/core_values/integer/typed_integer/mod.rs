@@ -75,7 +75,19 @@ impl Serialize for TypedInteger {
     where
         S: serde::Serializer,
     {
-        serializer.serialize_str(&self.to_string())
+        match self {
+            TypedInteger::IBig(v) => v.serialize(serializer),
+            TypedInteger::I8(v) => v.serialize(serializer),
+            TypedInteger::I16(v) => v.serialize(serializer),
+            TypedInteger::I32(v) => v.serialize(serializer),
+            TypedInteger::I64(v) => v.serialize(serializer),
+            TypedInteger::I128(v) => v.serialize(serializer),
+            TypedInteger::U8(v) => v.serialize(serializer),
+            TypedInteger::U16(v) => v.serialize(serializer),
+            TypedInteger::U32(v) => v.serialize(serializer),
+            TypedInteger::U64(v) => v.serialize(serializer),
+            TypedInteger::U128(v) => v.serialize(serializer),
+        }
     }
 }
 

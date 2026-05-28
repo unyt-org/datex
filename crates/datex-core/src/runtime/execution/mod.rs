@@ -595,14 +595,17 @@ mod tests {
     #[test]
     fn decimal() {
         let result = execute_datex_script_debug_with_result("1.5");
-        assert_eq!(result, Decimal::from_string("1.5").unwrap().into());
+        assert_eq!(result, Decimal::try_from_string("1.5").unwrap().into());
         assert_structural_eq!(result, ValueContainer::from(1.5));
     }
 
     #[test]
     fn decimal_and_integer() {
         let result = execute_datex_script_debug_with_result("-2341324.0");
-        assert_eq!(result, Decimal::from_string("-2341324").unwrap().into());
+        assert_eq!(
+            result,
+            Decimal::try_from_string("-2341324").unwrap().into()
+        );
         assert!(!result.structural_eq(&ValueContainer::from(-2341324)));
     }
 

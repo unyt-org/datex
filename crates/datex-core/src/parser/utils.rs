@@ -99,7 +99,7 @@ pub fn parse_integer_literal(
         let full_number = format!("{}e{}", integer_part, exponent_part);
         // no variant -> plain decimal with exponent
         if variant_part.is_empty() {
-            Decimal::from_string(&full_number).map(IntegerOrDecimal::Decimal)
+            Decimal::try_from_string(&full_number).map(IntegerOrDecimal::Decimal)
         }
         // decimal variant -> typed decimal with exponent
         else if let Ok(decimal_variant) =

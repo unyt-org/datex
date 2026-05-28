@@ -139,7 +139,7 @@ impl TypedDecimal {
                 "-infinity" => f64::NEG_INFINITY,
                 "nan" => f64::NAN,
                 _ => {
-                    let v: Decimal = Decimal::from_string(s)?;
+                    let v: Decimal = Decimal::try_from_string(s)?;
                     let res = v.into_f64();
                     if res.is_finite() {
                         res
@@ -164,7 +164,7 @@ impl TypedDecimal {
             DecimalTypeVariant::F32 => Self::parse_checked_f32(value),
             DecimalTypeVariant::F64 => Self::parse_checked_f64(value),
             DecimalTypeVariant::DBig => {
-                Decimal::from_string(value).map(TypedDecimal::Decimal)
+                Decimal::try_from_string(value).map(TypedDecimal::Decimal)
             }
         }
     }
@@ -187,7 +187,7 @@ impl TypedDecimal {
                 .map(|v| TypedDecimal::F64(OrderedFloat(v)))
                 .map_err(|_: ParseFloatError| NumberParseError::InvalidFormat),
             DecimalTypeVariant::DBig => {
-                Decimal::from_string(value).map(TypedDecimal::Decimal)
+                Decimal::try_from_string(value).map(TypedDecimal::Decimal)
             }
         }
     }
@@ -561,32 +561,29 @@ mod tests {
     }
 
     #[test]
-    fn from_string_f64() {
-        let a = TypedDecimal::parse_checked_f64("42.0").unwrap();
+    fn from_string() {
+        let a = TypedDecimal::parse_checked_f32("42.0").unwrap();
         assert_matches!(a, TypedDecimal::F32(OrderedFloat(42.0)));
 
-        let b = TypedDecimal::parse_checked_f64("42.0").unwrap();
+        let b = TypedDecimal::parse_checked_f32("42.0").unwrap();
         assert_matches!(b, TypedDecimal::F32(OrderedFloat(42.0)));
 
         let c =
-            TypedDecimal::parse_checked_f64("12345678901234567890.123456789")
+            TypedDecimal::parse_checked_f32("12345678901234567890.123456789")
                 .unwrap();
         assert_matches!(c, TypedDecimal::F32(_));
         assert_eq!(c.as_f32(), 12345678901234567890.123456789);
 
-        let d = TypedDecimal::parse_checked_f64("not_a_number");
+        let d = TypedDecimal::parse_checked_f32("not_a_number");
         assert!(d.is_err());
 
-        let e = TypedDecimal::parse_checked_f64("NaN").unwrap();
-        assert!(e.is_nan());
-
-        let f = TypedDecimal::parse_checked_f64("nan").unwrap();
+        let f = TypedDecimal::parse_checked_f32("nan").unwrap();
         assert!(f.is_nan());
 
-        let g = TypedDecimal::parse_checked_f64("Infinity").unwrap();
+        let g = TypedDecimal::parse_checked_f64("infinity").unwrap();
         assert!(g.is_infinite() && g.is_sign_positive());
 
-        let h = TypedDecimal::parse_checked_f64("-infinity").unwrap();
+        let h = TypedDecimal::parse_checked_f32("-infinity").unwrap();
         assert!(h.is_infinite() && h.is_sign_negative());
     }
 

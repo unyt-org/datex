@@ -222,7 +222,7 @@ impl Parser {
                     .map(TypeExpressionData::TypedDecimal)
             }
             None => {
-                Decimal::from_string(&value).map(TypeExpressionData::Decimal)
+                Decimal::try_from_string(&value).map(TypeExpressionData::Decimal)
             }
         };
         match res {
@@ -243,7 +243,7 @@ impl Parser {
         let span = self.advance()?.span.clone();
         // remove all underscores from fraction string
         let fraction: String = fraction.chars().filter(|&c| c != '_').collect();
-        match Decimal::from_string(&fraction) {
+        match Decimal::try_from_string(&fraction) {
             Ok(decimal) => {
                 Ok(TypeExpressionData::Decimal(decimal).with_span(span))
             }
@@ -381,7 +381,7 @@ mod tests {
         assert_eq!(
             expr.data,
             TypeExpressionData::Decimal(
-                Decimal::from_string("123.456").unwrap()
+                Decimal::try_from_string("123.456").unwrap()
             )
         );
     }
@@ -406,7 +406,7 @@ mod tests {
         let expr = parse_type_expression("3/4");
         assert_eq!(
             expr.data,
-            TypeExpressionData::Decimal(Decimal::from_string("3/4").unwrap())
+            TypeExpressionData::Decimal(Decimal::try_from_string("3/4").unwrap())
         );
     }
 }

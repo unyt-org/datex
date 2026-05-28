@@ -2401,7 +2401,7 @@ mod tests {
                 &inferred_type,
                 NominalTypeDefinition::new_base(
                     Type::from(LiteralTypeDefinition::Decimal(
-                        Decimal::from_string("3/4").unwrap()
+                        Decimal::try_from_string("3/4").unwrap()
                     ),),
                     "X".to_string()
                 )
