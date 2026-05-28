@@ -83,6 +83,8 @@ use datex_core::{
     },
 };
 use test_case::test_case;
+use datex_core::types::type_definition::list::ListTypeDefinition;
+use datex_core::types::type_definition::union::UnionTypeDefinition;
 
 #[test_case(
     Example {
@@ -542,4 +544,77 @@ fn get_datex_type_from_struct() {
             .into()
         )
     )
+}
+
+#[test]
+fn get_datex_type_from_enum() {
+    let dx_type = ExampleEnum::datex_type(&mut Memory::default());
+    println!("{}", dx_type);
+    
+    assert_eq!(
+        dx_type,
+        Type::Alias(
+            TypeDefinition::Union(UnionTypeDefinition(vec![
+                TypeDefinition::TaggedType(TaggedTypeDefinition {
+                    tag: "VariantA".to_string(),
+                    ty: None,
+                }).into(),
+                TypeDefinition::TaggedType(TaggedTypeDefinition {
+                    tag: "VariantB".to_string(),
+                    ty: Some(Box::new(TypeDefinition::List(ListTypeDefinition(vec![
+                        Type::Alias(
+                            TypeDefinition::Core(
+                                CoreLibVariantTypeId::Integer(
+                                    IntegerTypeVariant::U8
+                                )
+                                    .into()
+                            )
+                                .into()
+                        ),
+                    ]))))
+                }).into(),
+                TypeDefinition::TaggedType(TaggedTypeDefinition {
+                    tag: "VariantC".to_string(),
+                    ty: Some(Box::new(TypeDefinition::Map(MapTypeDefinition(vec![
+                        (
+                            Type::Alias(
+                                TypeDefinition::Literal(LiteralTypeDefinition::Text(
+                                    "x".to_string()
+                                ))
+                                .into()
+                            ),
+                            Type::Alias(
+                                TypeDefinition::Core(
+                                    CoreLibVariantTypeId::Integer(
+                                        IntegerTypeVariant::U8
+                                    )
+                                    .into()
+                                )
+                                .into()
+                            )
+                        ),
+                        (
+                            Type::Alias(
+                                TypeDefinition::Literal(LiteralTypeDefinition::Text(
+                                    "y".to_string()
+                                ))
+                                .into()
+                            ),
+                            Type::Alias(
+                                TypeDefinition::Core(CoreLibBaseTypeId::Text.into())
+                                    .into()
+                            )
+                        )
+                    ]))))
+                }).into(),
+                TypeDefinition::TaggedType(TaggedTypeDefinition {
+                    tag: "VariantD".to_string(),
+                    ty: Some(Box::new(TypeDefinition::Core(
+                        CoreLibVariantTypeId::Integer(IntegerTypeVariant::U8)
+                            .into()
+                    )))
+                }).into(),
+            ])).into()
+        )
+    );
 }
