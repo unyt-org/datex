@@ -12,7 +12,9 @@ use crate::{
     values::{
         core_value::CoreValue,
         core_values::{
-            boolean::Boolean, decimal::typed_decimal::TypedDecimal, map::Map,
+            boolean::Boolean, decimal::typed_decimal::TypedDecimal,
+            endpoint::Endpoint, integer::typed_integer::TypedInteger,
+            list::List, map::Map, range::Range,
         },
         value::Value,
     },
@@ -20,7 +22,7 @@ use crate::{
 use num::ToPrimitive;
 use ordered_float::OrderedFloat;
 use serde::{
-    Serialize, Serializer,
+    Deserialize, Serialize, Serializer,
     de::Visitor,
     ser::{SerializeStruct, SerializeTuple},
 };
@@ -358,85 +360,143 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, Value> {
         let custom_type: Option<TypeDefinition> =
             seq.next_element_seed(self.cast::<TypeDefinition>())?;
 
-        let inner: CoreValue = match core_lib_id {
-            Some(core_lib_id) => seq.next_element_seed(
-                self.cast_with_core_lib_id::<CoreValue>(core_lib_id),
-            )?,
-            None => seq.next_element_seed(self.cast::<CoreValue>())?,
-        }
-        .ok_or_else(|| serde::de::Error::invalid_length(2, &self))?;
-
+        let inner: CoreValue =
+            self.next_core_value_by_type_id(&mut seq, core_lib_id)?;
         Ok(Value { custom_type, inner })
     }
-    // [(optional) core_lib_id, (optional) custom_type_definition, value]
+}
 
-    // the value can be a array with length 3, where first element is the custom type
-    // the second element is the core value and the third element is the custom type definition for the custom type,
-    // or it can be an array with length 2, where the first element is the core value and the second element is the custom type definition
-    // for the custom type
+impl<'ctx, T> SerdeContext<'ctx, T> {
+    fn next_core_value_by_type_id<'de, A>(
+        &mut self,
+        seq: &mut A,
+        core_lib_id: Option<CoreLibTypeId>,
+    ) -> Result<CoreValue, A::Error>
+    where
+        A: serde::de::SeqAccess<'de>,
+    {
+        let Some(core_lib_id) = core_lib_id else {
+            return seq.next_element()?.ok_or_else(|| {
+                serde::de::Error::custom(
+                    "expected a core value with a core lib id",
+                )
+            });
+        };
+        match core_lib_id {
+            CoreLibTypeId::Base(base) => self.next_base_core_value(seq, base),
+            CoreLibTypeId::Variant(variant) => {
+                self.next_variant_core_value(seq, variant)
+            }
+        }
+    }
 
-    // let _custom_type: Option<TypeDefinition> = None;
-    // let _core_value: Option<CoreValue> = None;
+    fn next_base_core_value<'de, A>(
+        &mut self,
+        seq: &mut A,
+        base: CoreLibBaseTypeId,
+    ) -> Result<CoreValue, A::Error>
+    where
+        A: serde::de::SeqAccess<'de>,
+    {
+        match base {
+            CoreLibBaseTypeId::Endpoint => {
+                Ok(CoreValue::Endpoint(self.next_required(seq)?))
+            }
+            CoreLibBaseTypeId::Decimal => {
+                Ok(CoreValue::Decimal(self.next_required(seq)?))
+            }
+            CoreLibBaseTypeId::Integer => {
+                Ok(CoreValue::Integer(self.next_required(seq)?))
+            }
+            CoreLibBaseTypeId::List => {
+                let list =
+                    seq.next_element_seed(self.cast::<List>())?.ok_or_else(
+                        || serde::de::Error::invalid_length(2, &"list"),
+                    )?;
 
-    // let len = seq.size_hint().ok_or_else(|| {
-    //     serde::de::Error::custom(
-    //         "Value sequence must have known length: expected length 2 or 3",
-    //     )
-    // })?;
-    // match len {
-    //     2 => {
-    //         use alloc::borrow::Cow;
+                Ok(CoreValue::List(list))
+            }
+            CoreLibBaseTypeId::Range => {
+                let range =
+                    seq.next_element_seed(self.cast::<Range>())?.ok_or_else(
+                        || serde::de::Error::invalid_length(2, &"range"),
+                    )?;
+                Ok(CoreValue::Range(range))
+            }
+            CoreLibBaseTypeId::Map => {
+                let map =
+                    seq.next_element_seed(self.cast::<Map>())?.ok_or_else(
+                        || serde::de::Error::invalid_length(2, &"map"),
+                    )?;
 
-    //         let raw =
-    //             seq.next_element::<Cow<'de, str>>()?.ok_or_else(|| {
-    //                 serde::de::Error::invalid_length(0, &self)
-    //             })?;
+                Ok(CoreValue::Map(map))
+            }
+            CoreLibBaseTypeId::Type => {
+                unimplemented!(
+                    "deserialization of type values is not implemented yet"
+                )
+            }
+            CoreLibBaseTypeId::Null => Ok(CoreValue::Null),
+            CoreLibBaseTypeId::Text => {
+                let text: String = self.next_required(seq)?;
+                Ok(CoreValue::Text(text.into()))
+            }
+            CoreLibBaseTypeId::Boolean => {
+                let boolean: bool = self.next_required(seq)?;
+                Ok(CoreValue::Boolean(Boolean::new(boolean)))
+            }
+            CoreLibBaseTypeId::Unit => Ok(CoreValue::Null),
+            CoreLibBaseTypeId::Never => unimplemented!(),
+            CoreLibBaseTypeId::Unknown => todo!(),
+            CoreLibBaseTypeId::Callable => todo!(),
+        }
+    }
 
-    //         let _custom_type_definition =
-    //             CoreLibId::try_from_str(raw.as_ref()).ok_or_else(|| {
-    //                 serde::de::Error::custom(format!(
-    //                     "invalid core lib id: {raw:?}"
-    //                 ))
-    //             })?;
+    fn next_variant_core_value<'de, A>(
+        &mut self,
+        seq: &mut A,
+        variant: CoreLibVariantTypeId,
+    ) -> Result<CoreValue, A::Error>
+    where
+        A: serde::de::SeqAccess<'de>,
+    {
+        match variant {
+            CoreLibVariantTypeId::Integer(variant) => {
+                let value: String = self.next_required(seq)?;
 
-    //         let inner =
-    //             seq.next_element_seed(self.cast::<CoreValue>())?.unwrap();
+                Ok(CoreValue::TypedInteger(
+                    TypedInteger::from_string_and_variant(&value, variant)
+                        .map_err(|err| {
+                            serde::de::Error::custom(format!(
+                                "invalid typed integer value `{value}` for variant `{variant}`: {err}"
+                            ))
+                        })?,
+                ))
+            }
 
-    //         Ok(Value {
-    //             custom_type: None,
-    //             inner,
-    //         })
-    //     }
+            CoreLibVariantTypeId::Decimal(variant) => {
+                let value: String = self.next_required(seq)?;
 
-    //     3 => {
-    //         todo!()
-    //     }
+                Ok(CoreValue::TypedDecimal(
+                    TypedDecimal::from_string_and_variant(&value, variant)
+                        .map_err(|err| {
+                            serde::de::Error::custom(format!(
+                                "invalid typed decimal value `{value}` for variant `{variant}`: {err}"
+                            ))
+                        })?,
+                ))
+            }
+        }
+    }
 
-    //     other => Err(serde::de::Error::invalid_length(other, &self)),
-    // }
-
-    // fn visit_map<A: MapAccess<'de>>(
-    //     mut self,
-    //     mut map: A,
-    // ) -> Result<Value, A::Error> {
-    //     while let Some(key) = map.next_key::<String>()? {
-    //         match key.as_str() {
-    //             "custom_type" => {
-    //                 todo!("custom type")
-    //             }
-    //             _ => {
-    //                 map.next_value::<serde::de::IgnoredAny>()?;
-    //             }
-    //         }
-    //     }
-
-    //     let core_value = self.cast::<CoreValue>().visit_map(map)?;
-
-    //     Ok(Value {
-    //         inner: core_value,
-    //         custom_type: None,
-    //     })
-    // }
+    fn next_required<'de, A, V>(&mut self, seq: &mut A) -> Result<V, A::Error>
+    where
+        A: serde::de::SeqAccess<'de>,
+        V: serde::Deserialize<'de>,
+    {
+        seq.next_element()?
+            .ok_or_else(|| serde::de::Error::invalid_length(2, &"core value"))
+    }
 }
 
 #[cfg(test)]
@@ -452,10 +512,7 @@ mod tests {
             core_values::{
                 decimal::typed_decimal::{DecimalTypeVariant, TypedDecimal},
                 endpoint::Endpoint,
-                integer::{
-                    Integer,
-                    typed_integer::{IntegerTypeVariant, TypedInteger},
-                },
+                integer::{Integer, typed_integer::IntegerTypeVariant},
                 map::Map,
             },
         },
