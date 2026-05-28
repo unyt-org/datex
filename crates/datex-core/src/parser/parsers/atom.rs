@@ -1,7 +1,7 @@
 use crate::{
     ast::{
         expressions::{
-            DatexExpression, DatexExpressionData, RootPropertyAccess,
+            DatexExpression, DatexExpressionData, Return, RootPropertyAccess,
             ValueAccessType,
         },
         spanned::Spanned,
@@ -40,6 +40,7 @@ impl Parser {
             Token::Function | Token::Procedure => {
                 self.parse_callable_definition()?
             }
+            Token::Return => self.parse_return_expression()?,
             Token::Compile => self.parse_compile_expression()?,
 
             Token::Placeholder => self.parse_placeholder()?,
@@ -341,6 +342,17 @@ impl Parser {
                 span,
             }),
         }
+    }
+
+    pub(crate) fn parse_return_expression(
+        &mut self,
+    ) -> Result<DatexExpression, SpannedParserError> {
+        let start = self.advance()?.span.start;
+        let expr = self.parse_parenthesized_statements()?;
+        Ok(DatexExpressionData::Return(Return {
+            expression: Box::new(expr),
+        })
+        .with_span(start..self.get_current_source_position()))
     }
 }
 

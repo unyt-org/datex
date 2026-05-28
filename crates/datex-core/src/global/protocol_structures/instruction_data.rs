@@ -12,9 +12,8 @@ use crate::{
     },
     prelude::*,
     shared_values::{
-        PointerAddress,
-        ReferenceMutability, RemotePointerAddress, SelfOwnedPointerAddress,
-        SharedContainerMutability,
+        PointerAddress, ReferenceMutability, RemotePointerAddress,
+        SelfOwnedPointerAddress, SharedContainerMutability,
     },
     types::type_definition_with_metadata::TypeMetadata,
     values::core_values::{
@@ -350,7 +349,6 @@ pub struct RawSelfOwnedPointerAddress {
     pub bytes: [u8; 5],
 }
 
-
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
 #[brw(little)]
 pub enum RawPointerAddress {
@@ -571,10 +569,40 @@ pub struct JumpData {
     pub offset: i32,
 }
 
+// #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
+// #[brw(little)]
+// pub struct LoopData {
+//     // will be later, when it will have his own instruction
+// }
+
+// #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
+// #[brw(little)]
+// pub struct ConditionData {
+//     // will be later, when it will have his own instruction
+// }
+
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
 #[brw(little)]
 pub struct ApplyData {
     pub arg_count: u16,
+}
+
+#[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
+#[brw(little)]
+pub struct CallData {
+    pub offset: i32,
+    pub arg_count: u16,
+    pub return_add: i32,
+}
+
+#[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]
+#[brw(little)]
+pub struct InlineCallableData {
+    pub name: ShortTextData,
+    pub arg_count: u16,
+    pub bytecode_len: u32,
+    #[br(count = bytecode_len)]
+    pub bytecode: Vec<u8>,
 }
 
 #[derive(BinRead, BinWrite, Clone, Debug, PartialEq)]

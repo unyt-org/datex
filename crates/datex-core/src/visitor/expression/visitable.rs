@@ -355,8 +355,8 @@ impl<E> VisitableExpression<E> for DatexExpression {
             DatexExpressionData::Loop(loop_expr) => {
                 loop_expr.walk_children(visitor)
             }
-            DatexExpressionData::Loop(conditional) => {
-                conditional.walk_children(visitor)
+            DatexExpressionData::Return(expression) => {
+                visitor.visit_datex_expression(&mut expression.expression)
             }
             DatexExpressionData::VariableDeclaration(variable_declaration) => {
                 variable_declaration.walk_children(visitor)

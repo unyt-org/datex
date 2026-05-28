@@ -21,9 +21,9 @@ use crate::{
         protocol_structures::{
             instruction_data::{
                 ApplyData, DecimalData, Float32Data, Float64Data,
-                FloatAsInt16Data, FloatAsInt32Data, IntegerData,
-                ModifyStackValue, RawPointerAddress, ShortTextData,
-                TaggedValue, TextData, UnboundedStatementsData,
+                FloatAsInt16Data, FloatAsInt32Data, InlineCallableData,
+                IntegerData, ModifyStackValue, RawPointerAddress,
+                ShortTextData, TaggedValue, TextData, UnboundedStatementsData,
             },
             instructions::{Instruction, NestedInstructionResolutionStrategy},
             regular_instructions::RegularInstruction,
@@ -80,6 +80,9 @@ use crate::{
         core_value::CoreValue,
         core_values::{
             boolean::Boolean,
+            callable::{
+                Callable, CallableBody, CallableKind, CallableSignature,
+            },
             decimal::{Decimal, typed_decimal::TypedDecimal},
             integer::typed_integer::TypedInteger,
             list::List,
@@ -223,11 +226,9 @@ pub fn execution_loop(
     gen move {
         let mut active_value: Option<ValueContainer> = None;
 
-        for interrupt in inner_execution_loop(
-            dxb_body,
-            interrupt_provider.clone(),
-            state,
-        ) {
+        for interrupt in
+            inner_execution_loop(dxb_body, interrupt_provider.clone(), state)
+        {
             match interrupt {
                 Ok(interrupt) => match interrupt {
                     ExecutionInterrupt::External(external_interrupt) => {
@@ -401,6 +402,20 @@ pub fn inner_execution_loop(
                             }
                             RegularInstruction::Text(TextData(text)) => Some(ValueContainer::from(text).into()),
 
+                            RegularInstruction::InlineCallable(InlineCallableData { name, arg_count, bytecode_len: _, bytecode }) => {
+                                let signature = CallableSignature {
+                                    kind: CallableKind::Function,
+                                    parameter_types: vec![], // FIXME: add parameter type info
+                                    rest_parameter_type: None,
+                                    return_type: None,
+                                    yeet_type: None,
+                                };
+                                Some(ValueContainer::Local(Value::callable(
+                                    Some(name.0.clone()),
+                                    signature,
+                                    CallableBody::DatexBytecode(bytecode),
+                                )).into())
+                            }
                             RegularInstruction::RequestRemoteSharedRef(address) => Some(interrupt_with_value!(
                                     interrupt_provider,
                                     ExecutionInterrupt::External(
@@ -539,6 +554,7 @@ pub fn inner_execution_loop(
                             // NOTE: make sure that get_next_expected_instructions does not return None for these instructions!
                             RegularInstruction::Statements(_) |
                             RegularInstruction::ShortStatements(_) |
+                            RegularInstruction::Return |
                             RegularInstruction::UnboundedStatements |
                             RegularInstruction::UnboundedStatementsEnd(_) |
                             RegularInstruction::List(_) |
@@ -585,6 +601,9 @@ pub fn inner_execution_loop(
                             RegularInstruction::TypedValue |
                             RegularInstruction::Jump(_) |
                             RegularInstruction::JumpIfFalse(_) |
+                            RegularInstruction::Call(_) |
+                            RegularInstruction::Loop |
+                            RegularInstruction::Conditional |
                             RegularInstruction::RemoteExecution(_) |
                             RegularInstruction::SharedRefWithValue(_) |
                             RegularInstruction::TypeExpression => unreachable!(),

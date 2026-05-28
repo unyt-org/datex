@@ -72,6 +72,15 @@ pub fn pretty_print_dxb_to_string(bytes: &[u8]) -> String {
         for child in &node.children {
             tree_to_string(child, depth + 1, output);
         }
+        if let Instruction::Regular(RegularInstruction::InlineCallable(data)) =
+            &*node.instruction
+        {
+            let (body_tree, _err) = disassembler::disassemble_body(
+                &data.bytecode,
+                NestedInstructionResolutionStrategy::ResolveNestedScopesFlat,
+            );
+            tree_to_string(&body_tree, depth + 1, output);
+        }
     }
 
     fn instr_inline(
@@ -138,6 +147,12 @@ pub fn pretty_print_dxb_to_string(bytes: &[u8]) -> String {
             }
             Instruction::Regular(RegularInstruction::JumpIfFalse(data)) => {
                 format!("{}", data.offset)
+            }
+            Instruction::Regular(RegularInstruction::InlineCallable(data)) => {
+                format!(
+                    "{} / {} args / {} bytes",
+                    data.name.0, data.arg_count, data.bytecode_len
+                )
             }
             _ => String::new(),
         };

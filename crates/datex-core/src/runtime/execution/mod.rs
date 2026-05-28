@@ -10,7 +10,12 @@ use crate::{
         },
     },
     traits::apply::{Apply, ApplyError},
-    values::value_container::ValueContainer,
+    values::{
+        core_value::CoreValue,
+        core_values::callable::{Callable, CallableBody},
+        value::Value,
+        value_container::ValueContainer,
+    },
 };
 
 use self::execution_loop::{
@@ -88,7 +93,46 @@ pub fn execute_dxb_sync(
                 );
             }
             ExternalExecutionInterrupt::Apply(callee, args) => {
-                let res = handle_apply(&callee, &args)?;
+                let is_user_fn = callee.with_collapsed_value(|v: &Value| {
+                    matches!(
+                        v.inner,
+                        CoreValue::Callable(Callable {
+                            body: CallableBody::DatexBytecode(_),
+                            ..
+                        })
+                    )
+                });
+                let res = if is_user_fn {
+                    let bytecode = callee.with_collapsed_value(|v: &Value| {
+                        match &v.inner {
+                            CoreValue::Callable(Callable {
+                                body: CallableBody::DatexBytecode(b),
+                                ..
+                            }) => b.clone(),
+                            _ => unreachable!(),
+                        }
+                    });
+                    let child_stack = RuntimeExecutionStack {
+                        values: args.iter().map(|a| Some(a.clone())).collect(),
+                    };
+                    let input = ExecutionInput::new_with_stack(
+                        &bytecode,
+                        ExecutionCallerMetadata::local_default(),
+                        ExecutionOptions::default(),
+                        runtime.clone(),
+                        child_stack,
+                    );
+                    match execute_dxb_sync(input) {
+                        Ok(result) => result,
+                        Err(ExecutionError::IntermediateResultWithState(
+                            result,
+                            _,
+                        )) => result,
+                        Err(error) => return Err(error),
+                    }
+                } else {
+                    handle_apply(&callee, &args)?
+                };
                 interrupt_provider
                     .provide_result(InterruptResult::ResolvedValue(res));
             }
@@ -161,7 +205,46 @@ pub async fn execute_dxb(
                     .provide_result(InterruptResult::ResolvedValue(res));
             }
             ExternalExecutionInterrupt::Apply(callee, args) => {
-                let res = handle_apply(&callee, &args)?;
+                let is_user_fn = callee.with_collapsed_value(|v: &Value| {
+                    matches!(
+                        v.inner,
+                        CoreValue::Callable(Callable {
+                            body: CallableBody::DatexBytecode(_),
+                            ..
+                        })
+                    )
+                });
+                let res = if is_user_fn {
+                    let bytecode = callee.with_collapsed_value(|v: &Value| {
+                        match &v.inner {
+                            CoreValue::Callable(Callable {
+                                body: CallableBody::DatexBytecode(b),
+                                ..
+                            }) => b.clone(),
+                            _ => unreachable!(),
+                        }
+                    });
+                    let child_stack = RuntimeExecutionStack {
+                        values: args.iter().map(|a| Some(a.clone())).collect(),
+                    };
+                    let input = ExecutionInput::new_with_stack(
+                        &bytecode,
+                        ExecutionCallerMetadata::local_default(),
+                        ExecutionOptions::default(),
+                        runtime.clone(),
+                        child_stack,
+                    );
+                    match execute_dxb_sync(input) {
+                        Ok(result) => result,
+                        Err(ExecutionError::IntermediateResultWithState(
+                            result,
+                            _,
+                        )) => result,
+                        Err(error) => return Err(error),
+                    }
+                } else {
+                    handle_apply(&callee, &args)?
+                };
                 interrupt_provider
                     .provide_result(InterruptResult::ResolvedValue(res));
             }
@@ -199,8 +282,6 @@ fn handle_apply(
     callee: &ValueContainer,
     args: &[ValueContainer],
 ) -> Result<Option<ValueContainer>, ApplyError> {
-    // callee is guaranteed to be Some here
-    // apply_single if one arg, apply otherwise
     Ok(if args.len() == 1 {
         callee.try_apply_single(&args[0])?
     } else {
@@ -1125,5 +1206,50 @@ mod tests {
             ",
         );
         assert_eq!(result, Integer::from(1).into());
+    }
+
+    #[test]
+    fn add_func() {
+        let result = execute_datex_script_debug_with_result(
+            "
+            function add(a: Int, b: Int) (a+b);
+            add(3, 5)
+            ",
+        );
+        assert_eq!(result, Integer::from(8).into());
+    }
+
+    #[test]
+    fn add_func_nested_call() {
+        let result = execute_datex_script_debug_with_result(
+            "
+            function add(a: Int, b: Int) (a+b);
+            add(add(1, 2), 5)
+            ",
+        );
+        assert_eq!(result, Integer::from(8).into());
+    }
+
+    #[test]
+    fn add_func_early_return() {
+        let result = execute_datex_script_debug_with_result(
+            "
+            function add_one(a: Int) (return (a+1); a+100);
+            add_one(3)
+            ",
+        );
+        assert_eq!(result, Integer::from(4).into());
+    }
+
+    #[test]
+    #[ignore]
+    fn add_recurs() {
+        let result = execute_datex_script_debug_with_result(
+            "
+            function add_one(a: Int) (if(a==2) (return (a)) else (add_one(a+1)));
+            add_one(1)
+            ",
+        );
+        assert_eq!(result, Integer::from(2).into());
     }
 }

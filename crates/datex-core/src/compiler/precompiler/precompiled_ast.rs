@@ -16,6 +16,7 @@ pub struct VariableMetadata {
 pub enum VariableShape {
     Type,
     Value(VariableKind),
+    Callable,
 }
 
 impl From<VariableKind> for VariableShape {
@@ -29,6 +30,7 @@ impl Display for VariableShape {
         match self {
             VariableShape::Type => core::write!(f, "type"),
             VariableShape::Value(kind) => core::write!(f, "{kind}"),
+            VariableShape::Callable => core::write!(f, "function"),
         }
     }
 }

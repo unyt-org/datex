@@ -11,6 +11,10 @@ use crate::{
         },
         protocol_structures::instruction_data::StackIndex,
     },
+    libs::core::{
+        core_lib_id::CoreLibId, type_id::CoreLibTypeId,
+        value_id::CoreLibValueId,
+    },
     shared_values::{
         PointerAddress, ReferenceMutability, SharedContainerMutability,
     },
@@ -31,9 +35,6 @@ use crate::{
 };
 pub use crate::{prelude::*, values::core_values::callable::CallableKind};
 use core::{fmt::Display, ops, ops::Neg};
-use crate::libs::core::core_lib_id::CoreLibId;
-use crate::libs::core::type_id::CoreLibTypeId;
-use crate::libs::core::value_id::CoreLibValueId;
 
 #[derive(Clone, Debug)]
 /// An expression in the AST
@@ -131,6 +132,9 @@ pub enum DatexExpressionData {
 
     /// Loop expression, e.g. for (a < 10) (body)
     Loop(Loop),
+
+    /// Return expression, e.g. return (42)
+    Return(Return),
 
     // TODO #611: Give information on type kind (nominal & structural)
     /// Variable declaration, e.g. const x = 1, const mut x = 1, or var y = 2. VariableId is always set to 0 by the ast parser.
@@ -357,6 +361,11 @@ pub struct Conditional {
 pub struct Loop {
     pub condition: Option<Box<DatexExpression>>,
     pub body: Box<DatexExpression>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct Return {
+    pub expression: Box<DatexExpression>,
 }
 
 #[derive(Clone, Debug, PartialEq)]

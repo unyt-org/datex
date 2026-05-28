@@ -6,12 +6,12 @@ use crate::{
         instruction_codes::InstructionCode,
         protocol_structures::{
             instruction_data::{
-                ApplyData, DecimalData, Float32Data, JumpData,
-                Float64Data, FloatAsInt16Data, FloatAsInt32Data,
+                ApplyData, CallData, DecimalData, Float32Data, Float64Data,
+                FloatAsInt16Data, FloatAsInt32Data, InlineCallableData,
                 InstructionBlockData, Int8Data, Int16Data, Int32Data,
-                Int64Data, Int128Data, IntegerData, ListData, MapData,
-                ModifyStackValue, Move, PerformMove, PushToStackMultiple,
-                RawRemotePointerAddress,
+                Int64Data, Int128Data, IntegerData, JumpData, ListData,
+                MapData, ModifyStackValue, Move, PerformMove,
+                PushToStackMultiple, RawRemotePointerAddress,
                 RawSelfOwnedPointerAddress, SetSharedContainerValue, SharedRef,
                 SharedRefWithValue, ShortListData, ShortMapData,
                 ShortStatementsData, ShortTextData, StackIndex, StatementsData,
@@ -22,6 +22,7 @@ use crate::{
         },
         root_properties::RootProperty,
     },
+    libs::core::core_lib_id::{CoreLibId, CoreLibIdIndex},
     prelude::*,
     shared_values::PointerAddress,
     values::core_values::{
@@ -35,7 +36,6 @@ use binrw::{
 };
 use core::fmt::{Display, Write as FmtWrite};
 use serde::{Serialize, Serializer, ser::SerializeTuple};
-use crate::libs::core::core_lib_id::{CoreLibId, CoreLibIdIndex};
 
 #[derive(Clone, Debug, PartialEq, BinWrite)]
 #[brw(little)]
@@ -177,6 +177,11 @@ pub enum RegularInstruction {
 
     Jump(JumpData),
     JumpIfFalse(JumpData),
+    Loop,
+    Conditional,
+    Call(CallData),
+    Return,
+    InlineCallable(InlineCallableData),
 }
 
 /// Maps each regular instruction to its corresponding instruction code
@@ -345,13 +350,21 @@ impl From<&RegularInstruction> for InstructionCode {
                 InstructionCode::TYPE_EXPRESSION
             }
             RegularInstruction::Jump(_) => InstructionCode::JUMP,
-            RegularInstruction::JumpIfFalse(_) => InstructionCode::JUMP_IF_FALSE,
+            RegularInstruction::JumpIfFalse(_) => {
+                InstructionCode::JUMP_IF_FALSE
+            }
+            RegularInstruction::Call(_) => InstructionCode::CALL,
+            RegularInstruction::Return => InstructionCode::RETURN,
+            RegularInstruction::InlineCallable(_) => {
+                InstructionCode::INLINE_CALLABLE
+            }
             RegularInstruction::TaggedValue(_) => InstructionCode::TAGGED_VALUE,
             #[cfg(feature = "disassembler")]
             RegularInstruction::_RemoteExecutionDebugFlat(_)
             | RegularInstruction::_RemoteExecutionDebugTree(_) => {
                 InstructionCode::REMOTE_EXECUTION
             }
+            _ => InstructionCode::UNBOUNDED_STATEMENTS,
         }
     }
 }
@@ -481,11 +494,16 @@ impl RegularInstruction {
                 NextExpectedInstructions::Type(1)
             }
 
-            RegularInstruction::Jump(_) => {
-                NextExpectedInstructions::None
-            }
+            RegularInstruction::Jump(_) => NextExpectedInstructions::None,
             RegularInstruction::JumpIfFalse(_) => {
                 NextExpectedInstructions::Regular(1)
+            }
+            RegularInstruction::Call(call_data) => {
+                NextExpectedInstructions::Regular(call_data.arg_count as u32)
+            }
+            RegularInstruction::Return => NextExpectedInstructions::None,
+            RegularInstruction::InlineCallable(_) => {
+                NextExpectedInstructions::None
             }
 
             RegularInstruction::Range => NextExpectedInstructions::Regular(2),
@@ -770,10 +788,8 @@ impl RegularInstruction {
                     .map(RegularInstruction::GetLocalSharedRef)
             }
 
-            InstructionCode::GET_CORE_LIB_VALUE => {
-                CoreLibIdIndex::read(reader)
-                    .map(RegularInstruction::GetCoreLibValue)
-            }
+            InstructionCode::GET_CORE_LIB_VALUE => CoreLibIdIndex::read(reader)
+                .map(RegularInstruction::GetCoreLibValue),
 
             InstructionCode::PERFORM_MOVE => {
                 PerformMove::read(reader).map(RegularInstruction::PerformMove)
@@ -793,10 +809,21 @@ impl RegularInstruction {
                 Ok(RegularInstruction::TypeExpression)
             }
 
-            InstructionCode::JUMP => JumpData::read(reader)
-                .map(RegularInstruction::Jump),
-            InstructionCode::JUMP_IF_FALSE => JumpData::read(reader)
-                .map(RegularInstruction::JumpIfFalse),
+            InstructionCode::JUMP => {
+                JumpData::read(reader).map(RegularInstruction::Jump)
+            }
+            InstructionCode::JUMP_IF_FALSE => {
+                JumpData::read(reader).map(RegularInstruction::JumpIfFalse)
+            }
+
+            InstructionCode::CALL => {
+                CallData::read(reader).map(RegularInstruction::Call)
+            }
+            InstructionCode::RETURN => Ok(RegularInstruction::Return),
+            InstructionCode::INLINE_CALLABLE => {
+                InlineCallableData::read(reader)
+                    .map(RegularInstruction::InlineCallable)
+            }
 
             InstructionCode::RANGE => Ok(RegularInstruction::Range),
 

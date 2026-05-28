@@ -25,6 +25,10 @@ pub enum InstructionCode {
     JUMP,          // unconditional jump (relative byte offset)
     JUMP_IF_FALSE, // conditional jump, jumps if false
 
+    CALL, // call a function (relative byte offset to function entry, arg count) (currently unused, but will be a perfect for performance in future)
+    RETURN, // return from a function
+    INLINE_CALLABLE, // inline callable value (carries compiled function body bytecode)
+
     APPLY_ZERO,
     APPLY_SINGLE,
     APPLY,

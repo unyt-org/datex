@@ -37,6 +37,8 @@ pub struct CompilationContext {
     pub next_label_id: u32,
     pub labels: HashMap<u32, usize>,
     pub pending_jumps: Vec<PendingJump>,
+    /// Label to jump to for `return` statements (inside a function body)
+    pub return_target_label: Option<u32>,
 }
 
 impl CompilationContext {
@@ -74,6 +76,7 @@ impl CompilationContext {
             next_label_id: 0,
             labels: HashMap::new(),
             pending_jumps: Vec::new(),
+            return_target_label: None,
         }
     }
 

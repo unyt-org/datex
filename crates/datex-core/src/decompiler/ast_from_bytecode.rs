@@ -32,8 +32,7 @@ use crate::{
     },
     global::protocol_structures::{
         instruction_data::{
-            ShortTextData, StackIndex, TaggedValue,
-            UnboundedStatementsData,
+            ShortTextData, StackIndex, TaggedValue, UnboundedStatementsData,
         },
         instructions::NestedInstructionResolutionStrategy,
         regular_instructions::RegularInstruction,
@@ -377,7 +376,11 @@ pub fn ast_from_bytecode(
                         | RegularInstruction::TypedValue
                         | RegularInstruction::Jump(_)
                         | RegularInstruction::JumpIfFalse(_)
-                        | RegularInstruction::Conditional(_)
+                        | RegularInstruction::Conditional
+                        | RegularInstruction::Loop
+                        | RegularInstruction::Call(_)
+                        | RegularInstruction::Return
+                        | RegularInstruction::InlineCallable(_)
                         | RegularInstruction::RemoteExecution(_)
                         | RegularInstruction::TypeExpression => {
                             unreachable!()

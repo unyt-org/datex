@@ -234,6 +234,7 @@ pub enum Token {
     #[token("if")] If,
     #[token("else")] Else,
     #[token("for")] For,
+    #[token("return")] Return,
     #[token("compile")] Compile,
 
     #[token("type")] TypeDeclaration,

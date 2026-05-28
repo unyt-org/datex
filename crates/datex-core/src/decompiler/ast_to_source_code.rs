@@ -18,7 +18,7 @@ use core::fmt::{self};
 
 use crate::{
     ast::expressions::{
-        RootPropertyAccess, UnboxSlotAssignment, ValueAccessType,
+        Return, RootPropertyAccess, UnboxSlotAssignment, ValueAccessType,
     },
     decompiler::{FormattingMode, FormattingOptions, IndentType},
     shared_values::ReferenceMutability,
@@ -370,7 +370,7 @@ impl AstToSourceCodeConverter {
             TypeExpressionData::Recover => {
                 // TODO #653
                 "/*Recovered Type Expression*/".to_string()
-            },
+            }
             TypeExpressionData::GetCoreLibType(core_id) => core_id.to_string(),
         }
     }
@@ -655,6 +655,12 @@ impl AstToSourceCodeConverter {
                 code.push_str(") (");
                 code.push_str(&self.format(body));
                 code.push(')');
+                code
+            }
+            DatexExpressionData::Return(Return { expression }) => {
+                let mut code = String::from("return (");
+                code.push_str(&self.format(expression));
+                code.push_str(")");
                 code
             }
             DatexExpressionData::Conditional(Conditional {

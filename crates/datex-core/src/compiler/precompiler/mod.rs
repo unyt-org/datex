@@ -18,12 +18,12 @@ pub mod scope_stack;
 use crate::{
     ast::{
         expressions::{
-            BinaryOperation, CloneExpression, Conditional, DatexExpression,
-            DatexExpressionData, GetSharedRef, Loop, RemoteExecution,
-            RequestSharedRef, Statements, TypeDeclaration, TypeDeclarationKind,
-            Unbox, UnboxAssignment, ValueAccessType, VariableAccess,
-            VariableAssignment, VariableDeclaration, VariableKind,
-            VariantAccess,
+            BinaryOperation, CallableDeclaration, CloneExpression, Conditional,
+            DatexExpression, DatexExpressionData, GetSharedRef, Loop,
+            RemoteExecution, RequestSharedRef, Return, Statements,
+            TypeDeclaration, TypeDeclarationKind, Unbox, UnboxAssignment,
+            ValueAccessType, VariableAccess, VariableAssignment,
+            VariableDeclaration, VariableKind, VariantAccess,
         },
         resolved_variable::ResolvedVariable,
         spanned::Spanned,
@@ -68,6 +68,7 @@ pub struct Precompiler<'a> {
     is_first_level_expression: bool,
     in_conditional_condition: bool,
     in_assignment_rhs: bool,
+    in_function_body: bool,
     runtime: Runtime,
 }
 
@@ -150,6 +151,7 @@ impl<'a> Precompiler<'a> {
             is_first_level_expression: true,
             in_conditional_condition: false,
             in_assignment_rhs: false,
+            in_function_body: false,
             runtime,
         }
     }
@@ -890,18 +892,59 @@ impl<'a> ExpressionVisitor<SpannedCompilerError> for Precompiler<'a> {
         Ok(VisitAction::SkipChildren)
     }
 
+    fn visit_callable_declaration(
+        &mut self,
+        callable_declaration: &mut CallableDeclaration,
+        span: &Range<usize>,
+    ) -> ExpressionVisitResult<SpannedCompilerError> {
+        let _ = span;
+        let name = callable_declaration.name.clone();
+        if let Some(name) = name {
+            self.add_new_variable(name, VariableShape::Callable);
+        }
+        self.scope_stack.push_scope();
+        for (param_name, _) in &callable_declaration.parameters {
+            self.add_new_variable(
+                param_name.clone(),
+                VariableShape::Value(VariableKind::Const),
+            );
+        }
+        let prev = core::mem::replace(&mut self.in_function_body, true);
+        self.visit_datex_expression(&mut callable_declaration.body)?;
+        self.in_function_body = prev;
+        self.scope_stack.pop_scope();
+        Ok(VisitAction::SkipChildren)
+    }
+
+    fn visit_return(
+        &mut self,
+        expression: &mut Return,
+        span: &Range<usize>,
+    ) -> ExpressionVisitResult<SpannedCompilerError> {
+        let _ = span;
+        self.visit_datex_expression(&mut expression.expression)?;
+        Ok(VisitAction::SkipChildren)
+    }
+
     fn visit_identifier(
         &mut self,
         identifier: &mut String,
         span: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedCompilerError> {
-        let access_type = if self.in_conditional_condition {
-            ValueAccessType::Borrow
-        } else if self.in_assignment_rhs {
-            ValueAccessType::Borrow
-        } else {
-            ValueAccessType::MoveOrCopy
-        };
+        let is_callable = self
+            .scope_stack
+            .variable_kind(identifier, &self.ast_metadata.borrow())
+            == Some(VariableShape::Callable);
+        let access_type =
+            if self.in_conditional_condition || self.in_function_body {
+                ValueAccessType::Borrow
+            } else if self.in_assignment_rhs {
+                ValueAccessType::Borrow
+            } else if is_callable {
+                ValueAccessType::Borrow
+            } else {
+                ValueAccessType::MoveOrCopy
+            };
         self.visit_identifier_with_access_type(identifier, span, access_type)
     }
 }

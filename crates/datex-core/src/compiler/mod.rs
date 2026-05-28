@@ -2,9 +2,10 @@
 use crate::{
     ast::{
         expressions::{
-            BinaryOperation, ComparisonOperation, Conditional, DatexExpression,
-            DatexExpressionData, Loop, RemoteExecution, RootPropertyAccess,
-            Statements, UnaryOperation, UnboundedStatement, UnboxAssignment,
+            BinaryOperation, CallableDeclaration, ComparisonOperation,
+            Conditional, DatexExpression, DatexExpressionData, Loop,
+            RemoteExecution, Return, RootPropertyAccess, Statements,
+            UnaryOperation, UnboundedStatement, UnboxAssignment,
             ValueAccessType, VariableAccess, VariableAssignment,
             VariableDeclaration, VariableKind,
         },
@@ -29,6 +30,7 @@ use crate::{
         append_statements_preamble, append_text, append_typed_decimal,
         append_value,
     },
+    disassembler::pretty_print_dxb_to_string,
     global::{
         dxb_block::DXBBlock,
         instruction_codes::InstructionCode,
@@ -41,7 +43,7 @@ use crate::{
                 SharedInjectedValueType,
             },
             instruction_data::{
-                InstructionBlockData, ModifyStackValue,
+                InlineCallableData, InstructionBlockData, ModifyStackValue,
                 SetSharedContainerValue, ShortTextData, StackIndex,
                 TaggedValue, UnboundedStatementsData,
             },
@@ -1580,6 +1582,92 @@ fn compile_expression(
             compilation_context.resolve_pending_jumps();
         }
 
+        DatexExpressionData::CallableDeclaration(callable_decl) => {
+            compilation_context.mark_has_non_static_value();
+
+            let func_name = callable_decl.name.clone().unwrap_or_default();
+            let arg_count = callable_decl.parameters.len() as u16;
+
+            let stack_index = scope.get_next_stack_index();
+
+            let mut child_context = CompilationContext::new(
+                Vec::with_capacity(64),
+                compilation_context.inserted_values.clone(),
+                compilation_context.execution_mode,
+            );
+
+            let body_end_label = child_context.new_label();
+            child_context.return_target_label = Some(body_end_label);
+
+            let mut child_scope =
+                CompilationScope::new(compilation_context.execution_mode);
+            for (i, param) in callable_decl.parameters.iter().enumerate() {
+                child_scope.register_variable_slot(Variable {
+                    name: param.0.clone(),
+                    kind: VariableKind::Const,
+                    index: StackIndex(i as u32),
+                    representation: VariableRepresentation::Constant,
+                });
+            }
+
+            let mut body = *callable_decl.body;
+            ensure_statements(
+                &mut body,
+                Some(UnboundedStatement {
+                    is_first: true,
+                    is_last: true,
+                }),
+            );
+
+            let _ = compile_expression(
+                &mut child_context,
+                RichAst::new(body, &metadata),
+                CompileMetadata::default(),
+                child_scope,
+            )?;
+
+            child_context.bind_label(body_end_label);
+            child_context.return_target_label = None;
+            child_context.resolve_pending_jumps();
+
+            let body_bytecode = child_context.into_buffer();
+
+            compilation_context
+                .append_instruction_code(InstructionCode::PUSH_TO_STACK);
+
+            append_regular_instruction(
+                compilation_context.cursor(),
+                RegularInstruction::InlineCallable(InlineCallableData {
+                    name: ShortTextData(func_name.clone()),
+                    arg_count,
+                    bytecode_len: body_bytecode.len() as u32,
+                    bytecode: body_bytecode,
+                }),
+            );
+
+            scope.register_variable_slot(Variable {
+                name: func_name,
+                kind: VariableKind::Var,
+                index: stack_index,
+                representation: VariableRepresentation::VariableSlot,
+            });
+        }
+
+        DatexExpressionData::Return(Return { expression }) => {
+            compilation_context.mark_has_non_static_value();
+
+            scope = compile_expression(
+                compilation_context,
+                RichAst::new(*expression, &metadata),
+                CompileMetadata::default(),
+                scope,
+            )?;
+
+            if let Some(end_label) = compilation_context.return_target_label {
+                compilation_context.emit_jump_to_label(end_label);
+            }
+        }
+
         DatexExpressionData::ResolveCoreLibId(core_lib_id) => {
             append_regular_instruction(
                 compilation_context.cursor(),
@@ -1723,7 +1811,6 @@ pub mod tests {
         compiler::scope::CompilationScope,
         global::{
             instruction_codes::InstructionCode,
-            protocol_structures::instruction_data::InstructionBlockDataDebugTree,
             type_instruction_codes::TypeInstructionCode,
         },
         runtime::execution::context::ExecutionMode,
@@ -1736,7 +1823,7 @@ pub mod tests {
 
     use crate::{
         compiler::error::CompilerError,
-        disassembler::print_disassembled,
+        disassembler::{pretty_print_dxb_to_string, print_disassembled},
         global::{
             protocol_structures::{
                 injected_values::{
@@ -3991,6 +4078,68 @@ pub mod tests {
             0xFF,
             0xFF,
             InstructionCode::UNBOUNDED_STATEMENTS_END.into(),
+            0,
+        ];
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn simple_function() {
+        let script = "
+            function add(a: Int, b: Int) (a+b); add(3, 5)
+            ";
+        let result = compile_and_log(script);
+        let expected = vec![
+            InstructionCode::SHORT_STATEMENTS.into(),
+            2,
+            0,
+            InstructionCode::PUSH_TO_STACK.into(),
+            InstructionCode::INLINE_CALLABLE.into(),
+            3,   // length of  word "add"
+            97,  // a
+            100, // d
+            100, // d
+            2,   // arg count
+            0,
+            14, // Size of callable body
+            0,
+            0,
+            0,
+            InstructionCode::UNBOUNDED_STATEMENTS.into(),
+            InstructionCode::ADD.into(),
+            InstructionCode::BORROW_STACK_VALUE.into(),
+            0,
+            0,
+            0,
+            0,
+            InstructionCode::BORROW_STACK_VALUE.into(),
+            1,
+            0,
+            0,
+            0,
+            InstructionCode::UNBOUNDED_STATEMENTS_END.into(),
+            0,
+            InstructionCode::APPLY.into(),
+            2,
+            0,
+            InstructionCode::INT.into(),
+            2,
+            1,
+            0,
+            0,
+            0,
+            3,
+            InstructionCode::INT.into(),
+            2,
+            1,
+            0,
+            0,
+            0,
+            5,
+            InstructionCode::BORROW_STACK_VALUE.into(),
+            0,
+            0,
+            0,
             0,
         ];
         assert_eq!(result, expected);
