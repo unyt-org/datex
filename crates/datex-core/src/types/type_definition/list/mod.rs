@@ -1,10 +1,15 @@
 use core::ops::Deref;
 pub mod serde_dif;
-use crate::types::r#type::Type;
-use crate::prelude::*;
+use crate::{prelude::*, types::r#type::Type};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ListTypeDefinition(pub Vec<Type>);
+
+impl ListTypeDefinition {
+    pub fn new(items: Vec<Type>) -> Self {
+        Self(items)
+    }
+}
 
 impl Deref for ListTypeDefinition {
     type Target = Vec<Type>;

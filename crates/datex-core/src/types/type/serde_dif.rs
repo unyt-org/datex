@@ -2,7 +2,10 @@ use crate::{
     dif::serde_context::SerdeContext, types::r#type::Type,
     utils::serde_serialize_seed::SerializeSeed,
 };
-use serde::Serializer;
+use serde::{
+    Serializer,
+    de::{DeserializeSeed, Visitor},
+};
 
 impl<'ctx> SerializeSeed for SerdeContext<'ctx, Type> {
     type Value = Type;
@@ -17,4 +20,25 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, Type> {
     {
         todo!()
     }
+}
+
+impl<'de, 'ctx> DeserializeSeed<'de> for SerdeContext<'ctx, Type> {
+    type Value = Type;
+
+    fn deserialize<D: serde::de::Deserializer<'de>>(
+        self,
+        deserializer: D,
+    ) -> Result<Self::Value, D::Error> {
+        todo!()
+    }
+}
+
+impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, Type> {
+    fn expecting(
+        &self,
+        formatter: &mut std::fmt::Formatter,
+    ) -> std::fmt::Result {
+        formatter.write_str("a type definition")
+    }
+    type Value = Type;
 }

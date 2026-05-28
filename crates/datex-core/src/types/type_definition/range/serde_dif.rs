@@ -4,8 +4,9 @@ use crate::{
     utils::serde_serialize_seed::{SerializeSeed, ValueWithSeed},
 };
 use serde::{
-    Serializer,
-    ser::{SerializeMap, SerializeSeq, SerializeTuple},
+    Deserializer, Serializer,
+    de::{self, DeserializeSeed, SeqAccess, Visitor},
+    ser::SerializeTuple,
 };
 
 impl<'ctx> SerializeSeed for SerdeContext<'ctx, RangeTypeDefinition> {
@@ -26,5 +27,49 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, RangeTypeDefinition> {
             self.cast::<Type>(),
         ))?;
         tuple.end()
+    }
+}
+
+/// Deserialization implementations for [RangeTypeDefinition].
+impl<'de, 'ctx> DeserializeSeed<'de>
+    for SerdeContext<'ctx, RangeTypeDefinition>
+{
+    type Value = RangeTypeDefinition;
+
+    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deserializer.deserialize_seq(self)
+    }
+}
+
+impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, RangeTypeDefinition> {
+    type Value = RangeTypeDefinition;
+
+    fn expecting(
+        &self,
+        formatter: &mut std::fmt::Formatter,
+    ) -> std::fmt::Result {
+        formatter
+            .write_str("a tuple of two Type definitions representing a range")
+    }
+
+    fn visit_seq<A>(mut self, mut seq: A) -> Result<Self::Value, A::Error>
+    where
+        A: SeqAccess<'de>,
+    {
+        let start = seq
+            .next_element_seed(self.cast::<Type>())?
+            .ok_or_else(|| de::Error::invalid_length(0, &self))?;
+
+        let end = seq
+            .next_element_seed(self.cast::<Type>())?
+            .ok_or_else(|| de::Error::invalid_length(1, &self))?;
+
+        Ok(RangeTypeDefinition {
+            start: Box::new(start),
+            end: Box::new(end),
+        })
     }
 }
