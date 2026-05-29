@@ -15,7 +15,7 @@ use crate::{
 use core::ops::Deref;
 use num::ToPrimitive;
 use serde::{
-    Serialize, Serializer,
+    Serializer,
     de::{DeserializeSeed, IntoDeserializer, Visitor},
 };
 
@@ -35,7 +35,8 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, Type> {
                 TypeDefinition::Core(core)
                     if type_definition.metadata == TypeMetadata::default() =>
                 {
-                    core.index().0.serialize(serializer)
+                    self.cast::<TypeDefinition>()
+                        .serialize(&type_definition.definition, serializer)
                 }
                 _ => self
                     .cast::<TypeDefinitionWithMetadata>()

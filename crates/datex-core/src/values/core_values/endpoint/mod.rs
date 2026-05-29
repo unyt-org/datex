@@ -55,7 +55,7 @@ pub enum EndpointType {
     #[default]
     Person = 0,
     Institution = 1,
-    Anonymous = 2,
+    Anonymous = 0xFF,
 }
 
 #[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]
