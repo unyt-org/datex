@@ -177,8 +177,9 @@ impl Decimal {
     }
 
     /// Creates a Decimal from a string representation.
+    /// Supports regular decimal notation, scientific notation, and fractions.
+    /// Special values like "infinity", "-infinity", and "nan" are also supported.
     pub fn try_from_string(s: &str) -> Result<Self, NumberParseError> {
-        // TODO #133 represent as Infinity/-Infinity if out of bounds for representable DATEX values
         match s {
             DECIMAL_INFINITY => Ok(Decimal::Infinity),
             DECIMAL_NEG_INFINITY => Ok(Decimal::NegInfinity),

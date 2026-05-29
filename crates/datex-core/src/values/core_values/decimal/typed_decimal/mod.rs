@@ -10,6 +10,7 @@ use crate::{
 
 use crate::libs::core::type_id::{CoreLibTypeId, CoreLibVariantTypeId};
 use core::{fmt::Display, hash::Hash, num::ParseFloatError, result::Result};
+use num::ToPrimitive;
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use num_traits::Zero;
 use ordered_float::OrderedFloat;
@@ -125,13 +126,12 @@ impl TypedDecimal {
                     let v: f64 = s.parse().map_err(|_: ParseFloatError| {
                         NumberParseError::InvalidFormat
                     })?;
+                    let v: f32 =
+                        v.to_f32().ok_or(NumberParseError::OutOfRange)?;
                     if !v.is_finite() {
                         return Err(NumberParseError::OutOfRange);
                     }
-                    if v > f32::MAX as f64 || v < f32::MIN as f64 {
-                        return Err(NumberParseError::OutOfRange);
-                    }
-                    v as f32
+                    v
                 }
             }
             .into(),
@@ -151,13 +151,13 @@ impl TypedDecimal {
                 DECIMAL_NEG_INFINITY => f64::NEG_INFINITY,
                 DECIMAL_NAN => f64::NAN,
                 _ => {
-                    let v: Decimal = Decimal::try_from_string(s)?;
-                    let res = v.into_f64();
-                    if res.is_finite() {
-                        res
-                    } else {
+                    let v: f64 = s.parse().map_err(|_: ParseFloatError| {
+                        NumberParseError::InvalidFormat
+                    })?;
+                    if !v.is_finite() {
                         return Err(NumberParseError::OutOfRange);
                     }
+                    v
                 }
             }
             .into(),
@@ -165,9 +165,8 @@ impl TypedDecimal {
     }
 
     /// Creates a TypedDecimal from a string and a variant, ensuring the value is within the valid range.
-    /// Returns an error if the value is out of range or cannot be parsed.
-    /// Note: This function does not support Decimal syntax, as it can represent any valid decimal
-    /// value without range limitations.
+    /// Values that cannot be parsed or are out of range for the specified variant will result in an error.
+    /// Special values like "infinity", "-infinity", and "nan" are also supported.
     pub fn try_from_string_and_variant(
         value: &str,
         variant: DecimalTypeVariant,
@@ -577,6 +576,21 @@ mod tests {
     }
 
     #[test]
+    fn from_string_and_variant_out_of_range() {
+        let a = TypedDecimal::parse_checked_f32(&f64::MAX.to_string());
+        assert_eq!(a.err().unwrap(), NumberParseError::OutOfRange);
+
+        let a = TypedDecimal::parse_checked_f32(&f64::MIN.to_string());
+        assert_eq!(a.err().unwrap(), NumberParseError::OutOfRange);
+
+        let a = TypedDecimal::parse_checked_f32("1e40"); // larger than f32::MAX
+        assert_eq!(a.err().unwrap(), NumberParseError::OutOfRange);
+
+        let a = TypedDecimal::parse_checked_f64("1e400"); // larger than f64::MAX
+        assert_eq!(a.err().unwrap(), NumberParseError::OutOfRange);
+    }
+
+    #[test]
     fn from_string_and_variant() {
         let a = TypedDecimal::try_from_string_and_variant(
             "42.0",
@@ -655,34 +669,6 @@ mod tests {
         .unwrap();
         assert_matches!(k, TypedDecimal::Decimal(_));
         assert_eq!(k.as_f64(), 12345678901234567890.123456789);
-
-        let a = TypedDecimal::try_from_string_and_variant(
-            "1e40",
-            DecimalTypeVariant::F32,
-        );
-        assert!(a.is_err());
-        assert_eq!(a.err().unwrap(), NumberParseError::OutOfRange);
-
-        let b = TypedDecimal::try_from_string_and_variant(
-            "-1e40",
-            DecimalTypeVariant::F32,
-        );
-        assert!(b.is_err());
-        assert_eq!(b.err().unwrap(), NumberParseError::OutOfRange);
-
-        let c = TypedDecimal::try_from_string_and_variant(
-            "1e1000",
-            DecimalTypeVariant::F64,
-        );
-        assert!(c.is_err());
-        assert_eq!(c.err().unwrap(), NumberParseError::OutOfRange);
-
-        let d = TypedDecimal::try_from_string_and_variant(
-            "-1e1000",
-            DecimalTypeVariant::F64,
-        );
-        assert!(d.is_err());
-        assert_eq!(d.err().unwrap(), NumberParseError::OutOfRange);
     }
 
     #[test]
