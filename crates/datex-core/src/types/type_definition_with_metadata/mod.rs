@@ -2,6 +2,7 @@ use crate::{prelude::*, types::type_definition::TypeDefinition};
 use core::fmt::Display;
 
 mod metadata;
+pub mod serde_dif;
 pub use metadata::*;
 pub mod type_match;
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]

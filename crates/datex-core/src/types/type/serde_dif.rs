@@ -12,13 +12,15 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, Type> {
 
     fn serialize<S>(
         &mut self,
-        _value: &Self::Value,
-        _serializer: S,
+        value: &Self::Value,
+        serializer: S,
     ) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
-        todo!()
+        match value {
+            // Type::Alias()
+        }
     }
 }
 

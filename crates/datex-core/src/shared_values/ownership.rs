@@ -85,7 +85,8 @@ impl Ord for ReferenceMutability {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(untagged)]
 pub enum SharedContainerOwnership {
     Owned,
     Referenced(ReferenceMutability),

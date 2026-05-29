@@ -18,8 +18,9 @@ pub enum LocalMutability {
     Immutable,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 /// Combination of &/&mut, '/'mut shared and mut prefixes
+#[serde(tag = "kind")]
 pub enum TypeMetadata {
     /// Local types can be mut or not, and can optionally be a reference type with an additional reference mutability (e.g. &mut User)
     Local {
