@@ -532,13 +532,6 @@ mod tests {
 
     #[test]
     fn non_default_representation() {
-        // 1 --> f64
-        // 1 -> f64 -> [1, <nominal>]
-        // 42 -> f64 -> [42, <nominal>]
-        // 42 -> u8 [5, 42, <nominmal>]
-        // ["integer/u8", 1] -> u8
-        // [1, integer/u8]
-
         // f32
         let value = Value::from(CoreValue::TypedDecimal(TypedDecimal::F32(
             5.14f32.into(),
@@ -623,6 +616,33 @@ mod tests {
             "endpoint".into(),
             ValueContainer::Local(Value::from(Endpoint::from_str("@jonas").unwrap())),
         )])) ; "map with string keys"
+    )]
+    #[test_case(
+        CoreValue::Null ; "null"
+    )]
+    #[test_case(
+        CoreValue::Integer(Integer::new(42)) ; "base integer"
+    )]
+    #[test_case(
+        CoreValue::TypedInteger((-42i8).into()) ; "typed integer i8"
+    )]
+    #[test_case(
+        CoreValue::TypedInteger(42u16.into()) ; "typed integer u16"
+    )]
+    #[test_case(
+        CoreValue::TypedInteger(42u32.into()) ; "typed integer u32"
+    )]
+    #[test_case(
+        CoreValue::TypedInteger(42u64.into()) ; "typed integer u64"
+    )]
+    #[test_case(
+        CoreValue::TypedInteger(42u128.into()) ; "typed integer u128"
+    )]
+    #[test_case(
+        CoreValue::TypedDecimal(TypedDecimal::F64(f64::NEG_INFINITY.into())) ; "negative inf f64"
+    )]
+    #[test_case(
+        CoreValue::TypedDecimal(TypedDecimal::F32(f32::NEG_INFINITY.into())) ; "negative inf f32"
     )]
     fn roundtrip_no_custom_type(value: CoreValue) {
         let value = Value::from(value);
