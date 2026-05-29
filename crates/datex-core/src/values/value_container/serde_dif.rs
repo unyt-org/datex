@@ -14,7 +14,7 @@ use serde::{
     de::{DeserializeSeed, MapAccess, Visitor},
 };
 
-const SHARED_CONTAINER_KEY: &str = "$";
+pub const SHARED_CONTAINER_KEY: &str = "$";
 
 /// Deserialization for [ValueContainer] using a [DeserializationContext] to provide access to the memory during deserialization.
 impl<'de, 'ctx> DeserializeSeed<'de> for SerdeContext<'ctx, ValueContainer> {
@@ -158,7 +158,7 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, ValueContainer> {
         Ok(ValueContainer::Local(self.cast::<Value>().visit_f32(v)?))
     }
 
-    // map => shared container { $: pointer address }
+    // map => shared container { $: pointer address }
     fn visit_map<A: MapAccess<'de>>(
         mut self,
         mut map: A,

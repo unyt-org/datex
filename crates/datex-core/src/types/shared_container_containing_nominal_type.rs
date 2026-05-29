@@ -47,6 +47,11 @@ impl SharedContainerContainingNominalType {
             ),
         )
     }
+    
+    /// Converts the [SharedContainerContainingNominalType] into a [SharedContainer], consuming the wrapper.
+    pub fn to_shared_container(self) -> SharedContainer {
+        self.0
+    }
 
     /// Creates a new [SharedContainerContainingNominalType] from a [SharedContainer] without checking the constraint.
     /// # Safety

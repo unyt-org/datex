@@ -1,7 +1,7 @@
 use crate::{
     dif::serde_context::SerdeContext,
     types::{
-        r#type::Type, type_definition::TypeDefinition,
+        type_definition::TypeDefinition,
         type_definition_with_metadata::TypeDefinitionWithMetadata,
     },
     utils::serde_serialize_seed::{SerializeSeed, ValueWithSeed},
@@ -30,19 +30,5 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, TypeDefinitionWithMetadata> {
             &mut self.cast::<TypeDefinition>(),
         ))?;
         seq.end()
-    }
-}
-
-impl<'de, 'ctx> DeserializeSeed<'de>
-    for SerdeContext<'ctx, TypeDefinitionWithMetadata>
-{
-    type Value = TypeDefinitionWithMetadata;
-
-    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-		let seq_d
-		let metadata: TypeMetadata = deserializer.deserialize_s
     }
 }
