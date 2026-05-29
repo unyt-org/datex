@@ -305,10 +305,7 @@ mod tests {
         let value = ValueContainer::Shared(referenced_container);
         let json = SerdeContext::<ValueContainer>::new(cache)
             .serialize_to_json(&value);
-        assert_eq!(
-            json,
-            format!(r#"{{"$":"'{}"}}"#, pointer_address.to_string())
-        );
+        assert_eq!(json, format!(r#"{{"$":"'{}"}}"#, pointer_address));
 
         let outer = SerdeContext::<ValueContainer>::new(cache)
             .try_deserialize_from_json(&json)
@@ -340,7 +337,7 @@ mod tests {
         let json = format!(
             r#"[{},[{{"$":"'{}"}}]]"#,
             CoreLibIdIndex::from(CoreLibBaseTypeId::List),
-            pointer_address.to_string()
+            pointer_address
         );
         let outer = SerdeContext::<ValueContainer>::new(cache)
             .try_deserialize_from_json(&json)
