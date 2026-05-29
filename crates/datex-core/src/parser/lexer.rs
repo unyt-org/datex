@@ -245,8 +245,8 @@ pub enum Token {
     #[regex(r"\$(?:[0-9a-fA-F]{6}|[0-9a-fA-F]{10}|[0-9a-fA-F]{52})", allocated_string)] PointerAddress(String),
 
     // decimal literals (infinity, nan)
-    #[regex(r"[Ii]nfinity")] Infinity,
-    #[regex(r"(?:nan|NaN)")] Nan,
+    #[regex(r"infinity")] Infinity,
+    #[regex(r"nan")] Nan,
 
     /// Decimal integer with suffix
     /// Includes

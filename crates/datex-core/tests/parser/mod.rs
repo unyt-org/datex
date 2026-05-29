@@ -27,10 +27,10 @@ use datex_core::{
 use datex_core::{
     ast::{
         expressions::{
-            Apply, BinaryOperation, CallableDeclaration,
-            ComparisonOperation, Conditional, CreateMut, CreateShared,
-            DatexExpression, DatexExpressionData, GenericInstantiation, GetRef,
-            List, Map, PropertyAccess, PropertyAssignment, RequestSharedRef,
+            Apply, BinaryOperation, CallableDeclaration, ComparisonOperation,
+            Conditional, CreateMut, CreateShared, DatexExpression,
+            DatexExpressionData, GenericInstantiation, GetRef, List, Map,
+            PropertyAccess, PropertyAssignment, RequestSharedRef,
             RootPropertyAccess, UnaryOperation, Unbox, ValueAccessType,
             VariableAssignment, VariableDeclaration, VariableKind,
         },
@@ -52,9 +52,9 @@ use datex_core::{
     shared_values::{
         PointerAddress, ReferenceMutability, SharedContainerMutability,
     },
+    types::type_definition::callable::CallableKind,
     values::core_values::error::NumberParseError,
 };
-use datex_core::types::type_definition::callable::CallableKind;
 
 /// Parse the given source code into a DatexExpression AST.
 fn parse_unwrap(src: &str) -> DatexExpression {
@@ -1383,7 +1383,9 @@ fn integer_with_underscores() {
     let num = parse_unwrap_data(src);
     assert_eq!(
         num,
-        DatexExpressionData::Integer(Integer::try_from_string("123456").unwrap())
+        DatexExpressionData::Integer(
+            Integer::try_from_string("123456").unwrap()
+        )
     );
 }
 
@@ -1511,7 +1513,9 @@ fn negative_decimal() {
     let num = parse_unwrap_data(src);
     assert_eq!(
         num,
-        DatexExpressionData::Decimal(Decimal::try_from_string("-123.4").unwrap())
+        DatexExpressionData::Decimal(
+            Decimal::try_from_string("-123.4").unwrap()
+        )
     );
 }
 
@@ -1586,8 +1590,10 @@ fn list_with_values() {
             DatexExpressionData::Integer(Integer::from(1)).with_default_span(),
             DatexExpressionData::Integer(Integer::from(2)).with_default_span(),
             DatexExpressionData::Integer(Integer::from(3)).with_default_span(),
-            DatexExpressionData::Decimal(Decimal::try_from_string("4.5").unwrap())
-                .with_default_span(),
+            DatexExpressionData::Decimal(
+                Decimal::try_from_string("4.5").unwrap()
+            )
+            .with_default_span(),
             DatexExpressionData::Text("text".to_string()).with_default_span(),
         ]))
     );
@@ -3002,7 +3008,9 @@ fn decimal_to_value_container() {
     let val = parse_to_value_container(src);
     assert_eq!(
         val,
-        ValueContainer::from(Decimal::try_from_string("123.456789123456").unwrap())
+        ValueContainer::from(
+            Decimal::try_from_string("123.456789123456").unwrap()
+        )
     );
 }
 
@@ -3095,10 +3103,6 @@ fn invalid_value_containers() {
 
 #[test]
 fn decimal_nan() {
-    let src = "NaN";
-    let num = parse_unwrap_data(src);
-    assert_matches!(num, DatexExpressionData::Decimal(Decimal::Nan));
-
     let src = "nan";
     let num = parse_unwrap_data(src);
     assert_matches!(num, DatexExpressionData::Decimal(Decimal::Nan));
@@ -3106,14 +3110,6 @@ fn decimal_nan() {
 
 #[test]
 fn decimal_infinity() {
-    let src = "Infinity";
-    let num = parse_unwrap_data(src);
-    assert_eq!(num, DatexExpressionData::Decimal(Decimal::Infinity));
-
-    let src = "-Infinity";
-    let num = parse_unwrap_data(src);
-    assert_eq!(num, DatexExpressionData::Decimal(Decimal::NegInfinity));
-
     let src = "infinity";
     let num = parse_unwrap_data(src);
     assert_eq!(num, DatexExpressionData::Decimal(Decimal::Infinity));
