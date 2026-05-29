@@ -53,7 +53,27 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, Range> {
     fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_str("a range")
     }
-    
+
+    /// We can have the range represented as a sequence of two elements (start and end)
+    fn visit_seq<A>(mut self, mut seq: A) -> Result<Self::Value, A::Error>
+    where
+        A: serde::de::SeqAccess<'de>,
+    {
+        let start = seq
+            .next_element_seed(self.cast::<ValueContainer>())?
+            .ok_or_else(|| A::Error::custom("missing start element"))?;
+        let end = seq
+            .next_element_seed(self.cast::<ValueContainer>())?
+            .ok_or_else(|| A::Error::custom("missing end element"))?;
+
+        Ok(Range {
+            start: Box::new(start),
+            end: Box::new(end),
+        })
+    }
+
+    /// We expect the range to be represented as a map with "start" and "end" keys, each containing a ValueContainer.
+    /// TODO: Add inclusive / exclusive marker here
     fn visit_map<A>(mut self, mut map: A) -> Result<Range, A::Error>
     where
         A: MapAccess<'de>,

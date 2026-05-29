@@ -282,6 +282,90 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, Value> {
         ))))
     }
 
+    // default mapping for integers: decimal/f64 (with a check for overflow)
+    fn visit_i8<E>(self, v: i8) -> Result<Self::Value, E>
+    where
+        E: DeError,
+    {
+        self.visit_f64(v as f64)
+    }
+    fn visit_i16<E>(self, v: i16) -> Result<Self::Value, E>
+    where
+        E: DeError,
+    {
+        self.visit_f64(v as f64)
+    }
+    fn visit_i32<E>(self, v: i32) -> Result<Self::Value, E>
+    where
+        E: DeError,
+    {
+        self.visit_f64(v as f64)
+    }
+    fn visit_i64<E>(self, v: i64) -> Result<Self::Value, E>
+    where
+        E: DeError,
+    {
+        self.visit_f64(v.to_f64().ok_or_else(|| {
+            DeError::custom(format!(
+                "i64 value {v} is too large to fit into f64"
+            ))
+        })?)
+    }
+    fn visit_u8<E>(self, v: u8) -> Result<Self::Value, E>
+    where
+        E: DeError,
+    {
+        self.visit_f64(v as f64)
+    }
+    fn visit_u16<E>(self, v: u16) -> Result<Self::Value, E>
+    where
+        E: DeError,
+    {
+        self.visit_f64(v as f64)
+    }
+    fn visit_u32<E>(self, v: u32) -> Result<Self::Value, E>
+    where
+        E: DeError,
+    {
+        self.visit_f64(v as f64)
+    }
+    fn visit_u64<E>(self, v: u64) -> Result<Self::Value, E>
+    where
+        E: DeError,
+    {
+        self.visit_f64(v.to_f64().ok_or_else(|| {
+            DeError::custom(format!(
+                "u64 value {v} is too large to fit into f64"
+            ))
+        })?)
+    }
+    fn visit_f32<E>(self, v: f32) -> Result<Self::Value, E>
+    where
+        E: DeError,
+    {
+        self.visit_f64(v as f64)
+    }
+    fn visit_i128<E>(self, v: i128) -> Result<Self::Value, E>
+    where
+        E: DeError,
+    {
+        self.visit_f64(v.to_f64().ok_or_else(|| {
+            DeError::custom(format!(
+                "i128 value {v} is too large to fit into f64"
+            ))
+        })?)
+    }
+    fn visit_u128<E>(self, v: u128) -> Result<Self::Value, E>
+    where
+        E: DeError,
+    {
+        self.visit_f64(v.to_f64().ok_or_else(|| {
+            DeError::custom(format!(
+                "u128 value {v} is too large to fit into f64"
+            ))
+        })?)
+    }
+
     /// mapping for [core_lib_type_id, value, custom_type?]
     fn visit_seq<A>(mut self, mut seq: A) -> Result<Self::Value, A::Error>
     where
@@ -298,7 +382,10 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, Value> {
             serde::de::Error::custom("invalid core lib id index".to_string())
         })?;
 
-        let visitor = CoreValueVisitor { core_lib_id, context: &mut self };
+        let visitor = CoreValueVisitor {
+            core_lib_id,
+            context: &mut self,
+        };
         let inner: CoreValue = seq.next_element_seed(visitor)?.ok_or_else(|| {
             serde::de::Error::custom(format!(
                 "expected a sequence with at least two elements for core value deserialization, got only one (core lib id: {core_lib_id})"
@@ -387,7 +474,7 @@ mod tests {
             serialized,
             format!(
                 r#"[{},{{"endpoint":[{},"@jonas"]}}]"#,
-                 CoreLibIdIndex::from(CoreLibTypeId::Base(
+                CoreLibIdIndex::from(CoreLibTypeId::Base(
                     CoreLibBaseTypeId::Map
                 )),
                 CoreLibIdIndex::from(CoreLibTypeId::Base(
