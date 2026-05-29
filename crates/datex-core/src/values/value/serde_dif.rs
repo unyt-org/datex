@@ -405,7 +405,10 @@ mod tests {
     use super::*;
     use crate::{
         dif::cache::DIFSharedContainerCache,
-        libs::core::core_lib_id::CoreLibIdIndex,
+        libs::core::{
+            core_lib_id::CoreLibIdIndex,
+            type_id::{CoreLibBaseTypeId, CoreLibVariantTypeId},
+        },
         values::{
             core_value::CoreValue,
             core_values::{

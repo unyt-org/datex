@@ -20,6 +20,7 @@ use crate::{
         },
     },
 };
+use num::ToPrimitive;
 use serde::de::{Error, MapAccess};
 
 use crate::{
@@ -124,19 +125,39 @@ impl<'de, 'a, 'ctx> Visitor<'de> for CoreValueVisitor<'a, 'ctx> {
             // unsigned integer
             CoreLibTypeId::Variant(CoreLibVariantTypeId::Integer(
                 IntegerTypeVariant::U8,
-            )) => Ok(CoreValue::TypedInteger(TypedInteger::U8(v as u8))),
+            )) => Ok(CoreValue::TypedInteger(TypedInteger::U8(
+                v.to_u8().ok_or_else(|| {
+                    E::custom(format!("failed to convert integer to u8: {v}"))
+                })?,
+            ))),
             CoreLibTypeId::Variant(CoreLibVariantTypeId::Integer(
                 IntegerTypeVariant::U16,
-            )) => Ok(CoreValue::TypedInteger(TypedInteger::U16(v as u16))),
+            )) => Ok(CoreValue::TypedInteger(TypedInteger::U16(
+                v.to_u16().ok_or_else(|| {
+                    E::custom(format!("failed to convert integer to u16: {v}"))
+                })?,
+            ))),
             CoreLibTypeId::Variant(CoreLibVariantTypeId::Integer(
                 IntegerTypeVariant::U32,
-            )) => Ok(CoreValue::TypedInteger(TypedInteger::U32(v as u32))),
+            )) => Ok(CoreValue::TypedInteger(TypedInteger::U32(
+                v.to_u32().ok_or_else(|| {
+                    E::custom(format!("failed to convert integer to u32: {v}"))
+                })?,
+            ))),
             CoreLibTypeId::Variant(CoreLibVariantTypeId::Integer(
                 IntegerTypeVariant::U64,
-            )) => Ok(CoreValue::TypedInteger(TypedInteger::U64(v as u64))),
+            )) => Ok(CoreValue::TypedInteger(TypedInteger::U64(
+                v.to_u64().ok_or_else(|| {
+                    E::custom(format!("failed to convert integer to u64: {v}"))
+                })?,
+            ))),
             CoreLibTypeId::Variant(CoreLibVariantTypeId::Integer(
                 IntegerTypeVariant::U128,
-            )) => Ok(CoreValue::TypedInteger(TypedInteger::U128(v as u128))),
+            )) => Ok(CoreValue::TypedInteger(TypedInteger::U128(
+                v.to_u128().ok_or_else(|| {
+                    E::custom(format!("failed to convert integer to u128: {v}"))
+                })?,
+            ))),
 
             // base
             CoreLibTypeId::Base(CoreLibBaseTypeId::Integer) => {
@@ -154,17 +175,35 @@ impl<'de, 'a, 'ctx> Visitor<'de> for CoreValueVisitor<'a, 'ctx> {
             CoreLibTypeId::Variant(CoreLibVariantTypeId::Decimal(
                 DecimalTypeVariant::F32,
             )) => Ok(CoreValue::TypedDecimal(TypedDecimal::F32(
-                (v as f32).into(),
+                v.to_f32()
+                    .ok_or_else(|| {
+                        E::custom(format!(
+                            "failed to convert integer to f32: {v}"
+                        ))
+                    })?
+                    .into(),
             ))),
             CoreLibTypeId::Variant(CoreLibVariantTypeId::Decimal(
                 DecimalTypeVariant::F64,
             )) => Ok(CoreValue::TypedDecimal(TypedDecimal::F64(
-                (v as f64).into(),
+                v.to_f64()
+                    .ok_or_else(|| {
+                        E::custom(format!(
+                            "failed to convert integer to f64: {v}"
+                        ))
+                    })?
+                    .into(),
             ))),
             CoreLibTypeId::Variant(CoreLibVariantTypeId::Decimal(
                 DecimalTypeVariant::DBig,
             )) => Ok(CoreValue::TypedDecimal(TypedDecimal::Decimal(
-                (v as f64).into(),
+                v.to_f64()
+                    .ok_or_else(|| {
+                        E::custom(format!(
+                            "failed to convert integer to f64 for decimal: {v}"
+                        ))
+                    })?
+                    .into(),
             ))),
 
             other => Err(E::custom(format!(
@@ -221,7 +260,13 @@ impl<'de, 'a, 'ctx> Visitor<'de> for CoreValueVisitor<'a, 'ctx> {
             )) => Ok(CoreValue::TypedInteger(TypedInteger::I64(v as i64))),
             CoreLibTypeId::Variant(CoreLibVariantTypeId::Integer(
                 IntegerTypeVariant::I128,
-            )) => Ok(CoreValue::TypedInteger(TypedInteger::I128(v as i128))),
+            )) => Ok(CoreValue::TypedInteger(TypedInteger::I128(
+                v.to_i128().ok_or_else(|| {
+                    E::custom(format!(
+                        "failed to convert unsigned integer to i128: {v}"
+                    ))
+                })?,
+            ))),
             CoreLibTypeId::Variant(CoreLibVariantTypeId::Integer(
                 IntegerTypeVariant::IBig,
             )) => Ok(CoreValue::TypedInteger(TypedInteger::IBig(v.into()))),
@@ -259,17 +304,35 @@ impl<'de, 'a, 'ctx> Visitor<'de> for CoreValueVisitor<'a, 'ctx> {
             CoreLibTypeId::Variant(CoreLibVariantTypeId::Decimal(
                 DecimalTypeVariant::F32,
             )) => Ok(CoreValue::TypedDecimal(TypedDecimal::F32(
-                (v as f32).into(),
+                v.to_f32()
+                    .ok_or_else(|| {
+                        E::custom(format!(
+                            "failed to convert integer to f32: {v}"
+                        ))
+                    })?
+                    .into(),
             ))),
             CoreLibTypeId::Variant(CoreLibVariantTypeId::Decimal(
                 DecimalTypeVariant::F64,
             )) => Ok(CoreValue::TypedDecimal(TypedDecimal::F64(
-                (v as f64).into(),
+                v.to_f64()
+                    .ok_or_else(|| {
+                        E::custom(format!(
+                            "failed to convert integer to f64: {v}"
+                        ))
+                    })?
+                    .into(),
             ))),
             CoreLibTypeId::Variant(CoreLibVariantTypeId::Decimal(
                 DecimalTypeVariant::DBig,
             )) => Ok(CoreValue::TypedDecimal(TypedDecimal::Decimal(
-                (v as f64).into(),
+                v.to_f64()
+                    .ok_or_else(|| {
+                        E::custom(format!(
+                            "failed to convert integer to f64 for decimal: {v}"
+                        ))
+                    })?
+                    .into(),
             ))),
 
             other => Err(E::custom(format!(
@@ -316,7 +379,13 @@ impl<'de, 'a, 'ctx> Visitor<'de> for CoreValueVisitor<'a, 'ctx> {
             CoreLibTypeId::Variant(CoreLibVariantTypeId::Decimal(
                 DecimalTypeVariant::F32,
             )) => Ok(CoreValue::TypedDecimal(TypedDecimal::F32(
-                (v as f32).into(),
+                v.to_f32()
+                    .ok_or_else(|| {
+                        E::custom(format!(
+                            "failed to convert decimal to f32: {v}"
+                        ))
+                    })?
+                    .into(),
             ))),
             CoreLibTypeId::Variant(CoreLibVariantTypeId::Decimal(
                 DecimalTypeVariant::DBig,
