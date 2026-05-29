@@ -268,36 +268,34 @@ impl CoreValue {
         variant: DecimalTypeVariant,
     ) -> Option<TypedDecimal> {
         match self {
-            CoreValue::Text(text) => {
-                TypedDecimal::try_from_string_and_variant_in_range(
-                    text.as_str(),
-                    variant,
-                )
-                .ok()
-            }
+            CoreValue::Text(text) => TypedDecimal::try_from_string_and_variant(
+                text.as_str(),
+                variant,
+            )
+            .ok(),
             CoreValue::TypedInteger(int) => Some(
-                TypedDecimal::try_from_string_and_variant_in_range(
+                TypedDecimal::try_from_string_and_variant(
                     &int.to_string(),
                     variant,
                 )
                 .ok()?,
             ),
             CoreValue::TypedDecimal(decimal) => Some(
-                TypedDecimal::try_from_string_and_variant_in_range(
+                TypedDecimal::try_from_string_and_variant(
                     &decimal.to_string(),
                     variant,
                 )
                 .ok()?,
             ),
             CoreValue::Integer(int) => Some(
-                TypedDecimal::try_from_string_and_variant_in_range(
+                TypedDecimal::try_from_string_and_variant(
                     &int.to_string(),
                     variant,
                 )
                 .ok()?,
             ),
             CoreValue::Decimal(decimal) => Some(
-                TypedDecimal::try_from_string_and_variant_in_range(
+                TypedDecimal::try_from_string_and_variant(
                     &decimal.to_string(),
                     variant,
                 )

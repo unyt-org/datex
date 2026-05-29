@@ -1,7 +1,7 @@
 use core::result::Result;
 pub mod rational;
 pub mod typed_decimal;
-use crate::prelude::*;
+use crate::{global::instruction_codes::InstructionCode::DECIMAL, prelude::*};
 
 use crate::values::core_values::{
     decimal::typed_decimal::TypedDecimal, error::NumberParseError,
@@ -19,6 +19,10 @@ use num_traits::{FromPrimitive, Zero};
 use rational::Rational;
 use serde::{Deserialize, Serialize};
 pub mod ops;
+
+pub const DECIMAL_NAN: &str = "nan";
+pub const DECIMAL_INFINITY: &str = "infinity";
+pub const DECIMAL_NEG_INFINITY: &str = "-infinity";
 
 #[derive(Debug, Clone, Eq, Serialize, Deserialize)]
 pub enum Decimal {
@@ -176,9 +180,9 @@ impl Decimal {
     pub fn try_from_string(s: &str) -> Result<Self, NumberParseError> {
         // TODO #133 represent as Infinity/-Infinity if out of bounds for representable DATEX values
         match s {
-            "infinity" => Ok(Decimal::Infinity),
-            "-infinity" => Ok(Decimal::NegInfinity),
-            "nan" => Ok(Decimal::Nan),
+            DECIMAL_INFINITY => Ok(Decimal::Infinity),
+            DECIMAL_NEG_INFINITY => Ok(Decimal::NegInfinity),
+            DECIMAL_NAN => Ok(Decimal::Nan),
             _ => {
                 let s = &s.trim().replace('_', "");
                 if s.contains("/") {
@@ -225,11 +229,11 @@ impl Display for Decimal {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             Decimal::Finite(value) => core::write!(f, "{value}"),
-            Decimal::Nan => core::write!(f, "nan"),
+            Decimal::Nan => core::write!(f, "{}", DECIMAL_NAN),
+            Decimal::Infinity => core::write!(f, "{}", DECIMAL_INFINITY),
+            Decimal::NegInfinity => core::write!(f, "{}", DECIMAL_NEG_INFINITY),
             Decimal::Zero => core::write!(f, "0.0"),
             Decimal::NegZero => core::write!(f, "-0.0"),
-            Decimal::Infinity => core::write!(f, "infinity"),
-            Decimal::NegInfinity => core::write!(f, "-infinity"),
         }
     }
 }

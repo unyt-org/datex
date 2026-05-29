@@ -1,6 +1,11 @@
 use crate::{
     prelude::*,
-    values::core_values::{decimal::Decimal, error::NumberParseError},
+    values::core_values::{
+        decimal::{
+            DECIMAL_INFINITY, DECIMAL_NAN, DECIMAL_NEG_INFINITY, Decimal,
+        },
+        error::NumberParseError,
+    },
 };
 
 use crate::libs::core::type_id::{CoreLibTypeId, CoreLibVariantTypeId};
@@ -104,21 +109,25 @@ impl From<&TypedDecimal> for CoreLibTypeId {
 }
 
 impl TypedDecimal {
-    /// Parses a string into an f32, ensuring the value is finite and within the range of f32.
-    /// Returns an error if the value is out of range, NaN, or cannot be parsed.
+    /// Parses a string into an [TypedDecimal::F32].
+    /// A value can be parsed as f32 if it is a valid float literal and is within the range of f32.
+    /// The special values "nan", "infinity" and "-infinity" are also supported, same as e-notation for f32 literals in Rust.
     pub fn parse_checked_f32(
         s: &str,
     ) -> Result<TypedDecimal, NumberParseError> {
         Ok(TypedDecimal::F32(
             match s {
                 // handle special cases
-                "infinity" => f32::INFINITY,
-                "-infinity" => f32::NEG_INFINITY,
-                "nan" => f32::NAN,
+                DECIMAL_INFINITY => f32::INFINITY,
+                DECIMAL_NEG_INFINITY => f32::NEG_INFINITY,
+                DECIMAL_NAN => f32::NAN,
                 _ => {
                     let v: f64 = s.parse().map_err(|_: ParseFloatError| {
                         NumberParseError::InvalidFormat
                     })?;
+                    if !v.is_finite() {
+                        return Err(NumberParseError::OutOfRange);
+                    }
                     if v > f32::MAX as f64 || v < f32::MIN as f64 {
                         return Err(NumberParseError::OutOfRange);
                     }
@@ -129,17 +138,18 @@ impl TypedDecimal {
         ))
     }
 
-    /// Parses a string into an f64, ensuring the value is finite and within the range of f64.
-    /// Returns an error if the value is out of range, NaN, or cannot be parsed.
+    /// Parses a string into an [TypedDecimal::F64].
+    /// A value can be parsed as f64 if it is a valid float literal and is within the range of f64.
+    /// The special values "nan", "infinity" and "-infinity" are also supported, same as e-notation for f64 literals in Rust.
     pub fn parse_checked_f64(
         s: &str,
     ) -> Result<TypedDecimal, NumberParseError> {
         Ok(TypedDecimal::F64(
             match s {
                 // handle special cases
-                "infinity" => f64::INFINITY,
-                "-infinity" => f64::NEG_INFINITY,
-                "nan" => f64::NAN,
+                DECIMAL_INFINITY => f64::INFINITY,
+                DECIMAL_NEG_INFINITY => f64::NEG_INFINITY,
+                DECIMAL_NAN => f64::NAN,
                 _ => {
                     let v: Decimal = Decimal::try_from_string(s)?;
                     let res = v.into_f64();
@@ -158,36 +168,13 @@ impl TypedDecimal {
     /// Returns an error if the value is out of range or cannot be parsed.
     /// Note: This function does not support Decimal syntax, as it can represent any valid decimal
     /// value without range limitations.
-    pub fn try_from_string_and_variant_in_range(
+    pub fn try_from_string_and_variant(
         value: &str,
         variant: DecimalTypeVariant,
     ) -> Result<Self, NumberParseError> {
         match variant {
             DecimalTypeVariant::F32 => Self::parse_checked_f32(value),
             DecimalTypeVariant::F64 => Self::parse_checked_f64(value),
-            DecimalTypeVariant::DBig => {
-                Decimal::try_from_string(value).map(TypedDecimal::Decimal)
-            }
-        }
-    }
-
-    /// Creates a TypedDecimal from a string and a variant.
-    /// Returns an error if the value cannot be parsed.
-    /// Note: This function does not check for range limitations, so it may produce
-    /// NaN or Infinity for f32 and f64 variants.
-    pub fn try_from_string_and_variant(
-        value: &str,
-        variant: DecimalTypeVariant,
-    ) -> Result<Self, NumberParseError> {
-        match variant {
-            DecimalTypeVariant::F32 => value
-                .parse::<f32>()
-                .map(|v| TypedDecimal::F32(OrderedFloat(v)))
-                .map_err(|_: ParseFloatError| NumberParseError::InvalidFormat),
-            DecimalTypeVariant::F64 => value
-                .parse::<f64>()
-                .map(|v| TypedDecimal::F64(OrderedFloat(v)))
-                .map_err(|_: ParseFloatError| NumberParseError::InvalidFormat),
             DecimalTypeVariant::DBig => {
                 Decimal::try_from_string(value).map(TypedDecimal::Decimal)
             }
@@ -343,11 +330,11 @@ impl Display for TypedDecimal {
                 TypedDecimal::Decimal(value) => core::write!(f, "{}", value),
             }
         } else if self.is_nan() {
-            core::write!(f, "nan")
+            core::write!(f, "{}", DECIMAL_NAN)
         } else if self.is_sign_positive() {
-            core::write!(f, "infinity")
+            core::write!(f, "{}", DECIMAL_INFINITY)
         } else {
-            core::write!(f, "-infinity")
+            core::write!(f, "{}", DECIMAL_NEG_INFINITY)
         }
     }
 }
@@ -637,9 +624,8 @@ mod tests {
         let g = TypedDecimal::try_from_string_and_variant(
             "NaN",
             DecimalTypeVariant::F32,
-        )
-        .unwrap();
-        assert!(g.is_nan());
+        );
+        assert!(g.is_err());
 
         let h = TypedDecimal::try_from_string_and_variant(
             "nan",
@@ -649,7 +635,7 @@ mod tests {
         assert!(h.is_nan());
 
         let i = TypedDecimal::try_from_string_and_variant(
-            "Infinity",
+            "infinity",
             DecimalTypeVariant::F32,
         )
         .unwrap();
@@ -669,32 +655,29 @@ mod tests {
         .unwrap();
         assert_matches!(k, TypedDecimal::Decimal(_));
         assert_eq!(k.as_f64(), 12345678901234567890.123456789);
-    }
 
-    #[test]
-    fn from_string_and_variant_in_range() {
-        let a = TypedDecimal::try_from_string_and_variant_in_range(
+        let a = TypedDecimal::try_from_string_and_variant(
             "1e40",
             DecimalTypeVariant::F32,
         );
         assert!(a.is_err());
         assert_eq!(a.err().unwrap(), NumberParseError::OutOfRange);
 
-        let b = TypedDecimal::try_from_string_and_variant_in_range(
+        let b = TypedDecimal::try_from_string_and_variant(
             "-1e40",
             DecimalTypeVariant::F32,
         );
         assert!(b.is_err());
         assert_eq!(b.err().unwrap(), NumberParseError::OutOfRange);
 
-        let c = TypedDecimal::try_from_string_and_variant_in_range(
+        let c = TypedDecimal::try_from_string_and_variant(
             "1e1000",
             DecimalTypeVariant::F64,
         );
         assert!(c.is_err());
         assert_eq!(c.err().unwrap(), NumberParseError::OutOfRange);
 
-        let d = TypedDecimal::try_from_string_and_variant_in_range(
+        let d = TypedDecimal::try_from_string_and_variant(
             "-1e1000",
             DecimalTypeVariant::F64,
         );

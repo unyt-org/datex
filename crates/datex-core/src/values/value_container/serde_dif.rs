@@ -2,7 +2,7 @@ use crate::{
     shared_values::SharedContainer,
     values::{value::Value, value_container::ValueContainer},
 };
-use serde::{Serialize, Serializer};
+use serde::Serializer;
 
 use crate::{
     dif::serde_context::SerdeContext, prelude::*,
@@ -222,7 +222,6 @@ mod tests {
     use crate::{
         dif::cache::DIFSharedContainerCache,
         libs::core::{core_lib_id::CoreLibIdIndex, type_id::CoreLibBaseTypeId},
-        prelude::*,
         runtime::pointer_address_provider::SelfOwnedPointerAddressProvider,
         shared_values::{
             OwnedSharedContainer, PointerAddress, SelfOwnedPointerAddress,
@@ -288,7 +287,7 @@ mod tests {
 
     #[test]
     fn referenced() {
-        let mut cache = &mut DIFSharedContainerCache::default();
+        let cache = &mut DIFSharedContainerCache::default();
         let owned_container =
             OwnedSharedContainer::new_with_inferred_allowed_type(
                 42,

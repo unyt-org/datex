@@ -209,7 +209,7 @@ impl Parser {
         let span = self.advance()?.span.clone();
         let res = match variant {
             Some(var) => {
-                TypedDecimal::try_from_string_and_variant_in_range(&value, var)
+                TypedDecimal::try_from_string_and_variant(&value, var)
                     .map(DatexExpressionData::TypedDecimal)
             }
             None => Decimal::try_from_string(&value)
