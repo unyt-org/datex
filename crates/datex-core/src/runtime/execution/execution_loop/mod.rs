@@ -65,8 +65,11 @@ use crate::{
         literal_type_definition::LiteralTypeDefinition,
         r#type::Type,
         type_definition::{
-            TypeDefinition, impl_type::ImplTypeDefinition,
-            range::RangeTypeDefinition, tagged_type::TaggedTypeDefinition,
+            TypeDefinition,
+            callable::{CallableKind, CallableTypeDefinition},
+            impl_type::ImplTypeDefinition,
+            range::RangeTypeDefinition,
+            tagged_type::TaggedTypeDefinition,
         },
         type_definition_with_metadata::{
             TypeDefinitionWithMetadata, TypeMetadata,
@@ -80,9 +83,7 @@ use crate::{
         core_value::CoreValue,
         core_values::{
             boolean::Boolean,
-            callable::{
-                Callable, CallableBody, CallableKind, CallableSignature,
-            },
+            callable::{Callable, CallableBody},
             decimal::{Decimal, typed_decimal::TypedDecimal},
             integer::typed_integer::TypedInteger,
             list::List,
@@ -403,7 +404,7 @@ pub fn inner_execution_loop(
                             RegularInstruction::Text(TextData(text)) => Some(ValueContainer::from(text).into()),
 
                             RegularInstruction::InlineCallable(InlineCallableData { name, arg_count, bytecode_len: _, bytecode }) => {
-                                let signature = CallableSignature {
+                                let signature = CallableTypeDefinition {
                                     kind: CallableKind::Function,
                                     parameter_types: vec![], // FIXME: add parameter type info
                                     rest_parameter_type: None,
