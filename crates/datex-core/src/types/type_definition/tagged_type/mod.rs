@@ -1,6 +1,5 @@
-use crate::{prelude::*, types::type_definition::TypeDefinition};
+use crate::{prelude::*, types::r#type::Type};
 use core::fmt::Display;
-use crate::types::r#type::Type;
 
 pub mod serde_dif;
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

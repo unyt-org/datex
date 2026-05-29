@@ -1018,8 +1018,9 @@ mod tests {
             "42i8"
         );
 
-        let decimal_ast =
-            DatexExpressionData::Decimal(Decimal::try_from_string("1.23").unwrap());
+        let decimal_ast = DatexExpressionData::Decimal(
+            Decimal::try_from_string("1.23").unwrap(),
+        );
         assert_eq!(compact().format(&decimal_ast.with_default_span()), "1.23");
 
         let decimal_ast = DatexExpressionData::Decimal(Decimal::Infinity);

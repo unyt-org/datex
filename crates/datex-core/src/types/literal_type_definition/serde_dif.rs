@@ -180,13 +180,15 @@ where
         CoreLibTypeId::Variant(CoreLibVariantTypeId::Integer(variant)) => {
             let value: String = map.next_value()?;
 
-            let value = TypedInteger::try_from_string_and_variant(&value, variant)
-                .map_err(|err| {
-                    de::Error::custom(format!(
-                        "invalid typed integer literal for variant {:?}: {:?}",
-                        variant, err
-                    ))
-                })?;
+            let value = TypedInteger::try_from_string_and_variant(
+                &value, variant,
+            )
+            .map_err(|err| {
+                de::Error::custom(format!(
+                    "invalid typed integer literal for variant {:?}: {:?}",
+                    variant, err
+                ))
+            })?;
 
             Ok(LiteralTypeDefinition::TypedInteger(value))
         }
@@ -194,13 +196,15 @@ where
         CoreLibTypeId::Variant(CoreLibVariantTypeId::Decimal(variant)) => {
             let value: String = map.next_value()?;
 
-            let value = TypedDecimal::try_from_string_and_variant(&value, variant)
-                .map_err(|err| {
-                    de::Error::custom(format!(
-                        "invalid typed decimal literal for variant {:?}: {:?}",
-                        variant, err
-                    ))
-                })?;
+            let value = TypedDecimal::try_from_string_and_variant(
+                &value, variant,
+            )
+            .map_err(|err| {
+                de::Error::custom(format!(
+                    "invalid typed decimal literal for variant {:?}: {:?}",
+                    variant, err
+                ))
+            })?;
 
             Ok(LiteralTypeDefinition::TypedDecimal(value))
         }

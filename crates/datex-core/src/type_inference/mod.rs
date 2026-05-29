@@ -1548,7 +1548,8 @@ mod tests {
             shared_container_containing_type::SharedContainerContainingType,
             r#type::Type,
             type_definition::{
-                TypeDefinition, callable::CallableTypeDefinition,
+                TypeDefinition,
+                callable::{CallableKind, CallableTypeDefinition},
                 intersection::IntersectionTypeDefinition,
                 union::UnionTypeDefinition,
             },
@@ -1569,7 +1570,6 @@ mod tests {
             },
         },
     };
-    use crate::types::type_definition::callable::CallableKind;
 
     /// Infers type errors for the given source code.
     /// Panics if parsing or precompilation succeeds.

@@ -212,9 +212,8 @@ impl Parser {
                 TypedDecimal::try_from_string_and_variant_in_range(&value, var)
                     .map(DatexExpressionData::TypedDecimal)
             }
-            None => {
-                Decimal::try_from_string(&value).map(DatexExpressionData::Decimal)
-            }
+            None => Decimal::try_from_string(&value)
+                .map(DatexExpressionData::Decimal),
         };
         match res {
             Ok(expr) => Ok(expr.with_span(span)),
@@ -678,7 +677,9 @@ mod tests {
         let expr = parse("42e2");
         assert_eq!(
             expr.data,
-            DatexExpressionData::Decimal(Decimal::try_from_string("42e2").unwrap())
+            DatexExpressionData::Decimal(
+                Decimal::try_from_string("42e2").unwrap()
+            )
         );
     }
 
@@ -696,7 +697,9 @@ mod tests {
         let expr = parse("3/4");
         assert_eq!(
             expr.data,
-            DatexExpressionData::Decimal(Decimal::try_from_string("3/4").unwrap())
+            DatexExpressionData::Decimal(
+                Decimal::try_from_string("3/4").unwrap()
+            )
         );
     }
 

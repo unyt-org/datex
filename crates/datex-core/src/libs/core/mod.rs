@@ -23,11 +23,13 @@ pub mod type_id;
 mod type_match;
 pub mod value_id;
 
-use crate::{prelude::*, types::r#type::Type};
+use crate::{
+    prelude::*,
+    types::{r#type::Type, type_definition::callable::CallableKind},
+};
 use indexmap::IndexMap;
 use log::info;
 use strum::IntoEnumIterator;
-use crate::types::type_definition::callable::CallableKind;
 
 #[derive(Debug)]
 pub struct CoreLibraryValues {

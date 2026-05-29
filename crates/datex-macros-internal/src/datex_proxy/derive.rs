@@ -38,11 +38,10 @@ impl From<&Fields> for FieldsType {
             Fields::Unnamed(fields) => {
                 if fields.unnamed.len() == 1 {
                     FieldsType::Transparent
-                }
-                else {
+                } else {
                     FieldsType::Unnamed
                 }
-            },
+            }
         }
     }
 }
@@ -306,8 +305,10 @@ fn derive_struct(data_struct: DataStruct, ident: &Ident) -> DeriveData {
         },
     };
 
-    let type_definition = datex_type.unwrap_or_else(|| quote! {
-        Type::Alias(TypeDefinition::Core(CoreLibBaseTypeId::Unit.into()))
+    let type_definition = datex_type.unwrap_or_else(|| {
+        quote! {
+            Type::Alias(TypeDefinition::Core(CoreLibBaseTypeId::Unit.into()))
+        }
     });
 
     DeriveData {
@@ -464,18 +465,18 @@ fn derive_enum(data_enum: DataEnum, ident: &Ident) -> DeriveData {
         };
 
         let datex_type_for_variant = match datex_type {
-            None => quote!{
+            None => quote! {
                 Type::Alias(TypeDefinition::TaggedType(TaggedTypeDefinition {
                     tag: #variant_name.to_string(),
                     ty: None,
                 }).into())
             },
-            Some(type_definition) => quote!{
+            Some(type_definition) => quote! {
                 Type::Alias(TypeDefinition::TaggedType(TaggedTypeDefinition {
                     tag: #variant_name.to_string(),
                     ty: Some(Box::new(#type_definition)),
                 }).into())
-            }
+            },
         };
 
         variants_into_datex_fields.push(into_datex_fields_inner);
@@ -521,7 +522,6 @@ fn derive_enum(data_enum: DataEnum, ident: &Ident) -> DeriveData {
         helpers: Some(helpers),
     }
 }
-
 
 struct FieldDeriveData {
     is_fallible_serialization: bool,
@@ -746,9 +746,7 @@ fn derive_fields(fields: &Fields) -> FieldDeriveData {
                 #(#field_types),*
             ])).into())
         }),
-        FieldsType::Transparent => {
-            Some(field_types.remove(0))
-        },
+        FieldsType::Transparent => Some(field_types.remove(0)),
     };
 
     FieldDeriveData {

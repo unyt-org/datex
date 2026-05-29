@@ -56,7 +56,7 @@ impl TryFrom<String> for SelfOwnedPointerAddress {
         } else {
             &s
         };
-        
+
         hex::decode(hex_str)
             .map_err(|_| "Invalid hex string for SelfOwnedPointerAddress")
             .and_then(|bytes| {

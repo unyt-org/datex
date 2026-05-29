@@ -8,9 +8,7 @@ use serde::{
 
 use crate::{
     dif::serde_context::SerdeContext,
-    types::type_definition::{
-        TypeDefinition, tagged_type::TaggedTypeDefinition,
-    },
+    types::type_definition::tagged_type::TaggedTypeDefinition,
     utils::serde_serialize_seed::{SerializeSeed, ValueWithSeed},
 };
 
@@ -90,12 +88,9 @@ impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, TaggedTypeDefinition> {
     }
 }
 
-use crate::prelude::*;
-use crate::types::r#type::Type;
+use crate::{prelude::*, types::r#type::Type};
 
-impl<'de, 'ctx> DeserializeSeed<'de>
-    for SerdeContext<'ctx, Option<Box<Type>>>
-{
+impl<'de, 'ctx> DeserializeSeed<'de> for SerdeContext<'ctx, Option<Box<Type>>> {
     type Value = Option<Box<Type>>;
 
     fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
@@ -106,9 +101,7 @@ impl<'de, 'ctx> DeserializeSeed<'de>
     }
 }
 
-impl<'de, 'ctx> Visitor<'de>
-    for SerdeContext<'ctx, Option<Box<Type>>>
-{
+impl<'de, 'ctx> Visitor<'de> for SerdeContext<'ctx, Option<Box<Type>>> {
     type Value = Option<Box<Type>>;
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {

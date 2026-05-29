@@ -423,8 +423,8 @@ mod tests {
             Integer::try_from_string("123456789012345678901234567890").unwrap();
         assert_eq!(int4.to_string(), "123456789012345678901234567890");
 
-        let int5 =
-            Integer::try_from_string("-123456789012345678901234567890").unwrap();
+        let int5 = Integer::try_from_string("-123456789012345678901234567890")
+            .unwrap();
         assert_eq!(int5.to_string(), "-123456789012345678901234567890");
     }
 }

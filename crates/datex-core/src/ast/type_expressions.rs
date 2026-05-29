@@ -14,11 +14,11 @@ use crate::{
 };
 
 use crate::{
-    libs::core::type_id::CoreLibTypeId, shared_values::PointerAddress,
-    types::r#type::Type,
+    libs::core::type_id::CoreLibTypeId,
+    shared_values::PointerAddress,
+    types::{r#type::Type, type_definition::callable::CallableKind},
 };
 use core::ops;
-use crate::types::type_definition::callable::CallableKind;
 
 #[derive(Clone, Debug, PartialEq)]
 /// The different kinds of type expressions in the AST

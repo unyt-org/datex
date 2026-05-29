@@ -65,7 +65,8 @@ pub fn parse_integer_literal(
     if exponent_part.is_empty() {
         // no variant and no exponent -> plain integer
         if variant_part.is_empty() {
-            Integer::try_from_string(&integer_part).map(IntegerOrDecimal::Integer)
+            Integer::try_from_string(&integer_part)
+                .map(IntegerOrDecimal::Integer)
         }
         // variant -> distinguish between integer and decimal type variants
         else {
@@ -99,14 +100,18 @@ pub fn parse_integer_literal(
         let full_number = format!("{}e{}", integer_part, exponent_part);
         // no variant -> plain decimal with exponent
         if variant_part.is_empty() {
-            Decimal::try_from_string(&full_number).map(IntegerOrDecimal::Decimal)
+            Decimal::try_from_string(&full_number)
+                .map(IntegerOrDecimal::Decimal)
         }
         // decimal variant -> typed decimal with exponent
         else if let Ok(decimal_variant) =
             DecimalTypeVariant::from_str(&variant_part)
         {
-            TypedDecimal::try_from_string_and_variant(&full_number, decimal_variant)
-                .map(IntegerOrDecimal::TypedDecimal)
+            TypedDecimal::try_from_string_and_variant(
+                &full_number,
+                decimal_variant,
+            )
+            .map(IntegerOrDecimal::TypedDecimal)
         }
         // otherwise invalid variant for decimal with exponent
         else {

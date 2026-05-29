@@ -310,9 +310,11 @@ impl CoreValue {
     // FIXME #314 discuss here - shall we fit the integer in the minimum viable type?
     pub fn _cast_to_integer_internal(&self) -> Option<TypedInteger> {
         match self {
-            CoreValue::Text(text) => Integer::try_from_string(&text.to_string())
-                .map(|x| Some(x.to_smallest_fitting()))
-                .unwrap_or(None),
+            CoreValue::Text(text) => {
+                Integer::try_from_string(&text.to_string())
+                    .map(|x| Some(x.to_smallest_fitting()))
+                    .unwrap_or(None)
+            }
             CoreValue::TypedInteger(int) => {
                 Some(int.to_smallest_fitting().clone())
             }
@@ -356,19 +358,25 @@ impl CoreValue {
         variant: IntegerTypeVariant,
     ) -> Option<TypedInteger> {
         match self {
-            CoreValue::Text(text) => {
-                TypedInteger::try_from_string_and_variant(text.as_str(), variant)
-                    .ok()
-            }
-            CoreValue::TypedInteger(int) => {
-                TypedInteger::try_from_string_and_variant(&int.to_string(), variant)
-                    .ok()
-            }
-            CoreValue::Integer(int) => TypedInteger::try_from_string_and_variant(
-                int.to_string().as_str(),
+            CoreValue::Text(text) => TypedInteger::try_from_string_and_variant(
+                text.as_str(),
                 variant,
             )
             .ok(),
+            CoreValue::TypedInteger(int) => {
+                TypedInteger::try_from_string_and_variant(
+                    &int.to_string(),
+                    variant,
+                )
+                .ok()
+            }
+            CoreValue::Integer(int) => {
+                TypedInteger::try_from_string_and_variant(
+                    int.to_string().as_str(),
+                    variant,
+                )
+                .ok()
+            }
             CoreValue::Decimal(decimal) => {
                 Some(TypedInteger::from(decimal.into_f64() as i128))
             }

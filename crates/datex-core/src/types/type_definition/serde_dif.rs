@@ -5,7 +5,6 @@ use crate::{
     libs::core::core_lib_id::{CoreLibId, CoreLibIdIndex},
     prelude::*,
     types::{
-        literal_type_definition::LiteralTypeDefinition,
         r#type::Type,
         type_definition::{
             TypeDefinition, callable::CallableTypeDefinition,

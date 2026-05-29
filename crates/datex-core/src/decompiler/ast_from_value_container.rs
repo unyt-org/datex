@@ -205,9 +205,12 @@ fn type_cast_expression(
         TypeDefinition::TaggedType(TaggedTypeDefinition {
             tag,
             ty:
-                Some(box Type::Alias(TypeDefinitionWithMetadata { 
-                    definition: TypeDefinition::Core(CoreLibTypeId::Base(CoreLibBaseTypeId::Unit)),
-                    .. 
+                Some(box Type::Alias(TypeDefinitionWithMetadata {
+                    definition:
+                        TypeDefinition::Core(CoreLibTypeId::Base(
+                            CoreLibBaseTypeId::Unit,
+                        )),
+                    ..
                 })),
         }) => DatexExpressionData::Tag(TagExpression {
             tag: tag.clone(),

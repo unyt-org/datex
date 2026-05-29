@@ -55,8 +55,7 @@ impl Serialize for TypedDecimal {
         if !self.is_finite() {
             // Handle special edge cases, such as NaN and Infinity
             serializer.serialize_str(&self.to_string())
-        }
-        else {
+        } else {
             match self {
                 TypedDecimal::F32(value) => {
                     serializer.serialize_f32(value.into_inner())

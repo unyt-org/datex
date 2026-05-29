@@ -1,35 +1,21 @@
-use core::{fmt, fmt::Display, panic};
+use core::fmt;
 
 use crate::{
     dif::serde_context::SerdeContext,
-    libs::core::{
-        core_lib_id::{CoreLibId, CoreLibIdIndex},
-        type_id::{CoreLibBaseTypeId, CoreLibTypeId, CoreLibVariantTypeId},
-    },
+    libs::core::{core_lib_id::CoreLibIdIndex, type_id::CoreLibTypeId},
     prelude::*,
     types::type_definition::TypeDefinition,
     utils::serde_serialize_seed::{SerializeSeed, ValueWithSeed},
     values::{
         core_value::{CoreValue, serde_dif::CoreValueVisitor},
-        core_values::{
-            boolean::Boolean,
-            decimal::typed_decimal::{DecimalTypeVariant, TypedDecimal},
-            endpoint::Endpoint,
-            integer::typed_integer::TypedInteger,
-            list::List,
-            map::Map,
-            range::Range,
-        },
+        core_values::{boolean::Boolean, decimal::typed_decimal::TypedDecimal},
         value::Value,
-        value_container::ValueContainer,
     },
 };
 use num::ToPrimitive;
-use ordered_float::OrderedFloat;
 use serde::{
-    Deserialize, Deserializer, Serialize, Serializer,
-    de::{DeserializeSeed, Error as DeError, Visitor, value::SeqDeserializer},
-    forward_to_deserialize_any,
+    Deserializer, Serialize, Serializer,
+    de::{DeserializeSeed, Error as DeError, Visitor},
     ser::{SerializeMap, SerializeStruct, SerializeTuple},
 };
 
@@ -218,11 +204,11 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, Value> {
                 serializer,
                 false,
             ),
-            CoreValue::Type(ty) => todo!(),
-            CoreValue::NominalTypeDefinition(nominal_type_definition) => {
+            CoreValue::Type(_ty) => todo!(),
+            CoreValue::NominalTypeDefinition(_nominal_type_definition) => {
                 todo!()
             }
-            CoreValue::Callable(callable) => todo!(),
+            CoreValue::Callable(_callable) => todo!(),
         }
     }
 }

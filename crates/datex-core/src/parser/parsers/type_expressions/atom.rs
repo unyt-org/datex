@@ -221,9 +221,8 @@ impl Parser {
                 TypedDecimal::try_from_string_and_variant_in_range(&value, var)
                     .map(TypeExpressionData::TypedDecimal)
             }
-            None => {
-                Decimal::try_from_string(&value).map(TypeExpressionData::Decimal)
-            }
+            None => Decimal::try_from_string(&value)
+                .map(TypeExpressionData::Decimal),
         };
         match res {
             Ok(expr) => Ok(expr.with_span(span)),
@@ -406,7 +405,9 @@ mod tests {
         let expr = parse_type_expression("3/4");
         assert_eq!(
             expr.data,
-            TypeExpressionData::Decimal(Decimal::try_from_string("3/4").unwrap())
+            TypeExpressionData::Decimal(
+                Decimal::try_from_string("3/4").unwrap()
+            )
         );
     }
 }

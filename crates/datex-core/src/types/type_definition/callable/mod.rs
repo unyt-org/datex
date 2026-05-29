@@ -1,6 +1,6 @@
+use crate::types::r#type::Type;
 use core::fmt::{Display, Formatter};
 use serde::{Deserialize, Serialize};
-use crate::{types::r#type::Type};
 pub mod serde_dif;
 use crate::prelude::*;
 
@@ -20,7 +20,6 @@ impl Display for CallableKind {
         }
     }
 }
-
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CallableTypeDefinition {

@@ -8,7 +8,7 @@ use crate::{
     dif::serde_context::SerdeContext, prelude::*,
     utils::serde_serialize_seed::SerializeSeed,
 };
-use core::{fmt, panic};
+use core::fmt;
 use serde::{
     Deserializer,
     de::{DeserializeSeed, MapAccess, Visitor},
