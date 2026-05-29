@@ -17,7 +17,8 @@ use crate::{
         shared_container_containing_nominal_type::SharedContainerContainingNominalType,
         type_definition::TypeDefinition,
         type_definition_with_metadata::{
-            LocalMutability, TypeDefinitionWithMetadata, TypeMetadata,
+            LocalMutability, LocalOwnership, TypeDefinitionWithMetadata,
+            TypeMetadata,
         },
     },
     values::{core_value::CoreValue, value_container::ValueContainer},
@@ -98,7 +99,7 @@ impl Type {
             Type::Alias(TypeDefinitionWithMetadata {
                 metadata:
                     TypeMetadata::Local {
-                        reference_mutability: Option::None,
+                        ownership: LocalOwnership::Owned,
                         mutability: LocalMutability::Immutable,
                     },
                 definition,

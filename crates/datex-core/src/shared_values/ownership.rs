@@ -8,6 +8,7 @@ use core::{
 use num_enum::TryFromPrimitive;
 use serde::{Deserialize, Serialize};
 
+use serde_repr::*;
 #[derive(
     Debug,
     Clone,
@@ -16,10 +17,10 @@ use serde::{Deserialize, Serialize};
     Eq,
     Hash,
     TryFromPrimitive,
-    Serialize,
-    Deserialize,
     BinRead,
     BinWrite,
+    Serialize_repr,
+    Deserialize_repr,
 )]
 #[brw(repr(u8))]
 #[repr(u8)]
@@ -159,5 +160,20 @@ impl Ord for SharedContainerOwnership {
                 SharedContainerOwnership::Referenced(m2),
             ) => m1.cmp(m2),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::shared_values::{ReferenceMutability, SharedContainerOwnership};
+    use test_case::test_case;
+    #[test_case(SharedContainerOwnership::Owned; "owned")]
+    #[test_case(SharedContainerOwnership::Referenced(ReferenceMutability::Immutable); "referenced immutable")]
+    #[test_case(SharedContainerOwnership::Referenced(ReferenceMutability::Mutable); "referenced mutable")]
+    fn ownership_serde(ownership: SharedContainerOwnership) {
+        let serialized = serde_json::to_value(ownership).unwrap();
+        let deserialized: SharedContainerOwnership =
+            serde_json::from_value(serialized).unwrap();
+        assert_eq!(ownership, deserialized);
     }
 }

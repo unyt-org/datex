@@ -3,9 +3,12 @@ use crate::{
     ast::resolved_variable::ResolvedVariable,
     global::operators::{BinaryOperator, LogicalUnaryOperator, UnaryOperator},
     type_inference::options::ErrorHandling,
-    types::type_definition::{
-        TypeDefinition, callable::CallableTypeDefinition,
-        list::ListTypeDefinition,
+    types::{
+        type_definition::{
+            TypeDefinition, callable::CallableTypeDefinition,
+            list::ListTypeDefinition,
+        },
+        type_definition_with_metadata::LocalOwnership,
     },
 };
 
@@ -630,7 +633,7 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
 
         mark_type(inner_type.box_with_metadata(TypeMetadata::Local {
             mutability: LocalMutability::Immutable,
-            reference_mutability: Some(create_ref.mutability.clone()),
+            ownership: LocalOwnership::Referenced(create_ref.mutability),
         }))
     }
 

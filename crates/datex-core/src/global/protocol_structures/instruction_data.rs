@@ -602,7 +602,7 @@ impl From<&TypeMetadataBin> for TypeMetadata {
         match value.type_local_or_shared() {
             TypeLocalOrShared::Local => TypeMetadata::Local {
                 mutability: (&value.mutability()).into(),
-                reference_mutability: (&value.ownership()).into(),
+                ownership: (&value.ownership()).into(),
             },
             TypeLocalOrShared::Shared => TypeMetadata::Shared {
                 mutability: (&value.mutability()).into(),
@@ -617,7 +617,7 @@ impl From<&TypeMetadata> for TypeMetadataBin {
         match value {
             TypeMetadata::Local {
                 mutability,
-                reference_mutability,
+                ownership: reference_mutability,
             } => Self::new()
                 .with_type_local_or_shared(TypeLocalOrShared::Local)
                 .with_mutability(mutability.into())
