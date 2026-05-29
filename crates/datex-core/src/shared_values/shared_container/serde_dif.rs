@@ -3,6 +3,7 @@ use crate::{
         pointer_address::PointerAddressWithOwnership,
         serde_context::SerdeContext,
     },
+    prelude::*,
     shared_values::{
         ReferenceMutability, SharedContainer, SharedContainerOwnership,
     },
@@ -13,7 +14,6 @@ use alloc::string::String;
 use serde::{
     Deserialize, Deserializer, Serialize, Serializer, de::DeserializeSeed,
 };
-use crate::prelude::*;
 
 impl<'de, 'ctx> DeserializeSeed<'de> for SerdeContext<'ctx, SharedContainer> {
     type Value = SharedContainer;
@@ -54,11 +54,7 @@ impl<'ctx> SerdeContext<'ctx, SharedContainer> {
             SharedContainerOwnership::Owned => "",
         };
 
-        format!(
-            "{}{}",
-            ownership,
-            value.pointer_address().to_address_string()
-        )
+        format!("{}{}", ownership, value.pointer_address())
     }
 }
 impl<'ctx> SerializeSeed for SerdeContext<'ctx, SharedContainer> {
@@ -114,7 +110,7 @@ mod tests {
         .serialize_to_json(&SharedContainer::Referenced(
             owned_shared_container,
         ));
-        assert_eq!(serialized, format!(r#""'{}""#, address));
+        assert_eq!(serialized, format!(r#""'{}""#, address.to_string()));
     }
 
     #[test]
@@ -134,7 +130,7 @@ mod tests {
         .serialize_to_json(&owned_container);
         assert_eq!(
             serialized,
-            format!(r#""{}""#, owned_container.pointer_address())
+            format!(r#""{}""#, owned_container.pointer_address().to_string())
         );
     }
 

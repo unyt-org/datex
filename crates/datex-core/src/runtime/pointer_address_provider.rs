@@ -2,8 +2,7 @@ use crate::{
     global::protocol_structures::instruction_data::RawRemotePointerAddress,
     prelude::*,
     shared_values::{
-         PointerAddress, RemotePointerAddress,
-        SelfOwnedPointerAddress,
+        PointerAddress, RemotePointerAddress, SelfOwnedPointerAddress,
     },
     values::core_values::endpoint::Endpoint,
 };
@@ -45,7 +44,9 @@ impl SelfOwnedPointerAddressProvider {
             let writer = Cursor::new(Vec::new());
             let mut bytes = writer.into_inner();
             bytes.extend_from_slice(&raw_address.id);
-            PointerAddress::Remote(RemotePointerAddress(<[u8; 26]>::try_from(bytes).unwrap()))
+            PointerAddress::Remote(RemotePointerAddress(
+                <[u8; 26]>::try_from(bytes).unwrap(),
+            ))
         }
     }
 

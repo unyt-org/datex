@@ -3,7 +3,6 @@ use crate::{
     network::com_interfaces::com_interface::properties::ComInterfaceProperties,
     prelude::*,
 };
-use core::time::Duration;
 use datex_macros_internal::Datex;
 use serde::{Deserialize, Serialize};
 

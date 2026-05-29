@@ -27,10 +27,10 @@ use datex_core::{
 use datex_core::{
     ast::{
         expressions::{
-            Apply, BinaryOperation, CallableDeclaration, CallableKind,
-            ComparisonOperation, Conditional, CreateMut, CreateShared,
-            DatexExpression, DatexExpressionData, GenericInstantiation, GetRef,
-            List, Map, PropertyAccess, PropertyAssignment, RequestSharedRef,
+            Apply, BinaryOperation, CallableDeclaration, ComparisonOperation,
+            Conditional, CreateMut, CreateShared, DatexExpression,
+            DatexExpressionData, GenericInstantiation, GetRef, List, Map,
+            PropertyAccess, PropertyAssignment, RequestSharedRef,
             RootPropertyAccess, UnaryOperation, Unbox, ValueAccessType,
             VariableAssignment, VariableDeclaration, VariableKind,
         },
@@ -52,6 +52,7 @@ use datex_core::{
     shared_values::{
         PointerAddress, ReferenceMutability, SharedContainerMutability,
     },
+    types::type_definition::callable::CallableKind,
     values::core_values::error::NumberParseError,
 };
 
@@ -140,7 +141,7 @@ fn json() {
                     DatexExpressionData::Integer(Integer::from(3))
                         .with_default_span(),
                     DatexExpressionData::Decimal(
-                        Decimal::from_string("0.5").unwrap()
+                        Decimal::try_from_string("0.5").unwrap()
                     )
                     .with_default_span()
                 ]))
@@ -1359,7 +1360,7 @@ fn integer() {
     assert_eq!(
         num,
         DatexExpressionData::Integer(
-            Integer::from_string("123456789123456789").unwrap()
+            Integer::try_from_string("123456789123456789").unwrap()
         )
     );
 }
@@ -1371,7 +1372,7 @@ fn negative_integer() {
     assert_eq!(
         num,
         DatexExpressionData::Integer(
-            Integer::from_string("-123456789123456789").unwrap()
+            Integer::try_from_string("-123456789123456789").unwrap()
         )
     );
 }
@@ -1382,7 +1383,9 @@ fn integer_with_underscores() {
     let num = parse_unwrap_data(src);
     assert_eq!(
         num,
-        DatexExpressionData::Integer(Integer::from_string("123456").unwrap())
+        DatexExpressionData::Integer(
+            Integer::try_from_string("123456").unwrap()
+        )
     );
 }
 
@@ -1429,7 +1432,7 @@ fn decimal_with_exponent() {
     assert_eq!(
         num,
         DatexExpressionData::Decimal(
-            Decimal::from_string("20000000000").unwrap()
+            Decimal::try_from_string("20000000000").unwrap()
         )
     );
 
@@ -1437,7 +1440,7 @@ fn decimal_with_exponent() {
     let num = parse_unwrap_data(src);
     assert_eq!(
         num,
-        DatexExpressionData::Decimal(Decimal::from_string("20.0").unwrap())
+        DatexExpressionData::Decimal(Decimal::try_from_string("20.0").unwrap())
     );
 
     let src = "1.23456789123456e2";
@@ -1445,7 +1448,7 @@ fn decimal_with_exponent() {
     assert_eq!(
         num,
         DatexExpressionData::Decimal(
-            Decimal::from_string("123.456789123456").unwrap()
+            Decimal::try_from_string("123.456789123456").unwrap()
         )
     );
 }
@@ -1456,7 +1459,7 @@ fn decimal_with_negative_exponent() {
     let num = parse_unwrap_data(src);
     assert_eq!(
         num,
-        DatexExpressionData::Decimal(Decimal::from_string("0.02").unwrap())
+        DatexExpressionData::Decimal(Decimal::try_from_string("0.02").unwrap())
     );
 
     let src = "1.23456789123456e-2";
@@ -1464,7 +1467,7 @@ fn decimal_with_negative_exponent() {
     assert_eq!(
         num,
         DatexExpressionData::Decimal(
-            Decimal::from_string("0.0123456789123456").unwrap()
+            Decimal::try_from_string("0.0123456789123456").unwrap()
         )
     );
 }
@@ -1476,7 +1479,7 @@ fn decimal() {
     assert_eq!(
         num,
         DatexExpressionData::Decimal(
-            Decimal::from_string("123.456789123456").unwrap()
+            Decimal::try_from_string("123.456789123456").unwrap()
         )
     );
 }
@@ -1497,7 +1500,7 @@ fn decimal_with_separator() {
         assert_eq!(
             num,
             DatexExpressionData::Decimal(
-                Decimal::from_string(expected_str).unwrap()
+                Decimal::try_from_string(expected_str).unwrap()
             ),
             "Failed to parse: {src}"
         );
@@ -1510,7 +1513,9 @@ fn negative_decimal() {
     let num = parse_unwrap_data(src);
     assert_eq!(
         num,
-        DatexExpressionData::Decimal(Decimal::from_string("-123.4").unwrap())
+        DatexExpressionData::Decimal(
+            Decimal::try_from_string("-123.4").unwrap()
+        )
     );
 }
 
@@ -1521,7 +1526,7 @@ fn decimal_with_positive_exponent() {
     assert_eq!(
         num,
         DatexExpressionData::Decimal(
-            Decimal::from_string("123.456789123456").unwrap()
+            Decimal::try_from_string("123.456789123456").unwrap()
         )
     );
 }
@@ -1585,8 +1590,10 @@ fn list_with_values() {
             DatexExpressionData::Integer(Integer::from(1)).with_default_span(),
             DatexExpressionData::Integer(Integer::from(2)).with_default_span(),
             DatexExpressionData::Integer(Integer::from(3)).with_default_span(),
-            DatexExpressionData::Decimal(Decimal::from_string("4.5").unwrap())
-                .with_default_span(),
+            DatexExpressionData::Decimal(
+                Decimal::try_from_string("4.5").unwrap()
+            )
+            .with_default_span(),
             DatexExpressionData::Text("text".to_string()).with_default_span(),
         ]))
     );
@@ -2826,14 +2833,14 @@ fn fraction() {
     let res = parse_unwrap_data("42/3");
     assert_eq!(
         res,
-        DatexExpressionData::Decimal(Decimal::from_string("42/3").unwrap())
+        DatexExpressionData::Decimal(Decimal::try_from_string("42/3").unwrap())
     );
 
     let src = "1/3";
     let val = parse_to_value_container(src);
     assert_eq!(
         val,
-        ValueContainer::from(Decimal::from_string("1/3").unwrap())
+        ValueContainer::from(Decimal::try_from_string("1/3").unwrap())
     );
 
     // divison
@@ -2844,7 +2851,7 @@ fn fraction() {
             operator: BinaryOperator::Arithmetic(ArithmeticOperator::Divide),
             left: Box::new(
                 DatexExpressionData::Decimal(
-                    Decimal::from_string("42.4").unwrap()
+                    Decimal::try_from_string("42.4").unwrap()
                 )
                 .with_default_span()
             ),
@@ -2990,7 +2997,7 @@ fn integer_to_value_container() {
     assert_eq!(
         val,
         ValueContainer::from(
-            Integer::from_string("123456789123456789").unwrap()
+            Integer::try_from_string("123456789123456789").unwrap()
         )
     );
 }
@@ -3001,7 +3008,9 @@ fn decimal_to_value_container() {
     let val = parse_to_value_container(src);
     assert_eq!(
         val,
-        ValueContainer::from(Decimal::from_string("123.456789123456").unwrap())
+        ValueContainer::from(
+            Decimal::try_from_string("123.456789123456").unwrap()
+        )
     );
 }
 
@@ -3020,7 +3029,7 @@ fn list_to_value_container() {
         Integer::from(1).into(),
         Integer::from(2).into(),
         Integer::from(3).into(),
-        Decimal::from_string("4.5").unwrap().into(),
+        Decimal::try_from_string("4.5").unwrap().into(),
         "text".to_string().into(),
     ];
     assert_eq!(val, ValueContainer::from(value_container_list));
@@ -3045,7 +3054,7 @@ fn json_to_value_container() {
         Integer::from(1).into(),
         Integer::from(2).into(),
         Integer::from(3).into(),
-        Decimal::from_string("0.5").unwrap().into(),
+        Decimal::try_from_string("0.5").unwrap().into(),
     ];
     let value_container_inner_map: ValueContainer =
         ValueContainer::from(datex_core::values::core_values::map::Map::from(
@@ -3094,10 +3103,6 @@ fn invalid_value_containers() {
 
 #[test]
 fn decimal_nan() {
-    let src = "NaN";
-    let num = parse_unwrap_data(src);
-    assert_matches!(num, DatexExpressionData::Decimal(Decimal::Nan));
-
     let src = "nan";
     let num = parse_unwrap_data(src);
     assert_matches!(num, DatexExpressionData::Decimal(Decimal::Nan));
@@ -3105,14 +3110,6 @@ fn decimal_nan() {
 
 #[test]
 fn decimal_infinity() {
-    let src = "Infinity";
-    let num = parse_unwrap_data(src);
-    assert_eq!(num, DatexExpressionData::Decimal(Decimal::Infinity));
-
-    let src = "-Infinity";
-    let num = parse_unwrap_data(src);
-    assert_eq!(num, DatexExpressionData::Decimal(Decimal::NegInfinity));
-
     let src = "infinity";
     let num = parse_unwrap_data(src);
     assert_eq!(num, DatexExpressionData::Decimal(Decimal::Infinity));

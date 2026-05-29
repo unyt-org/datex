@@ -1,3 +1,4 @@
+pub use crate::prelude::*;
 use crate::{
     ast::{
         resolved_variable::{ResolvedVariable, VariableId},
@@ -19,7 +20,8 @@ use crate::{
         PointerAddress, ReferenceMutability, SharedContainerMutability,
     },
     types::{
-        r#type::Type, type_definition_with_metadata::LocalReferenceMutability,
+        r#type::Type, type_definition::callable::CallableKind,
+        type_definition_with_metadata::LocalReferenceMutability,
     },
     values::{
         core_value::CoreValue,
@@ -33,7 +35,6 @@ use crate::{
         value_container::ValueContainer,
     },
 };
-pub use crate::{prelude::*, values::core_values::callable::CallableKind};
 use core::{fmt::Display, ops, ops::Neg};
 
 #[derive(Clone, Debug)]

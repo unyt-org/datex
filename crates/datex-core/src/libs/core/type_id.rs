@@ -59,7 +59,10 @@ pub enum CoreLibBaseTypeId {
 }
 
 impl CoreLibBaseTypeId {
-    pub fn variant(&self, variant_name: &str) -> Result<CoreLibVariantTypeId, ()> {
+    pub fn variant(
+        &self,
+        variant_name: &str,
+    ) -> Result<CoreLibVariantTypeId, ()> {
         match self {
             CoreLibBaseTypeId::Integer => {
                 IntegerTypeVariant::from_str(variant_name)

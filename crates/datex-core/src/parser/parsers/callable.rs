@@ -1,8 +1,7 @@
 use crate::{
     ast::{
         expressions::{
-            CallableDeclaration, CallableKind, DatexExpression,
-            DatexExpressionData,
+            CallableDeclaration, DatexExpression, DatexExpressionData,
         },
         spanned::Spanned,
         type_expressions::TypeExpression,
@@ -10,7 +9,8 @@ use crate::{
     parser::{Parser, SpannedParserError, lexer::Token},
 };
 
-use crate::prelude::*;
+use crate::{prelude::*, types::type_definition::callable::CallableKind};
+
 impl Parser {
     pub(crate) fn parse_callable_definition(
         &mut self,
@@ -91,8 +91,8 @@ mod tests {
     use crate::{
         ast::{
             expressions::{
-                BinaryOperation, CallableDeclaration, CallableKind,
-                DatexExpressionData, Statements,
+                BinaryOperation, CallableDeclaration, DatexExpressionData,
+                Statements,
             },
             spanned::Spanned,
             type_expressions::TypeExpressionData,
@@ -100,6 +100,7 @@ mod tests {
         global::operators::{BinaryOperator, binary::ArithmeticOperator},
         parser::tests::parse,
         prelude::*,
+        types::type_definition::callable::CallableKind,
     };
 
     #[test]

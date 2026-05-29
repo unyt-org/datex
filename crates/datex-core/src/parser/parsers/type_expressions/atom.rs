@@ -217,13 +217,10 @@ impl Parser {
 
         let span = self.advance()?.span.clone();
         let res = match variant {
-            Some(var) => {
-                TypedDecimal::from_string_and_variant_in_range(&value, var)
-                    .map(TypeExpressionData::TypedDecimal)
-            }
-            None => {
-                Decimal::from_string(&value).map(TypeExpressionData::Decimal)
-            }
+            Some(var) => TypedDecimal::try_from_string_and_variant(&value, var)
+                .map(TypeExpressionData::TypedDecimal),
+            None => Decimal::try_from_string(&value)
+                .map(TypeExpressionData::Decimal),
         };
         match res {
             Ok(expr) => Ok(expr.with_span(span)),
@@ -243,7 +240,7 @@ impl Parser {
         let span = self.advance()?.span.clone();
         // remove all underscores from fraction string
         let fraction: String = fraction.chars().filter(|&c| c != '_').collect();
-        match Decimal::from_string(&fraction) {
+        match Decimal::try_from_string(&fraction) {
             Ok(decimal) => {
                 Ok(TypeExpressionData::Decimal(decimal).with_span(span))
             }
@@ -342,7 +339,7 @@ mod tests {
         assert_eq!(
             expr.data,
             TypeExpressionData::TypedInteger(
-                TypedInteger::from_string_with_variant(
+                TypedInteger::try_from_string_and_variant(
                     "12345",
                     IntegerTypeVariant::U16
                 )
@@ -381,7 +378,7 @@ mod tests {
         assert_eq!(
             expr.data,
             TypeExpressionData::Decimal(
-                Decimal::from_string("123.456").unwrap()
+                Decimal::try_from_string("123.456").unwrap()
             )
         );
     }
@@ -392,7 +389,7 @@ mod tests {
         assert_eq!(
             expr.data,
             TypeExpressionData::TypedDecimal(
-                TypedDecimal::from_string_and_variant_in_range(
+                TypedDecimal::try_from_string_and_variant(
                     "123.456",
                     DecimalTypeVariant::F32
                 )
@@ -406,7 +403,9 @@ mod tests {
         let expr = parse_type_expression("3/4");
         assert_eq!(
             expr.data,
-            TypeExpressionData::Decimal(Decimal::from_string("3/4").unwrap())
+            TypeExpressionData::Decimal(
+                Decimal::try_from_string("3/4").unwrap()
+            )
         );
     }
 }

@@ -19,10 +19,7 @@ use crate::{
         },
     },
     shared_values::base_shared_value_container::observers::TransceiverId,
-    values::{
-        borrowed_value_container::BorrowedValueContainer,
-        value_container::ValueContainer,
-    },
+    values::value_container::ValueContainer,
 };
 use core::{cell::RefCell, fmt::Debug};
 
@@ -180,9 +177,7 @@ impl RuntimeExecutionStack {
             resolved_values.push(match ty {
                 InjectedValueType::Shared(SharedInjectedValueType::Move) => {
                     match moved[i].take().unwrap() {
-                        shared @ ValueContainer::Shared(_) => {
-                            shared
-                        }
+                        shared @ ValueContainer::Shared(_) => shared,
                         ValueContainer::Local(_) => {
                             return Err(ExecutionError::ExpectedSharedValue);
                         }

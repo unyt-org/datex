@@ -1,11 +1,11 @@
+use crate::{prelude::*, types::r#type::Type};
 use core::fmt::Display;
-use crate::prelude::*;
-use crate::types::type_definition::TypeDefinition;
 
+pub mod serde_dif;
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TaggedTypeDefinition {
     pub tag: String,
-    pub ty: Option<Box<TypeDefinition>>,
+    pub ty: Option<Box<Type>>,
 }
 impl Display for TaggedTypeDefinition {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {

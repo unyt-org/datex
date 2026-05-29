@@ -461,7 +461,7 @@ mod tests {
         types::{
             literal_type_definition::LiteralTypeDefinition,
             r#type::Type,
-            type_definition::{TypeDefinition, union::TypeUnion},
+            type_definition::{TypeDefinition, union::UnionTypeDefinition},
             type_definition_with_metadata::TypeDefinitionWithMetadata,
             type_match::{
                 TypeSatisfiesValueContainer, TypeSubset, TypeSuperset,
@@ -511,7 +511,7 @@ mod tests {
 
         // 1 matches (1 | 2 | 3)
         assert!(
-            Type::from(TypeDefinition::Union(TypeUnion(vec![
+            Type::from(TypeDefinition::Union(UnionTypeDefinition(vec![
                 LiteralTypeDefinition::Integer(Integer::from(1)).into(),
                 LiteralTypeDefinition::Integer(Integer::from(2)).into(),
                 LiteralTypeDefinition::Integer(Integer::from(3)).into()
@@ -525,24 +525,24 @@ mod tests {
         // 1 <= (1 | 2 | 3)
         assert!(
             Type::from(LiteralTypeDefinition::Integer(Integer::from(1)))
-                .is_subset_of(&Type::from(TypeDefinition::Union(TypeUnion(
-                    vec![
+                .is_subset_of(&Type::from(TypeDefinition::Union(
+                    UnionTypeDefinition(vec![
                         LiteralTypeDefinition::Integer(Integer::from(1)).into(),
                         LiteralTypeDefinition::Integer(Integer::from(2)).into(),
                         LiteralTypeDefinition::Integer(Integer::from(3)).into()
-                    ]
-                ))))
+                    ])
+                )))
         );
 
         // 1 <= integer | text
         assert!(
             Type::from(LiteralTypeDefinition::Integer(Integer::from(1)))
-                .is_subset_of(&Type::from(TypeDefinition::Union(TypeUnion(
-                    vec![
+                .is_subset_of(&Type::from(TypeDefinition::Union(
+                    UnionTypeDefinition(vec![
                         Type::core(CoreLibBaseTypeId::Integer),
                         Type::core(CoreLibBaseTypeId::Text),
-                    ]
-                ))))
+                    ])
+                )))
         );
     }
 

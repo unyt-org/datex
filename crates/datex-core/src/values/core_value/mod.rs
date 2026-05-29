@@ -268,36 +268,34 @@ impl CoreValue {
         variant: DecimalTypeVariant,
     ) -> Option<TypedDecimal> {
         match self {
-            CoreValue::Text(text) => {
-                TypedDecimal::from_string_and_variant_in_range(
-                    text.as_str(),
-                    variant,
-                )
-                .ok()
-            }
+            CoreValue::Text(text) => TypedDecimal::try_from_string_and_variant(
+                text.as_str(),
+                variant,
+            )
+            .ok(),
             CoreValue::TypedInteger(int) => Some(
-                TypedDecimal::from_string_and_variant_in_range(
+                TypedDecimal::try_from_string_and_variant(
                     &int.to_string(),
                     variant,
                 )
                 .ok()?,
             ),
             CoreValue::TypedDecimal(decimal) => Some(
-                TypedDecimal::from_string_and_variant_in_range(
+                TypedDecimal::try_from_string_and_variant(
                     &decimal.to_string(),
                     variant,
                 )
                 .ok()?,
             ),
             CoreValue::Integer(int) => Some(
-                TypedDecimal::from_string_and_variant_in_range(
+                TypedDecimal::try_from_string_and_variant(
                     &int.to_string(),
                     variant,
                 )
                 .ok()?,
             ),
             CoreValue::Decimal(decimal) => Some(
-                TypedDecimal::from_string_and_variant_in_range(
+                TypedDecimal::try_from_string_and_variant(
                     &decimal.to_string(),
                     variant,
                 )
@@ -310,9 +308,11 @@ impl CoreValue {
     // FIXME #314 discuss here - shall we fit the integer in the minimum viable type?
     pub fn _cast_to_integer_internal(&self) -> Option<TypedInteger> {
         match self {
-            CoreValue::Text(text) => Integer::from_string(&text.to_string())
-                .map(|x| Some(x.to_smallest_fitting()))
-                .unwrap_or(None),
+            CoreValue::Text(text) => {
+                Integer::try_from_string(&text.to_string())
+                    .map(|x| Some(x.to_smallest_fitting()))
+                    .unwrap_or(None)
+            }
             CoreValue::TypedInteger(int) => {
                 Some(int.to_smallest_fitting().clone())
             }
@@ -335,7 +335,7 @@ impl CoreValue {
     pub fn cast_to_integer(&self) -> Option<Integer> {
         match self {
             CoreValue::Text(text) => {
-                Integer::from_string(&text.to_string()).ok()
+                Integer::try_from_string(&text.to_string()).ok()
             }
             CoreValue::TypedInteger(int) => Some(int.as_integer()),
             CoreValue::Integer(int) => Some(int.clone()),
@@ -356,22 +356,25 @@ impl CoreValue {
         variant: IntegerTypeVariant,
     ) -> Option<TypedInteger> {
         match self {
-            CoreValue::Text(text) => {
-                TypedInteger::from_string_with_variant(text.as_str(), variant)
-                    .ok()
-            }
+            CoreValue::Text(text) => TypedInteger::try_from_string_and_variant(
+                text.as_str(),
+                variant,
+            )
+            .ok(),
             CoreValue::TypedInteger(int) => {
-                TypedInteger::from_string_with_variant(
+                TypedInteger::try_from_string_and_variant(
                     &int.to_string(),
                     variant,
                 )
                 .ok()
             }
-            CoreValue::Integer(int) => TypedInteger::from_string_with_variant(
-                int.to_string().as_str(),
-                variant,
-            )
-            .ok(),
+            CoreValue::Integer(int) => {
+                TypedInteger::try_from_string_and_variant(
+                    int.to_string().as_str(),
+                    variant,
+                )
+                .ok()
+            }
             CoreValue::Decimal(decimal) => {
                 Some(TypedInteger::from(decimal.into_f64() as i128))
             }

@@ -30,7 +30,7 @@ impl<'de> Deserialize<'de> for Integer {
         D: serde::Deserializer<'de>,
     {
         let s = String::deserialize(deserializer)?;
-        Integer::from_string(&s).map_err(serde::de::Error::custom)
+        Integer::try_from_string(&s).map_err(serde::de::Error::custom)
     }
 }
 
@@ -40,7 +40,7 @@ impl Integer {
     }
     /// Parse an integer from a string in base 10.
     /// Returns an error if the string is not a valid integer.
-    pub fn from_string(s: &str) -> Result<Self, NumberParseError> {
+    pub fn try_from_string(s: &str) -> Result<Self, NumberParseError> {
         BigInt::from_str(s)
             .map(Integer)
             .map_err(|_| NumberParseError::InvalidFormat)
@@ -398,33 +398,33 @@ mod tests {
 
     #[test]
     fn integer_addition() {
-        let dec1 = Integer::from_string("12").unwrap();
-        let dec2 = Integer::from_string("56").unwrap();
+        let dec1 = Integer::try_from_string("12").unwrap();
+        let dec2 = Integer::try_from_string("56").unwrap();
         let result = dec1 + dec2;
         assert_eq!(result.to_string(), "68");
 
-        let dec1 = Integer::from_string("-12345").unwrap();
-        let dec2 = Integer::from_string("3").unwrap();
+        let dec1 = Integer::try_from_string("-12345").unwrap();
+        let dec2 = Integer::try_from_string("3").unwrap();
         let result = dec1 + dec2;
         assert_eq!(result.to_string(), "-12342");
     }
 
     #[test]
     fn formatting() {
-        let int1 = Integer::from_string("12").unwrap();
+        let int1 = Integer::try_from_string("12").unwrap();
         assert_eq!(int1.to_string(), "12");
 
-        let int2 = Integer::from_string("-12345").unwrap();
+        let int2 = Integer::try_from_string("-12345").unwrap();
         assert_eq!(int2.to_string(), "-12345");
-        let int3 = Integer::from_string("0").unwrap();
+        let int3 = Integer::try_from_string("0").unwrap();
         assert_eq!(int3.to_string(), "0");
 
         let int4 =
-            Integer::from_string("123456789012345678901234567890").unwrap();
+            Integer::try_from_string("123456789012345678901234567890").unwrap();
         assert_eq!(int4.to_string(), "123456789012345678901234567890");
 
-        let int5 =
-            Integer::from_string("-123456789012345678901234567890").unwrap();
+        let int5 = Integer::try_from_string("-123456789012345678901234567890")
+            .unwrap();
         assert_eq!(int5.to_string(), "-123456789012345678901234567890");
     }
 }

@@ -2,11 +2,13 @@
 //! A [Value] consists of a [CoreValue] representation and an optional custom type.
 use crate::{
     prelude::*,
-    types::type_definition::TypeDefinition,
+    types::type_definition::{
+        TypeDefinition, callable::CallableTypeDefinition,
+    },
     values::{
         core_value::CoreValue,
         core_values::{
-            callable::{Callable, CallableBody, CallableSignature},
+            callable::{Callable, CallableBody},
             integer::typed_integer::TypedInteger,
         },
         value_container::{ValueContainer, value_key::BorrowedValueKey},
@@ -51,7 +53,7 @@ impl Value {
 impl Value {
     pub fn callable(
         name: Option<String>,
-        signature: CallableSignature,
+        signature: CallableTypeDefinition,
         body: CallableBody,
     ) -> Self {
         Value {
@@ -295,7 +297,7 @@ mod tests {
         assert_structural_eq, datex_list,
         libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
         prelude::*,
-        types::r#type::Type,
+        types::{r#type::Type, type_definition::impl_type::ImplTypeDefinition},
         values::core_values::{
             endpoint::Endpoint,
             integer::{Integer, typed_integer::TypedInteger},
@@ -304,7 +306,6 @@ mod tests {
     };
     use core::str::FromStr;
     use log::info;
-    use crate::types::type_definition::impl_type::ImplTypeDefinition;
 
     #[test]
     fn endpoint() {
@@ -475,8 +476,9 @@ mod tests {
             inner: CoreValue::Integer(Integer::from(42)),
             custom_type: Some(TypeDefinition::ImplType(
                 ImplTypeDefinition::new(
-                    Type::core(CoreLibBaseTypeId::Integer), vec![]
-                )
+                    Type::core(CoreLibBaseTypeId::Integer),
+                    vec![],
+                ),
             )),
         };
 

@@ -2,11 +2,13 @@ use crate::runtime::RuntimeConfigInterface;
 
 use crate::{prelude::*, time::now_ms};
 use core::time::Duration;
+use datex_macros_internal::Datex;
 use serde::{Deserialize, Serialize};
 use strum::EnumString;
-use datex_macros_internal::Datex;
 
-#[derive(Datex, PartialEq, Eq, Debug, Clone, EnumString, Serialize, Deserialize)]
+#[derive(
+    Datex, PartialEq, Eq, Debug, Clone, EnumString, Serialize, Deserialize,
+)]
 pub enum InterfaceDirection {
     In,
     Out,

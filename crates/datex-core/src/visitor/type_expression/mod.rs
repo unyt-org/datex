@@ -11,6 +11,7 @@ use crate::{
             TypeExpressionData, TypeVariantAccess, Union,
         },
     },
+    libs::core::type_id::CoreLibTypeId,
     shared_values::PointerAddress,
     values::core_values::{
         decimal::{Decimal, typed_decimal::TypedDecimal},
@@ -24,7 +25,6 @@ use crate::{
         },
     },
 };
-use crate::libs::core::type_id::CoreLibTypeId;
 
 pub mod visitable;
 

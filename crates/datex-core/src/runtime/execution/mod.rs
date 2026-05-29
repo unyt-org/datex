@@ -28,7 +28,7 @@ use crate::{
     libs::core::core_lib_id::CoreLibId,
     shared_values::{
         PointerAddress, ReferenceMutability, ReferencedSharedContainer,
-        SharedContainer, base_shared_value_container::observers::TransceiverId,
+        SharedContainer,
     },
     values::core_values::endpoint::Endpoint,
 };
@@ -599,8 +599,9 @@ mod tests {
                 &value.custom_type,
                 &Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
                     tag: "Example".to_string(),
-                    ty: Some(Box::new(TypeDefinition::Core(
-                        CoreLibBaseTypeId::Unit.into()
+                    ty: Some(Box::new(Type::Alias(
+                        TypeDefinition::Core(CoreLibBaseTypeId::Unit.into())
+                            .into()
                     ))),
                 }))
             )
@@ -682,14 +683,17 @@ mod tests {
     #[test]
     fn decimal() {
         let result = execute_datex_script_debug_with_result("1.5");
-        assert_eq!(result, Decimal::from_string("1.5").unwrap().into());
+        assert_eq!(result, Decimal::try_from_string("1.5").unwrap().into());
         assert_structural_eq!(result, ValueContainer::from(1.5));
     }
 
     #[test]
     fn decimal_and_integer() {
         let result = execute_datex_script_debug_with_result("-2341324.0");
-        assert_eq!(result, Decimal::from_string("-2341324").unwrap().into());
+        assert_eq!(
+            result,
+            Decimal::try_from_string("-2341324").unwrap().into()
+        );
         assert!(!result.structural_eq(&ValueContainer::from(-2341324)));
     }
 

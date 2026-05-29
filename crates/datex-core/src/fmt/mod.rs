@@ -15,7 +15,6 @@ use crate::{
     },
     fmt::options::{FormattingOptions, TypeDeclarationFormatting},
     global::operators::{BinaryOperator, ComparisonOperator, UnaryOperator},
-    libs::core::core_lib_id::CoreLibId,
     parser::ParserOptions,
     prelude::*,
     runtime::Runtime,
@@ -168,9 +167,7 @@ impl<'a> Formatter<'a> {
                 name, ..
             }) => a.text(name.clone()),
 
-            TypeExpressionData::GetReference(ptr) => {
-                a.text(ptr.to_string())
-            }
+            TypeExpressionData::GetReference(ptr) => a.text(ptr.to_string()),
             TypeExpressionData::GetCoreLibType(core_lib_id) => {
                 a.text(core_lib_id.to_string())
             }

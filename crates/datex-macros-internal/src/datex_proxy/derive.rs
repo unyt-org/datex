@@ -27,6 +27,7 @@ enum FieldsType {
     Named,
     Unnamed,
     Unit,
+    Transparent,
 }
 
 impl From<&Fields> for FieldsType {
@@ -34,7 +35,13 @@ impl From<&Fields> for FieldsType {
         match &fields {
             Fields::Unit => FieldsType::Unit,
             Fields::Named(_) => FieldsType::Named,
-            Fields::Unnamed(_) => FieldsType::Unnamed,
+            Fields::Unnamed(fields) => {
+                if fields.unnamed.len() == 1 {
+                    FieldsType::Transparent
+                } else {
+                    FieldsType::Unnamed
+                }
+            }
         }
     }
 }
@@ -58,7 +65,7 @@ pub struct DeriveData {
     is_fallible_serialization: bool,
     from_datex_fields_inner: TokenStream,
     into_datex_fields_inner: TokenStream,
-    type_definition: TokenStream,
+    datex_type: TokenStream,
     helpers: Option<TokenStream>,
 }
 
@@ -76,7 +83,7 @@ pub fn derive(input: DeriveInput) -> TokenStream {
     let DeriveData {
         into_datex_fields_inner,
         from_datex_fields_inner,
-        type_definition,
+        datex_type,
         is_fallible_serialization,
         helpers,
     } = match input.data {
@@ -173,6 +180,9 @@ pub fn derive(input: DeriveInput) -> TokenStream {
                 values::core_values::map::Map,
                 values::core_values::list::List,
                 types::type_definition::TypeDefinition,
+                types::type_definition::union::UnionTypeDefinition,
+                types::type_definition::map::MapTypeDefinition,
+                types::type_definition::list::ListTypeDefinition,
                 types::type_definition::tagged_type::TaggedTypeDefinition,
                 prelude::*
             };
@@ -217,7 +227,7 @@ pub fn derive(input: DeriveInput) -> TokenStream {
             #[automatically_derived]
             impl DatexProxyTypes for #ident {
                 fn datex_type(memory: &mut Memory) -> Type {
-                    #type_definition
+                    #datex_type
                 }
             }
         };
@@ -231,7 +241,7 @@ fn derive_struct(data_struct: DataStruct, ident: &Ident) -> DeriveData {
         fields_type,
         into_datex_fields,
         from_datex_fields,
-        field_types,
+        datex_type,
     } = derive_fields(&data_struct.fields);
 
     let into_datex_fields_inner = match fields_type {
@@ -241,22 +251,21 @@ fn derive_struct(data_struct: DataStruct, ident: &Ident) -> DeriveData {
             ]))
         },
         FieldsType::Unnamed => {
-            if into_datex_fields.len() == 1 {
-                let into_field = into_datex_fields.first().unwrap();
-                quote! {
-                    let container = #into_field;
-                    if let ValueContainer::Local(value) = container {
-                        value
-                    }
-                    else {
-                        unreachable!("Expected ValueContainer::Local");
-                    }
+            quote! {
+                Value::from(List::from(vec![
+                    #(#into_datex_fields),*
+                ]))
+            }
+        }
+        FieldsType::Transparent => {
+            let into_field = into_datex_fields.first().unwrap();
+            quote! {
+                let container = #into_field;
+                if let ValueContainer::Local(value) = container {
+                    value
                 }
-            } else {
-                quote! {
-                    Value::from(List::from(vec![
-                        #(#into_datex_fields),*
-                    ]))
+                else {
+                    unreachable!("Expected ValueContainer::Local");
                 }
             }
         }
@@ -273,21 +282,20 @@ fn derive_struct(data_struct: DataStruct, ident: &Ident) -> DeriveData {
                 #(#from_datex_fields),*
             }
         }},
+        FieldsType::Transparent => {
+            let from_field = from_datex_fields.first().unwrap();
+            quote! {{
+                #ident(#from_field)
+            }}
+        }
         FieldsType::Unnamed => {
-            if from_datex_fields.len() == 1 {
-                let from_field = from_datex_fields.first().unwrap();
-                quote! {{
-                    #ident(#from_field)
-                }}
-            } else {
-                quote! {{
-                    let mut list: List = value.try_into()?;
+            quote! {{
+                let mut list: List = value.try_into()?;
 
-                    #ident(
-                        #(#from_datex_fields),*
-                    )
-                }}
-            }
+                #ident(
+                    #(#from_datex_fields),*
+                )
+            }}
         }
         FieldsType::Unit => quote! {
             if !value.is_null() {
@@ -297,20 +305,17 @@ fn derive_struct(data_struct: DataStruct, ident: &Ident) -> DeriveData {
         },
     };
 
-    // TODO:
-    let type_definition = quote! {
-        Type::Alias(
-            TypeDefinition::Map(vec![
-                #(#field_types),*
-            ].into_iter().collect()).into()
-        )
-    };
+    let type_definition = datex_type.unwrap_or_else(|| {
+        quote! {
+            Type::Alias(TypeDefinition::Core(CoreLibBaseTypeId::Unit.into()))
+        }
+    });
 
     DeriveData {
         is_fallible_serialization,
         into_datex_fields_inner,
         from_datex_fields_inner,
-        type_definition,
+        datex_type: type_definition,
         helpers: None,
     }
 }
@@ -319,8 +324,9 @@ fn derive_enum(data_enum: DataEnum, ident: &Ident) -> DeriveData {
     // serialization is only infallible if the enum has no serde fields or only serde fields with datex(serde_infallible)
     let mut is_fallible_serialization = false;
 
-    let mut into_datex_fields_inners = Vec::<TokenStream>::new();
-    let mut from_datex_fields_inners = Vec::<TokenStream>::new();
+    let mut variants_into_datex_fields = Vec::<TokenStream>::new();
+    let mut variants_from_datex_fields = Vec::<TokenStream>::new();
+    let mut variants_datex_types = Vec::<TokenStream>::new();
 
     let mut helper_structs = Vec::<TokenStream>::new();
 
@@ -342,7 +348,7 @@ fn derive_enum(data_enum: DataEnum, ident: &Ident) -> DeriveData {
             fields_type,
             into_datex_fields,
             from_datex_fields,
-            field_types,
+            datex_type,
         } = derive_fields(&variant.fields);
 
         // if any variant is fallible, mark as fallible
@@ -366,41 +372,40 @@ fn derive_enum(data_enum: DataEnum, ident: &Ident) -> DeriveData {
                     }
                 }
             },
-            FieldsType::Unnamed => {
-                if into_datex_fields.len() == 1 {
-                    let into_field = into_datex_fields.first().unwrap();
-                    quote! {
-                        #ident::#variant_ident {..} => {
-                            let value: #helper_struct_ident = value.into();
-                            let container = #into_field;
-                            if let ValueContainer::Local(Value {custom_type: None, inner}) = container {
-                                Value {
-                                    inner,
-                                    custom_type: Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
-                                        tag: #variant_name.to_string(),
-                                        ty: None,
-                                    })),
-                                }
-                            }
-                            else {
-                                unreachable!("Expected ValueContainer::Local without custom type");
-                            }
-                        }
-                    }
-                } else {
-                    quote! {
-                        #ident::#variant_ident (..) => {
-                            let value: #helper_struct_ident = value.into();
-                            let list = List::from(vec![
-                                #(#into_datex_fields),*
-                            ]);
+            FieldsType::Transparent => {
+                let into_field = into_datex_fields.first().unwrap();
+                quote! {
+                    #ident::#variant_ident {..} => {
+                        let value: #helper_struct_ident = value.into();
+                        let container = #into_field;
+                        if let ValueContainer::Local(Value {custom_type: None, inner}) = container {
                             Value {
-                                inner: CoreValue::List(list),
+                                inner,
                                 custom_type: Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
                                     tag: #variant_name.to_string(),
                                     ty: None,
                                 })),
                             }
+                        }
+                        else {
+                            unreachable!("Expected ValueContainer::Local without custom type");
+                        }
+                    }
+                }
+            }
+            FieldsType::Unnamed => {
+                quote! {
+                    #ident::#variant_ident (..) => {
+                        let value: #helper_struct_ident = value.into();
+                        let list = List::from(vec![
+                            #(#into_datex_fields),*
+                        ]);
+                        Value {
+                            inner: CoreValue::List(list),
+                            custom_type: Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
+                                tag: #variant_name.to_string(),
+                                ty: None,
+                            })),
                         }
                     }
                 }
@@ -418,8 +423,8 @@ fn derive_enum(data_enum: DataEnum, ident: &Ident) -> DeriveData {
             },
         };
 
-        let from_datex_fields_inner = match &variant.fields {
-            Fields::Named(_) => quote! {
+        let from_datex_fields_inner = match fields_type {
+            FieldsType::Named => quote! {
                 #variant_name => {
                     let mut map: Map = value.try_into()?;
 
@@ -428,29 +433,28 @@ fn derive_enum(data_enum: DataEnum, ident: &Ident) -> DeriveData {
                     }.into()
                 }
             },
-            Fields::Unnamed(_) => {
-                if from_datex_fields.len() == 1 {
-                    let from_field = from_datex_fields.first().unwrap();
-                    quote! {
-                        #variant_name => {
-                            #helper_struct_ident (
-                                #from_field
-                            ).into()
-                        }
-                    }
-                } else {
-                    quote! {
-                        #variant_name => {
-                            let mut list: List = value.try_into()?;
-
-                            #helper_struct_ident(
-                                #(#from_datex_fields),*
-                            ).into()
-                        }
+            FieldsType::Transparent => {
+                let from_field = from_datex_fields.first().unwrap();
+                quote! {
+                    #variant_name => {
+                        #helper_struct_ident (
+                            #from_field
+                        ).into()
                     }
                 }
             }
-            Fields::Unit => quote! {
+            FieldsType::Unnamed => {
+                quote! {
+                    #variant_name => {
+                        let mut list: List = value.try_into()?;
+
+                        #helper_struct_ident(
+                            #(#from_datex_fields),*
+                        ).into()
+                    }
+                }
+            }
+            FieldsType::Unit => quote! {
                 #variant_name => {
                     if !value.is_null() {
                         return Err(TryFromDatexValueError(format!("Unexpected value, expected null")));
@@ -460,13 +464,29 @@ fn derive_enum(data_enum: DataEnum, ident: &Ident) -> DeriveData {
             },
         };
 
-        into_datex_fields_inners.push(into_datex_fields_inner);
-        from_datex_fields_inners.push(from_datex_fields_inner);
+        let datex_type_for_variant = match datex_type {
+            None => quote! {
+                Type::Alias(TypeDefinition::TaggedType(TaggedTypeDefinition {
+                    tag: #variant_name.to_string(),
+                    ty: None,
+                }).into())
+            },
+            Some(type_definition) => quote! {
+                Type::Alias(TypeDefinition::TaggedType(TaggedTypeDefinition {
+                    tag: #variant_name.to_string(),
+                    ty: Some(Box::new(#type_definition)),
+                }).into())
+            },
+        };
+
+        variants_into_datex_fields.push(into_datex_fields_inner);
+        variants_from_datex_fields.push(from_datex_fields_inner);
+        variants_datex_types.push(datex_type_for_variant);
     }
 
     let into_datex_fields_inner = quote! {
         match &value {
-            #(#into_datex_fields_inners),*
+            #(#variants_into_datex_fields),*
         }
     };
 
@@ -478,7 +498,7 @@ fn derive_enum(data_enum: DataEnum, ident: &Ident) -> DeriveData {
         match &value.custom_type {
             Some(TypeDefinition::TaggedType(TaggedTypeDefinition {tag, ..})) => {
                 match tag.as_str() {
-                    #(#from_datex_fields_inners),*
+                    #(#variants_from_datex_fields),*
                     tag => return Err(TryFromDatexValueError(format!("Unexpected tag: {}", tag)))
                 }
             }
@@ -488,7 +508,9 @@ fn derive_enum(data_enum: DataEnum, ident: &Ident) -> DeriveData {
 
     let type_definition = quote! {
         Type::Alias(
-            TypeDefinition::Core(CoreLibTypeId::Base(CoreLibBaseTypeId::Unknown)).into()
+            TypeDefinition::Union(UnionTypeDefinition(vec![
+                #(#variants_datex_types),*
+            ])).into()
         )
     };
 
@@ -496,7 +518,7 @@ fn derive_enum(data_enum: DataEnum, ident: &Ident) -> DeriveData {
         is_fallible_serialization,
         into_datex_fields_inner,
         from_datex_fields_inner,
-        type_definition,
+        datex_type: type_definition,
         helpers: Some(helpers),
     }
 }
@@ -506,7 +528,7 @@ struct FieldDeriveData {
     fields_type: FieldsType,
     into_datex_fields: Vec<TokenStream>,
     from_datex_fields: Vec<TokenStream>,
-    field_types: Vec<TokenStream>,
+    datex_type: Option<TokenStream>,
 }
 
 fn generate_enum_helper_structs(
@@ -616,7 +638,7 @@ fn derive_fields(fields: &Fields) -> FieldDeriveData {
     let mut from_datex_fields: Vec<TokenStream> = vec![];
     let mut field_types: Vec<TokenStream> = vec![];
 
-    let is_new_type = fields.len() == 1;
+    let is_single_type = fields.len() == 1;
 
     // Iterate over the fields of the struct
     for (index, field) in fields.iter().enumerate() {
@@ -668,13 +690,11 @@ fn derive_fields(fields: &Fields) -> FieldDeriveData {
                         )?
                 });
 
-                field_types.push(
-                    generate_field_type_code(
-                        &field_attributes.serde_mode,
-                        &field_name,
-                        field_type
-                    )
-                );
+                field_types.push(generate_named_field_type_code(
+                    &field_attributes.serde_mode,
+                    &field_name,
+                    field_type,
+                ));
             }
 
             // tuple struct or unit struct
@@ -685,10 +705,11 @@ fn derive_fields(fields: &Fields) -> FieldDeriveData {
                     &field_index,
                     field_index.index.to_string(),
                 );
+                let field_type = &field.ty;
 
                 into_datex_fields.push(field_into);
 
-                if is_new_type {
+                if is_single_type {
                     from_datex_fields.push(quote! {
                         #from_value_container_function(
                             ValueContainer::Local(value)
@@ -702,16 +723,38 @@ fn derive_fields(fields: &Fields) -> FieldDeriveData {
                         )?
                     });
                 }
+
+                field_types.push(generate_unnamed_field_type_code(
+                    &field_attributes.serde_mode,
+                    field_type,
+                ));
             }
         }
     }
 
+    let fields_type = FieldsType::from(fields);
+
+    let datex_type = match fields_type {
+        FieldsType::Unit => None,
+        FieldsType::Named => Some(quote! {
+            Type::Alias(TypeDefinition::Map(MapTypeDefinition(vec![
+                #(#field_types),*
+            ])).into())
+        }),
+        FieldsType::Unnamed => Some(quote! {
+            Type::Alias(TypeDefinition::List(ListTypeDefinition(vec![
+                #(#field_types),*
+            ])).into())
+        }),
+        FieldsType::Transparent => Some(field_types.remove(0)),
+    };
+
     FieldDeriveData {
         is_fallible_serialization,
-        fields_type: FieldsType::from(fields),
+        fields_type,
         into_datex_fields,
         from_datex_fields,
-        field_types,
+        datex_type,
     }
 }
 
@@ -837,7 +880,7 @@ fn generate_field_conversion_code<T: ToTokens>(
     }
 }
 
-fn generate_field_type_code(
+fn generate_named_field_type_code(
     serde_mode: &SerdeMode,
     field_name: &String,
     field_type: &syn::Type,
@@ -859,6 +902,26 @@ fn generate_field_type_code(
                     Type::Alias(TypeDefinition::Literal(LiteralTypeDefinition::Text(#field_name.to_string())).into()),
                     Type::Alias(TypeDefinition::Core(CoreLibTypeId::Base(CoreLibBaseTypeId::Unknown)).into())
                 )
+            }
+        }
+    }
+}
+
+fn generate_unnamed_field_type_code(
+    serde_mode: &SerdeMode,
+    field_type: &syn::Type,
+) -> TokenStream {
+    match serde_mode {
+        // no serde or infallible serde, provide/assume DatexValueContainerProxyInfallibleSerialize
+        SerdeMode::None => {
+            quote! {
+                <#field_type as DatexProxyTypes>::datex_type(memory)
+            }
+        }
+        // Cannot infer type
+        SerdeMode::Fallible | SerdeMode::Infallible => {
+            quote! {
+               Type::Alias(TypeDefinition::Core(CoreLibTypeId::Base(CoreLibBaseTypeId::Unknown)).into())
             }
         }
     }

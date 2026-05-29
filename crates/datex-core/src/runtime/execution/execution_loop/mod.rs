@@ -546,7 +546,7 @@ pub fn inner_execution_loop(
                                     inner: CoreValue::Null,
                                     custom_type: Some(TypeDefinition::TaggedType(TaggedTypeDefinition {
                                         tag,
-                                        ty: Some(Box::new(TypeDefinition::Core(CoreLibBaseTypeId::Unit.into()))),
+                                        ty: Some(Box::new(TypeDefinition::Core(CoreLibBaseTypeId::Unit.into()).into())),
                                     }))
                                 })))
                             }
@@ -779,7 +779,7 @@ pub fn inner_execution_loop(
                                             // add tag type to the value
                                             value.custom_type = Some(TypeDefinition::TaggedType(TaggedTypeDefinition{
                                                 tag,
-                                                ty: value.custom_type.map(Box::new),
+                                                ty: value.custom_type.map(Type::from).map(Box::new),
                                             }));
                                             RuntimeValue::ValueContainer(ValueContainer::Local(value))
                                                 .into()

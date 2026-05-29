@@ -4,13 +4,12 @@ use crate::values::value_container::ValueContainer;
 
 use crate::{
     global::protocol_structures::instruction_data::{
-        RawRemotePointerAddress,
-        RawSelfOwnedPointerAddress,
+        RawRemotePointerAddress, RawSelfOwnedPointerAddress,
     },
+    libs::core::core_lib_id::CoreLibId,
     prelude::*,
     shared_values::{ReferenceMutability, SharedContainerMutability},
 };
-use crate::libs::core::core_lib_id::CoreLibId;
 
 #[derive(Debug)]
 pub enum ExecutionInterrupt {

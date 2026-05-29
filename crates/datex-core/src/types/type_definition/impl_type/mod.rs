@@ -1,7 +1,6 @@
+use crate::{prelude::*, shared_values::PointerAddress, types::r#type::Type};
 use core::fmt::Display;
-use crate::prelude::*;
-use crate::{shared_values::PointerAddress, types::r#type::Type};
-
+pub mod serde_dif;
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ImplTypeDefinition {
     pub inner_type: Box<Type>,

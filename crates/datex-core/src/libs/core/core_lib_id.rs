@@ -12,7 +12,11 @@ pub const VALUE_SPACE_BASE: u16 = 1000;
 #[derive(BinWrite, BinRead, Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[brw(little)]
 pub struct CoreLibIdIndex(pub u16);
-
+impl CoreLibIdIndex {
+    pub fn new(index: u16) -> Self {
+        Self(index)
+    }
+}
 impl Display for CoreLibIdIndex {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{}", self.0)
@@ -88,8 +92,7 @@ impl TryFrom<CoreLibIdIndex> for CoreLibId {
     fn try_from(bytes: CoreLibIdIndex) -> Result<Self, Self::Error> {
         if bytes.0 == 0 {
             Ok(CoreLibId::CoreMap)
-        }
-        else if let Ok(type_id) = CoreLibTypeId::try_from(bytes) {
+        } else if let Ok(type_id) = CoreLibTypeId::try_from(bytes) {
             Ok(CoreLibId::Type(type_id))
         } else if let Ok(value_id) = CoreLibValueId::try_from(bytes) {
             Ok(CoreLibId::Value(value_id))

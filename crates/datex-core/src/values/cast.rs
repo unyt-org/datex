@@ -1,5 +1,6 @@
 use crate::{
     datex_proxy::{TryFromDatexValueError, TryToDatexValueError, *},
+    libs::core::type_id::{CoreLibBaseTypeId, CoreLibVariantTypeId},
     prelude::*,
     types::{nominal_type_definition::NominalTypeDefinition, r#type::Type},
     values::{
@@ -19,14 +20,16 @@ use crate::{
         value_container::ValueContainer,
     },
 };
-use crate::libs::core::type_id::{CoreLibBaseTypeId, CoreLibVariantTypeId};
 
+use crate::{
+    runtime::memory::Memory,
+    types::type_definition::{TypeDefinition, union::UnionTypeDefinition},
+    values::core_values::{
+        decimal::typed_decimal::DecimalTypeVariant,
+        integer::typed_integer::IntegerTypeVariant,
+    },
+};
 use core::hash::Hash;
-use crate::runtime::memory::Memory;
-use crate::types::type_definition::TypeDefinition;
-use crate::types::type_definition::union::TypeUnion;
-use crate::values::core_values::decimal::typed_decimal::DecimalTypeVariant;
-use crate::values::core_values::integer::typed_integer::IntegerTypeVariant;
 
 macro_rules! impl_try_from_core_value {
     ($($variant:ident => $type:ty),* $(,)?) => {
@@ -168,34 +171,16 @@ macro_rules! impl_datex_direct_via_value_container {
     };
 }
 
-impl_datex_direct_via_value_container!(
-    Endpoint,
-    CoreLibBaseTypeId::Endpoint
-);
-impl_datex_direct_via_value_container!(
-    Map,
-    CoreLibBaseTypeId::Map
-);
-impl_datex_direct_via_value_container!(
-    List,
-    CoreLibBaseTypeId::List
-);
-impl_datex_direct_via_value_container!(
-    Range,
-    CoreLibBaseTypeId::Range
-);
-impl_datex_direct_via_value_container!(
-    Type,
-    CoreLibBaseTypeId::Type
-);
+impl_datex_direct_via_value_container!(Endpoint, CoreLibBaseTypeId::Endpoint);
+impl_datex_direct_via_value_container!(Map, CoreLibBaseTypeId::Map);
+impl_datex_direct_via_value_container!(List, CoreLibBaseTypeId::List);
+impl_datex_direct_via_value_container!(Range, CoreLibBaseTypeId::Range);
+impl_datex_direct_via_value_container!(Type, CoreLibBaseTypeId::Type);
 impl_datex_direct_via_value_container!(
     NominalTypeDefinition,
     CoreLibBaseTypeId::Unknown
 );
-impl_datex_direct_via_value_container!(
-    Callable,
-    CoreLibBaseTypeId::Callable
-);
+impl_datex_direct_via_value_container!(Callable, CoreLibBaseTypeId::Callable);
 
 derive_try_from_chain!(
     bool,
@@ -316,14 +301,18 @@ impl<T: DatexValueProxy> DatexValueProxyDeserialize for Option<T> {
     }
 }
 
-
 impl<T: DatexValueContainerProxy> DatexProxyTypes for Option<T> {
     fn datex_type(memory: &mut Memory) -> Type {
         // null | T
-        Type::Alias(TypeDefinition::Union(TypeUnion(vec![
-            Type::Alias(TypeDefinition::Core(CoreLibBaseTypeId::Null.into()).into()),
-            T::datex_type(memory),
-        ])).into())
+        Type::Alias(
+            TypeDefinition::Union(UnionTypeDefinition(vec![
+                Type::Alias(
+                    TypeDefinition::Core(CoreLibBaseTypeId::Null.into()).into(),
+                ),
+                T::datex_type(memory),
+            ]))
+            .into(),
+        )
     }
 }
 
@@ -365,7 +354,7 @@ impl<T: DatexValueContainerProxyInfallibleSerialize>
 }
 
 impl<T: DatexValueContainerProxy> DatexProxyTypes for Vec<T> {
-    fn datex_type(memory: &mut Memory) -> Type {
+    fn datex_type(_memory: &mut Memory) -> Type {
         Type::Alias(TypeDefinition::Core(CoreLibBaseTypeId::List.into()).into())
     }
 }
@@ -430,8 +419,9 @@ impl<
 }
 
 impl<K: DatexValueContainerProxy + Eq + Hash, V: DatexValueContainerProxy>
-    DatexProxyTypes for HashMap<K, V> {
-    fn datex_type(memory: &mut Memory) -> Type {
+    DatexProxyTypes for HashMap<K, V>
+{
+    fn datex_type(_memory: &mut Memory) -> Type {
         Type::Alias(TypeDefinition::Core(CoreLibBaseTypeId::Map.into()).into())
     }
 }

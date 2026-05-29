@@ -41,11 +41,11 @@ fn json_value_to_datex_value(json: &json_syntax::Value) -> Value {
                 // Parse as integer
                 // Value::from(Integer::from_string(num_str).unwrap())
                 Value::from(
-                    Integer::from_string(num_str).unwrap(), // .to_smallest_fitting(),
+                    Integer::try_from_string(num_str).unwrap(), // .to_smallest_fitting(),
                 )
             } else {
                 // Parse as big decimal
-                Value::from(Decimal::from_string(num_str).unwrap())
+                Value::from(Decimal::try_from_string(num_str).unwrap())
             }
         }
         json_syntax::Value::Boolean(b) => Value::from(*b),

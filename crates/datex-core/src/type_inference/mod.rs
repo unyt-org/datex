@@ -3,7 +3,10 @@ use crate::{
     ast::resolved_variable::ResolvedVariable,
     global::operators::{BinaryOperator, LogicalUnaryOperator, UnaryOperator},
     type_inference::options::ErrorHandling,
-    types::type_definition::{TypeDefinition, list::ListTypeDefinition},
+    types::type_definition::{
+        TypeDefinition, callable::CallableTypeDefinition,
+        list::ListTypeDefinition,
+    },
 };
 
 use crate::{
@@ -27,8 +30,8 @@ use crate::{
     compiler::precompiler::precompiled_ast::{AstMetadata, RichAst},
     global::protocol_structures::instruction_data::StackIndex,
     libs::core::{
-        core_lib_id::{CoreLibId, CoreLibIdIndex},
-        type_id::{CoreLibBaseTypeId, CoreLibTypeId, CoreLibVariantTypeId},
+        core_lib_id::CoreLibId,
+        type_id::{CoreLibBaseTypeId, CoreLibTypeId},
     },
     prelude::*,
     runtime::memory::Memory,
@@ -45,7 +48,9 @@ use crate::{
         error::TypeError,
         literal_type_definition::LiteralTypeDefinition,
         r#type::Type,
-        type_definition::union::TypeUnion,
+        type_definition::{
+            range::RangeTypeDefinition, union::UnionTypeDefinition,
+        },
         type_definition_with_metadata::{
             LocalMutability, TypeDefinitionWithMetadata, TypeMetadata,
         },
@@ -54,7 +59,6 @@ use crate::{
     values::{
         core_value::CoreValue,
         core_values::{
-            callable::CallableSignature,
             decimal::{Decimal, typed_decimal::TypedDecimal},
             endpoint::Endpoint,
             integer::{Integer, typed_integer::TypedInteger},
@@ -69,7 +73,6 @@ use crate::{
     },
 };
 use core::{cell::RefCell, ops::Range, panic};
-use crate::types::type_definition::range::RangeTypeDefinition;
 
 pub mod error;
 pub mod options;
@@ -393,7 +396,9 @@ impl<'a> TypeExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
             .iter_mut()
             .map(|member| self.infer_type_expression(member))
             .collect::<Result<Vec<_>, _>>()?;
-        mark_type(Type::from(TypeDefinition::Union(TypeUnion(members))))
+        mark_type(Type::from(TypeDefinition::Union(UnionTypeDefinition(
+            members,
+        ))))
     }
     fn visit_intersection_type(
         &mut self,
@@ -499,13 +504,15 @@ impl<'a> TypeExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
             None => None,
         };
 
-        mark_type(Type::from(TypeDefinition::Callable(CallableSignature {
-            kind: callable_type.kind.clone(),
-            parameter_types,
-            rest_parameter_type,
-            return_type: return_type.map(Box::new),
-            yeet_type: yeet_type.map(Box::new),
-        })))
+        mark_type(Type::from(TypeDefinition::Callable(
+            CallableTypeDefinition {
+                kind: callable_type.kind.clone(),
+                parameter_types,
+                rest_parameter_type,
+                return_type: return_type.map(Box::new),
+                yeet_type: yeet_type.map(Box::new),
+            },
+        )))
     }
     fn visit_generic_access_type(
         &mut self,
@@ -580,9 +587,9 @@ impl<'a> TypeExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
     fn visit_get_core_lib_type(
         &mut self,
         core_lib_type_id: &mut CoreLibTypeId,
-        span: &Range<usize>,
+        _span: &Range<usize>,
     ) -> TypeExpressionVisitResult<SpannedTypeError> {
-        mark_type(TypeDefinition::Core(core_lib_type_id.clone()).into())
+        mark_type(TypeDefinition::Core(*core_lib_type_id).into())
     }
 }
 
@@ -1198,7 +1205,7 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
             })
             .collect();
 
-        let signature = CallableSignature {
+        let signature = CallableTypeDefinition {
             kind: callable_declaration.kind.clone(),
             parameter_types: parameters,
             rest_parameter_type,
@@ -1257,8 +1264,8 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
         span: &Range<usize>,
     ) -> ExpressionVisitResult<SpannedTypeError> {
         fn variant_type_id_from_pointer_address(
-            pointer_address: &PointerAddress,
-            variant_access: &VariantAccess,
+            _pointer_address: &PointerAddress,
+            _variant_access: &VariantAccess,
             span: &Range<usize>,
         ) -> ExpressionVisitResult<SpannedTypeError> {
             // TODO implement variant access
@@ -1331,7 +1338,7 @@ impl<'a> ExpressionVisitor<SpannedTypeError> for TypeInference<'a> {
                     Type::Alias(alias) => {
                         match &alias.definition {
                             TypeDefinition::Core(core_lib_id) => {
-                                variant_type_id(CoreLibId::Type(core_lib_id.clone()), variant_access, span)
+                                variant_type_id(CoreLibId::Type(*core_lib_id), variant_access, span)
                             }
                             _ => Err(SpannedTypeError {
                                 error: TypeError::Unimplemented(
@@ -1541,8 +1548,10 @@ mod tests {
             shared_container_containing_type::SharedContainerContainingType,
             r#type::Type,
             type_definition::{
-                TypeDefinition, intersection::IntersectionTypeDefinition,
-                union::TypeUnion,
+                TypeDefinition,
+                callable::{CallableKind, CallableTypeDefinition},
+                intersection::IntersectionTypeDefinition,
+                union::UnionTypeDefinition,
             },
             type_definition_with_metadata::{
                 TypeDefinitionWithMetadata, TypeMetadata,
@@ -1552,7 +1561,6 @@ mod tests {
             core_value::CoreValue,
             core_values::{
                 boolean::Boolean,
-                callable::{CallableKind, CallableSignature},
                 decimal::{Decimal, typed_decimal::TypedDecimal},
                 endpoint::Endpoint,
                 integer::{
@@ -1778,7 +1786,7 @@ mod tests {
         let res = infer_type_from_script_ignore_errors(src);
         assert_eq!(
             res,
-            Type::from(TypeDefinition::Callable(CallableSignature {
+            Type::from(TypeDefinition::Callable(CallableTypeDefinition {
                 kind: CallableKind::Function,
                 parameter_types: vec![
                     (
@@ -1807,7 +1815,7 @@ mod tests {
         let res = infer_type_from_script_ignore_errors(src);
         assert_eq!(
             res,
-            Type::from(TypeDefinition::Callable(CallableSignature {
+            Type::from(TypeDefinition::Callable(CallableTypeDefinition {
                 kind: CallableKind::Function,
                 parameter_types: vec![
                     (
@@ -1870,17 +1878,21 @@ mod tests {
                 .with_default_span()
             ),
             Type::Alias(
-                TypeDefinition::List(vec![
-                    Type::from(LiteralTypeDefinition::Integer(Integer::from(
-                        1
-                    ))),
-                    Type::from(LiteralTypeDefinition::Integer(Integer::from(
-                        2
-                    ))),
-                    Type::from(LiteralTypeDefinition::Integer(Integer::from(
-                        3
-                    )))
-                ].into_iter().collect())
+                TypeDefinition::List(
+                    vec![
+                        Type::from(LiteralTypeDefinition::Integer(
+                            Integer::from(1)
+                        )),
+                        Type::from(LiteralTypeDefinition::Integer(
+                            Integer::from(2)
+                        )),
+                        Type::from(LiteralTypeDefinition::Integer(
+                            Integer::from(3)
+                        ))
+                    ]
+                    .into_iter()
+                    .collect()
+                )
                 .into()
             )
         );
@@ -1896,14 +1908,19 @@ mod tests {
                 .with_default_span()
             ),
             Type::Alias(
-                TypeDefinition::Map(vec![(
-                    Type::Alias(
-                        LiteralTypeDefinition::Text("a".to_string()).into()
-                    ),
-                    Type::Alias(
-                        LiteralTypeDefinition::Integer(Integer::from(1)).into()
-                    )
-                )].into_iter().collect())
+                TypeDefinition::Map(
+                    vec![(
+                        Type::Alias(
+                            LiteralTypeDefinition::Text("a".to_string()).into()
+                        ),
+                        Type::Alias(
+                            LiteralTypeDefinition::Integer(Integer::from(1))
+                                .into()
+                        )
+                    )]
+                    .into_iter()
+                    .collect()
+                )
                 .into()
             )
         );
@@ -2261,7 +2278,7 @@ mod tests {
         let var_type = var.var_type.as_ref().unwrap();
         assert_eq!(
             var_type,
-            &Type::from(TypeDefinition::Union(TypeUnion(vec![
+            &Type::from(TypeDefinition::Union(UnionTypeDefinition(vec![
                 Type::core(CoreLibBaseTypeId::Text),
                 Type::core(CoreLibBaseTypeId::Integer)
             ])))
@@ -2384,7 +2401,7 @@ mod tests {
                 &inferred_type,
                 NominalTypeDefinition::new_base(
                     Type::from(LiteralTypeDefinition::Decimal(
-                        Decimal::from_string("3/4").unwrap()
+                        Decimal::try_from_string("3/4").unwrap()
                     ),),
                     "X".to_string()
                 )
@@ -2474,7 +2491,7 @@ mod tests {
         assert!(has_nominal_type_definition(
             &inferred_type,
             NominalTypeDefinition::new_base(
-                Type::from(TypeDefinition::Union(TypeUnion(vec![
+                Type::from(TypeDefinition::Union(UnionTypeDefinition(vec![
                     Type::core(CoreLibVariantTypeId::Integer(
                         IntegerTypeVariant::U8
                     )),
@@ -2505,22 +2522,26 @@ mod tests {
         assert!(has_nominal_type_definition(
             &inferred_type,
             NominalTypeDefinition::new_base(
-                Type::from(TypeDefinition::Map(vec![
-                    (
-                        Type::from(LiteralTypeDefinition::Text(
-                            "a".to_string()
-                        ),),
-                        Type::core(CoreLibVariantTypeId::Integer(
-                            IntegerTypeVariant::U8
-                        )),
-                    ),
-                    (
-                        Type::from(LiteralTypeDefinition::Text(
-                            "b".to_string()
-                        ),),
-                        Type::core(CoreLibBaseTypeId::Decimal)
-                    )
-                ].into_iter().collect())),
+                Type::from(TypeDefinition::Map(
+                    vec![
+                        (
+                            Type::from(LiteralTypeDefinition::Text(
+                                "a".to_string()
+                            ),),
+                            Type::core(CoreLibVariantTypeId::Integer(
+                                IntegerTypeVariant::U8
+                            )),
+                        ),
+                        (
+                            Type::from(LiteralTypeDefinition::Text(
+                                "b".to_string()
+                            ),),
+                            Type::core(CoreLibBaseTypeId::Decimal)
+                        )
+                    ]
+                    .into_iter()
+                    .collect()
+                )),
                 "X".to_string()
             )
         ));

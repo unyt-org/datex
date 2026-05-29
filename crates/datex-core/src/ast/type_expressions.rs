@@ -7,16 +7,18 @@ use crate::{
     },
     prelude::*,
     values::core_values::{
-        callable::CallableKind,
         decimal::{Decimal, typed_decimal::TypedDecimal},
         endpoint::Endpoint,
         integer::{Integer, typed_integer::TypedInteger},
     },
 };
 
-use crate::{shared_values::PointerAddress, types::r#type::Type};
+use crate::{
+    libs::core::type_id::CoreLibTypeId,
+    shared_values::PointerAddress,
+    types::{r#type::Type, type_definition::callable::CallableKind},
+};
 use core::ops;
-use crate::libs::core::type_id::CoreLibTypeId;
 
 #[derive(Clone, Debug, PartialEq)]
 /// The different kinds of type expressions in the AST
@@ -33,7 +35,7 @@ pub enum TypeExpressionData {
 
     VariableAccess(VariableAccess),
     GetReference(PointerAddress),
-    
+
     GetCoreLibType(CoreLibTypeId),
 
     // literals

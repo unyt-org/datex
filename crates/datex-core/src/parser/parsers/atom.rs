@@ -211,12 +211,11 @@ impl Parser {
         let span = self.advance()?.span.clone();
         let res = match variant {
             Some(var) => {
-                TypedDecimal::from_string_and_variant_in_range(&value, var)
+                TypedDecimal::try_from_string_and_variant(&value, var)
                     .map(DatexExpressionData::TypedDecimal)
             }
-            None => {
-                Decimal::from_string(&value).map(DatexExpressionData::Decimal)
-            }
+            None => Decimal::try_from_string(&value)
+                .map(DatexExpressionData::Decimal),
         };
         match res {
             Ok(expr) => Ok(expr.with_span(span)),
@@ -333,7 +332,7 @@ impl Parser {
         let span = self.advance()?.span.clone();
         // remove all underscores from fraction string
         let fraction: String = fraction.chars().filter(|&c| c != '_').collect();
-        match Decimal::from_string(&fraction) {
+        match Decimal::try_from_string(&fraction) {
             Ok(decimal) => {
                 Ok(DatexExpressionData::Decimal(decimal).with_span(span))
             }
@@ -639,7 +638,7 @@ mod tests {
         assert_eq!(
             expr.data,
             DatexExpressionData::Decimal(
-                Decimal::from_string("123.456").unwrap()
+                Decimal::try_from_string("123.456").unwrap()
             )
         );
     }
@@ -659,7 +658,7 @@ mod tests {
         assert_eq!(
             expr.data,
             DatexExpressionData::Decimal(
-                Decimal::from_string("-0.001").unwrap()
+                Decimal::try_from_string("-0.001").unwrap()
             )
         );
     }
@@ -670,7 +669,7 @@ mod tests {
         assert_eq!(
             expr.data,
             DatexExpressionData::Decimal(
-                Decimal::from_string("1.23e4").unwrap()
+                Decimal::try_from_string("1.23e4").unwrap()
             )
         );
     }
@@ -691,7 +690,9 @@ mod tests {
         let expr = parse("42e2");
         assert_eq!(
             expr.data,
-            DatexExpressionData::Decimal(Decimal::from_string("42e2").unwrap())
+            DatexExpressionData::Decimal(
+                Decimal::try_from_string("42e2").unwrap()
+            )
         );
     }
 
@@ -709,7 +710,9 @@ mod tests {
         let expr = parse("3/4");
         assert_eq!(
             expr.data,
-            DatexExpressionData::Decimal(Decimal::from_string("3/4").unwrap())
+            DatexExpressionData::Decimal(
+                Decimal::try_from_string("3/4").unwrap()
+            )
         );
     }
 
@@ -719,7 +722,7 @@ mod tests {
         assert_eq!(
             expr.data,
             DatexExpressionData::Decimal(
-                Decimal::from_string("1000/2500").unwrap()
+                Decimal::try_from_string("1000/2500").unwrap()
             )
         );
     }
@@ -730,7 +733,7 @@ mod tests {
         assert_eq!(
             expr.data,
             DatexExpressionData::Decimal(
-                Decimal::from_string("-7500/2500").unwrap()
+                Decimal::try_from_string("-7500/2500").unwrap()
             )
         );
     }

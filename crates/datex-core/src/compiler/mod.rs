@@ -52,7 +52,6 @@ use crate::{
         },
         root_properties::RootProperty,
     },
-    libs::core::core_lib_id::CoreLibId,
     parser::{Parser, ParserOptions, errors::SpannedParserError},
     prelude::*,
     runtime::{Runtime, execution::context::ExecutionMode},

@@ -29,3 +29,40 @@ impl<'ctx> SerializeSeed for SerdeContext<'ctx, List> {
         state.end()
     }
 }
+
+impl<'de, 'ctx> serde::de::DeserializeSeed<'de> for SerdeContext<'ctx, List> {
+    type Value = List;
+
+    fn deserialize<D>(self, deserializer: D) -> Result<List, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        deserializer.deserialize_seq(self)
+    }
+}
+
+impl<'de, 'ctx> serde::de::Visitor<'de> for SerdeContext<'ctx, List> {
+    type Value = List;
+
+    fn expecting(
+        &self,
+        formatter: &mut core::fmt::Formatter,
+    ) -> core::fmt::Result {
+        formatter.write_str("a sequence of values for List")
+    }
+
+    fn visit_seq<A>(mut self, mut seq: A) -> Result<List, A::Error>
+    where
+        A: serde::de::SeqAccess<'de>,
+    {
+        let mut list = List::default();
+
+        while let Some(value) =
+            seq.next_element_seed(self.cast::<ValueContainer>())?
+        {
+            list.push(value);
+        }
+
+        Ok(list)
+    }
+}

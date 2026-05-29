@@ -1,31 +1,14 @@
 use crate::{
     prelude::*,
-    types::r#type::Type,
+    types::type_definition::callable::CallableTypeDefinition,
     values::{
         core_values::callable::error::CallableError,
         value_container::ValueContainer,
     },
 };
-use core::fmt::{Display, Formatter};
 pub mod apply;
 pub mod equality;
 pub mod error;
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub enum CallableKind {
-    // A pure function
-    Function,
-    // A procedure that may have side effects
-    Procedure,
-}
-
-impl Display for CallableKind {
-    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
-        match self {
-            CallableKind::Function => write!(f, "function"),
-            CallableKind::Procedure => write!(f, "procedure"),
-        }
-    }
-}
 
 pub type NativeCallable =
     fn(&[ValueContainer]) -> Result<Option<ValueContainer>, CallableError>;
@@ -37,18 +20,9 @@ pub enum CallableBody {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct CallableSignature {
-    pub kind: CallableKind,
-    pub parameter_types: Vec<(Option<String>, Type)>,
-    pub rest_parameter_type: Option<(Option<String>, Box<Type>)>,
-    pub return_type: Option<Box<Type>>,
-    pub yeet_type: Option<Box<Type>>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Callable {
     pub name: Option<String>,
-    pub signature: CallableSignature,
+    pub signature: CallableTypeDefinition,
     pub body: CallableBody,
 }
 

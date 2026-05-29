@@ -22,9 +22,9 @@ use crate::{
     prelude::*,
 };
 use core::fmt::Display;
+use datex_macros_internal::Datex;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
-use datex_macros_internal::Datex;
 
 #[derive(Serialize, Deserialize, Debug)]
 #[cfg_attr(feature = "wasm_runtime", derive(tsify::Tsify))]

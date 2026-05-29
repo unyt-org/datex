@@ -17,20 +17,19 @@ use crate::{
     ast::expressions::{
         CallableDeclaration, CreateShared, GetSharedRef, TagExpression,
     },
-    libs::core::{
-        core_lib_id::CoreLibId,
-        type_id::{CoreLibBaseTypeId, CoreLibTypeId},
-    },
+    libs::core::type_id::{CoreLibBaseTypeId, CoreLibTypeId},
     prelude::*,
     shared_values::SharedContainer,
     types::{
-        r#type::Type, type_definition::TypeDefinition,
+        r#type::Type,
+        type_definition::{
+            TypeDefinition, range::RangeTypeDefinition,
+            tagged_type::TaggedTypeDefinition,
+        },
         type_definition_with_metadata::TypeDefinitionWithMetadata,
     },
 };
 use alloc::format;
-use crate::types::type_definition::range::RangeTypeDefinition;
-use crate::types::type_definition::tagged_type::TaggedTypeDefinition;
 
 impl From<&ValueContainer> for DatexExpressionData {
     /// Converts a ValueContainer into a DatexExpression AST.
@@ -196,16 +195,23 @@ fn type_cast_expression(
     match target_type {
         // #SomeTag (...)
         TypeDefinition::TaggedType(TaggedTypeDefinition {
-           tag,
-           ty: Option::None,
+            tag,
+            ty: Option::None,
         }) => DatexExpressionData::Tag(TagExpression {
             tag: tag.clone(),
             expression: Some(Box::new(expression.with_default_span())),
         }),
         // #SomeTag
         TypeDefinition::TaggedType(TaggedTypeDefinition {
-           tag,
-           ty: Some(box TypeDefinition::Core(CoreLibTypeId::Base(CoreLibBaseTypeId::Unit))),
+            tag,
+            ty:
+                Some(box Type::Alias(TypeDefinitionWithMetadata {
+                    definition:
+                        TypeDefinition::Core(CoreLibTypeId::Base(
+                            CoreLibBaseTypeId::Unit,
+                        )),
+                    ..
+                })),
         }) => DatexExpressionData::Tag(TagExpression {
             tag: tag.clone(),
             expression: None,
@@ -269,7 +275,7 @@ fn structural_type_definition_to_type_expression(
             ))
             .with_default_span(),
         },
-        TypeDefinition::Range(RangeTypeDefinition {start, end}) => {
+        TypeDefinition::Range(RangeTypeDefinition { start, end }) => {
             let x = type_to_type_expression(start);
             let y = type_to_type_expression(end);
             TypeExpressionData::Range(RangeTypeExpr {
@@ -294,7 +300,7 @@ fn structural_type_definition_to_type_expression(
             ))
             .with_default_span()
         }
-        TypeDefinition::Shared(type_reference) => {
+        TypeDefinition::Shared(_type_reference) => {
             todo!("#651 Handle type references in decompiler");
         }
         TypeDefinition::Core(core_type) => {

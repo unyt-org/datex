@@ -1,11 +1,10 @@
 use crate::{
     runtime::memory::Memory,
     shared_values::{
-        PointerAddress,
+        PointerAddress, RemotePointerAddress,
         base_shared_value_container::BaseSharedValueContainer,
     },
 };
-use crate::shared_values::RemotePointerAddress;
 
 /// A shared container with an external pointer
 #[derive(Debug)]

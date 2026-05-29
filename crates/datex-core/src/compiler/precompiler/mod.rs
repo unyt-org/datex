@@ -39,8 +39,7 @@ use crate::{
     libs::core::{core_lib_id::CoreLibId, type_id::CoreLibBaseTypeId},
     runtime::Runtime,
     shared_values::{
-        PointerAddress, ReferenceMutability, SharedContainer,
-        SharedContainerMutability,
+        ReferenceMutability, SharedContainer, SharedContainerMutability,
     },
     types::{
         nominal_type_definition::NominalTypeDefinition,
