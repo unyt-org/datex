@@ -93,6 +93,20 @@ pub enum SharedContainerOwnership {
     Referenced(ReferenceMutability),
 }
 
+impl TryFrom<Option<u8>> for SharedContainerOwnership {
+    type Error = &'static str;
+    fn try_from(value: Option<u8>) -> Result<Self, Self::Error> {
+        match value {
+            None => Ok(SharedContainerOwnership::Owned),
+            Some(i) => {
+                let mutability = ReferenceMutability::try_from(i)
+                    .map_err(|_| "Invalid ownership value")?;
+                Ok(SharedContainerOwnership::Referenced(mutability))
+            }
+        }
+    }
+}
+
 impl SharedContainerOwnership {
     const OWNED: &'static str = SharedContainerOwnership::Owned.string();
     const REFERENCED_IMMUTABLE: &'static str =

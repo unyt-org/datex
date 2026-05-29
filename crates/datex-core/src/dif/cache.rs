@@ -173,4 +173,13 @@ impl DIFSharedContainerCache {
                 .map(SharedContainer::Referenced)?),
         }
     }
+    pub fn has_address_with_ownership(
+        &self,
+        pointer_address: &PointerAddress,
+        ownership: SharedContainerOwnership,
+    ) -> bool {
+        self.values
+            .get(pointer_address)
+            .map_or(false, |container| container.ownership() >= ownership)
+    }
 }

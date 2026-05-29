@@ -6,7 +6,7 @@ use crate::{
     runtime::pointer_address_provider::SelfOwnedPointerAddressProvider,
     shared_values::{
         OwnedSharedContainer, PointerAddress, SelfOwnedPointerAddress,
-        SelfOwnedSharedContainer, SharedContainer,
+        SelfOwnedSharedContainer, SharedContainer, SharedContainerOwnership,
         base_shared_value_container::{
             BaseSharedValueContainer,
             observers::{ObserveOptions, Observer, ObserverId, TransceiverId},
@@ -108,6 +108,15 @@ impl DIFInterface {
         address: PointerAddress,
     ) -> Result<SharedContainer, ValueNotFoundInCacheError> {
         self.cache.try_get_shared_container(&address).cloned()
+    }
+
+    pub fn has_address_with_ownership(
+        &self,
+        pointer_address: &PointerAddress,
+        ownership: SharedContainerOwnership,
+    ) -> bool {
+        self.cache
+            .has_address_with_ownership(pointer_address, ownership)
     }
 
     /// Starts observing changes to the pointer at the given address.
