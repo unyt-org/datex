@@ -1,6 +1,7 @@
 //! This module contains the implementation of the [BaseSharedValueContainer], which is the underlying data structure for shared values in DATEX.
 use crate::{
     traits::value_eq::ValueEq,
+    types::type_definition::TypeDefinition,
     utils::freemap::FreeHashMap,
     values::{
         core_value::CoreValue,
@@ -33,8 +34,8 @@ use observers::{Observer, ObserverId};
 pub struct BaseSharedValueContainer {
     /// The value of the container
     value_container: ValueContainer,
-    /// The [Type] that is allowed to be assigned to the shared container. This is used for type checking when assigning a new value container to the shared container.
-    allowed_type: Type,
+    /// The [TypeDefinition] that is allowed to be assigned to the shared container. This is used for type checking when assigning a new value container to the shared container.
+    allowed_type: TypeDefinition,
     /// List of observer callbacks
     /// TODO: move observers to ValueContainer?
     observers: FreeHashMap<ObserverId, Observer>,
@@ -42,17 +43,15 @@ pub struct BaseSharedValueContainer {
 }
 
 impl BaseSharedValueContainer {
-    /// Returns a new [BaseSharedValueContainer] with a [ValueContainer] containing a [CoreValue::Null], an allowed type of [Type::UNIT] and a mutability of [SharedContainerMutability::Immutable].
+    /// Returns a new [BaseSharedValueContainer] with a [ValueContainer] containing a [CoreValue::Null], an allowed type of [CoreLibTypeId::Base(CoreLibBaseTypeId::Null)] and a mutability of [SharedContainerMutability::Immutable].
     pub fn null() -> Self {
-        BaseSharedValueContainer {
-            value_container: ValueContainer::Local(Value {
+        Self::new_with_inferred_allowed_type(
+            ValueContainer::Local(Value {
                 inner: CoreValue::Null,
                 custom_type: None,
             }),
-            allowed_type: Type::UNIT,
-            observers: FreeHashMap::new(),
-            mutability: SharedContainerMutability::Immutable,
-        }
+            SharedContainerMutability::Immutable,
+        )
     }
 
     /// Tries to create a new [BaseSharedValueContainer] with an initial [ValueContainer],
@@ -61,7 +60,7 @@ impl BaseSharedValueContainer {
     /// an error is returned
     pub fn try_new(
         value_container: ValueContainer,
-        allowed_type: Type,
+        allowed_type: TypeDefinition,
         mutability: SharedContainerMutability,
     ) -> Result<Self, SharedValueCreationError> {
         // TODO #286: make sure allowed type is superset of reference's allowed type
@@ -125,7 +124,7 @@ impl BaseSharedValueContainer {
     pub(crate) fn value_container_mut(&mut self) -> &mut ValueContainer {
         &mut self.value_container
     }
-    pub fn allowed_type(&self) -> &Type {
+    pub fn allowed_type(&self) -> &TypeDefinition {
         &self.allowed_type
     }
     pub fn mutability(&self) -> &SharedContainerMutability {

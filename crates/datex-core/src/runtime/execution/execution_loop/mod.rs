@@ -1318,7 +1318,7 @@ pub fn inner_execution_loop(
                                     let referenced_container = yield_unwrap!(unsafe {ReferencedSharedContainer::try_new_external_from_base_container(
                                         yield_unwrap!(BaseSharedValueContainer::try_new(
                                             value,
-                                            Type::core(CoreLibBaseTypeId::Unknown),
+                                            TypeDefinition::Core(CoreLibBaseTypeId::Unknown.into()),
                                             shared_ref.container_mutability,
                                         )),
                                         pointer_address,

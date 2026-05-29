@@ -12,7 +12,7 @@ use crate::{
     traits::{
         identity::Identity, structural_eq::StructuralEq, value_eq::ValueEq,
     },
-    types::r#type::Type,
+    types::{r#type::Type, type_definition::TypeDefinition},
     values::{value::Value, value_container::ValueContainer},
 };
 use alloc::rc::Rc;
@@ -114,7 +114,7 @@ impl ReferencedSharedContainer {
     /// Tries to create a new immutable [ReferencedSharedContainer] containing a [SharedContainerInner::External]
     /// with the provided [ValueContainer] and [RemotePointerAddress].
     ///
-    /// Sets the provided [SharedContainerMutability] and allowed [Type].
+    /// Sets the provided [SharedContainerMutability] and allowed [TypeDefinition].
     /// If the allowed [TypeDefinition] is not a superset of the [ValueContainer]'s allowed type,
     /// an error is returned
     /// # Safety
@@ -123,7 +123,7 @@ impl ReferencedSharedContainer {
         value_container: ValueContainer,
         address: RemotePointerAddress,
         mutability: SharedContainerMutability,
-        allowed_type: Type,
+        allowed_type: TypeDefinition,
         memory: &Memory,
     ) -> Result<Self, SharedValueCreationError> {
         Ok(unsafe {
@@ -190,7 +190,7 @@ impl ReferencedSharedContainer {
     }
 
     /// Gets a [Ref] to the currently assigned allowed [TypeDefinition] of the shared container (not resolved recursively)
-    pub fn allowed_type(&self) -> Ref<'_, Type> {
+    pub fn allowed_type(&self) -> Ref<'_, TypeDefinition> {
         Ref::map(self.base_shared_container(), |base_shared_container| {
             base_shared_container.allowed_type()
         })
